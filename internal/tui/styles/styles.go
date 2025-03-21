@@ -1,0 +1,121 @@
+package styles
+
+import (
+	catppuccin "github.com/catppuccin/go"
+	"github.com/charmbracelet/lipgloss"
+)
+
+var (
+	light = catppuccin.Latte
+	dark  = catppuccin.Mocha
+)
+
+var (
+	Regular = lipgloss.NewStyle()
+	Bold    = Regular.Bold(true)
+	Padded  = Regular.Padding(0, 1)
+
+	Border       = Regular.Border(lipgloss.NormalBorder())
+	ThickBorder  = Regular.Border(lipgloss.ThickBorder())
+	DoubleBorder = Regular.Border(lipgloss.DoubleBorder())
+	// Colors
+
+	Surface0 = lipgloss.AdaptiveColor{
+		Dark:  dark.Surface0().Hex,
+		Light: light.Surface0().Hex,
+	}
+
+	Overlay0 = lipgloss.AdaptiveColor{
+		Dark:  dark.Overlay0().Hex,
+		Light: light.Overlay0().Hex,
+	}
+
+	Ovelay1 = lipgloss.AdaptiveColor{
+		Dark:  dark.Overlay1().Hex,
+		Light: light.Overlay1().Hex,
+	}
+
+	Text = lipgloss.AdaptiveColor{
+		Dark:  dark.Text().Hex,
+		Light: light.Text().Hex,
+	}
+
+	SubText0 = lipgloss.AdaptiveColor{
+		Dark:  dark.Subtext0().Hex,
+		Light: light.Subtext0().Hex,
+	}
+
+	SubText1 = lipgloss.AdaptiveColor{
+		Dark:  dark.Subtext1().Hex,
+		Light: light.Subtext1().Hex,
+	}
+
+	LightGrey = lipgloss.AdaptiveColor{
+		Dark:  dark.Surface0().Hex,
+		Light: light.Surface0().Hex,
+	}
+	Grey = lipgloss.AdaptiveColor{
+		Dark:  dark.Surface1().Hex,
+		Light: light.Surface1().Hex,
+	}
+
+	DarkGrey = lipgloss.AdaptiveColor{
+		Dark:  dark.Surface2().Hex,
+		Light: light.Surface2().Hex,
+	}
+
+	Base = lipgloss.AdaptiveColor{
+		Dark:  dark.Base().Hex,
+		Light: light.Base().Hex,
+	}
+
+	Crust = lipgloss.AdaptiveColor{
+		Dark:  dark.Crust().Hex,
+		Light: light.Crust().Hex,
+	}
+
+	Blue = lipgloss.AdaptiveColor{
+		Dark:  dark.Blue().Hex,
+		Light: light.Blue().Hex,
+	}
+
+	Red = lipgloss.AdaptiveColor{
+		Dark:  dark.Red().Hex,
+		Light: light.Red().Hex,
+	}
+
+	Green = lipgloss.AdaptiveColor{
+		Dark:  dark.Green().Hex,
+		Light: light.Green().Hex,
+	}
+
+	Mauve = lipgloss.AdaptiveColor{
+		Dark:  dark.Mauve().Hex,
+		Light: light.Mauve().Hex,
+	}
+
+	Teal = lipgloss.AdaptiveColor{
+		Dark:  dark.Teal().Hex,
+		Light: light.Teal().Hex,
+	}
+
+	Rosewater = lipgloss.AdaptiveColor{
+		Dark:  dark.Rosewater().Hex,
+		Light: light.Rosewater().Hex,
+	}
+
+	Flamingo = lipgloss.AdaptiveColor{
+		Dark:  dark.Flamingo().Hex,
+		Light: light.Flamingo().Hex,
+	}
+
+	Lavender = lipgloss.AdaptiveColor{
+		Dark:  dark.Lavender().Hex,
+		Light: light.Lavender().Hex,
+	}
+
+	Peach = lipgloss.AdaptiveColor{
+		Dark:  dark.Peach().Hex,
+		Light: light.Peach().Hex,
+	}
+)
