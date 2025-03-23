@@ -122,4 +122,7 @@ var (
 
 	Primary   = Blue
 	Secondary = Mauve
+
+	Warning = Peach
+	Error   = Red
 )

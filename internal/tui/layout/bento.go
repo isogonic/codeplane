@@ -73,7 +73,14 @@ func (b *bentoLayout) GetSize() (int, int) {
 }
 
 func (b *bentoLayout) Init() tea.Cmd {
-	return nil
+	var cmds []tea.Cmd
+	for _, pane := range b.panes {
+		cmd := pane.Init()
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	}
+	return tea.Batch(cmds...)
 }
 
 func (b *bentoLayout) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -98,12 +105,15 @@ func (b *bentoLayout) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	if pane, ok := b.panes[b.currentPane]; ok {
+	var cmds []tea.Cmd
+	for id, pane := range b.panes {
 		u, cmd := pane.Update(msg)
-		b.panes[b.currentPane] = u.(SinglePaneLayout)
-		return b, cmd
+		b.panes[id] = u.(SinglePaneLayout)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
 	}
-	return b, nil
+	return b, tea.Batch(cmds...)
 }
 
 func (b *bentoLayout) View() string {

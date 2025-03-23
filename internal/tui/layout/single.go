@@ -11,6 +11,7 @@ type SinglePaneLayout interface {
 	Focusable
 	Sizeable
 	Bindings
+	Pane() tea.Model
 }
 
 type singlePaneLayout struct {
@@ -26,6 +27,8 @@ type singlePaneLayout struct {
 	content tea.Model
 
 	padding []int
+
+	activeColor lipgloss.TerminalColor
 }
 
 type SinglePaneOption func(*singlePaneLayout)
@@ -48,7 +51,7 @@ func (s *singlePaneLayout) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (s *singlePaneLayout) View() string {
 	style := lipgloss.NewStyle().Width(s.width).Height(s.height)
 	if s.bordered {
-		style = style.Width(s.width).Height(s.height)
+		style = style.Width(s.width - 2).Height(s.height - 2)
 	}
 	if s.padding != nil {
 		style = style.Padding(s.padding...)
@@ -61,7 +64,7 @@ func (s *singlePaneLayout) View() string {
 		if bordered, ok := s.content.(Bordered); ok {
 			s.borderText = bordered.BorderText()
 		}
-		return Borderize(content, s.focused, s.borderText)
+		return Borderize(content, s.focused, s.borderText, s.activeColor)
 	}
 	return content
 }
@@ -89,11 +92,11 @@ func (s *singlePaneLayout) Focus() tea.Cmd {
 func (s *singlePaneLayout) SetSize(width, height int) {
 	s.width = width
 	s.height = height
-	if s.bordered {
-		s.width -= 2
-		s.height -= 2
-	}
 	childWidth, childHeight := s.width, s.height
+	if s.bordered {
+		childWidth -= 2
+		childHeight -= 2
+	}
 	if s.padding != nil {
 		if len(s.padding) == 1 {
 			childWidth -= s.padding[0] * 2
@@ -129,6 +132,10 @@ func (s *singlePaneLayout) BindingKeys() []key.Binding {
 		return b.BindingKeys()
 	}
 	return []key.Binding{}
+}
+
+func (s *singlePaneLayout) Pane() tea.Model {
+	return s.content
 }
 
 func NewSinglePane(content tea.Model, opts ...SinglePaneOption) SinglePaneLayout {
@@ -169,5 +176,11 @@ func WithSignlePaneBorderText(borderText map[BorderPosition]string) SinglePaneOp
 func WithSinglePanePadding(padding ...int) SinglePaneOption {
 	return func(opts *singlePaneLayout) {
 		opts.padding = padding
+	}
+}
+
+func WithSinglePaneActiveColor(color lipgloss.TerminalColor) SinglePaneOption {
+	return func(opts *singlePaneLayout) {
+		opts.activeColor = color
 	}
 }

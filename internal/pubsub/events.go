@@ -1,10 +1,16 @@
 package pubsub
 
+import "context"
+
 const (
 	CreatedEvent EventType = "created"
 	UpdatedEvent EventType = "updated"
 	DeletedEvent EventType = "deleted"
 )
+
+type Suscriber[T any] interface {
+	Subscribe(context.Context) <-chan Event[T]
+}
 
 type (
 	// EventType identifies the type of event

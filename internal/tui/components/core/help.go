@@ -24,23 +24,23 @@ type helpCmp struct {
 	bindings []key.Binding
 }
 
-func (m *helpCmp) Init() tea.Cmd {
+func (h *helpCmp) Init() tea.Cmd {
 	return nil
 }
 
-func (m *helpCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (h *helpCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
+		h.width = msg.Width
 	}
-	return m, nil
+	return h, nil
 }
 
-func (m *helpCmp) View() string {
+func (h *helpCmp) View() string {
 	helpKeyStyle := styles.Bold.Foreground(styles.Rosewater).Margin(0, 1, 0, 0)
 	helpDescStyle := styles.Regular.Foreground(styles.Flamingo)
 	// Compile list of bindings to render
-	bindings := removeDuplicateBindings(m.bindings)
+	bindings := removeDuplicateBindings(h.bindings)
 	// Enumerate through each group of bindings, populating a series of
 	// pairs of columns, one for keys, one for descriptions
 	var (
@@ -72,7 +72,7 @@ func (m *helpCmp) View() string {
 		// check whether it exceeds the maximum width avail (the width of the
 		// terminal, subtracting 2 for the borders).
 		width += lipgloss.Width(pair)
-		if width > m.width-2 {
+		if width > h.width-2 {
 			break
 		}
 		pairs = append(pairs, pair)
@@ -80,7 +80,7 @@ func (m *helpCmp) View() string {
 
 	// Join pairs of columns and enclose in a border
 	content := lipgloss.JoinHorizontal(lipgloss.Top, pairs...)
-	return styles.DoubleBorder.Height(rows).PaddingLeft(1).Width(m.width - 2).Render(content)
+	return styles.DoubleBorder.Height(rows).PaddingLeft(1).Width(h.width - 2).Render(content)
 }
 
 func removeDuplicateBindings(bindings []key.Binding) []key.Binding {
@@ -103,11 +103,11 @@ func removeDuplicateBindings(bindings []key.Binding) []key.Binding {
 	return result
 }
 
-func (m *helpCmp) SetBindings(bindings []key.Binding) {
-	m.bindings = bindings
+func (h *helpCmp) SetBindings(bindings []key.Binding) {
+	h.bindings = bindings
 }
 
-func (m helpCmp) Height() int {
+func (h helpCmp) Height() int {
 	return helpWidgetHeight
 }
 

@@ -24,9 +24,12 @@ var (
 	InactivePreviewBorder = styles.Grey
 )
 
-func Borderize(content string, active bool, embeddedText map[BorderPosition]string) string {
+func Borderize(content string, active bool, embeddedText map[BorderPosition]string, activeColor lipgloss.TerminalColor) string {
 	if embeddedText == nil {
 		embeddedText = make(map[BorderPosition]string)
+	}
+	if activeColor == nil {
+		activeColor = ActiveBorder
 	}
 	var (
 		thickness = map[bool]lipgloss.Border{
@@ -34,7 +37,7 @@ func Borderize(content string, active bool, embeddedText map[BorderPosition]stri
 			false: lipgloss.Border(lipgloss.NormalBorder()),
 		}
 		color = map[bool]lipgloss.TerminalColor{
-			true:  ActiveBorder,
+			true:  activeColor,
 			false: InactivePreviewBorder,
 		}
 		border = thickness[active]
