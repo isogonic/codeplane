@@ -48,11 +48,8 @@ func setupSubscriptions(ctx context.Context) (chan tea.Msg, func()) {
 			wg.Done()
 		}()
 	}
-	// cleanup function to be invoked when program is terminated.
 	return ch, func() {
 		cancel()
-		// Wait for relays to finish before closing channel, to avoid sends
-		// to a closed channel, which would result in a panic.
 		wg.Wait()
 		close(ch)
 	}

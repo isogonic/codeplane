@@ -72,11 +72,11 @@ func (b *bentoLayout) GetSize() (int, int) {
 	return b.width, b.height
 }
 
-func (b bentoLayout) Init() tea.Cmd {
+func (b *bentoLayout) Init() tea.Cmd {
 	return nil
 }
 
-func (b bentoLayout) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (b *bentoLayout) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		b.SetSize(msg.Width, msg.Height)
@@ -106,7 +106,7 @@ func (b bentoLayout) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return b, nil
 }
 
-func (b bentoLayout) View() string {
+func (b *bentoLayout) View() string {
 	if b.width <= 0 || b.height <= 0 {
 		return ""
 	}
@@ -310,14 +310,14 @@ func NewBentoLayout(panes BentoPanes, opts ...BentoLayoutOption) BentoLayout {
 	p := make(map[paneID]SinglePaneLayout, len(panes))
 	for id, pane := range panes {
 		// Wrap any pane that is not a SinglePaneLayout in a SinglePaneLayout
-		if _, ok := pane.(SinglePaneLayout); !ok {
+		if sp, ok := pane.(SinglePaneLayout); !ok {
 			p[id] = NewSinglePane(
 				pane,
 				WithSinglePaneFocusable(true),
 				WithSinglePaneBordered(true),
 			)
 		} else {
-			p[id] = pane.(SinglePaneLayout)
+			p[id] = sp
 		}
 	}
 	if len(p) == 0 {

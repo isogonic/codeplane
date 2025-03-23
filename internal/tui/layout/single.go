@@ -30,11 +30,11 @@ type singlePaneLayout struct {
 
 type SinglePaneOption func(*singlePaneLayout)
 
-func (s singlePaneLayout) Init() tea.Cmd {
+func (s *singlePaneLayout) Init() tea.Cmd {
 	return s.content.Init()
 }
 
-func (s singlePaneLayout) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (s *singlePaneLayout) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		s.SetSize(msg.Width, msg.Height)
@@ -45,7 +45,7 @@ func (s singlePaneLayout) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return s, cmd
 }
 
-func (s singlePaneLayout) View() string {
+func (s *singlePaneLayout) View() string {
 	style := lipgloss.NewStyle().Width(s.width).Height(s.height)
 	if s.bordered {
 		style = style.Width(s.width).Height(s.height)
