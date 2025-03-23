@@ -18,6 +18,7 @@ var (
 	Border       = Regular.Border(lipgloss.NormalBorder())
 	ThickBorder  = Regular.Border(lipgloss.ThickBorder())
 	DoubleBorder = Regular.Border(lipgloss.DoubleBorder())
+
 	// Colors
 
 	Surface0 = lipgloss.AdaptiveColor{
@@ -118,4 +119,7 @@ var (
 		Dark:  dark.Peach().Hex,
 		Light: light.Peach().Hex,
 	}
+
+	Primary   = Blue
+	Secondary = Mauve
 )

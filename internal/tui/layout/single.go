@@ -93,24 +93,25 @@ func (s *singlePaneLayout) SetSize(width, height int) {
 		s.width -= 2
 		s.height -= 2
 	}
+	childWidth, childHeight := s.width, s.height
 	if s.padding != nil {
 		if len(s.padding) == 1 {
-			s.width -= s.padding[0] * 2
-			s.height -= s.padding[0] * 2
+			childWidth -= s.padding[0] * 2
+			childHeight -= s.padding[0] * 2
 		} else if len(s.padding) == 2 {
-			s.width -= s.padding[0] * 2
-			s.height -= s.padding[1] * 2
+			childWidth -= s.padding[0] * 2
+			childHeight -= s.padding[1] * 2
 		} else if len(s.padding) == 3 {
-			s.width -= s.padding[0] * 2
-			s.height -= s.padding[1] + s.padding[2]
+			childWidth -= s.padding[0] * 2
+			childHeight -= s.padding[1] + s.padding[2]
 		} else if len(s.padding) == 4 {
-			s.width -= s.padding[0] + s.padding[2]
-			s.height -= s.padding[1] + s.padding[3]
+			childWidth -= s.padding[0] + s.padding[2]
+			childHeight -= s.padding[1] + s.padding[3]
 		}
 	}
 	if s.content != nil {
 		if c, ok := s.content.(Sizeable); ok {
-			c.SetSize(s.width, s.height)
+			c.SetSize(childWidth, childHeight)
 		}
 	}
 }
