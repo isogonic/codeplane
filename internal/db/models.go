@@ -4,12 +4,21 @@
 
 package db
 
+type Message struct {
+	ID          string `json:"id"`
+	SessionID   string `json:"session_id"`
+	MessageData string `json:"message_data"`
+	CreatedAt   int64  `json:"created_at"`
+	UpdatedAt   int64  `json:"updated_at"`
+}
+
 type Session struct {
-	ID           string  `json:"id"`
-	Title        string  `json:"title"`
-	MessageCount int64   `json:"message_count"`
-	Tokens       int64   `json:"tokens"`
-	Cost         float64 `json:"cost"`
-	UpdatedAt    int64   `json:"updated_at"`
-	CreatedAt    int64   `json:"created_at"`
+	ID               string  `json:"id"`
+	Title            string  `json:"title"`
+	MessageCount     int64   `json:"message_count"`
+	PromptTokens     int64   `json:"prompt_tokens"`
+	CompletionTokens int64   `json:"completion_tokens"`
+	Cost             float64 `json:"cost"`
+	UpdatedAt        int64   `json:"updated_at"`
+	CreatedAt        int64   `json:"created_at"`
 }

@@ -5,7 +5,9 @@ import (
 	"database/sql"
 
 	"github.com/kujtimiihoxha/termai/internal/db"
+	"github.com/kujtimiihoxha/termai/internal/llm"
 	"github.com/kujtimiihoxha/termai/internal/logging"
+	"github.com/kujtimiihoxha/termai/internal/message"
 	"github.com/kujtimiihoxha/termai/internal/session"
 	"github.com/spf13/viper"
 )
@@ -14,6 +16,8 @@ type App struct {
 	Context context.Context
 
 	Sessions session.Service
+	Messages message.Service
+	LLM      llm.Service
 
 	Logger logging.Interface
 }
@@ -23,9 +27,15 @@ func New(ctx context.Context, conn *sql.DB) *App {
 	log := logging.NewLogger(logging.Options{
 		Level: viper.GetString("log.level"),
 	})
+	sessions := session.NewService(ctx, q)
+	messages := message.NewService(ctx, q)
+	llm := llm.NewService(ctx, log, sessions, messages)
+
 	return &App{
 		Context:  ctx,
-		Sessions: session.NewService(ctx, q),
+		Sessions: sessions,
+		Messages: messages,
+		LLM:      llm,
 		Logger:   log,
 	}
 }

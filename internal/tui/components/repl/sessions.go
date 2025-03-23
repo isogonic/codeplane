@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/kujtimiihoxha/termai/internal/app"
+	"github.com/kujtimiihoxha/termai/internal/pubsub"
 	"github.com/kujtimiihoxha/termai/internal/session"
 	"github.com/kujtimiihoxha/termai/internal/tui/layout"
 	"github.com/kujtimiihoxha/termai/internal/tui/styles"
@@ -42,19 +43,30 @@ type SelectedSessionMsg struct {
 	SessionID string
 }
 
+type sessionsKeyMap struct {
+	Select key.Binding
+}
+
+var sessionKeyMapValue = sessionsKeyMap{
+	Select: key.NewBinding(
+		key.WithKeys("enter", " "),
+		key.WithHelp("enter/space", "select session"),
+	),
+}
+
 func (i *sessionsCmp) Init() tea.Cmd {
 	existing, err := i.app.Sessions.List()
 	if err != nil {
 		return util.ReportError(err)
 	}
 	if len(existing) == 0 || existing[0].MessageCount > 0 {
-		session, err := i.app.Sessions.Create(
+		newSession, err := i.app.Sessions.Create(
 			"New Session",
 		)
 		if err != nil {
 			return util.ReportError(err)
 		}
-		existing = append(existing, session)
+		existing = append([]session.Session{newSession}, existing...)
 	}
 	return tea.Batch(
 		util.CmdHandler(InsertSessionsMsg{existing}),
@@ -70,10 +82,35 @@ func (i *sessionsCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			items[i] = listItem{
 				id:    s.ID,
 				title: s.Title,
-				desc:  fmt.Sprintf("Tokens: %d, Cost: %.2f", s.Tokens, s.Cost),
+				desc:  fmt.Sprintf("Tokens: %d, Cost: %.2f", s.PromptTokens+s.CompletionTokens, s.Cost),
 			}
 		}
 		return i, i.list.SetItems(items)
+	case pubsub.Event[session.Session]:
+		if msg.Type == pubsub.UpdatedEvent {
+			// update the session in the list
+			items := i.list.Items()
+			for idx, item := range items {
+				s := item.(listItem)
+				if s.id == msg.Payload.ID {
+					s.title = msg.Payload.Title
+					s.desc = fmt.Sprintf("Tokens: %d, Cost: %.2f", msg.Payload.PromptTokens+msg.Payload.CompletionTokens, msg.Payload.Cost)
+					items[idx] = s
+					break
+				}
+			}
+			return i, i.list.SetItems(items)
+		}
+
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, sessionKeyMapValue.Select):
+			selected := i.list.SelectedItem()
+			if selected == nil {
+				return i, nil
+			}
+			return i, util.CmdHandler(SelectedSessionMsg{selected.(listItem).id})
+		}
 	}
 	if i.focused {
 		u, cmd := i.list.Update(msg)
@@ -129,7 +166,7 @@ func (i *sessionsCmp) BorderText() map[layout.BorderPosition]string {
 }
 
 func (i *sessionsCmp) BindingKeys() []key.Binding {
-	return layout.KeyMapToSlice(i.list.KeyMap)
+	return append(layout.KeyMapToSlice(i.list.KeyMap), sessionKeyMapValue.Select)
 }
 
 func NewSessionsCmp(app *app.App) SessionsCmp {

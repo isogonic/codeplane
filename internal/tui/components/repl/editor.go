@@ -1,8 +1,11 @@
 package repl
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/cloudwego/eino/schema"
 	"github.com/kujtimiihoxha/termai/internal/app"
 	"github.com/kujtimiihoxha/termai/internal/tui/layout"
 	"github.com/kujtimiihoxha/vimtea"
@@ -13,6 +16,7 @@ type EditorCmp interface {
 	layout.Focusable
 	layout.Sizeable
 	layout.Bordered
+	layout.Bindings
 }
 
 type editorCmp struct {
@@ -25,12 +29,16 @@ type editorCmp struct {
 	height     int
 }
 
-type localKeyMap struct {
-	SendMessage  key.Binding
-	SendMessageI key.Binding
+type editorKeyMap struct {
+	SendMessage    key.Binding
+	SendMessageI   key.Binding
+	InsertMode     key.Binding
+	NormaMode      key.Binding
+	VisualMode     key.Binding
+	VisualLineMode key.Binding
 }
 
-var keyMap = localKeyMap{
+var editorKeyMapValue = editorKeyMap{
 	SendMessage: key.NewBinding(
 		key.WithKeys("enter"),
 		key.WithHelp("enter", "send message normal mode"),
@@ -38,6 +46,22 @@ var keyMap = localKeyMap{
 	SendMessageI: key.NewBinding(
 		key.WithKeys("ctrl+s"),
 		key.WithHelp("ctrl+s", "send message insert mode"),
+	),
+	InsertMode: key.NewBinding(
+		key.WithKeys("i"),
+		key.WithHelp("i", "insert mode"),
+	),
+	NormaMode: key.NewBinding(
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "normal mode"),
+	),
+	VisualMode: key.NewBinding(
+		key.WithKeys("v"),
+		key.WithHelp("v", "visual mode"),
+	),
+	VisualLineMode: key.NewBinding(
+		key.WithKeys("V"),
+		key.WithHelp("V", "visual line mode"),
 	),
 }
 
@@ -58,11 +82,11 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch {
-			case key.Matches(msg, keyMap.SendMessage):
+			case key.Matches(msg, editorKeyMapValue.SendMessage):
 				if m.editorMode == vimtea.ModeNormal {
 					return m, m.Send()
 				}
-			case key.Matches(msg, keyMap.SendMessageI):
+			case key.Matches(msg, editorKeyMapValue.SendMessageI):
 				if m.editorMode == vimtea.ModeInsert {
 					return m, m.Send()
 				}
@@ -75,36 +99,30 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// Blur implements EditorCmp.
 func (m *editorCmp) Blur() tea.Cmd {
 	m.focused = false
 	return nil
 }
 
-// BorderText implements EditorCmp.
 func (m *editorCmp) BorderText() map[layout.BorderPosition]string {
 	return map[layout.BorderPosition]string{
 		layout.TopLeftBorder: "New Message",
 	}
 }
 
-// Focus implements EditorCmp.
 func (m *editorCmp) Focus() tea.Cmd {
 	m.focused = true
 	return m.editor.Tick()
 }
 
-// GetSize implements EditorCmp.
 func (m *editorCmp) GetSize() (int, int) {
 	return m.width, m.height
 }
 
-// IsFocused implements EditorCmp.
 func (m *editorCmp) IsFocused() bool {
 	return m.focused
 }
 
-// SetSize implements EditorCmp.
 func (m *editorCmp) SetSize(width int, height int) {
 	m.width = width
 	m.height = height
@@ -113,13 +131,19 @@ func (m *editorCmp) SetSize(width int, height int) {
 
 func (m *editorCmp) Send() tea.Cmd {
 	return func() tea.Msg {
-		// TODO: Send message
-		return nil
+		content := strings.Join(m.editor.GetBuffer().Lines(), "\n")
+		m.app.Messages.Create(m.sessionID, *schema.UserMessage(content))
+		m.app.LLM.SendRequest(m.sessionID, content)
+		return m.editor.Reset()
 	}
 }
 
 func (m *editorCmp) View() string {
 	return m.editor.View()
+}
+
+func (m *editorCmp) BindingKeys() []key.Binding {
+	return layout.KeyMapToSlice(editorKeyMapValue)
 }
 
 func NewEditorCmp(app *app.App) EditorCmp {

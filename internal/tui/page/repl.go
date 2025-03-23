@@ -16,5 +16,6 @@ func NewReplPage(app *app.App) tea.Model {
 			layout.BentoRightTopPane:    repl.NewMessagesCmp(app),
 			layout.BentoRightBottomPane: repl.NewEditorCmp(app),
 		},
+		layout.WithBentoLayoutCurrentPane(layout.BentoRightBottomPane),
 	)
 }

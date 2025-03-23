@@ -1,14 +1,15 @@
--- sqlfluff:dialect:sqlite
 -- name: CreateSession :one
 INSERT INTO sessions (
     id,
     title,
     message_count,
-    tokens,
+    prompt_tokens,
+    completion_tokens,
     cost,
     updated_at,
     created_at
 ) VALUES (
+    ?,
     ?,
     ?,
     ?,
@@ -32,7 +33,8 @@ ORDER BY created_at DESC;
 UPDATE sessions
 SET
     title = ?,
-    tokens = ?,
+    prompt_tokens = ?,
+    completion_tokens = ?,
     cost = ?
 WHERE id = ?
 RETURNING *;

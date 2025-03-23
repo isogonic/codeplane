@@ -9,13 +9,14 @@ import (
 )
 
 type Session struct {
-	ID           string
-	Title        string
-	MessageCount int64
-	Tokens       int64
-	Cost         float64
-	CreatedAt    int64
-	UpdatedAt    int64
+	ID               string
+	Title            string
+	MessageCount     int64
+	PromptTokens     int64
+	CompletionTokens int64
+	Cost             float64
+	CreatedAt        int64
+	UpdatedAt        int64
 }
 
 type Service interface {
@@ -69,10 +70,11 @@ func (s *service) Get(id string) (Session, error) {
 
 func (s *service) Save(session Session) (Session, error) {
 	dbSession, err := s.q.UpdateSession(s.ctx, db.UpdateSessionParams{
-		ID:     session.ID,
-		Title:  session.Title,
-		Tokens: session.Tokens,
-		Cost:   session.Cost,
+		ID:               session.ID,
+		Title:            session.Title,
+		PromptTokens:     session.PromptTokens,
+		CompletionTokens: session.CompletionTokens,
+		Cost:             session.Cost,
 	})
 	if err != nil {
 		return Session{}, err
@@ -96,13 +98,14 @@ func (s *service) List() ([]Session, error) {
 
 func (s service) fromDBItem(item db.Session) Session {
 	return Session{
-		ID:           item.ID,
-		Title:        item.Title,
-		MessageCount: item.MessageCount,
-		Tokens:       item.Tokens,
-		Cost:         item.Cost,
-		CreatedAt:    item.CreatedAt,
-		UpdatedAt:    item.UpdatedAt,
+		ID:               item.ID,
+		Title:            item.Title,
+		MessageCount:     item.MessageCount,
+		PromptTokens:     item.PromptTokens,
+		CompletionTokens: item.CompletionTokens,
+		Cost:             item.Cost,
+		CreatedAt:        item.CreatedAt,
+		UpdatedAt:        item.UpdatedAt,
 	}
 }
 

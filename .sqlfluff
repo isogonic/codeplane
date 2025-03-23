@@ -1,2 +1,0 @@
-[sqlfluff:rules]
-exclude_rules = AM04

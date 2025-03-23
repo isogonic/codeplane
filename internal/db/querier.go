@@ -9,10 +9,14 @@ import (
 )
 
 type Querier interface {
-	// sqlfluff:dialect:sqlite
+	CreateMessage(ctx context.Context, arg CreateMessageParams) (Message, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
+	DeleteMessage(ctx context.Context, id string) error
 	DeleteSession(ctx context.Context, id string) error
+	DeleteSessionMessages(ctx context.Context, sessionID string) error
+	GetMessage(ctx context.Context, id string) (Message, error)
 	GetSessionByID(ctx context.Context, id string) (Session, error)
+	ListMessagesBySession(ctx context.Context, sessionID string) ([]Message, error)
 	ListSessions(ctx context.Context) ([]Session, error)
 	UpdateSession(ctx context.Context, arg UpdateSessionParams) (Session, error)
 }

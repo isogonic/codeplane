@@ -1,10 +1,14 @@
 package tui
 
 import (
+	"log"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/kujtimiihoxha/termai/internal/app"
+	"github.com/kujtimiihoxha/termai/internal/llm"
+	"github.com/kujtimiihoxha/termai/internal/pubsub"
 	"github.com/kujtimiihoxha/termai/internal/tui/components/core"
 	"github.com/kujtimiihoxha/termai/internal/tui/components/dialog"
 	"github.com/kujtimiihoxha/termai/internal/tui/layout"
@@ -66,6 +70,9 @@ func (a appModel) Init() tea.Cmd {
 
 func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case pubsub.Event[llm.AgentEvent]:
+		log.Println("Event received")
+		log.Println(msg)
 	case vimtea.EditorModeMsg:
 		a.editorMode = msg.Mode
 	case tea.WindowSizeMsg:
