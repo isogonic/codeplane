@@ -109,8 +109,6 @@ func setupSubscriptions(app *app.App) (chan tea.Msg, func()) {
 	}
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
@@ -131,13 +129,14 @@ func loadConfig() {
 
 	// LLM
 	viper.SetDefault("models.big", string(models.DefaultBigModel))
-	viper.SetDefault("models.little", string(models.DefaultLittleModel))
+	viper.SetDefault("models.small", string(models.DefaultLittleModel))
 	viper.SetDefault("providers.openai.key", os.Getenv("OPENAI_API_KEY"))
 	viper.SetDefault("providers.anthropic.key", os.Getenv("ANTHROPIC_API_KEY"))
+	viper.SetDefault("providers.groq.key", os.Getenv("GROQ_API_KEY"))
 	viper.SetDefault("providers.common.max_tokens", 4000)
 
 	viper.SetDefault("agents.default", "coder")
-	//
+
 	viper.ReadInConfig()
 
 	workdir, err := os.Getwd()

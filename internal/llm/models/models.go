@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"errors"
+	"log"
 
 	"github.com/cloudwego/eino-ext/components/model/claude"
 	"github.com/cloudwego/eino-ext/components/model/openai"
@@ -16,10 +17,12 @@ type (
 )
 
 type Model struct {
-	ID       ModelID       `json:"id"`
-	Name     string        `json:"name"`
-	Provider ModelProvider `json:"provider"`
-	APIModel string        `json:"api_model"` // Actual value used when calling the API
+	ID           ModelID       `json:"id"`
+	Name         string        `json:"name"`
+	Provider     ModelProvider `json:"provider"`
+	APIModel     string        `json:"api_model"`
+	CostPer1MIn  float64       `json:"cost_per_1m_in"`
+	CostPer1MOut float64       `json:"cost_per_1m_out"`
 }
 
 const (
@@ -52,6 +55,9 @@ const (
 	// Meta
 	Llama3    ModelID = "llama-3"
 	Llama270B ModelID = "llama-2-70b"
+	// GROQ
+	GroqLlama3SpecDec ModelID = "groq-llama-3-spec-dec"
+	GroqQwen32BCoder  ModelID = "qwen-2.5-coder-32b"
 )
 
 const (
@@ -61,6 +67,7 @@ const (
 	ProviderXAI       ModelProvider = "xai"
 	ProviderDeepSeek  ModelProvider = "deepseek"
 	ProviderMeta      ModelProvider = "meta"
+	ProviderGroq      ModelProvider = "groq"
 )
 
 var SupportedModels = map[ModelID]Model{
@@ -72,10 +79,12 @@ var SupportedModels = map[ModelID]Model{
 		APIModel: "gpt-4o",
 	},
 	GPT4oMini: {
-		ID:       GPT4oMini,
-		Name:     "GPT-4o Mini",
-		Provider: ProviderOpenAI,
-		APIModel: "gpt-4o-mini",
+		ID:           GPT4oMini,
+		Name:         "GPT-4o Mini",
+		Provider:     ProviderOpenAI,
+		APIModel:     "gpt-4o-mini",
+		CostPer1MIn:  0.150,
+		CostPer1MOut: 0.600,
 	},
 	GPT45: {
 		ID:       GPT45,
@@ -172,10 +181,25 @@ var SupportedModels = map[ModelID]Model{
 		Provider: ProviderMeta,
 		APIModel: "llama-2-70b",
 	},
+
+	// GROQ
+	GroqLlama3SpecDec: {
+		ID:       GroqLlama3SpecDec,
+		Name:     "GROQ LLaMA 3 SpecDec",
+		Provider: ProviderGroq,
+		APIModel: "llama-3.3-70b-specdec",
+	},
+	GroqQwen32BCoder: {
+		ID:       GroqQwen32BCoder,
+		Name:     "GROQ Qwen 2.5 Coder 32B",
+		Provider: ProviderGroq,
+		APIModel: "qwen-2.5-coder-32b",
+	},
 }
 
 func GetModel(ctx context.Context, model ModelID) (model.ChatModel, error) {
 	provider := SupportedModels[model].Provider
+	log.Printf("Provider: %s", provider)
 	maxTokens := viper.GetInt("providers.common.max_tokens")
 	switch provider {
 	case ProviderOpenAI:
@@ -189,6 +213,14 @@ func GetModel(ctx context.Context, model ModelID) (model.ChatModel, error) {
 			APIKey:    viper.GetString("providers.anthropic.key"),
 			Model:     string(SupportedModels[model].APIModel),
 			MaxTokens: maxTokens,
+		})
+
+	case ProviderGroq:
+		return openai.NewChatModel(ctx, &openai.ChatModelConfig{
+			BaseURL:   "https://api.groq.com/openai/v1",
+			APIKey:    viper.GetString("providers.groq.key"),
+			Model:     string(SupportedModels[model].APIModel),
+			MaxTokens: &maxTokens,
 		})
 
 	}

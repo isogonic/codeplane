@@ -2,6 +2,7 @@ package repl
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -82,7 +83,7 @@ func (i *sessionsCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			items[i] = listItem{
 				id:    s.ID,
 				title: s.Title,
-				desc:  fmt.Sprintf("Tokens: %d, Cost: %.2f", s.PromptTokens+s.CompletionTokens, s.Cost),
+				desc:  formatTokensAndCost(s.PromptTokens+s.CompletionTokens, s.Cost),
 			}
 		}
 		return i, i.list.SetItems(items)
@@ -94,7 +95,7 @@ func (i *sessionsCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				s := item.(listItem)
 				if s.id == msg.Payload.ID {
 					s.title = msg.Payload.Title
-					s.desc = fmt.Sprintf("Tokens: %d, Cost: %.2f", msg.Payload.PromptTokens+msg.Payload.CompletionTokens, msg.Payload.Cost)
+					s.desc = formatTokensAndCost(msg.Payload.PromptTokens+msg.Payload.CompletionTokens, msg.Payload.Cost)
 					items[idx] = s
 					break
 				}
@@ -167,6 +168,32 @@ func (i *sessionsCmp) BorderText() map[layout.BorderPosition]string {
 
 func (i *sessionsCmp) BindingKeys() []key.Binding {
 	return append(layout.KeyMapToSlice(i.list.KeyMap), sessionKeyMapValue.Select)
+}
+
+func formatTokensAndCost(tokens int64, cost float64) string {
+	// Format tokens in human-readable format (e.g., 110K, 1.2M)
+	var formattedTokens string
+	switch {
+	case tokens >= 1_000_000:
+		formattedTokens = fmt.Sprintf("%.1fM", float64(tokens)/1_000_000)
+	case tokens >= 1_000:
+		formattedTokens = fmt.Sprintf("%.1fK", float64(tokens)/1_000)
+	default:
+		formattedTokens = fmt.Sprintf("%d", tokens)
+	}
+
+	// Remove .0 suffix if present
+	if strings.HasSuffix(formattedTokens, ".0K") {
+		formattedTokens = strings.Replace(formattedTokens, ".0K", "K", 1)
+	}
+	if strings.HasSuffix(formattedTokens, ".0M") {
+		formattedTokens = strings.Replace(formattedTokens, ".0M", "M", 1)
+	}
+
+	// Format cost with $ symbol and 2 decimal places
+	formattedCost := fmt.Sprintf("$%.2f", cost)
+
+	return fmt.Sprintf("Tokens: %s, Cost: %s", formattedTokens, formattedCost)
 }
 
 func NewSessionsCmp(app *app.App) SessionsCmp {
