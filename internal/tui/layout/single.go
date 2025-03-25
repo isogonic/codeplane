@@ -64,7 +64,10 @@ func (s *singlePaneLayout) View() string {
 		if bordered, ok := s.content.(Bordered); ok {
 			s.borderText = bordered.BorderText()
 		}
-		return Borderize(content, s.focused, s.borderText, s.activeColor)
+		return Borderize(content, BorderOptions{
+			Active:       s.focused,
+			EmbeddedText: s.borderText,
+		})
 	}
 	return content
 }

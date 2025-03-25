@@ -10,6 +10,7 @@ import (
 	"github.com/kujtimiihoxha/termai/internal/db"
 	"github.com/kujtimiihoxha/termai/internal/llm/models"
 	"github.com/kujtimiihoxha/termai/internal/tui"
+	zone "github.com/lrstanley/bubblezone"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -37,9 +38,11 @@ var rootCmd = &cobra.Command{
 
 		app := app.New(ctx, conn)
 		app.Logger.Info("Starting termai...")
+		zone.NewGlobal()
 		tui := tea.NewProgram(
 			tui.New(app),
 			tea.WithAltScreen(),
+			tea.WithMouseCellMotion(),
 		)
 		app.Logger.Info("Setting up subscriptions...")
 		ch, unsub := setupSubscriptions(app)
@@ -102,6 +105,16 @@ func setupSubscriptions(app *app.App) (chan tea.Msg, func()) {
 			wg.Done()
 		}()
 	}
+	{
+		sub := app.Permissions.Subscribe(ctx)
+		wg.Add(1)
+		go func() {
+			for ev := range sub {
+				ch <- ev
+			}
+			wg.Done()
+		}()
+	}
 	return ch, func() {
 		cancel()
 		wg.Wait()
@@ -130,6 +143,7 @@ func loadConfig() {
 	// LLM
 	viper.SetDefault("models.big", string(models.DefaultBigModel))
 	viper.SetDefault("models.small", string(models.DefaultLittleModel))
+
 	viper.SetDefault("providers.openai.key", os.Getenv("OPENAI_API_KEY"))
 	viper.SetDefault("providers.anthropic.key", os.Getenv("ANTHROPIC_API_KEY"))
 	viper.SetDefault("providers.groq.key", os.Getenv("GROQ_API_KEY"))

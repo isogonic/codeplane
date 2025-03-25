@@ -8,6 +8,7 @@ import (
 	"github.com/kujtimiihoxha/termai/internal/llm"
 	"github.com/kujtimiihoxha/termai/internal/logging"
 	"github.com/kujtimiihoxha/termai/internal/message"
+	"github.com/kujtimiihoxha/termai/internal/permission"
 	"github.com/kujtimiihoxha/termai/internal/session"
 	"github.com/spf13/viper"
 )
@@ -15,9 +16,10 @@ import (
 type App struct {
 	Context context.Context
 
-	Sessions session.Service
-	Messages message.Service
-	LLM      llm.Service
+	Sessions    session.Service
+	Messages    message.Service
+	Permissions permission.Service
+	LLM         llm.Service
 
 	Logger logging.Interface
 }
@@ -32,10 +34,11 @@ func New(ctx context.Context, conn *sql.DB) *App {
 	llm := llm.NewService(ctx, log, sessions, messages)
 
 	return &App{
-		Context:  ctx,
-		Sessions: sessions,
-		Messages: messages,
-		LLM:      llm,
-		Logger:   log,
+		Context:     ctx,
+		Sessions:    sessions,
+		Messages:    messages,
+		Permissions: permission.Default,
+		LLM:         llm,
+		Logger:      log,
 	}
 }

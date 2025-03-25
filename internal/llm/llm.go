@@ -88,7 +88,6 @@ func (s *service) handleRequest(id string, sessionID string, content string) {
 		return
 	}
 
-	log.Printf("Request: %s", content)
 	currentAgent, systemMessage, err := agent.GetAgent(s.ctx, viper.GetString("agents.default"))
 	if err != nil {
 		s.Publish(AgentErrorEvent, AgentEvent{
@@ -172,7 +171,6 @@ func (s *service) handleRequest(id string, sessionID string, content string) {
 		}
 		session.PromptTokens += int64(usage.PromptTokens)
 		session.CompletionTokens += int64(usage.CompletionTokens)
-		// TODO: calculate cost
 		model := models.SupportedModels[models.ModelID(viper.GetString("models.big"))]
 		session.Cost += float64(usage.PromptTokens)*(model.CostPer1MIn/1_000_000) +
 			float64(usage.CompletionTokens)*(model.CostPer1MOut/1_000_000)

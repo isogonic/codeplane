@@ -1,13 +1,17 @@
 package tui
 
 import (
+	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/kujtimiihoxha/termai/internal/app"
 	"github.com/kujtimiihoxha/termai/internal/llm"
+	"github.com/kujtimiihoxha/termai/internal/permission"
 	"github.com/kujtimiihoxha/termai/internal/pubsub"
 	"github.com/kujtimiihoxha/termai/internal/tui/components/core"
 	"github.com/kujtimiihoxha/termai/internal/tui/components/dialog"
@@ -48,6 +52,11 @@ var keys = keyMap{
 	),
 }
 
+var editorKeyMap = key.NewBinding(
+	key.WithKeys("i"),
+	key.WithHelp("i", "insert mode"),
+)
+
 type appModel struct {
 	width, height int
 	currentPage   page.PageID
@@ -71,8 +80,27 @@ func (a appModel) Init() tea.Cmd {
 func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case pubsub.Event[llm.AgentEvent]:
-		log.Println("Event received")
+		log.Println("AgentEvent")
 		log.Println(msg)
+	case pubsub.Event[permission.PermissionRequest]:
+		return a, dialog.NewPermissionDialogCmd(
+			msg.Payload,
+			fmt.Sprintf(
+				"Tool: %s\nAction: %s\nParams: %v",
+				msg.Payload.ToolName,
+				msg.Payload.Action,
+				msg.Payload.Params,
+			),
+		)
+	case dialog.PermissionResponseMsg:
+		switch msg.Action {
+		case dialog.PermissionAllow:
+			permission.Default.Grant(msg.Permission)
+		case dialog.PermissionAllowForSession:
+			permission.Default.GrantPersistant(msg.Permission)
+		case dialog.PermissionDeny:
+			permission.Default.Deny(msg.Permission)
+		}
 	case vimtea.EditorModeMsg:
 		a.editorMode = msg.Mode
 	case tea.WindowSizeMsg:
@@ -97,6 +125,8 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.dialog = d.(core.DialogCmp)
 		a.dialogVisible = false
 		return a, cmd
+	case page.PageChangeMsg:
+		return a, a.moveToPage(msg.ID)
 	case util.InfoMsg:
 		a.status, _ = a.status.Update(msg)
 	case util.ErrorMsg:
@@ -201,8 +231,17 @@ func (a appModel) View() string {
 }
 
 func New(app *app.App) tea.Model {
+	// Check if config file exists, if not, start with init page
+	homedir, _ := os.UserHomeDir()
+	configPath := filepath.Join(homedir, ".termai.yaml")
+
+	startPage := page.ReplPage
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		startPage = page.InitPage
+	}
+
 	return &appModel{
-		currentPage: page.ReplPage,
+		currentPage: startPage,
 		loadedPages: make(map[page.PageID]bool),
 		status:      core.NewStatusCmp(),
 		help:        core.NewHelpCmp(),

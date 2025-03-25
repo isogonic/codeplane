@@ -26,8 +26,8 @@ type Model struct {
 }
 
 const (
-	DefaultBigModel    = GPT4oMini
-	DefaultLittleModel = GPT4oMini
+	DefaultBigModel    = Claude37Sonnet
+	DefaultLittleModel = Claude37Sonnet
 )
 
 // Model IDs
@@ -118,10 +118,12 @@ var SupportedModels = map[ModelID]Model{
 		APIModel: "claude-3-haiku",
 	},
 	Claude37Sonnet: {
-		ID:       Claude37Sonnet,
-		Name:     "Claude 3.7 Sonnet",
-		Provider: ProviderAnthropic,
-		APIModel: "claude-3-7-sonnet-20250219",
+		ID:           Claude37Sonnet,
+		Name:         "Claude 3.7 Sonnet",
+		Provider:     ProviderAnthropic,
+		APIModel:     "claude-3-7-sonnet-20250219",
+		CostPer1MIn:  3.0,
+		CostPer1MOut: 15.0,
 	},
 	// Google
 	Gemini20Pro: {

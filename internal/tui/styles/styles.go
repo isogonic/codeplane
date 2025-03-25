@@ -20,6 +20,7 @@ var (
 	DoubleBorder = Regular.Border(lipgloss.DoubleBorder())
 
 	// Colors
+	White = lipgloss.Color("#ffffff")
 
 	Surface0 = lipgloss.AdaptiveColor{
 		Dark:  dark.Surface0().Hex,

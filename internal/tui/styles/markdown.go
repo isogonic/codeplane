@@ -146,8 +146,8 @@ var catppuccinDark = ansi.StyleConfig{
 	Code: ansi.StyleBlock{
 		StylePrimitive: ansi.StylePrimitive{
 			Color:  stringPtr(dark.Green().Hex),
-			Prefix: " ",
-			Suffix: " ",
+			Prefix: "",
+			Suffix: "",
 		},
 	},
 	CodeBlock: ansi.StyleCodeBlock{

@@ -5,9 +5,11 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/cloudwego/eino/schema"
 	"github.com/kujtimiihoxha/termai/internal/app"
 	"github.com/kujtimiihoxha/termai/internal/tui/layout"
+	"github.com/kujtimiihoxha/termai/internal/tui/styles"
 	"github.com/kujtimiihoxha/vimtea"
 )
 
@@ -105,8 +107,12 @@ func (m *editorCmp) Blur() tea.Cmd {
 }
 
 func (m *editorCmp) BorderText() map[layout.BorderPosition]string {
+	title := "New Message"
+	if m.focused {
+		title = lipgloss.NewStyle().Foreground(styles.Primary).Render(title)
+	}
 	return map[layout.BorderPosition]string{
-		layout.TopLeftBorder: "New Message",
+		layout.TopLeftBorder: title,
 	}
 }
 
@@ -148,7 +154,9 @@ func (m *editorCmp) BindingKeys() []key.Binding {
 
 func NewEditorCmp(app *app.App) EditorCmp {
 	return &editorCmp{
-		app:    app,
-		editor: vimtea.NewEditor(),
+		app: app,
+		editor: vimtea.NewEditor(
+			vimtea.WithFileName("message.md"),
+		),
 	}
 }

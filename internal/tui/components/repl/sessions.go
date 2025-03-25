@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/kujtimiihoxha/termai/internal/app"
 	"github.com/kujtimiihoxha/termai/internal/pubsub"
 	"github.com/kujtimiihoxha/termai/internal/session"
@@ -160,8 +161,13 @@ func (i *sessionsCmp) BorderText() map[layout.BorderPosition]string {
 		current,
 		totalCount,
 	)
+
+	title := "Sessions"
+	if i.focused {
+		title = lipgloss.NewStyle().Foreground(styles.Primary).Render(title)
+	}
 	return map[layout.BorderPosition]string{
-		layout.TopMiddleBorder:    "Sessions",
+		layout.TopMiddleBorder:    title,
 		layout.BottomMiddleBorder: pageInfo,
 	}
 }

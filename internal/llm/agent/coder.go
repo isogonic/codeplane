@@ -17,8 +17,15 @@ import (
 )
 
 func coderTools() []tool.BaseTool {
+	wd := viper.GetString("wd")
 	return []tool.BaseTool{
-		tools.NewBashTool(viper.GetString("wd")),
+		tools.NewAgentTool(wd),
+		tools.NewBashTool(wd),
+		tools.NewLsTool(wd),
+		tools.NewGlobTool(wd),
+		tools.NewViewTool(wd),
+		tools.NewWriteTool(wd),
+		tools.NewEditTool(wd),
 	}
 }
 

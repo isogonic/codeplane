@@ -24,24 +24,43 @@ var (
 	InactivePreviewBorder = styles.Grey
 )
 
-func Borderize(content string, active bool, embeddedText map[BorderPosition]string, activeColor lipgloss.TerminalColor) string {
-	if embeddedText == nil {
-		embeddedText = make(map[BorderPosition]string)
+type BorderOptions struct {
+	Active         bool
+	EmbeddedText   map[BorderPosition]string
+	ActiveColor    lipgloss.TerminalColor
+	InactiveColor  lipgloss.TerminalColor
+	ActiveBorder   lipgloss.Border
+	InactiveBorder lipgloss.Border
+}
+
+func Borderize(content string, opts BorderOptions) string {
+	if opts.EmbeddedText == nil {
+		opts.EmbeddedText = make(map[BorderPosition]string)
 	}
-	if activeColor == nil {
-		activeColor = ActiveBorder
+	if opts.ActiveColor == nil {
+		opts.ActiveColor = ActiveBorder
 	}
+	if opts.InactiveColor == nil {
+		opts.InactiveColor = InactivePreviewBorder
+	}
+	if opts.ActiveBorder == (lipgloss.Border{}) {
+		opts.ActiveBorder = lipgloss.ThickBorder()
+	}
+	if opts.InactiveBorder == (lipgloss.Border{}) {
+		opts.InactiveBorder = lipgloss.NormalBorder()
+	}
+
 	var (
 		thickness = map[bool]lipgloss.Border{
-			true:  lipgloss.Border(lipgloss.ThickBorder()),
-			false: lipgloss.Border(lipgloss.NormalBorder()),
+			true:  opts.ActiveBorder,
+			false: opts.InactiveBorder,
 		}
 		color = map[bool]lipgloss.TerminalColor{
-			true:  activeColor,
-			false: InactivePreviewBorder,
+			true:  opts.ActiveColor,
+			false: opts.InactiveColor,
 		}
-		border = thickness[active]
-		style  = lipgloss.NewStyle().Foreground(color[active])
+		border = thickness[opts.Active]
+		style  = lipgloss.NewStyle().Foreground(color[opts.Active])
 		width  = lipgloss.Width(content)
 	)
 
@@ -80,20 +99,20 @@ func Borderize(content string, active bool, embeddedText map[BorderPosition]stri
 	// Stack top border, content and horizontal borders, and bottom border.
 	return strings.Join([]string{
 		buildHorizontalBorder(
-			embeddedText[TopLeftBorder],
-			embeddedText[TopMiddleBorder],
-			embeddedText[TopRightBorder],
+			opts.EmbeddedText[TopLeftBorder],
+			opts.EmbeddedText[TopMiddleBorder],
+			opts.EmbeddedText[TopRightBorder],
 			border.TopLeft,
 			border.Top,
 			border.TopRight,
 		),
 		lipgloss.NewStyle().
-			BorderForeground(color[active]).
+			BorderForeground(color[opts.Active]).
 			Border(border, false, true, false, true).Render(content),
 		buildHorizontalBorder(
-			embeddedText[BottomLeftBorder],
-			embeddedText[BottomMiddleBorder],
-			embeddedText[BottomRightBorder],
+			opts.EmbeddedText[BottomLeftBorder],
+			opts.EmbeddedText[BottomMiddleBorder],
+			opts.EmbeddedText[BottomRightBorder],
 			border.BottomLeft,
 			border.Bottom,
 			border.BottomRight,
