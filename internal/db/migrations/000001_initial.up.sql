@@ -1,6 +1,7 @@
 -- Sessions
 CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
+    parent_session_id TEXT,
     title TEXT NOT NULL,
     message_count INTEGER NOT NULL DEFAULT 0 CHECK (message_count >= 0),
     prompt_tokens  INTEGER NOT NULL DEFAULT 0 CHECK (prompt_tokens >= 0),
@@ -21,7 +22,12 @@ END;
 CREATE TABLE IF NOT EXISTS messages (
     id TEXT PRIMARY KEY,
     session_id TEXT NOT NULL,
-    message_data TEXT NOT NULL,  -- JSON string of message content
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    thinking Text NOT NULL DEFAULT '',
+    finished BOOLEAN NOT NULL DEFAULT 0,
+    tool_calls TEXT,
+    tool_results TEXT,
     created_at INTEGER NOT NULL,  -- Unix timestamp in milliseconds
     updated_at INTEGER NOT NULL,  -- Unix timestamp in milliseconds
     FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE

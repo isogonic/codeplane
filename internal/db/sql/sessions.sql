@@ -1,6 +1,7 @@
 -- name: CreateSession :one
 INSERT INTO sessions (
     id,
+    parent_session_id,
     title,
     message_count,
     prompt_tokens,
@@ -9,6 +10,7 @@ INSERT INTO sessions (
     updated_at,
     created_at
 ) VALUES (
+    ?,
     ?,
     ?,
     ?,
@@ -27,6 +29,7 @@ WHERE id = ? LIMIT 1;
 -- name: ListSessions :many
 SELECT *
 FROM sessions
+WHERE parent_session_id is NULL
 ORDER BY created_at DESC;
 
 -- name: UpdateSession :one

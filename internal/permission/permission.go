@@ -65,6 +65,7 @@ func (s *permissionService) Deny(permission PermissionRequest) {
 func (s *permissionService) Request(opts CreatePermissionRequest) bool {
 	permission := PermissionRequest{
 		ID:          uuid.New().String(),
+		Path:        opts.Path,
 		ToolName:    opts.ToolName,
 		Description: opts.Description,
 		Action:      opts.Action,

@@ -6,10 +6,11 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/cloudwego/eino/schema"
 	"github.com/kujtimiihoxha/termai/internal/app"
+	"github.com/kujtimiihoxha/termai/internal/llm/agent"
 	"github.com/kujtimiihoxha/termai/internal/tui/layout"
 	"github.com/kujtimiihoxha/termai/internal/tui/styles"
+	"github.com/kujtimiihoxha/termai/internal/tui/util"
 	"github.com/kujtimiihoxha/vimtea"
 )
 
@@ -112,7 +113,7 @@ func (m *editorCmp) BorderText() map[layout.BorderPosition]string {
 		title = lipgloss.NewStyle().Foreground(styles.Primary).Render(title)
 	}
 	return map[layout.BorderPosition]string{
-		layout.TopLeftBorder: title,
+		layout.BottomLeftBorder: title,
 	}
 }
 
@@ -137,9 +138,15 @@ func (m *editorCmp) SetSize(width int, height int) {
 
 func (m *editorCmp) Send() tea.Cmd {
 	return func() tea.Msg {
+		messages, _ := m.app.Messages.List(m.sessionID)
+		if hasUnfinishedMessages(messages) {
+			return util.InfoMsg("Assistant is still working on the previous message")
+		}
+		a, _ := agent.NewCoderAgent(m.app)
+
 		content := strings.Join(m.editor.GetBuffer().Lines(), "\n")
-		m.app.Messages.Create(m.sessionID, *schema.UserMessage(content))
-		m.app.LLM.SendRequest(m.sessionID, content)
+		go a.Generate(m.sessionID, content)
+
 		return m.editor.Reset()
 	}
 }
@@ -153,10 +160,11 @@ func (m *editorCmp) BindingKeys() []key.Binding {
 }
 
 func NewEditorCmp(app *app.App) EditorCmp {
+	editor := vimtea.NewEditor(
+		vimtea.WithFileName("message.md"),
+	)
 	return &editorCmp{
-		app: app,
-		editor: vimtea.NewEditor(
-			vimtea.WithFileName("message.md"),
-		),
+		app:    app,
+		editor: editor,
 	}
 }

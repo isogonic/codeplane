@@ -7,11 +7,13 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createSession = `-- name: CreateSession :one
 INSERT INTO sessions (
     id,
+    parent_session_id,
     title,
     message_count,
     prompt_tokens,
@@ -26,23 +28,26 @@ INSERT INTO sessions (
     ?,
     ?,
     ?,
+    ?,
     strftime('%s', 'now'),
     strftime('%s', 'now')
-) RETURNING id, title, message_count, prompt_tokens, completion_tokens, cost, updated_at, created_at
+) RETURNING id, parent_session_id, title, message_count, prompt_tokens, completion_tokens, cost, updated_at, created_at
 `
 
 type CreateSessionParams struct {
-	ID               string  `json:"id"`
-	Title            string  `json:"title"`
-	MessageCount     int64   `json:"message_count"`
-	PromptTokens     int64   `json:"prompt_tokens"`
-	CompletionTokens int64   `json:"completion_tokens"`
-	Cost             float64 `json:"cost"`
+	ID               string         `json:"id"`
+	ParentSessionID  sql.NullString `json:"parent_session_id"`
+	Title            string         `json:"title"`
+	MessageCount     int64          `json:"message_count"`
+	PromptTokens     int64          `json:"prompt_tokens"`
+	CompletionTokens int64          `json:"completion_tokens"`
+	Cost             float64        `json:"cost"`
 }
 
 func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error) {
 	row := q.queryRow(ctx, q.createSessionStmt, createSession,
 		arg.ID,
+		arg.ParentSessionID,
 		arg.Title,
 		arg.MessageCount,
 		arg.PromptTokens,
@@ -52,6 +57,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 	var i Session
 	err := row.Scan(
 		&i.ID,
+		&i.ParentSessionID,
 		&i.Title,
 		&i.MessageCount,
 		&i.PromptTokens,
@@ -74,7 +80,7 @@ func (q *Queries) DeleteSession(ctx context.Context, id string) error {
 }
 
 const getSessionByID = `-- name: GetSessionByID :one
-SELECT id, title, message_count, prompt_tokens, completion_tokens, cost, updated_at, created_at
+SELECT id, parent_session_id, title, message_count, prompt_tokens, completion_tokens, cost, updated_at, created_at
 FROM sessions
 WHERE id = ? LIMIT 1
 `
@@ -84,6 +90,7 @@ func (q *Queries) GetSessionByID(ctx context.Context, id string) (Session, error
 	var i Session
 	err := row.Scan(
 		&i.ID,
+		&i.ParentSessionID,
 		&i.Title,
 		&i.MessageCount,
 		&i.PromptTokens,
@@ -96,8 +103,9 @@ func (q *Queries) GetSessionByID(ctx context.Context, id string) (Session, error
 }
 
 const listSessions = `-- name: ListSessions :many
-SELECT id, title, message_count, prompt_tokens, completion_tokens, cost, updated_at, created_at
+SELECT id, parent_session_id, title, message_count, prompt_tokens, completion_tokens, cost, updated_at, created_at
 FROM sessions
+WHERE parent_session_id is NULL
 ORDER BY created_at DESC
 `
 
@@ -112,6 +120,7 @@ func (q *Queries) ListSessions(ctx context.Context) ([]Session, error) {
 		var i Session
 		if err := rows.Scan(
 			&i.ID,
+			&i.ParentSessionID,
 			&i.Title,
 			&i.MessageCount,
 			&i.PromptTokens,
@@ -141,7 +150,7 @@ SET
     completion_tokens = ?,
     cost = ?
 WHERE id = ?
-RETURNING id, title, message_count, prompt_tokens, completion_tokens, cost, updated_at, created_at
+RETURNING id, parent_session_id, title, message_count, prompt_tokens, completion_tokens, cost, updated_at, created_at
 `
 
 type UpdateSessionParams struct {
@@ -163,6 +172,7 @@ func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) (S
 	var i Session
 	err := row.Scan(
 		&i.ID,
+		&i.ParentSessionID,
 		&i.Title,
 		&i.MessageCount,
 		&i.PromptTokens,

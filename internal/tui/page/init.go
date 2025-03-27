@@ -78,12 +78,12 @@ func (i *initPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Save configuration to file
 		configPath := filepath.Join(os.Getenv("HOME"), ".termai.yaml")
 		maxTokens, _ := strconv.Atoi(i.maxTokens)
-		config := map[string]interface{}{
+		config := map[string]any{
 			"models": map[string]string{
 				"big":   i.bigModel,
 				"small": i.smallModel,
 			},
-			"providers": map[string]interface{}{
+			"providers": map[string]any{
 				"openai": map[string]string{
 					"key": i.openAIKey,
 				},
@@ -192,8 +192,8 @@ func NewInitPage() tea.Model {
 	// Init page with form
 	initModel := &initPage{
 		modelOpts:  modelOpts,
-		bigModel:   string(models.DefaultBigModel),
-		smallModel: string(models.DefaultLittleModel),
+		bigModel:   string(models.Claude37Sonnet),
+		smallModel: string(models.Claude37Sonnet),
 		maxTokens:  "4000",
 		dataDir:    ".termai",
 		agent:      "coder",

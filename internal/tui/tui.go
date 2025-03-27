@@ -1,20 +1,15 @@
 package tui
 
 import (
-	"fmt"
-	"log"
-	"os"
-	"path/filepath"
-
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/kujtimiihoxha/termai/internal/app"
-	"github.com/kujtimiihoxha/termai/internal/llm"
 	"github.com/kujtimiihoxha/termai/internal/permission"
 	"github.com/kujtimiihoxha/termai/internal/pubsub"
 	"github.com/kujtimiihoxha/termai/internal/tui/components/core"
 	"github.com/kujtimiihoxha/termai/internal/tui/components/dialog"
+	"github.com/kujtimiihoxha/termai/internal/tui/components/repl"
 	"github.com/kujtimiihoxha/termai/internal/tui/layout"
 	"github.com/kujtimiihoxha/termai/internal/tui/page"
 	"github.com/kujtimiihoxha/termai/internal/tui/util"
@@ -52,9 +47,9 @@ var keys = keyMap{
 	),
 }
 
-var editorKeyMap = key.NewBinding(
-	key.WithKeys("i"),
-	key.WithHelp("i", "insert mode"),
+var replKeyMap = key.NewBinding(
+	key.WithKeys("N"),
+	key.WithHelp("N", "new session"),
 )
 
 type appModel struct {
@@ -66,6 +61,7 @@ type appModel struct {
 	status        tea.Model
 	help          core.HelpCmp
 	dialog        core.DialogCmp
+	app           *app.App
 	dialogVisible bool
 	editorMode    vimtea.EditorMode
 	showHelp      bool
@@ -79,19 +75,8 @@ func (a appModel) Init() tea.Cmd {
 
 func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case pubsub.Event[llm.AgentEvent]:
-		log.Println("AgentEvent")
-		log.Println(msg)
 	case pubsub.Event[permission.PermissionRequest]:
-		return a, dialog.NewPermissionDialogCmd(
-			msg.Payload,
-			fmt.Sprintf(
-				"Tool: %s\nAction: %s\nParams: %v",
-				msg.Payload.ToolName,
-				msg.Payload.Action,
-				msg.Payload.Params,
-			),
-		)
+		return a, dialog.NewPermissionDialogCmd(msg.Payload)
 	case dialog.PermissionResponseMsg:
 		switch msg.Action {
 		case dialog.PermissionAllow:
@@ -104,6 +89,7 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case vimtea.EditorModeMsg:
 		a.editorMode = msg.Mode
 	case tea.WindowSizeMsg:
+		var cmds []tea.Cmd
 		msg.Height -= 1 // Make space for the status bar
 		a.width, a.height = msg.Width, msg.Height
 
@@ -113,8 +99,14 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.help = uh.(core.HelpCmp)
 
 		p, cmd := a.pages[a.currentPage].Update(msg)
+		cmds = append(cmds, cmd)
 		a.pages[a.currentPage] = p
-		return a, cmd
+
+		d, cmd := a.dialog.Update(msg)
+		cmds = append(cmds, cmd)
+		a.dialog = d.(core.DialogCmp)
+
+		return a, tea.Batch(cmds...)
 	case core.DialogMsg:
 		d, cmd := a.dialog.Update(msg)
 		a.dialog = d.(core.DialogCmp)
@@ -144,6 +136,22 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if a.showHelp {
 					a.ToggleHelp()
 					return a, nil
+				}
+			case key.Matches(msg, replKeyMap):
+				if a.currentPage == page.ReplPage {
+					sessions, err := a.app.Sessions.List()
+					if err != nil {
+						return a, util.CmdHandler(util.ErrorMsg(err))
+					}
+					lastSession := sessions[0]
+					if lastSession.MessageCount == 0 {
+						return a, util.CmdHandler(repl.SelectedSessionMsg{SessionID: lastSession.ID})
+					}
+					s, err := a.app.Sessions.Create("New Session")
+					if err != nil {
+						return a, util.CmdHandler(util.ErrorMsg(err))
+					}
+					return a, util.CmdHandler(repl.SelectedSessionMsg{SessionID: s.ID})
 				}
 			case key.Matches(msg, keys.Logs):
 				return a, a.moveToPage(page.LogsPage)
@@ -205,6 +213,9 @@ func (a appModel) View() string {
 		if a.dialogVisible {
 			bindings = append(bindings, a.dialog.BindingKeys()...)
 		}
+		if a.currentPage == page.ReplPage {
+			bindings = append(bindings, replKeyMap)
+		}
 		a.help.SetBindings(bindings)
 		components = append(components, a.help.View())
 	}
@@ -231,14 +242,13 @@ func (a appModel) View() string {
 }
 
 func New(app *app.App) tea.Model {
-	// Check if config file exists, if not, start with init page
-	homedir, _ := os.UserHomeDir()
-	configPath := filepath.Join(homedir, ".termai.yaml")
-
+	// homedir, _ := os.UserHomeDir()
+	// configPath := filepath.Join(homedir, ".termai.yaml")
+	//
 	startPage := page.ReplPage
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		startPage = page.InitPage
-	}
+	// if _, err := os.Stat(configPath); os.IsNotExist(err) {
+	// 	startPage = page.InitPage
+	// }
 
 	return &appModel{
 		currentPage: startPage,
@@ -246,6 +256,7 @@ func New(app *app.App) tea.Model {
 		status:      core.NewStatusCmp(),
 		help:        core.NewHelpCmp(),
 		dialog:      core.NewDialogCmp(),
+		app:         app,
 		pages: map[page.PageID]tea.Model{
 			page.LogsPage: page.NewLogsPage(),
 			page.InitPage: page.NewInitPage(),

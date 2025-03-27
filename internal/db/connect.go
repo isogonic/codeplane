@@ -12,14 +12,14 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/mattn/go-sqlite3"
 
+	"github.com/kujtimiihoxha/termai/internal/config"
 	"github.com/kujtimiihoxha/termai/internal/logging"
-	"github.com/spf13/viper"
 )
 
 var log = logging.Get()
 
 func Connect() (*sql.DB, error) {
-	dataDir := viper.GetString("data.dir")
+	dataDir := config.Get().Data.Directory
 	if dataDir == "" {
 		return nil, fmt.Errorf("data.dir is not set")
 	}

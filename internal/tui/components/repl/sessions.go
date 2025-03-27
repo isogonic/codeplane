@@ -89,7 +89,23 @@ func (i *sessionsCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return i, i.list.SetItems(items)
 	case pubsub.Event[session.Session]:
-		if msg.Type == pubsub.UpdatedEvent {
+		if msg.Type == pubsub.CreatedEvent && msg.Payload.ParentSessionID == "" {
+			// Check if the session is already in the list
+			items := i.list.Items()
+			for _, item := range items {
+				s := item.(listItem)
+				if s.id == msg.Payload.ID {
+					return i, nil
+				}
+			}
+			// insert the new session at the top of the list
+			items = append([]list.Item{listItem{
+				id:    msg.Payload.ID,
+				title: msg.Payload.Title,
+				desc:  formatTokensAndCost(msg.Payload.PromptTokens+msg.Payload.CompletionTokens, msg.Payload.Cost),
+			}}, items...)
+			return i, i.list.SetItems(items)
+		} else if msg.Type == pubsub.UpdatedEvent {
 			// update the session in the list
 			items := i.list.Items()
 			for idx, item := range items {
@@ -229,3 +245,4 @@ func NewSessionsCmp(app *app.App) SessionsCmp {
 		focused: false,
 	}
 }
+

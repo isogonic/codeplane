@@ -6,25 +6,27 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cloudwego/eino/components/tool"
-	"github.com/cloudwego/eino/schema"
+	"github.com/kujtimiihoxha/termai/internal/config"
 	"github.com/kujtimiihoxha/termai/internal/llm/tools/shell"
 	"github.com/kujtimiihoxha/termai/internal/permission"
 )
 
-type bashTool struct {
-	workingDir string
-}
+type bashTool struct{}
 
 const (
 	BashToolName = "bash"
 
-	DefaultTimeout  = 30 * 60 * 1000 // 30 minutes in milliseconds
+	DefaultTimeout  = 1 * 60 * 1000  // 1 minutes in milliseconds
 	MaxTimeout      = 10 * 60 * 1000 // 10 minutes in milliseconds
 	MaxOutputLength = 30000
 )
 
 type BashParams struct {
+	Command string `json:"command"`
+	Timeout int    `json:"timeout"`
+}
+
+type BashPermissionsParams struct {
 	Command string `json:"command"`
 	Timeout int    `json:"timeout"`
 }
@@ -40,29 +42,29 @@ var SafeReadOnlyCommands = []string{
 	"whatis", //...
 }
 
-func (b *bashTool) Info(ctx context.Context) (*schema.ToolInfo, error) {
-	return &schema.ToolInfo{
-		Name: BashToolName,
-		Desc: bashDescription(),
-		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
-			"command": {
-				Type:     "string",
-				Desc:     "The command to execute",
-				Required: true,
+func (b *bashTool) Info() ToolInfo {
+	return ToolInfo{
+		Name:        BashToolName,
+		Description: bashDescription(),
+		Parameters: map[string]any{
+			"command": map[string]any{
+				"type":        "string",
+				"description": "The command to execute",
 			},
-			"timeout": {
-				Type: "number",
-				Desc: "Optional timeout in milliseconds (max 600000)",
+			"timeout": map[string]any{
+				"type":       "number",
+				"desription": "Optional timeout in milliseconds (max 600000)",
 			},
-		}),
-	}, nil
+		},
+		Required: []string{"command"},
+	}
 }
 
 // Handle implements Tool.
-func (b *bashTool) InvokableRun(ctx context.Context, args string, opts ...tool.Option) (string, error) {
+func (b *bashTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error) {
 	var params BashParams
-	if err := json.Unmarshal([]byte(args), &params); err != nil {
-		return "", err
+	if err := json.Unmarshal([]byte(call.Input), &params); err != nil {
+		return NewTextErrorResponse("invalid parameters"), nil
 	}
 
 	if params.Timeout > MaxTimeout {
@@ -72,13 +74,13 @@ func (b *bashTool) InvokableRun(ctx context.Context, args string, opts ...tool.O
 	}
 
 	if params.Command == "" {
-		return "missing command", nil
+		return NewTextErrorResponse("missing command"), nil
 	}
 
 	baseCmd := strings.Fields(params.Command)[0]
 	for _, banned := range BannedCommands {
 		if strings.EqualFold(baseCmd, banned) {
-			return fmt.Sprintf("command '%s' is not allowed", baseCmd), nil
+			return NewTextErrorResponse(fmt.Sprintf("command '%s' is not allowed", baseCmd)), nil
 		}
 	}
 	isSafeReadOnly := false
@@ -91,39 +93,21 @@ func (b *bashTool) InvokableRun(ctx context.Context, args string, opts ...tool.O
 	if !isSafeReadOnly {
 		p := permission.Default.Request(
 			permission.CreatePermissionRequest{
-				Path:        b.workingDir,
+				Path:        config.WorkingDirectory(),
 				ToolName:    BashToolName,
 				Action:      "execute",
 				Description: fmt.Sprintf("Execute command: %s", params.Command),
-				Params: map[string]interface{}{
-					"command": params.Command,
-					"timeout": params.Timeout,
-				},
+				Params:      BashPermissionsParams(params),
 			},
 		)
 		if !p {
-			return "", fmt.Errorf("permission denied for command: %s", params.Command)
+			return NewTextErrorResponse("permission denied"), nil
 		}
 	}
-
-	// p := b.permission.Request(permission.CreatePermissionRequest{
-	// 	Path:        b.workingDir,
-	// 	ToolName:    BashToolName,
-	// 	Action:      "execute",
-	// 	Description: fmt.Sprintf("Execute command: %s", params.Command),
-	// 	Params: map[string]any{
-	// 		"command": params.Command,
-	// 		"timeout": params.Timeout,
-	// 	},
-	// })
-	// if !p {
-	// 	return "", errors.New("permission denied")
-	// }
-
-	shell := shell.GetPersistentShell(b.workingDir)
+	shell := shell.GetPersistentShell(config.WorkingDirectory())
 	stdout, stderr, exitCode, interrupted, err := shell.Exec(ctx, params.Command, params.Timeout)
 	if err != nil {
-		return "", err
+		return NewTextErrorResponse(fmt.Sprintf("error executing command: %s", err)), nil
 	}
 
 	stdout = truncateOutput(stdout)
@@ -153,9 +137,9 @@ func (b *bashTool) InvokableRun(ctx context.Context, args string, opts ...tool.O
 	}
 
 	if stdout == "" {
-		return "no output", nil
+		return NewTextResponse("no output"), nil
 	}
-	return stdout, nil
+	return NewTextResponse(stdout), nil
 }
 
 func truncateOutput(content string) string {
@@ -327,8 +311,6 @@ Important:
 - Never update git config`, bannedCommandsStr, MaxOutputLength)
 }
 
-func NewBashTool(workingDir string) tool.InvokableTool {
-	return &bashTool{
-		workingDir: workingDir,
-	}
+func NewBashTool() BaseTool {
+	return &bashTool{}
 }
