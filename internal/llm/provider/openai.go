@@ -84,22 +84,22 @@ func (p *openaiProvider) convertToOpenAIMessages(messages []message.Message) []o
 	for _, msg := range messages {
 		switch msg.Role {
 		case message.User:
-			chatMessages = append(chatMessages, openai.UserMessage(msg.Content))
+			chatMessages = append(chatMessages, openai.UserMessage(msg.Content().String()))
 
 		case message.Assistant:
 			assistantMsg := openai.ChatCompletionAssistantMessageParam{
 				Role: "assistant",
 			}
 
-			if msg.Content != "" {
+			if msg.Content().String() != "" {
 				assistantMsg.Content = openai.ChatCompletionAssistantMessageParamContentUnion{
-					OfString: openai.String(msg.Content),
+					OfString: openai.String(msg.Content().String()),
 				}
 			}
 
-			if len(msg.ToolCalls) > 0 {
-				assistantMsg.ToolCalls = make([]openai.ChatCompletionMessageToolCallParam, len(msg.ToolCalls))
-				for i, call := range msg.ToolCalls {
+			if len(msg.ToolCalls()) > 0 {
+				assistantMsg.ToolCalls = make([]openai.ChatCompletionMessageToolCallParam, len(msg.ToolCalls()))
+				for i, call := range msg.ToolCalls() {
 					assistantMsg.ToolCalls[i] = openai.ChatCompletionMessageToolCallParam{
 						ID:   call.ID,
 						Type: "function",
@@ -116,7 +116,7 @@ func (p *openaiProvider) convertToOpenAIMessages(messages []message.Message) []o
 			})
 
 		case message.Tool:
-			for _, result := range msg.ToolResults {
+			for _, result := range msg.ToolResults() {
 				chatMessages = append(chatMessages,
 					openai.ToolMessage(result.Content, result.ToolCallID),
 				)
@@ -276,3 +276,4 @@ func (p *openaiProvider) StreamResponse(ctx context.Context, messages []message.
 
 	return eventChan, nil
 }
+

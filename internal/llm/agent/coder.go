@@ -44,20 +44,23 @@ func NewCoderAgent(app *app.App) (Agent, error) {
 		return nil, err
 	}
 
-	mcpTools := GetMcpTools(app.Context)
+	otherTools := GetMcpTools(app.Context)
+	if len(app.LSPClients) > 0 {
+		otherTools = append(otherTools, tools.NewDiagnosticsTool(app.LSPClients))
+	}
 	return &coderAgent{
 		agent: &agent{
 			App: app,
 			tools: append(
 				[]tools.BaseTool{
 					tools.NewBashTool(),
-					tools.NewEditTool(),
+					tools.NewEditTool(app.LSPClients),
 					tools.NewGlobTool(),
 					tools.NewGrepTool(),
 					tools.NewLsTool(),
-					tools.NewViewTool(),
-					tools.NewWriteTool(),
-				}, mcpTools...,
+					tools.NewViewTool(app.LSPClients),
+					tools.NewWriteTool(app.LSPClients),
+				}, otherTools...,
 			),
 			model:          model,
 			agent:          agentProvider,

@@ -91,7 +91,7 @@ func (b *agentTool) Run(ctx context.Context, call tools.ToolCall) (tools.ToolRes
 	if err != nil {
 		return tools.NewTextErrorResponse(fmt.Sprintf("error: %s", err)), nil
 	}
-	return tools.NewTextResponse(response.Content), nil
+	return tools.NewTextResponse(response.Content().String()), nil
 }
 
 func NewAgentTool(parentSessionID string, app *app.App) tools.BaseTool {

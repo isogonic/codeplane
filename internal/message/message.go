@@ -2,59 +2,17 @@ package message
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/kujtimiihoxha/termai/internal/db"
 	"github.com/kujtimiihoxha/termai/internal/pubsub"
 )
 
-type MessageRole string
-
-const (
-	Assistant MessageRole = "assistant"
-	User      MessageRole = "user"
-	System    MessageRole = "system"
-	Tool      MessageRole = "tool"
-)
-
-type ToolResult struct {
-	ToolCallID string
-	Content    string
-	IsError    bool
-	// TODO: support for images
-}
-
-type ToolCall struct {
-	ID    string
-	Name  string
-	Input string
-	Type  string
-}
-
-type Message struct {
-	ID        string
-	SessionID string
-
-	// NEW
-	Role     MessageRole
-	Content  string
-	Thinking string
-
-	Finished bool
-
-	ToolResults []ToolResult
-	ToolCalls   []ToolCall
-	CreatedAt   int64
-	UpdatedAt   int64
-}
-
 type CreateMessageParams struct {
-	Role        MessageRole
-	Content     string
-	ToolCalls   []ToolCall
-	ToolResults []ToolResult
+	Role  MessageRole
+	Parts []ContentPart
 }
 
 type Service interface {
@@ -73,6 +31,14 @@ type service struct {
 	ctx context.Context
 }
 
+func NewService(ctx context.Context, q db.Querier) Service {
+	return &service{
+		Broker: pubsub.NewBroker[Message](),
+		q:      q,
+		ctx:    ctx,
+	}
+}
+
 func (s *service) Delete(id string) error {
 	message, err := s.Get(id)
 	if err != nil {
@@ -87,22 +53,21 @@ func (s *service) Delete(id string) error {
 }
 
 func (s *service) Create(sessionID string, params CreateMessageParams) (Message, error) {
-	toolCallsStr, err := json.Marshal(params.ToolCalls)
+	if params.Role != Assistant {
+		params.Parts = append(params.Parts, Finish{
+			Reason: "stop",
+		})
+	}
+	partsJSON, err := marshallParts(params.Parts)
 	if err != nil {
 		return Message{}, err
 	}
-	toolResultsStr, err := json.Marshal(params.ToolResults)
-	if err != nil {
-		return Message{}, err
-	}
+
 	dbMessage, err := s.q.CreateMessage(s.ctx, db.CreateMessageParams{
-		ID:          uuid.New().String(),
-		SessionID:   sessionID,
-		Role:        string(params.Role),
-		Finished:    params.Role != Assistant,
-		Content:     params.Content,
-		ToolCalls:   sql.NullString{String: string(toolCallsStr), Valid: true},
-		ToolResults: sql.NullString{String: string(toolResultsStr), Valid: true},
+		ID:        uuid.New().String(),
+		SessionID: sessionID,
+		Role:      string(params.Role),
+		Parts:     string(partsJSON),
 	})
 	if err != nil {
 		return Message{}, err
@@ -132,21 +97,13 @@ func (s *service) DeleteSessionMessages(sessionID string) error {
 }
 
 func (s *service) Update(message Message) error {
-	toolCallsStr, err := json.Marshal(message.ToolCalls)
-	if err != nil {
-		return err
-	}
-	toolResultsStr, err := json.Marshal(message.ToolResults)
+	parts, err := marshallParts(message.Parts)
 	if err != nil {
 		return err
 	}
 	err = s.q.UpdateMessage(s.ctx, db.UpdateMessageParams{
-		ID:          message.ID,
-		Content:     message.Content,
-		Thinking:    message.Thinking,
-		Finished:    message.Finished,
-		ToolCalls:   sql.NullString{String: string(toolCallsStr), Valid: true},
-		ToolResults: sql.NullString{String: string(toolResultsStr), Valid: true},
+		ID:    message.ID,
+		Parts: string(parts),
 	})
 	if err != nil {
 		return err
@@ -179,40 +136,136 @@ func (s *service) List(sessionID string) ([]Message, error) {
 }
 
 func (s *service) fromDBItem(item db.Message) (Message, error) {
-	toolCalls := make([]ToolCall, 0)
-	if item.ToolCalls.Valid {
-		err := json.Unmarshal([]byte(item.ToolCalls.String), &toolCalls)
-		if err != nil {
-			return Message{}, err
-		}
+	parts, err := unmarshallParts([]byte(item.Parts))
+	if err != nil {
+		return Message{}, err
 	}
-
-	toolResults := make([]ToolResult, 0)
-	if item.ToolResults.Valid {
-		err := json.Unmarshal([]byte(item.ToolResults.String), &toolResults)
-		if err != nil {
-			return Message{}, err
-		}
-	}
-
 	return Message{
-		ID:          item.ID,
-		SessionID:   item.SessionID,
-		Role:        MessageRole(item.Role),
-		Content:     item.Content,
-		Thinking:    item.Thinking,
-		Finished:    item.Finished,
-		ToolCalls:   toolCalls,
-		ToolResults: toolResults,
-		CreatedAt:   item.CreatedAt,
-		UpdatedAt:   item.UpdatedAt,
+		ID:        item.ID,
+		SessionID: item.SessionID,
+		Role:      MessageRole(item.Role),
+		Parts:     parts,
+		CreatedAt: item.CreatedAt,
+		UpdatedAt: item.UpdatedAt,
 	}, nil
 }
 
-func NewService(ctx context.Context, q db.Querier) Service {
-	return &service{
-		Broker: pubsub.NewBroker[Message](),
-		q:      q,
-		ctx:    ctx,
+type partType string
+
+const (
+	reasoningType  partType = "reasoning"
+	textType       partType = "text"
+	imageURLType   partType = "image_url"
+	binaryType     partType = "binary"
+	toolCallType   partType = "tool_call"
+	toolResultType partType = "tool_result"
+	finishType     partType = "finish"
+)
+
+type partWrapper struct {
+	Type partType    `json:"type"`
+	Data ContentPart `json:"data"`
+}
+
+func marshallParts(parts []ContentPart) ([]byte, error) {
+	wrappedParts := make([]partWrapper, len(parts))
+
+	for i, part := range parts {
+		var typ partType
+
+		switch part.(type) {
+		case ReasoningContent:
+			typ = reasoningType
+		case TextContent:
+			typ = textType
+		case ImageURLContent:
+			typ = imageURLType
+		case BinaryContent:
+			typ = binaryType
+		case ToolCall:
+			typ = toolCallType
+		case ToolResult:
+			typ = toolResultType
+		case Finish:
+			typ = finishType
+		default:
+			return nil, fmt.Errorf("unknown part type: %T", part)
+		}
+
+		wrappedParts[i] = partWrapper{
+			Type: typ,
+			Data: part,
+		}
 	}
+	return json.Marshal(wrappedParts)
+}
+
+func unmarshallParts(data []byte) ([]ContentPart, error) {
+	temp := []json.RawMessage{}
+
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return nil, err
+	}
+
+	parts := make([]ContentPart, 0)
+
+	for _, rawPart := range temp {
+		var wrapper struct {
+			Type partType        `json:"type"`
+			Data json.RawMessage `json:"data"`
+		}
+
+		if err := json.Unmarshal(rawPart, &wrapper); err != nil {
+			return nil, err
+		}
+
+		switch wrapper.Type {
+		case reasoningType:
+			part := ReasoningContent{}
+			if err := json.Unmarshal(wrapper.Data, &part); err != nil {
+				return nil, err
+			}
+			parts = append(parts, part)
+		case textType:
+			part := TextContent{}
+			if err := json.Unmarshal(wrapper.Data, &part); err != nil {
+				return nil, err
+			}
+			parts = append(parts, part)
+		case imageURLType:
+			part := ImageURLContent{}
+			if err := json.Unmarshal(wrapper.Data, &part); err != nil {
+				return nil, err
+			}
+		case binaryType:
+			part := BinaryContent{}
+			if err := json.Unmarshal(wrapper.Data, &part); err != nil {
+				return nil, err
+			}
+			parts = append(parts, part)
+		case toolCallType:
+			part := ToolCall{}
+			if err := json.Unmarshal(wrapper.Data, &part); err != nil {
+				return nil, err
+			}
+			parts = append(parts, part)
+		case toolResultType:
+			part := ToolResult{}
+			if err := json.Unmarshal(wrapper.Data, &part); err != nil {
+				return nil, err
+			}
+			parts = append(parts, part)
+		case finishType:
+			part := Finish{}
+			if err := json.Unmarshal(wrapper.Data, &part); err != nil {
+				return nil, err
+			}
+			parts = append(parts, part)
+		default:
+			return nil, fmt.Errorf("unknown part type: %s", wrapper.Type)
+		}
+
+	}
+
+	return parts, nil
 }

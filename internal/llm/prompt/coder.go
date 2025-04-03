@@ -67,7 +67,7 @@ Never commit changes unless the user explicitly asks you to.`
 
 	envInfo := getEnvironmentInfo()
 
-	return fmt.Sprintf("%s\n\n%s", basePrompt, envInfo)
+	return fmt.Sprintf("%s\n\n%s\n%s", basePrompt, envInfo, lspInformation())
 }
 
 func CoderAnthropicSystemPrompt() string {
@@ -168,7 +168,7 @@ You MUST answer concisely with fewer than 4 lines of text (not including tool us
 
 	envInfo := getEnvironmentInfo()
 
-	return fmt.Sprintf("%s\n\n%s", basePrompt, envInfo)
+	return fmt.Sprintf("%s\n\n%s\n%s", basePrompt, envInfo, lspInformation())
 }
 
 func getEnvironmentInfo() string {
@@ -196,6 +196,25 @@ Today's date: %s
 func isGitRepo(dir string) bool {
 	_, err := os.Stat(filepath.Join(dir, ".git"))
 	return err == nil
+}
+
+func lspInformation() string {
+	cfg := config.Get()
+	hasLSP := false
+	for _, v := range cfg.LSP {
+		if !v.Disabled {
+			hasLSP = true
+			break
+		}
+	}
+	if !hasLSP {
+		return ""
+	}
+	return `# LSP Information
+Tools that support it will also include useful diagnostics such as linting and typechecking.
+These diagnostics will be automatically enabled when you run the tool, and will be displayed in the output at the bottom within the <file_diagnostics></file_diagnostics> and <project_diagnostics></project_diagnostics> tags.
+Take necessary actions to fix the issues.
+`
 }
 
 func boolToYesNo(b bool) string {

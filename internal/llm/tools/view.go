@@ -11,9 +11,12 @@ import (
 	"strings"
 
 	"github.com/kujtimiihoxha/termai/internal/config"
+	"github.com/kujtimiihoxha/termai/internal/lsp"
 )
 
-type viewTool struct{}
+type viewTool struct {
+	lspClients map[string]*lsp.Client
+}
 
 const (
 	ViewToolName     = "view"
@@ -127,15 +130,18 @@ func (v *viewTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error)
 		return NewTextErrorResponse(fmt.Sprintf("Failed to read file: %s", err)), nil
 	}
 
+	notifyLspOpenFile(ctx, filePath, v.lspClients)
+	output := "<file>\n"
 	// Format the output with line numbers
-	output := addLineNumbers(content, params.Offset+1)
+	output += addLineNumbers(content, params.Offset+1)
 
 	// Add a note if the content was truncated
 	if lineCount > params.Offset+len(strings.Split(content, "\n")) {
 		output += fmt.Sprintf("\n\n(File has more lines. Use 'offset' parameter to read beyond line %d)",
 			params.Offset+len(strings.Split(content, "\n")))
 	}
-
+	output += "\n</file>\n"
+	output += appendDiagnostics(filePath, v.lspClients)
 	recordFileRead(filePath)
 	return NewTextResponse(output), nil
 }
@@ -155,10 +161,10 @@ func addLineNumbers(content string, startLine int) string {
 		numStr := fmt.Sprintf("%d", lineNum)
 
 		if len(numStr) >= 6 {
-			result = append(result, fmt.Sprintf("%s\t%s", numStr, line))
+			result = append(result, fmt.Sprintf("%s|%s", numStr, line))
 		} else {
 			paddedNum := fmt.Sprintf("%6s", numStr)
-			result = append(result, fmt.Sprintf("%s\t|%s", paddedNum, line))
+			result = append(result, fmt.Sprintf("%s|%s", paddedNum, line))
 		}
 	}
 
@@ -173,8 +179,9 @@ func readTextFile(filePath string, offset, limit int) (string, int, error) {
 	defer file.Close()
 
 	lineCount := 0
+
+	scanner := NewLineScanner(file)
 	if offset > 0 {
-		scanner := NewLineScanner(file)
 		for lineCount < offset && scanner.Scan() {
 			lineCount++
 		}
@@ -192,7 +199,6 @@ func readTextFile(filePath string, offset, limit int) (string, int, error) {
 
 	var lines []string
 	lineCount = offset
-	scanner := NewLineScanner(file)
 
 	for scanner.Scan() && len(lines) < limit {
 		lineCount++
@@ -290,6 +296,8 @@ TIPS:
 - When viewing large files, use the offset parameter to read specific sections`
 }
 
-func NewViewTool() BaseTool {
-	return &viewTool{}
+func NewViewTool(lspClients map[string]*lsp.Client) BaseTool {
+	return &viewTool{
+		lspClients,
+	}
 }

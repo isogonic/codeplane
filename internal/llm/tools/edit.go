@@ -10,11 +10,14 @@ import (
 	"time"
 
 	"github.com/kujtimiihoxha/termai/internal/config"
+	"github.com/kujtimiihoxha/termai/internal/lsp"
 	"github.com/kujtimiihoxha/termai/internal/permission"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
-type editTool struct{}
+type editTool struct {
+	lspClients map[string]*lsp.Client
+}
 
 const (
 	EditToolName = "edit"
@@ -71,6 +74,7 @@ func (e *editTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error)
 		params.FilePath = filepath.Join(wd, params.FilePath)
 	}
 
+	notifyLspOpenFile(ctx, params.FilePath, e.lspClients)
 	if params.OldString == "" {
 		result, err := createNewFile(params.FilePath, params.NewString)
 		if err != nil {
@@ -91,6 +95,9 @@ func (e *editTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error)
 	if err != nil {
 		return NewTextErrorResponse(fmt.Sprintf("error replacing content: %s", err)), nil
 	}
+
+	result = fmt.Sprintf("<result>\n%s\n</result>\n", result)
+	result += appendDiagnostics(params.FilePath, e.lspClients)
 	return NewTextResponse(result), nil
 }
 
@@ -296,18 +303,18 @@ func GenerateDiff(oldContent, newContent string) string {
 
 		switch diff.Type {
 		case diffmatchpatch.DiffInsert:
-			for _, line := range strings.Split(text, "\n") {
+			for line := range strings.SplitSeq(text, "\n") {
 				_, _ = buff.WriteString("+ " + line + "\n")
 			}
 		case diffmatchpatch.DiffDelete:
-			for _, line := range strings.Split(text, "\n") {
+			for line := range strings.SplitSeq(text, "\n") {
 				_, _ = buff.WriteString("- " + line + "\n")
 			}
 		case diffmatchpatch.DiffEqual:
 			if len(text) > 40 {
 				_, _ = buff.WriteString("  " + text[:20] + "..." + text[len(text)-20:] + "\n")
 			} else {
-				for _, line := range strings.Split(text, "\n") {
+				for line := range strings.SplitSeq(text, "\n") {
 					_, _ = buff.WriteString("  " + line + "\n")
 				}
 			}
@@ -366,6 +373,8 @@ When making edits:
 Remember: when making multiple file edits in a row to the same file, you should prefer to send all edits in a single message with multiple calls to this tool, rather than multiple messages with a single call each.`
 }
 
-func NewEditTool() BaseTool {
-	return &editTool{}
+func NewEditTool(lspClients map[string]*lsp.Client) BaseTool {
+	return &editTool{
+		lspClients,
+	}
 }

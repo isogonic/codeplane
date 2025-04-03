@@ -78,7 +78,6 @@ func (p *geminiProvider) Close() {
 	}
 }
 
-// convertToGeminiHistory converts the message history to Gemini's format
 func (p *geminiProvider) convertToGeminiHistory(messages []message.Message) []*genai.Content {
 	var history []*genai.Content
 
@@ -86,7 +85,7 @@ func (p *geminiProvider) convertToGeminiHistory(messages []message.Message) []*g
 		switch msg.Role {
 		case message.User:
 			history = append(history, &genai.Content{
-				Parts: []genai.Part{genai.Text(msg.Content)},
+				Parts: []genai.Part{genai.Text(msg.Content().String())},
 				Role:  "user",
 			})
 		case message.Assistant:
@@ -95,14 +94,12 @@ func (p *geminiProvider) convertToGeminiHistory(messages []message.Message) []*g
 				Parts: []genai.Part{},
 			}
 
-			// Handle regular content
-			if msg.Content != "" {
-				content.Parts = append(content.Parts, genai.Text(msg.Content))
+			if msg.Content().String() != "" {
+				content.Parts = append(content.Parts, genai.Text(msg.Content().String()))
 			}
 
-			// Handle tool calls if any
-			if len(msg.ToolCalls) > 0 {
-				for _, call := range msg.ToolCalls {
+			if len(msg.ToolCalls()) > 0 {
+				for _, call := range msg.ToolCalls() {
 					args, _ := parseJsonToMap(call.Input)
 					content.Parts = append(content.Parts, genai.FunctionCall{
 						Name: call.Name,
@@ -113,8 +110,7 @@ func (p *geminiProvider) convertToGeminiHistory(messages []message.Message) []*g
 
 			history = append(history, content)
 		case message.Tool:
-			for _, result := range msg.ToolResults {
-				// Parse response content to map if possible
+			for _, result := range msg.ToolResults() {
 				response := map[string]interface{}{"result": result.Content}
 				parsed, err := parseJsonToMap(result.Content)
 				if err == nil {
@@ -123,7 +119,7 @@ func (p *geminiProvider) convertToGeminiHistory(messages []message.Message) []*g
 				var toolCall message.ToolCall
 				for _, msg := range messages {
 					if msg.Role == message.Assistant {
-						for _, call := range msg.ToolCalls {
+						for _, call := range msg.ToolCalls() {
 							if call.ID == result.ToolCallID {
 								toolCall = call
 								break
@@ -146,108 +142,6 @@ func (p *geminiProvider) convertToGeminiHistory(messages []message.Message) []*g
 	return history
 }
 
-// convertToolsToGeminiFunctionDeclarations converts tool definitions to Gemini's function declarations
-func (p *geminiProvider) convertToolsToGeminiFunctionDeclarations(tools []tools.BaseTool) []*genai.FunctionDeclaration {
-	declarations := make([]*genai.FunctionDeclaration, len(tools))
-
-	for i, tool := range tools {
-		info := tool.Info()
-
-		// Convert parameters to genai.Schema format
-		properties := make(map[string]*genai.Schema)
-		for name, param := range info.Parameters {
-			// Try to extract type and description from the parameter
-			paramMap, ok := param.(map[string]interface{})
-			if !ok {
-				// Default to string if unable to determine type
-				properties[name] = &genai.Schema{Type: genai.TypeString}
-				continue
-			}
-
-			schemaType := genai.TypeString // Default
-			var description string
-			var itemsTypeSchema *genai.Schema
-			if typeVal, found := paramMap["type"]; found {
-				if typeStr, ok := typeVal.(string); ok {
-					switch typeStr {
-					case "string":
-						schemaType = genai.TypeString
-					case "number":
-						schemaType = genai.TypeNumber
-					case "integer":
-						schemaType = genai.TypeInteger
-					case "boolean":
-						schemaType = genai.TypeBoolean
-					case "array":
-						schemaType = genai.TypeArray
-						items, found := paramMap["items"]
-						if found {
-							itemsMap, ok := items.(map[string]interface{})
-							if ok {
-								itemsType, found := itemsMap["type"]
-								if found {
-									itemsTypeStr, ok := itemsType.(string)
-									if ok {
-										switch itemsTypeStr {
-										case "string":
-											itemsTypeSchema = &genai.Schema{
-												Type: genai.TypeString,
-											}
-										case "number":
-											itemsTypeSchema = &genai.Schema{
-												Type: genai.TypeNumber,
-											}
-										case "integer":
-											itemsTypeSchema = &genai.Schema{
-												Type: genai.TypeInteger,
-											}
-										case "boolean":
-											itemsTypeSchema = &genai.Schema{
-												Type: genai.TypeBoolean,
-											}
-										}
-									}
-								}
-							}
-						}
-					case "object":
-						schemaType = genai.TypeObject
-						if _, found := paramMap["properties"]; !found {
-							continue
-						}
-						// TODO: Add support for other types
-					}
-				}
-			}
-
-			if desc, found := paramMap["description"]; found {
-				if descStr, ok := desc.(string); ok {
-					description = descStr
-				}
-			}
-
-			properties[name] = &genai.Schema{
-				Type:        schemaType,
-				Description: description,
-				Items:       itemsTypeSchema,
-			}
-		}
-
-		declarations[i] = &genai.FunctionDeclaration{
-			Name:        info.Name,
-			Description: info.Description,
-			Parameters: &genai.Schema{
-				Type:       genai.TypeObject,
-				Properties: properties,
-				Required:   info.Required,
-			},
-		}
-	}
-
-	return declarations
-}
-
-// extractTokenUsage extracts token usage information from Gemini's response
 func (p *geminiProvider) extractTokenUsage(resp *genai.GenerateContentResponse) TokenUsage {
 	if resp == nil || resp.UsageMetadata == nil {
 		return TokenUsage{}
@@ -261,41 +155,28 @@ func (p *geminiProvider) extractTokenUsage(resp *genai.GenerateContentResponse) 
 	}
 }
 
-// SendMessages sends a batch of messages to Gemini and returns the response
 func (p *geminiProvider) SendMessages(ctx context.Context, messages []message.Message, tools []tools.BaseTool) (*ProviderResponse, error) {
-	// Create a generative model
 	model := p.client.GenerativeModel(p.model.APIModel)
 	model.SetMaxOutputTokens(p.maxTokens)
 
-	// Set system instruction
 	model.SystemInstruction = genai.NewUserContent(genai.Text(p.systemMessage))
 
-	// Set up tools if provided
 	if len(tools) > 0 {
 		declarations := p.convertToolsToGeminiFunctionDeclarations(tools)
-		model.Tools = []*genai.Tool{{FunctionDeclarations: declarations}}
-	}
-
-	// Create chat session and set history
-	chat := model.StartChat()
-	chat.History = p.convertToGeminiHistory(messages[:len(messages)-1]) // Exclude last message
-
-	// Get the most recent user message
-	var lastUserMsg message.Message
-	for i := len(messages) - 1; i >= 0; i-- {
-		if messages[i].Role == message.User {
-			lastUserMsg = messages[i]
-			break
+		for _, declaration := range declarations {
+			model.Tools = append(model.Tools, &genai.Tool{FunctionDeclarations: []*genai.FunctionDeclaration{declaration}})
 		}
 	}
 
-	// Send the message
-	resp, err := chat.SendMessage(ctx, genai.Text(lastUserMsg.Content))
+	chat := model.StartChat()
+	chat.History = p.convertToGeminiHistory(messages[:len(messages)-1]) // Exclude last message
+
+	lastUserMsg := messages[len(messages)-1]
+	resp, err := chat.SendMessage(ctx, genai.Text(lastUserMsg.Content().String()))
 	if err != nil {
 		return nil, err
 	}
 
-	// Process the response
 	var content string
 	var toolCalls []message.ToolCall
 
@@ -317,7 +198,6 @@ func (p *geminiProvider) SendMessages(ctx context.Context, messages []message.Me
 		}
 	}
 
-	// Extract token usage
 	tokenUsage := p.extractTokenUsage(resp)
 
 	return &ProviderResponse{
@@ -327,16 +207,12 @@ func (p *geminiProvider) SendMessages(ctx context.Context, messages []message.Me
 	}, nil
 }
 
-// StreamResponse streams the response from Gemini
 func (p *geminiProvider) StreamResponse(ctx context.Context, messages []message.Message, tools []tools.BaseTool) (<-chan ProviderEvent, error) {
-	// Create a generative model
 	model := p.client.GenerativeModel(p.model.APIModel)
 	model.SetMaxOutputTokens(p.maxTokens)
 
-	// Set system instruction
 	model.SystemInstruction = genai.NewUserContent(genai.Text(p.systemMessage))
 
-	// Set up tools if provided
 	if len(tools) > 0 {
 		declarations := p.convertToolsToGeminiFunctionDeclarations(tools)
 		for _, declaration := range declarations {
@@ -344,14 +220,12 @@ func (p *geminiProvider) StreamResponse(ctx context.Context, messages []message.
 		}
 	}
 
-	// Create chat session and set history
 	chat := model.StartChat()
 	chat.History = p.convertToGeminiHistory(messages[:len(messages)-1]) // Exclude last message
 
 	lastUserMsg := messages[len(messages)-1]
 
-	// Start streaming
-	iter := chat.SendMessageStream(ctx, genai.Text(lastUserMsg.Content))
+	iter := chat.SendMessageStream(ctx, genai.Text(lastUserMsg.Content().String()))
 
 	eventChan := make(chan ProviderEvent)
 
@@ -392,7 +266,6 @@ func (p *geminiProvider) StreamResponse(ctx context.Context, messages []message.
 						}
 						currentContent += newText
 					case genai.FunctionCall:
-						// For function calls, we assume they come complete, not streamed in parts
 						id := "call_" + uuid.New().String()
 						args, _ := json.Marshal(p.Args)
 						newCall := message.ToolCall{
@@ -402,7 +275,6 @@ func (p *geminiProvider) StreamResponse(ctx context.Context, messages []message.
 							Type:  "function",
 						}
 
-						// Check if this is a new tool call
 						isNew := true
 						for _, existing := range toolCalls {
 							if existing.Name == newCall.Name && existing.Input == newCall.Input {
@@ -419,15 +291,15 @@ func (p *geminiProvider) StreamResponse(ctx context.Context, messages []message.
 			}
 		}
 
-		// Extract token usage from the final response
 		tokenUsage := p.extractTokenUsage(finalResp)
 
 		eventChan <- ProviderEvent{
 			Type: EventComplete,
 			Response: &ProviderResponse{
-				Content:   currentContent,
-				ToolCalls: toolCalls,
-				Usage:     tokenUsage,
+				Content:      currentContent,
+				ToolCalls:    toolCalls,
+				Usage:        tokenUsage,
+				FinishReason: string(finalResp.Candidates[0].FinishReason.String()),
 			},
 		}
 	}()
@@ -435,7 +307,99 @@ func (p *geminiProvider) StreamResponse(ctx context.Context, messages []message.
 	return eventChan, nil
 }
 
-// Helper function to parse JSON string into map
+func (p *geminiProvider) convertToolsToGeminiFunctionDeclarations(tools []tools.BaseTool) []*genai.FunctionDeclaration {
+	declarations := make([]*genai.FunctionDeclaration, len(tools))
+
+	for i, tool := range tools {
+		info := tool.Info()
+		declarations[i] = &genai.FunctionDeclaration{
+			Name:        info.Name,
+			Description: info.Description,
+			Parameters: &genai.Schema{
+				Type:       genai.TypeObject,
+				Properties: convertSchemaProperties(info.Parameters),
+				Required:   info.Required,
+			},
+		}
+	}
+
+	return declarations
+}
+
+func convertSchemaProperties(parameters map[string]interface{}) map[string]*genai.Schema {
+	properties := make(map[string]*genai.Schema)
+
+	for name, param := range parameters {
+		properties[name] = convertToSchema(param)
+	}
+
+	return properties
+}
+
+func convertToSchema(param interface{}) *genai.Schema {
+	schema := &genai.Schema{Type: genai.TypeString}
+
+	paramMap, ok := param.(map[string]interface{})
+	if !ok {
+		return schema
+	}
+
+	if desc, ok := paramMap["description"].(string); ok {
+		schema.Description = desc
+	}
+
+	typeVal, hasType := paramMap["type"]
+	if !hasType {
+		return schema
+	}
+
+	typeStr, ok := typeVal.(string)
+	if !ok {
+		return schema
+	}
+
+	schema.Type = mapJSONTypeToGenAI(typeStr)
+
+	switch typeStr {
+	case "array":
+		schema.Items = processArrayItems(paramMap)
+	case "object":
+		if props, ok := paramMap["properties"].(map[string]interface{}); ok {
+			schema.Properties = convertSchemaProperties(props)
+		}
+	}
+
+	return schema
+}
+
+func processArrayItems(paramMap map[string]interface{}) *genai.Schema {
+	items, ok := paramMap["items"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	return convertToSchema(items)
+}
+
+func mapJSONTypeToGenAI(jsonType string) genai.Type {
+	switch jsonType {
+	case "string":
+		return genai.TypeString
+	case "number":
+		return genai.TypeNumber
+	case "integer":
+		return genai.TypeInteger
+	case "boolean":
+		return genai.TypeBoolean
+	case "array":
+		return genai.TypeArray
+	case "object":
+		return genai.TypeObject
+	default:
+		return genai.TypeString // Default to string for unknown types
+	}
+}
+
 func parseJsonToMap(jsonStr string) (map[string]interface{}, error) {
 	var result map[string]interface{}
 	err := json.Unmarshal([]byte(jsonStr), &result)

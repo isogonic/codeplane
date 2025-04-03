@@ -221,7 +221,7 @@ func (s *PersistentShell) killChildren() {
 		return
 	}
 
-	for _, pidStr := range strings.Split(string(output), "\n") {
+	for pidStr := range strings.SplitSeq(string(output), "\n") {
 		if pidStr = strings.TrimSpace(pidStr); pidStr != "" {
 			var pid int
 			fmt.Sscanf(pidStr, "%d", &pid)

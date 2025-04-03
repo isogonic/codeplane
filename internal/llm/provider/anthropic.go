@@ -111,7 +111,7 @@ func (a *anthropicProvider) StreamResponse(ctx context.Context, messages []messa
 	var thinkingParam anthropic.ThinkingConfigParamUnion
 	lastMessage := messages[len(messages)-1]
 	temperature := anthropic.Float(0)
-	if lastMessage.Role == message.User && strings.Contains(strings.ToLower(lastMessage.Content), "think") {
+	if lastMessage.Role == message.User && strings.Contains(strings.ToLower(lastMessage.Content().String()), "think") {
 		thinkingParam = anthropic.ThinkingConfigParamUnion{
 			OfThinkingConfigEnabled: &anthropic.ThinkingConfigEnabledParam{
 				BudgetTokens: int64(float64(a.maxTokens) * 0.8),
@@ -187,9 +187,10 @@ func (a *anthropicProvider) StreamResponse(ctx context.Context, messages []messa
 				eventChan <- ProviderEvent{
 					Type: EventComplete,
 					Response: &ProviderResponse{
-						Content:   content,
-						ToolCalls: toolCalls,
-						Usage:     tokenUsage,
+						Content:      content,
+						ToolCalls:    toolCalls,
+						Usage:        tokenUsage,
+						FinishReason: string(accumulatedMessage.StopReason),
 					},
 				}
 			}
@@ -263,7 +264,7 @@ func (a *anthropicProvider) convertToAnthropicMessages(messages []message.Messag
 	for i, msg := range messages {
 		switch msg.Role {
 		case message.User:
-			content := anthropic.NewTextBlock(msg.Content)
+			content := anthropic.NewTextBlock(msg.Content().String())
 			if cachedBlocks < 2 {
 				content.OfRequestTextBlock.CacheControl = anthropic.CacheControlEphemeralParam{
 					Type: "ephemeral",
@@ -274,8 +275,8 @@ func (a *anthropicProvider) convertToAnthropicMessages(messages []message.Messag
 
 		case message.Assistant:
 			blocks := []anthropic.ContentBlockParamUnion{}
-			if msg.Content != "" {
-				content := anthropic.NewTextBlock(msg.Content)
+			if msg.Content().String() != "" {
+				content := anthropic.NewTextBlock(msg.Content().String())
 				if cachedBlocks < 2 {
 					content.OfRequestTextBlock.CacheControl = anthropic.CacheControlEphemeralParam{
 						Type: "ephemeral",
@@ -285,7 +286,7 @@ func (a *anthropicProvider) convertToAnthropicMessages(messages []message.Messag
 				blocks = append(blocks, content)
 			}
 
-			for _, toolCall := range msg.ToolCalls {
+			for _, toolCall := range msg.ToolCalls() {
 				var inputMap map[string]any
 				err := json.Unmarshal([]byte(toolCall.Input), &inputMap)
 				if err != nil {
@@ -297,8 +298,8 @@ func (a *anthropicProvider) convertToAnthropicMessages(messages []message.Messag
 			anthropicMessages[i] = anthropic.NewAssistantMessage(blocks...)
 
 		case message.Tool:
-			results := make([]anthropic.ContentBlockParamUnion, len(msg.ToolResults))
-			for i, toolResult := range msg.ToolResults {
+			results := make([]anthropic.ContentBlockParamUnion, len(msg.ToolResults()))
+			for i, toolResult := range msg.ToolResults() {
 				results[i] = anthropic.NewToolResultBlock(toolResult.ToolCallID, toolResult.Content, toolResult.IsError)
 			}
 			anthropicMessages[i] = anthropic.NewUserMessage(results...)

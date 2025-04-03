@@ -1,6 +1,3 @@
-/*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-*/
 package main
 
 import (
@@ -11,7 +8,8 @@ import (
 )
 
 func main() {
-	// Create a log file and make that the log output
+	// Create a log file and make that the log output DEBUG
+	// TODO: remove this on release
 	logfile, err := os.OpenFile("debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o666)
 	if err != nil {
 		panic(err)

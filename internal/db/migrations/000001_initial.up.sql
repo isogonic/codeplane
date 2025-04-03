@@ -23,11 +23,7 @@ CREATE TABLE IF NOT EXISTS messages (
     id TEXT PRIMARY KEY,
     session_id TEXT NOT NULL,
     role TEXT NOT NULL,
-    content TEXT NOT NULL,
-    thinking Text NOT NULL DEFAULT '',
-    finished BOOLEAN NOT NULL DEFAULT 0,
-    tool_calls TEXT,
-    tool_results TEXT,
+    parts TEXT NOT NULL default '[]',
     created_at INTEGER NOT NULL,  -- Unix timestamp in milliseconds
     updated_at INTEGER NOT NULL,  -- Unix timestamp in milliseconds
     FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE

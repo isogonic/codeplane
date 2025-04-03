@@ -7,7 +7,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
 )
 
 const createMessage = `-- name: CreateMessage :one
@@ -15,26 +14,20 @@ INSERT INTO messages (
     id,
     session_id,
     role,
-    finished,
-    content,
-    tool_calls,
-    tool_results,
+    parts,
     created_at,
     updated_at
 ) VALUES (
-    ?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'), strftime('%s', 'now')
+    ?, ?, ?, ?, strftime('%s', 'now'), strftime('%s', 'now')
 )
-RETURNING id, session_id, role, content, thinking, finished, tool_calls, tool_results, created_at, updated_at
+RETURNING id, session_id, role, parts, created_at, updated_at
 `
 
 type CreateMessageParams struct {
-	ID          string         `json:"id"`
-	SessionID   string         `json:"session_id"`
-	Role        string         `json:"role"`
-	Finished    bool           `json:"finished"`
-	Content     string         `json:"content"`
-	ToolCalls   sql.NullString `json:"tool_calls"`
-	ToolResults sql.NullString `json:"tool_results"`
+	ID        string `json:"id"`
+	SessionID string `json:"session_id"`
+	Role      string `json:"role"`
+	Parts     string `json:"parts"`
 }
 
 func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (Message, error) {
@@ -42,21 +35,14 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 		arg.ID,
 		arg.SessionID,
 		arg.Role,
-		arg.Finished,
-		arg.Content,
-		arg.ToolCalls,
-		arg.ToolResults,
+		arg.Parts,
 	)
 	var i Message
 	err := row.Scan(
 		&i.ID,
 		&i.SessionID,
 		&i.Role,
-		&i.Content,
-		&i.Thinking,
-		&i.Finished,
-		&i.ToolCalls,
-		&i.ToolResults,
+		&i.Parts,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -84,7 +70,7 @@ func (q *Queries) DeleteSessionMessages(ctx context.Context, sessionID string) e
 }
 
 const getMessage = `-- name: GetMessage :one
-SELECT id, session_id, role, content, thinking, finished, tool_calls, tool_results, created_at, updated_at
+SELECT id, session_id, role, parts, created_at, updated_at
 FROM messages
 WHERE id = ? LIMIT 1
 `
@@ -96,11 +82,7 @@ func (q *Queries) GetMessage(ctx context.Context, id string) (Message, error) {
 		&i.ID,
 		&i.SessionID,
 		&i.Role,
-		&i.Content,
-		&i.Thinking,
-		&i.Finished,
-		&i.ToolCalls,
-		&i.ToolResults,
+		&i.Parts,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -108,7 +90,7 @@ func (q *Queries) GetMessage(ctx context.Context, id string) (Message, error) {
 }
 
 const listMessagesBySession = `-- name: ListMessagesBySession :many
-SELECT id, session_id, role, content, thinking, finished, tool_calls, tool_results, created_at, updated_at
+SELECT id, session_id, role, parts, created_at, updated_at
 FROM messages
 WHERE session_id = ?
 ORDER BY created_at ASC
@@ -127,11 +109,7 @@ func (q *Queries) ListMessagesBySession(ctx context.Context, sessionID string) (
 			&i.ID,
 			&i.SessionID,
 			&i.Role,
-			&i.Content,
-			&i.Thinking,
-			&i.Finished,
-			&i.ToolCalls,
-			&i.ToolResults,
+			&i.Parts,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -151,32 +129,17 @@ func (q *Queries) ListMessagesBySession(ctx context.Context, sessionID string) (
 const updateMessage = `-- name: UpdateMessage :exec
 UPDATE messages
 SET
-    content = ?,
-    thinking = ?,
-    tool_calls = ?,
-    tool_results = ?,
-    finished = ?,
+    parts = ?,
     updated_at = strftime('%s', 'now')
 WHERE id = ?
 `
 
 type UpdateMessageParams struct {
-	Content     string         `json:"content"`
-	Thinking    string         `json:"thinking"`
-	ToolCalls   sql.NullString `json:"tool_calls"`
-	ToolResults sql.NullString `json:"tool_results"`
-	Finished    bool           `json:"finished"`
-	ID          string         `json:"id"`
+	Parts string `json:"parts"`
+	ID    string `json:"id"`
 }
 
 func (q *Queries) UpdateMessage(ctx context.Context, arg UpdateMessageParams) error {
-	_, err := q.exec(ctx, q.updateMessageStmt, updateMessage,
-		arg.Content,
-		arg.Thinking,
-		arg.ToolCalls,
-		arg.ToolResults,
-		arg.Finished,
-		arg.ID,
-	)
+	_, err := q.exec(ctx, q.updateMessageStmt, updateMessage, arg.Parts, arg.ID)
 	return err
 }

@@ -14,25 +14,18 @@ INSERT INTO messages (
     id,
     session_id,
     role,
-    finished,
-    content,
-    tool_calls,
-    tool_results,
+    parts,
     created_at,
     updated_at
 ) VALUES (
-    ?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'), strftime('%s', 'now')
+    ?, ?, ?, ?, strftime('%s', 'now'), strftime('%s', 'now')
 )
 RETURNING *;
 
 -- name: UpdateMessage :exec
 UPDATE messages
 SET
-    content = ?,
-    thinking = ?,
-    tool_calls = ?,
-    tool_results = ?,
-    finished = ?,
+    parts = ?,
     updated_at = strftime('%s', 'now')
 WHERE id = ?;
 

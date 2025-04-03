@@ -27,9 +27,10 @@ type TokenUsage struct {
 }
 
 type ProviderResponse struct {
-	Content   string
-	ToolCalls []message.ToolCall
-	Usage     TokenUsage
+	Content      string
+	ToolCalls    []message.ToolCall
+	Usage        TokenUsage
+	FinishReason string
 }
 
 type ProviderEvent struct {

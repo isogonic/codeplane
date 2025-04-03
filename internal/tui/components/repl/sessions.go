@@ -245,4 +245,3 @@ func NewSessionsCmp(app *app.App) SessionsCmp {
 		focused: false,
 	}
 }
-

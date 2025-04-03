@@ -49,11 +49,20 @@ type Log struct {
 	Level string `json:"level"`
 }
 
+type LSPConfig struct {
+	Disabled bool     `json:"enabled"`
+	Command  string   `json:"command"`
+	Args     []string `json:"args"`
+	Options  any      `json:"options"`
+}
+
 type Config struct {
 	Data       *Data                             `json:"data,omitempty"`
 	Log        *Log                              `json:"log,omitempty"`
 	MCPServers map[string]MCPServer              `json:"mcpServers,omitempty"`
 	Providers  map[models.ModelProvider]Provider `json:"providers,omitempty"`
+
+	LSP map[string]LSPConfig `json:"lsp,omitempty"`
 
 	Model *Model `json:"model,omitempty"`
 }

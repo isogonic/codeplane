@@ -91,6 +91,12 @@ go build -o termai
 ./termai
 ```
 
+## Acknowledgments
+
+TermAI builds upon the work of several open source projects and developers:
+
+- [@isaacphi](https://github.com/isaacphi) - LSP client implementation
+
 ## License
 
 [License information coming soon]

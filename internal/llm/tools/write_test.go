@@ -8,13 +8,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kujtimiihoxha/termai/internal/lsp"
 	"github.com/kujtimiihoxha/termai/internal/permission"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestWriteTool_Info(t *testing.T) {
-	tool := NewWriteTool()
+	tool := NewWriteTool(make(map[string]*lsp.Client))
 	info := tool.Info()
 
 	assert.Equal(t, WriteToolName, info.Name)
@@ -40,11 +41,11 @@ func TestWriteTool_Run(t *testing.T) {
 
 	t.Run("creates a new file successfully", func(t *testing.T) {
 		permission.Default = newMockPermissionService(true)
-		tool := NewWriteTool()
-		
+		tool := NewWriteTool(make(map[string]*lsp.Client))
+
 		filePath := filepath.Join(tempDir, "new_file.txt")
 		content := "This is a test content"
-		
+
 		params := WriteParams{
 			FilePath: filePath,
 			Content:  content,
@@ -70,11 +71,11 @@ func TestWriteTool_Run(t *testing.T) {
 
 	t.Run("creates file with nested directories", func(t *testing.T) {
 		permission.Default = newMockPermissionService(true)
-		tool := NewWriteTool()
-		
+		tool := NewWriteTool(make(map[string]*lsp.Client))
+
 		filePath := filepath.Join(tempDir, "nested/dirs/new_file.txt")
 		content := "Content in nested directory"
-		
+
 		params := WriteParams{
 			FilePath: filePath,
 			Content:  content,
@@ -100,17 +101,17 @@ func TestWriteTool_Run(t *testing.T) {
 
 	t.Run("updates existing file", func(t *testing.T) {
 		permission.Default = newMockPermissionService(true)
-		tool := NewWriteTool()
-		
+		tool := NewWriteTool(make(map[string]*lsp.Client))
+
 		// Create a file first
 		filePath := filepath.Join(tempDir, "existing_file.txt")
 		initialContent := "Initial content"
-		err := os.WriteFile(filePath, []byte(initialContent), 0644)
+		err := os.WriteFile(filePath, []byte(initialContent), 0o644)
 		require.NoError(t, err)
-		
+
 		// Record the file read to avoid modification time check failure
 		recordFileRead(filePath)
-		
+
 		// Update the file
 		updatedContent := "Updated content"
 		params := WriteParams{
@@ -138,8 +139,8 @@ func TestWriteTool_Run(t *testing.T) {
 
 	t.Run("handles invalid parameters", func(t *testing.T) {
 		permission.Default = newMockPermissionService(true)
-		tool := NewWriteTool()
-		
+		tool := NewWriteTool(make(map[string]*lsp.Client))
+
 		call := ToolCall{
 			Name:  WriteToolName,
 			Input: "invalid json",
@@ -152,8 +153,8 @@ func TestWriteTool_Run(t *testing.T) {
 
 	t.Run("handles missing file_path", func(t *testing.T) {
 		permission.Default = newMockPermissionService(true)
-		tool := NewWriteTool()
-		
+		tool := NewWriteTool(make(map[string]*lsp.Client))
+
 		params := WriteParams{
 			FilePath: "",
 			Content:  "Some content",
@@ -174,8 +175,8 @@ func TestWriteTool_Run(t *testing.T) {
 
 	t.Run("handles missing content", func(t *testing.T) {
 		permission.Default = newMockPermissionService(true)
-		tool := NewWriteTool()
-		
+		tool := NewWriteTool(make(map[string]*lsp.Client))
+
 		params := WriteParams{
 			FilePath: filepath.Join(tempDir, "file.txt"),
 			Content:  "",
@@ -196,13 +197,13 @@ func TestWriteTool_Run(t *testing.T) {
 
 	t.Run("handles writing to a directory path", func(t *testing.T) {
 		permission.Default = newMockPermissionService(true)
-		tool := NewWriteTool()
-		
+		tool := NewWriteTool(make(map[string]*lsp.Client))
+
 		// Create a directory
 		dirPath := filepath.Join(tempDir, "test_dir")
-		err := os.Mkdir(dirPath, 0755)
+		err := os.Mkdir(dirPath, 0o755)
 		require.NoError(t, err)
-		
+
 		params := WriteParams{
 			FilePath: dirPath,
 			Content:  "Some content",
@@ -223,8 +224,8 @@ func TestWriteTool_Run(t *testing.T) {
 
 	t.Run("handles permission denied", func(t *testing.T) {
 		permission.Default = newMockPermissionService(false)
-		tool := NewWriteTool()
-		
+		tool := NewWriteTool(make(map[string]*lsp.Client))
+
 		filePath := filepath.Join(tempDir, "permission_denied.txt")
 		params := WriteParams{
 			FilePath: filePath,
@@ -242,7 +243,7 @@ func TestWriteTool_Run(t *testing.T) {
 		response, err := tool.Run(context.Background(), call)
 		require.NoError(t, err)
 		assert.Contains(t, response.Content, "Permission denied")
-		
+
 		// Verify file was not created
 		_, err = os.Stat(filePath)
 		assert.True(t, os.IsNotExist(err))
@@ -250,14 +251,14 @@ func TestWriteTool_Run(t *testing.T) {
 
 	t.Run("detects file modified since last read", func(t *testing.T) {
 		permission.Default = newMockPermissionService(true)
-		tool := NewWriteTool()
-		
+		tool := NewWriteTool(make(map[string]*lsp.Client))
+
 		// Create a file
 		filePath := filepath.Join(tempDir, "modified_file.txt")
 		initialContent := "Initial content"
-		err := os.WriteFile(filePath, []byte(initialContent), 0644)
+		err := os.WriteFile(filePath, []byte(initialContent), 0o644)
 		require.NoError(t, err)
-		
+
 		// Record an old read time
 		fileRecordMutex.Lock()
 		fileRecords[filePath] = fileRecord{
@@ -265,7 +266,7 @@ func TestWriteTool_Run(t *testing.T) {
 			readTime: time.Now().Add(-1 * time.Hour),
 		}
 		fileRecordMutex.Unlock()
-		
+
 		// Try to update the file
 		params := WriteParams{
 			FilePath: filePath,
@@ -283,7 +284,7 @@ func TestWriteTool_Run(t *testing.T) {
 		response, err := tool.Run(context.Background(), call)
 		require.NoError(t, err)
 		assert.Contains(t, response.Content, "has been modified since it was last read")
-		
+
 		// Verify file was not modified
 		fileContent, err := os.ReadFile(filePath)
 		require.NoError(t, err)
@@ -292,17 +293,17 @@ func TestWriteTool_Run(t *testing.T) {
 
 	t.Run("skips writing when content is identical", func(t *testing.T) {
 		permission.Default = newMockPermissionService(true)
-		tool := NewWriteTool()
-		
+		tool := NewWriteTool(make(map[string]*lsp.Client))
+
 		// Create a file
 		filePath := filepath.Join(tempDir, "identical_content.txt")
 		content := "Content that won't change"
-		err := os.WriteFile(filePath, []byte(content), 0644)
+		err := os.WriteFile(filePath, []byte(content), 0o644)
 		require.NoError(t, err)
-		
+
 		// Record a read time
 		recordFileRead(filePath)
-		
+
 		// Try to write the same content
 		params := WriteParams{
 			FilePath: filePath,
@@ -322,3 +323,4 @@ func TestWriteTool_Run(t *testing.T) {
 		assert.Contains(t, response.Content, "already contains the exact content")
 	})
 }
+

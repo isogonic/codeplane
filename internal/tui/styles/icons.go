@@ -9,8 +9,11 @@ const (
 	UserIcon string = ""
 
 	CheckIcon   string = "✓"
-	ErrorIcon   string = "✗"
+	ErrorIcon   string = ""
+	WarningIcon string = ""
+	InfoIcon    string = ""
+	HintIcon    string = ""
 	SpinnerIcon string = "..."
-
-	SleepIcon string = "󰒲"
+	BugIcon     string = ""
+	SleepIcon   string = "󰒲"
 )

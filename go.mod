@@ -1,6 +1,8 @@
 module github.com/kujtimiihoxha/termai
 
-go 1.23.5
+go 1.24.0
+
+toolchain go1.24.2
 
 require (
 	github.com/anthropics/anthropic-sdk-go v0.2.0-beta.2
@@ -11,6 +13,7 @@ require (
 	github.com/charmbracelet/glamour v0.9.1
 	github.com/charmbracelet/huh v0.6.0
 	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/fsnotify/fsnotify v1.8.0
 	github.com/go-logfmt/logfmt v0.6.0
 	github.com/golang-migrate/migrate/v4 v4.18.2
 	github.com/google/generative-ai-go v0.19.0
@@ -53,7 +56,6 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
