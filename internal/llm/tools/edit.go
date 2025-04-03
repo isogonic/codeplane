@@ -260,7 +260,12 @@ func replaceContent(filePath, oldString, newString string) (string, error) {
 	}
 
 	newContent := oldContent[:index] + newString + oldContent[index+len(oldString):]
-	diff := GenerateDiff(oldString, newContent)
+
+	startIndex := max(0, index-3)
+	oldEndIndex := min(len(oldContent), index+len(oldString)+3)
+	newEndIndex := min(len(newContent), index+len(newString)+3)
+
+	diff := GenerateDiff(oldContent[startIndex:oldEndIndex], newContent[startIndex:newEndIndex])
 
 	p := permission.Default.Request(
 		permission.CreatePermissionRequest{

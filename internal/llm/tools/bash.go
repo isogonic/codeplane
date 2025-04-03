@@ -97,7 +97,9 @@ func (b *bashTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error)
 				ToolName:    BashToolName,
 				Action:      "execute",
 				Description: fmt.Sprintf("Execute command: %s", params.Command),
-				Params:      BashPermissionsParams(params),
+				Params: BashPermissionsParams{
+					Command: params.Command,
+				},
 			},
 		)
 		if !p {

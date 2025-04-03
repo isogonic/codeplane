@@ -50,12 +50,28 @@ termai -d
 
 ### Keyboard Shortcuts
 
+#### Global Shortcuts
+- `?`: Toggle help panel
+- `Ctrl+C` or `q`: Quit application
 - `L`: View logs
+- `Backspace`: Go back to previous page
+- `Esc`: Close current view/dialog or return to normal mode
+
+#### Session Management
 - `N`: Create new session
-- `Esc`: Close current view
-- `Backspace`: Go back
-- `Ctrl+C` or `q`: Quit
-- `?`: Toggle help
+- `Enter` or `Space`: Select session (in sessions list)
+
+#### Editor Shortcuts (Vim-like)
+- `i`: Enter insert mode
+- `Esc`: Enter normal mode
+- `v`: Enter visual mode
+- `V`: Enter visual line mode
+- `Enter`: Send message (in normal mode)
+- `Ctrl+S`: Send message (in insert mode)
+
+#### Navigation
+- Arrow keys: Navigate through lists and content
+- Page Up/Down: Scroll through content
 
 ## Architecture
 

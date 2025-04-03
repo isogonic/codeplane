@@ -112,9 +112,10 @@ func (p *permissionDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (p *permissionDialogCmp) render() string {
-	form := p.form.View()
 	keyStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Rosewater)
 	valueStyle := lipgloss.NewStyle().Foreground(styles.Peach)
+
+	form := p.form.View()
 
 	headerParts := []string{
 		lipgloss.JoinHorizontal(lipgloss.Left, keyStyle.Render("Tool:"), " ", valueStyle.Render(p.permission.ToolName)),
@@ -135,12 +136,15 @@ func (p *permissionDialogCmp) render() string {
 		content, _ = r.Render(fmt.Sprintf("```bash\n%s\n```", pr.Command))
 	case tools.EditToolName:
 		pr := p.permission.Params.(tools.EditPermissionsParams)
-		headerParts = append(headerParts, keyStyle.Render("Update:"))
+		headerParts = append(headerParts, keyStyle.Render("Update"))
 		content, _ = r.Render(fmt.Sprintf("```diff\n%s\n```", pr.Diff))
 	case tools.WriteToolName:
 		pr := p.permission.Params.(tools.WritePermissionsParams)
-		headerParts = append(headerParts, keyStyle.Render("Content:"))
+		headerParts = append(headerParts, keyStyle.Render("Content"))
 		content, _ = r.Render(fmt.Sprintf("```diff\n%s\n```", pr.Content))
+	case tools.FetchToolName:
+		pr := p.permission.Params.(tools.FetchPermissionsParams)
+		headerParts = append(headerParts, keyStyle.Render("URL: "+pr.URL))
 	default:
 		content, _ = r.Render(p.permission.Description)
 	}
@@ -153,11 +157,14 @@ func (p *permissionDialogCmp) render() string {
 		contentBorder = lipgloss.DoubleBorder()
 	}
 	cotentStyle := lipgloss.NewStyle().MarginTop(1).Padding(0, 1).Border(contentBorder).BorderForeground(styles.Flamingo)
-
+	contentFinal := cotentStyle.Render(p.contentViewPort.View())
+	if content == "" {
+		contentFinal = ""
+	}
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
 		headerContent,
-		cotentStyle.Render(p.contentViewPort.View()),
+		contentFinal,
 		form,
 	)
 }
