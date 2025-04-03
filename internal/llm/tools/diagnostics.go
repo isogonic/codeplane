@@ -65,7 +65,7 @@ func notifyLspOpenFile(ctx context.Context, filePath string, lsps map[string]*ls
 		if err != nil {
 			// Wait for the file to be opened and diagnostics to be received
 			// TODO: see if we can do this in a more efficient way
-			time.Sleep(2 * time.Second)
+			time.Sleep(3 * time.Second)
 		}
 
 	}

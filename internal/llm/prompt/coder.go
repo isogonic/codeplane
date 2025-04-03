@@ -212,8 +212,9 @@ func lspInformation() string {
 	}
 	return `# LSP Information
 Tools that support it will also include useful diagnostics such as linting and typechecking.
-These diagnostics will be automatically enabled when you run the tool, and will be displayed in the output at the bottom within the <file_diagnostics></file_diagnostics> and <project_diagnostics></project_diagnostics> tags.
-Take necessary actions to fix the issues.
+- These diagnostics will be automatically enabled when you run the tool, and will be displayed in the output at the bottom within the <file_diagnostics></file_diagnostics> and <project_diagnostics></project_diagnostics> tags.
+- Take necessary actions to fix the issues.
+- You should ignore diagnostics of files that you did not change or are not related or caused by your changes unless the user explicitly asks you to fix them.
 `
 }
 
