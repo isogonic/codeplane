@@ -127,10 +127,10 @@ func (g *gridLayout) View() string {
 
 	// Render each row
 	rows := make([]string, g.rows)
-	for i := 0; i < g.rows; i++ {
+	for i := range g.rows {
 		// Render each column in this row
 		cols := make([]string, len(g.panes[i]))
-		for j := 0; j < len(g.panes[i]); j++ {
+		for j := range g.panes[i] {
 			if g.panes[i][j] == nil {
 				cols[j] = ""
 				continue

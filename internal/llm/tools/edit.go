@@ -80,7 +80,7 @@ func (e *editTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error)
 		if err != nil {
 			return NewTextErrorResponse(fmt.Sprintf("error creating file: %s", err)), nil
 		}
-		return NewTextErrorResponse(result), nil
+		return NewTextResponse(result), nil
 	}
 
 	if params.NewString == "" {
@@ -88,7 +88,7 @@ func (e *editTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error)
 		if err != nil {
 			return NewTextErrorResponse(fmt.Sprintf("error deleting content: %s", err)), nil
 		}
-		return NewTextErrorResponse(result), nil
+		return NewTextResponse(result), nil
 	}
 
 	result, err := replaceContent(params.FilePath, params.OldString, params.NewString)

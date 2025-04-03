@@ -347,7 +347,7 @@ func matchesSimpleGlob(pattern, path string) bool {
 
 		// Otherwise, check if any path component matches
 		pathComponents := strings.Split(path, "/")
-		for i := 0; i < len(pathComponents); i++ {
+		for i := range pathComponents {
 			subPath := strings.Join(pathComponents[i:], "/")
 			if strings.HasSuffix(subPath, rest) {
 				return true

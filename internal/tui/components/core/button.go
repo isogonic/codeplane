@@ -67,7 +67,7 @@ const (
 // ButtonMsg is sent when a button is clicked
 type ButtonMsg struct {
 	ID      string
-	Payload interface{}
+	Payload any
 }
 
 // ButtonCmp represents a clickable button component
@@ -79,7 +79,7 @@ type ButtonCmp struct {
 	state      ButtonState
 	variant    ButtonVariant
 	keyMap     ButtonKeyMap
-	payload    interface{}
+	payload    any
 	style      lipgloss.Style
 	hoverStyle lipgloss.Style
 }
@@ -107,7 +107,7 @@ func (b *ButtonCmp) WithVariant(variant ButtonVariant) *ButtonCmp {
 }
 
 // WithPayload sets the payload sent with button events
-func (b *ButtonCmp) WithPayload(payload interface{}) *ButtonCmp {
+func (b *ButtonCmp) WithPayload(payload any) *ButtonCmp {
 	b.payload = payload
 	return b
 }

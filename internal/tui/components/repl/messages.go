@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -41,7 +40,6 @@ type messagesCmp struct {
 	height         int
 	focused        bool
 	cachedView     string
-	timeLoaded     time.Time
 }
 
 func (m *messagesCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -424,9 +422,6 @@ func (m *messagesCmp) projectDiagnostics() string {
 	}
 
 	if len(errorDiagnostics) == 0 && len(warnDiagnostics) == 0 && len(hintDiagnostics) == 0 && len(infoDiagnostics) == 0 {
-		if time.Since(m.timeLoaded) < time.Second*10 {
-			return "Loading diagnostics..."
-		}
 		return "No diagnostics"
 	}
 
@@ -496,7 +491,6 @@ func (m *messagesCmp) SetSize(width int, height int) {
 }
 
 func (m *messagesCmp) Init() tea.Cmd {
-	m.timeLoaded = time.Now()
 	return nil
 }
 

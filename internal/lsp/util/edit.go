@@ -34,9 +34,9 @@ func applyTextEdits(uri protocol.DocumentUri, edits []protocol.TextEdit) error {
 	lines := strings.Split(string(content), lineEnding)
 
 	// Check for overlapping edits
-	for i := 0; i < len(edits); i++ {
+	for i, edit1 := range edits {
 		for j := i + 1; j < len(edits); j++ {
-			if rangesOverlap(edits[i].Range, edits[j].Range) {
+			if rangesOverlap(edit1.Range, edits[j].Range) {
 				return fmt.Errorf("overlapping edits detected between edit %d and %d", i, j)
 			}
 		}
@@ -54,7 +54,7 @@ func applyTextEdits(uri protocol.DocumentUri, edits []protocol.TextEdit) error {
 
 	// Apply each edit
 	for _, edit := range sortedEdits {
-		newLines, err := applyTextEdit(lines, edit, lineEnding)
+		newLines, err := applyTextEdit(lines, edit)
 		if err != nil {
 			return fmt.Errorf("failed to apply edit: %w", err)
 		}
@@ -82,7 +82,7 @@ func applyTextEdits(uri protocol.DocumentUri, edits []protocol.TextEdit) error {
 	return nil
 }
 
-func applyTextEdit(lines []string, edit protocol.TextEdit, lineEnding string) ([]string, error) {
+func applyTextEdit(lines []string, edit protocol.TextEdit) ([]string, error) {
 	startLine := int(edit.Range.Start.Line)
 	endLine := int(edit.Range.End.Line)
 	startChar := int(edit.Range.Start.Character)
