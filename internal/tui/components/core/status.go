@@ -216,36 +216,34 @@ func (m *statusCmp) projectDiagnostics() string {
 		}
 	}
 
-	if len(errorDiagnostics) == 0 && len(warnDiagnostics) == 0 && len(hintDiagnostics) == 0 && len(infoDiagnostics) == 0 {
+	if len(errorDiagnostics) == 0 &&
+		len(warnDiagnostics) == 0 &&
+		len(hintDiagnostics) == 0 &&
+		len(infoDiagnostics) == 0 {
 		return "No diagnostics"
 	}
 
 	diagnostics := []string{}
-
 	if len(errorDiagnostics) > 0 {
 		errStr := lipgloss.NewStyle().
-			Background(t.BackgroundDarker()).
 			Foreground(t.Error()).
 			Render(fmt.Sprintf("%s %d", styles.ErrorIcon, len(errorDiagnostics)))
 		diagnostics = append(diagnostics, errStr)
 	}
 	if len(warnDiagnostics) > 0 {
 		warnStr := lipgloss.NewStyle().
-			Background(t.BackgroundDarker()).
 			Foreground(t.Warning()).
 			Render(fmt.Sprintf("%s %d", styles.WarningIcon, len(warnDiagnostics)))
 		diagnostics = append(diagnostics, warnStr)
 	}
 	if len(hintDiagnostics) > 0 {
 		hintStr := lipgloss.NewStyle().
-			Background(t.BackgroundDarker()).
 			Foreground(t.Text()).
 			Render(fmt.Sprintf("%s %d", styles.HintIcon, len(hintDiagnostics)))
 		diagnostics = append(diagnostics, hintStr)
 	}
 	if len(infoDiagnostics) > 0 {
 		infoStr := lipgloss.NewStyle().
-			Background(t.BackgroundDarker()).
 			Foreground(t.Info()).
 			Render(fmt.Sprintf("%s %d", styles.InfoIcon, len(infoDiagnostics)))
 		diagnostics = append(diagnostics, infoStr)
