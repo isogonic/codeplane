@@ -128,9 +128,8 @@ func (m statusCmp) View() string {
 		status += tokensStyle
 	}
 
-	diagnostics := styles.Padded().
-		Background(t.BackgroundDarker()).
-		Render(m.projectDiagnostics())
+	diagnostics :=
+		styles.Padded().Background(t.BackgroundDarker()).Render(m.projectDiagnostics())
 
 	model := m.model()
 
@@ -190,7 +189,6 @@ func (m *statusCmp) projectDiagnostics() string {
 	// If any server is initializing, show that status
 	if initializing {
 		return lipgloss.NewStyle().
-			Background(t.BackgroundDarker()).
 			Foreground(t.Warning()).
 			Render(fmt.Sprintf("%s Initializing LSP...", styles.SpinnerIcon))
 	}
@@ -216,40 +214,36 @@ func (m *statusCmp) projectDiagnostics() string {
 		}
 	}
 
-	if len(errorDiagnostics) == 0 &&
-		len(warnDiagnostics) == 0 &&
-		len(hintDiagnostics) == 0 &&
-		len(infoDiagnostics) == 0 {
-		return "No diagnostics"
-	}
-
 	diagnostics := []string{}
-	if len(errorDiagnostics) > 0 {
-		errStr := lipgloss.NewStyle().
-			Foreground(t.Error()).
-			Render(fmt.Sprintf("%s %d", styles.ErrorIcon, len(errorDiagnostics)))
-		diagnostics = append(diagnostics, errStr)
-	}
-	if len(warnDiagnostics) > 0 {
-		warnStr := lipgloss.NewStyle().
-			Foreground(t.Warning()).
-			Render(fmt.Sprintf("%s %d", styles.WarningIcon, len(warnDiagnostics)))
-		diagnostics = append(diagnostics, warnStr)
-	}
-	if len(hintDiagnostics) > 0 {
-		hintStr := lipgloss.NewStyle().
-			Foreground(t.Text()).
-			Render(fmt.Sprintf("%s %d", styles.HintIcon, len(hintDiagnostics)))
-		diagnostics = append(diagnostics, hintStr)
-	}
-	if len(infoDiagnostics) > 0 {
-		infoStr := lipgloss.NewStyle().
-			Foreground(t.Info()).
-			Render(fmt.Sprintf("%s %d", styles.InfoIcon, len(infoDiagnostics)))
-		diagnostics = append(diagnostics, infoStr)
-	}
 
-	return strings.Join(diagnostics, " ")
+	errStr := lipgloss.NewStyle().
+		Background(t.BackgroundDarker()).
+		Foreground(t.Error()).
+		Render(fmt.Sprintf("%s %d", styles.ErrorIcon, len(errorDiagnostics)))
+	diagnostics = append(diagnostics, errStr)
+
+	warnStr := lipgloss.NewStyle().
+		Background(t.BackgroundDarker()).
+		Foreground(t.Warning()).
+		Render(fmt.Sprintf("%s %d", styles.WarningIcon, len(warnDiagnostics)))
+	diagnostics = append(diagnostics, warnStr)
+
+	infoStr := lipgloss.NewStyle().
+		Background(t.BackgroundDarker()).
+		Foreground(t.Info()).
+		Render(fmt.Sprintf("%s %d", styles.InfoIcon, len(infoDiagnostics)))
+	diagnostics = append(diagnostics, infoStr)
+
+	hintStr := lipgloss.NewStyle().
+		Background(t.BackgroundDarker()).
+		Foreground(t.Text()).
+		Render(fmt.Sprintf("%s %d", styles.HintIcon, len(hintDiagnostics)))
+	diagnostics = append(diagnostics, hintStr)
+
+	return styles.ForceReplaceBackgroundWithLipgloss(
+		strings.Join(diagnostics, " "),
+		t.BackgroundDarker(),
+	)
 }
 
 func (m statusCmp) model() string {
