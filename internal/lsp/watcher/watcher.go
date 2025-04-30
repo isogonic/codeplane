@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -375,19 +376,29 @@ func (w *WorkspaceWatcher) WatchWorkspace(ctx context.Context, workspacePath str
 
 			// Add new directories to the watcher
 			if event.Op&fsnotify.Create != 0 {
-				if info, err := os.Stat(event.Name); err == nil {
-					if info.IsDir() {
-						// Skip excluded directories
-						if !shouldExcludeDir(event.Name) {
-							if err := watcher.Add(event.Name); err != nil {
-								logging.Error("Error adding directory to watcher", "path", event.Name, "error", err)
-							}
+				// Check if the file/directory still exists before processing
+				info, err := os.Stat(event.Name)
+				if err != nil {
+					if os.IsNotExist(err) {
+						// File was deleted between event and processing - ignore
+						logging.Debug("File deleted between create event and stat", "path", event.Name)
+						continue
+					}
+					logging.Error("Error getting file info", "path", event.Name, "error", err)
+					continue
+				}
+				
+				if info.IsDir() {
+					// Skip excluded directories
+					if !shouldExcludeDir(event.Name) {
+						if err := watcher.Add(event.Name); err != nil {
+							logging.Error("Error adding directory to watcher", "path", event.Name, "error", err)
 						}
-					} else {
-						// For newly created files
-						if !shouldExcludeFile(event.Name) {
-							w.openMatchingFile(ctx, event.Name)
-						}
+					}
+				} else {
+					// For newly created files
+					if !shouldExcludeFile(event.Name) {
+						w.openMatchingFile(ctx, event.Name)
 					}
 				}
 			}
@@ -643,14 +654,50 @@ func (w *WorkspaceWatcher) debounceHandleFileEvent(ctx context.Context, uri stri
 func (w *WorkspaceWatcher) handleFileEvent(ctx context.Context, uri string, changeType protocol.FileChangeType) {
 	// If the file is open and it's a change event, use didChange notification
 	filePath := uri[7:] // Remove "file://" prefix
+	
 	if changeType == protocol.FileChangeType(protocol.Deleted) {
+		// Always clear diagnostics for deleted files
 		w.client.ClearDiagnosticsForURI(protocol.DocumentUri(uri))
-	} else if changeType == protocol.FileChangeType(protocol.Changed) && w.client.IsFileOpen(filePath) {
-		err := w.client.NotifyChange(ctx, filePath)
-		if err != nil {
-			logging.Error("Error notifying change", "error", err)
+		
+		// If the file was open, close it in the LSP client
+		if w.client.IsFileOpen(filePath) {
+			if err := w.client.CloseFile(ctx, filePath); err != nil {
+				logging.Debug("Error closing deleted file in LSP client", "file", filePath, "error", err)
+				// Continue anyway - the file is gone
+			}
 		}
-		return
+	} else if changeType == protocol.FileChangeType(protocol.Changed) {
+		// For changed files, verify the file still exists before notifying
+		if _, err := os.Stat(filePath); err != nil {
+			if os.IsNotExist(err) {
+				// File was deleted between the event and now - treat as delete
+				logging.Debug("File deleted between change event and processing", "file", filePath)
+				w.handleFileEvent(ctx, uri, protocol.FileChangeType(protocol.Deleted))
+				return
+			}
+			logging.Error("Error getting file info", "path", filePath, "error", err)
+			return
+		}
+		
+		// File exists and is open, notify change
+		if w.client.IsFileOpen(filePath) {
+			err := w.client.NotifyChange(ctx, filePath)
+			if err != nil {
+				logging.Error("Error notifying change", "error", err)
+			}
+			return
+		}
+	} else if changeType == protocol.FileChangeType(protocol.Created) {
+		// For created files, verify the file still exists before notifying
+		if _, err := os.Stat(filePath); err != nil {
+			if os.IsNotExist(err) {
+				// File was deleted between the event and now - ignore
+				logging.Debug("File deleted between create event and processing", "file", filePath)
+				return
+			}
+			logging.Error("Error getting file info", "path", filePath, "error", err)
+			return
+		}
 	}
 
 	// Notify LSP server about the file event using didChangeWatchedFiles
@@ -827,6 +874,11 @@ func shouldExcludeFile(filePath string) bool {
 	if strings.HasSuffix(filePath, "~") {
 		return true
 	}
+	
+	// Skip numeric temporary files (often created by editors)
+	if _, err := strconv.Atoi(fileName); err == nil {
+		return true
+	}
 
 	// Check file size
 	info, err := os.Stat(filePath)
@@ -856,9 +908,19 @@ func shouldExcludeFile(filePath string) bool {
 // openMatchingFile opens a file if it matches any of the registered patterns
 func (w *WorkspaceWatcher) openMatchingFile(ctx context.Context, path string) {
 	cnf := config.Get()
-	// Skip directories
+	// Skip directories and verify file exists
 	info, err := os.Stat(path)
-	if err != nil || info.IsDir() {
+	if err != nil {
+		if os.IsNotExist(err) {
+			// File was deleted between event and processing - ignore
+			logging.Debug("File deleted between event and openMatchingFile", "path", path)
+			return
+		}
+		logging.Error("Error getting file info", "path", path, "error", err)
+		return
+	}
+	
+	if info.IsDir() {
 		return
 	}
 

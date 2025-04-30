@@ -118,7 +118,13 @@ func (app *App) restartLSPClient(ctx context.Context, name string) {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		_ = oldClient.Shutdown(shutdownCtx)
 		cancel()
+		
+		// Ensure we close the client to free resources
+		_ = oldClient.Close()
 	}
+
+	// Wait a moment before restarting to avoid rapid restart cycles
+	time.Sleep(1 * time.Second)
 
 	// Create a new client using the shared function
 	app.createAndStartLSPClient(ctx, name, clientConfig.Command, clientConfig.Args...)

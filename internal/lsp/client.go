@@ -627,6 +627,15 @@ func (c *Client) OpenFile(ctx context.Context, filepath string) error {
 func (c *Client) NotifyChange(ctx context.Context, filepath string) error {
 	uri := fmt.Sprintf("file://%s", filepath)
 
+	// Verify file exists before attempting to read it
+	if _, err := os.Stat(filepath); err != nil {
+		if os.IsNotExist(err) {
+			// File was deleted - close it in the LSP client instead of notifying change
+			return c.CloseFile(ctx, filepath)
+		}
+		return fmt.Errorf("error checking file: %w", err)
+	}
+
 	content, err := os.ReadFile(filepath)
 	if err != nil {
 		return fmt.Errorf("error reading file: %w", err)
