@@ -6,8 +6,9 @@ const (
 	CheckIcon   string = "✓"
 	ErrorIcon   string = "✖"
 	WarningIcon string = "⚠"
-	InfoIcon    string = ""
-	HintIcon    string = "i"
+	InfoIcon    string = "ℹ"
+	HintIcon    string = "💡"
 	SpinnerIcon string = "..."
 	LoadingIcon string = "⟳"
 )
+
