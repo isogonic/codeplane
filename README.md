@@ -67,7 +67,7 @@ OpenCode looks for configuration in the following locations:
 You can configure OpenCode using environment variables:
 
 | Environment Variable       | Purpose                                                |
-|----------------------------|--------------------------------------------------------|
+| -------------------------- | ------------------------------------------------------ |
 | `ANTHROPIC_API_KEY`        | For Claude models                                      |
 | `OPENAI_API_KEY`           | For OpenAI models                                      |
 | `GEMINI_API_KEY`           | For Google Gemini models                               |
@@ -78,7 +78,6 @@ You can configure OpenCode using environment variables:
 | `AZURE_OPENAI_ENDPOINT`    | For Azure OpenAI models                                |
 | `AZURE_OPENAI_API_KEY`     | For Azure OpenAI models (optional when using Entra ID) |
 | `AZURE_OPENAI_API_VERSION` | For Azure OpenAI models                                |
-
 
 ### Configuration File Structure
 
@@ -302,6 +301,76 @@ OpenCode's AI assistant has access to various tools to help with coding tasks:
 | `fetch`       | Fetch data from URLs                   | `url` (required), `format` (required), `timeout` (optional)                               |
 | `sourcegraph` | Search code across public repositories | `query` (required), `count` (optional), `context_window` (optional), `timeout` (optional) |
 | `agent`       | Run sub-tasks with the AI agent        | `prompt` (required)                                                                       |
+
+## Theming
+
+OpenCode supports multiple themes for customizing the appearance of the terminal interface.
+
+### Available Themes
+
+The following predefined themes are available:
+
+- `opencode` (default)
+- `catppuccin`
+- `dracula`
+- `flexoki`
+- `gruvbox`
+- `monokai`
+- `onedark`
+- `tokyonight`
+- `tron`
+- `custom` (user-defined)
+
+### Setting a Theme
+
+You can set a theme in your `.opencode.json` configuration file:
+
+```json
+{
+  "tui": {
+    "theme": "monokai"
+  }
+}
+```
+
+### Custom Themes
+
+You can define your own custom theme by setting the `theme` to `"custom"` and providing color definitions in the `customTheme` map:
+
+```json
+{
+  "tui": {
+    "theme": "custom",
+    "customTheme": {
+      "primary": "#ffcc00",
+      "secondary": "#00ccff",
+      "accent": { "dark": "#aa00ff", "light": "#ddccff" },
+      "error": "#ff0000"
+    }
+  }
+}
+```
+
+#### Color Definition Formats
+
+Custom theme colors support two formats:
+
+1. **Simple Hex String**: A single hex color string (e.g., `"#aabbcc"`) that will be used for both light and dark terminal backgrounds.
+
+2. **Adaptive Object**: An object with `dark` and `light` keys, each holding a hex color string. This allows for adaptive colors based on the terminal's background.
+
+#### Available Color Keys
+
+You can define any of the following color keys in your `customTheme`:
+
+- Base colors: `primary`, `secondary`, `accent`
+- Status colors: `error`, `warning`, `success`, `info`
+- Text colors: `text`, `textMuted`, `textEmphasized`
+- Background colors: `background`, `backgroundSecondary`, `backgroundDarker`
+- Border colors: `borderNormal`, `borderFocused`, `borderDim`
+- Diff view colors: `diffAdded`, `diffRemoved`, `diffContext`, etc.
+
+You don't need to define all colors. Any undefined colors will fall back to the default "opencode" theme colors.
 
 ## Architecture
 

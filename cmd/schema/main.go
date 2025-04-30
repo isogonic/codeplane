@@ -116,6 +116,34 @@ func generateSchema() map[string]any {
 					"onedark",
 					"tokyonight",
 					"tron",
+					"custom",
+				},
+			},
+			"customTheme": map[string]any{
+				"type":        "object",
+				"description": "Custom theme color definitions",
+				"additionalProperties": map[string]any{
+					"oneOf": []map[string]any{
+						{
+							"type":    "string",
+							"pattern": "^#[0-9a-fA-F]{6}$",
+						},
+						{
+							"type": "object",
+							"properties": map[string]any{
+								"dark": map[string]any{
+									"type":    "string",
+									"pattern": "^#[0-9a-fA-F]{6}$",
+								},
+								"light": map[string]any{
+									"type":    "string",
+									"pattern": "^#[0-9a-fA-F]{6}$",
+								},
+							},
+							"required":             []string{"dark", "light"},
+							"additionalProperties": false,
+						},
+					},
 				},
 			},
 		},

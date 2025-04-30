@@ -25,6 +25,9 @@ var globalManager = &Manager{
 	currentName: "",
 }
 
+// Default theme instance for custom theme defaulting
+var defaultThemeColors = NewOpenCodeTheme()
+
 // RegisterTheme adds a new theme to the registry.
 // If this is the first theme registered, it becomes the default.
 func RegisterTheme(name string, theme Theme) {
@@ -46,7 +49,22 @@ func SetTheme(name string) error {
 	defer globalManager.mu.Unlock()
 
 	delete(styles.Registry, "charm")
-	if _, exists := globalManager.themes[name]; !exists {
+	
+	// Handle custom theme
+	if name == "custom" {
+		cfg := config.Get()
+		if cfg == nil || cfg.TUI.CustomTheme == nil || len(cfg.TUI.CustomTheme) == 0 {
+			return fmt.Errorf("custom theme selected but no custom theme colors defined in config")
+		}
+		
+		customTheme, err := LoadCustomTheme(cfg.TUI.CustomTheme)
+		if err != nil {
+			return fmt.Errorf("failed to load custom theme: %w", err)
+		}
+		
+		// Register the custom theme
+		globalManager.themes["custom"] = customTheme
+	} else if _, exists := globalManager.themes[name]; !exists {
 		return fmt.Errorf("theme '%s' not found", name)
 	}
 
@@ -109,6 +127,87 @@ func GetTheme(name string) Theme {
 	defer globalManager.mu.RUnlock()
 
 	return globalManager.themes[name]
+}
+
+// LoadCustomTheme creates a new theme instance based on the custom theme colors
+// defined in the configuration. It uses the default OpenCode theme as a base
+// and overrides colors that are specified in the customTheme map.
+func LoadCustomTheme(customTheme map[string]any) (Theme, error) {
+	// Create a new theme based on the default OpenCode theme
+	theme := NewOpenCodeTheme()
+
+	// Process each color in the custom theme map
+	for key, value := range customTheme {
+		adaptiveColor, err := ParseAdaptiveColor(value)
+		if err != nil {
+			logging.Warn("Invalid color definition in custom theme", "key", key, "error", err)
+			continue // Skip this color but continue processing others
+		}
+
+		// Set the color in the theme based on the key
+		switch strings.ToLower(key) {
+		case "primary":
+			theme.PrimaryColor = adaptiveColor
+		case "secondary":
+			theme.SecondaryColor = adaptiveColor
+		case "accent":
+			theme.AccentColor = adaptiveColor
+		case "error":
+			theme.ErrorColor = adaptiveColor
+		case "warning":
+			theme.WarningColor = adaptiveColor
+		case "success":
+			theme.SuccessColor = adaptiveColor
+		case "info":
+			theme.InfoColor = adaptiveColor
+		case "text":
+			theme.TextColor = adaptiveColor
+		case "textmuted":
+			theme.TextMutedColor = adaptiveColor
+		case "textemphasized":
+			theme.TextEmphasizedColor = adaptiveColor
+		case "background":
+			theme.BackgroundColor = adaptiveColor
+		case "backgroundsecondary":
+			theme.BackgroundSecondaryColor = adaptiveColor
+		case "backgrounddarker":
+			theme.BackgroundDarkerColor = adaptiveColor
+		case "bordernormal":
+			theme.BorderNormalColor = adaptiveColor
+		case "borderfocused":
+			theme.BorderFocusedColor = adaptiveColor
+		case "borderdim":
+			theme.BorderDimColor = adaptiveColor
+		case "diffadded":
+			theme.DiffAddedColor = adaptiveColor
+		case "diffremoved":
+			theme.DiffRemovedColor = adaptiveColor
+		case "diffcontext":
+			theme.DiffContextColor = adaptiveColor
+		case "diffhunkheader":
+			theme.DiffHunkHeaderColor = adaptiveColor
+		case "diffhighlightadded":
+			theme.DiffHighlightAddedColor = adaptiveColor
+		case "diffhighlightremoved":
+			theme.DiffHighlightRemovedColor = adaptiveColor
+		case "diffaddedbg":
+			theme.DiffAddedBgColor = adaptiveColor
+		case "diffremovedbg":
+			theme.DiffRemovedBgColor = adaptiveColor
+		case "diffcontextbg":
+			theme.DiffContextBgColor = adaptiveColor
+		case "difflinenumber":
+			theme.DiffLineNumberColor = adaptiveColor
+		case "diffaddedlinenumberbg":
+			theme.DiffAddedLineNumberBgColor = adaptiveColor
+		case "diffremovedlinenumberbg":
+			theme.DiffRemovedLineNumberBgColor = adaptiveColor
+		default:
+			logging.Warn("Unknown color key in custom theme", "key", key)
+		}
+	}
+
+	return theme, nil
 }
 
 // updateConfigTheme updates the theme setting in the configuration file

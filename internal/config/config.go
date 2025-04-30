@@ -68,7 +68,8 @@ type LSPConfig struct {
 
 // TUIConfig defines the configuration for the Terminal User Interface.
 type TUIConfig struct {
-	Theme string `json:"theme,omitempty"`
+	Theme       string                 `json:"theme,omitempty"`
+	CustomTheme map[string]any `json:"customTheme,omitempty"`
 }
 
 // Config is the main configuration structure for the application.
@@ -747,16 +748,16 @@ func UpdateTheme(themeName string) error {
 	}
 
 	// Parse the JSON
-	var configMap map[string]interface{}
+	var configMap map[string]any
 	if err := json.Unmarshal(configData, &configMap); err != nil {
 		return fmt.Errorf("failed to parse config file: %w", err)
 	}
 
 	// Update just the theme value
-	tuiConfig, ok := configMap["tui"].(map[string]interface{})
+	tuiConfig, ok := configMap["tui"].(map[string]any)
 	if !ok {
 		// TUI config doesn't exist yet, create it
-		configMap["tui"] = map[string]interface{}{"theme": themeName}
+		configMap["tui"] = map[string]any{"theme": themeName}
 	} else {
 		// Update existing TUI config
 		tuiConfig["theme"] = themeName

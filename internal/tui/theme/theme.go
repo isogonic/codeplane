@@ -1,6 +1,9 @@
 package theme
 
 import (
+	"fmt"
+	"regexp"
+
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -206,3 +209,49 @@ func (t *BaseTheme) SyntaxNumber() lipgloss.AdaptiveColor { return t.SyntaxNumbe
 func (t *BaseTheme) SyntaxType() lipgloss.AdaptiveColor { return t.SyntaxTypeColor }
 func (t *BaseTheme) SyntaxOperator() lipgloss.AdaptiveColor { return t.SyntaxOperatorColor }
 func (t *BaseTheme) SyntaxPunctuation() lipgloss.AdaptiveColor { return t.SyntaxPunctuationColor }
+
+// ParseAdaptiveColor parses a color value from the config file into a lipgloss.AdaptiveColor.
+// It accepts either a string (hex color) or a map with "dark" and "light" keys.
+func ParseAdaptiveColor(value any) (lipgloss.AdaptiveColor, error) {
+	// Regular expression to validate hex color format
+	hexColorRegex := regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+
+	// Case 1: String value (same color for both dark and light modes)
+	if hexColor, ok := value.(string); ok {
+		if !hexColorRegex.MatchString(hexColor) {
+			return lipgloss.AdaptiveColor{}, fmt.Errorf("invalid hex color format: %s", hexColor)
+		}
+		return lipgloss.AdaptiveColor{
+			Dark:  hexColor,
+			Light: hexColor,
+		}, nil
+	}
+
+	// Case 2: Map with dark and light keys
+	if colorMap, ok := value.(map[string]any); ok {
+		darkVal, darkOk := colorMap["dark"]
+		lightVal, lightOk := colorMap["light"]
+
+		if !darkOk || !lightOk {
+			return lipgloss.AdaptiveColor{}, fmt.Errorf("color map must contain both 'dark' and 'light' keys")
+		}
+
+		darkHex, darkIsString := darkVal.(string)
+		lightHex, lightIsString := lightVal.(string)
+
+		if !darkIsString || !lightIsString {
+			return lipgloss.AdaptiveColor{}, fmt.Errorf("color values must be strings")
+		}
+
+		if !hexColorRegex.MatchString(darkHex) || !hexColorRegex.MatchString(lightHex) {
+			return lipgloss.AdaptiveColor{}, fmt.Errorf("invalid hex color format")
+		}
+
+		return lipgloss.AdaptiveColor{
+			Dark:  darkHex,
+			Light: lightHex,
+		}, nil
+	}
+
+	return lipgloss.AdaptiveColor{}, fmt.Errorf("color must be either a hex string or an object with dark/light keys")
+}

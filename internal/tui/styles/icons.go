@@ -11,4 +11,3 @@ const (
 	SpinnerIcon string = "..."
 	LoadingIcon string = "⟳"
 )
-
