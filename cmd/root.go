@@ -14,6 +14,7 @@ import (
 	"github.com/opencode-ai/opencode/internal/db"
 	"github.com/opencode-ai/opencode/internal/llm/agent"
 	"github.com/opencode-ai/opencode/internal/logging"
+	"github.com/opencode-ai/opencode/internal/lsp/discovery"
 	"github.com/opencode-ai/opencode/internal/pubsub"
 	"github.com/opencode-ai/opencode/internal/tui"
 	"github.com/opencode-ai/opencode/internal/version"
@@ -56,6 +57,12 @@ to assist developers in writing, debugging, and understanding code directly from
 		_, err := config.Load(cwd, debug)
 		if err != nil {
 			return err
+		}
+
+		// Run LSP auto-discovery
+		if err := discovery.IntegrateLSPServers(cwd); err != nil {
+			logging.Warn("Failed to auto-discover LSP servers", "error", err)
+			// Continue anyway, this is not a fatal error
 		}
 
 		// Connect DB, this will also run migrations

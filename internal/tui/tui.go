@@ -56,8 +56,8 @@ var keys = keyMap{
 	),
 
 	Models: key.NewBinding(
-		key.WithKeys("ctrl+m"),
-		key.WithHelp("ctrl+m", "model selection"),
+		key.WithKeys("ctrl+o"),
+		key.WithHelp("ctrl+o", "model selection"),
 	),
 
 	SwitchTheme: key.NewBinding(
@@ -385,10 +385,8 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return a, nil
 		case key.Matches(msg, keys.SwitchTheme):
-			if !a.showQuit && !a.showPermissions && !a.showSessionDialog && !a.showCommandDialog {
-				// Show theme switcher dialog
+			if a.currentPage == page.ChatPage && !a.showQuit && !a.showPermissions && !a.showSessionDialog && !a.showCommandDialog {
 				a.showThemeDialog = true
-				// Theme list is dynamically loaded by the dialog component
 				return a, a.themeDialog.Init()
 			}
 			return a, nil
