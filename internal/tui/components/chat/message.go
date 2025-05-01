@@ -30,11 +30,6 @@ const (
 	maxResultHeight = 10
 )
 
-// getDiffWidth returns the width for the diff formatting
-func getDiffWidth(width int) int {
-	return width
-}
-
 type uiMessage struct {
 	ID          string
 	messageType uiMessageType
