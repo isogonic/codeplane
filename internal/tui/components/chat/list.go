@@ -367,7 +367,7 @@ func (m *messagesCmp) help() string {
 			lipgloss.Left,
 			baseStyle.Foreground(t.TextMuted()).Bold(true).Render("press "),
 			baseStyle.Foreground(t.Text()).Bold(true).Render("esc"),
-			baseStyle.Foreground(t.TextMuted()).Bold(true).Render(" to exit cancel"),
+			baseStyle.Foreground(t.TextMuted()).Bold(true).Render(" to interrupt"),
 		)
 	} else {
 		text += lipgloss.JoinHorizontal(
