@@ -35,7 +35,7 @@ func header(width int) string {
 
 func lspsConfigured(width int) string {
 	cfg := config.Get()
-	title := "LSP Configuration"
+	title := "LSP Servers"
 	title = ansi.Truncate(title, width, "…")
 
 	t := theme.CurrentTheme()

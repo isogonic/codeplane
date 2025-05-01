@@ -35,7 +35,6 @@ func CoderAgentTools(
 			tools.NewViewTool(lspClients),
 			tools.NewPatchTool(lspClients, permissions, history),
 			tools.NewWriteTool(lspClients, permissions, history),
-			tools.NewConfigureLspServerTool(),
 			NewAgentTool(sessions, messages, lspClients),
 		}, otherTools...,
 	)
