@@ -118,7 +118,7 @@ func logo(width int) string {
 }
 
 func repo(width int) string {
-	repo := "https://github.com/opencode-ai/opencode"
+	repo := "github.com/opencode-ai/opencode"
 	t := theme.CurrentTheme()
 
 	return styles.BaseStyle().
