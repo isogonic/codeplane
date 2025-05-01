@@ -96,7 +96,7 @@ func lspsConfigured(width int) string {
 }
 
 func logo(width int) string {
-	logo := fmt.Sprintf("%s %s", styles.OpenCodeIcon, "OpenCode")
+	logo := fmt.Sprintf("%s%s", styles.OpenCodeIcon, "OpenCode")
 	t := theme.CurrentTheme()
 	baseStyle := styles.BaseStyle()
 
@@ -136,4 +136,3 @@ func cwd(width int) string {
 		Width(width).
 		Render(cwd)
 }
-
