@@ -45,13 +45,14 @@ var editorMaps = EditorKeyMaps{
 	),
 }
 
-func openEditor() tea.Cmd {
+func openEditor(value string) tea.Cmd {
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
 		editor = "nvim"
 	}
 
 	tmpfile, err := os.CreateTemp("", "msg_*.md")
+	tmpfile.WriteString(value)
 	if err != nil {
 		return util.ReportError(err)
 	}
@@ -119,7 +120,9 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.app.CoderAgent.IsSessionBusy(m.session.ID) {
 				return m, util.ReportWarn("Agent is working, please wait...")
 			}
-			return m, openEditor()
+			value := m.textarea.Value()
+			m.textarea.Reset()
+			return m, openEditor(value)
 		}
 		// Handle Enter key
 		if m.textarea.Focused() && key.Matches(msg, editorMaps.Send) {
@@ -204,4 +207,3 @@ func NewEditorCmp(app *app.App) tea.Model {
 		textarea: ta,
 	}
 }
-
