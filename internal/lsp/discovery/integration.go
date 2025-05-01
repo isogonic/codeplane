@@ -49,24 +49,18 @@ func IntegrateLSPServers(workingDir string) error {
 				Command:  serverInfo.Path,
 				Args:     serverInfo.Args,
 			}
-			logging.Info("Added LSP server to configuration", 
-				"language", langID, 
-				"command", serverInfo.Command, 
+			logging.Info("Added LSP server to configuration",
+				"language", langID,
+				"command", serverInfo.Command,
 				"path", serverInfo.Path)
 		} else {
-			logging.Warn("LSP server not available", 
-				"language", langID, 
-				"command", serverInfo.Command, 
+			logging.Warn("LSP server not available",
+				"language", langID,
+				"command", serverInfo.Command,
 				"installCmd", serverInfo.InstallCmd)
-		}
-	}
-
-	// Mark the project as initialized
-	if shouldInit {
-		if err := config.MarkProjectInitialized(); err != nil {
-			logging.Warn("Failed to mark project as initialized", "error", err)
 		}
 	}
 
 	return nil
 }
+
