@@ -429,7 +429,7 @@ func renderToolResponse(toolCall message.ToolCall, response message.ToolResult, 
 	switch toolCall.Name {
 	case agent.AgentToolName:
 		return styles.ForceReplaceBackgroundWithLipgloss(
-			toMarkdown(resultContent, false, width),
+			toMarkdown(response.Content, false, width),
 			t.Background(),
 		)
 	case tools.BashToolName:
