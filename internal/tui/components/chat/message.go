@@ -446,8 +446,7 @@ func renderToolResponse(toolCall message.ToolCall, response message.ToolResult, 
 	case tools.EditToolName:
 		metadata := tools.EditResponseMetadata{}
 		json.Unmarshal([]byte(response.Metadata), &metadata)
-		truncDiff := truncateHeight(metadata.Diff, maxResultHeight)
-		formattedDiff, _ := diff.FormatDiff(truncDiff, diff.WithTotalWidth(width))
+		formattedDiff, _ := diff.FormatDiff(metadata.Diff, diff.WithTotalWidth(width))
 		return formattedDiff
 	case tools.FetchToolName:
 		var params tools.FetchParams
@@ -636,4 +635,3 @@ func formatTimestampDiff(start, end int64) string {
 	}
 	return fmt.Sprintf("%.1fm", diffSeconds/60)
 }
-

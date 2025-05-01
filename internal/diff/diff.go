@@ -563,18 +563,6 @@ func createStyles(t theme.Theme) (removedLineStyle, addedLineStyle, contextLineS
 // Rendering Functions
 // -------------------------------------------------------------------------
 
-func lipglossToHex(color lipgloss.Color) string {
-	r, g, b, a := color.RGBA()
-
-	// Scale uint32 values (0-65535) to uint8 (0-255).
-	r8 := uint8(r >> 8)
-	g8 := uint8(g >> 8)
-	b8 := uint8(b >> 8)
-	a8 := uint8(a >> 8)
-
-	return fmt.Sprintf("#%02x%02x%02x%02x", r8, g8, b8, a8)
-}
-
 // applyHighlighting applies intra-line highlighting to a piece of text
 func applyHighlighting(content string, segments []Segment, segmentType LineType, highlightBg lipgloss.AdaptiveColor) string {
 	// Find all ANSI sequences in the content
@@ -833,13 +821,22 @@ func RenderSideBySideHunk(fileName string, h Hunk, opts ...SideBySideOption) str
 
 // FormatDiff creates a side-by-side formatted view of a diff
 func FormatDiff(diffText string, opts ...SideBySideOption) (string, error) {
+	t := theme.CurrentTheme()
 	diffResult, err := ParseUnifiedDiff(diffText)
 	if err != nil {
 		return "", err
 	}
 
 	var sb strings.Builder
+	config := NewSideBySideConfig(opts...)
 	for _, h := range diffResult.Hunks {
+		sb.WriteString(
+			lipgloss.NewStyle().
+				Background(t.DiffHunkHeader()).
+				Foreground(t.Background()).
+				Width(config.TotalWidth).
+				Render(h.Header) + "\n",
+		)
 		sb.WriteString(RenderSideBySideHunk(diffResult.OldFile, h, opts...))
 	}
 
@@ -854,8 +851,10 @@ func GenerateDiff(beforeContent, afterContent, fileName string) (string, int, in
 	fileName = strings.TrimPrefix(fileName, cwd)
 	fileName = strings.TrimPrefix(fileName, "/")
 
+	edits := udiff.Strings(beforeContent, afterContent)
+	unified, _ := udiff.ToUnified("a/"+fileName, "b/"+fileName, beforeContent, edits, 8)
+
 	var (
-		unified   = udiff.Unified("a/"+fileName, "b/"+fileName, beforeContent, afterContent)
 		additions = 0
 		removals  = 0
 	)
