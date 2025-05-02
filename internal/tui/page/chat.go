@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/opencode-ai/opencode/internal/app"
 	"github.com/opencode-ai/opencode/internal/logging"
+	"github.com/opencode-ai/opencode/internal/message"
 	"github.com/opencode-ai/opencode/internal/session"
 	"github.com/opencode-ai/opencode/internal/tui/components/chat"
 	"github.com/opencode-ai/opencode/internal/tui/layout"
@@ -54,7 +55,7 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd := p.layout.SetSize(msg.Width, msg.Height)
 		cmds = append(cmds, cmd)
 	case chat.SendMsg:
-		cmd := p.sendMessage(msg.Text)
+		cmd := p.sendMessage(msg.Text, msg.Attachments)
 		if cmd != nil {
 			return p, cmd
 		}
@@ -117,7 +118,7 @@ func (p *chatPage) clearSidebar() tea.Cmd {
 	return p.layout.ClearRightPanel()
 }
 
-func (p *chatPage) sendMessage(text string) tea.Cmd {
+func (p *chatPage) sendMessage(text string, attachments []message.Attachment) tea.Cmd {
 	var cmds []tea.Cmd
 	if p.session.ID == "" {
 		session, err := p.app.Sessions.Create(context.Background(), "New Session")
@@ -133,7 +134,10 @@ func (p *chatPage) sendMessage(text string) tea.Cmd {
 		cmds = append(cmds, util.CmdHandler(chat.SessionSelectedMsg(session)))
 	}
 
-	p.app.CoderAgent.Run(context.Background(), p.session.ID, text)
+	_, err := p.app.CoderAgent.Run(context.Background(), p.session.ID, text, attachments...)
+	if err != nil {
+		return util.ReportError(err)
+	}
 	return tea.Batch(cmds...)
 }
 
@@ -152,6 +156,7 @@ func (p *chatPage) View() string {
 func (p *chatPage) BindingKeys() []key.Binding {
 	bindings := layout.KeyMapToSlice(keyMap)
 	bindings = append(bindings, p.messages.BindingKeys()...)
+	bindings = append(bindings, p.editor.BindingKeys()...)
 	return bindings
 }
 

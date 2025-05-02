@@ -3,11 +3,12 @@ package styles
 const (
 	OpenCodeIcon string = "ⓒ"
 
-	ErrorIcon   string = "ⓧ"
-	WarningIcon string = "ⓦ"
-	InfoIcon    string = "ⓘ"
-	HintIcon    string = "ⓗ"
-	SpinnerIcon string = "⟳"
+	ErrorIcon    string = "ⓧ"
+	WarningIcon  string = "ⓦ"
+	InfoIcon     string = "ⓘ"
+	HintIcon     string = "ⓗ"
+	SpinnerIcon  string = "⟳"
+	DocumentIcon string = "🖼"
 )
 
 // CircledDigit returns the Unicode circled digit/number for 0‑20.

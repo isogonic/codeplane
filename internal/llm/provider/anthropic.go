@@ -13,6 +13,7 @@ import (
 	"github.com/anthropics/anthropic-sdk-go/bedrock"
 	"github.com/anthropics/anthropic-sdk-go/option"
 	"github.com/opencode-ai/opencode/internal/config"
+	"github.com/opencode-ai/opencode/internal/llm/models"
 	"github.com/opencode-ai/opencode/internal/llm/tools"
 	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/message"
@@ -70,7 +71,14 @@ func (a *anthropicClient) convertMessages(messages []message.Message) (anthropic
 					Type: "ephemeral",
 				}
 			}
-			anthropicMessages = append(anthropicMessages, anthropic.NewUserMessage(content))
+			var contentBlocks []anthropic.ContentBlockParamUnion
+			contentBlocks = append(contentBlocks, content)
+			for _, binaryContent := range msg.BinaryContent() {
+				base64Image := binaryContent.String(models.ProviderAnthropic)
+				imageBlock := anthropic.NewImageBlockBase64(binaryContent.MIMEType, base64Image)
+				contentBlocks = append(contentBlocks, imageBlock)
+			}
+			anthropicMessages = append(anthropicMessages, anthropic.NewUserMessage(contentBlocks...))
 
 		case message.Assistant:
 			blocks := []anthropic.ContentBlockParamUnion{}
@@ -204,6 +212,7 @@ func (a *anthropicClient) send(ctx context.Context, messages []message.Message, 
 		jsonData, _ := json.Marshal(preparedMessages)
 		logging.Debug("Prepared messages", "messages", string(jsonData))
 	}
+
 	attempts := 0
 	for {
 		attempts++
@@ -213,6 +222,7 @@ func (a *anthropicClient) send(ctx context.Context, messages []message.Message, 
 		)
 		// If there is an error we are going to see if we can retry the call
 		if err != nil {
+			logging.Error("Error in Anthropic API call", "error", err)
 			retry, after, retryErr := a.shouldRetry(attempts, err)
 			if retryErr != nil {
 				return nil, retryErr

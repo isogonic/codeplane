@@ -65,7 +65,6 @@ func (s *service) Create(ctx context.Context, sessionID string, params CreateMes
 	if err != nil {
 		return Message{}, err
 	}
-
 	dbMessage, err := s.q.CreateMessage(ctx, db.CreateMessageParams{
 		ID:        uuid.New().String(),
 		SessionID: sessionID,
