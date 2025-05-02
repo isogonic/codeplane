@@ -79,6 +79,9 @@ var SupportedModels = map[ModelID]Model{
 		CostPer1MInCached:  3.75,
 		CostPer1MOutCached: 0.30,
 		CostPer1MOut:       15.0,
+		ContextWindow:      200_000,
+		DefaultMaxTokens:   50_000,
+		CanReason:          true,
 	},
 }
 
