@@ -216,32 +216,36 @@ func (m *statusCmp) projectDiagnostics() string {
 
 	diagnostics := []string{}
 
+	errIcon := styles.CircledDigit(len(errorDiagnostics))
 	errStr := lipgloss.NewStyle().
 		Background(t.BackgroundDarker()).
 		Foreground(t.Error()).
-		Render(fmt.Sprintf("%s %d", styles.ErrorIcon, len(errorDiagnostics)))
+		Render(errIcon)
 	diagnostics = append(diagnostics, errStr)
 
+	warnIcon := styles.CircledDigit(len(warnDiagnostics))
 	warnStr := lipgloss.NewStyle().
 		Background(t.BackgroundDarker()).
 		Foreground(t.Warning()).
-		Render(fmt.Sprintf("%s %d", styles.WarningIcon, len(warnDiagnostics)))
+		Render(warnIcon)
 	diagnostics = append(diagnostics, warnStr)
 
+	infoIcon := styles.CircledDigit(len(infoDiagnostics))
 	infoStr := lipgloss.NewStyle().
 		Background(t.BackgroundDarker()).
 		Foreground(t.Info()).
-		Render(fmt.Sprintf("%s %d", styles.InfoIcon, len(infoDiagnostics)))
+		Render(infoIcon)
 	diagnostics = append(diagnostics, infoStr)
 
+	hintIcon := styles.CircledDigit(len(hintDiagnostics))
 	hintStr := lipgloss.NewStyle().
 		Background(t.BackgroundDarker()).
 		Foreground(t.Text()).
-		Render(fmt.Sprintf("%s %d", styles.HintIcon, len(hintDiagnostics)))
+		Render(hintIcon)
 	diagnostics = append(diagnostics, hintStr)
 
 	return styles.ForceReplaceBackgroundWithLipgloss(
-		strings.Join(diagnostics, " "),
+		styles.Padded().Render(strings.Join(diagnostics, "  ")),
 		t.BackgroundDarker(),
 	)
 }
