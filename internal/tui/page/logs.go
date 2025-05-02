@@ -7,6 +7,7 @@ import (
 	"github.com/opencode-ai/opencode/internal/tui/components/logs"
 	"github.com/opencode-ai/opencode/internal/tui/layout"
 	"github.com/opencode-ai/opencode/internal/tui/styles"
+	"github.com/opencode-ai/opencode/internal/tui/theme"
 )
 
 var LogsPage PageID = "logs"
@@ -42,11 +43,24 @@ func (p *logsPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (p *logsPage) View() string {
-	style := styles.BaseStyle().Width(p.width).Height(p.height)
-	return style.Render(lipgloss.JoinVertical(lipgloss.Top,
-		p.table.View(),
-		p.details.View(),
-	))
+	t := theme.CurrentTheme()
+
+	// Add padding to the right of the table view
+	tableView := lipgloss.NewStyle().PaddingRight(3).Render(p.table.View())
+
+	return styles.ForceReplaceBackgroundWithLipgloss(
+		lipgloss.JoinVertical(
+			lipgloss.Left,
+			styles.Bold().Render(" esc")+styles.Muted().Render(" to go back"),
+			"",
+			lipgloss.JoinHorizontal(lipgloss.Top,
+				tableView,
+				p.details.View(),
+			),
+			"",
+		),
+		t.Background(),
+	)
 }
 
 func (p *logsPage) BindingKeys() []key.Binding {
@@ -63,8 +77,8 @@ func (p *logsPage) SetSize(width int, height int) tea.Cmd {
 	p.width = width
 	p.height = height
 	return tea.Batch(
-		p.table.SetSize(width, height/2),
-		p.details.SetSize(width, height/2),
+		p.table.SetSize(width/2, height-3),
+		p.details.SetSize(width/2, height-3),
 	)
 }
 
@@ -77,7 +91,7 @@ func (p *logsPage) Init() tea.Cmd {
 
 func NewLogsPage() LogPage {
 	return &logsPage{
-		table:   layout.NewContainer(logs.NewLogsTable(), layout.WithBorderAll()),
-		details: layout.NewContainer(logs.NewLogsDetails(), layout.WithBorderAll()),
+		table:   layout.NewContainer(logs.NewLogsTable()),
+		details: layout.NewContainer(logs.NewLogsDetails()),
 	}
 }

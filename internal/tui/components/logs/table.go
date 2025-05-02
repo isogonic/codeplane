@@ -1,7 +1,6 @@
 package logs
 
 import (
-	"encoding/json"
 	"slices"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -10,7 +9,7 @@ import (
 	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/pubsub"
 	"github.com/opencode-ai/opencode/internal/tui/layout"
-	"github.com/opencode-ai/opencode/internal/tui/styles"
+	// "github.com/opencode-ai/opencode/internal/tui/styles"
 	"github.com/opencode-ai/opencode/internal/tui/theme"
 	"github.com/opencode-ai/opencode/internal/tui/util"
 )
@@ -66,7 +65,7 @@ func (i *tableCmp) View() string {
 	defaultStyles := table.DefaultStyles()
 	defaultStyles.Selected = defaultStyles.Selected.Foreground(t.Primary())
 	i.table.SetStyles(defaultStyles)
-	return styles.ForceReplaceBackgroundWithLipgloss(i.table.View(), t.Background())
+	return i.table.View()
 }
 
 func (i *tableCmp) GetSize() (int, int) {
@@ -76,12 +75,22 @@ func (i *tableCmp) GetSize() (int, int) {
 func (i *tableCmp) SetSize(width int, height int) tea.Cmd {
 	i.table.SetWidth(width)
 	i.table.SetHeight(height)
-	cloumns := i.table.Columns()
-	for i, col := range cloumns {
-		col.Width = (width / len(cloumns)) - 2
-		cloumns[i] = col
-	}
-	i.table.SetColumns(cloumns)
+	columns := i.table.Columns()
+
+	// Calculate widths for visible columns
+	timeWidth := 8  // Fixed width for Time column
+	levelWidth := 7 // Fixed width for Level column
+
+	// Message column gets the remaining space
+	messageWidth := width - timeWidth - levelWidth - 5 // 5 for padding and borders
+
+	// Set column widths
+	columns[0].Width = 0 // ID column (hidden)
+	columns[1].Width = timeWidth
+	columns[2].Width = levelWidth
+	columns[3].Width = messageWidth
+
+	i.table.SetColumns(columns)
 	return nil
 }
 
@@ -104,14 +113,12 @@ func (i *tableCmp) setRows() {
 	})
 
 	for _, log := range logs {
-		bm, _ := json.Marshal(log.Attributes)
-
+		// Include ID as hidden first column for selection
 		row := table.Row{
 			log.ID,
 			log.Time.Format("15:04:05"),
 			log.Level,
 			log.Message,
-			string(bm),
 		}
 		rows = append(rows, row)
 	}
@@ -120,11 +127,10 @@ func (i *tableCmp) setRows() {
 
 func NewLogsTable() TableComponent {
 	columns := []table.Column{
-		{Title: "ID", Width: 4},
-		{Title: "Time", Width: 4},
-		{Title: "Level", Width: 10},
-		{Title: "Message", Width: 10},
-		{Title: "Attributes", Width: 10},
+		{Title: "ID", Width: 0}, // ID column with zero width
+		{Title: "Time", Width: 8},
+		{Title: "Level", Width: 7},
+		{Title: "Message", Width: 30},
 	}
 
 	tableModel := table.New(

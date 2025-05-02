@@ -20,6 +20,10 @@ func Regular() lipgloss.Style {
 	return lipgloss.NewStyle()
 }
 
+func Muted() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(theme.CurrentTheme().TextMuted())
+}
+
 // Bold returns a bold style
 func Bold() lipgloss.Style {
 	return Regular().Bold(true)
@@ -149,4 +153,3 @@ func BorderFocusedColor() lipgloss.AdaptiveColor {
 func BorderDimColor() lipgloss.AdaptiveColor {
 	return theme.CurrentTheme().BorderDim()
 }
-
