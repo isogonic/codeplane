@@ -74,14 +74,19 @@ func (a *anthropicClient) convertMessages(messages []message.Message) (anthropic
 
 		case message.Assistant:
 			blocks := []anthropic.ContentBlockParamUnion{}
-			if msg.Content().String() != "" {
-				content := anthropic.NewTextBlock(msg.Content().String())
+
+			if msg.Content() != nil {
+				content := msg.Content().String()
+				if strings.TrimSpace(content) == "" {
+					content = " "
+				}
+				block := anthropic.NewTextBlock(content)
 				if cache && !a.options.disableCache {
-					content.OfRequestTextBlock.CacheControl = anthropic.CacheControlEphemeralParam{
+					block.OfRequestTextBlock.CacheControl = anthropic.CacheControlEphemeralParam{
 						Type: "ephemeral",
 					}
 				}
-				blocks = append(blocks, content)
+				blocks = append(blocks, block)
 			}
 
 			for _, toolCall := range msg.ToolCalls() {
@@ -196,8 +201,8 @@ func (a *anthropicClient) send(ctx context.Context, messages []message.Message, 
 	preparedMessages := a.preparedMessages(a.convertMessages(messages), a.convertTools(tools))
 	cfg := config.Get()
 	if cfg.Debug {
-		// jsonData, _ := json.Marshal(preparedMessages)
-		// logging.Debug("Prepared messages", "messages", string(jsonData))
+		jsonData, _ := json.Marshal(preparedMessages)
+		logging.Debug("Prepared messages", "messages", string(jsonData))
 	}
 	attempts := 0
 	for {
@@ -243,8 +248,8 @@ func (a *anthropicClient) stream(ctx context.Context, messages []message.Message
 	preparedMessages := a.preparedMessages(a.convertMessages(messages), a.convertTools(tools))
 	cfg := config.Get()
 	if cfg.Debug {
-		// jsonData, _ := json.Marshal(preparedMessages)
-		// logging.Debug("Prepared messages", "messages", string(jsonData))
+		jsonData, _ := json.Marshal(preparedMessages)
+		logging.Debug("Prepared messages", "messages", string(jsonData))
 	}
 	attempts := 0
 	eventChan := make(chan ProviderEvent)

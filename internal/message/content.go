@@ -48,7 +48,10 @@ type TextContent struct {
 	Text string `json:"text"`
 }
 
-func (tc TextContent) String() string {
+func (tc *TextContent) String() string {
+	if tc == nil {
+		return ""
+	}
 	return tc.Text
 }
 
@@ -115,13 +118,13 @@ type Message struct {
 	UpdatedAt int64
 }
 
-func (m *Message) Content() TextContent {
+func (m *Message) Content() *TextContent {
 	for _, part := range m.Parts {
 		if c, ok := part.(TextContent); ok {
-			return c
+			return &c
 		}
 	}
-	return TextContent{}
+	return nil
 }
 
 func (m *Message) ReasoningContent() ReasoningContent {
