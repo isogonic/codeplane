@@ -723,5 +723,23 @@ If there are Cursor rules (in .cursor/rules/ or .cursorrules) or Copilot rules (
 			)
 		},
 	})
+
+	model.RegisterCommand(dialog.Command{
+		ID:          "compact_conversation",
+		Title:       "Compact Conversation",
+		Description: "Summarize the current session to save tokens",
+		Handler: func(cmd dialog.Command) tea.Cmd {
+			// Get the current session from the appModel
+			if model.currentPage != page.ChatPage {
+				return util.ReportWarn("Please navigate to a chat session first.")
+			}
+			
+			// Return a message that will be handled by the chat page
+			return tea.Batch(
+				util.CmdHandler(chat.CompactSessionMsg{}),
+				util.ReportInfo("Compacting conversation..."))
+		},
+	})
+	
 	return model
 }

@@ -2,10 +2,12 @@ package page
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/opencode-ai/opencode/internal/app"
+	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/session"
 	"github.com/opencode-ai/opencode/internal/tui/components/chat"
 	"github.com/opencode-ai/opencode/internal/tui/layout"
@@ -64,6 +66,22 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		p.session = msg
+	case chat.CompactSessionMsg:
+		if p.session.ID == "" {
+			return p, util.ReportWarn("No active session to compact.")
+		}
+
+		// Run compaction in background
+		go func(sessionID string) {
+			err := p.app.CoderAgent.CompactSession(context.Background(), sessionID)
+			if err != nil {
+				logging.ErrorPersist(fmt.Sprintf("Compaction failed: %v", err))
+			} else {
+				logging.InfoPersist("Conversation compacted successfully.")
+			}
+		}(p.session.ID)
+
+		return p, nil
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keyMap.NewSession):

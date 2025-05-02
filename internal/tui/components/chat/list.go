@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -450,8 +451,11 @@ func (m *messagesCmp) BindingKeys() []key.Binding {
 }
 
 func NewMessagesCmp(app *app.App) tea.Model {
-	s := spinner.New()
-	s.Spinner = spinner.Pulse
+	customSpinner := spinner.Spinner{
+		Frames: []string{" ", "┃"},
+		FPS:    time.Second / 2, //nolint:gomnd
+	}
+	s := spinner.New(spinner.WithSpinner(customSpinner))
 	vp := viewport.New(0, 0)
 	vp.KeyMap.PageUp = messageKeys.PageUp
 	vp.KeyMap.PageDown = messageKeys.PageDown

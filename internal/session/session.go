@@ -17,6 +17,8 @@ type Session struct {
 	PromptTokens     int64
 	CompletionTokens int64
 	Cost             float64
+	Summary          string
+	SummarizedAt     int64
 	CreatedAt        int64
 	UpdatedAt        int64
 }
@@ -100,16 +102,31 @@ func (s *service) Get(ctx context.Context, id string) (Session, error) {
 }
 
 func (s *service) Save(ctx context.Context, session Session) (Session, error) {
+	summary := sql.NullString{}
+	if session.Summary != "" {
+		summary.String = session.Summary
+		summary.Valid = true
+	}
+
+	summarizedAt := sql.NullInt64{}
+	if session.SummarizedAt != 0 {
+		summarizedAt.Int64 = session.SummarizedAt
+		summarizedAt.Valid = true
+	}
+
 	dbSession, err := s.q.UpdateSession(ctx, db.UpdateSessionParams{
 		ID:               session.ID,
 		Title:            session.Title,
 		PromptTokens:     session.PromptTokens,
 		CompletionTokens: session.CompletionTokens,
 		Cost:             session.Cost,
+		Summary:          summary,
+		SummarizedAt:     summarizedAt,
 	})
 	if err != nil {
 		return Session{}, err
 	}
+
 	session = s.fromDBItem(dbSession)
 	s.Publish(pubsub.UpdatedEvent, session)
 	return session, nil
@@ -136,6 +153,8 @@ func (s service) fromDBItem(item db.Session) Session {
 		PromptTokens:     item.PromptTokens,
 		CompletionTokens: item.CompletionTokens,
 		Cost:             item.Cost,
+		Summary:          item.Summary.String,
+		SummarizedAt:     item.SummarizedAt.Int64,
 		CreatedAt:        item.CreatedAt,
 		UpdatedAt:        item.UpdatedAt,
 	}

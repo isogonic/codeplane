@@ -7,9 +7,13 @@ INSERT INTO sessions (
     prompt_tokens,
     completion_tokens,
     cost,
+    summary,
+    summarized_at,
     updated_at,
     created_at
 ) VALUES (
+    ?,
+    ?,
     ?,
     ?,
     ?,
@@ -38,7 +42,9 @@ SET
     title = ?,
     prompt_tokens = ?,
     completion_tokens = ?,
-    cost = ?
+    cost = ?,
+    summary = ?,
+    summarized_at = ?
 WHERE id = ?
 RETURNING *;
 

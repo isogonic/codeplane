@@ -23,6 +23,8 @@ type SessionClearedMsg struct{}
 
 type EditorFocusMsg bool
 
+type CompactSessionMsg struct{}
+
 func header(width int) string {
 	return lipgloss.JoinVertical(
 		lipgloss.Top,

@@ -9,6 +9,12 @@ FROM messages
 WHERE session_id = ?
 ORDER BY created_at ASC;
 
+-- name: ListMessagesBySessionAfter :many
+SELECT *
+FROM messages
+WHERE session_id = ? AND created_at > ?
+ORDER BY created_at ASC;
+
 -- name: CreateMessage :one
 INSERT INTO messages (
     id,

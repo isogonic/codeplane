@@ -25,6 +25,7 @@ type Service interface {
 	Update(ctx context.Context, message Message) error
 	Get(ctx context.Context, id string) (Message, error)
 	List(ctx context.Context, sessionID string) ([]Message, error)
+	ListAfter(ctx context.Context, sessionID string, timestamp int64) ([]Message, error)
 	Delete(ctx context.Context, id string) error
 	DeleteSessionMessages(ctx context.Context, sessionID string) error
 }
@@ -132,6 +133,24 @@ func (s *service) Get(ctx context.Context, id string) (Message, error) {
 
 func (s *service) List(ctx context.Context, sessionID string) ([]Message, error) {
 	dbMessages, err := s.q.ListMessagesBySession(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	messages := make([]Message, len(dbMessages))
+	for i, dbMessage := range dbMessages {
+		messages[i], err = s.fromDBItem(dbMessage)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return messages, nil
+}
+
+func (s *service) ListAfter(ctx context.Context, sessionID string, timestamp int64) ([]Message, error) {
+	dbMessages, err := s.q.ListMessagesBySessionAfter(ctx, db.ListMessagesBySessionAfterParams{
+		SessionID: sessionID,
+		CreatedAt: timestamp,
+	})
 	if err != nil {
 		return nil, err
 	}
