@@ -102,6 +102,8 @@ var defaultContextPaths = []string{
 	".cursor/rules/",
 	"CLAUDE.md",
 	"CLAUDE.local.md",
+	"CONTEXT.md",
+	"CONTEXT.local.md",
 	"opencode.md",
 	"opencode.local.md",
 	"OpenCode.md",
