@@ -74,7 +74,8 @@ func (b *diagnosticsTool) Run(ctx context.Context, call ToolCall) (ToolResponse,
 	lsps := b.lspClients
 
 	if len(lsps) == 0 {
-		return NewTextErrorResponse("no LSP clients available"), nil
+		// Return a more helpful message when LSP clients aren't ready yet
+		return NewTextResponse("\n<diagnostic_summary>\nLSP clients are still initializing. Diagnostics will be available once they're ready.\n</diagnostic_summary>\n"), nil
 	}
 
 	if params.FilePath != "" {

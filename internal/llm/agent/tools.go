@@ -20,9 +20,11 @@ func CoderAgentTools(
 ) []tools.BaseTool {
 	ctx := context.Background()
 	otherTools := GetMcpTools(ctx, permissions)
-	if len(lspClients) > 0 {
-		otherTools = append(otherTools, tools.NewDiagnosticsTool(lspClients))
-	}
+
+	// Always add the Diagnostics tool even if lspClients is empty
+	// The tool will handle the case when no clients are available
+	otherTools = append(otherTools, tools.NewDiagnosticsTool(lspClients))
+
 	return append(
 		[]tools.BaseTool{
 			tools.NewBashTool(permissions),
