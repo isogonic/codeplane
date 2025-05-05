@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 
@@ -710,6 +711,24 @@ func WorkingDirectory() string {
 		panic("config not loaded")
 	}
 	return cfg.WorkingDir
+}
+
+// GetHostname returns the system hostname or "User" if it can't be determined
+func GetHostname() (string, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return "User", err
+	}
+	return hostname, nil
+}
+
+// GetUsername returns the current user's username
+func GetUsername() (string, error) {
+	currentUser, err := user.Current()
+	if err != nil {
+		return "User", err
+	}
+	return currentUser.Username, nil
 }
 
 func UpdateAgentModel(agentName AgentName, modelID models.ModelID) error {

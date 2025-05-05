@@ -82,7 +82,8 @@ func renderMessage(msg string, isUser bool, isFocused bool, width int, info ...s
 func renderUserMessage(msg message.Message, isFocused bool, width int, position int) uiMessage {
 	var styledAttachments []string
 	t := theme.CurrentTheme()
-	attachmentStyles := styles.BaseStyle().
+	baseStyle := styles.BaseStyle()
+	attachmentStyles := baseStyle.
 		MarginLeft(1).
 		Background(t.TextMuted()).
 		Foreground(t.Text())
@@ -96,12 +97,23 @@ func renderUserMessage(msg message.Message, isFocused bool, width int, position 
 		}
 		styledAttachments = append(styledAttachments, attachmentStyles.Render(filename))
 	}
+
+	// Add timestamp info
+	info := []string{}
+	timestamp := time.Unix(msg.CreatedAt, 0).Format("15:04:05")
+	username, _ := config.GetUsername()
+	info = append(info, baseStyle.
+		Width(width-1).
+		Foreground(t.TextMuted()).
+		Render(fmt.Sprintf(" %s (%s)", username, timestamp)),
+	)
+
 	content := ""
 	if len(styledAttachments) > 0 {
-		attachmentContent := styles.BaseStyle().Width(width).Render(lipgloss.JoinHorizontal(lipgloss.Left, styledAttachments...))
-		content = renderMessage(msg.Content().String(), true, isFocused, width, attachmentContent)
+		attachmentContent := baseStyle.Width(width).Render(lipgloss.JoinHorizontal(lipgloss.Left, styledAttachments...))
+		content = renderMessage(msg.Content().String(), true, isFocused, width, append(info, attachmentContent)...)
 	} else {
-		content = renderMessage(msg.Content().String(), true, isFocused, width)
+		content = renderMessage(msg.Content().String(), true, isFocused, width, info...)
 	}
 	userMsg := uiMessage{
 		ID:          msg.ID,
@@ -134,36 +146,43 @@ func renderAssistantMessage(
 	t := theme.CurrentTheme()
 	baseStyle := styles.BaseStyle()
 
-	// Add finish info if available
+	// Always add timestamp info
+	timestamp := time.Unix(msg.CreatedAt, 0).Format("15:04:05")
+	modelName := "Assistant"
+	if msg.Model != "" {
+		modelName = models.SupportedModels[msg.Model].Name
+	}
+
+	info = append(info, baseStyle.
+		Width(width-1).
+		Foreground(t.TextMuted()).
+		Render(fmt.Sprintf(" %s (%s)", modelName, timestamp)),
+	)
+
 	if finished {
+		// Add finish info if available
 		switch finishData.Reason {
-		case message.FinishReasonEndTurn:
-			took := formatTimestampDiff(msg.CreatedAt, finishData.Time)
-			info = append(info, baseStyle.
-				Width(width-1).
-				Foreground(t.TextMuted()).
-				Render(fmt.Sprintf(" %s (%s)", models.SupportedModels[msg.Model].Name, took)),
-			)
 		case message.FinishReasonCanceled:
 			info = append(info, baseStyle.
 				Width(width-1).
-				Foreground(t.TextMuted()).
-				Render(fmt.Sprintf(" %s (%s)", models.SupportedModels[msg.Model].Name, "canceled")),
+				Foreground(t.Warning()).
+				Render("(canceled)"),
 			)
 		case message.FinishReasonError:
 			info = append(info, baseStyle.
 				Width(width-1).
-				Foreground(t.TextMuted()).
-				Render(fmt.Sprintf(" %s (%s)", models.SupportedModels[msg.Model].Name, "error")),
+				Foreground(t.Error()).
+				Render("(error)"),
 			)
 		case message.FinishReasonPermissionDenied:
 			info = append(info, baseStyle.
 				Width(width-1).
-				Foreground(t.TextMuted()).
-				Render(fmt.Sprintf(" %s (%s)", models.SupportedModels[msg.Model].Name, "permission denied")),
+				Foreground(t.Info()).
+				Render("(permission denied)"),
 			)
 		}
 	}
+
 	if content != "" || (finished && finishData.Reason == message.FinishReasonEndTurn) {
 		if content == "" {
 			content = "*Finished without output*"
@@ -180,8 +199,17 @@ func renderAssistantMessage(
 		position += messages[0].height
 		position++ // for the space
 	} else if thinking && thinkingContent != "" {
-		// Render the thinking content
-		content = renderMessage(thinkingContent, false, msg.ID == focusedUIMessageId, width)
+		// Render the thinking content with timestamp
+		content = renderMessage(thinkingContent, false, msg.ID == focusedUIMessageId, width, info...)
+		messages = append(messages, uiMessage{
+			ID:          msg.ID,
+			messageType: assistantMessageType,
+			position:    position,
+			height:      lipgloss.Height(content),
+			content:     content,
+		})
+		position += lipgloss.Height(content)
+		position++ // for the space
 	}
 
 	for i, toolCall := range msg.ToolCalls() {
