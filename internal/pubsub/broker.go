@@ -64,22 +64,27 @@ func (b *Broker[T]) Subscribe(ctx context.Context) <-chan Event[T] {
 	b.subs[sub] = struct{}{}
 	b.subCount++
 
-	go func() {
-		<-ctx.Done()
+	// Only start a goroutine if the context can actually be canceled
+	if ctx.Done() != nil {
+		go func() {
+			<-ctx.Done()
 
-		b.mu.Lock()
-		defer b.mu.Unlock()
+			b.mu.Lock()
+			defer b.mu.Unlock()
 
-		select {
-		case <-b.done:
-			return
-		default:
-		}
+			select {
+			case <-b.done:
+				return
+			default:
+			}
 
-		delete(b.subs, sub)
-		close(sub)
-		b.subCount--
-	}()
+			if _, exists := b.subs[sub]; exists {
+				delete(b.subs, sub)
+				close(sub)
+				b.subCount--
+			}
+		}()
+	}
 
 	return sub
 }

@@ -123,11 +123,11 @@ to assist developers in writing, debugging, and understanding code directly from
 
 		// Cleanup function for when the program exits
 		cleanup := func() {
-			// Shutdown the app
-			app.Shutdown()
-
 			// Cancel subscriptions first
 			cancelSubs()
+
+			// Then shutdown the app
+			app.Shutdown()
 
 			// Then cancel TUI message handler
 			tuiCancel()
@@ -188,6 +188,10 @@ func setupSubscriber[T any](
 		defer logging.RecoverPanic(fmt.Sprintf("subscription-%s", name), nil)
 
 		subCh := subscriber(ctx)
+		if subCh == nil {
+			logging.Warn("subscription channel is nil", "name", name)
+			return
+		}
 
 		for {
 			select {
