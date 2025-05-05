@@ -134,6 +134,7 @@ func renderAssistantMessage(
 	focusedUIMessageId string,
 	width int,
 	position int,
+	showToolMessages bool,
 ) []uiMessage {
 	messages := []uiMessage{}
 	content := msg.Content().String()
@@ -212,19 +213,22 @@ func renderAssistantMessage(
 		position++ // for the space
 	}
 
-	for i, toolCall := range msg.ToolCalls() {
-		toolCallContent := renderToolMessage(
-			toolCall,
-			allMessages,
-			messagesService,
-			focusedUIMessageId,
-			false,
-			width,
-			i+1,
-		)
-		messages = append(messages, toolCallContent)
-		position += toolCallContent.height
-		position++ // for the space
+	// Only render tool messages if they should be shown
+	if showToolMessages {
+		for i, toolCall := range msg.ToolCalls() {
+			toolCallContent := renderToolMessage(
+				toolCall,
+				allMessages,
+				messagesService,
+				focusedUIMessageId,
+				false,
+				width,
+				i+1,
+			)
+			messages = append(messages, toolCallContent)
+			position += toolCallContent.height
+			position++ // for the space
+		}
 	}
 	return messages
 }

@@ -26,8 +26,9 @@ type chatPage struct {
 }
 
 type ChatKeyMap struct {
-	NewSession key.Binding
-	Cancel     key.Binding
+	NewSession   key.Binding
+	Cancel       key.Binding
+	ToggleTools  key.Binding
 }
 
 var keyMap = ChatKeyMap{
@@ -38,6 +39,10 @@ var keyMap = ChatKeyMap{
 	Cancel: key.NewBinding(
 		key.WithKeys("esc"),
 		key.WithHelp("esc", "cancel"),
+	),
+	ToggleTools: key.NewBinding(
+		key.WithKeys("ctrl+h"),
+		key.WithHelp("ctrl+h", "toggle tools"),
 	),
 }
 
@@ -98,6 +103,8 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				p.app.CoderAgent.Cancel(p.session.ID)
 				return p, nil
 			}
+		case key.Matches(msg, keyMap.ToggleTools):
+			return p, util.CmdHandler(chat.ToggleToolMessagesMsg{})
 		}
 	}
 	u, cmd := p.layout.Update(msg)

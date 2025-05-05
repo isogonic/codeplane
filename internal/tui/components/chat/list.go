@@ -26,19 +26,21 @@ type cacheItem struct {
 	content []uiMessage
 }
 type messagesCmp struct {
-	app           *app.App
-	width, height int
-	viewport      viewport.Model
-	session       session.Session
-	messages      []message.Message
-	uiMessages    []uiMessage
-	currentMsgID  string
-	cachedContent map[string]cacheItem
-	spinner       spinner.Model
-	rendering     bool
-	attachments   viewport.Model
+	app             *app.App
+	width, height   int
+	viewport        viewport.Model
+	session         session.Session
+	messages        []message.Message
+	uiMessages      []uiMessage
+	currentMsgID    string
+	cachedContent   map[string]cacheItem
+	spinner         spinner.Model
+	rendering       bool
+	attachments     viewport.Model
+	showToolMessages bool
 }
 type renderFinishedMsg struct{}
+type ToggleToolMessagesMsg struct{}
 
 type MessageKeys struct {
 	PageDown     key.Binding
@@ -75,6 +77,12 @@ func (m *messagesCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case dialog.ThemeChangedMsg:
 		m.rerender()
+		return m, nil
+	case ToggleToolMessagesMsg:
+		m.showToolMessages = !m.showToolMessages
+		// Clear the cache to force re-rendering of all messages
+		m.cachedContent = make(map[string]cacheItem)
+		m.renderView()
 		return m, nil
 	case SessionSelectedMsg:
 		if msg.ID != m.session.ID {
@@ -217,6 +225,7 @@ func (m *messagesCmp) renderView() {
 				m.currentMsgID,
 				m.width,
 				pos,
+				m.showToolMessages,
 			)
 			for _, msg := range assistantMessages {
 				m.uiMessages = append(m.uiMessages, msg)
@@ -382,7 +391,10 @@ func (m *messagesCmp) help() string {
 			baseStyle.Foreground(t.TextMuted()).Bold(true).Render(" to send the message,"),
 			baseStyle.Foreground(t.TextMuted()).Bold(true).Render(" write"),
 			baseStyle.Foreground(t.Text()).Bold(true).Render(" \\"),
-			baseStyle.Foreground(t.TextMuted()).Bold(true).Render(" and enter to add a new line"),
+			baseStyle.Foreground(t.TextMuted()).Bold(true).Render(" and enter to add a new line,"),
+			baseStyle.Foreground(t.TextMuted()).Bold(true).Render(" press"),
+			baseStyle.Foreground(t.Text()).Bold(true).Render(" ctrl+h"),
+			baseStyle.Foreground(t.TextMuted()).Bold(true).Render(" to toggle tool messages"),
 		)
 	}
 	return baseStyle.
@@ -471,10 +483,11 @@ func NewMessagesCmp(app *app.App) tea.Model {
 	vp.KeyMap.HalfPageUp = messageKeys.HalfPageUp
 	vp.KeyMap.HalfPageDown = messageKeys.HalfPageDown
 	return &messagesCmp{
-		app:           app,
-		cachedContent: make(map[string]cacheItem),
-		viewport:      vp,
-		spinner:       s,
-		attachments:   attachmets,
+		app:             app,
+		cachedContent:   make(map[string]cacheItem),
+		viewport:        vp,
+		spinner:         s,
+		attachments:     attachmets,
+		showToolMessages: true,
 	}
 }
