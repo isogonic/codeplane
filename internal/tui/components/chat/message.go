@@ -137,7 +137,7 @@ func renderAssistantMessage(
 	showToolMessages bool,
 ) []uiMessage {
 	messages := []uiMessage{}
-	content := msg.Content().String()
+	content := strings.TrimSpace(msg.Content().String())
 	thinking := msg.IsThinking()
 	thinkingContent := msg.ReasoningContent().Thinking
 	finished := msg.IsFinished()
