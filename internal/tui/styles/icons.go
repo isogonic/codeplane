@@ -3,7 +3,7 @@ package styles
 const (
 	OpenCodeIcon string = "ⓒ"
 
-	ErrorIcon    string = "ⓧ"
+	ErrorIcon    string = "ⓔ"
 	WarningIcon  string = "ⓦ"
 	InfoIcon     string = "ⓘ"
 	HintIcon     string = "ⓗ"
