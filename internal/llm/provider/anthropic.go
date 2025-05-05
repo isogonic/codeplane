@@ -85,16 +85,15 @@ func (a *anthropicClient) convertMessages(messages []message.Message) (anthropic
 
 			if msg.Content() != nil {
 				content := msg.Content().String()
-				if strings.TrimSpace(content) == "" {
-					content = " "
-				}
-				block := anthropic.NewTextBlock(content)
-				if cache && !a.options.disableCache {
-					block.OfRequestTextBlock.CacheControl = anthropic.CacheControlEphemeralParam{
-						Type: "ephemeral",
+				if strings.TrimSpace(content) != "" {
+					block := anthropic.NewTextBlock(content)
+					if cache && !a.options.disableCache {
+						block.OfRequestTextBlock.CacheControl = anthropic.CacheControlEphemeralParam{
+							Type: "ephemeral",
+						}
 					}
+					blocks = append(blocks, block)
 				}
-				blocks = append(blocks, block)
 			}
 
 			for _, toolCall := range msg.ToolCalls() {
