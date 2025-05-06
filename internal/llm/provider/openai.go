@@ -182,6 +182,14 @@ func (o *openaiClient) preparedParams(messages []openai.ChatCompletionMessagePar
 		params.MaxTokens = openai.Int(o.providerOptions.maxTokens)
 	}
 
+	if o.providerOptions.model.Provider == models.ProviderOpenRouter {
+		params.WithExtraFields(map[string]any{
+			"provider": map[string]any{
+				"require_parameters": true,
+			},
+		})
+	}
+
 	return params
 }
 
