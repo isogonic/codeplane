@@ -307,7 +307,7 @@ func (a *agent) streamAndHandleEvents(ctx context.Context, sessionID string, msg
 	}
 
 	// If we're approaching the context window limit, trigger auto-compaction
-	if (*usage + maxTokens) >= threshold {
+	if false && (*usage+maxTokens) >= threshold {
 		logging.InfoPersist(fmt.Sprintf("Auto-compaction triggered for session %s. Estimated tokens: %d, Threshold: %d", sessionID, usage, threshold))
 
 		// Perform compaction with pause/resume to ensure safety

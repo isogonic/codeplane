@@ -21,7 +21,8 @@ type TableComponent interface {
 }
 
 type tableCmp struct {
-	table table.Model
+	table   table.Model
+	focused bool
 }
 
 type selectedLogMsg logging.LogMessage
@@ -38,23 +39,29 @@ func (i *tableCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		i.setRows()
 		return i, nil
 	}
-	prevSelectedRow := i.table.SelectedRow()
+	
+	// Only process keyboard input when focused
+	if _, ok := msg.(tea.KeyMsg); ok && !i.focused {
+		return i, nil
+	}
+	
 	t, cmd := i.table.Update(msg)
 	cmds = append(cmds, cmd)
 	i.table = t
 	selectedRow := i.table.SelectedRow()
 	if selectedRow != nil {
-		if prevSelectedRow == nil || selectedRow[0] == prevSelectedRow[0] {
-			var log logging.LogMessage
-			for _, row := range logging.List() {
-				if row.ID == selectedRow[0] {
-					log = row
-					break
-				}
+		// Always send the selected log message when a row is selected
+		// This fixes the issue where navigation doesn't update the detail pane
+		// when returning to the logs page
+		var log logging.LogMessage
+		for _, row := range logging.List() {
+			if row.ID == selectedRow[0] {
+				log = row
+				break
 			}
-			if log.ID != "" {
-				cmds = append(cmds, util.CmdHandler(selectedLogMsg(log)))
-			}
+		}
+		if log.ID != "" {
+			cmds = append(cmds, util.CmdHandler(selectedLogMsg(log)))
 		}
 	}
 	return i, tea.Batch(cmds...)
@@ -140,4 +147,17 @@ func NewLogsTable() TableComponent {
 	return &tableCmp{
 		table: tableModel,
 	}
+}
+
+// Focus implements the focusable interface
+func (i *tableCmp) Focus() {
+	i.focused = true
+	i.table.Focus()
+}
+
+// Blur implements the blurable interface
+func (i *tableCmp) Blur() {
+	i.focused = false
+	// Table doesn't have a Blur method, but we can implement it here
+	// to satisfy the interface
 }

@@ -17,6 +17,11 @@ const (
 	PersistTimeArg = "$_persist_time"
 )
 
+const (
+	// Maximum number of log messages to keep in memory
+	maxLogMessages = 1000
+)
+
 type LogData struct {
 	messages []LogMessage
 	*pubsub.Broker[LogMessage]
@@ -26,7 +31,15 @@ type LogData struct {
 func (l *LogData) Add(msg LogMessage) {
 	l.lock.Lock()
 	defer l.lock.Unlock()
+	
+	// Add new message
 	l.messages = append(l.messages, msg)
+	
+	// Trim if exceeding max capacity
+	if len(l.messages) > maxLogMessages {
+		l.messages = l.messages[len(l.messages)-maxLogMessages:]
+	}
+	
 	l.Publish(pubsub.CreatedEvent, msg)
 }
 
@@ -37,7 +50,7 @@ func (l *LogData) List() []LogMessage {
 }
 
 var defaultLogData = &LogData{
-	messages: make([]LogMessage, 0),
+	messages: make([]LogMessage, 0, maxLogMessages),
 	Broker:   pubsub.NewBroker[LogMessage](),
 }
 

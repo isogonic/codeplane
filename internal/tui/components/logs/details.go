@@ -25,6 +25,7 @@ type detailCmp struct {
 	width, height int
 	currentLog    logging.LogMessage
 	viewport      viewport.Model
+	focused       bool
 }
 
 func (i *detailCmp) Init() tea.Cmd {
@@ -37,12 +38,21 @@ func (i *detailCmp) Init() tea.Cmd {
 }
 
 func (i *detailCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case selectedLogMsg:
 		if msg.ID != i.currentLog.ID {
 			i.currentLog = logging.LogMessage(msg)
 			i.updateContent()
 		}
+	case tea.KeyMsg:
+		// Only process keyboard input when focused
+		if !i.focused {
+			return i, nil
+		}
+		// Handle keyboard input for scrolling
+		i.viewport, cmd = i.viewport.Update(msg)
+		return i, cmd
 	}
 
 	return i, nil
@@ -140,4 +150,15 @@ func NewLogsDetails() DetailComponent {
 	return &detailCmp{
 		viewport: viewport.New(0, 0),
 	}
+}
+
+// Focus implements the focusable interface
+func (i *detailCmp) Focus() {
+	i.focused = true
+	i.viewport.SetYOffset(i.viewport.YOffset)
+}
+
+// Blur implements the blurable interface
+func (i *detailCmp) Blur() {
+	i.focused = false
 }

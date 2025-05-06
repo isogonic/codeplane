@@ -439,7 +439,8 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return a, nil
 				}
 				if a.currentPage == page.LogsPage {
-					return a, a.moveToPage(page.ChatPage)
+					// Always allow returning from logs page, even when agent is busy
+					return a, a.moveToPageUnconditional(page.ChatPage)
 				}
 			}
 		case key.Matches(msg, keys.Logs):
@@ -562,11 +563,30 @@ func (a *appModel) RegisterCommand(cmd dialog.Command) {
 }
 
 func (a *appModel) moveToPage(pageID page.PageID) tea.Cmd {
-	if a.app.CoderAgent.IsBusy() {
-		// For now we don't move to any page if the agent is busy
+	// Allow navigating to logs page even when agent is busy
+	if a.app.CoderAgent.IsBusy() && pageID != page.LogsPage {
+		// Don't move to other pages if the agent is busy
 		return util.ReportWarn("Agent is busy, please wait...")
 	}
 
+	var cmds []tea.Cmd
+	if _, ok := a.loadedPages[pageID]; !ok {
+		cmd := a.pages[pageID].Init()
+		cmds = append(cmds, cmd)
+		a.loadedPages[pageID] = true
+	}
+	a.previousPage = a.currentPage
+	a.currentPage = pageID
+	if sizable, ok := a.pages[a.currentPage].(layout.Sizeable); ok {
+		cmd := sizable.SetSize(a.width, a.height)
+		cmds = append(cmds, cmd)
+	}
+
+	return tea.Batch(cmds...)
+}
+
+// moveToPageUnconditional is like moveToPage but doesn't check if the agent is busy
+func (a *appModel) moveToPageUnconditional(pageID page.PageID) tea.Cmd {
 	var cmds []tea.Cmd
 	if _, ok := a.loadedPages[pageID]; !ok {
 		cmd := a.pages[pageID].Init()

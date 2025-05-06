@@ -11,6 +11,8 @@ type Container interface {
 	tea.Model
 	Sizeable
 	Bindings
+	Focus() // Add focus method
+	Blur()  // Add blur method
 }
 type container struct {
 	width  int
@@ -29,6 +31,8 @@ type container struct {
 	borderBottom bool
 	borderLeft   bool
 	borderStyle  lipgloss.Border
+	
+	focused bool // Track focus state
 }
 
 func (c *container) Init() tea.Cmd {
@@ -65,7 +69,13 @@ func (c *container) View() string {
 			width--
 		}
 		style = style.Border(c.borderStyle, c.borderTop, c.borderRight, c.borderBottom, c.borderLeft)
-		style = style.BorderBackground(t.Background()).BorderForeground(t.BorderNormal())
+		
+		// Use primary color for border if focused
+		if c.focused {
+			style = style.BorderBackground(t.Background()).BorderForeground(t.Primary())
+		} else {
+			style = style.BorderBackground(t.Background()).BorderForeground(t.BorderNormal())
+		}
 	}
 	style = style.
 		Width(width).
@@ -119,6 +129,24 @@ func (c *container) BindingKeys() []key.Binding {
 		return b.BindingKeys()
 	}
 	return []key.Binding{}
+}
+
+// Focus sets the container as focused
+func (c *container) Focus() {
+	c.focused = true
+	// Pass focus to content if it supports it
+	if focusable, ok := c.content.(interface{ Focus() }); ok {
+		focusable.Focus()
+	}
+}
+
+// Blur removes focus from the container
+func (c *container) Blur() {
+	c.focused = false
+	// Remove focus from content if it supports it
+	if blurable, ok := c.content.(interface{ Blur() }); ok {
+		blurable.Blur()
+	}
 }
 
 type ContainerOption func(*container)

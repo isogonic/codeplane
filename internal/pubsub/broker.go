@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-const bufferSize = 64
+const bufferSize = 1000
 
 type Broker[T any] struct {
 	subs      map[chan Event[T]]struct{}
@@ -115,7 +115,23 @@ func (b *Broker[T]) Publish(t EventType, payload T) {
 	for _, sub := range subscribers {
 		select {
 		case sub <- event:
+			// Successfully sent
+		case <-b.done:
+			// Broker is shutting down
+			return
 		default:
+			// Channel is full, but we don't want to block
+			// Log this situation or consider other strategies
+			// For now, we'll create a new goroutine to ensure delivery
+			go func(ch chan Event[T], evt Event[T]) {
+				select {
+				case ch <- evt:
+					// Successfully sent
+				case <-b.done:
+					// Broker is shutting down
+					return
+				}
+			}(sub, event)
 		}
 	}
 }
