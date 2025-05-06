@@ -22,12 +22,17 @@ const (
 	OpenRouterClaude37Sonnet ModelID = "openrouter.claude-3.7-sonnet"
 	OpenRouterClaude35Haiku  ModelID = "openrouter.claude-3.5-haiku"
 	OpenRouterClaude3Opus    ModelID = "openrouter.claude-3-opus"
+	OpenRouterQwen235B       ModelID = "openrouter.qwen-3-235b"
+	OpenRouterQwen32B        ModelID = "openrouter.qwen-3-32b"
+	OpenRouterQwen30B        ModelID = "openrouter.qwen-3-30b"
+	OpenRouterQwen14B        ModelID = "openrouter.qwen-3-14b"
+	OpenRouterQwen8B         ModelID = "openrouter.qwen-3-8b"
 )
 
 var OpenRouterModels = map[ModelID]Model{
 	OpenRouterGPT41: {
 		ID:                 OpenRouterGPT41,
-		Name:               "OpenRouter – GPT 4.1",
+		Name:               "OpenRouter: GPT 4.1",
 		Provider:           ProviderOpenRouter,
 		APIModel:           "openai/gpt-4.1",
 		CostPer1MIn:        OpenAIModels[GPT41].CostPer1MIn,
@@ -39,7 +44,7 @@ var OpenRouterModels = map[ModelID]Model{
 	},
 	OpenRouterGPT41Mini: {
 		ID:                 OpenRouterGPT41Mini,
-		Name:               "OpenRouter – GPT 4.1 mini",
+		Name:               "OpenRouter: GPT 4.1 mini",
 		Provider:           ProviderOpenRouter,
 		APIModel:           "openai/gpt-4.1-mini",
 		CostPer1MIn:        OpenAIModels[GPT41Mini].CostPer1MIn,
@@ -51,7 +56,7 @@ var OpenRouterModels = map[ModelID]Model{
 	},
 	OpenRouterGPT41Nano: {
 		ID:                 OpenRouterGPT41Nano,
-		Name:               "OpenRouter – GPT 4.1 nano",
+		Name:               "OpenRouter: GPT 4.1 nano",
 		Provider:           ProviderOpenRouter,
 		APIModel:           "openai/gpt-4.1-nano",
 		CostPer1MIn:        OpenAIModels[GPT41Nano].CostPer1MIn,
@@ -63,7 +68,7 @@ var OpenRouterModels = map[ModelID]Model{
 	},
 	OpenRouterGPT45Preview: {
 		ID:                 OpenRouterGPT45Preview,
-		Name:               "OpenRouter – GPT 4.5 preview",
+		Name:               "OpenRouter: GPT 4.5 preview",
 		Provider:           ProviderOpenRouter,
 		APIModel:           "openai/gpt-4.5-preview",
 		CostPer1MIn:        OpenAIModels[GPT45Preview].CostPer1MIn,
@@ -75,7 +80,7 @@ var OpenRouterModels = map[ModelID]Model{
 	},
 	OpenRouterGPT4o: {
 		ID:                 OpenRouterGPT4o,
-		Name:               "OpenRouter – GPT 4o",
+		Name:               "OpenRouter: GPT 4o",
 		Provider:           ProviderOpenRouter,
 		APIModel:           "openai/gpt-4o",
 		CostPer1MIn:        OpenAIModels[GPT4o].CostPer1MIn,
@@ -87,7 +92,7 @@ var OpenRouterModels = map[ModelID]Model{
 	},
 	OpenRouterGPT4oMini: {
 		ID:                 OpenRouterGPT4oMini,
-		Name:               "OpenRouter – GPT 4o mini",
+		Name:               "OpenRouter: GPT 4o mini",
 		Provider:           ProviderOpenRouter,
 		APIModel:           "openai/gpt-4o-mini",
 		CostPer1MIn:        OpenAIModels[GPT4oMini].CostPer1MIn,
@@ -98,7 +103,7 @@ var OpenRouterModels = map[ModelID]Model{
 	},
 	OpenRouterO1: {
 		ID:                 OpenRouterO1,
-		Name:               "OpenRouter – O1",
+		Name:               "OpenRouter: O1",
 		Provider:           ProviderOpenRouter,
 		APIModel:           "openai/o1",
 		CostPer1MIn:        OpenAIModels[O1].CostPer1MIn,
@@ -111,7 +116,7 @@ var OpenRouterModels = map[ModelID]Model{
 	},
 	OpenRouterO1Pro: {
 		ID:                 OpenRouterO1Pro,
-		Name:               "OpenRouter – o1 pro",
+		Name:               "OpenRouter: o1 pro",
 		Provider:           ProviderOpenRouter,
 		APIModel:           "openai/o1-pro",
 		CostPer1MIn:        OpenAIModels[O1Pro].CostPer1MIn,
@@ -124,7 +129,7 @@ var OpenRouterModels = map[ModelID]Model{
 	},
 	OpenRouterO1Mini: {
 		ID:                 OpenRouterO1Mini,
-		Name:               "OpenRouter – o1 mini",
+		Name:               "OpenRouter: o1 mini",
 		Provider:           ProviderOpenRouter,
 		APIModel:           "openai/o1-mini",
 		CostPer1MIn:        OpenAIModels[O1Mini].CostPer1MIn,
@@ -137,7 +142,7 @@ var OpenRouterModels = map[ModelID]Model{
 	},
 	OpenRouterO3: {
 		ID:                 OpenRouterO3,
-		Name:               "OpenRouter – o3",
+		Name:               "OpenRouter: o3",
 		Provider:           ProviderOpenRouter,
 		APIModel:           "openai/o3",
 		CostPer1MIn:        OpenAIModels[O3].CostPer1MIn,
@@ -150,7 +155,7 @@ var OpenRouterModels = map[ModelID]Model{
 	},
 	OpenRouterO3Mini: {
 		ID:                 OpenRouterO3Mini,
-		Name:               "OpenRouter – o3 mini",
+		Name:               "OpenRouter: o3 mini",
 		Provider:           ProviderOpenRouter,
 		APIModel:           "openai/o3-mini-high",
 		CostPer1MIn:        OpenAIModels[O3Mini].CostPer1MIn,
@@ -163,7 +168,7 @@ var OpenRouterModels = map[ModelID]Model{
 	},
 	OpenRouterO4Mini: {
 		ID:                 OpenRouterO4Mini,
-		Name:               "OpenRouter – o4 mini",
+		Name:               "OpenRouter: o4 mini",
 		Provider:           ProviderOpenRouter,
 		APIModel:           "openai/o4-mini-high",
 		CostPer1MIn:        OpenAIModels[O4Mini].CostPer1MIn,
@@ -176,7 +181,7 @@ var OpenRouterModels = map[ModelID]Model{
 	},
 	OpenRouterGemini25Flash: {
 		ID:                 OpenRouterGemini25Flash,
-		Name:               "OpenRouter – Gemini 2.5 Flash",
+		Name:               "OpenRouter: Gemini 2.5 Flash",
 		Provider:           ProviderOpenRouter,
 		APIModel:           "google/gemini-2.5-flash-preview:thinking",
 		CostPer1MIn:        GeminiModels[Gemini25Flash].CostPer1MIn,
@@ -188,7 +193,7 @@ var OpenRouterModels = map[ModelID]Model{
 	},
 	OpenRouterGemini25: {
 		ID:                 OpenRouterGemini25,
-		Name:               "OpenRouter – Gemini 2.5 Pro",
+		Name:               "OpenRouter: Gemini 2.5 Pro",
 		Provider:           ProviderOpenRouter,
 		APIModel:           "google/gemini-2.5-pro-preview-03-25",
 		CostPer1MIn:        GeminiModels[Gemini25].CostPer1MIn,
@@ -200,7 +205,7 @@ var OpenRouterModels = map[ModelID]Model{
 	},
 	OpenRouterClaude35Sonnet: {
 		ID:                 OpenRouterClaude35Sonnet,
-		Name:               "OpenRouter – Claude 3.5 Sonnet",
+		Name:               "OpenRouter: Claude 3.5 Sonnet",
 		Provider:           ProviderOpenRouter,
 		APIModel:           "anthropic/claude-3.5-sonnet",
 		CostPer1MIn:        AnthropicModels[Claude35Sonnet].CostPer1MIn,
@@ -212,7 +217,7 @@ var OpenRouterModels = map[ModelID]Model{
 	},
 	OpenRouterClaude3Haiku: {
 		ID:                 OpenRouterClaude3Haiku,
-		Name:               "OpenRouter – Claude 3 Haiku",
+		Name:               "OpenRouter: Claude 3 Haiku",
 		Provider:           ProviderOpenRouter,
 		APIModel:           "anthropic/claude-3-haiku",
 		CostPer1MIn:        AnthropicModels[Claude3Haiku].CostPer1MIn,
@@ -224,7 +229,7 @@ var OpenRouterModels = map[ModelID]Model{
 	},
 	OpenRouterClaude37Sonnet: {
 		ID:                 OpenRouterClaude37Sonnet,
-		Name:               "OpenRouter – Claude 3.7 Sonnet",
+		Name:               "OpenRouter: Claude 3.7 Sonnet",
 		Provider:           ProviderOpenRouter,
 		APIModel:           "anthropic/claude-3.7-sonnet",
 		CostPer1MIn:        AnthropicModels[Claude37Sonnet].CostPer1MIn,
@@ -237,7 +242,7 @@ var OpenRouterModels = map[ModelID]Model{
 	},
 	OpenRouterClaude35Haiku: {
 		ID:                 OpenRouterClaude35Haiku,
-		Name:               "OpenRouter – Claude 3.5 Haiku",
+		Name:               "OpenRouter: Claude 3.5 Haiku",
 		Provider:           ProviderOpenRouter,
 		APIModel:           "anthropic/claude-3.5-haiku",
 		CostPer1MIn:        AnthropicModels[Claude35Haiku].CostPer1MIn,
@@ -249,7 +254,7 @@ var OpenRouterModels = map[ModelID]Model{
 	},
 	OpenRouterClaude3Opus: {
 		ID:                 OpenRouterClaude3Opus,
-		Name:               "OpenRouter – Claude 3 Opus",
+		Name:               "OpenRouter: Claude 3 Opus",
 		Provider:           ProviderOpenRouter,
 		APIModel:           "anthropic/claude-3-opus",
 		CostPer1MIn:        AnthropicModels[Claude3Opus].CostPer1MIn,
@@ -258,5 +263,65 @@ var OpenRouterModels = map[ModelID]Model{
 		CostPer1MOutCached: AnthropicModels[Claude3Opus].CostPer1MOutCached,
 		ContextWindow:      AnthropicModels[Claude3Opus].ContextWindow,
 		DefaultMaxTokens:   AnthropicModels[Claude3Opus].DefaultMaxTokens,
+	},
+	OpenRouterQwen235B: {
+		ID:                 OpenRouterQwen235B,
+		Name:               "OpenRouter: Qwen3 235B A22B",
+		Provider:           ProviderOpenRouter,
+		APIModel:           "qwen/qwen3-235b-a22b",
+		CostPer1MIn:        0.1,
+		CostPer1MInCached:  0.1,
+		CostPer1MOut:       0.1,
+		CostPer1MOutCached: 0.1,
+		ContextWindow:      40960,
+		DefaultMaxTokens:   4096,
+	},
+	OpenRouterQwen32B: {
+		ID:                 OpenRouterQwen32B,
+		Name:               "OpenRouter: Qwen3 32B",
+		Provider:           ProviderOpenRouter,
+		APIModel:           "qwen/qwen3-32b",
+		CostPer1MIn:        0.1,
+		CostPer1MInCached:  0.1,
+		CostPer1MOut:       0.3,
+		CostPer1MOutCached: 0.3,
+		ContextWindow:      40960,
+		DefaultMaxTokens:   4096,
+	},
+	OpenRouterQwen30B: {
+		ID:                 OpenRouterQwen30B,
+		Name:               "OpenRouter: Qwen3 30B A3B",
+		Provider:           ProviderOpenRouter,
+		APIModel:           "qwen/qwen3-30b-a3b",
+		CostPer1MIn:        0.1,
+		CostPer1MInCached:  0.1,
+		CostPer1MOut:       0.3,
+		CostPer1MOutCached: 0.3,
+		ContextWindow:      40960,
+		DefaultMaxTokens:   4096,
+	},
+	OpenRouterQwen14B: {
+		ID:                 OpenRouterQwen14B,
+		Name:               "OpenRouter: Qwen3 14B",
+		Provider:           ProviderOpenRouter,
+		APIModel:           "qwen/qwen3-14b",
+		CostPer1MIn:        0.7,
+		CostPer1MInCached:  0.7,
+		CostPer1MOut:       0.24,
+		CostPer1MOutCached: 0.24,
+		ContextWindow:      40960,
+		DefaultMaxTokens:   4096,
+	},
+	OpenRouterQwen8B: {
+		ID:                 OpenRouterQwen8B,
+		Name:               "OpenRouter: Qwen3 8B",
+		Provider:           ProviderOpenRouter,
+		APIModel:           "qwen/qwen3-8b",
+		CostPer1MIn:        0.35,
+		CostPer1MInCached:  0.35,
+		CostPer1MOut:       0.138,
+		CostPer1MOutCached: 0.138,
+		ContextWindow:      128000,
+		DefaultMaxTokens:   4096,
 	},
 }

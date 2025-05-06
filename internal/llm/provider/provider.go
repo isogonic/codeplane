@@ -55,6 +55,8 @@ type Provider interface {
 	StreamResponse(ctx context.Context, messages []message.Message, tools []tools.BaseTool) <-chan ProviderEvent
 
 	Model() models.Model
+
+	MaxTokens() int64
 }
 
 type providerClientOptions struct {
@@ -166,6 +168,10 @@ func (p *baseProvider[C]) SendMessages(ctx context.Context, messages []message.M
 
 func (p *baseProvider[C]) Model() models.Model {
 	return p.options.model
+}
+
+func (p *baseProvider[C]) MaxTokens() int64 {
+	return p.options.maxTokens
 }
 
 func (p *baseProvider[C]) StreamResponse(ctx context.Context, messages []message.Message, tools []tools.BaseTool) <-chan ProviderEvent {
