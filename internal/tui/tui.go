@@ -226,14 +226,12 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				})
 				a.status = s.(core.StatusCmp)
 				cmds = append(cmds, cmd)
-
 			case "warn":
 				s, cmd := a.status.Update(util.InfoMsg{
 					Type: util.InfoTypeWarn,
 					Msg:  msg.Payload.Message,
 					TTL:  msg.Payload.PersistTime,
 				})
-
 				a.status = s.(core.StatusCmp)
 				cmds = append(cmds, cmd)
 			default:
@@ -490,6 +488,7 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, tea.Batch(cmds...)
 		}
 	}
+
 	if a.showPermissions {
 		d, permissionsCmd := a.permissions.Update(msg)
 		a.permissions = d.(dialog.PermissionDialogCmp)
@@ -569,20 +568,7 @@ func (a *appModel) moveToPage(pageID page.PageID) tea.Cmd {
 		return util.ReportWarn("Agent is busy, please wait...")
 	}
 
-	var cmds []tea.Cmd
-	if _, ok := a.loadedPages[pageID]; !ok {
-		cmd := a.pages[pageID].Init()
-		cmds = append(cmds, cmd)
-		a.loadedPages[pageID] = true
-	}
-	a.previousPage = a.currentPage
-	a.currentPage = pageID
-	if sizable, ok := a.pages[a.currentPage].(layout.Sizeable); ok {
-		cmd := sizable.SetSize(a.width, a.height)
-		cmds = append(cmds, cmd)
-	}
-
-	return tea.Batch(cmds...)
+	return a.moveToPageUnconditional(pageID)
 }
 
 // moveToPageUnconditional is like moveToPage but doesn't check if the agent is busy
@@ -820,13 +806,13 @@ If there are Cursor rules (in .cursor/rules/ or .cursorrules) or Copilot rules (
 			if model.currentPage != page.ChatPage {
 				return util.ReportWarn("Please navigate to a chat session first.")
 			}
-			
+
 			// Return a message that will be handled by the chat page
 			return tea.Batch(
 				util.CmdHandler(chat.CompactSessionMsg{}),
 				util.ReportInfo("Compacting conversation..."))
 		},
 	})
-	
+
 	return model
 }
