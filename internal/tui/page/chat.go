@@ -128,17 +128,20 @@ func (p *chatPage) clearSidebar() tea.Cmd {
 func (p *chatPage) sendMessage(text string, attachments []message.Attachment) tea.Cmd {
 	var cmds []tea.Cmd
 	if p.session.ID == "" {
-		session, err := p.app.Sessions.Create(context.Background(), "New Session")
+		newSession, err := p.app.Sessions.Create(context.Background(), "New Session")
 		if err != nil {
 			return util.ReportError(err)
 		}
 
-		p.session = session
+		p.session = newSession
+		// Update the current session in the session manager
+		session.SetCurrentSession(newSession.ID)
+		
 		cmd := p.setSidebar()
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
-		cmds = append(cmds, util.CmdHandler(chat.SessionSelectedMsg(session)))
+		cmds = append(cmds, util.CmdHandler(chat.SessionSelectedMsg(newSession)))
 	}
 
 	_, err := p.app.CoderAgent.Run(context.Background(), p.session.ID, text, attachments...)

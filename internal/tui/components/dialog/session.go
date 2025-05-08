@@ -91,8 +91,11 @@ func (s *sessionDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return s, nil
 		case key.Matches(msg, sessionKeys.Enter):
 			if len(s.sessions) > 0 {
+				selectedSession := s.sessions[s.selectedIdx]
+				// Update the session manager with the selected session
+				session.SetCurrentSession(selectedSession.ID)
 				return s, util.CmdHandler(SessionSelectedMsg{
-					Session: s.sessions[s.selectedIdx],
+					Session: selectedSession,
 				})
 			}
 		case key.Matches(msg, sessionKeys.Escape):

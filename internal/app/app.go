@@ -42,6 +42,9 @@ func New(ctx context.Context, conn *sql.DB) (*App, error) {
 	messages := message.NewService(q)
 	files := history.NewService(q, conn)
 
+	// Initialize session manager
+	session.InitManager(sessions)
+
 	app := &App{
 		Sessions:    sessions,
 		Messages:    messages,
