@@ -13,11 +13,6 @@ import (
 )
 
 const (
-	persistKeyArg  = "$_persist"
-	PersistTimeArg = "$_persist_time"
-)
-
-const (
 	// Maximum number of log messages to keep in memory
 	maxLogMessages = 1000
 )
@@ -76,20 +71,10 @@ func (w *writer) Write(p []byte) (int, error) {
 			case "msg":
 				msg.Message = string(d.Value())
 			default:
-				if string(d.Key()) == persistKeyArg {
-					msg.Persist = true
-				} else if string(d.Key()) == PersistTimeArg {
-					parsed, err := time.ParseDuration(string(d.Value()))
-					if err != nil {
-						continue
-					}
-					msg.PersistTime = parsed
-				} else {
-					msg.Attributes = append(msg.Attributes, Attr{
-						Key:   string(d.Key()),
-						Value: string(d.Value()),
-					})
-				}
+				msg.Attributes = append(msg.Attributes, Attr{
+					Key:   string(d.Key()),
+					Value: string(d.Value()),
+				})
 			}
 		}
 		defaultLogData.Add(msg)

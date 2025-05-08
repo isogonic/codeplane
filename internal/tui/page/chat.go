@@ -7,9 +7,9 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/opencode-ai/opencode/internal/app"
-	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/message"
 	"github.com/opencode-ai/opencode/internal/session"
+	"github.com/opencode-ai/opencode/internal/status"
 	"github.com/opencode-ai/opencode/internal/tui/components/chat"
 	"github.com/opencode-ai/opencode/internal/tui/layout"
 	"github.com/opencode-ai/opencode/internal/tui/util"
@@ -26,9 +26,9 @@ type chatPage struct {
 }
 
 type ChatKeyMap struct {
-	NewSession   key.Binding
-	Cancel       key.Binding
-	ToggleTools  key.Binding
+	NewSession  key.Binding
+	Cancel      key.Binding
+	ToggleTools key.Binding
 }
 
 var keyMap = ChatKeyMap{
@@ -74,16 +74,17 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		p.session = msg
 	case chat.CompactSessionMsg:
 		if p.session.ID == "" {
-			return p, util.ReportWarn("No active session to compact.")
+			status.Warn("No active session to compact.")
+			return p, nil
 		}
 
 		// Run compaction in background
 		go func(sessionID string) {
 			err := p.app.CoderAgent.CompactSession(context.Background(), sessionID)
 			if err != nil {
-				logging.ErrorPersist(fmt.Sprintf("Compaction failed: %v", err))
+				status.Error(fmt.Sprintf("Compaction failed: %v", err))
 			} else {
-				logging.InfoPersist("Conversation compacted successfully.")
+				status.Info("Conversation compacted successfully.")
 			}
 		}(p.session.ID)
 
@@ -130,13 +131,14 @@ func (p *chatPage) sendMessage(text string, attachments []message.Attachment) te
 	if p.session.ID == "" {
 		newSession, err := p.app.Sessions.Create(context.Background(), "New Session")
 		if err != nil {
-			return util.ReportError(err)
+			status.Error(err.Error())
+			return nil
 		}
 
 		p.session = newSession
 		// Update the current session in the session manager
 		session.SetCurrentSession(newSession.ID)
-		
+
 		cmd := p.setSidebar()
 		if cmd != nil {
 			cmds = append(cmds, cmd)
@@ -146,7 +148,8 @@ func (p *chatPage) sendMessage(text string, attachments []message.Attachment) te
 
 	_, err := p.app.CoderAgent.Run(context.Background(), p.session.ID, text, attachments...)
 	if err != nil {
-		return util.ReportError(err)
+		status.Error(err.Error())
+		return nil
 	}
 	return tea.Batch(cmds...)
 }

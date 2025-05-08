@@ -18,6 +18,7 @@ import (
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/message"
+	"github.com/opencode-ai/opencode/internal/status"
 	"github.com/opencode-ai/opencode/internal/tui/image"
 	"github.com/opencode-ai/opencode/internal/tui/styles"
 	"github.com/opencode-ai/opencode/internal/tui/theme"
@@ -156,7 +157,7 @@ func (f *filepickerCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				path = f.cwd.Value()
 				fileInfo, err := os.Stat(path)
 				if err != nil {
-					logging.ErrorPersist("Invalid path")
+					status.Error("Invalid path")
 					return f, cmd
 				}
 				isPathDir = fileInfo.IsDir()
@@ -225,7 +226,7 @@ func (f *filepickerCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (f *filepickerCmp) addAttachmentToMessage() (tea.Model, tea.Cmd) {
 	modeInfo := GetSelectedModel(config.Get())
 	if !modeInfo.SupportsAttachments {
-		logging.ErrorPersist(fmt.Sprintf("Model %s doesn't support attachments", modeInfo.Name))
+		status.Error(fmt.Sprintf("Model %s doesn't support attachments", modeInfo.Name))
 		return f, nil
 	}
 	if isExtSupported(f.dirs[f.cursor].Name()) {
@@ -233,17 +234,17 @@ func (f *filepickerCmp) addAttachmentToMessage() (tea.Model, tea.Cmd) {
 		selectedFilePath := filepath.Join(f.cwdDetails.directory, "/", f.selectedFile)
 		isFileLarge, err := image.ValidateFileSize(selectedFilePath, maxAttachmentSize)
 		if err != nil {
-			logging.ErrorPersist("unable to read the image")
+			status.Error("unable to read the image")
 			return f, nil
 		}
 		if isFileLarge {
-			logging.ErrorPersist("file too large, max 5MB")
+			status.Error("file too large, max 5MB")
 			return f, nil
 		}
 
 		content, err := os.ReadFile(selectedFilePath)
 		if err != nil {
-			logging.ErrorPersist("Unable read selected file")
+			status.Error("Unable read selected file")
 			return f, nil
 		}
 
@@ -255,7 +256,7 @@ func (f *filepickerCmp) addAttachmentToMessage() (tea.Model, tea.Cmd) {
 		return f, util.CmdHandler(AttachmentAddedMsg{attachment})
 	}
 	if !isExtSupported(f.selectedFile) {
-		logging.ErrorPersist("Unsupported file")
+		status.Error("Unsupported file")
 		return f, nil
 	}
 	return f, nil
@@ -425,7 +426,7 @@ func readDir(path string, showHidden bool) []os.DirEntry {
 	go func() {
 		dirEntries, err := os.ReadDir(path)
 		if err != nil {
-			logging.ErrorPersist(err.Error())
+			status.Error(err.Error())
 			errChan <- err
 			return
 		}
@@ -457,12 +458,12 @@ func readDir(path string, showHidden bool) []os.DirEntry {
 
 		return sanitizedDirEntries
 
-	case err := <-errChan:
-		logging.ErrorPersist(fmt.Sprintf("Error reading directory %s", path), err)
+	case <-errChan:
+		status.Error(fmt.Sprintf("Error reading directory %s", path))
 		return []os.DirEntry{}
 
 	case <-time.After(5 * time.Second):
-		logging.ErrorPersist(fmt.Sprintf("Timeout reading directory %s", path), nil)
+		status.Error(fmt.Sprintf("Timeout reading directory %s", path))
 		return []os.DirEntry{}
 	}
 }

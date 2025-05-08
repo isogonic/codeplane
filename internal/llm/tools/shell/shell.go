@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/opencode-ai/opencode/internal/logging"
+	"github.com/opencode-ai/opencode/internal/status"
 )
 
 type PersistentShell struct {
@@ -101,7 +101,7 @@ func newPersistentShell(cwd string) *PersistentShell {
 	go func() {
 		err := cmd.Wait()
 		if err != nil {
-			logging.ErrorPersist(fmt.Sprintf("Shell process exited with error: %v", err))
+			status.Error(fmt.Sprintf("Shell process exited with error: %v", err))
 		}
 		shell.isAlive = false
 		close(shell.commandQueue)

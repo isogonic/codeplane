@@ -13,10 +13,10 @@ import (
 	"github.com/opencode-ai/opencode/internal/lsp/protocol"
 	"github.com/opencode-ai/opencode/internal/pubsub"
 	"github.com/opencode-ai/opencode/internal/session"
+	"github.com/opencode-ai/opencode/internal/status"
 	"github.com/opencode-ai/opencode/internal/tui/components/chat"
 	"github.com/opencode-ai/opencode/internal/tui/styles"
 	"github.com/opencode-ai/opencode/internal/tui/theme"
-	"github.com/opencode-ai/opencode/internal/tui/util"
 )
 
 type StatusCmp interface {
@@ -25,22 +25,34 @@ type StatusCmp interface {
 }
 
 type statusCmp struct {
-	info       util.InfoMsg
-	width      int
-	messageTTL time.Duration
-	lspClients map[string]*lsp.Client
-	session    session.Session
+	statusMessages []statusMessage
+	width          int
+	messageTTL     time.Duration
+	lspClients     map[string]*lsp.Client
+	session        session.Session
+}
+
+type statusMessage struct {
+	Level     status.Level
+	Message   string
+	Timestamp time.Time
+	ExpiresAt time.Time
 }
 
 // clearMessageCmd is a command that clears status messages after a timeout
-func (m statusCmp) clearMessageCmd(ttl time.Duration) tea.Cmd {
-	return tea.Tick(ttl, func(time.Time) tea.Msg {
-		return util.ClearStatusMsg{}
+func (m statusCmp) clearMessageCmd() tea.Cmd {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
+		return statusCleanupMsg{time: t}
 	})
 }
 
+// statusCleanupMsg is a message that triggers cleanup of expired status messages
+type statusCleanupMsg struct {
+	time time.Time
+}
+
 func (m statusCmp) Init() tea.Cmd {
-	return nil
+	return m.clearMessageCmd()
 }
 
 func (m statusCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -58,15 +70,26 @@ func (m statusCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.session = msg.Payload
 			}
 		}
-	case util.InfoMsg:
-		m.info = msg
-		ttl := msg.TTL
-		if ttl == 0 {
-			ttl = m.messageTTL
+	case pubsub.Event[status.StatusMessage]:
+		if msg.Type == pubsub.CreatedEvent {
+			statusMsg := statusMessage{
+				Level:     msg.Payload.Level,
+				Message:   msg.Payload.Message,
+				Timestamp: msg.Payload.Timestamp,
+				ExpiresAt: msg.Payload.Timestamp.Add(m.messageTTL),
+			}
+			m.statusMessages = append(m.statusMessages, statusMsg)
 		}
-		return m, m.clearMessageCmd(ttl)
-	case util.ClearStatusMsg:
-		m.info = util.InfoMsg{}
+	case statusCleanupMsg:
+		// Remove expired messages
+		var activeMessages []statusMessage
+		for _, sm := range m.statusMessages {
+			if sm.ExpiresAt.After(msg.time) {
+				activeMessages = append(activeMessages, sm)
+			}
+		}
+		m.statusMessages = activeMessages
+		return m, m.clearMessageCmd()
 	}
 	return m, nil
 }
@@ -128,8 +151,7 @@ func (m statusCmp) View() string {
 		status += tokensStyle
 	}
 
-	diagnostics :=
-		styles.Padded().Background(t.BackgroundDarker()).Render(m.projectDiagnostics())
+	diagnostics := styles.Padded().Background(t.BackgroundDarker()).Render(m.projectDiagnostics())
 
 	model := m.model()
 
@@ -141,25 +163,31 @@ func (m statusCmp) View() string {
 			lipgloss.Width(diagnostics),
 	)
 
-	if m.info.Msg != "" {
+	// Display the first status message if available
+	if len(m.statusMessages) > 0 {
+		sm := m.statusMessages[0]
 		infoStyle := styles.Padded().
 			Foreground(t.Background()).
 			Width(statusWidth)
-		switch m.info.Type {
-		case util.InfoTypeInfo:
+
+		switch sm.Level {
+		case "info":
 			infoStyle = infoStyle.Background(t.Info())
-		case util.InfoTypeWarn:
+		case "warn":
 			infoStyle = infoStyle.Background(t.Warning())
-		case util.InfoTypeError:
+		case "error":
 			infoStyle = infoStyle.Background(t.Error())
+		case "debug":
+			infoStyle = infoStyle.Background(t.TextMuted())
 		}
 
 		// Truncate message if it's longer than available width
-		msg := m.info.Msg
+		msg := sm.Message
 		availWidth := statusWidth - 10
 		if len(msg) > availWidth && availWidth > 0 {
 			msg = msg[:availWidth] + "..."
 		}
+
 		status += infoStyle.Render(msg)
 	} else {
 		status += styles.Padded().
@@ -272,8 +300,12 @@ func NewStatusCmp(lspClients map[string]*lsp.Client) StatusCmp {
 	// Initialize the help widget with default text
 	helpWidget = getHelpWidget("")
 
-	return &statusCmp{
-		messageTTL: 10 * time.Second,
-		lspClients: lspClients,
+	statusComponent := &statusCmp{
+		statusMessages: []statusMessage{},
+		messageTTL:     4 * time.Second,
+		lspClients:     lspClients,
 	}
+
+	return statusComponent
 }
+

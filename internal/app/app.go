@@ -16,6 +16,7 @@ import (
 	"github.com/opencode-ai/opencode/internal/message"
 	"github.com/opencode-ai/opencode/internal/permission"
 	"github.com/opencode-ai/opencode/internal/session"
+	"github.com/opencode-ai/opencode/internal/status"
 	"github.com/opencode-ai/opencode/internal/tui/theme"
 )
 
@@ -24,6 +25,7 @@ type App struct {
 	Messages    message.Service
 	History     history.Service
 	Permissions permission.Service
+	Status      status.Service
 
 	CoderAgent agent.Service
 
@@ -38,18 +40,24 @@ type App struct {
 
 func New(ctx context.Context, conn *sql.DB) (*App, error) {
 	q := db.New(conn)
-	sessions := session.NewService(q)
-	messages := message.NewService(q)
-	files := history.NewService(q, conn)
+	sessionService := session.NewService(q)
+	messageService := message.NewService(q)
+	historyService := history.NewService(q, conn)
+	permissionService := permission.NewPermissionService()
+	statusService := status.NewService()
 
 	// Initialize session manager
-	session.InitManager(sessions)
+	session.InitManager(sessionService)
+
+	// Initialize status service
+	status.InitManager(statusService)
 
 	app := &App{
-		Sessions:    sessions,
-		Messages:    messages,
-		History:     files,
-		Permissions: permission.NewPermissionService(),
+		Sessions:    sessionService,
+		Messages:    messageService,
+		History:     historyService,
+		Permissions: permissionService,
+		Status:      statusService,
 		LSPClients:  make(map[string]*lsp.Client),
 	}
 

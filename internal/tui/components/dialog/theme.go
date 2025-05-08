@@ -4,6 +4,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/opencode-ai/opencode/internal/status"
 	"github.com/opencode-ai/opencode/internal/tui/layout"
 	"github.com/opencode-ai/opencode/internal/tui/styles"
 	"github.com/opencode-ai/opencode/internal/tui/theme"
@@ -106,7 +107,8 @@ func (t *themeDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return t, util.CmdHandler(CloseThemeDialogMsg{})
 				}
 				if err := theme.SetTheme(selectedTheme); err != nil {
-					return t, util.ReportError(err)
+					status.Error(err.Error())
+					return t, nil
 				}
 				return t, util.CmdHandler(ThemeChangedMsg{
 					ThemeName: selectedTheme,
@@ -195,4 +197,3 @@ func NewThemeDialogCmp() ThemeDialog {
 		currentTheme: "",
 	}
 }
-

@@ -15,10 +15,10 @@ import (
 	"github.com/opencode-ai/opencode/internal/message"
 	"github.com/opencode-ai/opencode/internal/pubsub"
 	"github.com/opencode-ai/opencode/internal/session"
+	"github.com/opencode-ai/opencode/internal/status"
 	"github.com/opencode-ai/opencode/internal/tui/components/dialog"
 	"github.com/opencode-ai/opencode/internal/tui/styles"
 	"github.com/opencode-ai/opencode/internal/tui/theme"
-	"github.com/opencode-ai/opencode/internal/tui/util"
 )
 
 type cacheItem struct {
@@ -26,17 +26,17 @@ type cacheItem struct {
 	content []uiMessage
 }
 type messagesCmp struct {
-	app             *app.App
-	width, height   int
-	viewport        viewport.Model
-	session         session.Session
-	messages        []message.Message
-	uiMessages      []uiMessage
-	currentMsgID    string
-	cachedContent   map[string]cacheItem
-	spinner         spinner.Model
-	rendering       bool
-	attachments     viewport.Model
+	app              *app.App
+	width, height    int
+	viewport         viewport.Model
+	session          session.Session
+	messages         []message.Message
+	uiMessages       []uiMessage
+	currentMsgID     string
+	cachedContent    map[string]cacheItem
+	spinner          spinner.Model
+	rendering        bool
+	attachments      viewport.Model
 	showToolMessages bool
 }
 type renderFinishedMsg struct{}
@@ -447,7 +447,8 @@ func (m *messagesCmp) SetSession(session session.Session) tea.Cmd {
 	m.session = session
 	messages, err := m.app.Messages.List(context.Background(), session.ID)
 	if err != nil {
-		return util.ReportError(err)
+		status.Error(err.Error())
+		return nil
 	}
 	m.messages = messages
 	if len(m.messages) > 0 {
@@ -483,11 +484,11 @@ func NewMessagesCmp(app *app.App) tea.Model {
 	vp.KeyMap.HalfPageUp = messageKeys.HalfPageUp
 	vp.KeyMap.HalfPageDown = messageKeys.HalfPageDown
 	return &messagesCmp{
-		app:             app,
-		cachedContent:   make(map[string]cacheItem),
-		viewport:        vp,
-		spinner:         s,
-		attachments:     attachmets,
+		app:              app,
+		cachedContent:    make(map[string]cacheItem),
+		viewport:         vp,
+		spinner:          s,
+		attachments:      attachmets,
 		showToolMessages: true,
 	}
 }

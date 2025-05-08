@@ -12,9 +12,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/opencode-ai/opencode/internal/app"
-	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/message"
 	"github.com/opencode-ai/opencode/internal/session"
+	"github.com/opencode-ai/opencode/internal/status"
 	"github.com/opencode-ai/opencode/internal/tui/components/dialog"
 	"github.com/opencode-ai/opencode/internal/tui/layout"
 	"github.com/opencode-ai/opencode/internal/tui/styles"
@@ -87,7 +87,8 @@ func (m *editorCmp) openEditor(value string) tea.Cmd {
 	tmpfile, err := os.CreateTemp("", "msg_*.md")
 	tmpfile.WriteString(value)
 	if err != nil {
-		return util.ReportError(err)
+		status.Error(err.Error())
+		return nil
 	}
 	tmpfile.Close()
 	c := exec.Command(editor, tmpfile.Name()) //nolint:gosec
@@ -96,14 +97,17 @@ func (m *editorCmp) openEditor(value string) tea.Cmd {
 	c.Stderr = os.Stderr
 	return tea.ExecProcess(c, func(err error) tea.Msg {
 		if err != nil {
-			return util.ReportError(err)
+			status.Error(err.Error())
+			return nil
 		}
 		content, err := os.ReadFile(tmpfile.Name())
 		if err != nil {
-			return util.ReportError(err)
+			status.Error(err.Error())
+			return nil
 		}
 		if len(content) == 0 {
-			return util.ReportWarn("Message is empty")
+			status.Warn("Message is empty")
+			return nil
 		}
 		os.Remove(tmpfile.Name())
 		attachments := m.attachments
@@ -121,7 +125,8 @@ func (m *editorCmp) Init() tea.Cmd {
 
 func (m *editorCmp) send() tea.Cmd {
 	if m.app.CoderAgent.IsSessionBusy(m.session.ID) {
-		return util.ReportWarn("Agent is working, please wait...")
+		status.Warn("Agent is working, please wait...")
+		return nil
 	}
 
 	value := m.textarea.Value()
@@ -153,7 +158,7 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case dialog.AttachmentAddedMsg:
 		if len(m.attachments) >= maxAttachments {
-			logging.ErrorPersist(fmt.Sprintf("cannot add more than %d images", maxAttachments))
+			status.Error(fmt.Sprintf("cannot add more than %d images", maxAttachments))
 			return m, cmd
 		}
 		m.attachments = append(m.attachments, msg.Attachment)
@@ -185,7 +190,8 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if key.Matches(msg, editorMaps.OpenEditor) {
 			if m.app.CoderAgent.IsSessionBusy(m.session.ID) {
-				return m, util.ReportWarn("Agent is working, please wait...")
+				status.Warn("Agent is working, please wait...")
+				return m, nil
 			}
 			value := m.textarea.Value()
 			m.textarea.Reset()

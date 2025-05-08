@@ -12,6 +12,7 @@ import (
 	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/permission"
 	"github.com/opencode-ai/opencode/internal/pubsub"
+	"github.com/opencode-ai/opencode/internal/status"
 	"github.com/opencode-ai/opencode/internal/tui/components/chat"
 	"github.com/opencode-ai/opencode/internal/tui/components/core"
 	"github.com/opencode-ai/opencode/internal/tui/components/dialog"
@@ -154,10 +155,8 @@ func (a appModel) Init() tea.Cmd {
 	cmds = append(cmds, func() tea.Msg {
 		shouldShow, err := config.ShouldShowInitDialog()
 		if err != nil {
-			return util.InfoMsg{
-				Type: util.InfoTypeError,
-				Msg:  "Failed to check init status: " + err.Error(),
-			}
+			status.Error("Failed to check init status: " + err.Error())
+			return nil
 		}
 		return dialog.ShowInitDialogMsg{Show: shouldShow}
 	})
@@ -201,54 +200,11 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.initDialog.SetSize(msg.Width, msg.Height)
 
 		return a, tea.Batch(cmds...)
-	// Status
-	case util.InfoMsg:
-		s, cmd := a.status.Update(msg)
-		a.status = s.(core.StatusCmp)
-		cmds = append(cmds, cmd)
-		return a, tea.Batch(cmds...)
-	case pubsub.Event[logging.LogMessage]:
-		if msg.Payload.Persist {
-			switch msg.Payload.Level {
-			case "error":
-				s, cmd := a.status.Update(util.InfoMsg{
-					Type: util.InfoTypeError,
-					Msg:  msg.Payload.Message,
-					TTL:  msg.Payload.PersistTime,
-				})
-				a.status = s.(core.StatusCmp)
-				cmds = append(cmds, cmd)
-			case "info":
-				s, cmd := a.status.Update(util.InfoMsg{
-					Type: util.InfoTypeInfo,
-					Msg:  msg.Payload.Message,
-					TTL:  msg.Payload.PersistTime,
-				})
-				a.status = s.(core.StatusCmp)
-				cmds = append(cmds, cmd)
-			case "warn":
-				s, cmd := a.status.Update(util.InfoMsg{
-					Type: util.InfoTypeWarn,
-					Msg:  msg.Payload.Message,
-					TTL:  msg.Payload.PersistTime,
-				})
-				a.status = s.(core.StatusCmp)
-				cmds = append(cmds, cmd)
-			default:
-				s, cmd := a.status.Update(util.InfoMsg{
-					Type: util.InfoTypeInfo,
-					Msg:  msg.Payload.Message,
-					TTL:  msg.Payload.PersistTime,
-				})
-				a.status = s.(core.StatusCmp)
-				cmds = append(cmds, cmd)
-			}
-		}
-	case util.ClearStatusMsg:
-		s, _ := a.status.Update(msg)
-		a.status = s.(core.StatusCmp)
 
-	// Permission
+	case pubsub.Event[logging.LogMessage]:
+		a.pages[page.LogsPage], cmd = a.pages[page.LogsPage].Update(msg)
+		cmds = append(cmds, cmd)
+
 	case pubsub.Event[permission.PermissionRequest]:
 		a.showPermissions = true
 		return a, a.permissions.SetPermissions(msg.Payload)
@@ -287,7 +243,8 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case dialog.ThemeChangedMsg:
 		a.pages[a.currentPage], cmd = a.pages[a.currentPage].Update(msg)
 		a.showThemeDialog = false
-		return a, tea.Batch(cmd, util.ReportInfo("Theme changed to: "+msg.ThemeName))
+		status.Info("Theme changed to: " + msg.ThemeName)
+		return a, cmd
 
 	case dialog.CloseModelDialogMsg:
 		a.showModelDialog = false
@@ -298,10 +255,12 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		model, err := a.app.CoderAgent.Update(config.AgentCoder, msg.Model.ID)
 		if err != nil {
-			return a, util.ReportError(err)
+			status.Error(err.Error())
+			return a, nil
 		}
 
-		return a, util.ReportInfo(fmt.Sprintf("Model changed to %s", model.Name))
+		status.Info(fmt.Sprintf("Model changed to %s", model.Name))
+		return a, nil
 
 	case dialog.ShowInitDialogMsg:
 		a.showInitDialog = msg.Show
@@ -315,7 +274,8 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if cmd.ID == "init" {
 					// Mark the project as initialized
 					if err := config.MarkProjectInitialized(); err != nil {
-						return a, util.ReportError(err)
+						status.Error(err.Error())
+						return a, nil
 					}
 					return a, cmd.Handler(cmd)
 				}
@@ -323,7 +283,8 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			// Mark the project as initialized without running the command
 			if err := config.MarkProjectInitialized(); err != nil {
-				return a, util.ReportError(err)
+				status.Error(err.Error())
+				return a, nil
 			}
 		}
 		return a, nil
@@ -343,11 +304,11 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Command.Handler != nil {
 			return a, msg.Command.Handler(msg.Command)
 		}
-		return a, util.ReportInfo("Command selected: " + msg.Command.Title)
+		status.Info("Command selected: " + msg.Command.Title)
+		return a, nil
 
 	case tea.KeyMsg:
 		switch {
-
 		case key.Matches(msg, keys.Quit):
 			a.showQuit = !a.showQuit
 			if a.showHelp {
@@ -372,10 +333,12 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Load sessions and show the dialog
 				sessions, err := a.app.Sessions.List(context.Background())
 				if err != nil {
-					return a, util.ReportError(err)
+					status.Error(err.Error())
+					return a, nil
 				}
 				if len(sessions) == 0 {
-					return a, util.ReportWarn("No sessions available")
+					status.Warn("No sessions available")
+					return a, nil
 				}
 				a.sessionDialog.SetSessions(sessions)
 				a.showSessionDialog = true
@@ -386,7 +349,8 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if a.currentPage == page.ChatPage && !a.showQuit && !a.showPermissions && !a.showSessionDialog && !a.showThemeDialog && !a.showFilepicker {
 				// Show commands dialog
 				if len(a.commands) == 0 {
-					return a, util.ReportWarn("No commands available")
+					status.Warn("No commands available")
+					return a, nil
 				}
 				a.commandDialog.SetCommands(a.commands)
 				a.showCommandDialog = true
@@ -427,7 +391,8 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					a.showInitDialog = false
 					// Mark the project as initialized without running the command
 					if err := config.MarkProjectInitialized(); err != nil {
-						return a, util.ReportError(err)
+						status.Error(err.Error())
+						return a, nil
 					}
 					return a, nil
 				}
@@ -466,7 +431,6 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		f, filepickerCmd := a.filepicker.Update(msg)
 		a.filepicker = f.(dialog.FilepickerCmp)
 		cmds = append(cmds, filepickerCmd)
-
 	}
 
 	if a.showFilepicker {
@@ -549,8 +513,10 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	s, _ := a.status.Update(msg)
+	s, cmd := a.status.Update(msg)
+	cmds = append(cmds, cmd)
 	a.status = s.(core.StatusCmp)
+
 	a.pages[a.currentPage], cmd = a.pages[a.currentPage].Update(msg)
 	cmds = append(cmds, cmd)
 	return a, tea.Batch(cmds...)
@@ -565,7 +531,8 @@ func (a *appModel) moveToPage(pageID page.PageID) tea.Cmd {
 	// Allow navigating to logs page even when agent is busy
 	if a.app.CoderAgent.IsBusy() && pageID != page.LogsPage {
 		// Don't move to other pages if the agent is busy
-		return util.ReportWarn("Agent is busy, please wait...")
+		status.Warn("Agent is busy, please wait...")
+		return nil
 	}
 
 	return a.moveToPageUnconditional(pageID)
@@ -804,13 +771,13 @@ If there are Cursor rules (in .cursor/rules/ or .cursorrules) or Copilot rules (
 		Handler: func(cmd dialog.Command) tea.Cmd {
 			// Get the current session from the appModel
 			if model.currentPage != page.ChatPage {
-				return util.ReportWarn("Please navigate to a chat session first.")
+				status.Warn("Please navigate to a chat session first.")
+				return nil
 			}
 
 			// Return a message that will be handled by the chat page
-			return tea.Batch(
-				util.CmdHandler(chat.CompactSessionMsg{}),
-				util.ReportInfo("Compacting conversation..."))
+			status.Info("Compacting conversation...")
+			return util.CmdHandler(chat.CompactSessionMsg{})
 		},
 	})
 

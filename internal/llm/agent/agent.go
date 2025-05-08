@@ -17,6 +17,7 @@ import (
 	"github.com/opencode-ai/opencode/internal/message"
 	"github.com/opencode-ai/opencode/internal/permission"
 	"github.com/opencode-ai/opencode/internal/session"
+	"github.com/opencode-ai/opencode/internal/status"
 )
 
 // Common errors
@@ -96,7 +97,7 @@ func NewAgent(
 func (a *agent) Cancel(sessionID string) {
 	if cancelFunc, exists := a.activeRequests.LoadAndDelete(sessionID); exists {
 		if cancel, ok := cancelFunc.(context.CancelFunc); ok {
-			logging.InfoPersist(fmt.Sprintf("Request cancellation initiated for session: %s", sessionID))
+			status.Info(fmt.Sprintf("Request cancellation initiated for session: %s", sessionID))
 			cancel()
 		}
 	}
@@ -186,7 +187,7 @@ func (a *agent) Run(ctx context.Context, sessionID string, content string, attac
 		}
 		result := a.processGeneration(genCtx, sessionID, content, attachmentParts)
 		if result.Err() != nil && !errors.Is(result.Err(), ErrRequestCancelled) && !errors.Is(result.Err(), context.Canceled) {
-			logging.ErrorPersist(result.Err().Error())
+			status.Error(result.Err().Error())
 		}
 		logging.Debug("Request completed", "sessionID", sessionID)
 		a.activeRequests.Delete(sessionID)
@@ -224,11 +225,11 @@ func (a *agent) processGeneration(ctx context.Context, sessionID, content string
 	if len(sessionMessages) == 0 && currentSession.Summary == "" {
 		go func() {
 			defer logging.RecoverPanic("agent.Run", func() {
-				logging.ErrorPersist("panic while generating title")
+				status.Error("panic while generating title")
 			})
 			titleErr := a.generateTitle(context.Background(), sessionID, content)
 			if titleErr != nil {
-				logging.ErrorPersist(fmt.Sprintf("failed to generate title: %v", titleErr))
+				status.Error(fmt.Sprintf("failed to generate title: %v", titleErr))
 			}
 		}()
 	}
@@ -308,11 +309,11 @@ func (a *agent) streamAndHandleEvents(ctx context.Context, sessionID string, msg
 
 	// If we're approaching the context window limit, trigger auto-compaction
 	if false && (*usage+maxTokens) >= threshold {
-		logging.InfoPersist(fmt.Sprintf("Auto-compaction triggered for session %s. Estimated tokens: %d, Threshold: %d", sessionID, usage, threshold))
+		status.Info(fmt.Sprintf("Auto-compaction triggered for session %s. Estimated tokens: %d, Threshold: %d", sessionID, usage, threshold))
 
 		// Perform compaction with pause/resume to ensure safety
 		if err := a.CompactSession(ctx, sessionID); err != nil {
-			logging.ErrorPersist(fmt.Sprintf("Auto-compaction failed: %v", err))
+			status.Error(fmt.Sprintf("Auto-compaction failed: %v", err))
 			// Continue with the request even if compaction fails
 		} else {
 			// Re-fetch session details after compaction
@@ -495,10 +496,10 @@ func (a *agent) processEvent(ctx context.Context, sessionID string, assistantMsg
 		return a.messages.Update(ctx, *assistantMsg)
 	case provider.EventError:
 		if errors.Is(event.Error, context.Canceled) {
-			logging.InfoPersist(fmt.Sprintf("Event processing canceled for session: %s", sessionID))
+			status.Info(fmt.Sprintf("Event processing canceled for session: %s", sessionID))
 			return context.Canceled
 		}
-		logging.ErrorPersist(event.Error.Error())
+		status.Error(event.Error.Error())
 		return event.Error
 	case provider.EventComplete:
 		assistantMsg.SetToolCalls(event.Response.ToolCalls)
@@ -570,7 +571,7 @@ func (a *agent) PauseSession(sessionID string) error {
 		return nil // Session is not active, no need to pause
 	}
 
-	logging.InfoPersist(fmt.Sprintf("Pausing session: %s", sessionID))
+	status.Info(fmt.Sprintf("Pausing session: %s", sessionID))
 	a.pauseLock.Lock() // Acquire write lock to block new operations
 	return nil
 }
@@ -578,7 +579,7 @@ func (a *agent) PauseSession(sessionID string) error {
 // ResumeSession resumes message processing for a session
 // This should be called after completing operations that required exclusive access
 func (a *agent) ResumeSession(sessionID string) error {
-	logging.InfoPersist(fmt.Sprintf("Resuming session: %s", sessionID))
+	status.Info(fmt.Sprintf("Resuming session: %s", sessionID))
 	a.pauseLock.Unlock() // Release write lock to allow operations to continue
 	return nil
 }
@@ -592,7 +593,7 @@ func (a *agent) CompactSession(ctx context.Context, sessionID string) error {
 		}
 		// Make sure to resume the session when we're done
 		defer a.ResumeSession(sessionID)
-		logging.InfoPersist(fmt.Sprintf("Session %s paused for compaction", sessionID))
+		status.Info(fmt.Sprintf("Session %s paused for compaction", sessionID))
 	}
 
 	// Create a cancellable context

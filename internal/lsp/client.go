@@ -17,6 +17,7 @@ import (
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/lsp/protocol"
+	"github.com/opencode-ai/opencode/internal/status"
 )
 
 type Client struct {
@@ -106,7 +107,7 @@ func NewClient(ctx context.Context, command string, args ...string) (*Client, er
 	// Start message handling loop
 	go func() {
 		defer logging.RecoverPanic("LSP-message-handler", func() {
-			logging.ErrorPersist("LSP message handler crashed, LSP functionality may be impaired")
+			status.Error("LSP message handler crashed, LSP functionality may be impaired")
 		})
 		client.handleMessages()
 	}()
