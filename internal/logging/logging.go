@@ -10,22 +10,6 @@ import (
 	"github.com/opencode-ai/opencode/internal/status"
 )
 
-func Info(msg string, args ...any) {
-	slog.Info(msg, args...)
-}
-
-func Debug(msg string, args ...any) {
-	slog.Debug(msg, args...)
-}
-
-func Warn(msg string, args ...any) {
-	slog.Warn(msg, args...)
-}
-
-func Error(msg string, args ...any) {
-	slog.Error(msg, args...)
-}
-
 // RecoverPanic is a common function to handle panics gracefully.
 // It logs the error, creates a panic log file with stack trace,
 // and executes an optional cleanup function before returning.
@@ -33,7 +17,7 @@ func RecoverPanic(name string, cleanup func()) {
 	if r := recover(); r != nil {
 		// Log the panic
 		errorMsg := fmt.Sprintf("Panic in %s: %v", name, r)
-		Error(errorMsg)
+		slog.Error(errorMsg)
 		status.Error(errorMsg)
 
 		// Create a timestamped panic log file
@@ -43,7 +27,7 @@ func RecoverPanic(name string, cleanup func()) {
 		file, err := os.Create(filename)
 		if err != nil {
 			errMsg := fmt.Sprintf("Failed to create panic log: %v", err)
-			Error(errMsg)
+			slog.Error(errMsg)
 			status.Error(errMsg)
 		} else {
 			defer file.Close()
@@ -54,7 +38,7 @@ func RecoverPanic(name string, cleanup func()) {
 			fmt.Fprintf(file, "Stack Trace:\n%s\n", debug.Stack())
 
 			infoMsg := fmt.Sprintf("Panic details written to %s", filename)
-			Info(infoMsg)
+			slog.Info(infoMsg)
 			status.Info(infoMsg)
 		}
 
@@ -64,3 +48,4 @@ func RecoverPanic(name string, cleanup func()) {
 		}
 	}
 }
+

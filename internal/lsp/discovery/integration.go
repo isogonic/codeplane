@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/logging"
+	"log/slog"
 )
 
 // IntegrateLSPServers discovers languages and LSP servers and integrates them into the application configuration
@@ -23,9 +23,9 @@ func IntegrateLSPServers(workingDir string) error {
 
 	// Always run language detection, but log differently for first run vs. subsequent runs
 	if shouldInit || len(cfg.LSP) == 0 {
-		logging.Info("Running initial LSP auto-discovery...")
+		slog.Info("Running initial LSP auto-discovery...")
 	} else {
-		logging.Debug("Running LSP auto-discovery to detect new languages...")
+		slog.Debug("Running LSP auto-discovery to detect new languages...")
 	}
 
 	// Configure LSP servers
@@ -38,7 +38,7 @@ func IntegrateLSPServers(workingDir string) error {
 	for langID, serverInfo := range servers {
 		// Skip languages that already have a configured server
 		if _, exists := cfg.LSP[langID]; exists {
-			logging.Debug("LSP server already configured for language", "language", langID)
+			slog.Debug("LSP server already configured for language", "language", langID)
 			continue
 		}
 
@@ -49,12 +49,12 @@ func IntegrateLSPServers(workingDir string) error {
 				Command:  serverInfo.Path,
 				Args:     serverInfo.Args,
 			}
-			logging.Info("Added LSP server to configuration",
+			slog.Info("Added LSP server to configuration",
 				"language", langID,
 				"command", serverInfo.Command,
 				"path", serverInfo.Path)
 		} else {
-			logging.Warn("LSP server not available",
+			slog.Warn("LSP server not available",
 				"language", langID,
 				"command", serverInfo.Command,
 				"installCmd", serverInfo.InstallCmd)
@@ -63,4 +63,3 @@ func IntegrateLSPServers(workingDir string) error {
 
 	return nil
 }
-

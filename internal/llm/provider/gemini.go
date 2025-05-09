@@ -13,11 +13,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/llm/tools"
-	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/message"
 	"github.com/opencode-ai/opencode/internal/status"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
+	"log/slog"
 )
 
 type geminiOptions struct {
@@ -42,7 +42,7 @@ func newGeminiClient(opts providerClientOptions) GeminiClient {
 
 	client, err := genai.NewClient(context.Background(), option.WithAPIKey(opts.apiKey))
 	if err != nil {
-		logging.Error("Failed to create Gemini client", "error", err)
+		slog.Error("Failed to create Gemini client", "error", err)
 		return nil
 	}
 
@@ -176,7 +176,7 @@ func (g *geminiClient) send(ctx context.Context, messages []message.Message, too
 	cfg := config.Get()
 	if cfg.Debug {
 		jsonData, _ := json.Marshal(geminiMessages)
-		logging.Debug("Prepared messages", "messages", string(jsonData))
+		slog.Debug("Prepared messages", "messages", string(jsonData))
 	}
 
 	attempts := 0
@@ -263,7 +263,7 @@ func (g *geminiClient) stream(ctx context.Context, messages []message.Message, t
 	cfg := config.Get()
 	if cfg.Debug {
 		jsonData, _ := json.Marshal(geminiMessages)
-		logging.Debug("Prepared messages", "messages", string(jsonData))
+		slog.Debug("Prepared messages", "messages", string(jsonData))
 	}
 
 	attempts := 0

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/lsp"
+	"log/slog"
 )
 
 // LanguageInfo stores information about a detected language
@@ -206,9 +206,9 @@ func DetectLanguages(rootDir string) (map[string]LanguageInfo, error) {
 	// Log detected languages
 	for id, info := range languages {
 		if info.IsPrimary {
-			logging.Debug("Detected primary language", "language", id, "files", info.FileCount, "projectFiles", len(info.ProjectFiles))
+			slog.Debug("Detected primary language", "language", id, "files", info.FileCount, "projectFiles", len(info.ProjectFiles))
 		} else {
-			logging.Debug("Detected secondary language", "language", id, "files", info.FileCount)
+			slog.Debug("Detected secondary language", "language", id, "files", info.FileCount)
 		}
 	}
 
@@ -296,3 +296,4 @@ func GetLanguageIDFromPath(path string) string {
 	langKind := lsp.DetectLanguageID(uri)
 	return GetLanguageIDFromProtocol(string(langKind))
 }
+

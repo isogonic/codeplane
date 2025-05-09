@@ -7,9 +7,9 @@ import (
 
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/llm/tools"
-	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/permission"
 	"github.com/opencode-ai/opencode/internal/version"
+	"log/slog"
 
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -146,13 +146,13 @@ func getTools(ctx context.Context, name string, m config.MCPServer, permissions 
 
 	_, err := c.Initialize(ctx, initRequest)
 	if err != nil {
-		logging.Error("error initializing mcp client", "error", err)
+		slog.Error("error initializing mcp client", "error", err)
 		return stdioTools
 	}
 	toolsRequest := mcp.ListToolsRequest{}
 	tools, err := c.ListTools(ctx, toolsRequest)
 	if err != nil {
-		logging.Error("error listing tools", "error", err)
+		slog.Error("error listing tools", "error", err)
 		return stdioTools
 	}
 	for _, t := range tools.Tools {
@@ -175,7 +175,7 @@ func GetMcpTools(ctx context.Context, permissions permission.Service) []tools.Ba
 				m.Args...,
 			)
 			if err != nil {
-				logging.Error("error creating mcp client", "error", err)
+				slog.Error("error creating mcp client", "error", err)
 				continue
 			}
 
@@ -186,7 +186,7 @@ func GetMcpTools(ctx context.Context, permissions permission.Service) []tools.Ba
 				client.WithHeaders(m.Headers),
 			)
 			if err != nil {
-				logging.Error("error creating mcp client", "error", err)
+				slog.Error("error creating mcp client", "error", err)
 				continue
 			}
 			mcpTools = append(mcpTools, getTools(ctx, name, m, permissions, c)...)

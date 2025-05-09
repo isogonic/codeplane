@@ -11,9 +11,9 @@ import (
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/diff"
 	"github.com/opencode-ai/opencode/internal/history"
-	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/lsp"
 	"github.com/opencode-ai/opencode/internal/permission"
+	"log/slog"
 )
 
 type PatchParams struct {
@@ -318,7 +318,7 @@ func (p *patchTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error
 			// If not adding a file, create history entry for existing file
 			_, err = p.files.Create(ctx, sessionID, absPath, oldContent)
 			if err != nil {
-				logging.Debug("Error creating file history", "error", err)
+				slog.Debug("Error creating file history", "error", err)
 			}
 		}
 
@@ -326,7 +326,7 @@ func (p *patchTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error
 			// User manually changed content, store intermediate version
 			_, err = p.files.CreateVersion(ctx, sessionID, absPath, oldContent)
 			if err != nil {
-				logging.Debug("Error creating file history version", "error", err)
+				slog.Debug("Error creating file history version", "error", err)
 			}
 		}
 
@@ -337,7 +337,7 @@ func (p *patchTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error
 			_, err = p.files.CreateVersion(ctx, sessionID, absPath, newContent)
 		}
 		if err != nil {
-			logging.Debug("Error creating file history version", "error", err)
+			slog.Debug("Error creating file history version", "error", err)
 		}
 
 		// Record file operations

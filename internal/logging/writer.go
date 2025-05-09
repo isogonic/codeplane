@@ -5,59 +5,19 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-logfmt/logfmt"
-	"github.com/opencode-ai/opencode/internal/pubsub"
+	"github.com/opencode-ai/opencode/internal/session"
 )
-
-const (
-	// Maximum number of log messages to keep in memory
-	maxLogMessages = 1000
-)
-
-type LogData struct {
-	messages []LogMessage
-	*pubsub.Broker[LogMessage]
-	lock sync.Mutex
-}
-
-func (l *LogData) Add(msg LogMessage) {
-	l.lock.Lock()
-	defer l.lock.Unlock()
-	
-	// Add new message
-	l.messages = append(l.messages, msg)
-	
-	// Trim if exceeding max capacity
-	if len(l.messages) > maxLogMessages {
-		l.messages = l.messages[len(l.messages)-maxLogMessages:]
-	}
-	
-	l.Publish(pubsub.CreatedEvent, msg)
-}
-
-func (l *LogData) List() []LogMessage {
-	l.lock.Lock()
-	defer l.lock.Unlock()
-	return l.messages
-}
-
-var defaultLogData = &LogData{
-	messages: make([]LogMessage, 0, maxLogMessages),
-	Broker:   pubsub.NewBroker[LogMessage](),
-}
 
 type writer struct{}
 
 func (w *writer) Write(p []byte) (int, error) {
 	d := logfmt.NewDecoder(bytes.NewReader(p))
 	for d.ScanRecord() {
-		msg := LogMessage{
-			ID:   fmt.Sprintf("%d", time.Now().UnixNano()),
-			Time: time.Now(),
-		}
+		msg := Log{}
+
 		for d.ScanKeyval() {
 			switch string(d.Key()) {
 			case "time":
@@ -65,19 +25,21 @@ func (w *writer) Write(p []byte) (int, error) {
 				if err != nil {
 					return 0, fmt.Errorf("parsing time: %w", err)
 				}
-				msg.Time = parsed
+				msg.Timestamp = parsed.UnixMilli()
 			case "level":
 				msg.Level = strings.ToLower(string(d.Value()))
 			case "msg":
 				msg.Message = string(d.Value())
 			default:
-				msg.Attributes = append(msg.Attributes, Attr{
-					Key:   string(d.Key()),
-					Value: string(d.Value()),
-				})
+				if msg.Attributes == nil {
+					msg.Attributes = make(map[string]string)
+				}
+				msg.Attributes[string(d.Key())] = string(d.Value())
 			}
 		}
-		defaultLogData.Add(msg)
+
+		msg.SessionID = session.CurrentSessionID()
+		Create(context.Background(), msg)
 	}
 	if d.Err() != nil {
 		return 0, d.Err()
@@ -88,12 +50,4 @@ func (w *writer) Write(p []byte) (int, error) {
 func NewWriter() *writer {
 	w := &writer{}
 	return w
-}
-
-func Subscribe(ctx context.Context) <-chan pubsub.Event[LogMessage] {
-	return defaultLogData.Subscribe(ctx)
-}
-
-func List() []LogMessage {
-	return defaultLogData.List()
 }

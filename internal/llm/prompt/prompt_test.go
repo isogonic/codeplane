@@ -2,6 +2,7 @@ package prompt
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -14,8 +15,11 @@ import (
 func TestGetContextFromPaths(t *testing.T) {
 	t.Parallel()
 
+	lvl := new(slog.LevelVar)
+	lvl.Set(slog.LevelDebug)
+
 	tmpDir := t.TempDir()
-	_, err := config.Load(tmpDir, false)
+	_, err := config.Load(tmpDir, false, lvl)
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}

@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/opencode-ai/opencode/internal/llm/models"
-	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/spf13/viper"
 )
 
@@ -70,7 +69,7 @@ type LSPConfig struct {
 
 // TUIConfig defines the configuration for the Terminal User Interface.
 type TUIConfig struct {
-	Theme       string                 `json:"theme,omitempty"`
+	Theme       string         `json:"theme,omitempty"`
 	CustomTheme map[string]any `json:"customTheme,omitempty"`
 }
 
@@ -119,7 +118,7 @@ var cfg *Config
 // Load initializes the configuration from environment variables and config files.
 // If debug is true, debug mode is enabled and log level is set to debug.
 // It returns an error if configuration loading fails.
-func Load(workingDir string, debug bool) (*Config, error) {
+func Load(workingDir string, debug bool, lvl *slog.LevelVar) (*Config, error) {
 	if cfg != nil {
 		return cfg, nil
 	}
@@ -150,39 +149,13 @@ func Load(workingDir string, debug bool) (*Config, error) {
 	}
 
 	applyDefaultValues()
+
 	defaultLevel := slog.LevelInfo
 	if cfg.Debug {
 		defaultLevel = slog.LevelDebug
 	}
-	if os.Getenv("OPENCODE_DEV_DEBUG") == "true" {
-		loggingFile := fmt.Sprintf("%s/%s", cfg.Data.Directory, "debug.log")
-
-		// if file does not exist create it
-		if _, err := os.Stat(loggingFile); os.IsNotExist(err) {
-			if err := os.MkdirAll(cfg.Data.Directory, 0o755); err != nil {
-				return cfg, fmt.Errorf("failed to create directory: %w", err)
-			}
-			if _, err := os.Create(loggingFile); err != nil {
-				return cfg, fmt.Errorf("failed to create log file: %w", err)
-			}
-		}
-
-		sloggingFileWriter, err := os.OpenFile(loggingFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o666)
-		if err != nil {
-			return cfg, fmt.Errorf("failed to open log file: %w", err)
-		}
-		// Configure logger
-		logger := slog.New(slog.NewTextHandler(sloggingFileWriter, &slog.HandlerOptions{
-			Level: defaultLevel,
-		}))
-		slog.SetDefault(logger)
-	} else {
-		// Configure logger
-		logger := slog.New(slog.NewTextHandler(logging.NewWriter(), &slog.HandlerOptions{
-			Level: defaultLevel,
-		}))
-		slog.SetDefault(logger)
-	}
+	lvl.Set(defaultLevel)
+	slog.SetLogLoggerLevel(defaultLevel)
 
 	// Validate configuration
 	if err := Validate(); err != nil {
@@ -397,13 +370,13 @@ func validateAgent(cfg *Config, name AgentName, agent Agent) error {
 	// Check if model exists
 	model, modelExists := models.SupportedModels[agent.Model]
 	if !modelExists {
-		logging.Warn("unsupported model configured, reverting to default",
+		slog.Warn("unsupported model configured, reverting to default",
 			"agent", name,
 			"configured_model", agent.Model)
 
 		// Set default model based on available providers
 		if setDefaultModelForAgent(name) {
-			logging.Info("set default model for agent", "agent", name, "model", cfg.Agents[name].Model)
+			slog.Info("set default model for agent", "agent", name, "model", cfg.Agents[name].Model)
 		} else {
 			return fmt.Errorf("no valid provider available for agent %s", name)
 		}
@@ -418,14 +391,14 @@ func validateAgent(cfg *Config, name AgentName, agent Agent) error {
 		// Provider not configured, check if we have environment variables
 		apiKey := getProviderAPIKey(provider)
 		if apiKey == "" {
-			logging.Warn("provider not configured for model, reverting to default",
+			slog.Warn("provider not configured for model, reverting to default",
 				"agent", name,
 				"model", agent.Model,
 				"provider", provider)
 
 			// Set default model based on available providers
 			if setDefaultModelForAgent(name) {
-				logging.Info("set default model for agent", "agent", name, "model", cfg.Agents[name].Model)
+				slog.Info("set default model for agent", "agent", name, "model", cfg.Agents[name].Model)
 			} else {
 				return fmt.Errorf("no valid provider available for agent %s", name)
 			}
@@ -434,18 +407,18 @@ func validateAgent(cfg *Config, name AgentName, agent Agent) error {
 			cfg.Providers[provider] = Provider{
 				APIKey: apiKey,
 			}
-			logging.Info("added provider from environment", "provider", provider)
+			slog.Info("added provider from environment", "provider", provider)
 		}
 	} else if providerCfg.Disabled || providerCfg.APIKey == "" {
 		// Provider is disabled or has no API key
-		logging.Warn("provider is disabled or has no API key, reverting to default",
+		slog.Warn("provider is disabled or has no API key, reverting to default",
 			"agent", name,
 			"model", agent.Model,
 			"provider", provider)
 
 		// Set default model based on available providers
 		if setDefaultModelForAgent(name) {
-			logging.Info("set default model for agent", "agent", name, "model", cfg.Agents[name].Model)
+			slog.Info("set default model for agent", "agent", name, "model", cfg.Agents[name].Model)
 		} else {
 			return fmt.Errorf("no valid provider available for agent %s", name)
 		}
@@ -453,7 +426,7 @@ func validateAgent(cfg *Config, name AgentName, agent Agent) error {
 
 	// Validate max tokens
 	if agent.MaxTokens <= 0 {
-		logging.Warn("invalid max tokens, setting to default",
+		slog.Warn("invalid max tokens, setting to default",
 			"agent", name,
 			"model", agent.Model,
 			"max_tokens", agent.MaxTokens)
@@ -468,7 +441,7 @@ func validateAgent(cfg *Config, name AgentName, agent Agent) error {
 		cfg.Agents[name] = updatedAgent
 	} else if model.ContextWindow > 0 && agent.MaxTokens > model.ContextWindow/2 {
 		// Ensure max tokens doesn't exceed half the context window (reasonable limit)
-		logging.Warn("max tokens exceeds half the context window, adjusting",
+		slog.Warn("max tokens exceeds half the context window, adjusting",
 			"agent", name,
 			"model", agent.Model,
 			"max_tokens", agent.MaxTokens,
@@ -484,7 +457,7 @@ func validateAgent(cfg *Config, name AgentName, agent Agent) error {
 	if model.CanReason && provider == models.ProviderOpenAI {
 		if agent.ReasoningEffort == "" {
 			// Set default reasoning effort for models that support it
-			logging.Info("setting default reasoning effort for model that supports reasoning",
+			slog.Info("setting default reasoning effort for model that supports reasoning",
 				"agent", name,
 				"model", agent.Model)
 
@@ -496,7 +469,7 @@ func validateAgent(cfg *Config, name AgentName, agent Agent) error {
 			// Check if reasoning effort is valid (low, medium, high)
 			effort := strings.ToLower(agent.ReasoningEffort)
 			if effort != "low" && effort != "medium" && effort != "high" {
-				logging.Warn("invalid reasoning effort, setting to medium",
+				slog.Warn("invalid reasoning effort, setting to medium",
 					"agent", name,
 					"model", agent.Model,
 					"reasoning_effort", agent.ReasoningEffort)
@@ -509,7 +482,7 @@ func validateAgent(cfg *Config, name AgentName, agent Agent) error {
 		}
 	} else if !model.CanReason && agent.ReasoningEffort != "" {
 		// Model doesn't support reasoning but reasoning effort is set
-		logging.Warn("model doesn't support reasoning but reasoning effort is set, ignoring",
+		slog.Warn("model doesn't support reasoning but reasoning effort is set, ignoring",
 			"agent", name,
 			"model", agent.Model,
 			"reasoning_effort", agent.ReasoningEffort)
@@ -539,7 +512,7 @@ func Validate() error {
 	// Validate providers
 	for provider, providerCfg := range cfg.Providers {
 		if providerCfg.APIKey == "" && !providerCfg.Disabled {
-			logging.Warn("provider has no API key, marking as disabled", "provider", provider)
+			slog.Warn("provider has no API key, marking as disabled", "provider", provider)
 			providerCfg.Disabled = true
 			cfg.Providers[provider] = providerCfg
 		}
@@ -548,7 +521,7 @@ func Validate() error {
 	// Validate LSP configurations
 	for language, lspConfig := range cfg.LSP {
 		if lspConfig.Command == "" && !lspConfig.Disabled {
-			logging.Warn("LSP configuration has no command, marking as disabled", "language", language)
+			slog.Warn("LSP configuration has no command, marking as disabled", "language", language)
 			lspConfig.Disabled = true
 			cfg.LSP[language] = lspConfig
 		}
@@ -782,7 +755,7 @@ func UpdateTheme(themeName string) error {
 			return fmt.Errorf("failed to get home directory: %w", err)
 		}
 		configFile = filepath.Join(homeDir, fmt.Sprintf(".%s.json", appName))
-		logging.Info("config file not found, creating new one", "path", configFile)
+		slog.Info("config file not found, creating new one", "path", configFile)
 		configData = []byte(`{}`)
 	} else {
 		// Read the existing config file

@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/opencode-ai/opencode/internal/logging"
+	"log/slog"
 )
 
 // ServerInfo contains information about an LSP server
@@ -114,7 +114,7 @@ func FindLSPServer(languageID string) (ServerInfo, error) {
 	if err == nil {
 		serverInfo.Available = true
 		serverInfo.Path = path
-		logging.Debug("Found LSP server in PATH", "language", languageID, "command", serverInfo.Command, "path", path)
+		slog.Debug("Found LSP server in PATH", "language", languageID, "command", serverInfo.Command, "path", path)
 		return serverInfo, nil
 	}
 
@@ -125,13 +125,13 @@ func FindLSPServer(languageID string) (ServerInfo, error) {
 			// Found the server
 			serverInfo.Available = true
 			serverInfo.Path = searchPath
-			logging.Debug("Found LSP server in common location", "language", languageID, "command", serverInfo.Command, "path", searchPath)
+			slog.Debug("Found LSP server in common location", "language", languageID, "command", serverInfo.Command, "path", searchPath)
 			return serverInfo, nil
 		}
 	}
 
 	// Server not found
-	logging.Debug("LSP server not found", "language", languageID, "command", serverInfo.Command)
+	slog.Debug("LSP server not found", "language", languageID, "command", serverInfo.Command)
 	return serverInfo, fmt.Errorf("LSP server for %s not found. Install with: %s", languageID, serverInfo.InstallCmd)
 }
 
@@ -140,7 +140,7 @@ func getCommonLSPPaths(languageID, command string) []string {
 	var paths []string
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		logging.Error("Failed to get user home directory", "error", err)
+		slog.Error("Failed to get user home directory", "error", err)
 		return paths
 	}
 
@@ -148,21 +148,21 @@ func getCommonLSPPaths(languageID, command string) []string {
 	switch runtime.GOOS {
 	case "darwin":
 		// macOS paths
-		paths = append(paths, 
+		paths = append(paths,
 			fmt.Sprintf("/usr/local/bin/%s", command),
 			fmt.Sprintf("/opt/homebrew/bin/%s", command),
 			fmt.Sprintf("%s/.local/bin/%s", homeDir, command),
 		)
 	case "linux":
 		// Linux paths
-		paths = append(paths, 
+		paths = append(paths,
 			fmt.Sprintf("/usr/bin/%s", command),
 			fmt.Sprintf("/usr/local/bin/%s", command),
 			fmt.Sprintf("%s/.local/bin/%s", homeDir, command),
 		)
 	case "windows":
 		// Windows paths
-		paths = append(paths, 
+		paths = append(paths,
 			fmt.Sprintf("%s\\AppData\\Local\\Programs\\%s.exe", homeDir, command),
 			fmt.Sprintf("C:\\Program Files\\%s\\bin\\%s.exe", command, command),
 		)
@@ -182,12 +182,12 @@ func getCommonLSPPaths(languageID, command string) []string {
 	case "typescript", "javascript", "html", "css", "json", "yaml", "php":
 		// Node.js global packages
 		if runtime.GOOS == "windows" {
-			paths = append(paths, 
+			paths = append(paths,
 				fmt.Sprintf("%s\\AppData\\Roaming\\npm\\%s.cmd", homeDir, command),
 				fmt.Sprintf("%s\\AppData\\Roaming\\npm\\node_modules\\.bin\\%s.cmd", homeDir, command),
 			)
 		} else {
-			paths = append(paths, 
+			paths = append(paths,
 				fmt.Sprintf("%s/.npm-global/bin/%s", homeDir, command),
 				fmt.Sprintf("%s/.nvm/versions/node/*/bin/%s", homeDir, command),
 				fmt.Sprintf("/usr/local/lib/node_modules/.bin/%s", command),
@@ -196,12 +196,12 @@ func getCommonLSPPaths(languageID, command string) []string {
 	case "python":
 		// Python paths
 		if runtime.GOOS == "windows" {
-			paths = append(paths, 
+			paths = append(paths,
 				fmt.Sprintf("%s\\AppData\\Local\\Programs\\Python\\Python*\\Scripts\\%s.exe", homeDir, command),
 				fmt.Sprintf("C:\\Python*\\Scripts\\%s.exe", command),
 			)
 		} else {
-			paths = append(paths, 
+			paths = append(paths,
 				fmt.Sprintf("%s/.local/bin/%s", homeDir, command),
 				fmt.Sprintf("%s/.pyenv/shims/%s", homeDir, command),
 				fmt.Sprintf("/usr/local/bin/%s", command),
@@ -210,12 +210,12 @@ func getCommonLSPPaths(languageID, command string) []string {
 	case "rust":
 		// Rust paths
 		if runtime.GOOS == "windows" {
-			paths = append(paths, 
+			paths = append(paths,
 				fmt.Sprintf("%s\\.rustup\\toolchains\\*\\bin\\%s.exe", homeDir, command),
 				fmt.Sprintf("%s\\.cargo\\bin\\%s.exe", homeDir, command),
 			)
 		} else {
-			paths = append(paths, 
+			paths = append(paths,
 				fmt.Sprintf("%s/.rustup/toolchains/*/bin/%s", homeDir, command),
 				fmt.Sprintf("%s/.cargo/bin/%s", homeDir, command),
 			)
@@ -248,7 +248,7 @@ func getCommonLSPPaths(languageID, command string) []string {
 // getVSCodeExtensionsPath returns the path to VSCode extensions directory
 func getVSCodeExtensionsPath(homeDir string) string {
 	var basePath string
-	
+
 	switch runtime.GOOS {
 	case "darwin":
 		basePath = filepath.Join(homeDir, "Library", "Application Support", "Code", "User", "globalStorage")
@@ -259,12 +259,12 @@ func getVSCodeExtensionsPath(homeDir string) string {
 	default:
 		return ""
 	}
-	
+
 	// Check if the directory exists
 	if _, err := os.Stat(basePath); err != nil {
 		return ""
 	}
-	
+
 	return basePath
 }
 
@@ -275,32 +275,33 @@ func ConfigureLSPServers(rootDir string) (map[string]ServerInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to detect languages: %w", err)
 	}
-	
+
 	// Find LSP servers for detected languages
 	servers := make(map[string]ServerInfo)
 	for langID, langInfo := range languages {
 		// Prioritize primary languages but include all languages that have server definitions
 		if !langInfo.IsPrimary && langInfo.FileCount < 3 {
 			// Skip non-primary languages with very few files
-			logging.Debug("Skipping non-primary language with few files", "language", langID, "files", langInfo.FileCount)
+			slog.Debug("Skipping non-primary language with few files", "language", langID, "files", langInfo.FileCount)
 			continue
 		}
-		
+
 		// Check if we have a server for this language
 		serverInfo, err := FindLSPServer(langID)
 		if err != nil {
-			logging.Warn("LSP server not found", "language", langID, "error", err)
+			slog.Warn("LSP server not found", "language", langID, "error", err)
 			continue
 		}
-		
+
 		// Add to the map of configured servers
 		servers[langID] = serverInfo
 		if langInfo.IsPrimary {
-			logging.Info("Configured LSP server for primary language", "language", langID, "command", serverInfo.Command, "path", serverInfo.Path)
+			slog.Info("Configured LSP server for primary language", "language", langID, "command", serverInfo.Command, "path", serverInfo.Path)
 		} else {
-			logging.Info("Configured LSP server for secondary language", "language", langID, "command", serverInfo.Command, "path", serverInfo.Path)
+			slog.Info("Configured LSP server for secondary language", "language", langID, "command", serverInfo.Command, "path", serverInfo.Path)
 		}
 	}
-	
+
 	return servers, nil
 }
+

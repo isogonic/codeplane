@@ -6,8 +6,8 @@ import (
 
 	"github.com/opencode-ai/opencode/internal/llm/models"
 	"github.com/opencode-ai/opencode/internal/llm/tools"
-	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/message"
+	"log/slog"
 )
 
 type EventType string
@@ -166,13 +166,13 @@ func (p *baseProvider[C]) SendMessages(ctx context.Context, messages []message.M
 	messages = p.cleanMessages(messages)
 	response, err := p.client.send(ctx, messages, tools)
 	if err == nil && response != nil {
-		logging.Debug("API request token usage", 
+		slog.Debug("API request token usage",
 			"model", p.options.model.Name,
 			"input_tokens", response.Usage.InputTokens,
 			"output_tokens", response.Usage.OutputTokens,
 			"cache_creation_tokens", response.Usage.CacheCreationTokens,
 			"cache_read_tokens", response.Usage.CacheReadTokens,
-			"total_tokens", response.Usage.InputTokens + response.Usage.OutputTokens)
+			"total_tokens", response.Usage.InputTokens+response.Usage.OutputTokens)
 	}
 	return response, err
 }
@@ -188,30 +188,30 @@ func (p *baseProvider[C]) MaxTokens() int64 {
 func (p *baseProvider[C]) StreamResponse(ctx context.Context, messages []message.Message, tools []tools.BaseTool) <-chan ProviderEvent {
 	messages = p.cleanMessages(messages)
 	eventChan := p.client.stream(ctx, messages, tools)
-	
+
 	// Create a new channel to intercept events
 	wrappedChan := make(chan ProviderEvent)
-	
+
 	go func() {
 		defer close(wrappedChan)
-		
+
 		for event := range eventChan {
 			// Pass the event through
 			wrappedChan <- event
-			
+
 			// Log token usage when we get the complete event
 			if event.Type == EventComplete && event.Response != nil {
-				logging.Debug("API streaming request token usage", 
+				slog.Debug("API streaming request token usage",
 					"model", p.options.model.Name,
 					"input_tokens", event.Response.Usage.InputTokens,
 					"output_tokens", event.Response.Usage.OutputTokens,
 					"cache_creation_tokens", event.Response.Usage.CacheCreationTokens,
 					"cache_read_tokens", event.Response.Usage.CacheReadTokens,
-					"total_tokens", event.Response.Usage.InputTokens + event.Response.Usage.OutputTokens)
+					"total_tokens", event.Response.Usage.InputTokens+event.Response.Usage.OutputTokens)
 			}
 		}
 	}()
-	
+
 	return wrappedChan
 }
 

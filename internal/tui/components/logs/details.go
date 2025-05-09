@@ -23,17 +23,12 @@ type DetailComponent interface {
 
 type detailCmp struct {
 	width, height int
-	currentLog    logging.LogMessage
+	currentLog    logging.Log
 	viewport      viewport.Model
 	focused       bool
 }
 
 func (i *detailCmp) Init() tea.Cmd {
-	messages := logging.List()
-	if len(messages) == 0 {
-		return nil
-	}
-	i.currentLog = messages[0]
 	return nil
 }
 
@@ -42,8 +37,12 @@ func (i *detailCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case selectedLogMsg:
 		if msg.ID != i.currentLog.ID {
-			i.currentLog = logging.LogMessage(msg)
-			i.updateContent()
+			i.currentLog = logging.Log(msg)
+			// Defer content update to avoid blocking the UI
+			cmd = tea.Tick(time.Millisecond*1, func(time.Time) tea.Msg {
+				i.updateContent()
+				return nil
+			})
 		}
 	case tea.KeyMsg:
 		// Only process keyboard input when focused
@@ -55,7 +54,7 @@ func (i *detailCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return i, cmd
 	}
 
-	return i, nil
+	return i, cmd
 }
 
 func (i *detailCmp) updateContent() {
@@ -66,9 +65,12 @@ func (i *detailCmp) updateContent() {
 	timeStyle := lipgloss.NewStyle().Foreground(t.TextMuted())
 	levelStyle := getLevelStyle(i.currentLog.Level)
 
+	// Format timestamp
+	timeStr := time.Unix(i.currentLog.Timestamp, 0).Format(time.RFC3339)
+
 	header := lipgloss.JoinHorizontal(
 		lipgloss.Center,
-		timeStyle.Render(i.currentLog.Time.Format(time.RFC3339)),
+		timeStyle.Render(timeStr),
 		"  ",
 		levelStyle.Render(i.currentLog.Level),
 	)
@@ -93,14 +95,24 @@ func (i *detailCmp) updateContent() {
 		keyStyle := lipgloss.NewStyle().Foreground(t.Primary()).Bold(true)
 		valueStyle := lipgloss.NewStyle().Foreground(t.Text())
 
-		for _, attr := range i.currentLog.Attributes {
-			attrLine := fmt.Sprintf("%s: %s",
-				keyStyle.Render(attr.Key),
-				valueStyle.Render(attr.Value),
+		for key, value := range i.currentLog.Attributes {
+			attrLine := fmt.Sprintf("%s: %s", 
+				keyStyle.Render(key),
+				valueStyle.Render(value),
 			)
+
 			content.WriteString(lipgloss.NewStyle().Padding(0, 2).Render(attrLine))
 			content.WriteString("\n")
 		}
+	}
+
+	// Session ID if available
+	if i.currentLog.SessionID != "" {
+		sessionStyle := lipgloss.NewStyle().Bold(true).Foreground(t.Text())
+		content.WriteString("\n")
+		content.WriteString(sessionStyle.Render("Session:"))
+		content.WriteString("\n")
+		content.WriteString(lipgloss.NewStyle().Padding(0, 2).Render(i.currentLog.SessionID))
 	}
 
 	i.viewport.SetContent(content.String())
@@ -109,7 +121,7 @@ func (i *detailCmp) updateContent() {
 func getLevelStyle(level string) lipgloss.Style {
 	style := lipgloss.NewStyle().Bold(true)
 	t := theme.CurrentTheme()
-	
+
 	switch strings.ToLower(level) {
 	case "info":
 		return style.Foreground(t.Info())

@@ -201,7 +201,7 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return a, tea.Batch(cmds...)
 
-	case pubsub.Event[logging.LogMessage]:
+	case pubsub.Event[logging.Log]:
 		a.pages[page.LogsPage], cmd = a.pages[page.LogsPage].Update(msg)
 		cmds = append(cmds, cmd)
 

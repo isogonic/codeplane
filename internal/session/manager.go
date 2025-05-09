@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/pubsub"
+	"log/slog"
 )
 
 // Manager handles session management, tracking the currently active session.
@@ -41,7 +41,7 @@ func InitManager(service Service) {
 // SetCurrentSession changes the active session to the one with the specified ID.
 func SetCurrentSession(sessionID string) {
 	if globalManager == nil {
-		logging.Warn("Session manager not initialized")
+		slog.Warn("Session manager not initialized")
 		return
 	}
 
@@ -49,18 +49,17 @@ func SetCurrentSession(sessionID string) {
 	defer globalManager.mu.Unlock()
 
 	globalManager.currentSessionID = sessionID
-	logging.Debug("Current session changed", "sessionID", sessionID)
+	slog.Debug("Current session changed", "sessionID", sessionID)
 }
 
 // CurrentSessionID returns the ID of the currently active session.
 func CurrentSessionID() string {
 	if globalManager == nil {
-		logging.Warn("Session manager not initialized")
 		return ""
 	}
 
-	globalManager.mu.RLock()
-	defer globalManager.mu.RUnlock()
+	// globalManager.mu.RLock()
+	// defer globalManager.mu.RUnlock()
 
 	return globalManager.currentSessionID
 }
@@ -69,7 +68,6 @@ func CurrentSessionID() string {
 // If no session is set or the session cannot be found, it returns nil.
 func CurrentSession() *Session {
 	if globalManager == nil {
-		logging.Warn("Session manager not initialized")
 		return nil
 	}
 
@@ -80,7 +78,6 @@ func CurrentSession() *Session {
 
 	session, err := globalManager.service.Get(context.Background(), sessionID)
 	if err != nil {
-		logging.Warn("Failed to get current session", "err", err)
 		return nil
 	}
 

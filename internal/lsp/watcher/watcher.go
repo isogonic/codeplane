@@ -13,9 +13,9 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/fsnotify/fsnotify"
 	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/lsp"
 	"github.com/opencode-ai/opencode/internal/lsp/protocol"
+	"log/slog"
 )
 
 // WorkspaceWatcher manages LSP file watching
@@ -46,7 +46,7 @@ func NewWorkspaceWatcher(client *lsp.Client) *WorkspaceWatcher {
 func (w *WorkspaceWatcher) AddRegistrations(ctx context.Context, id string, watchers []protocol.FileSystemWatcher) {
 	cnf := config.Get()
 
-	logging.Debug("Adding file watcher registrations")
+	slog.Debug("Adding file watcher registrations")
 	w.registrationMu.Lock()
 	defer w.registrationMu.Unlock()
 
@@ -55,33 +55,33 @@ func (w *WorkspaceWatcher) AddRegistrations(ctx context.Context, id string, watc
 
 	// Print detailed registration information for debugging
 	if cnf.DebugLSP {
-		logging.Debug("Adding file watcher registrations",
+		slog.Debug("Adding file watcher registrations",
 			"id", id,
 			"watchers", len(watchers),
 			"total", len(w.registrations),
 		)
 
 		for i, watcher := range watchers {
-			logging.Debug("Registration", "index", i+1)
+			slog.Debug("Registration", "index", i+1)
 
 			// Log the GlobPattern
 			switch v := watcher.GlobPattern.Value.(type) {
 			case string:
-				logging.Debug("GlobPattern", "pattern", v)
+				slog.Debug("GlobPattern", "pattern", v)
 			case protocol.RelativePattern:
-				logging.Debug("GlobPattern", "pattern", v.Pattern)
+				slog.Debug("GlobPattern", "pattern", v.Pattern)
 
 				// Log BaseURI details
 				switch u := v.BaseURI.Value.(type) {
 				case string:
-					logging.Debug("BaseURI", "baseURI", u)
+					slog.Debug("BaseURI", "baseURI", u)
 				case protocol.DocumentUri:
-					logging.Debug("BaseURI", "baseURI", u)
+					slog.Debug("BaseURI", "baseURI", u)
 				default:
-					logging.Debug("BaseURI", "baseURI", u)
+					slog.Debug("BaseURI", "baseURI", u)
 				}
 			default:
-				logging.Debug("GlobPattern", "unknown type", fmt.Sprintf("%T", v))
+				slog.Debug("GlobPattern", "unknown type", fmt.Sprintf("%T", v))
 			}
 
 			// Log WatchKind
@@ -90,13 +90,13 @@ func (w *WorkspaceWatcher) AddRegistrations(ctx context.Context, id string, watc
 				watchKind = *watcher.Kind
 			}
 
-			logging.Debug("WatchKind", "kind", watchKind)
+			slog.Debug("WatchKind", "kind", watchKind)
 		}
 	}
 
 	// Determine server type for specialized handling
 	serverName := getServerNameFromContext(ctx)
-	logging.Debug("Server type detected", "serverName", serverName)
+	slog.Debug("Server type detected", "serverName", serverName)
 
 	// Check if this server has sent file watchers
 	hasFileWatchers := len(watchers) > 0
@@ -124,7 +124,7 @@ func (w *WorkspaceWatcher) AddRegistrations(ctx context.Context, id string, watc
 			filesOpened += highPriorityFilesOpened
 
 			if cnf.DebugLSP {
-				logging.Debug("Opened high-priority files",
+				slog.Debug("Opened high-priority files",
 					"count", highPriorityFilesOpened,
 					"serverName", serverName)
 			}
@@ -132,7 +132,7 @@ func (w *WorkspaceWatcher) AddRegistrations(ctx context.Context, id string, watc
 			// If we've already opened enough high-priority files, we might not need more
 			if filesOpened >= maxFilesToOpen {
 				if cnf.DebugLSP {
-					logging.Debug("Reached file limit with high-priority files",
+					slog.Debug("Reached file limit with high-priority files",
 						"filesOpened", filesOpened,
 						"maxFiles", maxFilesToOpen)
 				}
@@ -150,7 +150,7 @@ func (w *WorkspaceWatcher) AddRegistrations(ctx context.Context, id string, watc
 				if d.IsDir() {
 					if path != w.workspacePath && shouldExcludeDir(path) {
 						if cnf.DebugLSP {
-							logging.Debug("Skipping excluded directory", "path", path)
+							slog.Debug("Skipping excluded directory", "path", path)
 						}
 						return filepath.SkipDir
 					}
@@ -178,7 +178,7 @@ func (w *WorkspaceWatcher) AddRegistrations(ctx context.Context, id string, watc
 
 			elapsedTime := time.Since(startTime)
 			if cnf.DebugLSP {
-				logging.Debug("Limited workspace scan complete",
+				slog.Debug("Limited workspace scan complete",
 					"filesOpened", filesOpened,
 					"maxFiles", maxFilesToOpen,
 					"elapsedTime", elapsedTime.Seconds(),
@@ -187,11 +187,11 @@ func (w *WorkspaceWatcher) AddRegistrations(ctx context.Context, id string, watc
 			}
 
 			if err != nil && cnf.DebugLSP {
-				logging.Debug("Error scanning workspace for files to open", "error", err)
+				slog.Debug("Error scanning workspace for files to open", "error", err)
 			}
 		}()
 	} else if cnf.DebugLSP {
-		logging.Debug("Using on-demand file loading for server", "server", serverName)
+		slog.Debug("Using on-demand file loading for server", "server", serverName)
 	}
 }
 
@@ -264,7 +264,7 @@ func (w *WorkspaceWatcher) openHighPriorityFiles(ctx context.Context, serverName
 		matches, err := doublestar.Glob(os.DirFS(w.workspacePath), pattern)
 		if err != nil {
 			if cnf.DebugLSP {
-				logging.Debug("Error finding high-priority files", "pattern", pattern, "error", err)
+				slog.Debug("Error finding high-priority files", "pattern", pattern, "error", err)
 			}
 			continue
 		}
@@ -282,12 +282,12 @@ func (w *WorkspaceWatcher) openHighPriorityFiles(ctx context.Context, serverName
 			// Open the file
 			if err := w.client.OpenFile(ctx, fullPath); err != nil {
 				if cnf.DebugLSP {
-					logging.Debug("Error opening high-priority file", "path", fullPath, "error", err)
+					slog.Debug("Error opening high-priority file", "path", fullPath, "error", err)
 				}
 			} else {
 				filesOpened++
 				if cnf.DebugLSP {
-					logging.Debug("Opened high-priority file", "path", fullPath)
+					slog.Debug("Opened high-priority file", "path", fullPath)
 				}
 			}
 
@@ -319,7 +319,7 @@ func (w *WorkspaceWatcher) WatchWorkspace(ctx context.Context, workspacePath str
 	}
 
 	serverName := getServerNameFromContext(ctx)
-	logging.Debug("Starting workspace watcher", "workspacePath", workspacePath, "serverName", serverName)
+	slog.Debug("Starting workspace watcher", "workspacePath", workspacePath, "serverName", serverName)
 
 	// Register handler for file watcher registrations from the server
 	lsp.RegisterFileWatchHandler(func(id string, watchers []protocol.FileSystemWatcher) {
@@ -328,7 +328,7 @@ func (w *WorkspaceWatcher) WatchWorkspace(ctx context.Context, workspacePath str
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		logging.Error("Error creating watcher", "error", err)
+		slog.Error("Error creating watcher", "error", err)
 	}
 	defer watcher.Close()
 
@@ -342,7 +342,7 @@ func (w *WorkspaceWatcher) WatchWorkspace(ctx context.Context, workspacePath str
 		if d.IsDir() && path != workspacePath {
 			if shouldExcludeDir(path) {
 				if cnf.DebugLSP {
-					logging.Debug("Skipping excluded directory", "path", path)
+					slog.Debug("Skipping excluded directory", "path", path)
 				}
 				return filepath.SkipDir
 			}
@@ -352,14 +352,14 @@ func (w *WorkspaceWatcher) WatchWorkspace(ctx context.Context, workspacePath str
 		if d.IsDir() {
 			err = watcher.Add(path)
 			if err != nil {
-				logging.Error("Error watching path", "path", path, "error", err)
+				slog.Error("Error watching path", "path", path, "error", err)
 			}
 		}
 
 		return nil
 	})
 	if err != nil {
-		logging.Error("Error walking workspace", "error", err)
+		slog.Error("Error walking workspace", "error", err)
 	}
 
 	// Event loop
@@ -381,18 +381,18 @@ func (w *WorkspaceWatcher) WatchWorkspace(ctx context.Context, workspacePath str
 				if err != nil {
 					if os.IsNotExist(err) {
 						// File was deleted between event and processing - ignore
-						logging.Debug("File deleted between create event and stat", "path", event.Name)
+						slog.Debug("File deleted between create event and stat", "path", event.Name)
 						continue
 					}
-					logging.Error("Error getting file info", "path", event.Name, "error", err)
+					slog.Error("Error getting file info", "path", event.Name, "error", err)
 					continue
 				}
-				
+
 				if info.IsDir() {
 					// Skip excluded directories
 					if !shouldExcludeDir(event.Name) {
 						if err := watcher.Add(event.Name); err != nil {
-							logging.Error("Error adding directory to watcher", "path", event.Name, "error", err)
+							slog.Error("Error adding directory to watcher", "path", event.Name, "error", err)
 						}
 					}
 				} else {
@@ -406,7 +406,7 @@ func (w *WorkspaceWatcher) WatchWorkspace(ctx context.Context, workspacePath str
 			// Debug logging
 			if cnf.DebugLSP {
 				matched, kind := w.isPathWatched(event.Name)
-				logging.Debug("File event",
+				slog.Debug("File event",
 					"path", event.Name,
 					"operation", event.Op.String(),
 					"watched", matched,
@@ -427,7 +427,7 @@ func (w *WorkspaceWatcher) WatchWorkspace(ctx context.Context, workspacePath str
 					// Just send the notification if needed
 					info, err := os.Stat(event.Name)
 					if err != nil {
-						logging.Error("Error getting file info", "path", event.Name, "error", err)
+						slog.Error("Error getting file info", "path", event.Name, "error", err)
 						return
 					}
 					if !info.IsDir() && watchKind&protocol.WatchCreate != 0 {
@@ -455,7 +455,7 @@ func (w *WorkspaceWatcher) WatchWorkspace(ctx context.Context, workspacePath str
 			if !ok {
 				return
 			}
-			logging.Error("Error watching file", "error", err)
+			slog.Error("Error watching file", "error", err)
 		}
 	}
 }
@@ -580,7 +580,7 @@ func matchesSimpleGlob(pattern, path string) bool {
 	// Fall back to simple matching for simpler patterns
 	matched, err := filepath.Match(pattern, path)
 	if err != nil {
-		logging.Error("Error matching pattern", "pattern", pattern, "path", path, "error", err)
+		slog.Error("Error matching pattern", "pattern", pattern, "path", path, "error", err)
 		return false
 	}
 
@@ -591,7 +591,7 @@ func matchesSimpleGlob(pattern, path string) bool {
 func (w *WorkspaceWatcher) matchesPattern(path string, pattern protocol.GlobPattern) bool {
 	patternInfo, err := pattern.AsPattern()
 	if err != nil {
-		logging.Error("Error parsing pattern", "pattern", pattern, "error", err)
+		slog.Error("Error parsing pattern", "pattern", pattern, "error", err)
 		return false
 	}
 
@@ -616,7 +616,7 @@ func (w *WorkspaceWatcher) matchesPattern(path string, pattern protocol.GlobPatt
 	// Make path relative to basePath for matching
 	relPath, err := filepath.Rel(basePath, path)
 	if err != nil {
-		logging.Error("Error getting relative path", "path", path, "basePath", basePath, "error", err)
+		slog.Error("Error getting relative path", "path", path, "basePath", basePath, "error", err)
 		return false
 	}
 	relPath = filepath.ToSlash(relPath)
@@ -654,15 +654,15 @@ func (w *WorkspaceWatcher) debounceHandleFileEvent(ctx context.Context, uri stri
 func (w *WorkspaceWatcher) handleFileEvent(ctx context.Context, uri string, changeType protocol.FileChangeType) {
 	// If the file is open and it's a change event, use didChange notification
 	filePath := uri[7:] // Remove "file://" prefix
-	
+
 	if changeType == protocol.FileChangeType(protocol.Deleted) {
 		// Always clear diagnostics for deleted files
 		w.client.ClearDiagnosticsForURI(protocol.DocumentUri(uri))
-		
+
 		// If the file was open, close it in the LSP client
 		if w.client.IsFileOpen(filePath) {
 			if err := w.client.CloseFile(ctx, filePath); err != nil {
-				logging.Debug("Error closing deleted file in LSP client", "file", filePath, "error", err)
+				slog.Debug("Error closing deleted file in LSP client", "file", filePath, "error", err)
 				// Continue anyway - the file is gone
 			}
 		}
@@ -671,19 +671,19 @@ func (w *WorkspaceWatcher) handleFileEvent(ctx context.Context, uri string, chan
 		if _, err := os.Stat(filePath); err != nil {
 			if os.IsNotExist(err) {
 				// File was deleted between the event and now - treat as delete
-				logging.Debug("File deleted between change event and processing", "file", filePath)
+				slog.Debug("File deleted between change event and processing", "file", filePath)
 				w.handleFileEvent(ctx, uri, protocol.FileChangeType(protocol.Deleted))
 				return
 			}
-			logging.Error("Error getting file info", "path", filePath, "error", err)
+			slog.Error("Error getting file info", "path", filePath, "error", err)
 			return
 		}
-		
+
 		// File exists and is open, notify change
 		if w.client.IsFileOpen(filePath) {
 			err := w.client.NotifyChange(ctx, filePath)
 			if err != nil {
-				logging.Error("Error notifying change", "error", err)
+				slog.Error("Error notifying change", "error", err)
 			}
 			return
 		}
@@ -692,17 +692,17 @@ func (w *WorkspaceWatcher) handleFileEvent(ctx context.Context, uri string, chan
 		if _, err := os.Stat(filePath); err != nil {
 			if os.IsNotExist(err) {
 				// File was deleted between the event and now - ignore
-				logging.Debug("File deleted between create event and processing", "file", filePath)
+				slog.Debug("File deleted between create event and processing", "file", filePath)
 				return
 			}
-			logging.Error("Error getting file info", "path", filePath, "error", err)
+			slog.Error("Error getting file info", "path", filePath, "error", err)
 			return
 		}
 	}
 
 	// Notify LSP server about the file event using didChangeWatchedFiles
 	if err := w.notifyFileEvent(ctx, uri, changeType); err != nil {
-		logging.Error("Error notifying LSP server about file event", "error", err)
+		slog.Error("Error notifying LSP server about file event", "error", err)
 	}
 }
 
@@ -710,7 +710,7 @@ func (w *WorkspaceWatcher) handleFileEvent(ctx context.Context, uri string, chan
 func (w *WorkspaceWatcher) notifyFileEvent(ctx context.Context, uri string, changeType protocol.FileChangeType) error {
 	cnf := config.Get()
 	if cnf.DebugLSP {
-		logging.Debug("Notifying file event",
+		slog.Debug("Notifying file event",
 			"uri", uri,
 			"changeType", changeType,
 		)
@@ -874,7 +874,7 @@ func shouldExcludeFile(filePath string) bool {
 	if strings.HasSuffix(filePath, "~") {
 		return true
 	}
-	
+
 	// Skip numeric temporary files (often created by editors)
 	if _, err := strconv.Atoi(fileName); err == nil {
 		return true
@@ -890,7 +890,7 @@ func shouldExcludeFile(filePath string) bool {
 	// Skip large files
 	if info.Size() > maxFileSize {
 		if cnf.DebugLSP {
-			logging.Debug("Skipping large file",
+			slog.Debug("Skipping large file",
 				"path", filePath,
 				"size", info.Size(),
 				"maxSize", maxFileSize,
@@ -913,13 +913,13 @@ func (w *WorkspaceWatcher) openMatchingFile(ctx context.Context, path string) {
 	if err != nil {
 		if os.IsNotExist(err) {
 			// File was deleted between event and processing - ignore
-			logging.Debug("File deleted between event and openMatchingFile", "path", path)
+			slog.Debug("File deleted between event and openMatchingFile", "path", path)
 			return
 		}
-		logging.Error("Error getting file info", "path", path, "error", err)
+		slog.Error("Error getting file info", "path", path, "error", err)
 		return
 	}
-	
+
 	if info.IsDir() {
 		return
 	}
@@ -938,10 +938,10 @@ func (w *WorkspaceWatcher) openMatchingFile(ctx context.Context, path string) {
 		// This helps with project initialization for certain language servers
 		if isHighPriorityFile(path, serverName) {
 			if cnf.DebugLSP {
-				logging.Debug("Opening high-priority file", "path", path, "serverName", serverName)
+				slog.Debug("Opening high-priority file", "path", path, "serverName", serverName)
 			}
 			if err := w.client.OpenFile(ctx, path); err != nil && cnf.DebugLSP {
-				logging.Error("Error opening high-priority file", "path", path, "error", err)
+				slog.Error("Error opening high-priority file", "path", path, "error", err)
 			}
 			return
 		}
@@ -953,7 +953,7 @@ func (w *WorkspaceWatcher) openMatchingFile(ctx context.Context, path string) {
 			// Check file size - for preloading we're more conservative
 			if info.Size() > (1 * 1024 * 1024) { // 1MB limit for preloaded files
 				if cnf.DebugLSP {
-					logging.Debug("Skipping large file for preloading", "path", path, "size", info.Size())
+					slog.Debug("Skipping large file for preloading", "path", path, "size", info.Size())
 				}
 				return
 			}
@@ -985,7 +985,7 @@ func (w *WorkspaceWatcher) openMatchingFile(ctx context.Context, path string) {
 			if shouldOpen {
 				// Don't need to check if it's already open - the client.OpenFile handles that
 				if err := w.client.OpenFile(ctx, path); err != nil && cnf.DebugLSP {
-					logging.Error("Error opening file", "path", path, "error", err)
+					slog.Error("Error opening file", "path", path, "error", err)
 				}
 			}
 		}

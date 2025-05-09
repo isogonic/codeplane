@@ -12,9 +12,9 @@ import (
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/diff"
 	"github.com/opencode-ai/opencode/internal/history"
-	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/lsp"
 	"github.com/opencode-ai/opencode/internal/permission"
+	"log/slog"
 )
 
 type WriteParams struct {
@@ -201,13 +201,13 @@ func (w *writeTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error
 		// User Manually changed the content store an intermediate version
 		_, err = w.files.CreateVersion(ctx, sessionID, filePath, oldContent)
 		if err != nil {
-			logging.Debug("Error creating file history version", "error", err)
+			slog.Debug("Error creating file history version", "error", err)
 		}
 	}
 	// Store the new version
 	_, err = w.files.CreateVersion(ctx, sessionID, filePath, params.Content)
 	if err != nil {
-		logging.Debug("Error creating file history version", "error", err)
+		slog.Debug("Error creating file history version", "error", err)
 	}
 
 	recordFileWrite(filePath)

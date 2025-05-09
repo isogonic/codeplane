@@ -2,13 +2,13 @@ package theme
 
 import (
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 	"sync"
 
 	"github.com/alecthomas/chroma/v2/styles"
 	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/logging"
 )
 
 // Manager handles theme registration, selection, and retrieval.
@@ -49,19 +49,19 @@ func SetTheme(name string) error {
 	defer globalManager.mu.Unlock()
 
 	delete(styles.Registry, "charm")
-	
+
 	// Handle custom theme
 	if name == "custom" {
 		cfg := config.Get()
 		if cfg == nil || cfg.TUI.CustomTheme == nil || len(cfg.TUI.CustomTheme) == 0 {
 			return fmt.Errorf("custom theme selected but no custom theme colors defined in config")
 		}
-		
+
 		customTheme, err := LoadCustomTheme(cfg.TUI.CustomTheme)
 		if err != nil {
 			return fmt.Errorf("failed to load custom theme: %w", err)
 		}
-		
+
 		// Register the custom theme
 		globalManager.themes["custom"] = customTheme
 	} else if _, exists := globalManager.themes[name]; !exists {
@@ -73,7 +73,7 @@ func SetTheme(name string) error {
 	// Update the config file using viper
 	if err := updateConfigTheme(name); err != nil {
 		// Log the error but don't fail the theme change
-		logging.Warn("Warning: Failed to update config file with new theme", "err", err)
+		slog.Warn("Warning: Failed to update config file with new theme", "err", err)
 	}
 
 	return nil
@@ -140,7 +140,7 @@ func LoadCustomTheme(customTheme map[string]any) (Theme, error) {
 	for key, value := range customTheme {
 		adaptiveColor, err := ParseAdaptiveColor(value)
 		if err != nil {
-			logging.Warn("Invalid color definition in custom theme", "key", key, "error", err)
+			slog.Warn("Invalid color definition in custom theme", "key", key, "error", err)
 			continue // Skip this color but continue processing others
 		}
 
@@ -203,7 +203,7 @@ func LoadCustomTheme(customTheme map[string]any) (Theme, error) {
 		case "diffremovedlinenumberbg":
 			theme.DiffRemovedLineNumberBgColor = adaptiveColor
 		default:
-			logging.Warn("Unknown color key in custom theme", "key", key)
+			slog.Warn("Unknown color key in custom theme", "key", key)
 		}
 	}
 

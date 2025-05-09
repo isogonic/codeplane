@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"log/slog"
+
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/db"
 	"github.com/opencode-ai/opencode/internal/history"
@@ -21,6 +23,7 @@ import (
 )
 
 type App struct {
+	Logs        logging.Service
 	Sessions    session.Service
 	Messages    message.Service
 	History     history.Service
@@ -40,11 +43,15 @@ type App struct {
 
 func New(ctx context.Context, conn *sql.DB) (*App, error) {
 	q := db.New(conn)
+	loggingService := logging.NewService(q)
 	sessionService := session.NewService(q)
 	messageService := message.NewService(q)
 	historyService := history.NewService(q, conn)
 	permissionService := permission.NewPermissionService()
 	statusService := status.NewService()
+
+	// Initialize logging service
+	logging.InitManager(loggingService)
 
 	// Initialize session manager
 	session.InitManager(sessionService)
@@ -53,6 +60,7 @@ func New(ctx context.Context, conn *sql.DB) (*App, error) {
 	status.InitManager(statusService)
 
 	app := &App{
+		Logs:        loggingService,
 		Sessions:    sessionService,
 		Messages:    messageService,
 		History:     historyService,
@@ -81,7 +89,7 @@ func New(ctx context.Context, conn *sql.DB) (*App, error) {
 		),
 	)
 	if err != nil {
-		logging.Error("Failed to create coder agent", err)
+		slog.Error("Failed to create coder agent", err)
 		return nil, err
 	}
 
@@ -98,9 +106,9 @@ func (app *App) initTheme() {
 	// Try to set the theme from config
 	err := theme.SetTheme(cfg.TUI.Theme)
 	if err != nil {
-		logging.Warn("Failed to set theme from config, using default theme", "theme", cfg.TUI.Theme, "error", err)
+		slog.Warn("Failed to set theme from config, using default theme", "theme", cfg.TUI.Theme, "error", err)
 	} else {
-		logging.Debug("Set theme from config", "theme", cfg.TUI.Theme)
+		slog.Debug("Set theme from config", "theme", cfg.TUI.Theme)
 	}
 }
 
@@ -123,7 +131,7 @@ func (app *App) Shutdown() {
 	for name, client := range clients {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		if err := client.Shutdown(shutdownCtx); err != nil {
-			logging.Error("Failed to shutdown LSP client", "name", name, "error", err)
+			slog.Error("Failed to shutdown LSP client", "name", name, "error", err)
 		}
 		cancel()
 	}

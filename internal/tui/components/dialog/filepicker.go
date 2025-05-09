@@ -16,13 +16,13 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/opencode-ai/opencode/internal/app"
 	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/message"
 	"github.com/opencode-ai/opencode/internal/status"
 	"github.com/opencode-ai/opencode/internal/tui/image"
 	"github.com/opencode-ai/opencode/internal/tui/styles"
 	"github.com/opencode-ai/opencode/internal/tui/theme"
 	"github.com/opencode-ai/opencode/internal/tui/util"
+	"log/slog"
 )
 
 const (
@@ -376,7 +376,7 @@ func (f *filepickerCmp) IsCWDFocused() bool {
 func NewFilepickerCmp(app *app.App) FilepickerCmp {
 	homepath, err := os.UserHomeDir()
 	if err != nil {
-		logging.Error("error loading user files")
+		slog.Error("error loading user files")
 		return nil
 	}
 	baseDir := DirNode{parent: nil, directory: homepath}
@@ -392,7 +392,7 @@ func NewFilepickerCmp(app *app.App) FilepickerCmp {
 
 func (f *filepickerCmp) getCurrentFileBelowCursor() {
 	if len(f.dirs) == 0 || f.cursor < 0 || f.cursor >= len(f.dirs) {
-		logging.Error(fmt.Sprintf("Invalid cursor position. Dirs length: %d, Cursor: %d", len(f.dirs), f.cursor))
+		slog.Error(fmt.Sprintf("Invalid cursor position. Dirs length: %d, Cursor: %d", len(f.dirs), f.cursor))
 		f.viewport.SetContent("Preview unavailable")
 		return
 	}
@@ -405,7 +405,7 @@ func (f *filepickerCmp) getCurrentFileBelowCursor() {
 		go func() {
 			imageString, err := image.ImagePreview(f.viewport.Width-4, fullPath)
 			if err != nil {
-				logging.Error(err.Error())
+				slog.Error(err.Error())
 				f.viewport.SetContent("Preview unavailable")
 				return
 			}
@@ -418,7 +418,7 @@ func (f *filepickerCmp) getCurrentFileBelowCursor() {
 }
 
 func readDir(path string, showHidden bool) []os.DirEntry {
-	logging.Info(fmt.Sprintf("Reading directory: %s", path))
+	slog.Info(fmt.Sprintf("Reading directory: %s", path))
 
 	entriesChan := make(chan []os.DirEntry, 1)
 	errChan := make(chan error, 1)

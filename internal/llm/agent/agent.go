@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"log/slog"
+
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/llm/models"
 	"github.com/opencode-ai/opencode/internal/llm/prompt"
@@ -177,7 +179,7 @@ func (a *agent) Run(ctx context.Context, sessionID string, content string, attac
 
 	a.activeRequests.Store(sessionID, cancel)
 	go func() {
-		logging.Debug("Request started", "sessionID", sessionID)
+		slog.Debug("Request started", "sessionID", sessionID)
 		defer logging.RecoverPanic("agent.Run", func() {
 			events <- a.err(fmt.Errorf("panic while running the agent"))
 		})
@@ -189,7 +191,7 @@ func (a *agent) Run(ctx context.Context, sessionID string, content string, attac
 		if result.Err() != nil && !errors.Is(result.Err(), ErrRequestCancelled) && !errors.Is(result.Err(), context.Canceled) {
 			status.Error(result.Err().Error())
 		}
-		logging.Debug("Request completed", "sessionID", sessionID)
+		slog.Debug("Request completed", "sessionID", sessionID)
 		a.activeRequests.Delete(sessionID)
 		cancel()
 		events <- result
@@ -276,7 +278,7 @@ func (a *agent) processGeneration(ctx context.Context, sessionID, content string
 			}
 			return a.err(fmt.Errorf("failed to process events: %w", err))
 		}
-		logging.Info("Result", "message", agentMessage.FinishReason(), "toolResults", toolResults)
+		slog.Info("Result", "message", agentMessage.FinishReason(), "toolResults", toolResults)
 		if (agentMessage.FinishReason() == message.FinishReasonToolUse) && toolResults != nil {
 			// We are not done, we need to respond with the tool response
 			messages = append(messages, agentMessage, *toolResults)

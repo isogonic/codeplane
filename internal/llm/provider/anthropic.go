@@ -15,9 +15,9 @@ import (
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/llm/models"
 	"github.com/opencode-ai/opencode/internal/llm/tools"
-	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/message"
 	"github.com/opencode-ai/opencode/internal/status"
+	"log/slog"
 )
 
 type anthropicOptions struct {
@@ -107,7 +107,7 @@ func (a *anthropicClient) convertMessages(messages []message.Message) (anthropic
 			}
 
 			if len(blocks) == 0 {
-				logging.Warn("There is a message without content, investigate, this should not happen")
+				slog.Warn("There is a message without content, investigate, this should not happen")
 				continue
 			}
 			anthropicMessages = append(anthropicMessages, anthropic.NewAssistantMessage(blocks...))
@@ -210,7 +210,7 @@ func (a *anthropicClient) send(ctx context.Context, messages []message.Message, 
 	cfg := config.Get()
 	if cfg.Debug {
 		jsonData, _ := json.Marshal(preparedMessages)
-		logging.Debug("Prepared messages", "messages", string(jsonData))
+		slog.Debug("Prepared messages", "messages", string(jsonData))
 	}
 
 	attempts := 0
@@ -222,7 +222,7 @@ func (a *anthropicClient) send(ctx context.Context, messages []message.Message, 
 		)
 		// If there is an error we are going to see if we can retry the call
 		if err != nil {
-			logging.Error("Error in Anthropic API call", "error", err)
+			slog.Error("Error in Anthropic API call", "error", err)
 			retry, after, retryErr := a.shouldRetry(attempts, err)
 			if retryErr != nil {
 				return nil, retryErr
@@ -259,7 +259,7 @@ func (a *anthropicClient) stream(ctx context.Context, messages []message.Message
 	cfg := config.Get()
 	if cfg.Debug {
 		jsonData, _ := json.Marshal(preparedMessages)
-		logging.Debug("Prepared messages", "messages", string(jsonData))
+		slog.Debug("Prepared messages", "messages", string(jsonData))
 	}
 	attempts := 0
 	eventChan := make(chan ProviderEvent)
@@ -277,7 +277,7 @@ func (a *anthropicClient) stream(ctx context.Context, messages []message.Message
 				event := anthropicStream.Current()
 				err := accumulatedMessage.Accumulate(event)
 				if err != nil {
-					logging.Warn("Error accumulating message", "error", err)
+					slog.Warn("Error accumulating message", "error", err)
 					continue
 				}
 

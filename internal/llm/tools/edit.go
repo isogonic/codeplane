@@ -12,9 +12,9 @@ import (
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/diff"
 	"github.com/opencode-ai/opencode/internal/history"
-	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/lsp"
 	"github.com/opencode-ai/opencode/internal/permission"
+	"log/slog"
 )
 
 type EditParams struct {
@@ -234,7 +234,7 @@ func (e *editTool) createNewFile(ctx context.Context, filePath, content string) 
 	_, err = e.files.CreateVersion(ctx, sessionID, filePath, content)
 	if err != nil {
 		// Log error but don't fail the operation
-		logging.Debug("Error creating file history version", "error", err)
+		slog.Debug("Error creating file history version", "error", err)
 	}
 
 	recordFileWrite(filePath)
@@ -347,13 +347,13 @@ func (e *editTool) deleteContent(ctx context.Context, filePath, oldString string
 		// User Manually changed the content store an intermediate version
 		_, err = e.files.CreateVersion(ctx, sessionID, filePath, oldContent)
 		if err != nil {
-			logging.Debug("Error creating file history version", "error", err)
+			slog.Debug("Error creating file history version", "error", err)
 		}
 	}
 	// Store the new version
 	_, err = e.files.CreateVersion(ctx, sessionID, filePath, "")
 	if err != nil {
-		logging.Debug("Error creating file history version", "error", err)
+		slog.Debug("Error creating file history version", "error", err)
 	}
 
 	recordFileWrite(filePath)
@@ -467,13 +467,13 @@ func (e *editTool) replaceContent(ctx context.Context, filePath, oldString, newS
 		// User Manually changed the content store an intermediate version
 		_, err = e.files.CreateVersion(ctx, sessionID, filePath, oldContent)
 		if err != nil {
-			logging.Debug("Error creating file history version", "error", err)
+			slog.Debug("Error creating file history version", "error", err)
 		}
 	}
 	// Store the new version
 	_, err = e.files.CreateVersion(ctx, sessionID, filePath, newContent)
 	if err != nil {
-		logging.Debug("Error creating file history version", "error", err)
+		slog.Debug("Error creating file history version", "error", err)
 	}
 
 	recordFileWrite(filePath)

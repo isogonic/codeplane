@@ -14,9 +14,9 @@ import (
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/llm/models"
 	"github.com/opencode-ai/opencode/internal/llm/tools"
-	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/message"
 	"github.com/opencode-ai/opencode/internal/status"
+	"log/slog"
 )
 
 type openaiOptions struct {
@@ -199,7 +199,7 @@ func (o *openaiClient) send(ctx context.Context, messages []message.Message, too
 	cfg := config.Get()
 	if cfg.Debug {
 		jsonData, _ := json.Marshal(params)
-		logging.Debug("Prepared messages", "messages", string(jsonData))
+		slog.Debug("Prepared messages", "messages", string(jsonData))
 	}
 	attempts := 0
 	for {
@@ -256,7 +256,7 @@ func (o *openaiClient) stream(ctx context.Context, messages []message.Message, t
 	cfg := config.Get()
 	if cfg.Debug {
 		jsonData, _ := json.Marshal(params)
-		logging.Debug("Prepared messages", "messages", string(jsonData))
+		slog.Debug("Prepared messages", "messages", string(jsonData))
 	}
 
 	attempts := 0
@@ -427,7 +427,7 @@ func WithReasoningEffort(effort string) OpenAIOption {
 		case "low", "medium", "high":
 			defaultReasoningEffort = effort
 		default:
-			logging.Warn("Invalid reasoning effort, using default: medium")
+			slog.Warn("Invalid reasoning effort, using default: medium")
 		}
 		options.reasoningEffort = defaultReasoningEffort
 	}

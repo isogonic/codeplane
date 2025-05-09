@@ -1,15 +1,17 @@
 package logs
 
 import (
-	"slices"
+	"context"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/pubsub"
+	"github.com/opencode-ai/opencode/internal/session"
+	"github.com/opencode-ai/opencode/internal/tui/components/chat"
 	"github.com/opencode-ai/opencode/internal/tui/layout"
-	// "github.com/opencode-ai/opencode/internal/tui/styles"
 	"github.com/opencode-ai/opencode/internal/tui/theme"
 	"github.com/opencode-ai/opencode/internal/tui/util"
 )
@@ -23,45 +25,96 @@ type TableComponent interface {
 type tableCmp struct {
 	table   table.Model
 	focused bool
+	logs    []logging.Log
 }
 
-type selectedLogMsg logging.LogMessage
+type selectedLogMsg logging.Log
+
+// Message for when logs are loaded from the database
+type logsLoadedMsg struct {
+	logs []logging.Log
+}
 
 func (i *tableCmp) Init() tea.Cmd {
-	i.setRows()
-	return nil
+	return i.fetchLogs()
+}
+
+func (i *tableCmp) fetchLogs() tea.Cmd {
+	return func() tea.Msg {
+		ctx := context.Background()
+		loggingService := logging.GetService()
+		if loggingService == nil {
+			return nil
+		}
+
+		var logs []logging.Log
+		var err error
+		sessionId := session.CurrentSessionID()
+
+		// Limit the number of logs to improve performance
+		const logLimit = 100
+		if sessionId == "" {
+			logs, err = loggingService.ListAll(ctx, logLimit)
+		} else {
+			logs, err = loggingService.ListBySession(ctx, sessionId)
+			// Trim logs if there are too many
+			if err == nil && len(logs) > logLimit {
+				logs = logs[len(logs)-logLimit:]
+			}
+		}
+
+		if err != nil {
+			return nil
+		}
+
+		return logsLoadedMsg{logs: logs}
+	}
 }
 
 func (i *tableCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
-	switch msg.(type) {
-	case pubsub.Event[logging.LogMessage]:
-		i.setRows()
+
+	switch msg := msg.(type) {
+	case logsLoadedMsg:
+		i.logs = msg.logs
+		i.updateRows()
+		return i, nil
+
+	case chat.SessionSelectedMsg:
+		return i, i.fetchLogs()
+
+	case pubsub.Event[logging.Log]:
+		// Only handle created events
+		if msg.Type == pubsub.CreatedEvent {
+			// Add the new log to our list
+			i.logs = append([]logging.Log{msg.Payload}, i.logs...)
+			// Keep the list at a reasonable size
+			if len(i.logs) > 100 {
+				i.logs = i.logs[:100]
+			}
+			i.updateRows()
+		}
 		return i, nil
 	}
-	
+
 	// Only process keyboard input when focused
 	if _, ok := msg.(tea.KeyMsg); ok && !i.focused {
 		return i, nil
 	}
-	
+
 	t, cmd := i.table.Update(msg)
 	cmds = append(cmds, cmd)
 	i.table = t
+	
+	// Only send selected log message when selection changes
 	selectedRow := i.table.SelectedRow()
 	if selectedRow != nil {
-		// Always send the selected log message when a row is selected
-		// This fixes the issue where navigation doesn't update the detail pane
-		// when returning to the logs page
-		var log logging.LogMessage
-		for _, row := range logging.List() {
-			if row.ID == selectedRow[0] {
-				log = row
+		// Use a map for faster lookups by ID
+		for _, log := range i.logs {
+			if log.ID == selectedRow[0] {
+				cmds = append(cmds, util.CmdHandler(selectedLogMsg(log)))
 				break
 			}
-		}
-		if log.ID != "" {
-			cmds = append(cmds, util.CmdHandler(selectedLogMsg(log)))
 		}
 	}
 	return i, tea.Batch(cmds...)
@@ -105,25 +158,20 @@ func (i *tableCmp) BindingKeys() []key.Binding {
 	return layout.KeyMapToSlice(i.table.KeyMap)
 }
 
-func (i *tableCmp) setRows() {
-	rows := []table.Row{}
+func (i *tableCmp) updateRows() {
+	rows := make([]table.Row, 0, len(i.logs))
 
-	logs := logging.List()
-	slices.SortFunc(logs, func(a, b logging.LogMessage) int {
-		if a.Time.Before(b.Time) {
-			return 1
-		}
-		if a.Time.After(b.Time) {
-			return -1
-		}
-		return 0
-	})
+	// Logs are already sorted by timestamp (newest first) from the database query
+	// Skip the expensive sort operation
 
-	for _, log := range logs {
+	for _, log := range i.logs {
+		// Format timestamp as time
+		timeStr := time.Unix(log.Timestamp, 0).Format("15:04:05")
+
 		// Include ID as hidden first column for selection
 		row := table.Row{
 			log.ID,
-			log.Time.Format("15:04:05"),
+			timeStr,
 			log.Level,
 			log.Message,
 		}
@@ -146,6 +194,7 @@ func NewLogsTable() TableComponent {
 	tableModel.Focus()
 	return &tableCmp{
 		table: tableModel,
+		logs:  []logging.Log{},
 	}
 }
 

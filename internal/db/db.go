@@ -27,6 +27,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.createFileStmt, err = db.PrepareContext(ctx, createFile); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateFile: %w", err)
 	}
+	if q.createLogStmt, err = db.PrepareContext(ctx, createLog); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateLog: %w", err)
+	}
 	if q.createMessageStmt, err = db.PrepareContext(ctx, createMessage); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateMessage: %w", err)
 	}
@@ -60,6 +63,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getSessionByIDStmt, err = db.PrepareContext(ctx, getSessionByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetSessionByID: %w", err)
 	}
+	if q.listAllLogsStmt, err = db.PrepareContext(ctx, listAllLogs); err != nil {
+		return nil, fmt.Errorf("error preparing query ListAllLogs: %w", err)
+	}
 	if q.listFilesByPathStmt, err = db.PrepareContext(ctx, listFilesByPath); err != nil {
 		return nil, fmt.Errorf("error preparing query ListFilesByPath: %w", err)
 	}
@@ -68,6 +74,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.listLatestSessionFilesStmt, err = db.PrepareContext(ctx, listLatestSessionFiles); err != nil {
 		return nil, fmt.Errorf("error preparing query ListLatestSessionFiles: %w", err)
+	}
+	if q.listLogsBySessionStmt, err = db.PrepareContext(ctx, listLogsBySession); err != nil {
+		return nil, fmt.Errorf("error preparing query ListLogsBySession: %w", err)
 	}
 	if q.listMessagesBySessionStmt, err = db.PrepareContext(ctx, listMessagesBySession); err != nil {
 		return nil, fmt.Errorf("error preparing query ListMessagesBySession: %w", err)
@@ -98,6 +107,11 @@ func (q *Queries) Close() error {
 	if q.createFileStmt != nil {
 		if cerr := q.createFileStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing createFileStmt: %w", cerr)
+		}
+	}
+	if q.createLogStmt != nil {
+		if cerr := q.createLogStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createLogStmt: %w", cerr)
 		}
 	}
 	if q.createMessageStmt != nil {
@@ -155,6 +169,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getSessionByIDStmt: %w", cerr)
 		}
 	}
+	if q.listAllLogsStmt != nil {
+		if cerr := q.listAllLogsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listAllLogsStmt: %w", cerr)
+		}
+	}
 	if q.listFilesByPathStmt != nil {
 		if cerr := q.listFilesByPathStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing listFilesByPathStmt: %w", cerr)
@@ -168,6 +187,11 @@ func (q *Queries) Close() error {
 	if q.listLatestSessionFilesStmt != nil {
 		if cerr := q.listLatestSessionFilesStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing listLatestSessionFilesStmt: %w", cerr)
+		}
+	}
+	if q.listLogsBySessionStmt != nil {
+		if cerr := q.listLogsBySessionStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listLogsBySessionStmt: %w", cerr)
 		}
 	}
 	if q.listMessagesBySessionStmt != nil {
@@ -245,6 +269,7 @@ type Queries struct {
 	db                             DBTX
 	tx                             *sql.Tx
 	createFileStmt                 *sql.Stmt
+	createLogStmt                  *sql.Stmt
 	createMessageStmt              *sql.Stmt
 	createSessionStmt              *sql.Stmt
 	deleteFileStmt                 *sql.Stmt
@@ -256,9 +281,11 @@ type Queries struct {
 	getFileByPathAndSessionStmt    *sql.Stmt
 	getMessageStmt                 *sql.Stmt
 	getSessionByIDStmt             *sql.Stmt
+	listAllLogsStmt                *sql.Stmt
 	listFilesByPathStmt            *sql.Stmt
 	listFilesBySessionStmt         *sql.Stmt
 	listLatestSessionFilesStmt     *sql.Stmt
+	listLogsBySessionStmt          *sql.Stmt
 	listMessagesBySessionStmt      *sql.Stmt
 	listMessagesBySessionAfterStmt *sql.Stmt
 	listNewFilesStmt               *sql.Stmt
@@ -273,6 +300,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		db:                             tx,
 		tx:                             tx,
 		createFileStmt:                 q.createFileStmt,
+		createLogStmt:                  q.createLogStmt,
 		createMessageStmt:              q.createMessageStmt,
 		createSessionStmt:              q.createSessionStmt,
 		deleteFileStmt:                 q.deleteFileStmt,
@@ -284,9 +312,11 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getFileByPathAndSessionStmt:    q.getFileByPathAndSessionStmt,
 		getMessageStmt:                 q.getMessageStmt,
 		getSessionByIDStmt:             q.getSessionByIDStmt,
+		listAllLogsStmt:                q.listAllLogsStmt,
 		listFilesByPathStmt:            q.listFilesByPathStmt,
 		listFilesBySessionStmt:         q.listFilesBySessionStmt,
 		listLatestSessionFilesStmt:     q.listLatestSessionFilesStmt,
+		listLogsBySessionStmt:          q.listLogsBySessionStmt,
 		listMessagesBySessionStmt:      q.listMessagesBySessionStmt,
 		listMessagesBySessionAfterStmt: q.listMessagesBySessionAfterStmt,
 		listNewFilesStmt:               q.listNewFilesStmt,

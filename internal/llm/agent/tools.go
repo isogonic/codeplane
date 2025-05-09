@@ -33,7 +33,7 @@ func CoderAgentTools(
 			tools.NewGlobTool(),
 			tools.NewGrepTool(),
 			tools.NewLsTool(),
-			tools.NewSourcegraphTool(),
+			// tools.NewSourcegraphTool(),
 			tools.NewViewTool(lspClients),
 			tools.NewPatchTool(lspClients, permissions, history),
 			tools.NewWriteTool(lspClients, permissions, history),

@@ -14,6 +14,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"log/slog"
+
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/lsp/protocol"
@@ -97,10 +99,10 @@ func NewClient(ctx context.Context, command string, args ...string) (*Client, er
 	go func() {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
-			logging.Info("LSP Server", "message", scanner.Text())
+			slog.Info("LSP Server", "message", scanner.Text())
 		}
 		if err := scanner.Err(); err != nil {
-			logging.Error("Error reading LSP stderr", "error", err)
+			slog.Error("Error reading LSP stderr", "error", err)
 		}
 	}()
 
@@ -301,7 +303,7 @@ func (c *Client) WaitForServerReady(ctx context.Context) error {
 	defer ticker.Stop()
 
 	if cnf.DebugLSP {
-		logging.Debug("Waiting for LSP server to be ready...")
+		slog.Debug("Waiting for LSP server to be ready...")
 	}
 
 	// Determine server type for specialized initialization
@@ -310,7 +312,7 @@ func (c *Client) WaitForServerReady(ctx context.Context) error {
 	// For TypeScript-like servers, we need to open some key files first
 	if serverType == ServerTypeTypeScript {
 		if cnf.DebugLSP {
-			logging.Debug("TypeScript-like server detected, opening key configuration files")
+			slog.Debug("TypeScript-like server detected, opening key configuration files")
 		}
 		c.openKeyConfigFiles(ctx)
 	}
@@ -327,15 +329,15 @@ func (c *Client) WaitForServerReady(ctx context.Context) error {
 				// Server responded successfully
 				c.SetServerState(StateReady)
 				if cnf.DebugLSP {
-					logging.Debug("LSP server is ready")
+					slog.Debug("LSP server is ready")
 				}
 				return nil
 			} else {
-				logging.Debug("LSP server not ready yet", "error", err, "serverType", serverType)
+				slog.Debug("LSP server not ready yet", "error", err, "serverType", serverType)
 			}
 
 			if cnf.DebugLSP {
-				logging.Debug("LSP server not ready yet", "error", err, "serverType", serverType)
+				slog.Debug("LSP server not ready yet", "error", err, "serverType", serverType)
 			}
 		}
 	}
@@ -410,9 +412,9 @@ func (c *Client) openKeyConfigFiles(ctx context.Context) {
 		if _, err := os.Stat(file); err == nil {
 			// File exists, try to open it
 			if err := c.OpenFile(ctx, file); err != nil {
-				logging.Debug("Failed to open key config file", "file", file, "error", err)
+				slog.Debug("Failed to open key config file", "file", file, "error", err)
 			} else {
-				logging.Debug("Opened key config file for initialization", "file", file)
+				slog.Debug("Opened key config file for initialization", "file", file)
 			}
 		}
 	}
@@ -488,7 +490,7 @@ func (c *Client) pingTypeScriptServer(ctx context.Context) error {
 		return nil
 	})
 	if err != nil {
-		logging.Debug("Error walking directory for TypeScript files", "error", err)
+		slog.Debug("Error walking directory for TypeScript files", "error", err)
 	}
 
 	// Final fallback - just try a generic capability
@@ -528,7 +530,7 @@ func (c *Client) openTypeScriptFiles(ctx context.Context, workDir string) {
 			if err := c.OpenFile(ctx, path); err == nil {
 				filesOpened++
 				if cnf.DebugLSP {
-					logging.Debug("Opened TypeScript file for initialization", "file", path)
+					slog.Debug("Opened TypeScript file for initialization", "file", path)
 				}
 			}
 		}
@@ -537,11 +539,11 @@ func (c *Client) openTypeScriptFiles(ctx context.Context, workDir string) {
 	})
 
 	if err != nil && cnf.DebugLSP {
-		logging.Debug("Error walking directory for TypeScript files", "error", err)
+		slog.Debug("Error walking directory for TypeScript files", "error", err)
 	}
 
 	if cnf.DebugLSP {
-		logging.Debug("Opened TypeScript files for initialization", "count", filesOpened)
+		slog.Debug("Opened TypeScript files for initialization", "count", filesOpened)
 	}
 }
 
@@ -691,7 +693,7 @@ func (c *Client) CloseFile(ctx context.Context, filepath string) error {
 	}
 
 	if cnf.DebugLSP {
-		logging.Debug("Closing file", "file", filepath)
+		slog.Debug("Closing file", "file", filepath)
 	}
 	if err := c.Notify(ctx, "textDocument/didClose", params); err != nil {
 		return err
@@ -730,12 +732,12 @@ func (c *Client) CloseAllFiles(ctx context.Context) {
 	for _, filePath := range filesToClose {
 		err := c.CloseFile(ctx, filePath)
 		if err != nil && cnf.DebugLSP {
-			logging.Warn("Error closing file", "file", filePath, "error", err)
+			slog.Warn("Error closing file", "file", filePath, "error", err)
 		}
 	}
 
 	if cnf.DebugLSP {
-		logging.Debug("Closed all files", "files", filesToClose)
+		slog.Debug("Closed all files", "files", filesToClose)
 	}
 }
 
