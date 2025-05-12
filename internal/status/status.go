@@ -1,35 +1,36 @@
 package status
 
 import (
+	"context"
+	"fmt"
+	"sync"
 	"time"
 
 	"github.com/opencode-ai/opencode/internal/pubsub"
 )
 
-// Level represents the severity level of a status message
 type Level string
 
 const (
-	// LevelInfo represents an informational status message
-	LevelInfo Level = "info"
-	// LevelWarn represents a warning status message
-	LevelWarn Level = "warn"
-	// LevelError represents an error status message
+	LevelInfo  Level = "info"
+	LevelWarn  Level = "warn"
 	LevelError Level = "error"
-	// LevelDebug represents a debug status message
 	LevelDebug Level = "debug"
 )
 
-// StatusMessage represents a status update to be displayed in the UI
 type StatusMessage struct {
 	Level     Level     `json:"level"`
 	Message   string    `json:"message"`
 	Timestamp time.Time `json:"timestamp"`
 }
 
-// Service defines the interface for the status service
+const (
+	EventStatusPublished pubsub.EventType = "status_published"
+)
+
 type Service interface {
-	pubsub.Suscriber[StatusMessage]
+	pubsub.Subscriber[StatusMessage]
+
 	Info(message string)
 	Warn(message string)
 	Error(message string)
@@ -37,44 +38,75 @@ type Service interface {
 }
 
 type service struct {
-	*pubsub.Broker[StatusMessage]
+	broker *pubsub.Broker[StatusMessage]
+	mu     sync.RWMutex
 }
 
-// Info publishes an info level status message
+var globalStatusService *service
+
+func InitService() error {
+	if globalStatusService != nil {
+		return fmt.Errorf("status service already initialized")
+	}
+	broker := pubsub.NewBroker[StatusMessage]()
+	globalStatusService = &service{
+		broker: broker,
+	}
+	return nil
+}
+
+func GetService() Service {
+	if globalStatusService == nil {
+		panic("status service not initialized. Call status.InitService() at application startup.")
+	}
+	return globalStatusService
+}
+
 func (s *service) Info(message string) {
 	s.publish(LevelInfo, message)
 }
 
-// Warn publishes a warning level status message
 func (s *service) Warn(message string) {
 	s.publish(LevelWarn, message)
 }
 
-// Error publishes an error level status message
 func (s *service) Error(message string) {
 	s.publish(LevelError, message)
 }
 
-// Debug publishes a debug level status message
 func (s *service) Debug(message string) {
 	s.publish(LevelDebug, message)
 }
 
-// publish creates and publishes a status message with the given level and message
-func (s *service) publish(level Level, message string) {
+func (s *service) publish(level Level, messageText string) {
 	statusMsg := StatusMessage{
 		Level:     level,
-		Message:   message,
+		Message:   messageText,
 		Timestamp: time.Now(),
 	}
-	s.Publish(pubsub.CreatedEvent, statusMsg)
+	s.broker.Publish(EventStatusPublished, statusMsg)
 }
 
-// NewService creates a new status service
-func NewService() Service {
-	broker := pubsub.NewBroker[StatusMessage]()
-	return &service{
-		Broker: broker,
-	}
+func (s *service) Subscribe(ctx context.Context) <-chan pubsub.Event[StatusMessage] {
+	return s.broker.Subscribe(ctx)
 }
 
+func Info(message string) {
+	GetService().Info(message)
+}
+
+func Warn(message string) {
+	GetService().Warn(message)
+}
+
+func Error(message string) {
+	GetService().Error(message)
+}
+
+func Debug(message string) {
+	GetService().Debug(message)
+}
+
+func Subscribe(ctx context.Context) <-chan pubsub.Event[StatusMessage] {
+	return GetService().Subscribe(ctx)
+}

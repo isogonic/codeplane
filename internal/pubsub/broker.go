@@ -2,136 +2,112 @@ package pubsub
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 	"sync"
+	"time"
 )
 
-const bufferSize = 1000
+const defaultChannelBufferSize = 100
 
 type Broker[T any] struct {
-	subs      map[chan Event[T]]struct{}
-	mu        sync.RWMutex
-	done      chan struct{}
-	subCount  int
-	maxEvents int
+	subs     map[chan Event[T]]context.CancelFunc
+	mu       sync.RWMutex
+	isClosed bool
 }
 
 func NewBroker[T any]() *Broker[T] {
-	return NewBrokerWithOptions[T](bufferSize, 1000)
-}
-
-func NewBrokerWithOptions[T any](channelBufferSize, maxEvents int) *Broker[T] {
-	b := &Broker[T]{
-		subs:      make(map[chan Event[T]]struct{}),
-		done:      make(chan struct{}),
-		subCount:  0,
-		maxEvents: maxEvents,
+	return &Broker[T]{
+		subs: make(map[chan Event[T]]context.CancelFunc),
 	}
-	return b
 }
 
 func (b *Broker[T]) Shutdown() {
-	select {
-	case <-b.done: // Already closed
-		return
-	default:
-		close(b.done)
-	}
-
 	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	for ch := range b.subs {
-		delete(b.subs, ch)
-		close(ch)
+	if b.isClosed {
+		b.mu.Unlock()
+		return
 	}
+	b.isClosed = true
 
-	b.subCount = 0
+	for ch, cancel := range b.subs {
+		cancel()
+		close(ch)
+		delete(b.subs, ch)
+	}
+	b.mu.Unlock()
+	slog.Debug("PubSub broker shut down", "type", fmt.Sprintf("%T", *new(T)))
 }
 
 func (b *Broker[T]) Subscribe(ctx context.Context) <-chan Event[T] {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	select {
-	case <-b.done:
-		ch := make(chan Event[T])
-		close(ch)
-		return ch
-	default:
+	if b.isClosed {
+		closedCh := make(chan Event[T])
+		close(closedCh)
+		return closedCh
 	}
 
-	sub := make(chan Event[T], bufferSize)
-	b.subs[sub] = struct{}{}
-	b.subCount++
+	subCtx, subCancel := context.WithCancel(ctx)
+	subscriberChannel := make(chan Event[T], defaultChannelBufferSize)
+	b.subs[subscriberChannel] = subCancel
 
-	// Only start a goroutine if the context can actually be canceled
-	if ctx.Done() != nil {
-		go func() {
-			<-ctx.Done()
+	go func() {
+		<-subCtx.Done()
+		b.mu.Lock()
+		defer b.mu.Unlock()
+		if _, ok := b.subs[subscriberChannel]; ok {
+			close(subscriberChannel)
+			delete(b.subs, subscriberChannel)
+		}
+	}()
 
-			b.mu.Lock()
-			defer b.mu.Unlock()
+	return subscriberChannel
+}
 
-			select {
-			case <-b.done:
-				return
-			default:
-			}
+func (b *Broker[T]) Publish(eventType EventType, payload T) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 
-			if _, exists := b.subs[sub]; exists {
-				delete(b.subs, sub)
-				close(sub)
-				b.subCount--
-			}
-		}()
+	if b.isClosed {
+		slog.Warn("Attempted to publish on a closed pubsub broker", "type", eventType, "payload_type", fmt.Sprintf("%T", payload))
+		return
 	}
 
-	return sub
+	event := Event[T]{Type: eventType, Payload: payload}
+
+	for ch := range b.subs {
+		// Non-blocking send with a fallback to a goroutine to prevent slow subscribers
+		// from blocking the publisher.
+		select {
+		case ch <- event:
+			// Successfully sent
+		default:
+			// Subscriber channel is full or receiver is slow.
+			// Send in a new goroutine to avoid blocking the publisher.
+			// This might lead to out-of-order delivery for this specific slow subscriber.
+			go func(sChan chan Event[T], ev Event[T]) {
+				// Re-check if broker is closed before attempting send in goroutine
+				b.mu.RLock()
+				isBrokerClosed := b.isClosed
+				b.mu.RUnlock()
+				if isBrokerClosed {
+					return
+				}
+
+				select {
+				case sChan <- ev:
+				case <-time.After(2 * time.Second): // Timeout for slow subscriber
+					slog.Warn("PubSub: Dropped event for slow subscriber after timeout", "type", ev.Type)
+				}
+			}(ch, event)
+		}
+	}
 }
 
 func (b *Broker[T]) GetSubscriberCount() int {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	return b.subCount
-}
-
-func (b *Broker[T]) Publish(t EventType, payload T) {
-	b.mu.RLock()
-	select {
-	case <-b.done:
-		b.mu.RUnlock()
-		return
-	default:
-	}
-
-	subscribers := make([]chan Event[T], 0, len(b.subs))
-	for sub := range b.subs {
-		subscribers = append(subscribers, sub)
-	}
-	b.mu.RUnlock()
-
-	event := Event[T]{Type: t, Payload: payload}
-
-	for _, sub := range subscribers {
-		select {
-		case sub <- event:
-			// Successfully sent
-		case <-b.done:
-			// Broker is shutting down
-			return
-		default:
-			// Channel is full, but we don't want to block
-			// Log this situation or consider other strategies
-			// For now, we'll create a new goroutine to ensure delivery
-			go func(ch chan Event[T], evt Event[T]) {
-				select {
-				case ch <- evt:
-					// Successfully sent
-				case <-b.done:
-					// Broker is shutting down
-					return
-				}
-			}(sub, event)
-		}
-	}
+	return len(b.subs)
 }

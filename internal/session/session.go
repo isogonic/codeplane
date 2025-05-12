@@ -3,12 +3,16 @@ package session
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/opencode-ai/opencode/internal/db"
 	"github.com/opencode-ai/opencode/internal/pubsub"
 )
 
+// Session represents a conversation session.
 type Session struct {
 	ID               string
 	ParentSessionID  string
@@ -23,128 +27,185 @@ type Session struct {
 	UpdatedAt        int64
 }
 
+// --- Events ---
+
+const (
+	EventSessionCreated pubsub.EventType = "session_created"
+	EventSessionUpdated pubsub.EventType = "session_updated"
+	EventSessionDeleted pubsub.EventType = "session_deleted"
+)
+
+// --- Service Definition ---
+
 type Service interface {
-	pubsub.Suscriber[Session]
+	pubsub.Subscriber[Session]
+
 	Create(ctx context.Context, title string) (Session, error)
-	CreateTitleSession(ctx context.Context, parentSessionID string) (Session, error)
 	CreateTaskSession(ctx context.Context, toolCallID, parentSessionID, title string) (Session, error)
 	Get(ctx context.Context, id string) (Session, error)
 	List(ctx context.Context) ([]Session, error)
-	Save(ctx context.Context, session Session) (Session, error)
+	Update(ctx context.Context, session Session) (Session, error)
 	Delete(ctx context.Context, id string) error
 }
 
 type service struct {
-	*pubsub.Broker[Session]
-	q db.Querier
+	db     *db.Queries
+	broker *pubsub.Broker[Session]
+	mu     sync.RWMutex
 }
 
+var globalSessionService *service
+
+func InitService(dbConn *sql.DB) error {
+	if globalSessionService != nil {
+		return fmt.Errorf("session service already initialized")
+	}
+	queries := db.New(dbConn)
+	broker := pubsub.NewBroker[Session]()
+
+	globalSessionService = &service{
+		db:     queries,
+		broker: broker,
+	}
+	return nil
+}
+
+func GetService() Service {
+	if globalSessionService == nil {
+		panic("session service not initialized. Call session.InitService() first.")
+	}
+	return globalSessionService
+}
+
+// --- Service Methods ---
+
 func (s *service) Create(ctx context.Context, title string) (Session, error) {
-	dbSession, err := s.q.CreateSession(ctx, db.CreateSessionParams{
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if title == "" {
+		title = "New Session - " + time.Now().Format("2006-01-02 15:04:05")
+	}
+
+	dbSessParams := db.CreateSessionParams{
 		ID:    uuid.New().String(),
 		Title: title,
-	})
-	if err != nil {
-		return Session{}, err
 	}
+	dbSession, err := s.db.CreateSession(ctx, dbSessParams)
+	if err != nil {
+		return Session{}, fmt.Errorf("db.CreateSession: %w", err)
+	}
+
 	session := s.fromDBItem(dbSession)
-	s.Publish(pubsub.CreatedEvent, session)
+	s.broker.Publish(EventSessionCreated, session)
 	return session, nil
 }
 
 func (s *service) CreateTaskSession(ctx context.Context, toolCallID, parentSessionID, title string) (Session, error) {
-	dbSession, err := s.q.CreateSession(ctx, db.CreateSessionParams{
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if title == "" {
+		title = "Task Session - " + time.Now().Format("2006-01-02 15:04:05")
+	}
+	if toolCallID == "" {
+		toolCallID = uuid.New().String()
+	}
+
+	dbSessParams := db.CreateSessionParams{
 		ID:              toolCallID,
-		ParentSessionID: sql.NullString{String: parentSessionID, Valid: true},
+		ParentSessionID: sql.NullString{String: parentSessionID, Valid: parentSessionID != ""},
 		Title:           title,
-	})
+	}
+	dbSession, err := s.db.CreateSession(ctx, dbSessParams)
 	if err != nil {
-		return Session{}, err
+		return Session{}, fmt.Errorf("db.CreateTaskSession: %w", err)
 	}
 	session := s.fromDBItem(dbSession)
-	s.Publish(pubsub.CreatedEvent, session)
+	s.broker.Publish(EventSessionCreated, session)
 	return session, nil
-}
-
-func (s *service) CreateTitleSession(ctx context.Context, parentSessionID string) (Session, error) {
-	dbSession, err := s.q.CreateSession(ctx, db.CreateSessionParams{
-		ID:              "title-" + parentSessionID,
-		ParentSessionID: sql.NullString{String: parentSessionID, Valid: true},
-		Title:           "Generate a title",
-	})
-	if err != nil {
-		return Session{}, err
-	}
-	session := s.fromDBItem(dbSession)
-	s.Publish(pubsub.CreatedEvent, session)
-	return session, nil
-}
-
-func (s *service) Delete(ctx context.Context, id string) error {
-	session, err := s.Get(ctx, id)
-	if err != nil {
-		return err
-	}
-	err = s.q.DeleteSession(ctx, session.ID)
-	if err != nil {
-		return err
-	}
-	s.Publish(pubsub.DeletedEvent, session)
-	return nil
 }
 
 func (s *service) Get(ctx context.Context, id string) (Session, error) {
-	dbSession, err := s.q.GetSessionByID(ctx, id)
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	dbSession, err := s.db.GetSessionByID(ctx, id)
 	if err != nil {
-		return Session{}, err
+		if err == sql.ErrNoRows {
+			return Session{}, fmt.Errorf("session ID '%s' not found", id)
+		}
+		return Session{}, fmt.Errorf("db.GetSessionByID: %w", err)
 	}
 	return s.fromDBItem(dbSession), nil
 }
 
-func (s *service) Save(ctx context.Context, session Session) (Session, error) {
-	summary := sql.NullString{}
-	if session.Summary != "" {
-		summary.String = session.Summary
-		summary.Valid = true
+func (s *service) List(ctx context.Context) ([]Session, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	dbSessions, err := s.db.ListSessions(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("db.ListSessions: %w", err)
 	}
-
-	summarizedAt := sql.NullInt64{}
-	if session.SummarizedAt != 0 {
-		summarizedAt.Int64 = session.SummarizedAt
-		summarizedAt.Valid = true
+	sessions := make([]Session, len(dbSessions))
+	for i, dbSess := range dbSessions {
+		sessions[i] = s.fromDBItem(dbSess)
 	}
+	return sessions, nil
+}
 
-	dbSession, err := s.q.UpdateSession(ctx, db.UpdateSessionParams{
+func (s *service) Update(ctx context.Context, session Session) (Session, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if session.ID == "" {
+		return Session{}, fmt.Errorf("cannot update session with empty ID")
+	}
+	params := db.UpdateSessionParams{
 		ID:               session.ID,
 		Title:            session.Title,
 		PromptTokens:     session.PromptTokens,
 		CompletionTokens: session.CompletionTokens,
 		Cost:             session.Cost,
-		Summary:          summary,
-		SummarizedAt:     summarizedAt,
-	})
-	if err != nil {
-		return Session{}, err
+		Summary:          sql.NullString{String: session.Summary, Valid: session.Summary != ""},
+		SummarizedAt:     sql.NullInt64{Int64: session.SummarizedAt, Valid: session.SummarizedAt > 0},
 	}
-
-	session = s.fromDBItem(dbSession)
-	s.Publish(pubsub.UpdatedEvent, session)
-	return session, nil
+	dbSession, err := s.db.UpdateSession(ctx, params)
+	if err != nil {
+		return Session{}, fmt.Errorf("db.UpdateSession: %w", err)
+	}
+	updatedSession := s.fromDBItem(dbSession)
+	s.broker.Publish(EventSessionUpdated, updatedSession)
+	return updatedSession, nil
 }
 
-func (s *service) List(ctx context.Context) ([]Session, error) {
-	dbSessions, err := s.q.ListSessions(ctx)
+func (s *service) Delete(ctx context.Context, id string) error {
+	s.mu.Lock()
+	dbSess, err := s.db.GetSessionByID(ctx, id)
 	if err != nil {
-		return nil, err
+		s.mu.Unlock()
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("session ID '%s' not found for deletion", id)
+		}
+		return fmt.Errorf("db.GetSessionByID before delete: %w", err)
 	}
-	sessions := make([]Session, len(dbSessions))
-	for i, dbSession := range dbSessions {
-		sessions[i] = s.fromDBItem(dbSession)
+	sessionToPublish := s.fromDBItem(dbSess)
+	s.mu.Unlock()
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	err = s.db.DeleteSession(ctx, id)
+	if err != nil {
+		return fmt.Errorf("db.DeleteSession: %w", err)
 	}
-	return sessions, nil
+	s.broker.Publish(EventSessionDeleted, sessionToPublish)
+	return nil
 }
 
-func (s service) fromDBItem(item db.Session) Session {
+func (s *service) Subscribe(ctx context.Context) <-chan pubsub.Event[Session] {
+	return s.broker.Subscribe(ctx)
+}
+
+func (s *service) fromDBItem(item db.Session) Session {
 	return Session{
 		ID:               item.ID,
 		ParentSessionID:  item.ParentSessionID.String,
@@ -160,10 +221,30 @@ func (s service) fromDBItem(item db.Session) Session {
 	}
 }
 
-func NewService(q db.Querier) Service {
-	broker := pubsub.NewBroker[Session]()
-	return &service{
-		broker,
-		q,
-	}
+func Create(ctx context.Context, title string) (Session, error) {
+	return GetService().Create(ctx, title)
+}
+
+func CreateTaskSession(ctx context.Context, toolCallID, parentSessionID, title string) (Session, error) {
+	return GetService().CreateTaskSession(ctx, toolCallID, parentSessionID, title)
+}
+
+func Get(ctx context.Context, id string) (Session, error) {
+	return GetService().Get(ctx, id)
+}
+
+func List(ctx context.Context) ([]Session, error) {
+	return GetService().List(ctx)
+}
+
+func Update(ctx context.Context, session Session) (Session, error) {
+	return GetService().Update(ctx, session)
+}
+
+func Delete(ctx context.Context, id string) error {
+	return GetService().Delete(ctx, id)
+}
+
+func Subscribe(ctx context.Context) <-chan pubsub.Event[Session] {
+	return GetService().Subscribe(ctx)
 }
