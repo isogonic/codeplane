@@ -66,7 +66,7 @@ func (i *detailCmp) updateContent() {
 	levelStyle := getLevelStyle(i.currentLog.Level)
 
 	// Format timestamp
-	timeStr := time.Unix(i.currentLog.Timestamp, 0).Format(time.RFC3339)
+	timeStr := time.UnixMilli(i.currentLog.Timestamp).Format(time.RFC3339)
 
 	header := lipgloss.JoinHorizontal(
 		lipgloss.Center,

@@ -165,7 +165,7 @@ func (i *tableCmp) updateRows() {
 
 	for _, log := range i.logs {
 		// Format timestamp as time
-		timeStr := time.Unix(log.Timestamp, 0).Format("15:04:05")
+		timeStr := time.UnixMilli(log.Timestamp).Format("15:04:05")
 
 		// Include ID as hidden first column for selection
 		row := table.Row{

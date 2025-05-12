@@ -100,7 +100,7 @@ func renderUserMessage(msg message.Message, isFocused bool, width int, position 
 
 	// Add timestamp info
 	info := []string{}
-	timestamp := time.Unix(msg.CreatedAt, 0).Format("15:04:05")
+	timestamp := time.UnixMilli(msg.CreatedAt).Local().Format("02 Jan 2006 03:04 PM")
 	username, _ := config.GetUsername()
 	info = append(info, baseStyle.
 		Width(width-1).
@@ -148,7 +148,7 @@ func renderAssistantMessage(
 	baseStyle := styles.BaseStyle()
 
 	// Always add timestamp info
-	timestamp := time.Unix(msg.CreatedAt, 0).Format("15:04:05")
+	timestamp := time.UnixMilli(msg.CreatedAt).Local().Format("02 Jan 2006 03:04 PM")
 	modelName := "Assistant"
 	if msg.Model != "" {
 		modelName = models.SupportedModels[msg.Model].Name
