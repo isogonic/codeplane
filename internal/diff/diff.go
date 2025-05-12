@@ -648,8 +648,9 @@ func applyHighlighting(content string, segments []Segment, segmentType LineType,
 			r, g, b, _ = bgColor.RGBA()
 			sb.WriteString(fmt.Sprintf("%d;%d;%dm", r>>8, g>>8, b>>8))
 			sb.WriteString(char)
-			// Reset foreground and background
-			sb.WriteString("\x1b[39m")
+			
+			// Full reset of all attributes to ensure clean state
+			sb.WriteString("\x1b[0m")
 
 			// Reapply the original ANSI sequence
 			sb.WriteString(currentStyle)
