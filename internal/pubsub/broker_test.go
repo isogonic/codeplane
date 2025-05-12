@@ -51,12 +51,12 @@ func TestBrokerPublish(t *testing.T) {
 	ch := broker.Subscribe(ctx)
 
 	// Publish a message
-	broker.Publish(CreatedEvent, "test message")
+	broker.Publish("created", "test message")
 
 	// Verify message is received
 	select {
 	case event := <-ch:
-		assert.Equal(t, CreatedEvent, event.Type)
+		assert.Equal(t, "created", event.Type)
 		assert.Equal(t, "test message", event.Payload)
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("timeout waiting for message")
@@ -122,7 +122,7 @@ func TestBrokerConcurrency(t *testing.T) {
 
 	// Publish messages to all subscribers
 	for i := range numSubscribers {
-		broker.Publish(CreatedEvent, i)
+		broker.Publish("created", i)
 	}
 
 	// Wait for all subscribers to finish
