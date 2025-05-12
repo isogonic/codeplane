@@ -15,8 +15,8 @@ import (
 func GetAgentPrompt(agentName config.AgentName, provider models.ModelProvider) string {
 	basePrompt := ""
 	switch agentName {
-	case config.AgentCoder:
-		basePrompt = CoderPrompt(provider)
+	case config.AgentPrimary:
+		basePrompt = PrimaryPrompt(provider)
 	case config.AgentTitle:
 		basePrompt = TitlePrompt(provider)
 	case config.AgentTask:
@@ -25,7 +25,7 @@ func GetAgentPrompt(agentName config.AgentName, provider models.ModelProvider) s
 		basePrompt = "You are a helpful assistant"
 	}
 
-	if agentName == config.AgentCoder || agentName == config.AgentTask {
+	if agentName == config.AgentPrimary || agentName == config.AgentTask {
 		// Add context from project-specific instruction files if they exist
 		contextContent := getContextFromPaths()
 		slog.Debug("Context content", "Context", contextContent)

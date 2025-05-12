@@ -67,7 +67,7 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case dialog.CommandRunCustomMsg:
 		// Check if the agent is busy before executing custom commands
-		if p.app.CoderAgent.IsBusy() {
+		if p.app.PrimaryAgent.IsBusy() {
 			status.Warn("Agent is busy, please wait before executing a command...")
 			return p, nil
 		}
@@ -92,7 +92,7 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Run compaction in background
 		go func(sessionID string) {
-			err := p.app.CoderAgent.CompactSession(context.Background(), sessionID)
+			err := p.app.PrimaryAgent.CompactSession(context.Background(), sessionID)
 			if err != nil {
 				status.Error(fmt.Sprintf("Compaction failed: %v", err))
 			} else {
@@ -113,7 +113,7 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if p.session.ID != "" {
 				// Cancel the current session's generation process
 				// This allows users to interrupt long-running operations
-				p.app.CoderAgent.Cancel(p.session.ID)
+				p.app.PrimaryAgent.Cancel(p.session.ID)
 				return p, nil
 			}
 		case key.Matches(msg, keyMap.ToggleTools):
@@ -158,7 +158,7 @@ func (p *chatPage) sendMessage(text string, attachments []message.Attachment) te
 		cmds = append(cmds, util.CmdHandler(chat.SessionSelectedMsg(newSession)))
 	}
 
-	_, err := p.app.CoderAgent.Run(context.Background(), p.session.ID, text, attachments...)
+	_, err := p.app.PrimaryAgent.Run(context.Background(), p.session.ID, text, attachments...)
 	if err != nil {
 		status.Error(err.Error())
 		return nil

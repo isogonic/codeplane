@@ -11,7 +11,7 @@ import (
 	"github.com/opencode-ai/opencode/internal/session"
 )
 
-func CoderAgentTools(
+func PrimaryAgentTools(
 	permissions permission.Service,
 	sessions session.Service,
 	messages message.Service,

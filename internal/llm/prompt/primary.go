@@ -13,18 +13,18 @@ import (
 	"github.com/opencode-ai/opencode/internal/llm/tools"
 )
 
-func CoderPrompt(provider models.ModelProvider) string {
-	basePrompt := baseAnthropicCoderPrompt
+func PrimaryPrompt(provider models.ModelProvider) string {
+	basePrompt := baseAnthropicPrimaryPrompt
 	switch provider {
 	case models.ProviderOpenAI:
-		basePrompt = baseOpenAICoderPrompt
+		basePrompt = baseOpenAIPrimaryPrompt
 	}
 	envInfo := getEnvironmentInfo()
 
 	return fmt.Sprintf("%s\n\n%s\n%s", basePrompt, envInfo, lspInformation())
 }
 
-const baseOpenAICoderPrompt = `
+const baseOpenAIPrimaryPrompt = `
 You are operating as and within the OpenCode CLI, a terminal-based agentic coding assistant built by OpenAI. It wraps OpenAI models to enable natural language interaction with a local codebase. You are expected to be precise, safe, and helpful.
 
 You can:
@@ -71,7 +71,7 @@ You MUST adhere to the following criteria when executing the task:
 - Remember the user does not see the full output of tools
 `
 
-const baseAnthropicCoderPrompt = `You are OpenCode, an interactive CLI tool that helps users with software engineering tasks. Use the instructions below and the tools available to you to assist the user.
+const baseAnthropicPrimaryPrompt = `You are OpenCode, an interactive CLI tool that helps users with software engineering tasks. Use the instructions below and the tools available to you to assist the user.
 
 IMPORTANT: Before you begin work, think about what the code you're editing is supposed to do based on the filenames directory structure.
 

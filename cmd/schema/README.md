@@ -46,7 +46,7 @@ Here's an example configuration that conforms to the schema:
     }
   },
   "agents": {
-    "coder": {
+    "primary": {
       "model": "claude-3.7-sonnet",
       "maxTokens": 5000,
       "reasoningEffort": "medium"
@@ -62,3 +62,4 @@ Here's an example configuration that conforms to the schema:
   }
 }
 ```
+

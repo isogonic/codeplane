@@ -283,7 +283,7 @@ func (m *modelDialogCmp) setupModels() {
 
 func GetSelectedModel(cfg *config.Config) models.Model {
 
-	agentCfg := cfg.Agents[config.AgentCoder]
+	agentCfg := cfg.Agents[config.AgentPrimary]
 	selectedModelId := agentCfg.Model
 	return models.SupportedModels[selectedModelId]
 }
@@ -325,7 +325,7 @@ func findProviderIndex(providers []models.ModelProvider, provider models.ModelPr
 
 func (m *modelDialogCmp) setupModelsForProvider(provider models.ModelProvider) {
 	cfg := config.Get()
-	agentCfg := cfg.Agents[config.AgentCoder]
+	agentCfg := cfg.Agents[config.AgentPrimary]
 	selectedModelId := agentCfg.Model
 
 	m.provider = provider

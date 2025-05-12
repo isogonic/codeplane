@@ -179,7 +179,7 @@
       },
       "description": "Agent configurations",
       "properties": {
-        "coder": {
+        "primary": {
           "$ref": "#/definitions/agent"
         },
         "task": {

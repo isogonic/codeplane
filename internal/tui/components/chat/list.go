@@ -170,7 +170,7 @@ func (m *messagesCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *messagesCmp) IsAgentWorking() bool {
-	return m.app.CoderAgent.IsSessionBusy(m.session.ID)
+	return m.app.PrimaryAgent.IsSessionBusy(m.session.ID)
 }
 
 func formatTimeDifference(unixTime1, unixTime2 int64) string {
@@ -376,7 +376,7 @@ func (m *messagesCmp) help() string {
 
 	text := ""
 
-	if m.app.CoderAgent.IsBusy() {
+	if m.app.PrimaryAgent.IsBusy() {
 		text += lipgloss.JoinHorizontal(
 			lipgloss.Left,
 			baseStyle.Foreground(t.TextMuted()).Bold(true).Render("press "),

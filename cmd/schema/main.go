@@ -274,7 +274,7 @@ func generateSchema() map[string]any {
 	// Add specific agent properties
 	agentProperties := map[string]any{}
 	knownAgents := []string{
-		string(config.AgentCoder),
+		string(config.AgentPrimary),
 		string(config.AgentTask),
 		string(config.AgentTitle),
 	}

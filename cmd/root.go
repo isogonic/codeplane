@@ -86,7 +86,7 @@ to assist developers in writing, debugging, and understanding code directly from
 
 		app, err := app.New(ctx, conn)
 		if err != nil {
-			slog.Error("Failed to create app: %v", err)
+			slog.Error("Failed to create app", "error", err)
 			return err
 		}
 
@@ -152,11 +152,11 @@ to assist developers in writing, debugging, and understanding code directly from
 		cleanup()
 
 		if err != nil {
-			slog.Error("TUI error: %v", err)
+			slog.Error("TUI error", "error", err)
 			return fmt.Errorf("TUI error: %v", err)
 		}
 
-		slog.Info("TUI exited with result: %v", result)
+		slog.Info("TUI exited", "result", result)
 		return nil
 	},
 }

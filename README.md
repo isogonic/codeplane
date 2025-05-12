@@ -105,7 +105,7 @@ You can configure OpenCode using environment variables:
     }
   },
   "agents": {
-    "coder": {
+    "primary": {
       "model": "claude-3.7-sonnet",
       "maxTokens": 5000
     },

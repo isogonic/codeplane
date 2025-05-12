@@ -74,7 +74,7 @@ func NewAgent(
 	}
 	var titleProvider provider.Provider
 	// Only generate titles for the coder agent
-	if agentName == config.AgentCoder {
+	if agentName == config.AgentPrimary {
 		titleProvider, err = createAgentProvider(config.AgentTitle)
 		if err != nil {
 			return nil, err
@@ -673,7 +673,7 @@ func createAgentProvider(agentName config.AgentName) (provider.Provider, error) 
 				provider.WithReasoningEffort(agentConfig.ReasoningEffort),
 			),
 		)
-	} else if model.Provider == models.ProviderAnthropic && model.CanReason && agentName == config.AgentCoder {
+	} else if model.Provider == models.ProviderAnthropic && model.CanReason && agentName == config.AgentPrimary {
 		opts = append(
 			opts,
 			provider.WithAnthropicOptions(

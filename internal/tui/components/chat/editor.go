@@ -124,7 +124,7 @@ func (m *editorCmp) Init() tea.Cmd {
 }
 
 func (m *editorCmp) send() tea.Cmd {
-	if m.app.CoderAgent.IsSessionBusy(m.session.ID) {
+	if m.app.PrimaryAgent.IsSessionBusy(m.session.ID) {
 		status.Warn("Agent is working, please wait...")
 		return nil
 	}
@@ -189,7 +189,7 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if key.Matches(msg, editorMaps.OpenEditor) {
-			if m.app.CoderAgent.IsSessionBusy(m.session.ID) {
+			if m.app.PrimaryAgent.IsSessionBusy(m.session.ID) {
 				status.Warn("Agent is working, please wait...")
 				return m, nil
 			}

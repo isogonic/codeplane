@@ -266,7 +266,7 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case dialog.ModelSelectedMsg:
 		a.showModelDialog = false
 
-		model, err := a.app.CoderAgent.Update(config.AgentCoder, msg.Model.ID)
+		model, err := a.app.PrimaryAgent.Update(config.AgentPrimary, msg.Model.ID)
 		if err != nil {
 			status.Error(err.Error())
 			return a, nil
@@ -460,7 +460,7 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.showHelp = !a.showHelp
 			return a, nil
 		case key.Matches(msg, helpEsc):
-			if a.app.CoderAgent.IsBusy() {
+			if a.app.PrimaryAgent.IsBusy() {
 				if a.showQuit {
 					return a, nil
 				}
@@ -574,7 +574,7 @@ func (a *appModel) RegisterCommand(cmd dialog.Command) {
 
 func (a *appModel) moveToPage(pageID page.PageID) tea.Cmd {
 	// Allow navigating to logs page even when agent is busy
-	if a.app.CoderAgent.IsBusy() && pageID != page.LogsPage {
+	if a.app.PrimaryAgent.IsBusy() && pageID != page.LogsPage {
 		// Don't move to other pages if the agent is busy
 		status.Warn("Agent is busy, please wait...")
 		return nil
@@ -641,7 +641,7 @@ func (a appModel) View() string {
 
 	}
 
-	if !a.app.CoderAgent.IsBusy() {
+	if !a.app.PrimaryAgent.IsBusy() {
 		a.status.SetHelpWidgetMsg("ctrl+? help")
 	} else {
 		a.status.SetHelpWidgetMsg("? help")
@@ -658,7 +658,7 @@ func (a appModel) View() string {
 		if a.currentPage == page.LogsPage {
 			bindings = append(bindings, logsKeyReturnKey)
 		}
-		if !a.app.CoderAgent.IsBusy() {
+		if !a.app.PrimaryAgent.IsBusy() {
 			bindings = append(bindings, helpEsc)
 		}
 		a.help.SetBindings(bindings)

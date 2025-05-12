@@ -140,7 +140,7 @@ func formatTokensAndCost(tokens int64, contextWindow int64, cost float64) string
 
 func (m statusCmp) View() string {
 	t := theme.CurrentTheme()
-	modelID := config.Get().Agents[config.AgentCoder].Model
+	modelID := config.Get().Agents[config.AgentPrimary].Model
 	model := models.SupportedModels[modelID]
 
 	// Initialize the help widget
@@ -283,7 +283,7 @@ func (m statusCmp) model() string {
 
 	cfg := config.Get()
 
-	coder, ok := cfg.Agents[config.AgentCoder]
+	coder, ok := cfg.Agents[config.AgentPrimary]
 	if !ok {
 		return "Unknown"
 	}

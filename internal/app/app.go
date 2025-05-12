@@ -29,7 +29,7 @@ type App struct {
 	Permissions permission.Service
 	Status      status.Service
 
-	CoderAgent agent.Service
+	PrimaryAgent agent.Service
 
 	LSPClients map[string]*lsp.Client
 
@@ -88,11 +88,11 @@ func New(ctx context.Context, conn *sql.DB) (*App, error) {
 	// Initialize LSP clients in the background
 	go app.initLSPClients(ctx)
 
-	app.CoderAgent, err = agent.NewAgent(
-		config.AgentCoder,
+	app.PrimaryAgent, err = agent.NewAgent(
+		config.AgentPrimary,
 		app.Sessions,
 		app.Messages,
-		agent.CoderAgentTools(
+		agent.PrimaryAgentTools(
 			app.Permissions,
 			app.Sessions,
 			app.Messages,
@@ -101,7 +101,7 @@ func New(ctx context.Context, conn *sql.DB) (*App, error) {
 		),
 	)
 	if err != nil {
-		slog.Error("Failed to create coder agent", err)
+		slog.Error("Failed to create primary agent", "error", err)
 		return nil, err
 	}
 
