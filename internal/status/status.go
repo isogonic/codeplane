@@ -3,6 +3,7 @@ package status
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -64,18 +65,22 @@ func GetService() Service {
 
 func (s *service) Info(message string) {
 	s.publish(LevelInfo, message)
+	slog.Info(message)
 }
 
 func (s *service) Warn(message string) {
 	s.publish(LevelWarn, message)
+	slog.Warn(message)
 }
 
 func (s *service) Error(message string) {
 	s.publish(LevelError, message)
+	slog.Error(message)
 }
 
 func (s *service) Debug(message string) {
 	s.publish(LevelDebug, message)
+	slog.Debug(message)
 }
 
 func (s *service) publish(level Level, messageText string) {
