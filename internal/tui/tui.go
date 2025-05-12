@@ -153,6 +153,7 @@ func (a appModel) Init() tea.Cmd {
 	cmd = a.initDialog.Init()
 	cmds = append(cmds, cmd)
 	cmd = a.filepicker.Init()
+	cmds = append(cmds, cmd)
 	cmd = a.themeDialog.Init()
 	cmds = append(cmds, cmd)
 
