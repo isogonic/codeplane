@@ -665,52 +665,98 @@ func applyHighlighting(content string, segments []Segment, segmentType LineType,
 	return sb.String()
 }
 
-// renderLeftColumn formats the left side of a side-by-side diff
-func renderLeftColumn(fileName string, dl *DiffLine, colWidth int) string {
-	t := theme.CurrentTheme()
-
+// renderDiffColumnLine is a helper function that handles the common logic for rendering diff columns
+func renderDiffColumnLine(
+	fileName string,
+	dl *DiffLine,
+	colWidth int,
+	isLeftColumn bool,
+	t theme.Theme,
+) string {
 	if dl == nil {
 		contextLineStyle := lipgloss.NewStyle().Background(t.DiffContextBg())
 		return contextLineStyle.Width(colWidth).Render("")
 	}
 
-	removedLineStyle, _, contextLineStyle, lineNumberStyle := createStyles(t)
+	removedLineStyle, addedLineStyle, contextLineStyle, lineNumberStyle := createStyles(t)
 
-	// Determine line style based on line type
+	// Determine line style based on line type and column
 	var marker string
 	var bgStyle lipgloss.Style
-	switch dl.Kind {
-	case LineRemoved:
-		marker = removedLineStyle.Foreground(t.DiffRemoved()).Render("-")
-		bgStyle = removedLineStyle
-		lineNumberStyle = lineNumberStyle.Foreground(t.DiffRemoved()).Background(t.DiffRemovedLineNumberBg())
-	case LineAdded:
-		marker = "?"
-		bgStyle = contextLineStyle
-	case LineContext:
-		marker = contextLineStyle.Render(" ")
-		bgStyle = contextLineStyle
+	var lineNum string
+	var highlightType LineType
+	var highlightColor lipgloss.AdaptiveColor
+
+	if isLeftColumn {
+		// Left column logic
+		switch dl.Kind {
+		case LineRemoved:
+			marker = "-"
+			bgStyle = removedLineStyle
+			lineNumberStyle = lineNumberStyle.Foreground(t.DiffRemoved()).Background(t.DiffRemovedLineNumberBg())
+			highlightType = LineRemoved
+			highlightColor = t.DiffHighlightRemoved()
+		case LineAdded:
+			marker = "?"
+			bgStyle = contextLineStyle
+		case LineContext:
+			marker = " "
+			bgStyle = contextLineStyle
+		}
+
+		// Format line number for left column
+		if dl.OldLineNo > 0 {
+			lineNum = fmt.Sprintf("%6d", dl.OldLineNo)
+		}
+	} else {
+		// Right column logic
+		switch dl.Kind {
+		case LineAdded:
+			marker = "+"
+			bgStyle = addedLineStyle
+			lineNumberStyle = lineNumberStyle.Foreground(t.DiffAdded()).Background(t.DiffAddedLineNumberBg())
+			highlightType = LineAdded
+			highlightColor = t.DiffHighlightAdded()
+		case LineRemoved:
+			marker = "?"
+			bgStyle = contextLineStyle
+		case LineContext:
+			marker = " "
+			bgStyle = contextLineStyle
+		}
+
+		// Format line number for right column
+		if dl.NewLineNo > 0 {
+			lineNum = fmt.Sprintf("%6d", dl.NewLineNo)
+		}
 	}
 
-	// Format line number
-	lineNum := ""
-	if dl.OldLineNo > 0 {
-		lineNum = fmt.Sprintf("%6d", dl.OldLineNo)
+	// Style the marker based on line type
+	var styledMarker string
+	switch dl.Kind {
+	case LineRemoved:
+		styledMarker = removedLineStyle.Foreground(t.DiffRemoved()).Render(marker)
+	case LineAdded:
+		styledMarker = addedLineStyle.Foreground(t.DiffAdded()).Render(marker)
+	case LineContext:
+		styledMarker = contextLineStyle.Foreground(t.TextMuted()).Render(marker)
+	default:
+		styledMarker = marker
 	}
 
 	// Create the line prefix
-	prefix := lineNumberStyle.Render(lineNum + " " + marker)
+	prefix := lineNumberStyle.Render(lineNum + " " + styledMarker)
 
 	// Apply syntax highlighting
 	content := highlightLine(fileName, dl.Content, bgStyle.GetBackground())
 
-	// Apply intra-line highlighting for removed lines
-	if dl.Kind == LineRemoved && len(dl.Segments) > 0 {
-		content = applyHighlighting(content, dl.Segments, LineRemoved, t.DiffHighlightRemoved())
+	// Apply intra-line highlighting if needed
+	if (dl.Kind == LineRemoved && isLeftColumn || dl.Kind == LineAdded && !isLeftColumn) && len(dl.Segments) > 0 {
+		content = applyHighlighting(content, dl.Segments, highlightType, highlightColor)
 	}
 
-	// Add a padding space for removed lines
-	if dl.Kind == LineRemoved {
+	// Add a padding space for added/removed lines
+	if (dl.Kind == LineRemoved && isLeftColumn) || (dl.Kind == LineAdded && !isLeftColumn) {
 		content = bgStyle.Render(" ") + content
 	}
 
@@ -725,64 +771,14 @@ func renderLeftColumn(fileName string, dl *DiffLine, colWidth int) string {
 	)
 }
 
+// renderLeftColumn formats the left side of a side-by-side diff
+func renderLeftColumn(fileName string, dl *DiffLine, colWidth int) string {
+	return renderDiffColumnLine(fileName, dl, colWidth, true, theme.CurrentTheme())
+}
+
 // renderRightColumn formats the right side of a side-by-side diff
 func renderRightColumn(fileName string, dl *DiffLine, colWidth int) string {
-	t := theme.CurrentTheme()
-
-	if dl == nil {
-		contextLineStyle := lipgloss.NewStyle().Background(t.DiffContextBg())
-		return contextLineStyle.Width(colWidth).Render("")
-	}
-
-	_, addedLineStyle, contextLineStyle, lineNumberStyle := createStyles(t)
-
-	// Determine line style based on line type
-	var marker string
-	var bgStyle lipgloss.Style
-	switch dl.Kind {
-	case LineAdded:
-		marker = addedLineStyle.Foreground(t.DiffAdded()).Render("+")
-		bgStyle = addedLineStyle
-		lineNumberStyle = lineNumberStyle.Foreground(t.DiffAdded()).Background(t.DiffAddedLineNumberBg())
-	case LineRemoved:
-		marker = "?"
-		bgStyle = contextLineStyle
-	case LineContext:
-		marker = contextLineStyle.Render(" ")
-		bgStyle = contextLineStyle
-	}
-
-	// Format line number
-	lineNum := ""
-	if dl.NewLineNo > 0 {
-		lineNum = fmt.Sprintf("%6d", dl.NewLineNo)
-	}
-
-	// Create the line prefix
-	prefix := lineNumberStyle.Render(lineNum + " " + marker)
-
-	// Apply syntax highlighting
-	content := highlightLine(fileName, dl.Content, bgStyle.GetBackground())
-
-	// Apply intra-line highlighting for added lines
-	if dl.Kind == LineAdded && len(dl.Segments) > 0 {
-		content = applyHighlighting(content, dl.Segments, LineAdded, t.DiffHighlightAdded())
-	}
-
-	// Add a padding space for added lines
-	if dl.Kind == LineAdded {
-		content = bgStyle.Render(" ") + content
-	}
-
-	// Create the final line and truncate if needed
-	lineText := prefix + content
-	return bgStyle.MaxHeight(1).Width(colWidth).Render(
-		ansi.Truncate(
-			lineText,
-			colWidth,
-			lipgloss.NewStyle().Background(bgStyle.GetBackground()).Foreground(t.TextMuted()).Render("..."),
-		),
-	)
+	return renderDiffColumnLine(fileName, dl, colWidth, false, theme.CurrentTheme())
 }
 
 // -------------------------------------------------------------------------
