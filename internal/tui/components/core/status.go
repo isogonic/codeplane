@@ -110,7 +110,7 @@ func getHelpWidget(helpText string) string {
 		Render(helpText)
 }
 
-func formatTokensAndCost(tokens int64, cost float64) string {
+func formatTokensAndCost(tokens int64, contextWindow int64, cost float64) string {
 	// Format tokens in human-readable format (e.g., 110K, 1.2M)
 	var formattedTokens string
 	switch {
@@ -133,17 +133,21 @@ func formatTokensAndCost(tokens int64, cost float64) string {
 	// Format cost with $ symbol and 2 decimal places
 	formattedCost := fmt.Sprintf("$%.2f", cost)
 
-	return fmt.Sprintf("Tokens: %s, Cost: %s", formattedTokens, formattedCost)
+	percentage := (float64(tokens) / float64(contextWindow)) * 100
+
+	return fmt.Sprintf("Tokens: %s (%d%%), Cost: %s", formattedTokens, int(percentage), formattedCost)
 }
 
 func (m statusCmp) View() string {
 	t := theme.CurrentTheme()
+	modelID := config.Get().Agents[config.AgentCoder].Model
+	model := models.SupportedModels[modelID]
 
 	// Initialize the help widget
 	status := getHelpWidget("")
 
 	if m.session.ID != "" {
-		tokens := formatTokensAndCost(m.session.PromptTokens+m.session.CompletionTokens, m.session.Cost)
+		tokens := formatTokensAndCost(m.session.PromptTokens+m.session.CompletionTokens, model.ContextWindow, m.session.Cost)
 		tokensStyle := styles.Padded().
 			Background(t.Text()).
 			Foreground(t.BackgroundSecondary()).
@@ -153,13 +157,13 @@ func (m statusCmp) View() string {
 
 	diagnostics := styles.Padded().Background(t.BackgroundDarker()).Render(m.projectDiagnostics())
 
-	model := m.model()
+	modelName := m.model()
 
 	statusWidth := max(
 		0,
 		m.width-
 			lipgloss.Width(status)-
-			lipgloss.Width(model)-
+			lipgloss.Width(modelName)-
 			lipgloss.Width(diagnostics),
 	)
 
@@ -198,7 +202,7 @@ func (m statusCmp) View() string {
 	}
 
 	status += diagnostics
-	status += model
+	status += modelName
 	return status
 }
 
