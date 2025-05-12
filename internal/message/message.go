@@ -286,53 +286,14 @@ func (s *service) fromDBItem(item db.Message) (Message, error) {
 		return Message{}, fmt.Errorf("unmarshallParts for message ID %s: %w. Raw parts: %s", item.ID, err, item.Parts)
 	}
 
-	// DB stores created_at, updated_at, finished_at as Unix seconds.
-	// Go struct Message stores them as Unix milliseconds.
-	createdAtMillis := item.CreatedAt * 1000
-	updatedAtMillis := item.UpdatedAt * 1000
-
 	msg := Message{
 		ID:        item.ID,
 		SessionID: item.SessionID,
 		Role:      MessageRole(item.Role),
 		Parts:     parts,
 		Model:     models.ModelID(item.Model.String),
-		CreatedAt: createdAtMillis,
-		UpdatedAt: updatedAtMillis,
-	}
-
-	// Ensure Finish part in msg.Parts reflects the item.FinishedAt state
-	// if item.FinishedAt is the source of truth for the "overall message finished time".
-	// The `unmarshallParts` should already create a Finish part if it's in the JSON.
-	// This logic reconciles the DB column with the JSON parts.
-	var existingFinishPart *Finish
-	var finishPartIndex = -1
-
-	for i, p := range msg.Parts {
-		if fp, ok := p.(Finish); ok {
-			existingFinishPart = &fp
-			finishPartIndex = i
-			break
-		}
-	}
-
-	if item.FinishedAt.Valid && item.FinishedAt.Int64 > 0 {
-		dbFinishTimeMillis := item.FinishedAt.Int64 * 1000
-		if existingFinishPart != nil {
-			// If a Finish part exists from JSON, update its time if DB's time is different.
-			// This assumes DB `finished_at` is the ultimate source of truth for when the message truly finished.
-			if existingFinishPart.Time != dbFinishTimeMillis {
-				slog.Debug("Aligning Finish part time with DB finished_at", "message_id", msg.ID, "json_finish_time", existingFinishPart.Time, "db_finish_time", dbFinishTimeMillis)
-				existingFinishPart.Time = dbFinishTimeMillis
-				msg.Parts[finishPartIndex] = *existingFinishPart
-			}
-		} else {
-			// If no Finish part in JSON but DB says it's finished, add one.
-			// We might not know the original FinishReason here, so use a sensible default or leave it to be set by Update.
-			// This scenario should be less common if `Update` always ensures a Finish part for finished messages.
-			slog.Debug("Synthesizing Finish part from DB finished_at", "message_id", msg.ID)
-			msg.Parts = append(msg.Parts, Finish{Reason: FinishReasonEndTurn, Time: dbFinishTimeMillis})
-		}
+		CreatedAt: item.CreatedAt * 1000,
+		UpdatedAt: item.UpdatedAt * 1000,
 	}
 
 	return msg, nil
@@ -366,7 +327,7 @@ func DeleteSessionMessages(ctx context.Context, sessionID string) error {
 	return GetService().DeleteSessionMessages(ctx, sessionID)
 }
 
-func SubscribeToEvents(ctx context.Context) <-chan pubsub.Event[Message] {
+func Subscribe(ctx context.Context) <-chan pubsub.Event[Message] {
 	return GetService().Subscribe(ctx)
 }
 

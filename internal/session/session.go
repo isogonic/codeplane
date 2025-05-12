@@ -209,8 +209,8 @@ func (s *service) fromDBItem(item db.Session) Session {
 		Cost:             item.Cost,
 		Summary:          item.Summary.String,
 		SummarizedAt:     item.SummarizedAt.Int64,
-		CreatedAt:        item.CreatedAt,
-		UpdatedAt:        item.UpdatedAt,
+		CreatedAt:        item.CreatedAt * 1000,
+		UpdatedAt:        item.UpdatedAt * 1000,
 	}
 }
 

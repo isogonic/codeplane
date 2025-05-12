@@ -165,7 +165,7 @@ func ListAll(ctx context.Context, limit int) ([]Log, error) {
 	return GetService().ListAll(ctx, limit)
 }
 
-func SubscribeToEvents(ctx context.Context) <-chan pubsub.Event[Log] {
+func Subscribe(ctx context.Context) <-chan pubsub.Event[Log] {
 	return GetService().Subscribe(ctx)
 }
 

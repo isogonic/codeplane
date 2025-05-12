@@ -323,7 +323,6 @@ func (s *service) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// getServiceForPublish is an internal helper for Delete
 func (s *service) getServiceForPublish(ctx context.Context, id string) (*File, error) {
 	// Assumes outer lock is NOT held or caller manages it.
 	// For GetFile, it has its own RLock.
@@ -368,45 +367,55 @@ func (s *service) fromDBItem(item db.File) File {
 		Path:      item.Path,
 		Content:   item.Content,
 		Version:   item.Version,
-		CreatedAt: item.CreatedAt * 1000, // DB stores seconds, Go struct uses milliseconds
-		UpdatedAt: item.UpdatedAt * 1000, // DB stores seconds, Go struct uses milliseconds
+		CreatedAt: item.CreatedAt * 1000,
+		UpdatedAt: item.UpdatedAt * 1000,
 	}
 }
 
-// --- Package-Level Wrapper Functions ---
 func Create(ctx context.Context, sessionID, path, content string) (File, error) {
 	return GetService().Create(ctx, sessionID, path, content)
 }
+
 func CreateVersion(ctx context.Context, sessionID, path, content string) (File, error) {
 	return GetService().CreateVersion(ctx, sessionID, path, content)
 }
+
 func Get(ctx context.Context, id string) (File, error) {
 	return GetService().Get(ctx, id)
 }
+
 func GetByPathAndVersion(ctx context.Context, sessionID, path, version string) (File, error) {
 	return GetService().GetByPathAndVersion(ctx, sessionID, path, version)
 }
+
 func GetLatestByPathAndSession(ctx context.Context, path, sessionID string) (File, error) {
 	return GetService().GetLatestByPathAndSession(ctx, path, sessionID)
 }
+
 func ListBySession(ctx context.Context, sessionID string) ([]File, error) {
 	return GetService().ListBySession(ctx, sessionID)
 }
+
 func ListLatestSessionFiles(ctx context.Context, sessionID string) ([]File, error) {
 	return GetService().ListLatestSessionFiles(ctx, sessionID)
 }
+
 func ListVersionsByPath(ctx context.Context, path string) ([]File, error) {
 	return GetService().ListVersionsByPath(ctx, path)
 }
+
 func Update(ctx context.Context, file File) (File, error) {
 	return GetService().Update(ctx, file)
 }
+
 func Delete(ctx context.Context, id string) error {
 	return GetService().Delete(ctx, id)
 }
+
 func DeleteSessionFiles(ctx context.Context, sessionID string) error {
 	return GetService().DeleteSessionFiles(ctx, sessionID)
 }
-func SubscribeToEvents(ctx context.Context) <-chan pubsub.Event[File] {
+
+func Subscribe(ctx context.Context) <-chan pubsub.Event[File] {
 	return GetService().Subscribe(ctx)
 }
