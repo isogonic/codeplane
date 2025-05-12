@@ -386,13 +386,12 @@ func (m *messagesCmp) help() string {
 	} else {
 		text += lipgloss.JoinHorizontal(
 			lipgloss.Left,
-			baseStyle.Foreground(t.TextMuted()).Bold(true).Render("press "),
 			baseStyle.Foreground(t.Text()).Bold(true).Render("enter"),
-			baseStyle.Foreground(t.TextMuted()).Bold(true).Render(" to send the message,"),
-			baseStyle.Foreground(t.TextMuted()).Bold(true).Render(" write"),
+			baseStyle.Foreground(t.TextMuted()).Bold(true).Render(" to send,"),
 			baseStyle.Foreground(t.Text()).Bold(true).Render(" \\"),
-			baseStyle.Foreground(t.TextMuted()).Bold(true).Render(" and enter to add a new line,"),
-			baseStyle.Foreground(t.TextMuted()).Bold(true).Render(" press"),
+			baseStyle.Foreground(t.TextMuted()).Bold(true).Render("+"),
+			baseStyle.Foreground(t.Text()).Bold(true).Render("enter"),
+			baseStyle.Foreground(t.TextMuted()).Bold(true).Render(" for newline,"),
 			baseStyle.Foreground(t.Text()).Bold(true).Render(" ctrl+h"),
 			baseStyle.Foreground(t.TextMuted()).Bold(true).Render(" to toggle tool messages"),
 		)
