@@ -12,7 +12,6 @@ import (
 	"github.com/opencode-ai/opencode/internal/pubsub"
 )
 
-// Session represents a conversation session.
 type Session struct {
 	ID               string
 	ParentSessionID  string
@@ -27,15 +26,11 @@ type Session struct {
 	UpdatedAt        int64
 }
 
-// --- Events ---
-
 const (
 	EventSessionCreated pubsub.EventType = "session_created"
 	EventSessionUpdated pubsub.EventType = "session_updated"
 	EventSessionDeleted pubsub.EventType = "session_deleted"
 )
-
-// --- Service Definition ---
 
 type Service interface {
 	pubsub.Subscriber[Session]
@@ -76,8 +71,6 @@ func GetService() Service {
 	}
 	return globalSessionService
 }
-
-// --- Service Methods ---
 
 func (s *service) Create(ctx context.Context, title string) (Session, error) {
 	s.mu.Lock()

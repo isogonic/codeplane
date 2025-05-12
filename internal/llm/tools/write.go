@@ -167,6 +167,7 @@ func (w *writeTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error
 		permissionPath = rootDir
 	}
 	p := w.permissions.Request(
+		ctx,
 		permission.CreatePermissionRequest{
 			SessionID:   sessionID,
 			Path:        permissionPath,
@@ -189,7 +190,7 @@ func (w *writeTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error
 	}
 
 	// Check if file exists in history
-	file, err := w.files.GetByPathAndSession(ctx, filePath, sessionID)
+	file, err := w.files.GetLatestByPathAndSession(ctx, filePath, sessionID)
 	if err != nil {
 		_, err = w.files.Create(ctx, sessionID, filePath, oldContent)
 		if err != nil {

@@ -93,7 +93,7 @@ func (s *sessionDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(s.sessions) > 0 {
 				selectedSession := s.sessions[s.selectedIdx]
 				// Update the session manager with the selected session
-				session.SetCurrentSession(selectedSession.ID)
+				// session.SetCurrentSession(selectedSession.ID)
 				return s, util.CmdHandler(SessionSelectedMsg{
 					Session: selectedSession,
 				})
@@ -111,7 +111,7 @@ func (s *sessionDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (s *sessionDialogCmp) View() string {
 	t := theme.CurrentTheme()
 	baseStyle := styles.BaseStyle()
-	
+
 	if len(s.sessions) == 0 {
 		return baseStyle.Padding(1, 2).
 			Border(lipgloss.RoundedBorder()).

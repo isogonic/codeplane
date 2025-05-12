@@ -59,7 +59,7 @@ func (m *sidebarCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.loadModifiedFiles(ctx)
 		}
 	case pubsub.Event[session.Session]:
-		if msg.Type == pubsub.UpdatedEvent {
+		if msg.Type == session.EventSessionUpdated {
 			if m.session.ID == msg.Payload.ID {
 				m.session = msg.Payload
 			}

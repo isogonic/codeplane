@@ -212,11 +212,11 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		switch msg.Action {
 		case dialog.PermissionAllow:
-			a.app.Permissions.Grant(msg.Permission)
+			a.app.Permissions.Grant(context.Background(), msg.Permission)
 		case dialog.PermissionAllowForSession:
-			a.app.Permissions.GrantPersistant(msg.Permission)
+			a.app.Permissions.GrantPersistant(context.Background(), msg.Permission)
 		case dialog.PermissionDeny:
-			a.app.Permissions.Deny(msg.Permission)
+			a.app.Permissions.Deny(context.Background(), msg.Permission)
 		}
 		a.showPermissions = false
 		return a, cmd

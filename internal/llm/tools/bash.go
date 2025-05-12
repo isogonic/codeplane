@@ -268,6 +268,7 @@ func (b *bashTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error)
 	}
 	if !isSafeReadOnly {
 		p := b.permissions.Request(
+			ctx,
 			permission.CreatePermissionRequest{
 				SessionID:   sessionID,
 				Path:        config.WorkingDirectory(),

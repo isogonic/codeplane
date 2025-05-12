@@ -10,7 +10,6 @@ import (
 	"log/slog"
 
 	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/db"
 	"github.com/opencode-ai/opencode/internal/history"
 	"github.com/opencode-ai/opencode/internal/llm/agent"
 	"github.com/opencode-ai/opencode/internal/logging"
@@ -42,30 +41,44 @@ type App struct {
 }
 
 func New(ctx context.Context, conn *sql.DB) (*App, error) {
-	q := db.New(conn)
-	loggingService := logging.NewService(q)
-	sessionService := session.NewService(q)
-	messageService := message.NewService(q)
-	historyService := history.NewService(q, conn)
-	permissionService := permission.NewPermissionService()
-	statusService := status.NewService()
-
-	// Initialize logging service
-	logging.InitManager(loggingService)
-
-	// Initialize session manager
-	session.InitManager(sessionService)
-
-	// Initialize status service
-	status.InitManager(statusService)
+	err := logging.InitService(conn)
+	if err != nil {
+		slog.Error("Failed to initialize logging service", "error", err)
+		return nil, err
+	}
+	err = session.InitService(conn)
+	if err != nil {
+		slog.Error("Failed to initialize session service", "error", err)
+		return nil, err
+	}
+	err = message.InitService(conn)
+	if err != nil {
+		slog.Error("Failed to initialize message service", "error", err)
+		return nil, err
+	}
+	err = history.InitService(conn)
+	if err != nil {
+		slog.Error("Failed to initialize history service", "error", err)
+		return nil, err
+	}
+	err = permission.InitService()
+	if err != nil {
+		slog.Error("Failed to initialize permission service", "error", err)
+		return nil, err
+	}
+	err = status.InitService()
+	if err != nil {
+		slog.Error("Failed to initialize status service", "error", err)
+		return nil, err
+	}
 
 	app := &App{
-		Logs:        loggingService,
-		Sessions:    sessionService,
-		Messages:    messageService,
-		History:     historyService,
-		Permissions: permissionService,
-		Status:      statusService,
+		Logs:        logging.GetService(),
+		Sessions:    session.GetService(),
+		Messages:    message.GetService(),
+		History:     history.GetService(),
+		Permissions: permission.GetService(),
+		Status:      status.GetService(),
 		LSPClients:  make(map[string]*lsp.Client),
 	}
 
@@ -75,7 +88,6 @@ func New(ctx context.Context, conn *sql.DB) (*App, error) {
 	// Initialize LSP clients in the background
 	go app.initLSPClients(ctx)
 
-	var err error
 	app.CoderAgent, err = agent.NewAgent(
 		config.AgentCoder,
 		app.Sessions,

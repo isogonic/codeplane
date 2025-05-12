@@ -65,13 +65,13 @@ func (m statusCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case chat.SessionClearedMsg:
 		m.session = session.Session{}
 	case pubsub.Event[session.Session]:
-		if msg.Type == pubsub.UpdatedEvent {
+		if msg.Type == session.EventSessionUpdated {
 			if m.session.ID == msg.Payload.ID {
 				m.session = msg.Payload
 			}
 		}
 	case pubsub.Event[status.StatusMessage]:
-		if msg.Type == pubsub.CreatedEvent {
+		if msg.Type == status.EventStatusPublished {
 			statusMsg := statusMessage{
 				Level:     msg.Payload.Level,
 				Message:   msg.Payload.Message,
@@ -308,4 +308,3 @@ func NewStatusCmp(lspClients map[string]*lsp.Client) StatusCmp {
 
 	return statusComponent
 }
-

@@ -137,7 +137,7 @@ func (p *chatPage) sendMessage(text string, attachments []message.Attachment) te
 
 		p.session = newSession
 		// Update the current session in the session manager
-		session.SetCurrentSession(newSession.ID)
+		// session.SetCurrentSession(newSession.ID)
 
 		cmd := p.setSidebar()
 		if cmd != nil {

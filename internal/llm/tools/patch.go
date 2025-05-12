@@ -193,6 +193,7 @@ func (p *patchTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error
 			dir := filepath.Dir(path)
 			patchDiff, _, _ := diff.GenerateDiff("", *change.NewContent, path)
 			p := p.permissions.Request(
+				ctx,
 				permission.CreatePermissionRequest{
 					SessionID:   sessionID,
 					Path:        dir,
@@ -220,6 +221,7 @@ func (p *patchTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error
 			patchDiff, _, _ := diff.GenerateDiff(currentContent, newContent, path)
 			dir := filepath.Dir(path)
 			p := p.permissions.Request(
+				ctx,
 				permission.CreatePermissionRequest{
 					SessionID:   sessionID,
 					Path:        dir,
@@ -239,6 +241,7 @@ func (p *patchTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error
 			dir := filepath.Dir(path)
 			patchDiff, _, _ := diff.GenerateDiff(*change.OldContent, "", path)
 			p := p.permissions.Request(
+				ctx,
 				permission.CreatePermissionRequest{
 					SessionID:   sessionID,
 					Path:        dir,
@@ -313,7 +316,7 @@ func (p *patchTool) Run(ctx context.Context, call ToolCall) (ToolResponse, error
 		totalRemovals += removals
 
 		// Update history
-		file, err := p.files.GetByPathAndSession(ctx, absPath, sessionID)
+		file, err := p.files.GetLatestByPathAndSession(ctx, absPath, sessionID)
 		if err != nil && change.Type != diff.ActionAdd {
 			// If not adding a file, create history entry for existing file
 			_, err = p.files.Create(ctx, sessionID, absPath, oldContent)

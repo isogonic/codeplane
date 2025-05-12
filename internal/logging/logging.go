@@ -18,7 +18,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/opencode-ai/opencode/internal/db"
 	"github.com/opencode-ai/opencode/internal/pubsub"
-	// "github.com/opencode-ai/opencode/internal/status"
 )
 
 type Log struct {
@@ -220,6 +219,7 @@ func (sw *slogWriter) Write(p []byte) (n int, err error) {
 				logEntry.Attributes[key] = value
 			}
 		}
+
 		if d.Err() != nil {
 			return len(p), fmt.Errorf("logfmt.ScanRecord: %w", d.Err())
 		}
@@ -231,6 +231,11 @@ func (sw *slogWriter) Write(p []byte) (n int, err error) {
 		// Create log entry via the service (non-blocking or handle error appropriately)
 		// Using context.Background() as this is a low-level logging write.
 		go func(le Log) { // Run in a goroutine to avoid blocking slog
+			if globalLoggingService == nil {
+				// If the logging service is not initialized, log the message to stderr
+				// fmt.Fprintf(os.Stderr, "ERROR [logging.slogWriter]: logging service not initialized\n")
+				return
+			}
 			if err := Create(context.Background(), le); err != nil {
 				// Log internal error using a more primitive logger to avoid loops
 				fmt.Fprintf(os.Stderr, "ERROR [logging.slogWriter]: failed to persist log: %v\n", err)

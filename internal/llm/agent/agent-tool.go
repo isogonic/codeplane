@@ -91,7 +91,7 @@ func (b *agentTool) Run(ctx context.Context, call tools.ToolCall) (tools.ToolRes
 	parentSession.PromptTokens += updatedSession.PromptTokens
 	parentSession.CompletionTokens += updatedSession.CompletionTokens
 
-	_, err = b.sessions.Save(ctx, parentSession)
+	_, err = b.sessions.Update(ctx, parentSession)
 	if err != nil {
 		return tools.ToolResponse{}, fmt.Errorf("error saving parent session: %s", err)
 	}

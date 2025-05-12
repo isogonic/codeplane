@@ -110,7 +110,7 @@ func (m *messagesCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.GotoBottom()
 	case pubsub.Event[message.Message]:
 		needsRerender := false
-		if msg.Type == pubsub.CreatedEvent {
+		if msg.Type == message.EventMessageCreated {
 			if msg.Payload.SessionID == m.session.ID {
 
 				messageExists := false
@@ -142,7 +142,7 @@ func (m *messagesCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
-		} else if msg.Type == pubsub.UpdatedEvent && msg.Payload.SessionID == m.session.ID {
+		} else if msg.Type == message.EventMessageUpdated && msg.Payload.SessionID == m.session.ID {
 			for i, v := range m.messages {
 				if v.ID == msg.Payload.ID {
 					m.messages[i] = msg.Payload
@@ -155,8 +155,8 @@ func (m *messagesCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if needsRerender {
 			m.renderView()
 			if len(m.messages) > 0 {
-				if (msg.Type == pubsub.CreatedEvent) ||
-					(msg.Type == pubsub.UpdatedEvent && msg.Payload.ID == m.messages[len(m.messages)-1].ID) {
+				if (msg.Type == message.EventMessageCreated) ||
+					(msg.Type == message.EventMessageUpdated && msg.Payload.ID == m.messages[len(m.messages)-1].ID) {
 					m.viewport.GotoBottom()
 				}
 			}

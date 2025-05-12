@@ -156,7 +156,7 @@ func (a *agent) generateTitle(ctx context.Context, sessionID string, content str
 	}
 
 	session.Title = title
-	_, err = a.sessions.Save(ctx, session)
+	_, err = a.sessions.Update(ctx, session)
 	return err
 }
 
@@ -459,7 +459,7 @@ out:
 
 func (a *agent) finishMessage(ctx context.Context, msg *message.Message, finishReson message.FinishReason) {
 	msg.AddFinish(finishReson)
-	_ = a.messages.Update(ctx, *msg)
+	_, _ = a.messages.Update(ctx, *msg)
 }
 
 func (a *agent) processEvent(ctx context.Context, sessionID string, assistantMsg *message.Message, event provider.ProviderEvent) error {
@@ -477,13 +477,16 @@ func (a *agent) processEvent(ctx context.Context, sessionID string, assistantMsg
 	switch event.Type {
 	case provider.EventThinkingDelta:
 		assistantMsg.AppendReasoningContent(event.Content)
-		return a.messages.Update(ctx, *assistantMsg)
+		_, err := a.messages.Update(ctx, *assistantMsg)
+		return err
 	case provider.EventContentDelta:
 		assistantMsg.AppendContent(event.Content)
-		return a.messages.Update(ctx, *assistantMsg)
+		_, err := a.messages.Update(ctx, *assistantMsg)
+		return err
 	case provider.EventToolUseStart:
 		assistantMsg.AddToolCall(*event.ToolCall)
-		return a.messages.Update(ctx, *assistantMsg)
+		_, err := a.messages.Update(ctx, *assistantMsg)
+		return err
 	// TODO: see how to handle this
 	// case provider.EventToolUseDelta:
 	// 	tm := time.Unix(assistantMsg.UpdatedAt, 0)
@@ -495,7 +498,8 @@ func (a *agent) processEvent(ctx context.Context, sessionID string, assistantMsg
 	// 	}
 	case provider.EventToolUseStop:
 		assistantMsg.FinishToolCall(event.ToolCall.ID)
-		return a.messages.Update(ctx, *assistantMsg)
+		_, err := a.messages.Update(ctx, *assistantMsg)
+		return err
 	case provider.EventError:
 		if errors.Is(event.Error, context.Canceled) {
 			status.Info(fmt.Sprintf("Event processing canceled for session: %s", sessionID))
@@ -506,7 +510,7 @@ func (a *agent) processEvent(ctx context.Context, sessionID string, assistantMsg
 	case provider.EventComplete:
 		assistantMsg.SetToolCalls(event.Response.ToolCalls)
 		assistantMsg.AddFinish(event.Response.FinishReason)
-		if err := a.messages.Update(ctx, *assistantMsg); err != nil {
+		if _, err := a.messages.Update(ctx, *assistantMsg); err != nil {
 			return fmt.Errorf("failed to update message: %w", err)
 		}
 		return a.TrackUsage(ctx, sessionID, a.provider.Model(), event.Response.Usage)
@@ -540,7 +544,7 @@ func (a *agent) TrackUsage(ctx context.Context, sessionID string, model models.M
 	sess.CompletionTokens += usage.OutputTokens
 	sess.PromptTokens += usage.InputTokens
 
-	_, err = a.sessions.Save(ctx, sess)
+	_, err = a.sessions.Update(ctx, sess)
 	if err != nil {
 		return fmt.Errorf("failed to save session: %w", err)
 	}
@@ -691,7 +695,7 @@ func (a *agent) CompactSession(ctx context.Context, sessionID string) error {
 	session.SummarizedAt = currentTime
 
 	// Save the updated session
-	_, err = a.sessions.Save(ctx, session)
+	_, err = a.sessions.Update(ctx, session)
 	if err != nil {
 		return fmt.Errorf("failed to save session with summary: %w", err)
 	}

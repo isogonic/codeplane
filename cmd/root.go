@@ -42,7 +42,7 @@ to assist developers in writing, debugging, and understanding code directly from
 
 		// Setup logging
 		lvl := new(slog.LevelVar)
-		logger := slog.New(slog.NewTextHandler(logging.NewWriter(), &slog.HandlerOptions{
+		logger := slog.New(slog.NewTextHandler(logging.NewSlogWriter(), &slog.HandlerOptions{
 			Level: lvl,
 		}))
 		slog.SetDefault(logger)

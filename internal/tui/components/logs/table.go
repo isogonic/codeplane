@@ -9,7 +9,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/opencode-ai/opencode/internal/logging"
 	"github.com/opencode-ai/opencode/internal/pubsub"
-	"github.com/opencode-ai/opencode/internal/session"
 	"github.com/opencode-ai/opencode/internal/tui/components/chat"
 	"github.com/opencode-ai/opencode/internal/tui/layout"
 	"github.com/opencode-ai/opencode/internal/tui/theme"
@@ -49,7 +48,7 @@ func (i *tableCmp) fetchLogs() tea.Cmd {
 
 		var logs []logging.Log
 		var err error
-		sessionId := session.CurrentSessionID()
+		sessionId := "" //session.CurrentSessionID()
 
 		// Limit the number of logs to improve performance
 		const logLimit = 100
@@ -85,7 +84,7 @@ func (i *tableCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case pubsub.Event[logging.Log]:
 		// Only handle created events
-		if msg.Type == pubsub.CreatedEvent {
+		if msg.Type == logging.EventLogCreated {
 			// Add the new log to our list
 			i.logs = append([]logging.Log{msg.Payload}, i.logs...)
 			// Keep the list at a reasonable size
@@ -105,7 +104,7 @@ func (i *tableCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	t, cmd := i.table.Update(msg)
 	cmds = append(cmds, cmd)
 	i.table = t
-	
+
 	// Only send selected log message when selection changes
 	selectedRow := i.table.SelectedRow()
 	if selectedRow != nil {
