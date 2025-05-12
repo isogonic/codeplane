@@ -115,7 +115,7 @@ func (c *commandDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (c *commandDialogCmp) View() string {
 	t := theme.CurrentTheme()
 	baseStyle := styles.BaseStyle()
-	
+
 	if len(c.commands) == 0 {
 		return baseStyle.Padding(1, 2).
 			Border(lipgloss.RoundedBorder()).

@@ -31,7 +31,7 @@ type container struct {
 	borderBottom bool
 	borderLeft   bool
 	borderStyle  lipgloss.Border
-	
+
 	focused bool // Track focus state
 }
 
@@ -69,7 +69,7 @@ func (c *container) View() string {
 			width--
 		}
 		style = style.Border(c.borderStyle, c.borderTop, c.borderRight, c.borderBottom, c.borderLeft)
-		
+
 		// Use primary color for border if focused
 		if c.focused {
 			style = style.BorderBackground(t.Background()).BorderForeground(t.Primary())

@@ -88,8 +88,6 @@ func (b *agentTool) Run(ctx context.Context, call tools.ToolCall) (tools.ToolRes
 	}
 
 	parentSession.Cost += updatedSession.Cost
-	parentSession.PromptTokens += updatedSession.PromptTokens
-	parentSession.CompletionTokens += updatedSession.CompletionTokens
 
 	_, err = b.sessions.Update(ctx, parentSession)
 	if err != nil {

@@ -300,53 +300,6 @@ func (a *agent) createUserMessage(ctx context.Context, sessionID, content string
 }
 
 func (a *agent) streamAndHandleEvents(ctx context.Context, sessionID string, msgHistory []message.Message) (message.Message, *message.Message, error) {
-	// Check if we need to auto-compact based on token count
-	contextWindow := a.provider.Model().ContextWindow
-	maxTokens := a.provider.MaxTokens()
-	threshold := int64(float64(contextWindow) * 0.80)
-	usage, err := a.GetUsage(ctx, sessionID)
-	if err != nil || usage == nil {
-		return message.Message{}, nil, fmt.Errorf("failed to get usage: %w", err)
-	}
-
-	// If we're approaching the context window limit, trigger auto-compaction
-	if false && (*usage+maxTokens) >= threshold {
-		status.Info(fmt.Sprintf("Auto-compaction triggered for session %s. Estimated tokens: %d, Threshold: %d", sessionID, usage, threshold))
-
-		// Perform compaction with pause/resume to ensure safety
-		if err := a.CompactSession(ctx, sessionID); err != nil {
-			status.Error(fmt.Sprintf("Auto-compaction failed: %v", err))
-			// Continue with the request even if compaction fails
-		} else {
-			// Re-fetch session details after compaction
-			currentSession, err := a.sessions.Get(ctx, sessionID)
-			if err != nil {
-				return message.Message{}, nil, fmt.Errorf("failed to get session after compaction: %w", err)
-			}
-
-			// Re-prepare messages using the new summary
-			var sessionMessages []message.Message
-			if currentSession.Summary != "" && currentSession.SummarizedAt > 0 {
-				// If summary exists, only fetch messages after the summarization timestamp
-				sessionMessages, err = a.messages.ListAfter(ctx, sessionID, currentSession.SummarizedAt)
-				if err != nil {
-					return message.Message{}, nil, fmt.Errorf("failed to list messages after compaction: %w", err)
-				}
-
-				// Create a new message history with the summary and messages after summarization
-				summaryMessage := message.Message{
-					Role: message.Assistant,
-					Parts: []message.ContentPart{
-						message.TextContent{Text: currentSession.Summary},
-					},
-				}
-
-				// Replace msgHistory with the new compacted version
-				msgHistory = append([]message.Message{summaryMessage}, sessionMessages...)
-			}
-		}
-	}
-
 	eventChan := a.provider.StreamResponse(ctx, msgHistory, a.tools)
 
 	assistantMsg, err := a.messages.Create(ctx, sessionID, message.CreateMessageParams{
@@ -541,8 +494,8 @@ func (a *agent) TrackUsage(ctx context.Context, sessionID string, model models.M
 		model.CostPer1MOut/1e6*float64(usage.OutputTokens)
 
 	sess.Cost += cost
-	sess.CompletionTokens += usage.OutputTokens
-	sess.PromptTokens += usage.InputTokens
+	sess.CompletionTokens = usage.OutputTokens + usage.CacheReadTokens
+	sess.PromptTokens = usage.InputTokens + usage.CacheCreationTokens
 
 	_, err = a.sessions.Update(ctx, sess)
 	if err != nil {
@@ -646,7 +599,16 @@ func (a *agent) CompactSession(ctx context.Context, sessionID string) error {
 			Role: message.System,
 			Parts: []message.ContentPart{
 				message.TextContent{
-					Text: "You are a helpful AI assistant tasked with summarizing conversations.",
+					Text: `You are a helpful AI assistant tasked with summarizing conversations.
+
+When asked to summarize, provide a detailed but concise summary of the conversation. 
+Focus on information that would be helpful for continuing the conversation, including:
+- What was done
+- What is currently being worked on
+- Which files are being modified
+- What needs to be done next
+
+Your summary should be comprehensive enough to provide context but concise enough to be quickly understood.`,
 				},
 			},
 		},
@@ -655,7 +617,7 @@ func (a *agent) CompactSession(ctx context.Context, sessionID string) error {
 	// If there's an existing summary, include it
 	if existingSummary != "" {
 		messages = append(messages, message.Message{
-			Role: message.Assistant, // TODO: should this be system or user instead?
+			Role: message.Assistant,
 			Parts: []message.ContentPart{
 				message.TextContent{
 					Text: existingSummary,

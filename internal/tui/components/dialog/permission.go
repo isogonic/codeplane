@@ -150,7 +150,7 @@ func (p *permissionDialogCmp) selectCurrentOption() tea.Cmd {
 func (p *permissionDialogCmp) renderButtons() string {
 	t := theme.CurrentTheme()
 	baseStyle := styles.BaseStyle()
-	
+
 	allowStyle := baseStyle
 	allowSessionStyle := baseStyle
 	denyStyle := baseStyle
@@ -196,7 +196,7 @@ func (p *permissionDialogCmp) renderButtons() string {
 func (p *permissionDialogCmp) renderHeader() string {
 	t := theme.CurrentTheme()
 	baseStyle := styles.BaseStyle()
-	
+
 	toolKey := baseStyle.Foreground(t.TextMuted()).Bold(true).Render("Tool")
 	toolValue := baseStyle.
 		Foreground(t.Text()).
@@ -242,13 +242,13 @@ func (p *permissionDialogCmp) renderHeader() string {
 func (p *permissionDialogCmp) renderBashContent() string {
 	t := theme.CurrentTheme()
 	baseStyle := styles.BaseStyle()
-	
+
 	if pr, ok := p.permission.Params.(tools.BashPermissionsParams); ok {
 		content := fmt.Sprintf("```bash\n%s\n```", pr.Command)
 
 		// Use the cache for markdown rendering
 		renderedContent := p.GetOrSetMarkdown(p.permission.ID, func() (string, error) {
-			r := styles.GetMarkdownRenderer(p.width-10)
+			r := styles.GetMarkdownRenderer(p.width - 10)
 			s, err := r.Render(content)
 			return styles.ForceReplaceBackgroundWithLipgloss(s, t.Background()), err
 		})
@@ -302,13 +302,13 @@ func (p *permissionDialogCmp) renderWriteContent() string {
 func (p *permissionDialogCmp) renderFetchContent() string {
 	t := theme.CurrentTheme()
 	baseStyle := styles.BaseStyle()
-	
+
 	if pr, ok := p.permission.Params.(tools.FetchPermissionsParams); ok {
 		content := fmt.Sprintf("```bash\n%s\n```", pr.URL)
 
 		// Use the cache for markdown rendering
 		renderedContent := p.GetOrSetMarkdown(p.permission.ID, func() (string, error) {
-			r := styles.GetMarkdownRenderer(p.width-10)
+			r := styles.GetMarkdownRenderer(p.width - 10)
 			s, err := r.Render(content)
 			return styles.ForceReplaceBackgroundWithLipgloss(s, t.Background()), err
 		})
@@ -325,12 +325,12 @@ func (p *permissionDialogCmp) renderFetchContent() string {
 func (p *permissionDialogCmp) renderDefaultContent() string {
 	t := theme.CurrentTheme()
 	baseStyle := styles.BaseStyle()
-	
+
 	content := p.permission.Description
 
 	// Use the cache for markdown rendering
 	renderedContent := p.GetOrSetMarkdown(p.permission.ID, func() (string, error) {
-		r := styles.GetMarkdownRenderer(p.width-10)
+		r := styles.GetMarkdownRenderer(p.width - 10)
 		s, err := r.Render(content)
 		return styles.ForceReplaceBackgroundWithLipgloss(s, t.Background()), err
 	})
@@ -358,7 +358,7 @@ func (p *permissionDialogCmp) styleViewport() string {
 func (p *permissionDialogCmp) render() string {
 	t := theme.CurrentTheme()
 	baseStyle := styles.BaseStyle()
-	
+
 	title := baseStyle.
 		Bold(true).
 		Width(p.width - 4).

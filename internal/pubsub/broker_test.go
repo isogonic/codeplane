@@ -142,4 +142,3 @@ func TestBrokerConcurrency(t *testing.T) {
 	}
 	assert.Equal(t, numSubscribers, count)
 }
-

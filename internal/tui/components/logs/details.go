@@ -96,7 +96,7 @@ func (i *detailCmp) updateContent() {
 		valueStyle := lipgloss.NewStyle().Foreground(t.Text())
 
 		for key, value := range i.currentLog.Attributes {
-			attrLine := fmt.Sprintf("%s: %s", 
+			attrLine := fmt.Sprintf("%s: %s",
 				keyStyle.Render(key),
 				valueStyle.Render(value),
 			)

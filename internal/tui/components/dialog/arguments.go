@@ -170,4 +170,3 @@ type ShowArgumentsDialogMsg struct {
 	CommandID string
 	Content   string
 }
-

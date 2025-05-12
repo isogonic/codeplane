@@ -296,4 +296,3 @@ func GetLanguageIDFromPath(path string) string {
 	langKind := lsp.DetectLanguageID(uri)
 	return GetLanguageIDFromProtocol(string(langKind))
 }
-

@@ -196,7 +196,7 @@ func (p *logsPage) Init() tea.Cmd {
 	var cmds []tea.Cmd
 	cmds = append(cmds, p.table.Init())
 	cmds = append(cmds, p.details.Init())
-	
+
 	// Send a key down and then key up to select the first row
 	// This ensures the details pane is populated when returning to the logs page
 	cmds = append(cmds, func() tea.Msg {
@@ -205,7 +205,7 @@ func (p *logsPage) Init() tea.Cmd {
 	cmds = append(cmds, func() tea.Msg {
 		return tea.KeyMsg{Type: tea.KeyUp}
 	})
-	
+
 	return tea.Batch(cmds...)
 }
 

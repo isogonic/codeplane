@@ -11,7 +11,6 @@ import (
 	"os"
 	"runtime/debug"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-logfmt/logfmt"
@@ -45,7 +44,6 @@ type Service interface {
 type service struct {
 	db     *db.Queries
 	broker *pubsub.Broker[Log]
-	mu     sync.RWMutex
 }
 
 var globalLoggingService *service
@@ -72,9 +70,6 @@ func GetService() Service {
 }
 
 func (s *service) Create(ctx context.Context, log Log) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if log.ID == "" {
 		log.ID = uuid.New().String()
 	}
@@ -115,9 +110,6 @@ func (s *service) Create(ctx context.Context, log Log) error {
 }
 
 func (s *service) ListBySession(ctx context.Context, sessionID string) ([]Log, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	dbLogs, err := s.db.ListLogsBySession(ctx, sql.NullString{String: sessionID, Valid: true})
 	if err != nil {
 		return nil, fmt.Errorf("db.ListLogsBySession: %w", err)
@@ -126,9 +118,6 @@ func (s *service) ListBySession(ctx context.Context, sessionID string) ([]Log, e
 }
 
 func (s *service) ListAll(ctx context.Context, limit int) ([]Log, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	dbLogs, err := s.db.ListAllLogs(ctx, int64(limit))
 	if err != nil {
 		return nil, fmt.Errorf("db.ListAllLogs: %w", err)

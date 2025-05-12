@@ -304,4 +304,3 @@ func ConfigureLSPServers(rootDir string) (map[string]ServerInfo, error) {
 
 	return servers, nil
 }
-
