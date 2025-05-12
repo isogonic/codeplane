@@ -29,7 +29,6 @@ type tableCmp struct {
 
 type selectedLogMsg logging.Log
 
-// Message for when logs are loaded from the database
 type logsLoadedMsg struct {
 	logs []logging.Log
 }
@@ -48,7 +47,7 @@ func (i *tableCmp) fetchLogs() tea.Cmd {
 
 		var logs []logging.Log
 		var err error
-		sessionId := "" //session.CurrentSessionID()
+		sessionId := "" // TODO: session.CurrentSessionID()
 
 		// Limit the number of logs to improve performance
 		const logLimit = 100
@@ -159,9 +158,6 @@ func (i *tableCmp) BindingKeys() []key.Binding {
 
 func (i *tableCmp) updateRows() {
 	rows := make([]table.Row, 0, len(i.logs))
-
-	// Logs are already sorted by timestamp (newest first) from the database query
-	// Skip the expensive sort operation
 
 	for _, log := range i.logs {
 		// Format timestamp as time
