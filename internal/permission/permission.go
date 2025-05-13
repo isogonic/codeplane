@@ -11,8 +11,8 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/pubsub"
+	"github.com/sst/opencode/internal/config"
+	"github.com/sst/opencode/internal/pubsub"
 )
 
 var ErrorPermissionDenied = errors.New("permission denied")

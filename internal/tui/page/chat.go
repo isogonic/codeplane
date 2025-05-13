@@ -6,14 +6,14 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/opencode-ai/opencode/internal/app"
-	"github.com/opencode-ai/opencode/internal/message"
-	"github.com/opencode-ai/opencode/internal/session"
-	"github.com/opencode-ai/opencode/internal/status"
-	"github.com/opencode-ai/opencode/internal/tui/components/chat"
-	"github.com/opencode-ai/opencode/internal/tui/components/dialog"
-	"github.com/opencode-ai/opencode/internal/tui/layout"
-	"github.com/opencode-ai/opencode/internal/tui/util"
+	"github.com/sst/opencode/internal/app"
+	"github.com/sst/opencode/internal/message"
+	"github.com/sst/opencode/internal/session"
+	"github.com/sst/opencode/internal/status"
+	"github.com/sst/opencode/internal/tui/components/chat"
+	"github.com/sst/opencode/internal/tui/components/dialog"
+	"github.com/sst/opencode/internal/tui/layout"
+	"github.com/sst/opencode/internal/tui/util"
 )
 
 var ChatPage PageID = "chat"

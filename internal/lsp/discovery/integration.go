@@ -3,7 +3,7 @@ package discovery
 import (
 	"fmt"
 
-	"github.com/opencode-ai/opencode/internal/config"
+	"github.com/sst/opencode/internal/config"
 	"log/slog"
 )
 

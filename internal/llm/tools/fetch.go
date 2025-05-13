@@ -11,8 +11,8 @@ import (
 
 	md "github.com/JohannesKaufmann/html-to-markdown"
 	"github.com/PuerkitoBio/goquery"
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/permission"
+	"github.com/sst/opencode/internal/config"
+	"github.com/sst/opencode/internal/permission"
 )
 
 type FetchParams struct {

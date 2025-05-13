@@ -6,10 +6,10 @@ import (
 
 	"log/slog"
 
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/logging"
-	"github.com/opencode-ai/opencode/internal/lsp"
-	"github.com/opencode-ai/opencode/internal/lsp/watcher"
+	"github.com/sst/opencode/internal/config"
+	"github.com/sst/opencode/internal/logging"
+	"github.com/sst/opencode/internal/lsp"
+	"github.com/sst/opencode/internal/lsp/watcher"
 )
 
 func (app *App) initLSPClients(ctx context.Context) {

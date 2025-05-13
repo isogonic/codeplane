@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/alecthomas/chroma/v2/styles"
-	"github.com/opencode-ai/opencode/internal/config"
+	"github.com/sst/opencode/internal/config"
 )
 
 // Manager handles theme registration, selection, and retrieval.

@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/diff"
-	"github.com/opencode-ai/opencode/internal/history"
-	"github.com/opencode-ai/opencode/internal/lsp"
-	"github.com/opencode-ai/opencode/internal/permission"
+	"github.com/sst/opencode/internal/config"
+	"github.com/sst/opencode/internal/diff"
+	"github.com/sst/opencode/internal/history"
+	"github.com/sst/opencode/internal/lsp"
+	"github.com/sst/opencode/internal/permission"
 	"log/slog"
 )
 

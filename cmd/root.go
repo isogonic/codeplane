@@ -11,16 +11,16 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	zone "github.com/lrstanley/bubblezone"
-	"github.com/opencode-ai/opencode/internal/app"
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/db"
-	"github.com/opencode-ai/opencode/internal/llm/agent"
-	"github.com/opencode-ai/opencode/internal/logging"
-	"github.com/opencode-ai/opencode/internal/lsp/discovery"
-	"github.com/opencode-ai/opencode/internal/pubsub"
-	"github.com/opencode-ai/opencode/internal/tui"
-	"github.com/opencode-ai/opencode/internal/version"
 	"github.com/spf13/cobra"
+	"github.com/sst/opencode/internal/app"
+	"github.com/sst/opencode/internal/config"
+	"github.com/sst/opencode/internal/db"
+	"github.com/sst/opencode/internal/llm/agent"
+	"github.com/sst/opencode/internal/logging"
+	"github.com/sst/opencode/internal/lsp/discovery"
+	"github.com/sst/opencode/internal/pubsub"
+	"github.com/sst/opencode/internal/tui"
+	"github.com/sst/opencode/internal/version"
 )
 
 var rootCmd = &cobra.Command{

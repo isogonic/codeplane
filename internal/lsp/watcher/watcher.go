@@ -12,9 +12,9 @@ import (
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/fsnotify/fsnotify"
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/lsp"
-	"github.com/opencode-ai/opencode/internal/lsp/protocol"
+	"github.com/sst/opencode/internal/config"
+	"github.com/sst/opencode/internal/lsp"
+	"github.com/sst/opencode/internal/lsp/protocol"
 	"log/slog"
 )
 

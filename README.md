@@ -35,7 +35,7 @@ curl -fsSL https://opencode.ai/install | VERSION=0.1.0 bash
 ### Using Homebrew (macOS and Linux)
 
 ```bash
-brew install opencode-ai/tap/opencode
+brew install sst/tap/opencode
 ```
 
 ### Using AUR (Arch Linux)
@@ -51,7 +51,7 @@ paru -S opencode-bin
 ### Using Go
 
 ```bash
-go install github.com/opencode-ai/opencode@latest
+go install github.com/sst/opencode@latest
 ```
 
 ## Configuration
@@ -396,9 +396,11 @@ OpenCode supports custom commands that can be created by users to quickly send p
 Custom commands are predefined prompts stored as Markdown files in one of three locations:
 
 1. **User Commands** (prefixed with `user:`):
+
    ```
    $XDG_CONFIG_HOME/opencode/commands/
    ```
+
    (typically `~/.config/opencode/commands/` on Linux/macOS)
 
    or
@@ -541,7 +543,7 @@ While the LSP client implementation supports the full LSP protocol (including co
 
 ```bash
 # Clone the repository
-git clone https://github.com/opencode-ai/opencode.git
+git clone https://github.com/sst/opencode.git
 cd opencode
 
 # Build

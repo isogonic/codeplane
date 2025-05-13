@@ -4,10 +4,10 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/opencode-ai/opencode/internal/tui/layout"
-	"github.com/opencode-ai/opencode/internal/tui/styles"
-	"github.com/opencode-ai/opencode/internal/tui/theme"
-	"github.com/opencode-ai/opencode/internal/tui/util"
+	"github.com/sst/opencode/internal/tui/layout"
+	"github.com/sst/opencode/internal/tui/styles"
+	"github.com/sst/opencode/internal/tui/theme"
+	"github.com/sst/opencode/internal/tui/util"
 )
 
 // Command represents a command that can be executed

@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/opencode-ai/opencode/internal/llm/models"
 	"github.com/spf13/viper"
+	"github.com/sst/opencode/internal/llm/models"
 )
 
 // MCPType defines the type of MCP (Model Control Protocol) server.

@@ -12,11 +12,11 @@ import (
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/bedrock"
 	"github.com/anthropics/anthropic-sdk-go/option"
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/llm/models"
-	"github.com/opencode-ai/opencode/internal/llm/tools"
-	"github.com/opencode-ai/opencode/internal/message"
-	"github.com/opencode-ai/opencode/internal/status"
+	"github.com/sst/opencode/internal/config"
+	"github.com/sst/opencode/internal/llm/models"
+	"github.com/sst/opencode/internal/llm/tools"
+	"github.com/sst/opencode/internal/message"
+	"github.com/sst/opencode/internal/status"
 	"log/slog"
 )
 

@@ -16,10 +16,10 @@ import (
 
 	"log/slog"
 
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/logging"
-	"github.com/opencode-ai/opencode/internal/lsp/protocol"
-	"github.com/opencode-ai/opencode/internal/status"
+	"github.com/sst/opencode/internal/config"
+	"github.com/sst/opencode/internal/logging"
+	"github.com/sst/opencode/internal/lsp/protocol"
+	"github.com/sst/opencode/internal/status"
 )
 
 type Client struct {

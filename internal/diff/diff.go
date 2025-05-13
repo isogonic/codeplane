@@ -15,9 +15,9 @@ import (
 	"github.com/aymanbagabas/go-udiff"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/tui/theme"
 	"github.com/sergi/go-diff/diffmatchpatch"
+	"github.com/sst/opencode/internal/config"
+	"github.com/sst/opencode/internal/tui/theme"
 )
 
 // -------------------------------------------------------------------------
@@ -648,7 +648,7 @@ func applyHighlighting(content string, segments []Segment, segmentType LineType,
 			r, g, b, _ = bgColor.RGBA()
 			sb.WriteString(fmt.Sprintf("%d;%d;%dm", r>>8, g>>8, b>>8))
 			sb.WriteString(char)
-			
+
 			// Full reset of all attributes to ensure clean state
 			sb.WriteString("\x1b[0m")
 

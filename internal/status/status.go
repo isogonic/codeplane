@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opencode-ai/opencode/internal/pubsub"
+	"github.com/sst/opencode/internal/pubsub"
 )
 
 type Level string

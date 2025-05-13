@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/opencode-ai/opencode/internal/config"
+	"github.com/sst/opencode/internal/config"
 )
 
 const (

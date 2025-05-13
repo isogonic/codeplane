@@ -8,9 +8,9 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/llm/models"
-	"github.com/opencode-ai/opencode/internal/llm/tools"
+	"github.com/sst/opencode/internal/config"
+	"github.com/sst/opencode/internal/llm/models"
+	"github.com/sst/opencode/internal/llm/tools"
 )
 
 func PrimaryPrompt(provider models.ModelProvider) string {

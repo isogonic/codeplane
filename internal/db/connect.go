@@ -9,7 +9,7 @@ import (
 	_ "github.com/ncruces/go-sqlite3/driver"
 	_ "github.com/ncruces/go-sqlite3/embed"
 
-	"github.com/opencode-ai/opencode/internal/config"
+	"github.com/sst/opencode/internal/config"
 	"log/slog"
 
 	"github.com/pressly/goose/v3"

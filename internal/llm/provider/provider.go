@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/opencode-ai/opencode/internal/llm/models"
-	"github.com/opencode-ai/opencode/internal/llm/tools"
-	"github.com/opencode-ai/opencode/internal/message"
+	"github.com/sst/opencode/internal/llm/models"
+	"github.com/sst/opencode/internal/llm/tools"
+	"github.com/sst/opencode/internal/message"
 	"log/slog"
 )
 

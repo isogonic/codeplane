@@ -9,16 +9,16 @@ import (
 
 	"log/slog"
 
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/history"
-	"github.com/opencode-ai/opencode/internal/llm/agent"
-	"github.com/opencode-ai/opencode/internal/logging"
-	"github.com/opencode-ai/opencode/internal/lsp"
-	"github.com/opencode-ai/opencode/internal/message"
-	"github.com/opencode-ai/opencode/internal/permission"
-	"github.com/opencode-ai/opencode/internal/session"
-	"github.com/opencode-ai/opencode/internal/status"
-	"github.com/opencode-ai/opencode/internal/tui/theme"
+	"github.com/sst/opencode/internal/config"
+	"github.com/sst/opencode/internal/history"
+	"github.com/sst/opencode/internal/llm/agent"
+	"github.com/sst/opencode/internal/logging"
+	"github.com/sst/opencode/internal/lsp"
+	"github.com/sst/opencode/internal/message"
+	"github.com/sst/opencode/internal/permission"
+	"github.com/sst/opencode/internal/session"
+	"github.com/sst/opencode/internal/status"
+	"github.com/sst/opencode/internal/tui/theme"
 )
 
 type App struct {

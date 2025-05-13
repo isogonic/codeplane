@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/opencode-ai/opencode/internal/lsp"
+	"github.com/sst/opencode/internal/lsp"
 	"log/slog"
 )
 

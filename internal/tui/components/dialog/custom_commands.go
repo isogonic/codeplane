@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/tui/util"
+	"github.com/sst/opencode/internal/config"
+	"github.com/sst/opencode/internal/tui/util"
 )
 
 // Command prefix constants

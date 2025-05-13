@@ -11,11 +11,11 @@ import (
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 	"github.com/openai/openai-go/shared"
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/llm/models"
-	"github.com/opencode-ai/opencode/internal/llm/tools"
-	"github.com/opencode-ai/opencode/internal/message"
-	"github.com/opencode-ai/opencode/internal/status"
+	"github.com/sst/opencode/internal/config"
+	"github.com/sst/opencode/internal/llm/models"
+	"github.com/sst/opencode/internal/llm/tools"
+	"github.com/sst/opencode/internal/message"
+	"github.com/sst/opencode/internal/status"
 	"log/slog"
 )
 
