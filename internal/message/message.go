@@ -387,7 +387,10 @@ func marshallParts(parts []ContentPart) ([]byte, error) {
 			dataBytes, err = json.Marshal(p)
 		case Finish:
 			typ = finishType
-			dataBytes, err = json.Marshal(p)
+			var dbFinish DBFinish
+			dbFinish.Reason = p.Reason
+			dbFinish.Time = p.Time.UnixMilli()
+			dataBytes, err = json.Marshal(dbFinish)
 		default:
 			return nil, fmt.Errorf("unknown part type for marshalling: %T", part)
 		}
@@ -464,11 +467,7 @@ func unmarshallParts(data []byte) ([]ContentPart, error) {
 			}
 			parts = append(parts, p)
 		case finishType:
-			type dbFinish struct {
-				Reason FinishReason `json:"reason"`
-				Time   int64        `json:"time"`
-			}
-			var p dbFinish
+			var p DBFinish
 			if err := json.Unmarshal(wrapper.Data, &p); err != nil {
 				return nil, fmt.Errorf("unmarshal Finish: %w. Data: %s", err, string(wrapper.Data))
 			}

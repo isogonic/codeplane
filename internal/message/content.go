@@ -109,6 +109,11 @@ type Finish struct {
 	Time   time.Time    `json:"time"`
 }
 
+type DBFinish struct {
+	Reason FinishReason `json:"reason"`
+	Time   int64        `json:"time"`
+}
+
 func (Finish) isPart() {}
 
 func (m *Message) Content() *TextContent {
