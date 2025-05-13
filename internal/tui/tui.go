@@ -12,6 +12,7 @@ import (
 	"github.com/opencode-ai/opencode/internal/app"
 	"github.com/opencode-ai/opencode/internal/config"
 	"github.com/opencode-ai/opencode/internal/logging"
+	"github.com/opencode-ai/opencode/internal/message"
 	"github.com/opencode-ai/opencode/internal/permission"
 	"github.com/opencode-ai/opencode/internal/pubsub"
 	"github.com/opencode-ai/opencode/internal/status"
@@ -216,6 +217,10 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case pubsub.Event[logging.Log]:
 		a.pages[page.LogsPage], cmd = a.pages[page.LogsPage].Update(msg)
+		cmds = append(cmds, cmd)
+
+	case pubsub.Event[message.Message]:
+		a.pages[page.ChatPage], cmd = a.pages[page.ChatPage].Update(msg)
 		cmds = append(cmds, cmd)
 
 	case pubsub.Event[permission.PermissionRequest]:
