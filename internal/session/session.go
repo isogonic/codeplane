@@ -157,7 +157,7 @@ func (s *service) Update(ctx context.Context, session Session) (Session, error) 
 	if !session.SummarizedAt.IsZero() {
 		summarizedAt = sql.NullInt64{Int64: session.SummarizedAt.UnixMilli(), Valid: true}
 	}
-	
+
 	params := db.UpdateSessionParams{
 		ID:               session.ID,
 		Title:            session.Title,
@@ -208,7 +208,7 @@ func (s *service) fromDBItem(item db.Session) Session {
 	if item.SummarizedAt.Valid {
 		summarizedAt = time.UnixMilli(item.SummarizedAt.Int64)
 	}
-	
+
 	return Session{
 		ID:               item.ID,
 		ParentSessionID:  item.ParentSessionID.String,
@@ -219,8 +219,8 @@ func (s *service) fromDBItem(item db.Session) Session {
 		Cost:             item.Cost,
 		Summary:          item.Summary.String,
 		SummarizedAt:     summarizedAt,
-		CreatedAt:        time.UnixMilli(item.CreatedAt * 1000),
-		UpdatedAt:        time.UnixMilli(item.UpdatedAt * 1000),
+		CreatedAt:        time.UnixMilli(item.CreatedAt),
+		UpdatedAt:        time.UnixMilli(item.UpdatedAt),
 	}
 }
 

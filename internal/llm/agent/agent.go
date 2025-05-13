@@ -670,7 +670,7 @@ func (a *agent) CompactSession(ctx context.Context, sessionID string, force bool
 		// Filter messages that were created after the last summarization
 		var newMessages []message.Message
 		for _, msg := range sessionMessages {
-			if msg.CreatedAt > session.SummarizedAt.UnixMilli() {
+			if msg.CreatedAt.After(session.SummarizedAt) {
 				newMessages = append(newMessages, msg)
 			}
 		}

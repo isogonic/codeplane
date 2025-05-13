@@ -106,20 +106,10 @@ func (ToolResult) isPart() {}
 
 type Finish struct {
 	Reason FinishReason `json:"reason"`
-	Time   int64        `json:"time"`
+	Time   time.Time    `json:"time"`
 }
 
 func (Finish) isPart() {}
-
-type Message struct {
-	ID        string
-	Role      MessageRole
-	SessionID string
-	Parts     []ContentPart
-	Model     models.ModelID
-	CreatedAt int64
-	UpdatedAt int64
-}
 
 func (m *Message) Content() *TextContent {
 	for _, part := range m.Parts {
@@ -318,7 +308,7 @@ func (m *Message) AddFinish(reason FinishReason) {
 			break
 		}
 	}
-	m.Parts = append(m.Parts, Finish{Reason: reason, Time: time.Now().UnixMilli()})
+	m.Parts = append(m.Parts, Finish{Reason: reason, Time: time.Now()})
 }
 
 func (m *Message) AddImageURL(url, detail string) {

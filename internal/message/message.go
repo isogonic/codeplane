@@ -16,6 +16,16 @@ import (
 	"github.com/sst/opencode/internal/pubsub"
 )
 
+type Message struct {
+	ID        string
+	Role      MessageRole
+	SessionID string
+	Parts     []ContentPart
+	Model     models.ModelID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 const (
 	EventMessageCreated pubsub.EventType = "message_created"
 	EventMessageUpdated pubsub.EventType = "message_updated"
@@ -81,7 +91,7 @@ func (s *service) Create(ctx context.Context, sessionID string, params CreateMes
 		}
 	}
 	if params.Role == User && !isFinished {
-		params.Parts = append(params.Parts, Finish{Reason: FinishReasonEndTurn, Time: time.Now().UnixMilli()})
+		params.Parts = append(params.Parts, Finish{Reason: FinishReasonEndTurn, Time: time.Now()})
 	}
 
 	partsJSON, err := marshallParts(params.Parts)
@@ -126,9 +136,9 @@ func (s *service) Update(ctx context.Context, message Message) (Message, error) 
 
 	var dbFinishedAt sql.NullInt64
 	finishPart := message.FinishPart()
-	if finishPart != nil && finishPart.Time > 0 {
+	if finishPart != nil && !finishPart.Time.IsZero() {
 		dbFinishedAt = sql.NullInt64{
-			Int64: finishPart.Time,
+			Int64: finishPart.Time.UnixMilli(),
 			Valid: true,
 		}
 	}
@@ -290,8 +300,8 @@ func (s *service) fromDBItem(item db.Message) (Message, error) {
 		Role:      MessageRole(item.Role),
 		Parts:     parts,
 		Model:     models.ModelID(item.Model.String),
-		CreatedAt: item.CreatedAt * 1000,
-		UpdatedAt: item.UpdatedAt * 1000,
+		CreatedAt: time.UnixMilli(item.CreatedAt),
+		UpdatedAt: time.UnixMilli(item.UpdatedAt),
 	}
 
 	return msg, nil
@@ -400,14 +410,7 @@ func marshallParts(parts []ContentPart) ([]byte, error) {
 func unmarshallParts(data []byte) ([]ContentPart, error) {
 	var rawMessages []json.RawMessage
 	if err := json.Unmarshal(data, &rawMessages); err != nil {
-		// Handle case where 'parts' might be a single object if not an array initially
-		// This was a fallback, if your DB always stores an array, this might not be needed.
-		var singleRawMessage json.RawMessage
-		if errSingle := json.Unmarshal(data, &singleRawMessage); errSingle == nil {
-			rawMessages = []json.RawMessage{singleRawMessage}
-		} else {
-			return nil, fmt.Errorf("failed to unmarshal parts data as array: %w. Data: %s", err, string(data))
-		}
+		return nil, fmt.Errorf("failed to unmarshal parts data as array: %w. Data: %s", err, string(data))
 	}
 
 	parts := make([]ContentPart, 0, len(rawMessages))
@@ -461,11 +464,15 @@ func unmarshallParts(data []byte) ([]ContentPart, error) {
 			}
 			parts = append(parts, p)
 		case finishType:
-			var p Finish
+			type dbFinish struct {
+				Reason FinishReason `json:"reason"`
+				Time   int64        `json:"time"`
+			}
+			var p dbFinish
 			if err := json.Unmarshal(wrapper.Data, &p); err != nil {
 				return nil, fmt.Errorf("unmarshal Finish: %w. Data: %s", err, string(wrapper.Data))
 			}
-			parts = append(parts, p)
+			parts = append(parts, Finish{Reason: FinishReason(p.Reason), Time: time.UnixMilli(p.Time)})
 		default:
 			slog.Warn("Unknown part type during unmarshalling, attempting to parse as TextContent", "type", wrapper.Type, "data", string(wrapper.Data))
 			// Fallback: if type is unknown or empty, try to parse data as TextContent directly
