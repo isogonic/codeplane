@@ -92,7 +92,7 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Run compaction in background
 		go func(sessionID string) {
-			err := p.app.PrimaryAgent.CompactSession(context.Background(), sessionID)
+			err := p.app.PrimaryAgent.CompactSession(context.Background(), sessionID, false)
 			if err != nil {
 				status.Error(fmt.Sprintf("Compaction failed: %v", err))
 			} else {

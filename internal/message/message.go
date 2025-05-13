@@ -128,7 +128,7 @@ func (s *service) Update(ctx context.Context, message Message) (Message, error) 
 	finishPart := message.FinishPart()
 	if finishPart != nil && finishPart.Time > 0 {
 		dbFinishedAt = sql.NullInt64{
-			Int64: finishPart.Time / 1000, // Convert Milliseconds from Go struct to Seconds for DB
+			Int64: finishPart.Time,
 			Valid: true,
 		}
 	}
@@ -193,11 +193,9 @@ func (s *service) ListAfter(ctx context.Context, sessionID string, timestampMill
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	timestampSeconds := timestampMillis / 1000 // Convert to seconds for DB query
-
 	dbMessages, err := s.db.ListMessagesBySessionAfter(ctx, db.ListMessagesBySessionAfterParams{
 		SessionID: sessionID,
-		CreatedAt: timestampSeconds,
+		CreatedAt: timestampMillis,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("db.ListMessagesBySessionAfter: %w", err)

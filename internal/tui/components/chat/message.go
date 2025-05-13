@@ -672,15 +672,3 @@ func renderToolMessage(
 	}
 	return toolMsg
 }
-
-// Helper function to format the time difference between two Unix timestamps
-func formatTimestampDiff(start, end int64) string {
-	diffSeconds := float64(end-start) / 1000.0 // Convert to seconds
-	if diffSeconds < 1 {
-		return fmt.Sprintf("%dms", int(diffSeconds*1000))
-	}
-	if diffSeconds < 60 {
-		return fmt.Sprintf("%.1fs", diffSeconds)
-	}
-	return fmt.Sprintf("%.1fm", diffSeconds/60)
-}

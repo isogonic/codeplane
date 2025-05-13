@@ -95,11 +95,11 @@ func (s *service) Create(ctx context.Context, log Log) error {
 	err := s.db.CreateLog(ctx, db.CreateLogParams{
 		ID:         log.ID,
 		SessionID:  sql.NullString{String: log.SessionID, Valid: log.SessionID != ""},
-		Timestamp:  log.Timestamp / 1000,
+		Timestamp:  log.Timestamp,
 		Level:      log.Level,
 		Message:    log.Message,
 		Attributes: attributesJSON,
-		CreatedAt:  log.CreatedAt / 1000,
+		CreatedAt:  log.CreatedAt,
 	})
 	if err != nil {
 		return fmt.Errorf("db.CreateLog: %w", err)
