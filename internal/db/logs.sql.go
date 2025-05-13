@@ -10,7 +10,7 @@ import (
 	"database/sql"
 )
 
-const createLog = `-- name: CreateLog :exec
+const createLog = `-- name: CreateLog :one
 INSERT INTO logs (
     id,
     session_id,
@@ -27,7 +27,7 @@ INSERT INTO logs (
     ?,
     ?,
     ?
-)
+) RETURNING id, session_id, timestamp, level, message, attributes, created_at
 `
 
 type CreateLogParams struct {
@@ -40,8 +40,8 @@ type CreateLogParams struct {
 	CreatedAt  int64          `json:"created_at"`
 }
 
-func (q *Queries) CreateLog(ctx context.Context, arg CreateLogParams) error {
-	_, err := q.exec(ctx, q.createLogStmt, createLog,
+func (q *Queries) CreateLog(ctx context.Context, arg CreateLogParams) (Log, error) {
+	row := q.queryRow(ctx, q.createLogStmt, createLog,
 		arg.ID,
 		arg.SessionID,
 		arg.Timestamp,
@@ -50,7 +50,17 @@ func (q *Queries) CreateLog(ctx context.Context, arg CreateLogParams) error {
 		arg.Attributes,
 		arg.CreatedAt,
 	)
-	return err
+	var i Log
+	err := row.Scan(
+		&i.ID,
+		&i.SessionID,
+		&i.Timestamp,
+		&i.Level,
+		&i.Message,
+		&i.Attributes,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const listAllLogs = `-- name: ListAllLogs :many

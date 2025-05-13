@@ -318,7 +318,7 @@ func (m *Message) AddFinish(reason FinishReason) {
 			break
 		}
 	}
-	m.Parts = append(m.Parts, Finish{Reason: reason, Time: time.Now().Unix()})
+	m.Parts = append(m.Parts, Finish{Reason: reason, Time: time.Now().UnixMilli()})
 }
 
 func (m *Message) AddImageURL(url, detail string) {

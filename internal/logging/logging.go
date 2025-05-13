@@ -22,11 +22,11 @@ import (
 type Log struct {
 	ID         string
 	SessionID  string
-	Timestamp  int64
+	Timestamp  time.Time
 	Level      string
 	Message    string
 	Attributes map[string]string
-	CreatedAt  int64
+	CreatedAt  time.Time
 }
 
 const (
@@ -36,7 +36,7 @@ const (
 type Service interface {
 	pubsub.Subscriber[Log]
 
-	Create(ctx context.Context, log Log) error
+	Create(ctx context.Context, timestamp time.Time, level, message string, attributes map[string]string, sessionID string) error
 	ListBySession(ctx context.Context, sessionID string) ([]Log, error)
 	ListAll(ctx context.Context, limit int) ([]Log, error)
 }
@@ -69,42 +69,35 @@ func GetService() Service {
 	return globalLoggingService
 }
 
-func (s *service) Create(ctx context.Context, log Log) error {
-	if log.ID == "" {
-		log.ID = uuid.New().String()
-	}
-	if log.Timestamp == 0 {
-		log.Timestamp = time.Now().UnixMilli()
-	}
-	if log.CreatedAt == 0 {
-		log.CreatedAt = time.Now().UnixMilli()
-	}
-	if log.Level == "" {
-		log.Level = "info"
+func (s *service) Create(ctx context.Context, timestamp time.Time, level, message string, attributes map[string]string, sessionID string) error {
+	if level == "" {
+		level = "info"
 	}
 
 	var attributesJSON sql.NullString
-	if len(log.Attributes) > 0 {
-		attributesBytes, err := json.Marshal(log.Attributes)
+	if len(attributes) > 0 {
+		attributesBytes, err := json.Marshal(attributes)
 		if err != nil {
 			return fmt.Errorf("failed to marshal log attributes: %w", err)
 		}
 		attributesJSON = sql.NullString{String: string(attributesBytes), Valid: true}
 	}
 
-	err := s.db.CreateLog(ctx, db.CreateLogParams{
-		ID:         log.ID,
-		SessionID:  sql.NullString{String: log.SessionID, Valid: log.SessionID != ""},
-		Timestamp:  log.Timestamp,
-		Level:      log.Level,
-		Message:    log.Message,
+	dbLog, err := s.db.CreateLog(ctx, db.CreateLogParams{
+		ID:         uuid.New().String(),
+		SessionID:  sql.NullString{String: sessionID, Valid: sessionID != ""},
+		Timestamp:  timestamp.UnixMilli(),
+		Level:      level,
+		Message:    message,
 		Attributes: attributesJSON,
-		CreatedAt:  log.CreatedAt,
+		CreatedAt:  time.Now().UnixMilli(),
 	})
+
 	if err != nil {
 		return fmt.Errorf("db.CreateLog: %w", err)
 	}
 
+	log := s.fromDBItem(dbLog)
 	s.broker.Publish(EventLogCreated, log)
 	return nil
 }
@@ -114,7 +107,12 @@ func (s *service) ListBySession(ctx context.Context, sessionID string) ([]Log, e
 	if err != nil {
 		return nil, fmt.Errorf("db.ListLogsBySession: %w", err)
 	}
-	return s.fromDBItems(dbLogs)
+
+	logs := make([]Log, len(dbLogs))
+	for i, dbSess := range dbLogs {
+		logs[i] = s.fromDBItem(dbSess)
+	}
+	return logs, nil
 }
 
 func (s *service) ListAll(ctx context.Context, limit int) ([]Log, error) {
@@ -122,39 +120,41 @@ func (s *service) ListAll(ctx context.Context, limit int) ([]Log, error) {
 	if err != nil {
 		return nil, fmt.Errorf("db.ListAllLogs: %w", err)
 	}
-	return s.fromDBItems(dbLogs)
+	logs := make([]Log, len(dbLogs))
+	for i, dbSess := range dbLogs {
+		logs[i] = s.fromDBItem(dbSess)
+	}
+	return logs, nil
 }
 
 func (s *service) Subscribe(ctx context.Context) <-chan pubsub.Event[Log] {
 	return s.broker.Subscribe(ctx)
 }
 
-func (s *service) fromDBItems(items []db.Log) ([]Log, error) {
-	logs := make([]Log, len(items))
-	for i, item := range items {
-		log := Log{
-			ID:        item.ID,
-			SessionID: item.SessionID.String,
-			Timestamp: item.Timestamp * 1000,
-			Level:     item.Level,
-			Message:   item.Message,
-			CreatedAt: item.CreatedAt * 1000,
-		}
-		if item.Attributes.Valid && item.Attributes.String != "" {
-			if err := json.Unmarshal([]byte(item.Attributes.String), &log.Attributes); err != nil {
-				slog.Error("Failed to unmarshal log attributes", "log_id", item.ID, "error", err)
-				log.Attributes = make(map[string]string)
-			}
-		} else {
+func (s *service) fromDBItem(item db.Log) Log {
+	log := Log{
+		ID:        item.ID,
+		SessionID: item.SessionID.String,
+		Timestamp: time.UnixMilli(item.Timestamp),
+		Level:     item.Level,
+		Message:   item.Message,
+		CreatedAt: time.UnixMilli(item.CreatedAt),
+	}
+
+	if item.Attributes.Valid && item.Attributes.String != "" {
+		if err := json.Unmarshal([]byte(item.Attributes.String), &log.Attributes); err != nil {
+			slog.Error("Failed to unmarshal log attributes", "log_id", item.ID, "error", err)
 			log.Attributes = make(map[string]string)
 		}
-		logs[i] = log
+	} else {
+		log.Attributes = make(map[string]string)
 	}
-	return logs, nil
+
+	return log
 }
 
-func Create(ctx context.Context, log Log) error {
-	return GetService().Create(ctx, log)
+func Create(ctx context.Context, timestamp time.Time, level, message string, attributes map[string]string, sessionID string) error {
+	return GetService().Create(ctx, timestamp, level, message, attributes, sessionID)
 }
 
 func ListBySession(ctx context.Context, sessionID string) ([]Log, error) {
@@ -175,9 +175,13 @@ func (sw *slogWriter) Write(p []byte) (n int, err error) {
 	// Example: time=2024-05-09T12:34:56.789-05:00 level=INFO msg="User request" session=xyz foo=bar
 	d := logfmt.NewDecoder(bytes.NewReader(p))
 	for d.ScanRecord() {
-		logEntry := Log{
-			Attributes: make(map[string]string),
-		}
+		var timestamp time.Time
+		var level string
+		var message string
+		var sessionID string
+		var attributes map[string]string
+
+		attributes = make(map[string]string)
 		hasTimestamp := false
 
 		for d.ScanKeyval() {
@@ -191,45 +195,44 @@ func (sw *slogWriter) Write(p []byte) (n int, err error) {
 					parsedTime, timeErr = time.Parse(time.RFC3339, value)
 					if timeErr != nil {
 						slog.Error("Failed to parse time in slog writer", "value", value, "error", timeErr)
-						logEntry.Timestamp = time.Now().UnixMilli()
+						timestamp = time.Now()
 						hasTimestamp = true
 						continue
 					}
 				}
-				logEntry.Timestamp = parsedTime.UnixMilli()
+				timestamp = parsedTime
 				hasTimestamp = true
 			case "level":
-				logEntry.Level = strings.ToLower(value)
+				level = strings.ToLower(value)
 			case "msg", "message":
-				logEntry.Message = value
-			case "session_id", "session", "sid":
-				logEntry.SessionID = value
+				message = value
+			case "session_id":
+				sessionID = value
 			default:
-				logEntry.Attributes[key] = value
+				attributes[key] = value
 			}
 		}
-
 		if d.Err() != nil {
 			return len(p), fmt.Errorf("logfmt.ScanRecord: %w", d.Err())
 		}
 
 		if !hasTimestamp {
-			logEntry.Timestamp = time.Now().UnixMilli()
+			timestamp = time.Now()
 		}
 
 		// Create log entry via the service (non-blocking or handle error appropriately)
 		// Using context.Background() as this is a low-level logging write.
-		go func(le Log) { // Run in a goroutine to avoid blocking slog
+		go func(timestamp time.Time, level, message string, attributes map[string]string, sessionID string) { // Run in a goroutine to avoid blocking slog
 			if globalLoggingService == nil {
 				// If the logging service is not initialized, log the message to stderr
 				// fmt.Fprintf(os.Stderr, "ERROR [logging.slogWriter]: logging service not initialized\n")
 				return
 			}
-			if err := Create(context.Background(), le); err != nil {
+			if err := Create(context.Background(), timestamp, level, message, attributes, sessionID); err != nil {
 				// Log internal error using a more primitive logger to avoid loops
 				fmt.Fprintf(os.Stderr, "ERROR [logging.slogWriter]: failed to persist log: %v\n", err)
 			}
-		}(logEntry)
+		}(timestamp, level, message, attributes, sessionID)
 	}
 	if d.Err() != nil {
 		return len(p), fmt.Errorf("logfmt.ScanRecord final: %w", d.Err())

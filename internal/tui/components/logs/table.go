@@ -2,7 +2,6 @@ package logs
 
 import (
 	"context"
-	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
@@ -161,7 +160,7 @@ func (i *tableCmp) updateRows() {
 
 	for _, log := range i.logs {
 		// Format timestamp as time
-		timeStr := time.UnixMilli(log.Timestamp).Format("15:04:05")
+		timeStr := log.Timestamp.Format("15:04:05")
 
 		// Include ID as hidden first column for selection
 		row := table.Row{

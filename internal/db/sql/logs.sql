@@ -1,4 +1,4 @@
--- name: CreateLog :exec
+-- name: CreateLog :one
 INSERT INTO logs (
     id,
     session_id,
@@ -15,7 +15,7 @@ INSERT INTO logs (
     ?,
     ?,
     ?
-);
+) RETURNING *;
 
 -- name: ListLogsBySession :many
 SELECT * FROM logs
