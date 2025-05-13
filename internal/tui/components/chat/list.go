@@ -472,8 +472,8 @@ func (m *messagesCmp) BindingKeys() []key.Binding {
 
 func NewMessagesCmp(app *app.App) tea.Model {
 	customSpinner := spinner.Spinner{
-		Frames: []string{" ", "┃"},
-		FPS:    time.Second / 2, //nolint:gomnd
+		Frames: []string{" ", "┃", "┃"},
+		FPS:    time.Second / 3,
 	}
 	s := spinner.New(spinner.WithSpinner(customSpinner))
 	vp := viewport.New(0, 0)
