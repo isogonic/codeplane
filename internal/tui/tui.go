@@ -215,14 +215,6 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return a, tea.Batch(cmds...)
 
-	case pubsub.Event[logging.Log]:
-		a.pages[page.LogsPage], cmd = a.pages[page.LogsPage].Update(msg)
-		cmds = append(cmds, cmd)
-
-	case pubsub.Event[message.Message]:
-		a.pages[page.ChatPage], cmd = a.pages[page.ChatPage].Update(msg)
-		cmds = append(cmds, cmd)
-
 	case pubsub.Event[permission.PermissionRequest]:
 		a.showPermissions = true
 		return a, a.permissions.SetPermissions(msg.Payload)
@@ -477,6 +469,17 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.filepicker.ToggleFilepicker(a.showFilepicker)
 			return a, nil
 		}
+
+	case pubsub.Event[logging.Log]:
+		a.pages[page.LogsPage], cmd = a.pages[page.LogsPage].Update(msg)
+		cmds = append(cmds, cmd)
+		return a, tea.Batch(cmds...)
+
+	case pubsub.Event[message.Message]:
+		a.pages[page.ChatPage], cmd = a.pages[page.ChatPage].Update(msg)
+		cmds = append(cmds, cmd)
+		return a, tea.Batch(cmds...)
+
 	default:
 		f, filepickerCmd := a.filepicker.Update(msg)
 		a.filepicker = f.(dialog.FilepickerCmp)
