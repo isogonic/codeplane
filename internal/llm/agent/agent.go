@@ -207,9 +207,9 @@ func (a *agent) prepareMessageHistory(ctx context.Context, sessionID string) (se
 	}
 
 	var sessionMessages []message.Message
-	if currentSession.Summary != "" && currentSession.SummarizedAt > 0 {
+	if currentSession.Summary != "" && !currentSession.SummarizedAt.IsZero() {
 		// If summary exists, only fetch messages after the summarization timestamp
-		sessionMessages, err = a.messages.ListAfter(ctx, sessionID, currentSession.SummarizedAt)
+		sessionMessages, err = a.messages.ListAfter(ctx, sessionID, currentSession.SummarizedAt.UnixMilli())
 		if err != nil {
 			return currentSession, nil, fmt.Errorf("failed to list messages after summary: %w", err)
 		}
@@ -222,7 +222,7 @@ func (a *agent) prepareMessageHistory(ctx context.Context, sessionID string) (se
 	}
 
 	var messages []message.Message
-	if currentSession.Summary != "" && currentSession.SummarizedAt > 0 {
+	if currentSession.Summary != "" && !currentSession.SummarizedAt.IsZero() {
 		// If summary exists, create a temporary message for the summary
 		summaryMessage := message.Message{
 			Role: message.Assistant,
@@ -666,11 +666,11 @@ func (a *agent) CompactSession(ctx context.Context, sessionID string, force bool
 	}
 
 	var existingSummary string
-	if session.Summary != "" && session.SummarizedAt > 0 {
+	if session.Summary != "" && !session.SummarizedAt.IsZero() {
 		// Filter messages that were created after the last summarization
 		var newMessages []message.Message
 		for _, msg := range sessionMessages {
-			if msg.CreatedAt > session.SummarizedAt {
+			if msg.CreatedAt > session.SummarizedAt.UnixMilli() {
 				newMessages = append(newMessages, msg)
 			}
 		}
@@ -741,9 +741,8 @@ Your summary should be comprehensive enough to provide context but concise enoug
 	}
 
 	// Update the session with the new summary
-	currentTime := time.Now().UnixMilli()
 	session.Summary = summaryText
-	session.SummarizedAt = currentTime
+	session.SummarizedAt = time.Now()
 
 	// Save the updated session
 	_, err = a.sessions.Update(ctx, session)

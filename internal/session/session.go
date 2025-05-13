@@ -21,9 +21,9 @@ type Session struct {
 	CompletionTokens int64
 	Cost             float64
 	Summary          string
-	SummarizedAt     int64
-	CreatedAt        int64
-	UpdatedAt        int64
+	SummarizedAt     time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 const (
@@ -153,6 +153,11 @@ func (s *service) Update(ctx context.Context, session Session) (Session, error) 
 	if session.ID == "" {
 		return Session{}, fmt.Errorf("cannot update session with empty ID")
 	}
+	var summarizedAt sql.NullInt64
+	if !session.SummarizedAt.IsZero() {
+		summarizedAt = sql.NullInt64{Int64: session.SummarizedAt.UnixMilli(), Valid: true}
+	}
+	
 	params := db.UpdateSessionParams{
 		ID:               session.ID,
 		Title:            session.Title,
@@ -160,7 +165,7 @@ func (s *service) Update(ctx context.Context, session Session) (Session, error) 
 		CompletionTokens: session.CompletionTokens,
 		Cost:             session.Cost,
 		Summary:          sql.NullString{String: session.Summary, Valid: session.Summary != ""},
-		SummarizedAt:     sql.NullInt64{Int64: session.SummarizedAt, Valid: session.SummarizedAt > 0},
+		SummarizedAt:     summarizedAt,
 	}
 	dbSession, err := s.db.UpdateSession(ctx, params)
 	if err != nil {
@@ -199,6 +204,11 @@ func (s *service) Subscribe(ctx context.Context) <-chan pubsub.Event[Session] {
 }
 
 func (s *service) fromDBItem(item db.Session) Session {
+	var summarizedAt time.Time
+	if item.SummarizedAt.Valid {
+		summarizedAt = time.UnixMilli(item.SummarizedAt.Int64)
+	}
+	
 	return Session{
 		ID:               item.ID,
 		ParentSessionID:  item.ParentSessionID.String,
@@ -208,9 +218,9 @@ func (s *service) fromDBItem(item db.Session) Session {
 		CompletionTokens: item.CompletionTokens,
 		Cost:             item.Cost,
 		Summary:          item.Summary.String,
-		SummarizedAt:     item.SummarizedAt.Int64,
-		CreatedAt:        item.CreatedAt * 1000,
-		UpdatedAt:        item.UpdatedAt * 1000,
+		SummarizedAt:     summarizedAt,
+		CreatedAt:        time.UnixMilli(item.CreatedAt * 1000),
+		UpdatedAt:        time.UnixMilli(item.UpdatedAt * 1000),
 	}
 }
 
