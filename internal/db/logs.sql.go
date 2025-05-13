@@ -17,27 +17,24 @@ INSERT INTO logs (
     timestamp,
     level,
     message,
-    attributes,
-    created_at
+    attributes
 ) VALUES (
     ?,
     ?,
     ?,
     ?,
     ?,
-    ?,
     ?
-) RETURNING id, session_id, timestamp, level, message, attributes, created_at
+) RETURNING id, session_id, timestamp, level, message, attributes, created_at, updated_at
 `
 
 type CreateLogParams struct {
 	ID         string         `json:"id"`
 	SessionID  sql.NullString `json:"session_id"`
-	Timestamp  int64          `json:"timestamp"`
+	Timestamp  string         `json:"timestamp"`
 	Level      string         `json:"level"`
 	Message    string         `json:"message"`
 	Attributes sql.NullString `json:"attributes"`
-	CreatedAt  int64          `json:"created_at"`
 }
 
 func (q *Queries) CreateLog(ctx context.Context, arg CreateLogParams) (Log, error) {
@@ -48,7 +45,6 @@ func (q *Queries) CreateLog(ctx context.Context, arg CreateLogParams) (Log, erro
 		arg.Level,
 		arg.Message,
 		arg.Attributes,
-		arg.CreatedAt,
 	)
 	var i Log
 	err := row.Scan(
@@ -59,12 +55,13 @@ func (q *Queries) CreateLog(ctx context.Context, arg CreateLogParams) (Log, erro
 		&i.Message,
 		&i.Attributes,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const listAllLogs = `-- name: ListAllLogs :many
-SELECT id, session_id, timestamp, level, message, attributes, created_at FROM logs
+SELECT id, session_id, timestamp, level, message, attributes, created_at, updated_at FROM logs
 ORDER BY timestamp DESC
 LIMIT ?
 `
@@ -86,6 +83,7 @@ func (q *Queries) ListAllLogs(ctx context.Context, limit int64) ([]Log, error) {
 			&i.Message,
 			&i.Attributes,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -101,7 +99,7 @@ func (q *Queries) ListAllLogs(ctx context.Context, limit int64) ([]Log, error) {
 }
 
 const listLogsBySession = `-- name: ListLogsBySession :many
-SELECT id, session_id, timestamp, level, message, attributes, created_at FROM logs
+SELECT id, session_id, timestamp, level, message, attributes, created_at, updated_at FROM logs
 WHERE session_id = ?
 ORDER BY timestamp ASC
 `
@@ -123,6 +121,7 @@ func (q *Queries) ListLogsBySession(ctx context.Context, sessionID sql.NullStrin
 			&i.Message,
 			&i.Attributes,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

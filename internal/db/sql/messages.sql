@@ -21,11 +21,9 @@ INSERT INTO messages (
     session_id,
     role,
     parts,
-    model,
-    created_at,
-    updated_at
+    model
 ) VALUES (
-    ?, ?, ?, ?, ?, strftime('%s', 'now'), strftime('%s', 'now')
+    ?, ?, ?, ?, ?
 )
 RETURNING *;
 
@@ -34,7 +32,7 @@ UPDATE messages
 SET
     parts = ?,
     finished_at = ?,
-    updated_at = strftime('%s', 'now')
+    updated_at = strftime('%Y-%m-%dT%H:%M:%f000Z', 'now')
 WHERE id = ?;
 
 

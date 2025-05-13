@@ -113,7 +113,13 @@ func (s *service) CreateVersion(ctx context.Context, sessionID, path, content st
 			if b.Version == InitialVersion && a.Version != InitialVersion {
 				return -1
 			}
-			return int(b.CreatedAt - a.CreatedAt) // Fallback to timestamp
+			// Compare timestamps as strings (ISO format sorts correctly)
+			if b.CreatedAt > a.CreatedAt {
+				return 1
+			} else if a.CreatedAt > b.CreatedAt {
+				return -1
+			}
+			return 0 // Equal timestamps
 		})
 
 		latestFile := files[0]
@@ -362,14 +368,27 @@ func (s *service) Subscribe(ctx context.Context) <-chan pubsub.Event[File] {
 }
 
 func (s *service) fromDBItem(item db.File) File {
+	// Parse timestamps from ISO strings
+	createdAt, err := time.Parse(time.RFC3339Nano, item.CreatedAt)
+	if err != nil {
+		slog.Error("Failed to parse created_at", "value", item.CreatedAt, "error", err)
+		createdAt = time.Now() // Fallback
+	}
+
+	updatedAt, err := time.Parse(time.RFC3339Nano, item.UpdatedAt)
+	if err != nil {
+		slog.Error("Failed to parse created_at", "value", item.CreatedAt, "error", err)
+		updatedAt = time.Now() // Fallback
+	}
+
 	return File{
 		ID:        item.ID,
 		SessionID: item.SessionID,
 		Path:      item.Path,
 		Content:   item.Content,
 		Version:   item.Version,
-		CreatedAt: time.UnixMilli(item.CreatedAt * 1000),
-		UpdatedAt: time.UnixMilli(item.UpdatedAt * 1000),
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
 	}
 }
 

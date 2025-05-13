@@ -8,9 +8,7 @@ INSERT INTO sessions (
     completion_tokens,
     cost,
     summary,
-    summarized_at,
-    updated_at,
-    created_at
+    summarized_at
 ) VALUES (
     ?,
     ?,
@@ -20,9 +18,7 @@ INSERT INTO sessions (
     ?,
     ?,
     ?,
-    ?,
-    strftime('%s', 'now'),
-    strftime('%s', 'now')
+    ?
 ) RETURNING *;
 
 -- name: GetSessionByID :one

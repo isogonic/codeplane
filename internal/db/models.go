@@ -9,23 +9,25 @@ import (
 )
 
 type File struct {
-	ID        string `json:"id"`
-	SessionID string `json:"session_id"`
-	Path      string `json:"path"`
-	Content   string `json:"content"`
-	Version   string `json:"version"`
-	CreatedAt int64  `json:"created_at"`
-	UpdatedAt int64  `json:"updated_at"`
+	ID        string        `json:"id"`
+	SessionID string        `json:"session_id"`
+	Path      string        `json:"path"`
+	Content   string        `json:"content"`
+	Version   string        `json:"version"`
+	IsNew     sql.NullInt64 `json:"is_new"`
+	CreatedAt string        `json:"created_at"`
+	UpdatedAt string        `json:"updated_at"`
 }
 
 type Log struct {
 	ID         string         `json:"id"`
 	SessionID  sql.NullString `json:"session_id"`
-	Timestamp  int64          `json:"timestamp"`
+	Timestamp  string         `json:"timestamp"`
 	Level      string         `json:"level"`
 	Message    string         `json:"message"`
 	Attributes sql.NullString `json:"attributes"`
-	CreatedAt  int64          `json:"created_at"`
+	CreatedAt  string         `json:"created_at"`
+	UpdatedAt  string         `json:"updated_at"`
 }
 
 type Message struct {
@@ -34,9 +36,9 @@ type Message struct {
 	Role       string         `json:"role"`
 	Parts      string         `json:"parts"`
 	Model      sql.NullString `json:"model"`
-	CreatedAt  int64          `json:"created_at"`
-	UpdatedAt  int64          `json:"updated_at"`
-	FinishedAt sql.NullInt64  `json:"finished_at"`
+	CreatedAt  string         `json:"created_at"`
+	UpdatedAt  string         `json:"updated_at"`
+	FinishedAt sql.NullString `json:"finished_at"`
 }
 
 type Session struct {
@@ -47,8 +49,8 @@ type Session struct {
 	PromptTokens     int64          `json:"prompt_tokens"`
 	CompletionTokens int64          `json:"completion_tokens"`
 	Cost             float64        `json:"cost"`
-	UpdatedAt        int64          `json:"updated_at"`
-	CreatedAt        int64          `json:"created_at"`
 	Summary          sql.NullString `json:"summary"`
-	SummarizedAt     sql.NullInt64  `json:"summarized_at"`
+	SummarizedAt     sql.NullString `json:"summarized_at"`
+	UpdatedAt        string         `json:"updated_at"`
+	CreatedAt        string         `json:"created_at"`
 }

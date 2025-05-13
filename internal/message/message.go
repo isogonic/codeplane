@@ -45,7 +45,7 @@ type Service interface {
 	Update(ctx context.Context, message Message) (Message, error)
 	Get(ctx context.Context, id string) (Message, error)
 	List(ctx context.Context, sessionID string) ([]Message, error)
-	ListAfter(ctx context.Context, sessionID string, timestampMillis int64) ([]Message, error)
+	ListAfter(ctx context.Context, sessionID string, timestamp time.Time) ([]Message, error)
 	Delete(ctx context.Context, id string) error
 	DeleteSessionMessages(ctx context.Context, sessionID string) error
 }
@@ -134,12 +134,12 @@ func (s *service) Update(ctx context.Context, message Message) (Message, error) 
 		return Message{}, fmt.Errorf("failed to marshal message parts for update: %w", err)
 	}
 
-	var dbFinishedAt sql.NullInt64
+	var dbFinishedAt sql.NullString
 	finishPart := message.FinishPart()
 	if finishPart != nil && !finishPart.Time.IsZero() {
-		dbFinishedAt = sql.NullInt64{
-			Int64: finishPart.Time.UnixMilli(),
-			Valid: true,
+		dbFinishedAt = sql.NullString{
+			String: finishPart.Time.UTC().Format(time.RFC3339Nano),
+			Valid:  true,
 		}
 	}
 
@@ -199,13 +199,13 @@ func (s *service) List(ctx context.Context, sessionID string) ([]Message, error)
 	return messages, nil
 }
 
-func (s *service) ListAfter(ctx context.Context, sessionID string, timestampMillis int64) ([]Message, error) {
+func (s *service) ListAfter(ctx context.Context, sessionID string, timestamp time.Time) ([]Message, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	dbMessages, err := s.db.ListMessagesBySessionAfter(ctx, db.ListMessagesBySessionAfterParams{
 		SessionID: sessionID,
-		CreatedAt: timestampMillis,
+		CreatedAt: timestamp.Format(time.RFC3339Nano),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("db.ListMessagesBySessionAfter: %w", err)
@@ -294,14 +294,27 @@ func (s *service) fromDBItem(item db.Message) (Message, error) {
 		return Message{}, fmt.Errorf("unmarshallParts for message ID %s: %w. Raw parts: %s", item.ID, err, item.Parts)
 	}
 
+	// Parse timestamps from ISO strings
+	createdAt, err := time.Parse(time.RFC3339Nano, item.CreatedAt)
+	if err != nil {
+		slog.Error("Failed to parse created_at", "value", item.CreatedAt, "error", err)
+		createdAt = time.Now() // Fallback
+	}
+
+	updatedAt, err := time.Parse(time.RFC3339Nano, item.UpdatedAt)
+	if err != nil {
+		slog.Error("Failed to parse created_at", "value", item.CreatedAt, "error", err)
+		updatedAt = time.Now() // Fallback
+	}
+
 	msg := Message{
 		ID:        item.ID,
 		SessionID: item.SessionID,
 		Role:      MessageRole(item.Role),
 		Parts:     parts,
 		Model:     models.ModelID(item.Model.String),
-		CreatedAt: time.UnixMilli(item.CreatedAt),
-		UpdatedAt: time.UnixMilli(item.UpdatedAt),
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
 	}
 
 	return msg, nil
@@ -323,8 +336,8 @@ func List(ctx context.Context, sessionID string) ([]Message, error) {
 	return GetService().List(ctx, sessionID)
 }
 
-func ListAfter(ctx context.Context, sessionID string, timestampMillis int64) ([]Message, error) {
-	return GetService().ListAfter(ctx, sessionID, timestampMillis)
+func ListAfter(ctx context.Context, sessionID string, timestamp time.Time) ([]Message, error) {
+	return GetService().ListAfter(ctx, sessionID, timestamp)
 }
 
 func Delete(ctx context.Context, id string) error {

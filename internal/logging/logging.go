@@ -86,11 +86,10 @@ func (s *service) Create(ctx context.Context, timestamp time.Time, level, messag
 	dbLog, err := s.db.CreateLog(ctx, db.CreateLogParams{
 		ID:         uuid.New().String(),
 		SessionID:  sql.NullString{String: sessionID, Valid: sessionID != ""},
-		Timestamp:  timestamp.UnixMilli(),
+		Timestamp:  timestamp.UTC().Format(time.RFC3339Nano),
 		Level:      level,
 		Message:    message,
 		Attributes: attributesJSON,
-		CreatedAt:  time.Now().UnixMilli(),
 	})
 
 	if err != nil {
@@ -135,10 +134,24 @@ func (s *service) fromDBItem(item db.Log) Log {
 	log := Log{
 		ID:        item.ID,
 		SessionID: item.SessionID.String,
-		Timestamp: time.UnixMilli(item.Timestamp),
 		Level:     item.Level,
 		Message:   item.Message,
-		CreatedAt: time.UnixMilli(item.CreatedAt),
+	}
+
+	// Parse timestamp from ISO string
+	timestamp, err := time.Parse(time.RFC3339Nano, item.Timestamp)
+	if err == nil {
+		log.Timestamp = timestamp
+	} else {
+		log.Timestamp = time.Now() // Fallback
+	}
+
+	// Parse created_at from ISO string
+	createdAt, err := time.Parse(time.RFC3339Nano, item.CreatedAt)
+	if err == nil {
+		log.CreatedAt = createdAt
+	} else {
+		log.CreatedAt = time.Now() // Fallback
 	}
 
 	if item.Attributes.Valid && item.Attributes.String != "" {
@@ -195,7 +208,7 @@ func (sw *slogWriter) Write(p []byte) (n int, err error) {
 					parsedTime, timeErr = time.Parse(time.RFC3339, value)
 					if timeErr != nil {
 						slog.Error("Failed to parse time in slog writer", "value", value, "error", timeErr)
-						timestamp = time.Now()
+						timestamp = time.Now().UTC()
 						hasTimestamp = true
 						continue
 					}

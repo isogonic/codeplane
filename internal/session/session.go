@@ -153,10 +153,6 @@ func (s *service) Update(ctx context.Context, session Session) (Session, error) 
 	if session.ID == "" {
 		return Session{}, fmt.Errorf("cannot update session with empty ID")
 	}
-	var summarizedAt sql.NullInt64
-	if !session.SummarizedAt.IsZero() {
-		summarizedAt = sql.NullInt64{Int64: session.SummarizedAt.UnixMilli(), Valid: true}
-	}
 
 	params := db.UpdateSessionParams{
 		ID:               session.ID,
@@ -165,7 +161,7 @@ func (s *service) Update(ctx context.Context, session Session) (Session, error) 
 		CompletionTokens: session.CompletionTokens,
 		Cost:             session.Cost,
 		Summary:          sql.NullString{String: session.Summary, Valid: session.Summary != ""},
-		SummarizedAt:     summarizedAt,
+		SummarizedAt:     sql.NullString{String: session.SummarizedAt.UTC().Format(time.RFC3339Nano), Valid: !session.SummarizedAt.IsZero()},
 	}
 	dbSession, err := s.db.UpdateSession(ctx, params)
 	if err != nil {
@@ -206,8 +202,14 @@ func (s *service) Subscribe(ctx context.Context) <-chan pubsub.Event[Session] {
 func (s *service) fromDBItem(item db.Session) Session {
 	var summarizedAt time.Time
 	if item.SummarizedAt.Valid {
-		summarizedAt = time.UnixMilli(item.SummarizedAt.Int64)
+		parsedTime, err := time.Parse(time.RFC3339Nano, item.SummarizedAt.String)
+		if err == nil {
+			summarizedAt = parsedTime
+		}
 	}
+
+	createdAt, _ := time.Parse(time.RFC3339Nano, item.CreatedAt)
+	updatedAt, _ := time.Parse(time.RFC3339Nano, item.UpdatedAt)
 
 	return Session{
 		ID:               item.ID,
@@ -219,8 +221,8 @@ func (s *service) fromDBItem(item db.Session) Session {
 		Cost:             item.Cost,
 		Summary:          item.Summary.String,
 		SummarizedAt:     summarizedAt,
-		CreatedAt:        time.UnixMilli(item.CreatedAt),
-		UpdatedAt:        time.UnixMilli(item.UpdatedAt),
+		CreatedAt:        createdAt,
+		UpdatedAt:        updatedAt,
 	}
 }
 

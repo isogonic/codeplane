@@ -16,11 +16,9 @@ INSERT INTO messages (
     session_id,
     role,
     parts,
-    model,
-    created_at,
-    updated_at
+    model
 ) VALUES (
-    ?, ?, ?, ?, ?, strftime('%s', 'now'), strftime('%s', 'now')
+    ?, ?, ?, ?, ?
 )
 RETURNING id, session_id, role, parts, model, created_at, updated_at, finished_at
 `
@@ -145,7 +143,7 @@ ORDER BY created_at ASC
 
 type ListMessagesBySessionAfterParams struct {
 	SessionID string `json:"session_id"`
-	CreatedAt int64  `json:"created_at"`
+	CreatedAt string `json:"created_at"`
 }
 
 func (q *Queries) ListMessagesBySessionAfter(ctx context.Context, arg ListMessagesBySessionAfterParams) ([]Message, error) {
@@ -185,14 +183,14 @@ UPDATE messages
 SET
     parts = ?,
     finished_at = ?,
-    updated_at = strftime('%s', 'now')
+    updated_at = strftime('%Y-%m-%dT%H:%M:%f000Z', 'now')
 WHERE id = ?
 `
 
 type UpdateMessageParams struct {
-	Parts      string        `json:"parts"`
-	FinishedAt sql.NullInt64 `json:"finished_at"`
-	ID         string        `json:"id"`
+	Parts      string         `json:"parts"`
+	FinishedAt sql.NullString `json:"finished_at"`
+	ID         string         `json:"id"`
 }
 
 func (q *Queries) UpdateMessage(ctx context.Context, arg UpdateMessageParams) error {

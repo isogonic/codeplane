@@ -5,10 +5,8 @@ INSERT INTO logs (
     timestamp,
     level,
     message,
-    attributes,
-    created_at
+    attributes
 ) VALUES (
-    ?,
     ?,
     ?,
     ?,

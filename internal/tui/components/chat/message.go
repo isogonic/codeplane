@@ -605,7 +605,7 @@ func renderToolMessage(
 		return toolMsg
 	}
 
-	params := renderToolParams(width-2-lipgloss.Width(toolNameText), toolCall)
+	params := renderToolParams(width-1-lipgloss.Width(toolNameText), toolCall)
 	responseContent := ""
 	if response != nil {
 		responseContent = renderToolResponse(toolCall, *response, width-2)

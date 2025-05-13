@@ -209,7 +209,7 @@ func (a *agent) prepareMessageHistory(ctx context.Context, sessionID string) (se
 	var sessionMessages []message.Message
 	if currentSession.Summary != "" && !currentSession.SummarizedAt.IsZero() {
 		// If summary exists, only fetch messages after the summarization timestamp
-		sessionMessages, err = a.messages.ListAfter(ctx, sessionID, currentSession.SummarizedAt.UnixMilli())
+		sessionMessages, err = a.messages.ListAfter(ctx, sessionID, currentSession.SummarizedAt)
 		if err != nil {
 			return currentSession, nil, fmt.Errorf("failed to list messages after summary: %w", err)
 		}

@@ -20,9 +20,7 @@ INSERT INTO sessions (
     completion_tokens,
     cost,
     summary,
-    summarized_at,
-    updated_at,
-    created_at
+    summarized_at
 ) VALUES (
     ?,
     ?,
@@ -32,10 +30,8 @@ INSERT INTO sessions (
     ?,
     ?,
     ?,
-    ?,
-    strftime('%s', 'now'),
-    strftime('%s', 'now')
-) RETURNING id, parent_session_id, title, message_count, prompt_tokens, completion_tokens, cost, updated_at, created_at, summary, summarized_at
+    ?
+) RETURNING id, parent_session_id, title, message_count, prompt_tokens, completion_tokens, cost, summary, summarized_at, updated_at, created_at
 `
 
 type CreateSessionParams struct {
@@ -47,7 +43,7 @@ type CreateSessionParams struct {
 	CompletionTokens int64          `json:"completion_tokens"`
 	Cost             float64        `json:"cost"`
 	Summary          sql.NullString `json:"summary"`
-	SummarizedAt     sql.NullInt64  `json:"summarized_at"`
+	SummarizedAt     sql.NullString `json:"summarized_at"`
 }
 
 func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error) {
@@ -71,10 +67,10 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		&i.PromptTokens,
 		&i.CompletionTokens,
 		&i.Cost,
-		&i.UpdatedAt,
-		&i.CreatedAt,
 		&i.Summary,
 		&i.SummarizedAt,
+		&i.UpdatedAt,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -90,7 +86,7 @@ func (q *Queries) DeleteSession(ctx context.Context, id string) error {
 }
 
 const getSessionByID = `-- name: GetSessionByID :one
-SELECT id, parent_session_id, title, message_count, prompt_tokens, completion_tokens, cost, updated_at, created_at, summary, summarized_at
+SELECT id, parent_session_id, title, message_count, prompt_tokens, completion_tokens, cost, summary, summarized_at, updated_at, created_at
 FROM sessions
 WHERE id = ? LIMIT 1
 `
@@ -106,16 +102,16 @@ func (q *Queries) GetSessionByID(ctx context.Context, id string) (Session, error
 		&i.PromptTokens,
 		&i.CompletionTokens,
 		&i.Cost,
-		&i.UpdatedAt,
-		&i.CreatedAt,
 		&i.Summary,
 		&i.SummarizedAt,
+		&i.UpdatedAt,
+		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const listSessions = `-- name: ListSessions :many
-SELECT id, parent_session_id, title, message_count, prompt_tokens, completion_tokens, cost, updated_at, created_at, summary, summarized_at
+SELECT id, parent_session_id, title, message_count, prompt_tokens, completion_tokens, cost, summary, summarized_at, updated_at, created_at
 FROM sessions
 WHERE parent_session_id is NULL
 ORDER BY created_at DESC
@@ -138,10 +134,10 @@ func (q *Queries) ListSessions(ctx context.Context) ([]Session, error) {
 			&i.PromptTokens,
 			&i.CompletionTokens,
 			&i.Cost,
-			&i.UpdatedAt,
-			&i.CreatedAt,
 			&i.Summary,
 			&i.SummarizedAt,
+			&i.UpdatedAt,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -166,7 +162,7 @@ SET
     summary = ?,
     summarized_at = ?
 WHERE id = ?
-RETURNING id, parent_session_id, title, message_count, prompt_tokens, completion_tokens, cost, updated_at, created_at, summary, summarized_at
+RETURNING id, parent_session_id, title, message_count, prompt_tokens, completion_tokens, cost, summary, summarized_at, updated_at, created_at
 `
 
 type UpdateSessionParams struct {
@@ -175,7 +171,7 @@ type UpdateSessionParams struct {
 	CompletionTokens int64          `json:"completion_tokens"`
 	Cost             float64        `json:"cost"`
 	Summary          sql.NullString `json:"summary"`
-	SummarizedAt     sql.NullInt64  `json:"summarized_at"`
+	SummarizedAt     sql.NullString `json:"summarized_at"`
 	ID               string         `json:"id"`
 }
 
@@ -198,10 +194,10 @@ func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) (S
 		&i.PromptTokens,
 		&i.CompletionTokens,
 		&i.Cost,
-		&i.UpdatedAt,
-		&i.CreatedAt,
 		&i.Summary,
 		&i.SummarizedAt,
+		&i.UpdatedAt,
+		&i.CreatedAt,
 	)
 	return i, err
 }

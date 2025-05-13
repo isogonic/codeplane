@@ -28,11 +28,9 @@ INSERT INTO files (
     session_id,
     path,
     content,
-    version,
-    created_at,
-    updated_at
+    version
 ) VALUES (
-    ?, ?, ?, ?, ?, strftime('%s', 'now'), strftime('%s', 'now')
+    ?, ?, ?, ?, ?
 )
 RETURNING *;
 
@@ -41,7 +39,7 @@ UPDATE files
 SET
     content = ?,
     version = ?,
-    updated_at = strftime('%s', 'now')
+    updated_at = strftime('%Y-%m-%dT%H:%M:%f000Z', 'now')
 WHERE id = ?
 RETURNING *;
 
