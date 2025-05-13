@@ -172,6 +172,7 @@ func (i *tableCmp) updateRows() {
 		}
 		rows = append(rows, row)
 	}
+
 	i.table.SetRows(rows)
 }
 

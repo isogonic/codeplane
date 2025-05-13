@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/opencode-ai/opencode/internal/app"
@@ -171,10 +172,23 @@ func (a appModel) Init() tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
+func (a appModel) updateAllPages(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+	var cmd tea.Cmd
+	for id, _ := range a.pages {
+		a.pages[id], cmd = a.pages[id].Update(msg)
+		cmds = append(cmds, cmd)
+	}
+	return a, tea.Batch(cmds...)
+}
+
 func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
+	case spinner.TickMsg:
+		return a.updateAllPages(msg)
+
 	case tea.WindowSizeMsg:
 		msg.Height -= 1 // Make space for the status bar
 		a.width, a.height = msg.Width, msg.Height
