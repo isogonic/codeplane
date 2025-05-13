@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/sst/opencode/internal/db"
@@ -25,8 +26,8 @@ type File struct {
 	Path      string
 	Content   string
 	Version   string
-	CreatedAt int64
-	UpdatedAt int64
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 const (
@@ -367,8 +368,8 @@ func (s *service) fromDBItem(item db.File) File {
 		Path:      item.Path,
 		Content:   item.Content,
 		Version:   item.Version,
-		CreatedAt: item.CreatedAt * 1000,
-		UpdatedAt: item.UpdatedAt * 1000,
+		CreatedAt: time.UnixMilli(item.CreatedAt * 1000),
+		UpdatedAt: time.UnixMilli(item.UpdatedAt * 1000),
 	}
 }
 
