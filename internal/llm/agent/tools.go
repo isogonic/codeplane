@@ -37,6 +37,7 @@ func PrimaryAgentTools(
 			tools.NewReferencesTool(lspClients),
 			tools.NewDocSymbolsTool(lspClients),
 			tools.NewWorkspaceSymbolsTool(lspClients),
+			tools.NewCodeActionTool(lspClients),
 			NewAgentTool(sessions, messages, lspClients),
 		}, mcpTools...,
 	)
