@@ -35,6 +35,8 @@ func PrimaryAgentTools(
 			tools.NewDiagnosticsTool(lspClients),
 			tools.NewDefinitionTool(lspClients),
 			tools.NewReferencesTool(lspClients),
+			tools.NewDocSymbolsTool(lspClients),
+			tools.NewWorkspaceSymbolsTool(lspClients),
 			NewAgentTool(sessions, messages, lspClients),
 		}, mcpTools...,
 	)
@@ -48,5 +50,7 @@ func TaskAgentTools(lspClients map[string]*lsp.Client) []tools.BaseTool {
 		tools.NewViewTool(lspClients),
 		tools.NewDefinitionTool(lspClients),
 		tools.NewReferencesTool(lspClients),
+		tools.NewDocSymbolsTool(lspClients),
+		tools.NewWorkspaceSymbolsTool(lspClients),
 	}
 }
