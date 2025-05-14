@@ -81,7 +81,6 @@ func (i *tableCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return i, i.fetchLogs()
 
 	case pubsub.Event[logging.Log]:
-		// Only handle created events
 		if msg.Type == logging.EventLogCreated {
 			// Add the new log to our list
 			i.logs = append([]logging.Log{msg.Payload}, i.logs...)

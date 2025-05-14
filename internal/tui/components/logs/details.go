@@ -1,6 +1,8 @@
 package logs
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -96,6 +98,15 @@ func (i *detailCmp) updateContent() {
 		valueStyle := lipgloss.NewStyle().Foreground(t.Text())
 
 		for key, value := range i.currentLog.Attributes {
+			// if value is JSON, render it with indentation
+			if strings.HasPrefix(value, "{") {
+				var indented bytes.Buffer
+				if err := json.Indent(&indented, []byte(value), "", "  "); err != nil {
+					indented.WriteString(value)
+				}
+				value = indented.String()
+			}
+
 			attrLine := fmt.Sprintf("%s: %s",
 				keyStyle.Render(key),
 				valueStyle.Render(value),
