@@ -12,7 +12,7 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - -s -w -X github.com/opencode-ai/opencode/internal/version.Version={{.Version}}
+      - -s -w -X github.com/sst/opencode/internal/version.Version={{.Version}}
     main: ./main.go
 
 archives:
@@ -35,10 +35,11 @@ snapshot:
   name_template: "0.0.0-{{ .Timestamp }}"
 aurs:
   - name: opencode
-    homepage: "https://github.com/opencode-ai/opencode"
+    homepage: "https://github.com/sst/opencode"
     description: "terminal based agent that can build anything"
     maintainers:
-      - "kujtimiihoxha <kujtimii.h@gmail.com>"
+      - "dax"
+      - "adam"
     license: "MIT"
     private_key: "{{ .Env.AUR_KEY }}"
     git_url: "ssh://aur@aur.archlinux.org/opencode-bin.git"
@@ -50,7 +51,7 @@ aurs:
       install -Dm755 ./opencode "${pkgdir}/usr/bin/opencode"
 brews:
   - repository:
-      owner: opencode-ai
+      owner: sst
       name: homebrew-tap
 nfpms:
   - maintainer: kujtimiihoxha
