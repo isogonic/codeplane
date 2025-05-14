@@ -295,12 +295,11 @@ OpenCode's AI assistant has access to various tools to help with coding tasks:
 
 ### Other Tools
 
-| Tool          | Description                            | Parameters                                                                                |
-| ------------- | -------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `bash`        | Execute shell commands                 | `command` (required), `timeout` (optional)                                                |
-| `fetch`       | Fetch data from URLs                   | `url` (required), `format` (required), `timeout` (optional)                               |
-| `sourcegraph` | Search code across public repositories | `query` (required), `count` (optional), `context_window` (optional), `timeout` (optional) |
-| `agent`       | Run sub-tasks with the AI agent        | `prompt` (required)                                                                       |
+| Tool    | Description                     | Parameters                                                  |
+| ------- | ------------------------------- | ----------------------------------------------------------- |
+| `bash`  | Execute shell commands          | `command` (required), `timeout` (optional)                  |
+| `fetch` | Fetch data from URLs            | `url` (required), `format` (required), `timeout` (optional) |
+| `agent` | Run sub-tasks with the AI agent | `prompt` (required)                                         |
 
 ## Theming
 

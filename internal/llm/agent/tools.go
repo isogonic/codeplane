@@ -19,11 +19,8 @@ func PrimaryAgentTools(
 	lspClients map[string]*lsp.Client,
 ) []tools.BaseTool {
 	ctx := context.Background()
-	otherTools := GetMcpTools(ctx, permissions)
 
-	// Always add the Diagnostics tool even if lspClients is empty
-	// The tool will handle the case when no clients are available
-	otherTools = append(otherTools, tools.NewDiagnosticsTool(lspClients))
+	mcpTools := GetMcpTools(ctx, permissions)
 
 	return append(
 		[]tools.BaseTool{
@@ -33,12 +30,12 @@ func PrimaryAgentTools(
 			tools.NewGlobTool(),
 			tools.NewGrepTool(),
 			tools.NewLsTool(),
-			// tools.NewSourcegraphTool(),
 			tools.NewViewTool(lspClients),
 			tools.NewPatchTool(lspClients, permissions, history),
 			tools.NewWriteTool(lspClients, permissions, history),
+			tools.NewDiagnosticsTool(lspClients),
 			NewAgentTool(sessions, messages, lspClients),
-		}, otherTools...,
+		}, mcpTools...,
 	)
 }
 
@@ -47,7 +44,6 @@ func TaskAgentTools(lspClients map[string]*lsp.Client) []tools.BaseTool {
 		tools.NewGlobTool(),
 		tools.NewGrepTool(),
 		tools.NewLsTool(),
-		tools.NewSourcegraphTool(),
 		tools.NewViewTool(lspClients),
 	}
 }

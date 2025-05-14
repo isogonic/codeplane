@@ -260,8 +260,6 @@ func toolName(name string) string {
 		return "Grep"
 	case tools.LSToolName:
 		return "List"
-	case tools.SourcegraphToolName:
-		return "Sourcegraph"
 	case tools.ViewToolName:
 		return "View"
 	case tools.WriteToolName:
@@ -288,8 +286,6 @@ func getToolAction(name string) string {
 		return "Searching content..."
 	case tools.LSToolName:
 		return "Listing directory..."
-	case tools.SourcegraphToolName:
-		return "Searching code..."
 	case tools.ViewToolName:
 		return "Reading file..."
 	case tools.WriteToolName:
@@ -428,10 +424,6 @@ func renderToolParams(paramWidth int, toolCall message.ToolCall) string {
 			path = "."
 		}
 		return renderParams(paramWidth, path)
-	case tools.SourcegraphToolName:
-		var params tools.SourcegraphParams
-		json.Unmarshal([]byte(toolCall.Input), &params)
-		return renderParams(paramWidth, params.Query)
 	case tools.ViewToolName:
 		var params tools.ViewParams
 		json.Unmarshal([]byte(toolCall.Input), &params)
@@ -517,8 +509,6 @@ func renderToolResponse(toolCall message.ToolCall, response message.ToolResult, 
 	case tools.GrepToolName:
 		return baseStyle.Width(width).Foreground(t.TextMuted()).Render(resultContent)
 	case tools.LSToolName:
-		return baseStyle.Width(width).Foreground(t.TextMuted()).Render(resultContent)
-	case tools.SourcegraphToolName:
 		return baseStyle.Width(width).Foreground(t.TextMuted()).Render(resultContent)
 	case tools.ViewToolName:
 		metadata := tools.ViewResponseMetadata{}
