@@ -17,6 +17,7 @@ import (
 	"github.com/sst/opencode/internal/session"
 	"github.com/sst/opencode/internal/status"
 	"github.com/sst/opencode/internal/tui/components/dialog"
+	"github.com/sst/opencode/internal/tui/state"
 	"github.com/sst/opencode/internal/tui/styles"
 	"github.com/sst/opencode/internal/tui/theme"
 )
@@ -25,11 +26,11 @@ type cacheItem struct {
 	width   int
 	content []uiMessage
 }
+
 type messagesCmp struct {
 	app              *app.App
 	width, height    int
 	viewport         viewport.Model
-	session          session.Session
 	messages         []message.Message
 	uiMessages       []uiMessage
 	currentMsgID     string
@@ -84,19 +85,14 @@ func (m *messagesCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.cachedContent = make(map[string]cacheItem)
 		m.renderView()
 		return m, nil
-	case SessionSelectedMsg:
-		if msg.ID != m.session.ID {
-			cmd := m.SetSession(msg)
-			return m, cmd
-		}
-		return m, nil
-	case SessionClearedMsg:
-		m.session = session.Session{}
+	case state.SessionSelectedMsg:
+		cmd := m.Reload(msg)
+		return m, cmd
+	case state.SessionClearedMsg:
 		m.messages = make([]message.Message, 0)
 		m.currentMsgID = ""
 		m.rendering = false
 		return m, nil
-
 	case tea.KeyMsg:
 		if key.Matches(msg, messageKeys.PageUp) || key.Matches(msg, messageKeys.PageDown) ||
 			key.Matches(msg, messageKeys.HalfPageUp) || key.Matches(msg, messageKeys.HalfPageDown) {
@@ -104,15 +100,13 @@ func (m *messagesCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport = u
 			cmds = append(cmds, cmd)
 		}
-
 	case renderFinishedMsg:
 		m.rendering = false
 		m.viewport.GotoBottom()
 	case pubsub.Event[message.Message]:
 		needsRerender := false
 		if msg.Type == message.EventMessageCreated {
-			if msg.Payload.SessionID == m.session.ID {
-
+			if msg.Payload.SessionID == m.app.CurrentSession.ID {
 				messageExists := false
 				for _, v := range m.messages {
 					if v.ID == msg.Payload.ID {
@@ -142,7 +136,7 @@ func (m *messagesCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
-		} else if msg.Type == message.EventMessageUpdated && msg.Payload.SessionID == m.session.ID {
+		} else if msg.Type == message.EventMessageUpdated && msg.Payload.SessionID == m.app.CurrentSession.ID {
 			for i, v := range m.messages {
 				if v.ID == msg.Payload.ID {
 					m.messages[i] = msg.Payload
@@ -170,7 +164,7 @@ func (m *messagesCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *messagesCmp) IsAgentWorking() bool {
-	return m.app.PrimaryAgent.IsSessionBusy(m.session.ID)
+	return m.app.PrimaryAgent.IsSessionBusy(m.app.CurrentSession.ID)
 }
 
 func formatTimeDifference(unixTime1, unixTime2 int64) string {
@@ -439,11 +433,7 @@ func (m *messagesCmp) GetSize() (int, int) {
 	return m.width, m.height
 }
 
-func (m *messagesCmp) SetSession(session session.Session) tea.Cmd {
-	if m.session.ID == session.ID {
-		return nil
-	}
-	m.session = session
+func (m *messagesCmp) Reload(session *session.Session) tea.Cmd {
 	messages, err := m.app.Messages.List(context.Background(), session.ID)
 	if err != nil {
 		status.Error(err.Error())

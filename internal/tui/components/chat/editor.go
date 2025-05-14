@@ -13,7 +13,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sst/opencode/internal/app"
 	"github.com/sst/opencode/internal/message"
-	"github.com/sst/opencode/internal/session"
 	"github.com/sst/opencode/internal/status"
 	"github.com/sst/opencode/internal/tui/components/dialog"
 	"github.com/sst/opencode/internal/tui/layout"
@@ -26,7 +25,6 @@ type editorCmp struct {
 	width       int
 	height      int
 	app         *app.App
-	session     session.Session
 	textarea    textarea.Model
 	attachments []message.Attachment
 	deleteMode  bool
@@ -124,7 +122,7 @@ func (m *editorCmp) Init() tea.Cmd {
 }
 
 func (m *editorCmp) send() tea.Cmd {
-	if m.app.PrimaryAgent.IsSessionBusy(m.session.ID) {
+	if m.app.PrimaryAgent.IsSessionBusy(m.app.CurrentSession.ID) {
 		status.Warn("Agent is working, please wait...")
 		return nil
 	}
@@ -150,11 +148,6 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case dialog.ThemeChangedMsg:
 		m.textarea = CreateTextArea(&m.textarea)
-		return m, nil
-	case SessionSelectedMsg:
-		if msg.ID != m.session.ID {
-			m.session = msg
-		}
 		return m, nil
 	case dialog.AttachmentAddedMsg:
 		if len(m.attachments) >= maxAttachments {
@@ -189,7 +182,7 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if key.Matches(msg, editorMaps.OpenEditor) {
-			if m.app.PrimaryAgent.IsSessionBusy(m.session.ID) {
+			if m.app.PrimaryAgent.IsSessionBusy(m.app.CurrentSession.ID) {
 				status.Warn("Agent is working, please wait...")
 				return m, nil
 			}

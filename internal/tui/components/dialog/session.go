@@ -11,13 +11,10 @@ import (
 	"github.com/sst/opencode/internal/tui/util"
 )
 
-// SessionSelectedMsg is sent when a session is selected
-type SessionSelectedMsg struct {
-	Session session.Session
-}
-
 // CloseSessionDialogMsg is sent when the session dialog is closed
-type CloseSessionDialogMsg struct{}
+type CloseSessionDialogMsg struct {
+	Session *session.Session
+}
 
 // SessionDialog interface for the session switching dialog
 type SessionDialog interface {
@@ -92,10 +89,10 @@ func (s *sessionDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, sessionKeys.Enter):
 			if len(s.sessions) > 0 {
 				selectedSession := s.sessions[s.selectedIdx]
-				// Update the session manager with the selected session
-				// session.SetCurrentSession(selectedSession.ID)
-				return s, util.CmdHandler(SessionSelectedMsg{
-					Session: selectedSession,
+				s.selectedSessionID = selectedSession.ID
+
+				return s, util.CmdHandler(CloseSessionDialogMsg{
+					Session: &selectedSession,
 				})
 			}
 		case key.Matches(msg, sessionKeys.Escape):

@@ -7,14 +7,13 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/sst/opencode/internal/app"
 	"github.com/sst/opencode/internal/config"
 	"github.com/sst/opencode/internal/llm/models"
 	"github.com/sst/opencode/internal/lsp"
 	"github.com/sst/opencode/internal/lsp/protocol"
 	"github.com/sst/opencode/internal/pubsub"
-	"github.com/sst/opencode/internal/session"
 	"github.com/sst/opencode/internal/status"
-	"github.com/sst/opencode/internal/tui/components/chat"
 	"github.com/sst/opencode/internal/tui/styles"
 	"github.com/sst/opencode/internal/tui/theme"
 )
@@ -25,11 +24,10 @@ type StatusCmp interface {
 }
 
 type statusCmp struct {
+	app            *app.App
 	statusMessages []statusMessage
 	width          int
 	messageTTL     time.Duration
-	lspClients     map[string]*lsp.Client
-	session        session.Session
 }
 
 type statusMessage struct {
@@ -60,16 +58,6 @@ func (m statusCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		return m, nil
-	case chat.SessionSelectedMsg:
-		m.session = msg
-	case chat.SessionClearedMsg:
-		m.session = session.Session{}
-	case pubsub.Event[session.Session]:
-		if msg.Type == session.EventSessionUpdated {
-			if m.session.ID == msg.Payload.ID {
-				m.session = msg.Payload
-			}
-		}
 	case pubsub.Event[status.StatusMessage]:
 		if msg.Type == status.EventStatusPublished {
 			statusMsg := statusMessage{
@@ -146,8 +134,8 @@ func (m statusCmp) View() string {
 	// Initialize the help widget
 	status := getHelpWidget("")
 
-	if m.session.ID != "" {
-		tokens := formatTokensAndCost(m.session.PromptTokens+m.session.CompletionTokens, model.ContextWindow, m.session.Cost)
+	if m.app.CurrentSession.ID != "" {
+		tokens := formatTokensAndCost(m.app.CurrentSession.PromptTokens+m.app.CurrentSession.CompletionTokens, model.ContextWindow, m.app.CurrentSession.Cost)
 		tokensStyle := styles.Padded().
 			Background(t.Text()).
 			Foreground(t.BackgroundSecondary()).
@@ -211,7 +199,7 @@ func (m *statusCmp) projectDiagnostics() string {
 
 	// Check if any LSP server is still initializing
 	initializing := false
-	for _, client := range m.lspClients {
+	for _, client := range m.app.LSPClients {
 		if client.GetServerState() == lsp.StateStarting {
 			initializing = true
 			break
@@ -229,7 +217,7 @@ func (m *statusCmp) projectDiagnostics() string {
 	warnDiagnostics := []protocol.Diagnostic{}
 	hintDiagnostics := []protocol.Diagnostic{}
 	infoDiagnostics := []protocol.Diagnostic{}
-	for _, client := range m.lspClients {
+	for _, client := range m.app.LSPClients {
 		for _, d := range client.GetDiagnostics() {
 			for _, diag := range d {
 				switch diag.Severity {
@@ -300,14 +288,14 @@ func (m statusCmp) SetHelpWidgetMsg(s string) {
 	helpWidget = getHelpWidget(s)
 }
 
-func NewStatusCmp(lspClients map[string]*lsp.Client) StatusCmp {
+func NewStatusCmp(app *app.App) StatusCmp {
 	// Initialize the help widget with default text
 	helpWidget = getHelpWidget("")
 
 	statusComponent := &statusCmp{
+		app:            app,
 		statusMessages: []statusMessage{},
 		messageTTL:     4 * time.Second,
-		lspClients:     lspClients,
 	}
 
 	return statusComponent

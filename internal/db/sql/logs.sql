@@ -18,7 +18,7 @@ INSERT INTO logs (
 -- name: ListLogsBySession :many
 SELECT * FROM logs
 WHERE session_id = ?
-ORDER BY timestamp ASC;
+ORDER BY timestamp DESC;
 
 -- name: ListAllLogs :many
 SELECT * FROM logs

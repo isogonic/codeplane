@@ -101,7 +101,7 @@ func (q *Queries) ListAllLogs(ctx context.Context, limit int64) ([]Log, error) {
 const listLogsBySession = `-- name: ListLogsBySession :many
 SELECT id, session_id, timestamp, level, message, attributes, created_at, updated_at FROM logs
 WHERE session_id = ?
-ORDER BY timestamp ASC
+ORDER BY timestamp DESC
 `
 
 func (q *Queries) ListLogsBySession(ctx context.Context, sessionID sql.NullString) ([]Log, error) {

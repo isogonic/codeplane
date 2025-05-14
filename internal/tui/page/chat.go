@@ -13,6 +13,7 @@ import (
 	"github.com/sst/opencode/internal/tui/components/chat"
 	"github.com/sst/opencode/internal/tui/components/dialog"
 	"github.com/sst/opencode/internal/tui/layout"
+	"github.com/sst/opencode/internal/tui/state"
 	"github.com/sst/opencode/internal/tui/util"
 )
 
@@ -23,7 +24,6 @@ type chatPage struct {
 	editor   layout.Container
 	messages layout.Container
 	layout   layout.SplitPaneLayout
-	session  session.Session
 }
 
 type ChatKeyMap struct {
@@ -76,16 +76,14 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if cmd != nil {
 			return p, cmd
 		}
-	case chat.SessionSelectedMsg:
-		if p.session.ID == "" {
-			cmd := p.setSidebar()
-			if cmd != nil {
-				cmds = append(cmds, cmd)
-			}
-		}
-		p.session = msg
-	case chat.CompactSessionMsg:
-		if p.session.ID == "" {
+	case state.SessionSelectedMsg:
+		cmd := p.setSidebar()
+		cmds = append(cmds, cmd)
+	case state.SessionClearedMsg:
+		cmd := p.setSidebar()
+		cmds = append(cmds, cmd)
+	case state.CompactSessionMsg:
+		if p.app.CurrentSession.ID == "" {
 			status.Warn("No active session to compact.")
 			return p, nil
 		}
@@ -98,22 +96,22 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				status.Info("Conversation compacted successfully.")
 			}
-		}(p.session.ID)
+		}(p.app.CurrentSession.ID)
 
 		return p, nil
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keyMap.NewSession):
-			p.session = session.Session{}
+			p.app.CurrentSession = &session.Session{}
 			return p, tea.Batch(
 				p.clearSidebar(),
-				util.CmdHandler(chat.SessionClearedMsg{}),
+				util.CmdHandler(state.SessionClearedMsg{}),
 			)
 		case key.Matches(msg, keyMap.Cancel):
-			if p.session.ID != "" {
+			if p.app.CurrentSession.ID != "" {
 				// Cancel the current session's generation process
 				// This allows users to interrupt long-running operations
-				p.app.PrimaryAgent.Cancel(p.session.ID)
+				p.app.PrimaryAgent.Cancel(p.app.CurrentSession.ID)
 				return p, nil
 			}
 		case key.Matches(msg, keyMap.ToggleTools):
@@ -128,7 +126,7 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (p *chatPage) setSidebar() tea.Cmd {
 	sidebarContainer := layout.NewContainer(
-		chat.NewSidebarCmp(p.session, p.app.History),
+		chat.NewSidebarCmp(p.app),
 		layout.WithPadding(1, 1, 1, 1),
 	)
 	return tea.Batch(p.layout.SetRightPanel(sidebarContainer), sidebarContainer.Init())
@@ -140,25 +138,23 @@ func (p *chatPage) clearSidebar() tea.Cmd {
 
 func (p *chatPage) sendMessage(text string, attachments []message.Attachment) tea.Cmd {
 	var cmds []tea.Cmd
-	if p.session.ID == "" {
+	if p.app.CurrentSession.ID == "" {
 		newSession, err := p.app.Sessions.Create(context.Background(), "New Session")
 		if err != nil {
 			status.Error(err.Error())
 			return nil
 		}
 
-		p.session = newSession
-		// Update the current session in the session manager
-		// session.SetCurrentSession(newSession.ID)
+		p.app.CurrentSession = &newSession
 
 		cmd := p.setSidebar()
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
-		cmds = append(cmds, util.CmdHandler(chat.SessionSelectedMsg(newSession)))
+		cmds = append(cmds, util.CmdHandler(state.SessionSelectedMsg(&newSession)))
 	}
 
-	_, err := p.app.PrimaryAgent.Run(context.Background(), p.session.ID, text, attachments...)
+	_, err := p.app.PrimaryAgent.Run(context.Background(), p.app.CurrentSession.ID, text, attachments...)
 	if err != nil {
 		status.Error(err.Error())
 		return nil

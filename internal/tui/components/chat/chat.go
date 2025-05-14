@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/sst/opencode/internal/config"
 	"github.com/sst/opencode/internal/message"
-	"github.com/sst/opencode/internal/session"
 	"github.com/sst/opencode/internal/tui/styles"
 	"github.com/sst/opencode/internal/tui/theme"
 	"github.com/sst/opencode/internal/version"
@@ -18,14 +17,6 @@ type SendMsg struct {
 	Text        string
 	Attachments []message.Attachment
 }
-
-type SessionSelectedMsg = session.Session
-
-type SessionClearedMsg struct{}
-
-type EditorFocusMsg bool
-
-type CompactSessionMsg struct{}
 
 func header(width int) string {
 	return lipgloss.JoinVertical(

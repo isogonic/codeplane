@@ -23,6 +23,26 @@ import (
 	"github.com/sst/opencode/internal/version"
 )
 
+type SessionIDHandler struct {
+	slog.Handler
+	app *app.App
+}
+
+func (h *SessionIDHandler) Handle(ctx context.Context, r slog.Record) error {
+	if h.app != nil {
+		sessionID := h.app.CurrentSession.ID
+		if sessionID != "" {
+			r.AddAttrs(slog.String("session_id", sessionID))
+		}
+	}
+	return h.Handler.Handle(ctx, r)
+}
+
+func (h *SessionIDHandler) WithApp(app *app.App) *SessionIDHandler {
+	h.app = app
+	return h
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "OpenCode",
 	Short: "A terminal AI assistant for software development",
@@ -42,9 +62,9 @@ to assist developers in writing, debugging, and understanding code directly from
 
 		// Setup logging
 		lvl := new(slog.LevelVar)
-		logger := slog.New(slog.NewTextHandler(logging.NewSlogWriter(), &slog.HandlerOptions{
-			Level: lvl,
-		}))
+		textHandler := slog.NewTextHandler(logging.NewSlogWriter(), &slog.HandlerOptions{Level: lvl})
+		sessionAwareHandler := &SessionIDHandler{Handler: textHandler}
+		logger := slog.New(sessionAwareHandler)
 		slog.SetDefault(logger)
 
 		// Load the config
@@ -89,6 +109,7 @@ to assist developers in writing, debugging, and understanding code directly from
 			slog.Error("Failed to create app", "error", err)
 			return err
 		}
+		sessionAwareHandler.WithApp(app)
 
 		// Set up the TUI
 		zone.NewGlobal()

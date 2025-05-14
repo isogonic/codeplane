@@ -22,12 +22,13 @@ import (
 )
 
 type App struct {
-	Logs        logging.Service
-	Sessions    session.Service
-	Messages    message.Service
-	History     history.Service
-	Permissions permission.Service
-	Status      status.Service
+	CurrentSession *session.Session
+	Logs           logging.Service
+	Sessions       session.Service
+	Messages       message.Service
+	History        history.Service
+	Permissions    permission.Service
+	Status         status.Service
 
 	PrimaryAgent agent.Service
 
@@ -73,13 +74,14 @@ func New(ctx context.Context, conn *sql.DB) (*App, error) {
 	}
 
 	app := &App{
-		Logs:        logging.GetService(),
-		Sessions:    session.GetService(),
-		Messages:    message.GetService(),
-		History:     history.GetService(),
-		Permissions: permission.GetService(),
-		Status:      status.GetService(),
-		LSPClients:  make(map[string]*lsp.Client),
+		CurrentSession: &session.Session{},
+		Logs:           logging.GetService(),
+		Sessions:       session.GetService(),
+		Messages:       message.GetService(),
+		History:        history.GetService(),
+		Permissions:    permission.GetService(),
+		Status:         status.GetService(),
+		LSPClients:     make(map[string]*lsp.Client),
 	}
 
 	// Initialize theme based on configuration

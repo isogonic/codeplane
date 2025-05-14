@@ -4,6 +4,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/sst/opencode/internal/app"
 	"github.com/sst/opencode/internal/tui/components/logs"
 	"github.com/sst/opencode/internal/tui/layout"
 	"github.com/sst/opencode/internal/tui/styles"
@@ -209,9 +210,9 @@ func (p *logsPage) Init() tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func NewLogsPage() LogPage {
+func NewLogsPage(app *app.App) tea.Model {
 	// Create containers with borders to visually indicate active pane
-	tableContainer := layout.NewContainer(logs.NewLogsTable(), layout.WithBorderHorizontal())
+	tableContainer := layout.NewContainer(logs.NewLogsTable(app), layout.WithBorderHorizontal())
 	detailsContainer := layout.NewContainer(logs.NewLogsDetails(), layout.WithBorderHorizontal())
 
 	return &logsPage{

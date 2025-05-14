@@ -8,19 +8,19 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/sst/opencode/internal/app"
 	"github.com/sst/opencode/internal/config"
 	"github.com/sst/opencode/internal/diff"
 	"github.com/sst/opencode/internal/history"
 	"github.com/sst/opencode/internal/pubsub"
-	"github.com/sst/opencode/internal/session"
+	"github.com/sst/opencode/internal/tui/state"
 	"github.com/sst/opencode/internal/tui/styles"
 	"github.com/sst/opencode/internal/tui/theme"
 )
 
 type sidebarCmp struct {
+	app           *app.App
 	width, height int
-	session       session.Session
-	history       history.Service
 	modFiles      map[string]struct {
 		additions int
 		removals  int
@@ -28,10 +28,10 @@ type sidebarCmp struct {
 }
 
 func (m *sidebarCmp) Init() tea.Cmd {
-	if m.history != nil {
+	if m.app.History != nil {
 		ctx := context.Background()
 		// Subscribe to file events
-		filesCh := m.history.Subscribe(ctx)
+		filesCh := m.app.History.Subscribe(ctx)
 
 		// Initialize the modified files map
 		m.modFiles = make(map[string]struct {
@@ -52,30 +52,14 @@ func (m *sidebarCmp) Init() tea.Cmd {
 
 func (m *sidebarCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case SessionSelectedMsg:
-		if msg.ID != m.session.ID {
-			m.session = msg
-			ctx := context.Background()
-			m.loadModifiedFiles(ctx)
-		}
-	case pubsub.Event[session.Session]:
-		if msg.Type == session.EventSessionUpdated {
-			if m.session.ID == msg.Payload.ID {
-				m.session = msg.Payload
-			}
-		}
+	case state.SessionSelectedMsg:
+		ctx := context.Background()
+		m.loadModifiedFiles(ctx)
 	case pubsub.Event[history.File]:
-		if msg.Payload.SessionID == m.session.ID {
+		if msg.Payload.SessionID == m.app.CurrentSession.ID {
 			// Process the individual file change instead of reloading all files
 			ctx := context.Background()
 			m.processFileChanges(ctx, msg.Payload)
-
-			// Return a command to continue receiving events
-			return m, func() tea.Msg {
-				ctx := context.Background()
-				filesCh := m.history.Subscribe(ctx)
-				return <-filesCh
-			}
 		}
 	}
 	return m, nil
@@ -115,7 +99,7 @@ func (m *sidebarCmp) sessionSection() string {
 	sessionValue := baseStyle.
 		Foreground(t.Text()).
 		Width(m.width - lipgloss.Width(sessionKey)).
-		Render(fmt.Sprintf(": %s", m.session.Title))
+		Render(fmt.Sprintf(": %s", m.app.CurrentSession.Title))
 
 	return lipgloss.JoinHorizontal(
 		lipgloss.Left,
@@ -235,26 +219,25 @@ func (m *sidebarCmp) GetSize() (int, int) {
 	return m.width, m.height
 }
 
-func NewSidebarCmp(session session.Session, history history.Service) tea.Model {
+func NewSidebarCmp(app *app.App) tea.Model {
 	return &sidebarCmp{
-		session: session,
-		history: history,
+		app: app,
 	}
 }
 
 func (m *sidebarCmp) loadModifiedFiles(ctx context.Context) {
-	if m.history == nil || m.session.ID == "" {
+	if m.app.CurrentSession.ID == "" {
 		return
 	}
 
 	// Get all latest files for this session
-	latestFiles, err := m.history.ListLatestSessionFiles(ctx, m.session.ID)
+	latestFiles, err := m.app.History.ListLatestSessionFiles(ctx, m.app.CurrentSession.ID)
 	if err != nil {
 		return
 	}
 
 	// Get all files for this session (to find initial versions)
-	allFiles, err := m.history.ListBySession(ctx, m.session.ID)
+	allFiles, err := m.app.History.ListBySession(ctx, m.app.CurrentSession.ID)
 	if err != nil {
 		return
 	}
@@ -355,7 +338,7 @@ func (m *sidebarCmp) processFileChanges(ctx context.Context, file history.File) 
 // Helper function to find the initial version of a file
 func (m *sidebarCmp) findInitialVersion(ctx context.Context, path string) (history.File, error) {
 	// Get all versions of this file for the session
-	fileVersions, err := m.history.ListBySession(ctx, m.session.ID)
+	fileVersions, err := m.app.History.ListBySession(ctx, m.app.CurrentSession.ID)
 	if err != nil {
 		return history.File{}, err
 	}

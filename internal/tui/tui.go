@@ -17,12 +17,15 @@ import (
 	"github.com/sst/opencode/internal/message"
 	"github.com/sst/opencode/internal/permission"
 	"github.com/sst/opencode/internal/pubsub"
+	"github.com/sst/opencode/internal/session"
 	"github.com/sst/opencode/internal/status"
 	"github.com/sst/opencode/internal/tui/components/chat"
 	"github.com/sst/opencode/internal/tui/components/core"
 	"github.com/sst/opencode/internal/tui/components/dialog"
+	"github.com/sst/opencode/internal/tui/components/logs"
 	"github.com/sst/opencode/internal/tui/layout"
 	"github.com/sst/opencode/internal/tui/page"
+	"github.com/sst/opencode/internal/tui/state"
 	"github.com/sst/opencode/internal/tui/util"
 )
 
@@ -251,12 +254,30 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case page.PageChangeMsg:
 		return a, a.moveToPage(msg.ID)
 
+	case logs.LogsLoadedMsg:
+		a.pages[page.LogsPage], cmd = a.pages[page.LogsPage].Update(msg)
+		cmds = append(cmds, cmd)
+
+	case state.SessionSelectedMsg:
+		a.app.CurrentSession = msg
+		return a.updateAllPages(msg)
+
+	case pubsub.Event[session.Session]:
+		if msg.Type == session.EventSessionUpdated {
+			if a.app.CurrentSession.ID == msg.Payload.ID {
+				a.app.CurrentSession = &msg.Payload
+			}
+		}
+
 	case dialog.CloseQuitMsg:
 		a.showQuit = false
 		return a, nil
 
 	case dialog.CloseSessionDialogMsg:
 		a.showSessionDialog = false
+		if msg.Session != nil {
+			return a, util.CmdHandler(state.SessionSelectedMsg(msg.Session))
+		}
 		return a, nil
 
 	case dialog.CloseCommandDialogMsg:
@@ -313,15 +334,6 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				status.Error(err.Error())
 				return a, nil
 			}
-		}
-		return a, nil
-
-	case chat.SessionSelectedMsg:
-		a.sessionDialog.SetSelectedSession(msg.ID)
-	case dialog.SessionSelectedMsg:
-		a.showSessionDialog = false
-		if a.currentPage == page.ChatPage {
-			return a, util.CmdHandler(chat.SessionSelectedMsg(msg.Session))
 		}
 		return a, nil
 
@@ -811,7 +823,7 @@ func New(app *app.App) tea.Model {
 	model := &appModel{
 		currentPage:   startPage,
 		loadedPages:   make(map[page.PageID]bool),
-		status:        core.NewStatusCmp(app.LSPClients),
+		status:        core.NewStatusCmp(app),
 		help:          dialog.NewHelpCmp(),
 		quit:          dialog.NewQuitCmp(),
 		sessionDialog: dialog.NewSessionDialogCmp(),
@@ -824,7 +836,7 @@ func New(app *app.App) tea.Model {
 		commands:      []dialog.Command{},
 		pages: map[page.PageID]tea.Model{
 			page.ChatPage: page.NewChatPage(app),
-			page.LogsPage: page.NewLogsPage(),
+			page.LogsPage: page.NewLogsPage(app),
 		},
 		filepicker: dialog.NewFilepickerCmp(app),
 	}
@@ -862,7 +874,7 @@ If there are Cursor rules (in .cursor/rules/ or .cursorrules) or Copilot rules (
 
 			// Return a message that will be handled by the chat page
 			status.Info("Compacting conversation...")
-			return util.CmdHandler(chat.CompactSessionMsg{})
+			return util.CmdHandler(state.CompactSessionMsg{})
 		},
 	})
 

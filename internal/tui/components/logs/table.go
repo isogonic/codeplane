@@ -2,14 +2,16 @@ package logs
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/sst/opencode/internal/app"
 	"github.com/sst/opencode/internal/logging"
 	"github.com/sst/opencode/internal/pubsub"
-	"github.com/sst/opencode/internal/tui/components/chat"
 	"github.com/sst/opencode/internal/tui/layout"
+	"github.com/sst/opencode/internal/tui/state"
 	"github.com/sst/opencode/internal/tui/theme"
 )
 
@@ -20,6 +22,7 @@ type TableComponent interface {
 }
 
 type tableCmp struct {
+	app           *app.App
 	table         table.Model
 	focused       bool
 	logs          []logging.Log
@@ -28,7 +31,7 @@ type tableCmp struct {
 
 type selectedLogMsg logging.Log
 
-type logsLoadedMsg struct {
+type LogsLoadedMsg struct {
 	logs []logging.Log
 }
 
@@ -39,21 +42,17 @@ func (i *tableCmp) Init() tea.Cmd {
 func (i *tableCmp) fetchLogs() tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
-		loggingService := logging.GetService()
-		if loggingService == nil {
-			return nil
-		}
 
 		var logs []logging.Log
 		var err error
-		sessionId := "" // TODO: session.CurrentSessionID()
 
 		// Limit the number of logs to improve performance
 		const logLimit = 100
-		if sessionId == "" {
-			logs, err = loggingService.ListAll(ctx, logLimit)
+		if i.app.CurrentSession.ID == "" {
+			logs, err = i.app.Logs.ListAll(ctx, logLimit)
 		} else {
-			logs, err = loggingService.ListBySession(ctx, sessionId)
+			logs, err = i.app.Logs.ListBySession(ctx, i.app.CurrentSession.ID)
+
 			// Trim logs if there are too many
 			if err == nil && len(logs) > logLimit {
 				logs = logs[len(logs)-logLimit:]
@@ -61,10 +60,33 @@ func (i *tableCmp) fetchLogs() tea.Cmd {
 		}
 
 		if err != nil {
+			slog.Error("Failed to fetch logs", "error", err)
 			return nil
 		}
 
-		return logsLoadedMsg{logs: logs}
+		return LogsLoadedMsg{logs: logs}
+	}
+}
+
+func (i *tableCmp) updateRows() tea.Cmd {
+	return func() tea.Msg {
+		rows := make([]table.Row, 0, len(i.logs))
+
+		for _, log := range i.logs {
+			timeStr := log.Timestamp.Local().Format("15:04:05")
+
+			// Include ID as hidden first column for selection
+			row := table.Row{
+				log.ID,
+				timeStr,
+				log.Level,
+				log.Message,
+			}
+			rows = append(rows, row)
+		}
+
+		i.table.SetRows(rows)
+		return nil
 	}
 }
 
@@ -72,12 +94,11 @@ func (i *tableCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-	case logsLoadedMsg:
+	case LogsLoadedMsg:
 		i.logs = msg.logs
-		i.updateRows()
-		return i, nil
+		return i, i.updateRows()
 
-	case chat.SessionSelectedMsg:
+	case state.SessionSelectedMsg:
 		return i, i.fetchLogs()
 
 	case pubsub.Event[logging.Log]:
@@ -88,7 +109,7 @@ func (i *tableCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(i.logs) > 100 {
 				i.logs = i.logs[:100]
 			}
-			i.updateRows()
+			return i, i.updateRows()
 		}
 		return i, nil
 	}
@@ -116,9 +137,9 @@ func (i *tableCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			})
 		}
 
+		i.selectedLogID = selectedRow[0]
 	}
 
-	i.selectedLogID = selectedRow[0]
 	return i, tea.Batch(cmds...)
 }
 
@@ -160,26 +181,7 @@ func (i *tableCmp) BindingKeys() []key.Binding {
 	return layout.KeyMapToSlice(i.table.KeyMap)
 }
 
-func (i *tableCmp) updateRows() {
-	rows := make([]table.Row, 0, len(i.logs))
-
-	for _, log := range i.logs {
-		timeStr := log.Timestamp.Local().Format("15:04:05")
-
-		// Include ID as hidden first column for selection
-		row := table.Row{
-			log.ID,
-			timeStr,
-			log.Level,
-			log.Message,
-		}
-		rows = append(rows, row)
-	}
-
-	i.table.SetRows(rows)
-}
-
-func NewLogsTable() TableComponent {
+func NewLogsTable(app *app.App) TableComponent {
 	columns := []table.Column{
 		{Title: "ID", Width: 0}, // ID column with zero width
 		{Title: "Time", Width: 8},
@@ -192,6 +194,7 @@ func NewLogsTable() TableComponent {
 	)
 	tableModel.Focus()
 	return &tableCmp{
+		app:   app,
 		table: tableModel,
 		logs:  []logging.Log{},
 	}
@@ -206,6 +209,5 @@ func (i *tableCmp) Focus() {
 // Blur implements the blurable interface
 func (i *tableCmp) Blur() {
 	i.focused = false
-	// Table doesn't have a Blur method, but we can implement it here
-	// to satisfy the interface
+	i.table.Blur()
 }
