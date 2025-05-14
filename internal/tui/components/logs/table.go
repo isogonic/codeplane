@@ -11,7 +11,6 @@ import (
 	"github.com/sst/opencode/internal/tui/components/chat"
 	"github.com/sst/opencode/internal/tui/layout"
 	"github.com/sst/opencode/internal/tui/theme"
-	"github.com/sst/opencode/internal/tui/util"
 )
 
 type TableComponent interface {
@@ -21,9 +20,10 @@ type TableComponent interface {
 }
 
 type tableCmp struct {
-	table   table.Model
-	focused bool
-	logs    []logging.Log
+	table         table.Model
+	focused       bool
+	logs          []logging.Log
+	selectedLogID string
 }
 
 type selectedLogMsg logging.Log
@@ -103,17 +103,23 @@ func (i *tableCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 	i.table = t
 
-	// Only send selected log message when selection changes
 	selectedRow := i.table.SelectedRow()
 	if selectedRow != nil {
-		// Use a map for faster lookups by ID
-		for _, log := range i.logs {
-			if log.ID == selectedRow[0] {
-				cmds = append(cmds, util.CmdHandler(selectedLogMsg(log)))
-				break
-			}
+		// Only send message if it's a new selection
+		if i.selectedLogID != selectedRow[0] {
+			cmds = append(cmds, func() tea.Msg {
+				for _, log := range i.logs {
+					if log.ID == selectedRow[0] {
+						return selectedLogMsg(log)
+					}
+				}
+				return nil
+			})
 		}
+
 	}
+
+	i.selectedLogID = selectedRow[0]
 	return i, tea.Batch(cmds...)
 }
 
