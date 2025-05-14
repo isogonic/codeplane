@@ -19,7 +19,6 @@ func PrimaryAgentTools(
 	lspClients map[string]*lsp.Client,
 ) []tools.BaseTool {
 	ctx := context.Background()
-
 	mcpTools := GetMcpTools(ctx, permissions)
 
 	return append(
@@ -34,6 +33,8 @@ func PrimaryAgentTools(
 			tools.NewPatchTool(lspClients, permissions, history),
 			tools.NewWriteTool(lspClients, permissions, history),
 			tools.NewDiagnosticsTool(lspClients),
+			tools.NewDefinitionTool(lspClients),
+			tools.NewReferencesTool(lspClients),
 			NewAgentTool(sessions, messages, lspClients),
 		}, mcpTools...,
 	)
@@ -45,5 +46,7 @@ func TaskAgentTools(lspClients map[string]*lsp.Client) []tools.BaseTool {
 		tools.NewGrepTool(),
 		tools.NewLsTool(),
 		tools.NewViewTool(lspClients),
+		tools.NewDefinitionTool(lspClients),
+		tools.NewReferencesTool(lspClients),
 	}
 }
