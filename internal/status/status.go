@@ -20,9 +20,28 @@ const (
 )
 
 type StatusMessage struct {
-	Level     Level     `json:"level"`
-	Message   string    `json:"message"`
-	Timestamp time.Time `json:"timestamp"`
+	Level     Level         `json:"level"`
+	Message   string        `json:"message"`
+	Timestamp time.Time     `json:"timestamp"`
+	Critical  bool          `json:"critical"`
+	Duration  time.Duration `json:"duration"`
+}
+
+// StatusOption is a function that configures a status message
+type StatusOption func(*StatusMessage)
+
+// WithCritical marks a status message as critical, causing it to be displayed immediately
+func WithCritical(critical bool) StatusOption {
+	return func(msg *StatusMessage) {
+		msg.Critical = critical
+	}
+}
+
+// WithDuration sets a custom display duration for a status message
+func WithDuration(duration time.Duration) StatusOption {
+	return func(msg *StatusMessage) {
+		msg.Duration = duration
+	}
 }
 
 const (
@@ -32,10 +51,10 @@ const (
 type Service interface {
 	pubsub.Subscriber[StatusMessage]
 
-	Info(message string)
-	Warn(message string)
-	Error(message string)
-	Debug(message string)
+	Info(message string, opts ...StatusOption)
+	Warn(message string, opts ...StatusOption)
+	Error(message string, opts ...StatusOption)
+	Debug(message string, opts ...StatusOption)
 }
 
 type service struct {
@@ -63,32 +82,38 @@ func GetService() Service {
 	return globalStatusService
 }
 
-func (s *service) Info(message string) {
-	s.publish(LevelInfo, message)
+func (s *service) Info(message string, opts ...StatusOption) {
+	s.publish(LevelInfo, message, opts...)
 	slog.Info(message)
 }
 
-func (s *service) Warn(message string) {
-	s.publish(LevelWarn, message)
+func (s *service) Warn(message string, opts ...StatusOption) {
+	s.publish(LevelWarn, message, opts...)
 	slog.Warn(message)
 }
 
-func (s *service) Error(message string) {
-	s.publish(LevelError, message)
+func (s *service) Error(message string, opts ...StatusOption) {
+	s.publish(LevelError, message, opts...)
 	slog.Error(message)
 }
 
-func (s *service) Debug(message string) {
-	s.publish(LevelDebug, message)
+func (s *service) Debug(message string, opts ...StatusOption) {
+	s.publish(LevelDebug, message, opts...)
 	slog.Debug(message)
 }
 
-func (s *service) publish(level Level, messageText string) {
+func (s *service) publish(level Level, messageText string, opts ...StatusOption) {
 	statusMsg := StatusMessage{
 		Level:     level,
 		Message:   messageText,
 		Timestamp: time.Now(),
 	}
+
+	// Apply all options
+	for _, opt := range opts {
+		opt(&statusMsg)
+	}
+
 	s.broker.Publish(EventStatusPublished, statusMsg)
 }
 
@@ -96,20 +121,20 @@ func (s *service) Subscribe(ctx context.Context) <-chan pubsub.Event[StatusMessa
 	return s.broker.Subscribe(ctx)
 }
 
-func Info(message string) {
-	GetService().Info(message)
+func Info(message string, opts ...StatusOption) {
+	GetService().Info(message, opts...)
 }
 
-func Warn(message string) {
-	GetService().Warn(message)
+func Warn(message string, opts ...StatusOption) {
+	GetService().Warn(message, opts...)
 }
 
-func Error(message string) {
-	GetService().Error(message)
+func Error(message string, opts ...StatusOption) {
+	GetService().Error(message, opts...)
 }
 
-func Debug(message string) {
-	GetService().Debug(message)
+func Debug(message string, opts ...StatusOption) {
+	GetService().Debug(message, opts...)
 }
 
 func Subscribe(ctx context.Context) <-chan pubsub.Event[StatusMessage] {

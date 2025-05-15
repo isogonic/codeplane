@@ -211,15 +211,16 @@ func (o *openaiClient) send(ctx context.Context, messages []message.Message, too
 		// If there is an error we are going to see if we can retry the call
 		if err != nil {
 			retry, after, retryErr := o.shouldRetry(attempts, err)
+			duration := time.Duration(after) * time.Millisecond
 			if retryErr != nil {
 				return nil, retryErr
 			}
 			if retry {
-				status.Warn(fmt.Sprintf("Retrying due to rate limit... attempt %d of %d", attempts, maxRetries))
+				status.Warn(fmt.Sprintf("Retrying due to rate limit... attempt %d of %d", attempts, maxRetries), status.WithDuration(duration))
 				select {
 				case <-ctx.Done():
 					return nil, ctx.Err()
-				case <-time.After(time.Duration(after) * time.Millisecond):
+				case <-time.After(duration):
 					continue
 				}
 			}
@@ -315,13 +316,14 @@ func (o *openaiClient) stream(ctx context.Context, messages []message.Message, t
 
 			// If there is an error we are going to see if we can retry the call
 			retry, after, retryErr := o.shouldRetry(attempts, err)
+			duration := time.Duration(after) * time.Millisecond
 			if retryErr != nil {
 				eventChan <- ProviderEvent{Type: EventError, Error: retryErr}
 				close(eventChan)
 				return
 			}
 			if retry {
-				status.Warn(fmt.Sprintf("Retrying due to rate limit... attempt %d of %d", attempts, maxRetries))
+				status.Warn(fmt.Sprintf("Retrying due to rate limit... attempt %d of %d", attempts, maxRetries), status.WithDuration(duration))
 				select {
 				case <-ctx.Done():
 					// context cancelled
@@ -330,7 +332,7 @@ func (o *openaiClient) stream(ctx context.Context, messages []message.Message, t
 					}
 					close(eventChan)
 					return
-				case <-time.After(time.Duration(after) * time.Millisecond):
+				case <-time.After(duration):
 					continue
 				}
 			}

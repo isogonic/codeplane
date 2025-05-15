@@ -224,15 +224,16 @@ func (a *anthropicClient) send(ctx context.Context, messages []message.Message, 
 		if err != nil {
 			slog.Error("Error in Anthropic API call", "error", err)
 			retry, after, retryErr := a.shouldRetry(attempts, err)
+			duration := time.Duration(after) * time.Millisecond
 			if retryErr != nil {
 				return nil, retryErr
 			}
 			if retry {
-				status.Warn(fmt.Sprintf("Retrying due to rate limit... attempt %d of %d", attempts, maxRetries))
+				status.Warn(fmt.Sprintf("Retrying due to rate limit... attempt %d of %d", attempts, maxRetries), status.WithDuration(duration))
 				select {
 				case <-ctx.Done():
 					return nil, ctx.Err()
-				case <-time.After(time.Duration(after) * time.Millisecond):
+				case <-time.After(duration):
 					continue
 				}
 			}
@@ -360,13 +361,14 @@ func (a *anthropicClient) stream(ctx context.Context, messages []message.Message
 			}
 			// If there is an error we are going to see if we can retry the call
 			retry, after, retryErr := a.shouldRetry(attempts, err)
+			duration := time.Duration(after) * time.Millisecond
 			if retryErr != nil {
 				eventChan <- ProviderEvent{Type: EventError, Error: retryErr}
 				close(eventChan)
 				return
 			}
 			if retry {
-				status.Warn(fmt.Sprintf("Retrying due to rate limit... attempt %d of %d", attempts, maxRetries))
+				status.Warn(fmt.Sprintf("Retrying due to rate limit... attempt %d of %d", attempts, maxRetries), status.WithDuration(duration))
 				select {
 				case <-ctx.Done():
 					// context cancelled
@@ -375,7 +377,7 @@ func (a *anthropicClient) stream(ctx context.Context, messages []message.Message
 					}
 					close(eventChan)
 					return
-				case <-time.After(time.Duration(after) * time.Millisecond):
+				case <-time.After(duration):
 					continue
 				}
 			}

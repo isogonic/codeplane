@@ -24,17 +24,11 @@ type StatusCmp interface {
 }
 
 type statusCmp struct {
-	app            *app.App
-	statusMessages []statusMessage
-	width          int
-	messageTTL     time.Duration
-}
-
-type statusMessage struct {
-	Level     status.Level
-	Message   string
-	Timestamp time.Time
-	ExpiresAt time.Time
+	app         *app.App
+	queue       []status.StatusMessage
+	width       int
+	messageTTL  time.Duration
+	activeUntil time.Time
 }
 
 // clearMessageCmd is a command that clears status messages after a timeout
@@ -60,23 +54,50 @@ func (m statusCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case pubsub.Event[status.StatusMessage]:
 		if msg.Type == status.EventStatusPublished {
-			statusMsg := statusMessage{
-				Level:     msg.Payload.Level,
-				Message:   msg.Payload.Message,
-				Timestamp: msg.Payload.Timestamp,
-				ExpiresAt: msg.Payload.Timestamp.Add(m.messageTTL),
+			// If this is a critical message, move it to the front of the queue
+			if msg.Payload.Critical {
+				// Insert at the front of the queue
+				m.queue = append([]status.StatusMessage{msg.Payload}, m.queue...)
+
+				// Reset active time to show critical message immediately
+				m.activeUntil = time.Time{}
+			} else {
+				// Otherwise, just add it to the queue
+				m.queue = append(m.queue, msg.Payload)
+
+				// If this is the first message and nothing is active, activate it immediately
+				if len(m.queue) == 1 && m.activeUntil.IsZero() {
+					now := time.Now()
+					duration := m.messageTTL
+					if msg.Payload.Duration > 0 {
+						duration = msg.Payload.Duration
+					}
+					m.activeUntil = now.Add(duration)
+				}
 			}
-			m.statusMessages = append(m.statusMessages, statusMsg)
 		}
 	case statusCleanupMsg:
-		// Remove expired messages
-		var activeMessages []statusMessage
-		for _, sm := range m.statusMessages {
-			if sm.ExpiresAt.After(msg.time) {
-				activeMessages = append(activeMessages, sm)
+		now := msg.time
+
+		// If the active message has expired, remove it and activate the next one
+		if !m.activeUntil.IsZero() && m.activeUntil.Before(now) {
+			// Current message expired, remove it if we have one
+			if len(m.queue) > 0 {
+				m.queue = m.queue[1:]
 			}
+			m.activeUntil = time.Time{}
 		}
-		m.statusMessages = activeMessages
+
+		// If we have messages in queue but none are active, activate the first one
+		if len(m.queue) > 0 && m.activeUntil.IsZero() {
+			// Use custom duration if specified, otherwise use default
+			duration := m.messageTTL
+			if m.queue[0].Duration > 0 {
+				duration = m.queue[0].Duration
+			}
+			m.activeUntil = now.Add(duration)
+		}
+
 		return m, m.clearMessageCmd()
 	}
 	return m, nil
@@ -155,12 +176,14 @@ func (m statusCmp) View() string {
 			lipgloss.Width(diagnostics),
 	)
 
+	const minInlineWidth = 30
+
 	// Display the first status message if available
-	if len(m.statusMessages) > 0 {
-		sm := m.statusMessages[0]
+	var statusMessage string
+	if len(m.queue) > 0 {
+		sm := m.queue[0]
 		infoStyle := styles.Padded().
-			Foreground(t.Background()).
-			Width(statusWidth)
+			Foreground(t.Background())
 
 		switch sm.Level {
 		case "info":
@@ -176,11 +199,27 @@ func (m statusCmp) View() string {
 		// Truncate message if it's longer than available width
 		msg := sm.Message
 		availWidth := statusWidth - 10
-		if len(msg) > availWidth && availWidth > 0 {
-			msg = msg[:availWidth] + "..."
-		}
 
-		status += infoStyle.Render(msg)
+		// If we have enough space, show inline
+		if availWidth >= minInlineWidth {
+			if len(msg) > availWidth && availWidth > 0 {
+				msg = msg[:availWidth] + "..."
+			}
+			status += infoStyle.Width(statusWidth).Render(msg)
+		} else {
+			// Otherwise, prepare a full-width message to show above
+			if len(msg) > m.width-10 && m.width > 10 {
+				msg = msg[:m.width-10] + "..."
+			}
+			statusMessage = infoStyle.Width(m.width).Render(msg)
+
+			// Add empty space in the status bar
+			status += styles.Padded().
+				Foreground(t.Text()).
+				Background(t.BackgroundSecondary()).
+				Width(statusWidth).
+				Render("")
+		}
 	} else {
 		status += styles.Padded().
 			Foreground(t.Text()).
@@ -191,7 +230,14 @@ func (m statusCmp) View() string {
 
 	status += diagnostics
 	status += modelName
-	return status
+
+	// If we have a separate status message, prepend it
+	if statusMessage != "" {
+		return statusMessage + "\n" + status
+	} else {
+		blank := styles.BaseStyle().Background(t.Background()).Width(m.width).Render("")
+		return blank + "\n" + status
+	}
 }
 
 func (m *statusCmp) projectDiagnostics() string {
@@ -232,6 +278,16 @@ func (m *statusCmp) projectDiagnostics() string {
 				}
 			}
 		}
+	}
+
+	if len(errorDiagnostics) == 0 &&
+		len(warnDiagnostics) == 0 &&
+		len(infoDiagnostics) == 0 &&
+		len(hintDiagnostics) == 0 {
+		return styles.ForceReplaceBackgroundWithLipgloss(
+			styles.Padded().Render("No diagnostics"),
+			t.BackgroundDarker(),
+		)
 	}
 
 	diagnostics := []string{}
@@ -293,9 +349,10 @@ func NewStatusCmp(app *app.App) StatusCmp {
 	helpWidget = getHelpWidget("")
 
 	statusComponent := &statusCmp{
-		app:            app,
-		statusMessages: []statusMessage{},
-		messageTTL:     4 * time.Second,
+		app:         app,
+		queue:       []status.StatusMessage{},
+		messageTTL:  4 * time.Second,
+		activeUntil: time.Time{},
 	}
 
 	return statusComponent

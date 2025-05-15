@@ -197,15 +197,16 @@ func (g *geminiClient) send(ctx context.Context, messages []message.Message, too
 		// If there is an error we are going to see if we can retry the call
 		if err != nil {
 			retry, after, retryErr := g.shouldRetry(attempts, err)
+			duration := time.Duration(after) * time.Millisecond
 			if retryErr != nil {
 				return nil, retryErr
 			}
 			if retry {
-				status.Warn(fmt.Sprintf("Retrying due to rate limit... attempt %d of %d", attempts, maxRetries))
+				status.Warn(fmt.Sprintf("Retrying due to rate limit... attempt %d of %d", attempts, maxRetries), status.WithDuration(duration))
 				select {
 				case <-ctx.Done():
 					return nil, ctx.Err()
-				case <-time.After(time.Duration(after) * time.Millisecond):
+				case <-time.After(duration):
 					continue
 				}
 			}
@@ -292,12 +293,13 @@ func (g *geminiClient) stream(ctx context.Context, messages []message.Message, t
 			for resp, err := range chat.SendMessageStream(ctx, lastMsgParts...) {
 				if err != nil {
 					retry, after, retryErr := g.shouldRetry(attempts, err)
+					duration := time.Duration(after) * time.Millisecond
 					if retryErr != nil {
 						eventChan <- ProviderEvent{Type: EventError, Error: retryErr}
 						return
 					}
 					if retry {
-						status.Warn(fmt.Sprintf("Retrying due to rate limit... attempt %d of %d", attempts, maxRetries))
+						status.Warn(fmt.Sprintf("Retrying due to rate limit... attempt %d of %d", attempts, maxRetries), status.WithDuration(duration))
 						select {
 						case <-ctx.Done():
 							if ctx.Err() != nil {
@@ -305,7 +307,7 @@ func (g *geminiClient) stream(ctx context.Context, messages []message.Message, t
 							}
 
 							return
-						case <-time.After(time.Duration(after) * time.Millisecond):
+						case <-time.After(duration):
 							break
 						}
 					} else {
