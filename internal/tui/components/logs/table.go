@@ -52,11 +52,6 @@ func (i *tableCmp) fetchLogs() tea.Cmd {
 			logs, err = i.app.Logs.ListAll(ctx, logLimit)
 		} else {
 			logs, err = i.app.Logs.ListBySession(ctx, i.app.CurrentSession.ID)
-
-			// Trim logs if there are too many
-			if err == nil && len(logs) > logLimit {
-				logs = logs[len(logs)-logLimit:]
-			}
 		}
 
 		if err != nil {
