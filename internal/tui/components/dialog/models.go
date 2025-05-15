@@ -127,7 +127,6 @@ func (m *modelDialogCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.switchProvider(1)
 			}
 		case key.Matches(msg, modelKeys.Enter):
-			status.Info(fmt.Sprintf("selected model: %s", m.models[m.selectedIdx].Name))
 			return m, util.CmdHandler(ModelSelectedMsg{Model: m.models[m.selectedIdx]})
 		case key.Matches(msg, modelKeys.Escape):
 			return m, util.CmdHandler(CloseModelDialogMsg{})
