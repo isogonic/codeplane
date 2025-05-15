@@ -9,6 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"log/slog"
+
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -22,7 +25,6 @@ import (
 	"github.com/sst/opencode/internal/tui/styles"
 	"github.com/sst/opencode/internal/tui/theme"
 	"github.com/sst/opencode/internal/tui/util"
-	"log/slog"
 )
 
 const (
@@ -40,6 +42,7 @@ type FilePrickerKeyMap struct {
 	OpenFilePicker key.Binding
 	Esc            key.Binding
 	InsertCWD      key.Binding
+	Paste 		   key.Binding
 }
 
 var filePickerKeyMap = FilePrickerKeyMap{
@@ -74,6 +77,10 @@ var filePickerKeyMap = FilePrickerKeyMap{
 	InsertCWD: key.NewBinding(
 		key.WithKeys("i"),
 		key.WithHelp("i", "manual path input"),
+	),
+	Paste: key.NewBinding(
+		key.WithKeys("ctrl+v"),
+		key.WithHelp("ctrl+v", "paste file/directory path"),
 	),
 }
 
@@ -213,6 +220,15 @@ func (f *filepickerCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					f.getCurrentFileBelowCursor()
 				}
 			}
+		case key.Matches(msg, filePickerKeyMap.Paste):
+			if f.cwd.Focused() {
+				val, err := clipboard.ReadAll()
+				if err != nil {
+					slog.Error("failed to read clipboard")
+					return f, cmd
+				}
+				f.cwd.SetValue(f.cwd.Value() + val)
+			}
 		case key.Matches(msg, filePickerKeyMap.OpenFilePicker):
 			f.dirs = readDir(f.cwdDetails.directory, false)
 			f.cursor = 0
@@ -303,10 +319,6 @@ func (f *filepickerCmp) View() string {
 		}
 		if file.IsDir() {
 			filename = filename + "/"
-		} else if isExtSupported(file.Name()) {
-			filename = filename
-		} else {
-			filename = filename
 		}
 
 		files = append(files, itemStyle.Padding(0, 1).Render(filename))

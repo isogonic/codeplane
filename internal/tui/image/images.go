@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/disintegration/imaging"
 	"github.com/lucasb-eyer/go-colorful"
+	_ "golang.org/x/image/webp"
 )
 
 func ValidateFileSize(filePath string, sizeLimit int64) (bool, error) {
