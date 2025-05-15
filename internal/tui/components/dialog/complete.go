@@ -5,7 +5,6 @@ import (
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/sst/opencode/internal/logging"
 	"github.com/sst/opencode/internal/status"
 	utilComponents "github.com/sst/opencode/internal/tui/components/util"
 	"github.com/sst/opencode/internal/tui/layout"
