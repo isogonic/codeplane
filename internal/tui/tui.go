@@ -196,7 +196,7 @@ func (a appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a.updateAllPages(msg)
 
 	case tea.WindowSizeMsg:
-		msg.Height -= 1 // Make space for the status bar
+		msg.Height -= 2 // Make space for the status bar
 		a.width, a.height = msg.Width, msg.Height
 
 		s, _ := a.status.Update(msg)
