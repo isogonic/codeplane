@@ -10,6 +10,7 @@ import (
 	"log/slog"
 
 	"github.com/sst/opencode/internal/config"
+	"github.com/sst/opencode/internal/fileutil"
 	"github.com/sst/opencode/internal/history"
 	"github.com/sst/opencode/internal/llm/agent"
 	"github.com/sst/opencode/internal/logging"
@@ -72,6 +73,7 @@ func New(ctx context.Context, conn *sql.DB) (*App, error) {
 		slog.Error("Failed to initialize status service", "error", err)
 		return nil, err
 	}
+	fileutil.Init()
 
 	app := &App{
 		CurrentSession: &session.Session{},

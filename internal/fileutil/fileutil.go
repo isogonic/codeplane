@@ -19,7 +19,7 @@ var (
 	fzfPath string
 )
 
-func init() {
+func Init() {
 	var err error
 	rgPath, err = exec.LookPath("rg")
 	if err != nil {
