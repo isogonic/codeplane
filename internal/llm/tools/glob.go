@@ -12,6 +12,7 @@ import (
 
 	"github.com/sst/opencode/internal/config"
 	"github.com/sst/opencode/internal/fileutil"
+	"github.com/sst/opencode/internal/status"
 )
 
 const (
@@ -133,7 +134,7 @@ func globFiles(pattern, searchPath string, limit int) ([]string, bool, error) {
 		if err == nil {
 			return matches, len(matches) >= limit && limit > 0, nil
 		}
-		// logging.Warn(fmt.Sprintf("Ripgrep execution failed: %v. Falling back to doublestar.", err))
+		status.Warn(fmt.Sprintf("Ripgrep execution failed: %v. Falling back to doublestar.", err))
 	}
 
 	return fileutil.GlobWithDoublestar(pattern, searchPath, limit)

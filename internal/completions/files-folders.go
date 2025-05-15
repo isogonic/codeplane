@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 
 	"github.com/lithammer/fuzzysearch/fuzzy"
-	"github.com/opencode-ai/opencode/internal/fileutil"
-	"github.com/opencode-ai/opencode/internal/logging"
-	"github.com/opencode-ai/opencode/internal/tui/components/dialog"
+	"github.com/sst/opencode/internal/fileutil"
+	"github.com/sst/opencode/internal/status"
+	"github.com/sst/opencode/internal/tui/components/dialog"
 )
 
 type filesAndFoldersContextGroup struct {
@@ -82,7 +82,7 @@ func (cg *filesAndFoldersContextGroup) getFiles(query string) ([]string, error) 
 		errFzf := cmdFzf.Wait()
 
 		if errRg != nil {
-			logging.Warn(fmt.Sprintf("rg command failed during pipe: %v", errRg))
+			status.Warn(fmt.Sprintf("rg command failed during pipe: %v", errRg))
 		}
 
 		if errFzf != nil {
@@ -96,7 +96,7 @@ func (cg *filesAndFoldersContextGroup) getFiles(query string) ([]string, error) 
 
 		// Case 2: Only rg available
 	} else if cmdRg != nil {
-		logging.Debug("Using Ripgrep with fuzzy match fallback for file completions")
+		status.Debug("Using Ripgrep with fuzzy match fallback for file completions")
 		var rgOut bytes.Buffer
 		var rgErr bytes.Buffer
 		cmdRg.Stdout = &rgOut
@@ -111,7 +111,7 @@ func (cg *filesAndFoldersContextGroup) getFiles(query string) ([]string, error) 
 
 		// Case 3: Only fzf available
 	} else if cmdFzf != nil {
-		logging.Debug("Using FZF with doublestar fallback for file completions")
+		status.Debug("Using FZF with doublestar fallback for file completions")
 		files, _, err := fileutil.GlobWithDoublestar("**/*", ".", 0)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list files for fzf: %w", err)
@@ -147,7 +147,7 @@ func (cg *filesAndFoldersContextGroup) getFiles(query string) ([]string, error) 
 
 		// Case 4: Fallback to doublestar with fuzzy match
 	} else {
-		logging.Debug("Using doublestar with fuzzy match for file completions")
+		status.Debug("Using doublestar with fuzzy match for file completions")
 		allFiles, _, err := fileutil.GlobWithDoublestar("**/*", ".", 0)
 		if err != nil {
 			return nil, fmt.Errorf("failed to glob files: %w", err)
