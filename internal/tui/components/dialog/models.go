@@ -10,7 +10,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sst/opencode/internal/config"
 	"github.com/sst/opencode/internal/llm/models"
-	"github.com/sst/opencode/internal/status"
 	"github.com/sst/opencode/internal/tui/layout"
 	"github.com/sst/opencode/internal/tui/styles"
 	"github.com/sst/opencode/internal/tui/theme"
