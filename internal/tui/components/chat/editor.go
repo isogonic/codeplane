@@ -76,7 +76,7 @@ var DeleteKeyMaps = DeleteAttachmentKeyMaps{
 	),
 	DeleteAllAttachments: key.NewBinding(
 		key.WithKeys("r"),
-		key.WithHelp("ctrl+r+r", "delete all attchments"),
+		key.WithHelp("ctrl+r+r", "delete all attachments"),
 	),
 }
 
