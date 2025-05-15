@@ -2,9 +2,9 @@ package provider
 
 import (
 	"context"
+	"log/slog"
 	"os"
 
-	"github.com/opencode-ai/opencode/internal/logging"
 	"google.golang.org/genai"
 )
 
@@ -22,7 +22,7 @@ func newVertexAIClient(opts providerClientOptions) VertexAIClient {
 		Backend:  genai.BackendVertexAI,
 	})
 	if err != nil {
-		logging.Error("Failed to create VertexAI client", "error", err)
+		slog.Error("Failed to create VertexAI client", "error", err)
 		return nil
 	}
 
