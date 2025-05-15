@@ -51,8 +51,8 @@ var keyMap = ChatKeyMap{
 		key.WithHelp("ctrl+h", "toggle tools"),
 	),
 	ShowCompletionDialog: key.NewBinding(
-		key.WithKeys("@"),
-		key.WithHelp("@", "Complete"),
+		key.WithKeys("/"),
+		key.WithHelp("/", "Complete"),
 	),
 }
 
