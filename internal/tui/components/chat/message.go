@@ -266,6 +266,8 @@ func toolName(name string) string {
 		return "Write"
 	case tools.PatchToolName:
 		return "Patch"
+	case tools.BatchToolName:
+		return "Batch"
 	}
 	return name
 }
@@ -292,6 +294,8 @@ func getToolAction(name string) string {
 		return "Preparing write..."
 	case tools.PatchToolName:
 		return "Preparing patch..."
+	case tools.BatchToolName:
+		return "Running batch operations..."
 	}
 	return "Working..."
 }
@@ -443,6 +447,10 @@ func renderToolParams(paramWidth int, toolCall message.ToolCall) string {
 		json.Unmarshal([]byte(toolCall.Input), &params)
 		filePath := removeWorkingDirPrefix(params.FilePath)
 		return renderParams(paramWidth, filePath)
+	case tools.BatchToolName:
+		var params tools.BatchParams
+		json.Unmarshal([]byte(toolCall.Input), &params)
+		return renderParams(paramWidth, fmt.Sprintf("%d parallel calls", len(params.Calls)))
 	default:
 		input := strings.ReplaceAll(toolCall.Input, "\n", " ")
 		params = renderParams(paramWidth, input)
@@ -540,6 +548,38 @@ func renderToolResponse(toolCall message.ToolCall, response message.ToolResult, 
 			toMarkdown(resultContent, true, width),
 			t.Background(),
 		)
+	case tools.BatchToolName:
+		var batchResult tools.BatchResult
+		if err := json.Unmarshal([]byte(resultContent), &batchResult); err != nil {
+			return baseStyle.Width(width).Foreground(t.Error()).Render(fmt.Sprintf("Error parsing batch result: %s", err))
+		}
+
+		var toolCalls []string
+		for i, result := range batchResult.Results {
+			toolName := toolName(result.ToolName)
+
+			// Format the tool input as a string
+			inputStr := string(result.ToolInput)
+
+			// Format the result
+			var resultStr string
+			if result.Error != "" {
+				resultStr = fmt.Sprintf("Error: %s", result.Error)
+			} else {
+				var toolResponse tools.ToolResponse
+				if err := json.Unmarshal(result.Result, &toolResponse); err != nil {
+					resultStr = "Error parsing tool response"
+				} else {
+					resultStr = truncateHeight(toolResponse.Content, 3)
+				}
+			}
+
+			// Format the tool call
+			toolCall := fmt.Sprintf("%d. %s: %s\n   %s", i+1, toolName, inputStr, resultStr)
+			toolCalls = append(toolCalls, toolCall)
+		}
+
+		return baseStyle.Width(width).Foreground(t.TextMuted()).Render(strings.Join(toolCalls, "\n\n"))
 	default:
 		resultContent = fmt.Sprintf("```text\n%s\n```", resultContent)
 		return styles.ForceReplaceBackgroundWithLipgloss(
