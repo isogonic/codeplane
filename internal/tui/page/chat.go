@@ -6,7 +6,9 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/sst/opencode/internal/app"
+	"github.com/sst/opencode/internal/completions"
 	"github.com/sst/opencode/internal/message"
 	"github.com/sst/opencode/internal/session"
 	"github.com/sst/opencode/internal/status"
@@ -20,16 +22,19 @@ import (
 var ChatPage PageID = "chat"
 
 type chatPage struct {
-	app      *app.App
-	editor   layout.Container
-	messages layout.Container
-	layout   layout.SplitPaneLayout
+	app                  *app.App
+	editor               layout.Container
+	messages             layout.Container
+	layout               layout.SplitPaneLayout
+	completionDialog     dialog.CompletionDialog
+	showCompletionDialog bool
 }
 
 type ChatKeyMap struct {
-	NewSession  key.Binding
-	Cancel      key.Binding
-	ToggleTools key.Binding
+	NewSession           key.Binding
+	Cancel               key.Binding
+	ToggleTools          key.Binding
+	ShowCompletionDialog key.Binding
 }
 
 var keyMap = ChatKeyMap{
@@ -45,12 +50,17 @@ var keyMap = ChatKeyMap{
 		key.WithKeys("ctrl+h"),
 		key.WithHelp("ctrl+h", "toggle tools"),
 	),
+	ShowCompletionDialog: key.NewBinding(
+		key.WithKeys("@"),
+		key.WithHelp("@", "Complete"),
+	),
 }
 
 func (p *chatPage) Init() tea.Cmd {
 	cmds := []tea.Cmd{
 		p.layout.Init(),
 	}
+	cmds = append(cmds, p.completionDialog.Init())
 	return tea.Batch(cmds...)
 }
 
@@ -99,8 +109,13 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}(p.app.CurrentSession.ID)
 
 		return p, nil
+	case dialog.CompletionDialogCloseMsg:
+		p.showCompletionDialog = false
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, keyMap.ShowCompletionDialog):
+			p.showCompletionDialog = true
+			// Continue sending keys to layout->chat
 		case key.Matches(msg, keyMap.NewSession):
 			p.app.CurrentSession = &session.Session{}
 			return p, tea.Batch(
@@ -118,6 +133,19 @@ func (p *chatPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return p, util.CmdHandler(chat.ToggleToolMessagesMsg{})
 		}
 	}
+	if p.showCompletionDialog {
+		context, contextCmd := p.completionDialog.Update(msg)
+		p.completionDialog = context.(dialog.CompletionDialog)
+		cmds = append(cmds, contextCmd)
+
+		// Doesn't forward event if enter key is pressed
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			if keyMsg.String() == "enter" {
+				return p, tea.Batch(cmds...)
+			}
+		}
+	}
+
 	u, cmd := p.layout.Update(msg)
 	cmds = append(cmds, cmd)
 	p.layout = u.(layout.SplitPaneLayout)
@@ -171,7 +199,25 @@ func (p *chatPage) GetSize() (int, int) {
 }
 
 func (p *chatPage) View() string {
-	return p.layout.View()
+	layoutView := p.layout.View()
+
+	if p.showCompletionDialog {
+		_, layoutHeight := p.layout.GetSize()
+		editorWidth, editorHeight := p.editor.GetSize()
+
+		p.completionDialog.SetWidth(editorWidth)
+		overlay := p.completionDialog.View()
+
+		layoutView = layout.PlaceOverlay(
+			0,
+			layoutHeight-editorHeight-lipgloss.Height(overlay),
+			overlay,
+			layoutView,
+			false,
+		)
+	}
+
+	return layoutView
 }
 
 func (p *chatPage) BindingKeys() []key.Binding {
@@ -182,6 +228,8 @@ func (p *chatPage) BindingKeys() []key.Binding {
 }
 
 func NewChatPage(app *app.App) tea.Model {
+	cg := completions.NewFileAndFolderContextGroup()
+	completionDialog := dialog.NewCompletionDialogCmp(cg)
 	messagesContainer := layout.NewContainer(
 		chat.NewMessagesCmp(app),
 		layout.WithPadding(1, 1, 0, 1),
@@ -191,9 +239,10 @@ func NewChatPage(app *app.App) tea.Model {
 		layout.WithBorder(true, false, false, false),
 	)
 	return &chatPage{
-		app:      app,
-		editor:   editorContainer,
-		messages: messagesContainer,
+		app:              app,
+		editor:           editorContainer,
+		messages:         messagesContainer,
+		completionDialog: completionDialog,
 		layout: layout.NewSplitPane(
 			layout.WithLeftPanel(messagesContainer),
 			layout.WithBottomPanel(editorContainer),
