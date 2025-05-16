@@ -73,6 +73,12 @@ type TUIConfig struct {
 	CustomTheme map[string]any `json:"customTheme,omitempty"`
 }
 
+// ShellConfig defines the configuration for the shell used by the bash tool.
+type ShellConfig struct {
+	Path string   `json:"path,omitempty"`
+	Args []string `json:"args,omitempty"`
+}
+
 // Config is the main configuration structure for the application.
 type Config struct {
 	Data         Data                              `json:"data"`
@@ -85,6 +91,7 @@ type Config struct {
 	DebugLSP     bool                              `json:"debugLSP,omitempty"`
 	ContextPaths []string                          `json:"contextPaths,omitempty"`
 	TUI          TUIConfig                         `json:"tui"`
+	Shell        ShellConfig                       `json:"shell,omitempty"`
 }
 
 // Application constants

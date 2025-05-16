@@ -136,6 +136,10 @@ You can configure OpenCode using environment variables:
       "command": "gopls"
     }
   },
+  "shell": {
+    "path": "/bin/zsh",
+    "args": ["-l"]
+  },
   "debug": false,
   "debugLSP": false
 }
@@ -410,6 +414,35 @@ You can define any of the following color keys in your `customTheme`:
 - Diff view colors: `diffAdded`, `diffRemoved`, `diffContext`, etc.
 
 You don't need to define all colors. Any undefined colors will fall back to the default "opencode" theme colors.
+
+### Shell Configuration
+
+OpenCode allows you to configure the shell used by the `bash` tool. By default, it uses:
+1. The shell specified in the config file (if provided)
+2. The shell from the `$SHELL` environment variable (if available)
+3. Falls back to `/bin/bash` if neither of the above is available
+
+To configure a custom shell, add a `shell` section to your `.opencode.json` configuration file:
+
+```json
+{
+  "shell": {
+    "path": "/bin/zsh",
+    "args": ["-l"]
+  }
+}
+```
+
+You can specify any shell executable and custom arguments:
+
+```json
+{
+  "shell": {
+    "path": "/usr/bin/fish",
+    "args": []
+  }
+}
+```
 
 ## Architecture
 
