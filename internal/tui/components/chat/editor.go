@@ -2,6 +2,7 @@ package chat
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"slices"
@@ -16,6 +17,7 @@ import (
 	"github.com/sst/opencode/internal/message"
 	"github.com/sst/opencode/internal/status"
 	"github.com/sst/opencode/internal/tui/components/dialog"
+	"github.com/sst/opencode/internal/tui/image"
 	"github.com/sst/opencode/internal/tui/layout"
 	"github.com/sst/opencode/internal/tui/styles"
 	"github.com/sst/opencode/internal/tui/theme"
@@ -34,6 +36,7 @@ type editorCmp struct {
 type EditorKeyMaps struct {
 	Send       key.Binding
 	OpenEditor key.Binding
+	Paste      key.Binding
 }
 
 type bluredEditorKeyMaps struct {
@@ -55,6 +58,10 @@ var editorMaps = EditorKeyMaps{
 	OpenEditor: key.NewBinding(
 		key.WithKeys("ctrl+e"),
 		key.WithHelp("ctrl+e", "open editor"),
+	),
+	Paste: key.NewBinding(
+		key.WithKeys("ctrl+v"),
+		key.WithHelp("ctrl+v", "paste content"),
 	),
 }
 
@@ -199,6 +206,22 @@ func (m *editorCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if key.Matches(msg, DeleteKeyMaps.Escape) {
 			m.deleteMode = false
 			return m, nil
+		}
+
+		if key.Matches(msg, editorMaps.Paste) {
+			imageBytes, text, err := image.GetImageFromClipboard()
+			if err != nil {
+				slog.Error(err.Error())
+				return m, cmd
+			}
+			if len(imageBytes) != 0 {
+				attachmentName := fmt.Sprintf("clipboard-image-%d", len(m.attachments))
+				attachment := message.Attachment{FilePath: attachmentName, FileName: attachmentName, Content: imageBytes, MimeType: "image/png"}
+				m.attachments = append(m.attachments, attachment)
+			} else {
+				m.textarea.SetValue(m.textarea.Value() + text)
+			}
+			return m, cmd
 		}
 		// Handle Enter key
 		if m.textarea.Focused() && key.Matches(msg, editorMaps.Send) {
