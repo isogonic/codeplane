@@ -225,9 +225,27 @@ opencode -p "Explain the use of context in Go" -f json
 
 # Run without showing the spinner
 opencode -p "Explain the use of context in Go" -q
+
+# Enable verbose logging to stderr
+opencode -p "Explain the use of context in Go" --verbose
+
+# Restrict the agent to only use specific tools
+opencode -p "Explain the use of context in Go" --allowedTools=view,ls,glob
+
+# Prevent the agent from using specific tools
+opencode -p "Explain the use of context in Go" --excludedTools=bash,edit
 ```
 
 In this mode, OpenCode will process your prompt, print the result to standard output, and then exit. All permissions are auto-approved for the session.
+
+### Tool Restrictions
+
+You can control which tools the AI assistant has access to in non-interactive mode:
+
+- `--allowedTools`: Comma-separated list of tools that the agent is allowed to use. Only these tools will be available.
+- `--excludedTools`: Comma-separated list of tools that the agent is not allowed to use. All other tools will be available.
+
+These flags are mutually exclusive - you can use either `--allowedTools` or `--excludedTools`, but not both at the same time.
 
 ### Output Formats
 
@@ -242,14 +260,17 @@ The output format is implemented as a strongly-typed `OutputFormat` in the codeb
 
 ## Command-line Flags
 
-| Flag              | Short | Description                                            |
-| ----------------- | ----- | ------------------------------------------------------ |
-| `--help`          | `-h`  | Display help information                               |
-| `--debug`         | `-d`  | Enable debug mode                                      |
-| `--cwd`           | `-c`  | Set current working directory                          |
-| `--prompt`        | `-p`  | Run a single prompt in non-interactive mode            |
-| `--output-format` | `-f`  | Output format for non-interactive mode (text, json)    |
-| `--quiet`         | `-q`  | Hide spinner in non-interactive mode                   |
+| Flag              | Short | Description                                                |
+| ----------------- | ----- | ---------------------------------------------------------- |
+| `--help`          | `-h`  | Display help information                                   |
+| `--debug`         | `-d`  | Enable debug mode                                          |
+| `--cwd`           | `-c`  | Set current working directory                              |
+| `--prompt`        | `-p`  | Run a single prompt in non-interactive mode                |
+| `--output-format` | `-f`  | Output format for non-interactive mode (text, json)        |
+| `--quiet`         | `-q`  | Hide spinner in non-interactive mode                       |
+| `--verbose`       |       | Display logs to stderr in non-interactive mode             |
+| `--allowedTools`  |       | Restrict the agent to only use specified tools             |
+| `--excludedTools` |       | Prevent the agent from using specified tools               |
 
 ## Keyboard Shortcuts
 

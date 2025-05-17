@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Spinner wraps the bubbles spinner for both interactive and non-interactive mode
@@ -61,6 +62,30 @@ func NewSpinner(message string) *Spinner {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = s.Style.Foreground(s.Style.GetForeground())
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	model := spinnerModel{
+		spinner: s,
+		message: message,
+	}
+
+	prog := tea.NewProgram(model, tea.WithOutput(os.Stderr), tea.WithoutCatchPanics())
+
+	return &Spinner{
+		model:  s,
+		done:   make(chan struct{}),
+		prog:   prog,
+		ctx:    ctx,
+		cancel: cancel,
+	}
+}
+
+// NewThemedSpinner creates a new spinner with the given message and color
+func NewThemedSpinner(message string, color lipgloss.AdaptiveColor) *Spinner {
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	s.Style = s.Style.Foreground(color)
 
 	ctx, cancel := context.WithCancel(context.Background())
 

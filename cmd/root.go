@@ -19,11 +19,8 @@ import (
 	"github.com/sst/opencode/internal/llm/agent"
 	"github.com/sst/opencode/internal/logging"
 	"github.com/sst/opencode/internal/lsp/discovery"
-	"github.com/sst/opencode/internal/message"
-	"github.com/sst/opencode/internal/permission"
 	"github.com/sst/opencode/internal/pubsub"
 	"github.com/sst/opencode/internal/tui"
-	"github.com/sst/opencode/internal/tui/components/spinner"
 	"github.com/sst/opencode/internal/version"
 )
 
@@ -100,9 +97,15 @@ to assist developers in writing, debugging, and understanding code directly from
 			if !outputFormat.IsValid() {
 				return fmt.Errorf("invalid output format: %s", outputFormatStr)
 			}
-			
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
-			return handleNonInteractiveMode(cmd.Context(), prompt, outputFormat, quiet)
+			verbose, _ := cmd.Flags().GetBool("verbose")
+
+			// Get tool restriction flags
+			allowedTools, _ := cmd.Flags().GetStringSlice("allowedTools")
+			excludedTools, _ := cmd.Flags().GetStringSlice("excludedTools")
+
+			return handleNonInteractiveMode(cmd.Context(), prompt, outputFormat, quiet, verbose, allowedTools, excludedTools)
 		}
 
 		// Run LSP auto-discovery
@@ -222,97 +225,6 @@ func initMCPTools(ctx context.Context, app *app.App) {
 	}()
 }
 
-// handleNonInteractiveMode processes a single prompt in non-interactive mode
-func handleNonInteractiveMode(ctx context.Context, prompt string, outputFormat format.OutputFormat, quiet bool) error {
-	slog.Info("Running in non-interactive mode", "prompt", prompt, "format", outputFormat, "quiet", quiet)
-	
-	// Start spinner if not in quiet mode
-	var s *spinner.Spinner
-	if !quiet {
-		s = spinner.NewSpinner("Thinking...")
-		s.Start()
-		defer s.Stop()
-	}
-	
-	// Connect DB, this will also run migrations
-	conn, err := db.Connect()
-	if err != nil {
-		return err
-	}
-	
-	// Create a context with cancellation
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	
-	// Create the app
-	app, err := app.New(ctx, conn)
-	if err != nil {
-		slog.Error("Failed to create app", "error", err)
-		return err
-	}
-	
-	// Auto-approve all permissions for non-interactive mode
-	permission.AutoApproveSession(ctx, "non-interactive")
-	
-	// Create a new session for this prompt
-	session, err := app.Sessions.Create(ctx, "Non-interactive prompt")
-	if err != nil {
-		return fmt.Errorf("failed to create session: %w", err)
-	}
-	
-	// Set the session as current
-	app.CurrentSession = &session
-	
-	// Create the user message
-	_, err = app.Messages.Create(ctx, session.ID, message.CreateMessageParams{
-		Role:  message.User,
-		Parts: []message.ContentPart{message.TextContent{Text: prompt}},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create message: %w", err)
-	}
-	
-	// Run the agent to get a response
-	eventCh, err := app.PrimaryAgent.Run(ctx, session.ID, prompt)
-	if err != nil {
-		return fmt.Errorf("failed to run agent: %w", err)
-	}
-	
-	// Wait for the response
-	var response message.Message
-	for event := range eventCh {
-		if event.Err() != nil {
-			return fmt.Errorf("agent error: %w", event.Err())
-		}
-		response = event.Response()
-	}
-	
-	// Get the text content from the response
-	content := ""
-	if textContent := response.Content(); textContent != nil {
-		content = textContent.Text
-	}
-	
-	// Format the output according to the specified format
-	formattedOutput, err := format.FormatOutput(content, outputFormat)
-	if err != nil {
-		return fmt.Errorf("failed to format output: %w", err)
-	}
-	
-	// Stop spinner before printing output
-	if !quiet && s != nil {
-		s.Stop()
-	}
-	
-	// Print the formatted output to stdout
-	fmt.Println(formattedOutput)
-	
-	// Shutdown the app
-	app.Shutdown()
-	
-	return nil
-}
-
 func setupSubscriber[T any](
 	ctx context.Context,
 	wg *sync.WaitGroup,
@@ -407,4 +319,13 @@ func init() {
 	rootCmd.Flags().StringP("prompt", "p", "", "Run a single prompt in non-interactive mode")
 	rootCmd.Flags().StringP("output-format", "f", "text", "Output format for non-interactive mode (text, json)")
 	rootCmd.Flags().BoolP("quiet", "q", false, "Hide spinner in non-interactive mode")
+	rootCmd.Flags().BoolP("verbose", "", false, "Display logs to stderr in non-interactive mode")
+	rootCmd.Flags().StringSlice("allowedTools", nil, "Restrict the agent to only use the specified tools in non-interactive mode (comma-separated list)")
+	rootCmd.Flags().StringSlice("excludedTools", nil, "Prevent the agent from using the specified tools in non-interactive mode (comma-separated list)")
+
+	// Make allowedTools and excludedTools mutually exclusive
+	rootCmd.MarkFlagsMutuallyExclusive("allowedTools", "excludedTools")
+
+	// Make quiet and verbose mutually exclusive
+	rootCmd.MarkFlagsMutuallyExclusive("quiet", "verbose")
 }
