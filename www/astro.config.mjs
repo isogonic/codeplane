@@ -35,17 +35,13 @@ export default defineConfig({
 				replacesTitle: true,
 			},
 			sidebar: [
-				{
-					label: "Guides",
-					items: [
-						// Each item here is one entry in the navigation menu.
-						{ label: "Example Guide", slug: "guides/example" },
-					],
-				},
-				{
-					label: "Reference",
-					autogenerate: { directory: "reference" },
-				},
+				"docs",
+				"docs/cli",
+				"docs/config",
+				"docs/models",
+				"docs/themes",
+				"docs/shortcuts",
+				"docs/mcp-servers",
 			],
 			components: {
 				Hero: "./src/components/Hero.astro",
@@ -55,7 +51,6 @@ export default defineConfig({
 				headerLinks: [
 					{ name: "Home", url: "/" },
 					{ name: "Docs", url: "/docs/" },
-					{ name: "Blog", url: "/blog/" },
 				],
 			})],
 		}),
