@@ -1,0 +1,84 @@
+---
+title: Config
+---
+
+OpenCode looks for configuration in the following locations:
+
+- `$HOME/.opencode.json`
+- `$XDG_CONFIG_HOME/opencode/.opencode.json`
+- `./.opencode.json` (local directory)
+
+## Environment variables
+
+You can configure OpenCode using environment variables:
+
+| Environment Variable       | Purpose                                                |
+| -------------------------- | ------------------------------------------------------ |
+| `ANTHROPIC_API_KEY`        | For Claude models                                      |
+| `OPENAI_API_KEY`           | For OpenAI models                                      |
+| `GEMINI_API_KEY`           | For Google Gemini models                               |
+| `GROQ_API_KEY`             | For Groq models                                        |
+| `AWS_ACCESS_KEY_ID`        | For AWS Bedrock (Claude)                               |
+| `AWS_SECRET_ACCESS_KEY`    | For AWS Bedrock (Claude)                               |
+| `AWS_REGION`               | For AWS Bedrock (Claude)                               |
+| `AZURE_OPENAI_ENDPOINT`    | For Azure OpenAI models                                |
+| `AZURE_OPENAI_API_KEY`     | For Azure OpenAI models (optional when using Entra ID) |
+| `AZURE_OPENAI_API_VERSION` | For Azure OpenAI models                                |
+
+## OpenCode config
+
+```json
+{
+  "data": {
+    "directory": ".opencode"
+  },
+  "providers": {
+    "openai": {
+      "apiKey": "your-api-key",
+      "disabled": false
+    },
+    "anthropic": {
+      "apiKey": "your-api-key",
+      "disabled": false
+    },
+    "groq": {
+      "apiKey": "your-api-key",
+      "disabled": false
+    },
+    "openrouter": {
+      "apiKey": "your-api-key",
+      "disabled": false
+    }
+  },
+  "agents": {
+    "primary": {
+      "model": "claude-3.7-sonnet",
+      "maxTokens": 5000
+    },
+    "task": {
+      "model": "claude-3.7-sonnet",
+      "maxTokens": 5000
+    },
+    "title": {
+      "model": "claude-3.7-sonnet",
+      "maxTokens": 80
+    }
+  },
+  "mcpServers": {
+    "example": {
+      "type": "stdio",
+      "command": "path/to/mcp-server",
+      "env": [],
+      "args": []
+    }
+  },
+  "lsp": {
+    "go": {
+      "disabled": false,
+      "command": "gopls"
+    }
+  },
+  "debug": false,
+  "debugLSP": false
+}
+```
