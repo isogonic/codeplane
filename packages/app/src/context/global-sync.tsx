@@ -5,6 +5,7 @@ import type {
   Project,
   ProviderAuthResponse,
   ProviderListResponse,
+  Session,
   Todo,
 } from "@opencode-ai/sdk/v2/client"
 import { showToast } from "@opencode-ai/ui/toast"
@@ -21,6 +22,7 @@ import { createRefreshQueue } from "./global-sync/queue"
 import { clearSessionPrefetchDirectory } from "./global-sync/session-prefetch"
 import { estimateRootSessionTotal, loadRootSessionsWithFallback } from "./global-sync/session-load"
 import { trimSessions } from "./global-sync/session-trim"
+import { directoryKey } from "./global-sync/utils"
 import type { ProjectMeta } from "./global-sync/types"
 import { SESSION_RECENT_LIMIT } from "./global-sync/types"
 import { formatServerError } from "@/utils/server-errors"
@@ -166,25 +168,26 @@ function createGlobalSync() {
       return
     }
 
-    const limit = Math.max(store.limit + SESSION_RECENT_LIMIT, SESSION_RECENT_LIMIT)
+    const fetchLimit = Math.max(store.limit + SESSION_RECENT_LIMIT, SESSION_RECENT_LIMIT)
     const promise = queryClient
       .fetchQuery({
         ...loadSessionsQuery(directory),
         queryFn: () =>
           loadRootSessionsWithFallback({
             directory,
-            limit,
+            limit: fetchLimit,
             list: (query) => globalSDK.client.session.list(query),
           })
             .then((x) => {
+              const key = directoryKey(directory)
               const nonArchived = (x.data ?? [])
-                .filter((s) => !!s?.id)
-                .filter((s) => !s.time?.archived)
-                .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
-              const limit = store.limit
-              const childSessions = store.session.filter((s) => !!s.parentID)
+                .filter(
+                  (s): s is Session => !!s?.id && directoryKey(s.directory) === key && !s.time?.archived,
+                )
+              const currentLimit = store.limit
+              const childSessions = store.session.filter((s) => !!s.parentID && directoryKey(s.directory) === key)
               const sessions = trimSessions([...nonArchived, ...childSessions], {
-                limit,
+                limit: currentLimit,
                 permission: store.permission,
               })
               batch(() => {
@@ -199,7 +202,7 @@ function createGlobalSync() {
                 setStore("session", reconcile(sessions, { key: "id" }))
                 cleanupDroppedSessionCaches(store, setStore, sessions, setSessionTodo)
               })
-              sessionMeta.set(directory, { limit })
+              sessionMeta.set(directory, { limit: currentLimit })
             })
             .catch((err) => {
               console.error("Failed to load sessions", err)

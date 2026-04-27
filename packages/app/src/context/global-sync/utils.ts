@@ -2,6 +2,14 @@ import type { Agent, Project, ProviderListResponse } from "@opencode-ai/sdk/v2/c
 
 export const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
 
+export const directoryKey = (directory: string) => {
+  const value = directory.replaceAll("\\", "/")
+  const drive = value.match(/^([A-Za-z]:)\/+$/)
+  if (drive) return `${drive[1]}/`
+  if (/^\/+$/i.test(value)) return "/"
+  return value.replace(/\/+$/, "")
+}
+
 function isAgent(input: unknown): input is Agent {
   if (!input || typeof input !== "object") return false
   const item = input as { name?: unknown; mode?: unknown }

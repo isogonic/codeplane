@@ -1,18 +1,13 @@
 import { getFilename } from "@opencode-ai/shared/util/path"
 import { type Session } from "@opencode-ai/sdk/v2/client"
+import { directoryKey } from "@/context/global-sync/utils"
 
 type SessionStore = {
   session?: Session[]
   path: { directory: string }
 }
 
-export const workspaceKey = (directory: string) => {
-  const value = directory.replaceAll("\\", "/")
-  const drive = value.match(/^([A-Za-z]:)\/+$/)
-  if (drive) return `${drive[1]}/`
-  if (/^\/+$/i.test(value)) return "/"
-  return value.replace(/\/+$/, "")
-}
+export const workspaceKey = directoryKey
 
 function sortSessions(now: number) {
   const oneMinuteAgo = now - 60 * 1000

@@ -28,6 +28,20 @@ describe("trimSessions", () => {
     expect(result.map((x) => x.id)).toEqual(["a", "b", "c", "d"])
   })
 
+  test("selects the base page by updated time before storing by id", () => {
+    const now = 100_000_000
+    const result = trimSessions(
+      [
+        session({ id: "a", created: 1, updated: 10 }),
+        session({ id: "b", created: 2, updated: 20 }),
+        session({ id: "z", created: 3, updated: 30 }),
+      ],
+      { limit: 2, permission: {}, now },
+    )
+
+    expect(result.map((x) => x.id)).toEqual(["b", "z"])
+  })
+
   test("keeps children when root is kept, permission exists, or child is recent", () => {
     const now = 1_000_000
     const list = [

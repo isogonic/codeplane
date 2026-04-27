@@ -168,7 +168,7 @@ export function createChildStoreManager(input: {
             config: {},
             get path() {
               if (pathQuery.isLoading || !pathQuery.data)
-                return { state: "", config: "", worktree: "", directory: "", home: "" }
+                return { state: "", config: "", worktree: directory, directory, home: "" }
               return pathQuery.data
             },
             status: "loading" as const,
