@@ -89,7 +89,7 @@ export function ControlPlaneRoutes(): Hono {
         documentation: {
           info: {
             title: "opencode",
-            version: "2.1.0",
+            version: "2.2.0",
             description: "opencode api",
           },
           openapi: "3.1.1",
