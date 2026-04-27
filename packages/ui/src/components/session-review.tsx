@@ -352,15 +352,18 @@ export const SessionReview = (props: SessionReviewProps) => {
           </Show>
           <Show when={hasDiffs()}>
             <Button
+              data-slot="session-review-expand-button"
               size="small"
               icon="chevron-grabber-vertical"
-              class="w-[106px] justify-start"
+              class="justify-start"
               onClick={handleExpandOrCollapseAll}
             >
-              <Switch>
-                <Match when={open().length > 0}>{i18n.t("ui.sessionReview.collapseAll")}</Match>
-                <Match when={true}>{i18n.t("ui.sessionReview.expandAll")}</Match>
-              </Switch>
+              <span data-slot="session-review-expand-label">
+                <Switch>
+                  <Match when={open().length > 0}>{i18n.t("ui.sessionReview.collapseAll")}</Match>
+                  <Match when={true}>{i18n.t("ui.sessionReview.expandAll")}</Match>
+                </Switch>
+              </span>
             </Button>
           </Show>
           {props.actions}
