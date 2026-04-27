@@ -42,6 +42,12 @@ export const markdown = [
   "export const value = 42",
   "```",
   "",
+  "```mermaid",
+  "flowchart LR",
+  "  markdown[Markdown] --> preview[Preview]",
+  "  preview --> mermaid[Mermaid]",
+  "```",
+  "",
   "More at https://example.com/docs",
 ].join("\n")
 
