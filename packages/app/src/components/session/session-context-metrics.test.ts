@@ -8,6 +8,7 @@ const assistant = (
   cost: number,
   providerID = "openai",
   modelID = "gpt-4.1",
+  completed?: number,
 ) => {
   return {
     id,
@@ -24,7 +25,7 @@ const assistant = (
         write: tokens.write,
       },
     },
-    time: { created: 1 },
+    time: completed === undefined ? { created: 1 } : { created: 1, completed },
   } as unknown as Message
 }
 
@@ -65,6 +66,19 @@ describe("getSessionContextMetrics", () => {
     expect(metrics.context?.usage).toBe(50)
     expect(metrics.context?.providerLabel).toBe("OpenAI")
     expect(metrics.context?.modelLabel).toBe("GPT-4.1")
+    expect(metrics.averageTokensPerSecond).toBeNull()
+  })
+
+  test("computes average tokens per second from completed assistant messages", () => {
+    const messages = [
+      assistant("a1", { input: 0, output: 40, reasoning: 10, read: 0, write: 0 }, 0, "openai", "gpt-4.1", 5001),
+      assistant("a2", { input: 0, output: 999, reasoning: 0, read: 0, write: 0 }, 0, "openai", "gpt-4.1", 1),
+      assistant("a3", { input: 0, output: 100, reasoning: 0, read: 0, write: 0 }, 0),
+    ]
+
+    const metrics = getSessionContextMetrics(messages, [{ id: "openai", models: {} }])
+
+    expect(metrics.averageTokensPerSecond).toBe(10)
   })
 
   test("preserves fallback labels and null usage when model metadata is missing", () => {
@@ -96,6 +110,7 @@ describe("getSessionContextMetrics", () => {
     const metrics = getSessionContextMetrics(undefined, undefined)
 
     expect(metrics.totalCost).toBe(0)
+    expect(metrics.averageTokensPerSecond).toBeNull()
     expect(metrics.context).toBeUndefined()
   })
 })
