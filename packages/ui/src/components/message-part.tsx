@@ -152,6 +152,7 @@ export interface MessagePartProps {
   defaultOpen?: boolean
   showAssistantCopyPartID?: string | null
   turnDurationMs?: number
+  turnOutputTokens?: number
 }
 
 export type PartComponent = Component<MessagePartProps>
@@ -595,6 +596,7 @@ export function AssistantParts(props: {
   messages: AssistantMessage[]
   showAssistantCopyPartID?: string | null
   turnDurationMs?: number
+  turnOutputTokens?: number
   working?: boolean
   showReasoningSummaries?: boolean
   shellToolDefaultOpen?: boolean
@@ -679,6 +681,7 @@ export function AssistantParts(props: {
                         message={message()!}
                         showAssistantCopyPartID={props.showAssistantCopyPartID}
                         turnDurationMs={props.turnDurationMs}
+                        turnOutputTokens={props.turnOutputTokens}
                         defaultOpen={partDefaultOpen(item()!, props.shellToolDefaultOpen, props.editToolDefaultOpen)}
                       />
                     </Show>
@@ -1221,6 +1224,7 @@ export function Part(props: MessagePartProps) {
         defaultOpen={props.defaultOpen}
         showAssistantCopyPartID={props.showAssistantCopyPartID}
         turnDurationMs={props.turnDurationMs}
+        turnOutputTokens={props.turnOutputTokens}
       />
     </Show>
   )
@@ -1401,6 +1405,7 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
   const data = useData()
   const i18n = useI18n()
   const numfmt = createMemo(() => new Intl.NumberFormat(i18n.locale()))
+  const tpsfmt = createMemo(() => new Intl.NumberFormat(i18n.locale(), { maximumFractionDigits: 1 }))
   const part = () => props.part as TextPart
   const interrupted = createMemo(
     () =>
@@ -1414,17 +1419,20 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
     return match?.models?.[message.modelID]?.name ?? message.modelID
   })
 
-  const duration = createMemo(() => {
-    if (props.message.role !== "assistant") return ""
+  const durationMs = createMemo(() => {
+    if (props.message.role !== "assistant") return
     const message = props.message as AssistantMessage
     const completed = message.time.completed
-    const ms =
-      typeof props.turnDurationMs === "number"
-        ? props.turnDurationMs
-        : typeof completed === "number"
-          ? completed - message.time.created
-          : -1
-    if (!(ms >= 0)) return ""
+    return typeof props.turnDurationMs === "number"
+      ? props.turnDurationMs
+      : typeof completed === "number"
+        ? completed - message.time.created
+        : -1
+  })
+
+  const duration = createMemo(() => {
+    const ms = durationMs()
+    if (ms === undefined || ms < 0) return ""
     const total = Math.round(ms / 1000)
     if (total < 60) return i18n.t("ui.message.duration.seconds", { count: numfmt().format(total) })
     const minutes = Math.floor(total / 60)
@@ -1435,6 +1443,14 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
     })
   })
 
+  const tokensPerSecond = createMemo(() => {
+    if (props.message.role !== "assistant") return ""
+    const tokens = props.turnOutputTokens ?? (props.message as AssistantMessage).tokens.output
+    const ms = durationMs()
+    if (!(tokens > 0) || ms === undefined || ms <= 0) return ""
+    return i18n.t("ui.message.tps", { count: tpsfmt().format(tokens / (ms / 1000)) })
+  })
+
   const meta = createMemo(() => {
     if (props.message.role !== "assistant") return ""
     const agent = (props.message as AssistantMessage).agent
@@ -1442,6 +1458,7 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
       agent ? agent[0]?.toUpperCase() + agent.slice(1) : "",
       model(),
       duration(),
+      tokensPerSecond(),
       interrupted() ? i18n.t("ui.message.interrupted") : "",
     ]
     return items.filter((x) => !!x).join(" \u00B7 ")

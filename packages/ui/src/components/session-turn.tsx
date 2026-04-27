@@ -342,6 +342,7 @@ export function SessionTurn(
     if (end < start) return undefined
     return end - start
   })
+  const turnOutputTokens = createMemo(() => assistantMessages().reduce((sum, item) => sum + item.tokens.output, 0))
   const assistantDerived = createMemo(() => {
     let visible = 0
     let reason: string | undefined
@@ -404,6 +405,7 @@ export function SessionTurn(
                     messages={assistantMessages()}
                     showAssistantCopyPartID={assistantCopyPartID()}
                     turnDurationMs={turnDurationMs()}
+                    turnOutputTokens={turnOutputTokens()}
                     working={working()}
                     showReasoningSummaries={showReasoningSummaries()}
                     shellToolDefaultOpen={props.shellToolDefaultOpen}
