@@ -3,7 +3,7 @@
   "info": {
     "title": "opencode",
     "description": "opencode api",
-    "version": "2.2.0"
+    "version": "2.3.0"
   },
   "paths": {
     "/global/health": {
