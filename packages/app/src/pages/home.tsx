@@ -1,4 +1,4 @@
-import { createMemo, For, Show } from "solid-js"
+import { createEffect, createMemo, For, Show } from "solid-js"
 import { DateTime } from "luxon"
 import { useNavigate } from "@solidjs/router"
 import { Avatar } from "@opencode-ai/ui/avatar"
@@ -32,9 +32,29 @@ export default function Home() {
         name: displayName(project),
         iconColor: project.icon?.color,
         sessions: child.session ?? [],
+        sessionDiffs: child.session_diff,
       }
     })
     return buildHomeStats(inputs, Date.now())
+  })
+
+  createEffect(() => {
+    layout.projects.list().forEach((project) => {
+      const [child] = globalSync.child(project.worktree, { bootstrap: false })
+      const sessions = child.session
+        .filter((session) => !session.parentID && !session.time?.archived)
+        .filter((session) => child.session_diff[session.id] === undefined)
+        .filter(
+          (session) =>
+            (session.summary?.files ?? 0) +
+              (session.summary?.additions ?? 0) +
+              (session.summary?.deletions ?? 0) ===
+            0,
+        )
+        .map((session) => session.id)
+      if (sessions.length === 0) return
+      void globalSync.project.loadSessionDiffs(project.worktree, sessions)
+    })
   })
 
   const peakBucket = createMemo(() => {

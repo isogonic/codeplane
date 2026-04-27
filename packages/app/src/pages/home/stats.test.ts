@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { Session } from "@opencode-ai/sdk/v2/client"
+import type { Session, SnapshotFileDiff } from "@opencode-ai/sdk/v2/client"
 import { aggregateProjects, aggregateTotals, buildHomeStats, dailyBuckets, DAY_MS, recentSessions } from "./stats"
 
 const now = new Date("2026-04-27T12:00:00Z").getTime()
@@ -21,6 +21,13 @@ const session = (overrides: Partial<Session> & { id: string; created: number; up
 })
 
 const dayAgo = (days: number) => now - days * DAY_MS
+
+const diff = (file: string, additions: number, deletions: number): SnapshotFileDiff => ({
+  file,
+  patch: "",
+  additions,
+  deletions,
+})
 
 describe("aggregateProjects", () => {
   test("counts visible sessions and aggregates summary", () => {
@@ -46,6 +53,29 @@ describe("aggregateProjects", () => {
     expect(projects).toHaveLength(2)
     expect(projects[0]).toMatchObject({ name: "A", sessions: 2, files: 3, additions: 11, deletions: 6 })
     expect(projects[1]).toMatchObject({ name: "B", sessions: 1, files: 1, additions: 4, deletions: 0 })
+  })
+
+  test("falls back to cached session diffs when summary has no changes", () => {
+    const projects = aggregateProjects([
+      {
+        directory: "/a",
+        worktree: "/a",
+        name: "A",
+        sessions: [
+          session({ id: "1", created: dayAgo(0), summary: { additions: 0, deletions: 0, files: 0 } }),
+          session({
+            id: "2",
+            created: dayAgo(1),
+            summary: { additions: 0, deletions: 0, files: 0, diffs: [diff("src/b.ts", 2, 2)] },
+          }),
+        ],
+        sessionDiffs: {
+          "1": [diff("src/a.ts", 3, 0), diff("src/a.ts", 2, 0), diff("src/old.ts", 0, 4), diff("src/same.ts", 0, 0)],
+        },
+      },
+    ])
+
+    expect(projects[0]).toMatchObject({ sessions: 2, files: 3, additions: 7, deletions: 6 })
   })
 
   test("sorts by session count then last activity", () => {
@@ -168,6 +198,22 @@ describe("recentSessions", () => {
     expect(recent).toHaveLength(2)
     expect(recent[0]).toMatchObject({ id: "new", title: "Latest", projectName: "A", projectColor: "pink" })
     expect(recent[1]).toMatchObject({ id: "mid", projectName: "B" })
+  })
+
+  test("includes file and line stats from cached diffs", () => {
+    const recent = recentSessions([
+      {
+        directory: "/a",
+        worktree: "/a",
+        name: "A",
+        sessions: [session({ id: "latest", created: dayAgo(0), summary: { additions: 0, deletions: 0, files: 0 } })],
+        sessionDiffs: {
+          latest: [diff("src/a.ts", 10, 1), diff("src/b.ts", 0, 3)],
+        },
+      },
+    ])
+
+    expect(recent[0]).toMatchObject({ id: "latest", files: 2, additions: 10, deletions: 4 })
   })
 })
 

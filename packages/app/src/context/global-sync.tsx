@@ -10,6 +10,7 @@ import type {
 } from "@opencode-ai/sdk/v2/client"
 import { showToast } from "@opencode-ai/ui/toast"
 import { getFilename } from "@opencode-ai/shared/util/path"
+import { retry } from "@opencode-ai/shared/util/retry"
 import { batch, createContext, getOwner, onCleanup, onMount, type ParentProps, untrack, useContext } from "solid-js"
 import { createStore, produce, reconcile } from "solid-js/store"
 import { useLanguage } from "@/context/language"
@@ -26,6 +27,7 @@ import { directoryKey } from "./global-sync/utils"
 import type { ProjectMeta } from "./global-sync/types"
 import { SESSION_RECENT_LIMIT } from "./global-sync/types"
 import { formatServerError } from "@/utils/server-errors"
+import { diffs as listDiffs } from "@/utils/diffs"
 import { queryOptions, skipToken, useQueryClient } from "@tanstack/solid-query"
 
 type GlobalStore = {
@@ -54,6 +56,7 @@ function createGlobalSync() {
   const sdkCache = new Map<string, OpencodeClient>()
   const booting = new Map<string, Promise<void>>()
   const sessionLoads = new Map<string, Promise<void>>()
+  const diffLoads = new Map<string, Promise<void>>()
   const sessionMeta = new Map<string, { limit: number }>()
 
   const [globalStore, setGlobalStore] = createStore<GlobalStore>({
@@ -169,6 +172,27 @@ function createGlobalSync() {
     }
 
     const fetchLimit = Math.max(store.limit + SESSION_RECENT_LIMIT, SESSION_RECENT_LIMIT)
+    const loadChildren = (parents: Session[], seen = new Set(parents.map((session) => session.id))): Promise<Session[]> =>
+      Promise.all(
+        parents.map((parent) =>
+          retry(() => globalSDK.client.session.children({ directory, sessionID: parent.id }))
+            .then((x) =>
+              (x.data ?? [])
+                .filter((s): s is Session => !!s?.id && directoryKey(s.directory) === directoryKey(directory))
+                .filter((session) => !session.time?.archived)
+                .filter((session) => {
+                  if (seen.has(session.id)) return false
+                  seen.add(session.id)
+                  return true
+                }),
+            )
+            .catch(() => [] as Session[]),
+        ),
+      ).then((results) => {
+        const childSessions = results.flat()
+        if (childSessions.length === 0) return []
+        return loadChildren(childSessions, seen).then((nested) => [...childSessions, ...nested])
+      })
     const promise = queryClient
       .fetchQuery({
         ...loadSessionsQuery(directory),
@@ -178,14 +202,15 @@ function createGlobalSync() {
             limit: fetchLimit,
             list: (query) => globalSDK.client.session.list(query),
           })
-            .then((x) => {
+            .then(async (x) => {
               const key = directoryKey(directory)
               const nonArchived = (x.data ?? []).filter(
                 (s): s is Session => !!s?.id && directoryKey(s.directory) === key && !s.time?.archived,
               )
+              const loadedChildren = await loadChildren(nonArchived)
               const currentLimit = store.limit
               const childSessions = store.session.filter((s) => !!s.parentID && directoryKey(s.directory) === key)
-              const sessions = trimSessions([...nonArchived, ...childSessions], {
+              const sessions = trimSessions([...nonArchived, ...childSessions, ...loadedChildren], {
                 limit: currentLimit,
                 permission: store.permission,
               })
@@ -221,6 +246,29 @@ function createGlobalSync() {
       sessionLoads.delete(directory)
       children.unpin(directory)
     })
+    return promise
+  }
+
+  async function loadSessionDiff(directory: string, sessionID: string) {
+    const [store, setStore] = children.child(directory, { bootstrap: false })
+    if (store.session_diff[sessionID] !== undefined) return
+
+    const key = `${directory}\n${sessionID}`
+    const pending = diffLoads.get(key)
+    if (pending) return pending
+
+    children.pin(directory)
+    const promise = sdkFor(directory)
+      .session.diff({ sessionID })
+      .then((x) => {
+        if (!children.children[directory]) return
+        setStore("session_diff", sessionID, reconcile(listDiffs(x.data), { key: "file" }))
+      })
+      .finally(() => {
+        diffLoads.delete(key)
+        children.unpin(directory)
+      })
+    diffLoads.set(key, promise)
     return promise
   }
 
@@ -368,6 +416,11 @@ function createGlobalSync() {
 
   const projectApi = {
     loadSessions,
+    loadSessionDiffs(directory: string, sessionIDs: string[]) {
+      return Promise.all([...new Set(sessionIDs)].map((sessionID) => loadSessionDiff(directory, sessionID))).then(
+        () => undefined,
+      )
+    },
     meta(directory: string, patch: ProjectMeta) {
       children.projectMeta(directory, patch)
     },
