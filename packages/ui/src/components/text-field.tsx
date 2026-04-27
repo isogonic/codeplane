@@ -4,6 +4,7 @@ import type { ComponentProps } from "solid-js"
 import { useI18n } from "../context/i18n"
 import { IconButton } from "./icon-button"
 import { Tooltip } from "./tooltip"
+import { showToast } from "./toast"
 
 export interface TextFieldProps
   extends ComponentProps<typeof Kobalte.Input>,
@@ -70,6 +71,12 @@ export function TextField(props: TextFieldProps) {
   async function handleCopy() {
     const value = local.value ?? local.defaultValue ?? ""
     await navigator.clipboard.writeText(value)
+    showToast({
+      variant: "success",
+      icon: "circle-check",
+      title: i18n.t("ui.message.copied"),
+      description: local.copyKind === "link" ? i18n.t("ui.message.copiedLink") : i18n.t("ui.message.copiedText"),
+    })
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }

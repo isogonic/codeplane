@@ -15,6 +15,7 @@ import { ScrollView } from "@opencode-ai/ui/scroll-view"
 import { TextField } from "@opencode-ai/ui/text-field"
 import type { AssistantMessage, Message as MessageType, Part, TextPart, UserMessage } from "@opencode-ai/sdk/v2"
 import { showToast } from "@opencode-ai/ui/toast"
+import { useFileReference } from "@opencode-ai/ui/context/file"
 import { Binary } from "@opencode-ai/shared/util/binary"
 import { getFilename } from "@opencode-ai/shared/util/path"
 import { Popover as KobaltePopover } from "@kobalte/core/popover"
@@ -25,6 +26,7 @@ import { createResizeObserver } from "@solid-primitives/resize-observer"
 import { useLanguage } from "@/context/language"
 import { useSessionKey } from "@/pages/session/session-layout"
 import { useGlobalSDK } from "@/context/global-sdk"
+import { useLocal } from "@/context/local"
 import { usePlatform } from "@/context/platform"
 import { useSettings } from "@/context/settings"
 import { useSDK } from "@/context/sdk"
@@ -33,6 +35,7 @@ import { messageAgentColor } from "@/utils/agent"
 import { sessionTitle } from "@/utils/session-title"
 import { parseCommentNote, readCommentMetadata } from "@/utils/comment-note"
 import { makeTimer } from "@solid-primitives/timer"
+import { getSessionContextMetrics } from "@/components/session/session-context-metrics"
 
 type MessageComment = {
   path: string
@@ -236,6 +239,8 @@ export function MessageTimeline(props: {
   const globalSDK = useGlobalSDK()
   const sdk = useSDK()
   const sync = useSync()
+  const local = useLocal()
+  const fileReference = useFileReference()
   const settings = useSettings()
   const dialog = useDialog()
   const language = useLanguage()
@@ -254,6 +259,54 @@ export function MessageTimeline(props: {
       (item): item is AssistantMessage => item.role === "assistant" && typeof item.time.completed !== "number",
     ),
   )
+  const statusModel = createMemo(() => {
+    const model = local.model.current()
+    if (!model) return "none"
+    const variant = local.model.variant.current()
+    return variant ? `${model.name ?? model.id} / ${variant}` : (model.name ?? model.id)
+  })
+  const statusAgent = createMemo(() => local.agent.current()?.name ?? "none")
+  const statusProject = createMemo(() => sync.project?.name || getFilename(sync.project?.worktree ?? sdk.directory))
+  const statusBranch = createMemo(() => sync.data.vcs?.branch ?? (sync.project?.vcs === "git" ? "detached" : "no git"))
+  const statusNumber = createMemo(() =>
+    new Intl.NumberFormat(language.intl(), { maximumFractionDigits: 1, minimumFractionDigits: 0 }),
+  )
+  const statusCurrency = createMemo(
+    () =>
+      new Intl.NumberFormat(language.intl(), {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 4,
+        minimumFractionDigits: 2,
+      }),
+  )
+  const statusMetrics = createMemo(() => getSessionContextMetrics(sessionMessages(), sync.data.provider.all))
+  const lastAssistantWithUsage = createMemo(() => {
+    const messages = sessionMessages()
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i]
+      if (message?.role !== "assistant") continue
+      if (message.tokens.output + message.tokens.reasoning <= 0) continue
+      return message
+    }
+  })
+  const statusTokensPerSecond = createMemo(() => {
+    const message = lastAssistantWithUsage()
+    if (!message) return "0 t/s"
+    const end = message.time.completed ?? Date.now()
+    const ms = end - message.time.created
+    const tokens = message.tokens.output + message.tokens.reasoning
+    if (ms <= 0 || tokens <= 0) return "0 t/s"
+    return `${statusNumber().format(tokens / (ms / 1000))} t/s`
+  })
+  const statusItems = createMemo(() => [
+    { kind: "model", label: "Model", value: statusModel() },
+    { kind: "agent", label: "Agent", value: statusAgent() },
+    { kind: "project", label: "Project", value: statusProject() },
+    { kind: "branch", label: "Branch", value: statusBranch() },
+    { kind: "metric", label: "Token/s", value: statusTokensPerSecond() },
+    { kind: "metric", label: "Cost", value: statusCurrency().format(statusMetrics().totalCost) },
+  ])
   const sessionStatus = createMemo(() => {
     const id = sessionID()
     if (!id) return idle
@@ -332,7 +385,7 @@ export function MessageTimeline(props: {
     if (value) return value
     return language.t("command.session.new")
   })
-  const showHeader = createMemo(() => !!(titleValue() || parentID()))
+  const showHeader = createMemo(() => !!sessionID())
   const stageCfg = { init: 1, batch: 3 }
   const staging = createTimelineStaging({
     sessionKey,
@@ -430,6 +483,26 @@ export function MessageTimeline(props: {
     if (!id || unshareMutation.isPending) return
     if (!shareEnabled()) return
     unshareMutation.mutate(id)
+  }
+
+  const copySessionID = (id: string) => {
+    navigator.clipboard
+      .writeText(id)
+      .then(() => {
+        showToast({
+          variant: "success",
+          icon: "circle-check",
+          title: language.t("session.share.copy.copied"),
+          description: id,
+        })
+      })
+      .catch((err: unknown) => {
+        showToast({
+          variant: "error",
+          title: language.t("common.requestFailed"),
+          description: err instanceof Error ? err.message : String(err),
+        })
+      })
   }
 
   createEffect(
@@ -700,8 +773,8 @@ export function MessageTimeline(props: {
           onClick={props.onAutoScrollInteraction}
           class="relative min-w-0 w-full h-full"
           style={{
-            "--session-title-height": showHeader() ? "40px" : "0px",
-            "--sticky-accordion-top": showHeader() ? "48px" : "0px",
+            "--session-title-height": showHeader() ? "68px" : "0px",
+            "--sticky-accordion-top": showHeader() ? "76px" : "0px",
           }}
         >
           <div ref={props.setContentRef} class="min-w-0 w-full">
@@ -713,7 +786,7 @@ export function MessageTimeline(props: {
                 }}
                 data-session-title
                 classList={{
-                  "sticky top-0 z-30 bg-[linear-gradient(to_bottom,var(--background-stronger)_48px,transparent)]": true,
+                  "sticky top-0 z-30 bg-[linear-gradient(to_bottom,var(--background-stronger)_76px,transparent)]": true,
                   relative: true,
                   "w-full": true,
                   "pb-4": true,
@@ -881,6 +954,9 @@ export function MessageTimeline(props: {
                                 <DropdownMenu.Item onSelect={() => void archiveSession(id)}>
                                   <DropdownMenu.ItemLabel>{language.t("common.archive")}</DropdownMenu.ItemLabel>
                                 </DropdownMenu.Item>
+                                <DropdownMenu.Item onSelect={() => copySessionID(id)}>
+                                  <DropdownMenu.ItemLabel>Copy session ID</DropdownMenu.ItemLabel>
+                                </DropdownMenu.Item>
                                 <DropdownMenu.Separator />
                                 <DropdownMenu.Item
                                   onSelect={() => dialog.show(() => <DialogDeleteSession sessionID={id} />)}
@@ -993,6 +1069,41 @@ export function MessageTimeline(props: {
                     )}
                   </Show>
                 </div>
+                <div
+                  data-slot="session-status-bar"
+                  class="h-6 min-w-0 w-full overflow-hidden"
+                >
+                  <div class="h-full min-w-0 w-full flex items-center overflow-x-auto no-scrollbar text-12-regular text-text-weak">
+                    <For each={statusItems()}>
+                      {(item, index) => (
+                        <>
+                          <Show when={index() > 0}>
+                            <span aria-hidden="true" class="mx-2 size-1 shrink-0 rounded-full bg-border-weak-base" />
+                          </Show>
+                          <div
+                            title={`${item.label}: ${item.value}`}
+                            class="min-w-0 shrink-0 flex items-baseline whitespace-nowrap"
+                            classList={{
+                              "max-w-[min(44vw,280px)]": item.kind === "model",
+                              "max-w-36": item.kind === "agent" || item.kind === "project" || item.kind === "branch",
+                            }}
+                          >
+                            <span
+                              class="min-w-0 truncate text-text-base"
+                              classList={{
+                                "font-medium text-text-strong": item.kind === "model",
+                                "tabular-nums": item.kind === "metric",
+                              }}
+                            >
+                              <span class="sr-only">{item.label}: </span>
+                              {item.value}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </For>
+                  </div>
+                </div>
               </div>
             </Show>
             <div
@@ -1060,7 +1171,11 @@ export function MessageTimeline(props: {
                                     <Show when={comment()}>
                                       {(c) => (
                                         <div class="shrink-0 max-w-[260px] rounded-[6px] border border-border-weak-base bg-background-stronger px-2.5 py-2">
-                                          <div class="flex items-center gap-1.5 min-w-0 text-11-medium text-text-strong">
+                                          <button
+                                            type="button"
+                                            class="flex items-center gap-1.5 min-w-0 max-w-full text-11-medium text-text-strong hover:text-text-interactive-base"
+                                            onClick={() => fileReference.open?.(c().path, c().selection)}
+                                          >
                                             <FileIcon
                                               node={{ path: c().path, type: "file" }}
                                               class="size-3.5 shrink-0"
@@ -1075,7 +1190,7 @@ export function MessageTimeline(props: {
                                                 </span>
                                               )}
                                             </Show>
-                                          </div>
+                                          </button>
                                           <div class="pt-1 text-12-regular text-text-strong whitespace-pre-wrap break-words">
                                             {c().comment}
                                           </div>
@@ -1097,6 +1212,8 @@ export function MessageTimeline(props: {
                         active={active()}
                         status={active() ? sessionStatus() : undefined}
                         showReasoningSummaries={settings.general.showReasoningSummaries()}
+                        reasoningDisplay={settings.general.reasoningDisplay()}
+                        onReasoningDisplayChange={settings.general.setReasoningDisplay}
                         shellToolDefaultOpen={settings.general.shellToolPartsExpanded()}
                         editToolDefaultOpen={settings.general.editToolPartsExpanded()}
                         classes={{

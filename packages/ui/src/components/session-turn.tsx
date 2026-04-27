@@ -13,7 +13,14 @@ import { getDirectory, getFilename } from "@opencode-ai/shared/util/path"
 import { createEffect, createMemo, createSignal, For, on, ParentProps, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Dynamic } from "solid-js/web"
-import { AssistantParts, Message, MessageDivider, PART_MAPPING, type UserActions } from "./message-part"
+import {
+  AssistantParts,
+  Message,
+  MessageDivider,
+  PART_MAPPING,
+  type ReasoningDisplay,
+  type UserActions,
+} from "./message-part"
 import { Card } from "./card"
 import { Accordion } from "./accordion"
 import { StickyAccordionHeader } from "./sticky-accordion-header"
@@ -92,7 +99,7 @@ function list<T>(value: T[] | undefined | null, fallback: T[]) {
 
 const hidden = new Set(["todowrite"])
 
-function partState(part: PartType, showReasoningSummaries: boolean) {
+function partState(part: PartType, reasoningDisplay: ReasoningDisplay) {
   if (part.type === "tool") {
     if (hidden.has(part.tool)) return
     if (part.tool === "question" && (part.state.status === "pending" || part.state.status === "running")) return
@@ -100,7 +107,7 @@ function partState(part: PartType, showReasoningSummaries: boolean) {
   }
   if (part.type === "text") return part.text?.trim() ? ("visible" as const) : undefined
   if (part.type === "reasoning") {
-    if (showReasoningSummaries && part.text?.trim()) return "visible" as const
+    if (reasoningDisplay !== "off" && part.text?.trim()) return "visible" as const
     return
   }
   if (PART_MAPPING[part.type]) return "visible" as const
@@ -150,6 +157,8 @@ export function SessionTurn(
     messages?: MessageType[]
     actions?: UserActions
     showReasoningSummaries?: boolean
+    reasoningDisplay?: ReasoningDisplay
+    onReasoningDisplayChange?: (value: ReasoningDisplay) => void
     shellToolDefaultOpen?: boolean
     editToolDefaultOpen?: boolean
     active?: boolean
@@ -321,7 +330,10 @@ export function SessionTurn(
     return data.store.session_status[props.sessionID] ?? idle
   })
   const working = createMemo(() => status().type !== "idle" && active())
-  const showReasoningSummaries = createMemo(() => props.showReasoningSummaries ?? true)
+  const reasoningDisplay = createMemo<ReasoningDisplay>(
+    () => props.reasoningDisplay ?? (props.showReasoningSummaries === false ? "off" : "full"),
+  )
+  const showReasoningSummaries = createMemo(() => reasoningDisplay() !== "off")
 
   const assistantCopyPartID = createMemo(() => {
     if (working()) return null
@@ -346,10 +358,10 @@ export function SessionTurn(
   const assistantDerived = createMemo(() => {
     let visible = 0
     let reason: string | undefined
-    const show = showReasoningSummaries()
+    const display = reasoningDisplay()
     for (const message of assistantMessages()) {
       for (const part of list(data.store.part?.[message.id], emptyParts)) {
-        if (partState(part, show) === "visible") {
+        if (partState(part, display) === "visible") {
           visible++
         }
         if (part.type === "reasoning" && part.text) {
@@ -392,7 +404,13 @@ export function SessionTurn(
               class={props.classes?.container}
             >
               <div data-slot="session-turn-message-content" aria-live="off">
-                <Message message={message()!} parts={parts()} actions={props.actions} />
+                <Message
+                  message={message()!}
+                  parts={parts()}
+                  actions={props.actions}
+                  reasoningDisplay={reasoningDisplay()}
+                  onReasoningDisplayChange={props.onReasoningDisplayChange}
+                />
               </div>
               <Show when={divider()}>
                 <div data-slot="session-turn-compaction">
@@ -408,6 +426,8 @@ export function SessionTurn(
                     turnOutputTokens={turnOutputTokens()}
                     working={working()}
                     showReasoningSummaries={showReasoningSummaries()}
+                    reasoningDisplay={reasoningDisplay()}
+                    onReasoningDisplayChange={props.onReasoningDisplayChange}
                     shellToolDefaultOpen={props.shellToolDefaultOpen}
                     editToolDefaultOpen={props.editToolDefaultOpen}
                   />

@@ -181,6 +181,11 @@ export const SettingsGeneral: Component = () => {
     { value: "queue", label: language.t("settings.general.row.followup.option.queue") },
     { value: "steer", label: language.t("settings.general.row.followup.option.steer") },
   ])
+  const reasoningOptions = createMemo((): { value: "short" | "full" | "off"; label: string }[] => [
+    { value: "short", label: "Short" },
+    { value: "full", label: "Full" },
+    { value: "off", label: "Off" },
+  ])
 
   const noneSound = { id: "none", label: "sound.option.none" } as const
   const soundOptions = [noneSound, ...SOUND_OPTIONS]
@@ -269,9 +274,15 @@ export const SettingsGeneral: Component = () => {
           description={language.t("settings.general.row.reasoningSummaries.description")}
         >
           <div data-action="settings-feed-reasoning-summaries">
-            <Switch
-              checked={settings.general.showReasoningSummaries()}
-              onChange={(checked) => settings.general.setShowReasoningSummaries(checked)}
+            <Select
+              options={reasoningOptions()}
+              current={reasoningOptions().find((o) => o.value === settings.general.reasoningDisplay())}
+              value={(o) => o.value}
+              label={(o) => o.label}
+              onSelect={(option) => option && settings.general.setReasoningDisplay(option.value)}
+              variant="secondary"
+              size="small"
+              triggerVariant="settings"
             />
           </div>
         </SettingsRow>

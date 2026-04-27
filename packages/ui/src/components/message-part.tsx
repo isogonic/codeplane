@@ -31,7 +31,7 @@ import {
   QuestionInfo,
 } from "@opencode-ai/sdk/v2"
 import { useData } from "../context"
-import { useFileComponent } from "../context/file"
+import { useFileComponent, useFileReference, type FileReferenceSelection } from "../context/file"
 import { useDialog } from "../context/dialog"
 import { type UiI18n, useI18n } from "../context/i18n"
 import { BasicTool, GenericTool } from "./basic-tool"
@@ -49,6 +49,7 @@ import { getDirectory as _getDirectory, getFilename } from "@opencode-ai/shared/
 import { checksum } from "@opencode-ai/shared/util/encode"
 import { Tooltip } from "./tooltip"
 import { IconButton } from "./icon-button"
+import { showToast } from "./toast"
 import { Spinner } from "./spinner"
 import { TextShimmer } from "./text-shimmer"
 import { AnimatedCountList } from "./tool-count-summary"
@@ -136,6 +137,8 @@ export interface MessageProps {
   actions?: UserActions
   showAssistantCopyPartID?: string | null
   showReasoningSummaries?: boolean
+  reasoningDisplay?: ReasoningDisplay
+  onReasoningDisplayChange?: (value: ReasoningDisplay) => void
 }
 
 export type SessionAction = (input: { sessionID: string; messageID: string }) => Promise<void> | void
@@ -145,12 +148,16 @@ export type UserActions = {
   revert?: SessionAction
 }
 
+export type ReasoningDisplay = "short" | "full" | "off"
+
 export interface MessagePartProps {
   part: PartType
   message: MessageType
   hideDetails?: boolean
   defaultOpen?: boolean
   showAssistantCopyPartID?: string | null
+  reasoningDisplay?: ReasoningDisplay
+  onReasoningDisplayChange?: (value: ReasoningDisplay) => void
   turnDurationMs?: number
   turnOutputTokens?: number
 }
@@ -158,6 +165,41 @@ export interface MessagePartProps {
 export type PartComponent = Component<MessagePartProps>
 
 export const PART_MAPPING: Record<string, PartComponent | undefined> = {}
+
+function copiedToast(i18n: ReturnType<typeof useI18n>, description: string) {
+  showToast({
+    variant: "success",
+    icon: "circle-check",
+    title: i18n.t("ui.message.copied"),
+    description,
+  })
+}
+
+async function copyText(i18n: ReturnType<typeof useI18n>, text: string, description: string) {
+  if (!text) return
+  await navigator.clipboard.writeText(text)
+  copiedToast(i18n, description)
+}
+
+function lineSelection(text: string | undefined): FileReferenceSelection | undefined {
+  const match = text?.match(/:(\d+)(?:-(\d+))?$/)
+  if (!match?.[1]) return
+  const startLine = Number(match[1])
+  if (!Number.isInteger(startLine) || startLine <= 0) return
+  const endLine = match[2] ? Number(match[2]) : undefined
+  if (endLine !== undefined && (!Number.isInteger(endLine) || endLine <= 0)) return { startLine }
+  return { startLine, endLine }
+}
+
+function summarizeReasoning(text: string) {
+  return text
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/[#*_~>-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
 
 const TEXT_RENDER_PACE_MS = 24
 const TEXT_RENDER_SNAP = /[\s.,!?;:)\]]/
@@ -571,14 +613,14 @@ function index<T extends { id: string }>(items: readonly T[]) {
   return new Map(items.map((item) => [item.id, item] as const))
 }
 
-function renderable(part: PartType, showReasoningSummaries = true) {
+function renderable(part: PartType, reasoningDisplay: ReasoningDisplay = "full") {
   if (part.type === "tool") {
     if (HIDDEN_TOOLS.has(part.tool)) return false
     if (part.tool === "question") return part.state.status !== "pending" && part.state.status !== "running"
     return true
   }
   if (part.type === "text") return !!part.text?.trim()
-  if (part.type === "reasoning") return showReasoningSummaries && !!part.text?.trim()
+  if (part.type === "reasoning") return reasoningDisplay !== "off" && !!part.text?.trim()
   return !!PART_MAPPING[part.type]
 }
 
@@ -599,6 +641,8 @@ export function AssistantParts(props: {
   turnOutputTokens?: number
   working?: boolean
   showReasoningSummaries?: boolean
+  reasoningDisplay?: ReasoningDisplay
+  onReasoningDisplayChange?: (value: ReasoningDisplay) => void
   shellToolDefaultOpen?: boolean
   editToolDefaultOpen?: boolean
 }) {
@@ -618,7 +662,9 @@ export function AssistantParts(props: {
       groupParts(
         props.messages.flatMap((message) =>
           list(data.store.part?.[message.id], emptyParts)
-            .filter((part) => renderable(part, props.showReasoningSummaries ?? true))
+            .filter((part) =>
+              renderable(part, props.reasoningDisplay ?? (props.showReasoningSummaries === false ? "off" : "full")),
+            )
             .map((part) => ({
               messageID: message.id,
               part,
@@ -680,6 +726,8 @@ export function AssistantParts(props: {
                         part={item()!}
                         message={message()!}
                         showAssistantCopyPartID={props.showAssistantCopyPartID}
+                        reasoningDisplay={props.reasoningDisplay}
+                        onReasoningDisplayChange={props.onReasoningDisplayChange}
                         turnDurationMs={props.turnDurationMs}
                         turnOutputTokens={props.turnOutputTokens}
                         defaultOpen={partDefaultOpen(item()!, props.shellToolDefaultOpen, props.editToolDefaultOpen)}
@@ -815,6 +863,8 @@ export function Message(props: MessageProps) {
             parts={props.parts}
             showAssistantCopyPartID={props.showAssistantCopyPartID}
             showReasoningSummaries={props.showReasoningSummaries}
+            reasoningDisplay={props.reasoningDisplay}
+            onReasoningDisplayChange={props.onReasoningDisplayChange}
           />
         )}
       </Match>
@@ -827,6 +877,8 @@ export function AssistantMessageDisplay(props: {
   parts: PartType[]
   showAssistantCopyPartID?: string | null
   showReasoningSummaries?: boolean
+  reasoningDisplay?: ReasoningDisplay
+  onReasoningDisplayChange?: (value: ReasoningDisplay) => void
 }) {
   const emptyTools: ToolPart[] = []
   const part = createMemo(() => index(props.parts))
@@ -834,7 +886,9 @@ export function AssistantMessageDisplay(props: {
     () =>
       groupParts(
         props.parts
-          .filter((part) => renderable(part, props.showReasoningSummaries ?? true))
+          .filter((part) =>
+            renderable(part, props.reasoningDisplay ?? (props.showReasoningSummaries === false ? "off" : "full")),
+          )
           .map((part) => ({
             messageID: props.message.id,
             part,
@@ -886,6 +940,8 @@ export function AssistantMessageDisplay(props: {
                       part={item()!}
                       message={props.message}
                       showAssistantCopyPartID={props.showAssistantCopyPartID}
+                      reasoningDisplay={props.reasoningDisplay}
+                      onReasoningDisplayChange={props.onReasoningDisplayChange}
                     />
                   </Show>
                 )
@@ -1000,6 +1056,7 @@ export function UserMessageDisplay(props: { message: UserMessage; parts: PartTyp
   const data = useData()
   const dialog = useDialog()
   const i18n = useI18n()
+  const fileReference = useFileReference()
   const [state, setState] = createStore({
     copied: false,
     busy: false,
@@ -1051,9 +1108,13 @@ export function UserMessageDisplay(props: { message: UserMessage; parts: PartTyp
   const handleCopy = async () => {
     const content = text()
     if (!content) return
-    await navigator.clipboard.writeText(content)
+    await copyText(i18n, content, i18n.t("ui.message.copiedMessage"))
     setState("copied", true)
     setTimeout(() => setState("copied", false), 2000)
+  }
+
+  const copyPath = async (path: string) => {
+    await copyText(i18n, path, i18n.t("ui.message.copiedPath"))
   }
 
   const revert = () => {
@@ -1110,7 +1171,13 @@ export function UserMessageDisplay(props: { message: UserMessage; parts: PartTyp
         <>
           <div data-slot="user-message-body">
             <div data-slot="user-message-text">
-              <HighlightedText text={text()} references={inlineFiles()} agents={agents()} />
+              <HighlightedText
+                text={text()}
+                references={inlineFiles()}
+                agents={agents()}
+                onOpenFile={fileReference.open}
+                onCopyPath={copyPath}
+              />
             </div>
           </div>
           <div data-slot="user-message-copy-wrapper">
@@ -1173,16 +1240,40 @@ export function UserMessageDisplay(props: { message: UserMessage; parts: PartTyp
   )
 }
 
-type HighlightSegment = { text: string; type?: "file" | "agent" }
+type HighlightSegment = {
+  text: string
+  type?: "file" | "agent"
+  path?: string
+  selection?: FileReferenceSelection
+}
 
-function HighlightedText(props: { text: string; references: FilePart[]; agents: AgentPart[] }) {
+function HighlightedText(props: {
+  text: string
+  references: FilePart[]
+  agents: AgentPart[]
+  onOpenFile?: (path: string, selection?: FileReferenceSelection) => void
+  onCopyPath?: (path: string) => void | Promise<void>
+}) {
+  const i18n = useI18n()
   const segments = createMemo(() => {
     const text = props.text
 
-    const allRefs: { start: number; end: number; type: "file" | "agent" }[] = [
+    const allRefs: {
+      start: number
+      end: number
+      type: "file" | "agent"
+      path?: string
+      selection?: FileReferenceSelection
+    }[] = [
       ...props.references
         .filter((r) => r.source?.text?.start !== undefined && r.source?.text?.end !== undefined)
-        .map((r) => ({ start: r.source!.text!.start, end: r.source!.text!.end, type: "file" as const })),
+        .map((r) => ({
+          start: r.source!.text!.start,
+          end: r.source!.text!.end,
+          type: "file" as const,
+          path: r.source?.type === "file" ? r.source.path : undefined,
+          selection: lineSelection(r.source?.text?.value),
+        })),
       ...props.agents
         .filter((a) => a.source?.start !== undefined && a.source?.end !== undefined)
         .map((a) => ({ start: a.source!.start, end: a.source!.end, type: "agent" as const })),
@@ -1198,7 +1289,12 @@ function HighlightedText(props: { text: string; references: FilePart[]; agents: 
         result.push({ text: text.slice(lastIndex, ref.start) })
       }
 
-      result.push({ text: text.slice(ref.start, ref.end), type: ref.type })
+      result.push({
+        text: text.slice(ref.start, ref.end),
+        type: ref.type,
+        path: ref.path,
+        selection: ref.selection,
+      })
       lastIndex = ref.end
     }
 
@@ -1209,7 +1305,47 @@ function HighlightedText(props: { text: string; references: FilePart[]; agents: 
     return result
   })
 
-  return <For each={segments()}>{(segment) => <span data-highlight={segment.type}>{segment.text}</span>}</For>
+  return (
+    <For each={segments()}>
+      {(segment) => (
+        <Show
+          when={segment.type === "file" && segment.path}
+          fallback={<span data-highlight={segment.type}>{segment.text}</span>}
+        >
+          {(path) => (
+            <span data-component="file-reference" data-scope="user-message">
+              <button
+                type="button"
+                data-slot="file-reference-open"
+                data-highlight="file"
+                title={path()}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  props.onOpenFile?.(path(), segment.selection)
+                }}
+              >
+                {segment.text}
+              </button>
+              <Tooltip value={i18n.t("ui.message.copyPath")} placement="top" gutter={4}>
+                <IconButton
+                  type="button"
+                  icon="copy"
+                  size="small"
+                  variant="ghost"
+                  data-slot="file-reference-copy"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    void props.onCopyPath?.(path())
+                  }}
+                  aria-label={i18n.t("ui.message.copyPath")}
+                />
+              </Tooltip>
+            </span>
+          )}
+        </Show>
+      )}
+    </For>
+  )
 }
 
 export function Part(props: MessagePartProps) {
@@ -1223,6 +1359,8 @@ export function Part(props: MessagePartProps) {
         hideDetails={props.hideDetails}
         defaultOpen={props.defaultOpen}
         showAssistantCopyPartID={props.showAssistantCopyPartID}
+        reasoningDisplay={props.reasoningDisplay}
+        onReasoningDisplayChange={props.onReasoningDisplayChange}
         turnDurationMs={props.turnDurationMs}
         turnOutputTokens={props.turnOutputTokens}
       />
@@ -1485,7 +1623,7 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
   const handleCopy = async () => {
     const content = text()
     if (!content) return
-    await navigator.clipboard.writeText(content)
+    await copyText(i18n, content, i18n.t("ui.message.copiedResponse"))
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -1527,18 +1665,67 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
 }
 
 PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props) {
+  const i18n = useI18n()
   const part = () => props.part as ReasoningPart
   const streaming = createMemo(
     () => props.message.role === "assistant" && typeof (props.message as AssistantMessage).time.completed !== "number",
   )
   const text = () => part().text.trim()
+  const display = createMemo(() => props.reasoningDisplay ?? "full")
+  const [open, setOpen] = createSignal(display() === "full")
+  const summary = createMemo(() => summarizeReasoning(text()).slice(0, 180))
+
+  createEffect(() => {
+    setOpen(display() === "full")
+  })
 
   return (
-    <Show when={text()}>
+    <Show when={text() && display() !== "off"}>
       <div data-component="reasoning-part">
-        <Show when={streaming()} fallback={<Markdown text={text()} cacheKey={part().id} streaming={false} />}>
-          <PacedMarkdown text={text()} cacheKey={part().id} streaming={streaming()} />
-        </Show>
+        <Collapsible open={open()} onOpenChange={setOpen} variant="ghost">
+          <div data-slot="reasoning-header">
+            <Collapsible.Trigger>
+              <div data-slot="reasoning-trigger-content">
+                <Collapsible.Arrow />
+                <span data-slot="reasoning-title">{i18n.t("ui.message.reasoning")}</span>
+                <Show when={!open() && summary()}>
+                  <span data-slot="reasoning-summary">{summary()}</span>
+                </Show>
+              </div>
+            </Collapsible.Trigger>
+            <div data-slot="reasoning-mode" role="group" aria-label={i18n.t("ui.message.reasoningMode")}>
+              <For
+                each={
+                  [
+                    { value: "short", label: i18n.t("ui.message.reasoningMode.short") },
+                    { value: "full", label: i18n.t("ui.message.reasoningMode.full") },
+                    { value: "off", label: i18n.t("ui.message.reasoningMode.off") },
+                  ] as const
+                }
+              >
+                {(mode) => (
+                  <button
+                    type="button"
+                    data-active={display() === mode.value ? "true" : undefined}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      props.onReasoningDisplayChange?.(mode.value)
+                    }}
+                  >
+                    {mode.label}
+                  </button>
+                )}
+              </For>
+            </div>
+          </div>
+          <Collapsible.Content>
+            <div data-slot="reasoning-body">
+              <Show when={streaming()} fallback={<Markdown text={text()} cacheKey={part().id} streaming={false} />}>
+                <PacedMarkdown text={text()} cacheKey={part().id} streaming={streaming()} />
+              </Show>
+            </div>
+          </Collapsible.Content>
+        </Collapsible>
       </div>
     </Show>
   )
@@ -1850,7 +2037,7 @@ ToolRegistry.register({
     const handleCopy = async () => {
       const content = text()
       if (!content) return
-      await navigator.clipboard.writeText(content)
+      await copyText(i18n, content, i18n.t("ui.message.copiedCode"))
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
