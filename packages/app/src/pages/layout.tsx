@@ -87,6 +87,7 @@ import {
 } from "./layout/sidebar-workspace"
 import { ProjectDragOverlay, SortableProject, type ProjectSidebarContext } from "./layout/sidebar-project"
 import { SidebarContent } from "./layout/sidebar-shell"
+import { DialogArchivedSessions } from "@/components/dialog-archived-sessions"
 
 export default function Layout(props: ParentProps) {
   const [store, setStore, , ready] = persisted(
@@ -1883,6 +1884,25 @@ export default function Layout(props: ParentProps) {
     return [...ordered, extra]
   }
 
+  function archivedSessionWorkspaces(project: LocalProject, directory?: string) {
+    return workspaceIds(project)
+      .filter((item) => !directory || workspaceKey(item) === workspaceKey(directory))
+      .map((item) => {
+        const data = globalSync.child(item, { bootstrap: false })[0]
+        const kind: "local" | "sandbox" = workspaceKey(item) === workspaceKey(project.worktree) ? "local" : "sandbox"
+        const name = workspaceLabel(item, data.vcs?.branch, project.id)
+        return {
+          directory: item,
+          kind,
+          label: `${kind === "local" ? language.t("workspace.type.local") : language.t("workspace.type.sandbox")} : ${name}`,
+        }
+      })
+  }
+
+  function showArchivedSessionsDialog(project: LocalProject, directory?: string) {
+    dialog.show(() => <DialogArchivedSessions workspaces={archivedSessionWorkspaces(project, directory)} />)
+  }
+
   const sidebarProject = createMemo(() => {
     if (layout.sidebar.opened()) return currentProject()
     const hovered = hoverProjectData()
@@ -1986,6 +2006,11 @@ export default function Layout(props: ParentProps) {
       dialog.show(() => <DialogResetWorkspace root={root} directory={directory} />),
     showDeleteWorkspaceDialog: (root, directory) =>
       dialog.show(() => <DialogDeleteWorkspace root={root} directory={directory} />),
+    showArchivedSessionsDialog: (directory) => {
+      const project = currentProject()
+      if (!project) return
+      showArchivedSessionsDialog(project, directory)
+    },
     setScrollContainerRef: (el, mobile) => {
       if (!mobile) scrollContainerRef = el
     },
@@ -2187,6 +2212,17 @@ export default function Layout(props: ParentProps) {
                           <DropdownMenu.ItemLabel>
                             {language.t("sidebar.project.clearNotifications")}
                           </DropdownMenu.ItemLabel>
+                        </DropdownMenu.Item>
+                        <DropdownMenu.Item
+                          data-action="project-archived-sessions"
+                          data-project={slug()}
+                          onSelect={() => {
+                            const item = project()
+                            if (!item) return
+                            showArchivedSessionsDialog(item)
+                          }}
+                        >
+                          <DropdownMenu.ItemLabel>{language.t("command.session.archived")}</DropdownMenu.ItemLabel>
                         </DropdownMenu.Item>
                         <DropdownMenu.Separator />
                         <DropdownMenu.Item

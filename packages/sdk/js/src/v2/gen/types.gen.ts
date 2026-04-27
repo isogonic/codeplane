@@ -3273,6 +3273,10 @@ export type SessionListData = {
      * Maximum number of sessions to return
      */
     limit?: number
+    /**
+     * Filter sessions by archive state
+     */
+    archived?: boolean
   }
   url: "/session"
 }
@@ -3422,7 +3426,7 @@ export type SessionUpdateData = {
     title?: string
     permission?: PermissionRuleset
     time?: {
-      archived?: number
+      archived?: number | null
     }
   }
   path: {

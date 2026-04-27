@@ -8,7 +8,7 @@ import { type ProviderMetadata, type LanguageModelUsage } from "ai"
 import { Flag } from "../flag/flag"
 import { InstallationVersion } from "../installation/version"
 
-import { Database, NotFoundError, eq, and, gte, isNull, desc, like, inArray, lt } from "../storage"
+import { Database, NotFoundError, eq, and, gte, isNull, isNotNull, desc, like, inArray, lt } from "../storage"
 import { SyncEvent } from "../sync"
 import type { SQL } from "../storage"
 import { PartTable, SessionTable } from "./session.sql"
@@ -617,7 +617,7 @@ export const layer: Layer.Layer<Service, never, Bus.Service | Storage.Service> =
     })
 
     const setArchived = Effect.fn("Session.setArchived")(function* (input: { sessionID: SessionID; time?: number }) {
-      yield* patch(input.sessionID, { time: { archived: input.time } })
+      yield* patch(input.sessionID, { time: { archived: input.time ?? null } })
     })
 
     const setPermission = Effect.fn("Session.setPermission")(function* (input: {
@@ -743,6 +743,7 @@ export function* list(input?: {
   start?: number
   search?: string
   limit?: number
+  archived?: boolean
 }) {
   const project = Instance.project
   const conditions = [eq(SessionTable.project_id, project.id)]
@@ -763,6 +764,12 @@ export function* list(input?: {
   }
   if (input?.search) {
     conditions.push(like(SessionTable.title, `%${input.search}%`))
+  }
+  if (input?.archived === true) {
+    conditions.push(isNotNull(SessionTable.time_archived))
+  }
+  if (input?.archived === false) {
+    conditions.push(isNull(SessionTable.time_archived))
   }
 
   const limit = input?.limit ?? 100
