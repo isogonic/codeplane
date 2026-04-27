@@ -1085,7 +1085,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const modelCapabilities = createMemo(() => {
     const capabilities = currentModel()?.capabilities
     return {
-      vision: capabilities?.input.image ?? false,
+      vision: Boolean(capabilities?.attachment && capabilities.input.image),
       tools: capabilities?.toolcall ?? false,
       reasoning: capabilities?.reasoning ?? false,
     }

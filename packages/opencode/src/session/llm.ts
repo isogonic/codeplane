@@ -193,7 +193,7 @@ const live: Layer.Layer<
         },
       )
 
-      const tools = resolveTools(input)
+      const tools = input.model.capabilities.toolcall ? resolveTools(input) : {}
 
       // LiteLLM and some Anthropic proxies require the tools parameter to be present
       // when message history contains tool calls, even if no tools are being used.
@@ -211,6 +211,7 @@ const live: Layer.Layer<
       // during compaction), inject a stub tool to satisfy the validation requirement.
       // The stub description explicitly tells the model not to call it.
       if (
+        input.model.capabilities.toolcall &&
         (isLiteLLMProxy || input.model.providerID.includes("github-copilot")) &&
         Object.keys(tools).length === 0 &&
         hasToolCalls(input.messages)

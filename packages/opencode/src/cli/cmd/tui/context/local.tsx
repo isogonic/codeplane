@@ -240,7 +240,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             model: info?.name ?? value.modelID,
             reasoning: info?.capabilities?.reasoning ?? false,
             capabilities: {
-              vision: info?.capabilities?.input.image ?? false,
+              vision: Boolean(info?.capabilities?.attachment && info.capabilities.input.image),
               tools: info?.capabilities?.toolcall ?? false,
               reasoning: info?.capabilities?.reasoning ?? false,
             },
