@@ -142,7 +142,7 @@ interface State {
 }
 
 export function evaluate(permission: string, pattern: string, ...rulesets: Ruleset[]): Rule {
-  log.info("evaluate", { permission, pattern, ruleset: rulesets.flat() })
+  log.info("evaluate", { permission, pattern, rulesets })
   return evalRule(permission, pattern, ...rulesets)
 }
 
@@ -302,15 +302,17 @@ export function fromConfig(permission: ConfigPermission.Info) {
 }
 
 export function merge(...rulesets: Ruleset[]): Ruleset {
-  return rulesets.flat()
+  const result: Ruleset = []
+  for (const ruleset of rulesets) result.push(...ruleset)
+  return result
 }
 
-const EDIT_TOOLS = ["edit", "write", "apply_patch"]
+const EDIT_TOOLS = new Set(["edit", "write", "apply_patch"])
 
 export function disabled(tools: string[], ruleset: Ruleset): Set<string> {
   const result = new Set<string>()
   for (const tool of tools) {
-    const permission = EDIT_TOOLS.includes(tool) ? "edit" : tool
+    const permission = EDIT_TOOLS.has(tool) ? "edit" : tool
     const rule = ruleset.findLast((rule) => Wildcard.match(permission, rule.permission))
     if (!rule) continue
     if (rule.pattern === "*" && rule.action === "deny") result.add(tool)

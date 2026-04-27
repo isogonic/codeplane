@@ -117,6 +117,18 @@ export const layer: Layer.Layer<
     const skilltool = yield* SkillTool
     const agent = yield* Agent.Service
 
+    const descriptionCache = new Map<string, string>()
+    const cache = (key: string, build: () => string) => {
+      const cached = descriptionCache.get(key)
+      if (cached !== undefined) return cached
+      if (descriptionCache.size > 512) descriptionCache.clear()
+      const result = build()
+      descriptionCache.set(key, result)
+      return result
+    }
+    const permissionKey = (rules: Permission.Ruleset) =>
+      rules.map((rule) => [rule.permission, rule.pattern, rule.action].join("\x1d")).join("\x1e")
+
     const state = yield* InstanceState.make<State>(
       Effect.fn("ToolRegistry.state")(function* (ctx) {
         const custom: Tool.Def[] = []
@@ -165,15 +177,22 @@ export const layer: Layer.Layer<
           Glob.scanSync("{tool,tools}/*.{js,ts}", { cwd: dir, absolute: true, dot: true, symlink: true }),
         )
         if (matches.length) yield* config.waitForDependencies()
-        for (const match of matches) {
-          const namespace = path.basename(match, path.extname(match))
-          // `match` is an absolute filesystem path from `Glob.scanSync(..., { absolute: true })`.
-          // Import it as `file://` so Node on Windows accepts the dynamic import.
-          const mod = yield* Effect.promise(() => import(pathToFileURL(match).href))
-          for (const [id, def] of Object.entries<ToolDefinition>(mod)) {
-            custom.push(fromPlugin(id === "default" ? namespace : `${namespace}_${id}`, def))
-          }
-        }
+        custom.push(
+          ...(yield* Effect.forEach(
+            matches,
+            (match) =>
+              Effect.gen(function* () {
+                const namespace = path.basename(match, path.extname(match))
+                // `match` is an absolute filesystem path from `Glob.scanSync(..., { absolute: true })`.
+                // Import it as `file://` so Node on Windows accepts the dynamic import.
+                const mod = yield* Effect.promise(() => import(pathToFileURL(match).href))
+                return Object.entries<ToolDefinition>(mod).map(([id, def]) =>
+                  fromPlugin(id === "default" ? namespace : `${namespace}_${id}`, def),
+                )
+              }),
+            { concurrency: "unbounded" },
+          )).flat(),
+        )
 
         const plugins = yield* plugin.list()
         for (const p of plugins) {
@@ -243,47 +262,63 @@ export const layer: Layer.Layer<
     })
 
     const describeSkill = Effect.fn("ToolRegistry.describeSkill")(function* (agent: Agent.Info) {
-      const list = yield* skill.available(agent)
-      if (list.length === 0) return "No skills are currently available."
-      return [
-        "Load a specialized skill that provides domain-specific instructions and workflows.",
-        "",
-        "When you recognize that a task matches one of the available skills listed below, use this tool to load the full skill instructions.",
-        "",
-        "The skill will inject detailed instructions, workflows, and access to bundled resources (scripts, references, templates) into the conversation context.",
-        "",
-        'Tool output includes a `<skill_content name="...">` block with the loaded content.',
-        "",
-        "The following skills provide specialized sets of instructions for particular tasks",
-        "Invoke this tool to load a skill when a task matches one of the available skills listed below:",
-        "",
-        Skill.fmt(list, { verbose: false }),
-      ].join("\n")
+      const all = yield* skill.all()
+      const key = [
+        "skill",
+        permissionKey(agent.permission),
+        all.map((item) => [item.name, item.description, item.location].join("\x1d")).join("\x1e"),
+      ].join("\x1f")
+      return cache(key, () => {
+        const list = all
+          .filter((item) => Permission.evaluate("skill", item.name, agent.permission).action !== "deny")
+          .toSorted((a, b) => a.name.localeCompare(b.name))
+        if (list.length === 0) return "No skills are currently available."
+        return [
+          "Load a specialized skill that provides domain-specific instructions and workflows.",
+          "",
+          "When you recognize that a task matches one of the available skills listed below, use this tool to load the full skill instructions.",
+          "",
+          "The skill will inject detailed instructions, workflows, and access to bundled resources (scripts, references, templates) into the conversation context.",
+          "",
+          'Tool output includes a `<skill_content name="...">` block with the loaded content.',
+          "",
+          "The following skills provide specialized sets of instructions for particular tasks",
+          "Invoke this tool to load a skill when a task matches one of the available skills listed below:",
+          "",
+          Skill.fmt(list, { verbose: false }),
+        ].join("\n")
+      })
     })
 
     const describeTask = Effect.fn("ToolRegistry.describeTask")(function* (agent: Agent.Info) {
       const items = (yield* agents.list()).filter((item) => item.mode !== "primary")
-      const filtered = items.filter(
-        (item) => Permission.evaluate("task", item.name, agent.permission).action !== "deny",
-      )
-      const list = filtered.toSorted((a, b) => a.name.localeCompare(b.name))
-      const description = list
-        .map(
-          (item) =>
-            `- ${item.name}: ${item.description ?? "This subagent should only be called manually by the user."}`,
-        )
-        .join("\n")
-      return ["Available agent types and the tools they have access to:", description].join("\n")
+      const key = [
+        "task",
+        permissionKey(agent.permission),
+        items.map((item) => [item.name, item.mode, item.description ?? ""].join("\x1d")).join("\x1e"),
+      ].join("\x1f")
+      return cache(key, () => {
+        const list = items
+          .filter((item) => Permission.evaluate("task", item.name, agent.permission).action !== "deny")
+          .toSorted((a, b) => a.name.localeCompare(b.name))
+        const description = list
+          .map(
+            (item) =>
+              `- ${item.name}: ${item.description ?? "This subagent should only be called manually by the user."}`,
+          )
+          .join("\n")
+        return ["Available agent types and the tools they have access to:", description].join("\n")
+      })
     })
 
     const tools: Interface["tools"] = Effect.fn("ToolRegistry.tools")(function* (input) {
+      const usePatch =
+        input.modelID.includes("gpt-") && !input.modelID.includes("oss") && !input.modelID.includes("gpt-4")
       const filtered = (yield* all()).filter((tool) => {
         if (tool.id === CodeSearchTool.id || tool.id === WebSearchTool.id) {
           return input.providerID === ProviderID.opencode || Flag.OPENCODE_ENABLE_EXA
         }
 
-        const usePatch =
-          input.modelID.includes("gpt-") && !input.modelID.includes("oss") && !input.modelID.includes("gpt-4")
         if (tool.id === ApplyPatchTool.id) return usePatch
         if (tool.id === EditTool.id || tool.id === WriteTool.id) return !usePatch
 

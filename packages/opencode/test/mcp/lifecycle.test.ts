@@ -230,6 +230,7 @@ test(
       const toolsB = yield* mcp.tools()
       expect(Object.keys(toolsA).length).toBeGreaterThan(0)
       expect(Object.keys(toolsB).length).toBeGreaterThan(0)
+      expect(toolsA).toBe(toolsB)
       expect(serverState.listToolsCalls).toBe(1)
     }),
   ),
@@ -264,6 +265,8 @@ test(
       const after = yield* mcp.tools()
       expect(Object.keys(after).some((key) => key.includes("next_tool"))).toBe(true)
       expect(Object.keys(after).some((key) => key.includes("test_tool"))).toBe(false)
+      expect(after).not.toBe(before)
+      expect(yield* mcp.tools()).toBe(after)
       expect(serverState.listToolsCalls).toBe(2)
     }),
   ),
