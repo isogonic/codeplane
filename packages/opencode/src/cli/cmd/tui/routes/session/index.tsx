@@ -89,6 +89,7 @@ import { TuiPluginRuntime } from "../../plugin"
 import { DialogGoUpsell } from "../../component/dialog-go-upsell"
 import { SessionRetry } from "@/session/retry"
 import { getRevertDiffFiles } from "../../util/revert-diff"
+import { formatTaskHierarchy } from "./task-hierarchy"
 
 addDefaultParsers(parsers.parsers)
 
@@ -1555,6 +1556,9 @@ function ToolPart(props: { last: boolean; part: ToolPart; message: AssistantMess
     get part() {
       return props.part
     },
+    get message() {
+      return props.message
+    },
   }
 
   return (
@@ -1617,6 +1621,7 @@ type ToolProps<T> = {
   tool: string
   output?: string
   part: ToolPart
+  message: AssistantMessage
 }
 function GenericTool(props: ToolProps<any>) {
   const { theme } = useTheme()
@@ -1995,9 +2000,18 @@ function Task(props: ToolProps<typeof TaskTool>) {
     )
   })
 
-  const current = createMemo(() =>
-    tools().findLast((x) => (x.state.status === "running" || x.state.status === "completed") && x.state.title),
-  )
+  const current = createMemo(() => {
+    const item = tools().findLast(
+      (x) => (x.state.status === "running" || x.state.status === "completed") && x.state.title,
+    )
+    if (!item) return
+    const state = item.state
+    if (state.status !== "running" && state.status !== "completed") return
+    return {
+      title: state.title,
+      tool: item.tool,
+    }
+  })
 
   const isRunning = createMemo(() => props.part.state.status === "running")
 
@@ -2010,22 +2024,15 @@ function Task(props: ToolProps<typeof TaskTool>) {
 
   const content = createMemo(() => {
     if (!props.input.description) return ""
-    let content = [`${Locale.titlecase(props.input.subagent_type ?? "General")} Task — ${props.input.description}`]
-
-    if (isRunning() && tools().length > 0) {
-      // content[0] += ` · ${tools().length} toolcalls`
-      if (current()) {
-        const state = current()!.state
-        const title = state.status === "running" || state.status === "completed" ? state.title : undefined
-        content.push(`↳ ${Locale.titlecase(current()!.tool)} ${title}`)
-      } else content.push(`↳ ${tools().length} toolcalls`)
-    }
-
-    if (props.part.state.status === "completed") {
-      content.push(`└ ${tools().length} toolcalls · ${Locale.duration(duration())}`)
-    }
-
-    return content.join("\n")
+    return formatTaskHierarchy({
+      currentTool: current(),
+      description: props.input.description,
+      duration: duration(),
+      parentAgent: props.message.agent,
+      status: props.part.state.status,
+      subagentType: props.input.subagent_type,
+      toolCount: tools().length,
+    })
   })
 
   return (
