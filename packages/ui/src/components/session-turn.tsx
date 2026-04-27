@@ -10,7 +10,7 @@ import { useFileComponent } from "../context/file"
 
 import { Binary } from "@opencode-ai/shared/util/binary"
 import { getDirectory, getFilename } from "@opencode-ai/shared/util/path"
-import { createEffect, createMemo, createSignal, For, on, ParentProps, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, For, ParentProps, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Dynamic } from "solid-js/web"
 import {
@@ -478,23 +478,17 @@ export function SessionTurn(
                           const active = createMemo(() => expanded().includes(diff.file))
                           const [shown, setShown] = createSignal(false)
 
-                          createEffect(
-                            on(
-                              active,
-                              (value) => {
-                                if (!value) {
-                                  setShown(false)
-                                  return
-                                }
+                          createEffect(() => {
+                            if (!active()) {
+                              setShown(false)
+                              return
+                            }
 
-                                requestAnimationFrame(() => {
-                                  if (!active()) return
-                                  setShown(true)
-                                })
-                              },
-                              { defer: true },
-                            ),
-                          )
+                            requestAnimationFrame(() => {
+                              if (!active()) return
+                              setShown(true)
+                            })
+                          })
 
                           return (
                             <Accordion.Item value={diff.file}>

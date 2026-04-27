@@ -202,6 +202,8 @@ interface State {
   clients: Record<string, MCPClient>
   defs: Record<string, MCPToolDef[]>
   toolCache: Record<string, { defs: MCPToolDef[]; timeout: number | undefined; tools: Record<string, Tool> }>
+  toolsCache?: { version: number; timeoutKey: string; tools: Record<string, Tool> }
+  toolVersion: number
 }
 
 export interface Interface {
@@ -458,6 +460,11 @@ export const layer = Layer.effect(
       Effect.catch(() => Effect.succeed([] as number[])),
     )
 
+    function invalidateTools(s: State) {
+      s.toolVersion++
+      delete s.toolsCache
+    }
+
     function watch(s: State, name: string, client: MCPClient, bridge: EffectBridge.Shape, timeout?: number) {
       client.setNotificationHandler(ToolListChangedNotificationSchema, async () => {
         log.info("tools list changed notification received", { server: name })
@@ -469,6 +476,7 @@ export const layer = Layer.effect(
 
         s.defs[name] = listed
         delete s.toolCache[name]
+        invalidateTools(s)
         await bridge.promise(bus.publish(ToolsChanged, { server: name }).pipe(Effect.ignore))
       })
     }
@@ -483,6 +491,7 @@ export const layer = Layer.effect(
           clients: {},
           defs: {},
           toolCache: {},
+          toolVersion: 0,
         }
 
         yield* Effect.forEach(
@@ -543,6 +552,7 @@ export const layer = Layer.effect(
       const client = s.clients[name]
       delete s.defs[name]
       delete s.toolCache[name]
+      invalidateTools(s)
       if (!client) return Effect.void
       return Effect.tryPromise(() => client.close()).pipe(Effect.ignore)
     }
@@ -620,45 +630,56 @@ export const layer = Layer.effect(
     })
 
     const tools = Effect.fn("MCP.tools")(function* () {
-      const result: Record<string, Tool> = {}
       const s = yield* InstanceState.get(state)
 
       const cfg = yield* cfgSvc.get()
       const config = cfg.mcp ?? {}
       const defaultTimeout = cfg.experimental?.mcp_timeout
 
-      const connectedClients = Object.entries(s.clients).filter(
-        ([clientName]) => s.status[clientName]?.status === "connected",
-      )
+      const connectedClients = Object.entries(s.clients).flatMap(([clientName, client]) => {
+        if (s.status[clientName]?.status !== "connected") return []
+        const mcpConfig = config[clientName]
+        const entry = mcpConfig && isMcpConfigured(mcpConfig) ? mcpConfig : undefined
+        return [{ clientName, client, timeout: entry?.timeout ?? defaultTimeout }]
+      })
+
+      const timeoutKey = connectedClients.map((item) => [item.clientName, item.timeout ?? ""].join("\x00")).join("\x1f")
+      if (s.toolsCache?.version === s.toolVersion && s.toolsCache.timeoutKey === timeoutKey) {
+        return s.toolsCache.tools
+      }
 
       yield* Effect.forEach(
         connectedClients,
-        ([clientName, client]) =>
+        (item) =>
           Effect.gen(function* () {
-            const mcpConfig = config[clientName]
-            const entry = mcpConfig && isMcpConfigured(mcpConfig) ? mcpConfig : undefined
-
-            const listed = s.defs[clientName]
+            const listed = s.defs[item.clientName]
             if (!listed) {
-              log.warn("missing cached tools for connected server", { clientName })
+              log.warn("missing cached tools for connected server", { clientName: item.clientName })
               return
             }
 
-            const timeout = entry?.timeout ?? defaultTimeout
-            const cached = s.toolCache[clientName]
-            if (cached?.defs === listed && cached.timeout === timeout) {
-              Object.assign(result, cached.tools)
+            const cached = s.toolCache[item.clientName]
+            if (cached?.defs === listed && cached.timeout === item.timeout) {
               return
             }
             const tools: Record<string, Tool> = {}
             for (const mcpTool of listed) {
-              tools[sanitize(clientName) + "_" + sanitize(mcpTool.name)] = convertMcpTool(mcpTool, client, timeout)
+              tools[sanitize(item.clientName) + "_" + sanitize(mcpTool.name)] = convertMcpTool(
+                mcpTool,
+                item.client,
+                item.timeout,
+              )
             }
-            s.toolCache[clientName] = { defs: listed, timeout, tools }
-            Object.assign(result, tools)
+            s.toolCache[item.clientName] = { defs: listed, timeout: item.timeout, tools }
           }),
         { concurrency: "unbounded" },
       )
+
+      const result = Object.assign(
+        {},
+        ...connectedClients.map((item) => s.toolCache[item.clientName]?.tools ?? {}),
+      ) as Record<string, Tool>
+      s.toolsCache = { version: s.toolVersion, timeoutKey, tools: result }
       return result
     })
 

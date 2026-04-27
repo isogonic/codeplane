@@ -30,6 +30,7 @@ const log = Log.create({ service: "plugin" })
 
 type State = {
   hooks: Hooks[]
+  hooksByTrigger: Partial<Record<TriggerName, Hooks[]>>
 }
 
 // Hook names that follow the (input, output) => Promise<void> trigger pattern
@@ -252,7 +253,7 @@ export const layer = Layer.effect(
           Effect.forkScoped,
         )
 
-        return { hooks }
+        return { hooks, hooksByTrigger: {} }
       }),
     )
 
@@ -263,10 +264,11 @@ export const layer = Layer.effect(
     >(name: Name, input: Input, output: Output) {
       if (!name) return output
       const s = yield* InstanceState.get(state)
-      for (const hook of s.hooks) {
-        const fn = hook[name] as any
+      const hooks = s.hooksByTrigger[name] ?? (s.hooksByTrigger[name] = s.hooks.filter((hook) => hook[name]))
+      for (const hook of hooks) {
+        const fn = hook[name] as ((input: Input, output: Output) => Promise<void> | void) | undefined
         if (!fn) continue
-        yield* Effect.promise(async () => fn(input, output))
+        yield* Effect.promise(() => Promise.resolve().then(() => fn(input, output)))
       }
       return output
     })

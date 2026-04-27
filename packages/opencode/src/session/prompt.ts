@@ -10,7 +10,15 @@ import * as Session from "./session"
 import { Agent } from "../agent/agent"
 import { Provider } from "../provider"
 import { ModelID, ProviderID } from "../provider/schema"
-import { type Tool as AITool, tool, dynamicTool, jsonSchema, type ToolExecutionOptions, asSchema } from "ai"
+import {
+  type Tool as AITool,
+  tool,
+  dynamicTool,
+  jsonSchema,
+  type ToolExecutionOptions,
+  asSchema,
+  type Schema as AISchema,
+} from "ai"
 import type { JSONSchema7 } from "@ai-sdk/provider"
 import { SessionCompaction } from "./compaction"
 import { Bus } from "../bus"
@@ -109,13 +117,70 @@ export const layer = Layer.effect(
     const runner = Effect.fn("SessionPrompt.runner")(function* () {
       return yield* EffectBridge.make()
     })
-    const ops = Effect.fn("SessionPrompt.ops")(function* () {
-      const run = yield* runner()
-      return {
+    const makeOps = (run: EffectBridge.Shape) =>
+      ({
         cancel: (sessionID: SessionID) => run.fork(cancel(sessionID)),
         resolvePromptParts: (template: string) => resolvePromptParts(template),
         prompt: (input: PromptInput) => prompt(input),
-      } satisfies TaskPromptOps
+      }) satisfies TaskPromptOps
+    const ops = Effect.fn("SessionPrompt.ops")(function* () {
+      return makeOps(yield* runner())
+    })
+
+    const toolInputSchemaCache = new WeakMap<object, Map<string, AISchema>>()
+    const mcpInputSchemaCache = new WeakMap<object, Map<string, AISchema | Promise<AISchema>>>()
+
+    const toolSchemaKey = (model: Provider.Model) =>
+      [model.providerID, model.id, model.api.id, model.api.npm].join("\x00")
+
+    function cachedInputSchema(
+      cache: WeakMap<object, Map<string, AISchema>>,
+      target: object,
+      model: Provider.Model,
+      build: () => JSONSchema7,
+    ) {
+      const key = toolSchemaKey(model)
+      const existing = cache.get(target)
+      const cached = existing?.get(key)
+      if (cached) return cached
+      const inputSchema = jsonSchema(build())
+      if (existing) {
+        existing.set(key, inputSchema)
+        return inputSchema
+      }
+      cache.set(target, new Map([[key, inputSchema]]))
+      return inputSchema
+    }
+
+    const nativeInputSchema = (model: Provider.Model, parameters: Tool.Def["parameters"]) =>
+      cachedInputSchema(toolInputSchemaCache, parameters as object, model, () =>
+        ProviderTransform.schema(model, EffectZod.toJsonSchema(parameters)),
+      )
+
+    const mcpInputSchema = Effect.fnUntraced(function* (model: Provider.Model, inputSchema: AITool["inputSchema"]) {
+      if (typeof inputSchema !== "object" || inputSchema === null) {
+        const schema = (yield* Effect.promise(() => Promise.resolve(asSchema(inputSchema).jsonSchema))) as JSONSchema7
+        return jsonSchema(ProviderTransform.schema(model, schema))
+      }
+
+      const key = toolSchemaKey(model)
+      const existing = mcpInputSchemaCache.get(inputSchema)
+      const cached = existing?.get(key)
+      if (cached) return yield* Effect.promise(() => Promise.resolve(cached))
+
+      const byModel = existing ?? new Map<string, AISchema | Promise<AISchema>>()
+      if (!existing) mcpInputSchemaCache.set(inputSchema, byModel)
+
+      const pending = Promise.resolve(asSchema(inputSchema).jsonSchema)
+        .then((schema) => jsonSchema(ProviderTransform.schema(model, schema as JSONSchema7)))
+        .catch((error) => {
+          byModel.delete(key)
+          throw error
+        })
+      byModel.set(key, pending)
+      const resolved = yield* Effect.promise(() => pending)
+      byModel.set(key, resolved)
+      return resolved
     })
 
     const cancel = Effect.fn("SessionPrompt.cancel")(function* (sessionID: SessionID) {
@@ -366,7 +431,18 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       using _ = log.time("resolveTools")
       const tools: Record<string, AITool> = {}
       const run = yield* runner()
-      const promptOps = yield* ops()
+      const promptOps = makeOps(run)
+      const [nativeTools, mcpTools] = yield* Effect.all(
+        [
+          registry.tools({
+            modelID: ModelID.make(input.model.api.id),
+            providerID: input.model.providerID,
+            agent: input.agent,
+          }),
+          mcp.tools(),
+        ],
+        { concurrency: "unbounded" },
+      )
 
       const context = (args: any, options: ToolExecutionOptions): Tool.Context => ({
         sessionID: input.session.id,
@@ -401,15 +477,10 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             .pipe(Effect.orDie),
       })
 
-      for (const item of yield* registry.tools({
-        modelID: ModelID.make(input.model.api.id),
-        providerID: input.model.providerID,
-        agent: input.agent,
-      })) {
-        const schema = ProviderTransform.schema(input.model, EffectZod.toJsonSchema(item.parameters))
+      for (const item of nativeTools) {
         tools[item.id] = tool({
           description: item.description,
-          inputSchema: jsonSchema(schema),
+          inputSchema: nativeInputSchema(input.model, item.parameters),
           execute(args, options) {
             return run.promise(
               Effect.gen(function* () {
@@ -444,100 +515,112 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         })
       }
 
-      for (const [key, item] of Object.entries(yield* mcp.tools())) {
-        const execute = item.execute
-        if (!execute) continue
+      const mcpEntries = yield* Effect.forEach(
+        Object.entries(mcpTools),
+        ([key, item]) =>
+          Effect.gen(function* () {
+            const execute = item.execute
+            if (!execute) return
 
-        const schema = yield* Effect.promise(() => Promise.resolve(asSchema(item.inputSchema).jsonSchema))
-        const transformed = ProviderTransform.schema(input.model, schema)
-        tools[key] = dynamicTool({
-          description: item.description,
-          inputSchema: jsonSchema(transformed),
-          execute: (args, opts) =>
-            run.promise(
-              Effect.gen(function* () {
-                const ctx = context(args, opts)
-                const title = `MCP: ${key}`
-                yield* ctx.metadata({
-                  title,
-                  metadata: {
-                    mcp: true,
-                    tool: key,
-                  },
-                })
-                yield* plugin.trigger(
-                  "tool.execute.before",
-                  { tool: key, sessionID: ctx.sessionID, callID: opts.toolCallId },
-                  { args },
-                )
-                yield* ctx.ask({ permission: key, metadata: {}, patterns: ["*"], always: ["*"] })
-                const result: Awaited<ReturnType<NonNullable<typeof execute>>> = yield* Effect.promise(() =>
-                  execute(args, opts),
-                )
-                yield* plugin.trigger(
-                  "tool.execute.after",
-                  { tool: key, sessionID: ctx.sessionID, callID: opts.toolCallId, args },
-                  result,
-                )
-
-                const textParts: string[] = []
-                const contentTypes: string[] = []
-                const attachments: Omit<MessageV2.FilePart, "id" | "sessionID" | "messageID">[] = []
-                for (const contentItem of result.content) {
-                  contentTypes.push(contentItem.type)
-                  if (contentItem.type === "text") textParts.push(contentItem.text)
-                  else if (contentItem.type === "image") {
-                    textParts.push(`[Image: ${contentItem.mimeType}]`)
-                    attachments.push({
-                      type: "file",
-                      mime: contentItem.mimeType,
-                      url: `data:${contentItem.mimeType};base64,${contentItem.data}`,
-                    })
-                  } else if (contentItem.type === "resource") {
-                    const { resource } = contentItem
-                    if (resource.text) textParts.push(resource.text)
-                    if (resource.blob) {
-                      textParts.push(`[Resource: ${resource.uri} (${resource.mimeType ?? "application/octet-stream"})]`)
-                      attachments.push({
-                        type: "file",
-                        mime: resource.mimeType ?? "application/octet-stream",
-                        url: `data:${resource.mimeType ?? "application/octet-stream"};base64,${resource.blob}`,
-                        filename: resource.uri,
+            return [
+              key,
+              dynamicTool({
+                description: item.description,
+                inputSchema: yield* mcpInputSchema(input.model, item.inputSchema),
+                execute: (args, opts) =>
+                  run.promise(
+                    Effect.gen(function* () {
+                      const ctx = context(args, opts)
+                      const title = `MCP: ${key}`
+                      yield* ctx.metadata({
+                        title,
+                        metadata: {
+                          mcp: true,
+                          tool: key,
+                        },
                       })
-                    }
-                  }
-                }
+                      yield* plugin.trigger(
+                        "tool.execute.before",
+                        { tool: key, sessionID: ctx.sessionID, callID: opts.toolCallId },
+                        { args },
+                      )
+                      yield* ctx.ask({ permission: key, metadata: {}, patterns: ["*"], always: ["*"] })
+                      const result: Awaited<ReturnType<NonNullable<typeof execute>>> = yield* Effect.promise(() =>
+                        execute(args, opts),
+                      )
+                      yield* plugin.trigger(
+                        "tool.execute.after",
+                        { tool: key, sessionID: ctx.sessionID, callID: opts.toolCallId, args },
+                        result,
+                      )
 
-                const truncated = yield* truncate.output(textParts.join("\n\n"), {}, input.agent)
-                const metadata = {
-                  ...result.metadata,
-                  mcp: true,
-                  tool: key,
-                  contentTypes,
-                  attachmentCount: attachments.length,
-                  truncated: truncated.truncated,
-                  ...(truncated.truncated && { outputPath: truncated.outputPath }),
-                }
+                      const textParts: string[] = []
+                      const contentTypes: string[] = []
+                      const attachments: Omit<MessageV2.FilePart, "id" | "sessionID" | "messageID">[] = []
+                      for (const contentItem of result.content) {
+                        contentTypes.push(contentItem.type)
+                        if (contentItem.type === "text") textParts.push(contentItem.text)
+                        else if (contentItem.type === "image") {
+                          textParts.push(`[Image: ${contentItem.mimeType}]`)
+                          attachments.push({
+                            type: "file",
+                            mime: contentItem.mimeType,
+                            url: `data:${contentItem.mimeType};base64,${contentItem.data}`,
+                          })
+                        } else if (contentItem.type === "resource") {
+                          const { resource } = contentItem
+                          if (resource.text) textParts.push(resource.text)
+                          if (resource.blob) {
+                            textParts.push(
+                              `[Resource: ${resource.uri} (${resource.mimeType ?? "application/octet-stream"})]`,
+                            )
+                            attachments.push({
+                              type: "file",
+                              mime: resource.mimeType ?? "application/octet-stream",
+                              url: `data:${resource.mimeType ?? "application/octet-stream"};base64,${resource.blob}`,
+                              filename: resource.uri,
+                            })
+                          }
+                        }
+                      }
 
-                const output = {
-                  title,
-                  metadata,
-                  output: truncated.content,
-                  attachments: attachments.map((attachment) => ({
-                    ...attachment,
-                    id: PartID.ascending(),
-                    sessionID: ctx.sessionID,
-                    messageID: input.processor.message.id,
-                  })),
-                  content: result.content,
-                }
-                if (opts.abortSignal?.aborted) {
-                  yield* input.processor.completeToolCall(opts.toolCallId, output)
-                }
-                return output
+                      const truncated = yield* truncate.output(textParts.join("\n\n"), {}, input.agent)
+                      const metadata = {
+                        ...result.metadata,
+                        mcp: true,
+                        tool: key,
+                        contentTypes,
+                        attachmentCount: attachments.length,
+                        truncated: truncated.truncated,
+                        ...(truncated.truncated && { outputPath: truncated.outputPath }),
+                      }
+
+                      const output = {
+                        title,
+                        metadata,
+                        output: truncated.content,
+                        attachments: attachments.map((attachment) => ({
+                          ...attachment,
+                          id: PartID.ascending(),
+                          sessionID: ctx.sessionID,
+                          messageID: input.processor.message.id,
+                        })),
+                        content: result.content,
+                      }
+                      if (opts.abortSignal?.aborted) {
+                        yield* input.processor.completeToolCall(opts.toolCallId, output)
+                      }
+                      return output
+                    }),
+                  ),
               }),
-            ),
-        })
+            ] as const
+          }),
+        { concurrency: "unbounded" },
+      )
+      for (const entry of mcpEntries) {
+        if (!entry) continue
+        tools[entry[0]] = entry[1]
       }
 
       return tools
