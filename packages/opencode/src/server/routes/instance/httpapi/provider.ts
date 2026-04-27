@@ -66,7 +66,7 @@ export const ProviderApi = HttpApi.make("provider")
   .annotateMerge(
     OpenApi.annotations({
       title: "opencode experimental HttpApi",
-      version: "2.0.0",
+      version: "2.1.0",
       description: "Experimental HttpApi surface for selected instance routes.",
     }),
   )
