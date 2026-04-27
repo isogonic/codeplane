@@ -224,7 +224,12 @@ export function OrchestratorView(props: { sessionID: string }) {
                   </text>
                   <For each={wave.tasks}>
                     {(part, index) => (
-                      <TaskNode part={part} depth={0} last={index() === wave.tasks.length - 1} path={[rootSessionID()]} />
+                      <TaskNode
+                        part={part}
+                        depth={0}
+                        last={index() === wave.tasks.length - 1}
+                        path={[rootSessionID()]}
+                      />
                     )}
                   </For>
                 </box>

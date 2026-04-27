@@ -81,7 +81,11 @@ describe("aggregateProjects", () => {
         name: "A",
         sessions: [
           session({ id: "1", created: dayAgo(0) }),
-          session({ id: "old", created: dayAgo(40), time: { created: dayAgo(40), archived: dayAgo(30) } as Session["time"] }),
+          session({
+            id: "old",
+            created: dayAgo(40),
+            time: { created: dayAgo(40), archived: dayAgo(30) } as Session["time"],
+          }),
         ],
       },
     ])
@@ -98,9 +102,7 @@ describe("aggregateTotals", () => {
       session({ id: "weekAgo", created: dayAgo(6) }),
       session({ id: "old", created: dayAgo(8) }),
     ]
-    const projects = aggregateProjects([
-      { directory: "/a", worktree: "/a", name: "A", sessions },
-    ])
+    const projects = aggregateProjects([{ directory: "/a", worktree: "/a", name: "A", sessions }])
     const totals = aggregateTotals(projects, sessions, now)
     expect(totals).toMatchObject({
       projects: 1,

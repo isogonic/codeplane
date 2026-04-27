@@ -36,9 +36,7 @@ export function trimSessions(
 ) {
   const limit = Math.max(0, options.limit)
   const cutoff = (options.now ?? Date.now()) - SESSION_RECENT_WINDOW
-  const all = input
-    .filter((s) => !!s?.id)
-    .filter((s) => !s.time?.archived)
+  const all = input.filter((s) => !!s?.id).filter((s) => !s.time?.archived)
   const roots = all.filter((s) => !s.parentID).sort(compareSessionRecent)
   const children = all.filter((s) => !!s.parentID)
   const base = roots.slice(0, limit)

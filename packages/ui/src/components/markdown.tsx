@@ -69,7 +69,7 @@ type CopyLabels = {
   copiedPath: string
 }
 
-type Mermaid = typeof import("mermaid")["default"]
+type Mermaid = (typeof import("mermaid"))["default"]
 
 const urlPattern = /^https?:\/\/[^\s<>()`"']+$/
 let mermaidPromise: Promise<Mermaid> | undefined

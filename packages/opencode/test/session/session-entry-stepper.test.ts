@@ -9,10 +9,10 @@ const sessionID = SessionID.make("ses_test")
 const time = (n: number) => DateTime.makeUnsafe(n)
 
 function run(events: SessionEvent.Event[]) {
-  return events.reduce<SessionEntryStepper.MemoryState>(
-    (state, event) => SessionEntryStepper.step(state, event),
-    { entries: [], pending: [] },
-  )
+  return events.reduce<SessionEntryStepper.MemoryState>((state, event) => SessionEntryStepper.step(state, event), {
+    entries: [],
+    pending: [],
+  })
 }
 
 function assistant(state: SessionEntryStepper.MemoryState) {

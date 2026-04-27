@@ -86,7 +86,9 @@ const isAssistantMessage = (message: MessageType): message is AssistantMessage =
 const isToolPart = (part: Part): part is ToolPart => part.type === "tool"
 const partTime = (part: ToolPart, fallback: number) => ("time" in part.state ? part.state.time.start : fallback)
 const partDuration = (part: ToolPart) =>
-  "time" in part.state && "end" in part.state.time ? Math.max(0, part.state.time.end - part.state.time.start) : undefined
+  "time" in part.state && "end" in part.state.time
+    ? Math.max(0, part.state.time.end - part.state.time.start)
+    : undefined
 
 const modelLabel = (model: UserMessage["model"]) =>
   `${model.providerID}/${model.modelID}${model.variant ? ` (${model.variant})` : ""}`
@@ -108,9 +110,7 @@ const turnDiffs = (message: UserMessage) => {
 }
 
 const textInputValue = (input: Record<string, unknown>, keys: string[]) =>
-  keys
-    .map((key) => input[key])
-    .find((value): value is string => typeof value === "string" && value.trim().length > 0)
+  keys.map((key) => input[key]).find((value): value is string => typeof value === "string" && value.trim().length > 0)
 
 const toolTitle = (part: ToolPart) => {
   const title = "title" in part.state && typeof part.state.title === "string" ? part.state.title : undefined
@@ -262,7 +262,10 @@ export function buildSessionActivity(input: {
         return map
       }, new Map<string, FileTouch>())
       .values(),
-  ].sort((a, b) => b.count - a.count || b.additions + b.deletions - (a.additions + a.deletions) || a.file.localeCompare(b.file))
+  ].sort(
+    (a, b) =>
+      b.count - a.count || b.additions + b.deletions - (a.additions + a.deletions) || a.file.localeCompare(b.file),
+  )
 
   return {
     events: [...modelEvents, ...toolEvents, ...fileEvents].sort(
@@ -344,10 +347,7 @@ export function SessionActivityTab(props: {
   )
 
   const EventBody = (props: { event: ActivityEvent; last: boolean }) => (
-    <div
-      class="min-w-0 flex-1 border-b border-border-weaker-base py-2.5"
-      classList={{ "border-b-0": props.last }}
-    >
+    <div class="min-w-0 flex-1 border-b border-border-weaker-base py-2.5" classList={{ "border-b-0": props.last }}>
       <div class="rounded-md px-2.5 py-2 transition-colors group-hover:bg-surface-raised-base-hover">
         <SwitchEvent event={props.event} />
       </div>
@@ -380,10 +380,7 @@ export function SessionActivityTab(props: {
               : language.t("session.activity.model.switch")}
           </div>
           <div class="pt-1 text-12-regular text-text-base break-all">
-            <Show
-              when={props.event.from}
-              fallback={<span>{props.event.to}</span>}
-            >
+            <Show when={props.event.from} fallback={<span>{props.event.to}</span>}>
               {(from) => (
                 <span>
                   {from()} -&gt; {props.event.to}
@@ -518,7 +515,9 @@ export function SessionActivityTab(props: {
                         </div>
                       </div>
                       <div class="shrink-0 text-right">
-                        <div class="text-12-medium text-text-strong tabular-nums">{formatNumber().format(item.count)}</div>
+                        <div class="text-12-medium text-text-strong tabular-nums">
+                          {formatNumber().format(item.count)}
+                        </div>
                         <div class="text-12-regular text-text-weak tabular-nums">
                           +{formatNumber().format(item.additions)} -{formatNumber().format(item.deletions)}
                         </div>
