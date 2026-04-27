@@ -304,6 +304,26 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
 
     return {
       ready,
+      all() {
+        return store.list
+      },
+      unseenCount() {
+        return store.list.reduce((count, notification) => count + (notification.viewed ? 0 : 1), 0)
+      },
+      unseenHasError() {
+        return store.list.some((notification) => !notification.viewed && notification.type === "error")
+      },
+      markAllViewed() {
+        if (!store.list.some((notification) => !notification.viewed)) return
+
+        const list = store.list.map((notification) =>
+          notification.viewed ? notification : { ...notification, viewed: true },
+        )
+        batch(() => {
+          setStore("list", list)
+          setIndex(reconcile(buildNotificationIndex(list), { merge: false }))
+        })
+      },
       session: {
         all(session: string) {
           return index.session.all[session] ?? empty

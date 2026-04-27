@@ -516,6 +516,11 @@ export const dict = {
   "notification.session.responseReady.title": "Response ready",
   "notification.session.error.title": "Session error",
   "notification.session.error.fallbackDescription": "An error occurred",
+  "notification.center.title": "Notifications",
+  "notification.center.count": "{{count}} notifications",
+  "notification.center.markAllRead": "Mark all read",
+  "notification.center.empty.title": "No notifications",
+  "notification.center.item.responseReady": "{{sessionTitle}} in {{projectName}} is ready",
 
   "home.recentProjects": "Recent projects",
   "home.empty.title": "No recent projects",
@@ -671,6 +676,8 @@ export const dict = {
 
   "sidebar.menu.toggle": "Toggle menu",
   "sidebar.nav.projectsAndSessions": "Projects and sessions",
+  "sidebar.home": "Home",
+  "sidebar.notifications": "Notifications",
   "sidebar.settings": "Settings",
   "sidebar.help": "Help",
   "sidebar.workspaces.enable": "Enable workspaces",
