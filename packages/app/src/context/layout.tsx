@@ -453,26 +453,29 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
       }
     })
 
-    let sessionFrame: number | undefined
-    let sessionTimer: number | undefined
+    const loadedSessionDirs = new Set<string>()
 
-    onMount(() => {
-      sessionFrame = requestAnimationFrame(() => {
-        sessionFrame = undefined
-        sessionTimer = window.setTimeout(() => {
-          sessionTimer = undefined
-          void Promise.all(
-            server.projects.list().map((project) => {
-              return globalSync.project.loadSessions(project.worktree)
-            }),
-          )
-        }, 0)
+    createEffect(() => {
+      const projects = enriched()
+      if (!globalSync.ready) return
+
+      const directories = projects.flatMap((project) => [project.worktree, ...(project.sandboxes ?? [])])
+      const active = new Set(directories)
+      for (const directory of loadedSessionDirs) {
+        if (active.has(directory)) continue
+        loadedSessionDirs.delete(directory)
+      }
+
+      const pending = directories.filter((directory, index) => {
+        if (!directory) return false
+        if (directories.indexOf(directory) !== index) return false
+        if (loadedSessionDirs.has(directory)) return false
+        loadedSessionDirs.add(directory)
+        return true
       })
-    })
+      if (pending.length === 0) return
 
-    onCleanup(() => {
-      if (sessionFrame !== undefined) cancelAnimationFrame(sessionFrame)
-      if (sessionTimer !== undefined) window.clearTimeout(sessionTimer)
+      void Promise.all(pending.map((directory) => globalSync.project.loadSessions(directory)))
     })
 
     return {
