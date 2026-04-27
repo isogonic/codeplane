@@ -35,6 +35,7 @@ export function SessionSidePanel(props: {
   empty: () => string
   hasReview: () => boolean
   reviewCount: () => number
+  activityPanel: () => JSX.Element
   reviewPanel: () => JSX.Element
   activeDiff?: string
   focusReviewDiff: (path: string) => void
@@ -135,6 +136,7 @@ export function SessionSidePanel(props: {
     pathFromTab: file.pathFromTab,
     normalizeTab,
     review: reviewTab,
+    activity: reviewTab,
     hasReview: props.canReview,
   })
   const contextOpen = tabState.contextOpen
@@ -250,6 +252,11 @@ export function SessionSidePanel(props: {
                           </div>
                         </Tabs.Trigger>
                       </Show>
+                      <Show when={reviewTab()}>
+                        <Tabs.Trigger value="activity">
+                          <div>{language.t("session.tab.activity")}</div>
+                        </Tabs.Trigger>
+                      </Show>
                       <Show when={contextOpen()}>
                         <Tabs.Trigger
                           value="context"
@@ -307,6 +314,12 @@ export function SessionSidePanel(props: {
                   <Show when={reviewTab() && props.canReview()}>
                     <Tabs.Content value="review" class="flex flex-col h-full overflow-hidden contain-strict">
                       <Show when={activeTab() === "review"}>{props.reviewPanel()}</Show>
+                    </Tabs.Content>
+                  </Show>
+
+                  <Show when={reviewTab()}>
+                    <Tabs.Content value="activity" class="flex flex-col h-full overflow-hidden contain-strict">
+                      <Show when={activeTab() === "activity"}>{props.activityPanel()}</Show>
                     </Tabs.Content>
                   </Show>
 
@@ -378,14 +391,16 @@ export function SessionSidePanel(props: {
                   data-scope="filetree"
                 >
                   <Tabs.List>
-                    <Tabs.Trigger value="changes" class="flex-1" classes={{ button: "w-full" }}>
-                      {props.reviewCount()}{" "}
-                      {language.t(
-                        props.reviewCount() === 1 ? "session.review.change.one" : "session.review.change.other",
-                      )}
+                    <Tabs.Trigger value="changes" class="min-w-0 flex-1" classes={{ button: "w-full min-w-0 px-2" }}>
+                      <span class="truncate">
+                        {props.reviewCount()}{" "}
+                        {language.t(
+                          props.reviewCount() === 1 ? "session.review.change.one" : "session.review.change.other",
+                        )}
+                      </span>
                     </Tabs.Trigger>
-                    <Tabs.Trigger value="all" class="flex-1" classes={{ button: "w-full" }}>
-                      {language.t("session.files.all")}
+                    <Tabs.Trigger value="all" class="min-w-0 flex-1" classes={{ button: "w-full min-w-0 px-2" }}>
+                      <span class="truncate">{language.t("session.files.all")}</span>
                     </Tabs.Trigger>
                   </Tabs.List>
                   <Tabs.Content value="changes" class="bg-background-stronger px-3 py-0">
@@ -411,6 +426,7 @@ export function SessionSidePanel(props: {
                           />
                         </Show>
                       </Match>
+                      <Match when={true}>{empty(props.empty())}</Match>
                     </Switch>
                   </Tabs.Content>
                   <Tabs.Content value="all" class="bg-background-stronger px-3 py-0">

@@ -151,6 +151,12 @@ export default function Layout(props: ParentProps) {
   const colorSchemeLabel = (scheme: ColorScheme) => language.t(colorSchemeKey[scheme])
   const currentDir = createMemo(() => route().dir)
   const globalRouteSelected = createMemo(() => location.pathname === "/" || location.pathname === "/notifications")
+  const sidebarRouteKey = createMemo(() => {
+    if (!layoutReady()) return
+    if (globalRouteSelected()) return "global"
+    if (!params.dir) return
+    return `project:${params.dir}`
+  })
 
   const [state, setState] = createStore({
     autoselect: !initialDirectory && location.pathname !== "/" && location.pathname !== "/notifications",
@@ -235,16 +241,20 @@ export default function Layout(props: ParentProps) {
   }
   const clearHoverProjectSoon = () => queueMicrotask(() => setHoverProject(undefined))
 
-  createEffect(() => {
-    if (!layoutReady()) return
-    if (globalRouteSelected()) {
+  createEffect(
+    on(sidebarRouteKey, (key, previous) => {
+      if (!key) return
+      if (key === previous) return
+
       setHoverProject(undefined)
-      layout.sidebar.close()
-      return
-    }
-    if (!currentDir()) return
-    layout.sidebar.open()
-  })
+      if (key === "global") {
+        layout.sidebar.close()
+        return
+      }
+
+      layout.sidebar.open()
+    }),
+  )
 
   const disarm = () => {
     if (navLeave.current === undefined) return

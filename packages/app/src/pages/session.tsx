@@ -53,6 +53,7 @@ import {
 } from "@/pages/session/helpers"
 import { MessageTimeline } from "@/pages/session/message-timeline"
 import { type DiffStyle, SessionReviewTab, type SessionReviewTabProps } from "@/pages/session/review-tab"
+import { SessionActivityTab } from "@/pages/session/session-activity-tab"
 import { useSessionLayout } from "@/pages/session/session-layout"
 import { syncSessionModel } from "@/pages/session/session-model-helpers"
 import { SessionSidePanel } from "@/pages/session/session-side-panel"
@@ -514,7 +515,7 @@ export default function Page() {
 
   const [store, setStore] = createStore({
     messageId: undefined as string | undefined,
-    mobileTab: "session" as "session" | "changes",
+    mobileTab: "session" as "session" | "changes" | "activity",
     changes: "git" as ChangeMode,
     newSessionWorktree: "main",
     deferRender: false,
@@ -584,6 +585,8 @@ export default function Page() {
     return list
   })
   const mobileChanges = createMemo(() => !isDesktop() && store.mobileTab === "changes")
+  const mobileActivity = createMemo(() => !isDesktop() && store.mobileTab === "activity")
+  const mobilePanel = createMemo(() => !isDesktop() && store.mobileTab !== "session")
   const wantsReview = createMemo(() =>
     isDesktop()
       ? desktopFileTreeOpen() || (desktopReviewOpen() && activeTab() === "review")
@@ -1048,6 +1051,10 @@ export default function Page() {
     loadFile: file.load,
   })
 
+  const activityContent = (classes?: { root?: string; section?: string }) => (
+    <SessionActivityTab messages={messages()} parts={sync.data.part} onViewFile={openReviewFile} classes={classes} />
+  )
+
   const openChatFileReference = (target: string, selection?: FileReferenceSelection) => {
     const path = file.normalize(target)
     if (!path) return
@@ -1168,6 +1175,12 @@ export default function Page() {
           emptyClass: "h-full pb-64 -mt-4 flex flex-col items-center justify-center text-center gap-6",
         })}
       </div>
+    </div>
+  )
+
+  const activityPanel = () => (
+    <div class="flex flex-col h-full overflow-hidden bg-background-stronger contain-strict">
+      <div class="relative flex-1 min-h-0 overflow-hidden">{activityContent()}</div>
     </div>
   )
 
@@ -1821,7 +1834,7 @@ export default function Page() {
             <Tabs.List>
               <Tabs.Trigger
                 value="session"
-                class="!w-1/2 !max-w-none"
+                class="!w-1/3 !max-w-none"
                 classes={{ button: "w-full" }}
                 onClick={() => setStore("mobileTab", "session")}
               >
@@ -1829,13 +1842,25 @@ export default function Page() {
               </Tabs.Trigger>
               <Tabs.Trigger
                 value="changes"
-                class="!w-1/2 !max-w-none !border-r-0"
+                class="!w-1/3 !max-w-none"
                 classes={{ button: "w-full" }}
                 onClick={() => setStore("mobileTab", "changes")}
               >
-                {hasReview()
-                  ? language.t("session.review.filesChanged", { count: reviewCount() })
+                {reviewCount() > 0
+                  ? reviewCount() +
+                    " " +
+                    language.t(
+                      reviewCount() === 1 ? "session.review.change.one" : "session.review.change.other",
+                    )
                   : language.t("session.review.change.other")}
+              </Tabs.Trigger>
+              <Tabs.Trigger
+                value="activity"
+                class="!w-1/3 !max-w-none !border-r-0"
+                classes={{ button: "w-full" }}
+                onClick={() => setStore("mobileTab", "activity")}
+              >
+                {language.t("session.tab.activity")}
               </Tabs.Trigger>
             </Tabs.List>
           </Tabs>
@@ -1857,17 +1882,21 @@ export default function Page() {
               <Match when={params.id}>
                 <Show when={messagesReady()}>
                   <MessageTimeline
-                    mobileChanges={mobileChanges()}
-                    mobileFallback={reviewContent({
-                      diffStyle: "unified",
-                      classes: {
-                        root: "pb-8",
-                        header: "px-4",
-                        container: "px-4",
-                      },
-                      loadingClass: "px-4 py-4 text-text-weak",
-                      emptyClass: "h-full pb-64 -mt-4 flex flex-col items-center justify-center text-center gap-6",
-                    })}
+                    mobileChanges={mobilePanel()}
+                    mobileFallback={
+                      mobileActivity()
+                        ? activityContent({ root: "h-full overflow-y-auto pb-8", section: "px-4" })
+                        : reviewContent({
+                            diffStyle: "unified",
+                            classes: {
+                              root: "pb-8",
+                              header: "px-4",
+                              container: "px-4",
+                            },
+                            loadingClass: "px-4 py-4 text-text-weak",
+                            emptyClass: "h-full pb-64 -mt-4 flex flex-col items-center justify-center text-center gap-6",
+                          })
+                    }
                     actions={actions}
                     scroll={ui.scroll}
                     onResumeScroll={resumeScroll}
@@ -1978,6 +2007,7 @@ export default function Page() {
           empty={reviewEmptyText}
           hasReview={hasReview}
           reviewCount={reviewCount}
+          activityPanel={activityPanel}
           reviewPanel={reviewPanel}
           activeDiff={tree.activeDiff}
           focusReviewDiff={focusReviewDiff}
