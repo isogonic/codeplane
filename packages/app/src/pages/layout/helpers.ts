@@ -31,6 +31,11 @@ export const roots = (store: SessionStore) =>
 
 export const sortedRootSessions = (store: SessionStore, now: number) => roots(store).sort(sortSessions(now))
 
+export const childSessions = (sessions: Session[] | undefined, parentID: string, now: number) =>
+  (sessions ?? [])
+    .filter((session) => session.parentID === parentID && !session.time?.archived)
+    .sort(sortSessions(now))
+
 export const latestRootSession = (stores: SessionStore[], now: number) =>
   stores.flatMap(roots).sort(sortSessions(now))[0]
 

@@ -1,4 +1,4 @@
-import type { Session } from "@opencode-ai/sdk/v2/client"
+import type { Session, SnapshotFileDiff } from "@opencode-ai/sdk/v2/client"
 
 export const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -8,6 +8,7 @@ export type ProjectInput = {
   iconColor?: string
   worktree: string
   sessions: Session[]
+  sessionDiffs?: Record<string, SnapshotFileDiff[] | undefined>
 }
 
 export type ProjectAggregate = {
@@ -64,9 +65,37 @@ const isVisible = (session: Session) => !session.parentID && !session.time?.arch
 
 const sessionTime = (session: Session) => session.time.updated ?? session.time.created
 
-const sessionAdditions = (session: Session) => session.summary?.additions ?? 0
-const sessionDeletions = (session: Session) => session.summary?.deletions ?? 0
-const sessionFiles = (session: Session) => session.summary?.files ?? 0
+const changedDiffs = (diffs: SnapshotFileDiff[]) =>
+  diffs.filter((diff) => (diff.additions ?? 0) + (diff.deletions ?? 0) > 0)
+
+const diffStats = (diffs: SnapshotFileDiff[]) =>
+  changedDiffs(diffs).reduce(
+    (total, diff) => ({
+      files: total.files.add(diff.file),
+      additions: total.additions + (diff.additions ?? 0),
+      deletions: total.deletions + (diff.deletions ?? 0),
+    }),
+    { files: new Set<string>(), additions: 0, deletions: 0 },
+  )
+
+const sessionChangeStats = (session: Session, sessionDiffs?: ProjectInput["sessionDiffs"]) => {
+  const diffs = sessionDiffs?.[session.id] ?? session.summary?.diffs ?? []
+  const diff = diffStats(diffs)
+  const summaryTotal =
+    (session.summary?.files ?? 0) + (session.summary?.additions ?? 0) + (session.summary?.deletions ?? 0)
+  if (summaryTotal > 0) {
+    return {
+      files: session.summary?.files || diff.files.size,
+      additions: session.summary?.additions ?? 0,
+      deletions: session.summary?.deletions ?? 0,
+    }
+  }
+  return {
+    files: diff.files.size,
+    additions: diff.additions,
+    deletions: diff.deletions,
+  }
+}
 
 export const startOfDay = (timestamp: number) => {
   const date = new Date(timestamp)
@@ -84,6 +113,17 @@ export function aggregateProjects(input: ProjectInput[]): ProjectAggregate[] {
         if (max === undefined) return value
         return value > max ? value : max
       }, undefined)
+      const changes = visible.reduce(
+        (total, session) => {
+          const stats = sessionChangeStats(session, project.sessionDiffs)
+          return {
+            files: total.files + stats.files,
+            additions: total.additions + stats.additions,
+            deletions: total.deletions + stats.deletions,
+          }
+        },
+        { files: 0, additions: 0, deletions: 0 },
+      )
       return {
         directory: project.directory,
         worktree: project.worktree,
@@ -91,9 +131,9 @@ export function aggregateProjects(input: ProjectInput[]): ProjectAggregate[] {
         iconColor: project.iconColor,
         sessions: visible.length,
         archived,
-        files: visible.reduce((total, session) => total + sessionFiles(session), 0),
-        additions: visible.reduce((total, session) => total + sessionAdditions(session), 0),
-        deletions: visible.reduce((total, session) => total + sessionDeletions(session), 0),
+        files: changes.files,
+        additions: changes.additions,
+        deletions: changes.deletions,
         lastActivity,
       }
     })
@@ -153,6 +193,7 @@ export function recentSessions(input: ProjectInput[], limit = 8): RecentSession[
   for (const project of input) {
     for (const session of project.sessions) {
       if (!isVisible(session)) continue
+      const stats = sessionChangeStats(session, project.sessionDiffs)
       all.push({
         id: session.id,
         title: session.title || session.id,
@@ -161,9 +202,9 @@ export function recentSessions(input: ProjectInput[], limit = 8): RecentSession[
         projectName: project.name,
         projectColor: project.iconColor,
         updated: sessionTime(session),
-        files: sessionFiles(session),
-        additions: sessionAdditions(session),
-        deletions: sessionDeletions(session),
+        files: stats.files,
+        additions: stats.additions,
+        deletions: stats.deletions,
       })
     }
   }

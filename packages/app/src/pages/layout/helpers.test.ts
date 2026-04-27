@@ -9,6 +9,7 @@ import {
 import { type Session } from "@opencode-ai/sdk/v2/client"
 import {
   childSessionOnPath,
+  childSessions,
   displayName,
   effectiveWorkspaceOrder,
   errorMessage,
@@ -210,6 +211,18 @@ describe("layout workspace helpers", () => {
     expect(childSessionOnPath(list, "child", "leaf")?.id).toBe("leaf")
     expect(childSessionOnPath(list, "root", "root")).toBeUndefined()
     expect(childSessionOnPath(list, "root", "other")).toBeUndefined()
+  })
+
+  test("lists direct child sessions by recency", () => {
+    const list = [
+      session({ id: "root", directory: "/workspace" }),
+      session({ id: "old", directory: "/workspace", parentID: "root", time: { created: 1, updated: 1 } }),
+      session({ id: "new", directory: "/workspace", parentID: "root", time: { created: 2, updated: 3 } }),
+      session({ id: "archived", directory: "/workspace", parentID: "root", time: { created: 4, updated: 4, archived: 4 } }),
+      session({ id: "leaf", directory: "/workspace", parentID: "new", time: { created: 5, updated: 5 } }),
+    ]
+
+    expect(childSessions(list, "root", 120_000).map((item) => item.id)).toEqual(["new", "old"])
   })
 
   test("formats fallback project display name", () => {
