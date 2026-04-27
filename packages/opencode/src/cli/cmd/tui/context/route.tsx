@@ -13,13 +13,18 @@ export type SessionRoute = {
   prompt?: PromptInfo
 }
 
+export type OrchestratorRoute = {
+  type: "orchestrator"
+  sessionID: string
+}
+
 export type PluginRoute = {
   type: "plugin"
   id: string
   data?: Record<string, unknown>
 }
 
-export type Route = HomeRoute | SessionRoute | PluginRoute
+export type Route = HomeRoute | SessionRoute | OrchestratorRoute | PluginRoute
 
 export const { use: useRoute, provider: RouteProvider } = createSimpleContext({
   name: "Route",
