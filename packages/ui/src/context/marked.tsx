@@ -423,6 +423,32 @@ function renderMathExpressions(html: string): string {
     .join("")
 }
 
+function unescapeCodeBlock(code: string) {
+  return code
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+}
+
+function escapeCodeBlock(code: string) {
+  return code
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
+function codeBlockLanguage(lang?: string) {
+  return (lang ?? "text").split(/\s+/)[0]?.toLowerCase() || "text"
+}
+
+function mermaidCodeBlock(code: string) {
+  return `<pre data-language="mermaid"><code>${escapeCodeBlock(code)}</code></pre>`
+}
+
 async function highlightCodeBlocks(html: string): Promise<string> {
   const codeBlockRegex = /<pre><code(?:\s+class="language-([^"]*)")?>([\s\S]*?)<\/code><\/pre>/g
   const matches = [...html.matchAll(codeBlockRegex)]
@@ -437,14 +463,13 @@ async function highlightCodeBlocks(html: string): Promise<string> {
   let result = html
   for (const match of matches) {
     const [fullMatch, lang, escapedCode] = match
-    const code = escapedCode
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&amp;/g, "&")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
+    const code = unescapeCodeBlock(escapedCode)
+    if (codeBlockLanguage(lang) === "mermaid") {
+      result = result.replace(fullMatch, () => mermaidCodeBlock(code))
+      continue
+    }
 
-    let language = lang || "text"
+    let language = codeBlockLanguage(lang)
     if (!(language in bundledLanguages)) {
       language = "text"
     }
@@ -483,6 +508,8 @@ export const { use: useMarked, provider: MarkedProvider } = createSimpleContext(
       }),
       markedShiki({
         async highlight(code, lang) {
+          if (codeBlockLanguage(lang) === "mermaid") return mermaidCodeBlock(code)
+
           const highlighter = await getSharedHighlighter({
             themes: ["OpenCode"],
             langs: [],

@@ -131,6 +131,43 @@
     position: relative;
   }
 
+  [data-component="markdown-code"][data-mermaid="true"] {
+    [data-component="mermaid-preview"] {
+      display: none;
+      width: 100%;
+      max-width: 100%;
+      margin-top: 12px;
+      margin-bottom: 32px;
+      padding: 16px;
+      overflow: auto;
+      border: 0.5px solid var(--border-weak-base);
+      border-radius: 6px;
+      background: var(--surface-weak-base);
+      scrollbar-width: none;
+
+      &::-webkit-scrollbar {
+        display: none;
+      }
+
+      svg {
+        display: block;
+        max-width: 100%;
+        height: auto;
+        margin: 0 auto;
+      }
+    }
+  }
+
+  [data-component="markdown-code"][data-mermaid-state="rendered"] {
+    > pre {
+      display: none;
+    }
+
+    > [data-component="mermaid-preview"] {
+      display: block;
+    }
+  }
+
   [data-slot="markdown-copy-button"] {
     position: absolute;
     top: 4px;

@@ -63,7 +63,11 @@ type CopyLabels = {
   copied: string
 }
 
+type Mermaid = typeof import("mermaid")["default"]
+
 const urlPattern = /^https?:\/\/[^\s<>()`"']+$/
+let mermaidPromise: Promise<Mermaid> | undefined
+let mermaidCounter = 0
 
 function codeUrl(text: string) {
   const href = text.trim().replace(/[),.;!?]+$/, "")
@@ -74,6 +78,47 @@ function codeUrl(text: string) {
   } catch {
     return
   }
+}
+
+function loadMermaid() {
+  if (mermaidPromise) return mermaidPromise
+  mermaidPromise = import("mermaid").then((mod) => {
+    mod.default.initialize({
+      startOnLoad: false,
+      securityLevel: "strict",
+      theme: "base",
+      themeVariables: {
+        background: "transparent",
+        primaryColor: "var(--surface-weak-base)",
+        primaryTextColor: "var(--text-strong)",
+        primaryBorderColor: "var(--border-weak-base)",
+        lineColor: "var(--text-weak)",
+        secondaryColor: "var(--surface-base)",
+        tertiaryColor: "var(--surface-strong-base)",
+        fontFamily: "var(--font-family-sans)",
+        noteBkgColor: "var(--surface-weak-base)",
+        noteTextColor: "var(--text-strong)",
+        noteBorderColor: "var(--border-weak-base)",
+      },
+    })
+    return mod.default
+  })
+  return mermaidPromise
+}
+
+function sanitizeMermaid(svg: string) {
+  if (!DOMPurify.isSupported) return ""
+  return DOMPurify.sanitize(svg, {
+    USE_PROFILES: { svg: true, svgFilters: true },
+    SANITIZE_NAMED_PROPS: true,
+  })
+}
+
+function isMermaidBlock(block: HTMLPreElement) {
+  if (block.dataset.language?.toLowerCase() === "mermaid") return true
+  const code = block.querySelector("code")
+  const className = `${block.className} ${code?.className ?? ""}`
+  return /\blang(?:uage)?-mermaid\b/i.test(className)
 }
 
 function createIcon(path: string, slot: string) {
@@ -173,11 +218,41 @@ function markCodeLinks(root: HTMLDivElement) {
   }
 }
 
+function markMermaidBlocks(root: HTMLDivElement) {
+  const blocks = Array.from(root.querySelectorAll("pre")).filter(
+    (block): block is HTMLPreElement => block instanceof HTMLPreElement && isMermaidBlock(block),
+  )
+
+  for (const block of blocks) {
+    const wrapper = block.parentElement
+    const code = block.querySelector("code")
+    const hash = checksum(code?.textContent ?? "")
+    if (!wrapper || !hash) continue
+
+    wrapper.setAttribute("data-mermaid", "true")
+    wrapper.dataset.mermaidHash = hash
+    block.setAttribute("data-language", "mermaid")
+
+    const existing = Array.from(wrapper.children).find(
+      (child): child is HTMLElement =>
+        child instanceof HTMLElement && child.getAttribute("data-component") === "mermaid-preview",
+    )
+    const preview = existing ?? document.createElement("div")
+    preview.setAttribute("data-component", "mermaid-preview")
+    preview.setAttribute("role", "img")
+    preview.setAttribute("aria-label", "Mermaid diagram")
+    preview.dataset.mermaidHash = hash
+
+    if (!existing) wrapper.insertBefore(preview, block)
+  }
+}
+
 function decorate(root: HTMLDivElement, labels: CopyLabels) {
   const blocks = Array.from(root.querySelectorAll("pre"))
   for (const block of blocks) {
     ensureCodeWrapper(block, labels)
   }
+  markMermaidBlocks(root)
   markCodeLinks(root)
 }
 
@@ -223,6 +298,68 @@ function setupCodeCopy(root: HTMLDivElement, getLabels: () => CopyLabels) {
       clearTimeout(timeout)
     }
   }
+}
+
+function renderMermaidPreviews(root: HTMLDivElement) {
+  const blocks = Array.from(root.querySelectorAll('[data-component="markdown-code"][data-mermaid="true"]')).filter(
+    (block): block is HTMLElement => block instanceof HTMLElement,
+  )
+  const pending = blocks.filter((block) => {
+    const hash = block.dataset.mermaidHash
+    const preview = Array.from(block.children).find(
+      (child): child is HTMLElement =>
+        child instanceof HTMLElement && child.getAttribute("data-component") === "mermaid-preview",
+    )
+    if (!hash || !preview) return false
+    if (preview.dataset.mermaidRendering === hash) return false
+    return preview.dataset.mermaidRendered !== hash
+  })
+  if (pending.length === 0) return
+
+  void loadMermaid()
+    .then((mermaid) => {
+      for (const block of pending) {
+        const hash = block.dataset.mermaidHash
+        const preview = Array.from(block.children).find(
+          (child): child is HTMLElement =>
+            child instanceof HTMLElement && child.getAttribute("data-component") === "mermaid-preview",
+        )
+        const source = block.querySelector("pre code")?.textContent
+        if (!hash || !preview || !source) continue
+
+        preview.dataset.mermaidRendering = hash
+        block.dataset.mermaidState = "pending"
+
+        void mermaid
+          .render(`markdown-mermaid-${hash}-${mermaidCounter++}`, source)
+          .then((result) => {
+            if (block.dataset.mermaidHash !== hash) return
+            const svg = sanitizeMermaid(result.svg)
+            if (!svg) {
+              delete preview.dataset.mermaidRendering
+              block.dataset.mermaidState = "error"
+              return
+            }
+            preview.innerHTML = svg
+            result.bindFunctions?.(preview)
+            preview.dataset.mermaidRendered = hash
+            delete preview.dataset.mermaidRendering
+            block.dataset.mermaidState = "rendered"
+          })
+          .catch(() => {
+            if (block.dataset.mermaidHash !== hash) return
+            preview.replaceChildren()
+            delete preview.dataset.mermaidRendered
+            delete preview.dataset.mermaidRendering
+            block.dataset.mermaidState = "error"
+          })
+      }
+    })
+    .catch(() => {
+      for (const block of pending) {
+        block.dataset.mermaidState = "error"
+      }
+    })
 }
 
 function touch(key: string, value: Entry) {
@@ -309,6 +446,25 @@ export function Markdown(
     morphdom(container, temp, {
       childrenOnly: true,
       onBeforeElUpdated: (fromEl, toEl) => {
+        if (fromEl instanceof HTMLElement && toEl instanceof HTMLElement) {
+          if (
+            fromEl.getAttribute("data-component") === "mermaid-preview" &&
+            toEl.getAttribute("data-component") === "mermaid-preview" &&
+            fromEl.dataset.mermaidHash === toEl.dataset.mermaidHash &&
+            fromEl.dataset.mermaidRendered === fromEl.dataset.mermaidHash
+          ) {
+            return false
+          }
+          if (
+            fromEl.getAttribute("data-component") === "markdown-code" &&
+            toEl.getAttribute("data-component") === "markdown-code" &&
+            fromEl.dataset.mermaid === "true" &&
+            fromEl.dataset.mermaidHash === toEl.dataset.mermaidHash &&
+            fromEl.dataset.mermaidState
+          ) {
+            toEl.dataset.mermaidState = fromEl.dataset.mermaidState
+          }
+        }
         if (
           fromEl instanceof HTMLButtonElement &&
           toEl instanceof HTMLButtonElement &&
@@ -322,6 +478,7 @@ export function Markdown(
         return true
       },
     })
+    renderMermaidPreviews(container)
 
     if (!copyCleanup)
       copyCleanup = setupCodeCopy(container, () => ({
