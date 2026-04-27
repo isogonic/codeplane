@@ -8,9 +8,14 @@ import {
   type DragEvent,
 } from "@thisbeyond/solid-dnd"
 import { ConstrainDragXAxis } from "@/utils/solid-dnd"
+import { Icon, type IconProps } from "@opencode-ai/ui/icon"
 import { IconButton } from "@opencode-ai/ui/icon-button"
 import { Tooltip, TooltipKeybind } from "@opencode-ai/ui/tooltip"
 import { type LocalProject } from "@/context/layout"
+import { useLayout } from "@/context/layout"
+import { useLanguage } from "@/context/language"
+import { useNotification } from "@/context/notification"
+import { useLocation, useNavigate } from "@solidjs/router"
 
 export const SidebarContent = (props: {
   mobile?: boolean
@@ -32,8 +37,54 @@ export const SidebarContent = (props: {
   onOpenHelp: () => void
   renderPanel: () => JSX.Element
 }): JSX.Element => {
+  const layout = useLayout()
+  const language = useLanguage()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const notification = useNotification()
   const expanded = createMemo(() => !!props.mobile || props.opened())
   const placement = () => (props.mobile ? "bottom" : "right")
+  const homeSelected = createMemo(() => location.pathname === "/")
+  const notificationsSelected = createMemo(() => location.pathname === "/notifications")
+  const notificationActive = createMemo(() => notification.unseenCount() > 0)
+  const openGlobalRoute = (href: string) => {
+    navigate(href)
+    layout.mobileSidebar.hide()
+  }
+  const RailAction = (itemProps: {
+    icon: IconProps["name"]
+    label: Accessor<string>
+    selected: Accessor<boolean>
+    notify?: Accessor<boolean>
+    critical?: Accessor<boolean>
+    onClick: () => void
+  }) => (
+    <Tooltip placement={placement()} value={itemProps.label()}>
+      <button
+        type="button"
+        classList={{
+          "relative flex items-center justify-center size-10 p-1 rounded-lg overflow-hidden transition-colors cursor-default focus:outline-none": true,
+          "bg-transparent border-2 border-icon-strong-base hover:bg-surface-base-hover": itemProps.selected(),
+          "bg-transparent border border-transparent hover:bg-surface-base-hover hover:border-border-weak-base":
+            !itemProps.selected(),
+        }}
+        aria-label={itemProps.label()}
+        aria-current={itemProps.selected() ? "page" : undefined}
+        onClick={itemProps.onClick}
+      >
+        <Icon name={itemProps.icon} />
+        <Show when={itemProps.notify?.()}>
+          <div
+            classList={{
+              "absolute top-1 right-1 size-1.5 rounded-full z-10": true,
+              "bg-icon-critical-base": itemProps.critical?.(),
+              "bg-text-interactive-base": !itemProps.critical?.(),
+            }}
+          />
+        </Show>
+      </button>
+    </Tooltip>
+  )
   let panel: HTMLDivElement | undefined
 
   createEffect(() => {
@@ -63,6 +114,20 @@ export const SidebarContent = (props: {
             <DragDropSensors />
             <ConstrainDragXAxis />
             <div class="h-full w-full flex flex-col items-center gap-3 px-3 py-3 overflow-y-auto no-scrollbar">
+              <RailAction
+                icon="home"
+                label={() => language.t("sidebar.home")}
+                selected={homeSelected}
+                onClick={() => openGlobalRoute("/")}
+              />
+              <RailAction
+                icon="bell"
+                label={() => language.t("sidebar.notifications")}
+                selected={notificationsSelected}
+                notify={notificationActive}
+                critical={notification.unseenHasError}
+                onClick={() => openGlobalRoute("/notifications")}
+              />
               <SortableProvider ids={props.projects().map((p) => p.worktree)}>
                 <For each={props.projects()}>{(project) => props.renderProject(project)}</For>
               </SortableProvider>

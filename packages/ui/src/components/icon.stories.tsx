@@ -80,6 +80,8 @@ const names = [
   "speech-bubble",
   "comment",
   "folder-add-left",
+  "home",
+  "bell",
   "github",
   "discord",
   "layout-bottom",
