@@ -180,10 +180,9 @@ function createGlobalSync() {
           })
             .then((x) => {
               const key = directoryKey(directory)
-              const nonArchived = (x.data ?? [])
-                .filter(
-                  (s): s is Session => !!s?.id && directoryKey(s.directory) === key && !s.time?.archived,
-                )
+              const nonArchived = (x.data ?? []).filter(
+                (s): s is Session => !!s?.id && directoryKey(s.directory) === key && !s.time?.archived,
+              )
               const currentLimit = store.limit
               const childSessions = store.session.filter((s) => !!s.parentID && directoryKey(s.directory) === key)
               const sessions = trimSessions([...nonArchived, ...childSessions], {

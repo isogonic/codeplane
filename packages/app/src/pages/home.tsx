@@ -68,7 +68,11 @@ export default function Home() {
   return (
     <div class="size-full overflow-y-auto">
       <div class="mx-auto flex min-h-full w-full max-w-4xl flex-col gap-8 px-6 py-8">
-        <Header subtitleText={subtitleText} lastActivity={() => stats().totals.lastActivity} formatRelative={formatRelative} />
+        <Header
+          subtitleText={subtitleText}
+          lastActivity={() => stats().totals.lastActivity}
+          formatRelative={formatRelative}
+        />
 
         <HeroStats
           totals={() => stats().totals}
@@ -158,10 +162,7 @@ function HeroStats(props: {
         value={props.formatNumber().format(props.totals().sessions)}
         hint={() => (props.totals().archived > 0 ? props.tArchived(props.totals().archived) : undefined)}
       />
-      <Stat
-        label={props.labels.files}
-        value={props.formatNumber().format(props.totals().files)}
-      />
+      <Stat label={props.labels.files} value={props.formatNumber().format(props.totals().files)} />
       <Stat
         label={props.labels.lines}
         value={props.formatNumber().format(lines())}
@@ -310,15 +311,14 @@ function ProjectsSection(props: {
                   </div>
                   <div class="mt-1.5 flex items-center justify-between gap-3 text-12-regular text-text-weak">
                     <span class="truncate">
-                      <Show
-                        when={project.lastActivity}
-                        fallback={props.tNever}
-                      >
+                      <Show when={project.lastActivity} fallback={props.tNever}>
                         {(time) => <span>{props.formatRelative(time())}</span>}
                       </Show>
                     </span>
                     <Show when={project.additions + project.deletions > 0}>
-                      <span class="shrink-0 tabular-nums">{props.formattedDiff(project.additions, project.deletions)}</span>
+                      <span class="shrink-0 tabular-nums">
+                        {props.formattedDiff(project.additions, project.deletions)}
+                      </span>
                     </Show>
                   </div>
                 </div>

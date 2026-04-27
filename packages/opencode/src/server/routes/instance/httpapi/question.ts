@@ -52,7 +52,7 @@ export const QuestionApi = HttpApi.make("question")
   .annotateMerge(
     OpenApi.annotations({
       title: "opencode HttpApi",
-      version: "0.0.1",
+      version: "2.0.0",
       description: "Effect HttpApi surface for instance routes.",
     }),
   )

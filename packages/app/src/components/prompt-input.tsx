@@ -105,10 +105,7 @@ const NON_EMPTY_TEXT = /[^\s\u200B]/
 function CapabilityIcon(props: { capable: boolean; icon: IconProps["name"]; label: string }) {
   return (
     <Tooltip placement="top" value={<span>{props.label}</span>}>
-      <span
-        aria-label={props.label}
-        class="inline-flex size-5 items-center justify-center transition-colors"
-      >
+      <span aria-label={props.label} class="inline-flex size-5 items-center justify-center transition-colors">
         <Icon
           name={props.icon}
           size="small"

@@ -24,7 +24,13 @@ function sqlite(db: Database.TxOrDb, sessionID: SessionID): SessionEntryStepper.
       const { id, type, ...data } = assistant
       db.update(SessionEntryTable)
         .set({ data })
-        .where(and(eq(SessionEntryTable.id, id), eq(SessionEntryTable.session_id, sessionID), eq(SessionEntryTable.type, type)))
+        .where(
+          and(
+            eq(SessionEntryTable.id, id),
+            eq(SessionEntryTable.session_id, sessionID),
+            eq(SessionEntryTable.type, type),
+          ),
+        )
         .run()
     },
     appendEntry(entry) {
