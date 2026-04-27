@@ -4,6 +4,7 @@ import { useI18n } from "../context/i18n"
 import { createStore } from "solid-js/store"
 import { Collapsible } from "./collapsible"
 import type { IconProps } from "./icon"
+import { Markdown } from "./markdown"
 import { TextShimmer } from "./text-shimmer"
 
 export type TriggerTitle = {
@@ -265,6 +266,8 @@ export function GenericTool(props: {
   status?: string
   hideDetails?: boolean
   input?: Record<string, unknown>
+  output?: string
+  defaultOpen?: boolean
 }) {
   const i18n = useI18n()
 
@@ -278,6 +281,13 @@ export function GenericTool(props: {
         args: args(props.input),
       }}
       hideDetails={props.hideDetails}
-    />
+      defaultOpen={props.defaultOpen}
+    >
+      <Show when={props.output}>
+        <div data-component="tool-output" data-scrollable>
+          <Markdown text={props.output!} />
+        </div>
+      </Show>
+    </BasicTool>
   )
 }
