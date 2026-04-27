@@ -197,13 +197,16 @@ export function SessionContextTab() {
   }
 
   const stats = [
-    { label: "context.stats.session", value: () => info()?.title ?? params.id ?? "—" },
+    {
+      label: "context.stats.averageTokensPerSecond",
+      value: () => formatter().tokensPerSecond(metrics().averageTokensPerSecond),
+    },
     { label: "context.stats.messages", value: () => counts().all.toLocaleString(language.intl()) },
     { label: "context.stats.provider", value: providerLabel },
     { label: "context.stats.model", value: modelLabel },
     { label: "context.stats.limit", value: () => formatter().number(ctx()?.limit) },
-    { label: "context.stats.totalTokens", value: () => formatter().number(ctx()?.total) },
     { label: "context.stats.usage", value: () => formatter().percent(ctx()?.usage) },
+    { label: "context.stats.totalTokens", value: () => formatter().number(ctx()?.total) },
     { label: "context.stats.inputTokens", value: () => formatter().number(ctx()?.input) },
     { label: "context.stats.outputTokens", value: () => formatter().number(ctx()?.output) },
     { label: "context.stats.reasoningTokens", value: () => formatter().number(ctx()?.reasoning) },
@@ -211,9 +214,9 @@ export function SessionContextTab() {
       label: "context.stats.cacheTokens",
       value: () => `${formatter().number(ctx()?.cacheRead)} / ${formatter().number(ctx()?.cacheWrite)}`,
     },
+    { label: "context.stats.totalCost", value: cost },
     { label: "context.stats.userMessages", value: () => counts().user.toLocaleString(language.intl()) },
     { label: "context.stats.assistantMessages", value: () => counts().assistant.toLocaleString(language.intl()) },
-    { label: "context.stats.totalCost", value: cost },
     { label: "context.stats.sessionCreated", value: () => formatter().time(info()?.time.created) },
     { label: "context.stats.lastActivity", value: () => formatter().time(ctx()?.message.time.created) },
   ] satisfies { label: string; value: () => JSX.Element }[]

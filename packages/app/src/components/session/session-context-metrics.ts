@@ -31,11 +31,33 @@ type Context = {
 
 type Metrics = {
   totalCost: number
+  averageTokensPerSecond: number | null
   context: Context | undefined
+}
+
+type CompletedAssistantMessage = AssistantMessage & {
+  time: AssistantMessage["time"] & {
+    completed: number
+  }
 }
 
 const tokenTotal = (msg: AssistantMessage) => {
   return msg.tokens.input + msg.tokens.output + msg.tokens.reasoning + msg.tokens.cache.read + msg.tokens.cache.write
+}
+
+const generatedTokenTotal = (msg: AssistantMessage) => {
+  return msg.tokens.output + msg.tokens.reasoning
+}
+
+const completedAssistantWithDuration = (msg: Message): msg is CompletedAssistantMessage => {
+  return msg.role === "assistant" && typeof msg.time.completed === "number" && msg.time.completed > msg.time.created
+}
+
+const averageTokensPerSecond = (messages: Message[]) => {
+  const completed = messages.filter(completedAssistantWithDuration)
+  const duration = completed.reduce((sum, msg) => sum + msg.time.completed - msg.time.created, 0)
+  if (duration <= 0) return null
+  return (completed.reduce((sum, msg) => sum + generatedTokenTotal(msg), 0) / duration) * 1000
 }
 
 const lastAssistantWithTokens = (messages: Message[]) => {
@@ -49,8 +71,9 @@ const lastAssistantWithTokens = (messages: Message[]) => {
 
 const build = (messages: Message[] = [], providers: Provider[] = []): Metrics => {
   const totalCost = messages.reduce((sum, msg) => sum + (msg.role === "assistant" ? msg.cost : 0), 0)
+  const speed = averageTokensPerSecond(messages)
   const message = lastAssistantWithTokens(messages)
-  if (!message) return { totalCost, context: undefined }
+  if (!message) return { totalCost, averageTokensPerSecond: speed, context: undefined }
 
   const provider = providers.find((item) => item.id === message.providerID)
   const model = provider?.models[message.modelID]
@@ -59,6 +82,7 @@ const build = (messages: Message[] = [], providers: Provider[] = []): Metrics =>
 
   return {
     totalCost,
+    averageTokensPerSecond: speed,
     context: {
       message,
       provider,
