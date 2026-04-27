@@ -5,7 +5,7 @@ import { IconButton } from "@opencode-ai/ui/icon-button"
 import { Spinner } from "@opencode-ai/ui/spinner"
 import { Tooltip } from "@opencode-ai/ui/tooltip"
 import { getFilename } from "@opencode-ai/shared/util/path"
-import { A, useParams } from "@solidjs/router"
+import { A } from "@solidjs/router"
 import { type Accessor, createMemo, For, type JSX, Match, Show, Switch } from "solid-js"
 import { useGlobalSync } from "@/context/global-sync"
 import { useLanguage } from "@/context/language"
@@ -16,7 +16,7 @@ import { useProviders } from "@/hooks/use-providers"
 import { messageAgentColor } from "@/utils/agent"
 import { sessionTitle } from "@/utils/session-title"
 import { sessionPermissionRequest } from "../session/composer/session-request-tree"
-import { childSessionOnPath, hasProjectPermissions } from "./helpers"
+import { childSessions, hasProjectPermissions } from "./helpers"
 import { formatSessionPreviewCost, formatSessionPreviewDuration, getSessionPreview } from "./sidebar-session-preview"
 import { getProjectAvatarSource } from "./project-avatar"
 
@@ -134,7 +134,6 @@ const SessionRow = (props: {
 }
 
 export const SessionItem = (props: SessionItemProps): JSX.Element => {
-  const params = useParams()
   const layout = useLayout()
   const language = useLanguage()
   const notification = useNotification()
@@ -223,9 +222,9 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
       </Show>
     </div>
   )
-  const currentChild = createMemo(() => {
+  const children = createMemo(() => {
     if (!props.showChild) return
-    return childSessionOnPath(sessionStore.session, props.session.id, params.id)
+    return childSessions(sessionStore.session, props.session.id, Date.now())
   })
 
   const warm = (span: number, priority: "high" | "low") => {
@@ -329,13 +328,15 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
           </Show>
         </div>
       </div>
-      <Show when={currentChild()} keyed>
+      <For each={children() ?? []}>
         {(child) => (
-          <div class="w-full">
-            <SessionItem {...props} session={child} level={(props.level ?? 0) + 1} />
-          </div>
+          <Show when={child.id !== props.session.id}>
+            <div class="w-full">
+              <SessionItem {...props} session={child} level={(props.level ?? 0) + 1} />
+            </div>
+          </Show>
         )}
-      </Show>
+      </For>
     </>
   )
 }
