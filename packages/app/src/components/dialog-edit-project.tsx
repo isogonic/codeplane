@@ -106,8 +106,8 @@ export function DialogEditProject(props: { project: LocalProject }) {
   }
 
   return (
-    <Dialog title={language.t("dialog.project.edit.title")} class="w-full max-w-[480px] mx-auto">
-      <form onSubmit={handleSubmit} class="flex flex-col gap-6 p-6 pt-0">
+    <Dialog title={language.t("dialog.project.edit.title")} class="w-full max-w-[480px] mx-auto" fit>
+      <form onSubmit={handleSubmit} class="flex flex-col gap-5 px-6 pt-0 pb-5">
         <div class="flex flex-col gap-4">
           <TextField
             autofocus
@@ -126,12 +126,12 @@ export function DialogEditProject(props: { project: LocalProject }) {
                 onMouseEnter={() => setStore("iconHover", true)}
                 onMouseLeave={() => setStore("iconHover", false)}
               >
-                <div
-                  class="relative size-16 rounded-md transition-colors cursor-pointer"
+                <button
+                  type="button"
+                  class="group relative size-16 shrink-0 overflow-hidden rounded-md border bg-transparent p-0 transition-colors cursor-pointer focus:outline-none focus-visible:border-border-interactive-focus"
                   classList={{
-                    "border-text-interactive-base bg-surface-info-base/20": store.dragOver,
+                    "border-border-interactive-base bg-surface-info-base/20": store.dragOver,
                     "border-border-base hover:border-border-strong": !store.dragOver,
-                    "overflow-hidden": !!store.iconOverride,
                   }}
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
@@ -164,25 +164,22 @@ export function DialogEditProject(props: { project: LocalProject }) {
                       />
                     )}
                   </Show>
-                </div>
-                <div
-                  class="absolute inset-0 size-16 bg-surface-raised-stronger-non-alpha/90 rounded-[6px] z-10 pointer-events-none flex items-center justify-center transition-opacity"
-                  classList={{
-                    "opacity-100": store.iconHover && !store.iconOverride,
-                    "opacity-0": !(store.iconHover && !store.iconOverride),
-                  }}
-                >
-                  <Icon name="cloud-upload" size="large" class="text-icon-on-interactive-base drop-shadow-sm" />
-                </div>
-                <div
-                  class="absolute inset-0 size-16 bg-surface-raised-stronger-non-alpha/90 rounded-[6px] z-10 pointer-events-none flex items-center justify-center transition-opacity"
-                  classList={{
-                    "opacity-100": store.iconHover && !!store.iconOverride,
-                    "opacity-0": !(store.iconHover && !!store.iconOverride),
-                  }}
-                >
-                  <Icon name="trash" size="large" class="text-icon-on-interactive-base drop-shadow-sm" />
-                </div>
+                  <div
+                    class="pointer-events-none absolute inset-0 flex items-center justify-center bg-[color-mix(in_srgb,var(--surface-raised-stronger-non-alpha)_30%,transparent)] transition-opacity"
+                    classList={{
+                      "opacity-100": store.iconHover || store.dragOver,
+                      "opacity-0": !store.iconHover && !store.dragOver,
+                    }}
+                  >
+                    <div class="flex size-8 items-center justify-center rounded-md border border-border-weak-base bg-surface-raised-stronger-non-alpha/95 shadow-sm">
+                      <Icon
+                        name={store.iconOverride && !store.dragOver ? "trash" : "cloud-upload"}
+                        size="normal"
+                        class="text-icon-strong-base"
+                      />
+                    </div>
+                  </div>
+                </button>
               </div>
               <input
                 id="icon-upload"
@@ -212,7 +209,7 @@ export function DialogEditProject(props: { project: LocalProject }) {
                       aria-label={language.t("dialog.project.edit.color.select", { color })}
                       aria-pressed={store.color === color}
                       classList={{
-                        "flex items-center justify-center size-10 p-0.5 rounded-lg overflow-hidden transition-colors cursor-default": true,
+                        "flex items-center justify-center size-10 p-0.5 rounded-lg overflow-hidden transition-colors cursor-pointer": true,
                         "bg-transparent border-2 border-icon-strong-base hover:bg-surface-base-hover":
                           store.color === color,
                         "bg-transparent border border-transparent hover:bg-surface-base-hover hover:border-border-weak-base":
@@ -244,7 +241,7 @@ export function DialogEditProject(props: { project: LocalProject }) {
           />
         </div>
 
-        <div class="flex justify-end gap-2">
+        <div class="flex justify-end gap-2 pt-1">
           <Button type="button" variant="ghost" size="large" onClick={() => dialog.close()}>
             {language.t("common.cancel")}
           </Button>
