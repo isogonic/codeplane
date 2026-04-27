@@ -1,0 +1,11 @@
+benchmark,model,candidate,runs,ok,median_ms,mean_ms,min_ms,max_ms
+"cli_version","","mine-v2.1.0","8","8","2498.8","2569.9","2394.4","3072.6"
+"run_help","","mine-v2.1.0","8","8","2560.2","2623.8","2122.2","3537.7"
+"models_openai","","mine-v2.1.0","3","3","3270.7","3356.8","3249.9","3549.7"
+"llm_fixture_task","openai/gpt-5.4-mini-fast","mine-v2.1.0","1","1","34875.1","34875.1","34875.1","34875.1"
+"llm_fixture_task","github-copilot/gpt-5.4-mini","mine-v2.1.0","1","1","24931.9","24931.9","24931.9","24931.9"
+"cli_version","","upstream-v1.14.27","8","8","2396.9","2463.1","2273.5","3107.4"
+"run_help","","upstream-v1.14.27","8","8","2507.0","2482.1","2170.1","2608.0"
+"models_openai","","upstream-v1.14.27","3","3","3698.6","3696.9","3645.9","3746.1"
+"llm_fixture_task","openai/gpt-5.4-mini-fast","upstream-v1.14.27","1","0","2383.4","2383.4","2383.4","2383.4"
+"llm_fixture_task","github-copilot/gpt-5.4-mini","upstream-v1.14.27","1","0","2491.7","2491.7","2491.7","2491.7"

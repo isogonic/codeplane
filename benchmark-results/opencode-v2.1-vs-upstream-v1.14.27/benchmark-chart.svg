@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="630" viewBox="0 0 1400 630">
+  <style>
+    .bg { fill: #0f172a; }
+    .title { fill: #f8fafc; font: 700 30px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .subtitle { fill: #cbd5e1; font: 15px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .group { fill: #e2e8f0; font: 650 14px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .candidate { fill: #cbd5e1; font: 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .value { fill: #e2e8f0; font: 12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .axis { stroke: #334155; stroke-width: 1; }
+    .note { fill: #94a3b8; font: 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .legend { fill: #e2e8f0; font: 13px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  </style>
+  <rect class="bg" width="100%" height="100%" />
+  <text x="24" y="46" class="title">opencode Benchmark: v2.1.0 vs offizielles v1.14.27</text>
+  <text x="24" y="76" class="subtitle">Median wall-clock time, lower is better. Failed rows are red and are not successful latency measurements.</text>
+  <rect x="24" y="104" width="16" height="16" rx="4" fill="#2563eb" />
+  <text x="48" y="117" class="legend">Meine v2.1.0</text>
+  <rect x="180" y="104" width="16" height="16" rx="4" fill="#f97316" />
+  <text x="204" y="117" class="legend">Offiziell v1.14.27</text>
+  <rect x="360" y="104" width="16" height="16" rx="4" fill="#ef4444" />
+  <text x="384" y="117" class="legend">Fehlgeschlagen</text>
+  <line x1="280" y1="132" x2="280" y2="406" class="axis" />
+  <text x="24" y="168" class="group">cli_version</text>
+<text x="24" y="222" class="group">run_help</text>
+<text x="24" y="276" class="group">models_openai</text>
+<text x="24" y="330" class="group">llm_fixture_task openai/gpt-5.4-mini-fast</text>
+<text x="24" y="384" class="group">llm_fixture_task github-copilot/gpt-5.4-mini</text>
+  <text x="268" y="163" text-anchor="end" class="candidate">Meine v2.1.0</text>
+<rect x="280" y="150" width="66.6" height="16" rx="4" fill="#2563eb" />
+<text x="354.6344330200491" y="163" class="value">2.50s (8/8 ok)</text>
+<text x="268" y="185" text-anchor="end" class="candidate">Offiziell v1.14.27</text>
+<rect x="280" y="172" width="63.9" height="16" rx="4" fill="#f97316" />
+<text x="351.9173949779866" y="185" class="value">2.40s (8/8 ok)</text>
+<text x="268" y="217" text-anchor="end" class="candidate">Meine v2.1.0</text>
+<rect x="280" y="204" width="68.3" height="16" rx="4" fill="#2563eb" />
+<text x="356.27237981691127" y="217" class="value">2.56s (8/8 ok)</text>
+<text x="268" y="239" text-anchor="end" class="candidate">Offiziell v1.14.27</text>
+<rect x="280" y="226" width="66.9" height="16" rx="4" fill="#f97316" />
+<text x="354.853724819658" y="239" class="value">2.51s (8/8 ok)</text>
+<text x="268" y="271" text-anchor="end" class="candidate">Meine v2.1.0</text>
+<rect x="280" y="258" width="87.2" height="16" rx="4" fill="#2563eb" />
+<text x="375.2197134780996" y="271" class="value">3.27s (3/3 ok)</text>
+<text x="268" y="293" text-anchor="end" class="candidate">Offiziell v1.14.27</text>
+<rect x="280" y="280" width="98.6" height="16" rx="4" fill="#f97316" />
+<text x="386.63014349696135" y="293" class="value">3.70s (3/3 ok)</text>
+<text x="268" y="325" text-anchor="end" class="candidate">Meine v2.1.0</text>
+<rect x="280" y="312" width="930.0" height="16" rx="4" fill="#2563eb" />
+<text x="1218" y="325" class="value">34.88s (1/1 ok)</text>
+<text x="268" y="347" text-anchor="end" class="candidate">Offiziell v1.14.27</text>
+<rect x="280" y="334" width="63.6" height="16" rx="4" fill="#ef4444" />
+<text x="351.55836289051405" y="347" class="value">2.38s (0/1 ok) FAILED</text>
+<text x="268" y="379" text-anchor="end" class="candidate">Meine v2.1.0</text>
+<rect x="280" y="366" width="664.9" height="16" rx="4" fill="#2563eb" />
+<text x="952.8500119105876" y="379" class="value">24.93s (1/1 ok)</text>
+<text x="268" y="401" text-anchor="end" class="candidate">Offiziell v1.14.27</text>
+<rect x="280" y="388" width="66.4" height="16" rx="4" fill="#ef4444" />
+<text x="354.4464405994862" y="401" class="value">2.49s (0/1 ok) FAILED</text>
+  <text x="24" y="552" class="note">Generated: 2026-04-27T02:29:58.300Z</text>
+<text x="24" y="574" class="note">Official latest release verified via GitHub: anomalyco/opencode v1.14.27.</text>
+<text x="24" y="596" class="note">LLM prompt/model runs: 4.</text>
+<text x="24" y="618" class="note">Red bars are failed runs and should not be interpreted as successful model latency.</text>
+</svg>
