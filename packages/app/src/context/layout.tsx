@@ -94,6 +94,7 @@ export function pruneSessionKeys(input: {
 function nextSessionTabsForOpen(current: SessionTabs | undefined, tab: string): SessionTabs {
   const all = current?.all ?? []
   if (tab === "review") return { all: all.filter((x) => x !== "review"), active: tab }
+  if (tab === "activity") return { all: all.filter((x) => x !== "activity"), active: tab }
   if (tab === "context") return { all: [tab, ...all.filter((x) => x !== tab)], active: tab }
   if (!all.includes(tab)) return { all: [...all, tab], active: tab }
   return { all, active: tab }
@@ -790,7 +791,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         return {
           tabs,
           active: createMemo(() => tabs().active),
-          all: createMemo(() => tabs().all.filter((tab) => tab !== "review")),
+          all: createMemo(() => tabs().all.filter((tab) => tab !== "review" && tab !== "activity")),
           setActive(tab: string | undefined) {
             const session = key()
             const next = tab ? normalize(tab) : tab
@@ -802,7 +803,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           },
           setAll(all: string[]) {
             const session = key()
-            const next = normalizeAll(all).filter((tab) => tab !== "review")
+            const next = normalizeAll(all).filter((tab) => tab !== "review" && tab !== "activity")
             if (!store.sessionTabs[session]) {
               setStore("sessionTabs", session, { all: next, active: undefined })
             } else {

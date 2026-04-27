@@ -412,6 +412,9 @@
 
     [data-slot="tabs-trigger-wrapper"] {
       height: var(--tabs-compact-pill-height);
+      min-width: 0;
+      max-width: none;
+      flex: 1 1 0;
       border-radius: var(--tabs-compact-pill-radius);
       color: var(--text-weak);
       box-sizing: border-box;
@@ -420,6 +423,11 @@
         color 120ms ease,
         background-color 120ms ease,
         border-color 120ms ease;
+
+      [data-slot="tabs-trigger"] {
+        min-width: 0;
+        padding-inline: 8px;
+      }
 
       &:not(:has([data-selected])):hover:not(:disabled) {
         color: var(--text-base);

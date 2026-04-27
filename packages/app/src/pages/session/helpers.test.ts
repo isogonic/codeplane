@@ -178,4 +178,26 @@ describe("createSessionTabs", () => {
       dispose()
     })
   })
+
+  test("supports the activity tab as a static session tab", () => {
+    createRoot((dispose) => {
+      const [state] = createStore({
+        active: "activity" as string | undefined,
+        all: ["activity", "file://src/a.ts"],
+      })
+      const tabs = createMemo(() => ({ active: () => state.active, all: () => state.all }))
+      const result = createSessionTabs({
+        tabs,
+        pathFromTab: (tab) => (tab.startsWith("file://") ? tab.slice("file://".length) : undefined),
+        normalizeTab: (tab) => (tab.startsWith("file://") ? `norm:${tab.slice("file://".length)}` : tab),
+        activity: () => true,
+      })
+
+      expect(result.activeTab()).toBe("activity")
+      expect(result.openedTabs()).toEqual(["norm:src/a.ts"])
+      expect(result.activeFileTab()).toBeUndefined()
+      expect(result.closableTab()).toBeUndefined()
+      dispose()
+    })
+  })
 })

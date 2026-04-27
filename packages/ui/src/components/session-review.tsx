@@ -151,6 +151,43 @@ function diffId(file: string): string | undefined {
   return `session-review-diff-${sum}`
 }
 
+function isPatchAdded(patch: string | undefined) {
+  if (!patch) return false
+  return patch.includes("new file mode") || patch.startsWith("--- /dev/null") || patch.includes("\n--- /dev/null")
+}
+
+function isPatchDeleted(patch: string | undefined) {
+  if (!patch) return false
+  return patch.includes("deleted file mode") || patch.startsWith("+++ /dev/null") || patch.includes("\n+++ /dev/null")
+}
+
+function hasText(value: unknown) {
+  return typeof value === "string" && value.length > 0
+}
+
+function textField(diff: ReviewDiff, key: "before" | "after") {
+  const value = (diff as Record<string, unknown>)[key]
+  if (typeof value === "string") return value
+}
+
+function isAddedDiff(diff: ReviewDiff) {
+  if (diff.status === "added") return true
+  if (diff.status) return false
+  if ("before" in diff || "after" in diff) {
+    return !hasText(textField(diff, "before")) && hasText(textField(diff, "after"))
+  }
+  return isPatchAdded(diff.patch)
+}
+
+function isDeletedDiff(diff: ReviewDiff) {
+  if (diff.status === "deleted") return true
+  if (diff.status) return false
+  if ("before" in diff || "after" in diff) {
+    return hasText(textField(diff, "before")) && !hasText(textField(diff, "after"))
+  }
+  return isPatchDeleted(diff.patch)
+}
+
 type SessionReviewSelection = {
   file: string
   range: SelectedLineRange
@@ -177,9 +214,7 @@ export const SessionReview = (props: SessionReviewProps) => {
   const opened = () => store.opened
 
   const open = () => props.open ?? store.open
-  const items = createMemo<Item[]>(() =>
-    list(props.diffs).map((diff) => ({ ...normalize(diff), preloaded: diff.preloaded })),
-  )
+  const items = createMemo(() => list(props.diffs))
   const files = createMemo(() => items().map((diff) => diff.file))
   const grouped = createMemo(() => {
     const next = new Map<string, SessionReviewComment[]>()
@@ -393,6 +428,7 @@ export const SessionReview = (props: SessionReviewProps) => {
                     // binary files have empty diffs that we can't render
                     const diffCanRender = () => diff.additions !== 0 || diff.deletions !== 0
 
+                    const normalized = createMemo<Item>(() => ({ ...normalize(diff), preloaded: diff.preloaded }))
                     const expanded = createMemo(() => open().includes(file))
                     const mounted = createMemo(() => expanded() && (!!store.visible[file] || pinned(file)))
                     const force = () => !!store.force[file]
@@ -400,8 +436,6 @@ export const SessionReview = (props: SessionReviewProps) => {
                     const comments = createMemo(() => grouped().get(file) ?? [])
                     const commentedLines = createMemo(() => comments().map((c) => c.selection))
 
-                    const beforeText = () => text(diff, "deletions")
-                    const afterText = () => text(diff, "additions")
                     const changedLines = () => diff.additions + diff.deletions
                     const mediaKind = createMemo(() => mediaKindFromPath(file))
 
@@ -412,10 +446,8 @@ export const SessionReview = (props: SessionReviewProps) => {
                       return changedLines() > MAX_DIFF_CHANGED_LINES
                     })
 
-                    const isAdded = () =>
-                      diff.status === "added" || (beforeText().length === 0 && afterText().length > 0)
-                    const isDeleted = () =>
-                      diff.status === "deleted" || (afterText().length === 0 && beforeText().length > 0)
+                    const isAdded = () => isAddedDiff(diff)
+                    const isDeleted = () => isDeletedDiff(diff)
 
                     const selectedLines = createMemo(() => {
                       const current = selection()
@@ -453,7 +485,7 @@ export const SessionReview = (props: SessionReviewProps) => {
                           file,
                           selection,
                           comment,
-                          preview: selectionPreview(diff, selection),
+                          preview: selectionPreview(normalized(), selection),
                         })
                       },
                       onUpdate: ({ id, comment, selection }) => {
@@ -462,7 +494,7 @@ export const SessionReview = (props: SessionReviewProps) => {
                           file,
                           selection,
                           comment,
-                          preview: selectionPreview(diff, selection),
+                          preview: selectionPreview(normalized(), selection),
                         })
                       },
                       onDelete: (comment) => {
@@ -611,8 +643,8 @@ export const SessionReview = (props: SessionReviewProps) => {
                                   <Dynamic
                                     component={fileComponent}
                                     mode="diff"
-                                    fileDiff={diff.fileDiff}
-                                    preloadedDiff={diff.preloaded}
+                                    fileDiff={normalized().fileDiff}
+                                    preloadedDiff={normalized().preloaded}
                                     diffStyle={diffStyle()}
                                     onRendered={() => {
                                       props.onDiffRendered?.()
