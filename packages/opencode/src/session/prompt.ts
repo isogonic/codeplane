@@ -457,6 +457,14 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             run.promise(
               Effect.gen(function* () {
                 const ctx = context(args, opts)
+                const title = `MCP: ${key}`
+                yield* ctx.metadata({
+                  title,
+                  metadata: {
+                    mcp: true,
+                    tool: key,
+                  },
+                })
                 yield* plugin.trigger(
                   "tool.execute.before",
                   { tool: key, sessionID: ctx.sessionID, callID: opts.toolCallId },
@@ -473,10 +481,13 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                 )
 
                 const textParts: string[] = []
+                const contentTypes: string[] = []
                 const attachments: Omit<MessageV2.FilePart, "id" | "sessionID" | "messageID">[] = []
                 for (const contentItem of result.content) {
+                  contentTypes.push(contentItem.type)
                   if (contentItem.type === "text") textParts.push(contentItem.text)
                   else if (contentItem.type === "image") {
+                    textParts.push(`[Image: ${contentItem.mimeType}]`)
                     attachments.push({
                       type: "file",
                       mime: contentItem.mimeType,
@@ -486,6 +497,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                     const { resource } = contentItem
                     if (resource.text) textParts.push(resource.text)
                     if (resource.blob) {
+                      textParts.push(`[Resource: ${resource.uri} (${resource.mimeType ?? "application/octet-stream"})]`)
                       attachments.push({
                         type: "file",
                         mime: resource.mimeType ?? "application/octet-stream",
@@ -499,12 +511,16 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                 const truncated = yield* truncate.output(textParts.join("\n\n"), {}, input.agent)
                 const metadata = {
                   ...result.metadata,
+                  mcp: true,
+                  tool: key,
+                  contentTypes,
+                  attachmentCount: attachments.length,
                   truncated: truncated.truncated,
                   ...(truncated.truncated && { outputPath: truncated.outputPath }),
                 }
 
                 const output = {
-                  title: "",
+                  title,
                   metadata,
                   output: truncated.content,
                   attachments: attachments.map((attachment) => ({
