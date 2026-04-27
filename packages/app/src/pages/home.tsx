@@ -67,7 +67,7 @@ export default function Home() {
 
   return (
     <div class="size-full overflow-y-auto">
-      <div class="mx-auto flex min-h-full w-full max-w-4xl flex-col gap-8 px-6 py-8">
+      <div class="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-6 px-6 py-8">
         <Header
           subtitleText={subtitleText}
           lastActivity={() => stats().totals.lastActivity}
@@ -99,7 +99,7 @@ export default function Home() {
           tDayLabel={(count, date) => language.t("home.activity.dayLabel", { count, date })}
         />
 
-        <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div class="grid grid-cols-1 gap-6">
           <ProjectsSection
             projects={() => stats().projects}
             onSelect={openProject}
@@ -131,18 +131,18 @@ function Header(props: {
 }) {
   const language = useLanguage()
   return (
-    <div class="flex flex-col gap-2 border-b border-border-weak-base pb-6">
-      <div class="text-12-medium uppercase tracking-wide text-text-weak">{language.t("home.title")}</div>
-      <div class="flex flex-wrap items-baseline justify-between gap-3">
-        <div class="text-20-medium text-text-strong">{props.subtitleText()}</div>
-        <Show when={props.lastActivity()}>
-          {(time) => (
-            <div class="text-12-regular text-text-weak">
-              {language.t("home.subtitle.lastActivity", { time: props.formatRelative(time()) })}
-            </div>
-          )}
-        </Show>
+    <div class="shrink-0 flex items-center justify-between gap-4 border-b border-border-weak-base pb-4">
+      <div class="min-w-0">
+        <div class="text-20-medium text-text-strong truncate">{language.t("home.title")}</div>
+        <div class="text-12-regular text-text-weak">{props.subtitleText()}</div>
       </div>
+      <Show when={props.lastActivity()}>
+        {(time) => (
+          <div class="shrink-0 text-12-regular text-text-weak">
+            {language.t("home.subtitle.lastActivity", { time: props.formatRelative(time()) })}
+          </div>
+        )}
+      </Show>
     </div>
   )
 }
