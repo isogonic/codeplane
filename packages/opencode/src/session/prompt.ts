@@ -1451,17 +1451,19 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             const lastUserMsg = msgs.findLast((m) => m.info.role === "user")
             const bypassAgentCheck = lastUserMsg?.parts.some((p) => p.type === "agent") ?? false
 
-            const tools = yield* resolveTools({
-              agent,
-              session,
-              model,
-              tools: lastUser.tools,
-              processor: handle,
-              bypassAgentCheck,
-              messages: msgs,
-            })
+            const tools = model.capabilities.toolcall
+              ? yield* resolveTools({
+                  agent,
+                  session,
+                  model,
+                  tools: lastUser.tools,
+                  processor: handle,
+                  bypassAgentCheck,
+                  messages: msgs,
+                })
+              : {}
 
-            if (lastUser.format?.type === "json_schema") {
+            if (model.capabilities.toolcall && lastUser.format?.type === "json_schema") {
               tools["StructuredOutput"] = createStructuredOutputTool({
                 schema: lastUser.format.schema,
                 onSuccess(output) {

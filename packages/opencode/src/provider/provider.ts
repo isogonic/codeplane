@@ -162,8 +162,19 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
 
       if (!ok) {
         for (const [key, value] of Object.entries(input.models)) {
-          if (value.cost.input === 0) continue
-          delete input.models[key]
+          if (value.cost.input !== 0) {
+            delete input.models[key]
+            continue
+          }
+
+          value.capabilities.reasoning = false
+          value.capabilities.attachment = false
+          value.capabilities.toolcall = false
+          value.capabilities.input.audio = false
+          value.capabilities.input.image = false
+          value.capabilities.input.video = false
+          value.capabilities.input.pdf = false
+          value.variants = {}
         }
       }
 
