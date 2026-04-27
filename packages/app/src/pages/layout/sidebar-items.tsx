@@ -12,10 +12,12 @@ import { useLanguage } from "@/context/language"
 import { getAvatarColors, type LocalProject, useLayout } from "@/context/layout"
 import { useNotification } from "@/context/notification"
 import { usePermission } from "@/context/permission"
+import { useProviders } from "@/hooks/use-providers"
 import { messageAgentColor } from "@/utils/agent"
 import { sessionTitle } from "@/utils/session-title"
 import { sessionPermissionRequest } from "../session/composer/session-request-tree"
 import { childSessionOnPath, hasProjectPermissions } from "./helpers"
+import { formatSessionPreviewCost, formatSessionPreviewDuration, getSessionPreview } from "./sidebar-session-preview"
 import { getProjectAvatarSource } from "./project-avatar"
 
 export const ProjectIcon = (props: { project: LocalProject; class?: string; notify?: boolean }): JSX.Element => {
@@ -138,9 +140,16 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
   const notification = useNotification()
   const permission = usePermission()
   const globalSync = useGlobalSync()
+  const providers = useProviders()
   const unseenCount = createMemo(() => notification.session.unseenCount(props.session.id))
   const hasError = createMemo(() => notification.session.unseenHasError(props.session.id))
   const [sessionStore] = globalSync.child(props.session.directory)
+  const preview = createMemo(() =>
+    getSessionPreview({
+      messages: sessionStore.message[props.session.id],
+      parts: sessionStore.part,
+    }),
+  )
   const hasPermissions = createMemo(() => {
     return !!sessionPermissionRequest(sessionStore.session, sessionStore.permission, props.session.id, (item) => {
       return !permission.autoResponds(item, props.session.directory)
@@ -164,6 +173,56 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
 
   const tint = createMemo(() => messageAgentColor(sessionStore.message[props.session.id], sessionStore.agent))
   const tooltip = createMemo(() => props.showTooltip ?? (props.mobile || !props.sidebarExpanded()))
+  const modelLabel = createMemo(() => {
+    const data = preview()
+    if (!data.modelID) return "-"
+    return (
+      providers.all().find((provider) => provider.id === data.providerID)?.models[data.modelID]?.name ?? data.modelID
+    )
+  })
+  const previewValue = () => (
+    <div class="w-72 flex flex-col gap-2">
+      <div class="text-12-medium text-text-invert-strong truncate">{sessionTitle(props.session.title)}</div>
+      <Show
+        when={!preview().loading}
+        fallback={
+          <div class="text-12-regular text-text-invert-base">{language.t("sidebar.sessionPreview.loading")}</div>
+        }
+      >
+        <Show
+          when={preview().prompt}
+          fallback={
+            <div class="text-12-regular text-text-invert-base">{language.t("sidebar.sessionPreview.empty")}</div>
+          }
+        >
+          {(prompt) => (
+            <div
+              class="text-12-regular text-text-invert-strong whitespace-pre-wrap break-words overflow-hidden"
+              style={{
+                display: "-webkit-box",
+                "-webkit-line-clamp": "3",
+                "-webkit-box-orient": "vertical",
+              }}
+            >
+              {prompt()}
+            </div>
+          )}
+        </Show>
+        <div class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-12-regular">
+          <div class="text-text-invert-base">{language.t("context.stats.model")}</div>
+          <div class="text-text-invert-strong truncate text-right">{modelLabel()}</div>
+          <div class="text-text-invert-base">{language.t("context.usage.cost")}</div>
+          <div class="text-text-invert-strong truncate text-right">
+            {formatSessionPreviewCost(preview().cost, language.intl())}
+          </div>
+          <div class="text-text-invert-base">{language.t("sidebar.sessionPreview.duration")}</div>
+          <div class="text-text-invert-strong truncate text-right">
+            {formatSessionPreviewDuration(preview().duration, language.intl())}
+          </div>
+        </div>
+      </Show>
+    </div>
+  )
   const currentChild = createMemo(() => {
     if (!props.showChild) return
     return childSessionOnPath(sessionStore.session, props.session.id, params.id)
@@ -213,23 +272,33 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
         data-session-id={props.session.id}
         class="group/session relative w-full min-w-0 rounded-md cursor-default pr-3 transition-colors hover:bg-surface-raised-base-hover [&:has(:focus-visible)]:bg-surface-raised-base-hover has-[[data-expanded]]:bg-surface-raised-base-hover has-[.active]:bg-surface-base-active"
         style={{ "padding-left": `${8 + (props.level ?? 0) * 16}px` }}
+        onPointerEnter={() => warm(1, "high")}
       >
         <div class="flex min-w-0 items-center gap-1">
           <div class="min-w-0 flex-1">
             <Show
-              when={!tooltip()}
+              when={props.mobile}
               fallback={
-                <Tooltip
-                  placement={props.mobile ? "bottom" : "right"}
-                  value={sessionTitle(props.session.title)}
-                  gutter={10}
-                  class="min-w-0 w-full"
-                >
+                <Tooltip placement="right" value={previewValue()} gutter={10} class="min-w-0 w-full" contentClass="p-3">
                   {item}
                 </Tooltip>
               }
             >
-              {item}
+              <Show
+                when={!tooltip()}
+                fallback={
+                  <Tooltip
+                    placement="bottom"
+                    value={sessionTitle(props.session.title)}
+                    gutter={10}
+                    class="min-w-0 w-full"
+                  >
+                    {item}
+                  </Tooltip>
+                }
+              >
+                {item}
+              </Show>
             </Show>
           </div>
 
