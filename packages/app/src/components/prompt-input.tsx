@@ -20,7 +20,7 @@ import { useSync } from "@/context/sync"
 import { useComments } from "@/context/comments"
 import { Button } from "@opencode-ai/ui/button"
 import { DockShellForm, DockTray } from "@opencode-ai/ui/dock-surface"
-import { Icon } from "@opencode-ai/ui/icon"
+import { Icon, type IconProps } from "@opencode-ai/ui/icon"
 import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
 import { Tooltip, TooltipKeybind } from "@opencode-ai/ui/tooltip"
 import { IconButton } from "@opencode-ai/ui/icon-button"
@@ -100,6 +100,23 @@ const EXAMPLES = [
 ] as const
 
 const NON_EMPTY_TEXT = /[^\s\u200B]/
+
+function CapabilityIcon(props: { capable: boolean; icon: IconProps["name"]; label: string }) {
+  return (
+    <Tooltip placement="top" value={<span>{props.label}</span>}>
+      <span
+        aria-label={props.label}
+        classList={{
+          "inline-flex size-5 items-center justify-center transition-colors": true,
+          "text-icon-base": props.capable,
+          "text-icon-critical-base": !props.capable,
+        }}
+      >
+        <Icon name={props.icon} size="small" />
+      </span>
+    </Tooltip>
+  )
+}
 
 export const PromptInput: Component<PromptInputProps> = (props) => {
   const sdk = useSDK()
@@ -1064,6 +1081,15 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   })
 
   const variants = createMemo(() => ["default", ...local.model.variant.list()])
+  const currentModel = createMemo(() => local.model.current())
+  const modelCapabilities = createMemo(() => {
+    const capabilities = currentModel()?.capabilities
+    return {
+      vision: capabilities?.input.image ?? false,
+      tools: capabilities?.toolcall ?? false,
+      reasoning: capabilities?.reasoning ?? false,
+    }
+  })
   const accepting = createMemo(() => {
     const id = params.id
     if (!id) return permission.isAutoAcceptingDirectory(sdk.directory)
@@ -1618,6 +1644,32 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                             variant="ghost"
                           />
                         </TooltipKeybind>
+                      </div>
+                    </Show>
+                    <Show when={currentModel()}>
+                      <div
+                        data-component="prompt-model-capabilities"
+                        class="ml-auto hidden md:flex shrink-0 items-center gap-0.5"
+                      >
+                        <CapabilityIcon
+                          icon="photo"
+                          capable={modelCapabilities().vision}
+                          label={language.t("model.input.image")}
+                        />
+                        <CapabilityIcon
+                          icon="task"
+                          capable={modelCapabilities().tools}
+                          label={language.t("settings.permissions.section.tools")}
+                        />
+                        <CapabilityIcon
+                          icon="brain"
+                          capable={modelCapabilities().reasoning}
+                          label={language.t(
+                            modelCapabilities().reasoning
+                              ? "model.tooltip.reasoning.allowed"
+                              : "model.tooltip.reasoning.none",
+                          )}
+                        />
                       </div>
                     </Show>
                   </Show>
