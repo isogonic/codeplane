@@ -14,8 +14,6 @@
   <a href="https://github.com/devinoldenburg/codeplane/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/devinoldenburg/codeplane/publish.yml?style=flat-square&branch=dev" /></a>
 </p>
 
-[![CodePlane Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://codeplane.ai)
-
 ---
 
 ### Installation
