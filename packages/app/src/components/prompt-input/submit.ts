@@ -18,6 +18,7 @@ import { Worktree as WorktreeState } from "@/utils/worktree"
 import { buildRequestParts } from "./build-request-parts"
 import { setCursorPosition } from "./editor-dom"
 import { formatServerError } from "@/utils/server-errors"
+import { attachmentInput, modelSupportsAttachment } from "@/utils/model-capabilities"
 
 type PendingPrompt = {
   abort: AbortController
@@ -306,6 +307,17 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       showToast({
         title: language.t("prompt.toast.modelAgentRequired.title"),
         description: language.t("prompt.toast.modelAgentRequired.description"),
+      })
+      return
+    }
+
+    const unsupportedAttachment = images.find((attachment) => !modelSupportsAttachment(currentModel, attachment.mime))
+    if (unsupportedAttachment) {
+      showToast({
+        title: language.t("prompt.toast.pasteUnsupported.title"),
+        description: `${currentModel.name} does not support ${
+          attachmentInput(unsupportedAttachment.mime) ?? "file"
+        } attachments.`,
       })
       return
     }

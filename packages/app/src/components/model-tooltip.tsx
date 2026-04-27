@@ -1,5 +1,6 @@
 import { Show, type Component } from "solid-js"
 import { useLanguage } from "@/context/language"
+import { modelSupportsInput } from "@/utils/model-capabilities"
 
 type InputKey = "text" | "image" | "audio" | "video" | "pdf"
 type InputMap = Record<InputKey, boolean>
@@ -57,7 +58,7 @@ export const ModelTooltip: Component<{ model: ModelInfo; latest?: boolean; free?
       const input = props.model.capabilities.input
       const order: Array<InputKey> = ["text", "image", "audio", "video", "pdf"]
       const entries = order
-        .filter((key) => input[key] && (key === "text" || props.model.capabilities?.attachment))
+        .filter((key) => input[key] && modelSupportsInput(props.model, key))
         .map((key) => inputLabel(key))
       return entries.length ? entries.join(", ") : undefined
     }

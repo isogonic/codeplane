@@ -1023,6 +1023,12 @@ function fromModelsDevModel(provider: ModelsDev.Provider, model: ModelsDev.Model
     variants: {},
   }
 
+  if (model.id === "gpt-5.3-codex-spark") {
+    base.capabilities.attachment = false
+    base.capabilities.input.image = false
+    base.capabilities.input.pdf = false
+  }
+
   return {
     ...base,
     variants: mapValues(ProviderTransform.variants(base), (v) => v),

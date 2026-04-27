@@ -54,6 +54,7 @@ import { PromptContextItems } from "./prompt-input/context-items"
 import { PromptImageAttachments } from "./prompt-input/image-attachments"
 import { PromptDragOverlay } from "./prompt-input/drag-overlay"
 import { promptPlaceholder } from "./prompt-input/placeholder"
+import { modelSupportsInput } from "@/utils/model-capabilities"
 import { ImagePreview } from "@opencode-ai/ui/image-preview"
 import { useQueries } from "@tanstack/solid-query"
 import { loadAgentsQuery, loadProvidersQuery } from "@/context/global-sync/bootstrap"
@@ -1083,11 +1084,10 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const variants = createMemo(() => ["default", ...local.model.variant.list()])
   const currentModel = createMemo(() => local.model.current())
   const modelCapabilities = createMemo(() => {
-    const capabilities = currentModel()?.capabilities
     return {
-      vision: Boolean(capabilities?.attachment && capabilities.input.image),
-      tools: capabilities?.toolcall ?? false,
-      reasoning: capabilities?.reasoning ?? false,
+      vision: modelSupportsInput(currentModel(), "image"),
+      tools: currentModel()?.capabilities?.toolcall ?? false,
+      reasoning: currentModel()?.capabilities?.reasoning ?? false,
     }
   })
   const accepting = createMemo(() => {
