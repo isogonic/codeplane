@@ -1,6 +1,6 @@
 import { Platform, usePlatform } from "@/context/platform"
 import { makePersisted, type AsyncStorage, type SyncStorage } from "@solid-primitives/storage"
-import { checksum } from "@opencode-ai/shared/util/encode"
+import { checksum } from "@codeplane-ai/shared/util/encode"
 import { createResource, type Accessor } from "solid-js"
 import type { SetStoreFunction, Store } from "solid-js/store"
 
@@ -16,12 +16,13 @@ type PersistTarget = {
   storage?: string
   key: string
   legacy?: string[]
+  legacyTargets?: { storage?: string; key: string }[]
   migrate?: (value: unknown) => unknown
 }
 
 const LEGACY_STORAGE = "default.dat"
-const GLOBAL_STORAGE = "opencode.global.dat"
-const LOCAL_PREFIX = "opencode."
+const GLOBAL_STORAGE = "codeplane.global.dat"
+const LOCAL_PREFIX = "codeplane."
 const fallback = new Map<string, boolean>()
 
 const CACHE_MAX_ENTRIES = 500
@@ -208,10 +209,46 @@ function normalize(defaults: unknown, raw: string, migrate?: (value: unknown) =>
   return JSON.stringify(merged)
 }
 
+export type ServerPersistScope = {
+  key: string
+  legacy?: boolean
+}
+
+function serverScopeKey(scope: string | ServerPersistScope) {
+  return typeof scope === "string" ? scope : scope.key
+}
+
+function serverScopeLegacy(scope: string | ServerPersistScope) {
+  if (typeof scope === "string") return false
+  return scope.legacy === true
+}
+
+function storageToken(value: string, fallbackName: string) {
+  const head = (value.slice(0, 18) || fallbackName).replace(/[^a-zA-Z0-9._-]/g, "-")
+  const sum = checksum(value) ?? "0"
+  return `${head}.${sum}`
+}
+
+function serverStorage(scope: string | ServerPersistScope) {
+  return `codeplane.server.${storageToken(serverScopeKey(scope), "server")}.dat`
+}
+
 function workspaceStorage(dir: string) {
-  const head = (dir.slice(0, 12) || "workspace").replace(/[^a-zA-Z0-9._-]/g, "-")
-  const sum = checksum(dir) ?? "0"
-  return `opencode.workspace.${head}.${sum}.dat`
+  return `codeplane.workspace.${storageToken(dir, "workspace")}.dat`
+}
+
+function serverWorkspaceStorage(scope: string | ServerPersistScope, dir: string) {
+  return `codeplane.server.workspace.${storageToken(serverScopeKey(scope), "server")}.${storageToken(dir, "workspace")}.dat`
+}
+
+function localLegacy(legacy?: string[], enabled?: boolean) {
+  if (!enabled) return []
+  return legacy
+}
+
+function legacyTargets(enabled: boolean, targets: { storage?: string; key: string }[]) {
+  if (!enabled) return []
+  return targets
 }
 
 function localStorageWithPrefix(prefix: string): SyncStorage {
@@ -305,6 +342,8 @@ export const PersistTesting = {
   localStorageDirect,
   localStorageWithPrefix,
   normalize,
+  serverStorage,
+  serverWorkspaceStorage,
   workspaceStorage,
 }
 
@@ -312,15 +351,60 @@ export const Persist = {
   global(key: string, legacy?: string[]): PersistTarget {
     return { storage: GLOBAL_STORAGE, key, legacy }
   },
+  server(scope: string | ServerPersistScope, key: string, legacy?: string[]): PersistTarget {
+    const enabled = serverScopeLegacy(scope)
+    return {
+      storage: serverStorage(scope),
+      key,
+      legacy: localLegacy(legacy, enabled),
+      legacyTargets: legacyTargets(enabled, [{ storage: GLOBAL_STORAGE, key }]),
+    }
+  },
   workspace(dir: string, key: string, legacy?: string[]): PersistTarget {
     return { storage: workspaceStorage(dir), key: `workspace:${key}`, legacy }
+  },
+  serverWorkspace(scope: string | ServerPersistScope, dir: string, key: string, legacy?: string[]): PersistTarget {
+    const enabled = serverScopeLegacy(scope)
+    return {
+      storage: serverWorkspaceStorage(scope, dir),
+      key: `workspace:${key}`,
+      legacy: localLegacy(legacy, enabled),
+      legacyTargets: legacyTargets(enabled, [{ storage: workspaceStorage(dir), key: `workspace:${key}` }]),
+    }
   },
   session(dir: string, session: string, key: string, legacy?: string[]): PersistTarget {
     return { storage: workspaceStorage(dir), key: `session:${session}:${key}`, legacy }
   },
+  serverSession(
+    scope: string | ServerPersistScope,
+    dir: string,
+    session: string,
+    key: string,
+    legacy?: string[],
+  ): PersistTarget {
+    const enabled = serverScopeLegacy(scope)
+    return {
+      storage: serverWorkspaceStorage(scope, dir),
+      key: `session:${session}:${key}`,
+      legacy: localLegacy(legacy, enabled),
+      legacyTargets: legacyTargets(enabled, [
+        { storage: workspaceStorage(dir), key: `session:${session}:${key}` },
+      ]),
+    }
+  },
   scoped(dir: string, session: string | undefined, key: string, legacy?: string[]): PersistTarget {
     if (session) return Persist.session(dir, session, key, legacy)
     return Persist.workspace(dir, key, legacy)
+  },
+  serverScoped(
+    scope: string | ServerPersistScope,
+    dir: string,
+    session: string | undefined,
+    key: string,
+    legacy?: string[],
+  ): PersistTarget {
+    if (session) return Persist.serverSession(scope, dir, session, key, legacy)
+    return Persist.serverWorkspace(scope, dir, key, legacy)
   },
 }
 
@@ -351,11 +435,13 @@ export function persisted<T>(
 
   const isDesktop = platform.platform === "desktop" && !!platform.storage
 
-  const currentStorage = (() => {
-    if (isDesktop) return platform.storage?.(config.storage)
-    if (!config.storage) return localStorageDirect()
-    return localStorageWithPrefix(config.storage)
-  })()
+  const storageFor = (storageName?: string) => {
+    if (isDesktop) return platform.storage?.(storageName)
+    if (!storageName) return localStorageDirect()
+    return localStorageWithPrefix(storageName)
+  }
+
+  const currentStorage = storageFor(config.storage)
 
   const legacyStorage = (() => {
     if (!isDesktop) return localStorageDirect()
@@ -363,10 +449,18 @@ export function persisted<T>(
     return platform.storage?.(LEGACY_STORAGE)
   })()
 
+  const legacySources = () => [
+    ...(config.legacyTargets ?? []).flatMap((target) => {
+      const storage = storageFor(target.storage)
+      if (!storage) return []
+      return [{ storage, key: target.key }]
+    }),
+    ...legacy.flatMap((key) => (legacyStorage ? [{ storage: legacyStorage, key }] : [])),
+  ]
+
   const storage = (() => {
     if (!isDesktop) {
       const current = currentStorage as SyncStorage
-      const legacyStore = legacyStorage as SyncStorage
 
       const api: SyncStorage = {
         getItem: (key) => {
@@ -381,17 +475,17 @@ export function persisted<T>(
             return next
           }
 
-          for (const legacyKey of legacy) {
-            const legacyRaw = legacyStore.getItem(legacyKey)
+          for (const legacyTarget of legacySources() as { storage: SyncStorage; key: string }[]) {
+            const legacyRaw = legacyTarget.storage.getItem(legacyTarget.key)
             if (legacyRaw === null) continue
 
             const next = normalize(defaults, legacyRaw, config.migrate)
             if (next === undefined) {
-              legacyStore.removeItem(legacyKey)
+              legacyTarget.storage.removeItem(legacyTarget.key)
               continue
             }
             current.setItem(key, next)
-            legacyStore.removeItem(legacyKey)
+            legacyTarget.storage.removeItem(legacyTarget.key)
             return next
           }
 
@@ -409,7 +503,6 @@ export function persisted<T>(
     }
 
     const current = currentStorage as AsyncStorage
-    const legacyStore = legacyStorage as AsyncStorage | undefined
 
     const api: AsyncStorage = {
       getItem: async (key) => {
@@ -424,19 +517,17 @@ export function persisted<T>(
           return next
         }
 
-        if (!legacyStore) return null
-
-        for (const legacyKey of legacy) {
-          const legacyRaw = await legacyStore.getItem(legacyKey)
+        for (const legacyTarget of legacySources() as { storage: AsyncStorage; key: string }[]) {
+          const legacyRaw = await legacyTarget.storage.getItem(legacyTarget.key)
           if (legacyRaw === null) continue
 
           const next = normalize(defaults, legacyRaw, config.migrate)
           if (next === undefined) {
-            await legacyStore.removeItem(legacyKey).catch(() => undefined)
+            await legacyTarget.storage.removeItem(legacyTarget.key).catch(() => undefined)
             continue
           }
           await current.setItem(key, next)
-          await legacyStore.removeItem(legacyKey)
+          await legacyTarget.storage.removeItem(legacyTarget.key)
           return next
         }
 

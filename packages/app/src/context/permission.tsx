@@ -1,7 +1,7 @@
 import { createEffect, createMemo, onCleanup } from "solid-js"
 import { createStore, produce } from "solid-js/store"
-import { createSimpleContext } from "@opencode-ai/ui/context"
-import type { PermissionRequest } from "@opencode-ai/sdk/v2/client"
+import { createSimpleContext } from "@codeplane-ai/ui/context"
+import type { PermissionRequest } from "@codeplane-ai/sdk/v2/client"
 import { Persist, persisted } from "@/utils/persist"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { useGlobalSync } from "./global-sync"
@@ -13,6 +13,7 @@ import {
   isDirectoryAutoAccepting,
   autoRespondsPermission,
 } from "./permission-auto-respond"
+import { useServer } from "./server"
 
 type PermissionRespondFn = (input: {
   sessionID: string
@@ -50,6 +51,7 @@ export const { use: usePermission, provider: PermissionProvider } = createSimple
     const params = useParams()
     const globalSDK = useGlobalSDK()
     const globalSync = useGlobalSync()
+    const server = useServer()
 
     const permissionsEnabled = createMemo(() => {
       const directory = decode64(params.dir)
@@ -60,7 +62,7 @@ export const { use: usePermission, provider: PermissionProvider } = createSimple
 
     const [store, setStore, _, ready] = persisted(
       {
-        ...Persist.global("permission", ["permission.v3"]),
+        ...Persist.server(server.scope, "permission", ["permission.v3"]),
         migrate(value) {
           if (!value || typeof value !== "object" || Array.isArray(value)) return value
 

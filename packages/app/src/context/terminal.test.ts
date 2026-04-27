@@ -9,7 +9,7 @@ beforeAll(async () => {
     useNavigate: () => () => undefined,
     useParams: () => ({}),
   }))
-  mock.module("@opencode-ai/ui/context", () => ({
+  mock.module("@codeplane-ai/ui/context", () => ({
     createSimpleContext: () => ({
       use: () => undefined,
       provider: () => undefined,
@@ -24,6 +24,10 @@ beforeAll(async () => {
 describe("getWorkspaceTerminalCacheKey", () => {
   test("uses workspace-only directory cache key", () => {
     expect(getWorkspaceTerminalCacheKey("/repo")).toBe("/repo:__workspace__")
+  })
+
+  test("includes server scope when provided", () => {
+    expect(getWorkspaceTerminalCacheKey("/repo", "remote")).toBe("remote:/repo:__workspace__")
   })
 })
 

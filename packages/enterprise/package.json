@@ -1,6 +1,6 @@
 {
-  "name": "@opencode-ai/enterprise",
-  "version": "2.3.0",
+  "name": "@codeplane-ai/enterprise",
+  "version": "26.4.27",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -8,13 +8,13 @@
     "typecheck": "tsgo --noEmit",
     "dev": "vite dev",
     "build": "vite build",
-    "build:cloudflare": "OPENCODE_DEPLOYMENT_TARGET=cloudflare vite build",
+    "build:cloudflare": "CODEPLANE_DEPLOYMENT_TARGET=cloudflare vite build",
     "start": "vite start",
     "shell-prod": "sst shell --target Teams --stage production"
   },
   "dependencies": {
-    "@opencode-ai/shared": "workspace:*",
-    "@opencode-ai/ui": "workspace:*",
+    "@codeplane-ai/shared": "workspace:*",
+    "@codeplane-ai/ui": "workspace:*",
     "aws4fetch": "^1.0.20",
     "@pierre/diffs": "catalog:",
     "@solidjs/router": "catalog:",

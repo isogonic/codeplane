@@ -1,13 +1,13 @@
 import { Component } from "solid-js"
-import { Dialog } from "@opencode-ai/ui/dialog"
-import { Tabs } from "@opencode-ai/ui/tabs"
-import { Icon } from "@opencode-ai/ui/icon"
+import { Dialog } from "@codeplane-ai/ui/dialog"
+import { Tabs } from "@codeplane-ai/ui/tabs"
+import { Icon } from "@codeplane-ai/ui/icon"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { SettingsGeneral } from "./settings-general"
 import { SettingsKeybinds } from "./settings-keybinds"
 import { SettingsProviders } from "./settings-providers"
-import { SettingsModels } from "./settings-models"
+import { ModelsSettings } from "@/pages/models"
 
 export const DialogSettings: Component = () => {
   const language = useLanguage()
@@ -65,7 +65,7 @@ export const DialogSettings: Component = () => {
           <SettingsProviders />
         </Tabs.Content>
         <Tabs.Content value="models" class="no-scrollbar">
-          <SettingsModels />
+          <ModelsSettings layout="dialog" />
         </Tabs.Content>
       </Tabs>
     </Dialog>

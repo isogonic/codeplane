@@ -1,5 +1,5 @@
-import { useFilteredList } from "@opencode-ai/ui/hooks"
-import { useSpring } from "@opencode-ai/ui/motion-spring"
+import { useFilteredList } from "@codeplane-ai/ui/hooks"
+import { useSpring } from "@codeplane-ai/ui/motion-spring"
 import { createEffect, on, Component, Show, onCleanup, createMemo, createSignal, createResource } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useLocal } from "@/context/local"
@@ -18,14 +18,14 @@ import { useLayout } from "@/context/layout"
 import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
 import { useComments } from "@/context/comments"
-import { Button } from "@opencode-ai/ui/button"
-import { DockShellForm, DockTray } from "@opencode-ai/ui/dock-surface"
-import { Icon, type IconProps } from "@opencode-ai/ui/icon"
-import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
-import { Tooltip, TooltipKeybind } from "@opencode-ai/ui/tooltip"
-import { IconButton } from "@opencode-ai/ui/icon-button"
-import { Select } from "@opencode-ai/ui/select"
-import { useDialog } from "@opencode-ai/ui/context/dialog"
+import { Button } from "@codeplane-ai/ui/button"
+import { DockShellForm, DockTray } from "@codeplane-ai/ui/dock-surface"
+import { Icon, type IconProps } from "@codeplane-ai/ui/icon"
+import { ProviderIcon } from "@codeplane-ai/ui/provider-icon"
+import { Tooltip, TooltipKeybind } from "@codeplane-ai/ui/tooltip"
+import { IconButton } from "@codeplane-ai/ui/icon-button"
+import { Select } from "@codeplane-ai/ui/select"
+import { useDialog } from "@codeplane-ai/ui/context/dialog"
 import { ModelSelectorPopover } from "@/components/dialog-select-model"
 import { useProviders } from "@/hooks/use-providers"
 import { useCommand } from "@/context/command"
@@ -55,7 +55,7 @@ import { PromptImageAttachments } from "./prompt-input/image-attachments"
 import { PromptDragOverlay } from "./prompt-input/drag-overlay"
 import { promptPlaceholder } from "./prompt-input/placeholder"
 import { modelSupportsInput } from "@/utils/model-capabilities"
-import { ImagePreview } from "@opencode-ai/ui/image-preview"
+import { ImagePreview } from "@codeplane-ai/ui/image-preview"
 import { useQueries } from "@tanstack/solid-query"
 import { loadAgentsQuery, loadProvidersQuery } from "@/context/global-sync/bootstrap"
 
@@ -342,7 +342,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   })
 
   const [history, setHistory] = persisted(
-    Persist.global("prompt-history", ["prompt-history.v1"]),
+    Persist.server(sdk.scope, "prompt-history", ["prompt-history.v1"]),
     createStore<{
       entries: PromptHistoryStoredEntry[]
     }>({
@@ -350,7 +350,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     }),
   )
   const [shellHistory, setShellHistory] = persisted(
-    Persist.global("prompt-history-shell", ["prompt-history-shell.v1"]),
+    Persist.server(sdk.scope, "prompt-history-shell", ["prompt-history-shell.v1"]),
     createStore<{
       entries: PromptHistoryStoredEntry[]
     }>({
@@ -1293,7 +1293,11 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   }
 
   const [agentsQuery, globalProvidersQuery, providersQuery] = useQueries(() => ({
-    queries: [loadAgentsQuery(sdk.directory), loadProvidersQuery(null), loadProvidersQuery(sdk.directory)],
+    queries: [
+      loadAgentsQuery(sdk.directory, undefined, undefined, sdk.scope.key),
+      loadProvidersQuery(null, sdk.scope.key),
+      loadProvidersQuery(sdk.directory, sdk.scope.key),
+    ],
   }))
 
   const agentsLoading = () => agentsQuery.isLoading

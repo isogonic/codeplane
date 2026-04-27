@@ -1,9 +1,9 @@
 import { batch, createEffect, createMemo, onCleanup } from "solid-js"
 import { createStore, produce, reconcile } from "solid-js/store"
-import { createSimpleContext } from "@opencode-ai/ui/context"
-import { showToast } from "@opencode-ai/ui/toast"
+import { createSimpleContext } from "@codeplane-ai/ui/context"
+import { showToast } from "@codeplane-ai/ui/toast"
 import { useParams } from "@solidjs/router"
-import { getFilename } from "@opencode-ai/shared/util/path"
+import { getFilename } from "@codeplane-ai/shared/util/path"
 import { useSDK } from "./sdk"
 import { useSync } from "./sync"
 import { useLanguage } from "@/context/language"
@@ -60,6 +60,7 @@ export const { use: useFile, provider: FileProvider } = createSimpleContext({
     const layout = useLayout()
 
     const scope = createMemo(() => sdk.directory)
+    const contentKey = (file: string) => `${sdk.scope.key}\n${scope()}\n${file}`
     const path = createPathHelpers(scope)
     const tabs = layout.tabs(() => `${params.dir}${params.id ? "/" + params.id : ""}`)
 
@@ -83,12 +84,19 @@ export const { use: useFile, provider: FileProvider } = createSimpleContext({
       },
     })
 
+    const fileFromContentKey = (key: string) => {
+      const prefix = `${sdk.scope.key}\n${scope()}\n`
+      if (!key.startsWith(prefix)) return key
+      return key.slice(prefix.length)
+    }
+
     const evictContent = (keep?: Set<string>) => {
       evictContentLru(keep, (target) => {
-        if (!store.file[target]) return
+        const file = fileFromContentKey(target)
+        if (!store.file[file]) return
         setStore(
           "file",
-          target,
+          file,
           produce((draft) => {
             draft.content = undefined
             draft.loaded = false
@@ -107,7 +115,7 @@ export const { use: useFile, provider: FileProvider } = createSimpleContext({
       })
     })
 
-    const viewCache = createFileViewCache()
+    const viewCache = createFileViewCache(() => sdk.scope)
     const view = createMemo(() => viewCache.load(scope(), params.id))
 
     const ensure = (file: string) => {
@@ -179,8 +187,8 @@ export const { use: useFile, provider: FileProvider } = createSimpleContext({
           setLoaded(file, content)
 
           if (!content) return
-          touchFileContent(file, approxBytes(content))
-          evictContent(new Set([file]))
+          touchFileContent(contentKey(file), approxBytes(content))
+          evictContent(new Set([contentKey(file)]))
         })
         .catch((e) => {
           if (scope() !== directory) return
@@ -221,11 +229,11 @@ export const { use: useFile, provider: FileProvider } = createSimpleContext({
       const state = store.file[file]
       const content = state?.content
       if (!content) return state
-      if (hasFileContent(file)) {
-        touchFileContent(file)
+      if (hasFileContent(contentKey(file))) {
+        touchFileContent(contentKey(file))
         return state
       }
-      touchFileContent(file, approxBytes(content))
+      touchFileContent(contentKey(file), approxBytes(content))
       return state
     }
 

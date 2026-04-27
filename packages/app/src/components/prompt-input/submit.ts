@@ -1,7 +1,7 @@
-import type { Message, Session } from "@opencode-ai/sdk/v2/client"
-import { showToast } from "@opencode-ai/ui/toast"
-import { base64Encode } from "@opencode-ai/shared/util/encode"
-import { Binary } from "@opencode-ai/shared/util/binary"
+import type { Message, Session } from "@codeplane-ai/sdk/v2/client"
+import { showToast } from "@codeplane-ai/ui/toast"
+import { base64Encode } from "@codeplane-ai/shared/util/encode"
+import { Binary } from "@codeplane-ai/shared/util/binary"
 import { useNavigate, useParams } from "@solidjs/router"
 import { batch, type Accessor } from "solid-js"
 import type { FileSelection } from "@/context/file"
@@ -353,7 +353,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
           })
           return
         }
-        WorktreeState.pending(createdWorktree.directory)
+        WorktreeState.pending(createdWorktree.directory, sdk.scope.key)
         sessionDirectory = createdWorktree.directory
       }
 
@@ -512,7 +512,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     clearInput()
 
     const waitForWorktree = async () => {
-      const worktree = WorktreeState.get(sessionDirectory)
+      const worktree = WorktreeState.get(sessionDirectory, sdk.scope.key)
       if (!worktree || worktree.status !== "pending") return true
 
       if (sessionDirectory === projectDirectory) {
@@ -556,7 +556,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
         }, timeoutMs)
       })
 
-      const result = await Promise.race([WorktreeState.wait(sessionDirectory), abortWait, timeout]).finally(() => {
+      const result = await Promise.race([WorktreeState.wait(sessionDirectory, sdk.scope.key), abortWait, timeout]).finally(() => {
         if (timer.id === undefined) return
         clearTimeout(timer.id)
       })

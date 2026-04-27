@@ -5,10 +5,10 @@ import path from "path"
 import os from "os"
 import { Cause, Effect, Exit, Layer } from "effect"
 import { testEffect } from "../lib/effect"
-import { AppFileSystem } from "@opencode-ai/shared/filesystem"
-import { EffectFlock } from "@opencode-ai/shared/util/effect-flock"
-import { Global } from "@opencode-ai/shared/global"
-import { Hash } from "@opencode-ai/shared/util/hash"
+import { AppFileSystem } from "@codeplane-ai/shared/filesystem"
+import { EffectFlock } from "@codeplane-ai/shared/util/effect-flock"
+import { Global } from "@codeplane-ai/shared/global"
+import { Hash } from "@codeplane-ai/shared/util/hash"
 
 function lock(dir: string, key: string) {
   return path.join(dir, Hash.fast(key) + ".lock")

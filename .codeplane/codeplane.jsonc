@@ -1,0 +1,14 @@
+{
+  "$schema": "https://codeplane.ai/config.json",
+  "provider": {},
+  "permission": {
+    "edit": {
+      "packages/codeplane/migration/*": "deny",
+    },
+  },
+  "mcp": {},
+  "tools": {
+    "github-triage": false,
+    "github-pr-search": false,
+  },
+}

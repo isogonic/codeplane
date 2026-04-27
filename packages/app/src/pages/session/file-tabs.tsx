@@ -2,20 +2,21 @@ import { createEffect, createMemo, createSignal, Match, on, onCleanup, Switch } 
 import { createStore } from "solid-js/store"
 import { Dynamic } from "solid-js/web"
 import { makeEventListener } from "@solid-primitives/event-listener"
-import type { FileSearchHandle } from "@opencode-ai/ui/file"
-import { useFileComponent } from "@opencode-ai/ui/context/file"
-import { cloneSelectedLineRange, previewSelectedLines } from "@opencode-ai/ui/pierre/selection-bridge"
-import { createLineCommentController } from "@opencode-ai/ui/line-comment-annotations"
-import { sampledChecksum } from "@opencode-ai/shared/util/encode"
-import { DropdownMenu } from "@opencode-ai/ui/dropdown-menu"
-import { IconButton } from "@opencode-ai/ui/icon-button"
-import { Tabs } from "@opencode-ai/ui/tabs"
-import { ScrollView } from "@opencode-ai/ui/scroll-view"
-import { showToast } from "@opencode-ai/ui/toast"
+import type { FileSearchHandle } from "@codeplane-ai/ui/file"
+import { useFileComponent } from "@codeplane-ai/ui/context/file"
+import { cloneSelectedLineRange, previewSelectedLines } from "@codeplane-ai/ui/pierre/selection-bridge"
+import { createLineCommentController } from "@codeplane-ai/ui/line-comment-annotations"
+import { sampledChecksum } from "@codeplane-ai/shared/util/encode"
+import { DropdownMenu } from "@codeplane-ai/ui/dropdown-menu"
+import { IconButton } from "@codeplane-ai/ui/icon-button"
+import { Tabs } from "@codeplane-ai/ui/tabs"
+import { ScrollView } from "@codeplane-ai/ui/scroll-view"
+import { showToast } from "@codeplane-ai/ui/toast"
 import { selectionFromLines, useFile, type FileSelection, type SelectedLineRange } from "@/context/file"
 import { useComments } from "@/context/comments"
 import { useLanguage } from "@/context/language"
 import { usePrompt } from "@/context/prompt"
+import { useSDK } from "@/context/sdk"
 import { getSessionHandoff } from "@/pages/session/handoff"
 import { useSessionLayout } from "@/pages/session/session-layout"
 import { createSessionTabs } from "@/pages/session/helpers"
@@ -176,6 +177,7 @@ export function FileTabContent(props: { tab: string }) {
   const comments = useComments()
   const language = useLanguage()
   const prompt = usePrompt()
+  const sdk = useSDK()
   const fileComponent = useFileComponent()
   const { sessionKey, tabs, view } = useSessionLayout()
   const activeFileTab = createSessionTabs({
@@ -204,7 +206,7 @@ export function FileTabContent(props: { tab: string }) {
     const p = path()
     if (!p) return null
     if (file.ready()) return (file.selectedLines(p) as SelectedLineRange | undefined) ?? null
-    return (getSessionHandoff(sessionKey())?.files[p] as SelectedLineRange | undefined) ?? null
+    return (getSessionHandoff(sdk.scope.key, sessionKey())?.files[p] as SelectedLineRange | undefined) ?? null
   })
   const scrollSync = createScrollSync({
     tab: () => props.tab,

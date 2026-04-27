@@ -12,6 +12,8 @@ const store = {
   terminal: new Map<string, string[]>(),
 }
 
+const scoped = (scope: string, key: string) => `${scope}\n${key}`
+
 const touch = <K, V>(map: Map<K, V>, key: K, value: V) => {
   map.delete(key)
   map.set(key, value)
@@ -22,15 +24,16 @@ const touch = <K, V>(map: Map<K, V>, key: K, value: V) => {
   }
 }
 
-export const setSessionHandoff = (key: string, patch: Partial<HandoffSession>) => {
-  const prev = store.session.get(key) ?? { prompt: "", files: {} }
-  touch(store.session, key, { ...prev, ...patch })
+export const setSessionHandoff = (scope: string, key: string, patch: Partial<HandoffSession>) => {
+  const id = scoped(scope, key)
+  const prev = store.session.get(id) ?? { prompt: "", files: {} }
+  touch(store.session, id, { ...prev, ...patch })
 }
 
-export const getSessionHandoff = (key: string) => store.session.get(key)
+export const getSessionHandoff = (scope: string, key: string) => store.session.get(scoped(scope, key))
 
-export const setTerminalHandoff = (key: string, value: string[]) => {
-  touch(store.terminal, key, value)
+export const setTerminalHandoff = (scope: string, key: string, value: string[]) => {
+  touch(store.terminal, scoped(scope, key), value)
 }
 
-export const getTerminalHandoff = (key: string) => store.terminal.get(key)
+export const getTerminalHandoff = (scope: string, key: string) => store.terminal.get(scoped(scope, key))

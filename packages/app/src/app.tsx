@@ -1,12 +1,12 @@
 import "@/index.css"
-import { I18nProvider } from "@opencode-ai/ui/context"
-import { DialogProvider } from "@opencode-ai/ui/context/dialog"
-import { FileComponentProvider } from "@opencode-ai/ui/context/file"
-import { MarkedProvider } from "@opencode-ai/ui/context/marked"
-import { File } from "@opencode-ai/ui/file"
-import { Font } from "@opencode-ai/ui/font"
-import { Splash } from "@opencode-ai/ui/logo"
-import { ThemeProvider } from "@opencode-ai/ui/theme/context"
+import { I18nProvider } from "@codeplane-ai/ui/context"
+import { DialogProvider } from "@codeplane-ai/ui/context/dialog"
+import { FileComponentProvider } from "@codeplane-ai/ui/context/file"
+import { MarkedProvider } from "@codeplane-ai/ui/context/marked"
+import { File } from "@codeplane-ai/ui/file"
+import { Font } from "@codeplane-ai/ui/font"
+import { Splash } from "@codeplane-ai/ui/logo"
+import { ThemeProvider } from "@codeplane-ai/ui/theme/context"
 import { MetaProvider } from "@solidjs/meta"
 import { type BaseRouterProps, Navigate, Route, Router } from "@solidjs/router"
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query"
@@ -48,9 +48,15 @@ import { useCheckServerHealth } from "./utils/server-health"
 
 const HomeRoute = lazy(() => import("@/pages/home"))
 const NotificationsRoute = lazy(() => import("@/pages/notifications"))
+const SettingsRoute = lazy(() => import("@/pages/settings"))
 const loadSession = () => import("@/pages/session")
 const Session = lazy(loadSession)
 const Loading = () => <div class="size-full" />
+const ModesRedirect = () => <Navigate href="/settings/modes" />
+const ModelsRedirect = () => <Navigate href="/settings/models" />
+const McpRedirect = () => <Navigate href="/settings/mcp" />
+const PluginsRedirect = () => <Navigate href="/settings/plugins" />
+const SkillsRedirect = () => <Navigate href="/settings/skills" />
 
 if (typeof location === "object" && /\/session(?:\/|$)/.test(location.pathname)) {
   void loadSession()
@@ -71,7 +77,7 @@ function UiI18nBridge(props: ParentProps) {
 
 declare global {
   interface Window {
-    __OPENCODE__?: {
+    __CODEPLANE__?: {
       updaterEnabled?: boolean
       deepLinks?: string[]
       wsl?: boolean
@@ -270,9 +276,10 @@ function ConnectionError(props: { onRetry?: () => void; onServerSelected?: (key:
 
 function ServerKey(props: ParentProps) {
   const server = useServer()
+  const key = createMemo(() => `${server.key}\n${server.scope.key}`)
   return (
-    <Show when={server.key} keyed>
-      {props.children}
+    <Show when={key()} keyed>
+      {(_) => props.children}
     </Show>
   )
 }
@@ -301,6 +308,12 @@ export function AppInterface(props: {
                 >
                   <Route path="/" component={HomeRoute} />
                   <Route path="/notifications" component={NotificationsRoute} />
+                  <Route path="/modes" component={ModesRedirect} />
+                  <Route path="/models" component={ModelsRedirect} />
+                  <Route path="/mcp" component={McpRedirect} />
+                  <Route path="/plugins" component={PluginsRedirect} />
+                  <Route path="/skills" component={SkillsRedirect} />
+                  <Route path="/settings/:tab?" component={SettingsRoute} />
                   <Route path="/:dir" component={DirectoryLayout}>
                     <Route path="/" component={SessionIndexRoute} />
                     <Route path="/session/:id?" component={SessionRoute} />

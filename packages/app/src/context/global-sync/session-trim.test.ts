@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { PermissionRequest, Session } from "@opencode-ai/sdk/v2/client"
+import type { PermissionRequest, Session } from "@codeplane-ai/sdk/v2/client"
 import { trimSessions } from "./session-trim"
 
 const session = (input: { id: string; parentID?: string; created: number; updated?: number; archived?: number }) =>
@@ -44,6 +44,58 @@ describe("trimSessions", () => {
     expect(result).toHaveLength(52)
     expect(result.map((x) => x.id)).not.toContain("s-00")
     expect(result.map((x) => x.id)).toContain("s-59")
+  })
+
+  test("keeps preserved old roots outside the loaded-session window", () => {
+    const now = 100_000_000
+    const result = trimSessions(
+      [
+        session({ id: "active-old", created: 1, updated: 1 }),
+        ...Array.from({ length: 60 }, (_, index) =>
+          session({
+            id: `s-${index.toString().padStart(2, "0")}`,
+            created: now + index,
+            updated: now + index,
+          }),
+        ),
+      ],
+      { limit: 2, permission: {}, now, preserve: ["active-old"] },
+    )
+
+    expect(result.map((x) => x.id)).toContain("active-old")
+    expect(result.map((x) => x.id)).not.toContain("s-00")
+  })
+
+  test("keeps preserved archived roots for read-only archive views", () => {
+    const now = 100_000_000
+    const result = trimSessions(
+      [
+        session({ id: "archived-old", created: 1, updated: 1, archived: now }),
+        ...Array.from({ length: 2 }, (_, index) =>
+          session({
+            id: `s-${index.toString().padStart(2, "0")}`,
+            created: now + index,
+            updated: now + index,
+          }),
+        ),
+      ],
+      { limit: 2, permission: {}, now, preserve: ["archived-old"] },
+    )
+
+    expect(result.map((x) => x.id)).toContain("archived-old")
+  })
+
+  test("drops unpreserved archived roots", () => {
+    const now = 100_000_000
+    const result = trimSessions(
+      [
+        session({ id: "archived-old", created: 1, updated: 1, archived: now }),
+        session({ id: "active", created: now, updated: now }),
+      ],
+      { limit: 2, permission: {}, now },
+    )
+
+    expect(result.map((x) => x.id)).not.toContain("archived-old")
   })
 
   test("keeps children when root is kept, permission exists, or child is recent", () => {

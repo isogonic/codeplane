@@ -1,16 +1,16 @@
 import { describe, expect, test } from "bun:test"
-import type { Message, Part, PermissionRequest, Project, QuestionRequest, Session } from "@opencode-ai/sdk/v2/client"
+import type { Message, Part, PermissionRequest, Project, QuestionRequest, Session } from "@codeplane-ai/sdk/v2/client"
 import { createStore } from "solid-js/store"
 import type { State } from "./types"
 import { applyDirectoryEvent, applyGlobalEvent, cleanupDroppedSessionCaches } from "./event-reducer"
 
-const rootSession = (input: { id: string; parentID?: string; archived?: number }) =>
+const rootSession = (input: { id: string; parentID?: string; archived?: number; created?: number; updated?: number }) =>
   ({
     id: input.id,
     parentID: input.parentID,
     time: {
-      created: 1,
-      updated: 1,
+      created: input.created ?? 1,
+      updated: input.updated ?? input.created ?? 1,
       archived: input.archived,
     },
   }) as Session
@@ -248,22 +248,59 @@ describe("applyDirectoryEvent", () => {
     }
   })
 
-  test("cleans caches for trimmed sessions on session.created", () => {
-    const dropped = rootSession({ id: "ses_b" })
-    const kept = rootSession({ id: "ses_a" })
-    const message = userMessage("msg_1", dropped.id)
+  test("trims unpreserved overflow sessions on session.created", () => {
+    const dropped = rootSession({ id: "ses_z_dropped", created: 0, updated: 0 })
+    const kept = rootSession({ id: "ses_a_kept", created: 10_000, updated: 10_000 })
+    const filler = Array.from({ length: 51 }, (_, index) =>
+      rootSession({
+        id: `ses_m_${index.toString().padStart(2, "0")}`,
+        created: 1_000 + index,
+        updated: 1_000 + index,
+      }),
+    )
+    const [store, setStore] = createStore(
+      baseState({
+        limit: 1,
+        session: [dropped, ...filler].sort((a, b) => a.id.localeCompare(b.id)),
+      }),
+    )
+
+    applyDirectoryEvent({
+      event: { type: "session.created", properties: { info: kept } },
+      store,
+      setStore,
+      push() {},
+      directory: "/tmp",
+      loadLsp() {},
+    })
+
+    expect(store.session.map((x) => x.id)).toContain(kept.id)
+    expect(store.session.map((x) => x.id)).not.toContain(dropped.id)
+  })
+
+  test("preserves cached overflow sessions on session.created", () => {
+    const preserved = rootSession({ id: "ses_z_preserved", created: 0, updated: 0 })
+    const kept = rootSession({ id: "ses_a_kept", created: 10_000, updated: 10_000 })
+    const filler = Array.from({ length: 51 }, (_, index) =>
+      rootSession({
+        id: `ses_m_${index.toString().padStart(2, "0")}`,
+        created: 1_000 + index,
+        updated: 1_000 + index,
+      }),
+    )
+    const message = userMessage("msg_1", preserved.id)
     const todos: string[] = []
     const [store, setStore] = createStore(
       baseState({
         limit: 1,
-        session: [dropped],
-        message: { [dropped.id]: [message] },
-        part: { [message.id]: [textPart("prt_1", dropped.id, message.id)] },
-        session_diff: { [dropped.id]: [] },
-        todo: { [dropped.id]: [] },
-        permission: { [dropped.id]: [] },
-        question: { [dropped.id]: [] },
-        session_status: { [dropped.id]: { type: "busy" } },
+        session: [preserved, ...filler].sort((a, b) => a.id.localeCompare(b.id)),
+        message: { [preserved.id]: [message] },
+        part: { [message.id]: [textPart("prt_1", preserved.id, message.id)] },
+        session_diff: { [preserved.id]: [] },
+        todo: { [preserved.id]: [] },
+        permission: { [preserved.id]: [] },
+        question: { [preserved.id]: [] },
+        session_status: { [preserved.id]: { type: "busy" } },
       }),
     )
 
@@ -280,15 +317,16 @@ describe("applyDirectoryEvent", () => {
       },
     })
 
-    expect(store.session.map((x) => x.id)).toEqual([kept.id])
-    expect(store.message[dropped.id]).toBeUndefined()
-    expect(store.part[message.id]).toBeUndefined()
-    expect(store.session_diff[dropped.id]).toBeUndefined()
-    expect(store.todo[dropped.id]).toBeUndefined()
-    expect(store.permission[dropped.id]).toBeUndefined()
-    expect(store.question[dropped.id]).toBeUndefined()
-    expect(store.session_status[dropped.id]).toBeUndefined()
-    expect(todos).toEqual([dropped.id])
+    expect(store.session.map((x) => x.id)).toContain(kept.id)
+    expect(store.session.map((x) => x.id)).toContain(preserved.id)
+    expect(store.message[preserved.id]).toHaveLength(1)
+    expect(store.part[message.id]).toHaveLength(1)
+    expect(store.session_diff[preserved.id]).toHaveLength(0)
+    expect(store.todo[preserved.id]).toHaveLength(0)
+    expect(store.permission[preserved.id]).toHaveLength(0)
+    expect(store.question[preserved.id]).toHaveLength(0)
+    expect(store.session_status[preserved.id]).toEqual({ type: "busy" })
+    expect(todos).toEqual([])
   })
 
   test("cleanupDroppedSessionCaches clears part-only orphan state", () => {
@@ -302,6 +340,22 @@ describe("applyDirectoryEvent", () => {
     cleanupDroppedSessionCaches(store, setStore, store.session)
 
     expect(store.part.msg_1).toBeUndefined()
+  })
+
+  test("cleanupDroppedSessionCaches preserves cached archived sessions for archive views", () => {
+    const message = userMessage("msg_1", "ses_archived")
+    const [store, setStore] = createStore(
+      baseState({
+        session: [rootSession({ id: "ses_archived", archived: 10 })],
+        message: { ses_archived: [message] },
+        part: { [message.id]: [textPart("prt_1", "ses_archived", message.id)] },
+      }),
+    )
+
+    cleanupDroppedSessionCaches(store, setStore, [], undefined, ["ses_archived"])
+
+    expect(store.message.ses_archived).toHaveLength(1)
+    expect(store.part[message.id]).toHaveLength(1)
   })
 
   test("upserts and removes messages while clearing orphaned parts", () => {

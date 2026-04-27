@@ -1,4 +1,4 @@
-import type { AssistantMessage, Message, Part, UserMessage } from "@opencode-ai/sdk/v2/client"
+import type { AssistantMessage, Message, Part, UserMessage } from "@codeplane-ai/sdk/v2/client"
 
 export type SessionPreview = {
   loading: boolean

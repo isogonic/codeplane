@@ -1,5 +1,5 @@
-import type { Project, UserMessage } from "@opencode-ai/sdk/v2"
-import { useDialog } from "@opencode-ai/ui/context/dialog"
+import type { Project, UserMessage } from "@codeplane-ai/sdk/v2"
+import { useDialog } from "@codeplane-ai/ui/context/dialog"
 import { createQuery, skipToken, useMutation, useQueryClient } from "@tanstack/solid-query"
 import {
   batch,
@@ -21,15 +21,15 @@ import { createResizeObserver } from "@solid-primitives/resize-observer"
 import { useLocal } from "@/context/local"
 import { selectionFromLines, useFile, type FileSelection, type SelectedLineRange } from "@/context/file"
 import { createStore } from "solid-js/store"
-import { ResizeHandle } from "@opencode-ai/ui/resize-handle"
-import { Select } from "@opencode-ai/ui/select"
-import { Tabs } from "@opencode-ai/ui/tabs"
-import { FileReferenceProvider, type FileReferenceSelection } from "@opencode-ai/ui/context/file"
-import { createAutoScroll } from "@opencode-ai/ui/hooks"
-import { previewSelectedLines } from "@opencode-ai/ui/pierre/selection-bridge"
-import { Button } from "@opencode-ai/ui/button"
-import { showToast } from "@opencode-ai/ui/toast"
-import { checksum } from "@opencode-ai/shared/util/encode"
+import { ResizeHandle } from "@codeplane-ai/ui/resize-handle"
+import { Select } from "@codeplane-ai/ui/select"
+import { Tabs } from "@codeplane-ai/ui/tabs"
+import { FileReferenceProvider, type FileReferenceSelection } from "@codeplane-ai/ui/context/file"
+import { createAutoScroll } from "@codeplane-ai/ui/hooks"
+import { previewSelectedLines } from "@codeplane-ai/ui/pierre/selection-bridge"
+import { Button } from "@codeplane-ai/ui/button"
+import { showToast } from "@codeplane-ai/ui/toast"
+import { checksum } from "@codeplane-ai/shared/util/encode"
 import { useSearchParams } from "@solidjs/router"
 import { NewSessionView, SessionHeader } from "@/components/session"
 import { useComments } from "@/context/comments"
@@ -435,6 +435,7 @@ export default function Page() {
 
   const info = createMemo(() => (params.id ? sync.session.get(params.id) : undefined))
   const isChildSession = createMemo(() => !!info()?.parentID)
+  const archived = createMemo(() => !!info()?.time.archived)
   const diffs = createMemo(() => (params.id ? list(sync.data.session_diff[params.id]) : []))
   const canReview = createMemo(() => !!sync.project)
   const reviewTab = createMemo(() => isDesktop())
@@ -522,7 +523,7 @@ export default function Page() {
   })
 
   const [followup, setFollowup] = persisted(
-    Persist.workspace(sdk.directory, "followup", ["followup.v1"]),
+    Persist.serverWorkspace(sdk.scope, sdk.directory, "followup", ["followup.v1"]),
     createStore<{
       items: Record<string, FollowupItem[] | undefined>
       failed: Record<string, string | undefined>
@@ -772,7 +773,7 @@ export default function Page() {
       const stale = !cached
         ? false
         : (() => {
-            const info = getSessionPrefetch(directory, id)
+            const info = getSessionPrefetch(sdk.scope.key, directory, id)
             if (!info) return true
             return Date.now() - info.at > SESSION_PREFETCH_TTL
           })()
@@ -979,7 +980,7 @@ export default function Page() {
     }
 
     if (event.key.length === 1 && event.key !== "Unidentified" && !(event.ctrlKey || event.metaKey)) {
-      if (composer.blocked() || isChildSession()) return
+      if (composer.blocked() || isChildSession() || archived()) return
       inputRef?.focus()
     }
   }
@@ -1033,6 +1034,7 @@ export default function Page() {
 
   const focusInput = () => {
     if (isChildSession()) return
+    if (archived()) return
     inputRef?.focus()
   }
 
@@ -1519,10 +1521,7 @@ export default function Page() {
     })
 
   const busy = (sessionID: string) => {
-    if ((sync.data.session_status[sessionID] ?? { type: "idle" as const }).type !== "idle") return true
-    return (sync.data.message[sessionID] ?? []).some(
-      (item) => item.role === "assistant" && typeof item.time.completed !== "number",
-    )
+    return (sync.data.session_status[sessionID] ?? { type: "idle" as const }).type !== "idle"
   }
 
   const queuedFollowups = createMemo(() => {
@@ -1576,7 +1575,7 @@ export default function Page() {
   const queueEnabled = createMemo(() => {
     const id = params.id
     if (!id) return false
-    return settings.general.followup() === "queue" && busy(id) && !composer.blocked() && !isChildSession()
+    return settings.general.followup() === "queue" && busy(id) && !composer.blocked() && !isChildSession() && !archived()
   })
 
   const followupText = (item: FollowupDraft) => {
@@ -1608,7 +1607,8 @@ export default function Page() {
   const followupDock = createMemo(() => queuedFollowups().map((item) => ({ id: item.id, text: followupText(item) })))
 
   const sendFollowup = (sessionID: string, id: string, opts?: { manual?: boolean }) => {
-    if (sync.session.get(sessionID)?.parentID) return Promise.resolve()
+    const session = sync.session.get(sessionID)
+    if (session?.parentID || session?.time.archived) return Promise.resolve()
     const item = (followup.items[sessionID] ?? []).find((entry) => entry.id === id)
     if (!item) return Promise.resolve()
     if (followupBusy(sessionID)) return Promise.resolve()
@@ -1721,11 +1721,13 @@ export default function Page() {
   const restoring = createMemo(() => (restoreMutation.isPending ? restoreMutation.variables : undefined))
 
   const revert = (input: { sessionID: string; messageID: string }) => {
+    if (archived()) return
     if (reverting()) return
     return revertMutation.mutateAsync(input)
   }
 
   const restore = (id: string) => {
+    if (archived()) return
     if (!params.id || reverting()) return
     return restoreMutation.mutateAsync(id)
   }
@@ -1738,7 +1740,7 @@ export default function Page() {
       .map((item) => ({ id: item.id, text: line(item.id) }))
   })
 
-  const actions = { revert }
+  const timelineActions = createMemo(() => (archived() ? undefined : { revert }))
 
   createEffect(() => {
     const sessionID = params.id
@@ -1750,6 +1752,7 @@ export default function Page() {
     if (followup.failed[sessionID] === item.id) return
     if (followup.paused[sessionID]) return
     if (isChildSession()) return
+    if (archived()) return
     if (composer.blocked()) return
     if (busy(sessionID)) return
 
@@ -1859,7 +1862,7 @@ export default function Page() {
                   classes={{ button: "w-full" }}
                   onClick={() => setStore("mobileTab", "activity")}
                 >
-                  {language.t("session.tab.activity")}
+                  {language.t("session.activity.timeline.title")}
                 </Tabs.Trigger>
               </Tabs.List>
             </Tabs>
@@ -1897,7 +1900,7 @@ export default function Page() {
                                 "h-full pb-64 -mt-4 flex flex-col items-center justify-center text-center gap-6",
                             })
                       }
-                      actions={actions}
+                      actions={timelineActions()}
                       scroll={ui.scroll}
                       onResumeScroll={resumeScroll}
                       setScrollRef={setScrollRef}
@@ -1948,7 +1951,7 @@ export default function Page() {
               }}
               onResponseSubmit={resumeScroll}
               followup={
-                params.id && !isChildSession()
+                params.id && !isChildSession() && !archived()
                   ? {
                       queue: queueEnabled,
                       items: followupDock(),
@@ -1970,7 +1973,7 @@ export default function Page() {
                   : undefined
               }
               revert={
-                rolled().length > 0
+                !archived() && rolled().length > 0
                   ? {
                       items: rolled(),
                       restoring: restoring(),

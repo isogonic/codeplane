@@ -1,11 +1,14 @@
 import { createStore, produce } from "solid-js/store"
 import { batch, createEffect, createMemo, onCleanup, onMount, type Accessor } from "solid-js"
-import { createSimpleContext } from "@opencode-ai/ui/context"
+import { createSimpleContext } from "@codeplane-ai/ui/context"
+import { retry } from "@codeplane-ai/shared/util/retry"
 import { makeEventListener } from "@solid-primitives/event-listener"
+import { useGlobalSDK } from "./global-sdk"
 import { useGlobalSync } from "./global-sync"
+import { projectForDirectory } from "./global-sync/utils"
 import { useServer } from "./server"
 import { usePlatform } from "./platform"
-import { Project } from "@opencode-ai/sdk/v2"
+import { Project } from "@codeplane-ai/sdk/v2"
 import { Persist, persisted, removePersisted } from "@/utils/persist"
 import { decode64 } from "@/utils/base64"
 import { same } from "@/utils/same"
@@ -135,8 +138,10 @@ const normalizeStoredSessionTabs = (key: string, tabs: SessionTabs) => {
 export const { use: useLayout, provider: LayoutProvider } = createSimpleContext({
   name: "Layout",
   init: () => {
+    const globalSDK = useGlobalSDK()
     const globalSync = useGlobalSync()
     const server = useServer()
+    const scope = server.scope
     const platform = usePlatform()
 
     const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -225,7 +230,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
       }
     }
 
-    const target = Persist.global("layout", ["layout.v6"])
+    const target = Persist.server(scope, "layout", ["layout.v6"])
     const [store, setStore, _, ready] = persisted(
       { ...target, migrate },
       createStore({
@@ -284,11 +289,13 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         if (!dir) continue
 
         for (const entry of SESSION_STATE_KEYS) {
-          const target = session ? Persist.session(dir, session, entry.key) : Persist.workspace(dir, entry.key)
+          const target = Persist.serverScoped(scope, dir, session, entry.key)
           void removePersisted(target, platform)
 
-          const legacyKey = `${dir}/${entry.legacy}${session ? "/" + session : ""}.${entry.version}`
-          void removePersisted({ key: legacyKey }, platform)
+          if (scope.legacy) {
+            const legacyKey = `${dir}/${entry.legacy}${session ? "/" + session : ""}.${entry.version}`
+            void removePersisted({ key: legacyKey }, platform)
+          }
         }
       }
     }
@@ -376,45 +383,18 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
 
     function enrich(project: { worktree: string; expanded: boolean }) {
       const [childStore] = globalSync.child(project.worktree, { bootstrap: false })
-      const projectID = childStore.project
-      const metadata = projectID
-        ? globalSync.data.project.find((x) => x.id === projectID)
-        : globalSync.data.project.find((x) => x.worktree === project.worktree)
+      const metadata = projectForDirectory(project.worktree, globalSync.data.project)
+      const local = metadata ? undefined : childStore.projectMeta
+      const icon = local?.icon ? { ...metadata?.icon, ...local.icon } : (metadata?.icon ?? local?.icon)
+      const commands = local?.commands
+        ? { ...metadata?.commands, ...local.commands }
+        : (metadata?.commands ?? local?.commands)
 
-      return { ...metadata, ...project }
+      return { ...metadata, ...local, icon, commands, ...project }
     }
 
-    const roots = createMemo(() => {
-      const map = new Map<string, string>()
-      for (const project of globalSync.data.project) {
-        const sandboxes = project.sandboxes ?? []
-        for (const sandbox of sandboxes) {
-          map.set(sandbox, project.worktree)
-        }
-      }
-      return map
-    })
-
     const rootFor = (directory: string) => {
-      const map = roots()
-      if (map.size === 0) return directory
-
-      const visited = new Set<string>()
-      const chain = [directory]
-
-      while (chain.length) {
-        const current = chain[chain.length - 1]
-        if (!current) return directory
-
-        const next = map.get(current)
-        if (!next) return current
-
-        if (visited.has(next)) return directory
-        visited.add(next)
-        chain.push(next)
-      }
-
-      return directory
+      return projectForDirectory(directory, globalSync.data.project)?.worktree ?? directory
     }
 
     createEffect(() => {
@@ -440,6 +420,30 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
 
     const enriched = createMemo(() => server.projects.list().map(enrich))
     const list = createMemo(() => enriched())
+    const remoteProjectChecks = new Map<string, Promise<boolean>>()
+
+    createEffect(() => {
+      if (server.isLocal()) return
+      if (!globalSync.ready) return
+
+      const serverKey = server.key
+      for (const project of server.projects.list()) {
+        const key = `${serverKey}\n${project.worktree}`
+        if (remoteProjectChecks.has(key)) continue
+
+        const check = retry(() => globalSDK.client.path.get({ directory: project.worktree }))
+          .then((x) => !!x.data?.directory)
+          .catch(() => false)
+        remoteProjectChecks.set(key, check)
+
+        void check.then((valid) => {
+          if (valid) return
+          if (server.isLocal()) return
+          if (server.key !== serverKey) return
+          server.projects.close(project.worktree)
+        })
+      }
+    })
 
     createEffect(() => {
       const projects = enriched()

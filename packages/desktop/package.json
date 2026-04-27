@@ -1,7 +1,7 @@
 {
-  "name": "@opencode-ai/desktop",
+  "name": "@codeplane-ai/desktop",
   "private": true,
-  "version": "2.3.0",
+  "version": "26.4.27",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -13,8 +13,8 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@opencode-ai/app": "workspace:*",
-    "@opencode-ai/ui": "workspace:*",
+    "@codeplane-ai/app": "workspace:*",
+    "@codeplane-ai/ui": "workspace:*",
     "@solid-primitives/i18n": "2.2.1",
     "@solid-primitives/storage": "catalog:",
     "@tauri-apps/api": "^2",

@@ -1,8 +1,8 @@
 import { batch, createMemo } from "solid-js"
 import { createStore, produce, reconcile } from "solid-js/store"
-import { Binary } from "@opencode-ai/shared/util/binary"
-import { retry } from "@opencode-ai/shared/util/retry"
-import { createSimpleContext } from "@opencode-ai/ui/context"
+import { Binary } from "@codeplane-ai/shared/util/binary"
+import { retry } from "@codeplane-ai/shared/util/retry"
+import { createSimpleContext } from "@codeplane-ai/ui/context"
 import {
   clearSessionPrefetch,
   getSessionPrefetch,
@@ -11,7 +11,7 @@ import {
 } from "./global-sync/session-prefetch"
 import { useGlobalSync } from "./global-sync"
 import { useSDK } from "./sdk"
-import type { Message, Part } from "@opencode-ai/sdk/v2/client"
+import type { Message, Part } from "@codeplane-ai/sdk/v2/client"
 import { SESSION_CACHE_LIMIT, dropSessionCaches, pickSessionCacheEvictions } from "./global-sync/session-cache"
 import { diffs as list, message as clean } from "@/utils/diffs"
 
@@ -270,7 +270,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
 
     const evict = (directory: string, setStore: Setter, sessionIDs: string[]) => {
       if (sessionIDs.length === 0) return
-      clearSessionPrefetch(directory, sessionIDs)
+      clearSessionPrefetch(sdk.scope.key, directory, sessionIDs)
       for (const sessionID of sessionIDs) {
         globalSync.todo.set(sessionID, undefined)
       }
@@ -347,6 +347,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
             setMeta("cursor", key, next.cursor)
             setMeta("complete", key, next.complete)
             setSessionPrefetch({
+              scope: sdk.scope.key,
               directory: input.directory,
               sessionID: input.sessionID,
               limit: message.length,
@@ -435,7 +436,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
 
           touch(directory, setStore, sessionID)
 
-          const seeded = getSessionPrefetch(directory, sessionID)
+          const seeded = getSessionPrefetch(sdk.scope.key, directory, sessionID)
           if (seeded && store.message[sessionID] !== undefined && meta.limit[key] === undefined) {
             batch(() => {
               setMeta("limit", key, seeded.limit)
@@ -446,10 +447,10 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           }
 
           return runInflight(inflight, key, async () => {
-            const pending = getSessionPrefetchPromise(directory, sessionID)
+            const pending = getSessionPrefetchPromise(sdk.scope.key, directory, sessionID)
             if (pending) {
               await pending
-              const seeded = getSessionPrefetch(directory, sessionID)
+              const seeded = getSessionPrefetch(sdk.scope.key, directory, sessionID)
               if (seeded && store.message[sessionID] !== undefined && meta.limit[key] === undefined) {
                 batch(() => {
                   setMeta("limit", key, seeded.limit)

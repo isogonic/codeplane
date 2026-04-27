@@ -53,16 +53,16 @@ impl MainWindow {
             app,
             decorations,
         )
-        .title("OpenCode")
+        .title("CodePlane")
         .disable_drag_drop_handler()
         .zoom_hotkeys_enabled(false)
         .visible(true)
         .maximized(true)
         .initialization_script(format!(
             r#"
-            window.__OPENCODE__ ??= {{}};
-            window.__OPENCODE__.updaterEnabled = {UPDATER_ENABLED};
-            window.__OPENCODE__.wsl = {wsl_enabled};
+            window.__CODEPLANE__ ??= {{}};
+            window.__CODEPLANE__.updaterEnabled = {UPDATER_ENABLED};
+            window.__CODEPLANE__.wsl = {wsl_enabled};
           "#
         ));
 

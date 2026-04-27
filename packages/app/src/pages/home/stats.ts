@@ -1,4 +1,5 @@
-import type { Session, SnapshotFileDiff } from "@opencode-ai/sdk/v2/client"
+import type { Session, SnapshotFileDiff } from "@codeplane-ai/sdk/v2/client"
+import { diffs as listDiffs } from "@/utils/diffs"
 
 export const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -61,33 +62,56 @@ export type HomeStats = {
   buckets: DayBucket[]
 }
 
+type Diff = ReturnType<typeof listDiffs>[number]
+
 const isVisible = (session: Session) => !session.parentID && !session.time?.archived
 
 const sessionTime = (session: Session) => session.time.updated ?? session.time.created
 
-const changedDiffs = (diffs: SnapshotFileDiff[]) =>
-  diffs.filter((diff) => (diff.additions ?? 0) + (diff.deletions ?? 0) > 0)
+const patchStats = (patch: string) =>
+  patch.split("\n").reduce(
+    (total, line) => {
+      if (line.startsWith("+++") || line.startsWith("---")) return total
+      if (line.startsWith("+")) return { additions: total.additions + 1, deletions: total.deletions }
+      if (line.startsWith("-")) return { additions: total.additions, deletions: total.deletions + 1 }
+      return total
+    },
+    { additions: 0, deletions: 0 },
+  )
 
-const diffStats = (diffs: SnapshotFileDiff[]) =>
-  changedDiffs(diffs).reduce(
-    (total, diff) => ({
-      files: total.files.add(diff.file),
-      additions: total.additions + (diff.additions ?? 0),
-      deletions: total.deletions + (diff.deletions ?? 0),
-    }),
+const lineStats = (diff: Diff) => {
+  const stats = { additions: diff.additions ?? 0, deletions: diff.deletions ?? 0 }
+  if (stats.additions + stats.deletions > 0 || diff.patch.trim().length === 0) return stats
+  return patchStats(diff.patch)
+}
+
+const diffStats = (diffs: unknown) =>
+  listDiffs(diffs).reduce(
+    (total, diff) => {
+      const stats = lineStats(diff)
+      return {
+        files:
+          stats.additions + stats.deletions > 0 || diff.status || diff.patch.trim().length > 0
+            ? total.files.add(diff.file)
+            : total.files,
+        additions: total.additions + stats.additions,
+        deletions: total.deletions + stats.deletions,
+      }
+    },
     { files: new Set<string>(), additions: 0, deletions: 0 },
   )
 
 const sessionChangeStats = (session: Session, sessionDiffs?: ProjectInput["sessionDiffs"]) => {
-  const diffs = sessionDiffs?.[session.id] ?? session.summary?.diffs ?? []
-  const diff = diffStats(diffs)
+  const cached = listDiffs(sessionDiffs?.[session.id])
+  const diff = diffStats(cached.length > 0 ? cached : session.summary?.diffs)
+  const summaryLines = (session.summary?.additions ?? 0) + (session.summary?.deletions ?? 0)
   const summaryTotal =
     (session.summary?.files ?? 0) + (session.summary?.additions ?? 0) + (session.summary?.deletions ?? 0)
   if (summaryTotal > 0) {
     return {
       files: session.summary?.files || diff.files.size,
-      additions: session.summary?.additions ?? 0,
-      deletions: session.summary?.deletions ?? 0,
+      additions: summaryLines > 0 ? (session.summary?.additions ?? 0) : diff.additions,
+      deletions: summaryLines > 0 ? (session.summary?.deletions ?? 0) : diff.deletions,
     }
   }
   return {

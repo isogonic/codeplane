@@ -8,14 +8,15 @@ import {
   type DragEvent,
 } from "@thisbeyond/solid-dnd"
 import { ConstrainDragXAxis } from "@/utils/solid-dnd"
-import { Icon, type IconProps } from "@opencode-ai/ui/icon"
-import { IconButton } from "@opencode-ai/ui/icon-button"
-import { Tooltip, TooltipKeybind } from "@opencode-ai/ui/tooltip"
+import { Icon, type IconProps } from "@codeplane-ai/ui/icon"
+import { IconButton } from "@codeplane-ai/ui/icon-button"
+import { Tooltip } from "@codeplane-ai/ui/tooltip"
 import { type LocalProject } from "@/context/layout"
 import { useLayout } from "@/context/layout"
 import { useLanguage } from "@/context/language"
 import { useNotification } from "@/context/notification"
 import { useLocation, useNavigate } from "@solidjs/router"
+import { isSettingsPath } from "../settings/nav"
 
 export const SidebarContent = (props: {
   mobile?: boolean
@@ -33,8 +34,9 @@ export const SidebarContent = (props: {
   settingsLabel: Accessor<string>
   settingsKeybind: Accessor<string | undefined>
   onOpenSettings: () => void
-  helpLabel: Accessor<string>
-  onOpenHelp: () => void
+  restartLabel: Accessor<string>
+  restartConfirm: Accessor<string>
+  onRestart: () => void
   renderPanel: () => JSX.Element
 }): JSX.Element => {
   const layout = useLayout()
@@ -46,6 +48,7 @@ export const SidebarContent = (props: {
   const placement = () => (props.mobile ? "bottom" : "right")
   const homeSelected = createMemo(() => location.pathname === "/")
   const notificationsSelected = createMemo(() => location.pathname === "/notifications")
+  const settingsSelected = createMemo(() => isSettingsPath(location.pathname))
   const notificationActive = createMemo(() => notification.unseenCount() > 0)
   const openGlobalRoute = (href: string) => {
     navigate(href)
@@ -55,11 +58,22 @@ export const SidebarContent = (props: {
     icon: IconProps["name"]
     label: Accessor<string>
     selected: Accessor<boolean>
+    keybind?: Accessor<string | undefined>
     notify?: Accessor<boolean>
     critical?: Accessor<boolean>
     onClick: () => void
   }) => (
-    <Tooltip placement={placement()} value={itemProps.label()}>
+    <Tooltip
+      placement={placement()}
+      value={
+        <div class="flex items-center gap-2">
+          <span>{itemProps.label()}</span>
+          <Show when={!props.mobile && !!itemProps.keybind?.()}>
+            <span class="text-icon-base text-12-medium">{itemProps.keybind?.()}</span>
+          </Show>
+        </div>
+      }
+    >
       <button
         type="button"
         classList={{
@@ -155,22 +169,23 @@ export const SidebarContent = (props: {
           </DragDropProvider>
         </div>
         <div class="shrink-0 w-full pt-3 pb-6 flex flex-col items-center gap-2">
-          <TooltipKeybind placement={placement()} title={props.settingsLabel()} keybind={props.settingsKeybind() ?? ""}>
+          <RailAction
+            icon="settings-gear"
+            label={props.settingsLabel}
+            selected={settingsSelected}
+            keybind={props.settingsKeybind}
+            onClick={props.onOpenSettings}
+          />
+          <Tooltip placement={placement()} value={props.restartLabel()}>
             <IconButton
-              icon="settings-gear"
+              icon="reset"
               variant="ghost"
               size="large"
-              onClick={props.onOpenSettings}
-              aria-label={props.settingsLabel()}
-            />
-          </TooltipKeybind>
-          <Tooltip placement={placement()} value={props.helpLabel()}>
-            <IconButton
-              icon="help"
-              variant="ghost"
-              size="large"
-              onClick={props.onOpenHelp}
-              aria-label={props.helpLabel()}
+              onClick={() => {
+                if (!window.confirm(props.restartConfirm())) return
+                props.onRestart()
+              }}
+              aria-label={props.restartLabel()}
             />
           </Tooltip>
         </div>

@@ -1,6 +1,6 @@
 import type {
   Config,
-  OpencodeClient,
+  CodeplaneClient,
   Path,
   PermissionRequest,
   Project,
@@ -9,14 +9,14 @@ import type {
   QuestionRequest,
   Session,
   Todo,
-} from "@opencode-ai/sdk/v2/client"
-import { showToast } from "@opencode-ai/ui/toast"
-import { getFilename } from "@opencode-ai/shared/util/path"
-import { retry } from "@opencode-ai/shared/util/retry"
+} from "@codeplane-ai/sdk/v2/client"
+import { showToast } from "@codeplane-ai/ui/toast"
+import { getFilename } from "@codeplane-ai/shared/util/path"
+import { retry } from "@codeplane-ai/shared/util/retry"
 import { batch } from "solid-js"
 import { reconcile, type SetStoreFunction, type Store } from "solid-js/store"
 import type { State, VcsCache } from "./types"
-import { cmp, normalizeAgentList, normalizeProviderList, sanitizeProject } from "./utils"
+import { cmp, normalizeAgentList, normalizeProviderList, projectForDirectory, sanitizeProject } from "./utils"
 import { formatServerError } from "@/utils/server-errors"
 import { QueryClient, queryOptions, skipToken } from "@tanstack/solid-query"
 
@@ -58,8 +58,10 @@ function errors(list: PromiseSettledResult<unknown>[]) {
 
 const providerRev = new Map<string, number>()
 
-export function clearProviderRev(directory: string) {
-  providerRev.delete(directory)
+const scopedKey = (scope: string, directory: string | null) => `${scope}\n${directory ?? "global"}`
+
+export function clearProviderRev(scope: string, directory: string) {
+  providerRev.delete(scopedKey(scope, directory))
 }
 
 function runAll(list: Array<() => Promise<unknown>>) {
@@ -67,7 +69,8 @@ function runAll(list: Array<() => Promise<unknown>>) {
 }
 
 export async function bootstrapGlobal(input: {
-  globalSDK: OpencodeClient
+  scope: string
+  globalSDK: CodeplaneClient
   requestFailedTitle: string
   translate: (key: string, vars?: Record<string, string | number>) => string
   formatMoreCount: (count: number) => string
@@ -86,7 +89,7 @@ export async function bootstrapGlobal(input: {
   const slow = [
     () =>
       input.queryClient.fetchQuery({
-        ...loadProvidersQuery(null),
+        ...loadProvidersQuery(null, input.scope),
         queryFn: () =>
           retry(() =>
             input.globalSDK.provider.list().then((x) => {
@@ -106,7 +109,7 @@ export async function bootstrapGlobal(input: {
         input.globalSDK.project.list().then((x) => {
           const projects = (x.data ?? [])
             .filter((p) => !!p?.id)
-            .filter((p) => !!p.worktree && !p.worktree.includes("opencode-test"))
+            .filter((p) => !!p.worktree && !p.worktree.includes("codeplane-test"))
             .map(sanitizeProject)
             .slice()
             .sort((a, b) => cmp(a.id, b.id))
@@ -143,7 +146,7 @@ function groupBySession<T extends { id: string; sessionID: string }>(input: T[])
 }
 
 function projectID(directory: string, projects: Project[]) {
-  return projects.find((project) => project.worktree === directory || project.sandboxes?.includes(directory))?.id
+  return projectForDirectory(directory, projects)?.id
 }
 
 function mergeSession(setStore: SetStoreFunction<State>, session: Session) {
@@ -164,7 +167,7 @@ function warmSessions(input: {
   ids: string[]
   store: Store<State>
   setStore: SetStoreFunction<State>
-  sdk: OpencodeClient
+  sdk: CodeplaneClient
 }) {
   const known = new Set(input.store.session.map((item) => item.id))
   const ids = [...new Set(input.ids)].filter((id) => !!id && !known.has(id))
@@ -180,16 +183,17 @@ function warmSessions(input: {
   ).then(() => undefined)
 }
 
-export const loadProvidersQuery = (directory: string | null) =>
-  queryOptions<null>({ queryKey: [directory, "providers"], queryFn: skipToken })
+export const loadProvidersQuery = (directory: string | null, scope = "default") =>
+  queryOptions<null>({ queryKey: [scope, directory, "providers"], queryFn: skipToken })
 
 export const loadAgentsQuery = (
   directory: string | null,
-  sdk?: OpencodeClient,
-  transform?: (x: Awaited<ReturnType<OpencodeClient["app"]["agents"]>>) => void,
+  sdk?: CodeplaneClient,
+  transform?: (x: Awaited<ReturnType<CodeplaneClient["app"]["agents"]>>) => void,
+  scope = "default",
 ) =>
   queryOptions<null>({
-    queryKey: [directory, "agents"],
+    queryKey: [scope, directory, "agents"],
     queryFn:
       sdk && transform
         ? () =>
@@ -204,11 +208,12 @@ export const loadAgentsQuery = (
 
 export const loadPathQuery = (
   directory: string | null,
-  sdk?: OpencodeClient,
-  transform?: (x: Awaited<ReturnType<OpencodeClient["path"]["get"]>>) => void,
+  sdk?: CodeplaneClient,
+  transform?: (x: Awaited<ReturnType<CodeplaneClient["path"]["get"]>>) => void,
+  scope = "default",
 ) =>
   queryOptions<Path>({
-    queryKey: [directory, "path"],
+    queryKey: [scope, directory, "path"],
     queryFn:
       sdk && transform
         ? () =>
@@ -222,8 +227,9 @@ export const loadPathQuery = (
   })
 
 export async function bootstrapDirectory(input: {
+  scope: string
   directory: string
-  sdk: OpencodeClient
+  sdk: CodeplaneClient
   store: Store<State>
   setStore: SetStoreFunction<State>
   vcsCache: VcsCache
@@ -257,14 +263,20 @@ export async function bootstrapDirectory(input: {
   input.setStore("lsp", [])
   if (loading) input.setStore("status", "partial")
 
-  const rev = (providerRev.get(input.directory) ?? 0) + 1
-  providerRev.set(input.directory, rev)
+  const revKey = scopedKey(input.scope, input.directory)
+  const rev = (providerRev.get(revKey) ?? 0) + 1
+  providerRev.set(revKey, rev)
   ;(async () => {
     const slow = [
       () => Promise.resolve(input.loadSessions(input.directory)),
       () =>
-        input.queryClient.ensureQueryData(
-          loadAgentsQuery(input.directory, input.sdk, (x) => input.setStore("agent", normalizeAgentList(x.data))),
+        input.queryClient.fetchQuery(
+          loadAgentsQuery(
+            input.directory,
+            input.sdk,
+            (x) => input.setStore("agent", normalizeAgentList(x.data)),
+            input.scope,
+          ),
         ),
       () => retry(() => input.sdk.config.get().then((x) => input.setStore("config", x.data!))),
       () => retry(() => input.sdk.session.status().then((x) => input.setStore("session_status", x.data!))),
@@ -276,7 +288,7 @@ export async function bootstrapDirectory(input: {
             loadPathQuery(input.directory, input.sdk, (x) => {
               const next = projectID(x.data?.directory ?? input.directory, input.global.project)
               if (next) input.setStore("project", next)
-            }),
+            }, input.scope),
           )),
       () =>
         retry(() =>
@@ -349,16 +361,16 @@ export async function bootstrapDirectory(input: {
         ),
       () =>
         input.queryClient.ensureQueryData({
-          ...loadProvidersQuery(input.directory),
+          ...loadProvidersQuery(input.directory, input.scope),
           queryFn: () =>
             retry(() => input.sdk.provider.list())
               .then((x) => {
-                if (providerRev.get(input.directory) !== rev) return
+                if (providerRev.get(revKey) !== rev) return
                 input.setStore("provider", normalizeProviderList(x.data!))
                 input.setStore("provider_ready", true)
               })
               .catch((err) => {
-                if (providerRev.get(input.directory) !== rev) console.error("Failed to refresh provider list", err)
+                if (providerRev.get(revKey) !== rev) console.error("Failed to refresh provider list", err)
                 const project = getFilename(input.directory)
                 showToast({
                   variant: "error",

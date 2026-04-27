@@ -1,18 +1,19 @@
 import { createStore, reconcile } from "solid-js/store"
 import { batch, createEffect, createMemo, onCleanup } from "solid-js"
 import { useParams } from "@solidjs/router"
-import { createSimpleContext } from "@opencode-ai/ui/context"
+import { createSimpleContext } from "@codeplane-ai/ui/context"
 import { useGlobalSDK } from "./global-sdk"
 import { useGlobalSync } from "./global-sync"
 import { usePlatform } from "@/context/platform"
 import { useLanguage } from "@/context/language"
 import { useSettings } from "@/context/settings"
-import { Binary } from "@opencode-ai/shared/util/binary"
-import { base64Encode } from "@opencode-ai/shared/util/encode"
+import { Binary } from "@codeplane-ai/shared/util/binary"
+import { base64Encode } from "@codeplane-ai/shared/util/encode"
 import { decode64 } from "@/utils/base64"
-import { EventSessionError } from "@opencode-ai/sdk/v2"
+import { EventSessionError } from "@codeplane-ai/sdk/v2"
 import { Persist, persisted } from "@/utils/persist"
 import { playSoundById } from "@/utils/sound"
+import { useServer } from "./server"
 
 type NotificationBase = {
   directory?: string
@@ -114,6 +115,7 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
     const platform = usePlatform()
     const settings = useSettings()
     const language = useLanguage()
+    const server = useServer()
 
     const empty: Notification[] = []
 
@@ -124,7 +126,7 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
     const currentSession = createMemo(() => params.id)
 
     const [store, setStore, _, ready] = persisted(
-      Persist.global("notification", ["notification.v1"]),
+      Persist.server(server.scope, "notification", ["notification.v1"]),
       createStore({
         list: [] as Notification[],
       }),

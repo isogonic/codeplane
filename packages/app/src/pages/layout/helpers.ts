@@ -1,6 +1,6 @@
-import { getFilename } from "@opencode-ai/shared/util/path"
-import { type Session } from "@opencode-ai/sdk/v2/client"
-import { directoryKey } from "@/context/global-sync/utils"
+import { getFilename } from "@codeplane-ai/shared/util/path"
+import { type Session } from "@codeplane-ai/sdk/v2/client"
+import { directoryContains, directoryKey } from "@/context/global-sync/utils"
 
 type SessionStore = {
   session?: Session[]
@@ -24,7 +24,7 @@ function sortSessions(now: number) {
 }
 
 const isRootVisibleSession = (session: Session, directory: string) =>
-  workspaceKey(session.directory) === workspaceKey(directory) && !session.parentID && !session.time?.archived
+  directoryContains(directory, session.directory) && !session.parentID && !session.time?.archived
 
 export const roots = (store: SessionStore) =>
   (store.session ?? []).filter((session) => isRootVisibleSession(session, store.path.directory))

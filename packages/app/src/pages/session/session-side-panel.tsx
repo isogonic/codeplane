@@ -1,16 +1,16 @@
 import { For, Match, Show, Switch, createEffect, createMemo, onCleanup, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
 import { createMediaQuery } from "@solid-primitives/media"
-import { Tabs } from "@opencode-ai/ui/tabs"
-import { IconButton } from "@opencode-ai/ui/icon-button"
-import { TooltipKeybind } from "@opencode-ai/ui/tooltip"
-import { ResizeHandle } from "@opencode-ai/ui/resize-handle"
-import { Mark } from "@opencode-ai/ui/logo"
+import { Tabs } from "@codeplane-ai/ui/tabs"
+import { IconButton } from "@codeplane-ai/ui/icon-button"
+import { TooltipKeybind } from "@codeplane-ai/ui/tooltip"
+import { ResizeHandle } from "@codeplane-ai/ui/resize-handle"
+import { Mark } from "@codeplane-ai/ui/logo"
 import { DragDropProvider, DragDropSensors, DragOverlay, SortableProvider, closestCenter } from "@thisbeyond/solid-dnd"
 import type { DragEvent } from "@thisbeyond/solid-dnd"
-import type { SnapshotFileDiff, VcsFileDiff } from "@opencode-ai/sdk/v2"
+import type { SnapshotFileDiff, VcsFileDiff } from "@codeplane-ai/sdk/v2"
 import { ConstrainDragYAxis, getDraggableId } from "@/utils/solid-dnd"
-import { useDialog } from "@opencode-ai/ui/context/dialog"
+import { useDialog } from "@codeplane-ai/ui/context/dialog"
 
 import FileTree from "@/components/file-tree"
 import { SessionContextUsage } from "@/components/session-context-usage"
@@ -20,6 +20,7 @@ import { useFile, type SelectedLineRange } from "@/context/file"
 import { useLanguage } from "@/context/language"
 import { useLayout } from "@/context/layout"
 import { usePlatform } from "@/context/platform"
+import { useSDK } from "@/context/sdk"
 import { useSettings } from "@/context/settings"
 import { useSync } from "@/context/sync"
 import { createFileTabListSync } from "@/pages/session/file-tab-scroll"
@@ -47,6 +48,7 @@ export function SessionSidePanel(props: {
   const settings = useSettings()
   const sync = useSync()
   const file = useFile()
+  const sdk = useSDK()
   const language = useLanguage()
   const command = useCommand()
   const dialog = useDialog()
@@ -56,7 +58,7 @@ export function SessionSidePanel(props: {
   const shown = createMemo(
     () =>
       platform.platform !== "desktop" ||
-      import.meta.env.VITE_OPENCODE_CHANNEL !== "beta" ||
+      import.meta.env.VITE_CODEPLANE_CHANNEL !== "beta" ||
       settings.general.showFileTree(),
   )
 
@@ -183,7 +185,7 @@ export function SessionSidePanel(props: {
   createEffect(() => {
     if (!file.ready()) return
 
-    setSessionHandoff(sessionKey(), {
+    setSessionHandoff(sdk.scope.key, sessionKey(), {
       files: tabs()
         .all()
         .reduce<Record<string, SelectedLineRange | null>>((acc, tab) => {
@@ -254,7 +256,7 @@ export function SessionSidePanel(props: {
                       </Show>
                       <Show when={reviewTab()}>
                         <Tabs.Trigger value="activity">
-                          <div>{language.t("session.tab.activity")}</div>
+                          <div>{language.t("session.activity.timeline.title")}</div>
                         </Tabs.Trigger>
                       </Show>
                       <Show when={contextOpen()}>

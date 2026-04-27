@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-const repo = process.env.GH_REPO ?? "devinoldenburg/opencode"
+const repo = process.env.GH_REPO ?? "devinoldenburg/codeplane"
 
 async function sendToPostHog(event: string, properties: Record<string, any>) {
   const key = process.env["POSTHOG_KEY"]
@@ -197,8 +197,8 @@ console.log(`\nFetched ${releases.length} releases total\n`)
 
 const { total: githubTotal } = calculate(releases)
 
-console.log("Fetching npm all-time downloads for opencode-ai...\n")
-const npmDownloads = await fetchNpmDownloads("opencode-ai")
+console.log("Fetching npm all-time downloads for codeplane-ai...\n")
+const npmDownloads = await fetchNpmDownloads("codeplane-ai")
 console.log(`Fetched npm all-time downloads: ${npmDownloads.toLocaleString()}\n`)
 
 await save(githubTotal, npmDownloads)

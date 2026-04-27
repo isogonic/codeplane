@@ -3,19 +3,20 @@ import { createEffect, createMemo, For, Show, type Accessor, type JSX } from "so
 import { createStore } from "solid-js/store"
 import { createSortable } from "@thisbeyond/solid-dnd"
 import { createMediaQuery } from "@solid-primitives/media"
-import { base64Encode } from "@opencode-ai/shared/util/encode"
-import { getFilename } from "@opencode-ai/shared/util/path"
-import { Button } from "@opencode-ai/ui/button"
-import { Collapsible } from "@opencode-ai/ui/collapsible"
-import { DropdownMenu } from "@opencode-ai/ui/dropdown-menu"
-import { Icon } from "@opencode-ai/ui/icon"
-import { IconButton } from "@opencode-ai/ui/icon-button"
-import { Spinner } from "@opencode-ai/ui/spinner"
-import { Tooltip } from "@opencode-ai/ui/tooltip"
-import { type Session } from "@opencode-ai/sdk/v2/client"
+import { base64Encode } from "@codeplane-ai/shared/util/encode"
+import { getFilename } from "@codeplane-ai/shared/util/path"
+import { Button } from "@codeplane-ai/ui/button"
+import { Collapsible } from "@codeplane-ai/ui/collapsible"
+import { DropdownMenu } from "@codeplane-ai/ui/dropdown-menu"
+import { Icon } from "@codeplane-ai/ui/icon"
+import { IconButton } from "@codeplane-ai/ui/icon-button"
+import { Spinner } from "@codeplane-ai/ui/spinner"
+import { Tooltip } from "@codeplane-ai/ui/tooltip"
+import { type Session } from "@codeplane-ai/sdk/v2/client"
 import { type LocalProject } from "@/context/layout"
 import { loadSessionsQuery, useGlobalSync } from "@/context/global-sync"
 import { useLanguage } from "@/context/language"
+import { useServer } from "@/context/server"
 import { NewSessionItem, SessionItem, SessionSkeleton } from "./sidebar-items"
 import { sortedRootSessions, workspaceKey } from "./helpers"
 import { useQuery } from "@tanstack/solid-query"
@@ -239,6 +240,7 @@ const WorkspaceActions = (props: {
 )
 
 const WorkspaceSessionList = (props: {
+  directory: string
   slug: Accessor<string>
   mobile?: boolean
   ctx: WorkspaceSidebarContext
@@ -248,6 +250,7 @@ const WorkspaceSessionList = (props: {
   hasMore: Accessor<boolean>
   loadMore: () => Promise<void>
   language: ReturnType<typeof useLanguage>
+  hideArchive?: boolean
 }): JSX.Element => (
   <nav class="flex flex-col gap-1">
     <Show when={props.showNew()}>
@@ -292,7 +295,37 @@ const WorkspaceSessionList = (props: {
         </Button>
       </div>
     </Show>
+    <Show when={!props.hideArchive}>
+      <ArchivedSessionsButton directory={props.directory} ctx={props.ctx} language={props.language} />
+    </Show>
   </nav>
+)
+
+const ArchivedSessionsButton = (props: {
+  directory: string
+  ctx: WorkspaceSidebarContext
+  language: ReturnType<typeof useLanguage>
+  footer?: boolean
+}): JSX.Element => (
+  <div
+    classList={{
+      "relative w-full pt-1": true,
+      "shrink-0 pb-2": props.footer,
+    }}
+  >
+    <Button
+      variant="ghost"
+      icon="archive"
+      class="flex w-full justify-start text-left text-14-regular text-text-weak pl-2 pr-10"
+      size="large"
+      onClick={(e: MouseEvent) => {
+        props.ctx.showArchivedSessionsDialog(props.directory)
+        ;(e.currentTarget as HTMLButtonElement).blur()
+      }}
+    >
+      {props.language.t("command.session.archived")}
+    </Button>
+  </div>
 )
 
 export const SortableWorkspace = (props: {
@@ -306,6 +339,7 @@ export const SortableWorkspace = (props: {
   const params = useParams()
   const globalSync = useGlobalSync()
   const language = useLanguage()
+  const server = useServer()
   const sortable = createSortable(props.directory)
   const [workspaceStore, setWorkspaceStore] = globalSync.child(props.directory, { bootstrap: false })
   const [menu, setMenu] = createStore({
@@ -325,7 +359,7 @@ export const SortableWorkspace = (props: {
   const boot = createMemo(() => open() || active())
   const count = createMemo(() => sessions()?.length ?? 0)
   const hasMore = createMemo(() => workspaceStore.sessionTotal > count())
-  const query = useQuery(() => ({ ...loadSessionsQuery(props.directory) }))
+  const query = useQuery(() => ({ ...loadSessionsQuery(props.directory, server.scope.key) }))
   const busy = createMemo(() => props.ctx.isBusy(props.directory))
   const loading = () => query.isLoading && count() === 0
   const touch = createMediaQuery("(hover: none)")
@@ -429,6 +463,7 @@ export const SortableWorkspace = (props: {
 
         <Collapsible.Content>
           <WorkspaceSessionList
+            directory={props.directory}
             slug={slug}
             mobile={props.mobile}
             ctx={props.ctx}
@@ -453,6 +488,7 @@ export const LocalWorkspace = (props: {
 }): JSX.Element => {
   const globalSync = useGlobalSync()
   const language = useLanguage()
+  const server = useServer()
   const workspace = createMemo(() => {
     const [store, setStore] = globalSync.child(props.project.worktree)
     return { store, setStore }
@@ -460,7 +496,7 @@ export const LocalWorkspace = (props: {
   const slug = createMemo(() => base64Encode(props.project.worktree))
   const sessions = createMemo(() => sortedRootSessions(workspace().store, props.sortNow()))
   const count = createMemo(() => sessions()?.length ?? 0)
-  const query = useQuery(() => ({ ...loadSessionsQuery(props.project.worktree) }))
+  const query = useQuery(() => ({ ...loadSessionsQuery(props.project.worktree, server.scope.key) }))
   const hasMore = createMemo(() => workspace().store.sessionTotal > count())
   const loading = () => query.isLoading && count() === 0
   const loadMore = async () => {
@@ -469,21 +505,26 @@ export const LocalWorkspace = (props: {
   }
 
   return (
-    <div
-      ref={(el) => props.ctx.setScrollContainerRef(el, props.mobile)}
-      class="size-full flex flex-col py-2 overflow-y-auto no-scrollbar [overflow-anchor:none]"
-    >
-      <WorkspaceSessionList
-        slug={slug}
-        mobile={props.mobile}
-        ctx={props.ctx}
-        showNew={() => false}
-        loading={loading}
-        sessions={sessions}
-        hasMore={hasMore}
-        loadMore={loadMore}
-        language={language}
-      />
+    <div class="size-full min-h-0 flex flex-col py-2">
+      <div
+        ref={(el) => props.ctx.setScrollContainerRef(el, props.mobile)}
+        class="flex-1 min-h-0 overflow-y-auto no-scrollbar [overflow-anchor:none]"
+      >
+        <WorkspaceSessionList
+          directory={props.project.worktree}
+          slug={slug}
+          mobile={props.mobile}
+          ctx={props.ctx}
+          showNew={() => false}
+          loading={loading}
+          sessions={sessions}
+          hasMore={hasMore}
+          loadMore={loadMore}
+          language={language}
+          hideArchive
+        />
+      </div>
+      <ArchivedSessionsButton directory={props.project.worktree} ctx={props.ctx} language={language} footer />
     </div>
   )
 }

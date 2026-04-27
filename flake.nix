@@ -1,5 +1,5 @@
 {
-  description = "OpenCode development flake";
+  description = "CodePlane development flake";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -37,16 +37,16 @@
             node_modules = final.callPackage ./nix/node_modules.nix {
               inherit rev;
             };
-            opencode = final.callPackage ./nix/opencode.nix {
+            codeplane = final.callPackage ./nix/codeplane.nix {
               inherit node_modules;
             };
             desktop = final.callPackage ./nix/desktop.nix {
-              inherit opencode;
+              inherit codeplane;
             };
           in
           {
-            inherit opencode;
-            opencode-desktop = desktop;
+            inherit codeplane;
+            codeplane-desktop = desktop;
           };
       };
 
@@ -56,16 +56,16 @@
           node_modules = pkgs.callPackage ./nix/node_modules.nix {
             inherit rev;
           };
-          opencode = pkgs.callPackage ./nix/opencode.nix {
+          codeplane = pkgs.callPackage ./nix/codeplane.nix {
             inherit node_modules;
           };
           desktop = pkgs.callPackage ./nix/desktop.nix {
-            inherit opencode;
+            inherit codeplane;
           };
         in
         {
-          default = opencode;
-          inherit opencode desktop;
+          default = codeplane;
+          inherit codeplane desktop;
           # Updater derivation with fakeHash - build fails and reveals correct hash
           node_modules_updater = node_modules.override {
             hash = pkgs.lib.fakeHash;

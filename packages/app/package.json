@@ -1,6 +1,6 @@
 {
-  "name": "@opencode-ai/app",
-  "version": "2.3.0",
+  "name": "@codeplane-ai/app",
+  "version": "26.4.27",
   "description": "",
   "type": "module",
   "exports": {
@@ -40,9 +40,9 @@
   },
   "dependencies": {
     "@kobalte/core": "catalog:",
-    "@opencode-ai/sdk": "workspace:*",
-    "@opencode-ai/ui": "workspace:*",
-    "@opencode-ai/shared": "workspace:*",
+    "@codeplane-ai/sdk": "workspace:*",
+    "@codeplane-ai/ui": "workspace:*",
+    "@codeplane-ai/shared": "workspace:*",
     "@shikijs/transformers": "3.9.2",
     "@solid-primitives/active-element": "2.1.3",
     "@solid-primitives/audio": "1.4.2",

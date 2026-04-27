@@ -15,7 +15,7 @@ Možete se prebacivati ​​između agenata tokom sesije ili ih pozvati spominj
 
 ## Vrste
 
-Postoje dvije vrste agenata u OpenCode: primarni agenti i podagenti.
+Postoje dvije vrste agenata u CodePlane: primarni agenti i podagenti.
 
 ---
 
@@ -27,7 +27,7 @@ Primarni agenti su glavni pomoćnici s kojima direktno komunicirate. Možete se 
 Možete koristiti tipku **Tab** za prebacivanje između primarnih agenata tokom sesije.
 :::
 
-OpenCode dolazi sa dva ugrađena primarna agenta, **Build** i **Plan**. Pogledat ćemo ih u nastavku.
+CodePlane dolazi sa dva ugrađena primarna agenta, **Build** i **Plan**. Pogledat ćemo ih u nastavku.
 
 ---
 
@@ -35,13 +35,13 @@ OpenCode dolazi sa dva ugrađena primarna agenta, **Build** i **Plan**. Pogledat
 
 Subagenti su specijalizovani pomoćnici koje primarni agenti mogu pozvati za određene zadatke. Možete ih i ručno pozvati **@ spominjanjem** u svojim porukama.
 
-OpenCode dolazi sa dva ugrađena subagenta, **General** i **Explore**. Ovo ćemo pogledati u nastavku.
+CodePlane dolazi sa dva ugrađena subagenta, **General** i **Explore**. Ovo ćemo pogledati u nastavku.
 
 ---
 
 ## Ugrađeni
 
-OpenCode dolazi sa dva ugrađena primarna agenta i dva ugrađena subagenta.
+CodePlane dolazi sa dva ugrađena primarna agenta i dva ugrađena subagenta.
 
 ---
 
@@ -135,11 +135,11 @@ Možete prilagoditi ugrađene agente ili kreirati vlastite kroz konfiguraciju. A
 
 ### JSON
 
-Konfigurirajte agente u svom konfiguracijskom fajlu `opencode.json`:
+Konfigurirajte agente u svom konfiguracijskom fajlu `codeplane.json`:
 
-```json title="opencode.json"
+```json title="codeplane.json"
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://codeplane.ai/config.json",
   "agent": {
     "build": {
       "mode": "primary",
@@ -180,10 +180,10 @@ Konfigurirajte agente u svom konfiguracijskom fajlu `opencode.json`:
 
 Također možete definirati agente koristeći markdown datoteke. Stavite ih u:
 
-- Globalno: `~/.config/opencode/agents/`
-- Po projektu: `.opencode/agents/`
+- Globalno: `~/.config/codeplane/agents/`
+- Po projektu: `.codeplane/agents/`
 
-```markdown title="~/.config/opencode/agents/review.md"
+```markdown title="~/.config/codeplane/agents/review.md"
 ---
 description: Reviews code for quality and best practices
 mode: subagent
@@ -219,7 +219,7 @@ Pogledajmo ove opcije konfiguracije detaljno.
 
 Koristite opciju `description` da pružite kratak opis onoga što agent radi i kada ga koristiti.
 
-```json title="opencode.json"
+```json title="codeplane.json"
 {
   "agent": {
     "review": {
@@ -239,7 +239,7 @@ Kontrolišite slučajnost i kreativnost odgovora LLM-a pomoću `temperature` kon
 
 Niže vrijednosti čine odgovore fokusiranijim i determinističkim, dok više vrijednosti povećavaju kreativnost i varijabilnost.
 
-```json title="opencode.json"
+```json title="codeplane.json"
 {
   "agent": {
     "plan": {
@@ -258,7 +258,7 @@ Vrijednosti temperature se obično kreću od 0.0 do 1.0:
 - **0.3-0.5**: Uravnoteženi odgovori sa malo kreativnosti, dobro za opšte razvojne zadatke
 - **0.6-1.0**: Kreativniji i raznovrsniji odgovori, korisni za razmišljanje i istraživanje
 
-```json title="opencode.json"
+```json title="codeplane.json"
 {
   "agent": {
     "analyze": {
@@ -276,7 +276,7 @@ Vrijednosti temperature se obično kreću od 0.0 do 1.0:
 }
 ```
 
-Ako temperatura nije navedena, OpenCode koristi standardne postavke specifične za model; obično 0 za većinu modela, 0.55 za Qwen modele.
+Ako temperatura nije navedena, CodePlane koristi standardne postavke specifične za model; obično 0 za većinu modela, 0.55 za Qwen modele.
 
 ---
 
@@ -286,7 +286,7 @@ Kontrolirajte maksimalni broj iteracija agenta koje agent može izvesti prije ne
 
 Ako ovo nije postavljeno, agent će nastaviti iterirati sve dok model ne odluči da se zaustavi ili korisnik ne prekine sesiju.
 
-```json title="opencode.json"
+```json title="codeplane.json"
 {
   "agent": {
     "quick-thinker": {
@@ -310,7 +310,7 @@ Naslijeđeno polje `maxSteps` je zastarjelo. Umjesto toga koristite `steps`.
 
 Postavite na `true` da onemogućite agenta.
 
-```json title="opencode.json"
+```json title="codeplane.json"
 {
   "agent": {
     "review": {
@@ -326,7 +326,7 @@ Postavite na `true` da onemogućite agenta.
 
 Navedite prilagođenu sistemsku prompt datoteku za ovog agenta sa `prompt` konfiguracijom. Datoteka s promptom treba da sadrži upute specifične za svrhu agenta.
 
-```json title="opencode.json"
+```json title="codeplane.json"
 {
   "agent": {
     "review": {
@@ -336,7 +336,7 @@ Navedite prilagođenu sistemsku prompt datoteku za ovog agenta sa `prompt` konfi
 }
 ```
 
-Ova putanja je relativna u odnosu na mjesto gdje se nalazi konfiguracijski fajl. Dakle, ovo radi i za globalnu OpenCode konfiguraciju i za konfiguraciju specifične za projekat.
+Ova putanja je relativna u odnosu na mjesto gdje se nalazi konfiguracijski fajl. Dakle, ovo radi i za globalnu CodePlane konfiguraciju i za konfiguraciju specifične za projekat.
 
 ---
 
@@ -348,7 +348,7 @@ Koristite `model` konfiguraciju da nadjačate model za ovog agenta. Korisno za k
 Ako ne navedete model, primarni agenti koriste [model globalno konfiguriran](/docs/config#models) dok će podagenti koristiti model primarnog agenta koji je pozvao subagenta.
 :::
 
-```json title="opencode.json"
+```json title="codeplane.json"
 {
   "agent": {
     "plan": {
@@ -358,7 +358,7 @@ Ako ne navedete model, primarni agenti koriste [model globalno konfiguriran](/do
 }
 ```
 
-ID modela u vašoj OpenCode konfiguraciji koristi format `provider/model-id`. Na primjer, ako koristite [OpenCode Zen](/docs/zen), koristili biste `opencode/gpt-5.1-codex` za GPT 5.1 Codex.
+ID modela u vašoj CodePlane konfiguraciji koristi format `provider/model-id`. Na primjer, ako koristite [CodePlane Zen](/docs/zen), koristili biste `codeplane/gpt-5.1-codex` za GPT 5.1 Codex.
 
 ---
 
@@ -366,9 +366,9 @@ ID modela u vašoj OpenCode konfiguraciji koristi format `provider/model-id`. Na
 
 Kontrolirajte koji su alati dostupni u ovom agentu koristeći konfiguraciju `tools`. Možete omogućiti ili onemogućiti određene alate tako što ćete ih postaviti na `true` ili `false`.
 
-```json title="opencode.json" {3-6,9-12}
+```json title="codeplane.json" {3-6,9-12}
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://codeplane.ai/config.json",
   "tools": {
     "write": true,
     "bash": true
@@ -390,9 +390,9 @@ Konfiguracija specifična za agenta poništava globalnu konfiguraciju.
 
 Također možete koristiti zamjenske znakove za kontrolu više alata odjednom. Na primjer, da onemogućite sve alate sa MCP servera:
 
-```json title="opencode.json"
+```json title="codeplane.json"
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://codeplane.ai/config.json",
   "agent": {
     "readonly": {
       "tools": {
@@ -417,9 +417,9 @@ Možete konfigurirati dozvole za upravljanje radnjama koje agent može poduzeti.
 - `"allow"` — Dozvoli sve operacije bez odobrenja
 - `"deny"` — Onemogućite alat
 
-```json title="opencode.json"
+```json title="codeplane.json"
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://codeplane.ai/config.json",
   "permission": {
     "edit": "deny"
   }
@@ -428,9 +428,9 @@ Možete konfigurirati dozvole za upravljanje radnjama koje agent može poduzeti.
 
 Možete nadjačati ove dozvole po agentu.
 
-```json title="opencode.json" {3-5,8-10}
+```json title="codeplane.json" {3-5,8-10}
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://codeplane.ai/config.json",
   "permission": {
     "edit": "deny"
   },
@@ -446,7 +446,7 @@ Možete nadjačati ove dozvole po agentu.
 
 Također možete postaviti dozvole u Markdown agentima.
 
-```markdown title="~/.config/opencode/agents/review.md"
+```markdown title="~/.config/codeplane/agents/review.md"
 ---
 description: Code review without edits
 mode: subagent
@@ -465,9 +465,9 @@ Only analyze code and suggest changes.
 
 Možete postaviti dozvole za određene bash komande.
 
-```json title="opencode.json" {7}
+```json title="codeplane.json" {7}
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://codeplane.ai/config.json",
   "agent": {
     "build": {
       "permission": {
@@ -483,9 +483,9 @@ Možete postaviti dozvole za određene bash komande.
 
 Ovo može koristiti glob uzorak.
 
-```json title="opencode.json" {7}
+```json title="codeplane.json" {7}
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://codeplane.ai/config.json",
   "agent": {
     "build": {
       "permission": {
@@ -501,9 +501,9 @@ Ovo može koristiti glob uzorak.
 Također možete koristiti zamjenski znak `*` za kontrolu dozvola za sve komande.
 Budući da posljednje podudarno pravilo ima prednost, prvo postavite zamjenski znak `*`, a zatim navedena pravila.
 
-```json title="opencode.json" {8}
+```json title="codeplane.json" {8}
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://codeplane.ai/config.json",
   "agent": {
     "build": {
       "permission": {
@@ -525,7 +525,7 @@ Budući da posljednje podudarno pravilo ima prednost, prvo postavite zamjenski z
 
 Kontrolirajte način rada agenta koristeći konfiguraciju `mode`. Opcija `mode` se koristi da specificira kako se agent može koristiti.
 
-```json title="opencode.json"
+```json title="codeplane.json"
 {
   "agent": {
     "review": {
@@ -543,7 +543,7 @@ Opcija `mode` se može postaviti na `primary`, `subagent` ili `all`. Ako `mode` 
 
 Sakrij podagenta iz `@` menija za automatsko dovršavanje sa `hidden: true`. Korisno za interne podagente koje bi drugi agenti trebali programski pozvati samo preko Task alata.
 
-```json title="opencode.json"
+```json title="codeplane.json"
 {
   "agent": {
     "internal-helper": {
@@ -566,7 +566,7 @@ Odnosi se samo na `mode: subagent` agente.
 
 Kontrolirajte koje podagente agent može pozvati preko Task alata sa `permission.task`. Koristi glob uzorke za fleksibilno uparivanje.
 
-```json title="opencode.json"
+```json title="codeplane.json"
 {
   "agent": {
     "orchestrator": {
@@ -601,7 +601,7 @@ Prilagodite vizualni izgled agenta u korisničkom sučelju s opcijom `color`. Ov
 
 Koristite važeću heksadecimalnu boju (npr. `#FF5733`) ili boju teme: `primary`, `secondary`, `accent`, `success`, `warning`, `error`, `info`.
 
-```json title="opencode.json"
+```json title="codeplane.json"
 {
   "agent": {
     "creative": {
@@ -620,7 +620,7 @@ Koristite važeću heksadecimalnu boju (npr. `#FF5733`) ili boju teme: `primary`
 
 Kontrolirajte raznolikost odgovora s opcijom `top_p`. Alternativa temperaturi za kontrolu nasumice.
 
-```json title="opencode.json"
+```json title="codeplane.json"
 {
   "agent": {
     "brainstorm": {
@@ -640,7 +640,7 @@ Sve druge opcije koje navedete u konfiguraciji agenta će biti **direktno prosli
 
 Na primjer, sa OpenAI-jevim modelima rezonovanja, možete kontrolisati napor rasuđivanja:
 
-```json title="opencode.json" {6,7}
+```json title="codeplane.json" {6,7}
 {
   "agent": {
     "deep-thinker": {
@@ -656,7 +656,7 @@ Na primjer, sa OpenAI-jevim modelima rezonovanja, možete kontrolisati napor ras
 Ove dodatne opcije su specifične za model i dobavljača. U dokumentaciji vašeg provajdera provjerite dostupne parametre.
 
 :::tip
-Pokrenite `opencode models` da vidite listu dostupnih modela.
+Pokrenite `codeplane models` da vidite listu dostupnih modela.
 :::
 
 ---
@@ -666,7 +666,7 @@ Pokrenite `opencode models` da vidite listu dostupnih modela.
 Možete kreirati nove agente koristeći sljedeću naredbu:
 
 ```bash
-opencode agent create
+codeplane agent create
 ```
 
 Ova interaktivna komanda će:
@@ -696,14 +696,14 @@ Evo nekoliko uobičajenih slučajeva upotrebe različitih agenata.
 Evo nekoliko primjera agenata koji bi vam mogli biti korisni.
 
 :::tip
-Imate li agenta kojeg biste željeli podijeliti? [Pošalji PR](https://github.com/anomalyco/opencode).
+Imate li agenta kojeg biste željeli podijeliti? [Pošalji PR](https://github.com/devinoldenburg/codeplane).
 :::
 
 ---
 
 ### Agent za dokumentaciju
 
-```markdown title="~/.config/opencode/agents/docs-writer.md"
+```markdown title="~/.config/codeplane/agents/docs-writer.md"
 ---
 description: Writes and maintains project documentation
 mode: subagent
@@ -725,7 +725,7 @@ Focus on:
 
 ### Sigurnosni revizor
 
-```markdown title="~/.config/opencode/agents/security-auditor.md"
+```markdown title="~/.config/codeplane/agents/security-auditor.md"
 ---
 description: Performs security audits and identifies vulnerabilities
 mode: subagent

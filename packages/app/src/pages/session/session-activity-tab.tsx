@@ -6,15 +6,14 @@ import type {
   SnapshotFileDiff,
   ToolPart,
   UserMessage,
-} from "@opencode-ai/sdk/v2"
-import { FileIcon } from "@opencode-ai/ui/file-icon"
-import { Icon, type IconProps } from "@opencode-ai/ui/icon"
-import { getDirectory, getFilename } from "@opencode-ai/shared/util/path"
+} from "@codeplane-ai/sdk/v2"
+import { FileIcon } from "@codeplane-ai/ui/file-icon"
+import { Icon, type IconProps } from "@codeplane-ai/ui/icon"
+import { getDirectory, getFilename } from "@codeplane-ai/shared/util/path"
 import { useLanguage } from "@/context/language"
 import { diffs as listDiffs } from "@/utils/diffs"
 
 type ActivityKind = "model" | "tool" | "file"
-type ActivityTab = "timeline" | "heatmap" | "stats"
 type ToolStatus = ToolPart["state"]["status"]
 type FileStatus = NonNullable<SnapshotFileDiff["status"]>
 
@@ -54,22 +53,8 @@ type ActivityEvent =
       deletions: number
     }
 
-type FileTouch = {
-  file: string
-  count: number
-  additions: number
-  deletions: number
-  lastTime: number
-}
-
 type ActivitySummary = {
   events: ActivityEvent[]
-  heatmap: FileTouch[]
-  totals: {
-    tools: number
-    modelSwitches: number
-    files: number
-  }
 }
 
 const emptyParts: Part[] = []
@@ -79,7 +64,6 @@ const eventOrder: Record<ActivityKind, number> = {
   file: 2,
 }
 const timelineBatchSize = 80
-const activityTabs: ActivityTab[] = ["timeline", "heatmap", "stats"]
 
 const isUserMessage = (message: MessageType): message is UserMessage => message.role === "user"
 const isAssistantMessage = (message: MessageType): message is AssistantMessage => message.role === "assistant"
@@ -242,41 +226,10 @@ export function buildSessionActivity(input: {
     }),
   )
 
-  const heatmap = [
-    ...users
-      .flatMap((message) =>
-        turnDiffs(message).map((diff) => ({
-          ...diff,
-          time: completedAt(assistantsByParent.get(message.id) ?? []) ?? message.time.created,
-        })),
-      )
-      .reduce((map, diff) => {
-        const current = map.get(diff.file)
-        map.set(diff.file, {
-          file: diff.file,
-          count: (current?.count ?? 0) + 1,
-          additions: (current?.additions ?? 0) + diff.additions,
-          deletions: (current?.deletions ?? 0) + diff.deletions,
-          lastTime: Math.max(current?.lastTime ?? 0, diff.time),
-        })
-        return map
-      }, new Map<string, FileTouch>())
-      .values(),
-  ].sort(
-    (a, b) =>
-      b.count - a.count || b.additions + b.deletions - (a.additions + a.deletions) || a.file.localeCompare(b.file),
-  )
-
   return {
     events: [...modelEvents, ...toolEvents, ...fileEvents].sort(
       (a, b) => a.time - b.time || a.order - b.order || a.id.localeCompare(b.id),
     ),
-    heatmap,
-    totals: {
-      tools: toolEvents.length,
-      modelSwitches: modelEvents.filter((event) => event.kind === "model" && !event.initial).length,
-      files: heatmap.length,
-    },
   }
 }
 
@@ -290,12 +243,10 @@ export function SessionActivityTab(props: {
   }
 }) {
   const language = useLanguage()
-  const [tab, setTab] = createSignal<ActivityTab>("timeline")
   const [timelineLimit, setTimelineLimit] = createSignal(timelineBatchSize)
   const activity = createMemo(() => buildSessionActivity({ messages: props.messages, parts: props.parts }))
   const visibleEvents = createMemo(() => activity().events.slice(0, timelineLimit()))
   const hiddenEventCount = createMemo(() => Math.max(0, activity().events.length - visibleEvents().length))
-  const maxTouches = createMemo(() => Math.max(1, ...activity().heatmap.map((item) => item.count)))
   const formatTime = createMemo(
     () => new Intl.DateTimeFormat(language.intl(), { dateStyle: "short", timeStyle: "short" }),
   )
@@ -307,16 +258,8 @@ export function SessionActivityTab(props: {
   }
   const changes = (event: Extract<ActivityEvent, { kind: "file" }>) =>
     `+${formatNumber().format(event.additions)} -${formatNumber().format(event.deletions)}`
-  const heatFillStyle = (count: number) => ({
-    width: `${Math.round((count / maxTouches()) * 100)}%`,
-  })
   const openFile = (path: string) => props.onViewFile?.(path)
   const showMoreEvents = () => setTimelineLimit((limit) => limit + timelineBatchSize)
-  const tabLabel = (value: ActivityTab) => {
-    if (value === "timeline") return language.t("session.activity.timeline.title")
-    if (value === "heatmap") return language.t("session.activity.heatmap.title")
-    return language.t("session.activity.stats.title")
-  }
   let timelineRoot: string | undefined
 
   createEffect(() => {
@@ -325,15 +268,6 @@ export function SessionActivityTab(props: {
     timelineRoot = next
     setTimelineLimit(timelineBatchSize)
   })
-
-  const Stat = (props: { label: string; value: number }) => (
-    <div class="min-w-0 border-r border-border-weaker-base px-3 py-2.5 last:border-r-0">
-      <div class="text-[15px] font-medium leading-5 tracking-normal text-text-strong tabular-nums">
-        {formatNumber().format(props.value)}
-      </div>
-      <div class="pt-0.5 text-12-regular text-text-weak truncate">{props.label}</div>
-    </div>
-  )
 
   const EventIcon = (props: { event: ActivityEvent }) => (
     <div class="relative z-10 mt-3 flex size-7 shrink-0 items-center justify-center rounded-full border border-border-weaker-base bg-surface-raised-stronger-non-alpha text-icon-base shadow-[var(--shadow-xs)]">
@@ -456,126 +390,43 @@ export function SessionActivityTab(props: {
 
   return (
     <div class={props.classes?.root ?? "h-full overflow-y-auto pb-8"} data-scrollable>
-      <div class={`${sectionClass()} sticky top-0 z-20 bg-background-stronger pt-3 pb-2`}>
-        <div class="flex rounded-lg border border-border-weaker-base bg-background-base p-1 shadow-[var(--shadow-xs)]">
-          <For each={activityTabs}>
-            {(value) => (
-              <button
-                type="button"
-                role="tab"
-                class={`min-w-0 flex-1 rounded-md px-2 py-1.5 text-12-medium transition-colors hover:bg-surface-raised-base-hover hover:text-text-base focus:outline-none focus-visible:shadow-[var(--shadow-xs-border-focus)] ${
-                  tab() === value ? "bg-surface-base-active text-text-strong" : "text-text-weak"
-                }`}
-                aria-selected={tab() === value}
-                onClick={() => setTab(value)}
-              >
-                <span class="block truncate">{tabLabel(value)}</span>
-              </button>
-            )}
-          </For>
-        </div>
-      </div>
-
-      <Show when={tab() === "stats"}>
-        <section class={`${sectionClass()} pt-4`}>
-          <div class="grid grid-cols-3 overflow-hidden rounded-lg border border-border-weaker-base bg-background-base shadow-[var(--shadow-xs)]">
-            <Stat label={language.t("session.activity.stat.tools")} value={activity().totals.tools} />
-            <Stat label={language.t("session.activity.stat.models")} value={activity().totals.modelSwitches} />
-            <Stat label={language.t("session.activity.stat.files")} value={activity().totals.files} />
-          </div>
-        </section>
-      </Show>
-
-      <Show when={tab() === "heatmap"}>
-        <section class={`${sectionClass()} pt-4`}>
-          <Show
-            when={activity().heatmap.length > 0}
-            fallback={
-              <div class="rounded-lg border border-border-weaker-base bg-background-base px-3 py-5 text-center text-12-regular text-text-weak">
-                {language.t("session.activity.heatmap.empty")}
-              </div>
-            }
-          >
-            <div class="overflow-hidden rounded-lg border border-border-weaker-base bg-background-base shadow-[var(--shadow-xs)]">
-              <For each={activity().heatmap.slice(0, 12)}>
-                {(item) => (
-                  <button
-                    type="button"
-                    class="group w-full min-w-0 border-b border-border-weaker-base px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-surface-raised-base-hover focus:outline-none focus-visible:shadow-[var(--shadow-xs-border-focus)]"
-                    onClick={() => openFile(item.file)}
-                  >
-                    <div class="flex items-center justify-between gap-3">
-                      <div class="min-w-0 flex items-center gap-2">
-                        <FileIcon node={{ path: item.file, type: "file" }} class="size-4 shrink-0" />
-                        <div class="min-w-0">
-                          <div class="truncate text-12-medium text-text-strong">{getFilename(item.file)}</div>
-                          <Show when={item.file.includes("/")}>
-                            <div class="truncate text-12-regular text-text-weak">{getDirectory(item.file)}</div>
-                          </Show>
-                        </div>
-                      </div>
-                      <div class="shrink-0 text-right">
-                        <div class="text-12-medium text-text-strong tabular-nums">
-                          {formatNumber().format(item.count)}
-                        </div>
-                        <div class="text-12-regular text-text-weak tabular-nums">
-                          +{formatNumber().format(item.additions)} -{formatNumber().format(item.deletions)}
-                        </div>
-                      </div>
-                    </div>
-                    <div class="mt-2 h-1 overflow-hidden rounded-full bg-surface-base">
-                      <div
-                        class="h-full rounded-full bg-[color-mix(in_srgb,var(--text-interactive-base)_48%,transparent)]"
-                        style={heatFillStyle(item.count)}
-                      />
-                    </div>
-                  </button>
+      <section class={`${sectionClass()} pt-2`}>
+        <Show
+          when={activity().events.length > 0}
+          fallback={
+            <div class="py-4 text-12-regular text-text-weak">{language.t("session.activity.timeline.empty")}</div>
+          }
+        >
+          <div class="relative">
+            <div class="absolute left-3.5 top-5 bottom-5 w-px bg-border-weaker-base" aria-hidden="true" />
+            <div class="flex flex-col">
+              <For each={visibleEvents()}>
+                {(event, index) => (
+                  <div class="group relative flex gap-3">
+                    <EventIcon event={event} />
+                    <EventBody
+                      event={event}
+                      last={index() === visibleEvents().length - 1 && hiddenEventCount() === 0}
+                    />
+                  </div>
                 )}
               </For>
             </div>
-          </Show>
-        </section>
-      </Show>
-
-      <Show when={tab() === "timeline"}>
-        <section class={`${sectionClass()} pt-2`}>
-          <Show
-            when={activity().events.length > 0}
-            fallback={
-              <div class="py-4 text-12-regular text-text-weak">{language.t("session.activity.timeline.empty")}</div>
-            }
-          >
-            <div class="relative">
-              <div class="absolute left-3.5 top-5 bottom-5 w-px bg-border-weaker-base" aria-hidden="true" />
-              <div class="flex flex-col">
-                <For each={visibleEvents()}>
-                  {(event, index) => (
-                    <div class="group relative flex gap-3">
-                      <EventIcon event={event} />
-                      <EventBody
-                        event={event}
-                        last={index() === visibleEvents().length - 1 && hiddenEventCount() === 0}
-                      />
-                    </div>
-                  )}
-                </For>
+            <Show when={hiddenEventCount() > 0}>
+              <div class="pl-10 pt-3">
+                <button
+                  type="button"
+                  class="rounded-md border border-border-weaker-base bg-background-base px-3 py-1.5 text-12-medium text-text-base shadow-[var(--shadow-xs)] transition-colors hover:bg-surface-raised-base-hover hover:text-text-strong focus:outline-none focus-visible:shadow-[var(--shadow-xs-border-focus)]"
+                  onClick={showMoreEvents}
+                >
+                  {language.t("common.loadMore")}
+                  {language.t("common.moreCountSuffix", { count: hiddenEventCount() })}
+                </button>
               </div>
-              <Show when={hiddenEventCount() > 0}>
-                <div class="pl-10 pt-3">
-                  <button
-                    type="button"
-                    class="rounded-md border border-border-weaker-base bg-background-base px-3 py-1.5 text-12-medium text-text-base shadow-[var(--shadow-xs)] transition-colors hover:bg-surface-raised-base-hover hover:text-text-strong focus:outline-none focus-visible:shadow-[var(--shadow-xs-border-focus)]"
-                    onClick={showMoreEvents}
-                  >
-                    {language.t("common.loadMore")}
-                    {language.t("common.moreCountSuffix", { count: hiddenEventCount() })}
-                  </button>
-                </div>
-              </Show>
-            </div>
-          </Show>
-        </section>
-      </Show>
+            </Show>
+          </div>
+        </Show>
+      </section>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { AssistantMessage, TextPart, UserMessage } from "@opencode-ai/sdk/v2/client"
+import type { AssistantMessage, TextPart, UserMessage } from "@codeplane-ai/sdk/v2/client"
 import { formatSessionPreviewCost, formatSessionPreviewDuration, getSessionPreview } from "./sidebar-session-preview"
 
 const user = (input: { id: string; created: number; modelID?: string }) =>

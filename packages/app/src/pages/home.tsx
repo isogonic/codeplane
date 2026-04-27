@@ -1,8 +1,8 @@
 import { createEffect, createMemo, For, Show } from "solid-js"
 import { DateTime } from "luxon"
 import { useNavigate } from "@solidjs/router"
-import { Avatar } from "@opencode-ai/ui/avatar"
-import { base64Encode } from "@opencode-ai/shared/util/encode"
+import { Avatar } from "@codeplane-ai/ui/avatar"
+import { base64Encode } from "@codeplane-ai/shared/util/encode"
 import { useGlobalSync } from "@/context/global-sync"
 import { displayName } from "@/pages/layout/helpers"
 import { useLayout, getAvatarColors } from "@/context/layout"
@@ -21,6 +21,9 @@ export default function Home() {
     () => new Intl.DateTimeFormat(language.intl(), { weekday: "short", day: "numeric", month: "short" }),
   )
   const formatRelative = (time: number) => DateTime.fromMillis(time).setLocale(language.intl()).toRelative() ?? ""
+  const emptyDiffRefresh = new Set<string>()
+  const diffRefreshKey = (worktree: string, session: { id: string; time: { created: number; updated?: number } }) =>
+    `${worktree}\n${session.id}\n${session.time.updated ?? session.time.created}`
 
   const stats = createMemo(() => {
     const projects = layout.projects.list()
@@ -43,17 +46,28 @@ export default function Home() {
       const [child] = globalSync.child(project.worktree, { bootstrap: false })
       const sessions = child.session
         .filter((session) => !session.parentID && !session.time?.archived)
-        .filter((session) => child.session_diff[session.id] === undefined)
         .filter(
           (session) =>
-            (session.summary?.files ?? 0) +
-              (session.summary?.additions ?? 0) +
-              (session.summary?.deletions ?? 0) ===
-            0,
+            (session.summary?.files ?? 0) === 0 ||
+            (session.summary?.additions ?? 0) + (session.summary?.deletions ?? 0) === 0,
         )
-        .map((session) => session.id)
+        .filter((session) => {
+          const cached = child.session_diff[session.id]
+          if (cached === undefined) return true
+          if (cached.length > 0) return false
+          return !emptyDiffRefresh.has(diffRefreshKey(project.worktree, session))
+        })
+        .map((session) => ({
+          id: session.id,
+          key: diffRefreshKey(project.worktree, session),
+        }))
       if (sessions.length === 0) return
-      void globalSync.project.loadSessionDiffs(project.worktree, sessions)
+      sessions.forEach((session) => emptyDiffRefresh.add(session.key))
+      void globalSync.project.loadSessionDiffs(
+        project.worktree,
+        sessions.map((session) => session.id),
+        { force: true },
+      )
     })
   })
 

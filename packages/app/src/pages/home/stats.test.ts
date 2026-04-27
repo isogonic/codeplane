@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { Session, SnapshotFileDiff } from "@opencode-ai/sdk/v2/client"
+import type { Session, SnapshotFileDiff } from "@codeplane-ai/sdk/v2/client"
 import { aggregateProjects, aggregateTotals, buildHomeStats, dailyBuckets, DAY_MS, recentSessions } from "./stats"
 
 const now = new Date("2026-04-27T12:00:00Z").getTime()
@@ -27,6 +27,14 @@ const diff = (file: string, additions: number, deletions: number): SnapshotFileD
   patch: "",
   additions,
   deletions,
+})
+
+const patchDiff = (file: string, patch: string): SnapshotFileDiff => ({
+  file,
+  patch,
+  additions: 0,
+  deletions: 0,
+  status: "modified",
 })
 
 describe("aggregateProjects", () => {
@@ -76,6 +84,74 @@ describe("aggregateProjects", () => {
     ])
 
     expect(projects[0]).toMatchObject({ sessions: 2, files: 3, additions: 7, deletions: 6 })
+  })
+
+  test("counts changed files and parses patch lines when diff totals are missing", () => {
+    const projects = aggregateProjects([
+      {
+        directory: "/a",
+        worktree: "/a",
+        name: "A",
+        sessions: [
+          session({ id: "patch", created: dayAgo(0), summary: { additions: 0, deletions: 0, files: 0 } }),
+          session({ id: "binary", created: dayAgo(0), summary: { additions: 0, deletions: 0, files: 0 } }),
+        ],
+        sessionDiffs: {
+          patch: [
+            patchDiff(
+              "src/a.ts",
+              ["--- src/a.ts", "+++ src/a.ts", "@@ -1,2 +1,3 @@", " keep", "-old", "+new", "+extra"].join("\n"),
+            ),
+          ],
+          binary: [{ ...diff("assets/logo.png", 0, 0), status: "modified" }],
+        },
+      },
+    ])
+
+    expect(projects[0]).toMatchObject({ sessions: 2, files: 2, additions: 2, deletions: 1 })
+  })
+
+  test("fills missing summary line counts from cached diffs", () => {
+    const projects = aggregateProjects([
+      {
+        directory: "/a",
+        worktree: "/a",
+        name: "A",
+        sessions: [session({ id: "1", created: dayAgo(0), summary: { additions: 0, deletions: 0, files: 1 } })],
+        sessionDiffs: {
+          "1": [
+            patchDiff(
+              "src/a.ts",
+              ["--- src/a.ts", "+++ src/a.ts", "@@ -1 +1,2 @@", "-old", "+new", "+extra"].join("\n"),
+            ),
+          ],
+        },
+      },
+    ])
+
+    expect(projects[0]).toMatchObject({ sessions: 1, files: 1, additions: 2, deletions: 1 })
+  })
+
+  test("uses summary diffs when cached diffs are empty", () => {
+    const projects = aggregateProjects([
+      {
+        directory: "/a",
+        worktree: "/a",
+        name: "A",
+        sessions: [
+          session({
+            id: "1",
+            created: dayAgo(0),
+            summary: { additions: 0, deletions: 0, files: 0, diffs: [diff("src/a.ts", 3, 1)] },
+          }),
+        ],
+        sessionDiffs: {
+          "1": [],
+        },
+      },
+    ])
+
+    expect(projects[0]).toMatchObject({ sessions: 1, files: 1, additions: 3, deletions: 1 })
   })
 
   test("sorts by session count then last activity", () => {

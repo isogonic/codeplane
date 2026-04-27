@@ -1,11 +1,11 @@
 {
-  "name": "@opencode-ai/web",
+  "name": "@codeplane-ai/web",
   "type": "module",
   "license": "MIT",
-  "version": "2.3.0",
+  "version": "26.4.27",
   "scripts": {
     "dev": "astro dev",
-    "dev:remote": "VITE_API_URL=https://api.opencode.ai astro dev",
+    "dev:remote": "VITE_API_URL=https://api.codeplane.ai astro dev",
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
@@ -36,7 +36,7 @@
     "vscode-languageserver-types": "3.17.5"
   },
   "devDependencies": {
-    "opencode": "workspace:*",
+    "codeplane": "workspace:*",
     "@types/node": "catalog:",
     "@astrojs/check": "0.9.6",
     "typescript": "catalog:"
