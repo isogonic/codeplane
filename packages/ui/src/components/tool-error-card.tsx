@@ -6,6 +6,7 @@ import { Icon } from "./icon"
 import { IconButton } from "./icon-button"
 import { Tooltip } from "./tooltip"
 import { useI18n } from "../context/i18n"
+import { showToast } from "./toast"
 
 export interface ToolErrorCardProps extends Omit<ComponentProps<typeof Card>, "children" | "variant"> {
   tool: string
@@ -70,6 +71,12 @@ export function ToolErrorCard(props: ToolErrorCardProps) {
     const text = cleaned()
     if (!text) return
     await navigator.clipboard.writeText(text)
+    showToast({
+      variant: "success",
+      icon: "circle-check",
+      title: i18n.t("ui.message.copied"),
+      description: i18n.t("ui.message.copiedText"),
+    })
     setState("copied", true)
     setTimeout(() => setState("copied", false), 2000)
   }

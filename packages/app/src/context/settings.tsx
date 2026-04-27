@@ -29,6 +29,7 @@ export interface Settings {
     showStatus: boolean
     showTerminal: boolean
     showReasoningSummaries: boolean
+    reasoningDisplay: "short" | "full" | "off"
     shellToolPartsExpanded: boolean
     editToolPartsExpanded: boolean
     showSessionProgressBar: boolean
@@ -114,6 +115,7 @@ const defaultSettings: Settings = {
     showStatus: false,
     showTerminal: false,
     showReasoningSummaries: false,
+    reasoningDisplay: "short",
     shellToolPartsExpanded: false,
     editToolPartsExpanded: false,
     showSessionProgressBar: true,
@@ -148,6 +150,13 @@ const defaultSettings: Settings = {
 
 function withFallback<T>(read: () => T | undefined, fallback: T) {
   return createMemo(() => read() ?? fallback)
+}
+
+function reasoningDisplay(value: unknown, legacy: boolean | undefined) {
+  if (value === "short" || value === "full" || value === "off") return value
+  if (legacy === true) return "full"
+  if (legacy === false) return "off"
+  return defaultSettings.general.reasoningDisplay
 }
 
 export const { use: useSettings, provider: SettingsProvider } = createSimpleContext({
@@ -207,11 +216,20 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
           setStore("general", "showTerminal", value)
         },
         showReasoningSummaries: withFallback(
-          () => store.general?.showReasoningSummaries,
+          () => reasoningDisplay(store.general?.reasoningDisplay, store.general?.showReasoningSummaries) !== "off",
           defaultSettings.general.showReasoningSummaries,
         ),
         setShowReasoningSummaries(value: boolean) {
           setStore("general", "showReasoningSummaries", value)
+          setStore("general", "reasoningDisplay", value ? "full" : "off")
+        },
+        reasoningDisplay: withFallback(
+          () => reasoningDisplay(store.general?.reasoningDisplay, store.general?.showReasoningSummaries),
+          defaultSettings.general.reasoningDisplay,
+        ),
+        setReasoningDisplay(value: "short" | "full" | "off") {
+          setStore("general", "reasoningDisplay", value)
+          setStore("general", "showReasoningSummaries", value !== "off")
         },
         shellToolPartsExpanded: withFallback(
           () => store.general?.shellToolPartsExpanded,

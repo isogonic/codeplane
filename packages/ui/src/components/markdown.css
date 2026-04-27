@@ -237,6 +237,84 @@
     display: inline-flex;
   }
 
+  [data-component="file-reference"] {
+    display: inline-flex;
+    max-width: 100%;
+    align-items: baseline;
+    gap: 2px;
+    vertical-align: baseline;
+  }
+
+  [data-slot="file-reference-open"] {
+    min-width: 0;
+    max-width: 100%;
+    appearance: none;
+    border: 0;
+    background: transparent;
+    padding: 0 1px;
+    color: var(--text-interactive-base);
+    font: inherit;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+  }
+
+  [data-slot="file-reference-open"]:hover,
+  [data-slot="file-reference-open"]:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    outline: none;
+  }
+
+  [data-slot="file-reference-copy"] {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    min-height: 18px;
+    padding: 0;
+    opacity: 0;
+    vertical-align: text-bottom;
+    transition: opacity 0.15s ease;
+
+    &::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 4px);
+      transform: translateX(-50%);
+      z-index: 1000;
+      max-width: 320px;
+      border-radius: var(--radius-sm);
+      background: var(--surface-float-base);
+      color: var(--text-invert-strong);
+      padding: 2px 8px;
+      border: 1px solid var(--border-weak-base, rgba(0, 0, 0, 0.07));
+      box-shadow: var(--shadow-md);
+      pointer-events: none;
+      white-space: nowrap;
+      font-family: var(--font-family-sans);
+      font-size: var(--font-size-small);
+      font-style: normal;
+      font-weight: var(--font-weight-medium);
+      line-height: var(--line-height-large);
+      letter-spacing: var(--letter-spacing-normal);
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+  }
+
+  [data-component="file-reference"]:hover [data-slot="file-reference-copy"],
+  [data-component="file-reference"]:focus-within [data-slot="file-reference-copy"] {
+    opacity: 1;
+  }
+
+  [data-slot="file-reference-copy"]:hover::after,
+  [data-slot="file-reference-copy"]:focus-visible::after {
+    opacity: 1;
+  }
+
   pre {
     margin-top: 12px;
     margin-bottom: 32px;

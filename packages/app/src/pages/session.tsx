@@ -24,6 +24,7 @@ import { createStore } from "solid-js/store"
 import { ResizeHandle } from "@opencode-ai/ui/resize-handle"
 import { Select } from "@opencode-ai/ui/select"
 import { Tabs } from "@opencode-ai/ui/tabs"
+import { FileReferenceProvider, type FileReferenceSelection } from "@opencode-ai/ui/context/file"
 import { createAutoScroll } from "@opencode-ai/ui/hooks"
 import { previewSelectedLines } from "@opencode-ai/ui/pierre/selection-bridge"
 import { Button } from "@opencode-ai/ui/button"
@@ -1047,6 +1048,13 @@ export default function Page() {
     loadFile: file.load,
   })
 
+  const openChatFileReference = (target: string, selection?: FileReferenceSelection) => {
+    const path = file.normalize(target)
+    if (!path) return
+    if (selection) file.setSelectedLines(path, { start: selection.startLine, end: selection.endLine ?? selection.startLine })
+    openReviewFile(path)
+  }
+
   const changesTitle = () => {
     if (!canReview()) {
       return null
@@ -1803,7 +1811,8 @@ export default function Page() {
   })
 
   return (
-    <div class="relative bg-background-base size-full overflow-hidden flex flex-col">
+    <FileReferenceProvider open={openChatFileReference}>
+      <div class="relative bg-background-base size-full overflow-hidden flex flex-col">
       {sessionSync() ?? ""}
       <SessionHeader />
       <div class="flex-1 min-h-0 flex flex-col md:flex-row">
@@ -1978,6 +1987,7 @@ export default function Page() {
       </div>
 
       <TerminalPanel />
-    </div>
+      </div>
+    </FileReferenceProvider>
   )
 }
