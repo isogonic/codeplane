@@ -8,7 +8,7 @@ import { BusEvent } from "@/bus/bus-event"
 import { GlobalBus } from "@/bus/global"
 import { which } from "../util/which"
 import { ProjectID } from "./schema"
-import { Effect, Layer, Path, Scope, Context, Stream, Types, Schema } from "effect"
+import { Effect, Layer, Path, Context, Stream, Types, Schema } from "effect"
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import { NodePath } from "@effect/platform-node"
 import { AppFileSystem } from "@opencode-ai/shared/filesystem"
@@ -162,8 +162,6 @@ export const layer: Layer.Layer<
       return pathSvc.resolve(cwd, name)
     }
 
-    const scope = yield* Scope.Scope
-
     const readCachedProjectId = Effect.fnUntraced(function* (dir: string) {
       return yield* fs.readFileString(pathSvc.join(dir, "opencode")).pipe(
         Effect.map((x) => x.trim()),
@@ -265,8 +263,6 @@ export const layer: Layer.Layer<
             sandboxes: [] as string[],
             time: { created: Date.now(), updated: Date.now() },
           }
-
-      if (Flag.OPENCODE_EXPERIMENTAL_ICON_DISCOVERY) yield* discover(existing).pipe(Effect.ignore, Effect.forkIn(scope))
 
       const result: Info = {
         ...existing,

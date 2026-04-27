@@ -11,6 +11,7 @@ import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import { NodePath } from "@effect/platform-node"
 import { AppFileSystem } from "@opencode-ai/shared/filesystem"
 import * as CrossSpawnSpawner from "../../src/effect/cross-spawn-spawner"
+import { Flag } from "../../src/flag/flag"
 
 void Log.init({ print: false })
 
@@ -109,6 +110,22 @@ describe("Project.fromDirectory", () => {
     const { project: a } = await run((svc) => svc.fromDirectory(tmp.path))
     const { project: b } = await run((svc) => svc.fromDirectory(tmp.path))
     expect(b.id).toBe(a.id)
+  })
+
+  test("does not automatically discover project favicons", async () => {
+    const original = Flag.OPENCODE_EXPERIMENTAL_ICON_DISCOVERY
+    Flag.OPENCODE_EXPERIMENTAL_ICON_DISCOVERY = true
+    try {
+      await using tmp = await tmpdir({ git: true })
+      await Bun.write(path.join(tmp.path, "favicon.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+
+      const { project } = await run((svc) => svc.fromDirectory(tmp.path))
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
+      expect(Project.get(project.id)?.icon?.url).toBeUndefined()
+    } finally {
+      Flag.OPENCODE_EXPERIMENTAL_ICON_DISCOVERY = original
+    }
   })
 })
 

@@ -12,7 +12,7 @@ import { type LocalProject, getAvatarColors } from "@/context/layout"
 import { getFilename } from "@opencode-ai/shared/util/path"
 import { Avatar } from "@opencode-ai/ui/avatar"
 import { useLanguage } from "@/context/language"
-import { getProjectAvatarSource } from "@/pages/layout/sidebar-items"
+import { getProjectAvatarSource } from "@/pages/layout/project-avatar"
 
 const AVATAR_COLOR_KEYS = ["pink", "mint", "orange", "purple", "cyan", "lime"] as const
 
@@ -145,11 +145,7 @@ export function DialogEditProject(props: { project: LocalProject }) {
                   }}
                 >
                   <Show
-                    when={getProjectAvatarSource(props.project.id, {
-                      color: store.color,
-                      url: props.project.icon?.url,
-                      override: store.iconOverride,
-                    })}
+                    when={getProjectAvatarSource({ override: store.iconOverride })}
                     fallback={
                       <div class="size-full flex items-center justify-center">
                         <Avatar
@@ -222,10 +218,7 @@ export function DialogEditProject(props: { project: LocalProject }) {
                         "bg-transparent border border-transparent hover:bg-surface-base-hover hover:border-border-weak-base":
                           store.color !== color,
                       }}
-                      onClick={() => {
-                        if (store.color === color && !props.project.icon?.url) return
-                        setStore("color", store.color === color ? undefined : color)
-                      }}
+                      onClick={() => setStore("color", store.color === color ? undefined : color)}
                     >
                       <Avatar
                         fallback={store.name || defaultName()}

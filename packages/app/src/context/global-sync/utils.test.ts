@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import type { Agent } from "@opencode-ai/sdk/v2/client"
-import { normalizeAgentList } from "./utils"
+import type { Agent, Project } from "@opencode-ai/sdk/v2/client"
+import { normalizeAgentList, sanitizeProject } from "./utils"
 
 const agent = (name = "build") =>
   ({
@@ -31,5 +31,26 @@ describe("normalizeAgentList", () => {
   test("drops invalid payloads", () => {
     expect(normalizeAgentList({ name: "AbortError" })).toEqual([])
     expect(normalizeAgentList([{ name: "build" }, agent("docs")])).toEqual([agent("docs")])
+  })
+})
+
+describe("sanitizeProject", () => {
+  test("drops discovered icon urls while preserving manual icon settings", () => {
+    const project = {
+      id: "project",
+      worktree: "/tmp/project",
+      icon: {
+        url: "data:image/png;base64,discovered",
+        override: "data:image/png;base64,manual",
+        color: "pink",
+      },
+    } as Project
+
+    expect(sanitizeProject(project).icon).toEqual({
+      url: undefined,
+      override: "data:image/png;base64,manual",
+      color: "pink",
+    })
+    expect(sanitizeProject({ ...project, icon: { url: "data:image/png;base64,discovered" } }).icon).toBeUndefined()
   })
 })
