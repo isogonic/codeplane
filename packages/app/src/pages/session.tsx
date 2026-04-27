@@ -1611,6 +1611,16 @@ export default function Page() {
     })
   }
 
+  const deleteFollowup = (id: string) => {
+    const sessionID = params.id
+    if (!sessionID) return
+    if (followupBusy(sessionID)) return
+
+    setFollowup("items", sessionID, (items) => (items ?? []).filter((entry) => entry.id !== id))
+    setFollowup("failed", sessionID, (value) => (value === id ? undefined : value))
+    setFollowup("edit", sessionID, (value) => (value?.id === id ? undefined : value))
+  }
+
   const clearFollowupEdit = () => {
     const id = params.id
     if (!id) return
@@ -1916,6 +1926,7 @@ export default function Page() {
                       void sendFollowup(params.id!, id, { manual: true })
                     },
                     onEdit: editFollowup,
+                    onDelete: deleteFollowup,
                     onEditLoaded: clearFollowupEdit,
                   }
                 : undefined

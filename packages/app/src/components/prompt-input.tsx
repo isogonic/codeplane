@@ -33,6 +33,7 @@ import { Persist, persisted } from "@/utils/persist"
 import { usePermission } from "@/context/permission"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
+import { useSettings } from "@/context/settings"
 import { useSessionLayout } from "@/pages/session/session-layout"
 import { createSessionTabs } from "@/pages/session/helpers"
 import { createTextFragment, getCursorPosition, setCursorPosition, setRangeEdge } from "./prompt-input/editor-dom"
@@ -115,6 +116,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const permission = usePermission()
   const language = useLanguage()
   const platform = usePlatform()
+  const settings = useSettings()
   const { params, tabs, view } = useSessionLayout()
   let editorRef!: HTMLDivElement
   let fileInputRef: HTMLInputElement | undefined
@@ -257,6 +259,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     draggingType: "image" | "@mention" | null
     mode: "normal" | "shell"
     applyingHistory: boolean
+    followupMode: "queue" | "steer" | undefined
   }>({
     popover: null,
     historyIndex: -1,
@@ -265,6 +268,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     draggingType: null,
     mode: "normal",
     applyingHistory: false,
+    followupMode: undefined,
   })
 
   const buttonsSpring = useSpring(() => (store.mode === "normal" ? 1 : 0), { visualDuration: 0.2, bounce: 0 })
@@ -1084,7 +1088,11 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     setPopover: (popover) => setStore("popover", popover),
     newSessionWorktree: () => props.newSessionWorktree,
     onNewSessionWorktreeReset: props.onNewSessionWorktreeReset,
-    shouldQueue: props.shouldQueue,
+    shouldQueue: () => {
+      if (store.followupMode === "queue") return working()
+      if (store.followupMode === "steer") return false
+      return props.shouldQueue?.() ?? false
+    },
     onQueue: props.onQueue,
     onAbort: props.onAbort,
     onSubmit: props.onSubmit,
@@ -1167,7 +1175,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
     // Handle Shift+Enter BEFORE IME check - Shift+Enter is never used for IME input
     // and should always insert a newline regardless of composition state
-    if (event.key === "Enter" && event.shiftKey) {
+    if (event.key === "Enter" && event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey) {
       addPart({ type: "text", content: "\n", start: 0, end: 0 })
       event.preventDefault()
       return
@@ -1232,7 +1240,16 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       return
     }
 
-    // Note: Shift+Enter is handled earlier, before IME check
+    const invertFollowup = event.key === "Enter" && event.shiftKey && !event.altKey && (event.metaKey || event.ctrlKey)
+    if (invertFollowup) {
+      event.preventDefault()
+      if (event.repeat) return
+      setStore("followupMode", settings.general.followup() === "queue" ? "steer" : "queue")
+      void handleSubmit(event).finally(() => setStore("followupMode", undefined))
+      return
+    }
+
+    // Note: plain Shift+Enter is handled earlier, before IME check
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault()
       if (event.repeat) return
