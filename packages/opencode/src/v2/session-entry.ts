@@ -1,11 +1,13 @@
 import { Schema } from "effect"
+import { Prompt } from "./session-prompt"
 import { SessionEvent } from "./session-event"
+import { Event } from "./event"
 
-export const ID = SessionEvent.ID
+export const ID = Event.ID
 export type ID = Schema.Schema.Type<typeof ID>
 
 const Base = {
-  id: SessionEvent.ID,
+  id: ID,
   metadata: Schema.Record(Schema.String, Schema.Unknown).pipe(Schema.optional),
   time: Schema.Struct({
     created: Schema.DateTimeUtc,
@@ -14,36 +16,40 @@ const Base = {
 
 export class User extends Schema.Class<User>("Session.Entry.User")({
   ...Base,
-  text: SessionEvent.Prompt.fields.text,
-  files: SessionEvent.Prompt.fields.files,
-  agents: SessionEvent.Prompt.fields.agents,
+  text: Prompt.fields.text,
+  files: Prompt.fields.files,
+  agents: Prompt.fields.agents,
   type: Schema.Literal("user"),
   time: Schema.Struct({
     created: Schema.DateTimeUtc,
   }),
 }) {
-  static fromEvent(event: SessionEvent.Prompt) {
+  static fromEvent(event: SessionEvent.Prompted) {
     return new User({
-      id: event.id,
+      id: ID.create(),
       type: "user",
       metadata: event.metadata,
-      text: event.text,
-      files: event.files,
-      agents: event.agents,
-      time: { created: event.timestamp },
+      text: event.data.prompt.text,
+      files: event.data.prompt.files,
+      agents: event.data.prompt.agents,
+      time: { created: event.data.timestamp },
     })
   }
 }
 
 export class Synthetic extends Schema.Class<Synthetic>("Session.Entry.Synthetic")({
-  ...SessionEvent.Synthetic.fields,
   ...Base,
+  sessionID: SessionEvent.Synthetic.fields.data.fields.sessionID,
+  text: SessionEvent.Synthetic.fields.data.fields.text,
   type: Schema.Literal("synthetic"),
 }) {
   static fromEvent(event: SessionEvent.Synthetic) {
     return new Synthetic({
-      ...event,
-      time: { created: event.timestamp },
+      sessionID: event.data.sessionID,
+      text: event.data.text,
+      id: ID.create(),
+      type: "synthetic",
+      time: { created: event.data.timestamp },
     })
   }
 }
@@ -56,16 +62,14 @@ export class ToolStatePending extends Schema.Class<ToolStatePending>("Session.En
 export class ToolStateRunning extends Schema.Class<ToolStateRunning>("Session.Entry.ToolState.Running")({
   status: Schema.Literal("running"),
   input: Schema.Record(Schema.String, Schema.Unknown),
-  title: Schema.String.pipe(Schema.optional),
-  metadata: Schema.Record(Schema.String, Schema.Unknown).pipe(Schema.optional),
+  details: Schema.Record(Schema.String, Schema.Unknown).pipe(Schema.optional),
 }) {}
 
 export class ToolStateCompleted extends Schema.Class<ToolStateCompleted>("Session.Entry.ToolState.Completed")({
   status: Schema.Literal("completed"),
   input: Schema.Record(Schema.String, Schema.Unknown),
   output: Schema.String,
-  title: Schema.String,
-  metadata: Schema.Record(Schema.String, Schema.Unknown),
+  details: Schema.Record(Schema.String, Schema.Unknown).pipe(Schema.optional),
   attachments: SessionEvent.FileAttachment.pipe(Schema.Array, Schema.optional),
 }) {}
 
@@ -73,7 +77,7 @@ export class ToolStateError extends Schema.Class<ToolStateError>("Session.Entry.
   status: Schema.Literal("error"),
   input: Schema.Record(Schema.String, Schema.Unknown),
   error: Schema.String,
-  metadata: Schema.Record(Schema.String, Schema.Unknown).pipe(Schema.optional),
+  details: Schema.Record(Schema.String, Schema.Unknown).pipe(Schema.optional),
 }) {}
 
 export const ToolState = Schema.Union([ToolStatePending, ToolStateRunning, ToolStateCompleted, ToolStateError]).pipe(
@@ -101,6 +105,7 @@ export class AssistantText extends Schema.Class<AssistantText>("Session.Entry.As
 
 export class AssistantReasoning extends Schema.Class<AssistantReasoning>("Session.Entry.Assistant.Reasoning")({
   type: Schema.Literal("reasoning"),
+  reasoningID: Schema.String,
   text: Schema.String,
 }) {}
 
@@ -113,10 +118,10 @@ export class AssistantRetry extends Schema.Class<AssistantRetry>("Session.Entry.
 }) {
   static fromEvent(event: SessionEvent.Retried) {
     return new AssistantRetry({
-      attempt: event.attempt,
-      error: event.error,
+      attempt: event.data.attempt,
+      error: event.data.error,
       time: {
-        created: event.timestamp,
+        created: event.data.timestamp,
       },
     })
   }
@@ -150,10 +155,10 @@ export class Assistant extends Schema.Class<Assistant>("Session.Entry.Assistant"
 }) {
   static fromEvent(event: SessionEvent.Step.Started) {
     return new Assistant({
-      id: event.id,
+      id: ID.create(),
       type: "assistant",
       time: {
-        created: event.timestamp,
+        created: event.data.timestamp,
       },
       content: [],
       retries: [],
@@ -162,15 +167,20 @@ export class Assistant extends Schema.Class<Assistant>("Session.Entry.Assistant"
 }
 
 export class Compaction extends Schema.Class<Compaction>("Session.Entry.Compaction")({
-  ...SessionEvent.Compacted.fields,
   type: Schema.Literal("compaction"),
+  sessionID: SessionEvent.Compacted.fields.data.fields.sessionID,
+  auto: SessionEvent.Compacted.fields.data.fields.auto,
+  overflow: SessionEvent.Compacted.fields.data.fields.overflow,
   ...Base,
 }) {
   static fromEvent(event: SessionEvent.Compacted) {
     return new Compaction({
-      ...event,
+      sessionID: event.data.sessionID,
+      auto: event.data.auto,
+      overflow: event.data.overflow,
+      id: ID.create(),
       type: "compaction",
-      time: { created: event.timestamp },
+      time: { created: event.data.timestamp },
     })
   }
 }

@@ -60,11 +60,13 @@ export function stepWith<Result>(adapter: Adapter<Result>, event: SessionEvent.E
   const latestText = (assistant: DraftAssistant | undefined) =>
     assistant?.content.findLast((item): item is DraftText => item.type === "text")
 
-  const latestReasoning = (assistant: DraftAssistant | undefined) =>
-    assistant?.content.findLast((item): item is DraftReasoning => item.type === "reasoning")
+  const latestReasoning = (assistant: DraftAssistant | undefined, reasoningID: string) =>
+    assistant?.content.findLast(
+      (item): item is DraftReasoning => item.type === "reasoning" && item.reasoningID === reasoningID,
+    )
 
-  SessionEvent.Event.match(event, {
-    prompt: (event) => {
+  SessionEvent.All.match(event, {
+    "session.next.prompted": (event) => {
       const entry = SessionEntry.User.fromEvent(event)
       if (currentAssistant) {
         adapter.appendPending(entry)
@@ -72,31 +74,31 @@ export function stepWith<Result>(adapter: Adapter<Result>, event: SessionEvent.E
       }
       adapter.appendEntry(entry)
     },
-    synthetic: (event) => {
+    "session.next.synthetic": (event) => {
       adapter.appendEntry(SessionEntry.Synthetic.fromEvent(event))
     },
-    "step.started": (event) => {
+    "session.next.step.started": (event) => {
       if (currentAssistant) {
         adapter.updateAssistant(
           produce(currentAssistant, (draft) => {
-            draft.time.completed = event.timestamp
+            draft.time.completed = event.data.timestamp
           }),
         )
       }
       adapter.appendEntry(SessionEntry.Assistant.fromEvent(event))
     },
-    "step.ended": (event) => {
+    "session.next.step.ended": (event) => {
       if (currentAssistant) {
         adapter.updateAssistant(
           produce(currentAssistant, (draft) => {
-            draft.time.completed = event.timestamp
-            draft.cost = event.cost
-            draft.tokens = event.tokens
+            draft.time.completed = event.data.timestamp
+            draft.cost = event.data.cost
+            draft.tokens = event.data.tokens
           }),
         )
       }
     },
-    "text.started": () => {
+    "session.next.text.started": () => {
       if (currentAssistant) {
         adapter.updateAssistant(
           produce(currentAssistant, (draft) => {
@@ -108,27 +110,27 @@ export function stepWith<Result>(adapter: Adapter<Result>, event: SessionEvent.E
         )
       }
     },
-    "text.delta": (event) => {
+    "session.next.text.delta": (event) => {
       if (currentAssistant) {
         adapter.updateAssistant(
           produce(currentAssistant, (draft) => {
             const match = latestText(draft)
-            if (match) match.text += event.delta
+            if (match) match.text += event.data.delta
           }),
         )
       }
     },
-    "text.ended": () => {},
-    "tool.input.started": (event) => {
+    "session.next.text.ended": () => {},
+    "session.next.tool.input.started": (event) => {
       if (currentAssistant) {
         adapter.updateAssistant(
           produce(currentAssistant, (draft) => {
             draft.content.push({
               type: "tool",
-              callID: event.callID,
-              name: event.name,
+              callID: event.data.callID,
+              name: event.data.name,
               time: {
-                created: event.timestamp,
+                created: event.data.timestamp,
               },
               state: {
                 status: "pending",
@@ -139,103 +141,112 @@ export function stepWith<Result>(adapter: Adapter<Result>, event: SessionEvent.E
         )
       }
     },
-    "tool.input.delta": (event) => {
+    "session.next.tool.input.delta": (event) => {
       if (currentAssistant) {
         adapter.updateAssistant(
           produce(currentAssistant, (draft) => {
-            const match = latestTool(draft, event.callID)
+            const match = latestTool(draft, event.data.callID)
             // oxlint-disable-next-line no-base-to-string -- event.delta is a Schema.String (runtime string)
-            if (match && match.state.status === "pending") match.state.input += event.delta
+            if (match && match.state.status === "pending") match.state.input += event.data.delta
           }),
         )
       }
     },
-    "tool.input.ended": () => {},
-    "tool.called": (event) => {
+    "session.next.tool.input.ended": () => {},
+    "session.next.tool.called": (event) => {
       if (currentAssistant) {
         adapter.updateAssistant(
           produce(currentAssistant, (draft) => {
-            const match = latestTool(draft, event.callID)
+            const match = latestTool(draft, event.data.callID)
             if (match) {
-              match.time.ran = event.timestamp
+              match.time.ran = event.data.timestamp
               match.state = {
                 status: "running",
-                input: event.input,
+                input: event.data.input,
               }
             }
           }),
         )
       }
     },
-    "tool.success": (event) => {
+    "session.next.tool.progress": (event) => {
       if (currentAssistant) {
         adapter.updateAssistant(
           produce(currentAssistant, (draft) => {
-            const match = latestTool(draft, event.callID)
+            const match = latestTool(draft, event.data.callID)
+            if (match && match.state.status === "running") match.state.details = event.data.details
+          }),
+        )
+      }
+    },
+    "session.next.tool.success": (event) => {
+      if (currentAssistant) {
+        adapter.updateAssistant(
+          produce(currentAssistant, (draft) => {
+            const match = latestTool(draft, event.data.callID)
             if (match && match.state.status === "running") {
               match.state = {
                 status: "completed",
                 input: match.state.input,
-                output: event.output ?? "",
-                title: event.title,
-                metadata: event.metadata ?? {},
-                attachments: [...(event.attachments ?? [])],
+                output: event.data.output ?? "",
+                details: event.data.details,
+                attachments: [...(event.data.attachments ?? [])],
               }
             }
           }),
         )
       }
     },
-    "tool.error": (event) => {
+    "session.next.tool.error": (event) => {
       if (currentAssistant) {
         adapter.updateAssistant(
           produce(currentAssistant, (draft) => {
-            const match = latestTool(draft, event.callID)
+            const match = latestTool(draft, event.data.callID)
             if (match && match.state.status === "running") {
               match.state = {
                 status: "error",
-                error: event.error,
+                error: event.data.error,
                 input: match.state.input,
-                metadata: event.metadata ?? {},
               }
             }
           }),
         )
       }
     },
-    "reasoning.started": () => {
+    "session.next.reasoning.started": (event) => {
       if (currentAssistant) {
         adapter.updateAssistant(
           produce(currentAssistant, (draft) => {
             draft.content.push({
               type: "reasoning",
+              reasoningID: event.data.reasoningID,
               text: "",
             })
           }),
         )
       }
     },
-    "reasoning.delta": (event) => {
+    "session.next.reasoning.delta": (event) => {
       if (currentAssistant) {
         adapter.updateAssistant(
           produce(currentAssistant, (draft) => {
-            const match = latestReasoning(draft)
-            if (match) match.text += event.delta
+            const match = latestReasoning(draft, event.data.reasoningID)
+            if (match) match.text += event.data.delta
           }),
         )
       }
     },
-    "reasoning.ended": (event) => {
+    "session.next.reasoning.ended": (event) => {
       if (currentAssistant) {
         adapter.updateAssistant(
           produce(currentAssistant, (draft) => {
-            const match = latestReasoning(draft)
-            if (match) match.text = event.text
+            const match = latestReasoning(draft, event.data.reasoningID)
+            if (match) match.text = event.data.text
           }),
         )
       }
     },
-    retried: (event) => {
+    "session.next.retried": (event) => {
       if (currentAssistant) {
         adapter.updateAssistant(
           produce(currentAssistant, (draft) => {
@@ -244,7 +255,7 @@ export function stepWith<Result>(adapter: Adapter<Result>, event: SessionEvent.E
         )
       }
     },
-    compacted: (event) => {
+    "session.next.compacted": (event) => {
       adapter.appendEntry(SessionEntry.Compaction.fromEvent(event))
     },
   })
