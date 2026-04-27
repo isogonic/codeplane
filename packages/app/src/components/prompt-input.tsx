@@ -107,13 +107,13 @@ function CapabilityIcon(props: { capable: boolean; icon: IconProps["name"]; labe
     <Tooltip placement="top" value={<span>{props.label}</span>}>
       <span
         aria-label={props.label}
-        classList={{
-          "inline-flex size-5 items-center justify-center transition-colors": true,
-          "text-icon-base": props.capable,
-          "text-icon-critical-base": !props.capable,
-        }}
+        class="inline-flex size-5 items-center justify-center transition-colors"
       >
-        <Icon name={props.icon} size="small" />
+        <Icon
+          name={props.icon}
+          size="small"
+          style={{ color: props.capable ? "var(--icon-base)" : "var(--icon-critical-base)" }}
+        />
       </span>
     </Tooltip>
   )
@@ -1649,7 +1649,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                     <Show when={currentModel()}>
                       <div
                         data-component="prompt-model-capabilities"
-                        class="ml-auto hidden md:flex shrink-0 items-center gap-0.5"
+                        class="ml-auto hidden sm:flex shrink-0 items-center gap-0.5"
                       >
                         <CapabilityIcon
                           icon="photo"
