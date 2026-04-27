@@ -18,6 +18,11 @@ function mimeToModality(mime: string): Modality | undefined {
 }
 
 export const OUTPUT_TOKEN_MAX = Flag.OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX || 32_000
+const schemaCache = new WeakMap<object, Map<string, JSONSchema7>>()
+
+function schemaCacheKey(model: Provider.Model) {
+  return [model.providerID, model.id, model.api.id, model.api.npm].join("\x00")
+}
 
 // Maps npm package to the key the AI SDK expects for providerOptions
 function sdkKey(npm: string): string | undefined {
@@ -1038,13 +1043,19 @@ export function maxOutputTokens(model: Provider.Model): number {
   return Math.min(model.limit.output, OUTPUT_TOKEN_MAX) || OUTPUT_TOKEN_MAX
 }
 
-export function schema(model: Provider.Model, schema: JSONSchema.BaseSchema | JSONSchema7): JSONSchema7 {
+export function schema(model: Provider.Model, input: JSONSchema.BaseSchema | JSONSchema7): JSONSchema7 {
+  const cache = typeof input === "object" && input !== null ? schemaCache.get(input) : undefined
+  const cacheKey = schemaCacheKey(model)
+  const cached = cache?.get(cacheKey)
+  if (cached) return cached
+
+  let result = input
   /*
   if (["openai", "azure"].includes(providerID)) {
-    if (schema.type === "object" && schema.properties) {
-      for (const [key, value] of Object.entries(schema.properties)) {
-        if (schema.required?.includes(key)) continue
-        schema.properties[key] = {
+    if (result.type === "object" && result.properties) {
+      for (const [key, value] of Object.entries(result.properties)) {
+        if (result.required?.includes(key)) continue
+        result.properties[key] = {
           anyOf: [
             value as JSONSchema.JSONSchema,
             {
@@ -1133,8 +1144,15 @@ export function schema(model: Provider.Model, schema: JSONSchema.BaseSchema | JS
       return result
     }
 
-    schema = sanitizeGemini(schema)
+    result = sanitizeGemini(result)
   }
 
-  return schema as JSONSchema7
+  const transformed = result as JSONSchema7
+  if (typeof input !== "object" || input === null) return transformed
+  if (cache) {
+    cache.set(cacheKey, transformed)
+    return transformed
+  }
+  schemaCache.set(input, new Map([[cacheKey, transformed]]))
+  return transformed
 }

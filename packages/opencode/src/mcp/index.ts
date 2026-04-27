@@ -201,6 +201,7 @@ interface State {
   status: Record<string, Status>
   clients: Record<string, MCPClient>
   defs: Record<string, MCPToolDef[]>
+  toolCache: Record<string, { defs: MCPToolDef[]; timeout: number | undefined; tools: Record<string, Tool> }>
 }
 
 export interface Interface {
@@ -467,6 +468,7 @@ export const layer = Layer.effect(
         if (s.clients[name] !== client || s.status[name]?.status !== "connected") return
 
         s.defs[name] = listed
+        delete s.toolCache[name]
         await bridge.promise(bus.publish(ToolsChanged, { server: name }).pipe(Effect.ignore))
       })
     }
@@ -480,6 +482,7 @@ export const layer = Layer.effect(
           status: {},
           clients: {},
           defs: {},
+          toolCache: {},
         }
 
         yield* Effect.forEach(
@@ -539,6 +542,7 @@ export const layer = Layer.effect(
     function closeClient(s: State, name: string) {
       const client = s.clients[name]
       delete s.defs[name]
+      delete s.toolCache[name]
       if (!client) return Effect.void
       return Effect.tryPromise(() => client.close()).pipe(Effect.ignore)
     }
@@ -641,9 +645,17 @@ export const layer = Layer.effect(
             }
 
             const timeout = entry?.timeout ?? defaultTimeout
-            for (const mcpTool of listed) {
-              result[sanitize(clientName) + "_" + sanitize(mcpTool.name)] = convertMcpTool(mcpTool, client, timeout)
+            const cached = s.toolCache[clientName]
+            if (cached?.defs === listed && cached.timeout === timeout) {
+              Object.assign(result, cached.tools)
+              return
             }
+            const tools: Record<string, Tool> = {}
+            for (const mcpTool of listed) {
+              tools[sanitize(clientName) + "_" + sanitize(mcpTool.name)] = convertMcpTool(mcpTool, client, timeout)
+            }
+            s.toolCache[clientName] = { defs: listed, timeout, tools }
+            Object.assign(result, tools)
           }),
         { concurrency: "unbounded" },
       )
