@@ -1,5 +1,6 @@
 import { Effect, Option, Schema, SchemaAST } from "effect"
 import z from "zod"
+import type { JSONSchema } from "zod/v4/core"
 
 /**
  * Annotation key for providing a hand-crafted Zod schema that the walker
@@ -13,6 +14,7 @@ export const ZodOverride: unique symbol = Symbol.for("effect-zod/override")
 // avoids rebuilding equivalent Zod subtrees and keeps derived children stable
 // by reference across callers.
 const walkCache = new WeakMap<SchemaAST.AST, z.ZodTypeAny>()
+const jsonSchemaCache = new WeakMap<SchemaAST.AST, JSONSchema.BaseSchema>()
 
 // Shared empty ParseOptions for the rare callers that need one — avoids
 // allocating a fresh object per parse inside refinements and transforms.
@@ -56,7 +58,11 @@ function isZodType(value: unknown): value is z.ZodTypeAny {
  * `session/prompt.ts` has always passed to `ai`'s `jsonSchema()` helper.
  */
 export function toJsonSchema<S extends Schema.Top>(schema: S) {
-  return z.toJSONSchema(zod(schema), { io: "input" })
+  const cached = jsonSchemaCache.get(schema.ast)
+  if (cached) return cached
+  const result = z.toJSONSchema(zod(schema), { io: "input" })
+  jsonSchemaCache.set(schema.ast, result)
+  return result
 }
 
 function walk(ast: SchemaAST.AST): z.ZodTypeAny {
