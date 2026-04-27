@@ -4,7 +4,6 @@ import { DateTime } from "luxon"
 import { base64Encode } from "@opencode-ai/shared/util/encode"
 import { getFilename } from "@opencode-ai/shared/util/path"
 import { Button } from "@opencode-ai/ui/button"
-import { Icon } from "@opencode-ai/ui/icon"
 import { useGlobalSync } from "@/context/global-sync"
 import { useLanguage } from "@/context/language"
 import { useNotification, type Notification as AppNotification } from "@/context/notification"
@@ -65,15 +64,10 @@ export default function Notifications() {
     <div class="size-full overflow-y-auto">
       <div class="mx-auto flex min-h-full w-full max-w-3xl flex-col px-6 py-8">
         <div class="shrink-0 flex items-center justify-between gap-4 border-b border-border-weak-base pb-4">
-          <div class="flex min-w-0 items-center gap-3">
-            <div class="size-8 shrink-0 rounded-md border border-border-weak-base bg-surface-base flex items-center justify-center">
-              <Icon name="bell" />
-            </div>
-            <div class="min-w-0">
-              <div class="text-20-medium text-text-strong truncate">{language.t("notification.center.title")}</div>
-              <div class="text-12-regular text-text-weak">
-                {language.t("notification.center.count", { count: items().length })}
-              </div>
+          <div class="min-w-0">
+            <div class="text-20-medium text-text-strong truncate">{language.t("notification.center.title")}</div>
+            <div class="text-12-regular text-text-weak">
+              {language.t("notification.center.count", { count: items().length })}
             </div>
           </div>
           <Show when={notification.unseenCount() > 0}>
@@ -88,7 +82,6 @@ export default function Notifications() {
           fallback={
             <div class="flex flex-1 items-center justify-center px-6 text-center">
               <div class="flex max-w-60 flex-col items-center gap-3">
-                <Icon name="bell" size="large" class="text-icon-disabled" />
                 <div class="text-14-medium text-text-strong">{language.t("notification.center.empty.title")}</div>
               </div>
             </div>
@@ -100,16 +93,10 @@ export default function Notifications() {
                 <li class="border-b border-border-weak-base last:border-b-0">
                   <button
                     type="button"
-                    class="group flex w-full min-w-0 items-center gap-3 rounded-md px-3 py-3 text-left transition-colors hover:bg-surface-raised-base-hover focus:outline-none focus-visible:bg-surface-raised-base-hover"
+                    class="group flex w-full min-w-0 rounded-md px-3 py-3 text-left transition-colors hover:bg-surface-raised-base-hover focus:outline-none focus-visible:bg-surface-raised-base-hover"
                     classList={{ "bg-surface-base-active": !item.viewed }}
                     onClick={() => open(item)}
                   >
-                    <div
-                      class="size-8 shrink-0 rounded-md border border-border-weak-base bg-surface-base flex items-center justify-center"
-                      classList={{ "text-icon-critical-base": item.type === "error" }}
-                    >
-                      <Icon name={item.type === "error" ? "warning" : "bell"} />
-                    </div>
                     <div class="min-w-0 flex-1">
                       <div class="flex min-w-0 items-center gap-2">
                         <span class="truncate text-14-medium text-text-strong">
