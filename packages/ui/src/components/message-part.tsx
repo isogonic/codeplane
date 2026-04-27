@@ -22,14 +22,13 @@ import {
   Message as MessageType,
   Part as PartType,
   ReasoningPart,
-  Session,
   TextPart,
   ToolPart,
   UserMessage,
   Todo,
   QuestionAnswer,
   QuestionInfo,
-} from "@opencode-ai/sdk/v2"
+} from "@codeplane-ai/sdk/v2"
 import { useData } from "../context"
 import { useFileComponent, useFileReference, type FileReferenceSelection } from "../context/file"
 import { useDialog } from "../context/dialog"
@@ -45,8 +44,8 @@ import { Checkbox } from "./checkbox"
 import { DiffChanges } from "./diff-changes"
 import { Markdown } from "./markdown"
 import { ImagePreview } from "./image-preview"
-import { getDirectory as _getDirectory, getFilename } from "@opencode-ai/shared/util/path"
-import { checksum } from "@opencode-ai/shared/util/encode"
+import { getDirectory as _getDirectory, getFilename } from "@codeplane-ai/shared/util/path"
+import { checksum } from "@codeplane-ai/shared/util/encode"
 import { Tooltip } from "./tooltip"
 import { IconButton } from "./icon-button"
 import { showToast } from "./toast"
@@ -58,6 +57,7 @@ import { patchFiles } from "./apply-patch-file"
 import { animate } from "motion"
 import { useLocation } from "@solidjs/router"
 import { attached, inline, kind } from "./message-file"
+import { taskAgent, taskChildSession } from "./message-part-task"
 
 function ShellSubmessage(props: { text: string; animate?: boolean }) {
   let widthRef: HTMLSpanElement | undefined
@@ -319,47 +319,6 @@ function agentTitle(i18n: UiI18n, type?: string) {
   return i18n.t("ui.tool.agent", { type })
 }
 
-const agentTones: Record<string, string> = {
-  ask: "var(--icon-agent-ask-base)",
-  build: "var(--icon-agent-build-base)",
-  docs: "var(--icon-agent-docs-base)",
-  plan: "var(--icon-agent-plan-base)",
-}
-
-const agentPalette = [
-  "var(--icon-agent-ask-base)",
-  "var(--icon-agent-build-base)",
-  "var(--icon-agent-docs-base)",
-  "var(--icon-agent-plan-base)",
-  "var(--syntax-info)",
-  "var(--syntax-success)",
-  "var(--syntax-warning)",
-  "var(--syntax-property)",
-  "var(--syntax-constant)",
-  "var(--text-diff-add-base)",
-  "var(--text-diff-delete-base)",
-  "var(--icon-warning-base)",
-]
-
-function tone(name: string) {
-  let hash = 0
-  for (const char of name) hash = (hash * 31 + char.charCodeAt(0)) >>> 0
-  return agentPalette[hash % agentPalette.length]
-}
-
-function taskAgent(
-  raw: unknown,
-  list?: readonly { name: string; color?: string }[],
-): { name?: string; color?: string } {
-  if (typeof raw !== "string" || !raw) return {}
-  const key = raw.toLowerCase()
-  const item = list?.find((entry) => entry.name === raw || entry.name.toLowerCase() === key)
-  return {
-    name: item?.name ?? `${raw[0]!.toUpperCase()}${raw.slice(1)}`,
-    color: item?.color ?? agentTones[key] ?? tone(key),
-  }
-}
-
 export function getToolInfo(tool: string, input: any = {}): ToolInfo {
   const i18n = useI18n()
   switch (tool) {
@@ -486,27 +445,6 @@ function sessionLink(id: string | undefined, path: string, href?: (id: string) =
   const idx = path.indexOf("/session")
   if (idx === -1) return
   return `${path.slice(0, idx)}/session/${id}`
-}
-
-function currentSession(path: string) {
-  return path.match(/\/session\/([^/?#]+)/)?.[1]
-}
-
-function taskSession(
-  input: Record<string, any>,
-  path: string,
-  sessions: Session[] | undefined,
-  agents?: readonly { name: string; color?: string }[],
-) {
-  const parentID = currentSession(path)
-  if (!parentID) return
-  const description = typeof input.description === "string" ? input.description : ""
-  const agent = taskAgent(input.subagent_type, agents).name
-  return (sessions ?? [])
-    .filter((session) => session.parentID === parentID && !session.time?.archived)
-    .filter((session) => (description ? session.title.startsWith(description) : true))
-    .filter((session) => (agent ? session.title.includes(`@${agent}`) : true))
-    .sort((a, b) => (b.time.created ?? 0) - (a.time.created ?? 0))[0]?.id
 }
 
 const CONTEXT_GROUP_TOOLS = new Set(["read", "glob", "grep", "list"])
@@ -1947,11 +1885,12 @@ ToolRegistry.register({
     const i18n = useI18n()
     const location = useLocation()
     const childSessionId = createMemo(() => {
-      const value = props.metadata.sessionId
-      if (typeof value === "string" && value) return value
-      return taskSession(props.input, location.pathname, data.store.session, data.store.agent)
+      return taskChildSession(props.input, props.metadata, location.pathname, data.store.session, data.store.agent)
     })
-    const agent = createMemo(() => taskAgent(props.input.subagent_type, data.store.agent))
+    const agent = createMemo(() => {
+      const value = props.metadata.agent
+      return taskAgent(typeof value === "string" && value ? value : props.input.subagent_type, data.store.agent)
+    })
     const title = createMemo(() => agent().name ?? i18n.t("ui.tool.agent.default"))
     const tone = createMemo(() => agent().color)
     const subtitle = createMemo(() => {
@@ -1959,7 +1898,12 @@ ToolRegistry.register({
       if (typeof value === "string" && value) return value
       return childSessionId()
     })
-    const running = createMemo(() => props.status === "pending" || props.status === "running")
+    const taskStatus = createMemo(() => {
+      const value = props.metadata.status
+      if (value === "pending" || value === "running" || value === "completed" || value === "error") return value
+      return props.status
+    })
+    const running = createMemo(() => taskStatus() === "pending" || taskStatus() === "running")
 
     const href = createMemo(() => sessionLink(childSessionId(), location.pathname, data.sessionHref))
     const clickable = createMemo(() => !!(childSessionId() && (data.navigateToSession || href())))

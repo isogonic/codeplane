@@ -1,11 +1,12 @@
 import { batch, createMemo, createRoot, onCleanup } from "solid-js"
 import { createStore, reconcile, type SetStoreFunction, type Store } from "solid-js/store"
-import { createSimpleContext } from "@opencode-ai/ui/context"
+import { createSimpleContext } from "@codeplane-ai/ui/context"
 import { useParams } from "@solidjs/router"
 import { Persist, persisted } from "@/utils/persist"
 import { createScopedCache } from "@/utils/scoped-cache"
 import { uuid } from "@/utils/uuid"
 import type { SelectedLineRange } from "@/context/file"
+import { useSDK } from "./sdk"
 
 export type LineComment = {
   id: string
@@ -20,15 +21,17 @@ type CommentFocus = { file: string; id: string }
 const WORKSPACE_KEY = "__workspace__"
 const MAX_COMMENT_SESSIONS = 20
 
-function sessionKey(dir: string, id: string | undefined) {
-  return `${dir}\n${id ?? WORKSPACE_KEY}`
+function sessionKey(scope: string, dir: string, id: string | undefined) {
+  return `${scope}\n${dir}\n${id ?? WORKSPACE_KEY}`
 }
 
 function decodeSessionKey(key: string) {
+  const first = key.indexOf("\n")
   const split = key.lastIndexOf("\n")
-  if (split < 0) return { dir: key, id: WORKSPACE_KEY }
+  if (first < 0 || split <= first) return { scope: "default", dir: key, id: WORKSPACE_KEY }
   return {
-    dir: key.slice(0, split),
+    scope: key.slice(0, first),
+    dir: key.slice(first + 1, split),
     id: key.slice(split + 1),
   }
 }
@@ -166,11 +169,11 @@ export function createCommentSessionForTest(comments: Record<string, LineComment
   return createCommentSessionState(store, setStore)
 }
 
-function createCommentSession(dir: string, id: string | undefined) {
+function createCommentSession(scope: ReturnType<typeof useSDK>["scope"], dir: string, id: string | undefined) {
   const legacy = `${dir}/comments${id ? "/" + id : ""}.v1`
 
   const [store, setStore, _, ready] = persisted(
-    Persist.scoped(dir, id, "comments", [legacy]),
+    Persist.serverScoped(scope, dir, id, "comments", [legacy]),
     createStore<CommentStore>({
       comments: {},
     }),
@@ -200,11 +203,12 @@ export const { use: useComments, provider: CommentsProvider } = createSimpleCont
   gate: false,
   init: () => {
     const params = useParams()
+    const sdk = useSDK()
     const cache = createScopedCache(
       (key) => {
         const decoded = decodeSessionKey(key)
         return createRoot((dispose) => ({
-          value: createCommentSession(decoded.dir, decoded.id === WORKSPACE_KEY ? undefined : decoded.id),
+          value: createCommentSession(sdk.scope, decoded.dir, decoded.id === WORKSPACE_KEY ? undefined : decoded.id),
           dispose,
         }))
       },
@@ -217,7 +221,7 @@ export const { use: useComments, provider: CommentsProvider } = createSimpleCont
     onCleanup(() => cache.clear())
 
     const load = (dir: string, id: string | undefined) => {
-      const key = sessionKey(dir, id)
+      const key = sessionKey(sdk.scope.key, dir, id)
       return cache.get(key).value
     }
 

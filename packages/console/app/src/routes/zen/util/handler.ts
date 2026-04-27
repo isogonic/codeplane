@@ -1,19 +1,19 @@
 import type { APIEvent } from "@solidjs/start/server"
-import { and, Database, eq, isNull, lt, or, sql } from "@opencode-ai/console-core/drizzle/index.js"
-import { KeyTable } from "@opencode-ai/console-core/schema/key.sql.js"
-import { BillingTable, LiteTable, SubscriptionTable, UsageTable } from "@opencode-ai/console-core/schema/billing.sql.js"
-import { centsToMicroCents } from "@opencode-ai/console-core/util/price.js"
-import { getMonthlyBounds, getWeekBounds } from "@opencode-ai/console-core/util/date.js"
-import { Identifier } from "@opencode-ai/console-core/identifier.js"
-import { Billing } from "@opencode-ai/console-core/billing.js"
-import { Actor } from "@opencode-ai/console-core/actor.js"
-import { WorkspaceTable } from "@opencode-ai/console-core/schema/workspace.sql.js"
-import { ZenData } from "@opencode-ai/console-core/model.js"
-import { Subscription } from "@opencode-ai/console-core/subscription.js"
-import { BlackData } from "@opencode-ai/console-core/black.js"
-import { UserTable } from "@opencode-ai/console-core/schema/user.sql.js"
-import { ModelTable } from "@opencode-ai/console-core/schema/model.sql.js"
-import { ProviderTable } from "@opencode-ai/console-core/schema/provider.sql.js"
+import { and, Database, eq, isNull, lt, or, sql } from "@codeplane-ai/console-core/drizzle/index.js"
+import { KeyTable } from "@codeplane-ai/console-core/schema/key.sql.js"
+import { BillingTable, LiteTable, SubscriptionTable, UsageTable } from "@codeplane-ai/console-core/schema/billing.sql.js"
+import { centsToMicroCents } from "@codeplane-ai/console-core/util/price.js"
+import { getMonthlyBounds, getWeekBounds } from "@codeplane-ai/console-core/util/date.js"
+import { Identifier } from "@codeplane-ai/console-core/identifier.js"
+import { Billing } from "@codeplane-ai/console-core/billing.js"
+import { Actor } from "@codeplane-ai/console-core/actor.js"
+import { WorkspaceTable } from "@codeplane-ai/console-core/schema/workspace.sql.js"
+import { ZenData } from "@codeplane-ai/console-core/model.js"
+import { Subscription } from "@codeplane-ai/console-core/subscription.js"
+import { BlackData } from "@codeplane-ai/console-core/black.js"
+import { UserTable } from "@codeplane-ai/console-core/schema/user.sql.js"
+import { ModelTable } from "@codeplane-ai/console-core/schema/model.sql.js"
+import { ProviderTable } from "@codeplane-ai/console-core/schema/provider.sql.js"
 import { logger } from "./logger"
 import {
   AuthError,
@@ -41,8 +41,8 @@ import { createRateLimiter as createKeyRateLimiter } from "./keyRateLimiter"
 import { createDataDumper } from "./dataDumper"
 import { createTrialLimiter } from "./trialLimiter"
 import { createStickyTracker } from "./stickyProviderTracker"
-import { LiteData } from "@opencode-ai/console-core/lite.js"
-import { Resource } from "@opencode-ai/console-resource"
+import { LiteData } from "@codeplane-ai/console-core/lite.js"
+import { Resource } from "@codeplane-ai/console-resource"
 import { i18n, type Key } from "~/i18n"
 import { localeFromRequest } from "~/lib/language"
 import { createModelTpmLimiter } from "./modelTpmLimiter"
@@ -97,10 +97,10 @@ export async function handler(
     const ip = rawIp.includes(":") ? rawIp.split(":").slice(0, 4).join(":") : rawIp
     const rawZenApiKey = opts.parseApiKey(input.request.headers)
     const zenApiKey = rawZenApiKey === "public" ? undefined : rawZenApiKey
-    const sessionId = input.request.headers.get("x-opencode-session") ?? ""
-    const requestId = input.request.headers.get("x-opencode-request") ?? ""
-    const projectId = input.request.headers.get("x-opencode-project") ?? ""
-    const ocClient = input.request.headers.get("x-opencode-client") ?? ""
+    const sessionId = input.request.headers.get("x-codeplane-session") ?? ""
+    const requestId = input.request.headers.get("x-codeplane-request") ?? ""
+    const projectId = input.request.headers.get("x-codeplane-project") ?? ""
+    const ocClient = input.request.headers.get("x-codeplane-client") ?? ""
     logger.metric({
       is_stream: isStream,
       session: sessionId,
@@ -168,10 +168,10 @@ export async function handler(
           })
           headers.delete("host")
           headers.delete("content-length")
-          headers.delete("x-opencode-request")
-          headers.delete("x-opencode-session")
-          headers.delete("x-opencode-project")
-          headers.delete("x-opencode-client")
+          headers.delete("x-codeplane-request")
+          headers.delete("x-codeplane-session")
+          headers.delete("x-codeplane-project")
+          headers.delete("x-codeplane-client")
           return headers
         })(),
         body: reqBody,
@@ -425,7 +425,7 @@ export async function handler(
       throw new ModelError(
         `${t("zen.api.error.trialEnded", {
           model: modelData.name,
-          link: "https://opencode.ai/go",
+          link: "https://codeplane.ai/go",
         })}`,
       )
 
@@ -767,8 +767,8 @@ export async function handler(
 
     // Validate pay as you go billing
     const billing = authInfo.billing
-    const billingUrl = `https://opencode.ai/workspace/${authInfo.workspaceID}/billing`
-    const membersUrl = `https://opencode.ai/workspace/${authInfo.workspaceID}/members`
+    const billingUrl = `https://codeplane.ai/workspace/${authInfo.workspaceID}/billing`
+    const membersUrl = `https://codeplane.ai/workspace/${authInfo.workspaceID}/members`
     if (!billing.paymentMethodID && billing.balance <= 0)
       throw new CreditsError(t("zen.api.error.noPaymentMethod", { billingUrl }))
     if (billing.balance <= 0) throw new CreditsError(t("zen.api.error.insufficientBalance", { billingUrl }))

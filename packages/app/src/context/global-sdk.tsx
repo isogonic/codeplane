@@ -1,5 +1,5 @@
-import type { Event } from "@opencode-ai/sdk/v2/client"
-import { createSimpleContext } from "@opencode-ai/ui/context"
+import type { Event } from "@codeplane-ai/sdk/v2/client"
+import { createSimpleContext } from "@codeplane-ai/ui/context"
 import { createGlobalEmitter } from "@solid-primitives/event-bus"
 import { makeEventListener } from "@solid-primitives/event-listener"
 import { batch, onCleanup, onMount } from "solid-js"
@@ -34,6 +34,7 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
 
     const currentServer = server.current
     if (!currentServer) throw new Error(language.t("error.globalSDK.noServerAvailable"))
+    const currentScope = server.scope
 
     const eventSdk = createSdkForServer({
       signal: abort.signal,
@@ -229,13 +230,14 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
     })
 
     const sdk = createSdkForServer({
-      server: server.current.http,
+      server: currentServer.http,
       fetch: platform.fetch,
       throwOnError: true,
     })
 
     return {
       url: currentServer.http.url,
+      scope: currentScope,
       client: sdk,
       event: {
         on: emitter.on.bind(emitter),
@@ -243,7 +245,7 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
         start,
       },
       createClient(opts: Omit<Parameters<typeof createSdkForServer>[0], "server" | "fetch">) {
-        const s = server.current
+        const s = currentServer
         if (!s) throw new Error(language.t("error.globalSDK.serverNotAvailable"))
         return createSdkForServer({
           server: s.http,

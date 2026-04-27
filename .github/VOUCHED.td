@@ -21,8 +21,8 @@ iamdavidhill
 jayair
 kitlangton
 kommander
--opencode2026
--opencodeengineer bot that spams issues
+-codeplane2026
+-codeplaneengineer bot that spams issues
 r44vc0rp
 rekram1-node
 -ricardo-m-l

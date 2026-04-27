@@ -1,13 +1,13 @@
 import { Component, Show, createMemo, createResource, onMount, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
-import { Button } from "@opencode-ai/ui/button"
-import { Icon } from "@opencode-ai/ui/icon"
-import { Select } from "@opencode-ai/ui/select"
-import { Switch } from "@opencode-ai/ui/switch"
-import { TextField } from "@opencode-ai/ui/text-field"
-import { Tooltip } from "@opencode-ai/ui/tooltip"
-import { useTheme, type ColorScheme } from "@opencode-ai/ui/theme/context"
-import { showToast } from "@opencode-ai/ui/toast"
+import { Button } from "@codeplane-ai/ui/button"
+import { Icon } from "@codeplane-ai/ui/icon"
+import { Select } from "@codeplane-ai/ui/select"
+import { Switch } from "@codeplane-ai/ui/switch"
+import { TextField } from "@codeplane-ai/ui/text-field"
+import { Tooltip } from "@codeplane-ai/ui/tooltip"
+import { useTheme, type ColorScheme } from "@codeplane-ai/ui/theme/context"
+import { showToast } from "@codeplane-ai/ui/toast"
 import { useParams } from "@solidjs/router"
 import { useLanguage } from "@/context/language"
 import { usePermission } from "@/context/permission"
@@ -67,7 +67,7 @@ const playDemoSound = (id: string | undefined) => {
   }, 100)
 }
 
-export const SettingsGeneral: Component = () => {
+export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props) => {
   const theme = useTheme()
   const language = useLanguage()
   const permission = usePermission()
@@ -192,6 +192,7 @@ export const SettingsGeneral: Component = () => {
   const mono = () => monoInput(settings.appearance.font())
   const sans = () => sansInput(settings.appearance.uiFont())
   const terminal = () => terminalInput(settings.appearance.terminalFont())
+  const page = () => props.layout === "page"
 
   const soundSelectProps = (
     enabled: () => boolean,
@@ -427,7 +428,7 @@ export const SettingsGeneral: Component = () => {
           description={
             <>
               {language.t("settings.general.row.theme.description")}{" "}
-              <Link href="https://opencode.ai/docs/themes/">{language.t("common.learnMore")}</Link>
+              <Link href="https://codeplane.ai/docs/themes/">{language.t("common.learnMore")}</Link>
             </>
           }
         >
@@ -667,12 +668,20 @@ export const SettingsGeneral: Component = () => {
 
   console.log(import.meta.env)
   return (
-    <div class="flex flex-col h-full overflow-y-auto no-scrollbar px-4 pb-10 sm:px-10 sm:pb-10">
-      <div class="sticky top-0 z-10 bg-[linear-gradient(to_bottom,var(--surface-stronger-non-alpha)_calc(100%_-_24px),transparent)]">
-        <div class="flex flex-col gap-1 pt-6 pb-8">
-          <h2 class="text-16-medium text-text-strong">{language.t("settings.tab.general")}</h2>
+    <div
+      classList={{
+        "flex flex-col": true,
+        "w-full": page(),
+        "h-full overflow-y-auto no-scrollbar px-4 pb-10 sm:px-10 sm:pb-10": !page(),
+      }}
+    >
+      <Show when={!page()}>
+        <div class="sticky top-0 z-10 bg-[linear-gradient(to_bottom,var(--surface-stronger-non-alpha)_calc(100%_-_24px),transparent)]">
+          <div class="flex flex-col gap-1 pt-6 pb-8">
+            <h2 class="text-16-medium text-text-strong">{language.t("settings.tab.general")}</h2>
+          </div>
         </div>
-      </div>
+      </Show>
 
       <div class="flex flex-col gap-8 w-full">
         <GeneralSection />
@@ -749,7 +758,7 @@ export const SettingsGeneral: Component = () => {
           }}
         </Show>
 
-        <Show when={desktop() && import.meta.env.VITE_OPENCODE_CHANNEL === "beta"}>
+        <Show when={desktop() && import.meta.env.VITE_CODEPLANE_CHANNEL === "beta"}>
           <AdvancedSection />
         </Show>
       </div>

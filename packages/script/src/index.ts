@@ -18,36 +18,34 @@ if (!semver.satisfies(process.versions.bun, expectedBunVersionRange)) {
 }
 
 const env = {
-  OPENCODE_CHANNEL: process.env["OPENCODE_CHANNEL"],
-  OPENCODE_BUMP: process.env["OPENCODE_BUMP"],
-  OPENCODE_VERSION: process.env["OPENCODE_VERSION"],
-  OPENCODE_RELEASE: process.env["OPENCODE_RELEASE"],
+  CODEPLANE_CHANNEL: process.env["CODEPLANE_CHANNEL"],
+  CODEPLANE_BUMP: process.env["CODEPLANE_BUMP"],
+  CODEPLANE_VERSION: process.env["CODEPLANE_VERSION"],
+  CODEPLANE_RELEASE: process.env["CODEPLANE_RELEASE"],
 }
+
+const todayVersion = () => {
+  const now = new Date()
+  return `${String(now.getUTCFullYear()).slice(2)}.${String(now.getUTCMonth() + 1)}.${String(now.getUTCDate())}`
+}
+
 const CHANNEL = await (async () => {
-  if (env.OPENCODE_CHANNEL) return env.OPENCODE_CHANNEL
-  if (env.OPENCODE_BUMP) return "latest"
-  if (env.OPENCODE_VERSION && !env.OPENCODE_VERSION.startsWith("0.0.0-")) return "latest"
-  return await $`git branch --show-current`.text().then((x) => x.trim())
+  if (env.CODEPLANE_CHANNEL) return env.CODEPLANE_CHANNEL
+  if (env.CODEPLANE_VERSION) return "latest"
+  if (env.CODEPLANE_BUMP) return "latest"
+  const branch = await $`git branch --show-current`.text().then((x) => x.trim())
+  if (branch === "main" || branch === "dev") return "latest"
+  return branch
 })()
 const IS_PREVIEW = CHANNEL !== "latest"
 
 const VERSION = await (async () => {
-  if (env.OPENCODE_VERSION) return env.OPENCODE_VERSION
+  if (env.CODEPLANE_VERSION) return env.CODEPLANE_VERSION
   if (IS_PREVIEW) return `0.0.0-${CHANNEL}-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "")}`
-  const version = await fetch("https://registry.npmjs.org/opencode-ai/latest")
-    .then((res) => {
-      if (!res.ok) throw new Error(res.statusText)
-      return res.json()
-    })
-    .then((data: any) => data.version)
-  const [major, minor, patch] = version.split(".").map((x: string) => Number(x) || 0)
-  const t = env.OPENCODE_BUMP?.toLowerCase()
-  if (t === "major") return `${major + 1}.0.0`
-  if (t === "minor") return `${major}.${minor + 1}.0`
-  return `${major}.${minor}.${patch + 1}`
+  return todayVersion()
 })()
 
-const bot = ["actions-user", "opencode", "opencode-agent[bot]"]
+const bot = ["actions-user", "codeplane", "codeplane-agent[bot]"]
 const teamPath = path.resolve(import.meta.dir, "../../../.github/TEAM_MEMBERS")
 const team = [
   ...(await Bun.file(teamPath)
@@ -68,10 +66,10 @@ export const Script = {
     return IS_PREVIEW
   },
   get release(): boolean {
-    return !!env.OPENCODE_RELEASE
+    return !!env.CODEPLANE_RELEASE
   },
   get team() {
     return team
   },
 }
-console.log(`opencode script`, JSON.stringify(Script, null, 2))
+console.log(`codeplane script`, JSON.stringify(Script, null, 2))

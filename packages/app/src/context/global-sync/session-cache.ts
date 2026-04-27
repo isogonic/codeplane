@@ -6,11 +6,11 @@ import type {
   SessionStatus,
   SnapshotFileDiff,
   Todo,
-} from "@opencode-ai/sdk/v2/client"
+} from "@codeplane-ai/sdk/v2/client"
 
 export const SESSION_CACHE_LIMIT = 40
 
-type SessionCache = {
+export type SessionCache = {
   session_status: Record<string, SessionStatus | undefined>
   session_diff: Record<string, SnapshotFileDiff[] | undefined>
   todo: Record<string, Todo[] | undefined>
@@ -18,6 +18,22 @@ type SessionCache = {
   part: Record<string, Part[] | undefined>
   permission: Record<string, PermissionRequest[] | undefined>
   question: Record<string, QuestionRequest[] | undefined>
+}
+
+export function cachedSessionIDs(store: SessionCache) {
+  return new Set(
+    [
+      ...Object.keys(store.message),
+      ...Object.keys(store.session_diff),
+      ...Object.keys(store.todo),
+      ...Object.keys(store.permission),
+      ...Object.keys(store.question),
+      ...Object.keys(store.session_status),
+      ...Object.values(store.part)
+        .map((parts) => parts?.find((part) => !!part?.sessionID)?.sessionID)
+        .filter((sessionID): sessionID is string => !!sessionID),
+    ].filter(Boolean),
+  )
 }
 
 export function dropSessionCaches(store: SessionCache, sessionIDs: Iterable<string>) {

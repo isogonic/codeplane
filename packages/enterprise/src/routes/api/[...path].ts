@@ -16,9 +16,9 @@ app
     openAPIRouteHandler(app, {
       documentation: {
         info: {
-          title: "Opencode Enterprise API",
-          version: "2.3.0",
-          description: "Opencode Enterprise API endpoints",
+          title: "Codeplane Enterprise API",
+          version: "26.4.27",
+          description: "Codeplane Enterprise API endpoints",
         },
         openapi: "3.1.1",
       },

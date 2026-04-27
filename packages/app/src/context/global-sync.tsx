@@ -1,16 +1,16 @@
 import type {
   Config,
-  OpencodeClient,
+  CodeplaneClient,
   Path,
   Project,
   ProviderAuthResponse,
   ProviderListResponse,
   Session,
   Todo,
-} from "@opencode-ai/sdk/v2/client"
-import { showToast } from "@opencode-ai/ui/toast"
-import { getFilename } from "@opencode-ai/shared/util/path"
-import { retry } from "@opencode-ai/shared/util/retry"
+} from "@codeplane-ai/sdk/v2/client"
+import { showToast } from "@codeplane-ai/ui/toast"
+import { getFilename } from "@codeplane-ai/shared/util/path"
+import { retry } from "@codeplane-ai/shared/util/retry"
 import { batch, createContext, getOwner, onCleanup, onMount, type ParentProps, untrack, useContext } from "solid-js"
 import { createStore, produce, reconcile } from "solid-js/store"
 import { useLanguage } from "@/context/language"
@@ -20,15 +20,17 @@ import { bootstrapDirectory, bootstrapGlobal, clearProviderRev } from "./global-
 import { createChildStoreManager } from "./global-sync/child-store"
 import { applyDirectoryEvent, applyGlobalEvent, cleanupDroppedSessionCaches } from "./global-sync/event-reducer"
 import { createRefreshQueue } from "./global-sync/queue"
+import { cachedSessionIDs } from "./global-sync/session-cache"
 import { clearSessionPrefetchDirectory } from "./global-sync/session-prefetch"
 import { estimateRootSessionTotal, loadRootSessionsWithFallback } from "./global-sync/session-load"
 import { trimSessions } from "./global-sync/session-trim"
-import { directoryKey } from "./global-sync/utils"
+import { directoryContains, directoryKey } from "./global-sync/utils"
 import type { ProjectMeta } from "./global-sync/types"
 import { SESSION_RECENT_LIMIT } from "./global-sync/types"
 import { formatServerError } from "@/utils/server-errors"
 import { diffs as listDiffs } from "@/utils/diffs"
 import { queryOptions, skipToken, useQueryClient } from "@tanstack/solid-query"
+import { useServer } from "./server"
 
 type GlobalStore = {
   ready: boolean
@@ -44,16 +46,18 @@ type GlobalStore = {
   reload: undefined | "pending" | "complete"
 }
 
-export const loadSessionsQuery = (directory: string) =>
-  queryOptions<null>({ queryKey: [directory, "loadSessions"], queryFn: skipToken })
+export const loadSessionsQuery = (directory: string, scope = "default") =>
+  queryOptions<null>({ queryKey: [scope, directory, "loadSessions"], queryFn: skipToken })
 
 function createGlobalSync() {
   const globalSDK = useGlobalSDK()
   const language = useLanguage()
+  const server = useServer()
+  const scope = server.scope
   const owner = getOwner()
   if (!owner) throw new Error("GlobalSync must be created within owner")
 
-  const sdkCache = new Map<string, OpencodeClient>()
+  const sdkCache = new Map<string, CodeplaneClient>()
   const booting = new Map<string, Promise<void>>()
   const sessionLoads = new Map<string, Promise<void>>()
   const diffLoads = new Map<string, Promise<void>>()
@@ -64,7 +68,7 @@ function createGlobalSync() {
     path: { state: "", config: "", worktree: "", directory: "", home: "" },
     project: [],
     session_todo: {},
-    provider: { all: [], connected: [], default: {} },
+    provider: { all: [], catalog: [], connected: [], default: {} },
     provider_auth: {},
     config: {},
     reload: undefined,
@@ -125,6 +129,7 @@ function createGlobalSync() {
 
   const children = createChildStoreManager({
     owner,
+    scope: () => scope,
     isBooting: (directory) => booting.has(directory),
     isLoadingSessions: (directory) => sessionLoads.has(directory),
     onBootstrap: (directory) => {
@@ -134,8 +139,8 @@ function createGlobalSync() {
       queue.clear(directory)
       sessionMeta.delete(directory)
       sdkCache.delete(directory)
-      clearProviderRev(directory)
-      clearSessionPrefetchDirectory(directory)
+      clearProviderRev(scope.key, directory)
+      clearSessionPrefetchDirectory(scope.key, directory)
     },
     translate: language.t,
   })
@@ -159,26 +164,31 @@ function createGlobalSync() {
     const [store, setStore] = children.child(directory, { bootstrap: false })
     const meta = sessionMeta.get(directory)
     if (meta && meta.limit >= store.limit) {
+      const preserve = cachedSessionIDs(store)
       const next = trimSessions(store.session, {
         limit: store.limit,
         permission: store.permission,
+        preserve,
       })
       if (next.length !== store.session.length) {
         setStore("session", reconcile(next, { key: "id" }))
-        cleanupDroppedSessionCaches(store, setStore, next, setSessionTodo)
+        cleanupDroppedSessionCaches(store, setStore, next, setSessionTodo, preserve)
       }
       children.unpin(directory)
       return
     }
 
     const fetchLimit = Math.max(store.limit + SESSION_RECENT_LIMIT, SESSION_RECENT_LIMIT)
-    const loadChildren = (parents: Session[], seen = new Set(parents.map((session) => session.id))): Promise<Session[]> =>
+    const loadChildren = (
+      parents: Session[],
+      seen = new Set(parents.map((session) => session.id)),
+    ): Promise<Session[]> =>
       Promise.all(
         parents.map((parent) =>
           retry(() => globalSDK.client.session.children({ directory, sessionID: parent.id }))
             .then((x) =>
               (x.data ?? [])
-                .filter((s): s is Session => !!s?.id && directoryKey(s.directory) === directoryKey(directory))
+                .filter((s): s is Session => !!s?.id && directoryContains(directory, s.directory))
                 .filter((session) => !session.time?.archived)
                 .filter((session) => {
                   if (seen.has(session.id)) return false
@@ -195,7 +205,7 @@ function createGlobalSync() {
       })
     const promise = queryClient
       .fetchQuery({
-        ...loadSessionsQuery(directory),
+        ...loadSessionsQuery(directory, scope.key),
         queryFn: () =>
           loadRootSessionsWithFallback({
             directory,
@@ -205,14 +215,17 @@ function createGlobalSync() {
             .then(async (x) => {
               const key = directoryKey(directory)
               const nonArchived = (x.data ?? []).filter(
-                (s): s is Session => !!s?.id && directoryKey(s.directory) === key && !s.time?.archived,
+                (s): s is Session => !!s?.id && directoryContains(key, s.directory) && !s.time?.archived,
               )
               const loadedChildren = await loadChildren(nonArchived)
               const currentLimit = store.limit
+              const preserve = cachedSessionIDs(store)
+              const preservedSessions = store.session.filter((s) => preserve.has(s.id))
               const childSessions = store.session.filter((s) => !!s.parentID && directoryKey(s.directory) === key)
-              const sessions = trimSessions([...nonArchived, ...childSessions, ...loadedChildren], {
+              const sessions = trimSessions([...nonArchived, ...childSessions, ...loadedChildren, ...preservedSessions], {
                 limit: currentLimit,
                 permission: store.permission,
+                preserve,
               })
               batch(() => {
                 setStore(
@@ -224,7 +237,7 @@ function createGlobalSync() {
                   }),
                 )
                 setStore("session", reconcile(sessions, { key: "id" }))
-                cleanupDroppedSessionCaches(store, setStore, sessions, setSessionTodo)
+                cleanupDroppedSessionCaches(store, setStore, sessions, setSessionTodo, preserve)
               })
               sessionMeta.set(directory, { limit: currentLimit })
             })
@@ -249,9 +262,10 @@ function createGlobalSync() {
     return promise
   }
 
-  async function loadSessionDiff(directory: string, sessionID: string) {
+  async function loadSessionDiff(directory: string, sessionID: string, options?: { force?: boolean }) {
     const [store, setStore] = children.child(directory, { bootstrap: false })
-    if (store.session_diff[sessionID] !== undefined) return
+    const cached = store.session_diff[sessionID]
+    if (cached !== undefined && (!options?.force || cached.length > 0)) return
 
     const key = `${directory}\n${sessionID}`
     const pending = diffLoads.get(key)
@@ -284,6 +298,7 @@ function createGlobalSync() {
       if (!cache) return
       const sdk = sdkFor(directory)
       await bootstrapDirectory({
+        scope: scope.key,
         directory,
         global: {
           config: globalStore.config,
@@ -383,6 +398,7 @@ function createGlobalSync() {
     bootingRoot = true
     try {
       await bootstrapGlobal({
+        scope: scope.key,
         globalSDK: globalSDK.client,
         requestFailedTitle: language.t("common.requestFailed"),
         translate: language.t,
@@ -416,10 +432,10 @@ function createGlobalSync() {
 
   const projectApi = {
     loadSessions,
-    loadSessionDiffs(directory: string, sessionIDs: string[]) {
-      return Promise.all([...new Set(sessionIDs)].map((sessionID) => loadSessionDiff(directory, sessionID))).then(
-        () => undefined,
-      )
+    loadSessionDiffs(directory: string, sessionIDs: string[], options?: { force?: boolean }) {
+      return Promise.all(
+        [...new Set(sessionIDs)].map((sessionID) => loadSessionDiff(directory, sessionID, options)),
+      ).then(() => undefined)
     },
     meta(directory: string, patch: ProjectMeta) {
       children.projectMeta(directory, patch)

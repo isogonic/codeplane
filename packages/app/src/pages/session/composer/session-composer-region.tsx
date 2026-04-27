@@ -1,10 +1,12 @@
 import { Show, createEffect, createMemo, onCleanup } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useNavigate } from "@solidjs/router"
-import { useSpring } from "@opencode-ai/ui/motion-spring"
+import { useSpring } from "@codeplane-ai/ui/motion-spring"
+import { Icon } from "@codeplane-ai/ui/icon"
 import { PromptInput } from "@/components/prompt-input"
 import { useLanguage } from "@/context/language"
 import { usePrompt } from "@/context/prompt"
+import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
 import { getSessionHandoff, setSessionHandoff } from "@/pages/session/handoff"
 import { useSessionKey } from "@/pages/session/session-layout"
@@ -51,12 +53,14 @@ export function SessionComposerRegion(props: {
   const language = useLanguage()
   const route = useSessionKey()
   const sync = useSync()
+  const sdk = useSDK()
 
-  const handoffPrompt = createMemo(() => getSessionHandoff(route.sessionKey())?.prompt)
+  const handoffPrompt = createMemo(() => getSessionHandoff(sdk.scope.key, route.sessionKey())?.prompt)
   const info = createMemo(() => (route.params.id ? sync.session.get(route.params.id) : undefined))
   const parentID = createMemo(() => info()?.parentID)
   const child = createMemo(() => !!parentID())
-  const showComposer = createMemo(() => !props.state.blocked() || child())
+  const archived = createMemo(() => !!info()?.time.archived)
+  const showComposer = createMemo(() => !archived() && (!props.state.blocked() || child()))
 
   const previewPrompt = () =>
     prompt
@@ -72,7 +76,7 @@ export function SessionComposerRegion(props: {
 
   createEffect(() => {
     if (!prompt.ready()) return
-    setSessionHandoff(route.sessionKey(), { prompt: previewPrompt() })
+    setSessionHandoff(sdk.scope.key, route.sessionKey(), { prompt: previewPrompt() })
   })
 
   const [store, setStore] = createStore({
@@ -148,37 +152,85 @@ export function SessionComposerRegion(props: {
           "md:max-w-200 md:mx-auto 2xl:max-w-[1000px]": props.centered,
         }}
       >
-        <Show when={props.state.questionRequest()} keyed>
-          {(request) => (
-            <div>
-              <SessionQuestionDock request={request} onSubmit={props.onResponseSubmit} />
-            </div>
-          )}
+        <Show when={!archived()}>
+          <Show when={props.state.questionRequest()} keyed>
+            {(request) => (
+              <div>
+                <SessionQuestionDock request={request} onSubmit={props.onResponseSubmit} />
+              </div>
+            )}
+          </Show>
+
+          <Show when={props.state.permissionRequest()} keyed>
+            {(request) => (
+              <div>
+                <SessionPermissionDock
+                  request={request}
+                  responding={props.state.permissionResponding()}
+                  onDecide={(response) => {
+                    props.onResponseSubmit()
+                    props.state.decide(response)
+                  }}
+                />
+              </div>
+            )}
+          </Show>
         </Show>
 
-        <Show when={props.state.permissionRequest()} keyed>
-          {(request) => (
-            <div>
-              <SessionPermissionDock
-                request={request}
-                responding={props.state.permissionResponding()}
-                onDecide={(response) => {
-                  props.onResponseSubmit()
-                  props.state.decide(response)
-                }}
-              />
-            </div>
-          )}
-        </Show>
-
-        <Show when={showComposer()}>
-          <Show
-            when={prompt.ready()}
-            fallback={
-              <>
+        <Show
+          when={archived()}
+          fallback={
+            <Show when={showComposer()}>
+              <Show
+                when={prompt.ready()}
+                fallback={
+                  <>
+                    <Show when={rolled()} keyed>
+                      {(revert) => (
+                        <div class="pb-2">
+                          <SessionRevertDock
+                            items={revert.items}
+                            restoring={revert.restoring}
+                            disabled={revert.disabled}
+                            onRestore={revert.onRestore}
+                          />
+                        </div>
+                      )}
+                    </Show>
+                    <div class="w-full min-h-32 md:min-h-40 rounded-md border border-border-weak-base bg-background-base/50 px-4 py-3 text-text-weak whitespace-pre-wrap pointer-events-none">
+                      {handoffPrompt() || language.t("prompt.loading")}
+                    </div>
+                  </>
+                }
+              >
+                <Show when={dock()}>
+                  <div
+                    classList={{
+                      "overflow-hidden": true,
+                      "pointer-events-none": value() < 0.98,
+                    }}
+                    style={{
+                      "max-height": `${full() * value()}px`,
+                    }}
+                  >
+                    <div ref={(el) => setStore("body", el)}>
+                      <SessionTodoDock
+                        sessionID={route.params.id}
+                        todos={props.state.todos()}
+                        collapseLabel={language.t("session.todo.collapse")}
+                        expandLabel={language.t("session.todo.expand")}
+                        dockProgress={value()}
+                      />
+                    </div>
+                  </div>
+                </Show>
                 <Show when={rolled()} keyed>
                   {(revert) => (
-                    <div class="pb-2">
+                    <div
+                      style={{
+                        "margin-top": `${-36 * value()}px`,
+                      }}
+                    >
                       <SessionRevertDock
                         items={revert.items}
                         restoring={revert.restoring}
@@ -188,102 +240,69 @@ export function SessionComposerRegion(props: {
                     </div>
                   )}
                 </Show>
-                <div class="w-full min-h-32 md:min-h-40 rounded-md border border-border-weak-base bg-background-base/50 px-4 py-3 text-text-weak whitespace-pre-wrap pointer-events-none">
-                  {handoffPrompt() || language.t("prompt.loading")}
-                </div>
-              </>
-            }
-          >
-            <Show when={dock()}>
-              <div
-                classList={{
-                  "overflow-hidden": true,
-                  "pointer-events-none": value() < 0.98,
-                }}
-                style={{
-                  "max-height": `${full() * value()}px`,
-                }}
-              >
-                <div ref={(el) => setStore("body", el)}>
-                  <SessionTodoDock
-                    sessionID={route.params.id}
-                    todos={props.state.todos()}
-                    collapseLabel={language.t("session.todo.collapse")}
-                    expandLabel={language.t("session.todo.expand")}
-                    dockProgress={value()}
-                  />
-                </div>
-              </div>
-            </Show>
-            <Show when={rolled()} keyed>
-              {(revert) => (
                 <div
+                  classList={{
+                    "relative z-10": true,
+                  }}
                   style={{
-                    "margin-top": `${-36 * value()}px`,
+                    "margin-top": `${-lift()}px`,
                   }}
                 >
-                  <SessionRevertDock
-                    items={revert.items}
-                    restoring={revert.restoring}
-                    disabled={revert.disabled}
-                    onRestore={revert.onRestore}
-                  />
-                </div>
-              )}
-            </Show>
-            <div
-              classList={{
-                "relative z-10": true,
-              }}
-              style={{
-                "margin-top": `${-lift()}px`,
-              }}
-            >
-              <Show when={props.followup?.items.length}>
-                <SessionFollowupDock
-                  items={props.followup!.items}
-                  sending={props.followup!.sending}
-                  onSend={props.followup!.onSend}
-                  onEdit={props.followup!.onEdit}
-                  onDelete={props.followup!.onDelete}
-                />
-              </Show>
-              <Show
-                when={child()}
-                fallback={
-                  <Show when={!props.state.blocked()}>
-                    <PromptInput
-                      ref={props.inputRef}
-                      newSessionWorktree={props.newSessionWorktree}
-                      onNewSessionWorktreeReset={props.onNewSessionWorktreeReset}
-                      edit={props.followup?.edit}
-                      onEditLoaded={props.followup?.onEditLoaded}
-                      shouldQueue={props.followup?.queue}
-                      onQueue={props.followup?.onQueue}
-                      onAbort={props.followup?.onAbort}
-                      onSubmit={props.onSubmit}
+                  <Show when={props.followup?.items.length}>
+                    <SessionFollowupDock
+                      items={props.followup!.items}
+                      sending={props.followup!.sending}
+                      onSend={props.followup!.onSend}
+                      onEdit={props.followup!.onEdit}
+                      onDelete={props.followup!.onDelete}
                     />
                   </Show>
-                }
-              >
-                <div
-                  ref={props.inputRef}
-                  class="w-full rounded-[12px] border border-border-weak-base bg-background-base p-3 text-16-regular text-text-weak"
-                >
-                  <span>{language.t("session.child.promptDisabled")} </span>
-                  <Show when={parentID()}>
-                    <button
-                      type="button"
-                      class="text-text-base transition-colors hover:text-text-strong"
-                      onClick={openParent}
+                  <Show
+                    when={child()}
+                    fallback={
+                      <Show when={!props.state.blocked()}>
+                        <PromptInput
+                          ref={props.inputRef}
+                          newSessionWorktree={props.newSessionWorktree}
+                          onNewSessionWorktreeReset={props.onNewSessionWorktreeReset}
+                          edit={props.followup?.edit}
+                          onEditLoaded={props.followup?.onEditLoaded}
+                          shouldQueue={props.followup?.queue}
+                          onQueue={props.followup?.onQueue}
+                          onAbort={props.followup?.onAbort}
+                          onSubmit={props.onSubmit}
+                        />
+                      </Show>
+                    }
+                  >
+                    <div
+                      ref={props.inputRef}
+                      class="w-full rounded-[12px] border border-border-weak-base bg-background-base p-3 text-16-regular text-text-weak"
                     >
-                      {language.t("session.child.backToParent")}
-                    </button>
+                      <span>{language.t("session.child.promptDisabled")} </span>
+                      <Show when={parentID()}>
+                        <button
+                          type="button"
+                          class="text-text-base transition-colors hover:text-text-strong"
+                          onClick={openParent}
+                        >
+                          {language.t("session.child.backToParent")}
+                        </button>
+                      </Show>
+                    </div>
                   </Show>
                 </div>
               </Show>
-            </div>
-          </Show>
+            </Show>
+          }
+        >
+          <div
+            ref={props.inputRef}
+            class="flex w-full items-center gap-2 rounded-[12px] border border-border-weak-base bg-background-base px-4 py-3 text-14-regular text-text-weak"
+          >
+            <Icon name="archive" size="small" class="shrink-0" />
+            <span>{language.t("session.archived.readOnly")}</span>
+          </div>
         </Show>
       </div>
     </div>

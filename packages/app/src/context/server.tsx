@@ -1,4 +1,4 @@
-import { createSimpleContext } from "@opencode-ai/ui/context"
+import { createSimpleContext } from "@codeplane-ai/ui/context"
 import { type Accessor, batch, createEffect, createMemo, onCleanup } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Persist, persisted } from "@/utils/persist"
@@ -24,13 +24,34 @@ export function serverName(conn?: ServerConnection.Any, ignoreDisplayName = fals
 function projectsKey(key: ServerConnection.Key) {
   if (!key) return ""
   if (key === "sidecar") return "local"
-  if (isLocalHost(key)) return "local"
   return key
 }
 
-function isLocalHost(url: string) {
-  const host = url.replace(/^https?:\/\//, "").split(":")[0]
-  if (host === "localhost" || host === "127.0.0.1") return "local"
+function serverFromKey(key: ServerConnection.Key | undefined): ServerConnection.Http | undefined {
+  if (!key) return
+  if (!/^https?:\/\//.test(key)) return
+  return { type: "http", http: { url: key } }
+}
+
+function loopback(url: string) {
+  try {
+    const host = new URL(url).hostname.replace(/^\[(.*)\]$/, "$1")
+    return host === "localhost" || host === "127.0.0.1" || host === "::1"
+  } catch {
+    return false
+  }
+}
+
+function scopeUrl(input: string) {
+  const normalized = normalizeServerUrl(input) ?? input.replace(/\/+$/, "")
+  try {
+    const url = new URL(normalized)
+    url.username = ""
+    url.password = ""
+    return url.toString().replace(/\/+$/, "")
+  } catch {
+    return normalized.replace(/\/\/[^/@]+@/, "//")
+  }
 }
 
 export namespace ServerConnection {
@@ -90,6 +111,26 @@ export namespace ServerConnection {
 
   export type Key = string & { _brand: "Key" }
   export const Key = { make: (v: string) => v as Key }
+
+  export type StorageScope = {
+    key: string
+    legacy?: boolean
+  }
+
+  export const storageScope = (conn: Any): StorageScope => {
+    switch (conn.type) {
+      case "http": {
+        const key = scopeUrl(conn.http.url)
+        return { key, legacy: loopback(key) }
+      }
+      case "sidecar": {
+        if (conn.variant === "wsl") return { key: `wsl:${conn.distro}` }
+        return { key: "local", legacy: true }
+      }
+      case "ssh":
+        return { key: `ssh:${conn.host}` }
+    }
+  }
 }
 
 export const { use: useServer, provider: ServerProvider } = createSimpleContext({
@@ -115,6 +156,7 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
     const allServers = createMemo((): Array<ServerConnection.Any> => {
       const servers = [
         ...(props.servers ?? []),
+        ...[serverFromKey(props.defaultServer)].filter((conn): conn is ServerConnection.Http => !!conn),
         ...store.list.map((value) =>
           typeof value === "string"
             ? {
@@ -217,11 +259,19 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
     const origin = createMemo(() => projectsKey(state.active))
     const projectsList = createMemo(() => store.projects[origin()] ?? [])
     const current: Accessor<ServerConnection.Any | undefined> = createMemo(
-      () => allServers().find((s) => ServerConnection.key(s) === state.active) ?? allServers()[0],
+      () =>
+        allServers().find((s) => ServerConnection.key(s) === state.active) ??
+        serverFromKey(state.active) ??
+        allServers()[0],
     )
     const isLocal = createMemo(() => {
       const c = current()
-      return (c?.type === "sidecar" && c.variant === "base") || (c?.type === "http" && isLocalHost(c.http.url))
+      return c?.type === "sidecar"
+    })
+    const scope = createMemo(() => {
+      const c = current()
+      if (!c) return { key: projectsKey(state.active), legacy: false }
+      return ServerConnection.storageScope(c)
     })
 
     return {
@@ -239,6 +289,9 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
       },
       get current() {
         return current()
+      },
+      get scope() {
+        return scope()
       },
       setActive,
       add,

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import type { PermissionRequest, Session } from "@opencode-ai/sdk/v2/client"
-import { base64Encode } from "@opencode-ai/shared/util/encode"
+import type { PermissionRequest, Session } from "@codeplane-ai/sdk/v2/client"
+import { base64Encode } from "@codeplane-ai/shared/util/encode"
 import { autoRespondsPermission, isDirectoryAutoAccepting } from "./permission-auto-respond"
 
 const session = (input: { id: string; parentID?: string }) =>

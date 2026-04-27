@@ -1,22 +1,22 @@
 ---
 title: TUI
-description: Usando a interface de usuário de terminal opencode.
+description: Usando a interface de usuário de terminal codeplane.
 ---
 
 import { Tabs, TabItem } from "@astrojs/starlight/components"
 
-O opencode fornece uma interface de terminal interativa ou TUI para trabalhar em seus projetos com um LLM.
+O codeplane fornece uma interface de terminal interativa ou TUI para trabalhar em seus projetos com um LLM.
 
-Executar opencode inicia o TUI para o diretório atual.
+Executar codeplane inicia o TUI para o diretório atual.
 
 ```bash
-opencode
+codeplane
 ```
 
 Ou você pode iniciá-lo para um diretório de trabalho específico.
 
 ```bash
-opencode /path/to/project
+codeplane /path/to/project
 ```
 
 Uma vez que você esteja no TUI, você pode solicitar com uma mensagem.
@@ -57,7 +57,7 @@ A saída do comando é adicionada à conversa como um resultado de ferramenta.
 
 ## Comandos
 
-Ao usar o TUI do opencode, você pode digitar `/` seguido pelo nome de um comando para executar ações rapidamente. Por exemplo:
+Ao usar o TUI do codeplane, você pode digitar `/` seguido pelo nome de um comando para executar ações rapidamente. Por exemplo:
 
 ```bash frame="none"
 /help
@@ -71,7 +71,7 @@ Aqui estão todos os comandos de barra disponíveis:
 
 ### connect
 
-Adicione um provedor ao opencode. Permite que você selecione entre os provedores disponíveis e adicione suas chaves de API.
+Adicione um provedor ao codeplane. Permite que você selecione entre os provedores disponíveis e adicione suas chaves de API.
 
 ```bash frame="none"
 /connect
@@ -117,7 +117,7 @@ Abra um editor externo para compor mensagens. Usa o editor definido na sua vari�
 
 ### exit
 
-Saia do opencode. _Aliases_: `/quit`, `/q`
+Saia do codeplane. _Aliases_: `/quit`, `/q`
 
 ```bash frame="none"
 /exit
@@ -356,8 +356,8 @@ Você pode personalizar o comportamento do TUI através de `tui.json` (ou `tui.j
 
 ```json title="tui.json"
 {
-  "$schema": "https://opencode.ai/tui.json",
-  "theme": "opencode",
+  "$schema": "https://codeplane.ai/tui.json",
+  "theme": "codeplane",
   "keybinds": {
     "leader": "ctrl+x"
   },
@@ -369,7 +369,7 @@ Você pode personalizar o comportamento do TUI através de `tui.json` (ou `tui.j
 }
 ```
 
-Isso é separado do `opencode.json`, que configura o comportamento do servidor/runtime.
+Isso é separado do `codeplane.json`, que configura o comportamento do servidor/runtime.
 
 ### Opções
 
@@ -379,7 +379,7 @@ Isso é separado do `opencode.json`, que configura o comportamento do servidor/r
 - `scroll_speed` - Controla quão rápido o TUI rola ao usar comandos de rolagem (mínimo: `0.001`, suporta valores decimais). O padrão é `3`. **Nota: Isso é ignorado se `scroll_acceleration.enabled` estiver definido como `true`.**
 - `diff_style` - Controla a renderização de diffs. `"auto"` se adapta à largura do terminal, `"stacked"` sempre mostra um layout de coluna única.
 
-Use `OPENCODE_TUI_CONFIG` para carregar um caminho de configuração TUI personalizado.
+Use `CODEPLANE_TUI_CONFIG` para carregar um caminho de configuração TUI personalizado.
 
 ---
 

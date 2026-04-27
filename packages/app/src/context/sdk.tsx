@@ -1,5 +1,5 @@
-import type { Event } from "@opencode-ai/sdk/v2/client"
-import { createSimpleContext } from "@opencode-ai/ui/context"
+import type { Event } from "@codeplane-ai/sdk/v2/client"
+import { createSimpleContext } from "@codeplane-ai/ui/context"
 import { createGlobalEmitter } from "@solid-primitives/event-bus"
 import { type Accessor, createEffect, createMemo, onCleanup } from "solid-js"
 import { useGlobalSDK } from "./global-sdk"
@@ -40,6 +40,9 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
       event: emitter,
       get url() {
         return globalSDK.url
+      },
+      get scope() {
+        return globalSDK.scope
       },
       createClient(opts: Parameters<typeof globalSDK.createClient>[0]) {
         return globalSDK.createClient(opts)

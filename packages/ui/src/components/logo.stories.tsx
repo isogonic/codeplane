@@ -2,7 +2,7 @@
 import * as mod from "./logo"
 
 const docs = `### Overview
-OpenCode logo assets: mark, splash, and wordmark.
+CodePlane logo assets: mark, splash, and logo.
 
 Use Mark for compact spaces, Logo for headers, Splash for hero sections.
 

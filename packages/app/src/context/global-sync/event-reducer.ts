@@ -1,4 +1,4 @@
-import { Binary } from "@opencode-ai/shared/util/binary"
+import { Binary } from "@codeplane-ai/shared/util/binary"
 import { produce, reconcile, type SetStoreFunction, type Store } from "solid-js/store"
 import type {
   Message,
@@ -10,10 +10,10 @@ import type {
   SessionStatus,
   SnapshotFileDiff,
   Todo,
-} from "@opencode-ai/sdk/v2/client"
+} from "@codeplane-ai/sdk/v2/client"
 import type { State, VcsCache } from "./types"
 import { trimSessions } from "./session-trim"
-import { dropSessionCaches } from "./session-cache"
+import { cachedSessionIDs, dropSessionCaches } from "./session-cache"
 import { diffs as list, message as clean } from "@/utils/diffs"
 import { sanitizeProject } from "./utils"
 
@@ -67,8 +67,13 @@ export function cleanupDroppedSessionCaches(
   setStore: SetStoreFunction<State>,
   next: Session[],
   setSessionTodo?: (sessionID: string, todos: Todo[] | undefined) => void,
+  preserve?: Iterable<string>,
 ) {
   const keep = new Set(next.map((item) => item.id))
+  const preserved = new Set(preserve ?? [])
+  const preserveCaches = new Set(
+    store.session.filter((session) => preserved.has(session.id)).map((session) => session.id),
+  )
   const stale = [
     ...Object.keys(store.message),
     ...Object.keys(store.session_diff),
@@ -79,7 +84,9 @@ export function cleanupDroppedSessionCaches(
     ...Object.values(store.part)
       .map((parts) => parts?.find((part) => !!part?.sessionID)?.sessionID)
       .filter((sessionID): sessionID is string => !!sessionID),
-  ].filter((sessionID, index, list) => !keep.has(sessionID) && list.indexOf(sessionID) === index)
+  ].filter(
+    (sessionID, index, list) => !keep.has(sessionID) && !preserveCaches.has(sessionID) && list.indexOf(sessionID) === index,
+  )
   if (stale.length === 0) return
   for (const sessionID of stale) {
     setSessionTodo?.(sessionID, undefined)
@@ -116,9 +123,10 @@ export function applyDirectoryEvent(input: {
       }
       const next = input.store.session.slice()
       next.splice(result.index, 0, info)
-      const trimmed = trimSessions(next, { limit: input.store.limit, permission: input.store.permission })
+      const preserve = cachedSessionIDs(input.store)
+      const trimmed = trimSessions(next, { limit: input.store.limit, permission: input.store.permission, preserve })
       input.setStore("session", reconcile(trimmed, { key: "id" }))
-      cleanupDroppedSessionCaches(input.store, input.setStore, trimmed, input.setSessionTodo)
+      cleanupDroppedSessionCaches(input.store, input.setStore, trimmed, input.setSessionTodo, preserve)
       if (!info.parentID) input.setStore("sessionTotal", (value) => value + 1)
       break
     }
@@ -145,9 +153,10 @@ export function applyDirectoryEvent(input: {
       }
       const next = input.store.session.slice()
       next.splice(result.index, 0, info)
-      const trimmed = trimSessions(next, { limit: input.store.limit, permission: input.store.permission })
+      const preserve = cachedSessionIDs(input.store)
+      const trimmed = trimSessions(next, { limit: input.store.limit, permission: input.store.permission, preserve })
       input.setStore("session", reconcile(trimmed, { key: "id" }))
-      cleanupDroppedSessionCaches(input.store, input.setStore, trimmed, input.setSessionTodo)
+      cleanupDroppedSessionCaches(input.store, input.setStore, trimmed, input.setSessionTodo, preserve)
       break
     }
     case "session.deleted": {

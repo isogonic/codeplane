@@ -68,18 +68,18 @@ beforeAll(async () => {
     useParams: () => params,
   }))
 
-  mock.module("@opencode-ai/sdk/v2/client", () => ({
-    createOpencodeClient: (input: { directory: string }) => {
+  mock.module("@codeplane-ai/sdk/v2/client", () => ({
+    createCodeplaneClient: (input: { directory: string }) => {
       createdClients.push(input.directory)
       return clientFor(input.directory)
     },
   }))
 
-  mock.module("@opencode-ai/ui/toast", () => ({
+  mock.module("@codeplane-ai/ui/toast", () => ({
     showToast: () => 0,
   }))
 
-  mock.module("@opencode-ai/shared/util/encode", () => ({
+  mock.module("@codeplane-ai/shared/util/encode", () => ({
     base64Encode: (value: string) => value,
   }))
 

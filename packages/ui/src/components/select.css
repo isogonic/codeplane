@@ -111,6 +111,12 @@
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
 
     &:focus {
       outline: none;

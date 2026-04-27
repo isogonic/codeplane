@@ -1,6 +1,6 @@
 import { createEffect, createRoot } from "solid-js"
 import { createStore, produce } from "solid-js/store"
-import { Persist, persisted } from "@/utils/persist"
+import { Persist, persisted, type ServerPersistScope } from "@/utils/persist"
 import { createScopedCache } from "@/utils/scoped-cache"
 import type { FileViewState, SelectedLineRange } from "./types"
 
@@ -33,11 +33,11 @@ function equalSelectedLines(a: SelectedLineRange | null | undefined, b: Selected
   )
 }
 
-function createViewSession(dir: string, id: string | undefined) {
+function createViewSession(scope: ServerPersistScope, dir: string, id: string | undefined) {
   const legacyViewKey = `${dir}/file${id ? "/" + id : ""}.v1`
 
   const [view, setView, _, ready] = persisted(
-    Persist.scoped(dir, id, "file-view", [legacyViewKey]),
+    Persist.serverScoped(scope, dir, id, "file-view", [legacyViewKey]),
     createStore<{
       file: Record<string, FileViewState>
     }>({
@@ -119,14 +119,15 @@ function createViewSession(dir: string, id: string | undefined) {
   }
 }
 
-export function createFileViewCache() {
+export function createFileViewCache(scope: () => ServerPersistScope) {
   const cache = createScopedCache(
     (key) => {
+      const first = key.indexOf("\n")
       const split = key.lastIndexOf("\n")
-      const dir = split >= 0 ? key.slice(0, split) : key
+      const dir = first >= 0 && split > first ? key.slice(first + 1, split) : key
       const id = split >= 0 ? key.slice(split + 1) : WORKSPACE_KEY
       return createRoot((dispose) => ({
-        value: createViewSession(dir, id === WORKSPACE_KEY ? undefined : id),
+        value: createViewSession(scope(), dir, id === WORKSPACE_KEY ? undefined : id),
         dispose,
       }))
     },
@@ -138,7 +139,7 @@ export function createFileViewCache() {
 
   return {
     load: (dir: string, id: string | undefined) => {
-      const key = `${dir}\n${id ?? WORKSPACE_KEY}`
+      const key = `${scope().key}\n${dir}\n${id ?? WORKSPACE_KEY}`
       return cache.get(key).value
     },
     clear: () => cache.clear(),

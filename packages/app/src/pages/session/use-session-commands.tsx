@@ -1,7 +1,7 @@
 import { useNavigate } from "@solidjs/router"
 import { useCommand, type CommandOption } from "@/context/command"
-import { useDialog } from "@opencode-ai/ui/context/dialog"
-import { previewSelectedLines } from "@opencode-ai/ui/pierre/selection-bridge"
+import { useDialog } from "@codeplane-ai/ui/context/dialog"
+import { previewSelectedLines } from "@codeplane-ai/ui/pierre/selection-bridge"
 import { useFile, selectionFromLines, type FileSelection, type SelectedLineRange } from "@/context/file"
 import { useLanguage } from "@/context/language"
 import { useLayout } from "@/context/layout"
@@ -13,11 +13,11 @@ import { useSDK } from "@/context/sdk"
 import { useSettings } from "@/context/settings"
 import { useSync } from "@/context/sync"
 import { useTerminal } from "@/context/terminal"
-import { showToast } from "@opencode-ai/ui/toast"
-import { findLast } from "@opencode-ai/shared/util/array"
+import { showToast } from "@codeplane-ai/ui/toast"
+import { findLast } from "@codeplane-ai/shared/util/array"
 import { createSessionTabs } from "@/pages/session/helpers"
 import { extractPromptFromParts } from "@/utils/prompt"
-import { UserMessage } from "@opencode-ai/sdk/v2"
+import { UserMessage } from "@codeplane-ai/sdk/v2"
 import { useSessionLayout } from "@/pages/session/session-layout"
 
 export type SessionCommandContext = {
@@ -56,6 +56,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     if (!id) return
     return sync.session.get(id)
   }
+  const archived = () => !!info()?.time.archived
   const hasReview = () => !!params.id
   const normalizeTab = (tab: string) => {
     if (!tab.startsWith("file://")) return tab
@@ -72,7 +73,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
   const closableTab = tabState.closableTab
   const shown = () =>
     platform.platform !== "desktop" ||
-    import.meta.env.VITE_OPENCODE_CHANNEL !== "beta" ||
+    import.meta.env.VITE_CODEPLANE_CHANNEL !== "beta" ||
     settings.general.showFileTree()
 
   const idle = { type: "idle" as const }
@@ -106,6 +107,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
   }
 
   const canAddSelectionContext = () => {
+    if (archived()) return false
     const tab = activeFileTab()
     if (!tab) return false
     const path = file.pathFromTab(tab)
@@ -366,7 +368,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
           ? language.t("toast.session.share.success.description")
           : language.t("command.session.share.description"),
         slash: "share",
-        disabled: !params.id,
+        disabled: !params.id || archived(),
         onSelect: share,
       }),
       sessionCommand({
@@ -374,7 +376,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
         title: language.t("command.session.unshare"),
         description: language.t("command.session.unshare.description"),
         slash: "unshare",
-        disabled: !params.id || !info()?.share?.url,
+        disabled: !params.id || archived() || !info()?.share?.url,
         onSelect: unshare,
       }),
     ]
@@ -393,7 +395,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
       title: language.t("command.session.undo"),
       description: language.t("command.session.undo.description"),
       slash: "undo",
-      disabled: !params.id || visibleUserMessages().length === 0,
+      disabled: !params.id || archived() || visibleUserMessages().length === 0,
       onSelect: undo,
     }),
     sessionCommand({
@@ -401,7 +403,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
       title: language.t("command.session.redo"),
       description: language.t("command.session.redo.description"),
       slash: "redo",
-      disabled: !params.id || !info()?.revert?.messageID,
+      disabled: !params.id || archived() || !info()?.revert?.messageID,
       onSelect: redo,
     }),
     sessionCommand({
@@ -409,7 +411,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
       title: language.t("command.session.compact"),
       description: language.t("command.session.compact.description"),
       slash: "compact",
-      disabled: !params.id || visibleUserMessages().length === 0,
+      disabled: !params.id || archived() || visibleUserMessages().length === 0,
       onSelect: compact,
     }),
     sessionCommand({
@@ -417,7 +419,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
       title: language.t("command.session.fork"),
       description: language.t("command.session.fork.description"),
       slash: "fork",
-      disabled: !params.id || visibleUserMessages().length === 0,
+      disabled: !params.id || archived() || visibleUserMessages().length === 0,
       onSelect: fork,
     }),
   ]
@@ -479,6 +481,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
       id: "input.focus",
       title: language.t("command.input.focus"),
       keybind: "ctrl+l",
+      disabled: archived(),
       onSelect: focusInput,
     }),
   ]
@@ -566,7 +569,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
         ? language.t("command.permissions.autoaccept.disable")
         : language.t("command.permissions.autoaccept.enable"),
       keybind: "mod+shift+a",
-      disabled: false,
+      disabled: archived(),
       onSelect: toggleAutoAccept,
     }),
   ]

@@ -1,21 +1,20 @@
-import type { Session } from "@opencode-ai/sdk/v2/client"
-import { Button } from "@opencode-ai/ui/button"
-import { Dialog } from "@opencode-ai/ui/dialog"
-import { Icon } from "@opencode-ai/ui/icon"
-import { IconButton } from "@opencode-ai/ui/icon-button"
-import { RadioGroup } from "@opencode-ai/ui/radio-group"
-import { Spinner } from "@opencode-ai/ui/spinner"
-import { TextField } from "@opencode-ai/ui/text-field"
-import { Tooltip } from "@opencode-ai/ui/tooltip"
-import { showToast } from "@opencode-ai/ui/toast"
+import type { Session } from "@codeplane-ai/sdk/v2/client"
+import { base64Encode } from "@codeplane-ai/shared/util/encode"
+import { Dialog } from "@codeplane-ai/ui/dialog"
+import { useDialog } from "@codeplane-ai/ui/context/dialog"
+import { Icon } from "@codeplane-ai/ui/icon"
+import { IconButton } from "@codeplane-ai/ui/icon-button"
+import { RadioGroup } from "@codeplane-ai/ui/radio-group"
+import { Spinner } from "@codeplane-ai/ui/spinner"
+import { TextField } from "@codeplane-ai/ui/text-field"
+import { Tooltip } from "@codeplane-ai/ui/tooltip"
+import { useNavigate } from "@solidjs/router"
 import { createMemo, For, Match, onMount, Show, Switch } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useGlobalSDK } from "@/context/global-sdk"
-import { useGlobalSync } from "@/context/global-sync"
 import { useLanguage } from "@/context/language"
 import { sessionTitle } from "@/utils/session-title"
 import { getRelativeTime } from "@/utils/time"
-import { errorMessage } from "@/pages/layout/helpers"
 
 type ArchiveWorkspace = {
   directory: string
@@ -30,14 +29,16 @@ type ArchivedSession = {
   workspace: ArchiveWorkspace
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000
 const RECENT_ARCHIVE_MS = 7 * 24 * 60 * 60 * 1000
-
-const key = (item: ArchivedSession) => `${item.workspace.directory}:${item.session.id}`
+const ARCHIVE_RETENTION_MS = 30 * DAY_MS
 
 const sessionSearchText = (item: ArchivedSession) =>
   [item.session.title, item.session.id, item.workspace.label, item.workspace.directory].join(" ").toLowerCase()
 
 const archivedAt = (session: Session) => session.time.archived ?? 0
+const deletedAt = (session: Session) => archivedAt(session) + ARCHIVE_RETENTION_MS
+const daysUntilDeletion = (session: Session) => Math.max(1, Math.ceil((deletedAt(session) - Date.now()) / DAY_MS))
 
 const byArchivedAt = (a: ArchivedSession, b: ArchivedSession) => {
   const diff = archivedAt(b.session) - archivedAt(a.session)
@@ -47,8 +48,9 @@ const byArchivedAt = (a: ArchivedSession, b: ArchivedSession) => {
 
 export function DialogArchivedSessions(props: { workspaces: ArchiveWorkspace[] }) {
   const globalSDK = useGlobalSDK()
-  const globalSync = useGlobalSync()
+  const dialog = useDialog()
   const language = useLanguage()
+  const navigate = useNavigate()
   const request = { token: 0 }
   const [state, setState] = createStore({
     search: "",
@@ -57,7 +59,6 @@ export function DialogArchivedSessions(props: { workspaces: ArchiveWorkspace[] }
     loading: true,
     error: false,
     sessions: [] as ArchivedSession[],
-    restoring: {} as Record<string, boolean>,
   })
 
   const scopeOptions = createMemo(() =>
@@ -96,10 +97,14 @@ export function DialogArchivedSessions(props: { workspaces: ArchiveWorkspace[] }
       ),
     ).then((results) => {
       if (request.token !== token) return
+      const now = Date.now()
       setState({
         loading: false,
         error: results.some((result) => result.failed),
-        sessions: results.flatMap((result) => result.items).sort(byArchivedAt),
+        sessions: results
+          .flatMap((result) => result.items)
+          .filter((item) => deletedAt(item.session) > now)
+          .sort(byArchivedAt),
       })
     })
   }
@@ -117,39 +122,9 @@ export function DialogArchivedSessions(props: { workspaces: ArchiveWorkspace[] }
       .filter((item) => !query || sessionSearchText(item).includes(query))
   })
 
-  const insertRestoredSession = (session: Session) => {
-    const [store, setStore] = globalSync.child(session.directory, { bootstrap: false })
-    const exists = store.session.some((item) => item.id === session.id)
-    if (exists) return
-    setStore("session", (sessions) => [...sessions, session].sort((a, b) => a.id.localeCompare(b.id)))
-    if (!session.parentID) setStore("sessionTotal", (value) => value + 1)
-  }
-
-  const restore = (item: ArchivedSession) => {
-    const itemKey = key(item)
-    setState("restoring", itemKey, true)
-    void globalSDK.client.session
-      .update({
-        directory: item.workspace.directory,
-        sessionID: item.session.id,
-        time: { archived: null },
-      })
-      .then((result) => {
-        if (result.data) insertRestoredSession(result.data)
-        setState("sessions", (sessions) => sessions.filter((session) => key(session) !== itemKey))
-        showToast({
-          title: language.t("archiveSessions.restore.success.title"),
-          description: language.t("archiveSessions.restore.success.description"),
-        })
-      })
-      .catch((err) => {
-        showToast({
-          variant: "error",
-          title: language.t("archiveSessions.restore.failed.title"),
-          description: errorMessage(err, language.t("common.requestFailed")),
-        })
-      })
-      .finally(() => setState("restoring", itemKey, false))
+  const open = (item: ArchivedSession) => {
+    navigate(`/${base64Encode(item.workspace.directory)}/session/${item.session.id}`)
+    dialog.close()
   }
 
   onMount(refresh)
@@ -202,6 +177,10 @@ export function DialogArchivedSessions(props: { workspaces: ArchiveWorkspace[] }
               }}
             />
           </div>
+          <div class="flex items-start gap-2 rounded-md border border-border-weak-base bg-background-base px-3 py-2 text-12-regular text-text-weak">
+            <Icon name="archive" size="small" class="mt-px shrink-0" />
+            <span>{language.t("archiveSessions.retention")}</span>
+          </div>
         </div>
 
         <div class="min-h-0 flex-1 overflow-y-auto no-scrollbar">
@@ -220,10 +199,13 @@ export function DialogArchivedSessions(props: { workspaces: ArchiveWorkspace[] }
               <div class="flex flex-col gap-1">
                 <For each={visible()}>
                   {(item) => {
-                    const itemKey = createMemo(() => key(item))
                     const title = createMemo(() => sessionTitle(item.session.title))
                     return (
-                      <div class="group flex min-w-0 items-center gap-3 rounded-md px-2 py-2 hover:bg-surface-raised-base-hover">
+                      <button
+                        type="button"
+                        class="group flex w-full min-w-0 items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-surface-raised-base-hover focus:outline-none focus:bg-surface-raised-base-hover"
+                        onClick={() => open(item)}
+                      >
                         <div class="flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-base text-icon-weak">
                           <Icon name="archive" size="small" />
                         </div>
@@ -237,20 +219,19 @@ export function DialogArchivedSessions(props: { workspaces: ArchiveWorkspace[] }
                                 time: getRelativeTime(new Date(archivedAt(item.session)).toISOString(), language.t),
                               })}
                             </span>
+                            <span class="shrink-0">-</span>
+                            <span class="shrink-0">
+                              {language.t("archiveSessions.deletesIn", {
+                                count: daysUntilDeletion(item.session),
+                              })}
+                            </span>
                           </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="small"
-                          icon={state.restoring[itemKey()] ? undefined : "arrow-undo-down"}
-                          disabled={state.restoring[itemKey()]}
-                          onClick={() => restore(item)}
-                        >
-                          <Show when={state.restoring[itemKey()]} fallback={language.t("common.restore")}>
-                            <Spinner class="size-3" />
-                          </Show>
-                        </Button>
-                      </div>
+                        <div class="flex shrink-0 items-center gap-1 text-12-medium text-text-weak transition-colors group-hover:text-text-base">
+                          <Icon name="eye" size="small" />
+                          <span>{language.t("common.open")}</span>
+                        </div>
+                      </button>
                     )
                   }}
                 </For>

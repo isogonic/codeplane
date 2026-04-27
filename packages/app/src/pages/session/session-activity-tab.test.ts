@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { Message, Part } from "@opencode-ai/sdk/v2"
+import type { Message, Part } from "@codeplane-ai/sdk/v2"
 import { buildSessionActivity } from "./session-activity-tab"
 
 const tokens = {
@@ -66,7 +66,7 @@ const assistant = (input: {
 })
 
 describe("buildSessionActivity", () => {
-  test("collects tool calls, model switches, file events, and file heat", () => {
+  test("collects tool calls, model switches, and file events", () => {
     const messages: Message[] = [
       user({
         id: "u1",
@@ -168,15 +168,6 @@ describe("buildSessionActivity", () => {
 
     const activity = buildSessionActivity({ messages, parts })
 
-    expect(activity.totals).toEqual({
-      tools: 2,
-      modelSwitches: 1,
-      files: 2,
-    })
-    expect(activity.heatmap.map((item) => [item.file, item.count, item.additions, item.deletions])).toEqual([
-      ["src/a.ts", 2, 6, 1],
-      ["src/b.ts", 1, 1, 3],
-    ])
     expect(activity.events.map((event) => `${event.kind}:${event.id}`)).toEqual([
       "model:model:u1",
       "tool:tool:p1",

@@ -1,13 +1,13 @@
 {
-  "name": "@opencode-ai/desktop-electron",
+  "name": "@codeplane-ai/desktop-electron",
   "private": true,
-  "version": "2.3.0",
+  "version": "26.4.27",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://opencode.ai",
+  "homepage": "https://codeplane.ai",
   "author": {
-    "name": "OpenCode",
-    "email": "hello@opencode.ai"
+    "name": "CodePlane",
+    "email": "hello@codeplane.ai"
   },
   "scripts": {
     "typecheck": "tsgo -b",
@@ -36,8 +36,8 @@
   "devDependencies": {
     "@actions/artifact": "4.0.0",
     "@lydell/node-pty": "catalog:",
-    "@opencode-ai/app": "workspace:*",
-    "@opencode-ai/ui": "workspace:*",
+    "@codeplane-ai/app": "workspace:*",
+    "@codeplane-ai/ui": "workspace:*",
     "@solid-primitives/i18n": "2.2.1",
     "@solid-primitives/storage": "catalog:",
     "@solidjs/meta": "catalog:",

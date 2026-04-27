@@ -3,6 +3,7 @@ import {
   clearSessionPrefetch,
   clearSessionPrefetchDirectory,
   getSessionPrefetch,
+  isSessionPrefetchCurrent,
   runSessionPrefetch,
   setSessionPrefetch,
   shouldSkipSessionPrefetch,
@@ -10,10 +11,11 @@ import {
 
 describe("session prefetch", () => {
   test("stores and clears message metadata by directory", () => {
-    clearSessionPrefetch("/tmp/a", ["ses_1"])
-    clearSessionPrefetch("/tmp/b", ["ses_1"])
+    clearSessionPrefetch("local", "/tmp/a", ["ses_1"])
+    clearSessionPrefetch("local", "/tmp/b", ["ses_1"])
 
     setSessionPrefetch({
+      scope: "local",
       directory: "/tmp/a",
       sessionID: "ses_1",
       limit: 200,
@@ -22,20 +24,26 @@ describe("session prefetch", () => {
       at: 123,
     })
 
-    expect(getSessionPrefetch("/tmp/a", "ses_1")).toEqual({ limit: 200, cursor: "abc", complete: false, at: 123 })
-    expect(getSessionPrefetch("/tmp/b", "ses_1")).toBeUndefined()
+    expect(getSessionPrefetch("local", "/tmp/a", "ses_1")).toEqual({
+      limit: 200,
+      cursor: "abc",
+      complete: false,
+      at: 123,
+    })
+    expect(getSessionPrefetch("local", "/tmp/b", "ses_1")).toBeUndefined()
 
-    clearSessionPrefetch("/tmp/a", ["ses_1"])
+    clearSessionPrefetch("local", "/tmp/a", ["ses_1"])
 
-    expect(getSessionPrefetch("/tmp/a", "ses_1")).toBeUndefined()
+    expect(getSessionPrefetch("local", "/tmp/a", "ses_1")).toBeUndefined()
   })
 
   test("dedupes inflight work", async () => {
-    clearSessionPrefetch("/tmp/c", ["ses_2"])
+    clearSessionPrefetch("local", "/tmp/c", ["ses_2"])
 
     let calls = 0
     const run = () =>
       runSessionPrefetch({
+        scope: "local",
         directory: "/tmp/c",
         sessionID: "ses_2",
         task: async () => {
@@ -52,15 +60,108 @@ describe("session prefetch", () => {
   })
 
   test("clears a whole directory", () => {
-    setSessionPrefetch({ directory: "/tmp/d", sessionID: "ses_1", limit: 10, cursor: "a", complete: true, at: 1 })
-    setSessionPrefetch({ directory: "/tmp/d", sessionID: "ses_2", limit: 20, cursor: "b", complete: false, at: 2 })
-    setSessionPrefetch({ directory: "/tmp/e", sessionID: "ses_1", limit: 30, cursor: "c", complete: true, at: 3 })
+    setSessionPrefetch({
+      scope: "local",
+      directory: "/tmp/d",
+      sessionID: "ses_1",
+      limit: 10,
+      cursor: "a",
+      complete: true,
+      at: 1,
+    })
+    setSessionPrefetch({
+      scope: "local",
+      directory: "/tmp/d",
+      sessionID: "ses_2",
+      limit: 20,
+      cursor: "b",
+      complete: false,
+      at: 2,
+    })
+    setSessionPrefetch({
+      scope: "local",
+      directory: "/tmp/e",
+      sessionID: "ses_1",
+      limit: 30,
+      cursor: "c",
+      complete: true,
+      at: 3,
+    })
 
-    clearSessionPrefetchDirectory("/tmp/d")
+    clearSessionPrefetchDirectory("local", "/tmp/d")
 
-    expect(getSessionPrefetch("/tmp/d", "ses_1")).toBeUndefined()
-    expect(getSessionPrefetch("/tmp/d", "ses_2")).toBeUndefined()
-    expect(getSessionPrefetch("/tmp/e", "ses_1")).toEqual({ limit: 30, cursor: "c", complete: true, at: 3 })
+    expect(getSessionPrefetch("local", "/tmp/d", "ses_1")).toBeUndefined()
+    expect(getSessionPrefetch("local", "/tmp/d", "ses_2")).toBeUndefined()
+    expect(getSessionPrefetch("local", "/tmp/e", "ses_1")).toEqual({
+      limit: 30,
+      cursor: "c",
+      complete: true,
+      at: 3,
+    })
+  })
+
+  test("isolates same directory and session across server scopes", () => {
+    clearSessionPrefetch("local", "/tmp/same", ["ses_1"])
+    clearSessionPrefetch("remote", "/tmp/same", ["ses_1"])
+
+    setSessionPrefetch({
+      scope: "local",
+      directory: "/tmp/same",
+      sessionID: "ses_1",
+      limit: 10,
+      complete: false,
+      at: 1,
+    })
+    setSessionPrefetch({
+      scope: "remote",
+      directory: "/tmp/same",
+      sessionID: "ses_1",
+      limit: 20,
+      complete: true,
+      at: 2,
+    })
+
+    expect(getSessionPrefetch("local", "/tmp/same", "ses_1")).toEqual({ limit: 10, complete: false, at: 1 })
+    expect(getSessionPrefetch("remote", "/tmp/same", "ses_1")).toEqual({ limit: 20, complete: true, at: 2 })
+
+    clearSessionPrefetch("local", "/tmp/same", ["ses_1"])
+
+    expect(getSessionPrefetch("local", "/tmp/same", "ses_1")).toBeUndefined()
+    expect(getSessionPrefetch("remote", "/tmp/same", "ses_1")).toEqual({ limit: 20, complete: true, at: 2 })
+  })
+
+  test("invalidates stale inflight work only for the matching server scope", async () => {
+    clearSessionPrefetch("local", "/tmp/stale", ["ses_1"])
+    clearSessionPrefetch("remote", "/tmp/stale", ["ses_1"])
+
+    let resume = () => {}
+    const gate = new Promise<void>((resolve) => {
+      resume = resolve
+    })
+    const pending = runSessionPrefetch({
+      scope: "local",
+      directory: "/tmp/stale",
+      sessionID: "ses_1",
+      task: async (rev) => {
+        await gate
+        if (!isSessionPrefetchCurrent("local", "/tmp/stale", "ses_1", rev)) return
+        return { limit: 1, complete: true, at: 1 }
+      },
+    })
+
+    setSessionPrefetch({
+      scope: "remote",
+      directory: "/tmp/stale",
+      sessionID: "ses_1",
+      limit: 2,
+      complete: true,
+      at: 2,
+    })
+    clearSessionPrefetch("local", "/tmp/stale", ["ses_1"])
+    resume()
+
+    expect(await pending).toBeUndefined()
+    expect(getSessionPrefetch("remote", "/tmp/stale", "ses_1")).toEqual({ limit: 2, complete: true, at: 2 })
   })
 
   test("refreshes stale first-page prefetched history", () => {

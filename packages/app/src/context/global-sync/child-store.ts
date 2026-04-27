@@ -1,7 +1,7 @@
 import { createRoot, getOwner, onCleanup, runWithOwner, type Owner } from "solid-js"
 import { createStore, type SetStoreFunction, type Store } from "solid-js/store"
 import { Persist, persisted } from "@/utils/persist"
-import type { VcsInfo } from "@opencode-ai/sdk/v2/client"
+import type { VcsInfo } from "@codeplane-ai/sdk/v2/client"
 import {
   DIR_IDLE_TTL_MS,
   MAX_DIR_STORES,
@@ -19,6 +19,7 @@ import { loadPathQuery } from "./bootstrap"
 
 export function createChildStoreManager(input: {
   owner: Owner
+  scope: () => { key: string; legacy?: boolean }
   isBooting: (directory: string) => boolean
   isLoadingSessions: (directory: string) => boolean
   onBootstrap: (directory: string) => void
@@ -128,7 +129,7 @@ export function createChildStoreManager(input: {
     if (!children[directory]) {
       const vcs = runWithOwner(input.owner, () =>
         persisted(
-          Persist.workspace(directory, "vcs", ["vcs.v1"]),
+          Persist.serverWorkspace(input.scope(), directory, "vcs", ["vcs.v1"]),
           createStore({ value: undefined as VcsInfo | undefined }),
         ),
       )
@@ -138,7 +139,7 @@ export function createChildStoreManager(input: {
 
       const meta = runWithOwner(input.owner, () =>
         persisted(
-          Persist.workspace(directory, "project", ["project.v1"]),
+          Persist.serverWorkspace(input.scope(), directory, "project", ["project.v1"]),
           createStore({ value: undefined as ProjectMeta | undefined }),
         ),
       )
@@ -147,7 +148,7 @@ export function createChildStoreManager(input: {
 
       const icon = runWithOwner(input.owner, () =>
         persisted(
-          Persist.workspace(directory, "icon", ["icon.v1"]),
+          Persist.serverWorkspace(input.scope(), directory, "icon", ["icon.v1"]),
           createStore({ value: undefined as string | undefined }),
         ),
       )
@@ -158,13 +159,13 @@ export function createChildStoreManager(input: {
         createRoot((dispose) => {
           const initialIcon = icon[0].value
 
-          const pathQuery = useQuery(() => loadPathQuery(directory))
+          const pathQuery = useQuery(() => loadPathQuery(directory, undefined, undefined, input.scope().key))
           const child = createStore<State>({
             project: "",
             projectMeta: undefined,
             icon: initialIcon,
             provider_ready: false,
-            provider: { all: [], connected: [], default: {} },
+            provider: { all: [], catalog: [], connected: [], default: {} },
             config: {},
             get path() {
               if (pathQuery.isLoading || !pathQuery.data)

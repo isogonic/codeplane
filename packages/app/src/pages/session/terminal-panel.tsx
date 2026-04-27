@@ -1,10 +1,10 @@
 import { For, Show, createEffect, createMemo, on, onCleanup, onMount } from "solid-js"
 import { createStore } from "solid-js/store"
 import { makeEventListener } from "@solid-primitives/event-listener"
-import { Tabs } from "@opencode-ai/ui/tabs"
-import { ResizeHandle } from "@opencode-ai/ui/resize-handle"
-import { IconButton } from "@opencode-ai/ui/icon-button"
-import { TooltipKeybind } from "@opencode-ai/ui/tooltip"
+import { Tabs } from "@codeplane-ai/ui/tabs"
+import { ResizeHandle } from "@codeplane-ai/ui/resize-handle"
+import { IconButton } from "@codeplane-ai/ui/icon-button"
+import { TooltipKeybind } from "@codeplane-ai/ui/tooltip"
 import { DragDropProvider, DragDropSensors, DragOverlay, SortableProvider, closestCenter } from "@thisbeyond/solid-dnd"
 import type { DragEvent } from "@thisbeyond/solid-dnd"
 import { ConstrainDragYAxis, getDraggableId } from "@/utils/solid-dnd"
@@ -14,6 +14,7 @@ import { Terminal } from "@/components/terminal"
 import { useCommand } from "@/context/command"
 import { useLanguage } from "@/context/language"
 import { useLayout } from "@/context/layout"
+import { useSDK } from "@/context/sdk"
 import { useTerminal } from "@/context/terminal"
 import { terminalTabLabel } from "@/pages/session/terminal-label"
 import { createSizing, focusTerminalById } from "@/pages/session/helpers"
@@ -26,6 +27,7 @@ export function TerminalPanel() {
   const terminal = useTerminal()
   const language = useLanguage()
   const command = useCommand()
+  const sdk = useSDK()
   const { params, view } = useSessionLayout()
 
   const opened = createMemo(() => view().terminal.opened())
@@ -125,6 +127,7 @@ export function TerminalPanel() {
     language.locale()
 
     setTerminalHandoff(
+      sdk.scope.key,
       dir,
       terminal.all().map((pty) =>
         terminalTabLabel({
@@ -139,7 +142,7 @@ export function TerminalPanel() {
   const handoff = createMemo(() => {
     const dir = params.dir
     if (!dir) return []
-    return getTerminalHandoff(dir) ?? []
+    return getTerminalHandoff(sdk.scope.key, dir) ?? []
   })
 
   const all = terminal.all

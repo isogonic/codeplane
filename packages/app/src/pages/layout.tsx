@@ -17,23 +17,23 @@ import { useLocation, useNavigate, useParams } from "@solidjs/router"
 import { useLayout, LocalProject } from "@/context/layout"
 import { useGlobalSync } from "@/context/global-sync"
 import { Persist, persisted } from "@/utils/persist"
-import { base64Encode } from "@opencode-ai/shared/util/encode"
+import { base64Encode } from "@codeplane-ai/shared/util/encode"
 import { decode64 } from "@/utils/base64"
-import { ResizeHandle } from "@opencode-ai/ui/resize-handle"
-import { Button } from "@opencode-ai/ui/button"
-import { IconButton } from "@opencode-ai/ui/icon-button"
-import { Tooltip } from "@opencode-ai/ui/tooltip"
-import { DropdownMenu } from "@opencode-ai/ui/dropdown-menu"
-import { Dialog } from "@opencode-ai/ui/dialog"
-import { getFilename } from "@opencode-ai/shared/util/path"
-import { Session, type Message } from "@opencode-ai/sdk/v2/client"
+import { ResizeHandle } from "@codeplane-ai/ui/resize-handle"
+import { Button } from "@codeplane-ai/ui/button"
+import { IconButton } from "@codeplane-ai/ui/icon-button"
+import { Tooltip } from "@codeplane-ai/ui/tooltip"
+import { DropdownMenu } from "@codeplane-ai/ui/dropdown-menu"
+import { Dialog } from "@codeplane-ai/ui/dialog"
+import { getFilename } from "@codeplane-ai/shared/util/path"
+import { Session, type Message } from "@codeplane-ai/sdk/v2/client"
 import { usePlatform } from "@/context/platform"
 import { useSettings } from "@/context/settings"
 import { createStore, produce, reconcile } from "solid-js/store"
 import { DragDropProvider, DragDropSensors, DragOverlay, SortableProvider, closestCenter } from "@thisbeyond/solid-dnd"
 import type { DragEvent } from "@thisbeyond/solid-dnd"
 import { useProviders } from "@/hooks/use-providers"
-import { showToast, Toast, toaster } from "@opencode-ai/ui/toast"
+import { showToast, Toast, toaster } from "@codeplane-ai/ui/toast"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { clearWorkspaceTerminals } from "@/context/terminal"
 import { dropSessionCaches, pickSessionCacheEvictions } from "@/context/global-sync/session-cache"
@@ -48,16 +48,16 @@ import {
 } from "@/context/global-sync/session-prefetch"
 import { useNotification } from "@/context/notification"
 import { usePermission } from "@/context/permission"
-import { Binary } from "@opencode-ai/shared/util/binary"
-import { retry } from "@opencode-ai/shared/util/retry"
+import { Binary } from "@codeplane-ai/shared/util/binary"
+import { retry } from "@codeplane-ai/shared/util/retry"
 import { playSoundById } from "@/utils/sound"
 import { createAim } from "@/utils/aim"
 import { setNavigate } from "@/utils/notification-click"
 import { Worktree as WorktreeState } from "@/utils/worktree"
 import { setSessionHandoff } from "@/pages/session/handoff"
 
-import { useDialog } from "@opencode-ai/ui/context/dialog"
-import { useTheme, type ColorScheme } from "@opencode-ai/ui/theme/context"
+import { useDialog } from "@codeplane-ai/ui/context/dialog"
+import { useTheme, type ColorScheme } from "@codeplane-ai/ui/theme/context"
 import { useCommand, type CommandOption } from "@/context/command"
 import { ConstrainDragXAxis, getDraggableId } from "@/utils/solid-dnd"
 import { DebugBar } from "@/components/debug-bar"
@@ -88,10 +88,19 @@ import {
 import { ProjectDragOverlay, SortableProject, type ProjectSidebarContext } from "./layout/sidebar-project"
 import { SidebarContent } from "./layout/sidebar-shell"
 import { DialogArchivedSessions } from "@/components/dialog-archived-sessions"
+import {
+  SettingsSidebarPanel,
+  isSettingsPath,
+  settingsPath,
+  settingsSectionFromPath,
+  type SettingsSection,
+} from "./settings/nav"
 
 export default function Layout(props: ParentProps) {
+  const server = useServer()
+  const serverScope = server.scope
   const [store, setStore, , ready] = persisted(
-    Persist.global("layout.page", ["layout.page.v1"]),
+    Persist.server(serverScope, "layout.page", ["layout.page.v1"]),
     createStore({
       lastProjectSession: {} as { [directory: string]: { directory: string; id: string; at: number } },
       activeProject: undefined as string | undefined,
@@ -117,7 +126,6 @@ export default function Layout(props: ParentProps) {
   const layoutReady = createMemo(() => layout.ready())
   const platform = usePlatform()
   const settings = useSettings()
-  const server = useServer()
   const notification = useNotification()
   const permission = usePermission()
   const navigate = useNavigate()
@@ -150,16 +158,27 @@ export default function Layout(props: ParentProps) {
   }
   const colorSchemeLabel = (scheme: ColorScheme) => language.t(colorSchemeKey[scheme])
   const currentDir = createMemo(() => route().dir)
-  const globalRouteSelected = createMemo(() => location.pathname === "/" || location.pathname === "/notifications")
+  const isGlobalRoutePath = (pathname: string) =>
+    pathname === "/" ||
+    pathname === "/notifications" ||
+    pathname === "/modes" ||
+    pathname === "/models" ||
+    pathname === "/mcp" ||
+    pathname === "/plugins" ||
+    pathname === "/skills"
+  const settingsRouteSelected = createMemo(() => isSettingsPath(location.pathname))
+  const globalRouteSelected = createMemo(() => isGlobalRoutePath(location.pathname))
+  const currentSettingsSection = createMemo(() => settingsSectionFromPath(location.pathname))
   const sidebarRouteKey = createMemo(() => {
     if (!layoutReady()) return
+    if (settingsRouteSelected()) return "settings"
     if (globalRouteSelected()) return "global"
     if (!params.dir) return
     return `project:${params.dir}`
   })
 
   const [state, setState] = createStore({
-    autoselect: !initialDirectory && location.pathname !== "/" && location.pathname !== "/notifications",
+    autoselect: !initialDirectory && !isGlobalRoutePath(location.pathname) && !isSettingsPath(location.pathname),
     busyWorkspaces: {} as Record<string, boolean>,
     hoverProject: undefined as string | undefined,
     scrollSessionKey: undefined as string | undefined,
@@ -456,13 +475,13 @@ export default function Layout(props: ParentProps) {
       const unsub = globalSDK.event.listen((e) => {
         if (e.details?.type === "worktree.ready") {
           setBusy(e.name, false)
-          WorktreeState.ready(e.name)
+          WorktreeState.ready(e.name, serverScope.key)
           return
         }
 
         if (e.details?.type === "worktree.failed") {
           setBusy(e.name, false)
-          WorktreeState.failed(e.name, e.details.properties?.message ?? language.t("common.requestFailed"))
+          WorktreeState.failed(e.name, e.details.properties?.message ?? language.t("common.requestFailed"), serverScope.key)
           return
         }
 
@@ -740,7 +759,7 @@ export default function Layout(props: ParentProps) {
     globalSDK.url
 
     prefetchToken.value += 1
-    clearSessionPrefetchInflight()
+    clearSessionPrefetchInflight(serverScope.key)
     prefetchQueues.clear()
   })
 
@@ -787,13 +806,14 @@ export default function Layout(props: ParentProps) {
     const [store, setStore] = globalSync.child(directory, { bootstrap: false })
 
     return runSessionPrefetch({
+      scope: serverScope.key,
       directory,
       sessionID,
       task: (rev) =>
         retry(() => globalSDK.client.session.messages({ directory, sessionID, limit: prefetchChunk }))
           .then((messages) => {
             if (prefetchToken.value !== token) return
-            if (!isSessionPrefetchCurrent(directory, sessionID, rev)) return
+            if (!isSessionPrefetchCurrent(serverScope.key, directory, sessionID, rev)) return
 
             const items = (messages.data ?? []).filter((x) => !!x?.info?.id)
             const next = items.map((x) => x.info).filter((m): m is Message => !!m?.id)
@@ -808,7 +828,7 @@ export default function Layout(props: ParentProps) {
             }
 
             if (stale.length > 0) {
-              clearSessionPrefetch(directory, stale)
+              clearSessionPrefetch(serverScope.key, directory, stale)
               for (const id of stale) {
                 globalSync.todo.set(id, undefined)
               }
@@ -820,7 +840,7 @@ export default function Layout(props: ParentProps) {
               sorted,
             )
 
-            if (!isSessionPrefetchCurrent(directory, sessionID, rev)) return
+            if (!isSessionPrefetchCurrent(serverScope.key, directory, sessionID, rev)) return
 
             batch(() => {
               if (stale.length > 0) {
@@ -832,7 +852,7 @@ export default function Layout(props: ParentProps) {
               }
 
               setStore("message", sessionID, reconcile(merged, { key: "id" }))
-              setSessionPrefetch({ directory, sessionID, ...meta })
+              setSessionPrefetch({ scope: serverScope.key, directory, sessionID, ...meta })
 
               for (const message of items) {
                 const currentParts = store.part[message.info.id] ?? []
@@ -877,7 +897,7 @@ export default function Layout(props: ParentProps) {
 
     const [store] = globalSync.child(directory, { bootstrap: false })
     const cached = untrack(() => {
-      const info = getSessionPrefetch(directory, session.id)
+      const info = getSessionPrefetch(serverScope.key, directory, session.id)
       return shouldSkipSessionPrefetch({
         message: store.message[session.id] !== undefined,
         info,
@@ -1236,11 +1256,7 @@ export default function Layout(props: ParentProps) {
   }
 
   function openSettings() {
-    const run = ++dialogRun
-    void import("@/components/dialog-settings").then((x) => {
-      if (dialogDead || dialogRun !== run) return
-      dialog.show(() => <x.DialogSettings />)
-    })
+    navigateWithSidebarReset("/settings")
   }
 
   function projectRoot(directory: string) {
@@ -1392,7 +1408,7 @@ export default function Layout(props: ParentProps) {
       void openProject(link.directory, false)
       const slug = base64Encode(link.directory)
       if (link.prompt) {
-        setSessionHandoff(slug, { prompt: link.prompt })
+        setSessionHandoff(serverScope.key, slug, { prompt: link.prompt })
       }
       const href = link.prompt ? `/${slug}/session?prompt=${encodeURIComponent(link.prompt)}` : `/${slug}/session`
       navigateWithSidebarReset(href)
@@ -1581,6 +1597,7 @@ export default function Layout(props: ParentProps) {
       .catch(() => [])
 
     clearWorkspaceTerminals(
+      serverScope,
       directory,
       sessions.map((s) => s.id),
       platform,
@@ -1897,7 +1914,7 @@ export default function Layout(props: ParentProps) {
       !dirs.some((item) => workspaceKey(item) === workspaceKey(directory))
         ? directory
         : undefined
-    const pending = extra ? WorktreeState.get(extra)?.status === "pending" : false
+    const pending = extra ? WorktreeState.get(extra, serverScope.key)?.status === "pending" : false
 
     const ordered = effectiveWorkspaceOrder(local, dirs, store.workspaceOrder[project.worktree])
     if (pending && extra) return [local, extra, ...ordered.filter((item) => item !== local)]
@@ -1988,7 +2005,7 @@ export default function Layout(props: ParentProps) {
     const root = workspaceKey(local)
 
     setBusy(created.directory, true)
-    WorktreeState.pending(created.directory)
+    WorktreeState.pending(created.directory, serverScope.key)
     setStore("workspaceExpanded", key, true)
     if (key !== created.directory) {
       setStore("workspaceExpanded", created.directory, true)
@@ -2388,6 +2405,9 @@ export default function Layout(props: ParentProps) {
 
   const projects = () => layout.projects.list()
   const projectOverlay = () => <ProjectDragOverlay projects={projects} activeProject={() => store.activeProject} />
+  const selectSettingsSection = (section: SettingsSection) => {
+    navigateWithSidebarReset(settingsPath(section))
+  }
   const sidebarContent = (mobile?: boolean) => (
     <SidebarContent
       mobile={mobile}
@@ -2407,10 +2427,25 @@ export default function Layout(props: ParentProps) {
       settingsLabel={() => language.t("sidebar.settings")}
       settingsKeybind={() => command.keybind("settings.open")}
       onOpenSettings={openSettings}
-      helpLabel={() => language.t("sidebar.help")}
-      onOpenHelp={() => platform.openLink("https://opencode.ai/desktop-feedback")}
+      restartLabel={() => language.t("sidebar.restart")}
+      restartConfirm={() => language.t("sidebar.restart.confirm")}
+      onRestart={() => {
+        void platform.restart?.()
+      }}
       renderPanel={() =>
-        mobile ? <SidebarPanel project={currentProject} mobile /> : <SidebarPanel project={currentProject} merged />
+        settingsRouteSelected() ? (
+          <SettingsSidebarPanel
+            mobile={mobile}
+            merged
+            width={panel()}
+            current={currentSettingsSection}
+            onSelect={selectSettingsSection}
+          />
+        ) : mobile ? (
+          <SidebarPanel project={currentProject} mobile />
+        ) : (
+          <SidebarPanel project={currentProject} merged />
+        )
       }
     />
   )

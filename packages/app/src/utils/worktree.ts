@@ -1,4 +1,4 @@
-const normalize = (directory: string) => directory.replace(/[\\/]+$/, "")
+const normalize = (directory: string, scope = "default") => `${scope}\n${directory.replace(/[\\/]+$/, "")}`
 
 type State =
   | {
@@ -30,17 +30,17 @@ function deferred() {
 }
 
 export const Worktree = {
-  get(directory: string) {
-    return state.get(normalize(directory))
+  get(directory: string, scope?: string) {
+    return state.get(normalize(directory, scope))
   },
-  pending(directory: string) {
-    const key = normalize(directory)
+  pending(directory: string, scope?: string) {
+    const key = normalize(directory, scope)
     const current = state.get(key)
     if (current && current.status !== "pending") return
     state.set(key, { status: "pending" })
   },
-  ready(directory: string) {
-    const key = normalize(directory)
+  ready(directory: string, scope?: string) {
+    const key = normalize(directory, scope)
     const next = { status: "ready" } as const
     state.set(key, next)
     const waiter = waiters.get(key)
@@ -48,8 +48,8 @@ export const Worktree = {
     waiters.delete(key)
     waiter.resolve(next)
   },
-  failed(directory: string, message: string) {
-    const key = normalize(directory)
+  failed(directory: string, message: string, scope?: string) {
+    const key = normalize(directory, scope)
     const next = { status: "failed", message } as const
     state.set(key, next)
     const waiter = waiters.get(key)
@@ -57,8 +57,8 @@ export const Worktree = {
     waiters.delete(key)
     waiter.resolve(next)
   },
-  wait(directory: string) {
-    const key = normalize(directory)
+  wait(directory: string, scope?: string) {
+    const key = normalize(directory, scope)
     const current = state.get(key)
     if (current && current.status !== "pending") return Promise.resolve(current)
 

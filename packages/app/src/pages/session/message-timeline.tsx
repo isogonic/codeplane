@@ -2,26 +2,26 @@ import { For, createEffect, createMemo, on, onCleanup, Show, Index, type JSX, cr
 import { createStore, produce } from "solid-js/store"
 import { useNavigate } from "@solidjs/router"
 import { useMutation } from "@tanstack/solid-query"
-import { Button } from "@opencode-ai/ui/button"
-import { FileIcon } from "@opencode-ai/ui/file-icon"
-import { Icon } from "@opencode-ai/ui/icon"
-import { IconButton } from "@opencode-ai/ui/icon-button"
-import { DropdownMenu } from "@opencode-ai/ui/dropdown-menu"
-import { Dialog } from "@opencode-ai/ui/dialog"
-import { InlineInput } from "@opencode-ai/ui/inline-input"
-import { Spinner } from "@opencode-ai/ui/spinner"
-import { SessionTurn } from "@opencode-ai/ui/session-turn"
-import { ScrollView } from "@opencode-ai/ui/scroll-view"
-import { TextField } from "@opencode-ai/ui/text-field"
-import type { AssistantMessage, Message as MessageType, Part, TextPart, UserMessage } from "@opencode-ai/sdk/v2"
-import { showToast } from "@opencode-ai/ui/toast"
-import { useFileReference } from "@opencode-ai/ui/context/file"
-import { Binary } from "@opencode-ai/shared/util/binary"
-import { getFilename } from "@opencode-ai/shared/util/path"
+import { Button } from "@codeplane-ai/ui/button"
+import { FileIcon } from "@codeplane-ai/ui/file-icon"
+import { Icon } from "@codeplane-ai/ui/icon"
+import { IconButton } from "@codeplane-ai/ui/icon-button"
+import { DropdownMenu } from "@codeplane-ai/ui/dropdown-menu"
+import { Dialog } from "@codeplane-ai/ui/dialog"
+import { InlineInput } from "@codeplane-ai/ui/inline-input"
+import { Spinner } from "@codeplane-ai/ui/spinner"
+import { SessionTurn } from "@codeplane-ai/ui/session-turn"
+import { ScrollView } from "@codeplane-ai/ui/scroll-view"
+import { TextField } from "@codeplane-ai/ui/text-field"
+import type { AssistantMessage, Message as MessageType, Part, TextPart, UserMessage } from "@codeplane-ai/sdk/v2"
+import { showToast } from "@codeplane-ai/ui/toast"
+import { useFileReference } from "@codeplane-ai/ui/context/file"
+import { Binary } from "@codeplane-ai/shared/util/binary"
+import { getFilename } from "@codeplane-ai/shared/util/path"
 import { Popover as KobaltePopover } from "@kobalte/core/popover"
 import { shouldMarkBoundaryGesture, normalizeWheelDelta } from "@/pages/session/message-gesture"
 import { SessionContextUsage } from "@/components/session-context-usage"
-import { useDialog } from "@opencode-ai/ui/context/dialog"
+import { useDialog } from "@codeplane-ai/ui/context/dialog"
 import { createResizeObserver } from "@solid-primitives/resize-observer"
 import { useLanguage } from "@/context/language"
 import { useSessionKey } from "@/pages/session/session-layout"
@@ -251,15 +251,16 @@ export function MessageTimeline(props: {
     if (!id) return emptyMessages
     return sync.data.message[id] ?? emptyMessages
   })
-  const pending = createMemo(() =>
-    sessionMessages().findLast(
-      (item): item is AssistantMessage => item.role === "assistant" && typeof item.time.completed !== "number",
-    ),
-  )
   const sessionStatus = createMemo(() => {
     const id = sessionID()
     if (!id) return idle
     return sync.data.session_status[id] ?? idle
+  })
+  const pending = createMemo(() => {
+    if (sessionStatus().type === "idle") return
+    return sessionMessages().findLast(
+      (item): item is AssistantMessage => item.role === "assistant" && typeof item.time.completed !== "number",
+    )
   })
   const working = createMemo(() => sessionStatus().type !== "idle")
   const tint = createMemo(() => messageAgentColor(sessionMessages(), sync.data.agent))
@@ -303,10 +304,11 @@ export function MessageTimeline(props: {
     if (!id) return
     return sync.session.get(id)
   })
+  const archived = createMemo(() => !!info()?.time.archived)
   const titleValue = createMemo(() => info()?.title)
   const titleLabel = createMemo(() => sessionTitle(titleValue()))
   const shareUrl = createMemo(() => info()?.share?.url)
-  const shareEnabled = createMemo(() => sync.data.config.share !== "disabled")
+  const shareEnabled = createMemo(() => sync.data.config.share !== "disabled" && !archived())
   const parentID = createMemo(() => info()?.parentID)
   const parent = createMemo(() => {
     const id = parentID()
@@ -483,6 +485,7 @@ export function MessageTimeline(props: {
 
   const openTitleEditor = () => {
     if (!sessionID() || parentID()) return
+    if (archived()) return
     setTitle({ editing: true, draft: titleLabel() ?? "" })
     requestAnimationFrame(() => {
       titleRef?.focus()
@@ -525,6 +528,7 @@ export function MessageTimeline(props: {
   const archiveSession = async (sessionID: string) => {
     const session = sync.session.get(sessionID)
     if (!session) return
+    if (session.time.archived) return
 
     const sessions = sync.data.session ?? []
     const index = sessions.findIndex((s) => s.id === sessionID)
@@ -552,6 +556,7 @@ export function MessageTimeline(props: {
   const deleteSession = async (sessionID: string) => {
     const session = sync.session.get(sessionID)
     if (!session) return false
+    if (session.time.archived) return false
 
     const sessions = (sync.data.session ?? []).filter((s) => !s.parentID && !s.time?.archived)
     const index = sessions.findIndex((s) => s.id === sessionID)
@@ -881,37 +886,41 @@ export function MessageTimeline(props: {
                                   }
                                 }}
                               >
-                                <DropdownMenu.Item
-                                  onSelect={() => {
-                                    setTitle("pendingRename", true)
-                                    setTitle("menuOpen", false)
-                                  }}
-                                >
-                                  <DropdownMenu.ItemLabel>{language.t("common.rename")}</DropdownMenu.ItemLabel>
-                                </DropdownMenu.Item>
-                                <Show when={shareEnabled()}>
+                                <Show when={!archived()}>
                                   <DropdownMenu.Item
                                     onSelect={() => {
-                                      setTitle({ pendingShare: true, menuOpen: false })
+                                      setTitle("pendingRename", true)
+                                      setTitle("menuOpen", false)
                                     }}
                                   >
-                                    <DropdownMenu.ItemLabel>
-                                      {language.t("session.share.action.share")}
-                                    </DropdownMenu.ItemLabel>
+                                    <DropdownMenu.ItemLabel>{language.t("common.rename")}</DropdownMenu.ItemLabel>
+                                  </DropdownMenu.Item>
+                                  <Show when={shareEnabled()}>
+                                    <DropdownMenu.Item
+                                      onSelect={() => {
+                                        setTitle({ pendingShare: true, menuOpen: false })
+                                      }}
+                                    >
+                                      <DropdownMenu.ItemLabel>
+                                        {language.t("session.share.action.share")}
+                                      </DropdownMenu.ItemLabel>
+                                    </DropdownMenu.Item>
+                                  </Show>
+                                  <DropdownMenu.Item onSelect={() => void archiveSession(id)}>
+                                    <DropdownMenu.ItemLabel>{language.t("common.archive")}</DropdownMenu.ItemLabel>
                                   </DropdownMenu.Item>
                                 </Show>
-                                <DropdownMenu.Item onSelect={() => void archiveSession(id)}>
-                                  <DropdownMenu.ItemLabel>{language.t("common.archive")}</DropdownMenu.ItemLabel>
-                                </DropdownMenu.Item>
                                 <DropdownMenu.Item onSelect={() => copySessionID(id)}>
                                   <DropdownMenu.ItemLabel>Copy session ID</DropdownMenu.ItemLabel>
                                 </DropdownMenu.Item>
-                                <DropdownMenu.Separator />
-                                <DropdownMenu.Item
-                                  onSelect={() => dialog.show(() => <DialogDeleteSession sessionID={id} />)}
-                                >
-                                  <DropdownMenu.ItemLabel>{language.t("common.delete")}</DropdownMenu.ItemLabel>
-                                </DropdownMenu.Item>
+                                <Show when={!archived()}>
+                                  <DropdownMenu.Separator />
+                                  <DropdownMenu.Item
+                                    onSelect={() => dialog.show(() => <DialogDeleteSession sessionID={id} />)}
+                                  >
+                                    <DropdownMenu.ItemLabel>{language.t("common.delete")}</DropdownMenu.ItemLabel>
+                                  </DropdownMenu.Item>
+                                </Show>
                               </DropdownMenu.Content>
                             </DropdownMenu.Portal>
                           </DropdownMenu>

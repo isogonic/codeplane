@@ -1,6 +1,6 @@
 {
-  "name": "@opencode-ai/ui",
-  "version": "2.3.0",
+  "name": "@codeplane-ai/ui",
+  "version": "26.4.27",
   "type": "module",
   "license": "MIT",
   "exports": {
@@ -43,8 +43,8 @@
   },
   "dependencies": {
     "@kobalte/core": "catalog:",
-    "@opencode-ai/sdk": "workspace:*",
-    "@opencode-ai/shared": "workspace:*",
+    "@codeplane-ai/sdk": "workspace:*",
+    "@codeplane-ai/shared": "workspace:*",
     "@pierre/diffs": "catalog:",
     "@shikijs/transformers": "3.9.2",
     "@solid-primitives/bounds": "0.1.3",
