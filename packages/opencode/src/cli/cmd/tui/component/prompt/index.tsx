@@ -136,6 +136,11 @@ export function Prompt(props: PromptProps) {
   })
   const [auto, setAuto] = createSignal<AutocompleteRef>()
   const currentProviderLabel = createMemo(() => local.model.parsed().provider)
+  const safeMode = createMemo(() => {
+    if (!local.model.current()) return false
+    const capabilities = local.model.parsed().capabilities
+    return !capabilities.vision && !capabilities.tools && !capabilities.reasoning
+  })
   const hasRightContent = createMemo(() => Boolean(props.right))
 
   function promptModelWarning() {
@@ -1251,6 +1256,12 @@ export function Prompt(props: PromptProps) {
                             {local.model.parsed().model}
                           </text>
                           <text fg={fadeColor(theme.textMuted, modelMetaAlpha())}>{currentProviderLabel()}</text>
+                          <Show when={safeMode()}>
+                            <text fg={fadeColor(theme.textMuted, modelMetaAlpha())}>·</text>
+                            <text fg={fadeColor(theme.warning, modelMetaAlpha())}>
+                              <b>Safe mode</b>
+                            </text>
+                          </Show>
                           <Show when={showVariant()}>
                             <text fg={fadeColor(theme.textMuted, variantMetaAlpha())}>·</text>
                             <text>
