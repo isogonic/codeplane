@@ -91,7 +91,7 @@ export async function openapi() {
     documentation: {
       info: {
         title: "opencode",
-        version: "2.2.0",
+        version: "2.3.0",
         description: "opencode api",
       },
       openapi: "3.1.1",

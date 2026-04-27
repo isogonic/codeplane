@@ -17,7 +17,7 @@ app
       documentation: {
         info: {
           title: "Opencode Enterprise API",
-          version: "2.2.0",
+          version: "2.3.0",
           description: "Opencode Enterprise API endpoints",
         },
         openapi: "3.1.1",

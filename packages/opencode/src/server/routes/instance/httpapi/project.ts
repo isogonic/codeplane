@@ -40,7 +40,7 @@ export const ProjectApi = HttpApi.make("project")
   .annotateMerge(
     OpenApi.annotations({
       title: "opencode experimental HttpApi",
-      version: "2.2.0",
+      version: "2.3.0",
       description: "Experimental HttpApi surface for selected instance routes.",
     }),
   )
