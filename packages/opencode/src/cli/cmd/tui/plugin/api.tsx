@@ -81,6 +81,13 @@ function routeNavigate(route: ReturnType<typeof useRoute>, name: string, params?
     return
   }
 
+  if (name === "orchestrator") {
+    const sessionID = params?.sessionID
+    if (typeof sessionID !== "string") return
+    route.navigate({ type: "orchestrator", sessionID })
+    return
+  }
+
   route.navigate({ type: "plugin", id: name, data: params })
 }
 
@@ -92,6 +99,15 @@ function routeCurrent(route: ReturnType<typeof useRoute>): TuiPluginApi["route"]
       params: {
         sessionID: route.data.sessionID,
         prompt: route.data.prompt,
+      },
+    }
+  }
+
+  if (route.data.type === "orchestrator") {
+    return {
+      name: "orchestrator",
+      params: {
+        sessionID: route.data.sessionID,
       },
     }
   }

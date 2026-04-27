@@ -42,6 +42,7 @@ import { KeybindProvider, useKeybind } from "@tui/context/keybind"
 import { ThemeProvider, useTheme } from "@tui/context/theme"
 import { Home } from "@tui/routes/home"
 import { Session } from "@tui/routes/session"
+import { OrchestratorView } from "@tui/routes/orchestrator"
 import { PromptHistoryProvider } from "./component/prompt/history"
 import { FrecencyProvider } from "./component/prompt/frecency"
 import { PromptStashProvider } from "./component/prompt/stash"
@@ -217,6 +218,21 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
   const sync = useSync()
   const exit = useExit()
   const promptRef = usePromptRef()
+  const activeSessionID = createMemo(() => {
+    if (route.data.type === "session" || route.data.type === "orchestrator") return route.data.sessionID
+  })
+  const activeRootSessionID = createMemo(() => {
+    const sessionID = activeSessionID()
+    if (!sessionID) return
+    return sync.session.get(sessionID)?.parentID ?? sessionID
+  })
+  const hasOrchestratorTasks = createMemo(() => {
+    const sessionID = activeRootSessionID()
+    if (!sessionID) return false
+    return (sync.data.message[sessionID] ?? []).some((message) =>
+      (sync.data.part[message.id] ?? []).some((part) => part.type === "tool" && part.tool === "task"),
+    )
+  })
   const routes: RouteMap = new Map()
   const [routeRev, setRouteRev] = createSignal(0)
   const routeView = (name: string) => {
@@ -317,6 +333,13 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
 
       const title = session.title.length > 40 ? session.title.slice(0, 37) + "..." : session.title
       renderer.setTerminalTitle(`OC | ${title}`)
+      return
+    }
+
+    if (route.data.type === "orchestrator") {
+      const session = sync.session.get(route.data.sessionID)
+      const title = session && !SessionApi.isDefaultTitle(session.title) ? ` · ${session.title.slice(0, 32)}` : ""
+      renderer.setTerminalTitle(`OC | Orchestrator${title}`)
       return
     }
 
@@ -427,6 +450,26 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       onSelect: () => {
         route.navigate({
           type: "home",
+        })
+        dialog.clear()
+      },
+    },
+    {
+      title: "Orchestrator view",
+      value: "session.orchestrator",
+      suggested: route.data.type === "session" && hasOrchestratorTasks(),
+      enabled: activeSessionID() !== undefined,
+      category: "Session",
+      slash: {
+        name: "orchestrator",
+        aliases: ["flow", "tasks"],
+      },
+      onSelect: (dialog) => {
+        const sessionID = activeRootSessionID()
+        if (!sessionID) return
+        route.navigate({
+          type: "orchestrator",
+          sessionID,
         })
         dialog.clear()
       },
@@ -757,7 +800,10 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
   })
 
   event.on("session.deleted", (evt) => {
-    if (route.data.type === "session" && route.data.sessionID === evt.properties.info.id) {
+    if (
+      (route.data.type === "session" || route.data.type === "orchestrator") &&
+      route.data.sessionID === evt.properties.info.id
+    ) {
       route.navigate({ type: "home" })
       toast.show({
         variant: "info",
@@ -858,6 +904,9 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
           </Match>
           <Match when={route.data.type === "session"}>
             <Session />
+          </Match>
+          <Match when={route.data.type === "orchestrator"}>
+            <OrchestratorView sessionID={activeSessionID() ?? ""} />
           </Match>
         </Switch>
       </Show>
