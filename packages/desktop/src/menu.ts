@@ -5,7 +5,7 @@ import { relaunch } from "@tauri-apps/plugin-process"
 import { commands } from "./bindings"
 import { installCli } from "./cli"
 import { initI18n, t } from "./i18n"
-import { runUpdater, UPDATER_ENABLED } from "./updater"
+import { UPDATER_ENABLED } from "./updater"
 
 export async function createMenu(trigger: (id: string) => void) {
   if (ostype() !== "macos") return
@@ -22,7 +22,7 @@ export async function createMenu(trigger: (id: string) => void) {
           }),
           await MenuItem.new({
             enabled: UPDATER_ENABLED,
-            action: () => runUpdater({ alertOnFail: true }),
+            action: () => trigger("app.checkUpdates"),
             text: t("desktop.menu.checkForUpdates"),
           }),
           await MenuItem.new({

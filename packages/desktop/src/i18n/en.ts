@@ -37,6 +37,8 @@ export const dict = {
     "Version {{version}} of CodePlane has been downloaded, would you like to install it and relaunch?",
   "desktop.updater.installFailed.title": "Update Failed",
   "desktop.updater.installFailed.message": "Failed to install update",
+  "desktop.updater.tokenRequired.title": "GitHub token required",
+  "desktop.updater.tokenRequired.message": "Set a GitHub token in Settings before checking for updates.",
 
   "desktop.cli.installed.title": "CLI Installed",
   "desktop.cli.installed.message": "CLI installed to {{path}}\n\nRestart your terminal to use the 'codeplane' command.",

@@ -55,6 +55,12 @@ export type Platform = {
   /** Install the downloaded update using the platform restart flow */
   updateAndRestart?(): Promise<void>
 
+  /** Whether a write-only GitHub token has been configured for desktop updates */
+  getUpdateGitHubTokenConfigured?(): Promise<boolean>
+
+  /** Persist a replacement GitHub token for desktop updates */
+  setUpdateGitHubToken?(token: string): Promise<void>
+
   /** Fetch override */
   fetch?: typeof fetch
 
