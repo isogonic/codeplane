@@ -9,9 +9,14 @@ import { useLanguage } from "@/context/language"
 import { useServer } from "@/context/server"
 import { CronClient, type CronRun, type CronRunStatus, type CronTask } from "@/utils/cron-client"
 import { decode64 } from "@/utils/base64"
-import { projectForDirectory } from "@/context/global-sync/utils"
 import { cronSidebarEntries } from "./sidebar-cron-helpers"
-import { cronProjectDirectories, cronTaskInScope, type CronProjectScope } from "../cron-scope"
+import {
+  cronProjectDirectories,
+  cronProjectForDirectory,
+  cronProjectIDForRoute,
+  cronTaskInScope,
+  type CronProjectScope,
+} from "../cron-scope"
 
 function formatTimestamp(ms: number): string {
   return new Date(ms).toLocaleTimeString([], {
@@ -57,15 +62,7 @@ export const CronSidebarPanel = (props: {
     const worktreeMatch = location.pathname.match(/^\/cron\/worktree\/([^/?#]+)/)
     if (worktreeMatch) {
       const dir = decode64(worktreeMatch[1])
-      const queryProject = all.find((p) => p.id === queryProjectID())
-      const found =
-        dir && queryProject && projectForDirectory(dir, [queryProject])?.id === queryProject.id
-          ? queryProject
-          : dir
-            ? projectForDirectory(dir, all)
-            : undefined
-      if (found) return { id: found.id, worktree: found.worktree, sandboxes: found.sandboxes }
-      if (dir) return { worktree: dir }
+      return cronProjectForDirectory(dir, all, queryProjectID())
     }
     const match = location.pathname.match(/^\/cron\/([^/?#]+)/)
     if (match) {
@@ -76,13 +73,11 @@ export const CronSidebarPanel = (props: {
     const sessionMatch = location.pathname.match(/^\/([^/]+)\/session\//)
     if (sessionMatch) {
       const dir = decode64(sessionMatch[1])
-      const direct = dir ? projectForDirectory(dir, all) : undefined
-      if (direct) return { id: direct.id, worktree: direct.worktree, sandboxes: direct.sandboxes }
-      if (dir) return { worktree: dir }
+      return cronProjectForDirectory(dir, all, queryProjectID())
     }
   }) as () => CronProjectScope | { id?: string; worktree?: string; sandboxes?: string[] } | undefined
 
-  const projectID = createMemo(() => resolvedProject()?.id)
+  const projectID = createMemo(() => cronProjectIDForRoute(resolvedProject() as CronProjectScope | undefined, queryProjectID()))
   const projectWorktree = createMemo(() => resolvedProject()?.worktree)
   const projectDirectories = createMemo(() => cronProjectDirectories(resolvedProject() as CronProjectScope | undefined))
   const projectSessions = createMemo(() => {
@@ -175,14 +170,27 @@ export const CronSidebarPanel = (props: {
 
   return (
     <div class="flex flex-col min-h-0 flex-1 py-2">
+      <Show when={onTasksPage() && projectWorktree()}>
+        {(worktree) => (
+          <div class="shrink-0 px-1">
+            <A
+              href={`/${base64Encode(worktree())}`}
+              class="block w-full rounded-md transition-colors hover:bg-surface-raised-base-hover"
+            >
+              <div class="flex items-center gap-2 px-2 py-2 min-w-0">
+                <Icon name="arrow-left" size="small" class="shrink-0 icon-strong-base" />
+                <span class="text-14-medium text-text-strong truncate">
+                  Back
+                </span>
+              </div>
+            </A>
+          </div>
+        )}
+      </Show>
       <div class="shrink-0 px-1">
         <A
           href={tasksHref()}
-          class="block w-full rounded-md transition-colors"
-          classList={{
-            "bg-surface-base-active": onTasksPage(),
-            "hover:bg-surface-raised-base-hover": !onTasksPage(),
-          }}
+          class="block w-full rounded-md transition-colors hover:bg-surface-raised-base-hover"
         >
           <div class="flex items-center gap-2 px-2 py-2 min-w-0">
             <Icon name="bell" size="small" class="shrink-0 icon-strong-base" />

@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test"
-import { cronProjectDirectories, cronTaskInScope } from "./cron-scope"
+import {
+  cronProjectDirectories,
+  cronProjectForDirectory,
+  cronProjectIDForRoute,
+  cronTaskInScope,
+} from "./cron-scope"
 
 describe("cron scope helpers", () => {
   test("deduplicates project worktree and sandboxes", () => {
@@ -32,5 +37,26 @@ describe("cron scope helpers", () => {
     expect(cronTaskInScope({ projectID: "project_1", directory: "/repo" }, { project })).toBe(true)
     expect(cronTaskInScope({ projectID: "project_1", directory: "/tmp/repo-sandbox" }, { project })).toBe(true)
     expect(cronTaskInScope({ projectID: "project_2", directory: "/other" }, { project })).toBe(false)
+  })
+
+  test("preserves the route project id while project metadata is still loading", () => {
+    expect(cronProjectForDirectory("/repo", [], "project_1")).toEqual({
+      id: "project_1",
+      worktree: "/repo",
+    })
+    expect(cronProjectIDForRoute({ worktree: "/repo" }, "project_1")).toBe("project_1")
+  })
+
+  test("prefers the matching project metadata over a route fallback", () => {
+    expect(
+      cronProjectForDirectory(
+        "/repo/packages/app",
+        [
+          { id: "project_1", worktree: "/repo" },
+          { id: "project_2", worktree: "/repo/packages/app" },
+        ],
+        "project_1",
+      ),
+    ).toEqual({ id: "project_1", worktree: "/repo" })
   })
 })

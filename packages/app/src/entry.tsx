@@ -104,7 +104,10 @@ const getCurrentUrl = () => {
   return location.origin
 }
 
+const isLocalDevHost = () => location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "::1"
+
 const getDefaultUrl = () => {
+  if (import.meta.env.DEV && isLocalDevHost()) return getCurrentUrl()
   const lsDefault = readDefaultServerUrl()
   if (lsDefault) return lsDefault
   return getCurrentUrl()
@@ -119,6 +122,7 @@ const platform: Platform = {
   restart,
   notify,
   getDefaultServer: async () => {
+    if (import.meta.env.DEV && isLocalDevHost()) return ServerConnection.Key.make(getCurrentUrl())
     const stored = readDefaultServerUrl()
     return stored ? ServerConnection.Key.make(stored) : null
   },

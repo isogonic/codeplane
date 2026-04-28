@@ -10,6 +10,32 @@ import { ProjectID } from "@/project/schema"
 import { zodObject } from "@/util/effect-zod"
 import { errors } from "../error"
 
+const ScheduleInput = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("cron"),
+    expression: z.string(),
+  }),
+  z.object({
+    kind: z.literal("interval"),
+    intervalMs: z.number(),
+  }),
+])
+
+const CreateInput = z.object({
+  projectID: ProjectID.zod.optional(),
+  directory: z.string().optional(),
+  name: z.string(),
+  description: z.string().optional(),
+  prompt: z.string(),
+  agent: z.string().optional(),
+  model: z.string().optional(),
+  schedule: ScheduleInput,
+  timezone: z.string().optional(),
+  status: Cron.Status.zod.optional(),
+  timeoutMs: z.number().optional(),
+  maxRetries: z.number().optional(),
+})
+
 export const CronRoutes = lazy(() =>
   new Hono()
     .get(
@@ -62,7 +88,7 @@ export const CronRoutes = lazy(() =>
           ...errors(400),
         },
       }),
-      validator("json", Cron.CreateInput.zod),
+      validator("json", CreateInput),
       async (c) => {
         const body = c.req.valid("json")
         const task = await AppRuntime.runPromise(Cron.Service.use((svc) => svc.create(body)))

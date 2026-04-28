@@ -30,8 +30,7 @@ import {
 import { base64Encode } from "@codeplane-ai/shared/util/encode"
 import { getFilename } from "@codeplane-ai/shared/util/path"
 import { decode64 } from "@/utils/base64"
-import { projectForDirectory } from "@/context/global-sync/utils"
-import { cronTaskInScope, type CronProjectScope } from "./cron-scope"
+import { cronProjectForDirectory, cronProjectIDForRoute, cronTaskInScope, type CronProjectScope } from "./cron-scope"
 
 const CRON_QUERY_KEY = ["cron", "tasks"] as const
 
@@ -90,18 +89,13 @@ export default function CronPage() {
   )
   const selectedDirectory = createMemo(() => decode64(params.dir))
   const queryProjectID = createMemo(() => new URLSearchParams(location.search).get("projectID") ?? undefined)
+  const routeProjectID = createMemo(() => params.projectID ?? queryProjectID())
   const selectedProject = createMemo<CronProject | undefined>(() => {
     const dir = selectedDirectory()
-    if (dir) {
-      const queryProject = projects().find((p) => p.id === queryProjectID())
-      if (queryProject && projectForDirectory(dir, [queryProject])?.id === queryProject.id) return queryProject
-      const match = projectForDirectory(dir, projects())
-      if (match) return match
-      return { worktree: dir }
-    }
-    return projects().find((p) => p.id === (params.projectID ?? queryProjectID()))
+    if (dir) return cronProjectForDirectory(dir, projects(), queryProjectID())
+    return projects().find((p) => p.id === routeProjectID())
   })
-  const selectedProjectID = createMemo(() => selectedProject()?.id ?? (selectedDirectory() ? undefined : params.projectID ?? queryProjectID()))
+  const selectedProjectID = createMemo(() => cronProjectIDForRoute(selectedProject(), routeProjectID()))
   const navigate = useNavigate()
 
   createEffect(() => {
