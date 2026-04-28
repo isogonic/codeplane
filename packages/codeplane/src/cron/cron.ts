@@ -3,6 +3,7 @@ import z from "zod"
 import { BusEvent } from "@/bus/bus-event"
 import { GlobalBus } from "@/bus/global"
 import { SessionID } from "@/session/schema"
+import { Project } from "@/project"
 import { ProjectID } from "@/project/schema"
 import { Log } from "@/util"
 import { NamedError } from "@codeplane-ai/shared/util/error"
@@ -313,6 +314,7 @@ function emit<D extends { type: string }>(def: D, properties: unknown, projectID
 export const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
+    const projects = yield* Project.Service
     const get = Effect.fn("Cron.get")(function* (taskID: CronTaskID) {
       const row = yield* db((d) => d.select().from(CronTaskTable).where(eq(CronTaskTable.id, taskID)).get())
       if (!row) throw new NotFoundError({ message: `Cron task not found: ${taskID}` })
@@ -340,12 +342,8 @@ export const layer = Layer.effect(
       return rows.map(taskFromRow)
     })
 
-    const create = Effect.fn("Cron.create")(function* (input: CreateInput) {
-      yield* Effect.sync(() => {
-        validateInput({ name: input.name, prompt: input.prompt })
-        validateSchedule(input.schedule)
-      })
-      const project = yield* db((d) => {
+    const resolveProject = Effect.fn("Cron.resolveProject")(function* (input: CreateInput) {
+      const row = yield* db((d) => {
         if (input.projectID) {
           return d
             .select({ id: ProjectTable.id, worktree: ProjectTable.worktree })
@@ -362,6 +360,21 @@ export const layer = Layer.effect(
         }
         return undefined
       })
+      if (row) return row
+      if (!input.directory) return undefined
+      const resolved = yield* projects.fromDirectory(input.directory)
+      return {
+        id: resolved.project.id,
+        worktree: resolved.project.worktree,
+      }
+    })
+
+    const create = Effect.fn("Cron.create")(function* (input: CreateInput) {
+      yield* Effect.sync(() => {
+        validateInput({ name: input.name, prompt: input.prompt })
+        validateSchedule(input.schedule)
+      })
+      const project = yield* resolveProject(input)
       if (!project) {
         throw new NotFoundError({
           message: `Project not found${input.directory ? ` for ${input.directory}` : ""}`,
@@ -683,6 +696,6 @@ export const layer = Layer.effect(
   }),
 )
 
-export const defaultLayer = layer
+export const defaultLayer = layer.pipe(Layer.provide(Project.defaultLayer))
 
 export * as Cron from "./cron"

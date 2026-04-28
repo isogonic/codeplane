@@ -1,64 +1,88 @@
 <p align="center">
   <a href="https://codeplane.ai">
     <picture>
-      <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: light)">
       <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: dark)">
-      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="CodePlane" width="140">
+      <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: light)">
+      <img src="packages/console/app/src/asset/logo-ornate-dark.svg" alt="CodePlane" width="140">
     </picture>
   </a>
 </p>
 
-<h3 align="center">The AI coding agent built for the terminal.</h3>
+<h1 align="center">CodePlane</h1>
+
+<p align="center">
+  <strong>The AI coding agent built for the terminal.</strong>
+</p>
 
 <p align="center">
   Open source · Provider-agnostic · LSP-native · Client/server architecture
 </p>
 
 <p align="center">
-  <a href="https://codeplane.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
-  <a href="https://www.npmjs.com/package/codeplane-ai"><img alt="npm" src="https://img.shields.io/npm/v/codeplane-ai?style=flat-square" /></a>
-  <a href="https://github.com/devinoldenburg/codeplane/actions/workflows/publish.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/devinoldenburg/codeplane/publish.yml?style=flat-square&branch=dev" /></a>
-  <a href="https://github.com/devinoldenburg/codeplane/blob/dev/LICENSE"><img alt="License" src="https://img.shields.io/github/license/devinoldenburg/codeplane?style=flat-square" /></a>
+  <a href="https://codeplane.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord&color=5865F2" /></a>
+  <a href="https://www.npmjs.com/package/codeplane-ai"><img alt="npm" src="https://img.shields.io/npm/v/codeplane-ai?style=flat-square&color=cb3837" /></a>
+  <a href="https://github.com/devinoldenburg/codeplane/actions/workflows/publish.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/devinoldenburg/codeplane/publish.yml?style=flat-square&branch=main" /></a>
+  <a href="https://github.com/devinoldenburg/codeplane/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/devinoldenburg/codeplane?style=flat-square" /></a>
+  <a href="https://github.com/devinoldenburg/codeplane/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/devinoldenburg/codeplane?style=flat-square" /></a>
+</p>
+
+<p align="center">
+  <a href="#-quick-start">Quick start</a> ·
+  <a href="#-installation">Install</a> ·
+  <a href="#-features">Features</a> ·
+  <a href="#-agents">Agents</a> ·
+  <a href="#-desktop-app">Desktop</a> ·
+  <a href="https://codeplane.ai/docs">Docs</a>
 </p>
 
 <br />
 
 ---
 
-## Overview
+## What is CodePlane?
 
-CodePlane is a fully open-source AI coding agent. It runs as a TUI in your terminal, a native desktop application, or a headless API server. Built on a client/server architecture, any frontend can connect to and drive it — including mobile.
+CodePlane is a fully open-source AI coding agent that lives in your terminal — and anywhere else you want it.
 
-This is a fork of [opencode](https://github.com/sst/opencode) by [SST](https://sst.dev).
+It runs as a TUI, a native desktop application, or a headless server. Because it ships with a client/server architecture, any frontend (terminal, desktop, web, mobile) can drive the same engine.
+
+> Forked from [opencode](https://github.com/sst/opencode) by [SST](https://sst.dev), with a focus on a polished desktop client, multi-session workflows, and first-class scheduling.
 
 ---
 
-## Installation
-
-### One-liner
+## ⚡ Quick start
 
 ```bash
+# 1. Install
 curl -fsSL https://codeplane.ai/install | bash
+
+# 2. Run it in any project
+cd ~/my-project
+codeplane
 ```
 
-### Package managers
+Press `Tab` to switch between the **build** and **plan** agents. Use `@general` in a prompt to delegate research to a subagent.
 
-```bash
-npm i -g codeplane-ai@latest       # npm / bun / pnpm / yarn
-brew install devinoldenburg/tap/codeplane  # macOS & Linux (recommended)
-brew install codeplane             # macOS & Linux (official formula)
-scoop install codeplane            # Windows
-choco install codeplane            # Windows
-sudo pacman -S codeplane           # Arch Linux (stable)
-paru -S codeplane-bin              # Arch Linux (latest, AUR)
-mise use -g codeplane              # mise
-nix run nixpkgs#codeplane          # Nix
-```
+---
+
+## 📦 Installation
+
+| Platform | Command |
+| :--- | :--- |
+| **Universal** | `curl -fsSL https://codeplane.ai/install \| bash` |
+| **npm / bun / pnpm / yarn** | `npm i -g codeplane-ai@latest` |
+| **Homebrew** _(macOS / Linux)_ | `brew install devinoldenburg/tap/codeplane` |
+| **Scoop** _(Windows)_ | `scoop install codeplane` |
+| **Chocolatey** _(Windows)_ | `choco install codeplane` |
+| **Arch Linux** | `sudo pacman -S codeplane` _(stable)_ · `paru -S codeplane-bin` _(latest)_ |
+| **mise** | `mise use -g codeplane` |
+| **Nix** | `nix run nixpkgs#codeplane` |
 
 > [!TIP]
-> Remove any version older than `0.1.x` before upgrading.
+> Upgrading from `0.1.x` or earlier? Remove the old binary first to avoid path conflicts.
 
-### Custom install directory
+<details>
+<summary><strong>Custom install directory</strong></summary>
+<br />
 
 The install script resolves the target path in this order:
 
@@ -71,83 +95,109 @@ The install script resolves the target path in this order:
 CODEPLANE_INSTALL_DIR=/usr/local/bin curl -fsSL https://codeplane.ai/install | bash
 ```
 
+</details>
+
 ---
 
-## Desktop App <sup>Beta</sup>
+## 🖥 Desktop App <sup>Beta</sup>
 
-Download from [codeplane.ai/download](https://codeplane.ai/download) or the [releases page](https://github.com/devinoldenburg/codeplane/releases).
+A native desktop client with multi-session, scheduling, and a sidebar for orchestration.
+
+Download from **[codeplane.ai/download](https://codeplane.ai/download)** or the [releases page](https://github.com/devinoldenburg/codeplane/releases).
 
 | Platform | Installer |
 | :--- | :--- |
 | macOS — Apple Silicon | `codeplane-desktop-darwin-aarch64.dmg` |
 | macOS — Intel | `codeplane-desktop-darwin-x64.dmg` |
 | Windows | `codeplane-desktop-windows-x64.exe` |
-| Linux | `.deb`, `.rpm`, or `.AppImage` |
+| Linux | `.deb`, `.rpm`, `.AppImage` |
 
 ```bash
-brew install --cask codeplane-desktop                          # macOS
+brew install --cask codeplane-desktop                              # macOS
 scoop bucket add extras && scoop install extras/codeplane-desktop  # Windows
 ```
 
 ---
 
-## Features
+## ✨ Features
 
-- **Provider-agnostic** — Anthropic, OpenAI, Google, Bedrock, Groq, Mistral, Azure, local models, and [75+ more via models.dev](https://models.dev). Log in with GitHub to use your Copilot subscription, or OpenAI to use ChatGPT Plus/Pro.
-- **LSP-native** — automatically loads the right language servers so the agent has accurate, real-time code context
-- **MCP support** — connect any [Model Context Protocol](https://modelcontextprotocol.io) server
-- **Multi-session** — run multiple agents in parallel on the same project
-- **Git worktrees** — isolate agent work in separate worktrees to avoid conflicts
-- **Snapshot & undo** — filesystem snapshots make every change fully reversible
-- **Skills** — drop Markdown instruction files into `.codeplane/skills/` to extend agent behavior per project
-- **Plugins** — build custom tools and integrations with the [`@codeplane-ai/plugin`](https://codeplane.ai/docs/plugins) SDK
-- **Session sharing** — share a link to any session for reference or debugging
-- **Client/server architecture** — the TUI is just one client; connect from the desktop app, a web UI, or mobile
+#### Provider-agnostic by design
+Anthropic, OpenAI, Google, Bedrock, Groq, Mistral, Azure, local models, and [75+ more via models.dev](https://models.dev). Sign in with GitHub for Copilot, OpenAI for ChatGPT Plus/Pro, or bring your own API key.
+
+#### Built for real codebases
+- 🧠 **LSP-native** — language servers boot automatically so the agent has accurate symbols, types, and diagnostics
+- 🔌 **MCP support** — connect any [Model Context Protocol](https://modelcontextprotocol.io) server
+- 🌳 **Git worktrees** — isolate parallel agent work without branch juggling
+- ⏪ **Snapshot & undo** — every filesystem change is reversible
+
+#### Designed for multi-session workflows
+- 🪟 **Multiple agents in parallel** on the same project
+- 🔗 **Session sharing** — generate a link for any conversation
+- ⏰ **Cron / schedules** — run agents on a cadence with full scope control
+- 📡 **Client/server** — the TUI is just one client; drive the same server from desktop, web, or mobile
+
+#### Extend without forking
+- 📝 **Skills** — drop Markdown into `.codeplane/skills/` to teach the agent project-specific workflows
+- 🧩 **Plugins** — build custom tools with the [`@codeplane-ai/plugin`](https://codeplane.ai/docs/plugins) SDK
 
 ---
 
-## Agents
+## 🤖 Agents
 
-Switch between built-in agents with `Tab`.
+Switch with `Tab`. The two built-in agents trade off speed for safety:
 
 | Agent | Access | Best for |
 | :--- | :--- | :--- |
-| **build** | Full — reads, writes, runs commands | Active development |
-| **plan** | Read-only — asks before running any command | Exploring unfamiliar codebases, planning changes |
+| **build** | Read, write, run commands | Active development |
+| **plan** | Read-only, asks before any command | Exploring unfamiliar code, planning changes |
 
-A **general** subagent is available for complex searches and multi-step research tasks. Invoke it explicitly with `@general` in any message.
+A **general** subagent handles complex search and multi-step research. Invoke it explicitly with `@general` in any message.
 
-→ [Agents documentation](https://codeplane.ai/docs/agents)
-
----
-
-## Documentation
-
-Full configuration reference, provider setup, MCP, skills, plugins, and API docs:
-
-**[codeplane.ai/docs](https://codeplane.ai/docs)**
+→ [Full agents reference](https://codeplane.ai/docs/agents)
 
 ---
 
-## Contributing
+## 📚 Documentation
 
-Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull request. The default branch is `dev`.
+Configuration, providers, MCP, skills, plugins, SDK, and the full HTTP API:
+
+### **[codeplane.ai/docs](https://codeplane.ai/docs)**
 
 ---
 
-## FAQ
+## 🛠 Contributing
+
+Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull request. The default branch is `main`.
+
+For security disclosures, see [SECURITY.md](./SECURITY.md).
+
+---
+
+## ❓ FAQ
 
 <details>
 <summary><strong>How is this different from Claude Code?</strong></summary>
 <br />
 
-The capabilities are comparable. The key differences:
+Capabilities are comparable. The differences:
 
 - **100% open source** (MIT)
-- **Not locked to any provider** — use Claude, OpenAI, Gemini, local models, or [CodePlane Zen](https://codeplane.ai/zen) (our curated, tested model list)
-- **Native LSP support** out of the box
-- **Terminal-first** — built by neovim users and the team behind [terminal.shop](https://terminal.shop); we push the limits of what's possible in the terminal
-- **Client/server architecture** — the TUI is just one possible frontend; run the server headlessly and connect from anywhere
+- **Not locked to a provider** — Claude, OpenAI, Gemini, local, or [CodePlane Zen](https://codeplane.ai/zen) (our curated, tested model list)
+- **Native LSP** out of the box
+- **Terminal-first** — built by neovim users and the team behind [terminal.shop](https://terminal.shop)
+- **Client/server** — run the server headlessly and connect from anywhere
+
+</details>
+
+<details>
+<summary><strong>How is this different from the upstream <a href="https://github.com/sst/opencode">opencode</a>?</strong></summary>
+<br />
+
+CodePlane stays close to upstream for the core agent loop, but ships:
+
+- A polished desktop client with multi-session orchestration
+- A first-class scheduling / cron surface for recurring agent runs
+- A different release cadence focused on the desktop + server experience
 
 </details>
 
@@ -162,7 +212,12 @@ Please add a note to your README clarifying that your project is not built by or
 ---
 
 <p align="center">
-  <a href="https://discord.gg/codeplane">Discord</a> &nbsp;·&nbsp;
+  <sub>Built with care · MIT licensed · A fork of <a href="https://github.com/sst/opencode">opencode</a></sub>
+</p>
+
+<p align="center">
+  <a href="https://codeplane.ai/discord">Discord</a> &nbsp;·&nbsp;
   <a href="https://x.com/codeplane">X.com</a> &nbsp;·&nbsp;
-  <a href="https://codeplane.ai/docs">Docs</a>
+  <a href="https://codeplane.ai/docs">Docs</a> &nbsp;·&nbsp;
+  <a href="https://github.com/devinoldenburg/codeplane/releases">Releases</a>
 </p>
