@@ -24,6 +24,7 @@ import {
   terminalInput,
   useSettings,
 } from "@/context/settings"
+import { useUpdateInstaller } from "@/hooks/use-update-installer"
 import { decode64 } from "@/utils/base64"
 import { playSoundById, SOUND_OPTIONS } from "@/utils/sound"
 import { Link } from "./link"
@@ -72,15 +73,20 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
   const language = useLanguage()
   const permission = usePermission()
   const platform = usePlatform()
+  const updater = useUpdateInstaller()
   const params = useParams()
   const settings = useSettings()
 
   onMount(() => {
     void theme.loadThemes()
+    void refreshGitHubToken()
   })
 
   const [store, setStore] = createStore({
     checking: false,
+    savingGitHubToken: false,
+    githubToken: "",
+    githubTokenConfigured: false,
   })
 
   const linux = createMemo(() => platform.platform === "desktop" && platform.os === "linux")
@@ -111,8 +117,48 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
   }
   const desktop = createMemo(() => platform.platform === "desktop")
 
+  async function refreshGitHubToken() {
+    const configured = await platform.getUpdateGitHubTokenConfigured?.()
+    setStore("githubTokenConfigured", configured ?? false)
+  }
+
+  const saveGitHubToken = () => {
+    if (!platform.setUpdateGitHubToken) return
+    const token = store.githubToken.trim()
+    if (!token) return
+
+    setStore("savingGitHubToken", true)
+    void platform
+      .setUpdateGitHubToken(token)
+      .then(() => {
+        setStore("githubToken", "")
+        setStore("githubTokenConfigured", true)
+        showToast({
+          variant: "success",
+          icon: "circle-check",
+          title: language.t("settings.updates.toast.tokenSaved.title"),
+          description: language.t("settings.updates.toast.tokenSaved.description"),
+        })
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err)
+        showToast({ title: language.t("common.requestFailed"), description: message })
+      })
+      .finally(() => setStore("savingGitHubToken", false))
+  }
+
   const check = () => {
     if (!platform.checkUpdate) return
+    if (!store.githubTokenConfigured) {
+      showToast({
+        variant: "error",
+        icon: "github",
+        title: language.t("settings.updates.toast.tokenRequired.title"),
+        description: language.t("settings.updates.toast.tokenRequired.description"),
+      })
+      return
+    }
+
     setStore("checking", true)
 
     void platform
@@ -128,32 +174,9 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
           return
         }
 
-        const actions = platform.updateAndRestart
-          ? [
-              {
-                label: language.t("toast.update.action.installRestart"),
-                onClick: async () => {
-                  await platform.updateAndRestart!()
-                },
-              },
-              {
-                label: language.t("toast.update.action.notYet"),
-                onClick: "dismiss" as const,
-              },
-            ]
-          : [
-              {
-                label: language.t("toast.update.action.notYet"),
-                onClick: "dismiss" as const,
-              },
-            ]
-
-        showToast({
-          persistent: true,
-          icon: "download",
-          title: language.t("toast.update.title"),
-          description: language.t("toast.update.description", { version: result.version ?? "" }),
-          actions,
+        void updater.installWhenIdle({ version: result.version }).catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : String(err)
+          showToast({ title: language.t("common.requestFailed"), description: message })
         })
       })
       .catch((err: unknown) => {
@@ -627,6 +650,44 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
       <h3 class="text-14-medium text-text-strong pb-2">{language.t("settings.general.section.updates")}</h3>
 
       <SettingsList>
+        <Show when={platform.setUpdateGitHubToken}>
+          <SettingsRow
+            title={language.t("settings.updates.row.githubToken.title")}
+            description={language.t("settings.updates.row.githubToken.description")}
+          >
+            <div class="flex w-full flex-col gap-2 sm:w-[360px] sm:flex-row sm:items-center">
+              <TextField
+                data-action="settings-updates-github-token"
+                label={language.t("settings.updates.row.githubToken.title")}
+                hideLabel
+                type="password"
+                value={store.githubToken}
+                onChange={(value) => setStore("githubToken", value)}
+                placeholder={
+                  store.githubTokenConfigured
+                    ? language.t("settings.updates.row.githubToken.placeholder.configured")
+                    : language.t("settings.updates.row.githubToken.placeholder.empty")
+                }
+                spellcheck={false}
+                autocorrect="off"
+                autocomplete="off"
+                autocapitalize="off"
+                class="text-12-regular"
+              />
+              <Button
+                size="small"
+                variant="secondary"
+                disabled={store.savingGitHubToken || !store.githubToken.trim()}
+                onClick={saveGitHubToken}
+              >
+                {store.savingGitHubToken
+                  ? language.t("settings.updates.action.savingToken")
+                  : language.t("settings.updates.action.saveToken")}
+              </Button>
+            </div>
+          </SettingsRow>
+        </Show>
+
         <SettingsRow
           title={language.t("settings.updates.row.startup.title")}
           description={language.t("settings.updates.row.startup.description")}
@@ -656,7 +717,12 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
           title={language.t("settings.updates.row.check.title")}
           description={language.t("settings.updates.row.check.description")}
         >
-          <Button size="small" variant="secondary" disabled={store.checking || !platform.checkUpdate} onClick={check}>
+          <Button
+            size="small"
+            variant="secondary"
+            disabled={store.checking || !platform.checkUpdate || !store.githubTokenConfigured}
+            onClick={check}
+          >
             {store.checking
               ? language.t("settings.updates.action.checking")
               : language.t("settings.updates.action.checkNow")}
