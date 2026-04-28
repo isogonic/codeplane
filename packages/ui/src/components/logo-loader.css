@@ -1,0 +1,26 @@
+[data-component="logo-loader"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-family-mono);
+  font-feature-settings: var(--font-family-mono--font-feature-settings);
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0;
+  color: var(--text-base);
+  height: 20px;
+  width: 12px;
+  user-select: none;
+}
+
+[data-component="logo-loader"] [data-slot="logo-loader-frame"] {
+  display: inline-block;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-component="logo-loader"] [data-slot="logo-loader-frame"] {
+    animation: none;
+  }
+}

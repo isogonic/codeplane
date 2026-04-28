@@ -15,6 +15,7 @@ import { Log } from "../../util"
 import { lazy } from "../../util/lazy"
 import { Config } from "../../config"
 import { errors } from "../error"
+import { CronRoutes } from "./cron"
 
 const log = Log.create({ service: "server" })
 
@@ -72,6 +73,7 @@ async function streamEvents(c: Context, subscribe: (q: AsyncQueue<string | null>
 
 export const GlobalRoutes = lazy(() =>
   new Hono()
+    .route("/cron", CronRoutes())
     .get(
       "/health",
       describeRoute({

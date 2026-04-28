@@ -10,7 +10,7 @@ import { useFileComponent } from "../context/file"
 
 import { Binary } from "@codeplane-ai/shared/util/binary"
 import { getDirectory, getFilename } from "@codeplane-ai/shared/util/path"
-import { createEffect, createMemo, createSignal, For, ParentProps, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, For, onCleanup, ParentProps, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Dynamic } from "solid-js/web"
 import {
@@ -27,6 +27,7 @@ import { StickyAccordionHeader } from "./sticky-accordion-header"
 import { DiffChanges } from "./diff-changes"
 import { Icon } from "./icon"
 import { TextShimmer } from "./text-shimmer"
+import { LogoLoader } from "./logo-loader"
 import { SessionRetry } from "./session-retry"
 import { TextReveal } from "./text-reveal"
 import { createAutoScroll } from "../hooks"
@@ -381,6 +382,109 @@ export function SessionTurn(
     return true
   })
 
+  const toolDisplayName = (toolName: string) => {
+    const key = `ui.tool.${toolName}`
+    const translated = i18n.t(key as Parameters<typeof i18n.t>[0])
+    if (translated && translated !== key) return translated
+    return toolName.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+  }
+
+  const turnTrace = createMemo<{
+    running: string[]
+    completedCount: number
+    lastCompleted?: string
+  }>(
+    () => {
+      const messages = assistantMessages()
+      const running: string[] = []
+      let completedCount = 0
+      let lastCompleted: string | undefined
+      let lastEnd = -Infinity
+
+      for (const message of messages) {
+        const list = data.store.part?.[message.id]
+        if (!list) continue
+        for (const part of list) {
+          if (part.type !== "tool") continue
+          if (hidden.has(part.tool)) continue
+          if (part.tool === "todowrite" || part.tool === "todoread") continue
+          const state = part.state as { status?: string; time?: { start?: number; end?: number } }
+          if (state.status === "running" || state.status === "pending") {
+            running.push(part.tool)
+            continue
+          }
+          if (state.status === "completed" || state.status === "error") {
+            completedCount++
+            const end = state.time?.end ?? 0
+            if (end >= lastEnd) {
+              lastEnd = end
+              lastCompleted = part.tool
+            }
+          }
+        }
+      }
+
+      return { running, completedCount, lastCompleted }
+    },
+    { running: [], completedCount: 0, lastCompleted: undefined },
+    {
+      equals: (a, b) =>
+        a.completedCount === b.completedCount &&
+        a.lastCompleted === b.lastCompleted &&
+        a.running.length === b.running.length &&
+        a.running.every((tool, i) => tool === b.running[i]),
+    },
+  )
+
+  const currentActivity = createMemo<{ kind: "running" | "recent"; label: string } | undefined>(() => {
+    if (!showThinking()) return undefined
+    const trace = turnTrace()
+    const last = trace.running.at(-1)
+    if (last) return { kind: "running", label: toolDisplayName(last) }
+    if (trace.lastCompleted) return { kind: "recent", label: toolDisplayName(trace.lastCompleted) }
+    return undefined
+  })
+
+  const stepCount = createMemo(() => turnTrace().completedCount + turnTrace().running.length)
+
+  const thinkingStart = createMemo<number | undefined>(() => {
+    if (!showThinking()) return undefined
+    const last = assistantMessages().at(-1)?.time.created
+    if (typeof last === "number") return last
+    const created = message()?.time.created
+    if (typeof created === "number") return created
+    return Date.now()
+  })
+
+  const [now, setNow] = createSignal(Date.now())
+  createEffect(() => {
+    if (!showThinking()) return
+    setNow(Date.now())
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    onCleanup(() => clearInterval(id))
+  })
+
+  const thinkingElapsedSec = createMemo(() => {
+    const start = thinkingStart()
+    if (start === undefined) return 0
+    return Math.max(0, Math.floor((now() - start) / 1000))
+  })
+
+  const formatElapsed = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return s === 0 ? `${m}m` : `${m}m ${s}s`
+  }
+
+  const thinkingElapsedLabel = createMemo(() => {
+    const seconds = thinkingElapsedSec()
+    if (seconds < 5) return ""
+    return formatElapsed(seconds)
+  })
+
+  const thinkingIsLong = createMemo(() => thinkingElapsedSec() >= 30)
+
   const autoScroll = createAutoScroll({
     working,
     onUserInteracted: props.onUserInteracted,
@@ -388,7 +492,7 @@ export function SessionTurn(
   })
 
   return (
-    <div data-component="session-turn" class={props.classes?.root}>
+    <div data-component="session-turn" data-active={active() ? "true" : undefined} class={props.classes?.root}>
       <div
         ref={autoScroll.scrollRef}
         onScroll={autoScroll.handleScroll}
@@ -434,9 +538,26 @@ export function SessionTurn(
                 </div>
               </Show>
               <Show when={showThinking()}>
-                <div data-slot="session-turn-thinking">
-                  <TextShimmer text={i18n.t("ui.sessionTurn.status.thinking")} />
-                  <Show when={!showReasoningSummaries()}>
+                <div data-slot="session-turn-thinking" data-long={thinkingIsLong() || undefined}>
+                  <LogoLoader />
+                  <Show when={currentActivity()} fallback={<TextShimmer text={i18n.t("ui.sessionTurn.status.thinking")} />}>
+                    {(activity) => (
+                      <span data-slot="session-turn-thinking-headline" data-kind={activity().kind}>
+                        <Show
+                          when={activity().kind === "running"}
+                          fallback={<TextShimmer text={i18n.t("ui.sessionTurn.status.thinking")} />}
+                        >
+                          <TextShimmer text={activity().label} />
+                        </Show>
+                      </span>
+                    )}
+                  </Show>
+                  <Show when={thinkingElapsedLabel()}>
+                    <span data-slot="session-turn-thinking-meta" aria-live="polite">
+                      <span data-slot="session-turn-thinking-elapsed">{thinkingElapsedLabel()}</span>
+                    </span>
+                  </Show>
+                  <Show when={!showReasoningSummaries() && !currentActivity()}>
                     <TextReveal
                       text={reasoningHeading()}
                       class="session-turn-thinking-heading"

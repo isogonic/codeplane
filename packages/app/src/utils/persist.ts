@@ -547,6 +547,17 @@ export function persisted<T>(
   const [state, setState, init] = makePersisted(store, { name: config.key, storage })
 
   const isAsync = init instanceof Promise
+  if (!isAsync) {
+    return [
+      state,
+      setState,
+      init,
+      Object.assign(() => true, {
+        promise: undefined,
+      }),
+    ]
+  }
+
   const [ready] = createResource(
     () => init,
     async (initValue) => {
@@ -561,7 +572,7 @@ export function persisted<T>(
     setState,
     init,
     Object.assign(() => (ready.loading ? false : ready.latest === true), {
-      promise: init instanceof Promise ? init : undefined,
+      promise: init,
     }),
   ]
 }

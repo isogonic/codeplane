@@ -19,6 +19,13 @@ import { sanitizeProject } from "./utils"
 
 const SKIP_PARTS = new Set(["patch", "step-start", "step-finish"])
 
+function fullyLoadedRootLimit(store: Store<State>, incoming: Session) {
+  if (incoming.parentID) return store.limit
+  const loadedRootCount = store.session.filter((session) => !session.parentID && !session.time?.archived).length
+  if (loadedRootCount !== store.sessionTotal) return store.limit
+  return Math.max(store.limit, loadedRootCount + 1)
+}
+
 export function applyGlobalEvent(input: {
   event: { type: string; properties?: unknown }
   project: Project[]
@@ -124,7 +131,10 @@ export function applyDirectoryEvent(input: {
       const next = input.store.session.slice()
       next.splice(result.index, 0, info)
       const preserve = cachedSessionIDs(input.store)
-      const trimmed = trimSessions(next, { limit: input.store.limit, permission: input.store.permission, preserve })
+      const limit = fullyLoadedRootLimit(input.store, info)
+      const trimmed = trimSessions(next, { limit, permission: input.store.permission, preserve })
+      const grewLimit = limit !== input.store.limit
+      if (grewLimit) input.setStore("limit", limit)
       input.setStore("session", reconcile(trimmed, { key: "id" }))
       cleanupDroppedSessionCaches(input.store, input.setStore, trimmed, input.setSessionTodo, preserve)
       if (!info.parentID) input.setStore("sessionTotal", (value) => value + 1)
@@ -154,9 +164,13 @@ export function applyDirectoryEvent(input: {
       const next = input.store.session.slice()
       next.splice(result.index, 0, info)
       const preserve = cachedSessionIDs(input.store)
-      const trimmed = trimSessions(next, { limit: input.store.limit, permission: input.store.permission, preserve })
+      const limit = fullyLoadedRootLimit(input.store, info)
+      const trimmed = trimSessions(next, { limit, permission: input.store.permission, preserve })
+      const grewLimit = limit !== input.store.limit
+      if (grewLimit) input.setStore("limit", limit)
       input.setStore("session", reconcile(trimmed, { key: "id" }))
       cleanupDroppedSessionCaches(input.store, input.setStore, trimmed, input.setSessionTodo, preserve)
+      if (!info.parentID && grewLimit) input.setStore("sessionTotal", (value) => value + 1)
       break
     }
     case "session.deleted": {

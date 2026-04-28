@@ -47,6 +47,9 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
 
     type Queued = { directory: string; payload: Event }
     const FLUSH_FRAME_MS = 16
+    const FLUSH_BURST_MS = 24
+    const BURST_THRESHOLD = 40
+    const BURST_WINDOW_MS = 100
     const STREAM_YIELD_MS = 8
     const RECONNECT_DELAY_MS = 250
 
@@ -56,6 +59,7 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
     const staleDeltas = new Set<string>()
     let timer: ReturnType<typeof setTimeout> | undefined
     let last = 0
+    const recentEvents: number[] = []
 
     const deltaKey = (directory: string, messageID: string, partID: string) => `${directory}:${messageID}:${partID}`
 
@@ -98,8 +102,13 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
 
     const schedule = () => {
       if (timer) return
-      const elapsed = Date.now() - last
-      timer = setTimeout(flush, Math.max(0, FLUSH_FRAME_MS - elapsed))
+      const now = Date.now()
+      recentEvents.push(now)
+      const cutoff = now - BURST_WINDOW_MS
+      while (recentEvents.length > 0 && recentEvents[0] < cutoff) recentEvents.shift()
+      const flushMs = recentEvents.length >= BURST_THRESHOLD ? FLUSH_BURST_MS : FLUSH_FRAME_MS
+      const elapsed = now - last
+      timer = setTimeout(flush, Math.max(0, flushMs - elapsed))
     }
 
     let streamErrorLogged = false

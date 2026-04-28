@@ -44,6 +44,42 @@
     }
   }
 
+  &[data-trigger-style="form"] {
+    width: 100%;
+
+    [data-slot="select-select-trigger"] {
+      width: 100%;
+      padding: 2px 12px;
+      height: 32px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-weak-base);
+      background-color: var(--input-base);
+      justify-content: space-between;
+      box-shadow: none;
+
+      [data-slot="select-select-trigger-value"] {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 14px;
+        font-weight: var(--font-weight-regular);
+        color: var(--text-strong);
+      }
+
+      &[data-expanded],
+      &:focus-visible {
+        border-color: transparent;
+        box-shadow:
+          0 0 0 3px var(--border-weak-selected),
+          0 0 0 1px var(--border-selected),
+          0 1px 2px -1px rgba(19, 16, 16, 0.25),
+          0 1px 2px 0 rgba(19, 16, 16, 0.08),
+          0 1px 3px 0 rgba(19, 16, 16, 0.12);
+        background-color: var(--input-base);
+      }
+    }
+  }
+
   &[data-trigger-style="settings"] {
     [data-slot="select-select-trigger"] {
       padding: 6px 6px 6px 12px;

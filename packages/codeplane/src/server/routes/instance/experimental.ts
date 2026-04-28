@@ -18,6 +18,7 @@ import { lazy } from "@/util/lazy"
 import { Effect, Option } from "effect"
 import { Agent } from "@/agent/agent"
 import { jsonRequest, runRequest } from "./trace"
+import { queryBoolean } from "@/server/query"
 
 const ConsoleOrgOption = z.object({
   accountID: z.string(),
@@ -346,7 +347,7 @@ export const ExperimentalRoutes = lazy(() =>
         "query",
         z.object({
           directory: z.string().optional().meta({ description: "Filter sessions by project directory" }),
-          roots: z.coerce.boolean().optional().meta({ description: "Only return root sessions (no parentID)" }),
+          roots: queryBoolean.optional().meta({ description: "Only return root sessions (no parentID)" }),
           start: z.coerce
             .number()
             .optional()
@@ -357,7 +358,7 @@ export const ExperimentalRoutes = lazy(() =>
             .meta({ description: "Return sessions updated before this timestamp (milliseconds since epoch)" }),
           search: z.string().optional().meta({ description: "Filter sessions by title (case-insensitive)" }),
           limit: z.coerce.number().optional().meta({ description: "Maximum number of sessions to return" }),
-          archived: z.coerce.boolean().optional().meta({ description: "Include archived sessions (default false)" }),
+          archived: queryBoolean.optional().meta({ description: "Include archived sessions (default false)" }),
         }),
       ),
       async (c) => {

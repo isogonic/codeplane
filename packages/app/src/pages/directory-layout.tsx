@@ -15,10 +15,30 @@ function DirectoryDataProvider(props: ParentProps<{ directory: string }>) {
   const params = useParams()
   const sync = useSync()
   const slug = createMemo(() => base64Encode(props.directory))
+  const sessionBase = createMemo(() =>
+    location.pathname.startsWith(`/cron/worktree/${slug()}`) ? `/cron/worktree/${slug()}` : `/${slug()}`,
+  )
+  const sessionSearch = createMemo(() => {
+    const current = new URLSearchParams(location.search)
+    const next = new URLSearchParams()
+    if (current.get("sidebar") === "cron") next.set("sidebar", "cron")
+    const projectID = current.get("projectID")
+    if (projectID) next.set("projectID", projectID)
+    const value = next.toString()
+    return value ? `?${value}` : ""
+  })
 
   createEffect(() => {
     const next = sync.data.path.directory
     if (!next || next === props.directory) return
+    const cronPrefix = `/cron/worktree/${slug()}`
+    if (location.pathname.startsWith(cronPrefix)) {
+      navigate(
+        `/cron/worktree/${base64Encode(next)}${location.pathname.slice(cronPrefix.length)}${location.search}${location.hash}`,
+        { replace: true },
+      )
+      return
+    }
     const path = location.pathname.slice(slug().length + 1)
     navigate(`/${base64Encode(next)}${path}${location.search}${location.hash}`, { replace: true })
   })
@@ -32,8 +52,8 @@ function DirectoryDataProvider(props: ParentProps<{ directory: string }>) {
     <DataProvider
       data={sync.data}
       directory={props.directory}
-      onNavigateToSession={(sessionID: string) => navigate(`/${slug()}/session/${sessionID}`)}
-      onSessionHref={(sessionID: string) => `/${slug()}/session/${sessionID}`}
+      onNavigateToSession={(sessionID: string) => navigate(`${sessionBase()}/session/${sessionID}${sessionSearch()}`)}
+      onSessionHref={(sessionID: string) => `${sessionBase()}/session/${sessionID}${sessionSearch()}`}
     >
       <LocalProvider>{props.children}</LocalProvider>
     </DataProvider>

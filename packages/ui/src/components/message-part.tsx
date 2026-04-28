@@ -1312,6 +1312,7 @@ export interface ToolProps {
   tool: string
   output?: string
   status?: string
+  startTime?: number
   hideDetails?: boolean
   defaultOpen?: boolean
   forceOpen?: boolean
@@ -1448,6 +1449,8 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
               // @ts-expect-error
               output={part().state.output}
               status={part().state.status}
+              // @ts-expect-error
+              startTime={part().state.time?.start}
               hideDetails={props.hideDetails}
               defaultOpen={props.defaultOpen}
             />
@@ -1955,6 +1958,7 @@ ToolRegistry.register({
       <BasicTool
         icon="task"
         status={props.status}
+        startTime={props.startTime}
         trigger={trigger()}
         hideDetails
         triggerHref={href()}
@@ -2468,6 +2472,6 @@ ToolRegistry.register({
       </div>
     )
 
-    return <BasicTool icon="brain" status={props.status} trigger={trigger()} hideDetails />
+    return <BasicTool icon="brain" status={props.status} startTime={props.startTime} trigger={trigger()} hideDetails />
   },
 })

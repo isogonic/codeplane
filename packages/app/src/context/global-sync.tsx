@@ -24,9 +24,8 @@ import { cachedSessionIDs } from "./global-sync/session-cache"
 import { clearSessionPrefetchDirectory } from "./global-sync/session-prefetch"
 import { estimateRootSessionTotal, loadRootSessionsWithFallback } from "./global-sync/session-load"
 import { trimSessions } from "./global-sync/session-trim"
-import { directoryContains, directoryKey } from "./global-sync/utils"
 import type { ProjectMeta } from "./global-sync/types"
-import { SESSION_RECENT_LIMIT } from "./global-sync/types"
+import { SESSION_ALL_LIMIT, SESSION_RECENT_LIMIT } from "./global-sync/types"
 import { formatServerError } from "@/utils/server-errors"
 import { diffs as listDiffs } from "@/utils/diffs"
 import { queryOptions, skipToken, useQueryClient } from "@tanstack/solid-query"
@@ -61,7 +60,6 @@ function createGlobalSync() {
   const booting = new Map<string, Promise<void>>()
   const sessionLoads = new Map<string, Promise<void>>()
   const diffLoads = new Map<string, Promise<void>>()
-  const sessionMeta = new Map<string, { limit: number }>()
 
   const [globalStore, setGlobalStore] = createStore<GlobalStore>({
     ready: false,
@@ -137,7 +135,6 @@ function createGlobalSync() {
     },
     onDispose: (directory) => {
       queue.clear(directory)
-      sessionMeta.delete(directory)
       sdkCache.delete(directory)
       clearProviderRev(scope.key, directory)
       clearSessionPrefetchDirectory(scope.key, directory)
@@ -156,29 +153,21 @@ function createGlobalSync() {
     return sdk
   }
 
-  async function loadSessions(directory: string) {
+  async function loadSessions(directory: string, options?: { all?: boolean; force?: boolean }) {
     const pending = sessionLoads.get(directory)
-    if (pending) return pending
+    if (pending && !options?.force && !options?.all) return pending
+    if (pending) await pending.catch(() => undefined)
 
     children.pin(directory)
     const [store, setStore] = children.child(directory, { bootstrap: false })
-    const meta = sessionMeta.get(directory)
-    if (meta && meta.limit >= store.limit) {
-      const preserve = cachedSessionIDs(store)
-      const next = trimSessions(store.session, {
-        limit: store.limit,
-        permission: store.permission,
-        preserve,
-      })
-      if (next.length !== store.session.length) {
-        setStore("session", reconcile(next, { key: "id" }))
-        cleanupDroppedSessionCaches(store, setStore, next, setSessionTodo, preserve)
-      }
-      children.unpin(directory)
-      return
+    if (options?.force || options?.all) {
+      await queryClient.invalidateQueries({ queryKey: loadSessionsQuery(directory, scope.key).queryKey })
     }
 
-    const fetchLimit = Math.max(store.limit + SESSION_RECENT_LIMIT, SESSION_RECENT_LIMIT)
+    const loadedRootCount = store.session.filter((session) => !session.parentID && !session.time?.archived).length
+    const fetchLimit = options?.all
+      ? SESSION_ALL_LIMIT
+      : Math.max(store.limit + SESSION_RECENT_LIMIT, SESSION_RECENT_LIMIT, loadedRootCount)
     const loadChildren = (
       parents: Session[],
       seen = new Set(parents.map((session) => session.id)),
@@ -188,7 +177,7 @@ function createGlobalSync() {
           retry(() => globalSDK.client.session.children({ directory, sessionID: parent.id }))
             .then((x) =>
               (x.data ?? [])
-                .filter((s): s is Session => !!s?.id && directoryContains(directory, s.directory))
+                .filter((s): s is Session => !!s?.id)
                 .filter((session) => !session.time?.archived)
                 .filter((session) => {
                   if (seen.has(session.id)) return false
@@ -207,39 +196,80 @@ function createGlobalSync() {
       .fetchQuery({
         ...loadSessionsQuery(directory, scope.key),
         queryFn: () =>
-          loadRootSessionsWithFallback({
-            directory,
-            limit: fetchLimit,
-            list: (query) => globalSDK.client.session.list(query),
-          })
+          (options?.all
+            ? globalSDK.client.session.list({ directory, limit: SESSION_ALL_LIMIT }).then((result) => ({
+                data: result.data,
+                includesChildren: true as const,
+                limit: SESSION_ALL_LIMIT,
+                limited: true,
+              }))
+            : loadRootSessionsWithFallback({
+                directory,
+                limit: fetchLimit,
+                list: (query) => globalSDK.client.session.list(query),
+              }).then((result) => ({
+                ...result,
+                includesChildren: false as const,
+              })))
             .then(async (x) => {
-              const key = directoryKey(directory)
-              const nonArchived = (x.data ?? []).filter(
-                (s): s is Session => !!s?.id && directoryContains(key, s.directory) && !s.time?.archived,
+              const listed = (x.data ?? []).filter(
+                (s): s is Session => !!s?.id && !s.time?.archived,
               )
-              const loadedChildren = await loadChildren(nonArchived)
-              const currentLimit = store.limit
+              const nonArchived = x.includesChildren ? listed.filter((s) => !s.parentID) : listed
+              const existingRoots =
+                !options?.all && x.limit !== undefined && nonArchived.length >= x.limit
+                  ? store.session.filter((s) => !s.parentID && !s.time?.archived)
+                  : []
+              const rootSessions = [...nonArchived, ...existingRoots].filter(
+                (session, index, list) => list.findIndex((item) => item.id === session.id) === index,
+              )
               const preserve = cachedSessionIDs(store)
               const preservedSessions = store.session.filter((s) => preserve.has(s.id))
-              const childSessions = store.session.filter((s) => !!s.parentID && directoryKey(s.directory) === key)
-              const sessions = trimSessions([...nonArchived, ...childSessions, ...loadedChildren, ...preservedSessions], {
-                limit: currentLimit,
-                permission: store.permission,
-                preserve,
-              })
-              batch(() => {
-                setStore(
-                  "sessionTotal",
-                  estimateRootSessionTotal({
-                    count: nonArchived.length,
-                    limit: x.limit,
-                    limited: x.limited,
-                  }),
+              const childSessions = store.session.filter((s) => !!s.parentID)
+              if (x.includesChildren) {
+                const sessions = [...listed, ...preservedSessions].filter(
+                  (session, index, list) => list.findIndex((item) => item.id === session.id) === index,
                 )
-                setStore("session", reconcile(sessions, { key: "id" }))
-                cleanupDroppedSessionCaches(store, setStore, sessions, setSessionTodo, preserve)
-              })
-              sessionMeta.set(directory, { limit: currentLimit })
+                batch(() => {
+                  setStore("sessionTotal", rootSessions.length)
+                  setStore("limit", rootSessions.length)
+                  setStore("session", reconcile(sessions, { key: "id" }))
+                  cleanupDroppedSessionCaches(store, setStore, sessions, setSessionTodo, preserve)
+                })
+                return
+              }
+              const sessionLimit = store.limit
+              const applySessions = (loadedChildren: Session[]) => {
+                const loadedChildIDs = new Set(loadedChildren.map((session) => session.id))
+                const sessions = trimSessions(
+                  [
+                    ...rootSessions,
+                    ...childSessions.filter((session) => !loadedChildIDs.has(session.id)),
+                    ...loadedChildren,
+                    ...preservedSessions,
+                  ],
+                  {
+                    limit: sessionLimit,
+                    permission: store.permission,
+                    preserve,
+                  },
+                )
+                batch(() => {
+                  setStore(
+                    "sessionTotal",
+                    estimateRootSessionTotal({
+                      count: nonArchived.length,
+                      limit: x.limit,
+                      limited: x.limited,
+                    }),
+                  )
+                  if (options?.all) setStore("limit", sessionLimit)
+                  setStore("session", reconcile(sessions, { key: "id" }))
+                  cleanupDroppedSessionCaches(store, setStore, sessions, setSessionTodo, preserve)
+                })
+              }
+              applySessions([])
+              applySessions(await loadChildren(rootSessions))
             })
             .catch((err) => {
               console.error("Failed to load sessions", err)

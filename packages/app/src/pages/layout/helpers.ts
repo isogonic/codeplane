@@ -23,13 +23,22 @@ function sortSessions(now: number) {
   }
 }
 
-const isRootVisibleSession = (session: Session, directory: string) =>
-  directoryContains(directory, session.directory) && !session.parentID && !session.time?.archived
+const sessionInDirectory = (session: Session, directory: string) => directoryContains(directory, session.directory)
 
-export const roots = (store: SessionStore) =>
-  (store.session ?? []).filter((session) => isRootVisibleSession(session, store.path.directory))
+const isRootVisibleSession = (session: Session, directories: string[]) =>
+  directories.some((directory) => sessionInDirectory(session, directory)) &&
+  !session.parentID &&
+  !session.time?.archived
 
-export const sortedRootSessions = (store: SessionStore, now: number) => roots(store).sort(sortSessions(now))
+export const roots = (store: SessionStore, directory?: string) => {
+  const directories = [directory, store.path.directory]
+    .filter((value): value is string => !!value)
+    .filter((value, index, list) => list.findIndex((item) => directoryKey(item) === directoryKey(value)) === index)
+  return (store.session ?? []).filter((session) => isRootVisibleSession(session, directories))
+}
+
+export const sortedRootSessions = (store: SessionStore, now: number, directory?: string) =>
+  roots(store, directory).sort(sortSessions(now))
 
 export const childSessions = (sessions: Session[] | undefined, parentID: string, now: number) =>
   (sessions ?? [])
@@ -37,7 +46,7 @@ export const childSessions = (sessions: Session[] | undefined, parentID: string,
     .sort(sortSessions(now))
 
 export const latestRootSession = (stores: SessionStore[], now: number) =>
-  stores.flatMap(roots).sort(sortSessions(now))[0]
+  stores.flatMap((store) => roots(store)).sort(sortSessions(now))[0]
 
 export function hasProjectPermissions<T>(
   request: Record<string, T[] | undefined> | undefined,

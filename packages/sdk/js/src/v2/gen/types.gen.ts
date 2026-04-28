@@ -4,6 +4,82 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}` | (string & {})
 }
 
+export type CronSchedule =
+  | {
+      kind: "cron"
+      /**
+       * Standard 5-field cron expression
+       */
+      expression: string
+    }
+  | {
+      kind: "interval"
+      /**
+       * Run repeatedly every N milliseconds (>= 60000)
+       */
+      intervalMs: number
+    }
+
+export type CronStatus = "active" | "paused" | "disabled"
+
+export type CronRunStatus = "queued" | "running" | "success" | "failed" | "timeout" | "cancelled"
+
+export type CronTask = {
+  id: string
+  projectID: string
+  directory: string
+  name: string
+  description?: string
+  prompt: string
+  agent?: string
+  model?: string
+  schedule: CronSchedule
+  timezone?: string
+  status: CronStatus
+  timeoutMs?: number
+  maxRetries?: number
+  lastRunID?: string
+  lastRunAt?: number
+  lastRunStatus?: CronRunStatus
+  lastError?: string
+  nextRunAt?: number
+  time: {
+    created: number
+    updated: number
+  }
+}
+
+export type BadRequestError = {
+  data: unknown
+  errors: Array<{
+    [key: string]: unknown
+  }>
+  success: false
+}
+
+export type NotFoundError = {
+  name: "NotFoundError"
+  data: {
+    message: string
+  }
+}
+
+export type CronRun = {
+  id: string
+  taskID: string
+  sessionID?: string
+  status: CronRunStatus
+  attempt: number
+  timeStarted?: number
+  timeCompleted?: number
+  errorMessage?: string
+  logs?: string
+  time: {
+    created: number
+    updated: number
+  }
+}
+
 export type Project = {
   id: string
   worktree: string
@@ -506,6 +582,34 @@ export type EventPtyDeleted = {
   }
 }
 
+export type EventCronTaskCreated = {
+  type: "cron.task.created"
+  properties: CronTask
+}
+
+export type EventCronTaskUpdated = {
+  type: "cron.task.updated"
+  properties: CronTask
+}
+
+export type EventCronTaskDeleted = {
+  type: "cron.task.deleted"
+  properties: {
+    taskID: string
+    projectID: string
+  }
+}
+
+export type EventCronRunCreated = {
+  type: "cron.run.created"
+  properties: CronRun
+}
+
+export type EventCronRunUpdated = {
+  type: "cron.run.updated"
+  properties: CronRun
+}
+
 export type EventWorkspaceReady = {
   type: "workspace.ready"
   properties: {
@@ -961,6 +1065,7 @@ export type Session = {
     snapshot?: string
     diff?: string
   }
+  cronRunID?: string
 }
 
 export type EventSessionCreated = {
@@ -1348,6 +1453,7 @@ export type SyncEventSessionUpdated = {
         snapshot?: string
         diff?: string
       } | null
+      cronRunID?: string | null
     }
   }
 }
@@ -1703,6 +1809,11 @@ export type GlobalEvent = {
     | EventPtyUpdated
     | EventPtyExited
     | EventPtyDeleted
+    | EventCronTaskCreated
+    | EventCronTaskUpdated
+    | EventCronTaskDeleted
+    | EventCronRunCreated
+    | EventCronRunUpdated
     | EventWorkspaceReady
     | EventWorkspaceFailed
     | EventWorkspaceRestore
@@ -2291,14 +2402,6 @@ export type Config = {
   }
 }
 
-export type BadRequestError = {
-  data: unknown
-  errors: Array<{
-    [key: string]: unknown
-  }>
-  success: false
-}
-
 export type OAuth = {
   type: "oauth"
   refresh: string
@@ -2332,13 +2435,6 @@ export type Workspace = {
   directory: string | null
   extra: unknown | null
   projectID: string
-}
-
-export type NotFoundError = {
-  name: "NotFoundError"
-  data: {
-    message: string
-  }
 }
 
 export type Model = {
@@ -2501,6 +2597,7 @@ export type GlobalSession = {
     snapshot?: string
     diff?: string
   }
+  cronRunID?: string
   project: ProjectSummary | null
 }
 
@@ -2682,6 +2779,11 @@ export type Event =
   | EventPtyUpdated
   | EventPtyExited
   | EventPtyDeleted
+  | EventCronTaskCreated
+  | EventCronTaskUpdated
+  | EventCronTaskDeleted
+  | EventCronRunCreated
+  | EventCronRunUpdated
   | EventWorkspaceReady
   | EventWorkspaceFailed
   | EventWorkspaceRestore
@@ -2808,6 +2910,302 @@ export type FormatterStatus = {
   extensions: Array<string>
   enabled: boolean
 }
+
+export type CronListData = {
+  body?: never
+  path?: never
+  query?: {
+    projectID?: string
+    directory?: string
+  }
+  url: "/global/cron"
+}
+
+export type CronListResponses = {
+  /**
+   * Cron tasks
+   */
+  200: Array<CronTask>
+}
+
+export type CronListResponse = CronListResponses[keyof CronListResponses]
+
+export type CronCreateData = {
+  body?: {
+    projectID?: string
+    directory?: string
+    name: string
+    description?: string
+    prompt: string
+    agent?: string
+    model?: string
+    schedule: CronSchedule
+    timezone?: string
+    status?: CronStatus
+    timeoutMs?: number
+    maxRetries?: number
+  }
+  path?: never
+  query?: never
+  url: "/global/cron"
+}
+
+export type CronCreateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type CronCreateError = CronCreateErrors[keyof CronCreateErrors]
+
+export type CronCreateResponses = {
+  /**
+   * Created cron task
+   */
+  200: CronTask
+}
+
+export type CronCreateResponse = CronCreateResponses[keyof CronCreateResponses]
+
+export type CronDeleteData = {
+  body?: never
+  path: {
+    taskID: string
+  }
+  query?: never
+  url: "/global/cron/{taskID}"
+}
+
+export type CronDeleteErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type CronDeleteError = CronDeleteErrors[keyof CronDeleteErrors]
+
+export type CronDeleteResponses = {
+  /**
+   * Deleted
+   */
+  200: boolean
+}
+
+export type CronDeleteResponse = CronDeleteResponses[keyof CronDeleteResponses]
+
+export type CronGetData = {
+  body?: never
+  path: {
+    taskID: string
+  }
+  query?: never
+  url: "/global/cron/{taskID}"
+}
+
+export type CronGetErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type CronGetError = CronGetErrors[keyof CronGetErrors]
+
+export type CronGetResponses = {
+  /**
+   * Cron task
+   */
+  200: CronTask
+}
+
+export type CronGetResponse = CronGetResponses[keyof CronGetResponses]
+
+export type CronUpdateData = {
+  body?: {
+    name?: string
+    description?: string | null
+    prompt?: string
+    agent?: string | null
+    model?: string | null
+    schedule?: CronSchedule
+    timezone?: string | null
+    status?: CronStatus
+    timeoutMs?: number | null
+    maxRetries?: number | null
+  }
+  path: {
+    taskID: string
+  }
+  query?: never
+  url: "/global/cron/{taskID}"
+}
+
+export type CronUpdateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type CronUpdateError = CronUpdateErrors[keyof CronUpdateErrors]
+
+export type CronUpdateResponses = {
+  /**
+   * Updated cron task
+   */
+  200: CronTask
+}
+
+export type CronUpdateResponse = CronUpdateResponses[keyof CronUpdateResponses]
+
+export type CronSetStatusData = {
+  body?: {
+    status: CronStatus
+  }
+  path: {
+    taskID: string
+  }
+  query?: never
+  url: "/global/cron/{taskID}/status"
+}
+
+export type CronSetStatusErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type CronSetStatusError = CronSetStatusErrors[keyof CronSetStatusErrors]
+
+export type CronSetStatusResponses = {
+  /**
+   * Updated cron task
+   */
+  200: CronTask
+}
+
+export type CronSetStatusResponse = CronSetStatusResponses[keyof CronSetStatusResponses]
+
+export type CronTriggerData = {
+  body?: never
+  path: {
+    taskID: string
+  }
+  query?: never
+  url: "/global/cron/{taskID}/trigger"
+}
+
+export type CronTriggerErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type CronTriggerError = CronTriggerErrors[keyof CronTriggerErrors]
+
+export type CronTriggerResponses = {
+  /**
+   * Queued run
+   */
+  200: CronRun
+}
+
+export type CronTriggerResponse = CronTriggerResponses[keyof CronTriggerResponses]
+
+export type CronRunsListData = {
+  body?: never
+  path: {
+    taskID: string
+  }
+  query?: {
+    limit?: number
+  }
+  url: "/global/cron/{taskID}/runs"
+}
+
+export type CronRunsListErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type CronRunsListError = CronRunsListErrors[keyof CronRunsListErrors]
+
+export type CronRunsListResponses = {
+  /**
+   * Cron runs
+   */
+  200: Array<CronRun>
+}
+
+export type CronRunsListResponse = CronRunsListResponses[keyof CronRunsListResponses]
+
+export type CronRunsGetData = {
+  body?: never
+  path: {
+    runID: string
+  }
+  query?: never
+  url: "/global/cron/runs/{runID}"
+}
+
+export type CronRunsGetErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type CronRunsGetError = CronRunsGetErrors[keyof CronRunsGetErrors]
+
+export type CronRunsGetResponses = {
+  /**
+   * Cron run
+   */
+  200: CronRun
+}
+
+export type CronRunsGetResponse = CronRunsGetResponses[keyof CronRunsGetResponses]
+
+export type CronRunsCancelData = {
+  body?: never
+  path: {
+    runID: string
+  }
+  query?: never
+  url: "/global/cron/runs/{runID}/cancel"
+}
+
+export type CronRunsCancelErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type CronRunsCancelError = CronRunsCancelErrors[keyof CronRunsCancelErrors]
+
+export type CronRunsCancelResponses = {
+  /**
+   * Cancelled
+   */
+  200: boolean
+}
+
+export type CronRunsCancelResponse = CronRunsCancelResponses[keyof CronRunsCancelResponses]
 
 export type GlobalHealthData = {
   body?: never
@@ -3911,6 +4309,7 @@ export type SessionCreateData = {
     title?: string
     permission?: PermissionRuleset
     workspaceID?: string
+    cronRunID?: string
   }
   path?: never
   query?: {

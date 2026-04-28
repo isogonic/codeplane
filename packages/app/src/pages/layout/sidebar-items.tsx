@@ -179,8 +179,20 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
       providers.all().find((provider) => provider.id === data.providerID)?.models[data.modelID]?.name ?? data.modelID
     )
   })
+  const meta = createMemo(() => {
+    const data = preview()
+    const items: string[] = []
+    if (data.modelID) items.push(modelLabel())
+    if (typeof data.cost === "number" && data.cost > 0) {
+      items.push(formatSessionPreviewCost(data.cost, language.intl()))
+    }
+    if (typeof data.duration === "number" && data.duration > 0) {
+      items.push(formatSessionPreviewDuration(data.duration, language.intl()))
+    }
+    return items
+  })
   const previewValue = () => (
-    <div class="w-72 flex flex-col gap-2">
+    <div class="w-72 flex flex-col gap-1.5">
       <div class="text-12-medium text-text-invert-strong truncate">{sessionTitle(props.session.title)}</div>
       <Show
         when={!preview().loading}
@@ -196,7 +208,7 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
         >
           {(prompt) => (
             <div
-              class="text-12-regular text-text-invert-strong whitespace-pre-wrap break-words overflow-hidden"
+              class="text-12-regular text-text-invert-base whitespace-pre-wrap break-words overflow-hidden"
               style={{
                 display: "-webkit-box",
                 "-webkit-line-clamp": "3",
@@ -207,18 +219,20 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
             </div>
           )}
         </Show>
-        <div class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-12-regular">
-          <div class="text-text-invert-base">{language.t("context.stats.model")}</div>
-          <div class="text-text-invert-strong truncate text-right">{modelLabel()}</div>
-          <div class="text-text-invert-base">{language.t("context.usage.cost")}</div>
-          <div class="text-text-invert-strong truncate text-right">
-            {formatSessionPreviewCost(preview().cost, language.intl())}
+        <Show when={meta().length > 0}>
+          <div class="flex items-center gap-1.5 text-12-regular text-text-invert-base min-w-0">
+            <For each={meta()}>
+              {(item, i) => (
+                <>
+                  <Show when={i() > 0}>
+                    <span class="shrink-0 opacity-60">·</span>
+                  </Show>
+                  <span classList={{ "truncate min-w-0": i() === 0, "shrink-0": i() !== 0 }}>{item}</span>
+                </>
+              )}
+            </For>
           </div>
-          <div class="text-text-invert-base">{language.t("sidebar.sessionPreview.duration")}</div>
-          <div class="text-text-invert-strong truncate text-right">
-            {formatSessionPreviewDuration(preview().duration, language.intl())}
-          </div>
-        </div>
+        </Show>
       </Show>
     </div>
   )

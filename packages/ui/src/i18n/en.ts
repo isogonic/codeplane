@@ -126,6 +126,8 @@ export const dict: Record<string, string> = {
   "ui.common.file.other": "files",
   "ui.common.question.one": "question",
   "ui.common.question.other": "questions",
+  "ui.common.step.one": "step",
+  "ui.common.step.other": "steps",
 
   "ui.common.add": "Add",
   "ui.common.back": "Back",

@@ -17,6 +17,7 @@ describe("createChildStoreManager", () => {
 
     const manager = createChildStoreManager({
       owner,
+      scope: () => ({ key: "test" }),
       isBooting: () => false,
       isLoadingSessions: () => false,
       onBootstrap() {},

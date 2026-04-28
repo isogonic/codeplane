@@ -48,7 +48,7 @@
     align-items: center;
     justify-content: flex-start;
     gap: 8px;
-    margin-top: 12px;
+    margin-top: 24px;
     width: 100%;
     min-width: 0;
     text-align: left;
@@ -62,6 +62,53 @@
     [data-component="spinner"] {
       width: 16px;
       height: 16px;
+    }
+  }
+
+  [data-slot="session-turn-thinking-headline"] {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    animation: session-turn-thinking-elapsed-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  [data-slot="session-turn-thinking-headline"][data-kind="running"] {
+    color: var(--text-strong);
+  }
+
+  [data-slot="session-turn-thinking-meta"] {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-weaker);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-regular);
+    font-variant-numeric: tabular-nums;
+    line-height: 20px;
+    user-select: none;
+    animation: session-turn-thinking-elapsed-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  [data-slot="session-turn-thinking"][data-long] [data-slot="session-turn-thinking-meta"] {
+    color: var(--text-weak);
+  }
+
+  [data-slot="session-turn-thinking-elapsed"] {
+    flex: 0 0 auto;
+  }
+
+  @keyframes session-turn-thinking-elapsed-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
     }
   }
 

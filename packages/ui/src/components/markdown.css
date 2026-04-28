@@ -379,3 +379,31 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+[data-component="markdown"] [data-md-word] {
+  display: inline-block;
+  animation: markdown-word-blur-in 320ms ease-out both;
+  will-change: filter, opacity, transform;
+}
+
+@keyframes markdown-word-blur-in {
+  0% {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(2px);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-component="markdown"] [data-md-word] {
+    animation: none;
+  }
+}

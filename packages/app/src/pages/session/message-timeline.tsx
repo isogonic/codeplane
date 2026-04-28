@@ -304,7 +304,8 @@ export function MessageTimeline(props: {
     if (!id) return
     return sync.session.get(id)
   })
-  const archived = createMemo(() => !!info()?.time.archived)
+  const isCronSession = createMemo(() => !!(info() as { cronRunID?: string } | undefined)?.cronRunID)
+  const archived = createMemo(() => !!info()?.time.archived || isCronSession())
   const titleValue = createMemo(() => info()?.title)
   const titleLabel = createMemo(() => sessionTitle(titleValue()))
   const shareUrl = createMemo(() => info()?.share?.url)
@@ -337,7 +338,7 @@ export function MessageTimeline(props: {
     return language.t("command.session.new")
   })
   const showHeader = createMemo(() => !!(titleValue() || parentID()))
-  const stageCfg = { init: 1, batch: 3 }
+  const stageCfg = { init: 6, batch: 12 }
   const staging = createTimelineStaging({
     sessionKey,
     turnStart: () => props.turnStart,
@@ -911,8 +912,8 @@ export function MessageTimeline(props: {
                                   </DropdownMenu.Item>
                                 </Show>
                                 <DropdownMenu.Item onSelect={() => copySessionID(id)}>
-                                  <DropdownMenu.ItemLabel>Copy session ID</DropdownMenu.ItemLabel>
-                                </DropdownMenu.Item>
+                                   <DropdownMenu.ItemLabel>{language.t("session.copyId")}</DropdownMenu.ItemLabel>
+                                 </DropdownMenu.Item>
                                 <Show when={!archived()}>
                                   <DropdownMenu.Separator />
                                   <DropdownMenu.Item

@@ -3,112 +3,168 @@
     <picture>
       <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: light)">
       <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: dark)">
-      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="CodePlane logo">
+      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="CodePlane" width="240">
     </picture>
   </a>
 </p>
-<p align="center">The open source AI coding agent.</p>
+
+<h3 align="center">The AI coding agent built for the terminal.</h3>
+
+<p align="center">
+  Open source · Provider-agnostic · LSP-native · Client/server architecture
+</p>
+
 <p align="center">
   <a href="https://codeplane.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
   <a href="https://www.npmjs.com/package/codeplane-ai"><img alt="npm" src="https://img.shields.io/npm/v/codeplane-ai?style=flat-square" /></a>
-  <a href="https://github.com/devinoldenburg/codeplane/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/devinoldenburg/codeplane/publish.yml?style=flat-square&branch=dev" /></a>
+  <a href="https://github.com/devinoldenburg/codeplane/actions/workflows/publish.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/devinoldenburg/codeplane/publish.yml?style=flat-square&branch=dev" /></a>
+  <a href="https://github.com/devinoldenburg/codeplane/blob/dev/LICENSE"><img alt="License" src="https://img.shields.io/github/license/devinoldenburg/codeplane?style=flat-square" /></a>
 </p>
+
+<br />
+
+[![CodePlane Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://codeplane.ai)
 
 ---
 
-### Installation
+## Overview
+
+CodePlane is a fully open-source AI coding agent. It runs as a TUI in your terminal, a native desktop application, or a headless API server. Built on a client/server architecture, any frontend can connect to and drive it — including mobile.
+
+This is a fork of [opencode](https://github.com/sst/opencode) by [SST](https://sst.dev).
+
+---
+
+## Installation
+
+### One-liner
 
 ```bash
-# YOLO
 curl -fsSL https://codeplane.ai/install | bash
+```
 
-# Package managers
-npm i -g codeplane-ai@latest        # or bun/pnpm/yarn
-scoop install codeplane             # Windows
-choco install codeplane             # Windows
-brew install devinoldenburg/tap/codeplane # macOS and Linux (recommended, always up to date)
-brew install codeplane              # macOS and Linux (official brew formula, updated less)
-sudo pacman -S codeplane            # Arch Linux (Stable)
-paru -S codeplane-bin               # Arch Linux (Latest from AUR)
-mise use -g codeplane               # Any OS
-nix run nixpkgs#codeplane           # or github:devinoldenburg/codeplane for latest dev branch
+### Package managers
+
+```bash
+npm i -g codeplane-ai@latest       # npm / bun / pnpm / yarn
+brew install devinoldenburg/tap/codeplane  # macOS & Linux (recommended)
+brew install codeplane             # macOS & Linux (official formula)
+scoop install codeplane            # Windows
+choco install codeplane            # Windows
+sudo pacman -S codeplane           # Arch Linux (stable)
+paru -S codeplane-bin              # Arch Linux (latest, AUR)
+mise use -g codeplane              # mise
+nix run nixpkgs#codeplane          # Nix
 ```
 
 > [!TIP]
-> Remove versions older than 0.1.x before installing.
+> Remove any version older than `0.1.x` before upgrading.
 
-### Desktop App (BETA)
+### Custom install directory
 
-CodePlane is also available as a desktop application. Download directly from the [releases page](https://github.com/devinoldenburg/codeplane/releases) or [codeplane.ai/download](https://codeplane.ai/download).
+The install script resolves the target path in this order:
 
-| Platform              | Download                              |
-| --------------------- | ------------------------------------- |
-| macOS (Apple Silicon) | `codeplane-desktop-darwin-aarch64.dmg` |
-| macOS (Intel)         | `codeplane-desktop-darwin-x64.dmg`     |
-| Windows               | `codeplane-desktop-windows-x64.exe`    |
-| Linux                 | `.deb`, `.rpm`, or AppImage           |
+1. `$CODEPLANE_INSTALL_DIR`
+2. `$XDG_BIN_DIR`
+3. `$HOME/bin`
+4. `$HOME/.codeplane/bin` _(default fallback)_
 
 ```bash
-# macOS (Homebrew)
-brew install --cask codeplane-desktop
-# Windows (Scoop)
-scoop bucket add extras; scoop install extras/codeplane-desktop
-```
-
-#### Installation Directory
-
-The install script respects the following priority order for the installation path:
-
-1. `$CODEPLANE_INSTALL_DIR` - Custom installation directory
-2. `$XDG_BIN_DIR` - XDG Base Directory Specification compliant path
-3. `$HOME/bin` - Standard user binary directory (if it exists or can be created)
-4. `$HOME/.codeplane/bin` - Default fallback
-
-```bash
-# Examples
 CODEPLANE_INSTALL_DIR=/usr/local/bin curl -fsSL https://codeplane.ai/install | bash
-XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://codeplane.ai/install | bash
 ```
-
-### Agents
-
-CodePlane includes two built-in agents you can switch between with the `Tab` key.
-
-- **build** - Default, full-access agent for development work
-- **plan** - Read-only agent for analysis and code exploration
-  - Denies file edits by default
-  - Asks permission before running bash commands
-  - Ideal for exploring unfamiliar codebases or planning changes
-
-Also included is a **general** subagent for complex searches and multistep tasks.
-This is used internally and can be invoked using `@general` in messages.
-
-Learn more about [agents](https://codeplane.ai/docs/agents).
-
-### Documentation
-
-For more info on how to configure CodePlane, [**head over to our docs**](https://codeplane.ai/docs).
-
-### Contributing
-
-If you're interested in contributing to CodePlane, please read our [contributing docs](./CONTRIBUTING.md) before submitting a pull request.
-
-### Building on CodePlane
-
-If you are working on a project that's related to CodePlane and is using "codeplane" as part of its name, for example "codeplane-dashboard" or "codeplane-mobile", please add a note to your README to clarify that it is not built by the CodePlane team and is not affiliated with us in any way.
-
-### FAQ
-
-#### How is this different from Claude Code?
-
-It's very similar to Claude Code in terms of capability. Here are the key differences:
-
-- 100% open source
-- Not coupled to any provider. Although we recommend the models we provide through [CodePlane Zen](https://codeplane.ai/zen), CodePlane can be used with Claude, OpenAI, Google, or even local models. As models evolve, the gaps between them will close and pricing will drop, so being provider-agnostic is important.
-- Out-of-the-box LSP support
-- A focus on TUI. CodePlane is built by neovim users and the creators of [terminal.shop](https://terminal.shop); we are going to push the limits of what's possible in the terminal.
-- A client/server architecture. This, for example, can allow CodePlane to run on your computer while you drive it remotely from a mobile app, meaning that the TUI frontend is just one of the possible clients.
 
 ---
 
-**Join our community** [Discord](https://discord.gg/codeplane) | [X.com](https://x.com/codeplane)
+## Desktop App <sup>Beta</sup>
+
+Download from [codeplane.ai/download](https://codeplane.ai/download) or the [releases page](https://github.com/devinoldenburg/codeplane/releases).
+
+| Platform | Installer |
+| :--- | :--- |
+| macOS — Apple Silicon | `codeplane-desktop-darwin-aarch64.dmg` |
+| macOS — Intel | `codeplane-desktop-darwin-x64.dmg` |
+| Windows | `codeplane-desktop-windows-x64.exe` |
+| Linux | `.deb`, `.rpm`, or `.AppImage` |
+
+```bash
+brew install --cask codeplane-desktop                          # macOS
+scoop bucket add extras && scoop install extras/codeplane-desktop  # Windows
+```
+
+---
+
+## Features
+
+- **Provider-agnostic** — Anthropic, OpenAI, Google, Bedrock, Groq, Mistral, Azure, local models, and [75+ more via models.dev](https://models.dev). Log in with GitHub to use your Copilot subscription, or OpenAI to use ChatGPT Plus/Pro.
+- **LSP-native** — automatically loads the right language servers so the agent has accurate, real-time code context
+- **MCP support** — connect any [Model Context Protocol](https://modelcontextprotocol.io) server
+- **Multi-session** — run multiple agents in parallel on the same project
+- **Git worktrees** — isolate agent work in separate worktrees to avoid conflicts
+- **Snapshot & undo** — filesystem snapshots make every change fully reversible
+- **Skills** — drop Markdown instruction files into `.codeplane/skills/` to extend agent behavior per project
+- **Plugins** — build custom tools and integrations with the [`@codeplane-ai/plugin`](https://codeplane.ai/docs/plugins) SDK
+- **Session sharing** — share a link to any session for reference or debugging
+- **Client/server architecture** — the TUI is just one client; connect from the desktop app, a web UI, or mobile
+
+---
+
+## Agents
+
+Switch between built-in agents with `Tab`.
+
+| Agent | Access | Best for |
+| :--- | :--- | :--- |
+| **build** | Full — reads, writes, runs commands | Active development |
+| **plan** | Read-only — asks before running any command | Exploring unfamiliar codebases, planning changes |
+
+A **general** subagent is available for complex searches and multi-step research tasks. Invoke it explicitly with `@general` in any message.
+
+→ [Agents documentation](https://codeplane.ai/docs/agents)
+
+---
+
+## Documentation
+
+Full configuration reference, provider setup, MCP, skills, plugins, and API docs:
+
+**[codeplane.ai/docs](https://codeplane.ai/docs)**
+
+---
+
+## Contributing
+
+Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull request. The default branch is `dev`.
+
+---
+
+## FAQ
+
+<details>
+<summary><strong>How is this different from Claude Code?</strong></summary>
+<br />
+
+The capabilities are comparable. The key differences:
+
+- **100% open source** (MIT)
+- **Not locked to any provider** — use Claude, OpenAI, Gemini, local models, or [CodePlane Zen](https://codeplane.ai/zen) (our curated, tested model list)
+- **Native LSP support** out of the box
+- **Terminal-first** — built by neovim users and the team behind [terminal.shop](https://terminal.shop); we push the limits of what's possible in the terminal
+- **Client/server architecture** — the TUI is just one possible frontend; run the server headlessly and connect from anywhere
+
+</details>
+
+<details>
+<summary><strong>Building something that uses "codeplane" in the name?</strong></summary>
+<br />
+
+Please add a note to your README clarifying that your project is not built by or affiliated with the CodePlane team.
+
+</details>
+
+---
+
+<p align="center">
+  <a href="https://discord.gg/codeplane">Discord</a> &nbsp;·&nbsp;
+  <a href="https://x.com/codeplane">X.com</a> &nbsp;·&nbsp;
+  <a href="https://codeplane.ai/docs">Docs</a>
+</p>

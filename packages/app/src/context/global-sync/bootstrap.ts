@@ -233,7 +233,7 @@ export async function bootstrapDirectory(input: {
   store: Store<State>
   setStore: SetStoreFunction<State>
   vcsCache: VcsCache
-  loadSessions: (directory: string) => Promise<void> | void
+  loadSessions: (directory: string, options?: { all?: boolean; force?: boolean }) => Promise<void> | void
   translate: (key: string, vars?: Record<string, string | number>) => string
   global: {
     config: Config
@@ -268,7 +268,7 @@ export async function bootstrapDirectory(input: {
   providerRev.set(revKey, rev)
   ;(async () => {
     const slow = [
-      () => Promise.resolve(input.loadSessions(input.directory)),
+      () => Promise.resolve(input.loadSessions(input.directory, { all: true })),
       () =>
         input.queryClient.fetchQuery(
           loadAgentsQuery(
@@ -351,7 +351,7 @@ export async function bootstrapDirectory(input: {
             )
           }),
         ),
-      () => Promise.resolve(input.loadSessions(input.directory)),
+      () => Promise.resolve(input.loadSessions(input.directory, { all: true })),
       () =>
         retry(() =>
           input.sdk.mcp.status().then((x) => {

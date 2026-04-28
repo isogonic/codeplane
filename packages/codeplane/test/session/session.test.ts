@@ -8,6 +8,8 @@ import { MessageV2 } from "../../src/session/message-v2"
 import { MessageID, PartID, type SessionID } from "../../src/session/schema"
 import { AppRuntime } from "../../src/effect/app-runtime"
 import { tmpdir } from "../fixture/fixture"
+import { Database, eq } from "../../src/storage"
+import { SessionTable } from "../../src/session/session.sql"
 
 const projectRoot = path.join(__dirname, "../..")
 void Log.init({ print: false })
@@ -162,6 +164,34 @@ describe("step-finish token propagation via Bus event", () => {
 })
 
 describe("Session", () => {
+  test("directory list includes sessions with stale project ids", async () => {
+    await using tmp = await tmpdir({ git: true })
+    await using other = await tmpdir({ git: true })
+
+    const info = await Instance.provide({
+      directory: tmp.path,
+      fn: () => create({ title: "stale-project-session" }),
+    })
+    const stale = await Instance.provide({
+      directory: other.path,
+      fn: () => create({ title: "other-project-session" }),
+    })
+
+    Database.use((db) =>
+      db.update(SessionTable).set({ project_id: stale.projectID }).where(eq(SessionTable.id, info.id)).run(),
+    )
+
+    const sessions = await Instance.provide({
+      directory: tmp.path,
+      fn: async () => [...SessionNs.list({ directory: tmp.path, roots: true, limit: 200 })],
+    })
+
+    expect(sessions.map((session) => session.id)).toContain(info.id)
+
+    await remove(info.id)
+    await remove(stale.id)
+  })
+
   test("remove works without an instance", async () => {
     await using tmp = await tmpdir({ git: true })
 

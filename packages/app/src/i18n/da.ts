@@ -807,6 +807,7 @@ export const dict = {
   "settings.permissions.tool.doom_loop.title": "Doom Loop",
   "settings.permissions.tool.doom_loop.description": "Opdag gentagne værktøjskald med identisk input",
 
+  "session.copyId": "Kopiér sessions-ID",
   "session.delete.failed.title": "Kunne ikke slette session",
   "session.delete.title": "Slet session",
   "session.delete.confirm": 'Slet session "{{name}}"?',

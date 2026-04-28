@@ -1,4 +1,4 @@
-import { createEffect, For, Match, on, onCleanup, Show, Switch, type JSX } from "solid-js"
+import { createEffect, createMemo, createSignal, For, Match, on, onCleanup, Show, Switch, type JSX } from "solid-js"
 import { animate, type AnimationPlaybackControls } from "motion"
 import { useI18n } from "../context/i18n"
 import { createStore } from "solid-js/store"
@@ -28,6 +28,7 @@ export interface BasicToolProps {
   trigger: TriggerTitle | JSX.Element
   children?: JSX.Element
   status?: string
+  startTime?: number
   hideDetails?: boolean
   defaultOpen?: boolean
   forceOpen?: boolean
@@ -40,16 +41,63 @@ export interface BasicToolProps {
   clickable?: boolean
 }
 
-const SPRING = { type: "spring" as const, visualDuration: 0.35, bounce: 0 }
+const SPRING = { type: "spring" as const, visualDuration: 0.2, bounce: 0 }
+
+function formatToolElapsed(seconds: number) {
+  if (seconds < 60) return `${seconds}s`
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return s === 0 ? `${m}m` : `${m}m ${s}s`
+}
 
 export function BasicTool(props: BasicToolProps) {
+  const initiallyPending = props.status === "pending" || props.status === "running"
+  const initialOpenState = props.defaultOpen ?? initiallyPending
   const [state, setState] = createStore({
-    open: props.defaultOpen ?? false,
-    ready: props.defaultOpen ?? false,
+    open: initialOpenState,
+    ready: initialOpenState,
+    autoOpened: initiallyPending,
   })
   const open = () => state.open
   const ready = () => state.ready
   const pending = () => props.status === "pending" || props.status === "running"
+
+  createEffect(() => {
+    if (pending()) {
+      if (!state.open) {
+        setState({ open: true, autoOpened: true })
+      } else if (!state.autoOpened) {
+        setState("autoOpened", true)
+      }
+      return
+    }
+    if (state.autoOpened && !props.defaultOpen) {
+      setState({ open: false, autoOpened: false })
+    }
+  })
+
+  const [now, setNow] = createSignal(Date.now())
+  createEffect(() => {
+    if (!pending()) return
+    if (typeof props.startTime !== "number") return
+    setNow(Date.now())
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    onCleanup(() => clearInterval(id))
+  })
+
+  const elapsedSeconds = createMemo(() => {
+    if (!pending()) return 0
+    if (typeof props.startTime !== "number") return 0
+    return Math.max(0, Math.floor((now() - props.startTime) / 1000))
+  })
+
+  const elapsedLabel = createMemo(() => {
+    const seconds = elapsedSeconds()
+    if (seconds < 5) return ""
+    return formatToolElapsed(seconds)
+  })
+
+  const longRunning = createMemo(() => elapsedSeconds() >= 30)
 
   let frame: number | undefined
 
@@ -130,6 +178,8 @@ export function BasicTool(props: BasicToolProps) {
       data-component="tool-trigger"
       data-clickable={props.clickable ? "true" : undefined}
       data-hide-details={props.hideDetails ? "true" : undefined}
+      data-pending={pending() ? "true" : undefined}
+      data-long-running={longRunning() ? "true" : undefined}
     >
       <div data-slot="basic-tool-tool-trigger-content">
         <div data-slot="basic-tool-tool-info">
@@ -146,38 +196,41 @@ export function BasicTool(props: BasicToolProps) {
                     >
                       <TextShimmer text={title().title} active={pending()} />
                     </span>
-                    <Show when={!pending()}>
-                      <Show when={title().subtitle}>
-                        <span
-                          data-slot="basic-tool-tool-subtitle"
-                          classList={{
-                            [title().subtitleClass ?? ""]: !!title().subtitleClass,
-                            clickable: !!props.onSubtitleClick,
-                          }}
-                          onClick={(e) => {
-                            if (props.onSubtitleClick) {
-                              e.stopPropagation()
-                              props.onSubtitleClick()
-                            }
-                          }}
-                        >
-                          {title().subtitle}
-                        </span>
-                      </Show>
-                      <Show when={title().args?.length}>
-                        <For each={title().args}>
-                          {(arg) => (
-                            <span
-                              data-slot="basic-tool-tool-arg"
-                              classList={{
-                                [title().argsClass ?? ""]: !!title().argsClass,
-                              }}
-                            >
-                              {arg}
-                            </span>
-                          )}
-                        </For>
-                      </Show>
+                    <Show when={pending() && elapsedLabel()}>
+                      <span data-slot="basic-tool-tool-elapsed" aria-live="polite">
+                        {elapsedLabel()}
+                      </span>
+                    </Show>
+                    <Show when={title().subtitle}>
+                      <span
+                        data-slot="basic-tool-tool-subtitle"
+                        classList={{
+                          [title().subtitleClass ?? ""]: !!title().subtitleClass,
+                          clickable: !!props.onSubtitleClick,
+                        }}
+                        onClick={(e) => {
+                          if (props.onSubtitleClick) {
+                            e.stopPropagation()
+                            props.onSubtitleClick()
+                          }
+                        }}
+                      >
+                        {title().subtitle}
+                      </span>
+                    </Show>
+                    <Show when={title().args?.length}>
+                      <For each={title().args}>
+                        {(arg) => (
+                          <span
+                            data-slot="basic-tool-tool-arg"
+                            classList={{
+                              [title().argsClass ?? ""]: !!title().argsClass,
+                            }}
+                          >
+                            {arg}
+                          </span>
+                        )}
+                      </For>
                     </Show>
                   </div>
                   <Show when={!pending() && title().action}>
@@ -264,6 +317,7 @@ function args(input: Record<string, unknown> | undefined) {
 export function GenericTool(props: {
   tool: string
   status?: string
+  startTime?: number
   hideDetails?: boolean
   input?: Record<string, unknown>
   output?: string
@@ -275,6 +329,7 @@ export function GenericTool(props: {
     <BasicTool
       icon="mcp"
       status={props.status}
+      startTime={props.startTime}
       trigger={{
         title: i18n.t("ui.basicTool.called", { tool: props.tool }),
         subtitle: label(props.input),

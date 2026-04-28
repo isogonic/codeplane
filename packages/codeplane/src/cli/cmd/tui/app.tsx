@@ -332,19 +332,19 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       }
 
       const title = session.title.length > 40 ? session.title.slice(0, 37) + "..." : session.title
-      renderer.setTerminalTitle(`OC | ${title}`)
+      renderer.setTerminalTitle(`CP | ${title}`)
       return
     }
 
     if (route.data.type === "orchestrator") {
       const session = sync.session.get(route.data.sessionID)
       const title = session && !SessionApi.isDefaultTitle(session.title) ? ` · ${session.title.slice(0, 32)}` : ""
-      renderer.setTerminalTitle(`OC | Orchestrator${title}`)
+      renderer.setTerminalTitle(`CP | Orchestrator${title}`)
       return
     }
 
     if (route.data.type === "plugin") {
-      renderer.setTerminalTitle(`OC | ${route.data.id}`)
+      renderer.setTerminalTitle(`CP | ${route.data.id}`)
     }
   })
 

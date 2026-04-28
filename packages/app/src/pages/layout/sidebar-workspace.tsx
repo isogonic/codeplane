@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "@solidjs/router"
+import { A, useNavigate, useParams } from "@solidjs/router"
 import { createEffect, createMemo, For, Show, type Accessor, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
 import { createSortable } from "@thisbeyond/solid-dnd"
@@ -251,6 +251,8 @@ const WorkspaceSessionList = (props: {
   loadMore: () => Promise<void>
   language: ReturnType<typeof useLanguage>
   hideArchive?: boolean
+  projectID?: string
+  projectWorktree?: string
 }): JSX.Element => (
   <nav class="flex flex-col gap-1">
     <Show when={props.showNew()}>
@@ -296,10 +298,17 @@ const WorkspaceSessionList = (props: {
       </div>
     </Show>
     <Show when={!props.hideArchive}>
+      <CronJobsButton
+        language={props.language}
+        projectID={props.projectID}
+        projectWorktree={props.projectWorktree}
+      />
       <ArchivedSessionsButton directory={props.directory} ctx={props.ctx} language={props.language} />
     </Show>
   </nav>
 )
+
+export { CronJobsButton }
 
 const ArchivedSessionsButton = (props: {
   directory: string
@@ -328,6 +337,61 @@ const ArchivedSessionsButton = (props: {
   </div>
 )
 
+const CronJobsButton = (props: {
+  language: ReturnType<typeof useLanguage>
+  projectID?: string
+  projectWorktree?: string
+  footer?: boolean
+}): JSX.Element => {
+  const globalSync = useGlobalSync()
+  const projectID = createMemo(
+    () =>
+      props.projectID ??
+      globalSync.data.project.find(
+        (p) =>
+          p.id !== "global" &&
+          !!props.projectWorktree &&
+          workspaceKey(p.worktree) === workspaceKey(props.projectWorktree),
+      )?.id,
+  )
+  const href = createMemo(() => {
+    const pid = projectID()
+    if (props.projectWorktree)
+      return `/cron/worktree/${base64Encode(props.projectWorktree)}${pid ? `?projectID=${encodeURIComponent(pid)}` : ""}`
+    return pid ? `/cron/${encodeURIComponent(pid)}` : undefined
+  })
+  return (
+    <div
+      classList={{
+        "relative w-full": true,
+        "shrink-0 pb-2": props.footer,
+      }}
+    >
+      <A
+        href={href() ?? "#"}
+        data-component="button"
+        data-size="large"
+        data-variant="ghost"
+        data-icon="bell"
+        class="flex w-full justify-start text-left text-14-regular text-text-weak pl-2 pr-10"
+        classList={{
+          "pointer-events-none opacity-50": !href(),
+        }}
+        onClick={(e: MouseEvent) => {
+          if (!href()) {
+            e.preventDefault()
+            return
+          }
+          ;(e.currentTarget as HTMLElement).blur()
+        }}
+      >
+        <Icon name="bell" size="small" />
+        {props.language.t("command.cron.open")}
+      </A>
+    </div>
+  )
+}
+
 export const SortableWorkspace = (props: {
   ctx: WorkspaceSidebarContext
   directory: string
@@ -341,13 +405,13 @@ export const SortableWorkspace = (props: {
   const language = useLanguage()
   const server = useServer()
   const sortable = createSortable(props.directory)
-  const [workspaceStore, setWorkspaceStore] = globalSync.child(props.directory, { bootstrap: false })
+  const [workspaceStore] = globalSync.child(props.directory, { bootstrap: false })
   const [menu, setMenu] = createStore({
     open: false,
     pendingRename: false,
   })
   const slug = createMemo(() => base64Encode(props.directory))
-  const sessions = createMemo(() => sortedRootSessions(workspaceStore, props.sortNow()))
+  const sessions = createMemo(() => sortedRootSessions(workspaceStore, props.sortNow(), props.directory))
   const local = createMemo(() => props.directory === props.project.worktree)
   const active = createMemo(() => workspaceKey(props.ctx.currentDir()) === workspaceKey(props.directory))
   const workspaceValue = createMemo(() => {
@@ -364,9 +428,15 @@ export const SortableWorkspace = (props: {
   const loading = () => query.isLoading && count() === 0
   const touch = createMediaQuery("(hover: none)")
   const showNew = createMemo(() => !loading() && (touch() || count() === 0 || (active() && !params.id)))
-  const loadMore = async () => {
-    setWorkspaceStore("limit", (limit) => (limit ?? 0) + 5)
-    await globalSync.project.loadSessions(props.directory)
+  let loadingAll = false
+  const loadAllSessions = async () => {
+    if (loadingAll) return
+    loadingAll = true
+    try {
+      await globalSync.project.loadSessions(props.directory, { all: true })
+    } finally {
+      loadingAll = false
+    }
   }
 
   const workspaceEditActive = createMemo(() => props.ctx.editorOpen(`workspace:${props.directory}`))
@@ -396,6 +466,17 @@ export const SortableWorkspace = (props: {
   createEffect(() => {
     if (!boot()) return
     globalSync.child(props.directory, { bootstrap: true })
+  })
+
+  createEffect(() => {
+    const dir = props.directory
+    if (!dir) return
+    void loadAllSessions()
+  })
+
+  createEffect(() => {
+    if (!hasMore() || loading()) return
+    void loadAllSessions()
   })
 
   return (
@@ -471,8 +552,10 @@ export const SortableWorkspace = (props: {
             loading={() => query.isLoading && count() === 0}
             sessions={sessions}
             hasMore={hasMore}
-            loadMore={loadMore}
+            loadMore={loadAllSessions}
             language={language}
+            projectID={props.project.id}
+            projectWorktree={props.project.worktree}
           />
         </Collapsible.Content>
       </Collapsible>
@@ -490,19 +573,36 @@ export const LocalWorkspace = (props: {
   const language = useLanguage()
   const server = useServer()
   const workspace = createMemo(() => {
-    const [store, setStore] = globalSync.child(props.project.worktree)
-    return { store, setStore }
+    const [store] = globalSync.child(props.project.worktree)
+    return store
   })
   const slug = createMemo(() => base64Encode(props.project.worktree))
-  const sessions = createMemo(() => sortedRootSessions(workspace().store, props.sortNow()))
+  const sessions = createMemo(() => sortedRootSessions(workspace(), props.sortNow(), props.project.worktree))
   const count = createMemo(() => sessions()?.length ?? 0)
   const query = useQuery(() => ({ ...loadSessionsQuery(props.project.worktree, server.scope.key) }))
-  const hasMore = createMemo(() => workspace().store.sessionTotal > count())
+  const hasMore = createMemo(() => workspace().sessionTotal > count())
   const loading = () => query.isLoading && count() === 0
-  const loadMore = async () => {
-    workspace().setStore("limit", (limit) => (limit ?? 0) + 5)
-    await globalSync.project.loadSessions(props.project.worktree)
+  let loadingAll = false
+  const loadAllSessions = async () => {
+    if (loadingAll) return
+    loadingAll = true
+    try {
+      await globalSync.project.loadSessions(props.project.worktree, { all: true })
+    } finally {
+      loadingAll = false
+    }
   }
+
+  createEffect(() => {
+    const dir = props.project.worktree
+    if (!dir) return
+    void loadAllSessions()
+  })
+
+  createEffect(() => {
+    if (!hasMore() || loading()) return
+    void loadAllSessions()
+  })
 
   return (
     <div class="size-full min-h-0 flex flex-col py-2">
@@ -519,11 +619,17 @@ export const LocalWorkspace = (props: {
           loading={loading}
           sessions={sessions}
           hasMore={hasMore}
-          loadMore={loadMore}
+          loadMore={loadAllSessions}
           language={language}
           hideArchive
         />
       </div>
+      <CronJobsButton
+        language={language}
+        projectID={props.project.id}
+        projectWorktree={props.project.worktree}
+        footer
+      />
       <ArchivedSessionsButton directory={props.project.worktree} ctx={props.ctx} language={language} footer />
     </div>
   )

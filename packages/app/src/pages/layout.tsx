@@ -16,6 +16,7 @@ import { makeEventListener } from "@solid-primitives/event-listener"
 import { useLocation, useNavigate, useParams } from "@solidjs/router"
 import { useLayout, LocalProject } from "@/context/layout"
 import { useGlobalSync } from "@/context/global-sync"
+import { directoryContains } from "@/context/global-sync/utils"
 import { Persist, persisted } from "@/utils/persist"
 import { base64Encode } from "@codeplane-ai/shared/util/encode"
 import { decode64 } from "@/utils/base64"
@@ -87,6 +88,8 @@ import {
 } from "./layout/sidebar-workspace"
 import { ProjectDragOverlay, SortableProject, type ProjectSidebarContext } from "./layout/sidebar-project"
 import { SidebarContent } from "./layout/sidebar-shell"
+import { CronSidebarPanel } from "./layout/sidebar-cron"
+import { isCronSessionInfo } from "./layout/sidebar-cron-helpers"
 import { DialogArchivedSessions } from "@/components/dialog-archived-sessions"
 import {
   SettingsSidebarPanel,
@@ -149,6 +152,29 @@ export default function Layout(props: ParentProps) {
       dir: store[0].path.directory || dir,
     }
   })
+  const pathSessionRoute = createMemo(() => {
+    const cronMatch = location.pathname.match(/^\/cron\/worktree\/([^/?#]+)\/session(?:\/([^/?#]+))?/)
+    if (cronMatch) {
+      const dir = decode64(cronMatch[1])
+      if (!dir) return
+      return {
+        cron: true,
+        dir,
+        sessionID: cronMatch[2] ? decodeURIComponent(cronMatch[2]) : undefined,
+        slug: cronMatch[1],
+      }
+    }
+
+    const match = location.pathname.match(/^\/([^/]+)\/session(?:\/([^/?#]+))?/)
+    const dir = decode64(match?.[1])
+    if (!match || !dir) return
+    return {
+      cron: false,
+      dir,
+      sessionID: match[2] ? decodeURIComponent(match[2]) : undefined,
+      slug: match[1],
+    }
+  })
   const availableThemeEntries = createMemo(() => theme.ids().map((id) => [id, theme.themes()[id]] as const))
   const colorSchemeOrder: ColorScheme[] = ["system", "light", "dark"]
   const colorSchemeKey: Record<ColorScheme, "theme.scheme.system" | "theme.scheme.light" | "theme.scheme.dark"> = {
@@ -157,7 +183,8 @@ export default function Layout(props: ParentProps) {
     dark: "theme.scheme.dark",
   }
   const colorSchemeLabel = (scheme: ColorScheme) => language.t(colorSchemeKey[scheme])
-  const currentDir = createMemo(() => route().dir)
+  const currentDir = createMemo(() => route().dir || pathSessionRoute()?.dir || "")
+  const isCronRoutePath = (pathname: string) => pathname === "/cron" || pathname.startsWith("/cron/")
   const isGlobalRoutePath = (pathname: string) =>
     pathname === "/" ||
     pathname === "/notifications" ||
@@ -168,17 +195,115 @@ export default function Layout(props: ParentProps) {
     pathname === "/skills"
   const settingsRouteSelected = createMemo(() => isSettingsPath(location.pathname))
   const globalRouteSelected = createMemo(() => isGlobalRoutePath(location.pathname))
+  const cronRouteSelected = createMemo(() => isCronRoutePath(location.pathname))
+  const cronRouteProjectID = createMemo(() => new URLSearchParams(location.search).get("projectID") ?? undefined)
+  const cronSessionRouteSelected = createMemo(
+    () =>
+      !!pathSessionRoute()?.dir &&
+      !!pathSessionRoute()?.sessionID &&
+      (pathSessionRoute()?.cron || new URLSearchParams(location.search).get("sidebar") === "cron"),
+  )
+  const cronSessionSelected = createMemo(() => {
+    if (cronSessionRouteSelected()) return true
+    const dir = currentDir()
+    const sessionId = params.id ?? pathSessionRoute()?.sessionID
+    if (!dir || !sessionId) return false
+    const [child] = globalSync.child(dir, { bootstrap: false })
+    const session = child.session.find((s) => s.id === sessionId) as
+      | (Session & { cronRunID?: string })
+      | undefined
+    return isCronSessionInfo(session)
+  })
+  const cronContextActive = createMemo(() => cronRouteSelected() || cronSessionSelected())
+
+  createEffect(
+    on(
+      () => pathSessionRoute()?.dir,
+      (dir) => {
+        if (!dir) return
+        void globalSync.project.loadSessions(dir)
+      },
+      { defer: true },
+    ),
+  )
+
+  createEffect(
+    on(
+      () => [cronSessionSelected(), pathSessionRoute()?.cron, pathSessionRoute()?.dir, pathSessionRoute()?.sessionID] as const,
+      ([selected, cron, dir, sessionID]) => {
+        if (!selected || cron || !dir || !sessionID) return
+        const [child] = globalSync.child(dir, { bootstrap: false })
+        const search = new URLSearchParams({ sidebar: "cron" })
+        if (child.project) search.set("projectID", child.project)
+        navigate(`/cron/worktree/${base64Encode(dir)}/session/${sessionID}?${search.toString()}`, { replace: true })
+      },
+    ),
+  )
+
+  const cronProject = createMemo(() => {
+    const opened = layout.projects.list().filter((p) => p.id !== "global")
+    const all = (globalSync.data.project ?? []).filter((p) => p.id !== "global")
+    const openedFor = (project: { id?: string; worktree: string } | undefined) => {
+      if (!project) return
+      return opened.find((p) => p.id === project.id || workspaceKey(p.worktree) === workspaceKey(project.worktree))
+    }
+    const contains = (project: { worktree: string; sandboxes?: string[] }, directory: string) =>
+      directoryContains(project.worktree, directory) ||
+      !!project.sandboxes?.some((sandbox) => directoryContains(sandbox, directory))
+    const worktreeMatch = location.pathname.match(/^\/cron\/worktree\/([^/?#]+)/)
+    if (worktreeMatch) {
+      const dir = decode64(worktreeMatch[1])
+      if (dir) {
+        const queryProject =
+          opened.find((p) => p.id === cronRouteProjectID()) ??
+          openedFor(all.find((p) => p.id === cronRouteProjectID()))
+        if (queryProject && contains(queryProject, dir)) return queryProject
+        const found =
+          opened.find((p) => workspaceKey(p.worktree) === workspaceKey(dir)) ??
+          openedFor(all.find((p) => workspaceKey(p.worktree) === workspaceKey(dir)))
+        if (found) return found
+      }
+    }
+    // 1. Explicit project in URL: /cron/:projectID
+    const match = location.pathname.match(/^\/cron\/([^/?#]+)/)
+    if (match) {
+      const pid = cronRouteProjectID() ?? decodeURIComponent(match[1])
+      const found = opened.find((p) => p.id === pid) ?? openedFor(all.find((p) => p.id === pid))
+      if (found) return found
+    }
+    // 2. Cron session: resolve project from current dir
+    const dir = currentDir()
+    if (dir) {
+      const direct = opened.find((p) => p.worktree === dir) ?? openedFor(all.find((p) => p.worktree === dir))
+      if (direct) return direct
+      const [child] = globalSync.child(dir, { bootstrap: false })
+      const id = child.project
+      if (id) {
+        const meta = opened.find((p) => p.id === id) ?? openedFor(all.find((p) => p.id === id))
+        if (meta) return meta
+      }
+    }
+    return undefined
+  })
   const currentSettingsSection = createMemo(() => settingsSectionFromPath(location.pathname))
   const sidebarRouteKey = createMemo(() => {
     if (!layoutReady()) return
     if (settingsRouteSelected()) return "settings"
     if (globalRouteSelected()) return "global"
+    if (cronContextActive()) {
+      const project = cronProject()
+      return `cron:${project?.id ?? project?.worktree ?? pathSessionRoute()?.slug ?? params.dir ?? "unknown"}`
+    }
     if (!params.dir) return
     return `project:${params.dir}`
   })
 
   const [state, setState] = createStore({
-    autoselect: !initialDirectory && !isGlobalRoutePath(location.pathname) && !isSettingsPath(location.pathname),
+    autoselect:
+      !initialDirectory &&
+      !isGlobalRoutePath(location.pathname) &&
+      !isSettingsPath(location.pathname) &&
+      !isCronRoutePath(location.pathname),
     busyWorkspaces: {} as Record<string, boolean>,
     hoverProject: undefined as string | undefined,
     scrollSessionKey: undefined as string | undefined,
@@ -273,6 +398,17 @@ export default function Layout(props: ParentProps) {
 
       layout.sidebar.open()
     }),
+  )
+
+  createEffect(
+    on(
+      () => [layoutReady(), location.pathname, location.search, cronContextActive()] as const,
+      ([ready, , , active]) => {
+        if (!ready || !active) return
+        setHoverProject(undefined)
+        layout.sidebar.open()
+      },
+    ),
   )
 
   const disarm = () => {
@@ -596,6 +732,8 @@ export default function Layout(props: ParentProps) {
   }
 
   const currentProject = createMemo(() => {
+    if (cronContextActive()) return cronProject()
+
     const directory = currentDir()
     if (!directory) return
     const key = workspaceKey(directory)
@@ -618,6 +756,25 @@ export default function Layout(props: ParentProps) {
 
     return projects.find((p) => p.worktree === root)
   })
+
+  createEffect(
+    on(
+      () =>
+        [
+          pageReady(),
+          layoutReady(),
+          globalRouteSelected(),
+          settingsRouteSelected(),
+          cronContextActive(),
+          currentDir(),
+          params.dir,
+        ] as const,
+      ([page, ready, global, settings, cron, directory, slug]) => {
+        if (!page || !ready || global || settings || cron || !directory || !slug) return
+        layout.projects.open(directory)
+      },
+    ),
+  )
 
   const [autoselecting] = createResource(async () => {
     await ready.promise
@@ -705,7 +862,7 @@ export default function Layout(props: ParentProps) {
     const result: Session[] = []
     for (const dir of dirs) {
       const [dirStore] = globalSync.child(dir, { bootstrap: true })
-      const dirSessions = sortedRootSessions(dirStore, now)
+      const dirSessions = sortedRootSessions(dirStore, now, dir)
       result.push(...dirSessions)
     }
     return result
@@ -1061,7 +1218,10 @@ export default function Layout(props: ParentProps) {
         title: language.t("command.sidebar.toggle"),
         category: language.t("command.category.view"),
         keybind: "mod+b",
-        onSelect: () => layout.sidebar.toggle(),
+        onSelect: () => {
+          if (location.pathname === "/" || location.pathname === "/notifications") return
+          layout.sidebar.toggle()
+        },
       },
       {
         id: "project.open",
@@ -2441,6 +2601,22 @@ export default function Layout(props: ParentProps) {
             current={currentSettingsSection}
             onSelect={selectSettingsSection}
           />
+        ) : cronContextActive() ? (
+          <div
+            classList={{
+              "flex flex-col min-h-0 min-w-0 box-border rounded-tl-[12px]": true,
+              "border-l border-t border-border-weaker-base bg-background-base": !mobile,
+              "flex-1 min-w-0 max-w-full overflow-hidden": !!mobile,
+            }}
+            style={{ width: mobile ? undefined : `${panel()}px` }}
+          >
+            <CronSidebarPanel
+              mobile={mobile}
+              merged
+              projectID={() => cronProject()?.id}
+              projectWorktree={() => cronProject()?.worktree}
+            />
+          </div>
         ) : mobile ? (
           <SidebarPanel project={currentProject} mobile />
         ) : (

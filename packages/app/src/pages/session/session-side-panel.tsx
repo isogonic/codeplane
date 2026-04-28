@@ -1,4 +1,5 @@
 import { For, Match, Show, Switch, createEffect, createMemo, onCleanup, type JSX } from "solid-js"
+import { same } from "@/utils/same"
 import { createStore } from "solid-js/store"
 import { createMediaQuery } from "@solid-primitives/media"
 import { Tabs } from "@codeplane-ai/ui/tabs"
@@ -73,32 +74,44 @@ export function SessionSidePanel(props: {
   })
   const treeWidth = createMemo(() => (fileOpen() ? `${layout.fileTree.width()}px` : "0px"))
 
-  const diffFiles = createMemo(() => props.diffs().map((d) => d.file))
-  const kinds = createMemo(() => {
-    const merge = (a: "add" | "del" | "mix" | undefined, b: "add" | "del" | "mix") => {
-      if (!a) return b
-      if (a === b) return a
-      return "mix" as const
-    }
-
-    const normalize = (p: string) => p.replaceAll("\\\\", "/").replace(/\/+$/, "")
-
-    const out = new Map<string, "add" | "del" | "mix">()
-    for (const diff of props.diffs()) {
-      const file = normalize(diff.file)
-      const kind = diff.status === "added" ? "add" : diff.status === "deleted" ? "del" : "mix"
-
-      out.set(file, kind)
-
-      const parts = file.split("/")
-      for (const [idx] of parts.slice(0, -1).entries()) {
-        const dir = parts.slice(0, idx + 1).join("/")
-        if (!dir) continue
-        out.set(dir, merge(out.get(dir), kind))
+  const diffFiles = createMemo(() => props.diffs().map((d) => d.file), [], { equals: same })
+  const kinds = createMemo(
+    () => {
+      const merge = (a: "add" | "del" | "mix" | undefined, b: "add" | "del" | "mix") => {
+        if (!a) return b
+        if (a === b) return a
+        return "mix" as const
       }
-    }
-    return out
-  })
+
+      const normalize = (p: string) => p.replaceAll("\\\\", "/").replace(/\/+$/, "")
+
+      const out = new Map<string, "add" | "del" | "mix">()
+      for (const diff of props.diffs()) {
+        const file = normalize(diff.file)
+        const kind = diff.status === "added" ? "add" : diff.status === "deleted" ? "del" : "mix"
+
+        out.set(file, kind)
+
+        const parts = file.split("/")
+        for (const [idx] of parts.slice(0, -1).entries()) {
+          const dir = parts.slice(0, idx + 1).join("/")
+          if (!dir) continue
+          out.set(dir, merge(out.get(dir), kind))
+        }
+      }
+      return out
+    },
+    new Map(),
+    {
+      equals: (a, b) => {
+        if (a.size !== b.size) return false
+        for (const [k, v] of a) {
+          if (b.get(k) !== v) return false
+        }
+        return true
+      },
+    },
+  )
 
   const empty = (msg: string) => (
     <div class="h-full flex flex-col">
