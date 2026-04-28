@@ -679,7 +679,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       title: "Open docs",
       value: "docs.open",
       onSelect: () => {
-        open("https://codeplane.ai/docs").catch(() => {})
+        open("https://github.com/devinoldenburg/codeplane").catch(() => {})
         dialog.clear()
       },
       category: "System",

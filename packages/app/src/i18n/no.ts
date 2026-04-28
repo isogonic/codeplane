@@ -140,7 +140,7 @@ export const dict = {
   "provider.connect.codeplaneZen.line2":
     "Med én enkelt API-nøkkel får du tilgang til modeller som Claude, GPT, Gemini, GLM og flere.",
   "provider.connect.codeplaneZen.visit.prefix": "Besøk ",
-  "provider.connect.codeplaneZen.visit.link": "codeplane.ai/zen",
+  "provider.connect.codeplaneZen.visit.link": "example.invalid/zen",
   "provider.connect.codeplaneZen.visit.suffix": " for å hente API-nøkkelen din.",
   "provider.connect.oauth.code.visit.prefix": "Besøk ",
   "provider.connect.oauth.code.visit.link": "denne lenken",
@@ -454,7 +454,7 @@ export const dict = {
   "error.page.action.checkUpdates": "Se etter oppdateringer",
   "error.page.action.updateTo": "Oppdater til {{version}}",
   "error.page.report.prefix": "Vennligst rapporter denne feilen til CodePlane-teamet",
-  "error.page.report.discord": "på Discord",
+  "error.page.report.issues": "på GitHub",
   "error.page.version": "Versjon: {{version}}",
 
   "error.dev.rootNotFound":

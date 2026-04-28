@@ -1,10 +1,10 @@
 # codeplane VS Code Extension
 
-A Visual Studio Code extension that integrates [codeplane](https://codeplane.ai) directly into your development workflow.
+A Visual Studio Code extension that integrates [codeplane](https://github.com/devinoldenburg/codeplane) directly into your development workflow.
 
 ## Prerequisites
 
-This extension requires the [codeplane CLI](https://codeplane.ai) to be installed on your system. Visit [codeplane.ai](https://codeplane.ai) for installation instructions.
+This extension requires the [codeplane CLI](https://github.com/devinoldenburg/codeplane) to be installed on your system. Visit [example.invalid](https://github.com/devinoldenburg/codeplane) for installation instructions.
 
 ## Features
 

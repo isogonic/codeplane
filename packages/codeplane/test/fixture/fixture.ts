@@ -58,7 +58,7 @@ export async function tmpdir<T>(options?: TmpDirOptions<T>) {
     await Bun.write(
       path.join(dirpath, "codeplane.json"),
       JSON.stringify({
-        $schema: "https://codeplane.ai/config.json",
+        $schema: "https://example.invalid/config.json",
         ...options.config,
       }),
     )
@@ -111,7 +111,7 @@ export function tmpdirScoped(options?: { git?: boolean; config?: Partial<Config.
       yield* Effect.promise(() =>
         fs.writeFile(
           path.join(dir, "codeplane.json"),
-          JSON.stringify({ $schema: "https://codeplane.ai/config.json", ...options.config }),
+          JSON.stringify({ $schema: "https://example.invalid/config.json", ...options.config }),
         ),
       )
     }

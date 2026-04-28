@@ -125,7 +125,7 @@ export const dict = {
   "provider.connect.codeplaneZen.line2":
     "باستخدام مفتاح API واحد، ستحصل على إمكانية الوصول إلى نماذج مثل Claude و GPT و Gemini و GLM والمزيد.",
   "provider.connect.codeplaneZen.visit.prefix": "قم بزيارة ",
-  "provider.connect.codeplaneZen.visit.link": "codeplane.ai/zen",
+  "provider.connect.codeplaneZen.visit.link": "example.invalid/zen",
   "provider.connect.codeplaneZen.visit.suffix": " للحصول على مفتاح API الخاص بك.",
   "provider.connect.oauth.code.visit.prefix": "قم بزيارة ",
   "provider.connect.oauth.code.visit.link": "هذا الرابط",
@@ -406,7 +406,7 @@ export const dict = {
   "error.page.action.checkUpdates": "التحقق من وجود تحديثات",
   "error.page.action.updateTo": "تحديث إلى {{version}}",
   "error.page.report.prefix": "يرجى الإبلاغ عن هذا الخطأ لفريق CodePlane",
-  "error.page.report.discord": "على Discord",
+  "error.page.report.issues": "على GitHub",
   "error.page.version": "الإصدار: {{version}}",
   "error.dev.rootNotFound":
     "لم يتم العثور على العنصر الجذري. هل نسيت إضافته إلى index.html؟ أو ربما تمت كتابة سمة id بشكل خاطئ؟",

@@ -18,7 +18,7 @@ Example:
 
 ```json
 {
-  "$schema": "https://codeplane.ai/tui.json",
+  "$schema": "",
   "theme": "smoke-theme",
   "plugin": ["@acme/codeplane-plugin@1.2.3", ["./plugins/demo.tsx", { "label": "demo" }]],
   "plugin_enabled": {

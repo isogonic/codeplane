@@ -13,7 +13,7 @@ CodePlane admite los formatos **JSON** y **JSONC** (JSON con comentarios).
 
 ```jsonc title="codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   // Theme configuration
   "theme": "codeplane",
   "model": "anthropic/claude-sonnet-4-5",
@@ -146,7 +146,7 @@ El directorio personalizado se carga después de los directorios global config y
 
 ## Esquema
 
-El archivo de configuración tiene un esquema definido en [**`codeplane.ai/config.json`**](https://codeplane.ai/config.json).
+El archivo de configuración tiene un esquema definido en [**`example.invalid/config.json`**](https://example.invalid/config.json).
 
 Su editor debería poder validar y autocompletar según el esquema.
 
@@ -158,7 +158,7 @@ Puede configurar ajustes específicos de TUI a través de la opción `tui`.
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "tui": {
     "scroll_speed": 3,
     "scroll_acceleration": {
@@ -185,7 +185,7 @@ Puede configurar los ajustes del servidor para los comandos `codeplane serve` y 
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "server": {
     "port": 4096,
     "hostname": "0.0.0.0",
@@ -214,7 +214,7 @@ Puede administrar las herramientas que un LLM puede usar a través de la opción
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "tools": {
     "write": false,
     "bash": false
@@ -232,7 +232,7 @@ Puede configurar los proveedores y modelos que desea utilizar en su configuraci�
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {},
   "model": "anthropic/claude-sonnet-4-5",
   "small_model": "anthropic/claude-haiku-4-5"
@@ -245,7 +245,7 @@ Las opciones de proveedores pueden incluir `timeout` y `setCacheKey`:
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "anthropic": {
       "options": {
@@ -274,7 +274,7 @@ Amazon Bedrock admite la configuración específica de AWS:
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "amazon-bedrock": {
       "options": {
@@ -305,7 +305,7 @@ Puede configurar el tema que desea usar en su configuración CodePlane a través
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "theme": ""
 }
 ```
@@ -320,7 +320,7 @@ Puedes configurar agentes especializados para tareas específicas a través de l
 
 ```jsonc title="codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "agent": {
     "code-reviewer": {
       "description": "Reviews code for best practices and potential issues",
@@ -346,7 +346,7 @@ Puede configurar el agente predeterminado usando la opción `default_agent`. Est
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "default_agent": "plan"
 }
 ```
@@ -363,7 +363,7 @@ Puede configurar la función [compartir](/docs/share) a través de la opción `s
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "share": "manual"
 }
 ```
@@ -384,7 +384,7 @@ Puede configurar comandos personalizados para tareas repetitivas a través de la
 
 ```jsonc title="codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "command": {
     "test": {
       "template": "Run the full test suite with coverage report and show any failures.\nFocus on the failing tests and suggest fixes.",
@@ -410,7 +410,7 @@ Puede personalizar sus combinaciones de teclas a través de la opción `keybinds
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "keybinds": {}
 }
 ```
@@ -425,7 +425,7 @@ CodePlane descargará automáticamente cualquier actualización nueva cuando se 
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "autoupdate": false
 }
 ```
@@ -441,7 +441,7 @@ Puede configurar formateadores de código a través de la opción `formatter`.
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "formatter": {
     "prettier": {
       "disabled": true
@@ -469,7 +469,7 @@ Por ejemplo, para garantizar que las herramientas `edit` y `bash` requieran la a
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "edit": "ask",
     "bash": "ask"
@@ -487,7 +487,7 @@ Puede controlar el comportamiento de compactación del contexto a través de la 
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "compaction": {
     "auto": true,
     "prune": true
@@ -506,7 +506,7 @@ Puede configurar patrones de ignorancia del observador de archivos a través de 
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "watcher": {
     "ignore": ["node_modules/**", "dist/**", ".git/**"]
   }
@@ -523,7 +523,7 @@ Puede configurar los servidores MCP que desee utilizar a través de la opción `
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mcp": {}
 }
 ```
@@ -540,7 +540,7 @@ Coloque los archivos de complemento en `.codeplane/plugins/` o `~/.config/codepl
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "plugin": ["codeplane-helicone-session", "@my-org/custom-plugin"]
 }
 ```
@@ -555,7 +555,7 @@ Puedes configurar las instrucciones para el modelo que estás usando a través d
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "instructions": ["CONTRIBUTING.md", "docs/guidelines.md", ".cursor/rules/*.md"]
 }
 ```
@@ -571,7 +571,7 @@ Puede deshabilitar proveedores que se cargan automáticamente a través de la op
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "disabled_providers": ["openai", "gemini"]
 }
 ```
@@ -594,7 +594,7 @@ Puede especificar una lista de proveedores permitidos a través de la opción `e
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "enabled_providers": ["anthropic", "openai"]
 }
 ```
@@ -615,7 +615,7 @@ La clave `experimental` contiene opciones que se encuentran en desarrollo activo
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "experimental": {}
 }
 ```
@@ -638,7 +638,7 @@ Utilice `{env:VARIABLE_NAME}` para sustituir variables de entorno:
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "model": "{env:CODEPLANE_MODEL}",
   "provider": {
     "anthropic": {
@@ -661,7 +661,7 @@ Utilice `{file:path/to/file}` para sustituir el contenido de un archivo:
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "instructions": ["./custom-instructions.md"],
   "provider": {
     "openai": {

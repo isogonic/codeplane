@@ -141,7 +141,7 @@ export const dict = {
   "provider.connect.codeplaneZen.line2":
     "Tek bir API anahtarıyla Claude, GPT, Gemini, GLM ve daha fazlası gibi modellere erişebilirsiniz.",
   "provider.connect.codeplaneZen.visit.prefix": "",
-  "provider.connect.codeplaneZen.visit.link": "codeplane.ai/zen",
+  "provider.connect.codeplaneZen.visit.link": "example.invalid/zen",
   "provider.connect.codeplaneZen.visit.suffix": " adresini ziyaret ederek API anahtarınızı alın.",
   "provider.connect.oauth.code.visit.prefix":
     "Hesabınızı bağlamak ve CodePlane'da {{provider}} modellerini kullanmak için ",
@@ -456,7 +456,7 @@ export const dict = {
   "error.page.action.checkUpdates": "Güncellemeleri kontrol et",
   "error.page.action.updateTo": "{{version}} sürümüne güncelle",
   "error.page.report.prefix": "Lütfen bu hatayı CodePlane ekibine bildirin",
-  "error.page.report.discord": "Discord üzerinden",
+  "error.page.report.issues": "GitHub üzerinden",
   "error.page.version": "Sürüm: {{version}}",
 
   "error.dev.rootNotFound":

@@ -13,7 +13,7 @@ description: استخدام ملف إعدادات CodePlane بصيغة JSON.
 
 ```jsonc title="codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   // إعدادات السمة
   "theme": "codeplane",
   "model": "anthropic/claude-sonnet-4-5",
@@ -145,7 +145,7 @@ codeplane run "Hello world"
 
 ## المخطط
 
-يحتوي ملف الإعدادات على مخطط مُعرَّف في [**`codeplane.ai/config.json`**](https://codeplane.ai/config.json).
+يحتوي ملف الإعدادات على مخطط مُعرَّف في [**`example.invalid/config.json`**](https://example.invalid/config.json).
 
 يفترض أن يتمكن محررك من التحقق والإكمال التلقائي اعتمادًا على هذا المخطط.
 
@@ -157,7 +157,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "tui": {
     "scroll_speed": 3,
     "scroll_acceleration": {
@@ -184,7 +184,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "server": {
     "port": 4096,
     "hostname": "0.0.0.0",
@@ -213,7 +213,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "tools": {
     "write": false,
     "bash": false
@@ -231,7 +231,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {},
   "model": "anthropic/claude-sonnet-4-5",
   "small_model": "anthropic/claude-haiku-4-5"
@@ -244,7 +244,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "anthropic": {
       "options": {
@@ -273,7 +273,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "amazon-bedrock": {
       "options": {
@@ -304,7 +304,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "theme": ""
 }
 ```
@@ -319,7 +319,7 @@ codeplane run "Hello world"
 
 ```jsonc title="codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "agent": {
     "code-reviewer": {
       "description": "Reviews code for best practices and potential issues",
@@ -345,7 +345,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "default_agent": "plan"
 }
 ```
@@ -362,7 +362,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "share": "manual"
 }
 ```
@@ -383,7 +383,7 @@ codeplane run "Hello world"
 
 ```jsonc title="codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "command": {
     "test": {
       "template": "Run the full test suite with coverage report and show any failures.\nFocus on the failing tests and suggest fixes.",
@@ -409,7 +409,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "keybinds": {}
 }
 ```
@@ -424,7 +424,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "autoupdate": false
 }
 ```
@@ -440,7 +440,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "formatter": {
     "prettier": {
       "disabled": true
@@ -468,7 +468,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "edit": "ask",
     "bash": "ask"
@@ -486,7 +486,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "compaction": {
     "auto": true,
     "prune": true
@@ -506,7 +506,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "watcher": {
     "ignore": ["node_modules/**", "dist/**", ".git/**"]
   }
@@ -523,7 +523,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mcp": {}
 }
 ```
@@ -540,7 +540,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "plugin": ["codeplane-helicone-session", "@my-org/custom-plugin"]
 }
 ```
@@ -555,7 +555,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "instructions": ["CONTRIBUTING.md", "docs/guidelines.md", ".cursor/rules/*.md"]
 }
 ```
@@ -571,7 +571,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "disabled_providers": ["openai", "gemini"]
 }
 ```
@@ -594,7 +594,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "enabled_providers": ["anthropic", "openai"]
 }
 ```
@@ -615,7 +615,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "experimental": {}
 }
 ```
@@ -638,7 +638,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "model": "{env:CODEPLANE_MODEL}",
   "provider": {
     "anthropic": {
@@ -661,7 +661,7 @@ codeplane run "Hello world"
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "instructions": ["./custom-instructions.md"],
   "provider": {
     "openai": {

@@ -15,7 +15,7 @@ Bruk feltet `permission` for å kontrollere verktøyets oppførsel. Du kan tilla
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "edit": "deny",
     "bash": "ask",
@@ -28,7 +28,7 @@ Du kan også bruke jokertegn for å kontrollere flere verktøy samtidig. For eks
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "mymcp_*": "ask"
   }
@@ -51,7 +51,7 @@ Utfør skallkommandoer i prosjektmiljøet ditt.
 
 ```json title="codeplane.json" {4}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "bash": "allow"
   }
@@ -68,7 +68,7 @@ Endre eksisterende filer ved å bruke eksakte strengerstatninger.
 
 ```json title="codeplane.json" {4}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "edit": "allow"
   }
@@ -85,7 +85,7 @@ Opprett nye filer eller overskriv eksisterende.
 
 ```json title="codeplane.json" {4}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "edit": "allow"
   }
@@ -106,7 +106,7 @@ Les filinnholdet fra kodebasen din.
 
 ```json title="codeplane.json" {4}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "read": "allow"
   }
@@ -123,7 +123,7 @@ Søk i filinnhold ved hjelp av regulære uttrykk.
 
 ```json title="codeplane.json" {4}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "grep": "allow"
   }
@@ -140,7 +140,7 @@ Finn filer etter mønstermatching.
 
 ```json title="codeplane.json" {4}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "glob": "allow"
   }
@@ -161,7 +161,7 @@ Dette verktøyet er bare tilgjengelig når `CODEPLANE_EXPERIMENTAL_LSP_TOOL=true
 
 ```json title="codeplane.json" {4}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "lsp": "allow"
   }
@@ -180,7 +180,7 @@ Bruk patcher på filer.
 
 ```json title="codeplane.json" {4}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "edit": "allow"
   }
@@ -201,7 +201,7 @@ Last inn en [ferdighet](/docs/skills) (en `SKILL.md` fil) og returner innholdet 
 
 ```json title="codeplane.json" {4}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "skill": "allow"
   }
@@ -216,7 +216,7 @@ Administrer gjøremålslister under kodingsøkter.
 
 ```json title="codeplane.json" {4}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "todowrite": "allow"
   }
@@ -237,7 +237,7 @@ Hent nettinnhold.
 
 ```json title="codeplane.json" {4}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "webfetch": "allow"
   }
@@ -265,7 +265,7 @@ CODEPLANE_ENABLE_EXA=1 codeplane
 
 ```json title="codeplane.json" {4}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "websearch": "allow"
   }
@@ -288,7 +288,7 @@ Still brukeren spørsmål under utførelse.
 
 ```json title="codeplane.json" {4}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "question": "allow"
   }

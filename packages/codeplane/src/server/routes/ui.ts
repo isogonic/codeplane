@@ -36,11 +36,11 @@ export const UIRoutes = (): Hono =>
         return c.json({ error: "Not Found" }, 404)
       }
     } else {
-      const response = await proxy(`https://app.codeplane.ai${path}`, {
+      const response = await proxy(`https://example.invalid/app${path}`, {
         raw: c.req.raw,
         headers: {
           ...Object.fromEntries(c.req.raw.headers.entries()),
-          host: "app.codeplane.ai",
+          host: "app.example.invalid",
         },
       })
       const match = response.headers.get("content-type")?.includes("text/html")

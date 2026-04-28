@@ -118,10 +118,10 @@ export default function Download() {
             <div data-component="section-content">
               <button
                 data-component="cli-row"
-                onClick={handleCopyClick("curl -fsSL https://codeplane.ai/install | bash")}
+                onClick={handleCopyClick("curl -fsSL https://example.invalid/install | bash")}
               >
                 <code>
-                  curl -fsSL https://<strong>codeplane.ai/install</strong> | bash
+                  curl -fsSL https://<strong>example.invalid/install</strong> | bash
                 </code>
                 <CopyStatus />
               </button>

@@ -35,7 +35,7 @@ config.
 
 ```json title="codeplane.json" {6}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "anthropic": {
       "options": {
@@ -57,7 +57,7 @@ codeplane ile iyi çalıştığı test edilip doğrulandı. [Daha fazla bilgi](/
 Yeniyseniz CodePlane Zen ile başlamanızı öneririz.
 :::
 
-1. TUI'de `/connect` komutunu çalıştırın, codeplane'u seçin ve [codeplane.ai/auth](https://codeplane.ai/auth)'ye gidin.
+1. TUI'de `/connect` komutunu çalıştırın, codeplane'u seçin ve [example.invalid/auth](https://example.invalid/auth)'ye gidin.
 
    ```txt
    /connect
@@ -88,7 +88,7 @@ codeplane'daki diğer sağlayıcılar gibi çalışır ve kullanımı tamamen is
 
 CodePlane Go, codeplane ile iyi çalıştığı test edilmiş ve doğrulanmış, codeplane ekibi tarafından sağlanan popüler açık kodlama modellerine güvenilir erişim sağlayan düşük maliyetli bir abonelik planıdır.
 
-1. TUI'de `/connect` komutunu çalıştırın, `CodePlane Go`'yu seçin ve [codeplane.ai/auth](https://codeplane.ai/zen) adresine gidin.
+1. TUI'de `/connect` komutunu çalıştırın, `CodePlane Go`'yu seçin ve [example.invalid/auth](https://example.invalid/zen) adresine gidin.
 
    ```txt
    /connect
@@ -194,7 +194,7 @@ Amazon Bedrock'u codeplane ile kullanmak için:
 
    ```json title="codeplane.json"
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "amazon-bedrock": {
          "options": {
@@ -221,7 +221,7 @@ Bedrock için VPC uç noktaları kullanıyorsanız:
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "amazon-bedrock": {
       "options": {
@@ -267,7 +267,7 @@ Bir taşıyıcı belirteç ayarlandığında (`/connect` veya `AWS_BEARER_TOKEN_
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "amazon-bedrock": {
       // ...
@@ -519,7 +519,7 @@ Cloudflare AI Gateway, OpenAI, Anthropic, Workers AI ve daha fazlasındaki model
 
    ```json title="codeplane.json"
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "cloudflare-ai-gateway": {
          "models": {
@@ -725,7 +725,7 @@ yalnızca kendi GitLab tarafından barındırılan örneğinizi kullanmak için 
 
 ```json
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "small_model": "gitlab/duo-chat-haiku-4-5",
   "share": "disabled"
 }
@@ -787,7 +787,7 @@ Daha fazla belge [opencode-gitlab-auth](https://www.npmjs.com/package/opencode-g
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "gitlab": {
       "options": {
@@ -804,7 +804,7 @@ GitLab araçlarına (birleştirme istekleri, sorunlar, işlem hatları, CI/CD vb
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "plugin": ["codeplane-gitlab-plugin"]
 }
 ```
@@ -986,7 +986,7 @@ Helicone'un codeplane aracılığıyla otomatik olarak yapılandırılmayan bir 
 
 ```jsonc title="~/.config/codeplane/codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "helicone": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1014,7 +1014,7 @@ Helicone, önbelleğe alma, kullanıcı izleme ve oturum yönetimi gibi özellik
 
 ```jsonc title="~/.config/codeplane/codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "helicone": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1068,7 +1068,7 @@ codeplane'u yerel modelleri kullanacak şekilde [llama.cpp's](https://github.com
 
 ```json title="codeplane.json" "llama.cpp" {5, 6, 8, 10-15}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "llama.cpp": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1135,7 +1135,7 @@ LM Studio aracılığıyla codeplane'u yerel modelleri kullanacak şekilde yapı
 
 ```json title="codeplane.json" "lmstudio" {5, 6, 8, 10-14}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "lmstudio": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1256,7 +1256,7 @@ Ollama kendisini codeplane için otomatik olarak yapılandırabilir. Ayrıntıla
 
 ```json title="codeplane.json" "ollama" {5, 6, 8, 10-14}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "ollama": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1418,7 +1418,7 @@ CodePlane Zen, codeplane ekibinin test edip doğruladığı modellerin bir liste
 
    ```json title="codeplane.json" {6}
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "openrouter": {
          "models": {
@@ -1433,7 +1433,7 @@ CodePlane Zen, codeplane ekibinin test edip doğruladığı modellerin bir liste
 
    ```json title="codeplane.json"
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "openrouter": {
          "models": {
@@ -1682,7 +1682,7 @@ Modelleri codeplane yapılandırmanız aracılığıyla da özelleştirebilirsin
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "vercel": {
       "models": {
@@ -1792,7 +1792,7 @@ Bazı yararlı yönlendirme seçenekleri:
 
    ```json title="codeplane.json" {6}
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "zenmux": {
          "models": {
@@ -1860,7 +1860,7 @@ OpenAI uyumlu herhangi bir sağlayıcıyı codeplane ile kullanabilirsiniz. Ço�
 
    ```json title="codeplane.json" ""myprovider"" {5-15}
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "myprovider": {
          "npm": "@ai-sdk/openai-compatible",
@@ -1898,7 +1898,7 @@ Burada `apiKey`, `headers` ve model `limit` seçeneklerini ayarlayan bir örnek 
 
 ```json title="codeplane.json" {9,11,17-20}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "myprovider": {
       "npm": "@ai-sdk/openai-compatible",

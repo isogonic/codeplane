@@ -92,7 +92,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   meta = {
     description = "CodePlane Desktop App";
-    homepage = "https://codeplane.ai";
+    homepage = "https://github.com/devinoldenburg/codeplane";
     license = lib.licenses.mit;
     mainProgram = "codeplane-desktop";
     inherit (codeplane.meta) platforms;

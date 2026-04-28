@@ -137,7 +137,7 @@ export const dict = {
   "provider.connect.codeplaneZen.line2":
     "Sa jednim API ključem dobijaš pristup modelima kao što su Claude, GPT, Gemini, GLM i drugi.",
   "provider.connect.codeplaneZen.visit.prefix": "Posjeti ",
-  "provider.connect.codeplaneZen.visit.link": "codeplane.ai/zen",
+  "provider.connect.codeplaneZen.visit.link": "example.invalid/zen",
   "provider.connect.codeplaneZen.visit.suffix": " da preuzmeš svoj API ključ.",
   "provider.connect.oauth.code.visit.prefix": "Posjeti ",
   "provider.connect.oauth.code.visit.link": "ovaj link",
@@ -453,7 +453,7 @@ export const dict = {
   "error.page.action.checkUpdates": "Provjeri ažuriranja",
   "error.page.action.updateTo": "Ažuriraj na {{version}}",
   "error.page.report.prefix": "Molimo prijavi ovu grešku CodePlane timu",
-  "error.page.report.discord": "na Discordu",
+  "error.page.report.issues": "na GitHub-u",
   "error.page.version": "Verzija: {{version}}",
 
   "error.dev.rootNotFound":

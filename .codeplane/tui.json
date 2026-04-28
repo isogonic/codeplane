@@ -1,5 +1,4 @@
 {
-  "$schema": "https://codeplane.ai/tui.json",
   "plugin": [
     [
       "./plugins/tui-smoke.tsx",

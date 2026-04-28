@@ -23,9 +23,8 @@ export const dict = {
   "footer.github": "GitHub",
   "footer.docs": "文件",
   "footer.changelog": "更新日誌",
-  "footer.feishu": "飞书",
-  "footer.discord": "Discord",
-  "footer.x": "X",
+  "footer.issues": "問題",
+
 
   "legal.brand": "品牌",
   "legal.privacy": "隱私",

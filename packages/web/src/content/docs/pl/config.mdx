@@ -13,7 +13,7 @@ CodePlane obsługuje formaty **JSON** i **JSONC** (JSON z komentarzami).
 
 ```jsonc title="codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   // Theme configuration
   "theme": "codeplane",
   "model": "anthropic/claude-sonnet-4-5",
@@ -146,7 +146,7 @@ Katalog niestandardowy jest ładowany po globalnej konfiguracji i katalogach `.c
 
 ## Schemat
 
-Plik konfiguracyjny ma schemat JSON dostępny pod adresem [**`codeplane.ai/config.json`**](https://codeplane.ai/config.json).
+Plik konfiguracyjny ma schemat JSON dostępny pod adresem [**`example.invalid/config.json`**](https://example.invalid/config.json).
 
 Twój edytor powinien zapewniać walidację i autouzupełnianie na podstawie tego schematu.
 
@@ -158,7 +158,7 @@ Użyj dedykowanego pliku `tui.json` (lub `tui.jsonc`) dla ustawień specyficznyc
 
 ```json title="tui.json"
 {
-  "$schema": "https://codeplane.ai/tui.json",
+  "$schema": "",
   "scroll_speed": 3,
   "scroll_acceleration": {
     "enabled": true
@@ -181,7 +181,7 @@ Możesz skonfigurować serwer dla `codeplane serve` i `codeplane web` za pomocą
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "server": {
     "port": 4096,
     "hostname": "0.0.0.0",
@@ -210,7 +210,7 @@ Kontroluj, które narzędzia są dostępne dla LLM, za pomocą opcji `tools`.
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "tools": {
     "write": false,
     "bash": false
@@ -228,7 +228,7 @@ Możesz skonfigurować dostawców i modele, których chcesz używać, za pomocą
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {},
   "model": "anthropic/claude-sonnet-4-5",
   "small_model": "anthropic/claude-haiku-4-5"
@@ -241,7 +241,7 @@ Opcje dostawcy mogą zawierać `timeout` i `setCacheKey`:
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "anthropic": {
       "options": {
@@ -270,7 +270,7 @@ Amazon Bedrock umożliwia konfigurację połączenia z AWS:
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "amazon-bedrock": {
       "options": {
@@ -301,7 +301,7 @@ Ustaw motyw interfejsu użytkownika w `tui.json`.
 
 ```json title="tui.json"
 {
-  "$schema": "https://codeplane.ai/tui.json",
+  "$schema": "",
   "theme": "tokyonight"
 }
 ```
@@ -316,7 +316,7 @@ Możesz zdefiniować i skonfigurować agentów za pomocą opcji `agent`.
 
 ```jsonc title="codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "agent": {
     "code-reviewer": {
       "description": "Reviews code for best practices and potential issues",
@@ -342,7 +342,7 @@ Domyślnego agenta można ustawić za pomocą opcji `default_agent`. Określa to
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "default_agent": "plan"
 }
 ```
@@ -359,7 +359,7 @@ Możesz skonfigurować [udostępnianie](/docs/share) za pomocą opcji `share`.
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "share": "manual"
 }
 ```
@@ -380,7 +380,7 @@ Możesz zdefiniować niestandardowe polecenia dla powtarzalnych zadań za pomoc�
 
 ```jsonc title="codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "command": {
     "test": {
       "template": "Run the full test suite with coverage report and show any failures.\nFocus on the failing tests and suggest fixes.",
@@ -406,7 +406,7 @@ Dostosuj skróty klawiszowe w `tui.json`.
 
 ```json title="tui.json"
 {
-  "$schema": "https://codeplane.ai/tui.json",
+  "$schema": "",
   "keybinds": {}
 }
 ```
@@ -421,7 +421,7 @@ CodePlane może automatycznie pobierać nowe wersje. Możesz to kontrolować za 
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "autoupdate": false
 }
 ```
@@ -437,7 +437,7 @@ Możesz skonfigurować formatery kodu za pomocą opcji `formatter`.
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "formatter": {
     "prettier": {
       "disabled": true
@@ -465,7 +465,7 @@ Na przykład, aby wymagać zatwierdzenia dla narzędzi `edit` i `bash`:
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "edit": "ask",
     "bash": "ask"
@@ -483,7 +483,7 @@ Możesz kontrolować zachowanie kompaktowania kontekstu za pomocą opcji `compac
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "compaction": {
     "auto": true,
     "prune": true
@@ -502,7 +502,7 @@ Skonfiguruj ignorowane wzorce plików dla obserwatora plików za pomocą `watche
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "watcher": {
     "ignore": ["node_modules/**", "dist/**", ".git/**"]
   }
@@ -519,7 +519,7 @@ Skonfiguruj serwery MCP, których chcesz używać, za pomocą opcji `mcp`.
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mcp": {}
 }
 ```
@@ -536,7 +536,7 @@ Umieść pliki wtyczek w `.codeplane/plugins/` lub `~/.config/codeplane/plugins/
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "plugin": ["codeplane-helicone-session", "@my-org/custom-plugin"]
 }
 ```
@@ -551,7 +551,7 @@ Określ pliki instrukcji dla modelu, używając opcji `instructions`.
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "instructions": ["CONTRIBUTING.md", "docs/guidelines.md", ".cursor/rules/*.md"]
 }
 ```
@@ -566,7 +566,7 @@ Zapobiegaj automatycznemu ładowaniu dostawców za pomocą opcji `disabled_provi
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "disabled_providers": ["openai", "gemini"]
 }
 ```
@@ -589,7 +589,7 @@ Możesz określić listę dozwolonych dostawców za pomocą `enabled_providers`.
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "enabled_providers": ["anthropic", "openai"]
 }
 ```
@@ -610,7 +610,7 @@ Klucz `experimental` zawiera opcje, które są we wczesnej fazie rozwoju.
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "experimental": {}
 }
 ```
@@ -633,7 +633,7 @@ Użyj `{env:VARIABLE_NAME}`, aby wstawić wartość zmiennej środowiskowej:
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "model": "{env:CODEPLANE_MODEL}",
   "provider": {
     "anthropic": {
@@ -656,7 +656,7 @@ Użyj `{file:path/to/file}`, aby wstawić zawartość pliku:
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "instructions": ["./custom-instructions.md"],
   "provider": {
     "openai": {

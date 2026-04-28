@@ -130,7 +130,7 @@ export const dict = {
   "provider.connect.codeplaneZen.line2":
     "Mit einem einzigen API-Schlüssel erhalten Sie Zugriff auf Modelle wie Claude, GPT, Gemini, GLM und mehr.",
   "provider.connect.codeplaneZen.visit.prefix": "Besuchen Sie ",
-  "provider.connect.codeplaneZen.visit.link": "codeplane.ai/zen",
+  "provider.connect.codeplaneZen.visit.link": "example.invalid/zen",
   "provider.connect.codeplaneZen.visit.suffix": ", um Ihren API-Schlüssel zu erhalten.",
   "provider.connect.oauth.code.visit.prefix": "Besuchen Sie ",
   "provider.connect.oauth.code.visit.link": "diesen Link",
@@ -416,7 +416,7 @@ export const dict = {
   "error.page.action.checkUpdates": "Nach Updates suchen",
   "error.page.action.updateTo": "Auf {{version}} aktualisieren",
   "error.page.report.prefix": "Bitte melden Sie diesen Fehler dem CodePlane-Team",
-  "error.page.report.discord": "auf Discord",
+  "error.page.report.issues": "auf GitHub",
   "error.page.version": "Version: {{version}}",
   "error.dev.rootNotFound":
     "Wurzelelement nicht gefunden. Haben Sie vergessen, es in Ihre index.html aufzunehmen? Oder wurde das id-Attribut falsch geschrieben?",

@@ -32,7 +32,7 @@ Especifique paquetes npm en su archivo de configuración.
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "plugin": ["codeplane-helicone-session", "codeplane-wakatime", "@my-org/custom-plugin"]
 }
 ```
@@ -331,7 +331,7 @@ export const MyPlugin = async ({ client }) => {
 }
 ```
 
-Niveles: `debug`, `info`, `warn`, `error`. Consulte la [documentación del SDK](https://codeplane.ai/docs/sdk) para obtener más detalles.
+Niveles: `debug`, `info`, `warn`, `error`. Consulte la [documentación del SDK](https://github.com/devinoldenburg/codeplane) para obtener más detalles.
 
 ---
 

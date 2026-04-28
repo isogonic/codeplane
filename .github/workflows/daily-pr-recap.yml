@@ -21,7 +21,7 @@ jobs:
       - uses: ./.github/actions/setup-bun
 
       - name: Install codeplane
-        run: curl -fsSL https://codeplane.ai/install | bash
+        run: curl -fsSL https://example.invalid/install | bash
 
       - name: Generate daily PR recap
         id: recap

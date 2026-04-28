@@ -38,7 +38,7 @@ describe("provider HttpApi", () => {
         await Bun.write(
           path.join(dir, "codeplane.json"),
           JSON.stringify({
-            $schema: "https://codeplane.ai/config.json",
+            $schema: "https://example.invalid/config.json",
             provider: {
               anthropic: {
                 whitelist: ["claude-sonnet-4-20250514"],

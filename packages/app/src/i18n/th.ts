@@ -137,7 +137,7 @@ export const dict = {
   "provider.connect.codeplaneZen.line2":
     "ด้วยคีย์ API เดียวคุณจะได้รับการเข้าถึงโมเดล เช่น Claude, GPT, Gemini, GLM และอื่น ๆ",
   "provider.connect.codeplaneZen.visit.prefix": "เยี่ยมชม ",
-  "provider.connect.codeplaneZen.visit.link": "codeplane.ai/zen",
+  "provider.connect.codeplaneZen.visit.link": "example.invalid/zen",
   "provider.connect.codeplaneZen.visit.suffix": " เพื่อรวบรวมคีย์ API ของคุณ",
   "provider.connect.oauth.code.visit.prefix": "เยี่ยมชม ",
   "provider.connect.oauth.code.visit.link": "ลิงก์นี้",
@@ -451,7 +451,7 @@ export const dict = {
   "error.page.action.checkUpdates": "ตรวจสอบการอัปเดต",
   "error.page.action.updateTo": "อัปเดตเป็น {{version}}",
   "error.page.report.prefix": "โปรดรายงานข้อผิดพลาดนี้ให้ทีม CodePlane",
-  "error.page.report.discord": "บน Discord",
+  "error.page.report.issues": "บน GitHub",
   "error.page.version": "เวอร์ชัน: {{version}}",
 
   "error.dev.rootNotFound": "ไม่พบองค์ประกอบรูท คุณลืมเพิ่มใน index.html หรือบางทีแอตทริบิวต์ id อาจสะกดผิด?",

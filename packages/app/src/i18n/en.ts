@@ -193,7 +193,7 @@ export const dict = {
   "provider.connect.codeplaneZen.line2":
     "With a single API key you'll get access to models such as Claude, GPT, Gemini, GLM and more.",
   "provider.connect.codeplaneZen.visit.prefix": "Visit ",
-  "provider.connect.codeplaneZen.visit.link": "codeplane.ai/zen",
+  "provider.connect.codeplaneZen.visit.link": "example.invalid/zen",
   "provider.connect.codeplaneZen.visit.suffix": " to collect your API key.",
   "provider.connect.oauth.code.visit.prefix": "Visit ",
   "provider.connect.oauth.code.visit.link": "this link",
@@ -525,7 +525,7 @@ export const dict = {
   "error.page.action.updateTo": "Update to {{version}}",
   "error.page.circular": "[Circular]",
   "error.page.report.prefix": "Please report this error to the CodePlane team",
-  "error.page.report.discord": "on Discord",
+  "error.page.report.issues": "on GitHub",
   "error.page.version": "Version: {{version}}",
 
   "error.dev.rootNotFound":

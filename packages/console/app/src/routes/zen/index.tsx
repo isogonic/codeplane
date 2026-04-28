@@ -213,7 +213,7 @@ export default function Home() {
 
           <section data-component="testimonials">
             {/*Dax*/}
-            <a href="https://x.com/thdxr/status/1973531687629017227">
+            <a>
               <div data-slot="testimonial">
                 <div data-slot="name">
                   <img src={avatarDax} alt="" />
@@ -227,7 +227,7 @@ export default function Home() {
               </div>
             </a>
             {/*Jay*/}
-            <a href="https://x.com/jayair/status/1973530190870618456">
+            <a>
               <div data-slot="testimonial">
                 <div data-slot="name">
                   <img src={avatarJay} alt="" />
@@ -242,7 +242,7 @@ export default function Home() {
               </div>
             </a>
             {/*Adam*/}
-            <a href="https://x.com/adamdotdev/status/1973732040718860563">
+            <a>
               <div data-slot="testimonial">
                 <div data-slot="name">
                   <img src={avatarAdam} alt="" />
@@ -257,7 +257,7 @@ export default function Home() {
               </div>
             </a>
             {/*David*/}
-            <a href="https://x.com/iamdavidhill/status/1973530568773214622">
+            <a>
               <div data-slot="testimonial">
                 <div data-slot="name">
                   <img src={avatarDavid} alt="" />
@@ -272,7 +272,7 @@ export default function Home() {
               </div>
             </a>
             {/*Frank*/}
-            <a href="https://x.com/fanjiewang/status/1973530092736487756">
+            <a>
               <div data-slot="testimonial">
                 <div data-slot="name">
                   <img src={avatarFrank} alt="" />

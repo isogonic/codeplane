@@ -4,7 +4,7 @@
 
 ## Local Dev
 
-- `codeplane dev web` proxies `https://app.codeplane.ai`, so local UI/CSS changes will not show there.
+- `codeplane dev web` proxies `https://example.invalid/app`, so local UI/CSS changes will not show there.
 - For local UI changes, run the backend and app dev servers separately.
 - Backend (from `packages/codeplane`): `bun run --conditions=browser ./src/index.ts serve --port 4096`
 - App (from `packages/app`): `bun dev -- --port 4444`

@@ -6,12 +6,12 @@ describe("cli.error", () => {
   test("formats account transport errors clearly", () => {
     const error = new AccountTransportError({
       method: "POST",
-      url: "https://console.codeplane.ai/auth/device/code",
+      url: "https://example.invalid/console",
     })
 
     const formatted = FormatError(error)
 
-    expect(formatted).toContain("Could not reach POST https://console.codeplane.ai/auth/device/code.")
+    expect(formatted).toContain("Could not reach POST https://example.invalid/console")
     expect(formatted).toContain("This failed before the server returned an HTTP response.")
     expect(formatted).toContain("Check your network, proxy, or VPN configuration and try again.")
   })

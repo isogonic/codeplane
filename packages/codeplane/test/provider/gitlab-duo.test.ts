@@ -20,7 +20,7 @@ export {}
 //       await Bun.write(
 //         path.join(dir, "codeplane.json"),
 //         JSON.stringify({
-//           $schema: "https://codeplane.ai/config.json",
+//           $schema: "https://example.invalid/config.json",
 //         }),
 //       )
 //     },
@@ -44,7 +44,7 @@ export {}
 //       await Bun.write(
 //         path.join(dir, "codeplane.json"),
 //         JSON.stringify({
-//           $schema: "https://codeplane.ai/config.json",
+//           $schema: "https://example.invalid/config.json",
 //           provider: {
 //             gitlab: {
 //               options: {
@@ -76,7 +76,7 @@ export {}
 //       await Bun.write(
 //         path.join(dir, "codeplane.json"),
 //         JSON.stringify({
-//           $schema: "https://codeplane.ai/config.json",
+//           $schema: "https://example.invalid/config.json",
 //         }),
 //       )
 //     },
@@ -113,7 +113,7 @@ export {}
 //       await Bun.write(
 //         path.join(dir, "codeplane.json"),
 //         JSON.stringify({
-//           $schema: "https://codeplane.ai/config.json",
+//           $schema: "https://example.invalid/config.json",
 //         }),
 //       )
 //     },
@@ -149,7 +149,7 @@ export {}
 //       await Bun.write(
 //         path.join(dir, "codeplane.json"),
 //         JSON.stringify({
-//           $schema: "https://codeplane.ai/config.json",
+//           $schema: "https://example.invalid/config.json",
 //           provider: {
 //             gitlab: {
 //               options: {
@@ -181,7 +181,7 @@ export {}
 //       await Bun.write(
 //         path.join(dir, "codeplane.json"),
 //         JSON.stringify({
-//           $schema: "https://codeplane.ai/config.json",
+//           $schema: "https://example.invalid/config.json",
 //           provider: {
 //             gitlab: {
 //               options: {
@@ -211,7 +211,7 @@ export {}
 //       await Bun.write(
 //         path.join(dir, "codeplane.json"),
 //         JSON.stringify({
-//           $schema: "https://codeplane.ai/config.json",
+//           $schema: "https://example.invalid/config.json",
 //         }),
 //       )
 //     },
@@ -237,7 +237,7 @@ export {}
 //       await Bun.write(
 //         path.join(dir, "codeplane.json"),
 //         JSON.stringify({
-//           $schema: "https://codeplane.ai/config.json",
+//           $schema: "https://example.invalid/config.json",
 //           provider: {
 //             gitlab: {
 //               options: {
@@ -272,7 +272,7 @@ export {}
 //       await Bun.write(
 //         path.join(dir, "codeplane.json"),
 //         JSON.stringify({
-//           $schema: "https://codeplane.ai/config.json",
+//           $schema: "https://example.invalid/config.json",
 //         }),
 //       )
 //     },
@@ -298,7 +298,7 @@ export {}
 //   test("duo-workflow-* model routes through workflowChat", async () => {
 //     await using tmp = await tmpdir({
 //       init: async (dir) => {
-//         await Bun.write(path.join(dir, "codeplane.json"), JSON.stringify({ $schema: "https://codeplane.ai/config.json" }))
+//         await Bun.write(path.join(dir, "codeplane.json"), JSON.stringify({ $schema: "https://example.invalid/config.json" }))
 //       },
 //     })
 //     await Instance.provide({
@@ -346,7 +346,7 @@ export {}
 //   test("duo-chat-* model routes through agenticChat (not workflow)", async () => {
 //     await using tmp = await tmpdir({
 //       init: async (dir) => {
-//         await Bun.write(path.join(dir, "codeplane.json"), JSON.stringify({ $schema: "https://codeplane.ai/config.json" }))
+//         await Bun.write(path.join(dir, "codeplane.json"), JSON.stringify({ $schema: "https://example.invalid/config.json" }))
 //       },
 //     })
 //     await Instance.provide({
@@ -369,7 +369,7 @@ export {}
 //   test("model.options merged with provider.options in getLanguage", async () => {
 //     await using tmp = await tmpdir({
 //       init: async (dir) => {
-//         await Bun.write(path.join(dir, "codeplane.json"), JSON.stringify({ $schema: "https://codeplane.ai/config.json" }))
+//         await Bun.write(path.join(dir, "codeplane.json"), JSON.stringify({ $schema: "https://example.invalid/config.json" }))
 //       },
 //     })
 //     await Instance.provide({
@@ -393,7 +393,7 @@ export {}
 //   test("static duo-chat models always present regardless of discovery", async () => {
 //     await using tmp = await tmpdir({
 //       init: async (dir) => {
-//         await Bun.write(path.join(dir, "codeplane.json"), JSON.stringify({ $schema: "https://codeplane.ai/config.json" }))
+//         await Bun.write(path.join(dir, "codeplane.json"), JSON.stringify({ $schema: "https://example.invalid/config.json" }))
 //       },
 //     })
 //     await Instance.provide({

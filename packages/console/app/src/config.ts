@@ -3,7 +3,7 @@
  */
 export const config = {
   // Base URL
-  baseUrl: "https://codeplane.ai",
+  baseUrl: "https://github.com/devinoldenburg/codeplane",
 
   // GitHub
   github: {
@@ -12,12 +12,6 @@ export const config = {
       compact: "140K",
       full: "140,000",
     },
-  },
-
-  // Social links
-  social: {
-    twitter: "https://x.com/codeplane",
-    discord: "https://discord.gg/codeplane",
   },
 
   // Static stats (used on landing page)

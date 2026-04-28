@@ -15,7 +15,7 @@ import {
   buttonText,
 } from "../styles"
 
-const CONSOLE_URL = "https://codeplane.ai/"
+const CONSOLE_URL = "https://github.com/devinoldenburg/codeplane"
 
 interface InviteEmailProps {
   inviter: string

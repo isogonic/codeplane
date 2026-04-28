@@ -1581,7 +1581,7 @@ describe("ProviderTransform.message - strip openai metadata when store=false", (
       providerID: "codeplane",
       api: {
         id: "codeplane-test",
-        url: "https://api.codeplane.ai",
+        url: "https://example.invalid/api",
         npm: "@ai-sdk/openai-compatible",
       },
     }
@@ -1615,7 +1615,7 @@ describe("ProviderTransform.message - strip openai metadata when store=false", (
       providerID: "codeplane",
       api: {
         id: "codeplane-test",
-        url: "https://api.codeplane.ai",
+        url: "https://example.invalid/api",
         npm: "@ai-sdk/openai-compatible",
       },
     }

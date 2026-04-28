@@ -35,7 +35,7 @@ You can customize the base URL for any provider by setting the `baseURL` option.
 
 ```json title="codeplane.json" {6}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "anthropic": {
       "options": {
@@ -57,7 +57,7 @@ tested and verified to work well with CodePlane. [Learn more](/docs/zen).
 If you are new, we recommend starting with CodePlane Zen.
 :::
 
-1. Run the `/connect` command in the TUI, select `CodePlane Zen`, and head to [codeplane.ai/auth](https://codeplane.ai/zen).
+1. Run the `/connect` command in the TUI, select `CodePlane Zen`, and head to [example.invalid/auth](https://example.invalid/zen).
 
    ```txt
    /connect
@@ -89,7 +89,7 @@ It works like any other provider in CodePlane and is completely optional to use.
 CodePlane Go is a low cost subscription plan that provides reliable access to popular open coding models provided by the CodePlane team that have been
 tested and verified to work well with CodePlane.
 
-1. Run the `/connect` command in the TUI, select `CodePlane Go`, and head to [codeplane.ai/auth](https://codeplane.ai/zen).
+1. Run the `/connect` command in the TUI, select `CodePlane Go`, and head to [example.invalid/auth](https://example.invalid/zen).
 
    ```txt
    /connect
@@ -199,7 +199,7 @@ To use Amazon Bedrock with CodePlane:
 
    ```json title="codeplane.json"
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "amazon-bedrock": {
          "options": {
@@ -228,7 +228,7 @@ To use Amazon Bedrock with CodePlane:
 
    ```json title="codeplane.json"
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "amazon-bedrock": {
          "options": {
@@ -277,7 +277,7 @@ For custom inference profiles, use the model and provider name in the key and se
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "amazon-bedrock": {
       // ...
@@ -535,7 +535,7 @@ Cloudflare AI Gateway lets you access models from OpenAI, Anthropic, Workers AI,
 
    ```json title="codeplane.json"
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "cloudflare-ai-gateway": {
          "models": {
@@ -807,7 +807,7 @@ to only use your own GitLab-hosted instance, add the following to your
 
 ```json
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "small_model": "gitlab/duo-chat-haiku-4-5",
   "share": "disabled"
 }
@@ -871,7 +871,7 @@ Customize through `codeplane.json`:
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "gitlab": {
       "options": {
@@ -902,7 +902,7 @@ To access GitLab tools (merge requests, issues, pipelines, CI/CD, etc.):
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "plugin": ["codeplane-gitlab-plugin"]
 }
 ```
@@ -1083,7 +1083,7 @@ Here's [Helicone's Model Directory](https://helicone.ai/models), you'll need thi
 
 ```jsonc title="~/.config/codeplane/codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "helicone": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1111,7 +1111,7 @@ Helicone supports custom headers for features like caching, user tracking, and s
 
 ```jsonc title="~/.config/codeplane/codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "helicone": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1165,7 +1165,7 @@ You can configure codeplane to use local models through [llama.cpp's](https://gi
 
 ```json title="codeplane.json" "llama.cpp" {5, 6, 8, 10-15}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "llama.cpp": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1232,7 +1232,7 @@ You can configure codeplane to use local models through LM Studio.
 
 ```json title="codeplane.json" "lmstudio" {5, 6, 8, 10-14}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "lmstudio": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1349,7 +1349,7 @@ You can also use NVIDIA models locally via [NVIDIA NIM](https://docs.nvidia.com/
 
 ```json title="codeplane.json" {6}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "nvidia": {
       "options": {
@@ -1407,7 +1407,7 @@ Ollama can automatically configure itself for CodePlane. See the [Ollama integra
 
 ```json title="codeplane.json" "ollama" {5, 6, 8, 10-14}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "ollama": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1569,7 +1569,7 @@ CodePlane Zen is a list of tested and verified models provided by the CodePlane 
 
    ```json title="codeplane.json" {6}
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "openrouter": {
          "models": {
@@ -1584,7 +1584,7 @@ CodePlane Zen is a list of tested and verified models provided by the CodePlane 
 
    ```json title="codeplane.json"
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "openrouter": {
          "models": {
@@ -1633,7 +1633,7 @@ CodePlane Zen is a list of tested and verified models provided by the CodePlane 
 
    ```json title="codeplane.json" {6}
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "llmgateway": {
          "models": {
@@ -1648,7 +1648,7 @@ CodePlane Zen is a list of tested and verified models provided by the CodePlane 
 
    ```json title="codeplane.json"
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "llmgateway": {
          "models": {
@@ -1901,7 +1901,7 @@ You can also customize models through your codeplane config. Here's an example o
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "vercel": {
       "models": {
@@ -2011,7 +2011,7 @@ Some useful routing options:
 
    ```json title="codeplane.json" {6}
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "zenmux": {
          "models": {
@@ -2079,7 +2079,7 @@ You can use any OpenAI-compatible provider with codeplane. Most modern AI provid
 
    ```json title="codeplane.json" ""myprovider"" {5-15}
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "myprovider": {
          "npm": "@ai-sdk/openai-compatible",
@@ -2117,7 +2117,7 @@ Here's an example setting the `apiKey`, `headers`, and model `limit` options.
 
 ```json title="codeplane.json" {9,11,17-20}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "myprovider": {
       "npm": "@ai-sdk/openai-compatible",

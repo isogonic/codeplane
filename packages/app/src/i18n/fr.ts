@@ -125,7 +125,7 @@ export const dict = {
   "provider.connect.codeplaneZen.line2":
     "Avec une seule clé API, vous aurez accès à des modèles tels que Claude, GPT, Gemini, GLM et plus encore.",
   "provider.connect.codeplaneZen.visit.prefix": "Visitez ",
-  "provider.connect.codeplaneZen.visit.link": "codeplane.ai/zen",
+  "provider.connect.codeplaneZen.visit.link": "example.invalid/zen",
   "provider.connect.codeplaneZen.visit.suffix": " pour récupérer votre clé API.",
   "provider.connect.oauth.code.visit.prefix": "Visitez ",
   "provider.connect.oauth.code.visit.link": "ce lien",
@@ -410,7 +410,7 @@ export const dict = {
   "error.page.action.checkUpdates": "Vérifier les mises à jour",
   "error.page.action.updateTo": "Mettre à jour vers {{version}}",
   "error.page.report.prefix": "Veuillez signaler cette erreur à l'équipe CodePlane",
-  "error.page.report.discord": "sur Discord",
+  "error.page.report.issues": "sur GitHub",
   "error.page.version": "Version : {{version}}",
   "error.dev.rootNotFound":
     "Élément racine introuvable. Avez-vous oublié de l'ajouter à votre index.html ? Ou peut-être que l'attribut id est mal orthographié ?",

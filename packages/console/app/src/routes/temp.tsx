@@ -67,7 +67,7 @@ export default function Home() {
               <span>
                 <span>curl -fsSL </span>
                 <span data-slot="protocol">https://</span>
-                <span data-slot="highlight">codeplane.ai/install</span>
+                <span data-slot="highlight">example.invalid/install</span>
                 <span> | bash</span>
               </span>
               <CopyStatus />
@@ -158,13 +158,10 @@ export default function Home() {
 
         <footer data-component="footer">
           <div data-slot="cell">
-            <a href="https://x.com/codeplane">{i18n.t("footer.x")}</a>
-          </div>
-          <div data-slot="cell">
             <a href="https://github.com/devinoldenburg/codeplane">{i18n.t("footer.github")}</a>
           </div>
           <div data-slot="cell">
-            <a href="https://codeplane.ai/discord">{i18n.t("footer.discord")}</a>
+            <a href="https://github.com/devinoldenburg/codeplane/issues">{i18n.t("footer.issues")}</a>
           </div>
         </footer>
       </div>

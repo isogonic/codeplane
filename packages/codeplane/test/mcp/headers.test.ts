@@ -57,7 +57,7 @@ test("headers are passed to transports when oauth is enabled (default)", async (
       await Bun.write(
         `${dir}/codeplane.json`,
         JSON.stringify({
-          $schema: "https://codeplane.ai/config.json",
+          $schema: "https://example.invalid/config.json",
           mcp: {
             "test-server": {
               type: "remote",

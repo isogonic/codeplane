@@ -428,7 +428,7 @@ export function DialogConnectProvider(props: { provider: string }) {
               <div class="text-14-regular text-text-base">{language.t("provider.connect.codeplaneZen.line2")}</div>
               <div class="text-14-regular text-text-base">
                 {language.t("provider.connect.codeplaneZen.visit.prefix")}
-                <Link href="https://codeplane.ai/zen" tabIndex={-1}>
+                <Link href="https://example.invalid/zen" tabIndex={-1}>
                   {language.t("provider.connect.codeplaneZen.visit.link")}
                 </Link>
                 {language.t("provider.connect.codeplaneZen.visit.suffix")}

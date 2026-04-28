@@ -105,7 +105,7 @@ export const Info = Schema.Struct({
     description: "Server configuration for codeplane serve and web commands",
   }),
   command: Schema.optional(Schema.Record(Schema.String, ConfigCommand.Info)).annotate({
-    description: "Command configuration, see https://codeplane.ai/docs/commands",
+    description: "Command configuration, see https://github.com/devinoldenburg/codeplane",
   }),
   skills: Schema.optional(ConfigSkills.Info).annotate({ description: "Additional skill folder paths" }),
   watcher: Schema.optional(
@@ -174,7 +174,7 @@ export const Info = Schema.Struct({
       }),
       [Schema.Record(Schema.String, AgentRef)],
     ),
-  ).annotate({ description: "Agent configuration, see https://codeplane.ai/docs/agents" }),
+  ).annotate({ description: "Agent configuration, see https://github.com/devinoldenburg/codeplane" }),
   provider: Schema.optional(Schema.Record(Schema.String, ConfigProvider.Info)).annotate({
     description: "Custom provider configurations and model overrides",
   }),
@@ -367,8 +367,8 @@ export const layer = Layer.effect(
 
       yield* Effect.promise(() => resolveLoadedPlugins(data, options.path))
       if (!data.$schema) {
-        data.$schema = "https://codeplane.ai/config.json"
-        const updated = text.replace(/^\s*\{/, '{\n  "$schema": "https://codeplane.ai/config.json",')
+        data.$schema = "https://example.invalid/config.json"
+        const updated = text.replace(/^\s*\{/, '{\n  "$schema": "https://example.invalid/config.json",')
         yield* fs.writeFileString(options.path, updated).pipe(Effect.catch(() => Effect.void))
       }
       return data
@@ -396,7 +396,7 @@ export const layer = Layer.effect(
             .then(async (mod) => {
               const { provider, model, ...rest } = mod.default
               if (provider && model) result.model = `${provider}/${model}`
-              result["$schema"] = "https://codeplane.ai/config.json"
+              result["$schema"] = "https://example.invalid/config.json"
               result = mergeDeep(result, rest)
               await fsNode.writeFile(path.join(Global.Path.config, "config.json"), JSON.stringify(result, null, 2))
               await fsNode.unlink(legacy)
@@ -492,7 +492,7 @@ export const layer = Layer.effect(
             }
             const wellknown = (yield* Effect.promise(() => response.json())) as { config?: Record<string, unknown> }
             const remoteConfig = wellknown.config ?? {}
-            if (!remoteConfig.$schema) remoteConfig.$schema = "https://codeplane.ai/config.json"
+            if (!remoteConfig.$schema) remoteConfig.$schema = "https://example.invalid/config.json"
             const source = `${url}/.well-known/codeplane`
             const next = yield* loadConfig(JSON.stringify(remoteConfig), {
               dir: path.dirname(source),

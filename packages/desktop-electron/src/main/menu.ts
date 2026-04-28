@@ -115,7 +115,7 @@ export function createMenu(deps: Deps) {
     {
       label: "Help",
       submenu: [
-        { label: "CodePlane Documentation", click: () => shell.openExternal("https://codeplane.ai/docs") },
+        { label: "CodePlane Documentation", click: () => shell.openExternal("https://github.com/devinoldenburg/codeplane") },
         { label: "Support Forum", click: () => shell.openExternal("https://discord.com/invite/codeplane") },
         { type: "separator" },
         { type: "separator" },
