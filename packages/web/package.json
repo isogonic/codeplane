@@ -2,7 +2,7 @@
   "name": "@codeplane-ai/web",
   "type": "module",
   "license": "MIT",
-  "version": "26.4.28",
+  "version": "26.4.29",
   "scripts": {
     "dev": "astro dev",
     "dev:remote": "VITE_API_URL=https://api.codeplane.ai astro dev",
