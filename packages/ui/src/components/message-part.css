@@ -1,3 +1,24 @@
+@keyframes session-message-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-component="assistant-message"],
+  [data-component="user-message"] {
+    animation: none !important;
+  }
+}
+
+[data-component="session-turn"][data-active="true"] [data-component="assistant-message"],
+[data-component="session-turn"][data-active="true"] [data-component="user-message"] {
+  animation: none;
+}
+
 [data-component="assistant-message"] {
   content-visibility: auto;
   width: 100%;
@@ -5,6 +26,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 12px;
+  animation: session-message-in 90ms ease-out both;
 }
 
 [data-component="user-message"] {
@@ -22,6 +44,7 @@
   width: 100%;
   max-width: 100%;
   gap: 0;
+  animation: session-message-in 90ms ease-out both;
 
   [data-slot="user-message-attachments"] {
     display: flex;

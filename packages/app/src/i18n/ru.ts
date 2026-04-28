@@ -816,6 +816,7 @@ export const dict = {
   "settings.permissions.tool.doom_loop.description":
     "Обнаружение повторяющихся вызовов инструментов с одинаковыми входными данными",
 
+  "session.copyId": "Скопировать ID сессии",
   "session.delete.failed.title": "Не удалось удалить сессию",
   "session.delete.title": "Удалить сессию",
   "session.delete.confirm": 'Удалить сессию "{{name}}"?',

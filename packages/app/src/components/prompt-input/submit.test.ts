@@ -134,6 +134,7 @@ beforeAll(async () => {
       const sdk = {
         directory: "/repo/main",
         client: rootClient,
+        scope: { key: "local" },
         url: "http://localhost:4096",
         createClient(opts: any) {
           return clientFor(opts.directory)
@@ -169,6 +170,11 @@ beforeAll(async () => {
 
   mock.module("@/context/global-sync", () => ({
     useGlobalSync: () => ({
+      project: {
+        loadSessions: (directory: string) => {
+          syncedDirectories.push(directory)
+        },
+      },
       child: (directory: string) => {
         syncedDirectories.push(directory)
         storedSessions[directory] ??= []
@@ -252,12 +258,26 @@ describe("prompt submit worktree selection", () => {
     expect(createdClients).toEqual(["/repo/worktree-a", "/repo/worktree-b"])
     expect(createdSessions).toEqual(["/repo/worktree-a", "/repo/worktree-b"])
     expect(sentShell).toEqual(["/repo/worktree-a", "/repo/worktree-b"])
-    expect(syncedDirectories).toEqual(["/repo/worktree-a", "/repo/worktree-a", "/repo/worktree-b", "/repo/worktree-b"])
+    expect(syncedDirectories).toEqual([
+      "/repo/worktree-a",
+      "/repo/worktree-a",
+      "/repo/worktree-a",
+      "/repo/worktree-b",
+      "/repo/worktree-b",
+      "/repo/worktree-b",
+    ])
     expect(promoted).toEqual([
       { directory: "/repo/worktree-a", sessionID: "session-1" },
       { directory: "/repo/worktree-b", sessionID: "session-2" },
     ])
-    expect(syncedDirectories).toEqual(["/repo/worktree-a", "/repo/worktree-a", "/repo/worktree-b", "/repo/worktree-b"])
+    expect(syncedDirectories).toEqual([
+      "/repo/worktree-a",
+      "/repo/worktree-a",
+      "/repo/worktree-a",
+      "/repo/worktree-b",
+      "/repo/worktree-b",
+      "/repo/worktree-b",
+    ])
   })
 
   test("applies auto-accept to newly created sessions", async () => {

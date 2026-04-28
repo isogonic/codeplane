@@ -2,7 +2,7 @@ import { For, Index, createEffect, createMemo, on } from "solid-js"
 import { createStore } from "solid-js/store"
 
 const TRACK = Array.from({ length: 30 }, (_, index) => index % 10)
-const DURATION = 600
+const DURATION = 220
 
 function normalize(value: number) {
   return ((value % 10) + 10) % 10

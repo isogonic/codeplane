@@ -72,7 +72,7 @@ export function SessionTodoDock(props: {
   )
 
   const preview = createMemo(() => active()?.content ?? "")
-  const collapse = useSpring(() => (store.collapsed ? 1 : 0), { visualDuration: 0.3, bounce: 0 })
+  const collapse = useSpring(() => (store.collapsed ? 1 : 0), { visualDuration: 0.18, bounce: 0 })
   const dock = createMemo(() => Math.max(0, Math.min(1, props.dockProgress)))
   const shut = createMemo(() => 1 - dock())
   const value = createMemo(() => Math.max(0, Math.min(1, collapse())))
@@ -118,7 +118,7 @@ export function SessionTodoDock(props: {
             class="text-14-regular text-text-strong cursor-default inline-flex items-baseline shrink-0 overflow-visible"
             aria-label={label()}
             style={{
-              "--tool-motion-odometer-ms": "600ms",
+              "--tool-motion-odometer-ms": "220ms",
               "--tool-motion-mask": "18%",
               "--tool-motion-mask-height": "0px",
               "--tool-motion-spring-ms": "560ms",

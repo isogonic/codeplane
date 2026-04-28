@@ -59,7 +59,8 @@ export function SessionComposerRegion(props: {
   const info = createMemo(() => (route.params.id ? sync.session.get(route.params.id) : undefined))
   const parentID = createMemo(() => info()?.parentID)
   const child = createMemo(() => !!parentID())
-  const archived = createMemo(() => !!info()?.time.archived)
+  const isCronSession = createMemo(() => !!(info() as { cronRunID?: string } | undefined)?.cronRunID)
+  const archived = createMemo(() => !!info()?.time.archived || isCronSession())
   const showComposer = createMemo(() => !archived() && (!props.state.blocked() || child()))
 
   const previewPrompt = () =>
@@ -119,7 +120,7 @@ export function SessionComposerRegion(props: {
   onCleanup(clear)
 
   const open = createMemo(() => store.ready && props.state.dock() && !props.state.closing())
-  const progress = useSpring(() => (open() ? 1 : 0), { visualDuration: 0.3, bounce: 0 })
+  const progress = useSpring(() => (open() ? 1 : 0), { visualDuration: 0.18, bounce: 0 })
   const value = createMemo(() => Math.max(0, Math.min(1, progress())))
   const dock = createMemo(() => (store.ready && props.state.dock()) || value() > 0.001)
   const rolled = createMemo(() => (props.revert?.items.length ? props.revert : undefined))
@@ -300,8 +301,10 @@ export function SessionComposerRegion(props: {
             ref={props.inputRef}
             class="flex w-full items-center gap-2 rounded-[12px] border border-border-weak-base bg-background-base px-4 py-3 text-14-regular text-text-weak"
           >
-            <Icon name="archive" size="small" class="shrink-0" />
-            <span>{language.t("session.archived.readOnly")}</span>
+            <Icon name={isCronSession() ? "bell" : "archive"} size="small" class="shrink-0" />
+            <span>
+              {isCronSession() ? language.t("session.cron.readonly") : language.t("session.archived.readOnly")}
+            </span>
           </div>
         </Show>
       </div>

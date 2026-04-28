@@ -165,6 +165,48 @@ describe("applyDirectoryEvent", () => {
     expect(store.sessionTotal).toBe(2)
   })
 
+  test("keeps every root session when fully loaded lists receive many new sessions", () => {
+    const existing = Array.from({ length: 55 }, (_, index) =>
+      rootSession({
+        id: `ses_old_${index.toString().padStart(2, "0")}`,
+        created: index,
+        updated: index,
+      }),
+    )
+    const incoming = Array.from({ length: 51 }, (_, index) =>
+      rootSession({
+        id: `ses_new_${index.toString().padStart(2, "0")}`,
+        created: 1_000 + index,
+        updated: 1_000 + index,
+      }),
+    )
+    const expectedCount = existing.length + incoming.length
+    const expectedIDs = [...existing, ...incoming].map((x) => x.id).sort()
+    const [store, setStore] = createStore(
+      baseState({
+        limit: existing.length,
+        sessionTotal: existing.length,
+        session: existing,
+      }),
+    )
+
+    incoming.forEach((session) =>
+      applyDirectoryEvent({
+        event: { type: "session.created", properties: { info: session } },
+        store,
+        setStore,
+        push() {},
+        directory: "/tmp",
+        loadLsp() {},
+      }),
+    )
+
+    expect(store.limit).toBe(expectedCount)
+    expect(store.sessionTotal).toBe(expectedCount)
+    expect(store.session).toHaveLength(expectedCount)
+    expect(store.session.map((x) => x.id).sort()).toEqual(expectedIDs)
+  })
+
   test("cleans session caches when archived", () => {
     const message = userMessage("msg_1", "ses_1")
     const [store, setStore] = createStore(

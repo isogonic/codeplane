@@ -3,7 +3,9 @@ import { Effect } from "effect"
 import fs from "fs/promises"
 import path from "path"
 import { Instance } from "../../src/project/instance"
+import { Server } from "../../src/server/server"
 import { Session as SessionNs } from "../../src/session"
+import type { SessionID } from "../../src/session/schema"
 import { Log } from "../../src/util"
 import { tmpdir } from "../fixture/fixture"
 
@@ -17,6 +19,9 @@ const svc = {
   ...SessionNs,
   create(input?: SessionNs.CreateInput) {
     return run(SessionNs.Service.use((svc) => svc.create(input)))
+  },
+  setArchived(input: { sessionID: SessionID; time: number }) {
+    return run(SessionNs.Service.use((svc) => svc.setArchived(input)))
   },
 }
 
@@ -126,5 +131,36 @@ describe("session.list", () => {
         expect(sessions.length).toBe(2)
       },
     })
+  })
+
+  test("route parses archived=false and roots=false as false", async () => {
+    await using tmp = await tmpdir({ git: true })
+    const root = await Instance.provide({
+      directory: tmp.path,
+      fn: async () => svc.create({ title: "active-root" }),
+    })
+    const child = await Instance.provide({
+      directory: tmp.path,
+      fn: async () => svc.create({ title: "active-child", parentID: root.id }),
+    })
+    const archived = await Instance.provide({
+      directory: tmp.path,
+      fn: async () => svc.create({ title: "archived-root" }),
+    })
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => svc.setArchived({ sessionID: archived.id, time: Date.now() }),
+    })
+
+    const res = await Server.Default().app.request(
+      `/session?directory=${encodeURIComponent(tmp.path)}&roots=false&archived=false&limit=20`,
+    )
+    expect(res.status).toBe(200)
+    const sessions = (await res.json()) as SessionNs.Info[]
+    const ids = sessions.map((session) => session.id)
+
+    expect(ids).toContain(root.id)
+    expect(ids).toContain(child.id)
+    expect(ids).not.toContain(archived.id)
   })
 })

@@ -1,5 +1,5 @@
 import z from "zod"
-import { and, Database, eq } from "../storage"
+import { and, Database, eq, or, sql } from "../storage"
 import { ProjectTable } from "./project.sql"
 import { SessionTable } from "../session/session.sql"
 import { Log } from "../util"
@@ -17,6 +17,19 @@ import { zod } from "@/util/effect-zod"
 import { withStatics } from "@/util/schema"
 
 const log = Log.create({ service: "project" })
+
+function sessionDirectoryCondition(directory: string) {
+  const root = directory.replace(/[\\/]+$/, "")
+  if (!root || root === "/" || /^[A-Za-z]:$/i.test(root)) return eq(SessionTable.directory, directory)
+  const escaped = root.replace(/[\\%_]/g, (char) => `\\${char}`)
+  return (
+    or(
+      eq(SessionTable.directory, root),
+      sql`${SessionTable.directory} like ${`${escaped}/%`} escape '\\'`,
+      sql`${SessionTable.directory} like ${`${escaped}\\%`} escape '\\'`,
+    ) ?? eq(SessionTable.directory, root)
+  )
+}
 
 const ProjectVcs = Schema.Literal("git")
 
@@ -322,7 +335,17 @@ export const layer: Layer.Layer<
           d
             .update(SessionTable)
             .set({ project_id: data.id })
-            .where(and(eq(SessionTable.project_id, ProjectID.global), eq(SessionTable.directory, data.worktree)))
+            .where(
+              and(
+                eq(SessionTable.project_id, ProjectID.global),
+                data.sandbox === data.worktree
+                  ? sessionDirectoryCondition(data.worktree)
+                  : (or(
+                      sessionDirectoryCondition(data.worktree),
+                      sessionDirectoryCondition(data.sandbox),
+                    ) ?? sessionDirectoryCondition(data.worktree)),
+              ),
+            )
             .run(),
         )
       }

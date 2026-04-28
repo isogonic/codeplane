@@ -43,6 +43,7 @@ import { SettingsProvider } from "@/context/settings"
 import { TerminalProvider } from "@/context/terminal"
 import DirectoryLayout from "@/pages/directory-layout"
 import Layout from "@/pages/layout"
+import CronRoute from "@/pages/cron"
 import { ErrorPage } from "./pages/error"
 import { useCheckServerHealth } from "./utils/server-health"
 
@@ -69,6 +70,11 @@ const SessionRoute = () => (
 )
 
 const SessionIndexRoute = () => <Navigate href="session" />
+const CronSessionRoute = () => (
+  <DirectoryLayout>
+    <SessionRoute />
+  </DirectoryLayout>
+)
 
 function UiI18nBridge(props: ParentProps) {
   const language = useLanguage()
@@ -314,6 +320,10 @@ export function AppInterface(props: {
                   <Route path="/plugins" component={PluginsRedirect} />
                   <Route path="/skills" component={SkillsRedirect} />
                   <Route path="/settings/:tab?" component={SettingsRoute} />
+                  <Route path="/cron" component={CronRoute} />
+                  <Route path="/cron/worktree/:dir/session/:id" component={CronSessionRoute} />
+                  <Route path="/cron/worktree/:dir" component={CronRoute} />
+                  <Route path="/cron/:projectID" component={CronRoute} />
                   <Route path="/:dir" component={DirectoryLayout}>
                     <Route path="/" component={SessionIndexRoute} />
                     <Route path="/session/:id?" component={SessionRoute} />

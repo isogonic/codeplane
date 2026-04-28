@@ -490,9 +490,57 @@ async function highlightCodeBlocks(html: string): Promise<string> {
 
 export type NativeMarkdownParser = (markdown: string) => Promise<string>
 
+const PREWARM_LANGUAGES: BundledLanguage[] = [
+  "bash",
+  "shell",
+  "typescript",
+  "tsx",
+  "javascript",
+  "jsx",
+  "json",
+  "python",
+  "html",
+  "css",
+  "markdown",
+  "yaml",
+  "diff",
+]
+
+let prewarmStarted = false
+function prewarmShiki() {
+  if (prewarmStarted) return
+  prewarmStarted = true
+  if (typeof window === "undefined") return
+  const run = async () => {
+    try {
+      const highlighter = await getSharedHighlighter({
+        themes: ["CodePlane"],
+        langs: [],
+        preferredHighlighter: "shiki-wasm",
+      })
+      const loaded = new Set(highlighter.getLoadedLanguages())
+      for (const lang of PREWARM_LANGUAGES) {
+        if (loaded.has(lang)) continue
+        if (!(lang in bundledLanguages)) continue
+        try {
+          await highlighter.loadLanguage(lang)
+        } catch {
+          // ignore
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  const idle = (window as unknown as { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback
+  if (idle) idle(() => void run())
+  else setTimeout(() => void run(), 250)
+}
+
 export const { use: useMarked, provider: MarkedProvider } = createSimpleContext({
   name: "Marked",
   init: (props: { nativeParser?: NativeMarkdownParser }) => {
+    prewarmShiki()
     const jsParser = marked.use(
       {
         renderer: {

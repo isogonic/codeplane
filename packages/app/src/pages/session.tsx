@@ -435,7 +435,11 @@ export default function Page() {
 
   const info = createMemo(() => (params.id ? sync.session.get(params.id) : undefined))
   const isChildSession = createMemo(() => !!info()?.parentID)
-  const archived = createMemo(() => !!info()?.time.archived)
+  const isCronSession = createMemo(() => !!(info() as { cronRunID?: string } | undefined)?.cronRunID)
+  // Cron-driven sessions are read-only: the agent runs autonomously, no prompts
+  // or follow-ups accepted. We piggy-back on the existing `archived` predicate
+  // which already gates input, follow-ups, revert, and queue actions.
+  const archived = createMemo(() => !!info()?.time.archived || isCronSession())
   const diffs = createMemo(() => (params.id ? list(sync.data.session_diff[params.id]) : []))
   const canReview = createMemo(() => !!sync.project)
   const reviewTab = createMemo(() => isDesktop())
@@ -539,11 +543,8 @@ export default function Page() {
 
   createComputed((prev) => {
     const key = sessionKey()
-    if (key !== prev) {
-      setStore("deferRender", true)
-      requestAnimationFrame(() => {
-        setTimeout(() => setStore("deferRender", false), 0)
-      })
+    if (key !== prev && store.deferRender) {
+      setStore("deferRender", false)
     }
     return key
   }, sessionKey())
@@ -791,6 +792,21 @@ export default function Page() {
 
       return sync.session.sync(id)
     },
+  )
+
+  createEffect(
+    on(
+      () => [sdk.directory, params.id] as const,
+      ([dir, id]) => {
+        if (!id) return
+        const cached = untrack(() => sync.data.todo[id] !== undefined || globalSync.data.session_todo[id] !== undefined)
+        if (cached) return
+        untrack(() => {
+          if (sdk.directory !== dir || params.id !== id) return
+          void sync.session.todo(id)
+        })
+      },
+    ),
   )
 
   createEffect(

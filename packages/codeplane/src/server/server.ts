@@ -18,6 +18,8 @@ import { InstanceMiddleware } from "./routes/instance/middleware"
 import { WorkspaceRoutes } from "./routes/control/workspace"
 import { ExperimentalHttpApiServer } from "./routes/instance/httpapi/server"
 import { WorkspacePaths } from "./routes/instance/httpapi/workspace"
+import { AppRuntime } from "@/effect/app-runtime"
+import { CronScheduler } from "@/cron"
 import { Context } from "effect"
 
 // @ts-ignore This global is needed to prevent ai-sdk from logging warnings to stdout https://github.com/vercel/ai/blob/2dc67e0ef538307f21368db32d5a12345d98831b/packages/ai/src/logger/log-warnings.ts#L85
@@ -91,7 +93,7 @@ export async function openapi() {
     documentation: {
       info: {
         title: "codeplane",
-        version: "26.4.27",
+        version: "26.4.28",
         description: "codeplane api",
       },
       openapi: "3.1.1",
@@ -110,6 +112,13 @@ export async function listen(opts: {
   cors?: string[]
 }): Promise<Listener> {
   const built = create(opts)
+
+  // Pre-warm AppRuntime and start the cron scheduler before accepting connections.
+  // This ensures no HTTP request ever waits for layer initialization.
+  await AppRuntime.runPromise(CronScheduler.Service.use((svc) => svc.start())).catch((err) => {
+    log.error("failed to start cron scheduler", { error: err instanceof Error ? err.message : String(err) })
+  })
+
   const server = await built.runtime.listen(opts)
 
   const next = new URL("http://localhost")
@@ -137,6 +146,7 @@ export async function listen(opts: {
     stop(close?: boolean) {
       closing ??= (async () => {
         if (mdns) MDNS.unpublish()
+        await AppRuntime.runPromise(CronScheduler.Service.use((svc) => svc.stop())).catch(() => undefined)
         await server.stop(close)
       })()
       return closing

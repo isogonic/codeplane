@@ -134,14 +134,16 @@ export function DialogArchivedSessions(props: { workspaces: ArchiveWorkspace[] }
       <div class="flex h-full min-h-0 flex-col gap-3 px-4 pb-4">
         <div class="flex shrink-0 flex-col gap-2">
           <div class="flex items-center gap-2">
-            <TextField
-              value={state.search}
-              onChange={(value) => setState("search", value)}
-              placeholder={language.t("archiveSessions.search.placeholder")}
-              label={language.t("archiveSessions.search.label")}
-              hideLabel
-              autofocus
-            />
+            <div class="min-w-0 flex-1 [&_[data-slot=input-wrapper]:focus-within]:!border-border-weak-base [&_[data-slot=input-wrapper]:focus-within]:!shadow-none">
+              <TextField
+                value={state.search}
+                onChange={(value) => setState("search", value)}
+                placeholder={language.t("archiveSessions.search.placeholder")}
+                label={language.t("archiveSessions.search.label")}
+                hideLabel
+                autofocus
+              />
+            </div>
             <Tooltip value={language.t("common.refresh")} placement="top">
               <IconButton
                 icon="reset"
@@ -176,10 +178,6 @@ export function DialogArchivedSessions(props: { workspaces: ArchiveWorkspace[] }
                 if (option) setState("age", option.value)
               }}
             />
-          </div>
-          <div class="flex items-start gap-2 rounded-md border border-border-weak-base bg-background-base px-3 py-2 text-12-regular text-text-weak">
-            <Icon name="archive" size="small" class="mt-px shrink-0" />
-            <span>{language.t("archiveSessions.retention")}</span>
           </div>
         </div>
 

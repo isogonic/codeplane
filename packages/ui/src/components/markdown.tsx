@@ -4,7 +4,7 @@ import { useFileReference, type FileReferenceSelection } from "../context/file"
 import DOMPurify from "dompurify"
 import morphdom from "morphdom"
 import { checksum } from "@codeplane-ai/shared/util/encode"
-import { ComponentProps, createEffect, createResource, createSignal, onCleanup, splitProps } from "solid-js"
+import { ComponentProps, createEffect, createMemo, createResource, createSignal, onCleanup, splitProps } from "solid-js"
 import { isServer } from "solid-js/web"
 import { stream } from "./markdown-stream"
 import { showToast } from "./toast"
@@ -58,6 +58,45 @@ function escape(text: string) {
 
 function fallback(markdown: string) {
   return escape(markdown).replace(/\r\n?/g, "\n").replace(/\n/g, "<br>")
+}
+
+function wrapWords(text: string) {
+  const escaped = escape(text).replace(/\r\n?/g, "\n")
+  let out = ""
+  let buffer = ""
+  const flush = () => {
+    if (!buffer) return
+    out += `<span data-md-word>${buffer}</span>`
+    buffer = ""
+  }
+  let i = 0
+  while (i < escaped.length) {
+    const ch = escaped[i]
+    if (ch === "&") {
+      const end = escaped.indexOf(";", i)
+      if (end !== -1 && end - i <= 8) {
+        buffer += escaped.slice(i, end + 1)
+        i = end + 1
+        continue
+      }
+    }
+    if (ch === "\n") {
+      flush()
+      out += "<br>"
+      i++
+      continue
+    }
+    if (ch === " " || ch === "\t") {
+      flush()
+      out += ch
+      i++
+      continue
+    }
+    buffer += ch
+    i++
+  }
+  flush()
+  return out
 }
 
 type CopyLabels = {
@@ -599,13 +638,66 @@ export function Markdown(
   const i18n = useI18n()
   const fileReference = useFileReference()
   const [root, setRoot] = createSignal<HTMLDivElement>()
+  const cachedHtml = createMemo(() => {
+    if (isServer) return undefined
+    const text = local.text
+    if (!text) return ""
+    const base = local.cacheKey ?? checksum(text)
+    if (!base) return undefined
+    const blocks = stream(text, local.streaming ?? false)
+    const out: string[] = []
+    for (let index = 0; index < blocks.length; index++) {
+      const block = blocks[index]
+      const hash = checksum(block.raw)
+      if (!hash) return undefined
+      const key = `${base}:${index}:${block.mode}`
+      const cached = cache.get(key)
+      if (!cached || cached.hash !== hash) return undefined
+      touch(key, cached)
+      out.push(cached.html)
+    }
+    return out.join("")
+  })
+
+  const liveHtml = createMemo(() => {
+    if (isServer) return undefined
+    if (!local.streaming) return undefined
+    const text = local.text
+    if (!text) return undefined
+    const base = local.cacheKey ?? checksum(text)
+    if (!base) return undefined
+    const blocks = stream(text, true)
+    if (blocks.length === 0) return undefined
+    const out: string[] = []
+    let usedFallback = false
+    for (let index = 0; index < blocks.length; index++) {
+      const block = blocks[index]
+      const hash = checksum(block.raw)
+      if (!hash) return undefined
+      const key = `${base}:${index}:${block.mode}`
+      const cached = cache.get(key)
+      if (cached && cached.hash === hash) {
+        out.push(cached.html)
+        continue
+      }
+      out.push(wrapWords(block.src))
+      usedFallback = true
+    }
+    return usedFallback ? out.join("") : undefined
+  })
+
   const [html] = createResource(
-    () => ({
-      text: local.text,
-      key: local.cacheKey,
-      streaming: local.streaming ?? false,
-    }),
+    () => {
+      const cached = cachedHtml()
+      if (cached !== undefined) return null
+      return {
+        text: local.text,
+        key: local.cacheKey,
+        streaming: local.streaming ?? false,
+      }
+    },
     async (src) => {
+      if (src === null) return ""
       if (isServer) return fallback(src.text)
       if (!src.text) return ""
 
@@ -640,7 +732,10 @@ export function Markdown(
 
   createEffect(() => {
     const container = root()
-    const content = local.text ? (html.latest ?? html() ?? "") : ""
+    const cached = cachedHtml()
+    const live = liveHtml()
+    const parsed = html.latest ?? html()
+    const content = local.text ? (cached ?? parsed ?? live ?? "") : ""
     if (!container) return
     if (isServer) return
 

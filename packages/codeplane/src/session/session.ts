@@ -22,6 +22,7 @@ import { Snapshot } from "@/snapshot"
 import { ProjectID } from "../project/schema"
 import { WorkspaceID } from "../control-plane/schema"
 import { SessionID, MessageID, PartID } from "./schema"
+import { CronRunID } from "../cron/schema"
 
 import type { Provider } from "@/provider"
 import { Permission } from "@/permission"
@@ -85,6 +86,7 @@ export function fromRow(row: SessionRow): Info {
     share,
     revert,
     permission: row.permission ?? undefined,
+    cronRunID: row.cron_run_id ?? undefined,
     time: {
       created: row.time_created,
       updated: row.time_updated,
@@ -111,6 +113,7 @@ export function toRow(info: Info) {
     summary_diffs: info.summary?.diffs,
     revert: info.revert ?? null,
     permission: info.permission,
+    cron_run_id: info.cronRunID ?? null,
     time_created: info.time.created,
     time_updated: info.time.updated,
     time_compacting: info.time.compacting,
@@ -167,6 +170,7 @@ export const Info = Schema.Struct({
   time: Time,
   permission: Schema.optional(Permission.Ruleset),
   revert: Schema.optional(Revert),
+  cronRunID: Schema.optional(CronRunID),
 })
   .annotate({ identifier: "Session" })
   .pipe(withStatics((s) => ({ zod: zod(s) })))
@@ -195,6 +199,7 @@ export const CreateInput = Schema.optional(
     title: Schema.optional(Schema.String),
     permission: Schema.optional(Permission.Ruleset),
     workspaceID: Schema.optional(WorkspaceID),
+    cronRunID: Schema.optional(CronRunID),
   }),
 ).pipe(withStatics((s) => ({ zod: zod(s) })))
 export type CreateInput = Types.DeepMutable<Schema.Schema.Type<typeof CreateInput>>
@@ -257,6 +262,7 @@ const UpdatedInfo = Schema.Struct({
   time: Schema.optional(UpdatedTime),
   permission: Schema.optional(Schema.NullOr(Permission.Ruleset)),
   revert: Schema.optional(Schema.NullOr(Revert)),
+  cronRunID: Schema.optional(Schema.NullOr(CronRunID)),
 })
 
 const UpdatedEventSchema = Schema.Struct({
@@ -386,6 +392,7 @@ export interface Interface {
     title?: string
     permission?: Permission.Ruleset
     workspaceID?: WorkspaceID
+    cronRunID?: import("../cron/schema").CronRunID
   }) => Effect.Effect<Info>
   readonly fork: (input: { sessionID: SessionID; messageID?: MessageID }) => Effect.Effect<Info>
   readonly touch: (sessionID: SessionID) => Effect.Effect<void>
@@ -447,6 +454,7 @@ export const layer: Layer.Layer<Service, never, Bus.Service | Storage.Service> =
       workspaceID?: WorkspaceID
       directory: string
       permission?: Permission.Ruleset
+      cronRunID?: import("../cron/schema").CronRunID
     }) {
       const ctx = yield* InstanceState.context
       const result: Info = {
@@ -459,6 +467,7 @@ export const layer: Layer.Layer<Service, never, Bus.Service | Storage.Service> =
         parentID: input.parentID,
         title: input.title ?? createDefaultTitle(!!input.parentID),
         permission: input.permission,
+        cronRunID: input.cronRunID,
         time: {
           created: Date.now(),
           updated: Date.now(),
@@ -569,6 +578,7 @@ export const layer: Layer.Layer<Service, never, Bus.Service | Storage.Service> =
       title?: string
       permission?: Permission.Ruleset
       workspaceID?: WorkspaceID
+      cronRunID?: import("../cron/schema").CronRunID
     }) {
       const directory = yield* InstanceState.directory
       const workspace = yield* InstanceState.workspaceID
@@ -578,6 +588,7 @@ export const layer: Layer.Layer<Service, never, Bus.Service | Storage.Service> =
         title: input?.title,
         permission: input?.permission,
         workspaceID: workspace,
+        cronRunID: input?.cronRunID,
       })
     })
 
@@ -759,15 +770,12 @@ export function* list(input?: {
   archived?: boolean
 }) {
   const project = Instance.project
-  const conditions = [eq(SessionTable.project_id, project.id)]
+  const conditions: SQL[] = input?.directory
+    ? [directoryCondition(input.directory)]
+    : [eq(SessionTable.project_id, project.id)]
 
   if (input?.workspaceID) {
     conditions.push(eq(SessionTable.workspace_id, input.workspaceID))
-  }
-  if (!Flag.CODEPLANE_EXPERIMENTAL_WORKSPACES) {
-    if (input?.directory) {
-      conditions.push(directoryCondition(input.directory))
-    }
   }
   if (input?.roots) {
     conditions.push(isNull(SessionTable.parent_id))

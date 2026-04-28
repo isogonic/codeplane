@@ -119,13 +119,13 @@ export type DisposeCheck = {
 
 export type RootLoadArgs = {
   directory: string
-  limit: number
+  limit?: number
   list: (query: { directory: string; roots: true; limit?: number; archived?: boolean }) => Promise<{ data?: Session[] }>
 }
 
 export type RootLoadResult = {
   data?: Session[]
-  limit: number
+  limit?: number
   limited: boolean
 }
 
@@ -133,3 +133,4 @@ export const MAX_DIR_STORES = 30
 export const DIR_IDLE_TTL_MS = 20 * 60 * 1000
 export const SESSION_RECENT_WINDOW = 4 * 60 * 60 * 1000
 export const SESSION_RECENT_LIMIT = 50
+export const SESSION_ALL_LIMIT = 10_000

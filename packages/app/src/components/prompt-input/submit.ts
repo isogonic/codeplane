@@ -390,6 +390,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
         if (shouldAutoAccept) permission.enableAutoAccept(session.id, sessionDirectory)
         local.session.promote(sessionDirectory, session.id)
         layout.handoff.setTabs(base64Encode(sessionDirectory), session.id)
+        void globalSync.project.loadSessions(sessionDirectory, { force: true })
         navigate(`/${base64Encode(sessionDirectory)}/session/${session.id}`)
       }
     }

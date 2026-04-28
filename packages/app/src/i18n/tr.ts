@@ -823,6 +823,7 @@ export const dict = {
   "settings.permissions.tool.doom_loop.title": "Sonsuz Döngü",
   "settings.permissions.tool.doom_loop.description": "Aynı girdiyle tekrarlanan araç çağrılarını algıla",
 
+  "session.copyId": "Oturum ID'sini kopyala",
   "session.delete.failed.title": "Oturum silinemedi",
   "session.delete.title": "Oturumu sil",
   "session.delete.confirm": '"{{name}}" oturumu silinsin mi?',

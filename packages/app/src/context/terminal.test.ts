@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, mock, test } from "bun:test"
 
-let getWorkspaceTerminalCacheKey: (dir: string) => string
+let getWorkspaceTerminalCacheKey: (dir: string, scope?: string) => string
 let getLegacyTerminalStorageKeys: (dir: string, legacySessionID?: string) => string[]
 let migrateTerminalState: (value: unknown) => unknown
 

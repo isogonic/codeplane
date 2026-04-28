@@ -19,6 +19,27 @@ import type {
   ConfigProvidersResponses,
   ConfigUpdateErrors,
   ConfigUpdateResponses,
+  CronCreateErrors,
+  CronCreateResponses,
+  CronDeleteErrors,
+  CronDeleteResponses,
+  CronGetErrors,
+  CronGetResponses,
+  CronListResponses,
+  CronRunsCancelErrors,
+  CronRunsCancelResponses,
+  CronRunsGetErrors,
+  CronRunsGetResponses,
+  CronRunsListErrors,
+  CronRunsListResponses,
+  CronSchedule,
+  CronSetStatusErrors,
+  CronSetStatusResponses,
+  CronStatus,
+  CronTriggerErrors,
+  CronTriggerResponses,
+  CronUpdateErrors,
+  CronUpdateResponses,
   EventSubscribeResponses,
   EventTuiCommandExecute,
   EventTuiPromptAppend,
@@ -240,6 +261,299 @@ class HeyApiRegistry<T> {
 
   set(value: T, key?: string): void {
     this.instances.set(key ?? this.defaultKey, value)
+  }
+}
+
+export class Runs extends HeyApiClient {
+  /**
+   * List runs for a cron task
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters: {
+      taskID: string
+      limit?: number
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "taskID" },
+            { in: "query", key: "limit" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<CronRunsListResponses, CronRunsListErrors, ThrowOnError>({
+      url: "/global/cron/{taskID}/runs",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get cron run
+   */
+  public get<ThrowOnError extends boolean = false>(
+    parameters: {
+      runID: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "path", key: "runID" }] }])
+    return (options?.client ?? this.client).get<CronRunsGetResponses, CronRunsGetErrors, ThrowOnError>({
+      url: "/global/cron/runs/{runID}",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Cancel a cron run
+   */
+  public cancel<ThrowOnError extends boolean = false>(
+    parameters: {
+      runID: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "path", key: "runID" }] }])
+    return (options?.client ?? this.client).post<CronRunsCancelResponses, CronRunsCancelErrors, ThrowOnError>({
+      url: "/global/cron/runs/{runID}/cancel",
+      ...options,
+      ...params,
+    })
+  }
+}
+
+export class Cron extends HeyApiClient {
+  /**
+   * List cron tasks
+   *
+   * List all cron tasks across all projects, optionally filtered by project or directory.
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters?: {
+      projectID?: string
+      directory?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "projectID" },
+            { in: "query", key: "directory" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<CronListResponses, unknown, ThrowOnError>({
+      url: "/global/cron",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Create cron task
+   *
+   * Create a new cron task scoped to a project.
+   */
+  public create<ThrowOnError extends boolean = false>(
+    parameters?: {
+      projectID?: string
+      directory?: string
+      name?: string
+      description?: string
+      prompt?: string
+      agent?: string
+      model?: string
+      schedule?: CronSchedule
+      timezone?: string
+      status?: CronStatus
+      timeoutMs?: number
+      maxRetries?: number
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "body", key: "projectID" },
+            { in: "body", key: "directory" },
+            { in: "body", key: "name" },
+            { in: "body", key: "description" },
+            { in: "body", key: "prompt" },
+            { in: "body", key: "agent" },
+            { in: "body", key: "model" },
+            { in: "body", key: "schedule" },
+            { in: "body", key: "timezone" },
+            { in: "body", key: "status" },
+            { in: "body", key: "timeoutMs" },
+            { in: "body", key: "maxRetries" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<CronCreateResponses, CronCreateErrors, ThrowOnError>({
+      url: "/global/cron",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Delete cron task
+   */
+  public delete<ThrowOnError extends boolean = false>(
+    parameters: {
+      taskID: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "path", key: "taskID" }] }])
+    return (options?.client ?? this.client).delete<CronDeleteResponses, CronDeleteErrors, ThrowOnError>({
+      url: "/global/cron/{taskID}",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get cron task
+   */
+  public get<ThrowOnError extends boolean = false>(
+    parameters: {
+      taskID: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "path", key: "taskID" }] }])
+    return (options?.client ?? this.client).get<CronGetResponses, CronGetErrors, ThrowOnError>({
+      url: "/global/cron/{taskID}",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Update cron task
+   */
+  public update<ThrowOnError extends boolean = false>(
+    parameters: {
+      taskID: string
+      name?: string
+      description?: string | null
+      prompt?: string
+      agent?: string | null
+      model?: string | null
+      schedule?: CronSchedule
+      timezone?: string | null
+      status?: CronStatus
+      timeoutMs?: number | null
+      maxRetries?: number | null
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "taskID" },
+            { in: "body", key: "name" },
+            { in: "body", key: "description" },
+            { in: "body", key: "prompt" },
+            { in: "body", key: "agent" },
+            { in: "body", key: "model" },
+            { in: "body", key: "schedule" },
+            { in: "body", key: "timezone" },
+            { in: "body", key: "status" },
+            { in: "body", key: "timeoutMs" },
+            { in: "body", key: "maxRetries" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<CronUpdateResponses, CronUpdateErrors, ThrowOnError>({
+      url: "/global/cron/{taskID}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Set cron task status
+   */
+  public setStatus<ThrowOnError extends boolean = false>(
+    parameters: {
+      taskID: string
+      status?: CronStatus
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "taskID" },
+            { in: "body", key: "status" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<CronSetStatusResponses, CronSetStatusErrors, ThrowOnError>({
+      url: "/global/cron/{taskID}/status",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Trigger cron task now
+   *
+   * Queue an immediate run for this task, bypassing the schedule.
+   */
+  public trigger<ThrowOnError extends boolean = false>(
+    parameters: {
+      taskID: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "path", key: "taskID" }] }])
+    return (options?.client ?? this.client).post<CronTriggerResponses, CronTriggerErrors, ThrowOnError>({
+      url: "/global/cron/{taskID}/trigger",
+      ...options,
+      ...params,
+    })
+  }
+
+  private _runs?: Runs
+  get runs(): Runs {
+    return (this._runs ??= new Runs({ client: this.client }))
   }
 }
 
@@ -1660,6 +1974,7 @@ export class Session2 extends HeyApiClient {
       title?: string
       permission?: PermissionRuleset
       workspaceID?: string
+      cronRunID?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -1674,6 +1989,7 @@ export class Session2 extends HeyApiClient {
             { in: "body", key: "title" },
             { in: "body", key: "permission" },
             { in: "body", key: "workspaceID" },
+            { in: "body", key: "cronRunID" },
           ],
         },
       ],
@@ -4330,6 +4646,11 @@ export class CodeplaneClient extends HeyApiClient {
   constructor(args?: { client?: Client; key?: string }) {
     super(args)
     CodeplaneClient.__registry.set(this, args?.key)
+  }
+
+  private _cron?: Cron
+  get cron(): Cron {
+    return (this._cron ??= new Cron({ client: this.client }))
   }
 
   private _global?: Global

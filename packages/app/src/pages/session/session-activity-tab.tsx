@@ -7,6 +7,7 @@ import type {
   ToolPart,
   UserMessage,
 } from "@codeplane-ai/sdk/v2"
+import { Button } from "@codeplane-ai/ui/button"
 import { FileIcon } from "@codeplane-ai/ui/file-icon"
 import { Icon, type IconProps } from "@codeplane-ai/ui/icon"
 import { getDirectory, getFilename } from "@codeplane-ai/shared/util/path"
@@ -244,7 +245,21 @@ export function SessionActivityTab(props: {
 }) {
   const language = useLanguage()
   const [timelineLimit, setTimelineLimit] = createSignal(timelineBatchSize)
-  const activity = createMemo(() => buildSessionActivity({ messages: props.messages, parts: props.parts }))
+  const activity = createMemo(
+    () => buildSessionActivity({ messages: props.messages, parts: props.parts }),
+    { events: [] as ActivityEvent[] },
+    {
+      equals: (prev, next) => {
+        if (prev.events.length !== next.events.length) return false
+        return prev.events.every((e, i) => {
+          const n = next.events[i]
+          if (e.id !== n.id) return false
+          if (e.kind === "tool" && n.kind === "tool") return e.status === n.status && e.duration === n.duration
+          return true
+        })
+      },
+    },
+  )
   const visibleEvents = createMemo(() => activity().events.slice(0, timelineLimit()))
   const hiddenEventCount = createMemo(() => Math.max(0, activity().events.length - visibleEvents().length))
   const formatTime = createMemo(
@@ -270,21 +285,13 @@ export function SessionActivityTab(props: {
   })
 
   const EventIcon = (props: { event: ActivityEvent }) => (
-    <div class="relative z-10 mt-3 flex size-7 shrink-0 items-center justify-center rounded-full border border-border-weaker-base bg-surface-raised-stronger-non-alpha text-icon-base shadow-[var(--shadow-xs)]">
+    <div class="mt-0.5 shrink-0 text-icon-weak-base">
       <Show
         when={props.event.kind === "tool"}
         fallback={<Icon name={props.event.kind === "model" ? "models" : "code-lines"} size="small" />}
       >
         <Icon name={toolIcon((props.event as Extract<ActivityEvent, { kind: "tool" }>).tool)} size="small" />
       </Show>
-    </div>
-  )
-
-  const EventBody = (props: { event: ActivityEvent; last: boolean }) => (
-    <div class="min-w-0 flex-1 border-b border-border-weaker-base py-2.5" classList={{ "border-b-0": props.last }}>
-      <div class="rounded-md px-2.5 py-2 transition-colors group-hover:bg-surface-raised-base-hover">
-        <SwitchEvent event={props.event} />
-      </div>
     </div>
   )
 
@@ -397,31 +404,33 @@ export function SessionActivityTab(props: {
             <div class="py-4 text-12-regular text-text-weak">{language.t("session.activity.timeline.empty")}</div>
           }
         >
-          <div class="relative">
-            <div class="absolute left-3.5 top-5 bottom-5 w-px bg-border-weaker-base" aria-hidden="true" />
-            <div class="flex flex-col">
-              <For each={visibleEvents()}>
-                {(event, index) => (
-                  <div class="group relative flex gap-3">
-                    <EventIcon event={event} />
-                    <EventBody
-                      event={event}
-                      last={index() === visibleEvents().length - 1 && hiddenEventCount() === 0}
-                    />
+          <div class="flex flex-col">
+            <For each={visibleEvents()}>
+              {(event, index) => (
+                <div
+                  class="flex items-start gap-3 py-3 border-b border-border-weaker-base"
+                  classList={{
+                    "border-b-0": index() === visibleEvents().length - 1 && hiddenEventCount() === 0,
+                  }}
+                >
+                  <EventIcon event={event} />
+                  <div class="min-w-0 flex-1">
+                    <SwitchEvent event={event} />
                   </div>
-                )}
-              </For>
-            </div>
+                </div>
+              )}
+            </For>
             <Show when={hiddenEventCount() > 0}>
-              <div class="pl-10 pt-3">
-                <button
-                  type="button"
-                  class="rounded-md border border-border-weaker-base bg-background-base px-3 py-1.5 text-12-medium text-text-base shadow-[var(--shadow-xs)] transition-colors hover:bg-surface-raised-base-hover hover:text-text-strong focus:outline-none focus-visible:shadow-[var(--shadow-xs-border-focus)]"
+              <div class="pt-2">
+                <Button
+                  variant="ghost"
+                  size="large"
+                  class="w-full justify-center text-12-medium text-text-weak"
                   onClick={showMoreEvents}
                 >
                   {language.t("common.loadMore")}
                   {language.t("common.moreCountSuffix", { count: hiddenEventCount() })}
-                </button>
+                </Button>
               </div>
             </Show>
           </div>

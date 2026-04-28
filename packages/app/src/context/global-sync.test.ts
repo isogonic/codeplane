@@ -38,7 +38,7 @@ describe("loadRootSessionsWithFallback", () => {
 
     expect(result.data).toEqual([])
     expect(result.limited).toBe(true)
-    expect(calls).toEqual([{ directory: "dir", roots: true, limit: 10, archived: false }])
+    expect(calls).toEqual([{ directory: "dir", roots: true, limit: 10 }])
   })
 
   test("falls back to full roots query on limited-query failure", async () => {
@@ -57,9 +57,25 @@ describe("loadRootSessionsWithFallback", () => {
     expect(result.data).toEqual([])
     expect(result.limited).toBe(false)
     expect(calls).toEqual([
-      { directory: "dir", roots: true, limit: 25, archived: false },
-      { directory: "dir", roots: true, archived: false },
+      { directory: "dir", roots: true, limit: 25 },
+      { directory: "dir", roots: true },
     ])
+  })
+
+  test("can request root sessions without an explicit limit", async () => {
+    const calls: Array<{ directory: string; roots: true; limit?: number; archived?: boolean }> = []
+
+    const result = await loadRootSessionsWithFallback({
+      directory: "dir",
+      list: async (query) => {
+        calls.push(query)
+        return { data: [] }
+      },
+    })
+
+    expect(result.data).toEqual([])
+    expect(result.limited).toBe(false)
+    expect(calls).toEqual([{ directory: "dir", roots: true }])
   })
 })
 
@@ -74,6 +90,10 @@ describe("estimateRootSessionTotal", () => {
 
   test("keeps exact total when limited fetch is under limit", () => {
     expect(estimateRootSessionTotal({ count: 9, limit: 10, limited: true })).toBe(9)
+  })
+
+  test("keeps exact total when no limit was requested", () => {
+    expect(estimateRootSessionTotal({ count: 42, limited: true })).toBe(42)
   })
 })
 

@@ -15,6 +15,7 @@ import {
   errorMessage,
   hasProjectPermissions,
   latestRootSession,
+  sortedRootSessions,
   workspaceKey,
 } from "./helpers"
 
@@ -169,6 +170,30 @@ describe("layout workspace helpers", () => {
     )
 
     expect(result?.id).toBe("nested")
+  })
+
+  test("uses explicit workspace directory when resolved path differs", () => {
+    const result = sortedRootSessions(
+      {
+        path: { directory: "/resolved/workspace" },
+        session: [
+          session({
+            id: "kept",
+            directory: "/requested/workspace",
+            time: { created: 2, updated: 2, archived: undefined },
+          }),
+          session({
+            id: "other",
+            directory: "/elsewhere",
+            time: { created: 3, updated: 3, archived: undefined },
+          }),
+        ],
+      },
+      120_000,
+      "/requested/workspace",
+    )
+
+    expect(result.map((item) => item.id)).toEqual(["kept"])
   })
 
   test("detects project permissions with a filter", () => {
