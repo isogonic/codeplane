@@ -23,8 +23,8 @@ export const dict = {
   "footer.github": "GitHub",
   "footer.docs": "Документация",
   "footer.changelog": "Список изменений",
-  "footer.discord": "Discord",
-  "footer.x": "X",
+  "footer.issues": "Задачи",
+
 
   "legal.brand": "Бренд",
   "legal.privacy": "Конфиденциальность",

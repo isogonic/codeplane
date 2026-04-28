@@ -124,7 +124,7 @@ export const dict = {
     "CodePlane Zen은 코딩 에이전트를 위해 최적화된 신뢰할 수 있는 엄선된 모델에 대한 액세스를 제공합니다.",
   "provider.connect.codeplaneZen.line2": "단일 API 키로 Claude, GPT, Gemini, GLM 등 다양한 모델에 액세스할 수 있습니다.",
   "provider.connect.codeplaneZen.visit.prefix": "다음 ",
-  "provider.connect.codeplaneZen.visit.link": "codeplane.ai/zen",
+  "provider.connect.codeplaneZen.visit.link": "example.invalid/zen",
   "provider.connect.codeplaneZen.visit.suffix": "을 방문하여 API 키를 받으세요.",
   "provider.connect.oauth.code.visit.prefix": "다음 ",
   "provider.connect.oauth.code.visit.link": "이 링크",
@@ -405,7 +405,7 @@ export const dict = {
   "error.page.action.checkUpdates": "업데이트 확인",
   "error.page.action.updateTo": "{{version}} 버전으로 업데이트",
   "error.page.report.prefix": "이 오류를 CodePlane 팀에 제보해 주세요: ",
-  "error.page.report.discord": "Discord",
+  "error.page.report.issues": "GitHub에서",
   "error.page.version": "버전: {{version}}",
   "error.dev.rootNotFound":
     "루트 요소를 찾을 수 없습니다. index.html에 추가하는 것을 잊으셨나요? 또는 id 속성의 철자가 틀렸을 수 있습니다.",

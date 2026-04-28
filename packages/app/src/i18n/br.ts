@@ -125,7 +125,7 @@ export const dict = {
   "provider.connect.codeplaneZen.line2":
     "Com uma única chave de API você terá acesso a modelos como Claude, GPT, Gemini, GLM e mais.",
   "provider.connect.codeplaneZen.visit.prefix": "Visite ",
-  "provider.connect.codeplaneZen.visit.link": "codeplane.ai/zen",
+  "provider.connect.codeplaneZen.visit.link": "example.invalid/zen",
   "provider.connect.codeplaneZen.visit.suffix": " para obter sua chave de API.",
   "provider.connect.oauth.code.visit.prefix": "Visite ",
   "provider.connect.oauth.code.visit.link": "este link",
@@ -407,7 +407,7 @@ export const dict = {
   "error.page.action.checkUpdates": "Verificar atualizações",
   "error.page.action.updateTo": "Atualizar para {{version}}",
   "error.page.report.prefix": "Por favor, reporte este erro para a equipe do CodePlane",
-  "error.page.report.discord": "no Discord",
+  "error.page.report.issues": "no GitHub",
   "error.page.version": "Versão: {{version}}",
   "error.dev.rootNotFound":
     "Elemento raiz não encontrado. Você esqueceu de adicioná-lo ao seu index.html? Ou talvez o atributo id foi escrito incorretamente?",

@@ -1,6 +1,6 @@
 # codeplane GitHub Action
 
-A GitHub Action that integrates [codeplane](https://codeplane.ai) directly into your GitHub workflow.
+A GitHub Action that integrates [codeplane](https://github.com/devinoldenburg/codeplane) directly into your GitHub workflow.
 
 Mention `/codeplane` in your comment, and codeplane will execute tasks within your GitHub Actions runner.
 

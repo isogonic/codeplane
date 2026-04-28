@@ -61,7 +61,7 @@ Sie können Formatierer über den Abschnitt `formatter` in Ihrer CodePlane-Konfi
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "formatter": {}
 }
 ```
@@ -85,7 +85,7 @@ Um **alle** Formatierer global zu deaktivieren, setzen Sie `formatter` auf `fals
 
 ```json title="codeplane.json" {3}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "formatter": false
 }
 ```
@@ -94,7 +94,7 @@ Um einen **bestimmten** Formatierer zu deaktivieren, setzen Sie `disabled` auf `
 
 ```json title="codeplane.json" {5}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "formatter": {
     "prettier": {
       "disabled": true
@@ -111,7 +111,7 @@ Sie können den integrierten Formatierer überschreiben oder neu hinzufügen, in
 
 ```json title="codeplane.json" {4-14}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "formatter": {
     "prettier": {
       "command": ["npx", "prettier", "--write", "$FILE"],

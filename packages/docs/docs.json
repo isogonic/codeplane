@@ -16,7 +16,7 @@
           {
             "group": "Getting started",
             "pages": ["index", "quickstart", "development"],
-            "openapi": "https://codeplane.ai/openapi.json"
+            "openapi": "https://example.invalid/openapi.json"
           }
         ]
       }

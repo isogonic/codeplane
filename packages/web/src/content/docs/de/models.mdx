@@ -53,7 +53,7 @@ CodePlane config.
 
 ```json title="codeplane.json" {3}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "model": "lmstudio/google/gemma-3n-e4b"
 }
 ```
@@ -70,7 +70,7 @@ Sie können die Optionen eines Modells global über die Konfiguration konfigurie
 
 ```jsonc title="codeplane.jsonc" {7-12,19-24}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "openai": {
       "models": {
@@ -109,7 +109,7 @@ Sie können auch benutzerdefinierte Varianten definieren, die integrierte Varian
 
 ```jsonc title="codeplane.jsonc" {6-21}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "codeplane": {
       "models": {
@@ -174,7 +174,7 @@ Sie können vorhandene Varianten überschreiben oder eigene hinzufügen:
 
 ```jsonc title="codeplane.jsonc" {7-18}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "openai": {
       "models": {
@@ -211,7 +211,7 @@ Wenn CodePlane startet, sucht es nach Modellen in der folgenden Prioritätsreihe
 
    ```json title="codeplane.json"
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "model": "anthropic/claude-sonnet-4-20250514"
    }
    ```

@@ -66,7 +66,7 @@ describe("plugin.workspace", () => {
           path.join(dir, "codeplane.json"),
           JSON.stringify(
             {
-              $schema: "https://codeplane.ai/config.json",
+              $schema: "https://example.invalid/config.json",
               plugin: [pathToFileURL(file).href],
             },
             null,

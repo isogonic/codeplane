@@ -23,11 +23,11 @@ Certos servidores MCP, como o servidor MCP do GitHub, tendem a adicionar muitos 
 
 ## Habilitando
 
-Você pode definir servidores MCP em sua [Configuração do codeplane](https://codeplane.ai/docs/config/) sob `mcp`. Adicione cada MCP com um nome único. Você pode se referir a esse MCP pelo nome ao solicitar ao LLM.
+Você pode definir servidores MCP em sua [Configuração do codeplane](https://github.com/devinoldenburg/codeplane) sob `mcp`. Adicione cada MCP com um nome único. Você pode se referir a esse MCP pelo nome ao solicitar ao LLM.
 
 ```jsonc title="codeplane.jsonc" {6}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mcp": {
     "name-of-mcp-server": {
       // ...
@@ -52,7 +52,7 @@ Para habilitar um servidor específico da configuração remota da sua organiza�
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mcp": {
     "jira": {
       "type": "remote",
@@ -73,7 +73,7 @@ Adicione servidores MCP locais usando `type` como `"local"` dentro do objeto MCP
 
 ```jsonc title="codeplane.jsonc" {15}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mcp": {
     "my-local-mcp-server": {
       "type": "local",
@@ -94,7 +94,7 @@ Por exemplo, aqui está como você pode adicionar o servidor MCP de teste [`@mod
 
 ```jsonc title="codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mcp": {
     "mcp_everything": {
       "type": "local",
@@ -132,7 +132,7 @@ Adicione servidores MCP remotos definindo `type` como `"remote"`.
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mcp": {
     "my-remote-mcp": {
       "type": "remote",
@@ -179,7 +179,7 @@ Para a maioria dos servidores MCP habilitados para OAuth, nenhuma configuração
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mcp": {
     "my-oauth-server": {
       "type": "remote",
@@ -199,7 +199,7 @@ Se você tiver credenciais de cliente do provedor do servidor MCP, pode configur
 
 ```json title="codeplane.json" {7-11}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mcp": {
     "my-oauth-server": {
       "type": "remote",
@@ -248,7 +248,7 @@ Se você quiser desabilitar o OAuth automático para um servidor (por exemplo, p
 
 ```json title="codeplane.json" {7}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mcp": {
     "my-api-key-server": {
       "type": "remote",
@@ -301,7 +301,7 @@ Isso significa que você pode habilitá-los ou desabilitá-los globalmente.
 
 ```json title="codeplane.json" {14}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mcp": {
     "my-mcp-foo": {
       "type": "local",
@@ -322,7 +322,7 @@ Também podemos usar um padrão glob para desabilitar todos os MCPs corresponden
 
 ```json title="codeplane.json" {14}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mcp": {
     "my-mcp-foo": {
       "type": "local",
@@ -352,7 +352,7 @@ Se você tiver um grande número de servidores MCP, pode querer habilitá-los ap
 
 ```json title="codeplane.json" {11, 14-18}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mcp": {
     "my-mcp": {
       "type": "local",
@@ -406,7 +406,7 @@ Adicione o [servidor MCP Sentry](https://mcp.sentry.dev) para interagir com seus
 
 ```json title="codeplane.json" {4-8}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mcp": {
     "sentry": {
       "type": "remote",
@@ -439,7 +439,7 @@ Adicione o [servidor MCP Context7](https://github.com/upstash/context7) para pes
 
 ```json title="codeplane.json" {4-7}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mcp": {
     "context7": {
       "type": "remote",
@@ -453,7 +453,7 @@ Se você se inscreveu para uma conta gratuita, pode usar sua chave de API e obte
 
 ```json title="codeplane.json" {7-9}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mcp": {
     "context7": {
       "type": "remote",
@@ -488,7 +488,7 @@ Adicione o [Grep by Vercel](https://grep.app) servidor MCP para pesquisar atrav�
 
 ```json title="codeplane.json" {4-7}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mcp": {
     "gh_grep": {
       "type": "remote",

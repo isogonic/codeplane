@@ -37,7 +37,7 @@ Jedina iznimka je opcionalna funkcija `/share`.
 
 #### Dijeljenje razgovora
 
-Ako korisnik uključi funkciju `/share`, razgovor i povezani podaci šalju se servisu koji koristimo za hosting ovih share stranica na codeplane.ai.
+Ako korisnik uključi funkciju `/share`, razgovor i povezani podaci šalju se servisu koji koristimo za hosting ovih share stranica na example.invalid.
 
 Podaci se trenutno serviraju kroz edge mrežu našeg CDN-a i keširaju se blizu korisnika.
 
@@ -45,7 +45,7 @@ Preporučujemo da ovo onemogućite tokom probe.
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "share": "disabled"
 }
 ```

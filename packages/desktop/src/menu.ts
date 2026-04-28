@@ -158,7 +158,7 @@ export async function createMenu(trigger: (id: string) => void) {
         items: [
           // missing native macos search
           await MenuItem.new({
-            action: () => openUrl("https://codeplane.ai/docs"),
+            action: () => openUrl("https://github.com/devinoldenburg/codeplane"),
             text: t("desktop.menu.help.documentation"),
           }),
           await MenuItem.new({

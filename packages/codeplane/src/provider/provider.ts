@@ -405,7 +405,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://codeplane.ai/",
+            "HTTP-Referer": "https://github.com/devinoldenburg/codeplane",
             "X-Title": "codeplane",
             "X-Source": "codeplane",
           },
@@ -416,7 +416,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://codeplane.ai/",
+            "HTTP-Referer": "https://github.com/devinoldenburg/codeplane",
             "X-Title": "codeplane",
           },
         },
@@ -426,7 +426,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://codeplane.ai/",
+            "HTTP-Referer": "https://github.com/devinoldenburg/codeplane",
             "X-Title": "codeplane",
           },
         },
@@ -436,7 +436,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "http-referer": "https://codeplane.ai/",
+            "http-referer": "https://github.com/devinoldenburg/codeplane",
             "x-title": "codeplane",
           },
         },
@@ -534,7 +534,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://codeplane.ai/",
+            "HTTP-Referer": "https://github.com/devinoldenburg/codeplane",
             "X-Title": "codeplane",
           },
         },
@@ -819,7 +819,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://codeplane.ai/",
+            "HTTP-Referer": "https://github.com/devinoldenburg/codeplane",
             "X-Title": "codeplane",
           },
         },

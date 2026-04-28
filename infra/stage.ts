@@ -1,7 +1,7 @@
 export const domain = (() => {
-  if ($app.stage === "production") return "codeplane.ai"
-  if ($app.stage === "dev") return "dev.codeplane.ai"
-  return `${$app.stage}.dev.codeplane.ai`
+  if ($app.stage === "production") return "example.invalid"
+  if ($app.stage === "dev") return "dev.example.invalid"
+  return `${$app.stage}.dev.example.invalid`
 })()
 
 export const zoneID = "430ba34c138cfb5360826c4909f99be8"

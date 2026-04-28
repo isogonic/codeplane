@@ -61,7 +61,7 @@ Możesz dostosować formatery za pomocą sekcji `formatter` w konfiguracji CodeP
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "formatter": {}
 }
 ```
@@ -85,7 +85,7 @@ Aby globalnie wyłączyć **wszystkie** formatery, ustaw `formatter` na `false`:
 
 ```json title="codeplane.json" {3}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "formatter": false
 }
 ```
@@ -94,7 +94,7 @@ Aby wyłączyć **określony** formater, ustaw `disabled` na `true`:
 
 ```json title="codeplane.json" {5}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "formatter": {
     "prettier": {
       "disabled": true
@@ -111,7 +111,7 @@ Możesz dodać niestandardowe formatery, podając polecenie, zmienne środowisko
 
 ```json title="codeplane.json" {4-14}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "formatter": {
     "prettier": {
       "command": ["npx", "prettier", "--write", "$FILE"],

@@ -50,7 +50,7 @@ jobs:
 
       - name: Install CodePlane
         if: steps.changes.outputs.has_changes == 'true'
-        run: curl -fsSL https://codeplane.ai/install | bash
+        run: curl -fsSL https://example.invalid/install | bash
 
       - name: Sync locale docs with CodePlane
         if: steps.changes.outputs.has_changes == 'true'

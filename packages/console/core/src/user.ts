@@ -146,7 +146,7 @@ export namespace User {
             // @ts-ignore
             InviteEmail({
               inviter: emailInfo.inviterEmail,
-              assetsUrl: `https://codeplane.ai/email`,
+              assetsUrl: `https://example.invalid/email`,
               workspaceID: workspaceID,
               workspaceName: emailInfo.workspaceName,
             }),

@@ -93,7 +93,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
   meta = {
     description = "The open source coding agent";
-    homepage = "https://codeplane.ai/";
+    homepage = "https://github.com/devinoldenburg/codeplane";
     license = lib.licenses.mit;
     mainProgram = "codeplane";
     inherit (node_modules.meta) platforms;

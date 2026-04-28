@@ -137,7 +137,7 @@ export const dict = {
   "provider.connect.codeplaneZen.line2":
     "С одним API ключом вы получите доступ к таким моделям как Claude, GPT, Gemini, GLM и другим.",
   "provider.connect.codeplaneZen.visit.prefix": "Посетите ",
-  "provider.connect.codeplaneZen.visit.link": "codeplane.ai/zen",
+  "provider.connect.codeplaneZen.visit.link": "example.invalid/zen",
   "provider.connect.codeplaneZen.visit.suffix": " чтобы получить ваш API ключ.",
   "provider.connect.oauth.code.visit.prefix": "Посетите ",
   "provider.connect.oauth.code.visit.link": "эту ссылку",
@@ -452,7 +452,7 @@ export const dict = {
   "error.page.action.checkUpdates": "Проверить обновления",
   "error.page.action.updateTo": "Обновить до {{version}}",
   "error.page.report.prefix": "Пожалуйста, сообщите об этой ошибке команде CodePlane",
-  "error.page.report.discord": "в Discord",
+  "error.page.report.issues": "на GitHub",
   "error.page.version": "Версия: {{version}}",
 
   "error.dev.rootNotFound":

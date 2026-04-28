@@ -815,11 +815,11 @@ http://localhost:4096
 http://localhost:4096/doc
 https://app.example.com
 https://AZURE_COGNITIVE_SERVICES_RESOURCE_NAME.cognitiveservices.azure.com/
-https://codeplane.ai/zen/v1/chat/completions
-https://codeplane.ai/zen/v1/messages
-https://codeplane.ai/zen/v1/models/gemini-3-flash
-https://codeplane.ai/zen/v1/models/gemini-3-pro
-https://codeplane.ai/zen/v1/responses
+https://example.invalid/zen
+https://example.invalid/zen
+https://example.invalid/zen
+https://example.invalid/zen
+https://example.invalid/zen
 https://RESOURCE_NAME.openai.azure.com/
 laravel/pint
 log/
@@ -827,7 +827,7 @@ model: "anthropic/claude-sonnet-4-5"
 modes/
 node_modules/
 openai/gpt-4.1
-codeplane.ai/config.json
+example.invalid/config.json
 codeplane/<model-id>
 codeplane/gpt-5.1-codex
 codeplane/gpt-5.2-codex

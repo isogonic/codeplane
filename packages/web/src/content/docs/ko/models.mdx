@@ -53,7 +53,7 @@ codeplane 설정.
 
 ```json title="codeplane.json" {3}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "model": "lmstudio/google/gemma-3n-e4b"
 }
 ```
@@ -70,7 +70,7 @@ config를 통해 모델의 옵션을 구성할 수 있습니다.
 
 ```jsonc title="codeplane.jsonc" {7-12,19-24}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "openai": {
       "models": {
@@ -109,7 +109,7 @@ config를 통해 모델의 옵션을 구성할 수 있습니다.
 
 ```jsonc title="codeplane.jsonc" {6-21}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "codeplane": {
       "models": {
@@ -174,7 +174,7 @@ codeplane는 많은 공급자를 위한 기본 변종으로 발송합니다:
 
 ```jsonc title="codeplane.jsonc" {7-18}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "openai": {
       "models": {
@@ -211,7 +211,7 @@ codeplane가 시작될 때, 다음의 우선순위 순서에 있는 모형을 �
 
    ```json title="codeplane.json"
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "model": "anthropic/claude-sonnet-4-20250514"
    }
    ```

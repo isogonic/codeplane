@@ -428,7 +428,7 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
           description={
             <>
               {language.t("settings.general.row.theme.description")}{" "}
-              <Link href="https://codeplane.ai/docs/themes/">{language.t("common.learnMore")}</Link>
+              <Link href="https://github.com/devinoldenburg/codeplane">{language.t("common.learnMore")}</Link>
             </>
           }
         >

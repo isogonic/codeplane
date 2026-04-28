@@ -125,7 +125,7 @@ export const dict = {
   "provider.connect.codeplaneZen.line2":
     "Z jednym kluczem API uzyskasz dostęp do modeli takich jak Claude, GPT, Gemini, GLM i więcej.",
   "provider.connect.codeplaneZen.visit.prefix": "Odwiedź ",
-  "provider.connect.codeplaneZen.visit.link": "codeplane.ai/zen",
+  "provider.connect.codeplaneZen.visit.link": "example.invalid/zen",
   "provider.connect.codeplaneZen.visit.suffix": ", aby odebrać swój klucz API.",
   "provider.connect.oauth.code.visit.prefix": "Odwiedź ",
   "provider.connect.oauth.code.visit.link": "ten link",
@@ -407,7 +407,7 @@ export const dict = {
   "error.page.action.checkUpdates": "Sprawdź aktualizacje",
   "error.page.action.updateTo": "Zaktualizuj do {{version}}",
   "error.page.report.prefix": "Proszę zgłosić ten błąd do zespołu CodePlane",
-  "error.page.report.discord": "na Discordzie",
+  "error.page.report.issues": "na GitHub",
   "error.page.version": "Wersja: {{version}}",
   "error.dev.rootNotFound":
     "Nie znaleziono elementu głównego. Czy zapomniałeś dodać go do swojego index.html? A może atrybut id został błędnie wpisany?",

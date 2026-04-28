@@ -60,7 +60,7 @@ Configure los modos en su archivo de configuración `codeplane.json`:
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mode": {
     "build": {
       "model": "anthropic/claude-sonnet-4-20250514",
@@ -247,7 +247,7 @@ Puede crear sus propios modos personalizados agregándolos a la configuración. 
 
 ```json title="codeplane.json" {4-14}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "mode": {
     "docs": {
       "prompt": "{file:./prompts/documentation.txt}",

@@ -5,7 +5,7 @@
   "version": "26.4.29",
   "scripts": {
     "dev": "astro dev",
-    "dev:remote": "VITE_API_URL=https://api.codeplane.ai astro dev",
+    "dev:remote": "VITE_API_URL=https://example.invalid/api astro dev",
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",

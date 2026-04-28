@@ -139,7 +139,7 @@ export const dict = {
   "provider.connect.codeplaneZen.line1": "CodePlane Zen 為你提供一組精選的可靠最佳化模型，用於程式碼代理程式。",
   "provider.connect.codeplaneZen.line2": "只需一個 API 金鑰，你就能使用 Claude、GPT、Gemini、GLM 等模型。",
   "provider.connect.codeplaneZen.visit.prefix": "造訪 ",
-  "provider.connect.codeplaneZen.visit.link": "codeplane.ai/zen",
+  "provider.connect.codeplaneZen.visit.link": "example.invalid/zen",
   "provider.connect.codeplaneZen.visit.suffix": " 取得你的 API 金鑰。",
   "provider.connect.oauth.code.visit.prefix": "造訪 ",
   "provider.connect.oauth.code.visit.link": "此連結",
@@ -449,7 +449,7 @@ export const dict = {
   "error.page.action.checkUpdates": "檢查更新",
   "error.page.action.updateTo": "更新到 {{version}}",
   "error.page.report.prefix": "請將此錯誤回報給 CodePlane 團隊",
-  "error.page.report.discord": "在 Discord 上",
+  "error.page.report.issues": "在 GitHub 上",
   "error.page.version": "版本: {{version}}",
 
   "error.dev.rootNotFound": "找不到根元素。你是不是忘了把它新增到 index.html? 或者 id 屬性拼錯了?",

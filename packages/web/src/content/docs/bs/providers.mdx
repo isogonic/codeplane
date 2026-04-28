@@ -35,7 +35,7 @@ Možete prilagoditi osnovni URL za bilo kojeg provajdera postavljanjem opcije `b
 
 ```json title="codeplane.json" {6}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "anthropic": {
       "options": {
@@ -57,7 +57,7 @@ testirano i potvrđeno da dobro radi sa CodePlane. [Saznajte više](/docs/zen).
 Ako ste novi, preporučujemo da počnete sa CodePlane Zen.
 :::
 
-1. Pokrenite naredbu `/connect` u TUI-u, odaberite codeplane i idite na [codeplane.ai/auth](https://codeplane.ai/auth).
+1. Pokrenite naredbu `/connect` u TUI-u, odaberite codeplane i idite na [example.invalid/auth](https://example.invalid/auth).
 
 ```txt
    /connect
@@ -88,7 +88,7 @@ Radi kao i svaki drugi provajder u CodePlane i potpuno je opcionalan za korište
 
 CodePlane Go je jeftin plan pretplate koji pruža pouzdan pristup popularnim modelima otvorenog kodiranja koje pruža CodePlane tim i koji su testirani i verificirani da dobro rade s CodePlane-om.
 
-1. Pokrenite naredbu `/connect` u TUI-u, odaberite `CodePlane Go` i idite na [codeplane.ai/auth](https://codeplane.ai/zen).
+1. Pokrenite naredbu `/connect` u TUI-u, odaberite `CodePlane Go` i idite na [example.invalid/auth](https://example.invalid/zen).
 
    ```txt
    /connect
@@ -194,7 +194,7 @@ Za konfiguraciju specifičnu za projekat ili trajnu konfiguraciju, koristite `co
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "amazon-bedrock": {
       "options": {
@@ -222,7 +222,7 @@ Ako koristite VPC krajnje tačke za Bedrock:
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "amazon-bedrock": {
       "options": {
@@ -268,7 +268,7 @@ Za prilagođene profile zaključivanja, koristite ime modela i dobavljača u klj
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "amazon-bedrock": {
       // ...
@@ -520,7 +520,7 @@ Također možete dodati modele kroz svoju codeplane konfiguraciju.
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "cloudflare-ai-gateway": {
       "models": {
@@ -728,7 +728,7 @@ da biste koristili samo svoju vlastitu instancu koju hostuje GitLab, dodajte slj
 
 ```json
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "small_model": "gitlab/duo-chat-haiku-4-5",
   "share": "disabled"
 }
@@ -790,7 +790,7 @@ Prilagodite putem `codeplane.json`:
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "gitlab": {
       "options": {
@@ -807,7 +807,7 @@ Za pristup GitLab alatima (zahtjevi za spajanje, problemi, cjevovodi, CI/CD, itd
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "plugin": ["codeplane-gitlab-plugin"]
 }
 ```
@@ -990,7 +990,7 @@ Evo [Heliconeov katalog modela](https://helicone.ai/models), ovo će vam trebati
 
 ```jsonc title="~/.config/codeplane/codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "helicone": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1018,7 +1018,7 @@ Helicone podržava prilagođena zaglavlja za funkcije kao što su keširanje, pr
 
 ```jsonc title="~/.config/codeplane/codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "helicone": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1072,7 +1072,7 @@ Možete konfigurirati codeplane za korištenje lokalnih modela putem [llama.cpp'
 
 ```json title="codeplane.json" "llama.cpp" {5, 6, 8, 10-15}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "llama.cpp": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1139,7 +1139,7 @@ Možete konfigurirati codeplane za korištenje lokalnih modela preko LM Studio.
 
 ```json title="codeplane.json" "lmstudio" {5, 6, 8, 10-14}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "lmstudio": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1260,7 +1260,7 @@ Ollama se može automatski konfigurirati za CodePlane. Pogledajte [Ollama integr
 
 ```json title="codeplane.json" "ollama" {5, 6, 8, 10-14}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "ollama": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1422,7 +1422,7 @@ Također možete dodati dodatne modele putem vaše codeplane konfiguracije.
 
 ```json title="codeplane.json" {6}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "openrouter": {
       "models": {
@@ -1437,7 +1437,7 @@ Također možete dodati dodatne modele putem vaše codeplane konfiguracije.
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "openrouter": {
       "models": {
@@ -1686,7 +1686,7 @@ Također možete prilagoditi modele kroz svoju codeplane konfiguraciju. Evo prim
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "vercel": {
       "models": {
@@ -1796,7 +1796,7 @@ Također možete dodati dodatne modele putem vaše codeplane konfiguracije.
 
 ```json title="codeplane.json" {6}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "zenmux": {
       "models": {
@@ -1864,7 +1864,7 @@ Odaberite ID koji se pamti, to ćete koristiti u svom konfiguracijskom fajlu.
 
 ```json title="codeplane.json" ""myprovider"" {5-15}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "myprovider": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1903,7 +1903,7 @@ Evo primjera postavljanja opcija `apiKey`, `headers` i modela `limit`.
 
 ```json title="codeplane.json" {9,11,17-20}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "myprovider": {
       "npm": "@ai-sdk/openai-compatible",

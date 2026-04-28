@@ -124,7 +124,7 @@ export const dict = {
     "CodePlane Zenは、コーディングエージェント向けに最適化された信頼性の高いモデルへのアクセスを提供します。",
   "provider.connect.codeplaneZen.line2": "1つのAPIキーで、Claude、GPT、Gemini、GLMなどのモデルにアクセスできます。",
   "provider.connect.codeplaneZen.visit.prefix": " ",
-  "provider.connect.codeplaneZen.visit.link": "codeplane.ai/zen",
+  "provider.connect.codeplaneZen.visit.link": "example.invalid/zen",
   "provider.connect.codeplaneZen.visit.suffix": " にアクセスしてAPIキーを取得してください。",
   "provider.connect.oauth.code.visit.prefix": " ",
   "provider.connect.oauth.code.visit.link": "このリンク",
@@ -406,7 +406,7 @@ export const dict = {
   "error.page.action.checkUpdates": "アップデートを確認",
   "error.page.action.updateTo": "{{version}}にアップデート",
   "error.page.report.prefix": "このエラーをCodePlaneチームに報告してください: ",
-  "error.page.report.discord": "Discord",
+  "error.page.report.issues": "GitHub で",
   "error.page.version": "バージョン: {{version}}",
   "error.dev.rootNotFound":
     "ルート要素が見つかりません。index.htmlに追加するのを忘れていませんか？またはid属性のスペルが間違っていませんか？",

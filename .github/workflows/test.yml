@@ -51,7 +51,7 @@ jobs:
 
       - name: Configure git identity
         run: |
-          git config --global user.email "bot@codeplane.ai"
+          git config --global user.email "bot@example.invalid"
           git config --global user.name "codeplane"
 
       - name: Cache Turbo

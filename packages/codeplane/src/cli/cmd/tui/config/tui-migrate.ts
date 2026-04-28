@@ -10,7 +10,7 @@ import * as ConfigPaths from "@/config/paths"
 
 const log = Log.create({ service: "tui.migrate" })
 
-const TUI_SCHEMA_URL = "https://codeplane.ai/tui.json"
+const TUI_SCHEMA_URL = ""
 
 const LegacyTheme = TuiInfo.shape.theme.optional()
 const LegacyRecord = z.record(z.string(), z.unknown()).optional()

@@ -32,7 +32,7 @@ config 파일에 npm 패키지를 지정합니다.
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "plugin": ["codeplane-helicone-session", "codeplane-wakatime", "@my-org/custom-plugin"]
 }
 ```
@@ -330,7 +330,7 @@ export const MyPlugin = async ({ client }) => {
 }
 ```
 
-레벨: `debug`, `info`, `warn`, `error`. [SDK 문서](https://codeplane.ai/docs/sdk)를 참고하세요.
+레벨: `debug`, `info`, `warn`, `error`. [SDK 문서](https://github.com/devinoldenburg/codeplane)를 참고하세요.
 
 ---
 

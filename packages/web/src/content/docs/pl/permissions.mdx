@@ -25,7 +25,7 @@ Możesz zainstalować uprawnienia globalnie (za pomocą `*`) i znajdującego si�
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "*": "ask",
     "bash": "allow",
@@ -38,7 +38,7 @@ Możesz także zainstalować wszystkie uprawnienia na raz:
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": "allow"
 }
 ```
@@ -51,7 +51,7 @@ Można skorzystać z różnych działań, które zależą od danych użytkowych.
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "bash": {
       "*": "ask",
@@ -96,7 +96,7 @@ Na przykład umożliwia dostęp do wszystkiego pod `~/projects/personal/`:
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "external_directory": {
       "~/projects/personal/**": "allow"
@@ -109,7 +109,7 @@ Każdy dopuszczony tutaj katalog jest dziedziczy tych samych ustawień, co dost�
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "external_directory": {
       "~/projects/personal/**": "allow"
@@ -189,7 +189,7 @@ Bardziej szczegółowe przykłady dopasowywania wzorców można znaleźć w sekc
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "permission": {
     "bash": {
       "*": "ask",

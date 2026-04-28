@@ -35,7 +35,7 @@ export const subjects = createSubjects({
 
 const MY_THEME: Theme = {
   ...THEME_OPENAUTH,
-  logo: "https://codeplane.ai/favicon-v3.svg",
+  logo: "/favicon-v3.svg",
 }
 
 export default {

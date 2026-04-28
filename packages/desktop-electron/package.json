@@ -4,10 +4,10 @@
   "version": "26.4.29",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://codeplane.ai",
+  "homepage": "https://github.com/devinoldenburg/codeplane",
   "author": {
     "name": "CodePlane",
-    "email": "hello@codeplane.ai"
+    "email": "hello@example.invalid"
   },
   "scripts": {
     "typecheck": "tsgo -b",

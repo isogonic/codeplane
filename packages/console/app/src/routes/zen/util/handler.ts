@@ -425,7 +425,7 @@ export async function handler(
       throw new ModelError(
         `${t("zen.api.error.trialEnded", {
           model: modelData.name,
-          link: "https://codeplane.ai/go",
+          link: "https://example.invalid/go",
         })}`,
       )
 
@@ -767,8 +767,8 @@ export async function handler(
 
     // Validate pay as you go billing
     const billing = authInfo.billing
-    const billingUrl = `https://codeplane.ai/workspace/${authInfo.workspaceID}/billing`
-    const membersUrl = `https://codeplane.ai/workspace/${authInfo.workspaceID}/members`
+    const billingUrl = `https://example.invalid/workspace${authInfo.workspaceID}/billing`
+    const membersUrl = `https://example.invalid/workspace${authInfo.workspaceID}/members`
     if (!billing.paymentMethodID && billing.balance <= 0)
       throw new CreditsError(t("zen.api.error.noPaymentMethod", { billingUrl }))
     if (billing.balance <= 0) throw new CreditsError(t("zen.api.error.insufficientBalance", { billingUrl }))

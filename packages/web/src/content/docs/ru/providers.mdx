@@ -35,7 +35,7 @@ codeplane использует [AI SDK](https://ai-sdk.dev/) и [Models.dev](htt
 
 ```json title="codeplane.json" {6}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "anthropic": {
       "options": {
@@ -57,7 +57,7 @@ CodePlane Zen — это список моделей, предоставленн
 Если вы новичок, мы рекомендуем начать с CodePlane Zen.
 :::
 
-1. Запустите команду `/connect` в TUI, выберите `CodePlane Zen` и перейдите по адресу [codeplane.ai/auth](https://codeplane.ai/zen).
+1. Запустите команду `/connect` в TUI, выберите `CodePlane Zen` и перейдите по адресу [example.invalid/auth](https://example.invalid/zen).
 
    ```txt
    /connect
@@ -89,7 +89,7 @@ CodePlane Zen — это список моделей, предоставленн
 CodePlane Go — это недорогой план подписки, обеспечивающий надежный доступ к популярным открытым моделям кодирования, предоставляемым командой codeplane, которые были
 протестированы и проверены на хорошую работу с codeplane.
 
-1. Запустите команду `/connect` в TUI, выберите `CodePlane Go` и перейдите по адресу [codeplane.ai/auth](https://codeplane.ai/zen).
+1. Запустите команду `/connect` в TUI, выберите `CodePlane Go` и перейдите по адресу [example.invalid/auth](https://example.invalid/zen).
 
    ```txt
    /connect
@@ -194,7 +194,7 @@ CodePlane Go — это недорогой план подписки, обесп
 
    ```json title="codeplane.json"
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "amazon-bedrock": {
          "options": {
@@ -221,7 +221,7 @@ CodePlane Go — это недорогой план подписки, обесп
 
    ```json title="codeplane.json"
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "amazon-bedrock": {
          "options": {
@@ -265,7 +265,7 @@ CodePlane Go — это недорогой план подписки, обесп
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "amazon-bedrock": {
       // ...
@@ -517,7 +517,7 @@ Cloudflare AI Gateway позволяет вам получать доступ к
 
    ```json title="codeplane.json"
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "cloudflare-ai-gateway": {
          "models": {
@@ -723,7 +723,7 @@ codeplane использует небольшую модель для некот
 
 ```json
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "small_model": "gitlab/duo-chat-haiku-4-5",
   "share": "disabled"
 }
@@ -785,7 +785,7 @@ export GITLAB_OAUTH_CLIENT_ID=your_application_id_here
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "gitlab": {
       "options": {
@@ -802,7 +802,7 @@ export GITLAB_OAUTH_CLIENT_ID=your_application_id_here
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "plugin": ["codeplane-gitlab-plugin"]
 }
 ```
@@ -985,7 +985,7 @@ export GITLAB_OAUTH_CLIENT_ID=your_application_id_here
 
 ```jsonc title="~/.config/codeplane/codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "helicone": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1013,7 +1013,7 @@ Helicone поддерживает пользовательские заголо�
 
 ```jsonc title="~/.config/codeplane/codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "helicone": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1067,7 +1067,7 @@ npm install -g codeplane-helicone-session
 
 ```json title="codeplane.json" "llama.cpp" {5, 6, 8, 10-15}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "llama.cpp": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1134,7 +1134,7 @@ IO.NET предлагает 17 моделей, оптимизированных 
 
 ```json title="codeplane.json" "lmstudio" {5, 6, 8, 10-14}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "lmstudio": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1255,7 +1255,7 @@ Ollama может автоматически настроиться для codep
 
 ```json title="codeplane.json" "ollama" {5, 6, 8, 10-14}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "ollama": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1417,7 +1417,7 @@ CodePlane Zen — это список протестированных и про
 
    ```json title="codeplane.json" {6}
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "openrouter": {
          "models": {
@@ -1432,7 +1432,7 @@ CodePlane Zen — это список протестированных и про
 
    ```json title="codeplane.json"
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "openrouter": {
          "models": {
@@ -1681,7 +1681,7 @@ Vercel AI Gateway позволяет получать доступ к модел
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "vercel": {
       "models": {
@@ -1791,7 +1791,7 @@ Vercel AI Gateway позволяет получать доступ к модел
 
    ```json title="codeplane.json" {6}
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "zenmux": {
          "models": {
@@ -1859,7 +1859,7 @@ Vercel AI Gateway позволяет получать доступ к модел
 
    ```json title="codeplane.json" ""myprovider"" {5-15}
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "myprovider": {
          "npm": "@ai-sdk/openai-compatible",
@@ -1897,7 +1897,7 @@ Vercel AI Gateway позволяет получать доступ к модел
 
 ```json title="codeplane.json" {9,11,17-20}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "myprovider": {
       "npm": "@ai-sdk/openai-compatible",

@@ -2182,7 +2182,7 @@ export type Config = {
   logLevel?: LogLevel
   server?: ServerConfig
   /**
-   * Command configuration, see https://codeplane.ai/docs/commands
+   * Command configuration, see https://github.com/devinoldenburg/codeplane
    */
   command?: {
     [key: string]: {
@@ -2267,7 +2267,7 @@ export type Config = {
     [key: string]: AgentConfig | undefined
   }
   /**
-   * Agent configuration, see https://codeplane.ai/docs/agents
+   * Agent configuration, see https://github.com/devinoldenburg/codeplane
    */
   agent?: {
     plan?: AgentConfig

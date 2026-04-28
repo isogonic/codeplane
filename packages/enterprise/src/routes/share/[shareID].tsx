@@ -260,7 +260,7 @@ export default function () {
                         <div class="relative bg-background-stronger w-screen h-screen overflow-hidden flex flex-col">
                           <header class="h-12 px-6 py-2 flex items-center justify-between self-stretch bg-background-base border-b border-border-weak-base">
                             <div class="">
-                              <a href="https://codeplane.ai">
+                              <a href="https://github.com/devinoldenburg/codeplane">
                                 <Mark />
                               </a>
                             </div>
@@ -274,7 +274,7 @@ export default function () {
                               />
                               <IconButton
                                 as={"a"}
-                                href="https://codeplane.ai/discord"
+                                href="https://github.com/devinoldenburg/codeplane/issues"
                                 target="_blank"
                                 icon="discord"
                                 variant="ghost"

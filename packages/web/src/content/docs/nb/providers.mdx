@@ -35,7 +35,7 @@ Du kan tilpasse base-URL-en for enhver leverandør ved å angi alternativet `bas
 
 ```json title="codeplane.json" {6}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "anthropic": {
       "options": {
@@ -57,7 +57,7 @@ testet og verifisert for å fungere godt med CodePlane. [Finn ut mer](/docs/zen)
 Hvis du er ny, anbefaler vi å starte med CodePlane Zen.
 :::
 
-1. Kjør kommandoen `/connect` i TUI, velg `CodePlane Zen` og gå til [codeplane.ai/auth](https://codeplane.ai/zen).
+1. Kjør kommandoen `/connect` i TUI, velg `CodePlane Zen` og gå til [example.invalid/auth](https://example.invalid/zen).
 
    ```txt
    /connect
@@ -89,7 +89,7 @@ Det fungerer som alle andre leverandører i CodePlane og er helt valgfritt å br
 CodePlane Go er en lavpris abonnementsplan som gir pålitelig tilgang til populære åpne kodemodeller levert av CodePlane-teamet som har vært
 testet og verifisert for å fungere godt med CodePlane.
 
-1. Kjør kommandoen `/connect` i TUI, velg `CodePlane Go`, og gå til [codeplane.ai/auth](https://codeplane.ai/zen).
+1. Kjør kommandoen `/connect` i TUI, velg `CodePlane Go`, og gå til [example.invalid/auth](https://example.invalid/zen).
 
    ```txt
    /connect
@@ -196,7 +196,7 @@ Slik bruker du Amazon Bedrock med CodePlane:
 
    ```json title="codeplane.json"
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "amazon-bedrock": {
          "options": {
@@ -223,7 +223,7 @@ Slik bruker du Amazon Bedrock med CodePlane:
 
    ```json title="codeplane.json"
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "amazon-bedrock": {
          "options": {
@@ -267,7 +267,7 @@ For egendefinerte slutningsprofiler, bruk modellen og leverandørnavnet i nøkke
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "amazon-bedrock": {
       // ...
@@ -519,7 +519,7 @@ Cloudflare AI Gateway lar deg få tilgang til modeller fra OpenAI, Anthropic, Wo
 
    ```json title="codeplane.json"
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "cloudflare-ai-gateway": {
          "models": {
@@ -725,7 +725,7 @@ for kun å bruke din egen GitLab-hostede forekomst, legg til følgende i din
 
 ```json
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "small_model": "gitlab/duo-chat-haiku-4-5",
   "share": "disabled"
 }
@@ -787,7 +787,7 @@ Tilpass gjennom `codeplane.json`:
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "gitlab": {
       "options": {
@@ -804,7 +804,7 @@ For å få tilgang til GitLab-verktøy (sammenslåingsforespørsler, problemer, 
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "plugin": ["codeplane-gitlab-plugin"]
 }
 ```
@@ -987,7 +987,7 @@ Her er [Helicone's Model Directory](https://helicone.ai/models), du trenger denn
 
 ```jsonc title="~/.config/codeplane/codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "helicone": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1015,7 +1015,7 @@ Helicone støtter tilpassede headere for funksjoner som bufring, brukersporing o
 
 ```jsonc title="~/.config/codeplane/codeplane.jsonc"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "helicone": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1069,7 +1069,7 @@ Du kan konfigurere CodePlane for å bruke lokale modeller gjennom [llama.cpp](ht
 
 ```json title="codeplane.json" "llama.cpp" {5, 6, 8, 10-15}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "llama.cpp": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1136,7 +1136,7 @@ Du kan konfigurere CodePlane for å bruke lokale modeller gjennom LM Studio.
 
 ```json title="codeplane.json" "lmstudio" {5, 6, 8, 10-14}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "lmstudio": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1257,7 +1257,7 @@ Ollama kan automatisk konfigurere seg selv for CodePlane. Se [Ollama-integrasjon
 
 ```json title="codeplane.json" "ollama" {5, 6, 8, 10-14}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "ollama": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1419,7 +1419,7 @@ CodePlane Zen er en liste over testede og verifiserte modeller levert av CodePla
 
    ```json title="codeplane.json" {6}
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "openrouter": {
          "models": {
@@ -1434,7 +1434,7 @@ CodePlane Zen er en liste over testede og verifiserte modeller levert av CodePla
 
    ```json title="codeplane.json"
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "openrouter": {
          "models": {
@@ -1650,7 +1650,7 @@ Du kan også tilpasse modeller gjennom CodePlane-konfigurasjonen. Her er et ekse
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "vercel": {
       "models": {
@@ -1760,7 +1760,7 @@ Noen nyttige rutealternativer:
 
    ```json title="codeplane.json" {6}
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "zenmux": {
          "models": {
@@ -1828,7 +1828,7 @@ Du kan bruke hvilken som helst OpenAI-kompatibel leverandør med CodePlane. De f
 
    ```json title="codeplane.json" ""myprovider"" {5-15}
    {
-     "$schema": "https://codeplane.ai/config.json",
+     "$schema": "https://example.invalid/config.json",
      "provider": {
        "myprovider": {
          "npm": "@ai-sdk/openai-compatible",
@@ -1866,7 +1866,7 @@ Her er et eksempel på innstilling av alternativene `apiKey`, `headers` og model
 
 ```json title="codeplane.json" {9,11,17-20}
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "provider": {
     "myprovider": {
       "npm": "@ai-sdk/openai-compatible",

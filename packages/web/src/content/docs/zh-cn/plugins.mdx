@@ -32,7 +32,7 @@ description: 编写自己的插件来扩展 CodePlane。
 
 ```json title="codeplane.json"
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://example.invalid/config.json",
   "plugin": ["codeplane-helicone-session", "codeplane-wakatime", "@my-org/custom-plugin"]
 }
 ```
@@ -330,7 +330,7 @@ export const MyPlugin = async ({ client }) => {
 }
 ```
 
-日志级别：`debug`、`info`、`warn`、`error`。详情请参阅 [SDK 文档](https://codeplane.ai/docs/sdk)。
+日志级别：`debug`、`info`、`warn`、`error`。详情请参阅 [SDK 文档](https://github.com/devinoldenburg/codeplane)。
 
 ---
 

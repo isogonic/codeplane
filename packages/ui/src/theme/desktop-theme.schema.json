@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://codeplane.ai/desktop-theme.json",
   "title": "CodePlane Desktop Theme",
   "description": "A theme definition for the CodePlane desktop application",
   "type": "object",

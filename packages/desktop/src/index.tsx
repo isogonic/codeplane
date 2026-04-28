@@ -326,7 +326,7 @@ const createPlatform = (): Platform => {
         .then(() => {
           const notification = new Notification(title, {
             body: description ?? "",
-            icon: "https://codeplane.ai/favicon-96x96-v3.png",
+            icon: "/favicon-96x96-v3.png",
           })
           notification.onclick = () => {
             const win = getCurrentWindow()
