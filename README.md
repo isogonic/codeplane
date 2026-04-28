@@ -3,7 +3,7 @@
     <picture>
       <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: light)">
       <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: dark)">
-      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="CodePlane" width="240">
+      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="CodePlane" width="140">
     </picture>
   </a>
 </p>
@@ -22,8 +22,6 @@
 </p>
 
 <br />
-
-[![CodePlane Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://codeplane.ai)
 
 ---
 
