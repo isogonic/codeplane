@@ -1,8 +1,12 @@
 import { Effect, Schema } from "effect"
-import { HttpClient } from "effect/unstable/http"
+import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 import * as Tool from "./tool"
-import * as McpExa from "./mcp-exa"
 import DESCRIPTION from "./websearch.txt"
+
+const ENDPOINT = "https://api.exa.ai/search"
+const DEFAULT_NUM_RESULTS = 8
+const DEFAULT_CONTEXT_MAX_CHARACTERS = 10_000
+const REQUEST_TIMEOUT = "25 seconds"
 
 export const Parameters = Schema.Struct({
   query: Schema.String.annotate({ description: "Websearch query" }),
@@ -21,10 +25,47 @@ export const Parameters = Schema.Struct({
   }),
 })
 
+const ExaResult = Schema.Struct({
+  title: Schema.optional(Schema.NullOr(Schema.String)),
+  url: Schema.String,
+  publishedDate: Schema.optional(Schema.NullOr(Schema.String)),
+  author: Schema.optional(Schema.NullOr(Schema.String)),
+  text: Schema.optional(Schema.NullOr(Schema.String)),
+})
+
+const ExaSearchResponse = Schema.Struct({
+  results: Schema.Array(ExaResult),
+})
+
+function formatResults(results: ReadonlyArray<Schema.Schema.Type<typeof ExaResult>>, maxChars: number): string {
+  if (results.length === 0) return "No search results found. Please try a different query."
+
+  const blocks: string[] = []
+  let used = 0
+  for (let i = 0; i < results.length; i += 1) {
+    const r = results[i]
+    const header = `## ${i + 1}. ${r.title ?? r.url}\nURL: ${r.url}` +
+      (r.publishedDate ? `\nPublished: ${r.publishedDate}` : "") +
+      (r.author ? `\nAuthor: ${r.author}` : "")
+    const remainingForBody = Math.max(0, maxChars - used - header.length - 4)
+    const body = r.text
+      ? r.text.length > remainingForBody
+        ? r.text.slice(0, remainingForBody).trimEnd() + "…"
+        : r.text
+      : ""
+    const block = body ? `${header}\n\n${body}` : header
+    blocks.push(block)
+    used += block.length + 2
+    if (used >= maxChars) break
+  }
+  return blocks.join("\n\n")
+}
+
 export const WebSearchTool = Tool.define(
   "websearch",
   Effect.gen(function* () {
     const http = yield* HttpClient.HttpClient
+    const httpOk = HttpClient.filterStatusOk(http)
 
     return {
       get description() {
@@ -46,22 +87,52 @@ export const WebSearchTool = Tool.define(
             },
           })
 
-          const result = yield* McpExa.call(
-            http,
-            "web_search_exa",
-            McpExa.SearchArgs,
-            {
-              query: params.query,
-              type: params.type || "auto",
-              numResults: params.numResults || 8,
-              livecrawl: params.livecrawl || "fallback",
-              contextMaxCharacters: params.contextMaxCharacters,
+          const apiKey = process.env.EXA_API_KEY
+          if (!apiKey) {
+            return {
+              output:
+                "Web search is unavailable: set EXA_API_KEY in the codeplane environment to enable the native websearch tool.",
+              title: `Web search: ${params.query}`,
+              metadata: {},
+            }
+          }
+
+          const numResults = params.numResults ?? DEFAULT_NUM_RESULTS
+          const contextMaxCharacters = params.contextMaxCharacters ?? DEFAULT_CONTEXT_MAX_CHARACTERS
+
+          const body = {
+            query: params.query,
+            type: params.type ?? "auto",
+            numResults,
+            livecrawl: params.livecrawl ?? "fallback",
+            contents: {
+              text: { maxCharacters: Math.max(500, Math.floor(contextMaxCharacters / Math.max(1, numResults))) },
             },
-            "25 seconds",
+          }
+
+          const request = HttpClientRequest.post(ENDPOINT).pipe(
+            HttpClientRequest.setHeaders({
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              "x-api-key": apiKey,
+              "User-Agent": "codeplane-websearch",
+            }),
+            HttpClientRequest.bodyText(JSON.stringify(body), "application/json"),
           )
 
+          const response = yield* httpOk
+            .execute(request)
+            .pipe(
+              Effect.timeoutOrElse({
+                duration: REQUEST_TIMEOUT,
+                orElse: () => Effect.die(new Error("Web search request timed out")),
+              }),
+            )
+
+          const data = yield* HttpClientResponse.schemaBodyJson(ExaSearchResponse)(response)
+
           return {
-            output: result ?? "No search results found. Please try a different query.",
+            output: formatResults(data.results, contextMaxCharacters),
             title: `Web search: ${params.query}`,
             metadata: {},
           }
