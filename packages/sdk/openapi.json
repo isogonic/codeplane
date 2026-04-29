@@ -3,7 +3,7 @@
   "info": {
     "title": "codeplane",
     "description": "codeplane api",
-    "version": "26.5.11"
+    "version": "26.5.12"
   },
   "paths": {
     "/global/cron": {
