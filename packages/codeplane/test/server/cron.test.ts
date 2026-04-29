@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { Effect } from "effect"
 import { AppRuntime } from "../../src/effect/app-runtime"
+import { makeRuntime } from "../../src/effect/run-service"
 import { Cron, CronScheduler } from "../../src/cron"
 import { CronTaskTable } from "../../src/cron/cron.sql"
 import { CronExpression } from "../../src/cron/expression"
@@ -12,9 +13,10 @@ import { resetDatabase } from "../fixture/db"
 import { tmpdir } from "../fixture/fixture"
 
 void Log.init({ print: false })
+const cronSchedulerRuntime = makeRuntime(CronScheduler.Service, CronScheduler.defaultLayer)
 
 afterEach(async () => {
-  await AppRuntime.runPromise(CronScheduler.Service.use((svc) => svc.stop())).catch(() => undefined)
+  await cronSchedulerRuntime.runPromise((svc) => svc.stop()).catch(() => undefined)
   await resetDatabase()
 })
 
@@ -145,8 +147,8 @@ describe("cron routes", () => {
       }),
     )
 
-    await AppRuntime.runPromise(CronScheduler.Service.use((svc) => svc.start()))
-    await AppRuntime.runPromise(CronScheduler.Service.use((svc) => svc.stop()))
+    await cronSchedulerRuntime.runPromise((svc) => svc.start())
+    await cronSchedulerRuntime.runPromise((svc) => svc.stop())
     await new Promise((resolve) => setTimeout(resolve, 150))
 
     const after = await AppRuntime.runPromise(Cron.Service.use((svc) => svc.getRun(run.id)))

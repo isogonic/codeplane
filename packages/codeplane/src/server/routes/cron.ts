@@ -2,7 +2,7 @@ import { Hono } from "hono"
 import { describeRoute, validator, resolver } from "hono-openapi"
 import z from "zod"
 import { Effect } from "effect"
-import { AppRuntime } from "@/effect/app-runtime"
+import { makeRuntime } from "@/effect/run-service"
 import { lazy } from "@/util/lazy"
 import { Cron, CronScheduler } from "@/cron"
 import { CronTaskID, CronRunID } from "@/cron/schema"
@@ -36,6 +36,9 @@ const CreateInput = z.object({
   maxRetries: z.number().optional(),
 })
 
+const cronRuntime = makeRuntime(Cron.Service, Cron.defaultLayer)
+const cronSchedulerRuntime = makeRuntime(CronScheduler.Service, CronScheduler.defaultLayer)
+
 export const CronRoutes = lazy(() =>
   new Hono()
     .get(
@@ -64,8 +67,8 @@ export const CronRoutes = lazy(() =>
       ),
       async (c) => {
         const query = c.req.valid("query")
-        const tasks = await AppRuntime.runPromise(
-          Cron.Service.use((svc) => svc.list({ projectID: query.projectID, directory: query.directory })),
+        const tasks = await cronRuntime.runPromise((svc) =>
+          svc.list({ projectID: query.projectID, directory: query.directory }),
         )
         return c.json(tasks)
       },
@@ -91,7 +94,7 @@ export const CronRoutes = lazy(() =>
       validator("json", CreateInput),
       async (c) => {
         const body = c.req.valid("json")
-        const task = await AppRuntime.runPromise(Cron.Service.use((svc) => svc.create(body)))
+        const task = await cronRuntime.runPromise((svc) => svc.create(body))
         return c.json(task)
       },
     )
@@ -111,7 +114,7 @@ export const CronRoutes = lazy(() =>
       validator("param", z.object({ taskID: CronTaskID.zod })),
       async (c) => {
         const { taskID } = c.req.valid("param")
-        const task = await AppRuntime.runPromise(Cron.Service.use((svc) => svc.get(taskID)))
+        const task = await cronRuntime.runPromise((svc) => svc.get(taskID))
         return c.json(task)
       },
     )
@@ -133,9 +136,7 @@ export const CronRoutes = lazy(() =>
       async (c) => {
         const { taskID } = c.req.valid("param")
         const body = c.req.valid("json") as Omit<Cron.UpdateInput, "taskID">
-        const task = await AppRuntime.runPromise(
-          Cron.Service.use((svc) => svc.update({ ...body, taskID } as Cron.UpdateInput)),
-        )
+        const task = await cronRuntime.runPromise((svc) => svc.update({ ...body, taskID } as Cron.UpdateInput))
         return c.json(task)
       },
     )
@@ -155,8 +156,8 @@ export const CronRoutes = lazy(() =>
       validator("param", z.object({ taskID: CronTaskID.zod })),
       async (c) => {
         const { taskID } = c.req.valid("param")
-        await AppRuntime.runPromise(CronScheduler.Service.use((svc) => svc.cancelTask(taskID))).catch(() => undefined)
-        await AppRuntime.runPromise(Cron.Service.use((svc) => svc.remove(taskID)))
+        await cronSchedulerRuntime.runPromise((svc) => svc.cancelTask(taskID)).catch(() => undefined)
+        await cronRuntime.runPromise((svc) => svc.remove(taskID))
         return c.json(true)
       },
     )
@@ -178,9 +179,7 @@ export const CronRoutes = lazy(() =>
       async (c) => {
         const { taskID } = c.req.valid("param")
         const { status } = c.req.valid("json")
-        const task = await AppRuntime.runPromise(
-          Cron.Service.use((svc) => svc.setStatus({ taskID, status })),
-        )
+        const task = await cronRuntime.runPromise((svc) => svc.setStatus({ taskID, status }))
         return c.json(task)
       },
     )
@@ -201,7 +200,7 @@ export const CronRoutes = lazy(() =>
       validator("param", z.object({ taskID: CronTaskID.zod })),
       async (c) => {
         const { taskID } = c.req.valid("param")
-        const run = await AppRuntime.runPromise(
+        const run = await cronRuntime.runPromise(() =>
           Effect.gen(function* () {
             const svc = yield* Cron.Service
             const task = yield* svc.get(taskID)
@@ -209,9 +208,7 @@ export const CronRoutes = lazy(() =>
             return yield* svc.trigger(taskID)
           }),
         )
-        AppRuntime.runPromise(
-          CronScheduler.Service.use((svc) => svc.tick()),
-        ).catch(() => undefined)
+        cronSchedulerRuntime.runPromise((svc) => svc.tick()).catch(() => undefined)
         return c.json(run)
       },
     )
@@ -233,7 +230,7 @@ export const CronRoutes = lazy(() =>
       async (c) => {
         const { taskID } = c.req.valid("param")
         const { limit } = c.req.valid("query")
-        const runs = await AppRuntime.runPromise(Cron.Service.use((svc) => svc.listRuns(taskID, limit)))
+        const runs = await cronRuntime.runPromise((svc) => svc.listRuns(taskID, limit))
         return c.json(runs)
       },
     )
@@ -253,7 +250,7 @@ export const CronRoutes = lazy(() =>
       validator("param", z.object({ runID: CronRunID.zod })),
       async (c) => {
         const { runID } = c.req.valid("param")
-        const run = await AppRuntime.runPromise(Cron.Service.use((svc) => svc.getRun(runID)))
+        const run = await cronRuntime.runPromise((svc) => svc.getRun(runID))
         return c.json(run)
       },
     )
@@ -273,7 +270,7 @@ export const CronRoutes = lazy(() =>
       validator("param", z.object({ runID: CronRunID.zod })),
       async (c) => {
         const { runID } = c.req.valid("param")
-        await AppRuntime.runPromise(CronScheduler.Service.use((svc) => svc.cancelRun(runID)))
+        await cronSchedulerRuntime.runPromise((svc) => svc.cancelRun(runID))
         return c.json(true)
       },
     ),
