@@ -32,6 +32,7 @@ import {
 import { useData } from "../context"
 import { useFileComponent, useFileReference, type FileReferenceSelection } from "../context/file"
 import { useDialog } from "../context/dialog"
+import { useBashInteractive } from "../context/bash-interactive"
 import { type UiI18n, useI18n } from "../context/i18n"
 import { BasicTool, GenericTool } from "./basic-tool"
 import { Accordion } from "./accordion"
@@ -1310,6 +1311,7 @@ export interface ToolProps {
   input: Record<string, any>
   metadata: Record<string, any>
   tool: string
+  callID?: string
   output?: string
   status?: string
   startTime?: number
@@ -1445,6 +1447,7 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
               component={render()}
               input={input()}
               tool={part().tool}
+              callID={part().id}
               metadata={partMetadata()}
               // @ts-expect-error
               output={part().state.output}
@@ -2045,6 +2048,198 @@ ToolRegistry.register({
         clickable={clickable()}
         onTriggerClick={navigate}
       />
+    )
+  },
+})
+
+ToolRegistry.register({
+  name: "bash_interactive",
+  render(props) {
+    const i18n = useI18n()
+    const pending = createMemo(() => props.status === "pending" || props.status === "running")
+    const cmd = createMemo(() => (typeof props.input.command === "string" ? props.input.command : ""))
+    const description = createMemo(() =>
+      typeof props.input.description === "string" ? props.input.description : "",
+    )
+    const callIDAccessor = createMemo(() => props.callID)
+    const live = useBashInteractive(callIDAccessor)
+    // Prefer the live PTY buffer while running; fall back to the saved tool
+    // output when the call has finished and the model has the final answer.
+    const display = createMemo(() => {
+      const liveState = live()
+      if (liveState && liveState.output) return stripAnsi(liveState.output)
+      if (typeof props.output === "string") return stripAnsi(props.output)
+      return ""
+    })
+    const isRunning = createMemo(() => {
+      const liveState = live()
+      if (liveState) return liveState.status === "running"
+      return pending()
+    })
+    let preRef: HTMLPreElement | undefined
+    createEffect(() => {
+      // Auto-scroll the live transcript to the bottom on each new chunk
+      // so the user always sees the latest output without manual scrolling.
+      display()
+      if (preRef) preRef.scrollTop = preRef.scrollHeight
+    })
+
+    const [input, setInput] = createSignal("")
+    const [sending, setSending] = createSignal(false)
+    let inputRef: HTMLInputElement | undefined
+
+    const sendStdin = async (raw: string) => {
+      const id = props.callID
+      if (!id) return
+      const res = await fetch(`/global/bash-interactive/${encodeURIComponent(id)}/stdin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: raw }),
+      })
+      if (!res.ok && res.status !== 404) {
+        const body = await res.text().catch(() => "")
+        throw new Error(`stdin failed (${res.status}): ${body.slice(0, 200)}`)
+      }
+    }
+
+    const sendKill = async () => {
+      const id = props.callID
+      if (!id) return
+      await fetch(`/global/bash-interactive/${encodeURIComponent(id)}/kill`, { method: "POST" }).catch(() => {})
+    }
+
+    const submit = async () => {
+      const value = input()
+      if (sending()) return
+      setSending(true)
+      try {
+        await sendStdin(value + "\r")
+        setInput("")
+        inputRef?.focus()
+      } catch (err) {
+        console.error("[bash_interactive] failed to send stdin", err)
+      } finally {
+        setSending(false)
+      }
+    }
+
+    return (
+      <BasicTool
+        {...props}
+        animated
+        defaultOpen
+        forceOpen={isRunning()}
+        icon="terminal"
+        trigger={
+          <div data-slot="basic-tool-tool-info-structured">
+            <div data-slot="basic-tool-tool-info-main">
+              <span data-slot="basic-tool-tool-title">
+                <TextShimmer text={i18n.t("ui.tool.bashInteractive") || "Interactive shell"} active={isRunning()} />
+              </span>
+              <Show when={description() || cmd()}>
+                <span data-slot="basic-tool-tool-subtitle">{description() || cmd()}</span>
+              </Show>
+            </div>
+          </div>
+        }
+      >
+        <div
+          data-component="bash-interactive"
+          style={{
+            display: "flex",
+            "flex-direction": "column",
+            gap: "8px",
+            border: "1px solid var(--border-weak-base)",
+            "border-radius": "8px",
+            background: "var(--surface-base)",
+            overflow: "hidden",
+          }}
+        >
+          <pre
+            ref={(el) => (preRef = el)}
+            style={{
+              margin: 0,
+              padding: "10px 12px",
+              "max-height": "360px",
+              "overflow-y": "auto",
+              "white-space": "pre-wrap",
+              "overflow-wrap": "anywhere",
+              "font-family": "var(--font-family-mono)",
+              "font-size": "12.5px",
+              "line-height": "18px",
+              color: "var(--text-base)",
+            }}
+          >
+            {display() || "Starting…"}
+          </pre>
+          <Show when={isRunning()}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                void submit()
+              }}
+              style={{
+                display: "flex",
+                "align-items": "center",
+                gap: "6px",
+                padding: "6px 8px",
+                "border-top": "1px solid var(--border-weak-base)",
+                background: "var(--background-base)",
+              }}
+            >
+              <span style={{ "font-family": "var(--font-family-mono)", color: "var(--text-weak)", "font-size": "12.5px" }}>
+                ›
+              </span>
+              <input
+                ref={(el) => (inputRef = el)}
+                type="text"
+                autocomplete="off"
+                spellcheck={false}
+                value={input()}
+                onInput={(e) => setInput(e.currentTarget.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "c" && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault()
+                    void sendStdin("") // raw Ctrl+C to the PTY
+                  }
+                  if (e.key === "d" && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault()
+                    void sendStdin("") // raw Ctrl+D / EOF
+                  }
+                }}
+                placeholder="Type and press Enter to send to the running command…"
+                disabled={sending()}
+                style={{
+                  flex: "1 1 auto",
+                  "min-width": "0",
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  "font-family": "var(--font-family-mono)",
+                  "font-size": "12.5px",
+                  color: "var(--text-strong)",
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => void sendKill()}
+                style={{
+                  border: "1px solid var(--border-weak-base)",
+                  "border-radius": "4px",
+                  background: "transparent",
+                  padding: "2px 8px",
+                  "font-size": "11px",
+                  color: "var(--text-weak)",
+                  cursor: "pointer",
+                }}
+                title="SIGTERM the running command"
+              >
+                kill
+              </button>
+            </form>
+          </Show>
+        </div>
+      </BasicTool>
     )
   },
 })
