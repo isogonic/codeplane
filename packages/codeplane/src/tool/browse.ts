@@ -237,7 +237,15 @@ export const BrowseTool = Tool.define(
           return {
             output: `# ${params.url}\n\n${trimmed}${screenshotNote}`,
             title: params.url,
-            metadata: {},
+            metadata: attachment
+              ? {
+                  url: params.url,
+                  width,
+                  height,
+                  screenshotMime: attachment.mime,
+                  screenshotDataUrl: attachment.url,
+                }
+              : { url: params.url, width, height },
             attachments: attachment ? [attachment] : undefined,
           }
         }).pipe(Effect.orDie),

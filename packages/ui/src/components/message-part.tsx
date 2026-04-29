@@ -1830,6 +1830,86 @@ ToolRegistry.register({
 })
 
 ToolRegistry.register({
+  name: "browse",
+  render(props) {
+    const pending = createMemo(() => props.status === "pending" || props.status === "running")
+    const url = createMemo(() => {
+      const value = props.input.url
+      return typeof value === "string" ? value : ""
+    })
+    const screenshot = createMemo(() => {
+      const value = props.metadata?.screenshotDataUrl
+      return typeof value === "string" && value.length > 0 ? value : null
+    })
+    const dialog = useDialog()
+    return (
+      <BasicTool
+        {...props}
+        icon="window-cursor"
+        trigger={
+          <div data-slot="basic-tool-tool-info-structured">
+            <div data-slot="basic-tool-tool-info-main">
+              <span data-slot="basic-tool-tool-title">
+                <TextShimmer text="Browse" active={pending()} />
+              </span>
+              <Show when={!pending() && url()}>
+                <a
+                  data-slot="basic-tool-tool-subtitle"
+                  class="clickable subagent-link"
+                  href={url()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  {url()}
+                </a>
+              </Show>
+            </div>
+          </div>
+        }
+      >
+        <Show when={screenshot()}>
+          {(src) => (
+            <div data-component="browse-screenshot">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  dialog.show(() => <ImagePreview src={src()} alt={`Screenshot of ${url()}`} />)
+                }}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  padding: "0",
+                  border: "1px solid var(--border-weak-base)",
+                  "border-radius": "8px",
+                  overflow: "hidden",
+                  background: "var(--surface-base)",
+                  cursor: "zoom-in",
+                  "margin-bottom": "8px",
+                }}
+                aria-label={`Screenshot of ${url()}`}
+              >
+                <img
+                  src={src()}
+                  alt={`Screenshot of ${url()}`}
+                  style={{ display: "block", width: "100%", height: "auto", "max-height": "480px", "object-fit": "contain" }}
+                />
+              </button>
+            </div>
+          )}
+        </Show>
+        <Show when={typeof props.output === "string" && (props.output as string).length > 0}>
+          <div data-component="tool-output" data-scrollable>
+            <Markdown text={props.output as string} />
+          </div>
+        </Show>
+      </BasicTool>
+    )
+  },
+})
+
+ToolRegistry.register({
   name: "websearch",
   render(props) {
     const i18n = useI18n()
