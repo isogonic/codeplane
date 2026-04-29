@@ -48,7 +48,6 @@ import { ShareNext } from "@/share"
 import { SessionShare } from "@/share"
 import { Npm } from "@/npm"
 import { Cron } from "@/cron"
-import { CronScheduler } from "@/cron"
 import { memoMap } from "./memo-map"
 
 export const AppLayer = Layer.mergeAll(
@@ -98,7 +97,6 @@ export const AppLayer = Layer.mergeAll(
   ShareNext.defaultLayer,
   SessionShare.defaultLayer,
   Cron.defaultLayer,
-  CronScheduler.defaultLayer,
 ).pipe(Layer.provideMerge(Observability.layer))
 
 const rt = ManagedRuntime.make(AppLayer, { memoMap })
