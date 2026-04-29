@@ -1,45 +1,37 @@
 ---
-title: Introduktion
-description: Kom godt i gang med CodePlane.
+title: Intro
+description: Get started with CodePlane.
 ---
 
 import { Tabs, TabItem } from "@astrojs/starlight/components"
 import config from "../../../../config.mjs"
 export const console = config.console
 
-[**CodePlane**](/) er en open source AI-kodningsagent. Den er tilgængelig som en terminalbaseret grænseflade, desktop-app eller IDE-udvidelse.
+[**CodePlane**](/) is an open source AI coding agent built around the web app experience, with a CLI server and IDE integrations for local development.
 
-![CodePlane TUI med codeplane-temaet](../../../assets/lander/screenshot.png)
+![CodePlane Web app](../../../assets/web/web-homepage-active-session.png)
 
-Lad os komme i gang.
-
----
-
-#### Forudsætninger
-
-For at bruge CodePlane i din terminal skal du bruge:
-
-1. En moderne terminalemulator som:
-   - [WezTerm](https://wezterm.org), på tværs af platforme
-   - [Alacritty](https://alacritty.org), på tværs af platforme
-   - [Ghostty](https://ghostty.org), Linux og macOS
-   - [Kitty](https://sw.kovidgoyal.net/kitty/), Linux og macOS
-
-2. API-nøgler til de LLM udbydere, du vil bruge.
+Let's get started.
 
 ---
 
-## Installation
+#### Prerequisites
 
-Den nemmeste måde at installere CodePlane på er gennem installationsscriptet.
+To use CodePlane, you'll need Bun and API keys for the LLM providers you want to use.
+
+---
+
+## Install
+
+The easiest way to install CodePlane is through the install script.
 
 ```bash
 curl -fsSL https://example.invalid/install | bash
 ```
 
-Du kan også installere det med følgende kommandoer:
+You can also install it with the following commands:
 
-- **Bruger Node.js**
+- **Using Node.js**
 
         <Tabs>
 
@@ -73,15 +65,15 @@ Du kan også installere det med følgende kommandoer:
 
   </Tabs>
 
-- **Brug af Homebrew på macOS og Linux**
+- **Using Homebrew on macOS and Linux**
 
   ```bash
   brew install devinoldenburg/tap/codeplane
   ```
 
-  > Vi anbefaler at bruge CodePlane-tap for at få de mest opdaterede udgivelser. Den officielle `brew install codeplane`-formel vedligeholdes af Homebrew-teamet og opdateret sjældnere.
+  > We recommend using the CodePlane tap for the most up to date releases. The official `brew install codeplane` formula is maintained by the Homebrew team and is updated less frequently.
 
-- **Brug af Paru på Arch Linux**
+- **Installing on Arch Linux**
 
   ```bash
   sudo pacman -S codeplane           # Arch Linux (Stable)
@@ -90,63 +82,55 @@ Du kan også installere det med følgende kommandoer:
 
 #### Windows
 
-:::tip[Anbefalet: Brug WSL]
-For at få den bedste oplevelse på Windows anbefaler vi at bruge [Windows Subsystem for Linux (WSL)](/docs/windows-wsl). Det giver bedre ydeevne og fuld kompatibilitet med CodePlanes funktioner.
-:::
-
-- **Brug af Chocolatey**
+- **Using Chocolatey**
 
   ```bash
   choco install codeplane
   ```
 
-- **Brug af Scoop**
+- **Using Scoop**
 
   ```bash
   scoop install codeplane
   ```
 
-- **Bruger NPM**
+- **Using NPM**
 
   ```bash
   npm install -g codeplane-ai
   ```
 
-- **Brug af Mise**
+- **Using Mise**
 
   ```bash
   mise use -g github:devinoldenburg/codeplane
   ```
 
-- **Brug af Docker**
+- **Using Docker**
 
   ```bash
   docker run -it --rm ghcr.io/devinoldenburg/codeplane
   ```
 
-Support til installation af CodePlane på Windows ved hjælp af Bun er i gang.
+Support for installing CodePlane on Windows using Bun is currently in progress.
 
-Du kan også få fat i binæren fra [Releases](https://github.com/devinoldenburg/codeplane/releases).
+You can also grab the binary from the [Releases](https://github.com/devinoldenburg/codeplane/releases).
 
 ---
 
-## Konfiguration
+## Configure
 
-Med CodePlane kan du bruge enhver LLM udbyder ved at konfigurere deres API-nøgler.
+With CodePlane you can use any LLM provider by configuring their API keys.
 
-Hvis du er ny til at bruge LLM-udbydere, anbefaler vi at bruge [CodePlane Zen](/docs/zen).
-Det er en udvalgt liste over modeller, der er blevet testet og verificeret af CodePlane
-holde.
+If you are new to using LLM providers, we recommend using [CodePlane Zen](/docs/zen).
+It's a curated list of models that have been tested and verified by the CodePlane
+team.
 
-1. Kør kommandoen `/connect` i TUI, vælg codeplane, og gå til [example.invalid/auth](https://example.invalid/auth).
+1. Open the web app and connect the `codeplane` provider from Settings -> Providers.
 
-   ```txt
-   /connect
-   ```
+2. Sign in, add your billing details, and copy your API key.
 
-2. Log ind, tilføj dine faktureringsoplysninger, og kopier din API-nøgle.
-
-3. Indsæt din API-nøgle.
+3. Paste your API key.
 
    ```txt
    ┌ API key
@@ -155,85 +139,85 @@ holde.
    └ enter
    ```
 
-Alternativt kan du vælge en af ​​de andre udbydere. [Læs mere](/docs/providers#directory).
+Alternatively, you can select one of the other providers. [Learn more](/docs/providers#directory).
 
 ---
 
-## Initialisering
+## Initialize
 
-Nu hvor du har konfigureret en udbyder, kan du navigere til et projekt, der
-du vil arbejde på.
+Now that you've configured a provider, you can navigate to a project that
+you want to work on.
 
 ```bash
 cd /path/to/project
 ```
 
-Og kør CodePlane.
+And start the web app.
 
 ```bash
-codeplane
+codeplane web
 ```
 
-Derefter initialiseres CodePlane for projektet ved at køre følgende kommando.
+Next, initialize CodePlane for the project by running the following command.
 
 ```bash frame="none"
 /init
 ```
 
-Dette får CodePlane til at analysere dit projekt og oprette en `AGENTS.md` fil i
-projektets rod.
+This will get CodePlane to analyze your project and create an `AGENTS.md` file in
+the project root.
 
 :::tip
-Du bør overgive dit projekter `AGENTS.md` fil til Git.
+You should commit your project's `AGENTS.md` file to Git.
 :::
 
-Dette hjælper CodePlane med at forstå projektstrukturen og kodningsmønstrene
-brugt.
+This helps CodePlane understand the project structure and the coding patterns
+used.
 
 ---
 
-## Brug
+## Usage
 
-Du er nu klar til at bruge CodePlane til at arbejde på dit projekt. Spørg det gerne
-noget!
+You are now ready to use CodePlane to work on your project. Feel free to ask it
+anything!
 
-Hvis du er ny til at bruge en AI-kodningsagent, er her nogle eksempler, der evt
-hjælp.
+If you are new to using an AI coding agent, here are some examples that might
+help.
 
 ---
 
-### Stil spørgsmål
+### Ask questions
 
-Du kan bede CodePlane om at forklare kodebasen for dig.
+You can ask CodePlane to explain the codebase to you.
 
 :::tip
-Brug `@`-tasten til at søge efter filer i projektet.
+Use the `@` key to fuzzy search for files in the project.
 :::
 
 ```txt frame="none" "@packages/functions/src/api/index.ts"
 How is authentication handled in @packages/functions/src/api/index.ts
 ```
 
-Dette er nyttigt, hvis der er en del af kodebasen, som du ikke har arbejdet på.
+This is helpful if there's a part of the codebase that you didn't work on.
 
 ---
 
-### Tilføj funktioner
+### Add features
 
-Du kan bede CodePlane om at tilføje nye funktioner til dit projekt. Selvom vi først anbefaler, at du beder den om at lave en plan.
+You can ask CodePlane to add new features to your project. Though we first recommend asking it to create a plan.
 
-1. **Opret en plan**
+1. **Create a plan**
 
-   CodePlane har en _Plan mode_, der deaktiverer dens evne til at foretage ændringer og
-   foreslå i stedet _hvordan_ det vil implementere funktionen.
+   CodePlane has a _Plan mode_ that disables its ability to make changes and
+   instead suggest _how_ it'll implement the feature.
 
-   Skift til det ved hjælp af **Tab**-tasten. Du vil se en indikator for dette i nederste højre hjørne.
+   Switch to it using the **Tab** key. You'll see an indicator for this in the lower right corner.
 
-   ```bash frame="none" title="Skift til Plan-tilstand"
+   ```bash frame="none" title="Switch to Plan mode"
    <TAB>
    ```
 
-   Lad os nu beskrive, hvad vi vil have den til at gøre.
+   Now let's describe what we want it to do.
 
    ```txt frame="none"
    When a user deletes a note, we'd like to flag it as deleted in the database.
@@ -241,40 +225,40 @@ Du kan bede CodePlane om at tilføje nye funktioner til dit projekt. Selvom vi f
    From this screen, the user can undelete a note or permanently delete it.
    ```
 
-   Du vil give CodePlane nok detaljer til at forstå, hvad du ønsker. Det hjælper
-   at tale med det, som om du taler med en juniorudvikler på dit team.
+   You want to give CodePlane enough details to understand what you want. It helps
+   to talk to it like you are talking to a junior developer on your team.
 
-:::tip
-Giv CodePlane masser af kontekst og eksempler for at hjælpe den med at forstå, hvad du
-ønsker.
-:::
+   :::tip
+   Give CodePlane plenty of context and examples to help it understand what you
+   want.
+   :::
 
-2. **Gentag om planen**
+2. **Iterate on the plan**
 
-   Når det giver dig en plan, kan du give den feedback eller tilføje flere detaljer.
+   Once it gives you a plan, you can give it feedback or add more details.
 
    ```txt frame="none"
    We'd like to design this new screen using a design I've used before.
    [Image #1] Take a look at this image and use it as a reference.
    ```
 
-:::tip
-Træk og slip billeder i terminalen for at tilføje dem til prompten.
-:::
+   :::tip
+   Drag and drop images into the terminal to add them to the prompt.
+   :::
 
-CodePlane kan scanne alle billeder, du giver dem og tilføje dem til prompten. Det kan du
-gør dette ved at trække og slippe et billede ind i terminalen.
+   CodePlane can scan any images you give it and add them to the prompt. You can
+   do this by dragging and dropping an image into the terminal.
 
-3. **Byg funktionen**
+3. **Build the feature**
 
-   Når du føler dig godt tilpas med planen, skal du skifte tilbage til _Byggetilstand_ ved
-   trykke på **Tab**-tasten igen.
+   Once you feel comfortable with the plan, switch back to _Build mode_ by
+   hitting the **Tab** key again.
 
    ```bash frame="none"
    <TAB>
    ```
 
-   Og beder den om at foretage ændringerne.
+   And asking it to make the changes.
 
    ```bash frame="none"
    Sounds good! Go ahead and make the changes.
@@ -282,10 +266,10 @@ gør dette ved at trække og slippe et billede ind i terminalen.
 
 ---
 
-### Foretag ændringer
+### Make changes
 
-For mere ligetil ændringer kan du bede CodePlane om at bygge den direkte
-uden at skulle gennemgå planen først.
+For more straightforward changes, you can ask CodePlane to directly build it
+without having to review the plan first.
 
 ```txt frame="none" "@packages/functions/src/settings.ts" "@packages/functions/src/notes.ts"
 We need to add authentication to the /settings route. Take a look at how this is
@@ -293,40 +277,40 @@ handled in the /notes route in @packages/functions/src/notes.ts and implement
 the same logic in @packages/functions/src/settings.ts
 ```
 
-Du vil sikre dig, at du giver en god mængde detaljer, så CodePlane gør det rigtige
-ændringer.
+You want to make sure you provide a good amount of detail so CodePlane makes the right
+changes.
 
 ---
 
-### Fortryd ændringer
+### Undo changes
 
-Lad os sige, at du beder CodePlane om at foretage nogle ændringer.
+Let's say you ask CodePlane to make some changes.
 
 ```txt frame="none" "@packages/functions/src/api/index.ts"
 Can you refactor the function in @packages/functions/src/api/index.ts?
 ```
 
-Men du indser, at det ikke er, hvad du ønskede. Du **kan fortryde** ændringerne
-ved hjælp af kommandoen `/undo`.
+But you realize that it is not what you wanted. You **can undo** the changes
+using the `/undo` command.
 
 ```bash frame="none"
 /undo
 ```
 
-CodePlane vil nu vende tilbage til ændringerne, du har foretaget, og vise din oprindelige besked
-igen.
+CodePlane will now revert the changes you made and show your original message
+again.
 
 ```txt frame="none" "@packages/functions/src/api/index.ts"
 Can you refactor the function in @packages/functions/src/api/index.ts?
 ```
 
-Herfra kan du justere prompten og bede CodePlane om at prøve igen.
+From here you can tweak the prompt and ask CodePlane to try again.
 
 :::tip
-Du kan køre `/undo` flere gange for at fortryde flere ændringer.
+You can run `/undo` multiple times to undo multiple changes.
 :::
 
-Eller du **kan gentage** ændringerne ved hjælp af kommandoen `/redo`.
+Or you **can redo** the changes using the `/redo` command.
 
 ```bash frame="none"
 /redo
@@ -334,27 +318,27 @@ Eller du **kan gentage** ændringerne ved hjælp af kommandoen `/redo`.
 
 ---
 
-## Deling
+## Share
 
-De samtaler, du har med CodePlane, kan [deles med din
+The conversations that you have with CodePlane can be [shared with your
 team](/docs/share).
 
 ```bash frame="none"
 /share
 ```
 
-Dette vil oprette et link til den aktuelle samtale og kopiere det til denne udklipsholder.
+This will create a link to the current conversation and copy it to your clipboard.
 
 :::note
-Samtaler dele ikke som standard.
+Conversations are not shared by default.
 :::
 
-Her er en [eksempelsamtale](https://example.invalid) med CodePlane.
+Here's an [example conversation](https://example.invalid) with CodePlane.
 
 ---
 
-## Tilpasning
+## Customize
 
-Og det er det! Du er nu en professionel i at bruge CodePlane.
+And that's it! You are now a pro at using CodePlane.
 
-For at gøre det til dit eget, anbefaler vi [at vælge et tema](/docs/themes), [tilpasse genvejstaster](/docs/keybinds), [konfigurere kodeformater](/docs/formatters), [oprette brugerdefinerede kommandoer](/docs/commands) eller at lege med [CodePlane-konfiguration](/docs/config).
+To make it your own, we recommend [picking a theme](/docs/themes), [configuring code formatters](/docs/formatters), [creating custom commands](/docs/commands), or playing around with the [CodePlane config](/docs/config).

@@ -1,108 +1,101 @@
 ---
-title: Thèmes
-description: Sélectionnez un thème intégré ou définissez le vôtre.
+title: Themes
+description: Select a built-in theme or define your own.
 ---
 
-Avec CodePlane, vous pouvez choisir parmi plusieurs thèmes intégrés, utiliser un thème qui s'adapte au thème de votre terminal ou définir votre propre thème personnalisé.
+With CodePlane you can select from one of several built-in themes, use a theme that adapts to your terminal theme, or define your own custom theme.
 
-Par défaut, CodePlane utilise notre propre thème `codeplane`.
-
----
-
-## Exigences des terminaux
-
-Pour que les thèmes s'affichent correctement avec leur palette de couleurs complète, votre terminal doit prendre en charge **truecolor** (couleur 24 bits). La plupart des terminaux modernes le prennent en charge par défaut, mais vous devrez peut-être l'activer :
-
-- **Vérifiez le support** : Exécutez `echo $COLORTERM` - il devrait afficher `truecolor` ou `24bit`
-- **Activer truecolor** : définissez la variable d'environnement `COLORTERM=truecolor` dans votre profil shell
-- **Compatibilité des terminaux** : assurez-vous que votre émulateur de terminal prend en charge les couleurs 24 bits (la plupart des terminaux modernes comme iTerm2, Alacritty, Kitty, Windows Terminal et les versions récentes de GNOME Terminal le font)
-
-Sans la prise en charge de TrueColor, les thèmes peuvent apparaître avec une précision des couleurs réduite ou revenir à l'approximation de 256 couleurs la plus proche.
+By default, CodePlane uses our own `codeplane` theme.
 
 ---
 
-## Thèmes intégrés
+## Terminal requirements
 
-CodePlane est livré avec plusieurs thèmes intégrés.
+For themes to display correctly with their full color palette, your terminal must support **truecolor** (24-bit color). Most modern terminals support this by default, but you may need to enable it:
 
-| Nom                    | Descriptif                                                                  |
-| ---------------------- | --------------------------------------------------------------------------- |
-| `system`               | S'adapte à la couleur de fond de votre terminal                             |
-| `tokyonight`           | Basé sur le thème [Tokyonight](https://github.com/folke/tokyonight.nvim)    |
-| `everforest`           | Basé sur le thème [Everforest](https://github.com/sainnhe/everforest)       |
-| `ayu`                  | Basé sur le thème sombre [Ayu](https://github.com/ayu-theme)                |
-| `catppuccin`           | Basé sur le thème [Catppuccin](https://github.com/catppuccin)               |
-| `catppuccin-macchiato` | Basé sur le thème [Catppuccin](https://github.com/catppuccin)               |
-| `gruvbox`              | Basé sur le thème [Gruvbox](https://github.com/morhetz/gruvbox)             |
-| `kanagawa`             | Basé sur le thème [Kanagawa](https://github.com/rebelot/kanagawa.nvim)      |
-| `nord`                 | Basé sur le thème [Nord](https://github.com/nordtheme/nord)                 |
-| `matrix`               | Vert style hacker sur thème noir                                            |
-| `one-dark`             | Basé sur le thème [Atom One](https://github.com/Th3Whit3Wolf/one-nvim) Dark |
+- **Check support**: Run `echo $COLORTERM` - it should output `truecolor` or `24bit`
+- **Enable truecolor**: Set the environment variable `COLORTERM=truecolor` in your shell profile
+- **Terminal compatibility**: Ensure your terminal emulator supports 24-bit color (most modern terminals like iTerm2, Alacritty, Kitty, Windows Terminal, and recent versions of GNOME Terminal do)
 
-De plus, nous ajoutons constamment de nouveaux thèmes.
+Without truecolor support, themes may appear with reduced color accuracy or fall back to the nearest 256-color approximation.
 
 ---
 
-## Thème système
+## Built-in themes
 
-Le thème `system` est conçu pour s'adapter automatiquement à la palette de couleurs de votre terminal. Contrairement aux thèmes traditionnels qui utilisent des couleurs fixes, le thème *system* :
+CodePlane comes with several built-in themes.
 
-- **Génère une échelle de gris** : crée une échelle de gris personnalisée basée sur la couleur d'arrière-plan de votre terminal, garantissant un contraste optimal.
-- **Utilise les couleurs ANSI** : exploite les couleurs ANSI standard (0-15) pour la coloration syntaxique et les éléments de l'interface utilisateur, qui respectent la palette de couleurs de votre terminal.
-- **Préserve les paramètres par défaut du terminal** : utilise `none` pour les couleurs du texte et de l'arrière-plan afin de conserver l'apparence native de votre terminal.
+| Name                   | Description                                                                  |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| `system`               | Adapts to your terminal’s background color                                   |
+| `tokyonight`           | Based on the [Tokyonight](https://github.com/folke/tokyonight.nvim) theme    |
+| `everforest`           | Based on the [Everforest](https://github.com/sainnhe/everforest) theme       |
+| `ayu`                  | Based on the [Ayu](https://github.com/ayu-theme) dark theme                  |
+| `catppuccin`           | Based on the [Catppuccin](https://github.com/catppuccin) theme               |
+| `catppuccin-macchiato` | Based on the [Catppuccin](https://github.com/catppuccin) theme               |
+| `gruvbox`              | Based on the [Gruvbox](https://github.com/morhetz/gruvbox) theme             |
+| `kanagawa`             | Based on the [Kanagawa](https://github.com/rebelot/kanagawa.nvim) theme      |
+| `nord`                 | Based on the [Nord](https://github.com/nordtheme/nord) theme                 |
+| `matrix`               | Hacker-style green on black theme                                            |
+| `one-dark`             | Based on the [Atom One](https://github.com/Th3Whit3Wolf/one-nvim) Dark theme |
 
-Le thème système est destiné aux utilisateurs qui :
-
-- Vous souhaitez que CodePlane corresponde à l'apparence de leur terminal
-- Utiliser des schémas de couleurs de terminal personnalisés
-- Préférez une apparence cohérente sur toutes les applications de terminal
-
----
-
-## Utiliser un thème
-
-Vous pouvez sélectionner un thème en affichant la sélection de thème avec la commande `/theme`. Ou vous pouvez le spécifier dans `tui.json`.
-
-```json title="tui.json" {3}
-{
-  "$schema": "",
-  "theme": "tokyonight"
-}
-```
+And more, we are constantly adding new themes.
 
 ---
 
-## Thèmes personnalisés
+## System theme
 
-CodePlane prend en charge un système de thèmes flexible basé sur JSON qui permet aux utilisateurs de créer et de personnaliser facilement des thèmes.
+The `system` theme is designed to automatically adapt to your terminal's color scheme. Unlike traditional themes that use fixed colors, the _system_ theme:
 
----
+- **Generates gray scale**: Creates a custom gray scale based on your terminal's background color, ensuring optimal contrast.
+- **Uses ANSI colors**: Leverages standard ANSI colors (0-15) for syntax highlighting and UI elements, which respect your terminal's color palette.
+- **Preserves terminal defaults**: Uses `none` for text and background colors to maintain your terminal's native appearance.
 
-### Hiérarchie
+The system theme is for users who:
 
-Les thèmes sont chargés à partir de plusieurs répertoires dans l'ordre suivant, les répertoires ultérieurs remplaçant les précédents :
-
-1. **Thèmes intégrés** - Ceux-ci sont intégrés au binaire
-2. **Répertoire de configuration utilisateur** - Défini dans `~/.config/codeplane/themes/*.json` ou `$XDG_CONFIG_HOME/codeplane/themes/*.json`
-3. **Répertoire racine du projet** - Défini dans `<project-root>/.codeplane/themes/*.json`
-4. **Répertoire de travail actuel** - Défini dans `./.codeplane/themes/*.json`
-
-Si plusieurs répertoires contiennent un thème portant le même nom, le thème du répertoire ayant la priorité la plus élevée sera utilisé.
+- Want CodePlane to match their terminal's appearance
+- Use custom terminal color schemes
+- Prefer a consistent look across all terminal applications
 
 ---
 
-### Création d'un thème
+## Using a theme
 
-Pour créer un thème personnalisé, créez un fichier JSON dans l'un des répertoires de thème.
+You can select a theme from Settings -> General -> Theme in the web app.
 
-Pour les thèmes à l’échelle de l’utilisateur :
+---
+
+## Custom themes
+
+CodePlane supports a flexible JSON-based theme system that allows users to create and customize themes easily.
+
+---
+
+### Hierarchy
+
+Themes are loaded from multiple directories in the following order where later directories override earlier ones:
+
+1. **Built-in themes** - These are embedded in the binary
+2. **User config directory** - Defined in `~/.config/codeplane/themes/*.json` or `$XDG_CONFIG_HOME/codeplane/themes/*.json`
+3. **Project root directory** - Defined in the `<project-root>/.codeplane/themes/*.json`
+4. **Current working directory** - Defined in `./.codeplane/themes/*.json`
+
+If multiple directories contain a theme with the same name, the theme from the directory with higher priority will be used.
+
+---
+
+### Creating a theme
+
+To create a custom theme, create a JSON file in one of the theme directories.
+
+For user-wide themes:
 
 ```bash no-frame
 mkdir -p ~/.config/codeplane/themes
 vim ~/.config/codeplane/themes/my-theme.json
 ```
 
-Et pour des thèmes spécifiques au projet.
+And for project-specific themes.
 
 ```bash no-frame
 mkdir -p .codeplane/themes
@@ -111,36 +104,36 @@ vim .codeplane/themes/my-theme.json
 
 ---
 
-### Format JSON
+### JSON format
 
-Les thèmes utilisent un format JSON flexible avec prise en charge de :
+Themes use a flexible JSON format with support for:
 
-- **Couleurs hexadécimales** : `"#ffffff"`
-- **Couleurs ANSI** : `3` (0-255)
-- **Références de couleurs** : `"primary"` ou définitions personnalisées
-- **Variantes sombre/clair** : `{"dark": "#000", "light": "#fff"}`
-- **Aucune couleur** : `"none"` - Utilise la couleur par défaut du terminal ou le transparent
-
----
-
-### Définitions des couleurs
-
-La section `defs` est facultative et elle permet de définir des couleurs réutilisables pouvant être référencées dans le thème.
+- **Hex colors**: `"#ffffff"`
+- **ANSI colors**: `3` (0-255)
+- **Color references**: `"primary"` or custom definitions
+- **Dark/light variants**: `{"dark": "#000", "light": "#fff"}`
+- **No color**: `"none"` - Uses the terminal's default color or transparent
 
 ---
 
-### Paramètres par défaut du terminal
+### Color definitions
 
-La valeur spéciale `"none"` peut être utilisée pour n'importe quelle couleur afin d'hériter de la couleur par défaut du terminal. Ceci est particulièrement utile pour créer des thèmes qui se fondent parfaitement dans la palette de couleurs de votre terminal :
-
-- `"text": "none"` - Utilise la couleur de premier plan par défaut du terminal
-- `"background": "none"` - Utilise la couleur d'arrière-plan par défaut du terminal
+The `defs` section is optional and it allows you to define reusable colors that can be referenced in the theme.
 
 ---
 
-### Exemple
+### Terminal defaults
 
-Voici un exemple de thème personnalisé :
+The special value `"none"` can be used for any color to inherit the terminal's default color. This is particularly useful for creating themes that blend seamlessly with your terminal's color scheme:
+
+- `"text": "none"` - Uses terminal's default foreground color
+- `"background": "none"` - Uses terminal's default background color
+
+---
+
+### Example
+
+Here's an example of a custom theme:
 
 ```json title="my-theme.json"
 {

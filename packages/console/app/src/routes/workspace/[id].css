@@ -16,8 +16,8 @@
   justify-content: flex-end;
 }
 
-/* Desktop Navigation */
-[data-component="nav-desktop"] {
+/* Wide Navigation */
+[data-component="nav-wide"] {
   display: block;
 
   @media (max-width: 48rem) {

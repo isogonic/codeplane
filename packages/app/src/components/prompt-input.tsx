@@ -456,7 +456,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     }
   }
 
-  const escBlur = () => platform.platform === "desktop" && platform.os === "macos"
+  const escBlur = () => platform.os === "macos" && !!platform.openPath
 
   const pick = () => fileInputRef?.click()
 

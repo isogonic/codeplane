@@ -1,47 +1,48 @@
 ---
 title: IDE
-description: Ekstenzija CodePlane za VS Code, Cursor i druge IDE
+description: The CodePlane extension for VS Code, Cursor, and other IDEs
 ---
 
-CodePlane se integriše sa VS kodom, Cursor-om ili bilo kojim IDE-om koji podržava terminal. Samo pokrenite `codeplane` u terminalu da započnete.
-
----
-
-## Korištenje
-
-- **Brzo pokretanje**: Koristite `Cmd+Esc` (Mac) ili `Ctrl+Esc` (Windows/Linux) da otvorite CodePlane u prikazu podijeljenog terminala ili fokusirajte postojeću terminalsku sesiju ako je već pokrenuta.
-- **Nova sesija**: Koristite `Cmd+Shift+Esc` (Mac) ili `Ctrl+Shift+Esc` (Windows/Linux) da započnete novu CodePlane terminalsku sesiju, čak i ako je ona već otvorena. Takođe možete kliknuti na dugme CodePlane u korisničkom sučelju.
-- **Svijest o kontekstu**: Automatski dijelite svoj trenutni odabir ili karticu s CodePlane.
-- **Prečice za referencu datoteka**: Koristite `Cmd+Option+K` (Mac) ili `Alt+Ctrl+K` (Linux/Windows) za umetanje referenci datoteka. Na primjer, `@File#L37-42`.
+CodePlane integrates with VS Code, Cursor, or any IDE that supports opening a local web app. Just run `codeplane` in the terminal to get started.
 
 ---
 
-## Instalacija
+## Usage
 
-Da biste instalirali CodePlane na VS Code i popularne viljuške kao što su Cursor, Windsurf, VSCodium:
-
-1. Otvorite VS Code
-2. Otvorite integrirani terminal
-3. Pokrenite `codeplane` - ekstenzija se automatski instalira
-   Ako s druge strane želite da koristite svoj vlastiti IDE kada pokrenete `/editor` ili `/export` iz TUI-ja, morat ćete postaviti `export EDITOR="code --wait"`. [Saznajte više](/docs/tui/#editor-setup).
+- **Quick Launch**: Use `Cmd+Esc` (Mac) or `Ctrl+Esc` (Windows/Linux) to open CodePlane.
+- **New Session**: Use `Cmd+Shift+Esc` (Mac) or `Ctrl+Shift+Esc` (Windows/Linux) to start a new CodePlane session. You can also click the CodePlane button in the UI.
+- **Context Awareness**: Automatically share your current selection or tab with CodePlane.
+- **File Reference Shortcuts**: Use `Cmd+Option+K` (Mac) or `Alt+Ctrl+K` (Linux/Windows) to insert file references. For example, `@File#L37-42`.
 
 ---
 
-### Ručna instalacija
+## Installation
 
-Potražite **CodePlane** na Extension Marketplaceu i kliknite na **Instaliraj**.
+To install CodePlane on VS Code and popular forks like Cursor, Windsurf, VSCodium:
+
+1. Open VS Code
+2. Open the integrated terminal
+3. Run `codeplane` - the extension installs automatically
+
+To use VS Code as the editor for file-opening actions, set `export EDITOR="code --wait"`.
 
 ---
 
-### Rješavanje problema
+### Manual Install
 
-Ako se ekstenzija ne uspije automatski instalirati:
+Search for **CodePlane** in the Extension Marketplace and click **Install**.
 
-- Uvjerite se da koristite `codeplane` u integriranom terminalu.
-- Potvrdite da je CLI za vaš IDE instaliran:
-  - Za VS kod: `code` naredbu
-  - Za Cursor: `cursor` naredba
-  - Za Windsurf: `windsurf` komanda
-  - Za VSCodium: `codium` komanda
-  - Ako ne, pokrenite `Cmd+Shift+P` (Mac) ili `Ctrl+Shift+P` (Windows/Linux) i potražite "Shell Command: Install 'code' command in PATH" (ili ekvivalent za vaš IDE)
-- Osigurajte da VS Code ima dozvolu za instaliranje ekstenzija
+---
+
+### Troubleshooting
+
+If the extension fails to install automatically:
+
+- Ensure you’re running `codeplane` in the integrated terminal.
+- Confirm the CLI for your IDE is installed:
+  - For VS Code: `code` command
+  - For Cursor: `cursor` command
+  - For Windsurf: `windsurf` command
+  - For VSCodium: `codium` command
+  - If not, run `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux) and search for "Shell Command: Install 'code' command in PATH" (or the equivalent for your IDE)
+- Ensure VS Code has permission to install extensions

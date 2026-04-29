@@ -1,57 +1,67 @@
 ---
 title: Go
-description: 專為開源寫程式模型提供的低成本訂閱服務。
+description: Low cost subscription for open coding models.
 ---
 
 import config from "../../../../config.mjs"
 export const console = config.console
 export const email = `mailto:${config.email}`
 
-CodePlane Go 是一項低成本的訂閱服務——**首月 $5 美元**，之後**每月 $10 美元**——讓您能穩定使用受歡迎的開源寫程式模型。
+CodePlane Go is a low cost subscription — **$5 for your first month**, then **$10/month** — that gives you reliable access to popular open coding models.
 
 :::note
-CodePlane Go 目前處於 beta 測試階段。
+CodePlane Go is currently in beta.
 :::
 
-Go 的運作方式與 CodePlane 中的任何其他供應商相同。您訂閱 CodePlane Go 並取得您的 API key。這是**完全可選的**，您不需要使用它也能使用 CodePlane。
+Go works like any other provider in CodePlane. You subscribe to CodePlane Go and
+get your API key. It's **completely optional** and you don't need to use it to
+use CodePlane.
 
-它主要為國際使用者設計，模型託管於美國、歐盟和新加坡，以提供全球穩定的存取。
+It is designed primarily for international users, with models hosted in the US, EU, and Singapore for stable global access.
 
 ---
 
-## 背景
+## Background
 
-開源模型已經變得非常強大。它們在寫程式任務上的表現，現在已經接近專有模型。而且因為有許多供應商競爭提供服務，它們通常便宜得多。
+Open models have gotten really good. They now reach performance close to
+proprietary models for coding tasks. And because many providers can serve them
+competitively, they are usually far cheaper.
 
-然而，要獲得穩定、低延遲的存取可能很困難。各家供應商的品質和可用性不一。
+However, getting reliable, low latency access to them can be difficult. Providers
+vary in quality and availability.
 
 :::tip
-我們測試了一組精選的模型和供應商，它們與 CodePlane 搭配運作良好。
+We tested a select group of models and providers that work well with CodePlane.
 :::
 
-為了解決這個問題，我們做了幾件事：
+To fix this, we did a couple of things:
 
-1. 我們測試了一組精選的開源模型，並與它們的團隊討論如何最佳化運行。
-2. 接著我們與幾家供應商合作，確保這些模型被正確地提供服務。
-3. 最後，我們對模型與供應商的組合進行了基準測試，並整理出一份我們樂於推薦的清單。
+1. We tested a select group of open models and talked to their teams about how to
+   best run them.
+2. We then worked with a few providers to make sure these were being served
+   correctly.
+3. Finally, we benchmarked the combination of the model/provider and came up
+   with a list that we feel good recommending.
 
-CodePlane Go 讓您可以存取這些模型，**首月只需 $5 美元**，之後**每月 $10 美元**。
+CodePlane Go gives you access to these models for **$5 for your first month**, then **$10/month**.
 
 ---
 
-## 運作方式
+## How it works
 
-CodePlane Go 的運作方式與 CodePlane 中的任何其他供應商相同。
+CodePlane Go works like any other provider in CodePlane.
 
-1. 您登入 **<a href={console}>CodePlane Zen</a>**，訂閱 Go，然後複製您的 API key。
-2. 您在 TUI 中執行 `/connect` 命令，選擇 `CodePlane Go`，然後貼上您的 API key。
-3. 在 TUI 中執行 `/models` 即可查看透過 Go 可用的模型清單。
+1. You sign in to **<a href={console}>CodePlane Zen</a>**, subscribe to Go, and
+   copy your API key.
+2. Open Settings -> Providers in the web app, select `CodePlane Go`, and paste
+   your API key.
+3. Open the model selector to see the list of models available through Go.
 
 :::note
-每個工作區只能有一位成員訂閱 CodePlane Go。
+Only one member per workspace can subscribe to CodePlane Go.
 :::
 
-目前的模型清單包括：
+The current list of models includes:
 
 - **GLM-5**
 - **GLM-5.1**
@@ -62,79 +72,81 @@ CodePlane Go 的運作方式與 CodePlane 中的任何其他供應商相同。
 - **MiMo-V2.5-Pro**
 - **MiMo-V2.5**
 - **MiniMax M2.5**
+- **MiniMax M2.7**
 - **Qwen3.5 Plus**
 - **Qwen3.6 Plus**
-- **MiniMax M2.7**
 - **DeepSeek V4 Pro**
 - **DeepSeek V4 Flash**
 
-隨著我們測試並加入新模型，模型清單可能會有所變動。
+The list of models may change as we test and add new ones.
 
 ---
 
-## 使用限制
+## Usage limits
 
-CodePlane Go 包含以下限制：
+CodePlane Go includes the following limits:
 
-- **5 小時限制** — $12 美元的使用量
-- **每週限制** — $30 美元的使用量
-- **每月限制** — $60 美元的使用量
+- **5 hour limit** — $12 of usage
+- **Weekly limit** — $30 of usage
+- **Monthly limit** — $60 of usage
 
-限制是以美元價值來定義。這意味著您的實際請求次數取決於您使用的模型。像 MiniMax M2.5 這樣較便宜的模型允許更多的請求次數，而像 GLM-5.1 這樣成本較高的模型則允許較少次數。
+Limits are defined in dollar value. This means your actual request count depends on the model you use. Cheaper models like Qwen3.5 Plus allow for more requests, while higher-cost models like GLM-5.1 allow for fewer.
 
-下表提供了基於典型 Go 使用模式的預估請求次數：
+The table below provides an estimated request count based on typical Go usage patterns:
 
-| Model             | 每 5 小時請求數 | 每週請求數 | 每月請求數 |
-| ----------------- | --------------- | ---------- | ---------- |
-| GLM-5.1           | 880             | 2,150      | 4,300      |
-| GLM-5             | 1,150           | 2,880      | 5,750      |
-| Kimi K2.5         | 1,850           | 4,630      | 9,250      |
-| Kimi K2.6         | 1,150           | 2,880      | 5,750      |
-| MiMo-V2-Pro       | 1,290           | 3,225      | 6,450      |
-| MiMo-V2-Omni      | 2,150           | 5,450      | 10,900     |
-| MiMo-V2.5-Pro     | 1,290           | 3,225      | 6,450      |
-| MiMo-V2.5         | 2,150           | 5,450      | 10,900     |
-| Qwen3.6 Plus      | 3,300           | 8,200      | 16,300     |
-| MiniMax M2.7      | 3,400           | 8,500      | 17,000     |
-| MiniMax M2.5      | 6,300           | 15,900     | 31,800     |
-| Qwen3.5 Plus      | 10,200          | 25,200     | 50,500     |
-| DeepSeek V4 Pro   | 1,300           | 3,250      | 6,500      |
-| DeepSeek V4 Flash | 7,450           | 18,600     | 37,300     |
+| Model             | requests per 5 hour | requests per week | requests per month |
+| ----------------- | ------------------- | ----------------- | ------------------ |
+| GLM-5.1           | 880                 | 2,150             | 4,300              |
+| GLM-5             | 1,150               | 2,880             | 5,750              |
+| Kimi K2.5         | 1,850               | 4,630             | 9,250              |
+| Kimi K2.6         | 1,150               | 2,880             | 5,750              |
+| MiMo-V2-Pro       | 1,290               | 3,225             | 6,450              |
+| MiMo-V2-Omni      | 2,150               | 5,450             | 10,900             |
+| MiMo-V2.5-Pro     | 1,290               | 3,225             | 6,450              |
+| MiMo-V2.5         | 2,150               | 5,450             | 10,900             |
+| MiniMax M2.7      | 3,400               | 8,500             | 17,000             |
+| MiniMax M2.5      | 6,300               | 15,900            | 31,800             |
+| Qwen3.6 Plus      | 3,300               | 8,200             | 16,300             |
+| Qwen3.5 Plus      | 10,200              | 25,200            | 50,500             |
+| DeepSeek V4 Pro   | 1,300               | 3,250             | 6,500              |
+| DeepSeek V4 Flash | 7,450               | 18,600            | 37,300             |
 
-預估值是基於觀察到的平均請求模式：
+Estimates are based on observed average request patterns:
 
-- GLM-5/5.1 — 每次請求 700 個輸入 token、52,000 個快取 token、150 個輸出 token
-- Kimi K2.5/K2.6 — 每次請求 870 個輸入 token、55,000 個快取 token、200 個輸出 token
+- GLM-5/5.1 — 700 input, 52,000 cached, 150 output tokens per request
+- Kimi K2.5/K2.6 — 870 input, 55,000 cached, 200 output tokens per request
 - DeepSeek V4 Pro/Flash — 700 input, 52,000 cached, 150 output tokens per request
-- MiniMax M2.7/M2.5 — 每次請求 300 個輸入 token、55,000 個快取 token、125 個輸出 token
+- MiniMax M2.7/M2.5 — 300 input, 55,000 cached, 125 output tokens per request
+- MiMo-V2-Pro — 350 input, 41,000 cached, 250 output tokens per request
+- MiMo-V2-Omni — 1000 input, 60,000 cached, 140 output tokens per request
+- MiMo-V2.5-Pro — 350 input, 41,000 cached, 250 output tokens per request
+- MiMo-V2.5 — 1000 input, 60,000 cached, 140 output tokens per request
 - Qwen3.5 Plus — 410 input, 47,000 cached, 140 output tokens per request
 - Qwen3.6 Plus — 500 input, 57,000 cached, 190 output tokens per request
-- MiMo-V2-Pro — 每次請求 350 個輸入 token、41,000 個快取 token、250 個輸出 token
-- MiMo-V2-Omni — 每次請求 1000 個輸入 token、60,000 個快取 token、140 個輸出 token
-- MiMo-V2.5-Pro — 每次請求 350 個輸入 token、41,000 個快取 token、250 個輸出 token
-- MiMo-V2.5 — 每次請求 1000 個輸入 token、60,000 個快取 token、140 個輸出 token
 
-您可以在 **<a href={console}>console</a>** 中追蹤您目前的使用量。
+You can track your current usage in the **<a href={console}>console</a>**.
 
 :::tip
-如果您達到了使用限制，您可以繼續使用免費模型。
+If you reach the usage limit, you can continue using the free models.
 :::
 
-使用限制可能會隨著我們從早期使用情況和回饋中學習而有所調整。
+Usage limits may change as we learn from early usage and feedback.
 
 ---
 
-### 超出限制的使用量
+### Usage beyond limits
 
-如果您在您的 Zen 餘額中也有額度，您可以在 console 中啟用 **Use balance** 選項。啟用後，當您達到使用限制時，Go 將會改用您的 Zen 餘額，而不是阻擋請求。
+If you also have credits on your Zen balance, you can enable the **Use balance**
+option in the console. When enabled, Go will fall back to your Zen balance
+after you've reached your usage limits instead of blocking requests.
 
 ---
 
-## 端點
+## Endpoints
 
-您也可以透過以下 API 端點存取 Go 模型。
+You can also access Go models through the following API endpoints.
 
-| 模型              | 模型 ID           | 端點                                             | AI SDK 套件                 |
+| Model             | Model ID          | Endpoint                                         | AI SDK Package              |
 | ----------------- | ----------------- | ------------------------------------------------ | --------------------------- |
 | GLM-5.1           | glm-5.1           | `https://example.invalid/zen` | `@ai-sdk/openai-compatible` |
 | GLM-5             | glm-5             | `https://example.invalid/zen` | `@ai-sdk/openai-compatible` |
@@ -151,21 +163,23 @@ CodePlane Go 包含以下限制：
 | Qwen3.6 Plus      | qwen3.6-plus      | `https://example.invalid/zen` | `@ai-sdk/alibaba`           |
 | Qwen3.5 Plus      | qwen3.5-plus      | `https://example.invalid/zen` | `@ai-sdk/alibaba`           |
 
-您的 CodePlane 設定中的 [model id](/docs/config/#models) 使用 `codeplane-go/<model-id>` 格式。例如，Kimi K2.6 在設定中應使用 `codeplane-go/kimi-k2.6`。
+The [model id](/docs/config/#models) in your CodePlane config
+uses the format `codeplane-go/<model-id>`. For example, for Kimi K2.6, you would
+use `codeplane-go/kimi-k2.6` in your config.
 
 ---
 
-## 隱私權
+## Privacy
 
-此方案主要為國際使用者設計，模型部署於 US、EU 與 Singapore，以提供穩定的全球存取體驗。我們的供應商遵循零保留政策，不會將你的資料用於模型訓練。
+The plan is designed primarily for international users, with models hosted in the US, EU, and Singapore for stable global access. Our providers follow a zero-retention policy and do not use your data for model training.
 
 ---
 
-## 目標
+## Goals
 
-我們建立 CodePlane Go 的目的是：
+We created CodePlane Go to:
 
-1. 透過低成本的訂閱服務，讓更多人能**輕鬆獲得** AI 寫程式的協助。
-2. 提供**穩定可靠**的途徑來存取最好的開源寫程式模型。
-3. 精選經過**測試與效能評估**、適合寫程式代理使用的模型。
-4. 允許您在 CodePlane 中同時使用任何其他供應商，確保**不被單一廠商綁定**。
+1. Make AI coding **accessible** to more people with a low cost subscription.
+2. Provide **reliable** access to the best open coding models.
+3. Curate models that are **tested and benchmarked** for coding agent use.
+4. Have **no lock-in** by allowing you to use any other provider with CodePlane as well.

@@ -23,7 +23,6 @@ import { McpOAuthCallback } from "./oauth-callback"
 import { McpAuth } from "./auth"
 import { BusEvent } from "../bus/bus-event"
 import { Bus } from "@/bus"
-import { TuiEvent } from "@/cli/cmd/tui/event"
 import open from "open"
 import { Effect, Exit, Layer, Option, Context, Schema, Stream } from "effect"
 import { EffectBridge } from "@/effect"
@@ -327,26 +326,14 @@ export const layer = Layer.effect(
                   status: "needs_client_registration" as const,
                   error: "Server does not support dynamic client registration. Please provide clientId in config.",
                 }
-                return bus
-                  .publish(TuiEvent.ToastShow, {
-                    title: "MCP Authentication Required",
-                    message: `Server "${key}" requires a pre-registered client ID. Add clientId to your config.`,
-                    variant: "warning",
-                    duration: 8000,
-                  })
-                  .pipe(Effect.ignore, Effect.as(undefined))
-              } else {
-                pendingOAuthTransports.set(key, transport)
-                lastStatus = { status: "needs_auth" as const }
-                return bus
-                  .publish(TuiEvent.ToastShow, {
-                    title: "MCP Authentication Required",
-                    message: `Server "${key}" requires authentication. Run: codeplane mcp auth ${key}`,
-                    variant: "warning",
-                    duration: 8000,
-                  })
-                  .pipe(Effect.ignore, Effect.as(undefined))
+                log.warn("mcp server requires pre-registered client id", { key })
+                return Effect.succeed(undefined)
               }
+
+              pendingOAuthTransports.set(key, transport)
+              lastStatus = { status: "needs_auth" as const }
+              log.warn("mcp server requires authentication", { key })
+              return Effect.succeed(undefined)
             }
 
             log.debug("transport connection failed", {

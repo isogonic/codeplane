@@ -1,42 +1,37 @@
 ---
-title: Uvod
-description: Započnite sa CodePlane.
+title: Intro
+description: Get started with CodePlane.
 ---
 
 import { Tabs, TabItem } from "@astrojs/starlight/components"
 import config from "../../../../config.mjs"
 export const console = config.console
 
-[**CodePlane**](/) je AI agent za kodiranje otvorenog koda. Dostupan je kao interfejs baziran na terminalu, desktop aplikacija ili IDE ekstenzija.
-![CodePlane TUI sa codeplane temom](../../../assets/lander/screenshot.png)
-Hajde da počnemo.
+[**CodePlane**](/) is an open source AI coding agent built around the web app experience, with a CLI server and IDE integrations for local development.
+
+![CodePlane Web app](../../../assets/web/web-homepage-active-session.png)
+
+Let's get started.
 
 ---
 
-#### Preduvjeti
+#### Prerequisites
 
-Da biste koristili CodePlane u svom terminalu, trebat će vam:
-
-1. Moderan emulator terminala kao što su:
-   - [WezTerm](https://wezterm.org), više platformi
-   - [Alacritty](https://alacritty.org), više platformi
-   - [Ghostty](https://ghostty.org), Linux i macOS
-   - [Kitty](https://sw.kovidgoyal.net/kitty/), Linux i macOS
-2. API ključevi za LLM provajdere koje želite koristiti.
+To use CodePlane, you'll need Bun and API keys for the LLM providers you want to use.
 
 ---
 
-## Instalacija
+## Install
 
-Najlakši način za instaliranje CodePlane je putem instalacijske skripte.
+The easiest way to install CodePlane is through the install script.
 
 ```bash
 curl -fsSL https://example.invalid/install | bash
 ```
 
-Također ga možete instalirati pomoću sljedećih naredbi:
+You can also install it with the following commands:
 
-- **Korištenje Node.js**
+- **Using Node.js**
 
         <Tabs>
 
@@ -70,15 +65,15 @@ Također ga možete instalirati pomoću sljedećih naredbi:
 
   </Tabs>
 
-- **Korištenje Homebrew-a na macOS-u i Linux-u**
+- **Using Homebrew on macOS and Linux**
 
-```bash
+  ```bash
   brew install devinoldenburg/tap/codeplane
-```
+  ```
 
-> Preporučujemo korištenje CodePlane tap za najnovija izdanja. Službenu formulu `brew install codeplane` održava Homebrew tim i ažurira se rjeđe.
+  > We recommend using the CodePlane tap for the most up to date releases. The official `brew install codeplane` formula is maintained by the Homebrew team and is updated less frequently.
 
-- **Korištenje Parua na Arch Linuxu**
+- **Installing on Arch Linux**
 
   ```bash
   sudo pacman -S codeplane           # Arch Linux (Stable)
@@ -87,177 +82,194 @@ Također ga možete instalirati pomoću sljedećih naredbi:
 
 #### Windows
 
-:::tip[Preporučeno: Koristite WSL]
-Za najbolje iskustvo na Windows-u preporučujemo korištenje [Windows Subsystem for Linux (WSL)](/docs/windows-wsl). Pruža bolje performanse i potpunu kompatibilnost sa CodePlane funkcijama.
-:::
+- **Using Chocolatey**
 
-- **Korištenje Chocolatey-a**
-
-```bash
+  ```bash
   choco install codeplane
-```
+  ```
 
-- **Korištenje Scoop-a**
+- **Using Scoop**
 
-```bash
+  ```bash
   scoop install codeplane
-```
+  ```
 
-- **Korištenje NPM-a**
+- **Using NPM**
 
-```bash
+  ```bash
   npm install -g codeplane-ai
-```
+  ```
 
-- **Korištenje Mise**
+- **Using Mise**
 
-```bash
+  ```bash
   mise use -g github:devinoldenburg/codeplane
-```
+  ```
 
-- **Korištenje Dockera**
+- **Using Docker**
 
-```bash
+  ```bash
   docker run -it --rm ghcr.io/devinoldenburg/codeplane
-```
+  ```
 
-Podrška za instaliranje CodePlane na Windows koristeći Bun je trenutno u toku.
-Također možete preuzeti binarnu datoteku iz [Releases](https://github.com/devinoldenburg/codeplane/releases).
+Support for installing CodePlane on Windows using Bun is currently in progress.
+
+You can also grab the binary from the [Releases](https://github.com/devinoldenburg/codeplane/releases).
 
 ---
 
-## Konfiguracija
+## Configure
 
-Uz CodePlane možete koristiti bilo kojeg LLM provajdera tako što ćete konfigurirati njihove API ključeve.
-Ako ste tek počeli koristiti LLM provajdere, preporučujemo korištenje [CodePlane Zen](/docs/zen).
-To je kurirana lista modela koji su testirani i verifikovani od strane CodePlane tima.
+With CodePlane you can use any LLM provider by configuring their API keys.
 
-1. Pokrenite naredbu `/connect` u TUI-u, odaberite codeplane i idite na [example.invalid/auth](https://example.invalid/auth).
+If you are new to using LLM providers, we recommend using [CodePlane Zen](/docs/zen).
+It's a curated list of models that have been tested and verified by the CodePlane
+team.
 
-```txt
-   /connect
-```
+1. Open the web app and connect the `codeplane` provider from Settings -> Providers.
 
-2. Prijavite se, dodajte svoje detalje naplate i kopirajte svoj API ključ.
-3. Zalijepite svoj API ključ.
+2. Sign in, add your billing details, and copy your API key.
 
-```txt
+3. Paste your API key.
+
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-Alternativno, možete odabrati jednog od drugih provajdera. [Saznajte više](/docs/providers#directory).
+Alternatively, you can select one of the other providers. [Learn more](/docs/providers#directory).
 
 ---
 
-## Inicijalizacija
+## Initialize
 
-Sada kada ste konfigurisali provajdera, možete se kretati do projekta na kojem želite raditi.
+Now that you've configured a provider, you can navigate to a project that
+you want to work on.
 
 ```bash
 cd /path/to/project
 ```
 
-I pokrenite CodePlane.
+And start the web app.
 
 ```bash
-codeplane
+codeplane web
 ```
 
-Zatim inicijalizirajte CodePlane za projekat pokretanjem sljedeće naredbe.
+Next, initialize CodePlane for the project by running the following command.
 
 ```bash frame="none"
 /init
 ```
 
-Ovo će omogućiti CodePlane da analizira vaš projekat i kreira `AGENTS.md` fajl u korijenu projekta.
+This will get CodePlane to analyze your project and create an `AGENTS.md` file in
+the project root.
+
 :::tip
-Trebali biste komitovati datoteku `AGENTS.md` vašeg projekta u Git.
+You should commit your project's `AGENTS.md` file to Git.
 :::
-Ovo pomaže CodePlane da razumije strukturu projekta i obrasce kodiranja koji se koriste.
+
+This helps CodePlane understand the project structure and the coding patterns
+used.
 
 ---
 
-## Korištenje
+## Usage
 
-Sada ste spremni da koristite CodePlane za rad na svom projektu. Slobodno pitajte bilo šta!
-Ako ste novi u korištenju agenta za AI kodiranje, evo nekoliko primjera koji bi mogli pomoći.
+You are now ready to use CodePlane to work on your project. Feel free to ask it
+anything!
+
+If you are new to using an AI coding agent, here are some examples that might
+help.
 
 ---
 
-### Postavljanje pitanja
+### Ask questions
 
-Možete zamoliti CodePlane da vam objasni kodnu bazu.
+You can ask CodePlane to explain the codebase to you.
+
 :::tip
-Koristite tipku `@` za nejasnu pretragu datoteka u projektu.
+Use the `@` key to fuzzy search for files in the project.
 :::
 
 ```txt frame="none" "@packages/functions/src/api/index.ts"
 How is authentication handled in @packages/functions/src/api/index.ts
 ```
 
-Ovo je korisno ako postoji dio kodne baze na kojem niste radili.
+This is helpful if there's a part of the codebase that you didn't work on.
 
 ---
 
-### Dodavanje funkcija
+### Add features
 
-Možete zamoliti CodePlane da vašem projektu doda nove funkcije. Iako preporučujemo da ga prvo zamolite da napravi plan.
+You can ask CodePlane to add new features to your project. Though we first recommend asking it to create a plan.
 
-1. **Kreirajte plan**
-   CodePlane ima _Plan mod_ koji onemogućuje njegovu sposobnost da pravi promjene i umjesto toga predlaže _kako_ će implementirati ovu funkciju.
-   Prebacite se na njega pomoću tipke **Tab**. Vidjet ćete indikator za ovo u donjem desnom uglu.
+1. **Create a plan**
 
-```bash frame="none" title="Switch to Plan mode"
+   CodePlane has a _Plan mode_ that disables its ability to make changes and
+   instead suggest _how_ it'll implement the feature.
+
+   Switch to it using the **Tab** key. You'll see an indicator for this in the lower right corner.
+
+   ```bash frame="none" title="Switch to Plan mode"
    <TAB>
-```
+   ```
 
-Hajde sada da opišemo šta želimo da uradi.
+   Now let's describe what we want it to do.
 
-```txt frame="none"
-    When a user deletes a note, we'd like to flag it as deleted in the database.
-    Then create a screen that shows all the recently deleted notes.
-    From this screen, the user can undelete a note or permanently delete it.
-```
+   ```txt frame="none"
+   When a user deletes a note, we'd like to flag it as deleted in the database.
+   Then create a screen that shows all the recently deleted notes.
+   From this screen, the user can undelete a note or permanently delete it.
+   ```
 
-Želite da date CodePlane dovoljno detalja da razumije šta želite. Pomaže da razgovarate s njim kao da razgovarate sa mlađim programerom u svom timu.
-:::tip
-Dajte CodePlane dosta konteksta i primjera koji će mu pomoći da razumije šta vi želite.
-:::
+   You want to give CodePlane enough details to understand what you want. It helps
+   to talk to it like you are talking to a junior developer on your team.
 
-2. **Ponovite plan**
-   Kada vam da plan, možete mu dati povratne informacije ili dodati više detalja.
+   :::tip
+   Give CodePlane plenty of context and examples to help it understand what you
+   want.
+   :::
 
-```txt frame="none"
-    We'd like to design this new screen using a design I've used before.
-    [Image #1] Take a look at this image and use it as a reference.
-```
+2. **Iterate on the plan**
 
-:::tip
-Prevucite i ispustite slike u terminal da biste ih dodali u prompt.
-:::
-CodePlane može skenirati sve slike koje mu date i dodati ih u prompt. Možete to učiniti povlačenjem i ispuštanjem slike u terminal.
+   Once it gives you a plan, you can give it feedback or add more details.
 
-3. **Izgradite funkciju**
-   Kada se osjećate ugodno s planom, vratite se na _Build mode_ ponovnim pritiskom na taster **Tab**.
+   ```txt frame="none"
+   We'd like to design this new screen using a design I've used before.
+   [Image #1] Take a look at this image and use it as a reference.
+   ```
 
-```bash frame="none"
+   :::tip
+   Drag and drop images into the terminal to add them to the prompt.
+   :::
+
+   CodePlane can scan any images you give it and add them to the prompt. You can
+   do this by dragging and dropping an image into the terminal.
+
+3. **Build the feature**
+
+   Once you feel comfortable with the plan, switch back to _Build mode_ by
+   hitting the **Tab** key again.
+
+   ```bash frame="none"
    <TAB>
-```
+   ```
 
-I tražeći od njega da napravi promjene.
+   And asking it to make the changes.
 
-```bash frame="none"
+   ```bash frame="none"
    Sounds good! Go ahead and make the changes.
-```
+   ```
 
 ---
 
-### Pravljenje izmjena
+### Make changes
 
-Za jednostavnije promjene, možete zamoliti CodePlane da ga direktno izgradi bez potrebe da prvo pregledate plan.
+For more straightforward changes, you can ask CodePlane to directly build it
+without having to review the plan first.
 
 ```txt frame="none" "@packages/functions/src/settings.ts" "@packages/functions/src/notes.ts"
 We need to add authentication to the /settings route. Take a look at how this is
@@ -265,35 +277,40 @@ handled in the /notes route in @packages/functions/src/notes.ts and implement
 the same logic in @packages/functions/src/settings.ts
 ```
 
-Želite da budete sigurni da ste pružili dobru količinu detalja kako bi CodePlane napravio ispravne promjene.
+You want to make sure you provide a good amount of detail so CodePlane makes the right
+changes.
 
 ---
 
-### Poništavanje izmjena
+### Undo changes
 
-Recimo da tražite od CodePlane da izvrši neke promjene.
+Let's say you ask CodePlane to make some changes.
 
 ```txt frame="none" "@packages/functions/src/api/index.ts"
 Can you refactor the function in @packages/functions/src/api/index.ts?
 ```
 
-Ali shvatate da to nije ono što ste željeli. Možete **poništiti** promjene koristeći naredbu `/undo`.
+But you realize that it is not what you wanted. You **can undo** the changes
+using the `/undo` command.
 
 ```bash frame="none"
 /undo
 ```
 
-CodePlane će sada poništiti promjene koje ste napravili i ponovo prikazati vašu originalnu poruku.
+CodePlane will now revert the changes you made and show your original message
+again.
 
 ```txt frame="none" "@packages/functions/src/api/index.ts"
 Can you refactor the function in @packages/functions/src/api/index.ts?
 ```
 
-Odavde možete podesiti prompt i zamoliti CodePlane da pokuša ponovo.
+From here you can tweak the prompt and ask CodePlane to try again.
+
 :::tip
-Možete pokrenuti `/undo` više puta da poništite više promjena.
+You can run `/undo` multiple times to undo multiple changes.
 :::
-Ili **možete ponoviti** promjene koristeći naredbu `/redo`.
+
+Or you **can redo** the changes using the `/redo` command.
 
 ```bash frame="none"
 /redo
@@ -301,23 +318,27 @@ Ili **možete ponoviti** promjene koristeći naredbu `/redo`.
 
 ---
 
-## Dijeljenje
+## Share
 
-Razgovore koje imate sa CodePlane možete [dijeliti sa vašim timom](/docs/share).
+The conversations that you have with CodePlane can be [shared with your
+team](/docs/share).
 
 ```bash frame="none"
 /share
 ```
 
-Ovo će kreirati vezu do trenutnog razgovora i kopirati je u međuspremnik.
+This will create a link to the current conversation and copy it to your clipboard.
+
 :::note
-Razgovori se ne dijele prema zadanim postavkama.
+Conversations are not shared by default.
 :::
-Evo [primjer razgovora](https://example.invalid) sa CodePlane.
+
+Here's an [example conversation](https://example.invalid) with CodePlane.
 
 ---
 
-## Prilagođavanje
+## Customize
 
-I to je to! Sada ste profesionalac u korištenju CodePlane.
-Da biste to učinili svojim, preporučujemo [odabir teme](/docs/themes), [prilagođavanje povezivanja tipki](/docs/keybinds), [konfiguriranje formatera koda](/docs/formatters), [kreiranje prilagođenih komandi](/docs/commands), ili igranje sa [CodePlane config](/docs/config).
+And that's it! You are now a pro at using CodePlane.
+
+To make it your own, we recommend [picking a theme](/docs/themes), [configuring code formatters](/docs/formatters), [creating custom commands](/docs/commands), or playing around with the [CodePlane config](/docs/config).

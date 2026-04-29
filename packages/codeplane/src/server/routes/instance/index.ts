@@ -4,7 +4,6 @@ import type { UpgradeWebSocket } from "hono/ws"
 import { Context, Effect } from "effect"
 import z from "zod"
 import { Format } from "@/format"
-import { TuiRoutes } from "./tui"
 import { Instance } from "@/project/instance"
 import { Vcs } from "@/project"
 import { Agent } from "@/agent/agent"
@@ -69,7 +68,6 @@ export const InstanceRoutes = (upgrade: UpgradeWebSocket): Hono => {
     .route("/", FileRoutes())
     .route("/", EventRoutes())
     .route("/mcp", McpRoutes())
-    .route("/tui", TuiRoutes())
     .post(
       "/instance/dispose",
       describeRoute({

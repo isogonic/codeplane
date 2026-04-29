@@ -1,45 +1,37 @@
 ---
-title: Einführung
-description: Beginnen Sie mit CodePlane.
+title: Intro
+description: Get started with CodePlane.
 ---
 
 import { Tabs, TabItem } from "@astrojs/starlight/components"
 import config from "../../../../config.mjs"
 export const console = config.console
 
-[**CodePlane**](/) ist ein Open-Source-Coding-Agent für AI. Es ist als terminalbasierte Schnittstelle, Desktop-App oder IDE-Erweiterung verfügbar.
+[**CodePlane**](/) is an open source AI coding agent built around the web app experience, with a CLI server and IDE integrations for local development.
 
-![CodePlane TUI with the codeplane theme](../../../assets/lander/screenshot.png)
+![CodePlane Web app](../../../assets/web/web-homepage-active-session.png)
 
-Fangen wir an.
-
----
-
-#### Voraussetzungen
-
-Um CodePlane in Ihrem Terminal verwenden zu können, benötigen Sie:
-
-1. Ein moderner Terminal-Emulator, zum Beispiel:
-   - [WezTerm](https://wezterm.org), cross-platform
-   - [Alacritty](https://alacritty.org), plattformübergreifend
-   - [Ghostty](https://ghostty.org), Linux und macOS
-   - [Kitty](https://sw.kovidgoyal.net/kitty/), Linux und macOS
-
-2. API-Schlüssel für die LLM-Anbieter, die Sie verwenden möchten.
+Let's get started.
 
 ---
 
-## Installation
+#### Prerequisites
 
-Der einfachste Weg, CodePlane zu installieren, ist über das Installationsskript.
+To use CodePlane, you'll need Bun and API keys for the LLM providers you want to use.
+
+---
+
+## Install
+
+The easiest way to install CodePlane is through the install script.
 
 ```bash
 curl -fsSL https://example.invalid/install | bash
 ```
 
-Sie können es auch mit den folgenden Befehlen installieren:
+You can also install it with the following commands:
 
-- **Mit Node.js**
+- **Using Node.js**
 
         <Tabs>
 
@@ -73,15 +65,15 @@ Sie können es auch mit den folgenden Befehlen installieren:
 
   </Tabs>
 
-- **Homebrew unter macOS und Linux verwenden**
+- **Using Homebrew on macOS and Linux**
 
   ```bash
   brew install devinoldenburg/tap/codeplane
   ```
 
-  > Wir empfehlen die Verwendung des CodePlane-Taps für die aktuellsten Versionen. Die offizielle `brew install codeplane`-Formel wird vom Homebrew-Team gepflegt und seltener aktualisiert.
+  > We recommend using the CodePlane tap for the most up to date releases. The official `brew install codeplane` formula is maintained by the Homebrew team and is updated less frequently.
 
-- **Verwendung von Paru unter Arch Linux**
+- **Installing on Arch Linux**
 
   ```bash
   sudo pacman -S codeplane           # Arch Linux (Stable)
@@ -90,62 +82,55 @@ Sie können es auch mit den folgenden Befehlen installieren:
 
 #### Windows
 
-:::tip[Empfohlen: Verwenden Sie WSL]
-Für das beste Erlebnis unter Windows empfehlen wir die Verwendung von [Windows Subsystem for Linux (WSL)](/docs/windows-wsl). Es bietet eine bessere Leistung und vollständige Kompatibilität mit den Funktionen von CodePlane.
-:::
-
-- **Verwendung von Chocolatey**
+- **Using Chocolatey**
 
   ```bash
   choco install codeplane
   ```
 
-- **Scoop verwenden**
+- **Using Scoop**
 
   ```bash
   scoop install codeplane
   ```
 
-- **Mit NPM**
+- **Using NPM**
 
   ```bash
   npm install -g codeplane-ai
   ```
 
-- **Mit Mise**
+- **Using Mise**
 
   ```bash
   mise use -g github:devinoldenburg/codeplane
   ```
 
-- **Verwendung von Docker**
+- **Using Docker**
 
   ```bash
   docker run -it --rm ghcr.io/devinoldenburg/codeplane
   ```
 
-Die Unterstützung für die Installation von CodePlane unter Windows mit Bun ist derzeit in Arbeit.
+Support for installing CodePlane on Windows using Bun is currently in progress.
 
-Sie können die Binärdatei auch aus [Releases](https://github.com/devinoldenburg/codeplane/releases) abrufen.
+You can also grab the binary from the [Releases](https://github.com/devinoldenburg/codeplane/releases).
 
 ---
 
-## Konfiguration
+## Configure
 
-Mit CodePlane können Sie jeden LLM-Anbieter verwenden, indem Sie dessen API-Schlüssel konfigurieren.
+With CodePlane you can use any LLM provider by configuring their API keys.
 
-Wenn Sie mit der Verwendung von LLM-Anbietern noch nicht vertraut sind, empfehlen wir die Verwendung von [CodePlane Zen](/docs/zen).
-Es handelt sich um eine kuratierte Liste von Modellen, die vom CodePlane Team getestet und verifiziert wurden.
+If you are new to using LLM providers, we recommend using [CodePlane Zen](/docs/zen).
+It's a curated list of models that have been tested and verified by the CodePlane
+team.
 
-1. Führen Sie den Befehl `/connect` in TUI aus, wählen Sie CodePlane aus und gehen Sie zu [example.invalid/auth](https://example.invalid/auth).
+1. Open the web app and connect the `codeplane` provider from Settings -> Providers.
 
-   ```txt
-   /connect
-   ```
+2. Sign in, add your billing details, and copy your API key.
 
-2. Melden Sie sich an, geben Sie Ihre Rechnungsdaten ein und kopieren Sie Ihren API-Schlüssel.
-
-3. Fügen Sie Ihren API-Schlüssel ein.
+3. Paste your API key.
 
    ```txt
    ┌ API key
@@ -154,83 +139,85 @@ Es handelt sich um eine kuratierte Liste von Modellen, die vom CodePlane Team ge
    └ enter
    ```
 
-Alternativ können Sie auch einen der anderen Anbieter auswählen. [Mehr erfahren](/docs/providers#directory).
+Alternatively, you can select one of the other providers. [Learn more](/docs/providers#directory).
 
 ---
 
-## Initialisierung
+## Initialize
 
-Nachdem Sie nun einen Anbieter konfiguriert haben, können Sie zu einem Projekt navigieren
-an dem Sie arbeiten möchten.
+Now that you've configured a provider, you can navigate to a project that
+you want to work on.
 
 ```bash
 cd /path/to/project
 ```
 
-Und führen Sie CodePlane aus.
+And start the web app.
 
 ```bash
-codeplane
+codeplane web
 ```
 
-Als nächstes initialisieren Sie CodePlane für das Projekt, indem Sie den folgenden Befehl ausführen.
+Next, initialize CodePlane for the project by running the following command.
 
 ```bash frame="none"
 /init
 ```
 
-Dadurch wird CodePlane dazu veranlasst, Ihr Projekt zu analysieren und eine `AGENTS.md`-Datei im Projektstammverzeichnis zu erstellen.
+This will get CodePlane to analyze your project and create an `AGENTS.md` file in
+the project root.
 
 :::tip
-Sie sollten die `AGENTS.md`-Datei Ihres Projekts an Git übergeben.
+You should commit your project's `AGENTS.md` file to Git.
 :::
 
-Dies hilft CodePlane, die Projektstruktur und die Codierungsmuster zu verstehen
-die verwendet werden.
+This helps CodePlane understand the project structure and the coding patterns
+used.
 
 ---
 
-## Verwendung
+## Usage
 
-Sie können nun CodePlane verwenden, um an Ihrem Projekt zu arbeiten. Fragen Sie ruhig nach
-allem!
+You are now ready to use CodePlane to work on your project. Feel free to ask it
+anything!
 
-Wenn Sie mit der Verwendung eines AI-Codierungsagenten noch nicht vertraut sind, finden Sie hier einige Beispiele, die hilfreich sein könnten.
+If you are new to using an AI coding agent, here are some examples that might
+help.
 
 ---
 
-### Fragen stellen
+### Ask questions
 
-Sie können CodePlane bitten, Ihnen die Codebasis zu erklären.
+You can ask CodePlane to explain the codebase to you.
 
 :::tip
-Verwenden Sie die Taste `@`, um eine Fuzzy-Suche nach Dateien im Projekt durchzuführen.
+Use the `@` key to fuzzy search for files in the project.
 :::
 
 ```txt frame="none" "@packages/functions/src/api/index.ts"
 How is authentication handled in @packages/functions/src/api/index.ts
 ```
 
-Dies ist hilfreich, wenn es einen Teil der Codebasis gibt, an dem Sie nicht gearbeitet haben.
+This is helpful if there's a part of the codebase that you didn't work on.
 
 ---
 
-### Funktionen hinzufügen
+### Add features
 
-Sie können CodePlane bitten, Ihrem Projekt neue Funktionen hinzuzufügen. Wir empfehlen jedoch, es zunächst um die Erstellung eines Plans zu bitten.
+You can ask CodePlane to add new features to your project. Though we first recommend asking it to create a plan.
 
-1. **Erstellen Sie einen Plan**
+1. **Create a plan**
 
-   CodePlane verfügt über einen _Plan Mode_, der seine Fähigkeit, Änderungen vorzunehmen, deaktiviert
-   Schlagen Sie stattdessen vor, wie die Funktion implementiert wird.
+   CodePlane has a _Plan mode_ that disables its ability to make changes and
+   instead suggest _how_ it'll implement the feature.
 
-   Wechseln Sie mit der **Tabulatortaste** dorthin. In der unteren rechten Ecke sehen Sie einen Indikator dafür.
+   Switch to it using the **Tab** key. You'll see an indicator for this in the lower right corner.
 
-   ```bash frame="none" title="In den Plan-Modus wechseln"
+   ```bash frame="none" title="Switch to Plan mode"
    <TAB>
    ```
 
-   Beschreiben wir nun, was es tun soll.
+   Now let's describe what we want it to do.
 
    ```txt frame="none"
    When a user deletes a note, we'd like to flag it as deleted in the database.
@@ -238,17 +225,17 @@ Sie können CodePlane bitten, Ihrem Projekt neue Funktionen hinzuzufügen. Wir e
    From this screen, the user can undelete a note or permanently delete it.
    ```
 
-   Sie möchten CodePlane genügend Details geben, um zu verstehen, was Sie wollen. Es hilft
-   mit ihm zu sprechen, als ob Sie mit einem Junior-Entwickler in Ihrem Team sprechen würden.
+   You want to give CodePlane enough details to understand what you want. It helps
+   to talk to it like you are talking to a junior developer on your team.
 
    :::tip
-   Geben Sie CodePlane reichlich Kontext und Beispiele, damit es versteht, was Sie
-   wollen.
+   Give CodePlane plenty of context and examples to help it understand what you
+   want.
    :::
 
-2. **Den Plan überarbeiten**
+2. **Iterate on the plan**
 
-   Sobald Sie einen Plan erhalten, können Sie ihm Feedback geben oder weitere Details hinzufügen.
+   Once it gives you a plan, you can give it feedback or add more details.
 
    ```txt frame="none"
    We'd like to design this new screen using a design I've used before.
@@ -256,22 +243,22 @@ Sie können CodePlane bitten, Ihrem Projekt neue Funktionen hinzuzufügen. Wir e
    ```
 
    :::tip
-   Ziehen Sie Bilder per Drag-and-Drop in das Terminal, um sie zur Eingabeaufforderung hinzuzufügen.
+   Drag and drop images into the terminal to add them to the prompt.
    :::
 
-   CodePlane kann alle von Ihnen bereitgestellten Bilder scannen und zur Eingabeaufforderung hinzufügen. Du kannst
-   Ziehen Sie dazu ein Bild per Drag & Drop in das Terminal.
+   CodePlane can scan any images you give it and add them to the prompt. You can
+   do this by dragging and dropping an image into the terminal.
 
-3. **Funktion erstellen**
+3. **Build the feature**
 
-   Wenn Sie mit dem Plan zufrieden sind, wechseln Sie zurück in den _Build Mode_
-   indem Sie erneut die **Tabulatortaste** drücken.
+   Once you feel comfortable with the plan, switch back to _Build mode_ by
+   hitting the **Tab** key again.
 
    ```bash frame="none"
    <TAB>
    ```
 
-   Und es bitten, die Änderungen vorzunehmen.
+   And asking it to make the changes.
 
    ```bash frame="none"
    Sounds good! Go ahead and make the changes.
@@ -279,10 +266,10 @@ Sie können CodePlane bitten, Ihrem Projekt neue Funktionen hinzuzufügen. Wir e
 
 ---
 
-### Änderungen vornehmen
+### Make changes
 
-Für einfachere Änderungen können Sie CodePlane bitten, es direkt zu erstellen
-ohne den Plan vorher überprüfen zu müssen.
+For more straightforward changes, you can ask CodePlane to directly build it
+without having to review the plan first.
 
 ```txt frame="none" "@packages/functions/src/settings.ts" "@packages/functions/src/notes.ts"
 We need to add authentication to the /settings route. Take a look at how this is
@@ -290,40 +277,40 @@ handled in the /notes route in @packages/functions/src/notes.ts and implement
 the same logic in @packages/functions/src/settings.ts
 ```
 
-Sie möchten sicherstellen, dass Sie viele Details bereitstellen, damit CodePlane die richtigen
-Änderungen vornimmt.
+You want to make sure you provide a good amount of detail so CodePlane makes the right
+changes.
 
 ---
 
-### Änderungen rückgängig machen
+### Undo changes
 
-Nehmen wir an, Sie bitten CodePlane, einige Änderungen vorzunehmen.
+Let's say you ask CodePlane to make some changes.
 
 ```txt frame="none" "@packages/functions/src/api/index.ts"
 Can you refactor the function in @packages/functions/src/api/index.ts?
 ```
 
-Aber Sie erkennen, dass es nicht das ist, was Sie wollten. Sie können die Änderungen **rückgängig machen**
-mit dem Befehl `/undo`.
+But you realize that it is not what you wanted. You **can undo** the changes
+using the `/undo` command.
 
 ```bash frame="none"
 /undo
 ```
 
-CodePlane macht nun die von Ihnen vorgenommenen Änderungen rückgängig und zeigt Ihre ursprüngliche Nachricht
-wieder an.
+CodePlane will now revert the changes you made and show your original message
+again.
 
 ```txt frame="none" "@packages/functions/src/api/index.ts"
 Can you refactor the function in @packages/functions/src/api/index.ts?
 ```
 
-Von hier aus können Sie die Eingabeaufforderung anpassen und CodePlane bitten, es erneut zu versuchen.
+From here you can tweak the prompt and ask CodePlane to try again.
 
 :::tip
-Sie können `/undo` mehrmals ausführen, um mehrere Änderungen rückgängig zu machen.
+You can run `/undo` multiple times to undo multiple changes.
 :::
 
-Oder Sie **können** die Änderungen mit dem Befehl `/redo` wiederholen.
+Or you **can redo** the changes using the `/redo` command.
 
 ```bash frame="none"
 /redo
@@ -331,26 +318,27 @@ Oder Sie **können** die Änderungen mit dem Befehl `/redo` wiederholen.
 
 ---
 
-## Teilen
+## Share
 
-Die Gespräche, die Sie mit CodePlane führen, können [mit Ihrem Team](/docs/share) geteilt werden.
+The conversations that you have with CodePlane can be [shared with your
+team](/docs/share).
 
 ```bash frame="none"
 /share
 ```
 
-Dadurch wird ein Link zur aktuellen Konversation erstellt und in Ihre Zwischenablage kopiert.
+This will create a link to the current conversation and copy it to your clipboard.
 
 :::note
-Gespräche werden standardmäßig nicht geteilt.
+Conversations are not shared by default.
 :::
 
-Hier ist ein [Beispielgespräch](https://example.invalid) mit CodePlane.
+Here's an [example conversation](https://example.invalid) with CodePlane.
 
 ---
 
-## Anpassung
+## Customize
 
-Und das ist es! Sie sind jetzt ein Profi im Umgang mit CodePlane.
+And that's it! You are now a pro at using CodePlane.
 
-Um es zu Ihrem eigenen zu machen, empfehlen wir [ein Theme auszuwählen](/docs/themes), [Keybinds anzupassen](/docs/keybinds), [Code-Formatter zu konfigurieren](/docs/formatters), [eigene Commands zu erstellen](/docs/commands) oder mit der [CodePlane-Konfiguration](/docs/config) zu experimentieren.
+To make it your own, we recommend [picking a theme](/docs/themes), [configuring code formatters](/docs/formatters), [creating custom commands](/docs/commands), or playing around with the [CodePlane config](/docs/config).

@@ -1,23 +1,23 @@
 ---
-title: Comandi
-description: Crea comandi personalizzati per task ripetitivi.
+title: Commands
+description: Create custom commands for repetitive tasks.
 ---
 
-I comandi personalizzati ti permettono di definire un prompt da eseguire quando quel comando viene lanciato nella TUI.
+Custom commands let you specify a prompt you want to run from the web app or CLI.
 
 ```bash frame="none"
 /my-command
 ```
 
-I comandi personalizzati si aggiungono a quelli integrati come `/init`, `/undo`, `/redo`, `/share`, `/help`. [Scopri di piu](/docs/tui#commands).
+Custom commands are in addition to the built-in commands like `/init`, `/undo`, `/redo`, `/share`, and `/help`.
 
 ---
 
-## Creazione file di comando
+## Create command files
 
-Crea file markdown nella directory `commands/` per definire comandi personalizzati.
+Create markdown files in the `commands/` directory to define custom commands.
 
-Crea `.codeplane/commands/test.md`:
+Create `.codeplane/commands/test.md`:
 
 ```md title=".codeplane/commands/test.md"
 ---
@@ -30,9 +30,9 @@ Run the full test suite with coverage report and show any failures.
 Focus on the failing tests and suggest fixes.
 ```
 
-Il frontmatter definisce le proprieta del comando. Il contenuto diventa il template.
+The frontmatter defines command properties. The content becomes the template.
 
-Usa il comando digitando `/` seguito dal nome del comando.
+Use the command by typing `/` followed by the command name.
 
 ```bash frame="none"
 "/test"
@@ -40,15 +40,15 @@ Usa il comando digitando `/` seguito dal nome del comando.
 
 ---
 
-## Configurazione
+## Configure
 
-Puoi aggiungere comandi personalizzati tramite la config di CodePlane o creando file markdown nella directory `commands/`.
+You can add custom commands through the CodePlane config or by creating markdown files in the `commands/` directory.
 
 ---
 
 ### JSON
 
-Usa l'opzione `command` nella [config](/docs/config) di CodePlane:
+Use the `command` option in your CodePlane [config](/docs/config):
 
 ```json title="codeplane.jsonc" {4-12}
 {
@@ -58,7 +58,7 @@ Usa l'opzione `command` nella [config](/docs/config) di CodePlane:
     "test": {
       // This is the prompt that will be sent to the LLM
       "template": "Run the full test suite with coverage report and show any failures.\nFocus on the failing tests and suggest fixes.",
-      // This is shown as the description in the TUI
+      // This is shown as the description in command pickers
       "description": "Run tests with coverage",
       "agent": "build",
       "model": "anthropic/claude-3-5-sonnet-20241022"
@@ -67,7 +67,7 @@ Usa l'opzione `command` nella [config](/docs/config) di CodePlane:
 }
 ```
 
-Ora puoi eseguire questo comando nella TUI:
+Now you can run this command from the web app:
 
 ```bash frame="none"
 /test
@@ -77,10 +77,10 @@ Ora puoi eseguire questo comando nella TUI:
 
 ### Markdown
 
-Puoi anche definire comandi usando file markdown. Mettili in:
+You can also define commands using markdown files. Place them in:
 
-- Globale: `~/.config/codeplane/commands/`
-- Per progetto: `.codeplane/commands/`
+- Global: `~/.config/codeplane/commands/`
+- Per-project: `.codeplane/commands/`
 
 ```markdown title="~/.config/codeplane/commands/test.md"
 ---
@@ -93,7 +93,8 @@ Run the full test suite with coverage report and show any failures.
 Focus on the failing tests and suggest fixes.
 ```
 
-Il nome del file markdown diventa il nome del comando. Per esempio, `test.md` ti permette di eseguire:
+The markdown file name becomes the command name. For example, `test.md` lets
+you run:
 
 ```bash frame="none"
 /test
@@ -101,15 +102,15 @@ Il nome del file markdown diventa il nome del comando. Per esempio, `test.md` ti
 
 ---
 
-## Configurazione del prompt
+## Prompt config
 
-I prompt dei comandi personalizzati supportano diversi placeholder e sintassi speciali.
+The prompts for the custom commands support several special placeholders and syntax.
 
 ---
 
-### Argomenti
+### Arguments
 
-Passa argomenti ai comandi usando il placeholder `$ARGUMENTS`.
+Pass arguments to commands using the `$ARGUMENTS` placeholder.
 
 ```md title=".codeplane/commands/component.md"
 ---
@@ -120,22 +121,22 @@ Create a new React component named $ARGUMENTS with TypeScript support.
 Include proper typing and basic structure.
 ```
 
-Esegui il comando con argomenti:
+Run the command with arguments:
 
 ```bash frame="none"
 /component Button
 ```
 
-E `$ARGUMENTS` verra sostituito con `Button`.
+And `$ARGUMENTS` will be replaced with `Button`.
 
-Puoi anche accedere ai singoli argomenti usando parametri posizionali:
+You can also access individual arguments using positional parameters:
 
-- `$1` - Primo argomento
-- `$2` - Secondo argomento
-- `$3` - Terzo argomento
-- E cosi via...
+- `$1` - First argument
+- `$2` - Second argument
+- `$3` - Third argument
+- And so on...
 
-Per esempio:
+For example:
 
 ```md title=".codeplane/commands/create-file.md"
 ---
@@ -146,25 +147,25 @@ Create a file named $1 in the directory $2
 with the following content: $3
 ```
 
-Esegui il comando:
+Run the command:
 
 ```bash frame="none"
 /create-file config.json src "{ \"key\": \"value\" }"
 ```
 
-Questo sostituisce:
+This replaces:
 
-- `$1` con `config.json`
-- `$2` con `src`
-- `$3` con `{ "key": "value" }`
+- `$1` with `config.json`
+- `$2` with `src`
+- `$3` with `{ "key": "value" }`
 
 ---
 
-### Output della shell
+### Shell output
 
-Usa _!`command`_ per inserire nel prompt l'output di un [comando bash](/docs/tui#bash-commands).
+Use _!`command`_ to inject shell command output into your prompt.
 
-Per esempio, per creare un comando personalizzato che analizzi la copertura dei test:
+For example, to create a custom command that analyzes test coverage:
 
 ```md title=".codeplane/commands/analyze-coverage.md"
 ---
@@ -177,7 +178,7 @@ Here are the current test results:
 Based on these results, suggest improvements to increase coverage.
 ```
 
-Oppure per rivedere modifiche recenti:
+Or to review recent changes:
 
 ```md title=".codeplane/commands/review-changes.md"
 ---
@@ -190,13 +191,13 @@ Recent git commits:
 Review these changes and suggest any improvements.
 ```
 
-I comandi vengono eseguiti nella root del progetto e il loro output diventa parte del prompt.
+Commands run in your project's root directory and their output becomes part of the prompt.
 
 ---
 
-### Riferimenti ai file
+### File references
 
-Includi file nel comando usando `@` seguito dal nome del file.
+Include files in your command using `@` followed by the filename.
 
 ```md title=".codeplane/commands/review-component.md"
 ---
@@ -207,19 +208,19 @@ Review the component in @src/components/Button.tsx.
 Check for performance issues and suggest improvements.
 ```
 
-Il contenuto del file viene incluso automaticamente nel prompt.
+The file content gets included in the prompt automatically.
 
 ---
 
-## Opzioni
+## Options
 
-Vediamo le opzioni di configurazione nel dettaglio.
+Let's look at the configuration options in detail.
 
 ---
 
-### Template del prompt
+### Template
 
-L'opzione `template` definisce il prompt che verra inviato all'LLM quando il comando viene eseguito.
+The `template` option defines the prompt that will be sent to the LLM when the command is executed.
 
 ```json title="codeplane.json"
 {
@@ -231,13 +232,13 @@ L'opzione `template` definisce il prompt che verra inviato all'LLM quando il com
 }
 ```
 
-Questa e un'opzione di config **obbligatoria**.
+This is a **required** config option.
 
 ---
 
-### Descrizione
+### Description
 
-Usa l'opzione `description` per fornire una breve descrizione di cosa fa il comando.
+Use the `description` option to provide a brief description of what the command does.
 
 ```json title="codeplane.json"
 {
@@ -249,15 +250,15 @@ Usa l'opzione `description` per fornire una breve descrizione di cosa fa il coma
 }
 ```
 
-Questo viene mostrato come descrizione nella TUI quando digiti il comando.
+This is shown as the description when you type in the command.
 
 ---
 
-### Agente
+### Agent
 
-Usa la config `agent` per specificare opzionalmente quale [agente](/docs/agents) deve eseguire il comando.
-Se e un [subagent](/docs/agents/#subagents), il comando attiva per default l'invocazione di un subagent.
-Per disabilitare questo comportamento, imposta `subtask` a `false`.
+Use the `agent` config to optionally specify which [agent](/docs/agents) should execute this command.
+If this is a [subagent](/docs/agents/#subagents) the command will trigger a subagent invocation by default.
+To disable this behavior, set `subtask` to `false`.
 
 ```json title="codeplane.json"
 {
@@ -269,15 +270,15 @@ Per disabilitare questo comportamento, imposta `subtask` a `false`.
 }
 ```
 
-Questa e un'opzione di config **opzionale**. Se non specificata, usa l'agente corrente.
+This is an **optional** config option. If not specified, defaults to your current agent.
 
 ---
 
-### Sottotask
+### Subtask
 
-Usa il booleano `subtask` per forzare il comando ad attivare l'invocazione di un [subagent](/docs/agents/#subagents).
-E utile se vuoi evitare che il comando inquini il contesto principale e **forza** l'agente ad agire come subagent,
-anche se `mode` e impostato su `primary` nella configurazione dell'[agente](/docs/agents).
+Use the `subtask` boolean to force the command to trigger a [subagent](/docs/agents/#subagents) invocation.
+This is useful if you want the command to not pollute your primary context and will **force** the agent to act as a subagent,
+even if `mode` is set to `primary` on the [agent](/docs/agents) configuration.
 
 ```json title="codeplane.json"
 {
@@ -289,13 +290,13 @@ anche se `mode` e impostato su `primary` nella configurazione dell'[agente](/doc
 }
 ```
 
-Questa e un'opzione di config **opzionale**.
+This is an **optional** config option.
 
 ---
 
-### Modello
+### Model
 
-Usa la config `model` per sovrascrivere il modello predefinito per questo comando.
+Use the `model` config to override the default model for this command.
 
 ```json title="codeplane.json"
 {
@@ -307,16 +308,16 @@ Usa la config `model` per sovrascrivere il modello predefinito per questo comand
 }
 ```
 
-Questa e un'opzione di config **opzionale**.
+This is an **optional** config option.
 
 ---
 
-## Comandi integrati
+## Built-in
 
-codeplane include diversi comandi integrati come `/init`, `/undo`, `/redo`, `/share`, `/help`; [scopri di piu](/docs/tui#commands).
+codeplane includes several built-in commands like `/init`, `/undo`, `/redo`, `/share`, and `/help`.
 
 :::note
-I comandi personalizzati possono sovrascrivere quelli integrati.
+Custom commands can override built-in commands.
 :::
 
-Se definisci un comando personalizzato con lo stesso nome, sovrascrivera il comando integrato.
+If you define a custom command with the same name, it will override the built-in command.

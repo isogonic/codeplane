@@ -63,7 +63,7 @@ function normalizeLoadedConfig(data: unknown, source: string) {
   delete copy.theme
   delete copy.keybinds
   delete copy.tui
-  log.warn("tui keys in codeplane config are deprecated; move them to tui.json", { path: source })
+  log.warn("legacy terminal UI keys in codeplane config are no longer supported", { path: source })
   return copy
 }
 

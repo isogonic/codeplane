@@ -1,78 +1,81 @@
 ---
-title: Ecosistema
-description: Progetti e integrazioni costruiti con CodePlane.
+title: Ecosystem
+description: Projects and integrations built with CodePlane.
 ---
 
-Una raccolta di progetti della comunità costruiti su CodePlane.
+A collection of community projects built on CodePlane.
 
 :::note
-Vuoi aggiungere il tuo progetto legato a CodePlane a questa lista? Apri una PR.
+Want to add your CodePlane related project to this list? Submit a PR.
 :::
 
-Puoi anche dare un'occhiata a [awesome-codeplane](https://github.com/awesome-codeplane/awesome-codeplane) e [codeplane.cafe](https://codeplane.cafe), una comunità che aggrega ecosistema e community.
+You can also check out [awesome-codeplane](https://github.com/awesome-codeplane/awesome-codeplane) and [codeplane.cafe](https://codeplane.cafe), a community that aggregates the ecosystem and community.
 
 ---
 
-## Plugin
+## Plugins
 
-| Nome                                                                                               | Descrizione                                                                                       |
+| Name                                                                                               | Description                                                                                       |
 | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| [codeplane-daytona](https://github.com/daytonaio/daytona/tree/main/libs/codeplane-plugin)            | Esegue automaticamente sessioni CodePlane in sandbox Daytona isolate con sync git e anteprime live |
-| [codeplane-helicone-session](https://github.com/H2Shami/codeplane-helicone-session)                  | Inietta automaticamente gli header di sessione Helicone per raggruppare le richieste              |
-| [codeplane-type-inject](https://github.com/nick-vi/codeplane-type-inject)                            | Inietta automaticamente tipi TypeScript/Svelte nelle letture dei file con tool di lookup          |
-| [codeplane-openai-codex-auth](https://github.com/numman-ali/codeplane-openai-codex-auth)             | Usa il tuo abbonamento ChatGPT Plus/Pro invece dei crediti API                                    |
-| [codeplane-gemini-auth](https://github.com/jenslys/codeplane-gemini-auth)                            | Usa il tuo piano Gemini esistente invece della fatturazione API                                   |
-| [codeplane-antigravity-auth](https://github.com/NoeFabris/codeplane-antigravity-auth)                | Usa i modelli gratuiti di Antigravity invece della fatturazione API                               |
-| [codeplane-devcontainers](https://github.com/athal7/codeplane-devcontainers)                         | Isolamento devcontainer multi-branch con shallow clone e porte assegnate automaticamente          |
-| [codeplane-google-antigravity-auth](https://github.com/shekohex/codeplane-google-antigravity-auth)   | Plugin OAuth Google Antigravity, con supporto a Google Search e gestione API più robusta          |
-| [codeplane-dynamic-context-pruning](https://github.com/Tarquinen/codeplane-dynamic-context-pruning)  | Ottimizza l'uso dei token eliminando output obsoleti degli strumenti                              |
-| [codeplane-vibeguard](https://github.com/inkdust2021/codeplane-vibeguard)                            | Oscura segreti/PII in placeholder stile VibeGuard prima delle chiamate LLM; ripristina localmente |
-| [codeplane-websearch-cited](https://github.com/ghoulr/codeplane-websearch-cited.git)                 | Aggiunge supporto websearch nativo per provider supportati con stile grounded di Google           |
-| [codeplane-pty](https://github.com/shekohex/codeplane-pty.git)                                       | Permette agli agenti AI di eseguire processi in background in una PTY e inviare input interattivo |
-| [codeplane-shell-strategy](https://github.com/JRedeker/codeplane-shell-strategy)                     | Istruzioni per comandi shell non interattivi: evita blocchi dovuti a operazioni dipendenti da TTY |
-| [codeplane-wakatime](https://github.com/angristan/codeplane-wakatime)                                | Traccia l'uso di CodePlane con Wakatime                                                            |
-| [codeplane-md-table-formatter](https://github.com/franlol/codeplane-md-table-formatter/tree/main)    | Ripulisce le tabelle markdown prodotte dai LLM                                                    |
-| [codeplane-morph-plugin](https://github.com/morphllm/codeplane-morph-plugin)                         | Editing Fast Apply, ricerca codebase WarpGrep e compattazione del contesto tramite Morph          |
-| [oh-my-codeplane](https://github.com/code-yeongyu/oh-my-codeplane)                                   | Agenti in background, tool LSP/AST/MCP predefiniti, agenti curati, compatibile con Claude Code    |
-| [codeplane-notificator](https://github.com/panta82/codeplane-notificator)                            | Notifiche desktop e avvisi sonori per le sessioni CodePlane                                        |
-| [codeplane-notifier](https://github.com/mohak34/codeplane-notifier)                                  | Notifiche desktop e avvisi sonori per eventi di permesso, completamento ed errore                 |
-| [codeplane-zellij-namer](https://github.com/24601/codeplane-zellij-namer)                            | Naming automatico delle sessioni Zellij basato sul contesto CodePlane                              |
-| [codeplane-skillful](https://github.com/zenobi-us/codeplane-skillful)                                | Permette agli agenti CodePlane di caricare prompt al bisogno con discovery e injection di skill    |
-| [codeplane-supermemory](https://github.com/supermemoryai/codeplane-supermemory)                      | Memoria persistente tra sessioni usando Supermemory                                               |
-| [@plannotator/codeplane](https://github.com/backnotprop/plannotator/tree/main/apps/codeplane-plugin) | Revisione interattiva dei piani con annotazione visiva e condivisione privata/offline             |
-| [@openspoon/subtask2](https://github.com/spoons-and-mirrors/subtask2)                              | Estende codeplane /commands in un sistema di orchestrazione con controllo di flusso granulare      |
-| [codeplane-scheduler](https://github.com/different-ai/codeplane-scheduler)                           | Pianifica job ricorrenti con launchd (Mac) o systemd (Linux) usando sintassi cron                 |
-| [micode](https://github.com/vtemian/micode)                                                        | Workflow strutturato Brainstorm → Plan → Implement con continuità di sessione                     |
-| [octto](https://github.com/vtemian/octto)                                                          | UI browser interattiva per brainstorming AI con moduli multi-domanda                              |
-| [codeplane-background-agents](https://github.com/kdcokenny/codeplane-background-agents)              | Agenti in background stile Claude Code con delega async e persistenza del contesto                |
-| [codeplane-notify](https://github.com/kdcokenny/codeplane-notify)                                    | Notifiche native del sistema per CodePlane: sai quando i task finiscono                            |
-| [codeplane-workspace](https://github.com/kdcokenny/codeplane-workspace)                              | Harness di orchestrazione multi-agente bundle: 16 componenti, una installazione                   |
-| [codeplane-worktree](https://github.com/kdcokenny/codeplane-worktree)                                | Git worktree senza attriti per CodePlane                                                           |
-| [codeplane-sentry-monitor](https://github.com/stolinski/codeplane-sentry-monitor)                    | Traccia e debugga i tuoi agenti AI con Sentry AI Monitoring                                       |
+| [codeplane-daytona](https://github.com/daytonaio/daytona/tree/main/libs/codeplane-plugin)            | Automatically run CodePlane sessions in isolated Daytona sandboxes with git sync and live previews |
+| [codeplane-helicone-session](https://github.com/H2Shami/codeplane-helicone-session)                  | Automatically inject Helicone session headers for request grouping                                |
+| [codeplane-type-inject](https://github.com/nick-vi/codeplane-type-inject)                            | Auto-inject TypeScript/Svelte types into file reads with lookup tools                             |
+| [codeplane-openai-codex-auth](https://github.com/numman-ali/codeplane-openai-codex-auth)             | Use your ChatGPT Plus/Pro subscription instead of API credits                                     |
+| [codeplane-gemini-auth](https://github.com/jenslys/codeplane-gemini-auth)                            | Use your existing Gemini plan instead of API billing                                              |
+| [codeplane-antigravity-auth](https://github.com/NoeFabris/codeplane-antigravity-auth)                | Use Antigravity's free models instead of API billing                                              |
+| [codeplane-devcontainers](https://github.com/athal7/codeplane-devcontainers)                         | Multi-branch devcontainer isolation with shallow clones and auto-assigned ports                   |
+| [codeplane-google-antigravity-auth](https://github.com/shekohex/codeplane-google-antigravity-auth)   | Google Antigravity OAuth Plugin, with support for Google Search, and more robust API handling     |
+| [codeplane-dynamic-context-pruning](https://github.com/Tarquinen/codeplane-dynamic-context-pruning)  | Optimize token usage by pruning obsolete tool outputs                                             |
+| [codeplane-vibeguard](https://github.com/inkdust2021/codeplane-vibeguard)                            | Redact secrets/PII into VibeGuard-style placeholders before LLM calls; restore locally            |
+| [codeplane-websearch-cited](https://github.com/ghoulr/codeplane-websearch-cited.git)                 | Add native websearch support for supported providers with Google grounded style                   |
+| [codeplane-pty](https://github.com/shekohex/codeplane-pty.git)                                       | Enables AI agents to run background processes in a PTY, send interactive input to them.           |
+| [codeplane-shell-strategy](https://github.com/JRedeker/codeplane-shell-strategy)                     | Instructions for non-interactive shell commands - prevents hangs from TTY-dependent operations    |
+| [codeplane-wakatime](https://github.com/angristan/codeplane-wakatime)                                | Track CodePlane usage with Wakatime                                                                |
+| [codeplane-md-table-formatter](https://github.com/franlol/codeplane-md-table-formatter/tree/main)    | Clean up markdown tables produced by LLMs                                                         |
+| [codeplane-morph-fast-apply](https://github.com/JRedeker/codeplane-morph-fast-apply)                 | 10x faster code editing with Morph Fast Apply API and lazy edit markers                           |
+| [codeplane-morph-plugin](https://github.com/morphllm/codeplane-morph-plugin)                         | Fast Apply editing, WarpGrep codebase search, and context compaction via Morph                    |
+| [oh-my-codeplane](https://github.com/code-yeongyu/oh-my-codeplane)                                   | Background agents, pre-built LSP/AST/MCP tools, curated agents, Claude Code compatible            |
+| [codeplane-notificator](https://github.com/panta82/codeplane-notificator)                            | System notifications and sound alerts for CodePlane sessions                                      |
+| [codeplane-notifier](https://github.com/mohak34/codeplane-notifier)                                  | System notifications and sound alerts for permission, completion, and error events               |
+| [codeplane-zellij-namer](https://github.com/24601/codeplane-zellij-namer)                            | AI-powered automatic Zellij session naming based on CodePlane context                              |
+| [codeplane-skillful](https://github.com/zenobi-us/codeplane-skillful)                                | Allow CodePlane agents to lazy load prompts on demand with skill discovery and injection           |
+| [codeplane-supermemory](https://github.com/supermemoryai/codeplane-supermemory)                      | Persistent memory across sessions using Supermemory                                               |
+| [@plannotator/codeplane](https://github.com/backnotprop/plannotator/tree/main/apps/codeplane-plugin) | Interactive plan review with visual annotation and private/offline sharing                        |
+| [@openspoon/subtask2](https://github.com/spoons-and-mirrors/subtask2)                              | Extend codeplane /commands into a powerful orchestration system with granular flow control         |
+| [codeplane-scheduler](https://github.com/different-ai/codeplane-scheduler)                           | Schedule recurring jobs using launchd (Mac) or systemd (Linux) with cron syntax                   |
+| [codeplane-conductor](https://github.com/derekbar90/codeplane-conductor)                             | Protocol-Driven Workflow: Automation of the Context -> Spec -> Plan -> Implement lifecycle.       |
+| [micode](https://github.com/vtemian/micode)                                                        | Structured Brainstorm → Plan → Implement workflow with session continuity                         |
+| [octto](https://github.com/vtemian/octto)                                                          | Interactive browser UI for AI brainstorming with multi-question forms                             |
+| [codeplane-background-agents](https://github.com/kdcokenny/codeplane-background-agents)              | Claude Code-style background agents with async delegation and context persistence                 |
+| [codeplane-notify](https://github.com/kdcokenny/codeplane-notify)                                    | Native OS notifications for CodePlane – know when tasks complete                                   |
+| [codeplane-workspace](https://github.com/kdcokenny/codeplane-workspace)                              | Bundled multi-agent orchestration harness – 16 components, one install                            |
+| [codeplane-worktree](https://github.com/kdcokenny/codeplane-worktree)                                | Zero-friction git worktrees for CodePlane                                                          |
+| [codeplane-sentry-monitor](https://github.com/stolinski/codeplane-sentry-monitor)                    | Trace and debug your AI agents with Sentry AI Monitoring                                          |
+| [codeplane-firecrawl](https://github.com/firecrawl/codeplane-firecrawl)                              | Web scraping, crawling, and search via the Firecrawl CLI                                          |
 
 ---
 
-## Progetti
+## Projects
 
-| Nome                                                                                       | Descrizione                                                          |
-| ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
-| [kimaki](https://github.com/remorses/kimaki)                                               | Bot Discord per controllare sessioni CodePlane, costruito sull'SDK    |
-| [codeplane.nvim](https://github.com/NickvanDyke/codeplane.nvim)                              | Plugin Neovim per prompt consapevoli dell'editor, costruito sull'API |
-| [portal](https://github.com/hosenur/portal)                                                | Web UI mobile-first per CodePlane su Tailscale/VPN                    |
-| [codeplane plugin template](https://github.com/zenobi-us/codeplane-plugin-template/)         | Template per costruire plugin CodePlane                               |
-| [codeplane.nvim](https://github.com/sudo-tee/codeplane.nvim)                                 | Frontend Neovim per codeplane: un agente di coding AI per terminale   |
-| [ai-sdk-provider-codeplane-sdk](https://github.com/ben-vargas/ai-sdk-provider-codeplane-sdk) | Provider Vercel AI SDK per usare CodePlane tramite @codeplane-ai/sdk   |
-| [OpenChamber](https://github.com/btriapitsyn/openchamber)                                  | App Web/Desktop ed estensione VS Code per CodePlane                   |
-| [CodePlane-Obsidian](https://github.com/mtymek/codeplane-obsidian)                           | Plugin Obsidian che integra CodePlane nella UI di Obsidian            |
-| [OpenWork](https://github.com/different-ai/openwork)                                       | Alternativa open source a Claude Cowork, alimentata da CodePlane      |
-| [ocx](https://github.com/kdcokenny/ocx)                                                    | Gestore di estensioni CodePlane con profili portabili e isolati       |
-| [CodeNomad](https://github.com/NeuralNomadsAI/CodeNomad)                                   | App client Desktop, Web, Mobile e remota per CodePlane                |
+| Name                                                                                       | Description                                                      |
+| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| [kimaki](https://github.com/remorses/kimaki)                                               | Discord bot to control CodePlane sessions, built on the SDK       |
+| [codeplane.nvim](https://github.com/NickvanDyke/codeplane.nvim)                              | Neovim plugin for editor-aware prompts, built on the API         |
+| [portal](https://github.com/hosenur/portal)                                                | Mobile-first web UI for CodePlane over Tailscale/VPN              |
+| [codeplane plugin template](https://github.com/zenobi-us/codeplane-plugin-template/)         | Template for building CodePlane plugins                           |
+| [codeplane.nvim](https://github.com/sudo-tee/codeplane.nvim)                                 | Neovim frontend for codeplane - a terminal-based AI coding agent  |
+| [ai-sdk-provider-codeplane-sdk](https://github.com/ben-vargas/ai-sdk-provider-codeplane-sdk) | Vercel AI SDK provider for using CodePlane via @codeplane-ai/sdk   |
+| [OpenChamber](https://github.com/btriapitsyn/openchamber)                                  | Web app and VS Code extension for CodePlane                       |
+| [CodePlane-Obsidian](https://github.com/mtymek/codeplane-obsidian)                           | Obsidian plugin that embeds CodePlane in Obsidian's UI            |
+| [OpenWork](https://github.com/different-ai/openwork)                                       | An open-source alternative to Claude Cowork, powered by CodePlane |
+| [ocx](https://github.com/kdcokenny/ocx)                                                    | CodePlane extension manager with portable, isolated profiles.     |
+| [CodeNomad](https://github.com/NeuralNomadsAI/CodeNomad)                                   | Web, mobile, and remote client app for CodePlane                  |
 
 ---
 
-## Agenti
+## Agents
 
-| Nome                                                              | Descrizione                                               |
-| ----------------------------------------------------------------- | --------------------------------------------------------- |
-| [Agentic](https://github.com/Cluster444/agentic)                  | Agenti AI modulari e comandi per uno sviluppo strutturato |
-| [codeplane-agents](https://github.com/darrenhinde/codeplane-agents) | Config, prompt, agenti e plugin per workflow migliorati   |
+| Name                                                              | Description                                                  |
+| ----------------------------------------------------------------- | ------------------------------------------------------------ |
+| [Agentic](https://github.com/Cluster444/agentic)                  | Modular AI agents and commands for structured development    |
+| [codeplane-agents](https://github.com/darrenhinde/codeplane-agents) | Configs, prompts, agents, and plugins for enhanced workflows |

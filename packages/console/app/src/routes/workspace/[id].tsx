@@ -14,7 +14,7 @@ export default function WorkspaceLayout(props: RouteSectionProps) {
     <main data-page="workspace">
       <div data-component="workspace-container">
         <nav data-component="workspace-nav">
-          <nav data-component="nav-desktop">
+          <nav data-component="nav-wide">
             <div data-component="workspace-nav-items">
               <A href={`/workspace/${params.id}`} end activeClass="active" data-nav-button>
                 {i18n.t("workspace.nav.zen")}

@@ -1,17 +1,17 @@
 ---
 title: CLI
-description: Opcje i polecenia wiersza poleceń CodePlane.
+description: CodePlane CLI options and commands.
 ---
 
 import { Tabs, TabItem } from "@astrojs/starlight/components"
 
-CLI CodePlane domyślnie uruchamia [TUI](/docs/tui), gdy wywołasz je bez argumentów.
+The CodePlane CLI starts the web app when run without any arguments.
 
 ```bash
 codeplane
 ```
 
-CLI obsługuje też polecenia opisane na tej stronie, więc możesz używać CodePlane programowo.
+But it also accepts commands as documented on this page. This allows you to interact with CodePlane programmatically.
 
 ```bash
 codeplane run "Explain how closures work in JavaScript"
@@ -19,87 +19,35 @@ codeplane run "Explain how closures work in JavaScript"
 
 ---
 
-### tui
+## Commands
 
-Uruchamia interfejs terminalowy (TUI) CodePlane.
-
-```bash
-codeplane [project]
-```
-
-#### Flagi
-
-| Flaga        | Skrót | Opis                                                                    |
-| ------------ | ----- | ----------------------------------------------------------------------- |
-| `--continue` | `-c`  | Kontynuuj ostatnią sesję                                                |
-| `--session`  | `-s`  | Identyfikator sesji do kontynuowania                                    |
-| `--fork`     |       | Sklonuj sesję podczas kontynuacji (użyj z `--continue` lub `--session`) |
-| `--prompt`   |       | Monit do użycia                                                         |
-| `--model`    | `-m`  | Model do użycia w formacie dostawca/model                               |
-| `--agent`    |       | Agent do użycia                                                         |
-| `--port`     |       | Port do nasłuchiwania                                                   |
-| `--hostname` |       | Nazwa hosta, do której należy się powiązać                              |
-
----
-
-## Polecenia
-
-Interfejs CLI CodePlane zawiera także dodatkowe polecenia.
+The CodePlane CLI also has the following commands.
 
 ---
 
 ### agent
 
-Zarządzaj agentami CodePlane.
+Manage agents for CodePlane.
 
 ```bash
 codeplane agent [command]
 ```
 
----
-
-### attach
-
-Dołącz terminal do już działającego serwera backendu CodePlane uruchomionego za pomocą `serve` lub `web`.
-
-```bash
-codeplane attach [url]
-```
-
-Pozwala to połączyć TUI ze zdalnym backendem CodePlane. Na przykład:
-
-```bash
-# Start the backend server for web/mobile access
-codeplane web --port 4096 --hostname 0.0.0.0
-
-# In another terminal, attach the TUI to the running backend
-codeplane attach http://10.20.30.40:4096
-```
-
-#### Flagi
-
-| Flaga       | Skrót | Opis                                    |
-| ----------- | ----- | --------------------------------------- |
-| `--dir`     |       | Katalog roboczy, w którym uruchomić TUI |
-| `--session` | `-s`  | Identyfikator sesji do kontynuowania    |
-
----
-
 #### create
 
-Utwórz nowego agenta z niestandardową konfiguracją.
+Create a new agent with custom configuration.
 
 ```bash
 codeplane agent create
 ```
 
-To polecenie poprowadzi Cię przez proces tworzenia nowego agenta z niestandardowym promptem systemowym i konfiguracją narzędzi.
+This command will guide you through creating a new agent with a custom system prompt and tool configuration.
 
 ---
 
 #### list
 
-Wyświetl listę wszystkich agentów.
+List all available agents.
 
 ```bash
 codeplane agent list
@@ -109,7 +57,7 @@ codeplane agent list
 
 ### auth
 
-Zarządzaj danymi uwierzytelniającymi i logowaniem dla dostawców.
+Command to manage credentials and login for providers.
 
 ```bash
 codeplane auth [command]
@@ -119,25 +67,25 @@ codeplane auth [command]
 
 #### login
 
-CodePlane integruje się z wieloma dostawcami. Możesz użyć `codeplane auth login`, aby skonfigurować klucz API dla dowolnego obsługiwanego dostawcy. Klucze są bezpiecznie przechowywane w `~/.local/share/codeplane/auth.json`.
+CodePlane is powered by the provider list at [Models.dev](https://models.dev), so you can use `codeplane auth login` to configure API keys for any provider you'd like to use. This is stored in `~/.local/share/codeplane/auth.json`.
 
 ```bash
 codeplane auth login
 ```
 
-Podczas uruchamiania CodePlane ładuje dostawców z pliku poświadczeń, a także ze zmiennych środowiskowych lub pliku `.env` w Twoim projekcie.
+When CodePlane starts up it loads the providers from the credentials file. And if there are any keys defined in your environments or a `.env` file in your project.
 
 ---
 
 #### list
 
-Wyświetl listę wszystkich uwierzytelnionych dostawców przechowywanych w pliku poświadczeń.
+Lists all the authenticated providers as stored in the credentials file.
 
 ```bash
 codeplane auth list
 ```
 
-Lub skrócona wersja:
+Or the short version.
 
 ```bash
 codeplane auth ls
@@ -147,7 +95,7 @@ codeplane auth ls
 
 #### logout
 
-Wyloguj się z dostawcy, usuwając go z pliku poświadczeń.
+Logs you out of a provider by clearing it from the credentials file.
 
 ```bash
 codeplane auth logout
@@ -157,7 +105,7 @@ codeplane auth logout
 
 ### github
 
-Zarządzaj agentem GitHub w celu automatyzacji repozytorium.
+Manage the GitHub agent for repository automation.
 
 ```bash
 codeplane github [command]
@@ -167,36 +115,36 @@ codeplane github [command]
 
 #### install
 
-Zainstaluj agenta GitHub w swoim repozytorium.
+Install the GitHub agent in your repository.
 
 ```bash
 codeplane github install
 ```
 
-Spowoduje to utworzenie pliku workflow GitHub Actions i poprowadzi Cię przez proces konfiguracji. [Dowiedz się więcej](/docs/github).
+This sets up the necessary GitHub Actions workflow and guides you through the configuration process. [Learn more](/docs/github).
 
 ---
 
 #### run
 
-Uruchom agenta na GitHubie. Zwykle używane w GitHub Actions.
+Run the GitHub agent. This is typically used in GitHub Actions.
 
 ```bash
 codeplane github run
 ```
 
-##### Flagi
+##### Flags
 
-| Flaga     | Opis                                     |
-| --------- | ---------------------------------------- |
-| `--event` | Zdarzenie GitHub, które wyzwoliło agenta |
-| `--token` | Osobisty token dostępu GitHub            |
+| Flag      | Description                            |
+| --------- | -------------------------------------- |
+| `--event` | GitHub mock event to run the agent for |
+| `--token` | GitHub personal access token           |
 
 ---
 
 ### mcp
 
-Zarządzaj serwerami Model Context Protocol (MCP).
+Manage Model Context Protocol servers.
 
 ```bash
 codeplane mcp [command]
@@ -206,25 +154,25 @@ codeplane mcp [command]
 
 #### add
 
-Dodaj serwer MCP do swojej konfiguracji.
+Add an MCP server to your configuration.
 
 ```bash
 codeplane mcp add
 ```
 
-To polecenie poprowadzi Cię przez proces dodawania lokalnego lub zdalnego serwera MCP.
+This command will guide you through adding either a local or remote MCP server.
 
 ---
 
 #### list
 
-Wyświetl listę wszystkich skonfigurowanych serwerów MCP i ich status.
+List all configured MCP servers and their connection status.
 
 ```bash
 codeplane mcp list
 ```
 
-Lub skrócona wersja:
+Or use the short version.
 
 ```bash
 codeplane mcp ls
@@ -234,21 +182,21 @@ codeplane mcp ls
 
 #### auth
 
-Uwierzytelnij się w serwerze MCP z włączoną funkcją OAuth.
+Authenticate with an OAuth-enabled MCP server.
 
 ```bash
 codeplane mcp auth [name]
 ```
 
-Jeśli nie podasz nazwy serwera, zostaniesz poproszony o wybranie jednego z serwerów wymagających uwierzytelnienia.
+If you don't provide a server name, you'll be prompted to select from available OAuth-capable servers.
 
-Możesz także wyświetlić listę serwerów obsługujących OAuth i ich status uwierzytelnienia.
+You can also list OAuth-capable servers and their authentication status.
 
 ```bash
 codeplane mcp auth list
 ```
 
-Lub skrócona wersja:
+Or use the short version.
 
 ```bash
 codeplane mcp auth ls
@@ -258,7 +206,7 @@ codeplane mcp auth ls
 
 #### logout
 
-Usuń tokeny OAuth dla serwera MCP.
+Remove OAuth credentials for an MCP server.
 
 ```bash
 codeplane mcp logout [name]
@@ -268,7 +216,7 @@ codeplane mcp logout [name]
 
 #### debug
 
-Debuguj problemy z połączeniem OAuth dla serwera MCP.
+Debug OAuth connection issues for an MCP server.
 
 ```bash
 codeplane mcp debug <name>
@@ -278,30 +226,30 @@ codeplane mcp debug <name>
 
 ### models
 
-Wyświetl listę modeli ze wszystkich skonfigurowanych dostawców.
+List all available models from configured providers.
 
 ```bash
 codeplane models [provider]
 ```
 
-Pokazuje modele dostępne do użycia w `provider/model`.
+This command displays all models available across your configured providers in the format `provider/model`.
 
-Jest to identyfikator modelu, którego używasz w [konfiguracji](/docs/config).
+This is useful for figuring out the exact model name to use in [your config](/docs/config/).
 
-Opcjonalnie możesz podać identyfikator dostawcy, aby filtrować modele według tego dostawcy.
+You can optionally pass a provider ID to filter models by that provider.
 
 ```bash
 codeplane models anthropic
 ```
 
-#### Flagi
+#### Flags
 
-| Flaga       | Opis                                                                            |
-| ----------- | ------------------------------------------------------------------------------- |
-| `--refresh` | Odśwież pamięć podręczną modeli                                                 |
-| `--verbose` | Bardziej szczegółowe dane wyjściowe modelu (zawiera metadane, takie jak koszty) |
+| Flag        | Description                                                  |
+| ----------- | ------------------------------------------------------------ |
+| `--refresh` | Refresh the models cache from models.dev                     |
+| `--verbose` | Use more verbose model output (includes metadata like costs) |
 
-Użyj flagi `--refresh`, aby zaktualizować listę modeli w pamięci podręcznej. Jest to przydatne, gdy dostawca dodał nowe modele, które chcesz zobaczyć w CodePlane.
+Use the `--refresh` flag to update the cached model list. This is useful when new models have been added to a provider and you want to see them in CodePlane.
 
 ```bash
 codeplane models --refresh
@@ -311,19 +259,19 @@ codeplane models --refresh
 
 ### run
 
-Uruchom CodePlane w trybie nieinteraktywnym, przekazując bezpośrednio prompt.
+Run codeplane in non-interactive mode by passing a prompt directly.
 
 ```bash
 codeplane run [message..]
 ```
 
-Jest to przydatne do tworzenia skryptów, automatyzacji lub gdy chcesz wysłać szybkie zapytanie bez uruchamiania TUI. Na przykład:
+This is useful for scripting, automation, or when you want a quick answer without opening the web app. For example.
 
 ```bash "codeplane run"
 codeplane run Explain the use of context in Go
 ```
 
-Można również użyć tego z działającym `codeplane serve`, aby uniknąć zimnego startu serwera MCP przy każdym uruchomieniu:
+You can also attach to a running `codeplane serve` instance to avoid MCP server cold boot times on every run:
 
 ```bash
 # Start a headless server in one terminal
@@ -333,49 +281,50 @@ codeplane serve
 codeplane run --attach http://localhost:4096 "Explain async/await in JavaScript"
 ```
 
-#### Flagi
+#### Flags
 
-| Flaga        | Skrót | Opis                                                                    |
-| ------------ | ----- | ----------------------------------------------------------------------- |
-| `--command`  |       | Polecenie do uruchomienia, reszta to argumenty                          |
-| `--continue` | `-c`  | Kontynuuj ostatnią sesję                                                |
-| `--session`  | `-s`  | Identyfikator sesji do kontynuowania                                    |
-| `--fork`     |       | Sklonuj sesję podczas kontynuacji (użyj z `--continue` lub `--session`) |
-| `--share`    |       | Udostępnij sesję po zakończeniu                                         |
-| `--model`    | `-m`  | Model do użycia w formacie dostawca/model                               |
-| `--agent`    |       | Agent do użycia                                                         |
-| `--file`     | `-f`  | Pliki do załączenia do wiadomości                                       |
-| `--format`   |       | Format wyjściowy: `default` (sformatowany) lub `json` (surowy JSON)     |
-| `--title`    |       | Tytuł sesji (jeśli nie podano, zostanie wygenerowany z promptu)         |
-| `--attach`   |       | Dołącz do działającego serwera CodePlane (np. http://localhost:4096)     |
-| `--port`     |       | Port dla serwera lokalnego (domyślnie losowy)                           |
+| Flag                             | Short | Description                                                             |
+| -------------------------------- | ----- | ----------------------------------------------------------------------- |
+| `--command`                      |       | The command to run, use message for args                                |
+| `--continue`                     | `-c`  | Continue the last session                                               |
+| `--session`                      | `-s`  | Session ID to continue                                                  |
+| `--fork`                         |       | Fork the session when continuing (use with `--continue` or `--session`) |
+| `--share`                        |       | Share the session                                                       |
+| `--model`                        | `-m`  | Model to use in the form of provider/model                              |
+| `--agent`                        |       | Agent to use                                                            |
+| `--file`                         | `-f`  | File(s) to attach to message                                            |
+| `--format`                       |       | Format: default (formatted) or json (raw JSON events)                   |
+| `--title`                        |       | Title for the session (uses truncated prompt if no value provided)      |
+| `--attach`                       |       | Attach to a running codeplane server (e.g., http://localhost:4096)       |
+| `--port`                         |       | Port for the local server (defaults to random port)                     |
+| `--dangerously-skip-permissions` |       | Auto-approve permissions that are not explicitly denied (dangerous!)    |
 
 ---
 
 ### serve
 
-Uruchom serwer CodePlane (bez interfejsu) w celu uzyskania dostępu do API. Pełny opis API HTTP znajduje się w [dokumentacji serwera](/docs/server).
+Start a headless CodePlane server for API access. Check out the [server docs](/docs/server) for the full HTTP interface.
 
 ```bash
 codeplane serve
 ```
 
-Uruchamia to serwer HTTP, który zapewnia dostęp do API CodePlane bez interfejsu TUI. Ustaw `CODEPLANE_SERVER_PASSWORD`, aby włączyć podstawowe uwierzytelnianie HTTP (domyślna nazwa użytkownika to `codeplane`).
+This starts an HTTP server that provides API access to codeplane functionality without opening the browser UI. Set `CODEPLANE_SERVER_PASSWORD` to enable HTTP basic auth (username defaults to `codeplane`).
 
-#### Flagi
+#### Flags
 
-| Flaga        | Opis                                       |
+| Flag         | Description                                |
 | ------------ | ------------------------------------------ |
-| `--port`     | Port do nasłuchiwania                      |
-| `--hostname` | Nazwa hosta, do której należy się powiązać |
-| `--mdns`     | Włącz wykrywanie mDNS                      |
-| `--cors`     | Dodatkowe dozwolone źródła CORS            |
+| `--port`     | Port to listen on                          |
+| `--hostname` | Hostname to listen on                      |
+| `--mdns`     | Enable mDNS discovery                      |
+| `--cors`     | Additional browser origin(s) to allow CORS |
 
 ---
 
 ### session
 
-Zarządzaj sesjami CodePlane.
+Manage CodePlane sessions.
 
 ```bash
 codeplane session [command]
@@ -385,61 +334,61 @@ codeplane session [command]
 
 #### list
 
-Lista wszystkich sesji CodePlane.
+List all CodePlane sessions.
 
 ```bash
 codeplane session list
 ```
 
-##### Flagi
+##### Flags
 
-| Flaga         | Skrót | Opis                                       |
-| ------------- | ----- | ------------------------------------------ |
-| `--max-count` | `-n`  | Ogranicz do ostatnich N sesji              |
-| `--format`    |       | Format wyjściowy: tabela lub json (tabela) |
+| Flag          | Short | Description                          |
+| ------------- | ----- | ------------------------------------ |
+| `--max-count` | `-n`  | Limit to N most recent sessions      |
+| `--format`    |       | Output format: table or json (table) |
 
 ---
 
 ### stats
 
-Pokaż statystyki wykorzystania tokenów i sesji CodePlane.
+Show token usage and cost statistics for your CodePlane sessions.
 
 ```bash
 codeplane stats
 ```
 
-#### Flagi
+#### Flags
 
-| Flaga       | Opis                                                                                  |
-| ----------- | ------------------------------------------------------------------------------------- |
-| `--days`    | Pokaż statystyki z ostatnich N dni (domyślnie: cały czas)                             |
-| `--tools`   | Pokaż użycie poszczególnych narzędzi (domyślnie: wszystkie)                           |
-| `--models`  | Pokaż podział na modele (domyślnie ukryty). Podaj liczbę, aby pokazać N najczęstszych |
-| `--project` | Filtruj według projektu (domyślnie: wszystkie projekty, pusty ciąg: bieżący projekt)  |
+| Flag        | Description                                                                 |
+| ----------- | --------------------------------------------------------------------------- |
+| `--days`    | Show stats for the last N days (all time)                                   |
+| `--tools`   | Number of tools to show (all)                                               |
+| `--models`  | Show model usage breakdown (hidden by default). Pass a number to show top N |
+| `--project` | Filter by project (all projects, empty string: current project)             |
 
 ---
 
 ### export
 
-Eksportuj dane sesji jako JSON.
+Export session data as JSON.
 
 ```bash
 codeplane export [sessionID]
 ```
 
-Jeśli nie podasz identyfikatora sesji, zostaniesz poproszony o wybranie jednej z ostatnich sesji.
+If you don't provide a session ID, you'll be prompted to select from available sessions.
 
 ---
 
 ### import
 
-Importuj dane sesji z pliku JSON lub adresu URL udostępniania CodePlane.
+Import session data from a JSON file or CodePlane share URL.
 
 ```bash
 codeplane import <file>
 ```
 
-Możesz importować z pliku lokalnego lub adresu URL.
+You can import from a local file or an CodePlane share URL.
 
 ```bash
 codeplane import session.json
@@ -450,154 +399,152 @@ codeplane import https://opncd.ai/s/abc123
 
 ### web
 
-Uruchom serwer CodePlane z interfejsem internetowym.
+Start a headless CodePlane server with a web interface.
 
 ```bash
 codeplane web
 ```
 
-Uruchamia to serwer HTTP i udostępnia CodePlane przez interfejs przeglądarkowy. Ustaw `CODEPLANE_SERVER_PASSWORD`, aby włączyć podstawowe uwierzytelnianie HTTP (domyślna nazwa użytkownika to `codeplane`).
+This starts an HTTP server and opens a web browser to access CodePlane through a web interface. Set `CODEPLANE_SERVER_PASSWORD` to enable HTTP basic auth (username defaults to `codeplane`).
 
-#### Flagi
+#### Flags
 
-| Flaga        | Opis                                       |
+| Flag         | Description                                |
 | ------------ | ------------------------------------------ |
-| `--port`     | Port do nasłuchiwania                      |
-| `--hostname` | Nazwa hosta, do której należy się powiązać |
-| `--mdns`     | Włącz wykrywanie mDNS                      |
-| `--cors`     | Dodatkowe dozwolone źródła CORS            |
+| `--port`     | Port to listen on                          |
+| `--hostname` | Hostname to listen on                      |
+| `--mdns`     | Enable mDNS discovery                      |
+| `--cors`     | Additional browser origin(s) to allow CORS |
 
 ---
 
 ### acp
 
-Uruchom serwer ACP (Agent Client Protocol).
+Start an ACP (Agent Client Protocol) server.
 
 ```bash
 codeplane acp
 ```
 
-Uruchamia serwer ACP, który komunikuje się przez stdin/stdout przy użyciu JSON-RPC.
+This command starts an ACP server that communicates via stdin/stdout using nd-JSON.
 
-#### Flagi
+#### Flags
 
-| Flaga        | Opis                                       |
-| ------------ | ------------------------------------------ |
-| `--cwd`      | Katalog roboczy                            |
-| `--port`     | Port do nasłuchiwania                      |
-| `--hostname` | Nazwa hosta, do której należy się powiązać |
+| Flag         | Description           |
+| ------------ | --------------------- |
+| `--cwd`      | Working directory     |
+| `--port`     | Port to listen on     |
+| `--hostname` | Hostname to listen on |
 
 ---
 
 ### uninstall
 
-Odinstaluj CodePlane i usuń wszystkie powiązane pliki.
+Uninstall CodePlane and remove all related files.
 
 ```bash
 codeplane uninstall
 ```
 
-#### Flagi
+#### Flags
 
-| Flaga           | Skrót | Opis                          |
-| --------------- | ----- | ----------------------------- |
-| `--keep-config` | `-c`  | Zachowaj pliki konfiguracyjne |
-| `--keep-data`   | `-d`  | Zachowaj dane sesji i migawki |
-| `--dry-run`     |       | Pokaż co zostanie usunięte    |
-| `--force`       | `-f`  | Pomiń monity o potwierdzenie  |
+| Flag            | Short | Description                                 |
+| --------------- | ----- | ------------------------------------------- |
+| `--keep-config` | `-c`  | Keep configuration files                    |
+| `--keep-data`   | `-d`  | Keep session data and snapshots             |
+| `--dry-run`     |       | Show what would be removed without removing |
+| `--force`       | `-f`  | Skip confirmation prompts                   |
 
 ---
 
 ### upgrade
 
-Aktualizuj CodePlane do najnowszej lub określonej wersji.
+Updates codeplane to the latest version or a specific version.
 
 ```bash
 codeplane upgrade [target]
 ```
 
-Aby zaktualizować do najnowszej wersji:
+To upgrade to the latest version.
 
 ```bash
 codeplane upgrade
 ```
 
-Aby zaktualizować do konkretnej wersji:
+To upgrade to a specific version.
 
 ```bash
 codeplane upgrade v0.1.48
 ```
 
-#### Flagi
+#### Flags
 
-| Flaga      | Skrót | Opis                                                |
-| ---------- | ----- | --------------------------------------------------- |
-| `--method` | `-m`  | Wymuś metodę instalacji: curl, npm, pnpm, bun, brew |
-
----
-
-## Flagi globalne
-
-Interfejs CLI CodePlane przyjmuje następujące flagi globalne dla każdego polecenia.
-
-| Flaga          | Skrót | Opis                                        |
-| -------------- | ----- | ------------------------------------------- |
-| `--help`       | `-h`  | Wyświetl pomoc                              |
-| `--version`    | `-v`  | Wydrukuj numer wersji                       |
-| `--print-logs` |       | Drukuj logi na stderr                       |
-| `--log-level`  |       | Poziom logowania (DEBUG, INFO, WARN, ERROR) |
+| Flag       | Short | Description                                                       |
+| ---------- | ----- | ----------------------------------------------------------------- |
+| `--method` | `-m`  | The installation method that was used; curl, npm, pnpm, bun, brew |
 
 ---
 
-## Zmienne środowiskowe
+## Global Flags
 
-CodePlane można skonfigurować za pomocą zmiennych środowiskowych.
+The codeplane CLI takes the following global flags.
 
-| Zmienna                               | Typ     | Opis                                                       |
-| ------------------------------------- | ------- | ---------------------------------------------------------- |
-| `CODEPLANE_AUTO_SHARE`                 | boolean | Automatycznie udostępniaj sesje                            |
-| `CODEPLANE_GIT_BASH_PATH`              | string  | Ścieżka do pliku wykonywalnego Git Bash w systemie Windows |
-| `CODEPLANE_CONFIG`                     | string  | Ścieżka do pliku konfiguracyjnego                          |
-| `CODEPLANE_TUI_CONFIG`                 | string  | Ścieżka do pliku konfiguracyjnego TUI                      |
-| `CODEPLANE_CONFIG_DIR`                 | string  | Ścieżka do katalogu konfiguracyjnego                       |
-| `CODEPLANE_CONFIG_CONTENT`             | string  | Treść konfiguracji JSON (inline)                           |
-| `CODEPLANE_DISABLE_AUTOUPDATE`         | boolean | Wyłącz automatyczne sprawdzanie aktualizacji               |
-| `CODEPLANE_DISABLE_PRUNE`              | boolean | Wyłącz czyszczenie starych wyników (pruning)               |
-| `CODEPLANE_DISABLE_TERMINAL_TITLE`     | boolean | Wyłącz automatyczne ustawianie tytułu terminala            |
-| `CODEPLANE_PERMISSION`                 | string  | Konfiguracja uprawnień w JSON (inline)                     |
-| `CODEPLANE_DISABLE_DEFAULT_PLUGINS`    | boolean | Wyłącz domyślne wtyczki                                    |
-| `CODEPLANE_DISABLE_LSP_DOWNLOAD`       | boolean | Wyłącz automatyczne pobieranie serwerów LSP                |
-| `CODEPLANE_ENABLE_EXPERIMENTAL_MODELS` | boolean | Włącz modele eksperymentalne                               |
-| `CODEPLANE_DISABLE_AUTOCOMPACT`        | boolean | Wyłącz automatyczne kompaktowanie kontekstu                |
-| `CODEPLANE_DISABLE_CLAUDE_CODE`        | boolean | Wyłącz integrację z `.claude` (prompt + skills)            |
-| `CODEPLANE_DISABLE_CLAUDE_CODE_PROMPT` | boolean | Wyłącz czytanie `~/.claude/CLAUDE.md`                      |
-| `CODEPLANE_DISABLE_CLAUDE_CODE_SKILLS` | boolean | Wyłącz ładowanie `.claude/skills`                          |
-| `CODEPLANE_DISABLE_MODELS_FETCH`       | boolean | Wyłącz pobieranie modeli ze źródeł zewnętrznych            |
-| `CODEPLANE_FAKE_VCS`                   | string  | Fałszywy dostawca VCS do celów testowych                   |
-| `CODEPLANE_CLIENT`                     | string  | Identyfikator klienta (domyślnie `cli`)                    |
-| `CODEPLANE_ENABLE_EXA`                 | boolean | Włącz narzędzie wyszukiwania internetowego Exa             |
-| `CODEPLANE_SERVER_PASSWORD`            | string  | Włącz uwierzytelnianie podstawowe dla `serve`/`web`        |
-| `CODEPLANE_SERVER_USERNAME`            | string  | Nazwa użytkownika do autoryzacji (domyślnie `codeplane`)    |
-| `CODEPLANE_MODELS_URL`                 | string  | Niestandardowy adres URL do pobierania konfiguracji modeli |
+| Flag           | Short | Description                          |
+| -------------- | ----- | ------------------------------------ |
+| `--help`       | `-h`  | Display help                         |
+| `--version`    | `-v`  | Print version number                 |
+| `--print-logs` |       | Print logs to stderr                 |
+| `--log-level`  |       | Log level (DEBUG, INFO, WARN, ERROR) |
 
 ---
 
-### Eksperymentalne
+## Environment variables
 
-Te zmienne włączają funkcje eksperymentalne, które mogą ulec zmianie lub zostać usunięte.
+CodePlane can be configured using environment variables.
 
-| Zmienna                                         | Typ     | Opis                                         |
-| ----------------------------------------------- | ------- | -------------------------------------------- |
-| `CODEPLANE_EXPERIMENTAL`                         | boolean | Włącz wszystkie funkcje eksperymentalne      |
-| `CODEPLANE_EXPERIMENTAL_ICON_DISCOVERY`          | boolean | Włącz wykrywanie ikon                        |
-| `CODEPLANE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT`  | boolean | Wyłącz kopiowanie przy zaznaczaniu w TUI     |
-| `CODEPLANE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS` | number  | Domyślny limit czasu dla narzędzia bash w ms |
-| `CODEPLANE_EXPERIMENTAL_OUTPUT_TOKEN_MAX`        | number  | Maksymalne tokeny wyjściowe dla LLM          |
-| `CODEPLANE_EXPERIMENTAL_FILEWATCHER`             | boolean | Włącz obserwatora plików dla całego katalogu |
-| `CODEPLANE_EXPERIMENTAL_OXFMT`                   | boolean | Włącz formater oxfmt                         |
-| `CODEPLANE_EXPERIMENTAL_LSP_TOOL`                | boolean | Włącz eksperymentalne narzędzie LSP          |
-| `CODEPLANE_EXPERIMENTAL_DISABLE_FILEWATCHER`     | boolean | Wyłącz obserwatora plików                    |
-| `CODEPLANE_EXPERIMENTAL_EXA`                     | boolean | Włącz funkcje eksperymentalne Exa            |
-| `CODEPLANE_EXPERIMENTAL_LSP_TY`                  | boolean | Włącz TY LSP dla plików python               |
-| `CODEPLANE_EXPERIMENTAL_MARKDOWN`                | boolean | Włącz funkcje eksperymentalne Markdown       |
-| `CODEPLANE_EXPERIMENTAL_PLAN_MODE`               | boolean | Włącz tryb planowania                        |
+| Variable                              | Type    | Description                                       |
+| ------------------------------------- | ------- | ------------------------------------------------- |
+| `CODEPLANE_AUTO_SHARE`                 | boolean | Automatically share sessions                      |
+| `CODEPLANE_GIT_BASH_PATH`              | string  | Path to Git Bash executable on Windows            |
+| `CODEPLANE_CONFIG`                     | string  | Path to config file                               |
+| `CODEPLANE_CONFIG_DIR`                 | string  | Path to config directory                          |
+| `CODEPLANE_CONFIG_CONTENT`             | string  | Inline json config content                        |
+| `CODEPLANE_DISABLE_AUTOUPDATE`         | boolean | Disable automatic update checks                   |
+| `CODEPLANE_DISABLE_PRUNE`              | boolean | Disable pruning of old data                       |
+| `CODEPLANE_DISABLE_TERMINAL_TITLE`     | boolean | Disable automatic terminal title updates          |
+| `CODEPLANE_PERMISSION`                 | string  | Inlined json permissions config                   |
+| `CODEPLANE_DISABLE_DEFAULT_PLUGINS`    | boolean | Disable default plugins                           |
+| `CODEPLANE_DISABLE_LSP_DOWNLOAD`       | boolean | Disable automatic LSP server downloads            |
+| `CODEPLANE_ENABLE_EXPERIMENTAL_MODELS` | boolean | Enable experimental models                        |
+| `CODEPLANE_DISABLE_AUTOCOMPACT`        | boolean | Disable automatic context compaction              |
+| `CODEPLANE_DISABLE_CLAUDE_CODE`        | boolean | Disable reading from `.claude` (prompt + skills)  |
+| `CODEPLANE_DISABLE_CLAUDE_CODE_PROMPT` | boolean | Disable reading `~/.claude/CLAUDE.md`             |
+| `CODEPLANE_DISABLE_CLAUDE_CODE_SKILLS` | boolean | Disable loading `.claude/skills`                  |
+| `CODEPLANE_DISABLE_MODELS_FETCH`       | boolean | Disable fetching models from remote sources       |
+| `CODEPLANE_FAKE_VCS`                   | string  | Fake VCS provider for testing purposes            |
+| `CODEPLANE_CLIENT`                     | string  | Client identifier (defaults to `cli`)             |
+| `CODEPLANE_ENABLE_EXA`                 | boolean | Enable Exa web search tools                       |
+| `CODEPLANE_SERVER_PASSWORD`            | string  | Enable basic auth for `serve`/`web`               |
+| `CODEPLANE_SERVER_USERNAME`            | string  | Override basic auth username (default `codeplane`) |
+| `CODEPLANE_MODELS_URL`                 | string  | Custom URL for fetching models configuration      |
+
+---
+
+### Experimental
+
+These environment variables enable experimental features that may change or be removed.
+
+| Variable                                        | Type    | Description                             |
+| ----------------------------------------------- | ------- | --------------------------------------- |
+| `CODEPLANE_EXPERIMENTAL`                         | boolean | Enable all experimental features        |
+| `CODEPLANE_EXPERIMENTAL_ICON_DISCOVERY`          | boolean | Enable icon discovery                   |
+| `CODEPLANE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS` | number  | Default timeout for bash commands in ms |
+| `CODEPLANE_EXPERIMENTAL_OUTPUT_TOKEN_MAX`        | number  | Max output tokens for LLM responses     |
+| `CODEPLANE_EXPERIMENTAL_FILEWATCHER`             | boolean | Enable file watcher for entire dir      |
+| `CODEPLANE_EXPERIMENTAL_OXFMT`                   | boolean | Enable oxfmt formatter                  |
+| `CODEPLANE_EXPERIMENTAL_LSP_TOOL`                | boolean | Enable experimental LSP tool            |
+| `CODEPLANE_EXPERIMENTAL_DISABLE_FILEWATCHER`     | boolean | Disable file watcher                    |
+| `CODEPLANE_EXPERIMENTAL_EXA`                     | boolean | Enable experimental Exa features        |
+| `CODEPLANE_EXPERIMENTAL_LSP_TY`                  | boolean | Enable TY LSP for python files          |
+| `CODEPLANE_EXPERIMENTAL_MARKDOWN`                | boolean | Enable experimental markdown features   |
+| `CODEPLANE_EXPERIMENTAL_PLAN_MODE`               | boolean | Enable plan mode                        |

@@ -1,29 +1,29 @@
 ---
-title: Server MCP
-description: Aggiungi strumenti MCP locali e remoti.
+title: MCP servers
+description: Add local and remote MCP tools.
 ---
 
-Puoi aggiungere strumenti esterni a CodePlane usando il _Model Context Protocol_, o MCP. CodePlane supporta sia server locali sia remoti.
+You can add external tools to CodePlane using the _Model Context Protocol_, or MCP. CodePlane supports both local and remote servers.
 
-Una volta aggiunti, gli strumenti MCP sono automaticamente disponibili all'LLM insieme agli strumenti integrati.
+Once added, MCP tools are automatically available to the LLM alongside built-in tools.
 
 ---
 
-#### Avvertenze
+#### Caveats
 
-Quando usi un server MCP, aggiunge contenuto al contesto. Questo puo' crescere rapidamente se hai molti strumenti. Per questo consigliamo di fare attenzione a quali server MCP abiliti.
+When you use an MCP server, it adds to the context. This can quickly add up if you have a lot of tools. So we recommend being careful with which MCP servers you use.
 
 :::tip
-I server MCP aumentano il contesto, quindi e' meglio essere prudenti su quali abilitare.
+MCP servers add to your context, so you want to be careful with which ones you enable.
 :::
 
-Alcuni server MCP, come il server MCP di GitHub, tendono ad aggiungere molti token e possono facilmente superare il limite di contesto.
+Certain MCP servers, like the GitHub MCP server, tend to add a lot of tokens and can easily exceed the context limit.
 
 ---
 
-## Abilita
+## Enable
 
-Puoi definire server MCP nella tua [CodePlane Config](https://github.com/devinoldenburg/codeplane) sotto `mcp`. Aggiungi ogni MCP con un nome univoco. Puoi riferirti a quell'MCP per nome quando fai prompt all'LLM.
+You can define MCP servers in your [CodePlane Config](https://github.com/devinoldenburg/codeplane) under `mcp`. Add each MCP with a unique name. You can refer to that MCP by name when prompting the LLM.
 
 ```jsonc title="codeplane.jsonc" {6}
 {
@@ -40,15 +40,15 @@ Puoi definire server MCP nella tua [CodePlane Config](https://github.com/devinol
 }
 ```
 
-Puoi anche disabilitare un server impostando `enabled` a `false`. E' utile se vuoi disabilitare temporaneamente un server senza rimuoverlo dalla configurazione.
+You can also disable a server by setting `enabled` to `false`. This is useful if you want to temporarily disable a server without removing it from your config.
 
 ---
 
-### Sovrascrivere i default remoti
+### Overriding remote defaults
 
-Le organizzazioni possono fornire server MCP predefiniti tramite l'endpoint `.well-known/codeplane`. Questi server possono essere disabilitati di default, lasciando agli utenti la possibilita' di fare opt-in su quelli necessari.
+Organizations can provide default MCP servers via their `.well-known/codeplane` endpoint. These servers may be disabled by default, allowing users to opt-in to the ones they need.
 
-Per abilitare un server specifico dalla configurazione remota dell'organizzazione, aggiungilo alla configurazione locale con `enabled: true`:
+To enable a specific server from your organization's remote config, add it to your local config with `enabled: true`:
 
 ```json title="codeplane.json"
 {
@@ -63,13 +63,13 @@ Per abilitare un server specifico dalla configurazione remota dell'organizzazion
 }
 ```
 
-I valori della configurazione locale sovrascrivono i default remoti. Vedi [config precedence](/docs/config#precedence-order) per maggiori dettagli.
+Your local config values override the remote defaults. See [config precedence](/docs/config#precedence-order) for more details.
 
 ---
 
-## Locali
+## Local
 
-Aggiungi server MCP locali impostando `type` a `"local"` dentro l'oggetto `mcp`.
+Add local MCP servers using `type` to `"local"` within the MCP object.
 
 ```jsonc title="codeplane.jsonc" {15}
 {
@@ -88,9 +88,9 @@ Aggiungi server MCP locali impostando `type` a `"local"` dentro l'oggetto `mcp`.
 }
 ```
 
-Il comando e' come viene avviato il server MCP locale. Puoi anche passare un elenco di variabili d'ambiente.
+The command is how the local MCP server is started. You can also pass in a list of environment variables as well.
 
-Per esempio, ecco come aggiungere il server MCP di test [`@modelcontextprotocol/server-everything`](https://www.npmjs.com/package/@modelcontextprotocol/server-everything).
+For example, here's how you can add the test [`@modelcontextprotocol/server-everything`](https://www.npmjs.com/package/@modelcontextprotocol/server-everything) MCP server.
 
 ```jsonc title="codeplane.jsonc"
 {
@@ -104,7 +104,7 @@ Per esempio, ecco come aggiungere il server MCP di test [`@modelcontextprotocol/
 }
 ```
 
-E per usarlo posso aggiungere `use the mcp_everything tool` ai miei prompt.
+And to use it I can add `use the mcp_everything tool` to my prompts.
 
 ```txt "mcp_everything"
 use the mcp_everything tool to add the number 3 and 4
@@ -112,23 +112,23 @@ use the mcp_everything tool to add the number 3 and 4
 
 ---
 
-#### Opzioni
+#### Options
 
-Ecco tutte le opzioni per configurare un server MCP locale.
+Here are all the options for configuring a local MCP server.
 
-| Opzione       | Tipo    | Richiesto | Descrizione                                                                          |
-| ------------- | ------- | --------- | ------------------------------------------------------------------------------------ |
-| `type`        | String  | Y         | Tipo di connessione del server MCP, deve essere `"local"`.                           |
-| `command`     | Array   | Y         | Comando e argomenti per eseguire il server MCP.                                      |
-| `environment` | Object  |           | Variabili d'ambiente da impostare quando si esegue il server.                        |
-| `enabled`     | Boolean |           | Abilita o disabilita il server MCP all'avvio.                                        |
-| `timeout`     | Number  |           | Timeout in ms per recuperare gli strumenti dal server MCP. Default 5000 (5 secondi). |
+| Option        | Type    | Required | Description                                                                         |
+| ------------- | ------- | -------- | ----------------------------------------------------------------------------------- |
+| `type`        | String  | Y        | Type of MCP server connection, must be `"local"`.                                   |
+| `command`     | Array   | Y        | Command and arguments to run the MCP server.                                        |
+| `environment` | Object  |          | Environment variables to set when running the server.                               |
+| `enabled`     | Boolean |          | Enable or disable the MCP server on startup.                                        |
+| `timeout`     | Number  |          | Timeout in ms for fetching tools from the MCP server. Defaults to 5000 (5 seconds). |
 
 ---
 
-## Remoti
+## Remote
 
-Aggiungi server MCP remoti impostando `type` a `"remote"`.
+Add remote MCP servers by setting `type` to `"remote"`.
 
 ```json title="codeplane.json"
 {
@@ -146,36 +146,36 @@ Aggiungi server MCP remoti impostando `type` a `"remote"`.
 }
 ```
 
-`url` e' l'URL del server MCP remoto e con l'opzione `headers` puoi passare un elenco di header.
+The `url` is the URL of the remote MCP server and with the `headers` option you can pass in a list of headers.
 
 ---
 
-#### Opzioni
+#### Options
 
-| Opzione   | Tipo    | Richiesto | Descrizione                                                                          |
-| --------- | ------- | --------- | ------------------------------------------------------------------------------------ |
-| `type`    | String  | Y         | Tipo di connessione del server MCP, deve essere `"remote"`.                          |
-| `url`     | String  | Y         | URL del server MCP remoto.                                                           |
-| `enabled` | Boolean |           | Abilita o disabilita il server MCP all'avvio.                                        |
-| `headers` | Object  |           | Header da inviare con la richiesta.                                                  |
-| `oauth`   | Object  |           | Configurazione autenticazione OAuth. Vedi sezione [OAuth](#oauth) sotto.             |
-| `timeout` | Number  |           | Timeout in ms per recuperare gli strumenti dal server MCP. Default 5000 (5 secondi). |
+| Option    | Type    | Required | Description                                                                         |
+| --------- | ------- | -------- | ----------------------------------------------------------------------------------- |
+| `type`    | String  | Y        | Type of MCP server connection, must be `"remote"`.                                  |
+| `url`     | String  | Y        | URL of the remote MCP server.                                                       |
+| `enabled` | Boolean |          | Enable or disable the MCP server on startup.                                        |
+| `headers` | Object  |          | Headers to send with the request.                                                   |
+| `oauth`   | Object  |          | OAuth authentication configuration. See [OAuth](#oauth) section below.              |
+| `timeout` | Number  |          | Timeout in ms for fetching tools from the MCP server. Defaults to 5000 (5 seconds). |
 
 ---
 
 ## OAuth
 
-CodePlane gestisce automaticamente l'autenticazione OAuth per i server MCP remoti. Quando un server richiede autenticazione, CodePlane:
+CodePlane automatically handles OAuth authentication for remote MCP servers. When a server requires authentication, CodePlane will:
 
-1. Rileva la risposta 401 e avvia il flusso OAuth
-2. Usa **Dynamic Client Registration (RFC 7591)** se supportato dal server
-3. Memorizza i token in modo sicuro per richieste future
+1. Detect the 401 response and initiate the OAuth flow
+2. Use **Dynamic Client Registration (RFC 7591)** if supported by the server
+3. Store tokens securely for future requests
 
 ---
 
-### Automatico
+### Automatic
 
-Per la maggior parte dei server MCP con OAuth, non serve alcuna configurazione speciale. Basta configurare il server remoto:
+For most OAuth-enabled MCP servers, no special configuration is needed. Just configure the remote server:
 
 ```json title="codeplane.json"
 {
@@ -189,13 +189,13 @@ Per la maggior parte dei server MCP con OAuth, non serve alcuna configurazione s
 }
 ```
 
-Se il server richiede autenticazione, CodePlane ti chiedera' di autenticarti la prima volta che provi a usarlo. In caso contrario, puoi [attivare manualmente il flusso](#authenticating) con `codeplane mcp auth <server-name>`.
+If the server requires authentication, CodePlane will prompt you to authenticate when you first try to use it. If not, you can [manually trigger the flow](#authenticating) with `codeplane mcp auth <server-name>`.
 
 ---
 
-### Pre-registrato
+### Pre-registered
 
-Se hai credenziali client dal provider del server MCP, puoi configurarle:
+If you have client credentials from the MCP server provider, you can configure them:
 
 ```json title="codeplane.json" {7-11}
 {
@@ -216,35 +216,35 @@ Se hai credenziali client dal provider del server MCP, puoi configurarle:
 
 ---
 
-### Autenticazione
+### Authenticating
 
-Puoi avviare manualmente l'autenticazione o gestire le credenziali.
+You can manually trigger authentication or manage credentials.
 
-Autentica con un server MCP specifico:
+Authenticate with a specific MCP server:
 
 ```bash
 codeplane mcp auth my-oauth-server
 ```
 
-Elenca tutti i server MCP e il loro stato di autenticazione:
+List all MCP servers and their auth status:
 
 ```bash
 codeplane mcp list
 ```
 
-Rimuovi credenziali memorizzate:
+Remove stored credentials:
 
 ```bash
 codeplane mcp logout my-oauth-server
 ```
 
-Il comando `mcp auth` aprira' il browser per l'autorizzazione. Dopo l'autorizzazione, CodePlane memorizzera' i token in modo sicuro in `~/.local/share/codeplane/mcp-auth.json`.
+The `mcp auth` command will open your browser for authorization. After you authorize, CodePlane will store the tokens securely in `~/.local/share/codeplane/mcp-auth.json`.
 
 ---
 
-#### Disabilitare OAuth
+#### Disabling OAuth
 
-Se vuoi disabilitare l'OAuth automatico per un server (ad esempio per server che usano API key), imposta `oauth` a `false`:
+If you want to disable automatic OAuth for a server (e.g., for servers that use API keys instead), set `oauth` to `false`:
 
 ```json title="codeplane.json" {7}
 {
@@ -264,18 +264,18 @@ Se vuoi disabilitare l'OAuth automatico per un server (ad esempio per server che
 
 ---
 
-#### Opzioni OAuth
+#### OAuth Options
 
-| Opzione        | Tipo            | Descrizione                                                                 |
-| -------------- | --------------- | --------------------------------------------------------------------------- |
-| `oauth`        | Object \| false | Oggetto config OAuth, o `false` per disabilitare l'auto-detection di OAuth. |
-| `clientId`     | String          | OAuth client ID. Se non fornito, si prova la dynamic client registration.   |
-| `clientSecret` | String          | OAuth client secret, se richiesto dal server di autorizzazione.             |
-| `scope`        | String          | Scope OAuth da richiedere durante l'autorizzazione.                         |
+| Option         | Type            | Description                                                                      |
+| -------------- | --------------- | -------------------------------------------------------------------------------- |
+| `oauth`        | Object \| false | OAuth config object, or `false` to disable OAuth auto-detection.                 |
+| `clientId`     | String          | OAuth client ID. If not provided, dynamic client registration will be attempted. |
+| `clientSecret` | String          | OAuth client secret, if required by the authorization server.                    |
+| `scope`        | String          | OAuth scopes to request during authorization.                                    |
 
-#### Debug
+#### Debugging
 
-Se un server MCP remoto non riesce ad autenticarsi, puoi diagnosticare i problemi con:
+If a remote MCP server is failing to authenticate, you can diagnose issues with:
 
 ```bash
 # View auth status for all OAuth-capable servers
@@ -285,19 +285,19 @@ codeplane mcp auth list
 codeplane mcp debug my-oauth-server
 ```
 
-Il comando `mcp debug` mostra lo stato di autenticazione corrente, testa la connettivita' HTTP e prova il flusso di discovery OAuth.
+The `mcp debug` command shows the current auth status, tests HTTP connectivity, and attempts the OAuth discovery flow.
 
 ---
 
-## Gestione
+## Manage
 
-I tuoi MCP sono disponibili come strumenti in CodePlane insieme agli strumenti integrati. Quindi puoi gestirli tramite la configurazione CodePlane come qualunque altro strumento.
+Your MCPs are available as tools in CodePlane, alongside built-in tools. So you can manage them through the CodePlane config like any other tool.
 
 ---
 
-### Globale
+### Global
 
-Questo significa che puoi abilitarli o disabilitarli globalmente.
+This means that you can enable or disable them globally.
 
 ```json title="codeplane.json" {14}
 {
@@ -318,7 +318,7 @@ Questo significa che puoi abilitarli o disabilitarli globalmente.
 }
 ```
 
-Possiamo anche usare un pattern glob per disabilitare tutti gli MCP corrispondenti.
+We can also use a glob pattern to disable all matching MCPs.
 
 ```json title="codeplane.json" {14}
 {
@@ -339,16 +339,16 @@ Possiamo anche usare un pattern glob per disabilitare tutti gli MCP corrisponden
 }
 ```
 
-Qui stiamo usando il pattern glob `my-mcp*` per disabilitare tutti gli MCP.
+Here we are using the glob pattern `my-mcp*` to disable all MCPs.
 
 ---
 
-### Per agente
+### Per agent
 
-Se hai molti server MCP, potresti volerli abilitare solo per agente e disabilitarli globalmente. Per farlo:
+If you have a large number of MCP servers you may want to only enable them per agent and disable them globally. To do this:
 
-1. Disabilitalo globalmente come strumento.
-2. Nella tua [config dell'agente](/docs/agents#tools), abilita il server MCP come strumento.
+1. Disable it as a tool globally.
+2. In your [agent config](/docs/agents#tools), enable the MCP server as a tool.
 
 ```json title="codeplane.json" {11, 14-18}
 {
@@ -375,16 +375,16 @@ Se hai molti server MCP, potresti volerli abilitare solo per agente e disabilita
 
 ---
 
-#### Pattern glob
+#### Glob patterns
 
-Il pattern glob usa semplici regole di globbing:
+The glob pattern uses simple regex globbing patterns:
 
-- `*` corrisponde a zero o piu' caratteri qualsiasi (ad esempio `"my-mcp*"` corrisponde a `my-mcp_search`, `my-mcp_list`, ecc.)
-- `?` corrisponde esattamente a un carattere
-- Tutti gli altri caratteri corrispondono letteralmente
+- `*` matches zero or more of any character (e.g., `"my-mcp*"` matches `my-mcp_search`, `my-mcp_list`, etc.)
+- `?` matches exactly one character
+- All other characters match literally
 
 :::note
-Gli strumenti del server MCP vengono registrati con il nome del server come prefisso, quindi per disabilitare tutti gli strumenti di un server e' sufficiente usare:
+MCP server tools are registered with server name as prefix, so to disable all tools for a server simply use:
 
 ```
 "mymcpservername_*": false
@@ -394,15 +394,15 @@ Gli strumenti del server MCP vengono registrati con il nome del server come pref
 
 ---
 
-## Esempi
+## Examples
 
-Qui sotto trovi esempi di alcuni server MCP comuni. Puoi inviare una PR se vuoi documentare altri server.
+Below are examples of some common MCP servers. You can submit a PR if you want to document other servers.
 
 ---
 
 ### Sentry
 
-Aggiungi il [server MCP di Sentry](https://mcp.sentry.dev) per interagire con i tuoi progetti e le issue di Sentry.
+Add the [Sentry MCP server](https://mcp.sentry.dev) to interact with your Sentry projects and issues.
 
 ```json title="codeplane.json" {4-8}
 {
@@ -417,15 +417,15 @@ Aggiungi il [server MCP di Sentry](https://mcp.sentry.dev) per interagire con i 
 }
 ```
 
-Dopo aver aggiunto la configurazione, autentica con Sentry:
+After adding the configuration, authenticate with Sentry:
 
 ```bash
 codeplane mcp auth sentry
 ```
 
-Questo aprira' una finestra del browser per completare il flusso OAuth e collegare CodePlane al tuo account Sentry.
+This will open a browser window to complete the OAuth flow and connect CodePlane to your Sentry account.
 
-Una volta autenticato, puoi usare gli strumenti Sentry nei tuoi prompt per interrogare issue, progetti e dati sugli errori.
+Once authenticated, you can use Sentry tools in your prompts to query issues, projects, and error data.
 
 ```txt "use sentry"
 Show me the latest unresolved issues in my project. use sentry
@@ -435,7 +435,7 @@ Show me the latest unresolved issues in my project. use sentry
 
 ### Context7
 
-Aggiungi il [server MCP Context7](https://github.com/upstash/context7) per cercare nella documentazione.
+Add the [Context7 MCP server](https://github.com/upstash/context7) to search through docs.
 
 ```json title="codeplane.json" {4-7}
 {
@@ -449,7 +449,7 @@ Aggiungi il [server MCP Context7](https://github.com/upstash/context7) per cerca
 }
 ```
 
-Se ti sei registrato per un account gratuito, puoi usare la tua API key e ottenere rate limit piu' alti.
+If you have signed up for a free account, you can use your API key and get higher rate-limits.
 
 ```json title="codeplane.json" {7-9}
 {
@@ -466,15 +466,15 @@ Se ti sei registrato per un account gratuito, puoi usare la tua API key e ottene
 }
 ```
 
-Qui assumiamo che tu abbia impostato la variabile d'ambiente `CONTEXT7_API_KEY`.
+Here we are assuming that you have the `CONTEXT7_API_KEY` environment variable set.
 
-Aggiungi `use context7` ai tuoi prompt per usare il server MCP Context7.
+Add `use context7` to your prompts to use Context7 MCP server.
 
 ```txt "use context7"
 Configure a Cloudflare Worker script to cache JSON API responses for five minutes. use context7
 ```
 
-In alternativa, puoi aggiungere qualcosa del genere al tuo [AGENTS.md](/docs/rules/).
+Alternatively, you can add something like this to your [AGENTS.md](/docs/rules/).
 
 ```md title="AGENTS.md"
 When you need to search docs, use `context7` tools.
@@ -484,7 +484,7 @@ When you need to search docs, use `context7` tools.
 
 ### Grep by Vercel
 
-Aggiungi il server MCP [Grep by Vercel](https://grep.app) per cercare snippet di codice su GitHub.
+Add the [Grep by Vercel](https://grep.app) MCP server to search through code snippets on GitHub.
 
 ```json title="codeplane.json" {4-7}
 {
@@ -498,13 +498,13 @@ Aggiungi il server MCP [Grep by Vercel](https://grep.app) per cercare snippet di
 }
 ```
 
-Dato che abbiamo chiamato il nostro server MCP `gh_grep`, puoi aggiungere `use the gh_grep tool` ai tuoi prompt per fare in modo che l'agente lo usi.
+Since we named our MCP server `gh_grep`, you can add `use the gh_grep tool` to your prompts to get the agent to use it.
 
 ```txt "use the gh_grep tool"
 What's the right way to set a custom domain in an SST Astro component? use the gh_grep tool
 ```
 
-In alternativa, puoi aggiungere qualcosa del genere al tuo [AGENTS.md](/docs/rules/).
+Alternatively, you can add something like this to your [AGENTS.md](/docs/rules/).
 
 ```md title="AGENTS.md"
 If you are unsure how to do something, use `gh_grep` to search code examples from GitHub.

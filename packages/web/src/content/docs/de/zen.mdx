@@ -1,57 +1,66 @@
 ---
 title: Zen
-description: Kuratierte Modellliste direkt von CodePlane.
+description: Curated list of models provided by CodePlane.
 ---
 
 import config from "../../../../config.mjs"
 export const console = config.console
 export const email = `mailto:${config.email}`
 
-CodePlane Zen ist eine Liste von getesteten und verifizierten Modellen, die vom CodePlane-Team bereitgestellt wird.
+CodePlane Zen is a list of tested and verified models provided by the CodePlane team.
 
 :::note
-CodePlane Zen befindet sich derzeit in der Beta.
+CodePlane Zen is currently in beta.
 :::
 
-Zen funktioniert wie jeder andere Provider in CodePlane. Du meldest dich bei CodePlane Zen an und erhältst deinen API-Key. Es ist **vollständig optional** und du musst es nicht verwenden, um CodePlane zu nutzen.
+Zen works like any other provider in CodePlane. You login to CodePlane Zen and get
+your API key. It's **completely optional** and you don't need to use it to use
+CodePlane.
 
 ---
 
-## Hintergrund
+## Background
 
-Es gibt eine große Anzahl an Modellen, aber nur wenige davon eignen sich gut als Coding-Agenten. Außerdem sind die meisten Provider sehr unterschiedlich konfiguriert, sodass du sehr unterschiedliche Leistung und Qualität erhältst.
+There are a large number of models out there but only a few of
+these models work well as coding agents. Additionally, most providers are
+configured very differently; so you get very different performance and quality.
 
 :::tip
-Wir haben eine ausgewählte Gruppe von Modellen und Providern getestet, die gut mit CodePlane funktionieren.
+We tested a select group of models and providers that work well with CodePlane.
 :::
 
-Wenn du also ein Modell über etwas wie OpenRouter nutzt, kannst du nie sicher sein, ob du die beste Version des gewünschten Modells bekommst.
+So if you are using a model through something like OpenRouter, you can never be
+sure if you are getting the best version of the model you want.
 
-Um das zu beheben, haben wir ein paar Dinge getan:
+To fix this, we did a couple of things:
 
-1. Wir haben eine ausgewählte Gruppe von Modellen getestet und mit ihren Teams darüber gesprochen, wie man sie am besten betreibt.
-2. Anschließend haben wir mit einigen Providern zusammengearbeitet, um sicherzustellen, dass diese korrekt ausgeliefert werden.
-3. Schließlich haben wir die Kombination aus Modell und Provider benchmarked und eine Liste erstellt, die wir guten Gewissens empfehlen können.
+1. We tested a select group of models and talked to their teams about how to
+   best run them.
+2. We then worked with a few providers to make sure these were being served
+   correctly.
+3. Finally, we benchmarked the combination of the model/provider and came up
+   with a list that we feel good recommending.
 
-CodePlane Zen ist ein AI-Gateway, das dir Zugriff auf diese Modelle gibt.
-
----
-
-## So funktioniert es
-
-CodePlane Zen funktioniert wie jeder andere Provider in CodePlane.
-
-1. Du meldest dich bei **<a href={console}>CodePlane Zen</a>** an, hinterlegst deine Zahlungsdaten und kopierst deinen API-Key.
-2. Du führst den Befehl `/connect` in der TUI aus, wählst CodePlane Zen aus und fügst deinen API-Key ein.
-3. Führe `/models` in der TUI aus, um die Liste der Modelle zu sehen, die wir empfehlen.
-
-Dir wird pro Anfrage berechnet, und du kannst deinem Konto Guthaben hinzufügen.
+CodePlane Zen is an AI gateway that gives you access to these models.
 
 ---
 
-## Endpunkte
+## How it works
 
-Du kannst auch über die folgenden API-Endpunkte auf unsere Modelle zugreifen.
+CodePlane Zen works like any other provider in CodePlane.
+
+1. You sign in to **<a href={console}>CodePlane Zen</a>**, add your billing
+   details, and copy your API key.
+2. Open Settings -> Providers in the web app, select CodePlane Zen, and paste your API key.
+3. Open the model selector to see the list of models we recommend.
+
+You are charged per request and you can add credits to your account.
+
+---
+
+## Endpoints
+
+You can also access our models through the following API endpoints.
 
 | Model                 | Model ID              | Endpoint                                           | AI SDK Package              |
 | --------------------- | --------------------- | -------------------------------------------------- | --------------------------- |
@@ -85,9 +94,9 @@ Du kannst auch über die folgenden API-Endpunkte auf unsere Modelle zugreifen.
 | Gemini 3 Flash        | gemini-3-flash        | `https://example.invalid/zen` | `@ai-sdk/google`            |
 | Qwen3.6 Plus          | qwen3.6-plus          | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | Qwen3.5 Plus          | qwen3.5-plus          | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
+| MiniMax M2.7          | minimax-m2.7          | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | MiniMax M2.5          | minimax-m2.5          | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | MiniMax M2.5 Free     | minimax-m2.5-free     | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
-| MiniMax M2.7          | minimax-m2.7          | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | GLM 5.1               | glm-5.1               | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | GLM 5                 | glm-5                 | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | Kimi K2.5             | kimi-k2.5             | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
@@ -97,13 +106,15 @@ Du kannst auch über die folgenden API-Endpunkte auf unsere Modelle zugreifen.
 | Hy3 Preview Free      | hy3-preview-free      | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | Nemotron 3 Super Free | nemotron-3-super-free | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 
-Die [Model-ID](/docs/config/#models) in deiner CodePlane-Konfiguration verwendet das Format `codeplane/<model-id>`. Für GPT 5.5 würdest du zum Beispiel `codeplane/gpt-5.5` in deiner Konfiguration verwenden.
+The [model id](/docs/config/#models) in your CodePlane config
+uses the format `codeplane/<model-id>`. For example, for GPT 5.5, you would
+use `codeplane/gpt-5.5` in your config.
 
 ---
 
 ### Models
 
-Du kannst die vollständige Liste der verfügbaren Modelle und ihrer Metadaten hier abrufen:
+You can fetch the full list of available models and their metadata from:
 
 ```
 https://example.invalid/zen
@@ -111,9 +122,9 @@ https://example.invalid/zen
 
 ---
 
-## Preise
+## Pricing
 
-Wir unterstützen ein Pay-as-you-go-Modell. Unten findest du die Preise **pro 1M Tokens**.
+We support a pay-as-you-go model. Below are the prices **per 1M tokens**.
 
 | Model                             | Input  | Output  | Cached Read | Cached Write |
 | --------------------------------- | ------ | ------- | ----------- | ------------ |
@@ -164,41 +175,44 @@ Wir unterstützen ein Pay-as-you-go-Modell. Unten findest du die Preise **pro 1M
 | GPT 5 Codex                       | $1.07  | $8.50   | $0.107      | -            |
 | GPT 5 Nano                        | Free   | Free    | Free        | -            |
 
-Möglicherweise siehst du _Claude Haiku 3.5_ in deinem Nutzungsverlauf. Das ist ein [kostengünstiges Modell](/docs/config/#models), das verwendet wird, um die Titel deiner Sessions zu generieren.
+You might notice _Claude Haiku 3.5_ in your usage history. This is a [low cost model](/docs/config/#models) that's used to generate the titles of your sessions.
 
 :::note
-Kreditkartengebühren werden zum Selbstkostenpreis weitergegeben (4.4% + $0.30 pro Transaktion); wir berechnen darüber hinaus nichts.
+Credit card fees are passed along at cost (4.4% + $0.30 per transaction); we don't charge anything beyond that.
 :::
 
-Die kostenlosen Modelle:
+The free models:
 
-- MiniMax M2.5 Free ist für begrenzte Zeit auf CodePlane verfügbar. Das Team nutzt diese Zeit, um Feedback zu sammeln und das Modell zu verbessern.
-- Ling 2.6 Flash Free ist für begrenzte Zeit auf CodePlane verfügbar. Das Team nutzt diese Zeit, um Feedback zu sammeln und das Modell zu verbessern.
-- Hy3 Preview Flash Free ist für begrenzte Zeit auf CodePlane verfügbar. Das Team nutzt diese Zeit, um Feedback zu sammeln und das Modell zu verbessern.
-- Nemotron 3 Super Free ist für begrenzte Zeit auf CodePlane verfügbar. Das Team nutzt diese Zeit, um Feedback zu sammeln und das Modell zu verbessern.
-- Big Pickle ist ein Stealth-Modell, das für begrenzte Zeit kostenlos auf CodePlane verfügbar ist. Das Team nutzt diese Zeit, um Feedback zu sammeln und das Modell zu verbessern.
+- MiniMax M2.5 Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Ling 2.6 Flash Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Hy3 Preview Flash Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Nemotron 3 Super Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Big Pickle is a stealth model that's free on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
 
-<a href={email}>Kontaktiere uns</a>, wenn du Fragen hast.
+<a href={email}>Contact us</a> if you have any questions.
 
 ---
 
 ### Auto-reload
 
-Wenn dein Guthaben unter $5 fällt, lädt Zen automatisch $20 nach.
+If your balance goes below $5, Zen will automatically reload $20.
 
-Du kannst den Auto-reload-Betrag ändern. Du kannst Auto-reload auch vollständig deaktivieren.
-
----
-
-### Monatliche Limits
-
-Du kannst auch ein monatliches Nutzungslimit für den gesamten Workspace und für jedes Mitglied deines Teams festlegen.
-
-Angenommen, du setzt ein monatliches Nutzungslimit von $20, dann wird Zen in einem Monat nicht mehr als $20 verwenden. Wenn du jedoch Auto-reload aktiviert hast, kann es sein, dass Zen dir mehr als $20 berechnet, wenn dein Guthaben unter $5 fällt.
+You can change the auto-reload amount. You can also disable auto-reload entirely.
 
 ---
 
-### Veraltete Modelle
+### Monthly limits
+
+You can also set a monthly usage limit for the entire workspace and for each
+member of your team.
+
+For example, let's say you set a monthly usage limit to $20, Zen will not use
+more than $20 in a month. But if you have auto-reload enabled, Zen might end up
+charging you more than $20 if your balance goes below $5.
+
+---
+
+### Deprecated models
 
 | Model            | Deprecation date |
 | ---------------- | ---------------- |
@@ -212,66 +226,70 @@ Angenommen, du setzt ein monatliches Nutzungslimit von $20, dann wird Zen in ein
 
 ---
 
-## Datenschutz
+## Privacy
 
-Alle unsere Modelle werden in den USA gehostet. Unsere Provider folgen einer Zero-Retention-Richtlinie und verwenden deine Daten nicht zum Trainieren von Modellen, mit den folgenden Ausnahmen:
+All our models are hosted in the US. Our providers follow a zero-retention policy and do not use your data for model training, with the following exceptions:
 
-- Big Pickle: Während des kostenlosen Zeitraums können gesammelte Daten zur Verbesserung des Modells verwendet werden.
-- MiniMax M2.5 Free: Während des kostenlosen Zeitraums können gesammelte Daten zur Verbesserung des Modells verwendet werden.
-- Ling 2.6 Flash Free: Während des kostenlosen Zeitraums können gesammelte Daten zur Verbesserung des Modells verwendet werden.
-- Hy3 Preview Free: Während des kostenlosen Zeitraums können gesammelte Daten zur Verbesserung des Modells verwendet werden.
-- Nemotron 3 Super Free (kostenlose NVIDIA-Endpunkte): Bereitgestellt gemäß den [NVIDIA API Trial Terms of Service](https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf). Nur für Testzwecke, nicht für Produktion oder sensible Daten. Eingaben und Ausgaben werden von NVIDIA protokolliert, um seine Modelle und Dienste zu verbessern. Übermitteln Sie keine personenbezogenen oder vertraulichen Daten.
-- OpenAI APIs: Anfragen werden in Übereinstimmung mit [OpenAI's Data Policies](https://platform.openai.com/docs/guides/your-data) 30 Tage lang gespeichert.
-- Anthropic APIs: Anfragen werden in Übereinstimmung mit [Anthropic's Data Policies](https://docs.anthropic.com/en/docs/claude-code/data-usage) 30 Tage lang gespeichert.
+- Big Pickle: During its free period, collected data may be used to improve the model.
+- MiniMax M2.5 Free: During its free period, collected data may be used to improve the model.
+- Ling 2.6 Flash Free: During its free period, collected data may be used to improve the model.
+- Hy3 Preview Free: During its free period, collected data may be used to improve the model.
+- Nemotron 3 Super Free (NVIDIA free endpoints): Provided under the [NVIDIA API Trial Terms of Service](https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf). Trial use only — not for production or sensitive data. Prompts and outputs are logged by NVIDIA to improve its models and services. Do not submit personal or confidential data.
+- OpenAI APIs: Requests are retained for 30 days in accordance with [OpenAI's Data Policies](https://platform.openai.com/docs/guides/your-data).
+- Anthropic APIs: Requests are retained for 30 days in accordance with [Anthropic's Data Policies](https://docs.anthropic.com/en/docs/claude-code/data-usage).
 
 ---
 
-## Für Teams
+## For Teams
 
-Zen funktioniert auch hervorragend für Teams. Du kannst Teammitglieder einladen, Rollen zuweisen, die Modelle kuratieren, die dein Team verwendet, und mehr.
+Zen also works great for teams. You can invite teammates, assign roles, curate
+the models your team uses, and more.
 
 :::note
-Workspaces sind für Teams derzeit als Teil der Beta kostenlos.
+Workspaces are currently free for teams as a part of the beta.
 :::
 
-Die Verwaltung deines Workspace ist für Teams derzeit als Teil der Beta kostenlos. Wir werden bald mehr Details zur Preisgestaltung teilen.
+Managing your workspace is currently free for teams as a part of the beta. We'll be
+sharing more details on the pricing soon.
 
 ---
 
-### Rollen
+### Roles
 
-Du kannst Teammitglieder in deinen Workspace einladen und Rollen zuweisen:
+You can invite teammates to your workspace and assign roles:
 
-- **Admin**: Verwaltet Modelle, Mitglieder, API-Keys und Abrechnung
-- **Member**: Verwaltet nur die eigenen API-Keys
+- **Admin**: Manage models, members, API keys, and billing
+- **Member**: Manage only their own API keys
 
-Admins können außerdem monatliche Ausgabenlimits für jedes Mitglied festlegen, um die Kosten unter Kontrolle zu halten.
-
----
-
-### Modellzugriff
-
-Admins können bestimmte Modelle für den Workspace aktivieren oder deaktivieren. Anfragen an ein deaktiviertes Modell geben einen Fehler zurück.
-
-Das ist nützlich, wenn du die Verwendung eines Modells deaktivieren möchtest, das Daten sammelt.
+Admins can also set monthly spending limits for each member to keep costs under control.
 
 ---
 
-### Eigenen Key mitbringen
+### Model access
 
-Du kannst deine eigenen OpenAI- oder Anthropic-API-Keys verwenden und trotzdem auf andere Modelle in Zen zugreifen.
+Admins can enable or disable specific models for the workspace. Requests made to a disabled model will return an error.
 
-Wenn du deine eigenen Keys verwendest, werden Tokens direkt vom Provider abgerechnet, nicht von Zen.
-
-Zum Beispiel hat deine Organisation möglicherweise bereits einen Key für OpenAI oder Anthropic und du möchtest diesen anstelle des von Zen bereitgestellten verwenden.
+This is useful for cases where you want to disable the use of a model that
+collects data.
 
 ---
 
-## Ziele
+### Bring your own key
 
-Wir haben CodePlane Zen geschaffen, um:
+You can use your own OpenAI or Anthropic API keys while still accessing other models in Zen.
 
-1. die besten Modelle/Provider für Coding-Agenten zu **benchmarken**.
-2. Zugriff auf die **höchste Qualität** zu haben und die Leistung nicht zu verschlechtern oder an günstigere Provider weiterzuleiten.
-3. **Preissenkungen** weiterzugeben, indem wir zum Selbstkostenpreis verkaufen; der einzige Aufschlag dient also dazu, unsere Bearbeitungsgebühren abzudecken.
-4. **keinen Lock-in** zu haben, indem du es mit jedem anderen Coding-Agenten verwenden kannst. Und dir außerdem immer zu erlauben, mit CodePlane auch jeden anderen Provider zu verwenden.
+When you use your own keys, tokens are billed directly by the provider, not by Zen.
+
+For example, your organization might already have a key for OpenAI or Anthropic
+and you want to use that instead of the one that Zen provides.
+
+---
+
+## Goals
+
+We created CodePlane Zen to:
+
+1. **Benchmark** the best models/providers for coding agents.
+2. Have access to the **highest quality** options and not downgrade performance or route to cheaper providers.
+3. Pass along any **price drops** by selling at cost; so the only markup is to cover our processing fees.
+4. Have **no lock-in** by allowing you to use it with any other coding agent. And always let you use any other provider with CodePlane as well.

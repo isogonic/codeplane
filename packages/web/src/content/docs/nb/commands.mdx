@@ -1,23 +1,23 @@
 ---
-title: Kommandoer
-description: Lag egendefinerte kommandoer for repeterende oppgaver.
+title: Commands
+description: Create custom commands for repetitive tasks.
 ---
 
-Egendefinerte kommandoer lar deg spesifisere en ledetekst du vil kjøre når kommandoen utføres i TUI.
+Custom commands let you specify a prompt you want to run from the web app or CLI.
 
 ```bash frame="none"
 /my-command
 ```
 
-Egendefinerte kommandoer kommer i tillegg til de innebygde kommandoene som `/init`, `/undo`, `/redo`, `/share`, `/help`. [Finn ut mer](/docs/tui#commands).
+Custom commands are in addition to the built-in commands like `/init`, `/undo`, `/redo`, `/share`, and `/help`.
 
 ---
 
-## Lag kommandofiler
+## Create command files
 
-Lag nedmerkingsfiler i `commands/`-katalogen for å definere egendefinerte kommandoer.
+Create markdown files in the `commands/` directory to define custom commands.
 
-Opprett `.codeplane/commands/test.md`:
+Create `.codeplane/commands/test.md`:
 
 ```md title=".codeplane/commands/test.md"
 ---
@@ -30,9 +30,9 @@ Run the full test suite with coverage report and show any failures.
 Focus on the failing tests and suggest fixes.
 ```
 
-Frontmatter definerer kommandoegenskaper. Innholdet blir malen.
+The frontmatter defines command properties. The content becomes the template.
 
-Bruk kommandoen ved å skrive `/` etterfulgt av kommandonavnet.
+Use the command by typing `/` followed by the command name.
 
 ```bash frame="none"
 "/test"
@@ -40,15 +40,15 @@ Bruk kommandoen ved å skrive `/` etterfulgt av kommandonavnet.
 
 ---
 
-## Konfigurasjon
+## Configure
 
-Du kan legge til egendefinerte kommandoer gjennom CodePlane-konfigurasjonen eller ved å lage markdown-filer i katalogen `commands/`.
+You can add custom commands through the CodePlane config or by creating markdown files in the `commands/` directory.
 
 ---
 
 ### JSON
 
-Bruk alternativet `command` i CodePlane [config](/docs/config):
+Use the `command` option in your CodePlane [config](/docs/config):
 
 ```json title="codeplane.jsonc" {4-12}
 {
@@ -58,7 +58,7 @@ Bruk alternativet `command` i CodePlane [config](/docs/config):
     "test": {
       // This is the prompt that will be sent to the LLM
       "template": "Run the full test suite with coverage report and show any failures.\nFocus on the failing tests and suggest fixes.",
-      // This is shown as the description in the TUI
+      // This is shown as the description in command pickers
       "description": "Run tests with coverage",
       "agent": "build",
       "model": "anthropic/claude-3-5-sonnet-20241022"
@@ -67,7 +67,7 @@ Bruk alternativet `command` i CodePlane [config](/docs/config):
 }
 ```
 
-Nå kan du kjøre denne kommandoen i TUI:
+Now you can run this command from the web app:
 
 ```bash frame="none"
 /test
@@ -77,10 +77,10 @@ Nå kan du kjøre denne kommandoen i TUI:
 
 ### Markdown
 
-Du kan også definere kommandoer ved å bruke markdown-filer. Plasser dem i:
+You can also define commands using markdown files. Place them in:
 
-- Globalt: `~/.config/codeplane/commands/`
-- Per prosjekt: `.codeplane/commands/`
+- Global: `~/.config/codeplane/commands/`
+- Per-project: `.codeplane/commands/`
 
 ```markdown title="~/.config/codeplane/commands/test.md"
 ---
@@ -93,8 +93,8 @@ Run the full test suite with coverage report and show any failures.
 Focus on the failing tests and suggest fixes.
 ```
 
-Markdown-filnavnet blir kommandonavnet. For eksempel lar `test.md`
-deg kjøre:
+The markdown file name becomes the command name. For example, `test.md` lets
+you run:
 
 ```bash frame="none"
 /test
@@ -102,15 +102,15 @@ deg kjøre:
 
 ---
 
-## Ledetekstkonfigurasjon
+## Prompt config
 
-Ledetekstene for de egendefinerte kommandoene støtter flere spesielle plassholdere og syntaks.
+The prompts for the custom commands support several special placeholders and syntax.
 
 ---
 
-### Argumenter
+### Arguments
 
-Send argumenter til kommandoer ved å bruke plassholderen `$ARGUMENTS`.
+Pass arguments to commands using the `$ARGUMENTS` placeholder.
 
 ```md title=".codeplane/commands/component.md"
 ---
@@ -121,22 +121,22 @@ Create a new React component named $ARGUMENTS with TypeScript support.
 Include proper typing and basic structure.
 ```
 
-Kjør kommandoen med argumenter:
+Run the command with arguments:
 
 ```bash frame="none"
 /component Button
 ```
 
-Og `$ARGUMENTS` vil bli erstattet med `Button`.
+And `$ARGUMENTS` will be replaced with `Button`.
 
-Du kan også få tilgang til individuelle argumenter ved å bruke posisjonelle parametere:
+You can also access individual arguments using positional parameters:
 
-- `$1` - Første argument
-- `$2` - Andre argument
-- `$3` - Tredje argument
-- Og så videre...
+- `$1` - First argument
+- `$2` - Second argument
+- `$3` - Third argument
+- And so on...
 
-For eksempel:
+For example:
 
 ```md title=".codeplane/commands/create-file.md"
 ---
@@ -147,25 +147,25 @@ Create a file named $1 in the directory $2
 with the following content: $3
 ```
 
-Kjør kommandoen:
+Run the command:
 
 ```bash frame="none"
 /create-file config.json src "{ \"key\": \"value\" }"
 ```
 
-Dette erstatter:
+This replaces:
 
-- `$1` med `config.json`
-- `$2` med `src`
-- `$3` med `{ "key": "value" }`
+- `$1` with `config.json`
+- `$2` with `src`
+- `$3` with `{ "key": "value" }`
 
 ---
 
-### Shell-utdata
+### Shell output
 
-Bruk _!`command`_ for å injisere [bash-kommando](/docs/tui#bash-commands)-utdata i ledeteksten.
+Use _!`command`_ to inject shell command output into your prompt.
 
-For eksempel, for å lage en egendefinert kommando som analyserer testdekning:
+For example, to create a custom command that analyzes test coverage:
 
 ```md title=".codeplane/commands/analyze-coverage.md"
 ---
@@ -178,7 +178,7 @@ Here are the current test results:
 Based on these results, suggest improvements to increase coverage.
 ```
 
-Eller for å se gjennom nylige endringer:
+Or to review recent changes:
 
 ```md title=".codeplane/commands/review-changes.md"
 ---
@@ -191,13 +191,13 @@ Recent git commits:
 Review these changes and suggest any improvements.
 ```
 
-Kommandoer kjøres i prosjektets rotkatalog og utdataene deres blir en del av ledeteksten.
+Commands run in your project's root directory and their output becomes part of the prompt.
 
 ---
 
-### Filreferanser
+### File references
 
-Inkluder filer i kommandoen din ved å bruke `@` etterfulgt av filnavnet.
+Include files in your command using `@` followed by the filename.
 
 ```md title=".codeplane/commands/review-component.md"
 ---
@@ -208,19 +208,19 @@ Review the component in @src/components/Button.tsx.
 Check for performance issues and suggest improvements.
 ```
 
-Filinnholdet blir automatisk inkludert i ledeteksten.
+The file content gets included in the prompt automatically.
 
 ---
 
-## Alternativer
+## Options
 
-La oss se på konfigurasjonsalternativene i detalj.
+Let's look at the configuration options in detail.
 
 ---
 
-### Mal
+### Template
 
-Alternativet `template` definerer ledeteksten som vil bli sendt til LLM når kommandoen utføres.
+The `template` option defines the prompt that will be sent to the LLM when the command is executed.
 
 ```json title="codeplane.json"
 {
@@ -232,13 +232,13 @@ Alternativet `template` definerer ledeteksten som vil bli sendt til LLM når kom
 }
 ```
 
-Dette er et **obligatorisk** konfigurasjonsalternativ.
+This is a **required** config option.
 
 ---
 
-### Beskrivelse
+### Description
 
-Bruk alternativet `description` for å gi en kort beskrivelse av hva kommandoen gjør.
+Use the `description` option to provide a brief description of what the command does.
 
 ```json title="codeplane.json"
 {
@@ -250,15 +250,15 @@ Bruk alternativet `description` for å gi en kort beskrivelse av hva kommandoen 
 }
 ```
 
-Dette vises som beskrivelsen i TUI når du skriver inn kommandoen.
+This is shown as the description when you type in the command.
 
 ---
 
 ### Agent
 
-Bruk `agent`-konfigurasjonen for å spesifisere hvilken [agent](/docs/agents) som skal utføre denne kommandoen.
-Hvis dette er en [subagent](/docs/agents/#subagents), vil kommandoen utløse en subagent påkalling som standard.
-For å deaktivere denne virkemåten, sett `subtask` til `false`.
+Use the `agent` config to optionally specify which [agent](/docs/agents) should execute this command.
+If this is a [subagent](/docs/agents/#subagents) the command will trigger a subagent invocation by default.
+To disable this behavior, set `subtask` to `false`.
 
 ```json title="codeplane.json"
 {
@@ -270,15 +270,15 @@ For å deaktivere denne virkemåten, sett `subtask` til `false`.
 }
 ```
 
-Denne kommandoen vil veilede deg gjennom å lage en ny agent med en tilpasset systemmelding og verktøykonfigurasjon.
+This is an **optional** config option. If not specified, defaults to your current agent.
 
 ---
 
-### Underoppgave
+### Subtask
 
-Bruk `subtask` for å tvinge kommandoen til å utløse en [subagent](/docs/agents/#subagents) påkalling.
-Dette er nyttig hvis du vil at kommandoen ikke skal forurense din primære kontekst og vil **tvinge** agenten til å fungere som en underagent,
-selv om `mode` er satt til `primary` på [agent](/docs/agents) konfigurasjonen.
+Use the `subtask` boolean to force the command to trigger a [subagent](/docs/agents/#subagents) invocation.
+This is useful if you want the command to not pollute your primary context and will **force** the agent to act as a subagent,
+even if `mode` is set to `primary` on the [agent](/docs/agents) configuration.
 
 ```json title="codeplane.json"
 {
@@ -290,13 +290,13 @@ selv om `mode` er satt til `primary` på [agent](/docs/agents) konfigurasjonen.
 }
 ```
 
-Dette er et **valgfritt** konfigurasjonsalternativ.
+This is an **optional** config option.
 
 ---
 
-### Modell
+### Model
 
-Bruk `model`-konfigurasjonen for å overstyre standardmodellen for denne kommandoen.
+Use the `model` config to override the default model for this command.
 
 ```json title="codeplane.json"
 {
@@ -308,16 +308,16 @@ Bruk `model`-konfigurasjonen for å overstyre standardmodellen for denne kommand
 }
 ```
 
-Dette er et **valgfritt** konfigurasjonsalternativ.
+This is an **optional** config option.
 
 ---
 
-## Innebygd
+## Built-in
 
-CodePlane inkluderer flere innebygde kommandoer som `/init`, `/undo`, `/redo`, `/share`, `/help`; [finn ut mer](/docs/tui#commands).
+codeplane includes several built-in commands like `/init`, `/undo`, `/redo`, `/share`, and `/help`.
 
 :::note
-Egendefinerte kommandoer kan overstyre innebygde kommandoer.
+Custom commands can override built-in commands.
 :::
 
-Hvis du definerer en egendefinert kommando med samme navn, vil den overstyre den innebygde kommandoen.
+If you define a custom command with the same name, it will override the built-in command.

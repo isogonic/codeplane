@@ -6,7 +6,7 @@ Practical plan for retiring the promise-backed / ALS-backed `Instance` helper in
 
 End state:
 
-- request, CLI, TUI, and tool entrypoints shift into an instance through Effect, not `Instance.provide(...)`
+- request, CLI, web, and tool entrypoints shift into an instance through Effect, not `Instance.provide(...)`
 - Effect code reads the current instance from `InstanceRef` or its eventual replacement, not from ALS-backed sync getters
 - per-directory boot, caching, and disposal are scoped Effect resources, not a module-level `Map<string, Promise<InstanceContext>>`
 - ALS remains only as a temporary bridge for native callback APIs that fire outside the Effect fiber tree
@@ -94,7 +94,7 @@ Main boundaries:
 
 - HTTP server middleware and experimental `HttpApi` entrypoints
 - CLI commands
-- TUI worker / attach / thread entrypoints
+- Web and CLI entrypoints
 - tool execution entrypoints
 
 These boundaries should become Effect-native wrappers that:
@@ -190,7 +190,7 @@ Migration rule:
 - move these to explicit Effect entrypoints that provide `InstanceRef` / `WorkspaceRef`
 - do not move these first; first reduce the number of downstream handlers and services that still expect ambient ALS
 
-### CLI and TUI boundaries
+### CLI and Web Boundaries
 
 These commands still enter an instance through `Instance.provide(...)` or read sync getters directly.
 
@@ -206,10 +206,7 @@ These commands still enter an instance through `Instance.provide(...)` or read s
 - `src/cli/cmd/pr.ts`
 - `src/cli/cmd/providers.ts`
 - `src/cli/cmd/stats.ts`
-- `src/cli/cmd/tui/attach.ts`
-- `src/cli/cmd/tui/plugin/runtime.ts`
-- `src/cli/cmd/tui/thread.ts`
-- `src/cli/cmd/tui/worker.ts`
+- `src/cli/cmd/web.ts`
 
 Migration rule:
 
@@ -238,7 +235,6 @@ Migration rule:
 These modules are already the best near-term migration targets because they are in Effect code but still read sync getters from the legacy helper.
 
 - `src/agent/agent.ts`
-- `src/cli/cmd/tui/config/tui-migrate.ts`
 - `src/file/index.ts`
 - `src/file/watcher.ts`
 - `src/format/formatter.ts`

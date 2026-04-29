@@ -400,17 +400,17 @@ export default function Page() {
     ),
   )
 
-  const isDesktop = createMediaQuery("(min-width: 768px)")
+  const isWide = createMediaQuery("(min-width: 768px)")
   const size = createSizing()
-  const desktopReviewOpen = createMemo(() => isDesktop() && view().reviewPanel.opened())
-  const desktopFileTreeOpen = createMemo(() => isDesktop() && layout.fileTree.opened())
-  const desktopSidePanelOpen = createMemo(() => desktopReviewOpen() || desktopFileTreeOpen())
+  const wideReviewOpen = createMemo(() => isWide() && view().reviewPanel.opened())
+  const wideFileTreeOpen = createMemo(() => isWide() && layout.fileTree.opened())
+  const wideSidePanelOpen = createMemo(() => wideReviewOpen() || wideFileTreeOpen())
   const sessionPanelWidth = createMemo(() => {
-    if (!desktopSidePanelOpen()) return "100%"
-    if (desktopReviewOpen()) return `${layout.session.width()}px`
+    if (!wideSidePanelOpen()) return "100%"
+    if (wideReviewOpen()) return `${layout.session.width()}px`
     return `calc(100% - ${layout.fileTree.width()}px)`
   })
-  const centered = createMemo(() => isDesktop() && !desktopReviewOpen())
+  const centered = createMemo(() => isWide() && !wideReviewOpen())
 
   function normalizeTab(tab: string) {
     if (!tab.startsWith("file://")) return tab
@@ -442,7 +442,7 @@ export default function Page() {
   const archived = createMemo(() => !!info()?.time.archived || isCronSession())
   const diffs = createMemo(() => (params.id ? list(sync.data.session_diff[params.id]) : []))
   const canReview = createMemo(() => !!sync.project)
-  const reviewTab = createMemo(() => isDesktop())
+  const reviewTab = createMemo(() => isWide())
   const tabState = createSessionTabs({
     tabs,
     pathFromTab: file.pathFromTab,
@@ -558,7 +558,7 @@ export default function Page() {
   let diffTimer: number | undefined
 
   createComputed((prev) => {
-    const open = desktopReviewOpen()
+    const open = wideReviewOpen()
     if (prev === undefined || prev === open) return open
 
     if (reviewFrame !== undefined) cancelAnimationFrame(reviewFrame)
@@ -568,7 +568,7 @@ export default function Page() {
       setUi("reviewSnap", false)
     })
     return open
-  }, desktopReviewOpen())
+  }, wideReviewOpen())
 
   const turnDiffs = createMemo(() => list(lastUserMessage()?.summary?.diffs))
   const nogit = createMemo(() => !!sync.project && sync.project.vcs !== "git")
@@ -586,12 +586,12 @@ export default function Page() {
     list.push("turn")
     return list
   })
-  const mobileChanges = createMemo(() => !isDesktop() && store.mobileTab === "changes")
-  const mobileActivity = createMemo(() => !isDesktop() && store.mobileTab === "activity")
-  const mobilePanel = createMemo(() => !isDesktop() && store.mobileTab !== "session")
+  const mobileChanges = createMemo(() => !isWide() && store.mobileTab === "changes")
+  const mobileActivity = createMemo(() => !isWide() && store.mobileTab === "activity")
+  const mobilePanel = createMemo(() => !isWide() && store.mobileTab !== "session")
   const wantsReview = createMemo(() =>
-    isDesktop()
-      ? desktopFileTreeOpen() || (desktopReviewOpen() && activeTab() === "review")
+    isWide()
+      ? wideFileTreeOpen() || (wideReviewOpen() && activeTab() === "review")
       : store.mobileTab === "changes",
   )
   const vcsMode = createMemo<VcsMode | undefined>(() => {
@@ -1337,7 +1337,7 @@ export default function Page() {
   let treeDir: string | undefined
   createEffect(() => {
     const dir = sdk.directory
-    if (!isDesktop()) return
+    if (!isWide()) return
     if (!layout.fileTree.opened()) return
     if (sync.status === "loading") return
 
@@ -1849,7 +1849,7 @@ export default function Page() {
         {sessionSync() ?? ""}
         <SessionHeader />
         <div class="flex-1 min-h-0 flex flex-col md:flex-row">
-          <Show when={!isDesktop() && !!params.id}>
+          <Show when={!isWide() && !!params.id}>
             <Tabs value={store.mobileTab} class="h-auto">
               <Tabs.List>
                 <Tabs.Trigger
@@ -2003,7 +2003,7 @@ export default function Page() {
               }}
             />
 
-            <Show when={desktopReviewOpen()}>
+            <Show when={wideReviewOpen()}>
               <div onPointerDown={() => size.start()}>
                 <ResizeHandle
                   direction="horizontal"

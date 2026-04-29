@@ -1,45 +1,37 @@
 ---
-title: はじめに
-description: CodePlane を始めましょう。
+title: Intro
+description: Get started with CodePlane.
 ---
 
 import { Tabs, TabItem } from "@astrojs/starlight/components"
 import config from "../../../../config.mjs"
 export const console = config.console
 
-[**CodePlane**](/) は、オープンソースの AI コーディングエージェントです。これは、ターミナルベースのインターフェイス、デスクトップアプリ、または IDE 拡張機能として利用できます。
+[**CodePlane**](/) is an open source AI coding agent built around the web app experience, with a CLI server and IDE integrations for local development.
 
-![codeplaneテーマ](../../../assets/lander/screenshot.png)を使用したCodePlane TUI
+![CodePlane Web app](../../../assets/web/web-homepage-active-session.png)
 
-始めましょう。
-
----
-
-#### 前提条件
-
-ターミナルで CodePlane を使用するには、次のものが必要です。
-
-1. 次のような最新のターミナルエミュレータ:
-   - [WezTerm](https://wezterm.org)、クロスプラットフォーム
-   - [Alacritty](https://alacritty.org)、クロスプラットフォーム
-   - [Ghostty](https://ghostty.org)、Linux および macOS
-   - [Kitty](https://sw.kovidgoyal.net/kitty/)、Linux および macOS
-
-2. 使用する LLM プロバイダーの API キー。
+Let's get started.
 
 ---
 
-## インストール
+#### Prerequisites
 
-CodePlane をインストールする最も簡単な方法は、インストールスクリプトを使用することです。
+To use CodePlane, you'll need Bun and API keys for the LLM providers you want to use.
+
+---
+
+## Install
+
+The easiest way to install CodePlane is through the install script.
 
 ```bash
 curl -fsSL https://example.invalid/install | bash
 ```
 
-次のコマンドを使用してインストールすることもできます。
+You can also install it with the following commands:
 
-- **Node.js の使用**
+- **Using Node.js**
 
         <Tabs>
 
@@ -73,15 +65,15 @@ curl -fsSL https://example.invalid/install | bash
 
   </Tabs>
 
-- **macOS および Linux での Homebrew の使用**
+- **Using Homebrew on macOS and Linux**
 
   ```bash
   brew install devinoldenburg/tap/codeplane
   ```
 
-  > 最新のリリースには CodePlane タップを使用することをお勧めします。公式の `brew install codeplane` 式は Homebrew チームによって維持されており、更新頻度は低くなります。
+  > We recommend using the CodePlane tap for the most up to date releases. The official `brew install codeplane` formula is maintained by the Homebrew team and is updated less frequently.
 
-- **Arch Linux での Paru の使用**
+- **Installing on Arch Linux**
 
   ```bash
   sudo pacman -S codeplane           # Arch Linux (Stable)
@@ -90,62 +82,55 @@ curl -fsSL https://example.invalid/install | bash
 
 #### Windows
 
-:::tip[推奨: WSL を使用する]
-Windows で最高のエクスペリエンスを得るには、[Windows Subsystem for Linux (WSL)](/docs/windows-wsl) を使用することをお勧めします。これにより、パフォーマンスが向上し、CodePlane の機能との完全な互換性が提供されます。
-:::
-
-- **Chocolatey の使用**
+- **Using Chocolatey**
 
   ```bash
   choco install codeplane
   ```
 
-- **Scoop の使用**
+- **Using Scoop**
 
   ```bash
   scoop install codeplane
   ```
 
-- **npm の使用**
+- **Using NPM**
 
   ```bash
   npm install -g codeplane-ai
   ```
 
-- **Mise の使用**
+- **Using Mise**
 
   ```bash
   mise use -g github:devinoldenburg/codeplane
   ```
 
-- **Docker の使用**
+- **Using Docker**
 
   ```bash
   docker run -it --rm ghcr.io/devinoldenburg/codeplane
   ```
 
-Bun を使用して Windows に CodePlane をインストールするためのサポートは現在進行中です。
+Support for installing CodePlane on Windows using Bun is currently in progress.
 
-[Releases](https://github.com/devinoldenburg/codeplane/releases).
+You can also grab the binary from the [Releases](https://github.com/devinoldenburg/codeplane/releases).
 
 ---
 
-## 設定
+## Configure
 
-CodePlane を使用すると、API キーを構成することで任意の LLM プロバイダーを使用できます。
+With CodePlane you can use any LLM provider by configuring their API keys.
 
-LLM プロバイダーを初めて使用する場合は、[CodePlane Zen](/docs/zen) をお勧めします。
-これは、CodePlane チームによってテストおよび検証されたモデルの厳選されたリストです。
+If you are new to using LLM providers, we recommend using [CodePlane Zen](/docs/zen).
+It's a curated list of models that have been tested and verified by the CodePlane
+team.
 
-1. TUI で `/connect` コマンドを実行し、codeplane を選択して、[example.invalid/auth](https://example.invalid/auth) で認証します。
+1. Open the web app and connect the `codeplane` provider from Settings -> Providers.
 
-   ```txt
-   /connect
-   ```
+2. Sign in, add your billing details, and copy your API key.
 
-2. サインインし、お支払いの詳細を追加し、API キーをコピーします。
-
-3. API キーを貼り付けます。
+3. Paste your API key.
 
    ```txt
    ┌ API key
@@ -154,131 +139,137 @@ LLM プロバイダーを初めて使用する場合は、[CodePlane Zen](/docs/
    └ enter
    ```
 
-あるいは、他のプロバイダーのいずれかを選択することもできます。 [詳細はこちら](/docs/providers#directory)。
+Alternatively, you can select one of the other providers. [Learn more](/docs/providers#directory).
 
 ---
 
-## 初期化
+## Initialize
 
-プロバイダーを構成したので、取り組みたいプロジェクトに移動できます。
+Now that you've configured a provider, you can navigate to a project that
+you want to work on.
 
 ```bash
 cd /path/to/project
 ```
 
-そしてCodePlaneを実行します。
+And start the web app.
 
 ```bash
-codeplane
+codeplane web
 ```
 
-次に、次のコマンドを実行して、プロジェクトの CodePlane を初期化します。
+Next, initialize CodePlane for the project by running the following command.
 
 ```bash frame="none"
 /init
 ```
 
-これにより、CodePlane がプロジェクトを分析し、プロジェクトのルートに `AGENTS.md` ファイルを作成します。
+This will get CodePlane to analyze your project and create an `AGENTS.md` file in
+the project root.
 
 :::tip
-プロジェクトの `AGENTS.md` ファイルを Git にコミットする必要があります。
+You should commit your project's `AGENTS.md` file to Git.
 :::
 
-これは、CodePlane がプロジェクトの構造と使用されているコーディングパターンを理解するのに役立ちます。
+This helps CodePlane understand the project structure and the coding patterns
+used.
 
 ---
 
-## 使用法
+## Usage
 
-これで、CodePlane を使用してプロジェクトに取り組む準備が整いました。何でもお気軽にお尋ねください！
+You are now ready to use CodePlane to work on your project. Feel free to ask it
+anything!
 
-AI コーディングエージェントを初めて使用する場合は、次の例を参考にしてください。
+If you are new to using an AI coding agent, here are some examples that might
+help.
 
 ---
 
-### 質問する
+### Ask questions
 
-CodePlane にコードベースの説明を依頼できます。
+You can ask CodePlane to explain the codebase to you.
 
 :::tip
-プロジェクト内のファイルをあいまい検索するには、`@` キーを使用します。
+Use the `@` key to fuzzy search for files in the project.
 :::
 
 ```txt frame="none" "@packages/functions/src/api/index.ts"
 How is authentication handled in @packages/functions/src/api/index.ts
 ```
 
-これは、コードベースに作業していない部分がある場合に役立ちます。
+This is helpful if there's a part of the codebase that you didn't work on.
 
 ---
 
-### 機能を追加する
+### Add features
 
-CodePlane に新しい機能をプロジェクトに追加するよう依頼できます。ただし、最初は計画の作成を依頼することをお勧めします。
+You can ask CodePlane to add new features to your project. Though we first recommend asking it to create a plan.
 
-1. **計画を作成する**
+1. **Create a plan**
 
-CodePlane には、変更を加える機能を無効にする _Plan mode_ があり、
-代わりに、その機能を*どのように*実装するかを提案します。
+   CodePlane has a _Plan mode_ that disables its ability to make changes and
+   instead suggest _how_ it'll implement the feature.
 
-**Tab** キーを使用してそれに切り替えます。右下隅にこれを示すインジケーターが表示されます。
+   Switch to it using the **Tab** key. You'll see an indicator for this in the lower right corner.
 
-```bash frame="none" title="Switch to Plan mode"
+   ```bash frame="none" title="Switch to Plan mode"
    <TAB>
-```
+   ```
 
-では、何をしたいのかを説明しましょう。
+   Now let's describe what we want it to do.
 
-```txt frame="none"
+   ```txt frame="none"
    When a user deletes a note, we'd like to flag it as deleted in the database.
    Then create a screen that shows all the recently deleted notes.
    From this screen, the user can undelete a note or permanently delete it.
-```
+   ```
 
-自分が何を望んでいるのかを理解するために、CodePlane に十分な詳細を提供したいと考えています。
-チームの若手開発者と話しているように話すと良いでしょう。
+   You want to give CodePlane enough details to understand what you want. It helps
+   to talk to it like you are talking to a junior developer on your team.
 
-:::tip
-CodePlane に多くのコンテキストと例を提供して、意図する内容を理解できるようにします。
-:::
+   :::tip
+   Give CodePlane plenty of context and examples to help it understand what you
+   want.
+   :::
 
-2. **計画を反復する**
+2. **Iterate on the plan**
 
-計画が示されたら、フィードバックを送信したり、詳細を追加したりできます。
+   Once it gives you a plan, you can give it feedback or add more details.
 
-```txt frame="none"
+   ```txt frame="none"
    We'd like to design this new screen using a design I've used before.
    [Image #1] Take a look at this image and use it as a reference.
-```
+   ```
 
-:::tip
-画像をターミナルにドラッグアンドドロップして、プロンプトに追加します。
-:::
+   :::tip
+   Drag and drop images into the terminal to add them to the prompt.
+   :::
 
-CodePlane は、指定された画像をスキャンしてプロンプトに追加できます。
-画像をターミナルにドラッグアンドドロップしてこれを行うことができます。
+   CodePlane can scan any images you give it and add them to the prompt. You can
+   do this by dragging and dropping an image into the terminal.
 
-3. **機能を構築する**
+3. **Build the feature**
 
-計画に慣れたら、*Build mode*に戻ります。
-**Tab** キーをもう一度押します。
+   Once you feel comfortable with the plan, switch back to _Build mode_ by
+   hitting the **Tab** key again.
 
-```bash frame="none"
+   ```bash frame="none"
    <TAB>
-```
+   ```
 
-そして変更を加えるように依頼します。
+   And asking it to make the changes.
 
-```bash frame="none"
+   ```bash frame="none"
    Sounds good! Go ahead and make the changes.
-```
+   ```
 
 ---
 
-### 変更を加える
+### Make changes
 
-より単純な変更については、CodePlane に直接ビルドするよう依頼できます。
-最初に計画を見直す必要はありません。
+For more straightforward changes, you can ask CodePlane to directly build it
+without having to review the plan first.
 
 ```txt frame="none" "@packages/functions/src/settings.ts" "@packages/functions/src/notes.ts"
 We need to add authentication to the /settings route. Take a look at how this is
@@ -286,38 +277,40 @@ handled in the /notes route in @packages/functions/src/notes.ts and implement
 the same logic in @packages/functions/src/settings.ts
 ```
 
-CodePlane が適切な変更を行えるように、十分な量の詳細を確実に提供する必要があります。
+You want to make sure you provide a good amount of detail so CodePlane makes the right
+changes.
 
 ---
 
-### 変更を元に戻す
+### Undo changes
 
-CodePlane にいくつかの変更を依頼するとします。
+Let's say you ask CodePlane to make some changes.
 
 ```txt frame="none" "@packages/functions/src/api/index.ts"
 Can you refactor the function in @packages/functions/src/api/index.ts?
 ```
 
-しかし、それは自分が望んでいたものではないことに気づきます。変更は **元に戻すことができます**
-`/undo` コマンドを使用します。
+But you realize that it is not what you wanted. You **can undo** the changes
+using the `/undo` command.
 
 ```bash frame="none"
 /undo
 ```
 
-CodePlane は加えた変更を元に戻し、元のメッセージを再度表示します。
+CodePlane will now revert the changes you made and show your original message
+again.
 
 ```txt frame="none" "@packages/functions/src/api/index.ts"
 Can you refactor the function in @packages/functions/src/api/index.ts?
 ```
 
-ここからプロンプトを調整し、CodePlane に再試行を依頼できます。
+From here you can tweak the prompt and ask CodePlane to try again.
 
 :::tip
-`/undo` を複数回実行すると、複数の変更を元に戻すことができます。
+You can run `/undo` multiple times to undo multiple changes.
 :::
 
-または、`/redo` コマンドを使用して変更を**やり直す**こともできます。
+Or you **can redo** the changes using the `/redo` command.
 
 ```bash frame="none"
 /redo
@@ -325,26 +318,27 @@ Can you refactor the function in @packages/functions/src/api/index.ts?
 
 ---
 
-## 共有
+## Share
 
-CodePlane との会話は [他のチームメンバーと共有できます](/docs/share)。
+The conversations that you have with CodePlane can be [shared with your
+team](/docs/share).
 
 ```bash frame="none"
 /share
 ```
 
-これにより、現在の会話へのリンクが作成され、クリップボードにコピーされます。
+This will create a link to the current conversation and copy it to your clipboard.
 
 :::note
-会話はデフォルトでは共有されません。
+Conversations are not shared by default.
 :::
 
-これは [CodePlane を使用した会話 ](https://example.invalid) の例です。
+Here's an [example conversation](https://example.invalid) with CodePlane.
 
 ---
 
-## カスタマイズ
+## Customize
 
-それで終わりです！これであなたは CodePlane の使い方のプロになりました。
+And that's it! You are now a pro at using CodePlane.
 
-独自のものにするには、[テーマ](/docs/themes) を選択する、[キーバインドをカスタマイズする](/docs/keybinds)、[コードフォーマッタ](/docs/formatters) を設定する、[カスタムコマンド](/docs/commands) を作成する、または [CodePlane設定](/docs/config) を試してみることをお勧めします。
+To make it your own, we recommend [picking a theme](/docs/themes), [configuring code formatters](/docs/formatters), [creating custom commands](/docs/commands), or playing around with the [CodePlane config](/docs/config).

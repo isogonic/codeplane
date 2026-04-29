@@ -264,7 +264,7 @@ export default function Home() {
 
         <div data-component="content">
           <section data-component="hero">
-            <div data-component="desktop-app-banner">
+            <div data-component="web-app-banner">
               <span data-slot="badge">{i18n.t("home.banner.badge")}</span>
               <div data-slot="content">
                 <span data-slot="text">{i18n.t("go.banner.text")}</span>

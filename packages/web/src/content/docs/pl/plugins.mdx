@@ -1,34 +1,34 @@
 ---
-title: Wtyczki
-description: Napisz własną wtyczkę, aby rozszerzyć codeplane.
+title: Plugins
+description: Write your own plugins to extend CodePlane.
 ---
 
-Wtyczki umożliwiające wyłączenie codeplane poprzez podjęcie różnych zdarzeń i zachowanie. Można utworzyć wtyczkę, aby sprawdzić nowe funkcje, integrować się z usługami lub sprawdzaniem zachowania codeplane.
+Plugins allow you to extend CodePlane by hooking into various events and customizing behavior. You can create plugins to add new features, integrate with external services, or modify CodePlane's default behavior.
 
-Aby znaleźć się z przykładami, przejrzyj [wtyczki](/docs/ecosystem#plugins) utworzone przez społeczność.
-
----
-
-## Użyj wtyczki
-
-Istnieją dwa sposoby ładowania wtyczek.
+For examples, check out the [plugins](/docs/ecosystem#plugins) created by the community.
 
 ---
 
-### Z plików lokalnych
+## Use a plugin
 
-Miejsce plików JavaScript lub TypeScript w katalogu wtyczki.
-
-- `.codeplane/plugins/` - Wtyczki na poziomie projektu
-- `~/.config/codeplane/plugins/` - Wtyczki globalne
-
-Pliki w tych katalogach są automatycznie ładowane podczas uruchamiania.
+There are two ways to load plugins.
 
 ---
 
-### Z npm
+### From local files
 
-szczegółowy pakiet npm w pliku konfiguracyjnym.
+Place JavaScript or TypeScript files in the plugin directory.
+
+- `.codeplane/plugins/` - Project-level plugins
+- `~/.config/codeplane/plugins/` - Global plugins
+
+Files in these directories are automatically loaded at startup.
+
+---
+
+### From npm
+
+Specify npm packages in your config file.
 
 ```json title="codeplane.json"
 {
@@ -37,43 +37,43 @@ szczegółowy pakiet npm w pliku konfiguracyjnym.
 }
 ```
 
-Obsługiwane są zarówno pakiety zwykłe, jak i pakiety npm o określonym zakresie.
+Both regular and scoped npm packages are supported.
 
-Przeglądaj dostępną wtyczkę w [ekosystemie](/docs/ecosystem#plugins).
-
----
-
-### Sposób instalacji wtyczek
-
-**wtyczki npm** są instalowane automatycznie przy użyciu Bun podczas uruchamiania. Pakiety i ich zależności są buforowane w `~/.cache/codeplane/node_modules/`.
-
-**Wtyczki lokalne** są ładowane bezpośrednio z katalogu wtyczek. Aby uzyskać dostęp do zewnętrznych pakietów, musisz zainstalować `package.json` w swoim katalogu konfiguracyjnym (zobacz [Zależności](#dependencies)) lub opublikować wtyczkę w npm i [dodaj ją do swojej konfiguracji](/docs/config#plugins).
+Browse available plugins in the [ecosystem](/docs/ecosystem#plugins).
 
 ---
 
-### Kolejność ładowania
+### How plugins are installed
 
-Wtyczki są ładowane ze wszystkich źródeł, a wszystkie hooki napisane po kolei. Kolejność ładowania do:
+**npm plugins** are installed automatically using Bun at startup. Packages and their dependencies are cached in `~/.cache/codeplane/node_modules/`.
 
-1. Konfiguracja globalna (`~/.config/codeplane/codeplane.json`)
-2. Konfiguracja projektu (`codeplane.json`)
-3. Globalny katalog wtyczek (`~/.config/codeplane/plugins/`)
-4. Katalog wtyczek projektu (`.codeplane/plugins/`)
-
-Zduplikowane pakiety npm o tej samej nazwie i wersji są ładowane raz. Równie ważny jest dostęp lokalny i zewnętrzny npm o dodatkowych nazwach, które są zewnętrzne.
+**Local plugins** are loaded directly from the plugin directory. To use external packages, you must create a `package.json` within your config directory (see [Dependencies](#dependencies)), or publish the plugin to npm and [add it to your config](/docs/config#plugins).
 
 ---
 
-## Utwórz wtyczkę
+### Load order
 
-Wtyczka do **moduł JavaScript/TypeScript**, który eksportuje jeden lub więcej wtyczek
-funkcje. dostępna funkcja korzystania z obiektu kontekstu i głównego obiektu hooks.
+Plugins are loaded from all sources and all hooks run in sequence. The load order is:
+
+1. Global config (`~/.config/codeplane/codeplane.json`)
+2. Project config (`codeplane.json`)
+3. Global plugin directory (`~/.config/codeplane/plugins/`)
+4. Project plugin directory (`.codeplane/plugins/`)
+
+Duplicate npm packages with the same name and version are loaded once. However, a local plugin and an npm plugin with similar names are both loaded separately.
 
 ---
 
-### Zależności
+## Create a plugin
 
-Lokalne narzędzie i narzędzie, które można wykorzystać z zewnętrznych pakietów npm. Dodaj `package.json` do swojego katalogu konfiguracyjnego z zależnościami.
+A plugin is a **JavaScript/TypeScript module** that exports one or more plugin
+functions. Each function receives a context object and returns a hooks object.
+
+---
+
+### Dependencies
+
+Local plugins and custom tools can use external npm packages. Add a `package.json` to your config directory with the dependencies you need.
 
 ```json title=".codeplane/package.json"
 {
@@ -83,7 +83,7 @@ Lokalne narzędzie i narzędzie, które można wykorzystać z zewnętrznych paki
 }
 ```
 
-codeplane uruchomienie `bun install` przy uruchomieniu, aby je uruchomić. Twoje dodatkowe funkcje będą dostępne po zaimportowaniu.
+CodePlane runs `bun install` at startup to install these. Your plugins and tools can then import them.
 
 ```ts title=".codeplane/plugins/my-plugin.ts"
 import { escape } from "shescape"
@@ -101,7 +101,7 @@ export const MyPlugin = async (ctx) => {
 
 ---
 
-### Podstawowa struktura
+### Basic structure
 
 ```js title=".codeplane/plugins/example.js"
 export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
@@ -113,19 +113,19 @@ export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
 }
 ```
 
-Funkcja dostępu do:
+The plugin function receives:
 
-- `project`: Aktualne informacje o projekcie.
-- `directory`: Bieżący katalog roboczy.
-- `worktree`: Ścieżka eksploatacyjna Git.
-- `client`: Klient SDK z codeplane do sztucznej inteligencji.
-- `$`: [API obudowy](https://bun.com/docs/runtime/shell) Buna do wykonywania oprogramowania.
+- `project`: The current project information.
+- `directory`: The current working directory.
+- `worktree`: The git worktree path.
+- `client`: An codeplane SDK client for interacting with the AI.
+- `$`: Bun's [shell API](https://bun.com/docs/runtime/shell) for executing commands.
 
 ---
 
-### Obsługa TypeScriptu
+### TypeScript support
 
-W przypadku wtyczek TypeScript możesz importować typy z pakietu wtyczek:
+For TypeScript plugins, you can import types from the plugin package:
 
 ```ts title="my-plugin.ts" {1}
 import type { Plugin } from "@codeplane-ai/plugin"
@@ -139,45 +139,45 @@ export const MyPlugin: Plugin = async ({ project, client, $, directory, worktree
 
 ---
 
-### Wydarzenia
+### Events
 
-Wtyczki mogą subskrybować zdarzenia, jak zastosować poniżej sekcji Przykłady. Oto lista różnych działań.
+Plugins can subscribe to events as seen below in the Examples section. Here is a list of the different events available.
 
-#### Wydarzenia dowodzenia
+#### Command Events
 
 - `command.executed`
 
-#### Plik Wydarzenia
+#### File Events
 
 - `file.edited`
 - `file.watcher.updated`
 
-#### Wydarzenia instalacyjne
+#### Installation Events
 
 - `installation.updated`
 
-#### Wydarzenia LSP
+#### LSP Events
 
 - `lsp.client.diagnostics`
 - `lsp.updated`
 
-#### Wydarzenia w wiadomościach
+#### Message Events
 
 - `message.part.removed`
 - `message.part.updated`
 - `message.removed`
 - `message.updated`
 
-#### Wydarzenia związane z uprawnieniami
+#### Permission Events
 
 - `permission.asked`
 - `permission.replied`
 
-#### Wydarzenia serwerowe
+#### Server Events
 
 - `server.connected`
 
-#### Wydarzenia sesyjne
+#### Session Events
 
 - `session.created`
 - `session.compacted`
@@ -188,36 +188,28 @@ Wtyczki mogą subskrybować zdarzenia, jak zastosować poniżej sekcji Przykład
 - `session.status`
 - `session.updated`
 
-#### Wydarzenia do zrobienia
+#### Todo Events
 
 - `todo.updated`
 
-#### Wydarzenia shell
+#### Shell Events
 
 - `shell.env`
 
-#### Wydarzenia narzędziowe
+#### Tool Events
 
 - `tool.execute.after`
 - `tool.execute.before`
 
-#### Wydarzenia TUI
+## Examples
 
-- `tui.prompt.append`
-- `tui.command.execute`
-- `tui.toast.show`
+Here are some examples of plugins you can use to extend codeplane.
 
 ---
 
-## Przykłady
+### Send notifications
 
-Oto kilka dostępnych wtyczek, które można udostępnić do codeplane.
-
----
-
-### Wysyłaj powiadomienia
-
-Wysyłaj powiadomienia, gdy wystąpią określone zdarzenia:
+Send notifications when certain events occur:
 
 ```js title=".codeplane/plugins/notification.js"
 export const NotificationPlugin = async ({ project, client, $, directory, worktree }) => {
@@ -232,17 +224,13 @@ export const NotificationPlugin = async ({ project, client, $, directory, worktr
 }
 ```
 
-Używamy `osascript` do uruchamiania AppleScript na macOS. Tutaj możesz przejść do wysyłania pozostałości.
-
-:::note
-Jeśli korzystasz z aplikacji komputerowej codeplane, może ona automatycznie wysłać wiadomość systemową, gdy odpowiedź jest gotowa lub gdy wystąpią błędy sesji.
-:::
+We are using `osascript` to run AppleScript on macOS. Here we are using it to send notifications.
 
 ---
 
-### ochrona .env
+### .env protection
 
-Zablokuj codeplane czytanie plików `.env`:
+Prevent codeplane from reading `.env` files:
 
 ```javascript title=".codeplane/plugins/env-protection.js"
 export const EnvProtection = async ({ project, client, $, directory, worktree }) => {
@@ -258,9 +246,9 @@ export const EnvProtection = async ({ project, client, $, directory, worktree })
 
 ---
 
-### Wstrzyknij zmienne środowiskowe
+### Inject environment variables
 
-Wstrzyknij zmienne konsekwencje dla wszystkich wykonań (narzędzia AI i terminale użytkownika):
+Inject environment variables into all shell execution (AI tools and user terminals):
 
 ```javascript title=".codeplane/plugins/inject-env.js"
 export const InjectEnvPlugin = async () => {
@@ -275,9 +263,9 @@ export const InjectEnvPlugin = async () => {
 
 ---
 
-### Niestandardowe narzędzia
+### Custom tools
 
-Wtyczki mogą również dodawać niestandardowe narzędzia do codeplane:
+Plugins can also add custom tools to codeplane:
 
 ```ts title=".codeplane/plugins/custom-tools.ts"
 import { type Plugin, tool } from "@codeplane-ai/plugin"
@@ -300,19 +288,23 @@ export const CustomToolsPlugin: Plugin = async (ctx) => {
 }
 ```
 
-Pomocnik `tool` tworzy narzędzie użytkowe, które może wywołać kod codeplane. Pobierane schematu Zoda i narzędzie wyszukiwania za pomocą:
+The `tool` helper creates a custom tool that codeplane can call. It takes a Zod schema function and returns a tool definition with:
 
-- `description`: Co robi do narzędzia
-- `args`: Schemat Zoda dla narzędzi argumentów
-- `execute`: Funkcja uruchamiania po wywołaniu narzędzia
+- `description`: What the tool does
+- `args`: Zod schema for the tool's arguments
+- `execute`: Function that runs when the tool is called
 
-Twoje narzędzie będzie dostępne dla otwartego kodu wraz z narzędziami użytkowymi.
+Your custom tools will be available to codeplane alongside built-in tools.
+
+:::note
+If a plugin tool uses the same name as a built-in tool, the plugin tool takes precedence.
+:::
 
 ---
 
-### Logowanie
+### Logging
 
-użyj `client.app.log()` zamiast `console.log` do rejestracji strukturalnego:
+Use `client.app.log()` instead of `console.log` for structured logging:
 
 ```ts title=".codeplane/plugins/my-plugin.ts"
 export const MyPlugin = async ({ client }) => {
@@ -327,13 +319,13 @@ export const MyPlugin = async ({ client }) => {
 }
 ```
 
-Poziomy: `debug`, `info`, `warn`, `error`. Aby uzyskać szczegółowe informacje, zobacz [dokumentację pakietu SDK](https://github.com/devinoldenburg/codeplane).
+Levels: `debug`, `info`, `warn`, `error`. See [SDK documentation](https://github.com/devinoldenburg/codeplane) for details.
 
 ---
 
-### Haki zagęszczające
+### Compaction hooks
 
-Dostosuj kontekst dołączony podczas kompaktowania sesji:
+Customize the context included when a session is compacted:
 
 ```ts title=".codeplane/plugins/compaction.ts"
 import type { Plugin } from "@codeplane-ai/plugin"
@@ -355,9 +347,9 @@ Include any state that should persist across compaction:
 }
 ```
 
-Hak `experimental.session.compacting` jest uruchamiany, zanim LLM wygeneruje podsumowanie kontynuacji. go, aby wstrzyknąć kontekst kontekstu dla domeny, której nie dostrzeżono przez domyślny monit o zagęszczenie.
+The `experimental.session.compacting` hook fires before the LLM generates a continuation summary. Use it to inject domain-specific context that the default compaction prompt would miss.
 
-Można także umieścić kompletny monit o zagęszczenie, ustawiając `output.prompt`:
+You can also replace the compaction prompt entirely by setting `output.prompt`:
 
 ```ts title=".codeplane/plugins/custom-compaction.ts"
 import type { Plugin } from "@codeplane-ai/plugin"
@@ -382,4 +374,4 @@ Format as a structured prompt that a new agent can use to resume work.
 }
 ```
 
-Gdy urządzenie jest `output.prompt`, jest całkowicie dostępne na domyślnym monit o zagęszczanie. Tablica `output.context` jest w tym przypadku poniesiona.
+When `output.prompt` is set, it completely replaces the default compaction prompt. The `output.context` array is ignored in this case.

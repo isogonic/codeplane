@@ -1,41 +1,37 @@
 ---
-title: Modeller
-description: LLM sağlayıcılarını ve model seçimlerini yapılandırın.
+title: Models
+description: Configuring an LLM provider and model.
 ---
 
-codeplane, **75+ LLM sağlayıcısını** desteklemek için [AI SDK](https://ai-sdk.dev/) ve [Models.dev](https://models.dev) kullanır ve yerel modellerin çalıştırılmasını destekler.
-
----
-
-## Sağlayıcılar
-
-Çoğu popüler sağlayıcı varsayılan olarak önceden yüklenmiştir. Bir sağlayıcının kimlik bilgilerini `/connect` komutu aracılığıyla eklediyseniz, bunlar codeplane'u başlattığınızda kullanılabilir olacaktır.
-
-[Sağlayıcılar](/docs/providers) hakkında daha fazla bilgi edinin.
+CodePlane uses the [AI SDK](https://ai-sdk.dev/) and [Models.dev](https://models.dev) to support **75+ LLM providers** and it supports running local models.
 
 ---
 
-## Model seçimi
+## Providers
 
-Sağlayıcınızı yapılandırdıktan sonra aşağıdaki komutu yazarak istediğiniz modeli seçebilirsiniz:
+Most popular providers are preloaded by default. If you've added provider credentials from Settings -> Providers, they'll be available when you start CodePlane.
 
-```bash frame="none"
-/models
-```
+Learn more about [providers](/docs/providers).
 
 ---
 
-## Önerilen modeller
+## Select a model
 
-Piyasada pek çok model var ve her hafta yeni modeller çıkıyor.
+Once you've configured your provider you can select the model you want from the model selector in the web app.
+
+---
+
+## Recommended models
+
+There are a lot of models out there, with new models coming out every week.
 
 :::tip
-Önerdiğimiz modellerden birini kullanmayı düşünün.
+Consider using one of the models we recommend.
 :::
 
-Ancak, hem kod oluşturmada hem de araç çağırmada iyi olan yalnızca birkaçı var.
+However, there are only a few of them that are good at both generating code and tool calling.
 
-Burada, codeplane ile belirli bir sıraya göre iyi çalışan birkaç model yer almaktadır. (Bu kapsamlı bir liste değildir ve mutlaka güncel olması da gerekmez):
+Here are several models that work well with CodePlane, in no particular order. (This is not an exhaustive list nor is it necessarily up to date):
 
 - GPT 5.2
 - GPT 5.1 Codex
@@ -46,10 +42,10 @@ Burada, codeplane ile belirli bir sıraya göre iyi çalışan birkaç model yer
 
 ---
 
-## Varsayılan ayarlama
+## Set a default
 
-Bunlardan birini varsayılan model olarak ayarlamak için `model` anahtarınızı telefonunuzudan ayarlayabilirsiniz.
-codeplane yapılandırması
+To set one of these as the default model, you can set the `model` key in your
+CodePlane config.
 
 ```json title="codeplane.json" {3}
 {
@@ -58,15 +54,15 @@ codeplane yapılandırması
 }
 ```
 
-Burada tam kimlik `provider_id/model_id`'dir. Örneğin, [CodePlane Zen](/docs/zen) kullanıyorsanız, GPT 5.1 Codex için `codeplane/gpt-5.1-codex` kullanırsınız.
+Here the full ID is `provider_id/model_id`. For example, if you're using [CodePlane Zen](/docs/zen), you would use `codeplane/gpt-5.1-codex` for GPT 5.1 Codex.
 
-Bir [custom provider](/docs/providers#custom) yapılandırılmışsa, `provider_id`, performansınızın `provider` bölümünden gelen anahtardır ve `model_id`, `provider.models`'den gelen anahtardır.
+If you've configured a [custom provider](/docs/providers#custom), the `provider_id` is key from the `provider` part of your config, and the `model_id` is the key from `provider.models`.
 
 ---
 
-## Model yapılandırma
+## Configure models
 
-Bir modelin seçeneklerini genel olarak yapılandırma aracılığıyla yapılandırabilirsiniz.
+You can globally configure a model's options through the config.
 
 ```jsonc title="codeplane.jsonc" {7-12,19-24}
 {
@@ -100,12 +96,12 @@ Bir modelin seçeneklerini genel olarak yapılandırma aracılığıyla yapılan
 }
 ```
 
-Burada iki yerleşik model için genel ayarları yapılandırıyoruz: `gpt-5` sağlayıcısı aracılığıyla erişildiğinde `openai` ve `claude-sonnet-4-20250514` sağlayıcısı aracılığıyla erişildiğinde `anthropic`.
-Yerleşik sağlayıcı ve model adları [Models.dev](https://models.dev) adresinde bulunabilir.
+Here we're configuring global settings for two built-in models: `gpt-5` when accessed via the `openai` provider, and `claude-sonnet-4-20250514` when accessed via the `anthropic` provider.
+The built-in provider and model names can be found on [Models.dev](https://models.dev).
 
-Bu seçenekleri kullandığınız tüm aracılar için de yapılandırabilirsiniz. Aracı yapılandırması burada tüm genel seçenekleri geçersiz kılar. [Daha fazla bilgi](/docs/agents/#additional).
+You can also configure these options for any agents that you are using. The agent config overrides any global options here. [Learn more](/docs/agents/#additional).
 
-Ayrıca yerleşik çeşitleri genişleten özel varyantlar da tanımlayabilirsiniz. Varyantlar, yinelenen girişler oluşturmadan aynı model için farklı ayarları yapılandırmanıza olanak tanır:
+You can also define custom variants that extend built-in ones. Variants let you configure different settings for the same model without creating duplicate entries:
 
 ```jsonc title="codeplane.jsonc" {6-21}
 {
@@ -135,42 +131,42 @@ Ayrıca yerleşik çeşitleri genişleten özel varyantlar da tanımlayabilirsin
 
 ---
 
-## Varyantlar
+## Variants
 
-Birçok model, farklı konfigürasyonlara sahip birden fazla kapasiteye sahip. codeplane, popüler sağlayıcılar için sunulan değişkenlerle birlikte gelir.
+Many models support multiple variants with different configurations. CodePlane ships with built-in default variants for popular providers.
 
-### Yerleşik çeşitler
+### Built-in variants
 
-codeplane birçok sağlayıcı için varsayılan değişkenlerle birlikte gelir:
+CodePlane ships with default variants for many providers:
 
-**Antropik**:
+**Anthropic**:
 
-- `high` - Yüksek düşünme bütçesi (varsayılan)
-- `max` - Maksimum düşünme bütçesi
+- `high` - High thinking budget (default)
+- `max` - Maximum thinking budget
 
 **OpenAI**:
 
-Modele göre değişir ancak kabaca:
+Varies by model but roughly:
 
-- `none` - Gerekçe yok
-- `minimal` - Minimum akıl yürütme çabası
-- `low` - Düşük muhakeme çabası
-- `medium` - Orta düzey muhakeme çabası
-- `high` - Yüksek akıl yürütme çabası
-- `xhigh` - Ekstra yüksek muhakeme çabası
+- `none` - No reasoning
+- `minimal` - Minimal reasoning effort
+- `low` - Low reasoning effort
+- `medium` - Medium reasoning effort
+- `high` - High reasoning effort
+- `xhigh` - Extra high reasoning effort
 
 **Google**:
 
-- `low` - Daha düşük effort/token bütçesi
-- `high` - Daha yüksek effort/token bütçesi
+- `low` - Lower effort/token budget
+- `high` - Higher effort/token budget
 
 :::tip
-Bu liste kapsamlı değildir. Diğer birçok sağlayıcının da yerleşik varsayılanları vardır.
+This list is not comprehensive. Many other providers have built-in defaults too.
 :::
 
-### Özel çeşitler
+### Custom variants
 
-Mevcut varyantları geçersiz kılabilir veya kendinizinkini ekleyebilirsiniz:
+You can override existing variants or add your own:
 
 ```jsonc title="codeplane.jsonc" {7-18}
 {
@@ -195,19 +191,19 @@ Mevcut varyantları geçersiz kılabilir veya kendinizinkini ekleyebilirsiniz:
 }
 ```
 
-### Döngü çeşitleri
+### Cycle variants
 
-Çeşitler arasında hızlı geçiş yapmak için `variant_cycle` tuş atamasını kullanın. [Daha fazla bilgi](/docs/keybinds).
+Use the model selector to switch between variants.
 
 ---
 
-## Modelleri yükleme
+## Loading models
 
-codeplane başlatıldığında modelleri aşağıdaki öncelik sırasına göre kontrol eder:
+When CodePlane starts up, it checks for models in the following priority order:
 
-1. `--model` veya `-m` komut satırı bayrağı. Biçim, yapılandırma dosyasındakiyle aynıdır: `provider_id/model_id`.
+1. The `--model` or `-m` command line flag. The format is the same as in the config file: `provider_id/model_id`.
 
-2. codeplane yapılandırmasındaki model listesi.
+2. The model list in the CodePlane config.
 
    ```json title="codeplane.json"
    {
@@ -216,8 +212,8 @@ codeplane başlatıldığında modelleri aşağıdaki öncelik sırasına göre 
    }
    ```
 
-   Buradaki format `provider/model`'dır.
+   The format here is `provider/model`.
 
-3. En son kullanılan model.
+3. The last used model.
 
-4. Dahili öncelik kullanan ilk model.
+4. The first model using an internal priority.

@@ -1,59 +1,68 @@
 ---
 title: Zen
-description: CodePlane가 제공하는 엄선된 모델 목록.
+description: Curated list of models provided by CodePlane.
 ---
 
 import config from "../../../../config.mjs"
 export const console = config.console
 export const email = `mailto:${config.email}`
 
-CodePlane Zen은 CodePlane 팀이 제공하는, 테스트와 검증을 거친 모델 목록입니다.
+CodePlane Zen is a list of tested and verified models provided by the CodePlane team.
 
 :::note
-CodePlane Zen은 현재 beta입니다.
+CodePlane Zen is currently in beta.
 :::
 
-Zen은 CodePlane의 다른 provider와 똑같이 작동합니다. CodePlane Zen에 로그인해 API 키를 받으면 됩니다. 이는 **완전히 선택 사항**이며, CodePlane를 사용하기 위해 반드시 사용할 필요는 없습니다.
+Zen works like any other provider in CodePlane. You login to CodePlane Zen and get
+your API key. It's **completely optional** and you don't need to use it to use
+CodePlane.
 
 ---
 
-## 배경
+## Background
 
-시중에는 매우 많은 모델이 있지만, 이 가운데 코딩 에이전트로 잘 작동하는 모델은 일부뿐입니다. 또한 대부분의 provider는 설정 방식이 매우 달라서, 성능과 품질에도 큰 차이가 생깁니다.
+There are a large number of models out there but only a few of
+these models work well as coding agents. Additionally, most providers are
+configured very differently; so you get very different performance and quality.
 
 :::tip
-CodePlane에서 잘 작동하는 일부 모델과 provider를 직접 테스트했습니다.
+We tested a select group of models and providers that work well with CodePlane.
 :::
 
-따라서 OpenRouter 같은 서비스를 통해 모델을 사용하면, 원하는 모델의 최적 버전을 정말 쓰고 있는지 확신하기 어렵습니다.
+So if you are using a model through something like OpenRouter, you can never be
+sure if you are getting the best version of the model you want.
 
-이 문제를 해결하기 위해 다음과 같은 작업을 했습니다.
+To fix this, we did a couple of things:
 
-1. 일부 모델을 직접 테스트하고, 각 팀과 함께 가장 잘 운영하는 방법을 논의했습니다.
-2. 이어서 몇몇 provider와 협력해, 이 모델들이 올바르게 제공되도록 했습니다.
-3. 마지막으로 모델/provider 조합을 벤치마크하고, 자신 있게 추천할 수 있는 목록을 정리했습니다.
+1. We tested a select group of models and talked to their teams about how to
+   best run them.
+2. We then worked with a few providers to make sure these were being served
+   correctly.
+3. Finally, we benchmarked the combination of the model/provider and came up
+   with a list that we feel good recommending.
 
-CodePlane Zen은 이런 모델에 접근할 수 있게 해주는 AI gateway입니다.
-
----
-
-## 작동 방식
-
-CodePlane Zen은 CodePlane의 다른 provider와 똑같이 작동합니다.
-
-1. **<a href={console}>CodePlane Zen</a>**에 로그인하고, 결제 정보를 추가한 뒤, API 키를 복사합니다.
-2. TUI에서 `/connect` 명령을 실행하고, CodePlane Zen을 선택한 다음 API 키를 붙여넣습니다.
-3. TUI에서 `/models`를 실행해, 저희가 추천하는 모델 목록을 확인합니다.
-
-요금은 요청별로 청구되며, 계정에 크레딧을 추가할 수 있습니다.
+CodePlane Zen is an AI gateway that gives you access to these models.
 
 ---
 
-## 엔드포인트
+## How it works
 
-다음 API 엔드포인트를 통해서도 모델에 접근할 수 있습니다.
+CodePlane Zen works like any other provider in CodePlane.
 
-| 모델                  | 모델 ID               | 엔드포인트                                         | AI SDK 패키지               |
+1. You sign in to **<a href={console}>CodePlane Zen</a>**, add your billing
+   details, and copy your API key.
+2. Open Settings -> Providers in the web app, select CodePlane Zen, and paste your API key.
+3. Open the model selector to see the list of models we recommend.
+
+You are charged per request and you can add credits to your account.
+
+---
+
+## Endpoints
+
+You can also access our models through the following API endpoints.
+
+| Model                 | Model ID              | Endpoint                                           | AI SDK Package              |
 | --------------------- | --------------------- | -------------------------------------------------- | --------------------------- |
 | GPT 5.5               | gpt-5.5               | `https://example.invalid/zen`             | `@ai-sdk/openai`            |
 | GPT 5.5 Pro           | gpt-5.5-pro           | `https://example.invalid/zen`             | `@ai-sdk/openai`            |
@@ -85,9 +94,9 @@ CodePlane Zen은 CodePlane의 다른 provider와 똑같이 작동합니다.
 | Gemini 3 Flash        | gemini-3-flash        | `https://example.invalid/zen` | `@ai-sdk/google`            |
 | Qwen3.6 Plus          | qwen3.6-plus          | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | Qwen3.5 Plus          | qwen3.5-plus          | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
+| MiniMax M2.7          | minimax-m2.7          | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | MiniMax M2.5          | minimax-m2.5          | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | MiniMax M2.5 Free     | minimax-m2.5-free     | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
-| MiniMax M2.7          | minimax-m2.7          | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | GLM 5.1               | glm-5.1               | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | GLM 5                 | glm-5                 | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | Kimi K2.5             | kimi-k2.5             | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
@@ -97,13 +106,15 @@ CodePlane Zen은 CodePlane의 다른 provider와 똑같이 작동합니다.
 | Hy3 Preview Free      | hy3-preview-free      | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | Nemotron 3 Super Free | nemotron-3-super-free | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 
-CodePlane config에서 사용하는 [모델 ID](/docs/config/#models)는 `codeplane/<model-id>` 형식입니다. 예를 들어 GPT 5.5를 사용하려면 config에서 `codeplane/gpt-5.5`를 사용하면 됩니다.
+The [model id](/docs/config/#models) in your CodePlane config
+uses the format `codeplane/<model-id>`. For example, for GPT 5.5, you would
+use `codeplane/gpt-5.5` in your config.
 
 ---
 
-### 모델
+### Models
 
-사용 가능한 전체 모델 목록과 메타데이터는 다음에서 가져올 수 있습니다.
+You can fetch the full list of available models and their metadata from:
 
 ```
 https://example.invalid/zen
@@ -111,11 +122,11 @@ https://example.invalid/zen
 
 ---
 
-## 요금
+## Pricing
 
-종량제(pay-as-you-go)를 지원합니다. 아래 가격은 **1M tokens당** 기준입니다.
+We support a pay-as-you-go model. Below are the prices **per 1M tokens**.
 
-| 모델                              | 입력   | 출력    | Cached Read | Cached Write |
+| Model                             | Input  | Output  | Cached Read | Cached Write |
 | --------------------------------- | ------ | ------- | ----------- | ------------ |
 | Big Pickle                        | Free   | Free    | Free        | -            |
 | MiniMax M2.5 Free                 | Free   | Free    | Free        | -            |
@@ -164,114 +175,121 @@ https://example.invalid/zen
 | GPT 5 Codex                       | $1.07  | $8.50   | $0.107      | -            |
 | GPT 5 Nano                        | Free   | Free    | Free        | -            |
 
-사용 기록에서 *Claude Haiku 3.5*를 볼 수 있습니다. 이는 세션 제목을 생성할 때 사용되는 [저비용 모델](/docs/config/#models)입니다.
+You might notice _Claude Haiku 3.5_ in your usage history. This is a [low cost model](/docs/config/#models) that's used to generate the titles of your sessions.
 
 :::note
-신용카드 수수료는 원가 그대로 전달됩니다(거래당 4.4% + $0.30). 그 외 추가 요금은 부과하지 않습니다.
+Credit card fees are passed along at cost (4.4% + $0.30 per transaction); we don't charge anything beyond that.
 :::
 
-무료 모델:
+The free models:
 
-- MiniMax M2.5 Free는 한정된 기간 동안 CodePlane에서 제공됩니다. 팀은 이 기간에 피드백을 수집하고 모델을 개선합니다.
-- Ling 2.6 Flash Free는 한정된 기간 동안 CodePlane에서 제공됩니다. 팀은 이 기간에 피드백을 수집하고 모델을 개선합니다.
-- Hy3 Preview Flash Free는 한정된 기간 동안 CodePlane에서 제공됩니다. 팀은 이 기간에 피드백을 수집하고 모델을 개선합니다.
-- Nemotron 3 Super Free는 한정된 기간 동안 CodePlane에서 제공됩니다. 팀은 이 기간에 피드백을 수집하고 모델을 개선합니다.
-- Big Pickle은 한정된 기간 동안 CodePlane에서 무료로 제공되는 stealth model입니다. 팀은 이 기간에 피드백을 수집하고 모델을 개선합니다.
+- MiniMax M2.5 Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Ling 2.6 Flash Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Hy3 Preview Flash Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Nemotron 3 Super Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Big Pickle is a stealth model that's free on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
 
-궁금한 점이 있으면 <a href={email}>Contact us</a>로 문의해 주세요.
-
----
-
-### 자동 충전
-
-잔액이 $5 아래로 내려가면 Zen이 자동으로 $20을 충전합니다.
-
-자동 충전 금액은 변경할 수 있습니다. 자동 충전을 완전히 비활성화할 수도 있습니다.
+<a href={email}>Contact us</a> if you have any questions.
 
 ---
 
-### 월간 한도
+### Auto-reload
 
-워크스페이스 전체와 팀의 각 구성원에 대해 월간 사용 한도를 설정할 수도 있습니다.
+If your balance goes below $5, Zen will automatically reload $20.
 
-예를 들어 월간 사용 한도를 $20로 설정하면, Zen은 한 달에 $20를 초과해 사용하지 않습니다. 하지만 자동 충전이 켜져 있다면 잔액이 $5 아래로 내려갈 때 자동으로 충전되어, 실제 청구 금액은 $20를 넘을 수 있습니다.
-
----
-
-### 지원 중단 모델
-
-| 모델             | 지원 중단 날짜 |
-| ---------------- | -------------- |
-| MiniMax M2.1     | March 15, 2026 |
-| GLM 4.7          | March 15, 2026 |
-| GLM 4.6          | March 15, 2026 |
-| Gemini 3 Pro     | March 9, 2026  |
-| Kimi K2 Thinking | March 6, 2026  |
-| Kimi K2          | March 6, 2026  |
-| Qwen3 Coder 480B | Feb 6, 2026    |
+You can change the auto-reload amount. You can also disable auto-reload entirely.
 
 ---
 
-## 개인정보 보호
+### Monthly limits
 
-모든 모델은 미국에서 호스팅됩니다. provider는 zero-retention 정책을 따르며, 다음 예외를 제외하고는 데이터를 모델 학습에 사용하지 않습니다.
+You can also set a monthly usage limit for the entire workspace and for each
+member of your team.
 
-- Big Pickle: 무료 제공 기간에는 수집된 데이터가 모델 개선에 사용될 수 있습니다.
-- MiniMax M2.5 Free: 무료 제공 기간에는 수집된 데이터가 모델 개선에 사용될 수 있습니다.
-- Ling 2.6 Flash Free: 무료 제공 기간에는 수집된 데이터가 모델 개선에 사용될 수 있습니다.
-- Hy3 Preview Free: 무료 제공 기간에는 수집된 데이터가 모델 개선에 사용될 수 있습니다.
-- Nemotron 3 Super Free(NVIDIA 무료 엔드포인트): [NVIDIA API Trial Terms of Service](https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf)에 따라 제공됩니다. 평가판 전용이며 프로덕션 환경이나 민감한 데이터에는 사용할 수 없습니다. NVIDIA는 자사 모델과 서비스를 개선하기 위해 프롬프트와 출력을 기록합니다. 개인 정보나 기밀 데이터는 제출하지 마세요.
-- OpenAI APIs: 요청은 [OpenAI's Data Policies](https://platform.openai.com/docs/guides/your-data)에 따라 30일 동안 보관됩니다.
-- Anthropic APIs: 요청은 [Anthropic's Data Policies](https://docs.anthropic.com/en/docs/claude-code/data-usage)에 따라 30일 동안 보관됩니다.
+For example, let's say you set a monthly usage limit to $20, Zen will not use
+more than $20 in a month. But if you have auto-reload enabled, Zen might end up
+charging you more than $20 if your balance goes below $5.
 
 ---
 
-## 팀용 기능
+### Deprecated models
 
-Zen은 팀에서도 매우 잘 작동합니다. 팀원을 초대하고, 역할을 할당하고, 팀에서 사용할 모델을 선별하는 등 다양한 작업을 할 수 있습니다.
+| Model            | Deprecation date |
+| ---------------- | ---------------- |
+| MiniMax M2.1     | March 15, 2026   |
+| GLM 4.7          | March 15, 2026   |
+| GLM 4.6          | March 15, 2026   |
+| Gemini 3 Pro     | March 9, 2026    |
+| Kimi K2 Thinking | March 6, 2026    |
+| Kimi K2          | March 6, 2026    |
+| Qwen3 Coder 480B | Feb 6, 2026      |
+
+---
+
+## Privacy
+
+All our models are hosted in the US. Our providers follow a zero-retention policy and do not use your data for model training, with the following exceptions:
+
+- Big Pickle: During its free period, collected data may be used to improve the model.
+- MiniMax M2.5 Free: During its free period, collected data may be used to improve the model.
+- Ling 2.6 Flash Free: During its free period, collected data may be used to improve the model.
+- Hy3 Preview Free: During its free period, collected data may be used to improve the model.
+- Nemotron 3 Super Free (NVIDIA free endpoints): Provided under the [NVIDIA API Trial Terms of Service](https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf). Trial use only — not for production or sensitive data. Prompts and outputs are logged by NVIDIA to improve its models and services. Do not submit personal or confidential data.
+- OpenAI APIs: Requests are retained for 30 days in accordance with [OpenAI's Data Policies](https://platform.openai.com/docs/guides/your-data).
+- Anthropic APIs: Requests are retained for 30 days in accordance with [Anthropic's Data Policies](https://docs.anthropic.com/en/docs/claude-code/data-usage).
+
+---
+
+## For Teams
+
+Zen also works great for teams. You can invite teammates, assign roles, curate
+the models your team uses, and more.
 
 :::note
-워크스페이스는 현재 beta의 일부로 팀에 무료 제공되고 있습니다.
+Workspaces are currently free for teams as a part of the beta.
 :::
 
-현재 beta의 일부로 팀의 워크스페이스 관리도 무료입니다. 가격에 대한 더 자세한 내용은 곧 공유할 예정입니다.
+Managing your workspace is currently free for teams as a part of the beta. We'll be
+sharing more details on the pricing soon.
 
 ---
 
-### 역할
+### Roles
 
-워크스페이스에 팀원을 초대하고 역할을 할당할 수 있습니다.
+You can invite teammates to your workspace and assign roles:
 
-- **Admin**: 모델, 멤버, API 키, 결제를 관리
-- **Member**: 자신의 API 키만 관리
+- **Admin**: Manage models, members, API keys, and billing
+- **Member**: Manage only their own API keys
 
-Admin은 비용을 통제할 수 있도록 각 멤버의 월간 지출 한도도 설정할 수 있습니다.
+Admins can also set monthly spending limits for each member to keep costs under control.
 
 ---
 
-### 모델 접근
+### Model access
 
-Admin은 워크스페이스에서 특정 모델을 활성화하거나 비활성화할 수 있습니다. 비활성화된 모델로 보내는 요청은 오류를 반환합니다.
+Admins can enable or disable specific models for the workspace. Requests made to a disabled model will return an error.
 
-이는 데이터를 수집하는 모델의 사용을 비활성화하고 싶을 때 유용합니다.
+This is useful for cases where you want to disable the use of a model that
+collects data.
 
 ---
 
 ### Bring your own key
 
-Zen의 다른 모델도 계속 사용하면서, 자체 OpenAI 또는 Anthropic API 키를 사용할 수 있습니다.
+You can use your own OpenAI or Anthropic API keys while still accessing other models in Zen.
 
-자체 키를 사용하면 토큰 요금은 Zen이 아니라 provider가 직접 청구합니다.
+When you use your own keys, tokens are billed directly by the provider, not by Zen.
 
-예를 들어 조직에서 이미 OpenAI나 Anthropic 키를 가지고 있고, Zen이 제공하는 키 대신 그 키를 사용하고 싶을 수 있습니다.
+For example, your organization might already have a key for OpenAI or Anthropic
+and you want to use that instead of the one that Zen provides.
 
 ---
 
-## 목표
+## Goals
 
-CodePlane Zen을 만든 이유는 다음과 같습니다.
+We created CodePlane Zen to:
 
-1. 코딩 에이전트에 가장 적합한 모델/provider를 **벤치마크**하기 위해.
-2. 성능을 낮추거나 더 저렴한 provider로 라우팅하지 않고, **최고 품질**의 선택지에 접근하기 위해.
-3. 원가로 판매해 **가격 인하**를 그대로 반영하기 위해. 따라서 붙는 마진은 처리 수수료를 충당하기 위한 수준뿐입니다.
-4. 다른 코딩 에이전트와도 함께 사용할 수 있게 해 **lock-in이 없도록** 하기 위해. 또한 CodePlane에서 언제나 다른 provider도 사용할 수 있게 하기 위해.
+1. **Benchmark** the best models/providers for coding agents.
+2. Have access to the **highest quality** options and not downgrade performance or route to cheaper providers.
+3. Pass along any **price drops** by selling at cost; so the only markup is to cover our processing fees.
+4. Have **no lock-in** by allowing you to use it with any other coding agent. And always let you use any other provider with CodePlane as well.

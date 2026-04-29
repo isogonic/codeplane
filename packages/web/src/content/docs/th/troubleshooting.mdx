@@ -1,275 +1,141 @@
 ---
-title: การแก้ไขปัญหา
-description: ปัญหาทั่วไปและวิธีแก้ปัญหา
+title: Troubleshooting
+description: Common issues and how to resolve them.
 ---
 
-หากต้องการแก้ไขข้อบกพร่องเกี่ยวกับ CodePlane ให้เริ่มต้นด้วยการตรวจสอบบันทึกและข้อมูลในเครื่องที่จัดเก็บไว้ในดิสก์
+To debug issues with CodePlane, start by checking the logs and local data it stores on disk.
 
 ---
 
-## บันทึก
+## Logs
 
-ไฟล์บันทึกถูกเขียนไปที่:
+Log files are written to:
 
 - **macOS/Linux**: `~/.local/share/codeplane/log/`
-- **Windows**: กด `WIN+R` แล้ววาง `%USERPROFILE%\.local\share\codeplane\log`
+- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.local\share\codeplane\log`
 
-ไฟล์บันทึกจะถูกตั้งชื่อด้วยการประทับเวลา (เช่น `2025-01-09T123456.log`) และไฟล์บันทึกล่าสุด 10 ไฟล์จะถูกเก็บไว้
+Log files are named with timestamps (e.g., `2025-01-09T123456.log`) and the most recent 10 log files are kept.
 
-คุณสามารถตั้งค่าระดับการบันทึกด้วยตัวเลือกบรรทัดคำสั่ง `--log-level` เพื่อรับข้อมูลการแก้ไขข้อบกพร่องโดยละเอียดเพิ่มเติม ตัวอย่างเช่น `codeplane --log-level DEBUG`
+You can set the log level with the `--log-level` command-line option to get more detailed debug information. For example, `codeplane --log-level DEBUG`.
 
 ---
 
-## พื้นที่จัดเก็บ
+## Storage
 
-codeplane เก็บข้อมูลเซสชันและข้อมูลแอปพลิเคชันอื่น ๆ ไว้บนดิสก์ที่:
+codeplane stores session data and other application data on disk at:
 
 - **macOS/Linux**: `~/.local/share/codeplane/`
-- **Windows**: กด `WIN+R` แล้ววาง `%USERPROFILE%\.local\share\codeplane`
+- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.local\share\codeplane`
 
-ไดเรกทอรีนี้ประกอบด้วย:
+This directory contains:
 
-- `auth.json` - ​​ข้อมูลการตรวจสอบสิทธิ์ เช่น คีย์ API, OAuth Token
-- `log/` - ​​บันทึกแอปพลิเคชัน
-- `project/` - ​​ข้อมูลเฉพาะโครงการ เช่น ข้อมูลเซสชันและข้อความ
-  - หากโปรเจ็กต์อยู่ภายใน repo Git มันจะถูกจัดเก็บไว้ใน `./<project-slug>/storage/`
-  - หากไม่ใช่ repo Git มันจะถูกเก็บไว้ใน `./global/storage/`
+- `auth.json` - Authentication data like API keys, OAuth tokens
+- `log/` - Application logs
+- `project/` - Project-specific data like session and message data
+  - If the project is within a Git repo, it is stored in `./<project-slug>/storage/`
+  - If it is not a Git repo, it is stored in `./global/storage/`
 
----
+## Getting help
 
-## แอปเดสก์ท็อป
+If you're experiencing issues with CodePlane:
 
-CodePlane Desktop รันเซิร์ฟเวอร์ CodePlane ในเครื่อง (ไฟล์ `codeplane-cli` sidecar) ในเบื้องหลัง ปัญหาส่วนใหญ่มีสาเหตุมาจากปลั๊กอินที่ทำงานผิดปกติ แคชเสียหาย หรือการตั้งค่าเซิร์ฟเวอร์ไม่ถูกต้อง
+1. **Report issues on GitHub**
 
-### การตรวจสอบอย่างรวดเร็ว
-
-- ออกจากระบบโดยสมบูรณ์แล้วเปิดแอปใหม่อีกครั้ง
-- หากแอปแสดงหน้าจอข้อผิดพลาด ให้คลิก **รีสตาร์ท** และคัดลอกรายละเอียดข้อผิดพลาด
-- macOS เท่านั้น: เมนู `CodePlane` -> **โหลด Webview ใหม่** (ช่วยได้หาก UI ว่างเปล่า/frozen)
-
----
-
-### ปิดการใช้งานปลั๊กอิน
-
-หากแอปเดสก์ท็อปขัดข้องเมื่อเปิดใช้งาน หยุดทำงาน หรือทำงานผิดปกติ ให้เริ่มต้นด้วยการปิดใช้งานปลั๊กอิน
-
-#### ตรวจสอบการกำหนดค่าส่วนกลาง
-
-เปิดไฟล์กำหนดค่าส่วนกลางของคุณแล้วมองหาคีย์ `plugin`
-
-- **macOS/Linux**: `~/.config/codeplane/codeplane.jsonc` (หรือ `~/.config/codeplane/codeplane.json`)
-- **macOS/Linux** (การติดตั้งเก่ากว่า): `~/.local/share/codeplane/codeplane.jsonc`
-- **Windows**: กด `WIN+R` แล้ววาง `%USERPROFILE%\.config\codeplane\codeplane.jsonc`
-
-หากคุณได้กำหนดค่าปลั๊กอินไว้ ให้ปิดการใช้งานชั่วคราวโดยลบคีย์ออกหรือตั้งค่าเป็นอาร์เรย์ว่าง:
-
-```jsonc
-{
-  "$schema": "https://example.invalid/config.json",
-  "plugin": [],
-}
-```
-
-#### ตรวจสอบไดเร็กทอรีปลั๊กอิน
-
-CodePlane ยังสามารถโหลดปลั๊กอินในเครื่องจากดิสก์ได้ ย้ายสิ่งเหล่านี้ออกไปชั่วคราว (หรือเปลี่ยนชื่อโฟลเดอร์) และรีสตาร์ทแอปเดสก์ท็อป:
-
-- **ปลั๊กอินสากล**
-  - **macOS/Linux**: `~/.config/codeplane/plugins/`
-  - **Windows**: กด `WIN+R` แล้ววาง `%USERPROFILE%\.config\codeplane\plugins`
-- **ปลั๊กอินโครงการ** (เฉพาะในกรณีที่คุณใช้การกำหนดค่าต่อโครงการ)
-  - `<your-project>/.codeplane/plugins/`
-
-หากแอปเริ่มทำงานอีกครั้ง ให้เปิดใช้งานปลั๊กอินอีกครั้งทีละรายการเพื่อดูว่าปลั๊กอินใดเป็นสาเหตุของปัญหา
-
----
-
-### ล้างแคช
-
-หากการปิดใช้งานปลั๊กอินไม่ได้ผล (หรือการติดตั้งปลั๊กอินค้าง) ให้ล้างแคชเพื่อให้ CodePlane สามารถสร้างใหม่ได้
-
-1. ออกจาก CodePlane Desktop โดยสมบูรณ์
-2. ลบไดเรกทอรีแคช:
-
-- **macOS**: ตัวค้นหา -> `Cmd+Shift+G` -> วาง `~/.cache/codeplane`
-- **Linux**: ลบ `~/.cache/codeplane` (หรือรัน `rm -rf ~/.cache/codeplane`)
-- **Windows**: กด `WIN+R` แล้ววาง `%USERPROFILE%\.cache\codeplane`
-
-3. รีสตาร์ทเดสก์ท็อป CodePlane
-
----
-
-### แก้ไขปัญหาการเชื่อมต่อเซิร์ฟเวอร์
-
-CodePlane Desktop สามารถเริ่มต้นเซิร์ฟเวอร์ภายในเครื่องของตนเองได้ (ค่าเริ่มต้น) หรือเชื่อมต่อกับเซิร์ฟเวอร์ URL ที่คุณกำหนดค่าไว้
-
-หากคุณเห็นกล่องโต้ตอบ **"การเชื่อมต่อล้มเหลว"** (หรือแอปไม่เคยผ่านหน้าจอเริ่มต้น) ให้ตรวจสอบเซิร์ฟเวอร์ที่กำหนดเอง URL
-
-#### ล้างเซิร์ฟเวอร์เริ่มต้นของเดสก์ท็อป URL
-
-จากหน้าจอหลัก คลิกชื่อเซิร์ฟเวอร์ (ที่มีจุดสถานะ) เพื่อเปิดตัวเลือกเซิร์ฟเวอร์ ในส่วน **เซิร์ฟเวอร์เริ่มต้น** คลิก **ล้าง**
-
-#### ลบ `server.port` / `server.hostname` ออกจากการกำหนดค่าของคุณ
-
-หาก `codeplane.json(c)` ของคุณมีส่วน `server` ให้ลบออกชั่วคราวแล้วรีสตาร์ทแอปเดสก์ท็อป
-
-#### ตรวจสอบตัวแปรสภาพแวดล้อม
-
-หากคุณตั้งค่า `CODEPLANE_PORT` ในสภาพแวดล้อมของคุณ แอปเดสก์ท็อปจะพยายามใช้พอร์ตนั้นสำหรับเซิร์ฟเวอร์ภายในเครื่อง
-
-- ยกเลิกการตั้งค่า `CODEPLANE_PORT` (หรือเลือกพอร์ตว่าง) แล้วรีสตาร์ท
-
----
-
-### Linux: ปัญหา Wayland / X11
-
-บน Linux การตั้งค่า Wayland บางอย่างอาจทำให้เกิดหน้าต่างว่างหรือข้อผิดพลาดของตัวประกอบ
-
-- หากคุณอยู่บน Wayland และแอปว่างเปล่า/crashing ให้ลองเปิดใช้งานด้วย `OC_ALLOW_WAYLAND=1`
-- หากสิ่งนั้นทำให้สิ่งต่าง ๆ แย่ลง ให้ลบออกแล้วลองเปิดใช้งานภายใต้เซสชัน X11 แทน
-
----
-
-### Windows: รันไทม์ WebView2
-
-บน Windows CodePlane Desktop ต้องใช้ Microsoft Edge **WebView2 Runtime** หากแอปเปิดเป็นหน้าต่างว่างหรือไม่เริ่มทำงาน ให้ติดตั้ง/update WebView2 แล้วลองอีกครั้ง
-
----
-
-### Windows: ปัญหาด้านประสิทธิภาพทั่วไป
-
-หากคุณประสบปัญหาประสิทธิภาพการทำงานช้า ปัญหาการเข้าถึงไฟล์ หรือปัญหา terminal บน Windows ให้ลองใช้ [WSL (ระบบย่อย Windows สำหรับ Linux)](/docs/windows-wsl) WSL มอบสภาพแวดล้อม Linux ที่ทำงานร่วมกับคุณสมบัติของ CodePlane ได้อย่างราบรื่นยิ่งขึ้น
-
----
-
-### การแจ้งเตือนไม่แสดง
-
-CodePlane Desktop จะแสดงการแจ้งเตือนของระบบเฉพาะเมื่อ:
-
-- การแจ้งเตือนเปิดใช้งานสำหรับ CodePlane ในการตั้งค่าระบบปฏิบัติการของคุณและ
-- หน้าต่างแอพไม่ได้โฟกัส
-
----
-
-### รีเซ็ตที่เก็บข้อมูลแอปเดสก์ท็อป (วิธีสุดท้าย)
-
-หากแอปไม่เริ่มทำงานและคุณไม่สามารถล้างการตั้งค่าจากภายใน UI ได้ ให้รีเซ็ตสถานะที่บันทึกไว้ของแอปเดสก์ท็อป
-
-1. ออกจากเดสก์ท็อป CodePlane
-2. ค้นหาและลบไฟล์เหล่านี้ (อยู่ในไดเร็กทอรีข้อมูลแอป CodePlane Desktop):
-
-- `codeplane.settings.dat` (เซิร์ฟเวอร์เริ่มต้นของเดสก์ท็อป URL)
-- `codeplane.global.dat` และ `codeplane.workspace.*.dat` (สถานะ UI เช่น เซิร์ฟเวอร์ล่าสุด/projects)
-
-หากต้องการค้นหาไดเร็กทอรีอย่างรวดเร็ว:
-
-- **macOS**: Finder -> `Cmd+Shift+G` -> `~/Library/Application Support` (จากนั้นค้นหาชื่อไฟล์ด้านบน)
-- **Linux**: ค้นหาภายใต้ `~/.local/share` สำหรับชื่อไฟล์ด้านบน
-- **Windows**: กด `WIN+R` -> `%APPDATA%` (จากนั้นค้นหาชื่อไฟล์ด้านบน)
-
----
-
-## การขอความช่วยเหลือ
-
-หากคุณประสบปัญหากับ CodePlane:
-
-1. **รายงานปัญหาเกี่ยวกับ GitHub**
-
-   วิธีที่ดีที่สุดในการรายงานจุดบกพร่องหรือขอคุณสมบัติคือผ่านพื้นที่เก็บข้อมูล GitHub ของเรา:
+   The best way to report bugs or request features is through our GitHub repository:
 
    [**github.com/devinoldenburg/codeplane/issues**](https://github.com/devinoldenburg/codeplane/issues)
 
-   ก่อนที่จะสร้างปัญหาใหม่ ให้ค้นหาปัญหาที่มีอยู่เพื่อดูว่าปัญหาของคุณได้รับการรายงานแล้วหรือไม่
+   Before creating a new issue, search existing issues to see if your problem has already been reported.
 
 
 ---
 
-## ปัญหาทั่วไป
+## Common issues
 
-ต่อไปนี้เป็นปัญหาทั่วไปบางประการและวิธีแก้ปัญหา
-
----
-
-### CodePlane จะไม่เริ่มทำงาน
-
-1. ตรวจสอบบันทึกเพื่อดูข้อความแสดงข้อผิดพลาด
-2. ลองรันด้วย `--print-logs` เพื่อดูเอาต์พุตใน terminal
-3. ตรวจสอบให้แน่ใจว่าคุณมีเวอร์ชันล่าสุดด้วย `codeplane upgrade`
+Here are some common issues and how to resolve them.
 
 ---
 
-### ปัญหาการรับรองความถูกต้อง
+### CodePlane won't start
 
-1. ลองตรวจสอบความถูกต้องอีกครั้งด้วยคำสั่ง `/connect` ใน TUI
-2. ตรวจสอบว่าคีย์ API ของคุณถูกต้อง
-3. ตรวจสอบให้แน่ใจว่าเครือข่ายของคุณอนุญาตการเชื่อมต่อกับ API ของผู้ให้บริการ
+1. Check the logs for error messages
+2. Try running with `--print-logs` to see output in the terminal
+3. Ensure you have the latest version with `codeplane upgrade`
 
 ---
 
-### ไม่มีรุ่น
+### Authentication issues
 
-1. ตรวจสอบว่าคุณได้รับการรับรองความถูกต้องกับผู้ให้บริการแล้ว
-2. ตรวจสอบชื่อรุ่นในการกำหนดค่าของคุณถูกต้อง
-3. บางรุ่นอาจต้องมีการเข้าถึงหรือสมัครสมาชิกโดยเฉพาะ
+1. Try re-authenticating from Settings -> Providers in the web app
+2. Check that your API keys are valid
+3. Ensure your network allows connections to the provider's API
 
-หากคุณพบ `ProviderModelNotFoundError` เป็นไปได้มากว่าคุณจะคิดผิด
-อ้างอิงแบบจำลองที่ไหนสักแห่ง
-ควรอ้างอิงโมเดลดังนี้: `<providerId>/<modelId>`
+---
 
-ตัวอย่าง:
+### Model not available
+
+1. Check that you've authenticated with the provider
+2. Verify the model name in your config is correct
+3. Some models may require specific access or subscriptions
+
+If you encounter `ProviderModelNotFoundError` you are most likely incorrectly
+referencing a model somewhere.
+Models should be referenced like so: `<providerId>/<modelId>`
+
+Examples:
 
 - `openai/gpt-4.1`
 - `openrouter/google/gemini-2.5-flash`
 - `codeplane/kimi-k2`
 
-หากต้องการทราบว่าคุณมีสิทธิ์เข้าถึงรุ่นใด ให้เรียกใช้ `codeplane models`
+To figure out what models you have access to, run `codeplane models`
 
 ---
 
 ### ProviderInitError
 
-หากคุณพบ ProviderInitError คุณอาจมีการกำหนดค่าที่ไม่ถูกต้องหรือเสียหาย
+If you encounter a ProviderInitError, you likely have an invalid or corrupted configuration.
 
-เพื่อแก้ไขปัญหานี้:
+To resolve this:
 
-1. ขั้นแรก ตรวจสอบให้แน่ใจว่าผู้ให้บริการของคุณตั้งค่าอย่างถูกต้องโดยทำตาม [คู่มือผู้ให้บริการ](/docs/providers)
-2. หากปัญหายังคงอยู่ ให้ลองล้างการกำหนดค่าที่เก็บไว้:
+1. First, verify your provider is set up correctly by following the [providers guide](/docs/providers)
+2. If the issue persists, try clearing your stored configuration:
 
    ```bash
    rm -rf ~/.local/share/codeplane
    ```
 
-   บน Windows กด `WIN+R` และลบ: `%USERPROFILE%\.local\share\codeplane`
+   On Windows, press `WIN+R` and delete: `%USERPROFILE%\.local\share\codeplane`
 
-3. ตรวจสอบความถูกต้องอีกครั้งกับผู้ให้บริการของคุณโดยใช้คำสั่ง `/connect` ใน TUI
+3. Re-authenticate with your provider from Settings -> Providers in the web app.
 
 ---
 
-### AI_APICallError และปัญหาแพ็คเกจผู้ให้บริการ
+### AI_APICallError and provider package issues
 
-หากคุณพบข้อผิดพลาดในการโทร API อาจเนื่องมาจากแพ็คเกจผู้ให้บริการที่ล้าสมัย codeplane จะติดตั้งแพ็คเกจของผู้ให้บริการแบบไดนามิก (OpenAI, Anthropic, Google ฯลฯ) ตามความจำเป็น และแคชไว้ในเครื่อง
+If you encounter API call errors, this may be due to outdated provider packages. codeplane dynamically installs provider packages (OpenAI, Anthropic, Google, etc.) as needed and caches them locally.
 
-ในการแก้ไขปัญหาแพ็คเกจผู้ให้บริการ:
+To resolve provider package issues:
 
-1. ล้างแคชแพ็คเกจผู้ให้บริการ:
+1. Clear the provider package cache:
 
    ```bash
    rm -rf ~/.cache/codeplane
    ```
 
-   บน Windows กด `WIN+R` และลบ: `%USERPROFILE%\.cache\codeplane`
+   On Windows, press `WIN+R` and delete: `%USERPROFILE%\.cache\codeplane`
 
-2. รีสตาร์ท codeplane เพื่อติดตั้งแพ็คเกจผู้ให้บริการล่าสุดอีกครั้ง
+2. Restart codeplane to reinstall the latest provider packages
 
-การดำเนินการนี้จะบังคับให้ codeplane ดาวน์โหลดแพ็คเกจผู้ให้บริการเวอร์ชันล่าสุด ซึ่งมักจะแก้ไขปัญหาความเข้ากันได้กับพารามิเตอร์โมเดลและการเปลี่ยนแปลง API
+This will force codeplane to download the most recent versions of provider packages, which often resolves compatibility issues with model parameters and API changes.
 
 ---
 
-### Copy/paste ไม่ทำงานบน Linux
+### Copy/paste not working on Linux
 
-ผู้ใช้ Linux จำเป็นต้องติดตั้งยูทิลิตี้คลิปบอร์ดตัวใดตัวหนึ่งต่อไปนี้เพื่อให้ฟังก์ชัน copy/paste ทำงาน:
+Linux users need to have one of the following clipboard utilities installed for copy/paste functionality to work:
 
-**สำหรับระบบ X11:**
+**For X11 systems:**
 
 ```bash
 apt install -y xclip
@@ -277,13 +143,13 @@ apt install -y xclip
 apt install -y xsel
 ```
 
-**สำหรับระบบ Wayland:**
+**For Wayland systems:**
 
 ```bash
 apt install -y wl-clipboard
 ```
 
-**สำหรับสภาพแวดล้อมที่ไม่มีหัว:**
+**For headless environments:**
 
 ```bash
 apt install -y xvfb
@@ -292,4 +158,4 @@ Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
 export DISPLAY=:99.0
 ```
 
-codeplane จะตรวจพบว่าคุณใช้ Wayland และชอบ `wl-clipboard` หรือไม่เช่นนั้นจะพยายามค้นหาเครื่องมือคลิปบอร์ดตามลำดับ: `xclip` และ `xsel`
+codeplane will detect if you're using Wayland and prefer `wl-clipboard`, otherwise it will try to find clipboard tools in order of: `xclip` and `xsel`.

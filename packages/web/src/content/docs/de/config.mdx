@@ -1,69 +1,72 @@
 ---
-title: Konfiguration
-description: Verwenden Sie die Konfiguration CodePlane JSON.
+title: Config
+description: Using the CodePlane JSON config.
 ---
 
-Sie können CodePlane mithilfe einer JSON-Konfigurationsdatei konfigurieren.
+You can configure CodePlane using a JSON config file.
 
 ---
 
 ## Format
 
-CodePlane unterstützt die Formate **JSON** und **JSONC** (JSON mit Kommentaren).
+CodePlane supports both **JSON** and **JSONC** (JSON with Comments) formats.
 
 ```jsonc title="codeplane.jsonc"
 {
   "$schema": "https://example.invalid/config.json",
-  // Theme configuration
-  "theme": "codeplane",
   "model": "anthropic/claude-sonnet-4-5",
   "autoupdate": true,
+  "server": {
+    "port": 4096,
+  },
 }
 ```
 
 ---
 
-## Speicherorte
+## Locations
 
-Sie können Ihre Konfiguration an verschiedenen Orten platzieren und sie haben eine
-andere Rangfolge.
+You can place your config in a couple of different locations and they have a
+different order of precedence.
 
 :::note
-Konfigurationsdateien werden **zusammengeführt**, nicht ersetzt.
+Configuration files are **merged together**, not replaced.
 :::
 
-Konfigurationsdateien werden zusammengeführt und nicht ersetzt. Einstellungen aus den folgenden Konfigurationsspeicherorten werden kombiniert. Spätere Konfigurationen überschreiben frühere nur bei Schlüsselkonflikten. Es bleiben keine widersprüchlichen Einstellungen aus allen Konfigurationen erhalten.
+Configuration files are merged together, not replaced. Settings from the following config locations are combined. Later configs override earlier ones only for conflicting keys. Non-conflicting settings from all configs are preserved.
 
-Wenn Ihre globale Konfiguration beispielsweise `theme: "codeplane"` und `autoupdate: true` und Ihre Projektkonfiguration `model: "anthropic/claude-sonnet-4-5"` festlegt, umfasst die endgültige Konfiguration alle drei Einstellungen.
+For example, if your global config sets `autoupdate: true` and your project config sets `model: "anthropic/claude-sonnet-4-5"`, the final configuration will include both settings.
 
 ---
 
-### Rangfolge
+### Precedence order
 
-Konfigurationsquellen werden in dieser Reihenfolge geladen (spätere Quellen überschreiben frühere):
+Config sources are loaded in this order (later sources override earlier ones):
 
-1. **Remote-Konfiguration** (von `.well-known/codeplane`) – Organisationsstandards
-2. **Globale Konfiguration** (`~/.config/codeplane/codeplane.json`) – Benutzereinstellungen
-3. **Benutzerdefinierte Konfiguration** (`CODEPLANE_CONFIG` env var) – benutzerdefinierte Überschreibungen
-4. **Projektkonfiguration** (`codeplane.json` im Projekt) – projektspezifische Einstellungen
-5. **`.codeplane` Verzeichnisse** – Agenten, Befehle, Plugins
-6. **Inline-Konfiguration** (`CODEPLANE_CONFIG_CONTENT` env var) – Laufzeitüberschreibungen
+1. **Remote config** (from `.well-known/codeplane`) - organizational defaults
+2. **Global config** (`~/.config/codeplane/codeplane.json`) - user preferences
+3. **Custom config** (`CODEPLANE_CONFIG` env var) - custom overrides
+4. **Project config** (`codeplane.json` in project) - project-specific settings
+5. **`.codeplane` directories** - agents, commands, plugins
+6. **Inline config** (`CODEPLANE_CONFIG_CONTENT` env var) - runtime overrides
+7. **Managed config files** (`/Library/Application Support/codeplane/` on macOS) - admin-controlled
+8. **macOS managed preferences** (`.mobileconfig` via MDM) - highest priority, not user-overridable
 
-Dies bedeutet, dass Projektkonfigurationen globale Standardeinstellungen überschreiben können und globale Konfigurationen Remote-Organisationsstandards überschreiben können.
+This means project configs can override global defaults, and global configs can override remote organizational defaults. Managed settings override everything.
 
 :::note
-Die Verzeichnisse `.codeplane` und `~/.config/codeplane` verwenden **Pluralnamen** für Unterverzeichnisse: `agents/`, `commands/`, `modes/`, `plugins/`, `skills/`, `tools/` und `themes/`. Aus Gründen der Abwärtskompatibilität werden auch einzelne Namen (z. B. `agent/`) unterstützt.
+The `.codeplane` and `~/.config/codeplane` directories use **plural names** for subdirectories: `agents/`, `commands/`, `modes/`, `plugins/`, `skills/`, `tools/`, and `themes/`. Singular names (e.g., `agent/`) are also supported for backwards compatibility.
 :::
 
 ---
 
 ### Remote
 
-Organisationen können die Standardkonfiguration über den Endpunkt `.well-known/codeplane` bereitstellen. Dieser wird automatisch abgerufen, wenn Sie sich bei einem Anbieter authentifizieren, der dies unterstützt.
+Organizations can provide default configuration via the `.well-known/codeplane` endpoint. This is fetched automatically when you authenticate with a provider that supports it.
 
-Zuerst wird die Remote-Konfiguration geladen, die als Basisschicht dient. Alle anderen Konfigurationsquellen (global, Projekt) können diese Standardeinstellungen überschreiben.
+Remote config is loaded first, serving as the base layer. All other config sources (global, project) can override these defaults.
 
-Wenn Ihre Organisation beispielsweise MCP-Server bereitstellt, sind die standardmäßig deaktiviert:
+For example, if your organization provides MCP servers that are disabled by default:
 
 ```json title="Remote config from .well-known/codeplane"
 {
@@ -77,7 +80,7 @@ Wenn Ihre Organisation beispielsweise MCP-Server bereitstellt, sind die standard
 }
 ```
 
-Sie können bestimmte Server in Ihrer lokalen Konfiguration aktivieren:
+You can enable specific servers in your local config:
 
 ```json title="codeplane.json"
 {
@@ -95,93 +98,166 @@ Sie können bestimmte Server in Ihrer lokalen Konfiguration aktivieren:
 
 ### Global
 
-Platzieren Sie Ihre globale CodePlane-Konfiguration in `~/.config/codeplane/codeplane.json`. Verwenden Sie die globale Konfiguration für benutzerweite Einstellungen wie Themen, Anbieter oder Tastenkombinationen.
+Place your global CodePlane config in `~/.config/codeplane/codeplane.json`. Use global config for user-wide server/runtime preferences like providers, models, and permissions.
 
-Die globale Konfiguration überschreibt die Standardeinstellungen der Remote-Organisation.
+Global config overrides remote organizational defaults.
 
 ---
 
-### Pro Projekt
+### Per project
 
-Fügen Sie `codeplane.json` in Ihrem Projektstamm hinzu. Die Projektkonfiguration hat unter den Standardkonfigurationsdateien die höchste Priorität – sie überschreibt sowohl globale als auch Remote-Konfigurationen.
+Add `codeplane.json` in your project root. Project config has the highest precedence among standard config files - it overrides both global and remote configs.
 
 :::tip
-Platzieren Sie die projektspezifische Konfiguration im Stammverzeichnis Ihres Projekts.
+Place project specific config in the root of your project.
 :::
 
-Wenn CodePlane gestartet wird, sucht es im aktuellen Verzeichnis nach einer Konfigurationsdatei oder durchsucht das nächstgelegene Git-Verzeichnis.
+When CodePlane starts up, it looks for a config file in the current directory or traverse up to the nearest Git directory.
 
-Dies kann auch sicher in Git eingecheckt werden und dasselbe Schema wie das globale verwenden.
+This is also safe to be checked into Git and uses the same schema as the global one.
 
 ---
 
-### Benutzerdefinierter Pfad
+### Custom path
 
-Geben Sie mithilfe der Umgebungsvariablen `CODEPLANE_CONFIG` einen benutzerdefinierten Konfigurationsdateipfad an.
+Specify a custom config file path using the `CODEPLANE_CONFIG` environment variable.
 
 ```bash
 export CODEPLANE_CONFIG=/path/to/my/custom-config.json
 codeplane run "Hello world"
 ```
 
-Die benutzerdefinierte Konfiguration wird in der Rangfolge zwischen globalen und Projektkonfigurationen geladen.
+Custom config is loaded between global and project configs in the precedence order.
 
 ---
 
-### Benutzerdefiniertes Verzeichnis
+### Custom directory
 
-Geben Sie mit `CODEPLANE_CONFIG_DIR` ein benutzerdefiniertes Konfigurationsverzeichnis an.
-Umgebungsvariable. Dieses Verzeichnis wird nach Agenten, Befehlen,
-Modi und Plugins genau wie das Standardverzeichnis `.codeplane` und sollten
-folgen der gleichen Struktur.
+Specify a custom config directory using the `CODEPLANE_CONFIG_DIR`
+environment variable. This directory will be searched for agents, commands,
+modes, and plugins just like the standard `.codeplane` directory, and should
+follow the same structure.
 
 ```bash
 export CODEPLANE_CONFIG_DIR=/path/to/my/config-directory
 codeplane run "Hello world"
 ```
 
-Das benutzerdefinierte Verzeichnis wird nach den Verzeichnissen global config und `.codeplane` geladen, sodass es deren Einstellungen **überschreiben** kann.
+The custom directory is loaded after the global config and `.codeplane` directories, so it **can override** their settings.
+
+---
+
+### Managed settings
+
+Organizations can enforce configuration that users cannot override. Managed settings are loaded at the highest priority tier.
+
+#### File-based
+
+Drop an `codeplane.json` or `codeplane.jsonc` file in the system managed config directory:
+
+| Platform | Path                                     |
+| -------- | ---------------------------------------- |
+| macOS    | `/Library/Application Support/codeplane/` |
+| Linux    | `/etc/codeplane/`                         |
+| Windows  | `%ProgramData%\codeplane`                 |
+
+These directories require admin/root access to write, so users cannot modify them.
+
+#### macOS managed preferences
+
+On macOS, CodePlane reads managed preferences from the `ai.codeplane.managed` preference domain. Deploy a `.mobileconfig` via MDM (Jamf, Kandji, FleetDM) and the settings are enforced automatically.
+
+CodePlane checks these paths:
+
+1. `/Library/Managed Preferences/<user>/ai.codeplane.managed.plist`
+2. `/Library/Managed Preferences/ai.codeplane.managed.plist`
+
+The plist keys map directly to `codeplane.json` fields. MDM metadata keys (`PayloadUUID`, `PayloadType`, etc.) are stripped automatically.
+
+**Creating a `.mobileconfig`**
+
+Use the `ai.codeplane.managed` PayloadType. The CodePlane config keys go directly in the payload dict:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>PayloadContent</key>
+  <array>
+    <dict>
+      <key>PayloadType</key>
+      <string>ai.codeplane.managed</string>
+      <key>PayloadIdentifier</key>
+      <string>com.example.codeplane.config</string>
+      <key>PayloadUUID</key>
+      <string>GENERATE-YOUR-OWN-UUID</string>
+      <key>PayloadVersion</key>
+      <integer>1</integer>
+      <key>share</key>
+      <string>disabled</string>
+      <key>server</key>
+      <dict>
+        <key>hostname</key>
+        <string>127.0.0.1</string>
+      </dict>
+      <key>permission</key>
+      <dict>
+        <key>*</key>
+        <string>ask</string>
+        <key>bash</key>
+        <dict>
+          <key>*</key>
+          <string>ask</string>
+          <key>rm -rf *</key>
+          <string>deny</string>
+        </dict>
+      </dict>
+    </dict>
+  </array>
+  <key>PayloadType</key>
+  <string>Configuration</string>
+  <key>PayloadIdentifier</key>
+  <string>com.example.codeplane</string>
+  <key>PayloadUUID</key>
+  <string>GENERATE-YOUR-OWN-UUID</string>
+  <key>PayloadVersion</key>
+  <integer>1</integer>
+</dict>
+</plist>
+```
+
+Generate unique UUIDs with `uuidgen`. Customize the settings to match your organization's requirements.
+
+**Deploying via MDM**
+
+- **Jamf Pro:** Computers > Configuration Profiles > Upload > scope to target devices or smart groups
+- **FleetDM:** Add the `.mobileconfig` to your gitops repo under `mdm.macos_settings.custom_settings` and run `fleetctl apply`
+
+**Verifying on a device**
+
+Double-click the `.mobileconfig` to install locally for testing (shows in System Settings > Privacy & Security > Profiles), then run:
+
+```bash
+codeplane debug config
+```
+
+All managed preference keys appear in the resolved config and cannot be overridden by user or project configuration.
 
 ---
 
 ## Schema
 
-Die Konfigurationsdatei verfügt über ein Schema, das in [**`example.invalid/config.json`**](https://example.invalid/config.json) definiert ist.
+The server/runtime config schema is defined in [**`example.invalid/config.json`**](https://example.invalid/config.json).
 
-Ihr Editor sollte in der Lage sein, basierend auf dem Schema zu validieren und automatisch zu vervollständigen.
-
----
-
-### TUI
-
-Sie können TUI-spezifische Einstellungen über die Option `tui` konfigurieren.
-
-```json title="codeplane.json"
-{
-  "$schema": "https://example.invalid/config.json",
-  "tui": {
-    "scroll_speed": 3,
-    "scroll_acceleration": {
-      "enabled": true
-    },
-    "diff_style": "auto"
-  }
-}
-```
-
-Verfügbare Optionen:
-
-- `scroll_acceleration.enabled` – Scrollbeschleunigung im macOS-Stil aktivieren. **Hat Vorrang vor `scroll_speed`.**
-- `scroll_speed` – Benutzerdefinierter Scrollgeschwindigkeitsmultiplikator (Standard: `3`, Minimum: `1`). Wird ignoriert, wenn `scroll_acceleration.enabled` gleich `true` ist.
-- `diff_style` – Steuern Sie das Diff-Rendering. `"auto"` passt sich der Terminalbreite an, `"stacked"` zeigt immer eine einzelne Spalte an.
-
-[Erfahren Sie hier mehr über die Verwendung der TUI](/docs/tui).
+Your editor should be able to validate and autocomplete based on the schema.
 
 ---
 
 ### Server
 
-Sie können Servereinstellungen für die Befehle `codeplane serve` und `codeplane web` über die Option `server` konfigurieren.
+You can configure server settings for the `codeplane serve` and `codeplane web` commands through the `server` option.
 
 ```json title="codeplane.json"
 {
@@ -196,21 +272,21 @@ Sie können Servereinstellungen für die Befehle `codeplane serve` und `codeplan
 }
 ```
 
-Verfügbare Optionen:
+Available options:
 
-- `port` – Port zum Abhören.
-- `hostname` – Hostname zum Abhören. Wenn `mdns` aktiviert ist und kein Hostname festgelegt ist, wird standardmäßig `0.0.0.0` verwendet.
-- `mdns` – mDNS-Diensterkennung aktivieren. Dadurch können andere Geräte im Netzwerk Ihres CodePlane-Servers erkannt werden.
-- `mdnsDomain` – Benutzerdefinierter Domänenname für den mDNS-Dienst. Standardmäßig ist `codeplane.local`. Nützlich für die Ausführung mehrerer Instanzen im selben Netzwerk.
-- `cors` – Zusätzliche Ursprünge, um CORS zu ermöglichen, wenn der HTTP-Server von einem browserbasierten Client aus verwendet wird. Die Werte müssen vollständige Ursprünge haben (Schema + Host + optionaler Port), z. B. `https://app.example.com`.
+- `port` - Port to listen on.
+- `hostname` - Hostname to listen on. When `mdns` is enabled and no hostname is set, defaults to `0.0.0.0`.
+- `mdns` - Enable mDNS service discovery. This allows other devices on the network to discover your CodePlane server.
+- `mdnsDomain` - Custom domain name for mDNS service. Defaults to `codeplane.local`. Useful for running multiple instances on the same network.
+- `cors` - Additional origins to allow for CORS when using the HTTP server from a browser-based client. Values must be full origins (scheme + host + optional port), eg `https://app.example.com`.
 
-[Erfahren Sie hier mehr über den Server](/docs/server).
+[Learn more about the server here](/docs/server).
 
 ---
 
-### Werkzeuge
+### Tools
 
-Sie können die Tools, die ein LLM verwenden kann, über die Option `tools` verwalten.
+You can manage the tools an LLM can use through the `tools` option.
 
 ```json title="codeplane.json"
 {
@@ -222,13 +298,13 @@ Sie können die Tools, die ein LLM verwenden kann, über die Option `tools` verw
 }
 ```
 
-[Erfahren Sie hier mehr über Tools](/docs/tools).
+[Learn more about tools here](/docs/tools).
 
 ---
 
-### Modelle
+### Models
 
-Sie können die Anbieter und Modelle, die Sie in Ihrer CodePlane-Konfiguration verwenden möchten, über die Optionen `provider`, `model` und `small_model` konfigurieren.
+You can configure the providers and models you want to use in your CodePlane config through the `provider`, `model` and `small_model` options.
 
 ```json title="codeplane.json"
 {
@@ -239,9 +315,9 @@ Sie können die Anbieter und Modelle, die Sie in Ihrer CodePlane-Konfiguration v
 }
 ```
 
-Die Option `small_model` konfiguriert ein separates Modell für einfache Aufgaben wie die Titelgenerierung. Standardmäßig versucht CodePlane, ein günstigeres Modell zu verwenden, sofern eines bei Ihrem Anbieter verfügbar ist, andernfalls greift es auf Ihr Hauptmodell zurück.
+The `small_model` option configures a separate model for lightweight tasks like title generation. By default, CodePlane tries to use a cheaper model if one is available from your provider, otherwise it falls back to your main model.
 
-Zu den Anbieteroptionen können `timeout` und `setCacheKey` gehören:
+Provider options can include `timeout`, `chunkTimeout`, and `setCacheKey`:
 
 ```json title="codeplane.json"
 {
@@ -250,6 +326,7 @@ Zu den Anbieteroptionen können `timeout` und `setCacheKey` gehören:
     "anthropic": {
       "options": {
         "timeout": 600000,
+        "chunkTimeout": 30000,
         "setCacheKey": true
       }
     }
@@ -257,20 +334,21 @@ Zu den Anbieteroptionen können `timeout` und `setCacheKey` gehören:
 }
 ```
 
-- `timeout` – Anforderungszeitlimit in Millisekunden (Standard: 300000). Zum Deaktivieren auf `false` setzen.
-- `setCacheKey` – Stellen Sie sicher, dass immer ein Cache-Schlüssel für den angegebenen Anbieter festgelegt ist.
+- `timeout` - Request timeout in milliseconds (default: 300000). Set to `false` to disable.
+- `chunkTimeout` - Timeout in milliseconds between streamed response chunks. If no chunk arrives in time, the request is aborted.
+- `setCacheKey` - Ensure a cache key is always set for designated provider.
 
-Sie können auch [lokale Modelle](/docs/models#local) konfigurieren. [Mehr erfahren](/docs/models).
+You can also configure [local models](/docs/models#local). [Learn more](/docs/models).
 
 ---
 
-#### Anbieterspezifische Optionen
+#### Provider-Specific Options
 
-Einige Anbieter unterstützen zusätzliche Konfigurationsoptionen über die allgemeinen Einstellungen `timeout` und `apiKey` hinaus.
+Some providers support additional configuration options beyond the generic `timeout` and `apiKey` settings.
 
 ##### Amazon Bedrock
 
-Amazon Bedrock unterstützt AWS-spezifische Konfigurationen:
+Amazon Bedrock supports AWS-specific configuration:
 
 ```json title="codeplane.json"
 {
@@ -287,36 +365,29 @@ Amazon Bedrock unterstützt AWS-spezifische Konfigurationen:
 }
 ```
 
-- `region` – AWS-Region für Bedrock (standardmäßig `AWS_REGION` env var oder `us-east-1`)
-- `profile` – AWS benanntes Profil von `~/.aws/credentials` (standardmäßig `AWS_PROFILE` Umgebungsvariable)
-- `endpoint` – Benutzerdefinierter Endpunkt URL für VPC-Endpunkte. Dies ist ein Alias ​​​​für die generische Option `baseURL` unter Verwendung der AWS-spezifischen Terminologie. Wenn beide angegeben sind, hat `endpoint` Vorrang.
+- `region` - AWS region for Bedrock (defaults to `AWS_REGION` env var or `us-east-1`)
+- `profile` - AWS named profile from `~/.aws/credentials` (defaults to `AWS_PROFILE` env var)
+- `endpoint` - Custom endpoint URL for VPC endpoints. This is an alias for the generic `baseURL` option using AWS-specific terminology. If both are specified, `endpoint` takes precedence.
 
 :::note
-Inhabertoken (`AWS_BEARER_TOKEN_BEDROCK` oder `/connect`) haben Vorrang vor der profilbasierten Authentifizierung. Weitere Informationen finden Sie unter [Authentifizierungs-Rangfolge](/docs/providers#authentication-precedence).
+Bearer tokens (`AWS_BEARER_TOKEN_BEDROCK` or `/connect`) take precedence over profile-based authentication. See [authentication precedence](/docs/providers#authentication-precedence) for details.
 :::
 
-[Erfahren Sie mehr über die Amazon Bedrock-Konfiguration](/docs/providers#amazon-bedrock).
+[Learn more about Amazon Bedrock configuration](/docs/providers#amazon-bedrock).
 
 ---
 
-### Themen
+### Themes
 
-Sie können das Thema, das Sie in Ihrer CodePlane-Konfiguration verwenden möchten, über die Option `theme` konfigurieren.
+Set your UI theme from the web app settings.
 
-```json title="codeplane.json"
-{
-  "$schema": "https://example.invalid/config.json",
-  "theme": ""
-}
-```
-
-[Mehr erfahren](/docs/themes).
+[Learn more here](/docs/themes).
 
 ---
 
-### Agenten
+### Agents
 
-Über die Option `agent` können Sie spezielle Agenten für bestimmte Aufgaben konfigurieren.
+You can configure specialized agents for specific tasks through the `agent` option.
 
 ```jsonc title="codeplane.jsonc"
 {
@@ -336,13 +407,13 @@ Sie können das Thema, das Sie in Ihrer CodePlane-Konfiguration verwenden möcht
 }
 ```
 
-Sie können Agenten auch mithilfe von Markdown-Dateien in `~/.config/codeplane/agents/` oder `.codeplane/agents/` definieren. [Mehr erfahren](/docs/agents).
+You can also define agents using markdown files in `~/.config/codeplane/agents/` or `.codeplane/agents/`. [Learn more here](/docs/agents).
 
 ---
 
-### Standardagent
+### Default agent
 
-Sie können den Standardagenten mit der Option `default_agent` festlegen. Dadurch wird bestimmt, welcher Agent verwendet wird, wenn keiner explizit angegeben wird.
+You can set the default agent using the `default_agent` option. This determines which agent is used when none is explicitly specified.
 
 ```json title="codeplane.json"
 {
@@ -351,15 +422,15 @@ Sie können den Standardagenten mit der Option `default_agent` festlegen. Dadurc
 }
 ```
 
-Der Standardagent muss ein Primäragent (kein Subagent) sein. Dies kann ein integrierter Agent wie `"build"` oder `"plan"` oder ein von Ihnen definierter [custom agent](/docs/agents) sein. Wenn der angegebene Agent nicht existiert oder ein Subagent ist, greift CodePlane mit einer Warnung auf `"build"` zurück.
+The default agent must be a primary agent (not a subagent). This can be a built-in agent like `"build"` or `"plan"`, or a [custom agent](/docs/agents) you've defined. If the specified agent doesn't exist or is a subagent, CodePlane will fall back to `"build"` with a warning.
 
-Diese Einstellung gilt für alle Schnittstellen: TUI, CLI (`codeplane run`), Desktop-App und GitHub Aktion.
+This setting applies across the web app, CLI (`codeplane run`), and GitHub Action.
 
 ---
 
-### Teilen
+### Sharing
 
-Sie können die Funktion [share](/docs/share) über die Option `share` konfigurieren.
+You can configure the [share](/docs/share) feature through the `share` option.
 
 ```json title="codeplane.json"
 {
@@ -368,19 +439,19 @@ Sie können die Funktion [share](/docs/share) über die Option `share` konfiguri
 }
 ```
 
-Dazu braucht es:
+This takes:
 
-- `"manual"` – Manuelles Teilen über Befehle zulassen (Standard)
-- `"auto"` – Neue Konversationen automatisch teilen
-- `"disabled"` – Teile vollständig deaktivieren
+- `"manual"` - Allow manual sharing via commands (default)
+- `"auto"` - Automatically share new conversations
+- `"disabled"` - Disable sharing entirely
 
-Standardmäßig ist die Freigabe auf den manuellen Modus eingestellt, in dem Sie Konversationen explizit mit dem Befehl `/share` teilen müssen.
+By default, sharing is set to manual mode where you need to explicitly share conversations using the `/share` command.
 
 ---
 
-### Befehle
+### Commands
 
-Sie können benutzerdefinierte Befehle für sich wiederholende Aufgaben über die Option `command` konfigurieren.
+You can configure custom commands for repetitive tasks through the `command` option.
 
 ```jsonc title="codeplane.jsonc"
 {
@@ -400,28 +471,30 @@ Sie können benutzerdefinierte Befehle für sich wiederholende Aufgaben über di
 }
 ```
 
-Sie können Befehle auch mithilfe von Markdown-Dateien in `~/.config/codeplane/commands/` oder `.codeplane/commands/` definieren. [Mehr erfahren](/docs/commands).
+You can also define commands using markdown files in `~/.config/codeplane/commands/` or `.codeplane/commands/`. [Learn more here](/docs/commands).
 
 ---
 
-### Tastenkombinationen
+### Snapshot
 
-Sie können Ihre Tastenkombinationen über die Option `keybinds` anpassen.
+CodePlane uses snapshots to track file changes during agent operations, enabling you to undo and revert changes within a session. Snapshots are enabled by default.
+
+For large repositories or projects with many submodules, the snapshot system can cause slow indexing and significant disk usage as it tracks all changes using an internal git repository. You can disable snapshots using the `snapshot` option.
 
 ```json title="codeplane.json"
 {
   "$schema": "https://example.invalid/config.json",
-  "keybinds": {}
+  "snapshot": false
 }
 ```
 
-[Mehr erfahren](/docs/keybinds).
+Note that disabling snapshots means changes made by the agent cannot be rolled back through the UI.
 
 ---
 
-### Automatisches Update
+### Autoupdate
 
-CodePlane lädt beim Start automatisch alle neuen Updates herunter. Sie können dies mit der Option `autoupdate` deaktivieren.
+CodePlane will automatically download any new updates when it starts up. You can disable this with the `autoupdate` option.
 
 ```json title="codeplane.json"
 {
@@ -430,14 +503,14 @@ CodePlane lädt beim Start automatisch alle neuen Updates herunter. Sie können 
 }
 ```
 
-Wenn Sie keine Updates wünschen, aber dringend möchten, wenn eine neue Version verfügbar ist, setzen Sie `autoupdate` auf `"notify"`.
-Beachten Sie, dass dies nur funktioniert, wenn es nicht mit einem Paketmanager wie Homebrew installiert wurde.
+If you don't want updates but want to be notified when a new version is available, set `autoupdate` to `"notify"`.
+Notice that this only works if it was not installed using a package manager such as Homebrew.
 
 ---
 
-### Formatierer
+### Formatters
 
-Sie können Codeformatierer über die Option `formatter` konfigurieren.
+You can configure code formatters through the `formatter` option.
 
 ```json title="codeplane.json"
 {
@@ -457,15 +530,15 @@ Sie können Codeformatierer über die Option `formatter` konfigurieren.
 }
 ```
 
-[Erfahren Sie hier mehr über Formatierer](/docs/formatters).
+[Learn more about formatters here](/docs/formatters).
 
 ---
 
-### Berechtigungen
+### Permissions
 
-CodePlane erlaubt standardmäßig alle Vorgänge, ohne dass eine ausdrückliche Genehmigung erforderlich ist. Sie können dies mit der Option `permission` ändern.
+By default, codeplane **allows all operations** without requiring explicit approval. You can change this using the `permission` option.
 
-Um beispielsweise sicherzustellen, dass die Tools `edit` und `bash` eine Benutzergenehmigung erfordern:
+For example, to ensure that the `edit` and `bash` tools require user approval:
 
 ```json title="codeplane.json"
 {
@@ -477,32 +550,34 @@ Um beispielsweise sicherzustellen, dass die Tools `edit` und `bash` eine Benutze
 }
 ```
 
-[Erfahren Sie hier mehr über Berechtigungen](/docs/permissions).
+[Learn more about permissions here](/docs/permissions).
 
 ---
 
-### Komprimierung
+### Compaction
 
-Sie können das Verhalten der Kontextkomprimierung über die Option `compaction` steuern.
+You can control context compaction behavior through the `compaction` option.
 
 ```json title="codeplane.json"
 {
   "$schema": "https://example.invalid/config.json",
   "compaction": {
     "auto": true,
-    "prune": true
+    "prune": true,
+    "reserved": 10000
   }
 }
 ```
 
-- `auto` – Die Sitzung wird automatisch komprimieren, wenn der Kontext voll ist (Standard: `true`).
-- `prune` – Alte Tool-Ausgaben entfernen, um Token zu sparen (Standard: `true`).
+- `auto` - Automatically compact the session when context is full (default: `true`).
+- `prune` - Remove old tool outputs to save tokens (default: `true`).
+- `reserved` - Token buffer for compaction. Leaves enough window to avoid overflow during compaction
 
 ---
 
-### Dateiüberwachung
+### Watcher
 
-Sie können Datei-Watcher-Ignoriermuster über die Option `watcher` konfigurieren.
+You can configure file watcher ignore patterns through the `watcher` option.
 
 ```json title="codeplane.json"
 {
@@ -513,13 +588,13 @@ Sie können Datei-Watcher-Ignoriermuster über die Option `watcher` konfiguriere
 }
 ```
 
-Muster folgen der Glob-Syntax. Verwenden Sie diese Option, um verrauschte Verzeichnisse von der Dateiüberwachung auszuschließen.
+Patterns follow glob syntax. Use this to exclude noisy directories from file watching.
 
 ---
 
-### MCP
+### MCP servers
 
-Sie können den MCP-Server, den Sie verwenden möchten, über die Option `mcp` konfigurieren.
+You can configure MCP servers you want to use through the `mcp` option.
 
 ```json title="codeplane.json"
 {
@@ -528,15 +603,15 @@ Sie können den MCP-Server, den Sie verwenden möchten, über die Option `mcp` k
 }
 ```
 
-[Mehr erfahren](/docs/mcp-servers).
+[Learn more here](/docs/mcp-servers).
 
 ---
 
 ### Plugins
 
-[Plugins](/docs/plugins) erweitert CodePlane mit benutzerdefinierten Tools, Hooks und Integrationen.
+[Plugins](/docs/plugins) extend CodePlane with custom tools, hooks, and integrations.
 
-Platzieren Sie Ihre Plugin-Dateien in `.codeplane/plugins/` oder `~/.config/codeplane/plugins/`. Sie können Plugins auch über die Option `plugin` von npm laden.
+Place plugin files in `.codeplane/plugins/` or `~/.config/codeplane/plugins/`. You can also load plugins from npm through the `plugin` option.
 
 ```json title="codeplane.json"
 {
@@ -545,13 +620,13 @@ Platzieren Sie Ihre Plugin-Dateien in `.codeplane/plugins/` oder `~/.config/code
 }
 ```
 
-[Mehr erfahren](/docs/plugins).
+[Learn more here](/docs/plugins).
 
 ---
 
-### Anweisungen
+### Instructions
 
-Sie können die Anweisungen für das von Ihnen verwendete Modell über die Option `instructions` konfigurieren.
+You can configure the instructions for the model you're using through the `instructions` option.
 
 ```json title="codeplane.json"
 {
@@ -560,13 +635,14 @@ Sie können die Anweisungen für das von Ihnen verwendete Modell über die Optio
 }
 ```
 
-Dies erfordert eine Reihe von Pfaden und Glob-Mustern zu Anweisungsdateien. [Erfahren Sie hier mehr über Regeln](/docs/rules).
+This takes an array of paths and glob patterns to instruction files. [Learn more
+about rules here](/docs/rules).
 
 ---
 
-### Deaktivierte Anbieter
+### Disabled providers
 
-Sie können Anbieter, die automatisch geladen werden, über die Option `disabled_providers` deaktivieren. Dies ist nützlich, wenn Sie verhindern möchten, dass bestimmte Anbieter geladen werden, selbst wenn deren Anmeldeinformationen verfügbar sind.
+You can disable providers that are loaded automatically through the `disabled_providers` option. This is useful when you want to prevent certain providers from being loaded even if their credentials are available.
 
 ```json title="codeplane.json"
 {
@@ -576,20 +652,20 @@ Sie können Anbieter, die automatisch geladen werden, über die Option `disabled
 ```
 
 :::note
-Der `disabled_providers` hat Vorrang vor `enabled_providers`.
+The `disabled_providers` takes priority over `enabled_providers`.
 :::
 
-Die Option `disabled_providers` akzeptiert ein Array des Anbieters IDs. Wenn ein Anbieter deaktiviert ist:
+The `disabled_providers` option accepts an array of provider IDs. When a provider is disabled:
 
-- Es wird nicht geladen, selbst wenn Umgebungsvariablen festgelegt sind.
-- Es wird nicht geladen, selbst wenn API-Schlüssel über den Befehl `/connect` konfiguriert werden.
-- Die Modelle des Anbieters erscheinen nicht in der Modellauswahlliste.
+- It won't be loaded even if environment variables are set.
+- It won't be loaded even if API keys are configured through the web app.
+- The provider's models won't appear in the model selection list.
 
 ---
 
-### Aktivierte Anbieter
+### Enabled providers
 
-Sie können über die Option `enabled_providers` eine Zulassungsliste für Anbieter angeben. Wenn diese Option festgelegt ist, werden nur die angegebenen Anbieter aktiviert und alle anderen werden ignoriert.
+You can specify an allowlist of providers through the `enabled_providers` option. When set, only the specified providers will be enabled and all others will be ignored.
 
 ```json title="codeplane.json"
 {
@@ -598,19 +674,19 @@ Sie können über die Option `enabled_providers` eine Zulassungsliste für Anbie
 }
 ```
 
-Dies ist nützlich, wenn Sie CodePlane darauf beschränken möchten, nur bestimmte Anbieter zu verwenden, anstatt sie einzeln zu deaktivieren.
+This is useful when you want to restrict CodePlane to only use specific providers rather than disabling them one by one.
 
 :::note
-Der `disabled_providers` hat Vorrang vor `enabled_providers`.
+The `disabled_providers` takes priority over `enabled_providers`.
 :::
 
-Wenn ein Anbieter sowohl in `enabled_providers` als auch in `disabled_providers` vorkommt, hat `disabled_providers` aus Gründen der Abwärtskompatibilität Vorrang.
+If a provider appears in both `enabled_providers` and `disabled_providers`, the `disabled_providers` takes priority for backwards compatibility.
 
 ---
 
-### Experimentell
+### Experimental
 
-Der Schlüssel `experimental` enthält Optionen, die sich in der aktiven Entwicklung befinden.
+The `experimental` key contains options that are under active development.
 
 ```json title="codeplane.json"
 {
@@ -620,20 +696,20 @@ Der Schlüssel `experimental` enthält Optionen, die sich in der aktiven Entwick
 ```
 
 :::caution
-Experimentelle Optionen sind nicht stabil. Sie können ohne vorherige Ankündigung geändert oder entfernt werden.
+Experimental options are not stable. They may change or be removed without notice.
 :::
 
 ---
 
-## Variablen
+## Variables
 
-Sie können die Variablenersetzung in Ihren Konfigurationsdateien verwenden, um auf Umgebungsvariablen und Dateiinhalte zu verweisen.
+You can use variable substitution in your config files to reference environment variables and file contents.
 
 ---
 
-### Umgebungsvariablen
+### Env vars
 
-Verwenden Sie `{env:VARIABLE_NAME}`, um Umgebungsvariablen zu ersetzen:
+Use `{env:VARIABLE_NAME}` to substitute environment variables:
 
 ```json title="codeplane.json"
 {
@@ -650,13 +726,13 @@ Verwenden Sie `{env:VARIABLE_NAME}`, um Umgebungsvariablen zu ersetzen:
 }
 ```
 
-Wenn die Umgebungsvariable nicht gesetzt ist, wird sie durch eine leere Zeichenfolge ersetzt.
+If the environment variable is not set, it will be replaced with an empty string.
 
 ---
 
-### Dateien
+### Files
 
-Verwenden Sie `{file:path/to/file}`, um den Inhalt einer Datei zu ersetzen:
+Use `{file:path/to/file}` to substitute the contents of a file:
 
 ```json title="codeplane.json"
 {
@@ -672,13 +748,13 @@ Verwenden Sie `{file:path/to/file}`, um den Inhalt einer Datei zu ersetzen:
 }
 ```
 
-Dateipfade können sein:
+File paths can be:
 
-- Relativ zum Konfigurationsdateiverzeichnis
-- Oder absolute Pfade beginnend mit `/` oder `~`
+- Relative to the config file directory
+- Or absolute paths starting with `/` or `~`
 
-Diese sind nützlich für:
+These are useful for:
 
-- Bewahren Sie vertrauliche Daten wie API-Schlüssel in separaten Dateien auf.
-- Einschließlich große Anweisungsdateien, ohne Ihre Konfiguration zu überladen.
-- Gemeinsame Nutzung gemeinsamer Konfigurationsausschnitte über mehrere Konfigurationsdateien hinweg.
+- Keeping sensitive data like API keys in separate files.
+- Including large instruction files without cluttering your config.
+- Sharing common configuration snippets across multiple config files.

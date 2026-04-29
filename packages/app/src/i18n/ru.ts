@@ -439,18 +439,11 @@ export const dict = {
 
   "toast.session.listFailed.title": "Не удалось загрузить сессии для {{project}}",
 
-  "toast.update.title": "Доступно обновление",
-  "toast.update.description": "Новая версия CodePlane ({{version}}) доступна для установки.",
-  "toast.update.action.installRestart": "Установить и перезапустить",
-  "toast.update.action.notYet": "Пока нет",
 
   "error.page.title": "Что-то пошло не так",
   "error.page.description": "Произошла ошибка при загрузке приложения.",
   "error.page.details.label": "Детали ошибки",
   "error.page.action.restart": "Перезапустить",
-  "error.page.action.checking": "Проверка...",
-  "error.page.action.checkUpdates": "Проверить обновления",
-  "error.page.action.updateTo": "Обновить до {{version}}",
   "error.page.report.prefix": "Пожалуйста, сообщите об этой ошибке команде CodePlane",
   "error.page.report.issues": "на GitHub",
   "error.page.version": "Версия: {{version}}",
@@ -612,21 +605,16 @@ export const dict = {
   "sidebar.project.viewAllSessions": "Посмотреть все сессии",
   "sidebar.project.clearNotifications": "Очистить уведомления",
 
-  "app.name.desktop": "CodePlane Desktop",
-  "settings.section.desktop": "Приложение",
+  "app.name.web": "CodePlane Web",
+  "settings.section.app": "App",
   "settings.section.server": "Сервер",
   "settings.tab.general": "Основные",
   "settings.tab.shortcuts": "Горячие клавиши",
-  "settings.desktop.section.wsl": "WSL",
-  "settings.desktop.wsl.title": "Интеграция с WSL",
-  "settings.desktop.wsl.description": "Запускать сервер CodePlane внутри WSL на Windows.",
 
   "settings.general.section.appearance": "Внешний вид",
   "settings.general.section.notifications": "Системные уведомления",
-  "settings.general.section.updates": "Обновления",
   "settings.general.section.sounds": "Звуковые эффекты",
   "settings.general.section.feed": "Лента",
-  "settings.general.section.display": "Дисплей",
 
   "settings.general.row.language.title": "Язык",
   "settings.general.row.language.description": "Изменить язык отображения CodePlane",
@@ -659,22 +647,10 @@ export const dict = {
   "settings.general.row.showSessionProgressBar.title": "Показывать индикатор прогресса сессии",
   "settings.general.row.showSessionProgressBar.description":
     "Показывать анимированный индикатор прогресса вверху сессии, когда агент работает",
-  "settings.general.row.wayland.title": "Использовать нативный Wayland",
-  "settings.general.row.wayland.description": "Отключить X11 fallback на Wayland. Требуется перезапуск.",
-  "settings.general.row.wayland.tooltip":
-    "На Linux с мониторами разной частоты обновления нативный Wayland может быть стабильнее.",
 
   "settings.general.row.releaseNotes.title": "Примечания к выпуску",
   "settings.general.row.releaseNotes.description": 'Показывать всплывающие окна "Что нового" после обновлений',
 
-  "settings.updates.row.startup.title": "Проверять обновления при запуске",
-  "settings.updates.row.startup.description": "Автоматически проверять обновления при запуске CodePlane",
-  "settings.updates.row.check.title": "Проверить обновления",
-  "settings.updates.row.check.description": "Проверить обновления вручную и установить, если доступны",
-  "settings.updates.action.checkNow": "Проверить сейчас",
-  "settings.updates.action.checking": "Проверка...",
-  "settings.updates.toast.latest.title": "У вас последняя версия",
-  "settings.updates.toast.latest.description": "Вы используете последнюю версию CodePlane.",
   "sound.option.none": "Нет",
   "sound.option.alert01": "Alert 01",
   "sound.option.alert02": "Alert 02",

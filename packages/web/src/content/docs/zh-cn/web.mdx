@@ -1,70 +1,64 @@
 ---
 title: Web
-description: 在浏览器中使用 CodePlane。
+description: Using CodePlane in your browser.
 ---
 
-CodePlane 可以作为 Web 应用在浏览器中运行，无需终端即可获得同样强大的 AI 编码体验。
+CodePlane can run as a web application in your browser, providing the same powerful AI coding experience without needing a terminal.
 
 ![CodePlane Web - New Session](../../../assets/web/web-homepage-new-session.png)
 
-## 快速开始
+## Getting Started
 
-运行以下命令启动 Web 界面：
+Start the web interface by running:
 
 ```bash
 codeplane web
 ```
 
-这会在 `127.0.0.1` 上启动一个本地服务器，使用随机可用端口，并自动在默认浏览器中打开 CodePlane。
+This starts a local server on `127.0.0.1` with a random available port and automatically opens CodePlane in your default browser.
 
 :::caution
-如果未设置 `CODEPLANE_SERVER_PASSWORD`，服务器将没有安全保护。本地使用没有问题，但在网络访问时应当设置密码。
+If `CODEPLANE_SERVER_PASSWORD` is not set, the server will be unsecured. This is fine for local use but should be set for network access.
 :::
 
-:::tip[Windows 用户]
-为获得最佳体验，建议从 [WSL](/docs/windows-wsl) 而非 PowerShell 运行 `codeplane web`。这可以确保正确的文件系统访问和终端集成。
-:::
+## Configuration
 
----
+You can configure the web server using command line flags or in your [config file](/docs/config).
 
-## 配置
+### Port
 
-你可以通过命令行标志或[配置文件](/docs/config)来配置 Web 服务器。
-
-### 端口
-
-默认情况下，CodePlane 会选择一个可用端口。你也可以指定端口：
+By default, CodePlane picks an available port. You can specify a port:
 
 ```bash
 codeplane web --port 4096
 ```
 
-### 主机名
+### Hostname
 
-默认情况下，服务器绑定到 `127.0.0.1`（仅限本地访问）。要使 CodePlane 在网络中可访问：
+By default, the server binds to `127.0.0.1` (localhost only). To make CodePlane accessible on your network:
 
 ```bash
 codeplane web --hostname 0.0.0.0
 ```
 
-使用 `0.0.0.0` 时，CodePlane 会同时显示本地地址和网络地址：
+When using `0.0.0.0`, CodePlane will display both local and network addresses:
 
 ```
   Local access:       http://localhost:4096
   Network access:     http://192.168.1.100:4096
 ```
 
-### mDNS 发现
+### mDNS Discovery
 
-启用 mDNS 可以让你的服务器在本地网络中被自动发现：
+Enable mDNS to make your server discoverable on the local network:
 
 ```bash
 codeplane web --mdns
 ```
 
-这会自动将主机名设置为 `0.0.0.0`，并将服务器广播为 `codeplane.local`。
+This automatically sets the hostname to `0.0.0.0` and advertises the server as `codeplane.local`.
 
-你可以自定义 mDNS 域名，以便在同一网络中运行多个实例：
+You can customize the mDNS domain name to run multiple instances on the same network:
 
 ```bash
 codeplane web --mdns --mdns-domain myproject.local
@@ -72,61 +66,43 @@ codeplane web --mdns --mdns-domain myproject.local
 
 ### CORS
 
-要为 CORS 添加额外的允许域名（适用于自定义前端）：
+To allow additional domains for CORS (useful for custom frontends):
 
 ```bash
 codeplane web --cors https://example.com
 ```
 
-### 身份验证
+### Authentication
 
-要保护服务器访问，可以通过 `CODEPLANE_SERVER_PASSWORD` 环境变量设置密码：
+To protect access, set a password using the `CODEPLANE_SERVER_PASSWORD` environment variable:
 
 ```bash
 CODEPLANE_SERVER_PASSWORD=secret codeplane web
 ```
 
-用户名默认为 `codeplane`，可以通过 `CODEPLANE_SERVER_USERNAME` 进行更改。
+The username defaults to `codeplane` but can be changed with `CODEPLANE_SERVER_USERNAME`.
 
 ---
 
-## 使用 Web 界面
+## Using the Web Interface
 
-启动后，Web 界面提供对 CodePlane 会话的访问。
+Once started, the web interface provides access to your CodePlane sessions.
 
-### 会话
+### Sessions
 
-在主页上查看和管理你的会话。你可以查看活跃的会话，也可以创建新的会话。
+View and manage your sessions from the homepage. You can see active sessions and start new ones.
 
 ![CodePlane Web - Active Session](../../../assets/web/web-homepage-active-session.png)
 
-### 服务器状态
+### Server Status
 
-点击"See Servers"可以查看已连接的服务器及其状态。
+Click "See Servers" to view connected servers and their status.
 
 ![CodePlane Web - See Servers](../../../assets/web/web-homepage-see-servers.png)
 
----
+## Config File
 
-## 连接终端
-
-你可以将终端 TUI 连接到正在运行的 Web 服务器：
-
-```bash
-# 启动 Web 服务器
-codeplane web --port 4096
-
-# 在另一个终端中连接 TUI
-codeplane attach http://localhost:4096
-```
-
-这样你就可以同时使用 Web 界面和终端，共享相同的会话和状态。
-
----
-
-## 配置文件
-
-你也可以在 `codeplane.json` 配置文件中设置服务器选项：
+You can also configure server settings in your `codeplane.json` config file:
 
 ```json
 {
@@ -139,4 +115,4 @@ codeplane attach http://localhost:4096
 }
 ```
 
-命令行标志的优先级高于配置文件中的设置。
+Command line flags take precedence over config file settings.

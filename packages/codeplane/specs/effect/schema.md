@@ -331,7 +331,6 @@ done.
 - [ ] `src/server/routes/instance/question.ts`
 - [ ] `src/server/routes/instance/session.ts`
 - [ ] `src/server/routes/instance/sync.ts`
-- [ ] `src/server/routes/instance/tui.ts`
 
 The bigger prize for this group is the `@effect/platform` HTTP migration
 described in `specs/effect/http-api.md`. Once that lands, every one of
@@ -348,10 +347,6 @@ piecewise.
 - [ ] `src/agent/agent.ts`
 - [x] `src/bus/bus-event.ts`
 - [ ] `src/bus/index.ts`
-- [ ] `src/cli/cmd/tui/config/tui-migrate.ts`
-- [ ] `src/cli/cmd/tui/config/tui-schema.ts`
-- [ ] `src/cli/cmd/tui/config/tui.ts`
-- [ ] `src/cli/cmd/tui/event.ts`
 - [ ] `src/cli/ui.ts`
 - [ ] `src/command/index.ts`
 - [x] `src/control-plane/adaptors/worktree.ts`

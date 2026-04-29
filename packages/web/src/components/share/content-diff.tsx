@@ -159,7 +159,7 @@ export function ContentDiff(props: Props) {
 
   return (
     <div class={styles.root}>
-      <div data-component="desktop">
+      <div data-component="wide">
         <For each={rows()}>
           {(row) => (
             <div data-component="diff-row" data-type={row.type}>

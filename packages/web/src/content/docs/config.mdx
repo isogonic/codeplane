@@ -100,8 +100,6 @@ You can enable specific servers in your local config:
 
 Place your global CodePlane config in `~/.config/codeplane/codeplane.json`. Use global config for user-wide server/runtime preferences like providers, models, and permissions.
 
-For TUI-specific settings, use `~/.config/codeplane/tui.json`.
-
 Global config overrides remote organizational defaults.
 
 ---
@@ -109,8 +107,6 @@ Global config overrides remote organizational defaults.
 ### Per project
 
 Add `codeplane.json` in your project root. Project config has the highest precedence among standard config files - it overrides both global and remote configs.
-
-For project-specific TUI settings, add `tui.json` alongside it.
 
 :::tip
 Place project specific config in the root of your project.
@@ -255,31 +251,7 @@ All managed preference keys appear in the resolved config and cannot be overridd
 
 The server/runtime config schema is defined in [**`example.invalid/config.json`**](https://example.invalid/config.json).
 
-TUI config uses [**`example.invalid/tui.json`**]().
-
 Your editor should be able to validate and autocomplete based on the schema.
-
----
-
-### TUI
-
-Use a dedicated `tui.json` (or `tui.jsonc`) file for TUI-specific settings.
-
-```json title="tui.json"
-{
-  "$schema": "",
-  "scroll_speed": 3,
-  "scroll_acceleration": {
-    "enabled": true
-  },
-  "diff_style": "auto",
-  "mouse": true
-}
-```
-
-Use `CODEPLANE_TUI_CONFIG` to point to a custom TUI config file.
-
-Legacy `theme`, `keybinds`, and `tui` keys in `codeplane.json` are deprecated and automatically migrated when possible.
 
 ---
 
@@ -407,14 +379,7 @@ Bearer tokens (`AWS_BEARER_TOKEN_BEDROCK` or `/connect`) take precedence over pr
 
 ### Themes
 
-Set your UI theme in `tui.json`.
-
-```json title="tui.json"
-{
-  "$schema": "",
-  "theme": "tokyonight"
-}
-```
+Set your UI theme from the web app settings.
 
 [Learn more here](/docs/themes).
 
@@ -459,7 +424,7 @@ You can set the default agent using the `default_agent` option. This determines 
 
 The default agent must be a primary agent (not a subagent). This can be a built-in agent like `"build"` or `"plan"`, or a [custom agent](/docs/agents) you've defined. If the specified agent doesn't exist or is a subagent, CodePlane will fall back to `"build"` with a warning.
 
-This setting applies across all interfaces: TUI, CLI (`codeplane run`), desktop app, and GitHub Action.
+This setting applies across the web app, CLI (`codeplane run`), and GitHub Action.
 
 ---
 
@@ -507,21 +472,6 @@ You can configure custom commands for repetitive tasks through the `command` opt
 ```
 
 You can also define commands using markdown files in `~/.config/codeplane/commands/` or `.codeplane/commands/`. [Learn more here](/docs/commands).
-
----
-
-### Keybinds
-
-Customize keybinds in `tui.json`.
-
-```json title="tui.json"
-{
-  "$schema": "",
-  "keybinds": {}
-}
-```
-
-[Learn more here](/docs/keybinds).
 
 ---
 
@@ -708,7 +658,7 @@ The `disabled_providers` takes priority over `enabled_providers`.
 The `disabled_providers` option accepts an array of provider IDs. When a provider is disabled:
 
 - It won't be loaded even if environment variables are set.
-- It won't be loaded even if API keys are configured through the `/connect` command.
+- It won't be loaded even if API keys are configured through the web app.
 - The provider's models won't appear in the model selection list.
 
 ---

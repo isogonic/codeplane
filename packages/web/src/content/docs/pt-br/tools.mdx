@@ -1,17 +1,17 @@
 ---
-title: Ferramentas
-description: Gerencie as ferramentas que um LLM pode usar.
+title: Tools
+description: Manage the tools an LLM can use.
 ---
 
-As ferramentas permitem que o LLM execute ações em sua base de código. O codeplane vem com um conjunto de ferramentas integradas, mas você pode estendê-lo com [ferramentas personalizadas](/docs/custom-tools) ou [servidores MCP](/docs/mcp-servers).
+Tools allow the LLM to perform actions in your codebase. CodePlane comes with a set of built-in tools, but you can extend it with [custom tools](/docs/custom-tools) or [MCP servers](/docs/mcp-servers).
 
-Por padrão, todas as ferramentas estão **ativadas** e não precisam de permissão para serem executadas. Você pode controlar o comportamento das ferramentas através de [permissões](/docs/permissions).
+By default, all tools are **enabled** and don't need permission to run. You can control tool behavior through [permissions](/docs/permissions).
 
 ---
 
-## Configuração
+## Configure
 
-Use o campo `permission` para controlar o comportamento das ferramentas. Você pode permitir, negar ou exigir aprovação para cada ferramenta.
+Use the `permission` field to control tool behavior. You can allow, deny, or require approval for each tool.
 
 ```json title="codeplane.json"
 {
@@ -24,7 +24,7 @@ Use o campo `permission` para controlar o comportamento das ferramentas. Você p
 }
 ```
 
-Você também pode usar curingas para controlar várias ferramentas ao mesmo tempo. Por exemplo, para exigir aprovação para todas as ferramentas de um servidor MCP:
+You can also use wildcards to control multiple tools at once. For example, to require approval for all tools from an MCP server:
 
 ```json title="codeplane.json"
 {
@@ -35,19 +35,19 @@ Você também pode usar curingas para controlar várias ferramentas ao mesmo tem
 }
 ```
 
-[Saiba mais](/docs/permissions) sobre como configurar permissões.
+[Learn more](/docs/permissions) about configuring permissions.
 
 ---
 
-## Integradas
+## Built-in
 
-Aqui estão todas as ferramentas integradas disponíveis no codeplane.
+Here are all the built-in tools available in CodePlane.
 
 ---
 
 ### bash
 
-Execute comandos de shell no ambiente do seu projeto.
+Execute shell commands in your project environment.
 
 ```json title="codeplane.json" {4}
 {
@@ -58,13 +58,13 @@ Execute comandos de shell no ambiente do seu projeto.
 }
 ```
 
-Esta ferramenta permite que o LLM execute comandos de terminal como `npm install`, `git status` ou qualquer outro comando de shell.
+This tool allows the LLM to run terminal commands like `npm install`, `git status`, or any other shell command.
 
 ---
 
 ### edit
 
-Modifique arquivos existentes usando substituições de string exatas.
+Modify existing files using exact string replacements.
 
 ```json title="codeplane.json" {4}
 {
@@ -75,13 +75,13 @@ Modifique arquivos existentes usando substituições de string exatas.
 }
 ```
 
-Esta ferramenta realiza edições precisas em arquivos substituindo correspondências de texto exatas. É a principal forma como o LLM modifica o código.
+This tool performs precise edits to files by replacing exact text matches. It's the primary way the LLM modifies code.
 
 ---
 
 ### write
 
-Crie novos arquivos ou sobrescreva os existentes.
+Create new files or overwrite existing ones.
 
 ```json title="codeplane.json" {4}
 {
@@ -92,17 +92,17 @@ Crie novos arquivos ou sobrescreva os existentes.
 }
 ```
 
-Use isso para permitir que o LLM crie novos arquivos. Ele sobrescreverá arquivos existentes se já existirem.
+Use this to allow the LLM to create new files. It will overwrite existing files if they already exist.
 
 :::note
-A ferramenta `write` é controlada pela permissão `edit`, que cobre todas as modificações de arquivos (`edit`, `write`, `patch`).
+The `write` tool is controlled by the `edit` permission, which covers all file modifications (`edit`, `write`, `apply_patch`).
 :::
 
 ---
 
 ### read
 
-Leia o conteúdo dos arquivos da sua base de código.
+Read file contents from your codebase.
 
 ```json title="codeplane.json" {4}
 {
@@ -113,13 +113,13 @@ Leia o conteúdo dos arquivos da sua base de código.
 }
 ```
 
-Esta ferramenta lê arquivos e retorna seus conteúdos. Suporta a leitura de intervalos de linhas específicos para arquivos grandes.
+This tool reads files and returns their contents. It supports reading specific line ranges for large files.
 
 ---
 
 ### grep
 
-Pesquise o conteúdo dos arquivos usando expressões regulares.
+Search file contents using regular expressions.
 
 ```json title="codeplane.json" {4}
 {
@@ -130,13 +130,13 @@ Pesquise o conteúdo dos arquivos usando expressões regulares.
 }
 ```
 
-Busca rápida de conteúdo em sua base de código. Suporta a sintaxe completa de regex e filtragem de padrões de arquivos.
+Fast content search across your codebase. Supports full regex syntax and file pattern filtering.
 
 ---
 
 ### glob
 
-Encontre arquivos por correspondência de padrões.
+Find files by pattern matching.
 
 ```json title="codeplane.json" {4}
 {
@@ -147,16 +147,16 @@ Encontre arquivos por correspondência de padrões.
 }
 ```
 
-Pesquise arquivos usando padrões glob como `**/*.js` ou `src/**/*.ts`. Retorna caminhos de arquivos correspondentes ordenados por tempo de modificação.
+Search for files using glob patterns like `**/*.js` or `src/**/*.ts`. Returns matching file paths sorted by modification time.
 
 ---
 
 ### lsp (experimental)
 
-Interaja com seus servidores LSP configurados para obter recursos de inteligência de código, como definições, referências, informações de hover e hierarquia de chamadas.
+Interact with your configured LSP servers to get code intelligence features like definitions, references, hover info, and call hierarchy.
 
 :::note
-Esta ferramenta está disponível apenas quando `CODEPLANE_EXPERIMENTAL_LSP_TOOL=true` (ou `CODEPLANE_EXPERIMENTAL=true`).
+This tool is only available when `CODEPLANE_EXPERIMENTAL_LSP_TOOL=true` (or `CODEPLANE_EXPERIMENTAL=true`).
 :::
 
 ```json title="codeplane.json" {4}
@@ -168,15 +168,15 @@ Esta ferramenta está disponível apenas quando `CODEPLANE_EXPERIMENTAL_LSP_TOOL
 }
 ```
 
-As operações suportadas incluem `goToDefinition`, `findReferences`, `hover`, `documentSymbol`, `workspaceSymbol`, `goToImplementation`, `prepareCallHierarchy`, `incomingCalls` e `outgoingCalls`.
+Supported operations include `goToDefinition`, `findReferences`, `hover`, `documentSymbol`, `workspaceSymbol`, `goToImplementation`, `prepareCallHierarchy`, `incomingCalls`, and `outgoingCalls`.
 
-Para configurar quais servidores LSP estão disponíveis para seu projeto, veja [Servidores LSP](/docs/lsp).
+To configure which LSP servers are available for your project, see [LSP Servers](/docs/lsp).
 
 ---
 
-### patch
+### apply_patch
 
-Aplique patches a arquivos.
+Apply patches to files.
 
 ```json title="codeplane.json" {4}
 {
@@ -187,17 +187,21 @@ Aplique patches a arquivos.
 }
 ```
 
-Esta ferramenta aplica arquivos de patch à sua base de código. Útil para aplicar diffs e patches de várias fontes.
+This tool applies patch files to your codebase. Useful for applying diffs and patches from various sources.
+
+When handling `tool.execute.before` or `tool.execute.after` hooks, check `input.tool === "apply_patch"` (not `"patch"`).
+
+`apply_patch` uses `output.args.patchText` instead of `output.args.filePath`. Paths are embedded in marker lines within `patchText` and are relative to the project root (for example: `*** Add File: src/new-file.ts`, `*** Update File: src/existing.ts`, `*** Move to: src/renamed.ts`, `*** Delete File: src/obsolete.ts`).
 
 :::note
-A ferramenta `patch` é controlada pela permissão `edit`, que cobre todas as modificações de arquivos (`edit`, `write`, `patch`).
+The `apply_patch` tool is controlled by the `edit` permission, which covers all file modifications (`edit`, `write`, `apply_patch`).
 :::
 
 ---
 
 ### skill
 
-Carregue uma [skill](/docs/skills) (um arquivo `SKILL.md`) e retorne seu conteúdo na conversa.
+Load a [skill](/docs/skills) (a `SKILL.md` file) and return its content in the conversation.
 
 ```json title="codeplane.json" {4}
 {
@@ -212,7 +216,7 @@ Carregue uma [skill](/docs/skills) (um arquivo `SKILL.md`) e retorne seu conteú
 
 ### todowrite
 
-Gerencie listas de tarefas durante sessões de codificação.
+Manage todo lists during coding sessions.
 
 ```json title="codeplane.json" {4}
 {
@@ -223,17 +227,17 @@ Gerencie listas de tarefas durante sessões de codificação.
 }
 ```
 
-Cria e atualiza listas de tarefas para acompanhar o progresso durante operações complexas. O LLM usa isso para organizar tarefas de múltiplas etapas.
+Creates and updates task lists to track progress during complex operations. The LLM uses this to organize multi-step tasks.
 
 :::note
-Esta ferramenta está desativada para subagentes por padrão, mas você pode ativá-la manualmente. [Saiba mais](/docs/agents/#permissions)
+This tool is disabled for subagents by default, but you can enable it manually. [Learn more](/docs/agents/#permissions)
 :::
 
 ---
 
 ### webfetch
 
-Busque conteúdo da web.
+Fetch web content.
 
 ```json title="codeplane.json" {4}
 {
@@ -244,18 +248,18 @@ Busque conteúdo da web.
 }
 ```
 
-Permite que o LLM busque e leia páginas da web. Útil para consultar documentação ou pesquisar recursos online.
+Allows the LLM to fetch and read web pages. Useful for looking up documentation or researching online resources.
 
 ---
 
 ### websearch
 
-Pesquise na web por informações.
+Search the web for information.
 
 :::note
-Esta ferramenta está disponível apenas ao usar o provedor codeplane ou quando a variável de ambiente `CODEPLANE_ENABLE_EXA` está definida como qualquer valor verdadeiro (por exemplo, `true` ou `1`).
+This tool is only available when using the CodePlane provider or when the `CODEPLANE_ENABLE_EXA` environment variable is set to any truthy value (e.g., `true` or `1`).
 
-Para habilitar ao iniciar o codeplane:
+To enable when launching CodePlane:
 
 ```bash
 CODEPLANE_ENABLE_EXA=1 codeplane
@@ -272,19 +276,19 @@ CODEPLANE_ENABLE_EXA=1 codeplane
 }
 ```
 
-Realiza buscas na web usando Exa AI para encontrar informações relevantes online. Útil para pesquisar tópicos, encontrar eventos atuais ou reunir informações além do limite de dados de treinamento.
+Performs web searches using Exa AI to find relevant information online. Useful for researching topics, finding current events, or gathering information beyond the training data cutoff.
 
-Nenhuma chave de API é necessária — a ferramenta se conecta diretamente ao serviço MCP hospedado da Exa AI sem autenticação.
+No API key is required — the tool connects directly to Exa AI's hosted MCP service without authentication.
 
 :::tip
-Use `websearch` quando precisar encontrar informações (descoberta) e `webfetch` quando precisar recuperar conteúdo de uma URL específica (recuperação).
+Use `websearch` when you need to find information (discovery), and `webfetch` when you need to retrieve content from a specific URL (retrieval).
 :::
 
 ---
 
 ### question
 
-Faça perguntas ao usuário durante a execução.
+Ask the user questions during execution.
 
 ```json title="codeplane.json" {4}
 {
@@ -295,42 +299,42 @@ Faça perguntas ao usuário durante a execução.
 }
 ```
 
-Esta ferramenta permite que o LLM faça perguntas ao usuário durante uma tarefa. É útil para:
+This tool allows the LLM to ask the user questions during a task. It's useful for:
 
-- Coletar preferências ou requisitos do usuário
-- Esclarecer instruções ambíguas
-- Obter decisões sobre escolhas de implementação
-- Oferecer opções sobre qual direção seguir
+- Gathering user preferences or requirements
+- Clarifying ambiguous instructions
+- Getting decisions on implementation choices
+- Offering choices about what direction to take
 
-Cada pergunta inclui um cabeçalho, o texto da pergunta e uma lista de opções. Os usuários podem selecionar entre as opções fornecidas ou digitar uma resposta personalizada. Quando há várias perguntas, os usuários podem navegar entre elas antes de enviar todas as respostas.
-
----
-
-## Ferramentas personalizadas
-
-Ferramentas personalizadas permitem que você defina suas próprias funções que o LLM pode chamar. Estas são definidas em seu arquivo de configuração e podem executar código arbitrário.
-
-[Saiba mais](/docs/custom-tools) sobre como criar ferramentas personalizadas.
+Each question includes a header, the question text, and a list of options. Users can select from the provided options or type a custom answer. When there are multiple questions, users can navigate between them before submitting all answers.
 
 ---
 
-## Servidores MCP
+## Custom tools
 
-Servidores MCP (Model Context Protocol) permitem que você integre ferramentas e serviços externos. Isso inclui acesso a bancos de dados, integrações de API e serviços de terceiros.
+Custom tools let you define your own functions that the LLM can call. These are defined in your config file and can execute arbitrary code.
 
-[Saiba mais](/docs/mcp-servers) sobre como configurar servidores MCP.
-
----
-
-## Internos
-
-Internamente, ferramentas como `grep` e `glob` usam [ripgrep](https://github.com/BurntSushi/ripgrep) por trás dos panos. Por padrão, o ripgrep respeita padrões `.gitignore`, o que significa que arquivos e diretórios listados em seu `.gitignore` serão excluídos de buscas e listagens.
+[Learn more](/docs/custom-tools) about creating custom tools.
 
 ---
 
-### Padrões de ignorar
+## MCP servers
 
-Para incluir arquivos que normalmente seriam ignorados, crie um arquivo `.ignore` na raiz do seu projeto. Este arquivo pode permitir explicitamente certos caminhos.
+MCP (Model Context Protocol) servers allow you to integrate external tools and services. This includes database access, API integrations, and third-party services.
+
+[Learn more](/docs/mcp-servers) about configuring MCP servers.
+
+---
+
+## Internals
+
+Internally, tools like `grep` and `glob` use [ripgrep](https://github.com/BurntSushi/ripgrep) under the hood. By default, ripgrep respects `.gitignore` patterns, which means files and directories listed in your `.gitignore` will be excluded from searches and listings.
+
+---
+
+### Ignore patterns
+
+To include files that would normally be ignored, create a `.ignore` file in your project root. This file can explicitly allow certain paths.
 
 ```text title=".ignore"
 !node_modules/
@@ -338,4 +342,4 @@ Para incluir arquivos que normalmente seriam ignorados, crie um arquivo `.ignore
 !build/
 ```
 
-Por exemplo, este arquivo `.ignore` permite que o ripgrep busque dentro dos diretórios `node_modules/`, `dist/` e `build/`, mesmo que estejam listados em `.gitignore`.
+For example, this `.ignore` file allows ripgrep to search within `node_modules/`, `dist/`, and `build/` directories even if they're listed in `.gitignore`.

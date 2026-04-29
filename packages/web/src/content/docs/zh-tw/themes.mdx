@@ -1,108 +1,101 @@
 ---
-title: 主題
-description: 選擇內建主題或定義您自己的主題。
+title: Themes
+description: Select a built-in theme or define your own.
 ---
 
-透過 CodePlane，您可以從多個內建主題中進行選擇，使用能自動適配終端機主題的主題，或者定義您自己的自訂主題。
+With CodePlane you can select from one of several built-in themes, use a theme that adapts to your terminal theme, or define your own custom theme.
 
-預設情況下，CodePlane 使用我們自己的 `codeplane` 主題。
-
----
-
-## 終端機要求
-
-為了使主題能夠正確顯示完整的調色盤，您的終端機必須支援**真彩色**（24 位元色）。大多數現代終端機預設支援此功能，但您可能需要手動啟用：
-
-- **檢查支援情況**：執行 `echo $COLORTERM` — 輸出應為 `truecolor` 或 `24bit`
-- **啟用真彩色**：在您的 shell 設定檔中設定環境變數 `COLORTERM=truecolor`
-- **終端機相容性**：確保您的終端機模擬器支援 24 位元色（大多數現代終端機如 iTerm2、Alacritty、Kitty、Windows Terminal 以及較新版本的 GNOME Terminal 均已支援）
-
-如果沒有真彩色支援，主題可能會出現色彩精度下降的情況，或者回退到最接近的 256 色近似值。
+By default, CodePlane uses our own `codeplane` theme.
 
 ---
 
-## 內建主題
+## Terminal requirements
 
-CodePlane 自帶多個內建主題。
+For themes to display correctly with their full color palette, your terminal must support **truecolor** (24-bit color). Most modern terminals support this by default, but you may need to enable it:
 
-| 名稱                   | 描述                                                                |
-| ---------------------- | ------------------------------------------------------------------- |
-| `system`               | 自動適配終端機的背景顏色                                            |
-| `tokyonight`           | 基於 [Tokyonight](https://github.com/folke/tokyonight.nvim) 主題    |
-| `everforest`           | 基於 [Everforest](https://github.com/sainnhe/everforest) 主題       |
-| `ayu`                  | 基於 [Ayu](https://github.com/ayu-theme) 暗色主題                   |
-| `catppuccin`           | 基於 [Catppuccin](https://github.com/catppuccin) 主題               |
-| `catppuccin-macchiato` | 基於 [Catppuccin](https://github.com/catppuccin) 主題               |
-| `gruvbox`              | 基於 [Gruvbox](https://github.com/morhetz/gruvbox) 主題             |
-| `kanagawa`             | 基於 [Kanagawa](https://github.com/rebelot/kanagawa.nvim) 主題      |
-| `nord`                 | 基於 [Nord](https://github.com/nordtheme/nord) 主題                 |
-| `matrix`               | 駭客風格的黑底綠字主題                                              |
-| `one-dark`             | 基於 [Atom One](https://github.com/Th3Whit3Wolf/one-nvim) Dark 主題 |
+- **Check support**: Run `echo $COLORTERM` - it should output `truecolor` or `24bit`
+- **Enable truecolor**: Set the environment variable `COLORTERM=truecolor` in your shell profile
+- **Terminal compatibility**: Ensure your terminal emulator supports 24-bit color (most modern terminals like iTerm2, Alacritty, Kitty, Windows Terminal, and recent versions of GNOME Terminal do)
 
-我們還在不斷新增更多主題。
+Without truecolor support, themes may appear with reduced color accuracy or fall back to the nearest 256-color approximation.
 
 ---
 
-## 系統主題
+## Built-in themes
 
-`system` 主題旨在自動適配您終端機的配色方案。與使用固定顏色的傳統主題不同，_system_ 主題具有以下特點：
+CodePlane comes with several built-in themes.
 
-- **產生灰階色階**：根據終端機的背景顏色建立自訂灰階色階，確保最佳對比度。
-- **使用 ANSI 顏色**：利用標準 ANSI 顏色（0-15）進行語法高亮和 UI 元素渲染，遵循終端機的調色盤設定。
-- **保留終端機預設值**：將文字和背景顏色設為 `none`，以保持終端機的原生外觀。
+| Name                   | Description                                                                  |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| `system`               | Adapts to your terminal’s background color                                   |
+| `tokyonight`           | Based on the [Tokyonight](https://github.com/folke/tokyonight.nvim) theme    |
+| `everforest`           | Based on the [Everforest](https://github.com/sainnhe/everforest) theme       |
+| `ayu`                  | Based on the [Ayu](https://github.com/ayu-theme) dark theme                  |
+| `catppuccin`           | Based on the [Catppuccin](https://github.com/catppuccin) theme               |
+| `catppuccin-macchiato` | Based on the [Catppuccin](https://github.com/catppuccin) theme               |
+| `gruvbox`              | Based on the [Gruvbox](https://github.com/morhetz/gruvbox) theme             |
+| `kanagawa`             | Based on the [Kanagawa](https://github.com/rebelot/kanagawa.nvim) theme      |
+| `nord`                 | Based on the [Nord](https://github.com/nordtheme/nord) theme                 |
+| `matrix`               | Hacker-style green on black theme                                            |
+| `one-dark`             | Based on the [Atom One](https://github.com/Th3Whit3Wolf/one-nvim) Dark theme |
 
-系統主題適合以下使用者：
-
-- 希望 CodePlane 與終端機的外觀保持一致
-- 使用了自訂終端機配色方案
-- 偏好所有終端機應用程式擁有統一的視覺風格
-
----
-
-## 使用主題
-
-您可以透過 `/theme` 指令調出主題選擇介面來選擇主題，也可以在 `tui.json` 中直接指定。
-
-```json title="tui.json" {3}
-{
-  "$schema": "",
-  "theme": "tokyonight"
-}
-```
+And more, we are constantly adding new themes.
 
 ---
 
-## 自訂主題
+## System theme
 
-CodePlane 支援靈活的基於 JSON 的主題系統，讓使用者可以輕鬆建立和自訂主題。
+The `system` theme is designed to automatically adapt to your terminal's color scheme. Unlike traditional themes that use fixed colors, the _system_ theme:
 
----
+- **Generates gray scale**: Creates a custom gray scale based on your terminal's background color, ensuring optimal contrast.
+- **Uses ANSI colors**: Leverages standard ANSI colors (0-15) for syntax highlighting and UI elements, which respect your terminal's color palette.
+- **Preserves terminal defaults**: Uses `none` for text and background colors to maintain your terminal's native appearance.
 
-### 層級優先順序
+The system theme is for users who:
 
-主題按以下順序從多個目錄載入，後面的目錄會覆蓋前面的目錄：
-
-1. **內建主題** — 嵌入在二進位檔案中
-2. **使用者設定目錄** — 定義在 `~/.config/codeplane/themes/*.json` 或 `$XDG_CONFIG_HOME/codeplane/themes/*.json`
-3. **專案根目錄** — 定義在 `<project-root>/.codeplane/themes/*.json`
-4. **當前工作目錄** — 定義在 `./.codeplane/themes/*.json`
-
-如果多個目錄包含同名主題，將使用優先順序較高的目錄中的主題。
+- Want CodePlane to match their terminal's appearance
+- Use custom terminal color schemes
+- Prefer a consistent look across all terminal applications
 
 ---
 
-### 建立主題
+## Using a theme
 
-要建立自訂主題，請在上述任一主題目錄中建立一個 JSON 檔案。
+You can select a theme from Settings -> General -> Theme in the web app.
 
-建立使用者級主題：
+---
+
+## Custom themes
+
+CodePlane supports a flexible JSON-based theme system that allows users to create and customize themes easily.
+
+---
+
+### Hierarchy
+
+Themes are loaded from multiple directories in the following order where later directories override earlier ones:
+
+1. **Built-in themes** - These are embedded in the binary
+2. **User config directory** - Defined in `~/.config/codeplane/themes/*.json` or `$XDG_CONFIG_HOME/codeplane/themes/*.json`
+3. **Project root directory** - Defined in the `<project-root>/.codeplane/themes/*.json`
+4. **Current working directory** - Defined in `./.codeplane/themes/*.json`
+
+If multiple directories contain a theme with the same name, the theme from the directory with higher priority will be used.
+
+---
+
+### Creating a theme
+
+To create a custom theme, create a JSON file in one of the theme directories.
+
+For user-wide themes:
 
 ```bash no-frame
 mkdir -p ~/.config/codeplane/themes
 vim ~/.config/codeplane/themes/my-theme.json
 ```
 
-建立專案級主題：
+And for project-specific themes.
 
 ```bash no-frame
 mkdir -p .codeplane/themes
@@ -111,36 +104,36 @@ vim .codeplane/themes/my-theme.json
 
 ---
 
-### JSON 格式
+### JSON format
 
-主題使用靈活的 JSON 格式，支援以下特性：
+Themes use a flexible JSON format with support for:
 
-- **十六進位顏色**：`"#ffffff"`
-- **ANSI 顏色**：`3`（0-255）
-- **顏色參考**：`"primary"` 或自訂定義的顏色名
-- **深色/淺色變體**：`{"dark": "#000", "light": "#fff"}`
-- **無顏色**：`"none"` — 使用終端機的預設顏色或透明背景
-
----
-
-### 顏色定義
-
-`defs` 部分是選填的，它允許您定義可在主題中重複引用的可重複使用顏色。
+- **Hex colors**: `"#ffffff"`
+- **ANSI colors**: `3` (0-255)
+- **Color references**: `"primary"` or custom definitions
+- **Dark/light variants**: `{"dark": "#000", "light": "#fff"}`
+- **No color**: `"none"` - Uses the terminal's default color or transparent
 
 ---
 
-### 終端機預設值
+### Color definitions
 
-特殊值 `"none"` 可用於任何顏色屬性，以繼承終端機的預設顏色。這在建立需要與終端機配色方案無縫融合的主題時特別有用：
-
-- `"text": "none"` — 使用終端機的預設前景色
-- `"background": "none"` — 使用終端機的預設背景色
+The `defs` section is optional and it allows you to define reusable colors that can be referenced in the theme.
 
 ---
 
-### 範例
+### Terminal defaults
 
-以下是一個自訂主題的完整範例：
+The special value `"none"` can be used for any color to inherit the terminal's default color. This is particularly useful for creating themes that blend seamlessly with your terminal's color scheme:
+
+- `"text": "none"` - Uses terminal's default foreground color
+- `"background": "none"` - Uses terminal's default background color
+
+---
+
+### Example
+
+Here's an example of a custom theme:
 
 ```json title="my-theme.json"
 {

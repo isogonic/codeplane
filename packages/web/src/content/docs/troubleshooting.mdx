@@ -35,140 +35,6 @@ This directory contains:
   - If the project is within a Git repo, it is stored in `./<project-slug>/storage/`
   - If it is not a Git repo, it is stored in `./global/storage/`
 
----
-
-## Desktop app
-
-CodePlane Desktop runs a local CodePlane server (the `codeplane-cli` sidecar) in the background. Most issues are caused by a misbehaving plugin, a corrupted cache, or a bad server setting.
-
-### Quick checks
-
-- Fully quit and relaunch the app.
-- If the app shows an error screen, click **Restart** and copy the error details.
-- macOS only: `CodePlane` menu -> **Reload Webview** (helps if the UI is blank/frozen).
-
----
-
-### Disable plugins
-
-If the desktop app is crashing on launch, hanging, or behaving strangely, start by disabling plugins.
-
-#### Check the global config
-
-Open your global config file and look for a `plugin` key.
-
-- **macOS/Linux**: `~/.config/codeplane/codeplane.jsonc` (or `~/.config/codeplane/codeplane.json`)
-- **macOS/Linux** (older installs): `~/.local/share/codeplane/codeplane.jsonc`
-- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.config\codeplane\codeplane.jsonc`
-
-If you have plugins configured, temporarily disable them by removing the key or setting it to an empty array:
-
-```jsonc
-{
-  "$schema": "https://example.invalid/config.json",
-  "plugin": [],
-}
-```
-
-#### Check plugin directories
-
-CodePlane can also load local plugins from disk. Temporarily move these out of the way (or rename the folder) and restart the desktop app:
-
-- **Global plugins**
-  - **macOS/Linux**: `~/.config/codeplane/plugins/`
-  - **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.config\codeplane\plugins`
-- **Project plugins** (only if you use per-project config)
-  - `<your-project>/.codeplane/plugins/`
-
-If the app starts working again, re-enable plugins one at a time to find which one is causing the issue.
-
----
-
-### Clear the cache
-
-If disabling plugins doesn't help (or a plugin install is stuck), clear the cache so CodePlane can rebuild it.
-
-1. Quit CodePlane Desktop completely.
-2. Delete the cache directory:
-
-- **macOS**: Finder -> `Cmd+Shift+G` -> paste `~/.cache/codeplane`
-- **Linux**: delete `~/.cache/codeplane` (or run `rm -rf ~/.cache/codeplane`)
-- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.cache\codeplane`
-
-3. Restart CodePlane Desktop.
-
----
-
-### Fix server connection issues
-
-CodePlane Desktop can either start its own local server (default) or connect to a server URL you configured.
-
-If you see a **"Connection Failed"** dialog (or the app never gets past the splash screen), check for a custom server URL.
-
-#### Clear the desktop default server URL
-
-From the Home screen, click the server name (with the status dot) to open the Server picker. In the **Default server** section, click **Clear**.
-
-#### Remove `server.port` / `server.hostname` from your config
-
-If your `codeplane.json(c)` contains a `server` section, temporarily remove it and restart the desktop app.
-
-#### Check environment variables
-
-If you have `CODEPLANE_PORT` set in your environment, the desktop app will try to use that port for the local server.
-
-- Unset `CODEPLANE_PORT` (or pick a free port) and restart.
-
----
-
-### Linux: Wayland / X11 issues
-
-On Linux, some Wayland setups can cause blank windows or compositor errors.
-
-- If you're on Wayland and the app is blank/crashing, try launching with `OC_ALLOW_WAYLAND=1`.
-- If that makes things worse, remove it and try launching under an X11 session instead.
-
----
-
-### Windows: WebView2 runtime
-
-On Windows, CodePlane Desktop requires the Microsoft Edge **WebView2 Runtime**. If the app opens to a blank window or won't start, install/update WebView2 and try again.
-
----
-
-### Windows: General performance issues
-
-If you're experiencing slow performance, file access issues, or terminal problems on Windows, try using [WSL (Windows Subsystem for Linux)](/docs/windows-wsl). WSL provides a Linux environment that works more seamlessly with CodePlane's features.
-
----
-
-### Notifications not showing
-
-CodePlane Desktop only shows system notifications when:
-
-- notifications are enabled for CodePlane in your OS settings, and
-- the app window is not focused.
-
----
-
-### Reset desktop app storage (last resort)
-
-If the app won't start and you can't clear settings from inside the UI, reset the desktop app's saved state.
-
-1. Quit CodePlane Desktop.
-2. Find and delete these files (they live in the CodePlane Desktop app data directory):
-
-- `codeplane.settings.dat` (desktop default server URL)
-- `codeplane.global.dat` and `codeplane.workspace.*.dat` (UI state like recent servers/projects)
-
-To find the directory quickly:
-
-- **macOS**: Finder -> `Cmd+Shift+G` -> `~/Library/Application Support` (then search for the filenames above)
-- **Linux**: search under `~/.local/share` for the filenames above
-- **Windows**: Press `WIN+R` -> `%APPDATA%` (then search for the filenames above)
-
----
-
 ## Getting help
 
 If you're experiencing issues with CodePlane:
@@ -200,7 +66,7 @@ Here are some common issues and how to resolve them.
 
 ### Authentication issues
 
-1. Try re-authenticating with the `/connect` command in the TUI
+1. Try re-authenticating from Settings -> Providers in the web app
 2. Check that your API keys are valid
 3. Ensure your network allows connections to the provider's API
 
@@ -241,7 +107,7 @@ To resolve this:
 
    On Windows, press `WIN+R` and delete: `%USERPROFILE%\.local\share\codeplane`
 
-3. Re-authenticate with your provider using the `/connect` command in the TUI.
+3. Re-authenticate with your provider from Settings -> Providers in the web app.
 
 ---
 

@@ -1,41 +1,37 @@
 ---
-title: 模型
-description: 設定 LLM 提供商和模型。
+title: Models
+description: Configuring an LLM provider and model.
 ---
 
-CodePlane 使用 [AI SDK](https://ai-sdk.dev/) 和 [Models.dev](https://models.dev) 支援 **75+ LLM 提供商**，並支援執行本地模型。
-
----
-
-## 提供商
-
-大多數熱門提供商已預設預先載入。如果您透過 `/connect` 指令新增了提供商的憑證，它們將在您啟動 CodePlane 時自動可用。
-
-了解更多關於[提供商](/docs/providers)的資訊。
+CodePlane uses the [AI SDK](https://ai-sdk.dev/) and [Models.dev](https://models.dev) to support **75+ LLM providers** and it supports running local models.
 
 ---
 
-## 選擇模型
+## Providers
 
-設定好提供商後，您可以透過輸入以下指令來選擇想要使用的模型：
+Most popular providers are preloaded by default. If you've added provider credentials from Settings -> Providers, they'll be available when you start CodePlane.
 
-```bash frame="none"
-/models
-```
+Learn more about [providers](/docs/providers).
 
 ---
 
-## 推薦模型
+## Select a model
 
-市面上有非常多的模型，每週都有新模型發布。
+Once you've configured your provider you can select the model you want from the model selector in the web app.
+
+---
+
+## Recommended models
+
+There are a lot of models out there, with new models coming out every week.
 
 :::tip
-建議使用我們推薦的模型。
+Consider using one of the models we recommend.
 :::
 
-然而，真正擅長程式碼生成和工具呼叫的模型只有少數幾個。
+However, there are only a few of them that are good at both generating code and tool calling.
 
-以下是與 CodePlane 配合良好的幾個模型，排名不分先後（此列表並非詳盡無遺，也不一定是最新的）：
+Here are several models that work well with CodePlane, in no particular order. (This is not an exhaustive list nor is it necessarily up to date):
 
 - GPT 5.2
 - GPT 5.1 Codex
@@ -46,9 +42,10 @@ CodePlane 使用 [AI SDK](https://ai-sdk.dev/) 和 [Models.dev](https://models.d
 
 ---
 
-## 設定預設模型
+## Set a default
 
-要將某個模型設為預設模型，可以在 CodePlane 設定中設定 `model` 欄位。
+To set one of these as the default model, you can set the `model` key in your
+CodePlane config.
 
 ```json title="codeplane.json" {3}
 {
@@ -57,15 +54,15 @@ CodePlane 使用 [AI SDK](https://ai-sdk.dev/) 和 [Models.dev](https://models.d
 }
 ```
 
-這裡完整的 ID 格式為 `provider_id/model_id`。例如，如果您使用 [CodePlane Zen](/docs/zen)，則 GPT 5.1 Codex 對應的值為 `codeplane/gpt-5.1-codex`。
+Here the full ID is `provider_id/model_id`. For example, if you're using [CodePlane Zen](/docs/zen), you would use `codeplane/gpt-5.1-codex` for GPT 5.1 Codex.
 
-如果您設定了[自訂提供商](/docs/providers#custom)，`provider_id` 是設定中 `provider` 部分的鍵名，`model_id` 是 `provider.models` 中的鍵名。
+If you've configured a [custom provider](/docs/providers#custom), the `provider_id` is key from the `provider` part of your config, and the `model_id` is the key from `provider.models`.
 
 ---
 
-## 設定模型
+## Configure models
 
-您可以透過設定檔全域設定模型的選項。
+You can globally configure a model's options through the config.
 
 ```jsonc title="codeplane.jsonc" {7-12,19-24}
 {
@@ -99,12 +96,12 @@ CodePlane 使用 [AI SDK](https://ai-sdk.dev/) 和 [Models.dev](https://models.d
 }
 ```
 
-這裡我們為兩個內建模型設定了全域選項：透過 `openai` 提供商存取的 `gpt-5`，以及透過 `anthropic` 提供商存取的 `claude-sonnet-4-20250514`。
-內建的提供商和模型名稱可以在 [Models.dev](https://models.dev) 上查閱。
+Here we're configuring global settings for two built-in models: `gpt-5` when accessed via the `openai` provider, and `claude-sonnet-4-20250514` when accessed via the `anthropic` provider.
+The built-in provider and model names can be found on [Models.dev](https://models.dev).
 
-您還可以為使用中的任何代理設定這些選項。代理設定會覆寫此處的全域選項。[了解更多](/docs/agents/#additional)。
+You can also configure these options for any agents that you are using. The agent config overrides any global options here. [Learn more](/docs/agents/#additional).
 
-您也可以定義擴展內建變體的自訂變體。變體允許您為同一個模型設定不同的選項，而無需建立重複的項目：
+You can also define custom variants that extend built-in ones. Variants let you configure different settings for the same model without creating duplicate entries:
 
 ```jsonc title="codeplane.jsonc" {6-21}
 {
@@ -134,42 +131,42 @@ CodePlane 使用 [AI SDK](https://ai-sdk.dev/) 和 [Models.dev](https://models.d
 
 ---
 
-## 變體
+## Variants
 
-許多模型支援具有不同設定的多種變體。CodePlane 為熱門提供商內建了預設變體。
+Many models support multiple variants with different configurations. CodePlane ships with built-in default variants for popular providers.
 
-### 內建變體
+### Built-in variants
 
-CodePlane 為許多提供商提供了預設變體：
+CodePlane ships with default variants for many providers:
 
-**Anthropic**：
+**Anthropic**:
 
-- `high` - 高思考預算（預設）
-- `max` - 最大思考預算
+- `high` - High thinking budget (default)
+- `max` - Maximum thinking budget
 
-**OpenAI**：
+**OpenAI**:
 
-因模型而異，但大致如下：
+Varies by model but roughly:
 
-- `none` - 無推理
-- `minimal` - 極少推理
-- `low` - 低推理
-- `medium` - 中等推理
-- `high` - 高推理
-- `xhigh` - 超高推理
+- `none` - No reasoning
+- `minimal` - Minimal reasoning effort
+- `low` - Low reasoning effort
+- `medium` - Medium reasoning effort
+- `high` - High reasoning effort
+- `xhigh` - Extra high reasoning effort
 
-**Google**：
+**Google**:
 
-- `low` - 較低推理/Token 預算
-- `high` - 較高推理/Token 預算
+- `low` - Lower effort/token budget
+- `high` - Higher effort/token budget
 
 :::tip
-此列表並不全面，許多其他提供商也有內建的預設變體。
+This list is not comprehensive. Many other providers have built-in defaults too.
 :::
 
-### 自訂變體
+### Custom variants
 
-您可以覆寫現有變體或新增自己的變體：
+You can override existing variants or add your own:
 
 ```jsonc title="codeplane.jsonc" {7-18}
 {
@@ -194,19 +191,19 @@ CodePlane 為許多提供商提供了預設變體：
 }
 ```
 
-### 切換變體
+### Cycle variants
 
-使用快捷鍵 `variant_cycle` 可以快速在變體之間切換。[了解更多](/docs/keybinds)。
+Use the model selector to switch between variants.
 
 ---
 
-## 載入模型
+## Loading models
 
-CodePlane 啟動時，會按以下優先順序載入模型：
+When CodePlane starts up, it checks for models in the following priority order:
 
-1. `--model` 或 `-m` 命令列旗標。格式與設定檔中相同：`provider_id/model_id`。
+1. The `--model` or `-m` command line flag. The format is the same as in the config file: `provider_id/model_id`.
 
-2. CodePlane 設定中的 model 欄位。
+2. The model list in the CodePlane config.
 
    ```json title="codeplane.json"
    {
@@ -215,8 +212,8 @@ CodePlane 啟動時，會按以下優先順序載入模型：
    }
    ```
 
-   格式為 `provider/model`。
+   The format here is `provider/model`.
 
-3. 上次使用的模型。
+3. The last used model.
 
-4. 按內部優先順序排列的第一個可用模型。
+4. The first model using an internal priority.

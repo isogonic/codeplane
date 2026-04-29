@@ -5,7 +5,7 @@ import config from "virtual:starlight/user-config";
 
 import CopyIcon from "../assets/lander/copy.svg";
 import CheckIcon from "../assets/lander/check.svg";
-import TuiScreenshot from "../assets/lander/screenshot-splash.png";
+import WebScreenshot from "../assets/web/web-homepage-active-session.png";
 import VscodeScreenshot from "../assets/lander/screenshot-vscode.png";
 import GithubScreenshot from "../assets/lander/screenshot-github.png";
 
@@ -24,7 +24,7 @@ const discord = (config.social || []).filter(s => s.icon === 'discord')[0];
 const locale = Astro.currentLocale || 'root';
 const t = Astro.locals.t as (key: string) => string;
 const docsHref = getRelativeLocaleUrl(locale, "")
-const docsCliHref = getRelativeLocaleUrl(locale, "cli")
+const docsWebHref = getRelativeLocaleUrl(locale, "web")
 const docsIdeHref = getRelativeLocaleUrl(locale, "ide")
 const docsGithubHref = getRelativeLocaleUrl(locale, "github")
 
@@ -81,7 +81,7 @@ if (image) {
 
     <section class="content">
       <ul>
-        <li><b>{t('app.lander.features.native_tui.title')}</b>: {t('app.lander.features.native_tui.description')}</li>
+        <li><b>{t('app.lander.features.web_app.title')}</b>: {t('app.lander.features.web_app.description')}</li>
         <li><b>{t('app.lander.features.lsp_enabled.title')}</b>: {t('app.lander.features.lsp_enabled.description')}</li>
         <li><b>{t('app.lander.features.multi_session.title')}</b>: {t('app.lander.features.multi_session.description')}</li>
         <li><b>{t('app.lander.features.shareable_links.title')}</b>: {t('app.lander.features.shareable_links.description')}</li>
@@ -157,9 +157,9 @@ if (image) {
     <section class="images">
       <div class="left">
         <figure>
-          <figcaption>{t('app.lander.images.tui.caption')}</figcaption>
-          <a href={docsCliHref}>
-            <Image src={TuiScreenshot} alt={t('app.lander.images.tui.alt')} />
+          <figcaption>{t('app.lander.images.web.caption')}</figcaption>
+          <a href={docsWebHref}>
+            <Image src={WebScreenshot} alt={t('app.lander.images.web.alt')} />
           </a>
         </figure>
       </div>

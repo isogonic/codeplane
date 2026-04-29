@@ -1,45 +1,37 @@
 ---
-title: 簡介
-description: 開始使用 CodePlane。
+title: Intro
+description: Get started with CodePlane.
 ---
 
 import { Tabs, TabItem } from "@astrojs/starlight/components"
 import config from "../../../../config.mjs"
 export const console = config.console
 
-[**CodePlane**](/) 是一個開源的 AI 編碼代理。它提供終端機介面、桌面應用程式和 IDE 擴充功能等多種使用方式。
+[**CodePlane**](/) is an open source AI coding agent built around the web app experience, with a CLI server and IDE integrations for local development.
 
-![使用 CodePlane 主題的 CodePlane TUI](../../../assets/lander/screenshot.png)
+![CodePlane Web app](../../../assets/web/web-homepage-active-session.png)
 
-讓我們開始吧。
-
----
-
-#### 前提條件
-
-要在終端機中使用 CodePlane，您需要：
-
-1. 一款現代終端機模擬器，例如：
-   - [WezTerm](https://wezterm.org)，跨平台
-   - [Alacritty](https://alacritty.org)，跨平台
-   - [Ghostty](https://ghostty.org)，Linux 和 macOS
-   - [Kitty](https://sw.kovidgoyal.net/kitty/)，Linux 和 macOS
-
-2. 您想使用的 LLM 供應商的 API 金鑰。
+Let's get started.
 
 ---
 
-## 安裝
+#### Prerequisites
 
-安裝 CodePlane 最簡單的方法是透過安裝指令碼。
+To use CodePlane, you'll need Bun and API keys for the LLM providers you want to use.
+
+---
+
+## Install
+
+The easiest way to install CodePlane is through the install script.
 
 ```bash
 curl -fsSL https://example.invalid/install | bash
 ```
 
-您也可以使用以下方式安裝：
+You can also install it with the following commands:
 
-- **使用 Node.js**
+- **Using Node.js**
 
         <Tabs>
 
@@ -73,15 +65,15 @@ curl -fsSL https://example.invalid/install | bash
 
   </Tabs>
 
-- **在 macOS 和 Linux 上使用 Homebrew**
+- **Using Homebrew on macOS and Linux**
 
   ```bash
   brew install devinoldenburg/tap/codeplane
   ```
 
-  > 我們推薦使用 CodePlane tap 以取得最新版本。官方的 `brew install codeplane` formula 由 Homebrew 團隊維護，更新頻率較低。
+  > We recommend using the CodePlane tap for the most up to date releases. The official `brew install codeplane` formula is maintained by the Homebrew team and is updated less frequently.
 
-- **在 Arch Linux 上安裝**
+- **Installing on Arch Linux**
 
   ```bash
   sudo pacman -S codeplane           # Arch Linux (Stable)
@@ -90,61 +82,55 @@ curl -fsSL https://example.invalid/install | bash
 
 #### Windows
 
-:::tip[推薦：使用 WSL]
-為了在 Windows 上獲得最佳體驗，我們推薦使用 [Windows Subsystem for Linux (WSL)](/docs/windows-wsl)。它提供更好的效能，並完全相容 CodePlane 的所有功能。
-:::
-
-- **使用 Chocolatey**
+- **Using Chocolatey**
 
   ```bash
   choco install codeplane
   ```
 
-- **使用 Scoop**
+- **Using Scoop**
 
   ```bash
   scoop install codeplane
   ```
 
-- **使用 NPM**
+- **Using NPM**
 
   ```bash
   npm install -g codeplane-ai
   ```
 
-- **使用 Mise**
+- **Using Mise**
 
   ```bash
   mise use -g github:devinoldenburg/codeplane
   ```
 
-- **使用 Docker**
+- **Using Docker**
 
   ```bash
   docker run -it --rm ghcr.io/devinoldenburg/codeplane
   ```
 
-在 Windows 上透過 Bun 安裝 CodePlane 的支援目前正在開發中。
+Support for installing CodePlane on Windows using Bun is currently in progress.
 
-您也可以從 [Releases](https://github.com/devinoldenburg/codeplane/releases) 頁面直接下載二進位檔案。
+You can also grab the binary from the [Releases](https://github.com/devinoldenburg/codeplane/releases).
 
 ---
 
-## 設定
+## Configure
 
-透過 CodePlane，您可以設定 API 金鑰來使用任意 LLM 供應商。
+With CodePlane you can use any LLM provider by configuring their API keys.
 
-如果您剛開始接觸 LLM 供應商，我們推薦使用 [CodePlane Zen](/docs/zen)。這是一組經過 CodePlane 團隊測試和驗證的精選模型。
+If you are new to using LLM providers, we recommend using [CodePlane Zen](/docs/zen).
+It's a curated list of models that have been tested and verified by the CodePlane
+team.
 
-1. 在 TUI 中執行 `/connect` 指令，選擇 codeplane，然後前往 [example.invalid/auth](https://example.invalid/auth)。
+1. Open the web app and connect the `codeplane` provider from Settings -> Providers.
 
-   ```txt
-   /connect
-   ```
+2. Sign in, add your billing details, and copy your API key.
 
-2. 登入並新增帳單資訊，然後複製您的 API 金鑰。
-
-3. 貼上您的 API 金鑰。
+3. Paste your API key.
 
    ```txt
    ┌ API key
@@ -153,79 +139,85 @@ curl -fsSL https://example.invalid/install | bash
    └ enter
    ```
 
-您也可以選擇其他供應商。[了解更多](/docs/providers#directory)。
+Alternatively, you can select one of the other providers. [Learn more](/docs/providers#directory).
 
 ---
 
-## 初始化
+## Initialize
 
-設定好供應商後，導覽到您想要處理的專案目錄。
+Now that you've configured a provider, you can navigate to a project that
+you want to work on.
 
 ```bash
 cd /path/to/project
 ```
 
-然後執行 CodePlane。
+And start the web app.
 
 ```bash
-codeplane
+codeplane web
 ```
 
-接下來，執行以下指令為專案初始化 CodePlane。
+Next, initialize CodePlane for the project by running the following command.
 
 ```bash frame="none"
 /init
 ```
 
-CodePlane 會分析您的專案並在專案根目錄建立一個 `AGENTS.md` 檔案。
+This will get CodePlane to analyze your project and create an `AGENTS.md` file in
+the project root.
 
 :::tip
-您應該將專案的 `AGENTS.md` 檔案提交到 Git。
+You should commit your project's `AGENTS.md` file to Git.
 :::
 
-這有助於 CodePlane 理解專案結構和編碼規範。
+This helps CodePlane understand the project structure and the coding patterns
+used.
 
 ---
 
-## 使用
+## Usage
 
-現在您已經準備好使用 CodePlane 來處理專案了，儘管提問吧！
+You are now ready to use CodePlane to work on your project. Feel free to ask it
+anything!
 
-如果您是第一次使用 AI 編碼代理，以下範例可能會對您有所幫助。
+If you are new to using an AI coding agent, here are some examples that might
+help.
 
 ---
 
-### 提問
+### Ask questions
 
-您可以讓 CodePlane 為您講解程式碼庫。
+You can ask CodePlane to explain the codebase to you.
 
 :::tip
-使用 `@` 鍵可以模糊搜尋專案中的檔案。
+Use the `@` key to fuzzy search for files in the project.
 :::
 
 ```txt frame="none" "@packages/functions/src/api/index.ts"
 How is authentication handled in @packages/functions/src/api/index.ts
 ```
 
-當您遇到不熟悉的程式碼時，這個功能非常有用。
+This is helpful if there's a part of the codebase that you didn't work on.
 
 ---
 
-### 新增功能
+### Add features
 
-您可以讓 CodePlane 為專案新增新功能。不過我們建議先讓它制定一個計畫。
+You can ask CodePlane to add new features to your project. Though we first recommend asking it to create a plan.
 
-1. **制定計畫**
+1. **Create a plan**
 
-   CodePlane 有一個*計畫模式*，該模式下它不會進行任何修改，而是建議*如何*實作該功能。
+   CodePlane has a _Plan mode_ that disables its ability to make changes and
+   instead suggest _how_ it'll implement the feature.
 
-   使用 **Tab** 鍵切換到計畫模式。您會在右下角看到模式指示器。
+   Switch to it using the **Tab** key. You'll see an indicator for this in the lower right corner.
 
    ```bash frame="none" title="Switch to Plan mode"
    <TAB>
    ```
 
-   接下來描述您希望它做什麼。
+   Now let's describe what we want it to do.
 
    ```txt frame="none"
    When a user deletes a note, we'd like to flag it as deleted in the database.
@@ -233,15 +225,17 @@ How is authentication handled in @packages/functions/src/api/index.ts
    From this screen, the user can undelete a note or permanently delete it.
    ```
 
-   您需要提供足夠的細節，讓 CodePlane 理解您的需求。可以把它當作團隊中的一名初級開發者來溝通。
+   You want to give CodePlane enough details to understand what you want. It helps
+   to talk to it like you are talking to a junior developer on your team.
 
    :::tip
-   為 CodePlane 提供充足的上下文和範例，幫助它理解您的需求。
+   Give CodePlane plenty of context and examples to help it understand what you
+   want.
    :::
 
-2. **迭代計畫**
+2. **Iterate on the plan**
 
-   當它給出計畫後，您可以提供回饋或補充更多細節。
+   Once it gives you a plan, you can give it feedback or add more details.
 
    ```txt frame="none"
    We'd like to design this new screen using a design I've used before.
@@ -249,20 +243,22 @@ How is authentication handled in @packages/functions/src/api/index.ts
    ```
 
    :::tip
-   將圖片拖放到終端機中即可將其新增到提示詞中。
+   Drag and drop images into the terminal to add them to the prompt.
    :::
 
-   CodePlane 可以掃描您提供的圖片並將其新增到提示詞中。只需將圖片拖放到終端機視窗即可。
+   CodePlane can scan any images you give it and add them to the prompt. You can
+   do this by dragging and dropping an image into the terminal.
 
-3. **建置功能**
+3. **Build the feature**
 
-   當您對計畫滿意後，再次按 **Tab** 鍵切換回*建置模式*。
+   Once you feel comfortable with the plan, switch back to _Build mode_ by
+   hitting the **Tab** key again.
 
    ```bash frame="none"
    <TAB>
    ```
 
-   然後讓它開始實施。
+   And asking it to make the changes.
 
    ```bash frame="none"
    Sounds good! Go ahead and make the changes.
@@ -270,9 +266,10 @@ How is authentication handled in @packages/functions/src/api/index.ts
 
 ---
 
-### 直接修改
+### Make changes
 
-對於比較簡單的修改，您可以直接讓 CodePlane 實施，無需先審查計畫。
+For more straightforward changes, you can ask CodePlane to directly build it
+without having to review the plan first.
 
 ```txt frame="none" "@packages/functions/src/settings.ts" "@packages/functions/src/notes.ts"
 We need to add authentication to the /settings route. Take a look at how this is
@@ -280,37 +277,40 @@ handled in the /notes route in @packages/functions/src/notes.ts and implement
 the same logic in @packages/functions/src/settings.ts
 ```
 
-請確保提供足夠的細節，以便 CodePlane 做出正確的修改。
+You want to make sure you provide a good amount of detail so CodePlane makes the right
+changes.
 
 ---
 
-### 復原修改
+### Undo changes
 
-假設您讓 CodePlane 做了一些修改。
+Let's say you ask CodePlane to make some changes.
 
 ```txt frame="none" "@packages/functions/src/api/index.ts"
 Can you refactor the function in @packages/functions/src/api/index.ts?
 ```
 
-但您發現結果不是您想要的。您**可以使用** `/undo` 指令來復原修改。
+But you realize that it is not what you wanted. You **can undo** the changes
+using the `/undo` command.
 
 ```bash frame="none"
 /undo
 ```
 
-CodePlane 會還原所做的修改，並重新顯示您之前的訊息。
+CodePlane will now revert the changes you made and show your original message
+again.
 
 ```txt frame="none" "@packages/functions/src/api/index.ts"
 Can you refactor the function in @packages/functions/src/api/index.ts?
 ```
 
-您可以調整提示詞，讓 CodePlane 重新嘗試。
+From here you can tweak the prompt and ask CodePlane to try again.
 
 :::tip
-您可以多次執行 `/undo` 來復原多次修改。
+You can run `/undo` multiple times to undo multiple changes.
 :::
 
-您也**可以使用** `/redo` 指令來重做修改。
+Or you **can redo** the changes using the `/redo` command.
 
 ```bash frame="none"
 /redo
@@ -318,26 +318,27 @@ Can you refactor the function in @packages/functions/src/api/index.ts?
 
 ---
 
-## 分享
+## Share
 
-您與 CodePlane 的對話可以[與團隊分享](/docs/share)。
+The conversations that you have with CodePlane can be [shared with your
+team](/docs/share).
 
 ```bash frame="none"
 /share
 ```
 
-這會生成當前對話的連結並複製到剪貼簿。
+This will create a link to the current conversation and copy it to your clipboard.
 
 :::note
-對話預設不會被分享。
+Conversations are not shared by default.
 :::
 
-這是一個與 CodePlane 的[範例對話](https://example.invalid)。
+Here's an [example conversation](https://example.invalid) with CodePlane.
 
 ---
 
-## 個人化
+## Customize
 
-以上就是全部內容！您現在已經是 CodePlane 的使用高手了。
+And that's it! You are now a pro at using CodePlane.
 
-要讓它更符合您的習慣，我們推薦[選擇一個主題](/docs/themes)、[自訂快捷鍵](/docs/keybinds)、[設定程式碼格式化器](/docs/formatters)、[建立自訂指令](/docs/commands)，或者探索 [CodePlane 設定](/docs/config)。
+To make it your own, we recommend [picking a theme](/docs/themes), [configuring code formatters](/docs/formatters), [creating custom commands](/docs/commands), or playing around with the [CodePlane config](/docs/config).

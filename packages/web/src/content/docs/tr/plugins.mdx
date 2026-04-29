@@ -1,34 +1,34 @@
 ---
-title: Eklentiler
-description: CodePlane'u genişletmek için kendi eklentilerinizi yazın.
+title: Plugins
+description: Write your own plugins to extend CodePlane.
 ---
 
-Eklentiler, çeşitli olaylara bağlanarak ve davranışı özelleştirerek CodePlane'u genişletmenize olanak tanır. Yeni özellikler eklemek, harici hizmetlerle entegrasyon sağlamak veya CodePlane'un varsayılan davranışını değiştirmek için eklentiler oluşturabilirsiniz.
+Plugins allow you to extend CodePlane by hooking into various events and customizing behavior. You can create plugins to add new features, integrate with external services, or modify CodePlane's default behavior.
 
-Örnekler için topluluk tarafından oluşturulan [eklentilere](/docs/ecosystem#plugins) göz atın.
-
----
-
-## Eklenti kullanımı
-
-Eklentileri yüklemenin iki yolu vardır.
+For examples, check out the [plugins](/docs/ecosystem#plugins) created by the community.
 
 ---
 
-### Yerel dosyalardan
+## Use a plugin
 
-JavaScript veya TypeScript dosyalarını eklenti dizinine yerleştirin.
-
-- `.codeplane/plugins/` - Proje düzeyinde eklentiler
-- `~/.config/codeplane/plugins/` - Genel eklentiler
-
-Bu dizinlerdeki dosyalar başlangıçta otomatik olarak yüklenir.
+There are two ways to load plugins.
 
 ---
 
-### npm'den
+### From local files
 
-Yapılandırma dosyanızda npm paketlerini belirtin.
+Place JavaScript or TypeScript files in the plugin directory.
+
+- `.codeplane/plugins/` - Project-level plugins
+- `~/.config/codeplane/plugins/` - Global plugins
+
+Files in these directories are automatically loaded at startup.
+
+---
+
+### From npm
+
+Specify npm packages in your config file.
 
 ```json title="codeplane.json"
 {
@@ -37,42 +37,43 @@ Yapılandırma dosyanızda npm paketlerini belirtin.
 }
 ```
 
-Hem normal hem de kapsamlı npm paketleri desteklenir.
+Both regular and scoped npm packages are supported.
 
-[Ekosistem](/docs/ecosystem#plugins)'deki mevcut eklentilere göz atın.
-
----
-
-### Eklentiler nasıl kurulur?
-
-**npm eklentileri** başlangıçta Bun kullanılarak otomatik olarak yüklenir. Paketler ve bağımlılıkları `~/.cache/codeplane/node_modules/`'da önbelleğe alınır.
-
-**Yerel eklentiler** doğrudan eklenti dizininden yüklenir. Harici paketleri kullanmak için, sisteminizin dizininde bir `package.json` oluşturmanız (bkz. [Bağımlılıklar](#dependencies)) veya eklentiyi npm ve [yapılandırmanıza eklemeniz](/docs/config#plugins) gerekir.
+Browse available plugins in the [ecosystem](/docs/ecosystem#plugins).
 
 ---
 
-### Yükleme sırası
+### How plugins are installed
 
-Eklentiler tüm kaynaklardan yüklenir ve tüm kancalar sırayla çalışır. Yükleme sırası şöyledir:
+**npm plugins** are installed automatically using Bun at startup. Packages and their dependencies are cached in `~/.cache/codeplane/node_modules/`.
+
+**Local plugins** are loaded directly from the plugin directory. To use external packages, you must create a `package.json` within your config directory (see [Dependencies](#dependencies)), or publish the plugin to npm and [add it to your config](/docs/config#plugins).
+
+---
+
+### Load order
+
+Plugins are loaded from all sources and all hooks run in sequence. The load order is:
 
 1. Global config (`~/.config/codeplane/codeplane.json`)
 2. Project config (`codeplane.json`)
-3. Global eklenti dizini (`~/.config/codeplane/plugins/`)
-4. Proje eklenti dizini (`.codeplane/plugins/`)
+3. Global plugin directory (`~/.config/codeplane/plugins/`)
+4. Project plugin directory (`.codeplane/plugins/`)
 
-Aynı ad ve sürüme sahip yinelenen npm paketleri bir kez yüklenir. Ancak benzer adlara sahip bir yerel eklenti ve bir npm eklentisinin her ikisi de ayrı ayrı yüklenir.
-
----
-
-## Eklenti oluşturma
-
-Eklenti, bir veya daha fazla eklenti işlevini dışa aktaran bir **JavaScript/TypeScript modülüdür**. Her işlev bir bağlam nesnesi alır ve bir kanca nesnesi döndürür.
+Duplicate npm packages with the same name and version are loaded once. However, a local plugin and an npm plugin with similar names are both loaded separately.
 
 ---
 
-### Bağımlılıklar
+## Create a plugin
 
-Yerel eklentiler ve özel araçlar harici npm paketlerini kullanabilir. İhtiyacınız olan bağımlılıkları içeren config dizininize bir `package.json` ekleyin.
+A plugin is a **JavaScript/TypeScript module** that exports one or more plugin
+functions. Each function receives a context object and returns a hooks object.
+
+---
+
+### Dependencies
+
+Local plugins and custom tools can use external npm packages. Add a `package.json` to your config directory with the dependencies you need.
 
 ```json title=".codeplane/package.json"
 {
@@ -82,7 +83,7 @@ Yerel eklentiler ve özel araçlar harici npm paketlerini kullanabilir. İhtiyac
 }
 ```
 
-CodePlane bunları yüklemek için başlangıçta `bun install` komutunu çalıştırır. Eklentileriniz ve araçlarınız daha sonra bunları içe aktarabilir.
+CodePlane runs `bun install` at startup to install these. Your plugins and tools can then import them.
 
 ```ts title=".codeplane/plugins/my-plugin.ts"
 import { escape } from "shescape"
@@ -100,7 +101,7 @@ export const MyPlugin = async (ctx) => {
 
 ---
 
-### Temel yapı
+### Basic structure
 
 ```js title=".codeplane/plugins/example.js"
 export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
@@ -112,19 +113,19 @@ export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
 }
 ```
 
-Eklenti işlevi şunları alır:
+The plugin function receives:
 
-- `project`: Mevcut proje bilgisi.
-- `directory`: Güncel çalışma dizini.
-- `worktree`: Git çalışma ağacı yolu.
-- `client`: Yapay zeka ile etkileşim kurmak için bir CodePlane SDK istemcisi.
-- `$`: Bun'un komutları yürütmek için kullandığı [shell API](https://bun.com/docs/runtime/shell).
+- `project`: The current project information.
+- `directory`: The current working directory.
+- `worktree`: The git worktree path.
+- `client`: An codeplane SDK client for interacting with the AI.
+- `$`: Bun's [shell API](https://bun.com/docs/runtime/shell) for executing commands.
 
 ---
 
-### TypeScript desteği
+### TypeScript support
 
-TypeScript eklentileri için türleri eklenti paketinden içe aktarabilirsiniz:
+For TypeScript plugins, you can import types from the plugin package:
 
 ```ts title="my-plugin.ts" {1}
 import type { Plugin } from "@codeplane-ai/plugin"
@@ -138,45 +139,45 @@ export const MyPlugin: Plugin = async ({ project, client, $, directory, worktree
 
 ---
 
-### Olaylar
+### Events
 
-Eklentiler aşağıdaki Örnekler bölümünde görüldüğü gibi etkinliklere abone olabilirler. Burada mevcut farklı etkinliklerin bir listesi bulunmaktadır.
+Plugins can subscribe to events as seen below in the Examples section. Here is a list of the different events available.
 
-#### Komut Olayları
+#### Command Events
 
 - `command.executed`
 
-#### Dosya Olayları
+#### File Events
 
 - `file.edited`
 - `file.watcher.updated`
 
-#### Kurulum Olayları
+#### Installation Events
 
 - `installation.updated`
 
-#### LSP Olayları
+#### LSP Events
 
 - `lsp.client.diagnostics`
 - `lsp.updated`
 
-#### Mesaj Olayları
+#### Message Events
 
 - `message.part.removed`
 - `message.part.updated`
 - `message.removed`
 - `message.updated`
 
-#### İzin Olayları
+#### Permission Events
 
 - `permission.asked`
 - `permission.replied`
 
-#### Sunucu Olayları
+#### Server Events
 
 - `server.connected`
 
-#### Oturum Olayları
+#### Session Events
 
 - `session.created`
 - `session.compacted`
@@ -187,36 +188,28 @@ Eklentiler aşağıdaki Örnekler bölümünde görüldüğü gibi etkinliklere 
 - `session.status`
 - `session.updated`
 
-#### Yapılacaklar Olayları
+#### Todo Events
 
 - `todo.updated`
 
-#### Kabuk Olayları
+#### Shell Events
 
 - `shell.env`
 
-#### Araç Olayları
+#### Tool Events
 
 - `tool.execute.after`
 - `tool.execute.before`
 
-#### TUI Olayları
+## Examples
 
-- `tui.prompt.append`
-- `tui.command.execute`
-- `tui.toast.show`
+Here are some examples of plugins you can use to extend codeplane.
 
 ---
 
-## Örnekler
+### Send notifications
 
-CodePlane'u genişletmek için kullanabileceğiniz bazı eklenti örneklerini burada bulabilirsiniz.
-
----
-
-### Bildirim Gönderme
-
-Belirli olaylar meydana geldiğinde bildirim gönderin:
+Send notifications when certain events occur:
 
 ```js title=".codeplane/plugins/notification.js"
 export const NotificationPlugin = async ({ project, client, $, directory, worktree }) => {
@@ -231,17 +224,13 @@ export const NotificationPlugin = async ({ project, client, $, directory, worktr
 }
 ```
 
-macOS'ta AppleScript'i çalıştırmak için `osascript` kullanıyoruz. Burada bildirim göndermek için kullanıyoruz.
-
-:::note
-CodePlane masaüstü uygulamasını kullanıyorsanız yanıt hazır olduğunda veya oturum hataları oluştuğunda otomatik olarak sistem bildirimleri gönderebilir.
-:::
+We are using `osascript` to run AppleScript on macOS. Here we are using it to send notifications.
 
 ---
 
-### .env Koruması
+### .env protection
 
-CodePlane'un `.env` dosyalarını okumasını önleyin:
+Prevent codeplane from reading `.env` files:
 
 ```javascript title=".codeplane/plugins/env-protection.js"
 export const EnvProtection = async ({ project, client, $, directory, worktree }) => {
@@ -257,9 +246,9 @@ export const EnvProtection = async ({ project, client, $, directory, worktree })
 
 ---
 
-### Ortam değişkenlerini enjekte etme
+### Inject environment variables
 
-Ortam değişkenlerini tüm kabuk yürütmeye (AI araçları ve kullanıcı terminalleri) enjekte edin:
+Inject environment variables into all shell execution (AI tools and user terminals):
 
 ```javascript title=".codeplane/plugins/inject-env.js"
 export const InjectEnvPlugin = async () => {
@@ -274,9 +263,9 @@ export const InjectEnvPlugin = async () => {
 
 ---
 
-### Özel araçlar
+### Custom tools
 
-Eklentiler ayrıca CodePlane'a özel araçlar da ekleyebilir:
+Plugins can also add custom tools to codeplane:
 
 ```ts title=".codeplane/plugins/custom-tools.ts"
 import { type Plugin, tool } from "@codeplane-ai/plugin"
@@ -299,23 +288,23 @@ export const CustomToolsPlugin: Plugin = async (ctx) => {
 }
 ```
 
-`tool` yardımcısı, CodePlane'un çağırabileceği özel bir araç oluşturur. Bir Zod şeması işlevini alır ve aşağıdakileri içeren bir araç tanımı döndürür:
+The `tool` helper creates a custom tool that codeplane can call. It takes a Zod schema function and returns a tool definition with:
 
-- `description`: Araç ne yapar?
-- `args`: Aracın argümanları için Zod şeması
-- `execute`: Araç çağrıldığında çalışan fonksiyon
+- `description`: What the tool does
+- `args`: Zod schema for the tool's arguments
+- `execute`: Function that runs when the tool is called
 
-Özel araçlarınız, yerleşik araçların yanı sıra CodePlane'a da hazır olacaktır.
+Your custom tools will be available to codeplane alongside built-in tools.
 
 :::note
-Eğer bir eklenti aracı yerleşik bir araçla aynı adı kullanırsa, eklenti aracı öncelik kazanır.
+If a plugin tool uses the same name as a built-in tool, the plugin tool takes precedence.
 :::
 
 ---
 
-### Günlüğe kaydetme
+### Logging
 
-Yapılandırılmış günlük kaydı için `console.log` yerine `client.app.log()` kullanın:
+Use `client.app.log()` instead of `console.log` for structured logging:
 
 ```ts title=".codeplane/plugins/my-plugin.ts"
 export const MyPlugin = async ({ client }) => {
@@ -330,13 +319,13 @@ export const MyPlugin = async ({ client }) => {
 }
 ```
 
-Seviyeler: `debug`, `info`, `warn`, `error`. Ayrıntılar için [SDK belgelerine](https://github.com/devinoldenburg/codeplane) bakın.
+Levels: `debug`, `info`, `warn`, `error`. See [SDK documentation](https://github.com/devinoldenburg/codeplane) for details.
 
 ---
 
-### Sıkıştırma kancaları
+### Compaction hooks
 
-Bir oturum sıkıştırıldığında içerilen bağlamı özelleştirin:
+Customize the context included when a session is compacted:
 
 ```ts title=".codeplane/plugins/compaction.ts"
 import type { Plugin } from "@codeplane-ai/plugin"
@@ -358,9 +347,9 @@ Include any state that should persist across compaction:
 }
 ```
 
-`experimental.session.compacting` kancası, LLM bir devam özeti oluşturmadan önce tetiklenir. Varsayılan sıkıştırma isteminin kaçıracağı etki alanına özgü bağlamı enjekte etmek için bunu kullanın.
+The `experimental.session.compacting` hook fires before the LLM generates a continuation summary. Use it to inject domain-specific context that the default compaction prompt would miss.
 
-Ayrıca `output.prompt` ayarını yaparak sıkıştırma istemini tamamen değiştirebilirsiniz:
+You can also replace the compaction prompt entirely by setting `output.prompt`:
 
 ```ts title=".codeplane/plugins/custom-compaction.ts"
 import type { Plugin } from "@codeplane-ai/plugin"
@@ -385,4 +374,4 @@ Format as a structured prompt that a new agent can use to resume work.
 }
 ```
 
-`output.prompt` ayarlandığında, varsayılan sıkıştırma isteminin tamamen yerini alır. Bu durumda `output.context` dizisi dikkate alınmaz.
+When `output.prompt` is set, it completely replaces the default compaction prompt. The `output.context` array is ignored in this case.

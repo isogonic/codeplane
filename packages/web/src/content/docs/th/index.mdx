@@ -1,45 +1,37 @@
 ---
-title: บทนำ
-description: เริ่มต้นใช้งาน CodePlane
+title: Intro
+description: Get started with CodePlane.
 ---
 
 import { Tabs, TabItem } from "@astrojs/starlight/components"
 import config from "../../../../config.mjs"
 export const console = config.console
 
-[**CodePlane**](/) คือเอเจนต์การเข้ารหัส AI แบบโอเพ่นซอร์ส มีให้บริการในรูปแบบอินเทอร์เฟซบน terminal แอปเดสก์ท็อป หรือส่วนขยาย IDE
+[**CodePlane**](/) is an open source AI coding agent built around the web app experience, with a CLI server and IDE integrations for local development.
 
-![CodePlane TUI พร้อม codeplane theme](../../../assets/lander/screenshot.png)
+![CodePlane Web app](../../../assets/web/web-homepage-active-session.png)
 
-มาเริ่มกันเลย
-
----
-
-#### ข้อกำหนดเบื้องต้น
-
-หากต้องการใช้ CodePlane ใน terminal คุณจะต้องมี:
-
-1. terminal อีมูเลเตอร์ที่ทันสมัยเช่น:
-   - [WezTerm](https://wezterm.org) ข้ามแพลตฟอร์ม
-   - [Alacritty](https://alacritty.org) ข้ามแพลตฟอร์ม
-   - [Ghostty](https://ghostty.org), Linux และ macOS
-   - [Kitty](https://sw.kovidgoyal.net/kitty/), Linux และ macOS
-
-2. API Key สำหรับผู้ให้บริการ LLM ที่คุณต้องการใช้
+Let's get started.
 
 ---
 
-## ติดตั้ง
+#### Prerequisites
 
-วิธีที่ง่ายที่สุดในการติดตั้ง CodePlane คือการใช้สคริปต์การติดตั้ง
+To use CodePlane, you'll need Bun and API keys for the LLM providers you want to use.
+
+---
+
+## Install
+
+The easiest way to install CodePlane is through the install script.
 
 ```bash
 curl -fsSL https://example.invalid/install | bash
 ```
 
-คุณยังสามารถติดตั้งได้ด้วยคำสั่งต่อไปนี้:
+You can also install it with the following commands:
 
-- **ใช้ Node.js**
+- **Using Node.js**
 
         <Tabs>
 
@@ -73,15 +65,15 @@ curl -fsSL https://example.invalid/install | bash
 
   </Tabs>
 
-- **ใช้ Homebrew บน macOS และ Linux**
+- **Using Homebrew on macOS and Linux**
 
   ```bash
   brew install devinoldenburg/tap/codeplane
   ```
 
-  > เราขอแนะนำให้ใช้ CodePlane tap เพื่อเผยแพร่ข้อมูลล่าสุด สูตร `brew install codeplane` อย่างเป็นทางการได้รับการดูแลโดยทีมงาน Homebrew และมีการอัปเดตไม่บ่อยนัก
+  > We recommend using the CodePlane tap for the most up to date releases. The official `brew install codeplane` formula is maintained by the Homebrew team and is updated less frequently.
 
-- **ใช้ Paru บน Arch Linux**
+- **Installing on Arch Linux**
 
   ```bash
   sudo pacman -S codeplane           # Arch Linux (Stable)
@@ -90,63 +82,55 @@ curl -fsSL https://example.invalid/install | bash
 
 #### Windows
 
-:::tip[แนะนำ: ใช้ WSL]
-เพื่อประสบการณ์ที่ดีที่สุดบน Windows เราขอแนะนำให้ใช้ [ระบบย่อย Windows สำหรับ Linux (WSL)](/docs/windows-wsl) ให้ประสิทธิภาพที่ดีขึ้นและความเข้ากันได้เต็มรูปแบบกับคุณสมบัติของ CodePlane
-:::
-
-- **ใช้ Chocolatey**
+- **Using Chocolatey**
 
   ```bash
   choco install codeplane
   ```
 
-- **ใช้ Scoop**
+- **Using Scoop**
 
   ```bash
   scoop install codeplane
   ```
 
-- **การใช้ NPM**
+- **Using NPM**
 
   ```bash
   npm install -g codeplane-ai
   ```
 
-- **ใช้ Mise**
+- **Using Mise**
 
   ```bash
   mise use -g github:devinoldenburg/codeplane
   ```
 
-- **ใช้ Docker**
+- **Using Docker**
 
   ```bash
   docker run -it --rm ghcr.io/devinoldenburg/codeplane
   ```
 
-ขณะนี้การสนับสนุนสำหรับการติดตั้ง CodePlane บน Windows โดยใช้ Bun อยู่ระหว่างดำเนินการ
+Support for installing CodePlane on Windows using Bun is currently in progress.
 
-คุณยังสามารถคว้าไบนารี่ได้จาก [เผยแพร่](https://github.com/devinoldenburg/codeplane/releases)
+You can also grab the binary from the [Releases](https://github.com/devinoldenburg/codeplane/releases).
 
 ---
 
-## กำหนดค่า
+## Configure
 
-ด้วย CodePlane คุณสามารถใช้ผู้ให้บริการ LLM ใดก็ได้โดยกำหนดค่าคีย์ API
+With CodePlane you can use any LLM provider by configuring their API keys.
 
-หากคุณยังใหม่ต่อการใช้ผู้ให้บริการ LLM เราขอแนะนำให้ใช้ [CodePlane Zen](/docs/zen)
-เป็นรายการโมเดลที่ได้รับการดูแลจัดการซึ่งได้รับการทดสอบและตรวจสอบโดย CodePlane
-ทีม.
+If you are new to using LLM providers, we recommend using [CodePlane Zen](/docs/zen).
+It's a curated list of models that have been tested and verified by the CodePlane
+team.
 
-1. เรียกใช้คำสั่ง `/connect` ใน TUI เลือก codeplane และไปที่ [example.invalid/auth](https://example.invalid/auth)
+1. Open the web app and connect the `codeplane` provider from Settings -> Providers.
 
-   ```txt
-   /connect
-   ```
+2. Sign in, add your billing details, and copy your API key.
 
-2. ลงชื่อเข้าใช้ เพิ่มรายละเอียดการเรียกเก็บเงินของคุณ และคัดลอกรหัส API ของคุณ
-
-3. วางคีย์ API ของคุณ
+3. Paste your API key.
 
    ```txt
    ┌ API key
@@ -155,85 +139,85 @@ curl -fsSL https://example.invalid/install | bash
    └ enter
    ```
 
-หรือคุณสามารถเลือกหนึ่งในผู้ให้บริการรายอื่นได้ [เรียนรู้เพิ่มเติม](/docs/providers#ไดเรกทอรี)
+Alternatively, you can select one of the other providers. [Learn more](/docs/providers#directory).
 
 ---
 
-## เริ่มต้น
+## Initialize
 
-เมื่อคุณได้กำหนดค่าผู้ให้บริการแล้ว คุณสามารถนำทางไปยังโปรเจ็กต์นั้นได้
-คุณอยากทำงานต่อ
+Now that you've configured a provider, you can navigate to a project that
+you want to work on.
 
 ```bash
 cd /path/to/project
 ```
 
-และเรียกใช้ CodePlane
+And start the web app.
 
 ```bash
-codeplane
+codeplane web
 ```
 
-จากนั้น เริ่มต้น CodePlane สำหรับโปรเจ็กต์โดยการรันคำสั่งต่อไปนี้
+Next, initialize CodePlane for the project by running the following command.
 
 ```bash frame="none"
 /init
 ```
 
-นี่จะได้รับ CodePlane เพื่อวิเคราะห์โครงการของคุณและสร้างไฟล์ `AGENTS.md`
-รากของโครงการ
+This will get CodePlane to analyze your project and create an `AGENTS.md` file in
+the project root.
 
 :::tip
-คุณควรคอมมิตไฟล์ `AGENTS.md` ของโปรเจ็กต์ของคุณไปที่ Git
+You should commit your project's `AGENTS.md` file to Git.
 :::
 
-ซึ่งจะช่วยให้ CodePlane เข้าใจโครงสร้างโปรเจ็กต์และรูปแบบการเขียนโค้ด
-ใช้แล้ว.
+This helps CodePlane understand the project structure and the coding patterns
+used.
 
 ---
 
-## การใช้งาน
+## Usage
 
-ตอนนี้คุณพร้อมที่จะใช้ CodePlane เพื่อทำงานในโครงการของคุณแล้ว อย่าลังเลที่จะถามมัน
-อะไรก็ตาม!
+You are now ready to use CodePlane to work on your project. Feel free to ask it
+anything!
 
-หากคุณยังใหม่ต่อการใช้เอเจนต์การเข้ารหัส AI ต่อไปนี้คือตัวอย่างบางส่วนที่อาจเป็นไปได้
-ช่วย.
+If you are new to using an AI coding agent, here are some examples that might
+help.
 
 ---
 
-### ถามคำถาม
+### Ask questions
 
-คุณสามารถขอให้ CodePlane อธิบาย codebase ให้คุณได้
+You can ask CodePlane to explain the codebase to you.
 
 :::tip
-ใช้ปุ่ม `@` เพื่อค้นหาไฟล์ในโครงการอย่างคลุมเครือ
+Use the `@` key to fuzzy search for files in the project.
 :::
 
 ```txt frame="none" "@packages/functions/src/api/index.ts"
 How is authentication handled in @packages/functions/src/api/index.ts
 ```
 
-สิ่งนี้มีประโยชน์หากมีส่วนหนึ่งของโค้ดเบสที่คุณไม่ได้ดำเนินการ
+This is helpful if there's a part of the codebase that you didn't work on.
 
 ---
 
-### เพิ่มคุณสมบัติ
+### Add features
 
-คุณสามารถขอให้ CodePlane เพิ่มคุณสมบัติใหม่ให้กับโครงการของคุณได้ แม้ว่าเราจะแนะนำให้ขอให้สร้างแผนก่อนก็ตาม
+You can ask CodePlane to add new features to your project. Though we first recommend asking it to create a plan.
 
-1. **สร้างแผน**
+1. **Create a plan**
 
-   CodePlane มีโหมด _Plan_ ที่ปิดการใช้งานความสามารถในการเปลี่ยนแปลงและ
-   แนะนำ _how_ ว่าจะใช้งานฟีเจอร์นี้แทน
+   CodePlane has a _Plan mode_ that disables its ability to make changes and
+   instead suggest _how_ it'll implement the feature.
 
-   เปลี่ยนไปใช้ปุ่ม **Tab** คุณจะเห็นตัวบ่งชี้นี้ที่มุมขวาล่าง
+   Switch to it using the **Tab** key. You'll see an indicator for this in the lower right corner.
 
    ```bash frame="none" title="Switch to Plan mode"
    <TAB>
    ```
 
-   ตอนนี้เรามาอธิบายสิ่งที่เราต้องการให้ทำ
+   Now let's describe what we want it to do.
 
    ```txt frame="none"
    When a user deletes a note, we'd like to flag it as deleted in the database.
@@ -241,17 +225,17 @@ How is authentication handled in @packages/functions/src/api/index.ts
    From this screen, the user can undelete a note or permanently delete it.
    ```
 
-   คุณต้องการให้รายละเอียด CodePlane เพียงพอเพื่อทำความเข้าใจสิ่งที่คุณต้องการ มันช่วยได้
-   เพื่อพูดคุยเหมือนคุณกำลังพูดคุยกับนักพัฒนารุ่นน้องในทีมของคุณ
+   You want to give CodePlane enough details to understand what you want. It helps
+   to talk to it like you are talking to a junior developer on your team.
 
    :::tip
-   ให้บริบทและตัวอย่างมากมายแก่ CodePlane เพื่อช่วยให้เข้าใจสิ่งที่คุณ
-   ต้องการ.
+   Give CodePlane plenty of context and examples to help it understand what you
+   want.
    :::
 
-2. **ทบทวนแผน**
+2. **Iterate on the plan**
 
-   เมื่อมีแผนแล้ว คุณสามารถให้ข้อเสนอแนะหรือเพิ่มรายละเอียดเพิ่มเติมได้
+   Once it gives you a plan, you can give it feedback or add more details.
 
    ```txt frame="none"
    We'd like to design this new screen using a design I've used before.
@@ -259,22 +243,22 @@ How is authentication handled in @packages/functions/src/api/index.ts
    ```
 
    :::tip
-   ลากและวางรูปภาพลงใน terminal เพื่อเพิ่มลงในพรอมต์
+   Drag and drop images into the terminal to add them to the prompt.
    :::
 
-   CodePlane สามารถสแกนรูปภาพที่คุณให้มาและเพิ่มลงในข้อความแจ้งได้ คุณสามารถ
-   ทำได้โดยลากและวางรูปภาพลงใน terminal
+   CodePlane can scan any images you give it and add them to the prompt. You can
+   do this by dragging and dropping an image into the terminal.
 
-3. **สร้างฟีเจอร์**
+3. **Build the feature**
 
-   เมื่อคุณรู้สึกพอใจกับแผนแล้ว ให้เปลี่ยนกลับเป็น _Build mode_ ภายใน
-   กดปุ่ม **Tab** อีกครั้ง
+   Once you feel comfortable with the plan, switch back to _Build mode_ by
+   hitting the **Tab** key again.
 
    ```bash frame="none"
    <TAB>
    ```
 
-   และขอให้ทำการเปลี่ยนแปลง
+   And asking it to make the changes.
 
    ```bash frame="none"
    Sounds good! Go ahead and make the changes.
@@ -282,10 +266,10 @@ How is authentication handled in @packages/functions/src/api/index.ts
 
 ---
 
-### ทำการเปลี่ยนแปลง
+### Make changes
 
-หากต้องการการเปลี่ยนแปลงที่ตรงไปตรงมามากขึ้น คุณสามารถขอให้ CodePlane สร้างมันโดยตรงได้
-โดยไม่ต้องทบทวนแผนก่อน
+For more straightforward changes, you can ask CodePlane to directly build it
+without having to review the plan first.
 
 ```txt frame="none" "@packages/functions/src/settings.ts" "@packages/functions/src/notes.ts"
 We need to add authentication to the /settings route. Take a look at how this is
@@ -293,40 +277,40 @@ handled in the /notes route in @packages/functions/src/notes.ts and implement
 the same logic in @packages/functions/src/settings.ts
 ```
 
-คุณต้องการให้แน่ใจว่าคุณให้รายละเอียดในปริมาณที่เหมาะสมเพื่อให้ CodePlane ดำเนินการได้ถูกต้อง
-การเปลี่ยนแปลง
+You want to make sure you provide a good amount of detail so CodePlane makes the right
+changes.
 
 ---
 
-### เลิกทำการเปลี่ยนแปลง
+### Undo changes
 
-สมมติว่าคุณขอให้ CodePlane ทำการเปลี่ยนแปลงบางอย่าง
+Let's say you ask CodePlane to make some changes.
 
 ```txt frame="none" "@packages/functions/src/api/index.ts"
 Can you refactor the function in @packages/functions/src/api/index.ts?
 ```
 
-แต่คุณก็รู้ว่ามันไม่ใช่สิ่งที่คุณต้องการ คุณ **สามารถยกเลิก** การเปลี่ยนแปลงได้
-โดยใช้คำสั่ง `/undo`
+But you realize that it is not what you wanted. You **can undo** the changes
+using the `/undo` command.
 
 ```bash frame="none"
 /undo
 ```
 
-CodePlane จะคืนค่าการเปลี่ยนแปลงที่คุณทำและแสดงข้อความต้นฉบับของคุณ
-อีกครั้ง.
+CodePlane will now revert the changes you made and show your original message
+again.
 
 ```txt frame="none" "@packages/functions/src/api/index.ts"
 Can you refactor the function in @packages/functions/src/api/index.ts?
 ```
 
-จากที่นี่ คุณสามารถปรับแต่งข้อความแจ้งและขอให้ CodePlane ลองอีกครั้ง
+From here you can tweak the prompt and ask CodePlane to try again.
 
 :::tip
-คุณสามารถเรียกใช้ `/undo` ได้หลายครั้งเพื่อเลิกทำการเปลี่ยนแปลงหลายรายการ
+You can run `/undo` multiple times to undo multiple changes.
 :::
 
-หรือคุณสามารถ **สามารถทำซ้ำ** การเปลี่ยนแปลงโดยใช้คำสั่ง `/redo`
+Or you **can redo** the changes using the `/redo` command.
 
 ```bash frame="none"
 /redo
@@ -334,27 +318,27 @@ Can you refactor the function in @packages/functions/src/api/index.ts?
 
 ---
 
-## แบ่งปัน
+## Share
 
-การสนทนาที่คุณมีกับ CodePlane สามารถ [แชร์กับคุณได้
-ทีมงาน](/docs/share)
+The conversations that you have with CodePlane can be [shared with your
+team](/docs/share).
 
 ```bash frame="none"
 /share
 ```
 
-การดำเนินการนี้จะสร้างลิงก์ไปยังการสนทนาปัจจุบันและคัดลอกไปยังคลิปบอร์ดของคุณ
+This will create a link to the current conversation and copy it to your clipboard.
 
 :::note
-การสนทนาจะไม่ถูกแชร์โดยค่าเริ่มต้น
+Conversations are not shared by default.
 :::
 
-นี่คือ [ตัวอย่างการสนทนา](https://example.invalid) กับ CodePlane
+Here's an [example conversation](https://example.invalid) with CodePlane.
 
 ---
 
-## ปรับแต่ง
+## Customize
 
-แค่นั้นแหละ! ตอนนี้คุณเป็นมืออาชีพในการใช้ CodePlane แล้ว
+And that's it! You are now a pro at using CodePlane.
 
-หากต้องการทำให้เป็นของคุณเอง เราขอแนะนำให้ [เลือกธีม](/docs/themes), [ปรับแต่งปุ่มลัด](/docs/keybinds), [กำหนดค่าตัวจัดรูปแบบโค้ด](/docs/formatters), [สร้างคำสั่งที่กำหนดเอง](/docs/commands) หรือลองใช้ [การกำหนดค่า CodePlane](/docs/config)
+To make it your own, we recommend [picking a theme](/docs/themes), [configuring code formatters](/docs/formatters), [creating custom commands](/docs/commands), or playing around with the [CodePlane config](/docs/config).

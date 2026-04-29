@@ -34,7 +34,6 @@ import { createStore, produce, reconcile } from "solid-js/store"
 import { DragDropProvider, DragDropSensors, DragOverlay, SortableProvider, closestCenter } from "@thisbeyond/solid-dnd"
 import type { DragEvent } from "@thisbeyond/solid-dnd"
 import { useProviders } from "@/hooks/use-providers"
-import { useUpdateInstaller } from "@/hooks/use-update-installer"
 import { showToast, Toast, toaster } from "@codeplane-ai/ui/toast"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { clearWorkspaceTerminals } from "@/context/terminal"
@@ -129,7 +128,6 @@ export default function Layout(props: ParentProps) {
   const layout = useLayout()
   const layoutReady = createMemo(() => layout.ready())
   const platform = usePlatform()
-  const updater = useUpdateInstaller()
   const settings = useSettings()
   const notification = useNotification()
   const permission = usePermission()
@@ -544,104 +542,6 @@ export default function Layout(props: ParentProps) {
     setLocale(next)
   }
 
-  const useUpdatePolling = () =>
-    onMount(() => {
-      if (!platform.checkUpdate || !platform.updateAndRestart) return
-
-      let interval: ReturnType<typeof setInterval> | undefined
-      let pending = false
-
-      const tokenConfigured = async () => {
-        if (!platform.getUpdateGitHubTokenConfigured) return true
-        return platform.getUpdateGitHubTokenConfigured()
-      }
-
-      const pollUpdate = () => {
-        if (pending) return
-
-        void tokenConfigured()
-          .then((configured) => {
-            if (!configured) return
-            return platform.checkUpdate!()
-          })
-          .then((result) => {
-            if (!result?.updateAvailable) return
-            pending = true
-            void updater
-              .installWhenIdle({ version: result.version })
-              .catch((err: unknown) => {
-                console.warn("Failed to install update", err)
-              })
-              .finally(() => {
-                pending = false
-              })
-          })
-          .catch((err: unknown) => {
-            console.warn("Failed to check for updates", err)
-          })
-      }
-
-      createEffect(() => {
-        if (!settings.ready()) return
-
-        if (!settings.updates.startup()) {
-          if (interval === undefined) return
-          clearInterval(interval)
-          interval = undefined
-          return
-        }
-
-        if (interval !== undefined) return
-        pollUpdate()
-        interval = setInterval(pollUpdate, 10 * 60 * 1000)
-      })
-
-      onCleanup(() => {
-        if (interval === undefined) return
-        clearInterval(interval)
-      })
-    })
-
-  const checkForUpdates = () => {
-    if (!platform.checkUpdate) return
-
-    void Promise.resolve()
-      .then(async () => {
-        const configured = platform.getUpdateGitHubTokenConfigured
-          ? await platform.getUpdateGitHubTokenConfigured()
-          : true
-        if (!configured) {
-          showToast({
-            variant: "error",
-            icon: "github",
-            title: language.t("settings.updates.toast.tokenRequired.title"),
-            description: language.t("settings.updates.toast.tokenRequired.description"),
-          })
-          return
-        }
-
-        const result = await platform.checkUpdate!()
-        if (!result.updateAvailable) {
-          showToast({
-            variant: "success",
-            icon: "circle-check",
-            title: language.t("settings.updates.toast.latest.title"),
-            description: language.t("settings.updates.toast.latest.description", { version: platform.version ?? "" }),
-          })
-          return
-        }
-
-        void updater.installWhenIdle({ version: result.version }).catch((err: unknown) => {
-          const message = err instanceof Error ? err.message : String(err)
-          showToast({ title: language.t("common.requestFailed"), description: message })
-        })
-      })
-      .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : String(err)
-        showToast({ title: language.t("common.requestFailed"), description: message })
-      })
-  }
-
   const useSDKNotificationToasts = () =>
     onMount(() => {
       const toastBySession = new Map<string, number>()
@@ -761,7 +661,6 @@ export default function Layout(props: ParentProps) {
       })
     })
 
-  useUpdatePolling()
   useSDKNotificationToasts()
 
   function scrollToSession(sessionId: string, sessionKey: string) {
@@ -1261,12 +1160,6 @@ export default function Layout(props: ParentProps) {
 
   command.register("layout", () => {
     const commands: CommandOption[] = [
-      {
-        id: "app.checkUpdates",
-        title: language.t("error.page.action.checkUpdates"),
-        category: language.t("command.category.view"),
-        onSelect: checkForUpdates,
-      },
       {
         id: "sidebar.toggle",
         title: language.t("command.sidebar.toggle"),
@@ -2607,7 +2500,7 @@ export default function Layout(props: ParentProps) {
                   {language.t("command.provider.connect")}
                 </Button>
                 <Button size="large" variant="ghost" onClick={() => setStore("gettingStartedDismissed", true)}>
-                  {language.t("toast.update.action.notYet")}
+                  {language.t("common.dismiss")}
                 </Button>
               </div>
             </div>
@@ -2689,7 +2582,7 @@ export default function Layout(props: ParentProps) {
           <div class="size-full relative overflow-x-hidden">
             <nav
               aria-label={language.t("sidebar.nav.projectsAndSessions")}
-              data-component="sidebar-nav-desktop"
+              data-component="sidebar-nav-wide"
               classList={{
                 "hidden xl:block": true,
                 "absolute inset-y-0 left-0": true,

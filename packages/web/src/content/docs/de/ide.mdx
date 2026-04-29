@@ -1,48 +1,48 @@
 ---
 title: IDE
-description: Die CodePlane-Erweiterung für VS Code, Cursor und andere IDEs
+description: The CodePlane extension for VS Code, Cursor, and other IDEs
 ---
 
-CodePlane lässt sich in VS Code, Cursor oder jede IDE integrieren, die ein Terminal unterstützt. Führen Sie einfach `codeplane` im Terminal aus, um zu beginnen.
+CodePlane integrates with VS Code, Cursor, or any IDE that supports opening a local web app. Just run `codeplane` in the terminal to get started.
 
 ---
 
-## Verwendung
+## Usage
 
-- **Schnellstart**: Verwenden Sie `Cmd+Esc` (Mac) oder `Ctrl+Esc` (Windows/Linux), um CodePlane in einer geteilten Terminalansicht zu öffnen, oder fokussieren Sie eine dieser Terminalsitzung, falls bereits eine ausgeführt wird.
-- **Neue Sitzung**: Verwenden Sie `Cmd+Shift+Esc` (Mac) oder `Ctrl+Shift+Esc` (Windows/Linux), um eine neue CodePlane-Terminalsitzung zu starten, auch wenn eine bereits geöffnet ist. Sie können auch auf die CodePlane-Schaltfläche im UI klicken.
-- **Kontextbewusstsein**: Teilen Sie Ihre aktuelle Auswahl oder Registerkarte automatisch mit CodePlane.
-- **Verknüpfungen zu Dateiverweisen**: Verwenden Sie `Cmd+Option+K` (Mac) oder `Alt+Ctrl+K` (Linux/Windows), um Dateiverweisen einzufügen. Beispiel: `@File#L37-42`.
+- **Quick Launch**: Use `Cmd+Esc` (Mac) or `Ctrl+Esc` (Windows/Linux) to open CodePlane.
+- **New Session**: Use `Cmd+Shift+Esc` (Mac) or `Ctrl+Shift+Esc` (Windows/Linux) to start a new CodePlane session. You can also click the CodePlane button in the UI.
+- **Context Awareness**: Automatically share your current selection or tab with CodePlane.
+- **File Reference Shortcuts**: Use `Cmd+Option+K` (Mac) or `Alt+Ctrl+K` (Linux/Windows) to insert file references. For example, `@File#L37-42`.
 
 ---
 
 ## Installation
 
-So installieren Sie CodePlane in VS Code und beliebten Forks wie Cursor, Windsurf, VSCodium:
+To install CodePlane on VS Code and popular forks like Cursor, Windsurf, VSCodium:
 
-1. Öffnen Sie VS Code
-2. Öffnen Sie das integrierte Terminal
-3. Führen Sie `codeplane` aus – die Erweiterung wird automatisch installiert
+1. Open VS Code
+2. Open the integrated terminal
+3. Run `codeplane` - the extension installs automatically
 
-Wenn Sie andererseits Ihre eigene IDE verwenden möchten, wenn Sie `/editor` oder `/export` von TUI ausführen, müssen Sie `export EDITOR="code --wait"` festlegen. [Learn more](/docs/tui/#editor-setup).
-
----
-
-### Manuelle Installation
-
-Suchen Sie im Extension Marketplace nach **CodePlane** und klicken Sie auf **Installieren**.
+To use VS Code as the editor for file-opening actions, set `export EDITOR="code --wait"`.
 
 ---
 
-### Fehlerbehebung
+### Manual Install
 
-Wenn die Erweiterung nicht automatisch installiert werden kann:
+Search for **CodePlane** in the Extension Marketplace and click **Install**.
 
-- Stellen Sie sicher, dass Sie `codeplane` im integrierten Terminal ausführen.
-- Bestätigen Sie, dass CLI für Ihre IDE installiert ist:
-  - Für VS Code: `code` Befehl
-  - Für Cursor: Befehl `cursor`
-  - Für Windsurf: Befehl `windsurf`
-  - Für VSCodium: Befehl `codium`
-  - Wenn nicht, führen Sie `Cmd+Shift+P` (Mac) oder `Ctrl+Shift+P` (Windows/Linux) aus und suchen Sie nach „Shell Command: Install 'code' command in PATH“ (oder dem Äquivalent für Ihre IDE).
-- Stellen Sie sicher, dass VS Code über die Berechtigung zum Installieren von Erweiterungen verfügt
+---
+
+### Troubleshooting
+
+If the extension fails to install automatically:
+
+- Ensure you’re running `codeplane` in the integrated terminal.
+- Confirm the CLI for your IDE is installed:
+  - For VS Code: `code` command
+  - For Cursor: `cursor` command
+  - For Windsurf: `windsurf` command
+  - For VSCodium: `codium` command
+  - If not, run `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux) and search for "Shell Command: Install 'code' command in PATH" (or the equivalent for your IDE)
+- Ensure VS Code has permission to install extensions

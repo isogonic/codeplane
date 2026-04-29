@@ -5,8 +5,8 @@ import { iife } from "@/util/iife"
 
 export type Err = ReturnType<NamedError["toObject"]>
 
-// This exported message is shared with the TUI upsell detector. Matching on a
-// literal error string kind of sucks, but it is the simplest for now.
+// This exported message is shared with UI upsell detectors. Matching on a
+// literal error string is not ideal, but it is the simplest for now.
 export const GO_UPSELL_MESSAGE = "Free usage exceeded, subscribe to Go https://example.invalid/go"
 
 export const RETRY_INITIAL_DELAY = 2000

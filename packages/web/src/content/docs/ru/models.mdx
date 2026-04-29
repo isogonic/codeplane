@@ -1,55 +1,51 @@
 ---
-title: Модели
-description: Настройка поставщика и модели LLM.
+title: Models
+description: Configuring an LLM provider and model.
 ---
 
-codeplane использует [AI SDK](https://ai-sdk.dev/) и [Models.dev](https://models.dev) для поддержки **более 75 поставщиков LLM** и поддерживает запуск локальных моделей.
-
----
-
-## Провайдеры
-
-Большинство популярных провайдеров предварительно загружены по умолчанию. Если вы добавили учетные данные для поставщика с помощью команды `/connect`, они будут доступны при запуске codeplane.
-
-Узнайте больше о [providers](/docs/providers).
+CodePlane uses the [AI SDK](https://ai-sdk.dev/) and [Models.dev](https://models.dev) to support **75+ LLM providers** and it supports running local models.
 
 ---
 
-## Выберите модель
+## Providers
 
-После того, как вы настроили своего провайдера, вы можете выбрать нужную модель, введя:
+Most popular providers are preloaded by default. If you've added provider credentials from Settings -> Providers, they'll be available when you start CodePlane.
 
-```bash frame="none"
-/models
-```
+Learn more about [providers](/docs/providers).
 
 ---
 
-## Рекомендуемые модели
+## Select a model
 
-Моделей очень много, новые выходят каждую неделю.
+Once you've configured your provider you can select the model you want from the model selector in the web app.
+
+---
+
+## Recommended models
+
+There are a lot of models out there, with new models coming out every week.
 
 :::tip
-Рассмотрите возможность использования одной из моделей, которые мы рекомендуем.
+Consider using one of the models we recommend.
 :::
 
-Однако лишь немногие из них хороши как в генерации кода, так и в вызове инструментов.
+However, there are only a few of them that are good at both generating code and tool calling.
 
-Вот несколько моделей, которые хорошо работают с codeplane (в произвольном порядке). (Это не исчерпывающий список и не обязательно актуальный):
+Here are several models that work well with CodePlane, in no particular order. (This is not an exhaustive list nor is it necessarily up to date):
 
 - GPT 5.2
-- Кодекс GPT 5.1
+- GPT 5.1 Codex
 - Claude Opus 4.5
 - Claude Sonnet 4.5
-- MiniMax M2.1
+- Minimax M2.1
 - Gemini 3 Pro
 
 ---
 
-## Установить значение по умолчанию
+## Set a default
 
-Чтобы установить одну из них в качестве модели по умолчанию, вы можете установить ключ `model` в вашем
-Конфигурация codeplane.
+To set one of these as the default model, you can set the `model` key in your
+CodePlane config.
 
 ```json title="codeplane.json" {3}
 {
@@ -58,15 +54,15 @@ codeplane использует [AI SDK](https://ai-sdk.dev/) и [Models.dev](htt
 }
 ```
 
-Здесь полный идентификатор `provider_id/model_id`. Например, если вы используете [CodePlane Zen](/docs/zen), вы должны использовать `codeplane/gpt-5.1-codex` для кодекса GPT 5.1.
+Here the full ID is `provider_id/model_id`. For example, if you're using [CodePlane Zen](/docs/zen), you would use `codeplane/gpt-5.1-codex` for GPT 5.1 Codex.
 
-Если вы настроили [пользовательский поставщик](/docs/providers#custom), `provider_id` — это ключ из части `provider` вашей конфигурации, а `model_id` — это ключ из `provider.models`.
+If you've configured a [custom provider](/docs/providers#custom), the `provider_id` is key from the `provider` part of your config, and the `model_id` is the key from `provider.models`.
 
 ---
 
-## Настройка моделей
+## Configure models
 
-Вы можете глобально настроить параметры модели через файл config.
+You can globally configure a model's options through the config.
 
 ```jsonc title="codeplane.jsonc" {7-12,19-24}
 {
@@ -100,12 +96,12 @@ codeplane использует [AI SDK](https://ai-sdk.dev/) и [Models.dev](htt
 }
 ```
 
-Здесь мы настраиваем глобальные параметры для двух встроенных моделей: `gpt-5` при доступе через поставщика `openai` и `claude-sonnet-4-20250514` при доступе через поставщика `anthropic`.
-Названия встроенных поставщиков и моделей можно найти на сайте [Models.dev](https://models.dev).
+Here we're configuring global settings for two built-in models: `gpt-5` when accessed via the `openai` provider, and `claude-sonnet-4-20250514` when accessed via the `anthropic` provider.
+The built-in provider and model names can be found on [Models.dev](https://models.dev).
 
-Вы также можете настроить эти параметры для любых используемых вами агентов. Конфигурация агента переопределяет любые глобальные параметры здесь. [Подробнее](/docs/agents/#additional).
+You can also configure these options for any agents that you are using. The agent config overrides any global options here. [Learn more](/docs/agents/#additional).
 
-Вы также можете определить собственные варианты, расширяющие встроенные. Варианты позволяют настраивать разные параметры для одной и той же модели без создания повторяющихся записей:
+You can also define custom variants that extend built-in ones. Variants let you configure different settings for the same model without creating duplicate entries:
 
 ```jsonc title="codeplane.jsonc" {6-21}
 {
@@ -135,42 +131,42 @@ codeplane использует [AI SDK](https://ai-sdk.dev/) и [Models.dev](htt
 
 ---
 
-## Варианты
+## Variants
 
-Многие модели поддерживают несколько вариантов с разными конфигурациями. codeplane поставляется со встроенными вариантами по умолчанию для популярных провайдеров.
+Many models support multiple variants with different configurations. CodePlane ships with built-in default variants for popular providers.
 
-### Встроенные варианты
+### Built-in variants
 
-codeplane поставляется с вариантами по умолчанию для многих провайдеров:
+CodePlane ships with default variants for many providers:
 
 **Anthropic**:
 
-- `high` — Бюджет рассуждений: высокий (по умолчанию)
-- `max` — Максимальный бюджет рассуждений
+- `high` - High thinking budget (default)
+- `max` - Maximum thinking budget
 
 **OpenAI**:
 
-Зависит от модели, но примерно:
+Varies by model but roughly:
 
-- `none` — Без рассуждений.
-- `minimal` — Минимальные усилия для рассуждений
-- `low` — Низкие усилия для рассуждений.
-- `medium` — Средние усилия для рассуждений.
-- `high` — Высокие усилия для рассуждений.
-- `xhigh` — Сверхвысокие усилия для рассуждений.
+- `none` - No reasoning
+- `minimal` - Minimal reasoning effort
+- `low` - Low reasoning effort
+- `medium` - Medium reasoning effort
+- `high` - High reasoning effort
+- `xhigh` - Extra high reasoning effort
 
 **Google**:
 
-- `low` – меньший бюджет усилий/токенов.
-- `high` — более высокий бюджет усилий/токенов
+- `low` - Lower effort/token budget
+- `high` - Higher effort/token budget
 
 :::tip
-Этот список не является исчерпывающим. Многие другие провайдеры также имеют встроенные настройки по умолчанию.
+This list is not comprehensive. Many other providers have built-in defaults too.
 :::
 
-### Пользовательские варианты
+### Custom variants
 
-Вы можете переопределить существующие варианты или добавить свои собственные:
+You can override existing variants or add your own:
 
 ```jsonc title="codeplane.jsonc" {7-18}
 {
@@ -195,19 +191,19 @@ codeplane поставляется с вариантами по умолчани
 }
 ```
 
-### Переключение вариантов
+### Cycle variants
 
-Используйте сочетание клавиш `variant_cycle` для быстрого переключения между вариантами. [Подробнее ](/docs/keybinds).
+Use the model selector to switch between variants.
 
 ---
 
-## Загрузка моделей
+## Loading models
 
-Когда codeplane запускается, он проверяет модели в следующем порядке приоритета:
+When CodePlane starts up, it checks for models in the following priority order:
 
-1. CLI-флаг `--model` или `-m`. Формат тот же, что и в файле конфигурации: `provider_id/model_id`.
+1. The `--model` or `-m` command line flag. The format is the same as in the config file: `provider_id/model_id`.
 
-2. Список моделей в конфигурации codeplane.
+2. The model list in the CodePlane config.
 
    ```json title="codeplane.json"
    {
@@ -216,8 +212,8 @@ codeplane поставляется с вариантами по умолчани
    }
    ```
 
-   Здесь используется формат `provider/model`.
+   The format here is `provider/model`.
 
-3. Последняя использованная модель.
+3. The last used model.
 
-4. Первая модель, использующая внутренний приоритет.
+4. The first model using an internal priority.

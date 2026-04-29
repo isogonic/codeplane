@@ -74,7 +74,7 @@ function parseRelease(value: unknown): ParsedRelease | undefined {
 
     const source = getText(group.source)
     if (!source) return []
-    if (!source.toLowerCase().includes("desktop")) return []
+    if (!source.toLowerCase().includes("web")) return []
 
     if (Array.isArray(group.items)) {
       return group.items.map((item) => parseHighlight(item)).filter((item): item is Highlight => item !== undefined)

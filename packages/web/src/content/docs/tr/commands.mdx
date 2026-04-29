@@ -1,23 +1,23 @@
 ---
-title: Komutlar
-description: Tekrarlanan görevler için özel komutlar oluşturulur.
+title: Commands
+description: Create custom commands for repetitive tasks.
 ---
 
-Özel komutlar, söz konusu komut TUI'da yürütüldüğünde çalıştırmak istediğiniz istemi belirtmenize olanak tanır.
+Custom commands let you specify a prompt you want to run from the web app or CLI.
 
 ```bash frame="none"
 /my-command
 ```
 
-Özel komutlar, `/init`, `/undo`, `/redo`, `/share`, `/help` gibi komutlara ek olarak sunulur. [Daha fazla bilgi](/docs/tui#commands).
+Custom commands are in addition to the built-in commands like `/init`, `/undo`, `/redo`, `/share`, and `/help`.
 
 ---
 
-## Komut dosyaları oluşturma
+## Create command files
 
-Özel komutları tanımlamak için `commands/` dizininde işaretleme dosyaları oluşturun.
+Create markdown files in the `commands/` directory to define custom commands.
 
-`.codeplane/commands/test.md` oluştur:
+Create `.codeplane/commands/test.md`:
 
 ```md title=".codeplane/commands/test.md"
 ---
@@ -30,9 +30,9 @@ Run the full test suite with coverage report and show any failures.
 Focus on the failing tests and suggest fixes.
 ```
 
-Ön madde komut özelliklerini tanımlar. İçerik şablon haline gelir.
+The frontmatter defines command properties. The content becomes the template.
 
-`/` ve ardından komut adını yazarak komutu kullanın.
+Use the command by typing `/` followed by the command name.
 
 ```bash frame="none"
 "/test"
@@ -40,15 +40,15 @@ Focus on the failing tests and suggest fixes.
 
 ---
 
-## Yapılandırma
+## Configure
 
-codeplane işlemleri aracılığıyla veya `commands/` dizininde işaretleme dosyalarının oluşturulması özel komutlar ile yapılabilir.
+You can add custom commands through the CodePlane config or by creating markdown files in the `commands/` directory.
 
 ---
 
 ### JSON
 
-codeplane [config](/docs/config)'deki `command` seçeneğini kullanın:
+Use the `command` option in your CodePlane [config](/docs/config):
 
 ```json title="codeplane.jsonc" {4-12}
 {
@@ -58,7 +58,7 @@ codeplane [config](/docs/config)'deki `command` seçeneğini kullanın:
     "test": {
       // This is the prompt that will be sent to the LLM
       "template": "Run the full test suite with coverage report and show any failures.\nFocus on the failing tests and suggest fixes.",
-      // This is shown as the description in the TUI
+      // This is shown as the description in command pickers
       "description": "Run tests with coverage",
       "agent": "build",
       "model": "anthropic/claude-3-5-sonnet-20241022"
@@ -67,7 +67,7 @@ codeplane [config](/docs/config)'deki `command` seçeneğini kullanın:
 }
 ```
 
-Artık bu komutu TUI'da çalıştırabilirsiniz:
+Now you can run this command from the web app:
 
 ```bash frame="none"
 /test
@@ -77,10 +77,10 @@ Artık bu komutu TUI'da çalıştırabilirsiniz:
 
 ### Markdown
 
-Markdown dosyalarını kullanarak komutları da tanımlayabilirsiniz. Bunları şuraya yerleştirin:
+You can also define commands using markdown files. Place them in:
 
-- Küresel: `~/.config/codeplane/commands/`
-- Proje başına: `.codeplane/commands/`
+- Global: `~/.config/codeplane/commands/`
+- Per-project: `.codeplane/commands/`
 
 ```markdown title="~/.config/codeplane/commands/test.md"
 ---
@@ -93,8 +93,8 @@ Run the full test suite with coverage report and show any failures.
 Focus on the failing tests and suggest fixes.
 ```
 
-Markdown dosyasının adı komut adı olur. Örneğin, `test.md` şunu sağlar:
-sen koşuyorsun:
+The markdown file name becomes the command name. For example, `test.md` lets
+you run:
 
 ```bash frame="none"
 /test
@@ -102,15 +102,15 @@ sen koşuyorsun:
 
 ---
 
-## İstem yapılandırması
+## Prompt config
 
-Özel komut istemleri birçok özel yer tutucuyu ve sözdizimini destekler.
+The prompts for the custom commands support several special placeholders and syntax.
 
 ---
 
-### Argümanlar
+### Arguments
 
-`$ARGUMENTS` yer tutucusunu kullanarak komutlara argümanları iletin.
+Pass arguments to commands using the `$ARGUMENTS` placeholder.
 
 ```md title=".codeplane/commands/component.md"
 ---
@@ -121,22 +121,22 @@ Create a new React component named $ARGUMENTS with TypeScript support.
 Include proper typing and basic structure.
 ```
 
-Komutu bağımsız değişkenlerle çalıştırın:
+Run the command with arguments:
 
 ```bash frame="none"
 /component Button
 ```
 
-Ve `$ARGUMENTS`, `Button` ile değiştirilecektir.
+And `$ARGUMENTS` will be replaced with `Button`.
 
-Konumsal parametreleri kullanarak bağımsız değişkenlere de erişebilirsiniz:
+You can also access individual arguments using positional parameters:
 
-- `$1` - İlk argüman
-- `$2` - İkinci argüman
-- `$3` - Üçüncü argüman
-- Ve benzeri...
+- `$1` - First argument
+- `$2` - Second argument
+- `$3` - Third argument
+- And so on...
 
-Örneğin:
+For example:
 
 ```md title=".codeplane/commands/create-file.md"
 ---
@@ -147,25 +147,25 @@ Create a file named $1 in the directory $2
 with the following content: $3
 ```
 
-Komutu çalıştırın:
+Run the command:
 
 ```bash frame="none"
 /create-file config.json src "{ \"key\": \"value\" }"
 ```
 
-Bu şunun yerini alır:
+This replaces:
 
-- `$1` ile `config.json`
-- `$2` ile `src`
-- `$3` ile `{ "key": "value" }`
+- `$1` with `config.json`
+- `$2` with `src`
+- `$3` with `{ "key": "value" }`
 
 ---
 
 ### Shell output
 
-İsteminize [bash command](/docs/tui#bash-commands) çıktısını enjekte etmek için \__!`command`_ kullanın.
+Use _!`command`_ to inject shell command output into your prompt.
 
-Örneğin, test kapsamını analiz eden özel bir komut oluşturmak için:
+For example, to create a custom command that analyzes test coverage:
 
 ```md title=".codeplane/commands/analyze-coverage.md"
 ---
@@ -191,13 +191,13 @@ Recent git commits:
 Review these changes and suggest any improvements.
 ```
 
-Komutlar projenizin kök dizininde çalışır ve çıktıları istemin bir parçası olur.
+Commands run in your project's root directory and their output becomes part of the prompt.
 
 ---
 
-### Dosya referansları
+### File references
 
-Komutunuza `@` ve ardından dosya adını kullanarak dosyaları ekleyin.
+Include files in your command using `@` followed by the filename.
 
 ```md title=".codeplane/commands/review-component.md"
 ---
@@ -208,19 +208,19 @@ Review the component in @src/components/Button.tsx.
 Check for performance issues and suggest improvements.
 ```
 
-Dosya içeriği otomatik olarak istemde yer alır.
+The file content gets included in the prompt automatically.
 
 ---
 
-## Seçenekler
+## Options
 
-Yapılandırma seçeneklerine ayrıntılı olarak bakalım.
+Let's look at the configuration options in detail.
 
 ---
 
-### Şablon
+### Template
 
-`template` seçeneği, komut yürütüldüğünde LLM'ye gönderilecek olan istemi tanımlar.
+The `template` option defines the prompt that will be sent to the LLM when the command is executed.
 
 ```json title="codeplane.json"
 {
@@ -232,13 +232,13 @@ Yapılandırma seçeneklerine ayrıntılı olarak bakalım.
 }
 ```
 
-Bu **gerekli** bir yapılandırma seçeneğidir.
+This is a **required** config option.
 
 ---
 
-### Açıklama
+### Description
 
-Komutun ne yaptığına ilişkin kısa bir açıklama sağlamak için `description` seçeneğini kullanın.
+Use the `description` option to provide a brief description of what the command does.
 
 ```json title="codeplane.json"
 {
@@ -250,15 +250,15 @@ Komutun ne yaptığına ilişkin kısa bir açıklama sağlamak için `descripti
 }
 ```
 
-Bu, komutu yazdığınızda TUI içindeki açıklama olarak gösterilir.
+This is shown as the description when you type in the command.
 
 ---
 
-### Ajan
+### Agent
 
-İsteğe bağlı olarak bu komutu hangi [agent](/docs/agents)'nin yürütmesi gerektiğini belirtmek için `agent` yapılandırmasını kullanın.
-Bu bir [subagent](/docs/agents/#subagents) ise, komut varsayılan olarak bir alt aracı çağrısını tetikleyecektir.
-Bu davranışı devre dışı bırakmak için `subtask` öğesini `false` olarak ayarlayın.
+Use the `agent` config to optionally specify which [agent](/docs/agents) should execute this command.
+If this is a [subagent](/docs/agents/#subagents) the command will trigger a subagent invocation by default.
+To disable this behavior, set `subtask` to `false`.
 
 ```json title="codeplane.json"
 {
@@ -270,15 +270,15 @@ Bu davranışı devre dışı bırakmak için `subtask` öğesini `false` olarak
 }
 ```
 
-Bu **isteğe bağlı** bir yapılandırma seçeneğidir. Belirtilmemişse, varsayılan olarak mevcut temsilciniz kullanılır.
+This is an **optional** config option. If not specified, defaults to your current agent.
 
 ---
 
 ### Subtask
 
-Komutu bir [subagent](/docs/agents/#subagents) çağrısını tetiklemeye zorlamak için `subtask` boolean'ını kullanın.
-Bu, komutun birincil bağlamınızı kirletmemesini ve aracıyı bir alt aracı olarak davranmaya **zorlamasını** istiyorsanız kullanışlıdır.
-`mode`, [agent](/docs/agents) yapılandırmasında `primary` olarak ayarlanmış olsa bile.
+Use the `subtask` boolean to force the command to trigger a [subagent](/docs/agents/#subagents) invocation.
+This is useful if you want the command to not pollute your primary context and will **force** the agent to act as a subagent,
+even if `mode` is set to `primary` on the [agent](/docs/agents) configuration.
 
 ```json title="codeplane.json"
 {
@@ -290,13 +290,13 @@ Bu, komutun birincil bağlamınızı kirletmemesini ve aracıyı bir alt aracı 
 }
 ```
 
-Bu **isteğe bağlı** bir yapılandırma seçeneğidir.
+This is an **optional** config option.
 
 ---
 
-### Modeli
+### Model
 
-Bu parçanın varsayılan kodu geçersiz için `model` kontrolünü kullanın.
+Use the `model` config to override the default model for this command.
 
 ```json title="codeplane.json"
 {
@@ -308,16 +308,16 @@ Bu parçanın varsayılan kodu geçersiz için `model` kontrolünü kullanın.
 }
 ```
 
-Bu **isteğe bağlı** bir yapılandırma seçeneğidir.
+This is an **optional** config option.
 
 ---
 
-## Yerleşik
+## Built-in
 
-codeplane, `/init`, `/undo`, `/redo`, `/share`, `/help` gibi çeşitli yerleşik komutlar içerir; [learn more](/docs/tui#commands).
+codeplane includes several built-in commands like `/init`, `/undo`, `/redo`, `/share`, and `/help`.
 
 :::note
-Özel komutlar yerleşik komutları geçersiz kılabilir.
+Custom commands can override built-in commands.
 :::
 
-Aynı adda özel bir komut tanımlarsanız yerleşik komutu geçersiz kılar.
+If you define a custom command with the same name, it will override the built-in command.

@@ -123,7 +123,6 @@ Special routes need explicit designs before Hono can disappear completely.
 
 - `event`: SSE
 - `pty`: websocket
-- `tui`: UI/control bridge behavior
 - streaming `session` endpoints
 
 Use raw Effect HTTP routes where `HttpApi` does not fit. The goal is deleting Hono implementations, not forcing every transport shape through `HttpApi`.
@@ -146,7 +145,6 @@ Use raw Effect HTTP routes where `HttpApi` does not fit. The goal is deleting Ho
 | `sync`                   | `later`           | process/control side effects                                   |
 | `event`                  | `special`         | SSE                                                            |
 | `pty`                    | `special`         | websocket                                                      |
-| `tui`                    | `special`         | UI bridge                                                      |
 
 ## Next PRs
 

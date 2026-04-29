@@ -47,7 +47,7 @@ If the user asks for a "review", default to a code review mindset: prioritise id
 ## Frontend tasks
 
 When doing frontend design tasks, avoid collapsing into "AI slop" or safe, average-looking layouts.
-- Ensure the page loads properly on both desktop and mobile
+- Ensure the page loads properly on both large and small screens
 - For React code, prefer modern patterns including useEffectEvent, startTransition, and useDeferredValue when appropriate if used by the team. Do not add useMemo/useCallback by default unless already used; follow the repo's React Compiler guidance.
 - Overall: Avoid boilerplate layouts and interchangeable UI patterns. Vary themes, type families, and visual languages across outputs.
 

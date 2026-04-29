@@ -20,7 +20,6 @@ import { useCommand } from "@/context/command"
 import { useFile, type SelectedLineRange } from "@/context/file"
 import { useLanguage } from "@/context/language"
 import { useLayout } from "@/context/layout"
-import { usePlatform } from "@/context/platform"
 import { useSDK } from "@/context/sdk"
 import { useSettings } from "@/context/settings"
 import { useSync } from "@/context/sync"
@@ -45,7 +44,6 @@ export function SessionSidePanel(props: {
   size: Sizing
 }) {
   const layout = useLayout()
-  const platform = usePlatform()
   const settings = useSettings()
   const sync = useSync()
   const file = useFile()
@@ -55,18 +53,15 @@ export function SessionSidePanel(props: {
   const dialog = useDialog()
   const { sessionKey, tabs, view } = useSessionLayout()
 
-  const isDesktop = createMediaQuery("(min-width: 768px)")
+  const isWide = createMediaQuery("(min-width: 768px)")
   const shown = createMemo(
-    () =>
-      platform.platform !== "desktop" ||
-      import.meta.env.VITE_CODEPLANE_CHANNEL !== "beta" ||
-      settings.general.showFileTree(),
+    () => import.meta.env.VITE_CODEPLANE_CHANNEL !== "beta" || settings.general.showFileTree(),
   )
 
-  const reviewOpen = createMemo(() => isDesktop() && view().reviewPanel.opened())
-  const fileOpen = createMemo(() => isDesktop() && shown() && layout.fileTree.opened())
+  const reviewOpen = createMemo(() => isWide() && view().reviewPanel.opened())
+  const fileOpen = createMemo(() => isWide() && shown() && layout.fileTree.opened())
   const open = createMemo(() => reviewOpen() || fileOpen())
-  const reviewTab = createMemo(() => isDesktop())
+  const reviewTab = createMemo(() => isWide())
   const panelWidth = createMemo(() => {
     if (!open()) return "0px"
     if (reviewOpen()) return `calc(100% - ${layout.session.width()}px)`
@@ -217,7 +212,7 @@ export function SessionSidePanel(props: {
   })
 
   return (
-    <Show when={isDesktop()}>
+    <Show when={isWide()}>
       <aside
         id="review-panel"
         aria-label={language.t("session.panel.reviewAndFiles")}

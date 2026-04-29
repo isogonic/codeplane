@@ -1,23 +1,23 @@
 ---
-title: コマンド
-description: 反復的なタスク用のカスタムコマンドを作成します。
+title: Commands
+description: Create custom commands for repetitive tasks.
 ---
 
-カスタムコマンドを使用すると、TUI でコマンドを実行するときに実行するプロンプトを指定できます。
+Custom commands let you specify a prompt you want to run from the web app or CLI.
 
 ```bash frame="none"
 /my-command
 ```
 
-カスタムコマンドは、`/init`、`/undo`、`/redo`、`/share`、`/help` などの組み込みコマンドに追加されます。 [詳細はこちら](/docs/tui#commands)。
+Custom commands are in addition to the built-in commands like `/init`, `/undo`, `/redo`, `/share`, and `/help`.
 
 ---
 
-## コマンドファイルの作成
+## Create command files
 
-カスタムコマンドを定義するには、`commands/` ディレクトリに Markdown ファイルを作成します。
+Create markdown files in the `commands/` directory to define custom commands.
 
-`.codeplane/commands/test.md` を作成します。
+Create `.codeplane/commands/test.md`:
 
 ```md title=".codeplane/commands/test.md"
 ---
@@ -30,9 +30,9 @@ Run the full test suite with coverage report and show any failures.
 Focus on the failing tests and suggest fixes.
 ```
 
-フロントマターはコマンドのプロパティを定義します。内容がテンプレートとなります。
+The frontmatter defines command properties. The content becomes the template.
 
-`/` に続けてコマンド名を入力して、コマンドを使用します。
+Use the command by typing `/` followed by the command name.
 
 ```bash frame="none"
 "/test"
@@ -40,15 +40,15 @@ Focus on the failing tests and suggest fixes.
 
 ---
 
-## 設定
+## Configure
 
-カスタムコマンドは、CodePlane 設定を通じて、または `commands/` ディレクトリに Markdown ファイルを作成することによって追加できます。
+You can add custom commands through the CodePlane config or by creating markdown files in the `commands/` directory.
 
 ---
 
 ### JSON
 
-CodePlane [設定](/docs/config)で `command` オプションを使用します:
+Use the `command` option in your CodePlane [config](/docs/config):
 
 ```json title="codeplane.jsonc" {4-12}
 {
@@ -58,7 +58,7 @@ CodePlane [設定](/docs/config)で `command` オプションを使用します:
     "test": {
       // This is the prompt that will be sent to the LLM
       "template": "Run the full test suite with coverage report and show any failures.\nFocus on the failing tests and suggest fixes.",
-      // This is shown as the description in the TUI
+      // This is shown as the description in command pickers
       "description": "Run tests with coverage",
       "agent": "build",
       "model": "anthropic/claude-3-5-sonnet-20241022"
@@ -67,7 +67,7 @@ CodePlane [設定](/docs/config)で `command` オプションを使用します:
 }
 ```
 
-これで、TUI で次のコマンドを実行できるようになります。
+Now you can run this command from the web app:
 
 ```bash frame="none"
 /test
@@ -77,10 +77,10 @@ CodePlane [設定](/docs/config)で `command` オプションを使用します:
 
 ### Markdown
 
-Markdown ファイルを使用してコマンドを定義することもできます。それらを次の場所に置きます。
+You can also define commands using markdown files. Place them in:
 
-- グローバル: `~/.config/codeplane/commands/`
-- プロジェクトごと: `.codeplane/commands/`
+- Global: `~/.config/codeplane/commands/`
+- Per-project: `.codeplane/commands/`
 
 ```markdown title="~/.config/codeplane/commands/test.md"
 ---
@@ -93,8 +93,8 @@ Run the full test suite with coverage report and show any failures.
 Focus on the failing tests and suggest fixes.
 ```
 
-Markdown ファイル名がコマンド名になります。たとえば、`test.md` を使用すると、
-あなたは実行します:
+The markdown file name becomes the command name. For example, `test.md` lets
+you run:
 
 ```bash frame="none"
 /test
@@ -102,15 +102,15 @@ Markdown ファイル名がコマンド名になります。たとえば、`test
 
 ---
 
-## プロンプト構成
+## Prompt config
 
-カスタムコマンドのプロンプトは、いくつかの特別なプレースホルダーと構文をサポートしています。
+The prompts for the custom commands support several special placeholders and syntax.
 
 ---
 
-### 引数
+### Arguments
 
-`$ARGUMENTS` プレースホルダーを使用してコマンドに引数を渡します。
+Pass arguments to commands using the `$ARGUMENTS` placeholder.
 
 ```md title=".codeplane/commands/component.md"
 ---
@@ -121,22 +121,22 @@ Create a new React component named $ARGUMENTS with TypeScript support.
 Include proper typing and basic structure.
 ```
 
-引数を指定してコマンドを実行します。
+Run the command with arguments:
 
 ```bash frame="none"
 /component Button
 ```
 
-そして、`$ARGUMENTS` は `Button` に置き換えられます。
+And `$ARGUMENTS` will be replaced with `Button`.
 
-位置パラメータを使用して個々の引数にアクセスすることもできます。
+You can also access individual arguments using positional parameters:
 
-- `$1` - 最初の引数
-- `$2` - 2 番目の引数
-- `$3` - 3 番目の引数
-- 等々...
+- `$1` - First argument
+- `$2` - Second argument
+- `$3` - Third argument
+- And so on...
 
-例えば：
+For example:
 
 ```md title=".codeplane/commands/create-file.md"
 ---
@@ -147,25 +147,25 @@ Create a file named $1 in the directory $2
 with the following content: $3
 ```
 
-次のコマンドを実行します。
+Run the command:
 
 ```bash frame="none"
 /create-file config.json src "{ \"key\": \"value\" }"
 ```
 
-これは以下を置き換えます。
+This replaces:
 
-- `$1` と `config.json`
-- `$2` と `src`
-- `$3` と `{ "key": "value" }`
+- `$1` with `config.json`
+- `$2` with `src`
+- `$3` with `{ "key": "value" }`
 
 ---
 
-### シェル出力
+### Shell output
 
-_!`command`_ を使用して、[bash コマンド](/docs/tui#bash-commands) の出力をプロンプトに挿入します。
+Use _!`command`_ to inject shell command output into your prompt.
 
-たとえば、テストカバレッジを分析するカスタムコマンドを作成するには、次のようにします。
+For example, to create a custom command that analyzes test coverage:
 
 ```md title=".codeplane/commands/analyze-coverage.md"
 ---
@@ -178,7 +178,7 @@ Here are the current test results:
 Based on these results, suggest improvements to increase coverage.
 ```
 
-または、最近の変更を確認するには:
+Or to review recent changes:
 
 ```md title=".codeplane/commands/review-changes.md"
 ---
@@ -191,13 +191,13 @@ Recent git commits:
 Review these changes and suggest any improvements.
 ```
 
-コマンドはプロジェクトのルートディレクトリで実行され、その出力はプロンプトの一部になります。
+Commands run in your project's root directory and their output becomes part of the prompt.
 
 ---
 
-### ファイル参照
+### File references
 
-`@` の後にファイル名を指定して、コマンドにファイルを含めます。
+Include files in your command using `@` followed by the filename.
 
 ```md title=".codeplane/commands/review-component.md"
 ---
@@ -208,19 +208,19 @@ Review the component in @src/components/Button.tsx.
 Check for performance issues and suggest improvements.
 ```
 
-ファイルの内容はプロンプトに自動的に含まれます。
+The file content gets included in the prompt automatically.
 
 ---
 
-## オプション
+## Options
 
-設定オプションを詳しく見てみましょう。
+Let's look at the configuration options in detail.
 
 ---
 
-### テンプレート
+### Template
 
-`template` オプションは、コマンドの実行時に LLM に送信されるプロンプトを定義します。
+The `template` option defines the prompt that will be sent to the LLM when the command is executed.
 
 ```json title="codeplane.json"
 {
@@ -232,13 +232,13 @@ Check for performance issues and suggest improvements.
 }
 ```
 
-これは**必須**の設定オプションです。
+This is a **required** config option.
 
 ---
 
-### 説明
+### Description
 
-`description` オプションを使用して、コマンドの動作の簡単な説明を入力します。
+Use the `description` option to provide a brief description of what the command does.
 
 ```json title="codeplane.json"
 {
@@ -250,15 +250,15 @@ Check for performance issues and suggest improvements.
 }
 ```
 
-これは、コマンドを入力すると TUI に説明として表示されます。
+This is shown as the description when you type in the command.
 
 ---
 
-### エージェント
+### Agent
 
-オプションで、`agent` 設定を使用して、このコマンドを実行する [agent](/docs/agents) を指定します。
-これが [subagent](/docs/agents/#subagents) の場合、コマンドはデフォルトでサブエージェントの呼び出しをトリガーします。
-この動作を無効にするには、`subtask` を `false` に設定します。
+Use the `agent` config to optionally specify which [agent](/docs/agents) should execute this command.
+If this is a [subagent](/docs/agents/#subagents) the command will trigger a subagent invocation by default.
+To disable this behavior, set `subtask` to `false`.
 
 ```json title="codeplane.json"
 {
@@ -270,15 +270,15 @@ Check for performance issues and suggest improvements.
 }
 ```
 
-これは**オプション**の設定オプションです。指定しない場合、デフォルトで現在のエージェントが使用されます。
+This is an **optional** config option. If not specified, defaults to your current agent.
 
 ---
 
-### サブタスク
+### Subtask
 
-`subtask` ブール値を使用して、コマンドが [subagent](/docs/agents/#subagents) 呼び出しを強制的にトリガーします。
-これは、コマンドがプライマリコンテキストを汚染せず、エージェントがサブエージェントとして動作するように**強制**する場合に便利です。
-[agent](/docs/agents) 設定で `mode` が `primary` に設定されている場合でも。
+Use the `subtask` boolean to force the command to trigger a [subagent](/docs/agents/#subagents) invocation.
+This is useful if you want the command to not pollute your primary context and will **force** the agent to act as a subagent,
+even if `mode` is set to `primary` on the [agent](/docs/agents) configuration.
 
 ```json title="codeplane.json"
 {
@@ -290,13 +290,13 @@ Check for performance issues and suggest improvements.
 }
 ```
 
-これは**オプション**の設定オプションです。
+This is an **optional** config option.
 
 ---
 
-### モデル
+### Model
 
-`model` 設定を使用して、このコマンドのデフォルトモデルをオーバーライドします。
+Use the `model` config to override the default model for this command.
 
 ```json title="codeplane.json"
 {
@@ -308,15 +308,16 @@ Check for performance issues and suggest improvements.
 }
 ```
 
-これは**オプション**の設定オプションです。
+This is an **optional** config option.
 
 ---
 
-## 組み込み
+## Built-in
 
-CodePlane には、`/init`、`/undo`、`/redo`、`/share`、`/help` などのいくつかの組み込みコマンドが含まれています。 [詳細はこちら](/docs/tui#commands)。
+codeplane includes several built-in commands like `/init`, `/undo`, `/redo`, `/share`, and `/help`.
 
 :::note
-カスタムコマンドは組み込みコマンドをオーバーライドできます。
+Custom commands can override built-in commands.
 :::
-同じ名前のカスタムコマンドを定義すると、組み込みコマンドがオーバーライドされます。
+
+If you define a custom command with the same name, it will override the built-in command.

@@ -1,108 +1,101 @@
 ---
-title: 테마
-description: 내장 테마를 선택하거나 자신만의 테마를 정의하세요.
+title: Themes
+description: Select a built-in theme or define your own.
 ---
 
-CodePlane를 사용하면 여러 내장 테마 중 하나에서 선택할 수 있으며 terminal 테마에 적응하는 테마를 사용하거나 사용자 정의 테마를 정의 할 수 있습니다.
+With CodePlane you can select from one of several built-in themes, use a theme that adapts to your terminal theme, or define your own custom theme.
 
-기본적으로 CodePlane는 자체 `codeplane` 테마를 사용합니다.
-
----
-
-## 터미널 요구 사항
-
-테마가 전체 색상 팔레트로 올바르게 표시되려면 터미널이 **truecolor** (24비트 색상)를 지원해야 합니다. 대부분의 최신 터미널은 기본적으로 이를 지원하지만, 활성화해야 할 수도 있습니다:
-
-- **지원 확인**: `echo $COLORTERM` 실행 - `truecolor` 또는 `24bit`가 출력되어야 합니다.
-- **truecolor 활성화**: 셸 프로필에서 환경 변수 `COLORTERM=truecolor`를 설정하십시오.
-- **터미널 호환성**: 터미널 에뮬레이터가 24비트 색상을 지원하는지 확인하십시오 (iTerm2, Alacritty, Kitty, Windows Terminal 및 최신 버전의 GNOME Terminal 등 대부분의 최신 터미널이 지원함).
-
-truecolor 지원이 없으면 테마가 감소된 색상 정확도로 표시되거나 가장 가까운 256색 근사치로 대체될 수 있습니다.
+By default, CodePlane uses our own `codeplane` theme.
 
 ---
 
-## 내장 테마
+## Terminal requirements
 
-CodePlane는 여러 내장 테마와 함께 제공됩니다.
+For themes to display correctly with their full color palette, your terminal must support **truecolor** (24-bit color). Most modern terminals support this by default, but you may need to enable it:
 
-| 이름                   | 설명                                                                |
-| ---------------------- | ------------------------------------------------------------------- |
-| `system`               | terminal 배경 색상에 맞춰 자동으로 조정됨                           |
-| `tokyonight`           | [Tokyonight](https://github.com/folke/tokyonight.nvim) 테마 기반    |
-| `everforest`           | [Everforest](https://github.com/sainnhe/everforest) 테마 기반       |
-| `ayu`                  | [Ayu](https://github.com/ayu-theme) 다크 테마 기반                  |
-| `catppuccin`           | [Catppuccin](https://github.com/catppuccin) 테마 기반               |
-| `catppuccin-macchiato` | [Catppuccin](https://github.com/catppuccin) 테마 기반               |
-| `gruvbox`              | [Gruvbox](https://github.com/morhetz/gruvbox) 테마 기반             |
-| `kanagawa`             | [Kanagawa](https://github.com/rebelot/kanagawa.nvim) 테마 기반      |
-| `nord`                 | [Nord](https://github.com/nordtheme/nord) 테마 기반                 |
-| `matrix`               | 검은 배경에 녹색 텍스트의 해커 스타일 테마                          |
-| `one-dark`             | [Atom One](https://github.com/Th3Whit3Wolf/one-nvim) Dark 테마 기반 |
+- **Check support**: Run `echo $COLORTERM` - it should output `truecolor` or `24bit`
+- **Enable truecolor**: Set the environment variable `COLORTERM=truecolor` in your shell profile
+- **Terminal compatibility**: Ensure your terminal emulator supports 24-bit color (most modern terminals like iTerm2, Alacritty, Kitty, Windows Terminal, and recent versions of GNOME Terminal do)
 
-그리고 더, 우리는 끊임없이 새로운 테마를 추가하고 있습니다.
+Without truecolor support, themes may appear with reduced color accuracy or fall back to the nearest 256-color approximation.
 
 ---
 
-## 시스템 테마
+## Built-in themes
 
-`system` 테마는 터미널의 색상 스키마에 자동으로 적응하도록 설계되었습니다. 고정 색상을 사용하는 기존 테마와 달리, system 테마는:
+CodePlane comes with several built-in themes.
 
-- **그레이스케일 생성**: 터미널의 배경 색상을 기반으로 사용자 정의 그레이스케일을 생성하여 최적의 대비를 보장합니다.
-- **ANSI 색상 사용**: 구문 강조 및 UI 요소에 표준 ANSI 색상(0-15)을 활용하여 터미널의 색상 팔레트를 존중합니다.
-- **터미널 기본값 유지**: 텍스트 및 배경 색상에 `none`을 사용하여 터미널의 기본 모양을 유지합니다.
+| Name                   | Description                                                                  |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| `system`               | Adapts to your terminal’s background color                                   |
+| `tokyonight`           | Based on the [Tokyonight](https://github.com/folke/tokyonight.nvim) theme    |
+| `everforest`           | Based on the [Everforest](https://github.com/sainnhe/everforest) theme       |
+| `ayu`                  | Based on the [Ayu](https://github.com/ayu-theme) dark theme                  |
+| `catppuccin`           | Based on the [Catppuccin](https://github.com/catppuccin) theme               |
+| `catppuccin-macchiato` | Based on the [Catppuccin](https://github.com/catppuccin) theme               |
+| `gruvbox`              | Based on the [Gruvbox](https://github.com/morhetz/gruvbox) theme             |
+| `kanagawa`             | Based on the [Kanagawa](https://github.com/rebelot/kanagawa.nvim) theme      |
+| `nord`                 | Based on the [Nord](https://github.com/nordtheme/nord) theme                 |
+| `matrix`               | Hacker-style green on black theme                                            |
+| `one-dark`             | Based on the [Atom One](https://github.com/Th3Whit3Wolf/one-nvim) Dark theme |
 
-시스템 테마는 다음과 같은 사용자에게 적합합니다:
-
-- CodePlane가 터미널의 모양과 일치하기를 원하는 경우
-- 사용자 정의 터미널 색상 스키마를 사용하는 경우
-- 모든 터미널 애플리케이션에서 일관된 모양을 선호하는 경우
-
----
-
-## 테마 사용
-
-`/theme` 명령어로 테마 선택기를 불러와 테마를 선택할 수 있습니다. 또는 `tui.json`에서 지정할 수 있습니다.
-
-```json title="tui.json" {3}
-{
-  "$schema": "",
-  "theme": "tokyonight"
-}
-```
+And more, we are constantly adding new themes.
 
 ---
 
-## 사용자 정의 테마
+## System theme
 
-CodePlane는 사용자가 쉽게 테마를 만들고 사용자 정의할 수 있도록 유연한 JSON 기반 테마 시스템을 지원합니다.
+The `system` theme is designed to automatically adapt to your terminal's color scheme. Unlike traditional themes that use fixed colors, the _system_ theme:
 
----
+- **Generates gray scale**: Creates a custom gray scale based on your terminal's background color, ensuring optimal contrast.
+- **Uses ANSI colors**: Leverages standard ANSI colors (0-15) for syntax highlighting and UI elements, which respect your terminal's color palette.
+- **Preserves terminal defaults**: Uses `none` for text and background colors to maintain your terminal's native appearance.
 
-### 계층 구조
+The system theme is for users who:
 
-테마는 다음 순서대로 여러 디렉토리에서 로드되며, 나중 디렉토리가 이전 디렉토리를 덮어씁니다:
-
-1. **내장 테마 (Built-in themes)** - 바이너리에 내장되어 있습니다.
-2. **사용자 설정 디렉토리 (User config directory)** - `~/.config/codeplane/themes/*.json` 또는 `$XDG_CONFIG_HOME/codeplane/themes/*.json`에 정의됩니다.
-3. **프로젝트 루트 디렉토리 (Project root directory)** - `<project-root>/.codeplane/themes/*.json`에 정의됩니다.
-4. **현재 작업 디렉토리 (Current working directory)** - `./.codeplane/themes/*.json`에 정의됩니다.
-
-여러 디렉토리에 같은 이름의 테마가 있는 경우, 더 높은 우선 순위를 가진 디렉토리의 테마가 사용됩니다.
+- Want CodePlane to match their terminal's appearance
+- Use custom terminal color schemes
+- Prefer a consistent look across all terminal applications
 
 ---
 
-### 테마 만들기
+## Using a theme
 
-사용자 정의 테마를 만들려면 테마 디렉토리 중 하나에 JSON 파일을 만듭니다.
+You can select a theme from Settings -> General -> Theme in the web app.
 
-사용자 전역 테마:
+---
+
+## Custom themes
+
+CodePlane supports a flexible JSON-based theme system that allows users to create and customize themes easily.
+
+---
+
+### Hierarchy
+
+Themes are loaded from multiple directories in the following order where later directories override earlier ones:
+
+1. **Built-in themes** - These are embedded in the binary
+2. **User config directory** - Defined in `~/.config/codeplane/themes/*.json` or `$XDG_CONFIG_HOME/codeplane/themes/*.json`
+3. **Project root directory** - Defined in the `<project-root>/.codeplane/themes/*.json`
+4. **Current working directory** - Defined in `./.codeplane/themes/*.json`
+
+If multiple directories contain a theme with the same name, the theme from the directory with higher priority will be used.
+
+---
+
+### Creating a theme
+
+To create a custom theme, create a JSON file in one of the theme directories.
+
+For user-wide themes:
 
 ```bash no-frame
 mkdir -p ~/.config/codeplane/themes
 vim ~/.config/codeplane/themes/my-theme.json
 ```
 
-프로젝트별 테마:
+And for project-specific themes.
 
 ```bash no-frame
 mkdir -p .codeplane/themes
@@ -111,36 +104,36 @@ vim .codeplane/themes/my-theme.json
 
 ---
 
-### JSON 형식
+### JSON format
 
-테마는 다음을 지원하는 유연한 JSON 형식을 사용합니다:
+Themes use a flexible JSON format with support for:
 
-- **Hex 색상**: `"#ffffff"`
-- **ANSI 색상**: `3` (0-255)
-- **색상 참조**: `"primary"` 또는 사용자 정의 정의
-- **다크/라이트 변형**: `{"dark": "#000", "light": "#fff"}`
-- **색상 없음**: `"none"` - 터미널의 기본 색상 또는 투명 사용
-
----
-
-### 색상 정의
-
-`defs` 섹션은 선택 사항이며 테마 내에서 참조할 수 있는 재사용 가능한 색상을 정의할 수 있습니다.
+- **Hex colors**: `"#ffffff"`
+- **ANSI colors**: `3` (0-255)
+- **Color references**: `"primary"` or custom definitions
+- **Dark/light variants**: `{"dark": "#000", "light": "#fff"}`
+- **No color**: `"none"` - Uses the terminal's default color or transparent
 
 ---
 
-### 터미널 기본값
+### Color definitions
 
-`"none"`이라는 특별한 값은 모든 색상에 대해 터미널의 기본 색상을 상속하는 데 사용할 수 있습니다. 이는 특히 터미널의 색상 스키마와 매끄럽게 어우러지는 테마를 만들 때 유용합니다:
-
-- `"text": "none"` - 터미널의 기본 전경색 사용
-- `"background": "none"` - 터미널의 기본 배경색 사용
+The `defs` section is optional and it allows you to define reusable colors that can be referenced in the theme.
 
 ---
 
-### 예제
+### Terminal defaults
 
-사용자 정의 테마의 예입니다:
+The special value `"none"` can be used for any color to inherit the terminal's default color. This is particularly useful for creating themes that blend seamlessly with your terminal's color scheme:
+
+- `"text": "none"` - Uses terminal's default foreground color
+- `"background": "none"` - Uses terminal's default background color
+
+---
+
+### Example
+
+Here's an example of a custom theme:
 
 ```json title="my-theme.json"
 {

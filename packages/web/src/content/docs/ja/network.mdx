@@ -1,15 +1,15 @@
 ---
-title: ネットワーク
-description: プロキシとカスタム証明書を構成します。
+title: Network
+description: Configure proxies and custom certificates.
 ---
 
-CodePlane は、エンタープライズネットワーク環境の標準プロキシ環境変数とカスタム証明書をサポートしています。
+CodePlane supports standard proxy environment variables and custom certificates for enterprise network environments.
 
 ---
 
-## プロキシ
+## Proxy
 
-CodePlane は標準のプロキシ環境変数を尊重します。
+CodePlane respects standard proxy environment variables.
 
 ```bash
 # HTTPS proxy (recommended)
@@ -23,33 +23,35 @@ export NO_PROXY=localhost,127.0.0.1
 ```
 
 :::caution
-TUI はローカル HTTP サーバーと通信します。ルーティングループを防ぐには、この接続のプロキシをバイパスする必要があります。
+The web app communicates with a local HTTP server. You must bypass the proxy for this connection to prevent routing loops.
 :::
-[CLI フラグ](/docs/cli#run) を使用して、サーバーのポートとホスト名を構成できます。
+
+You can configure the server's port and hostname using [CLI flags](/docs/cli#run).
 
 ---
 
-### 認証
+### Authenticate
 
-プロキシで基本認証が必要な場合は、URL に認証情報を含めます。
+If your proxy requires basic authentication, include credentials in the URL.
 
 ```bash
 export HTTPS_PROXY=http://username:password@proxy.example.com:8080
 ```
 
 :::caution
-パスワードのハードコーディングは避けてください。環境変数または安全な認証情報ストレージを使用します。
+Avoid hardcoding passwords. Use environment variables or secure credential storage.
 :::
-NTLM や Kerberos などの高度な認証を必要とするプロキシの場合は、認証方法をサポートする LLM ゲートウェイの使用を検討してください。
+
+For proxies requiring advanced authentication like NTLM or Kerberos, consider using an LLM Gateway that supports your authentication method.
 
 ---
 
-## カスタム証明書
+## Custom certificates
 
-企業が HTTPS 接続にカスタム CA を使用している場合は、それらを信頼するように CodePlane を構成します。
+If your enterprise uses custom CAs for HTTPS connections, configure CodePlane to trust them.
 
 ```bash
 export NODE_EXTRA_CA_CERTS=/path/to/ca-cert.pem
 ```
 
-これは、プロキシ接続と直接 API アクセスの両方で機能します。
+This works for both proxy connections and direct API access.

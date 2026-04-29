@@ -54,7 +54,7 @@ export default function Home() {
 
         <div data-component="content">
           <section data-component="hero">
-            <div data-component="desktop-app-banner">
+            <div data-component="web-app-banner">
               <span data-slot="badge">{i18n.t("home.banner.badge")}</span>
               <div data-slot="content">
                 <span data-slot="text">
@@ -695,9 +695,10 @@ export default function Home() {
               </li>
               <li>
                 <Faq question={i18n.t("home.faq.q5")}>
-                  {i18n.t("home.faq.a5.beforeDesktop")}{" "}
-                  <a href={language.route("/download")}>{i18n.t("home.faq.a5.desktop")}</a> {i18n.t("home.faq.a5.and")}{" "}
-                  <a href={language.route("/docs/web")}>{i18n.t("home.faq.a5.web")}</a>!
+                  {i18n.t("home.faq.a5.beforeWeb")}{" "}
+                  <a href={language.route("/docs/web")}>{i18n.t("home.faq.a5.webDocs")}</a>{" "}
+                  {i18n.t("home.faq.a5.and")}{" "}
+                  <a href={language.route("/download")}>{i18n.t("home.faq.a5.installPath")}</a>!
                 </Faq>
               </li>
               <li>

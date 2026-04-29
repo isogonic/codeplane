@@ -5,7 +5,7 @@ description: CodePlane CLI options and commands.
 
 import { Tabs, TabItem } from "@astrojs/starlight/components"
 
-The CodePlane CLI by default starts the [TUI](/docs/tui) when run without any arguments.
+The CodePlane CLI starts the web app when run without any arguments.
 
 ```bash
 codeplane
@@ -16,29 +16,6 @@ But it also accepts commands as documented on this page. This allows you to inte
 ```bash
 codeplane run "Explain how closures work in JavaScript"
 ```
-
----
-
-### tui
-
-Start the CodePlane terminal user interface.
-
-```bash
-codeplane [project]
-```
-
-#### Flags
-
-| Flag         | Short | Description                                                             |
-| ------------ | ----- | ----------------------------------------------------------------------- |
-| `--continue` | `-c`  | Continue the last session                                               |
-| `--session`  | `-s`  | Session ID to continue                                                  |
-| `--fork`     |       | Fork the session when continuing (use with `--continue` or `--session`) |
-| `--prompt`   |       | Prompt to use                                                           |
-| `--model`    | `-m`  | Model to use in the form of provider/model                              |
-| `--agent`    |       | Agent to use                                                            |
-| `--port`     |       | Port to listen on                                                       |
-| `--hostname` |       | Hostname to listen on                                                   |
 
 ---
 
@@ -55,35 +32,6 @@ Manage agents for CodePlane.
 ```bash
 codeplane agent [command]
 ```
-
----
-
-### attach
-
-Attach a terminal to an already running CodePlane backend server started via `serve` or `web` commands.
-
-```bash
-codeplane attach [url]
-```
-
-This allows using the TUI with a remote CodePlane backend. For example:
-
-```bash
-# Start the backend server for web/mobile access
-codeplane web --port 4096 --hostname 0.0.0.0
-
-# In another terminal, attach the TUI to the running backend
-codeplane attach http://10.20.30.40:4096
-```
-
-#### Flags
-
-| Flag        | Short | Description                       |
-| ----------- | ----- | --------------------------------- |
-| `--dir`     |       | Working directory to start TUI in |
-| `--session` | `-s`  | Session ID to continue            |
-
----
 
 #### create
 
@@ -317,7 +265,7 @@ Run codeplane in non-interactive mode by passing a prompt directly.
 codeplane run [message..]
 ```
 
-This is useful for scripting, automation, or when you want a quick answer without launching the full TUI. For example.
+This is useful for scripting, automation, or when you want a quick answer without opening the web app. For example.
 
 ```bash "codeplane run"
 codeplane run Explain the use of context in Go
@@ -361,7 +309,7 @@ Start a headless CodePlane server for API access. Check out the [server docs](/d
 codeplane serve
 ```
 
-This starts an HTTP server that provides API access to codeplane functionality without the TUI interface. Set `CODEPLANE_SERVER_PASSWORD` to enable HTTP basic auth (username defaults to `codeplane`).
+This starts an HTTP server that provides API access to codeplane functionality without opening the browser UI. Set `CODEPLANE_SERVER_PASSWORD` to enable HTTP basic auth (username defaults to `codeplane`).
 
 #### Flags
 
@@ -559,7 +507,6 @@ CodePlane can be configured using environment variables.
 | `CODEPLANE_AUTO_SHARE`                 | boolean | Automatically share sessions                      |
 | `CODEPLANE_GIT_BASH_PATH`              | string  | Path to Git Bash executable on Windows            |
 | `CODEPLANE_CONFIG`                     | string  | Path to config file                               |
-| `CODEPLANE_TUI_CONFIG`                 | string  | Path to TUI config file                           |
 | `CODEPLANE_CONFIG_DIR`                 | string  | Path to config directory                          |
 | `CODEPLANE_CONFIG_CONTENT`             | string  | Inline json config content                        |
 | `CODEPLANE_DISABLE_AUTOUPDATE`         | boolean | Disable automatic update checks                   |
@@ -574,7 +521,6 @@ CodePlane can be configured using environment variables.
 | `CODEPLANE_DISABLE_CLAUDE_CODE_PROMPT` | boolean | Disable reading `~/.claude/CLAUDE.md`             |
 | `CODEPLANE_DISABLE_CLAUDE_CODE_SKILLS` | boolean | Disable loading `.claude/skills`                  |
 | `CODEPLANE_DISABLE_MODELS_FETCH`       | boolean | Disable fetching models from remote sources       |
-| `CODEPLANE_DISABLE_MOUSE`              | boolean | Disable mouse capture in the TUI                  |
 | `CODEPLANE_FAKE_VCS`                   | string  | Fake VCS provider for testing purposes            |
 | `CODEPLANE_CLIENT`                     | string  | Client identifier (defaults to `cli`)             |
 | `CODEPLANE_ENABLE_EXA`                 | boolean | Enable Exa web search tools                       |
@@ -592,7 +538,6 @@ These environment variables enable experimental features that may change or be r
 | ----------------------------------------------- | ------- | --------------------------------------- |
 | `CODEPLANE_EXPERIMENTAL`                         | boolean | Enable all experimental features        |
 | `CODEPLANE_EXPERIMENTAL_ICON_DISCOVERY`          | boolean | Enable icon discovery                   |
-| `CODEPLANE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT`  | boolean | Disable copy on select in TUI           |
 | `CODEPLANE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS` | number  | Default timeout for bash commands in ms |
 | `CODEPLANE_EXPERIMENTAL_OUTPUT_TOKEN_MAX`        | number  | Max output tokens for LLM responses     |
 | `CODEPLANE_EXPERIMENTAL_FILEWATCHER`             | boolean | Enable file watcher for entire dir      |

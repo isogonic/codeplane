@@ -1,30 +1,30 @@
 ---
-title: Strumenti personalizzati
-description: Crea strumenti che l'LLM puo chiamare in codeplane.
+title: Custom Tools
+description: Create tools the LLM can call in codeplane.
 ---
 
-Gli strumenti personalizzati sono funzioni che crei e che l'LLM puo chiamare durante le conversazioni. Funzionano insieme agli [strumenti integrati](/docs/tools) di codeplane come `read`, `write` e `bash`.
-
----
-
-## Creazione di uno strumento
-
-Gli strumenti sono definiti come file **TypeScript** o **JavaScript**. Tuttavia, la definizione dello strumento puo invocare script scritti in **qualsiasi linguaggio**: TypeScript o JavaScript vengono usati solo per la definizione in se.
+Custom tools are functions you create that the LLM can call during conversations. They work alongside codeplane's [built-in tools](/docs/tools) like `read`, `write`, and `bash`.
 
 ---
 
-### Posizione
+## Creating a tool
 
-Possono essere definiti:
-
-- In locale, mettendoli nella directory `.codeplane/tools/` del progetto.
-- Oppure in globale, mettendoli in `~/.config/codeplane/tools/`.
+Tools are defined as **TypeScript** or **JavaScript** files. However, the tool definition can invoke scripts written in **any language** — TypeScript or JavaScript is only used for the tool definition itself.
 
 ---
 
-### Struttura
+### Location
 
-Il modo piu semplice per creare strumenti e usare l'helper `tool()` che fornisce type-safety e validazione.
+They can be defined:
+
+- Locally by placing them in the `.codeplane/tools/` directory of your project.
+- Or globally, by placing them in `~/.config/codeplane/tools/`.
+
+---
+
+### Structure
+
+The easiest way to create tools is using the `tool()` helper which provides type-safety and validation.
 
 ```ts title=".codeplane/tools/database.ts" {1}
 import { tool } from "@codeplane-ai/plugin"
@@ -41,13 +41,13 @@ export default tool({
 })
 ```
 
-Il **nome del file** diventa il **nome dello strumento**. L'esempio sopra crea lo strumento `database`.
+The **filename** becomes the **tool name**. The above creates a `database` tool.
 
 ---
 
-#### Strumenti multipli per file
+#### Multiple tools per file
 
-Puoi anche esportare piu strumenti da un singolo file. Ogni export diventa **uno strumento separato** con nome **`<filename>_<exportname>`**:
+You can also export multiple tools from a single file. Each export becomes **a separate tool** with the name **`<filename>_<exportname>`**:
 
 ```ts title=".codeplane/tools/math.ts"
 import { tool } from "@codeplane-ai/plugin"
@@ -75,15 +75,15 @@ export const multiply = tool({
 })
 ```
 
-Questo crea due strumenti: `math_add` e `math_multiply`.
+This creates two tools: `math_add` and `math_multiply`.
 
 ---
 
-#### Collisioni di nomi con strumenti integrati
+#### Name collisions with built-in tools
 
-Gli strumenti personalizzati sono indicizzati per nome. Se uno strumento personalizzato usa lo stesso nome di uno strumento integrato, quello personalizzato ha la precedenza.
+Custom tools are keyed by tool name. If a custom tool uses the same name as a built-in tool, the custom tool takes precedence.
 
-Per esempio, questo file sostituisce lo strumento `bash` integrato:
+For example, this file replaces the built-in `bash` tool:
 
 ```ts title=".codeplane/tools/bash.ts"
 import { tool } from "@codeplane-ai/plugin"
@@ -100,14 +100,14 @@ export default tool({
 ```
 
 :::note
-Preferisci nomi univoci a meno che tu non voglia intenzionalmente sostituire uno strumento integrato. Se vuoi disabilitare uno strumento integrato ma non sovrascriverlo, usa i [permessi](/docs/permissions).
+Prefer unique names unless you intentionally want to replace a built-in tool. If you want to disable a built in tool but not override it, use [permissions](/docs/permissions).
 :::
 
 ---
 
-### Argomenti
+### Arguments
 
-Puoi usare `tool.schema`, che e semplicemente [Zod](https://zod.dev), per definire i tipi degli argomenti.
+You can use `tool.schema`, which is just [Zod](https://zod.dev), to define argument types.
 
 ```ts "tool.schema"
 args: {
@@ -115,7 +115,7 @@ args: {
 }
 ```
 
-Puoi anche importare [Zod](https://zod.dev) direttamente e restituire un oggetto semplice:
+You can also import [Zod](https://zod.dev) directly and return a plain object:
 
 ```ts {6}
 import { z } from "zod"
@@ -134,9 +134,9 @@ export default {
 
 ---
 
-### Contesto
+### Context
 
-Gli strumenti ricevono un contesto sulla sessione corrente:
+Tools receive context about the current session:
 
 ```ts title=".codeplane/tools/project.ts" {8}
 import { tool } from "@codeplane-ai/plugin"
@@ -152,18 +152,18 @@ export default tool({
 })
 ```
 
-Usa `context.directory` per la working directory della sessione.
-Usa `context.worktree` per la root del worktree git.
+Use `context.directory` for the session working directory.
+Use `context.worktree` for the git worktree root.
 
 ---
 
-## Esempi
+## Examples
 
-### Scrivere uno strumento in Python
+### Write a tool in Python
 
-Puoi scrivere gli strumenti in qualunque linguaggio. Ecco un esempio che somma due numeri usando Python.
+You can write your tools in any language you want. Here's an example that adds two numbers using Python.
 
-Per prima cosa, crea lo strumento come script Python:
+First, create the tool as a Python script:
 
 ```python title=".codeplane/tools/add.py"
 import sys
@@ -173,7 +173,7 @@ b = int(sys.argv[2])
 print(a + b)
 ```
 
-Poi crea la definizione dello strumento che lo invoca:
+Then create the tool definition that invokes it:
 
 ```ts title=".codeplane/tools/python-add.ts" {10}
 import { tool } from "@codeplane-ai/plugin"
@@ -193,4 +193,4 @@ export default tool({
 })
 ```
 
-Qui usiamo l'utility [`Bun.$`](https://bun.com/docs/runtime/shell) per eseguire lo script Python.
+Here we are using the [`Bun.$`](https://bun.com/docs/runtime/shell) utility to run the Python script.

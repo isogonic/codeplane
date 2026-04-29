@@ -1,17 +1,11 @@
-import { Component, Show, createMemo, createResource, onMount, type JSX } from "solid-js"
-import { createStore } from "solid-js/store"
-import { Button } from "@codeplane-ai/ui/button"
-import { Icon } from "@codeplane-ai/ui/icon"
+import { Component, Show, createMemo, onMount, type JSX } from "solid-js"
 import { Select } from "@codeplane-ai/ui/select"
 import { Switch } from "@codeplane-ai/ui/switch"
 import { TextField } from "@codeplane-ai/ui/text-field"
-import { Tooltip } from "@codeplane-ai/ui/tooltip"
 import { useTheme, type ColorScheme } from "@codeplane-ai/ui/theme/context"
-import { showToast } from "@codeplane-ai/ui/toast"
 import { useParams } from "@solidjs/router"
 import { useLanguage } from "@/context/language"
 import { usePermission } from "@/context/permission"
-import { usePlatform } from "@/context/platform"
 import {
   monoDefault,
   monoFontFamily,
@@ -24,7 +18,6 @@ import {
   terminalInput,
   useSettings,
 } from "@/context/settings"
-import { useUpdateInstaller } from "@/hooks/use-update-installer"
 import { decode64 } from "@/utils/base64"
 import { playSoundById, SOUND_OPTIONS } from "@/utils/sound"
 import { Link } from "./link"
@@ -72,24 +65,13 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
   const theme = useTheme()
   const language = useLanguage()
   const permission = usePermission()
-  const platform = usePlatform()
-  const updater = useUpdateInstaller()
   const params = useParams()
   const settings = useSettings()
 
   onMount(() => {
     void theme.loadThemes()
-    void refreshGitHubToken()
   })
 
-  const [store, setStore] = createStore({
-    checking: false,
-    savingGitHubToken: false,
-    githubToken: "",
-    githubTokenConfigured: false,
-  })
-
-  const linux = createMemo(() => platform.platform === "desktop" && platform.os === "linux")
   const dir = createMemo(() => decode64(params.dir))
   const accepting = createMemo(() => {
     const value = dir()
@@ -114,76 +96,6 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
     }
 
     permission.disableAutoAccept(params.id, value)
-  }
-  const desktop = createMemo(() => platform.platform === "desktop")
-
-  async function refreshGitHubToken() {
-    const configured = await platform.getUpdateGitHubTokenConfigured?.()
-    setStore("githubTokenConfigured", configured ?? false)
-  }
-
-  const saveGitHubToken = () => {
-    if (!platform.setUpdateGitHubToken) return
-    const token = store.githubToken.trim()
-    if (!token) return
-
-    setStore("savingGitHubToken", true)
-    void platform
-      .setUpdateGitHubToken(token)
-      .then(() => {
-        setStore("githubToken", "")
-        setStore("githubTokenConfigured", true)
-        showToast({
-          variant: "success",
-          icon: "circle-check",
-          title: language.t("settings.updates.toast.tokenSaved.title"),
-          description: language.t("settings.updates.toast.tokenSaved.description"),
-        })
-      })
-      .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : String(err)
-        showToast({ title: language.t("common.requestFailed"), description: message })
-      })
-      .finally(() => setStore("savingGitHubToken", false))
-  }
-
-  const check = () => {
-    if (!platform.checkUpdate) return
-    if (!store.githubTokenConfigured) {
-      showToast({
-        variant: "error",
-        icon: "github",
-        title: language.t("settings.updates.toast.tokenRequired.title"),
-        description: language.t("settings.updates.toast.tokenRequired.description"),
-      })
-      return
-    }
-
-    setStore("checking", true)
-
-    void platform
-      .checkUpdate()
-      .then((result) => {
-        if (!result.updateAvailable) {
-          showToast({
-            variant: "success",
-            icon: "circle-check",
-            title: language.t("settings.updates.toast.latest.title"),
-            description: language.t("settings.updates.toast.latest.description", { version: platform.version ?? "" }),
-          })
-          return
-        }
-
-        void updater.installWhenIdle({ version: result.version }).catch((err: unknown) => {
-          const message = err instanceof Error ? err.message : String(err)
-          showToast({ title: language.t("common.requestFailed"), description: message })
-        })
-      })
-      .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : String(err)
-        showToast({ title: language.t("common.requestFailed"), description: message })
-      })
-      .finally(() => setStore("checking", false))
   }
 
   const themeOptions = createMemo<ThemeOption[]>(() => theme.ids().map((id) => ({ id, name: theme.name(id) })))
@@ -645,94 +557,6 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
     </div>
   )
 
-  const UpdatesSection = () => (
-    <div class="flex flex-col gap-1">
-      <h3 class="text-14-medium text-text-strong pb-2">{language.t("settings.general.section.updates")}</h3>
-
-      <SettingsList>
-        <Show when={platform.setUpdateGitHubToken}>
-          <SettingsRow
-            title={language.t("settings.updates.row.githubToken.title")}
-            description={language.t("settings.updates.row.githubToken.description")}
-          >
-            <div class="flex w-full flex-col gap-2 sm:w-[360px] sm:flex-row sm:items-center">
-              <TextField
-                data-action="settings-updates-github-token"
-                label={language.t("settings.updates.row.githubToken.title")}
-                hideLabel
-                type="password"
-                value={store.githubToken}
-                onChange={(value) => setStore("githubToken", value)}
-                placeholder={
-                  store.githubTokenConfigured
-                    ? language.t("settings.updates.row.githubToken.placeholder.configured")
-                    : language.t("settings.updates.row.githubToken.placeholder.empty")
-                }
-                spellcheck={false}
-                autocorrect="off"
-                autocomplete="off"
-                autocapitalize="off"
-                class="text-12-regular"
-              />
-              <Button
-                size="small"
-                variant="secondary"
-                disabled={store.savingGitHubToken || !store.githubToken.trim()}
-                onClick={saveGitHubToken}
-              >
-                {store.savingGitHubToken
-                  ? language.t("settings.updates.action.savingToken")
-                  : language.t("settings.updates.action.saveToken")}
-              </Button>
-            </div>
-          </SettingsRow>
-        </Show>
-
-        <SettingsRow
-          title={language.t("settings.updates.row.startup.title")}
-          description={language.t("settings.updates.row.startup.description")}
-        >
-          <div data-action="settings-updates-startup">
-            <Switch
-              checked={settings.updates.startup()}
-              disabled={!platform.checkUpdate}
-              onChange={(checked) => settings.updates.setStartup(checked)}
-            />
-          </div>
-        </SettingsRow>
-
-        <SettingsRow
-          title={language.t("settings.general.row.releaseNotes.title")}
-          description={language.t("settings.general.row.releaseNotes.description")}
-        >
-          <div data-action="settings-release-notes">
-            <Switch
-              checked={settings.general.releaseNotes()}
-              onChange={(checked) => settings.general.setReleaseNotes(checked)}
-            />
-          </div>
-        </SettingsRow>
-
-        <SettingsRow
-          title={language.t("settings.updates.row.check.title")}
-          description={language.t("settings.updates.row.check.description")}
-        >
-          <Button
-            size="small"
-            variant="secondary"
-            disabled={store.checking || !platform.checkUpdate || !store.githubTokenConfigured}
-            onClick={check}
-          >
-            {store.checking
-              ? language.t("settings.updates.action.checking")
-              : language.t("settings.updates.action.checkNow")}
-          </Button>
-        </SettingsRow>
-      </SettingsList>
-    </div>
-  )
-
-  console.log(import.meta.env)
   return (
     <div
       classList={{
@@ -758,73 +582,21 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
 
         <SoundsSection />
 
-        {/*<Show when={platform.platform === "desktop" && platform.os === "windows" && platform.getWslEnabled}>
-          {(_) => {
-            const [enabledResource, actions] = createResource(() => platform.getWslEnabled?.())
-            const enabled = () => (enabledResource.state === "pending" ? undefined : enabledResource.latest)
+        <SettingsList>
+          <SettingsRow
+            title={language.t("settings.general.row.releaseNotes.title")}
+            description={language.t("settings.general.row.releaseNotes.description")}
+          >
+            <div data-action="settings-release-notes">
+              <Switch
+                checked={settings.general.releaseNotes()}
+                onChange={(checked) => settings.general.setReleaseNotes(checked)}
+              />
+            </div>
+          </SettingsRow>
+        </SettingsList>
 
-            return (
-              <div class="flex flex-col gap-1">
-                <h3 class="text-14-medium text-text-strong pb-2">{language.t("settings.desktop.section.wsl")}</h3>
-
-                <SettingsList>
-                  <SettingsRow
-                    title={language.t("settings.desktop.wsl.title")}
-                    description={language.t("settings.desktop.wsl.description")}
-                  >
-                    <div data-action="settings-wsl">
-                      <Switch
-                        checked={enabled() ?? false}
-                        disabled={enabledResource.state === "pending"}
-                        onChange={(checked) => platform.setWslEnabled?.(checked)?.finally(() => actions.refetch())}
-                      />
-                    </div>
-                  </SettingsRow>
-                </SettingsList>
-              </div>
-            )
-          }}
-        </Show>*/}
-
-        <UpdatesSection />
-
-        <Show when={linux()}>
-          {(_) => {
-            const [valueResource, actions] = createResource(() => platform.getDisplayBackend?.())
-            const value = () => (valueResource.state === "pending" ? undefined : valueResource.latest)
-
-            const onChange = (checked: boolean) =>
-              platform.setDisplayBackend?.(checked ? "wayland" : "auto").finally(() => actions.refetch())
-
-            return (
-              <div class="flex flex-col gap-1">
-                <h3 class="text-14-medium text-text-strong pb-2">{language.t("settings.general.section.display")}</h3>
-
-                <SettingsList>
-                  <SettingsRow
-                    title={
-                      <div class="flex items-center gap-2">
-                        <span>{language.t("settings.general.row.wayland.title")}</span>
-                        <Tooltip value={language.t("settings.general.row.wayland.tooltip")} placement="top">
-                          <span class="text-text-weak">
-                            <Icon name="help" size="small" />
-                          </span>
-                        </Tooltip>
-                      </div>
-                    }
-                    description={language.t("settings.general.row.wayland.description")}
-                  >
-                    <div data-action="settings-wayland">
-                      <Switch checked={value() === "wayland"} onChange={onChange} />
-                    </div>
-                  </SettingsRow>
-                </SettingsList>
-              </div>
-            )
-          }}
-        </Show>
-
-        <Show when={desktop() && import.meta.env.VITE_CODEPLANE_CHANNEL === "beta"}>
+        <Show when={import.meta.env.VITE_CODEPLANE_CHANNEL === "beta"}>
           <AdvancedSection />
         </Show>
       </div>

@@ -1,23 +1,23 @@
 ---
-title: الأوامر
-description: أنشئ أوامر مخصصة للمهام المتكررة.
+title: Commands
+description: Create custom commands for repetitive tasks.
 ---
 
-تتيح لك الأوامر المخصصة تحديد مُطالبة (prompt) تريد تشغيلها عند تنفيذ ذلك الأمر في واجهة TUI.
+Custom commands let you specify a prompt you want to run from the web app or CLI.
 
 ```bash frame="none"
 /my-command
 ```
 
-تُعدّ الأوامر المخصصة إضافةً إلى الأوامر المضمنة مثل `/init` و`/undo` و`/redo` و`/share` و`/help`. [اعرف المزيد](/docs/tui#commands).
+Custom commands are in addition to the built-in commands like `/init`, `/undo`, `/redo`, `/share`, and `/help`.
 
 ---
 
-## إنشاء ملفات الأوامر
+## Create command files
 
-أنشئ ملفات Markdown داخل الدليل `commands/` لتعريف أوامر مخصصة.
+Create markdown files in the `commands/` directory to define custom commands.
 
-أنشئ الملف `.codeplane/commands/test.md`:
+Create `.codeplane/commands/test.md`:
 
 ```md title=".codeplane/commands/test.md"
 ---
@@ -30,9 +30,9 @@ Run the full test suite with coverage report and show any failures.
 Focus on the failing tests and suggest fixes.
 ```
 
-تُعرِّف ترويسة Frontmatter خصائص الأمر، بينما يصبح المحتوى هو القالب.
+The frontmatter defines command properties. The content becomes the template.
 
-استخدم الأمر بكتابة `/` ثم اسم الأمر.
+Use the command by typing `/` followed by the command name.
 
 ```bash frame="none"
 "/test"
@@ -40,25 +40,25 @@ Focus on the failing tests and suggest fixes.
 
 ---
 
-## الإعداد
+## Configure
 
-يمكنك إضافة أوامر مخصصة عبر إعدادات CodePlane أو بإنشاء ملفات Markdown داخل الدليل `commands/`.
+You can add custom commands through the CodePlane config or by creating markdown files in the `commands/` directory.
 
 ---
 
 ### JSON
 
-استخدم خيار `command` في [config](/docs/config) الخاص بـ CodePlane:
+Use the `command` option in your CodePlane [config](/docs/config):
 
 ```json title="codeplane.jsonc" {4-12}
 {
   "$schema": "https://example.invalid/config.json",
   "command": {
-    // يصبح هذا اسم الأمر
+    // This becomes the name of the command
     "test": {
-      // هذه هي المطالبة التي ستُرسل إلى LLM
+      // This is the prompt that will be sent to the LLM
       "template": "Run the full test suite with coverage report and show any failures.\nFocus on the failing tests and suggest fixes.",
-      // يظهر هذا كوصف في TUI
+      // This is shown as the description in command pickers
       "description": "Run tests with coverage",
       "agent": "build",
       "model": "anthropic/claude-3-5-sonnet-20241022"
@@ -67,7 +67,7 @@ Focus on the failing tests and suggest fixes.
 }
 ```
 
-يمكنك الآن تشغيل هذا الأمر في واجهة TUI:
+Now you can run this command from the web app:
 
 ```bash frame="none"
 /test
@@ -77,10 +77,10 @@ Focus on the failing tests and suggest fixes.
 
 ### Markdown
 
-يمكنك أيضًا تعريف الأوامر باستخدام ملفات Markdown. ضعها في:
+You can also define commands using markdown files. Place them in:
 
-- على مستوى النظام: `~/.config/codeplane/commands/`
-- لكل مشروع: `.codeplane/commands/`
+- Global: `~/.config/codeplane/commands/`
+- Per-project: `.codeplane/commands/`
 
 ```markdown title="~/.config/codeplane/commands/test.md"
 ---
@@ -93,7 +93,8 @@ Run the full test suite with coverage report and show any failures.
 Focus on the failing tests and suggest fixes.
 ```
 
-يصبح اسم ملف Markdown هو اسم الأمر. على سبيل المثال، يتيح لك `test.md` تشغيل:
+The markdown file name becomes the command name. For example, `test.md` lets
+you run:
 
 ```bash frame="none"
 /test
@@ -101,15 +102,15 @@ Focus on the failing tests and suggest fixes.
 
 ---
 
-## إعداد المُطالبة
+## Prompt config
 
-تدعم مُطالبات الأوامر المخصصة عدة عناصر نائبة (placeholders) وبنى خاصة.
+The prompts for the custom commands support several special placeholders and syntax.
 
 ---
 
-### الوسائط
+### Arguments
 
-مرِّر وسائط إلى الأوامر باستخدام العنصر النائب `$ARGUMENTS`.
+Pass arguments to commands using the `$ARGUMENTS` placeholder.
 
 ```md title=".codeplane/commands/component.md"
 ---
@@ -120,22 +121,22 @@ Create a new React component named $ARGUMENTS with TypeScript support.
 Include proper typing and basic structure.
 ```
 
-شغِّل الأمر مع وسائط:
+Run the command with arguments:
 
 ```bash frame="none"
 /component Button
 ```
 
-وسيُستبدل `$ARGUMENTS` بالقيمة `Button`.
+And `$ARGUMENTS` will be replaced with `Button`.
 
-يمكنك أيضًا الوصول إلى كل وسيط على حدة باستخدام المعاملات الموضعية:
+You can also access individual arguments using positional parameters:
 
-- `$1` - الوسيط الأول
-- `$2` - الوسيط الثاني
-- `$3` - الوسيط الثالث
-- وهكذا...
+- `$1` - First argument
+- `$2` - Second argument
+- `$3` - Third argument
+- And so on...
 
-على سبيل المثال:
+For example:
 
 ```md title=".codeplane/commands/create-file.md"
 ---
@@ -146,25 +147,25 @@ Create a file named $1 in the directory $2
 with the following content: $3
 ```
 
-شغِّل الأمر:
+Run the command:
 
 ```bash frame="none"
 /create-file config.json src "{ \"key\": \"value\" }"
 ```
 
-سيؤدي ذلك إلى استبدال:
+This replaces:
 
-- `$1` بـ `config.json`
-- `$2` بـ `src`
-- `$3` بـ `{ "key": "value" }`
+- `$1` with `config.json`
+- `$2` with `src`
+- `$3` with `{ "key": "value" }`
 
 ---
 
-### خرج shell
+### Shell output
 
-استخدم _!`command`_ لحقن خرج [أمر bash](/docs/tui#bash-commands) داخل مُطالبتك.
+Use _!`command`_ to inject shell command output into your prompt.
 
-على سبيل المثال، لإنشاء أمر مخصص يُحلل تغطية الاختبارات:
+For example, to create a custom command that analyzes test coverage:
 
 ```md title=".codeplane/commands/analyze-coverage.md"
 ---
@@ -177,7 +178,7 @@ Here are the current test results:
 Based on these results, suggest improvements to increase coverage.
 ```
 
-أو لمراجعة التغييرات الأخيرة:
+Or to review recent changes:
 
 ```md title=".codeplane/commands/review-changes.md"
 ---
@@ -190,13 +191,13 @@ Recent git commits:
 Review these changes and suggest any improvements.
 ```
 
-تُشغَّل الأوامر في دليل جذر مشروعك ويصبح خرجها جزءًا من المُطالبة.
+Commands run in your project's root directory and their output becomes part of the prompt.
 
 ---
 
-### مراجع الملفات
+### File references
 
-ضمِّن الملفات في أمرك باستخدام `@` ثم اسم الملف.
+Include files in your command using `@` followed by the filename.
 
 ```md title=".codeplane/commands/review-component.md"
 ---
@@ -207,19 +208,19 @@ Review the component in @src/components/Button.tsx.
 Check for performance issues and suggest improvements.
 ```
 
-يُدرج محتوى الملف في المُطالبة تلقائيًا.
+The file content gets included in the prompt automatically.
 
 ---
 
-## الخيارات
+## Options
 
-لنلقِ نظرةً على خيارات الإعداد بالتفصيل.
+Let's look at the configuration options in detail.
 
 ---
 
-### القالب (`template`)
+### Template
 
-يُعرِّف خيار `template` المُطالبة التي ستُرسل إلى نموذج اللغة (LLM) عند تنفيذ الأمر.
+The `template` option defines the prompt that will be sent to the LLM when the command is executed.
 
 ```json title="codeplane.json"
 {
@@ -231,13 +232,13 @@ Check for performance issues and suggest improvements.
 }
 ```
 
-هذا خيار إعداد **إلزامي**.
+This is a **required** config option.
 
 ---
 
-### الوصف (`description`)
+### Description
 
-استخدم خيار `description` لتقديم وصف موجز لما يفعله الأمر.
+Use the `description` option to provide a brief description of what the command does.
 
 ```json title="codeplane.json"
 {
@@ -249,15 +250,15 @@ Check for performance issues and suggest improvements.
 }
 ```
 
-يظهر هذا الوصف في واجهة TUI عند كتابة الأمر.
+This is shown as the description when you type in the command.
 
 ---
 
-### الوكيل (`agent`)
+### Agent
 
-استخدم إعداد `agent` لتحديد أي [agent](/docs/agents) ينبغي أن ينفّذ هذا الأمر (اختياريًا).
-إذا كان هذا [subagent](/docs/agents/#subagents)، فسيؤدي الأمر افتراضيًا إلى تشغيل استدعاء subagent.
-لإيقاف هذا السلوك، عيِّن `subtask` إلى `false`.
+Use the `agent` config to optionally specify which [agent](/docs/agents) should execute this command.
+If this is a [subagent](/docs/agents/#subagents) the command will trigger a subagent invocation by default.
+To disable this behavior, set `subtask` to `false`.
 
 ```json title="codeplane.json"
 {
@@ -269,15 +270,15 @@ Check for performance issues and suggest improvements.
 }
 ```
 
-هذا خيار إعداد **اختياري**. إن لم تُحدده، فسيُستخدم agent الحالي افتراضيًا.
+This is an **optional** config option. If not specified, defaults to your current agent.
 
 ---
 
-### مهمة فرعية (`subtask`)
+### Subtask
 
-استخدم القيمة المنطقية `subtask` لفرض أن يُشغِّل الأمر استدعاء [subagent](/docs/agents/#subagents).
-يفيد هذا إذا أردت ألا يلوّث الأمر السياق الأساسي لديك، إذ سيُجبر (**force**) الـ agent على العمل كـ subagent،
-حتى لو كان `mode` مضبوطًا على `primary` في إعدادات [agent](/docs/agents).
+Use the `subtask` boolean to force the command to trigger a [subagent](/docs/agents/#subagents) invocation.
+This is useful if you want the command to not pollute your primary context and will **force** the agent to act as a subagent,
+even if `mode` is set to `primary` on the [agent](/docs/agents) configuration.
 
 ```json title="codeplane.json"
 {
@@ -289,13 +290,13 @@ Check for performance issues and suggest improvements.
 }
 ```
 
-هذا خيار إعداد **اختياري**.
+This is an **optional** config option.
 
 ---
 
-### النموذج (`model`)
+### Model
 
-استخدم إعداد `model` لتجاوز النموذج الافتراضي لهذا الأمر.
+Use the `model` config to override the default model for this command.
 
 ```json title="codeplane.json"
 {
@@ -307,16 +308,16 @@ Check for performance issues and suggest improvements.
 }
 ```
 
-هذا خيار إعداد **اختياري**.
+This is an **optional** config option.
 
 ---
 
-## الأوامر المضمنة
+## Built-in
 
-يتضمن codeplane عدة أوامر مضمنة مثل `/init` و`/undo` و`/redo` و`/share` و`/help`؛ [اعرف المزيد](/docs/tui#commands).
+codeplane includes several built-in commands like `/init`, `/undo`, `/redo`, `/share`, and `/help`.
 
 :::note
-يمكن للأوامر المخصصة تجاوز الأوامر المضمنة.
+Custom commands can override built-in commands.
 :::
 
-إذا عرّفت أمرًا مخصصًا بالاسم نفسه، فسيستبدل الأمر المضمن.
+If you define a custom command with the same name, it will override the built-in command.

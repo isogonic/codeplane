@@ -1,70 +1,64 @@
 ---
 title: Web
-description: Tarayıcınızda codeplane'u kullanma.
+description: Using CodePlane in your browser.
 ---
 
-codeplane, tarayıcınızda bir web uygulaması olarak çalışabilir ve bir terminale ihtiyaç duymadan aynı güçlü AI kodlama deneyimini sağlayabilir.
+CodePlane can run as a web application in your browser, providing the same powerful AI coding experience without needing a terminal.
 
-![codeplane Web - Yeni Oturum](../../../assets/web/web-homepage-new-session.png)
+![CodePlane Web - New Session](../../../assets/web/web-homepage-new-session.png)
 
-## Başlarken
+## Getting Started
 
-Aşağıdakileri çalıştırarak web arayüzünü başlatın:
+Start the web interface by running:
 
 ```bash
 codeplane web
 ```
 
-Bu, `127.0.0.1` üzerinde rastgele kullanılabilir bir bağlantı noktasına sahip yerel bir sunucuyu başlatır ve codeplane'u varsayılan tarayıcınızda otomatik olarak açar.
+This starts a local server on `127.0.0.1` with a random available port and automatically opens CodePlane in your default browser.
 
 :::caution
-`CODEPLANE_SERVER_PASSWORD` ayarlanmadıysa sunucunun güvenliği kaldırılacaktır. Bu, yerel kullanım için iyidir ancak ağ erişimi için ayarlanmalıdır.
+If `CODEPLANE_SERVER_PASSWORD` is not set, the server will be unsecured. This is fine for local use but should be set for network access.
 :::
 
-:::tip[Windows Kullanıcıları]
-En iyi deneyim için PowerShell yerine `codeplane web`'yi [WSL](/docs/windows-wsl)'den çalıştırın. Bu, uygun dosya sistemi erişimini ve terminal entegrasyonunu sağlar.
-:::
+## Configuration
 
----
-
-## Yapılandırma
-
-Web sunucusunu komut satırı bayraklarıyla veya [config dosyanızda](/docs/config) yapılandırabilirsiniz.
+You can configure the web server using command line flags or in your [config file](/docs/config).
 
 ### Port
 
-codeplane varsayılan olarak kullanılabilir bir bağlantı noktasını seçer. Bir bağlantı noktası belirtebilirsiniz:
+By default, CodePlane picks an available port. You can specify a port:
 
 ```bash
 codeplane web --port 4096
 ```
 
-### Ana makine adı
+### Hostname
 
-Varsayılan olarak sunucu `127.0.0.1` (yalnızca localhost) öğesine bağlanır. codeplane'u ağınızda erişilebilir kılmak için:
+By default, the server binds to `127.0.0.1` (localhost only). To make CodePlane accessible on your network:
 
 ```bash
 codeplane web --hostname 0.0.0.0
 ```
 
-`0.0.0.0` kullanıldığında, codeplane hem yerel hem de ağ adreslerini gösterecektir:
+When using `0.0.0.0`, CodePlane will display both local and network addresses:
 
 ```
   Local access:       http://localhost:4096
   Network access:     http://192.168.1.100:4096
 ```
 
-### mDNS Keşfi
+### mDNS Discovery
 
-Sunucunuzun yerel ağda bulunabilir olmasını sağlamak için mDNS'yi etkinleştirin:
+Enable mDNS to make your server discoverable on the local network:
 
 ```bash
 codeplane web --mdns
 ```
 
-Bu, ana bilgisayar adını otomatik olarak `0.0.0.0` olarak ayarlar ve sunucuyu `codeplane.local` olarak tanıtır.
+This automatically sets the hostname to `0.0.0.0` and advertises the server as `codeplane.local`.
 
-Aynı ağ üzerinde birden fazla örneği çalıştıracak şekilde mDNS alan adını özelleştirebilirsiniz:
+You can customize the mDNS domain name to run multiple instances on the same network:
 
 ```bash
 codeplane web --mdns --mdns-domain myproject.local
@@ -72,61 +66,43 @@ codeplane web --mdns --mdns-domain myproject.local
 
 ### CORS
 
-CORS'a yönelik ek alan adlarına izin vermek için (özel ön uçlar için kullanışlıdır):
+To allow additional domains for CORS (useful for custom frontends):
 
 ```bash
 codeplane web --cors https://example.com
 ```
 
-### Kimlik Doğrulaması
+### Authentication
 
-Erişimi korumak için `CODEPLANE_SERVER_PASSWORD` ortam değişkenini kullanarak bir parola ayarlayın:
+To protect access, set a password using the `CODEPLANE_SERVER_PASSWORD` environment variable:
 
 ```bash
 CODEPLANE_SERVER_PASSWORD=secret codeplane web
 ```
 
-Kullanıcı adı varsayılan olarak `codeplane` şeklindedir ancak `CODEPLANE_SERVER_USERNAME` ile değiştirilebilir.
+The username defaults to `codeplane` but can be changed with `CODEPLANE_SERVER_USERNAME`.
 
 ---
 
-## Web Arayüzünü Kullanma
+## Using the Web Interface
 
-Web arayüzü başlatıldığında codeplane oturumlarınıza erişim sağlar.
+Once started, the web interface provides access to your CodePlane sessions.
 
-### Oturum
+### Sessions
 
-Oturumlarınızı ana sayfadan görüntüleyin ve yönetin. Aktif oturumları görebilir ve yenilerini başlatabilirsiniz.
+View and manage your sessions from the homepage. You can see active sessions and start new ones.
 
-![codeplane Web - Etkin Oturum](../../../assets/web/web-homepage-active-session.png)
+![CodePlane Web - Active Session](../../../assets/web/web-homepage-active-session.png)
 
-### Sunucu Durumu
+### Server Status
 
-Bağlı sunucuları ve durumlarını görüntülemek için "Sunucuları Gör" seçeneğini tıklayın.
+Click "See Servers" to view connected servers and their status.
 
-![codeplane Web - Sunuculara bakın](../../../assets/web/web-homepage-see-servers.png)
+![CodePlane Web - See Servers](../../../assets/web/web-homepage-see-servers.png)
 
----
+## Config File
 
-## Terminal Takma
-
-Çalışan bir web sunucusuna bir terminal TUI'si ekleyebilirsiniz:
-
-```bash
-# Start the web server
-codeplane web --port 4096
-
-# In another terminal, attach the TUI
-codeplane attach http://localhost:4096
-```
-
-Bu, aynı oturumları ve durumu paylaşarak hem web arayüzünü hem de terminali aynı anda kullanmanıza olanak tanır.
-
----
-
-## Yapılandırma Dosyası
-
-Sunucu ayarlarını `codeplane.json` yapılandırma dosyanızda da yapılandırabilirsiniz:
+You can also configure server settings in your `codeplane.json` config file:
 
 ```json
 {
@@ -139,4 +115,4 @@ Sunucu ayarlarını `codeplane.json` yapılandırma dosyanızda da yapılandıra
 }
 ```
 
-Komut satırı bayrakları yapılandırma dosyası ayarlarından önceliklidir.
+Command line flags take precedence over config file settings.

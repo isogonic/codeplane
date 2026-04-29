@@ -10,7 +10,7 @@ const theme = fileURLToPath(new URL("./public/oc-theme-preload.js", import.meta.
  */
 export default [
   {
-    name: "codeplane-desktop:config",
+    name: "codeplane-web:config",
     config() {
       return {
         resolve: {
@@ -25,7 +25,7 @@ export default [
     },
   },
   {
-    name: "codeplane-desktop:theme-preload",
+    name: "codeplane-web:theme-preload",
     transformIndexHtml(html) {
       return html.replace(
         '<script id="oc-theme-preload-script" src="/oc-theme-preload.js"></script>',

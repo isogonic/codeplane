@@ -1,34 +1,34 @@
 ---
-title: 플러그인
-description: CodePlane를 확장하기 위해 자신만의 플러그인을 작성하세요.
+title: Plugins
+description: Write your own plugins to extend CodePlane.
 ---
 
-플러그인은 다양한 이벤트와 사용자 정의 행동으로 후킹하여 codeplane를 확장 할 수 있습니다. 플러그인을 사용하여 새로운 기능을 추가하거나, 외부 서비스와 통합하거나, codeplane의 기본 동작을 수정할 수 있습니다.
+Plugins allow you to extend CodePlane by hooking into various events and customizing behavior. You can create plugins to add new features, integrate with external services, or modify CodePlane's default behavior.
 
-예를 들어, 커뮤니티에 의해 생성 된 [plugins](/docs/ecosystem#plugins)를 확인하십시오.
-
----
-
-## 플러그인 사용
-
-플러그인을 로드하는 두 가지 방법이 있습니다.
+For examples, check out the [plugins](/docs/ecosystem#plugins) created by the community.
 
 ---
 
-### 로컬 파일에서
+## Use a plugin
 
-플러그인 디렉토리에 JavaScript 또는 TypeScript 파일을 배치합니다.
-
-- `.codeplane/plugins/` - 프로젝트 레벨 플러그인
-- `~/.config/codeplane/plugins/` - 글로벌 플러그인
-
-이 디렉토리의 파일은 시작 시 자동으로 로드됩니다.
+There are two ways to load plugins.
 
 ---
 
-### npm에서
+### From local files
 
-config 파일에 npm 패키지를 지정합니다.
+Place JavaScript or TypeScript files in the plugin directory.
+
+- `.codeplane/plugins/` - Project-level plugins
+- `~/.config/codeplane/plugins/` - Global plugins
+
+Files in these directories are automatically loaded at startup.
+
+---
+
+### From npm
+
+Specify npm packages in your config file.
 
 ```json title="codeplane.json"
 {
@@ -37,42 +37,43 @@ config 파일에 npm 패키지를 지정합니다.
 }
 ```
 
-일반 패키지 및 스코프 npm 패키지 모두 지원됩니다.
+Both regular and scoped npm packages are supported.
 
-[ecosystem](/docs/ecosystem#plugins)에서 사용할 수 있는 플러그인을 찾아보세요.
-
----
-
-### 플러그인이 설치되는 방법
-
-**npm 플러그인**은 시작시 Bun을 사용하여 자동으로 설치됩니다. 패키지와 그 의존성은 `~/.cache/codeplane/node_modules/`에 캐시됩니다.
-
-**로컬 플러그인**은 플러그인 디렉토리에서 직접 로드됩니다. 외부 패키지를 사용하려면 구성 디렉토리 내에 `package.json`을 작성해야 하거나([의존성](#의존성) 참조), 플러그인을 npm에 게시하고 [config에 추가](/docs/config#plugins)해야 합니다.
+Browse available plugins in the [ecosystem](/docs/ecosystem#plugins).
 
 ---
 
-### 로드 순서
+### How plugins are installed
 
-플러그인은 모든 소스에서 로드되며 모든 후크는 순서대로 실행됩니다. 로드 순서는 다음과 같습니다:
+**npm plugins** are installed automatically using Bun at startup. Packages and their dependencies are cached in `~/.cache/codeplane/node_modules/`.
 
-1. 글로벌 구성 (`~/.config/codeplane/codeplane.json`)
-2. 프로젝트 구성 (`codeplane.json`)
-3. 글로벌 플러그인 디렉토리 (`~/.config/codeplane/plugins/`)
-4. 프로젝트 플러그인 디렉토리 (`.codeplane/plugins/`)
-
-중복된 이름과 버전의 npm 패키지는 한 번만 로드됩니다. 하지만 로컬 플러그인과 npm 플러그인의 이름이 비슷하더라도 둘 다 별도로 로드됩니다.
+**Local plugins** are loaded directly from the plugin directory. To use external packages, you must create a `package.json` within your config directory (see [Dependencies](#dependencies)), or publish the plugin to npm and [add it to your config](/docs/config#plugins).
 
 ---
 
-## 플러그인 만들기
+### Load order
 
-플러그인은 하나 이상의 플러그인 함수를 내보내는 **JavaScript/TypeScript 모듈**입니다. 각 함수는 context 객체를 수신하고 hooks 객체를 반환합니다.
+Plugins are loaded from all sources and all hooks run in sequence. The load order is:
+
+1. Global config (`~/.config/codeplane/codeplane.json`)
+2. Project config (`codeplane.json`)
+3. Global plugin directory (`~/.config/codeplane/plugins/`)
+4. Project plugin directory (`.codeplane/plugins/`)
+
+Duplicate npm packages with the same name and version are loaded once. However, a local plugin and an npm plugin with similar names are both loaded separately.
 
 ---
 
-### 의존성
+## Create a plugin
 
-로컬 플러그인 및 사용자 정의 도구는 외부 npm 패키지를 사용할 수 있습니다. config 디렉토리에 `package.json`을 추가하고 필요한 의존성을 명시하십시오.
+A plugin is a **JavaScript/TypeScript module** that exports one or more plugin
+functions. Each function receives a context object and returns a hooks object.
+
+---
+
+### Dependencies
+
+Local plugins and custom tools can use external npm packages. Add a `package.json` to your config directory with the dependencies you need.
 
 ```json title=".codeplane/package.json"
 {
@@ -82,7 +83,7 @@ config 파일에 npm 패키지를 지정합니다.
 }
 ```
 
-codeplane는 시작 시 `bun install`을 실행하여 이를 설치합니다. 이후 플러그인 및 도구에서 가져올 수 있습니다.
+CodePlane runs `bun install` at startup to install these. Your plugins and tools can then import them.
 
 ```ts title=".codeplane/plugins/my-plugin.ts"
 import { escape } from "shescape"
@@ -100,7 +101,7 @@ export const MyPlugin = async (ctx) => {
 
 ---
 
-### 기본 구조
+### Basic structure
 
 ```js title=".codeplane/plugins/example.js"
 export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
@@ -112,19 +113,19 @@ export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
 }
 ```
 
-플러그인 함수가 받는 인자:
+The plugin function receives:
 
-- `project`: 현재 프로젝트 정보.
-- `directory`: 현재 작업 디렉토리.
-- `worktree`: git worktree 경로.
-- `client`: AI와 상호 작용을 위한 codeplane SDK 클라이언트.
-- `$`: 명령어를 실행하기 위한 Bun의 [shell API](https://bun.com/docs/runtime/shell).
+- `project`: The current project information.
+- `directory`: The current working directory.
+- `worktree`: The git worktree path.
+- `client`: An codeplane SDK client for interacting with the AI.
+- `$`: Bun's [shell API](https://bun.com/docs/runtime/shell) for executing commands.
 
 ---
 
-### TypeScript 지원
+### TypeScript support
 
-TypeScript 플러그인의 경우 플러그인 패키지에서 타입을 가져올 수 있습니다.
+For TypeScript plugins, you can import types from the plugin package:
 
 ```ts title="my-plugin.ts" {1}
 import type { Plugin } from "@codeplane-ai/plugin"
@@ -138,45 +139,45 @@ export const MyPlugin: Plugin = async ({ project, client, $, directory, worktree
 
 ---
 
-### 이벤트
+### Events
 
-플러그인은 아래 예제 섹션에서 볼 수 있듯이 이벤트를 구독할 수 있습니다. 사용 가능한 이벤트 목록은 다음과 같습니다.
+Plugins can subscribe to events as seen below in the Examples section. Here is a list of the different events available.
 
-#### 명령어 이벤트
+#### Command Events
 
 - `command.executed`
 
-#### 파일 이벤트
+#### File Events
 
 - `file.edited`
 - `file.watcher.updated`
 
-#### 설치 이벤트
+#### Installation Events
 
 - `installation.updated`
 
-#### LSP 이벤트
+#### LSP Events
 
 - `lsp.client.diagnostics`
 - `lsp.updated`
 
-#### 메시지 이벤트
+#### Message Events
 
 - `message.part.removed`
 - `message.part.updated`
 - `message.removed`
 - `message.updated`
 
-#### 권한 이벤트
+#### Permission Events
 
 - `permission.asked`
 - `permission.replied`
 
-#### 서버 이벤트
+#### Server Events
 
 - `server.connected`
 
-#### 세션 이벤트
+#### Session Events
 
 - `session.created`
 - `session.compacted`
@@ -187,36 +188,28 @@ export const MyPlugin: Plugin = async ({ project, client, $, directory, worktree
 - `session.status`
 - `session.updated`
 
-#### Todo 이벤트
+#### Todo Events
 
 - `todo.updated`
 
-#### 셸 이벤트
+#### Shell Events
 
 - `shell.env`
 
-#### 도구 이벤트
+#### Tool Events
 
 - `tool.execute.after`
 - `tool.execute.before`
 
-#### TUI 이벤트
+## Examples
 
-- `tui.prompt.append`
-- `tui.command.execute`
-- `tui.toast.show`
+Here are some examples of plugins you can use to extend codeplane.
 
 ---
 
-## 예제
+### Send notifications
 
-codeplane를 확장하기 위해 사용할 수 있는 플러그인 예제입니다.
-
----
-
-### 알림 보내기
-
-특정 이벤트가 발생할 때 알림을 전송:
+Send notifications when certain events occur:
 
 ```js title=".codeplane/plugins/notification.js"
 export const NotificationPlugin = async ({ project, client, $, directory, worktree }) => {
@@ -231,17 +224,13 @@ export const NotificationPlugin = async ({ project, client, $, directory, worktr
 }
 ```
 
-macOS에서 AppleScript를 실행하기 위해 `osascript`를 사용하고 있습니다. 여기서는 알림을 보내는 데 사용합니다.
-
-:::note
-codeplane 데스크톱 앱을 사용하는 경우 응답이 준비되어 있거나 세션 오류가 있을 때 시스템 알림을 자동으로 보낼 수 있습니다.
-:::
+We are using `osascript` to run AppleScript on macOS. Here we are using it to send notifications.
 
 ---
 
-### .env 보호
+### .env protection
 
-codeplane가 `.env` 파일을 읽지 못하도록 방지:
+Prevent codeplane from reading `.env` files:
 
 ```javascript title=".codeplane/plugins/env-protection.js"
 export const EnvProtection = async ({ project, client, $, directory, worktree }) => {
@@ -257,9 +246,9 @@ export const EnvProtection = async ({ project, client, $, directory, worktree })
 
 ---
 
-### Inject 환경 변수
+### Inject environment variables
 
-모든 shell 실행(AI 도구 및 사용자 terminal)에 환경 변수 주입:
+Inject environment variables into all shell execution (AI tools and user terminals):
 
 ```javascript title=".codeplane/plugins/inject-env.js"
 export const InjectEnvPlugin = async () => {
@@ -274,9 +263,9 @@ export const InjectEnvPlugin = async () => {
 
 ---
 
-### 사용자 정의 도구
+### Custom tools
 
-플러그인은 codeplane에 사용자 정의 도구를 추가할 수 있습니다:
+Plugins can also add custom tools to codeplane:
 
 ```ts title=".codeplane/plugins/custom-tools.ts"
 import { type Plugin, tool } from "@codeplane-ai/plugin"
@@ -299,23 +288,23 @@ export const CustomToolsPlugin: Plugin = async (ctx) => {
 }
 ```
 
-`tool` helper는 codeplane가 호출할 수 있는 사용자 정의 도구를 만듭니다. Zod 스키마 함수를 받고 다음을 포함하는 도구 정의를 반환합니다:
+The `tool` helper creates a custom tool that codeplane can call. It takes a Zod schema function and returns a tool definition with:
 
-- `description`: 도구가 하는 일
-- `args`: 도구의 인수에 대한 Zod 스키마
-- `execute`: 도구가 호출될 때 실행되는 함수
+- `description`: What the tool does
+- `args`: Zod schema for the tool's arguments
+- `execute`: Function that runs when the tool is called
 
-사용자 정의 도구는 내장 도구와 함께 codeplane에서 사용할 수 있습니다.
+Your custom tools will be available to codeplane alongside built-in tools.
 
 :::note
-플러그인 도구가 내장 도구와 같은 이름을 사용하면 플러그인 도구가 우선순위를 갖습니다.
+If a plugin tool uses the same name as a built-in tool, the plugin tool takes precedence.
 :::
 
 ---
 
-### 로깅
+### Logging
 
-구조화된 로깅을 위해 `console.log` 대신 `client.app.log()`를 사용하십시오:
+Use `client.app.log()` instead of `console.log` for structured logging:
 
 ```ts title=".codeplane/plugins/my-plugin.ts"
 export const MyPlugin = async ({ client }) => {
@@ -330,13 +319,13 @@ export const MyPlugin = async ({ client }) => {
 }
 ```
 
-레벨: `debug`, `info`, `warn`, `error`. [SDK 문서](https://github.com/devinoldenburg/codeplane)를 참고하세요.
+Levels: `debug`, `info`, `warn`, `error`. See [SDK documentation](https://github.com/devinoldenburg/codeplane) for details.
 
 ---
 
-### Compaction 훅
+### Compaction hooks
 
-세션이 압축될 때 포함되는 컨텍스트를 사용자 지정할 수 있습니다:
+Customize the context included when a session is compacted:
 
 ```ts title=".codeplane/plugins/compaction.ts"
 import type { Plugin } from "@codeplane-ai/plugin"
@@ -358,9 +347,9 @@ Include any state that should persist across compaction:
 }
 ```
 
-`experimental.session.compacting` 훅은 LLM이 연속 요약을 생성하기 전에 실행됩니다. 기본 압축 프롬프트가 놓칠 수 있는 도메인별 컨텍스트를 주입하는 데 사용하세요.
+The `experimental.session.compacting` hook fires before the LLM generates a continuation summary. Use it to inject domain-specific context that the default compaction prompt would miss.
 
-또한 `output.prompt`를 설정하여 압축 프롬프트를 완전히 대체할 수도 있습니다:
+You can also replace the compaction prompt entirely by setting `output.prompt`:
 
 ```ts title=".codeplane/plugins/custom-compaction.ts"
 import type { Plugin } from "@codeplane-ai/plugin"
@@ -385,4 +374,4 @@ Format as a structured prompt that a new agent can use to resume work.
 }
 ```
 
-`output.prompt`가 설정되면 기본 압축 프롬프트를 완전히 대체합니다. 이 경우 `output.context` 배열은 무시됩니다.
+When `output.prompt` is set, it completely replaces the default compaction prompt. The `output.context` array is ignored in this case.

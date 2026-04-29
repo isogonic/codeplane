@@ -1,15 +1,15 @@
 ---
-title: เครือข่าย
-description: กำหนดค่าพร็อกซีและใบรับรองที่กำหนดเอง
+title: Network
+description: Configure proxies and custom certificates.
 ---
 
-CodePlane รองรับตัวแปรสภาพแวดล้อมพร็อกซีมาตรฐานและใบรับรองที่กำหนดเองสำหรับสภาพแวดล้อมเครือข่ายองค์กร
+CodePlane supports standard proxy environment variables and custom certificates for enterprise network environments.
 
 ---
 
-## พร็อกซี
+## Proxy
 
-CodePlane เคารพตัวแปรสภาพแวดล้อมพร็อกซีมาตรฐาน
+CodePlane respects standard proxy environment variables.
 
 ```bash
 # HTTPS proxy (recommended)
@@ -23,35 +23,35 @@ export NO_PROXY=localhost,127.0.0.1
 ```
 
 :::caution
-TUI สื่อสารกับเซิร์ฟเวอร์ HTTP ในพื้นที่ คุณต้องข้ามพร็อกซีสำหรับการเชื่อมต่อนี้เพื่อป้องกันการกำหนดเส้นทางวนซ้ำ
+The web app communicates with a local HTTP server. You must bypass the proxy for this connection to prevent routing loops.
 :::
 
-คุณสามารถกำหนดค่าพอร์ตของเซิร์ฟเวอร์และชื่อโฮสต์ได้โดยใช้ [CLI flags](/docs/cli#run)
+You can configure the server's port and hostname using [CLI flags](/docs/cli#run).
 
 ---
 
-### การยืนยันตัวตน
+### Authenticate
 
-หากพร็อกซีของคุณต้องการการรับรองความถูกต้องขั้นพื้นฐาน ให้ใส่ข้อมูลรับรองใน URL
+If your proxy requires basic authentication, include credentials in the URL.
 
 ```bash
 export HTTPS_PROXY=http://username:password@proxy.example.com:8080
 ```
 
 :::caution
-หลีกเลี่ยงรหัสผ่านฮาร์ดโค้ด ใช้ตัวแปรสภาพแวดล้อมหรือที่จัดเก็บข้อมูลรับรองที่ปลอดภัย
+Avoid hardcoding passwords. Use environment variables or secure credential storage.
 :::
 
-สำหรับพร็อกซีที่ต้องการการรับรองความถูกต้องขั้นสูง เช่น NTLM หรือ Kerberos ให้พิจารณาใช้เกตเวย์ LLM ที่รองรับวิธีการตรวจสอบความถูกต้องของคุณ
+For proxies requiring advanced authentication like NTLM or Kerberos, consider using an LLM Gateway that supports your authentication method.
 
 ---
 
-## ใบรับรองที่กำหนดเอง
+## Custom certificates
 
-หากองค์กรของคุณใช้ CA แบบกำหนดเองสำหรับการเชื่อมต่อ HTTPS ให้กำหนดค่า CodePlane ให้เชื่อถือ
+If your enterprise uses custom CAs for HTTPS connections, configure CodePlane to trust them.
 
 ```bash
 export NODE_EXTRA_CA_CERTS=/path/to/ca-cert.pem
 ```
 
-ซึ่งใช้ได้กับทั้งการเชื่อมต่อพร็อกซีและการเข้าถึง API โดยตรง
+This works for both proxy connections and direct API access.

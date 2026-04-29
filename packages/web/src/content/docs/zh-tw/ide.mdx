@@ -1,48 +1,48 @@
 ---
 title: IDE
-description: 適用於 VS Code、Cursor 及其他 IDE 的 CodePlane 擴充功能
+description: The CodePlane extension for VS Code, Cursor, and other IDEs
 ---
 
-CodePlane 可與 VS Code、Cursor 或任何支援終端機的 IDE 整合。只需在終端機中執行 `codeplane` 即可開始使用。
-
----
-
-## 用法
-
-- **快速啟動**：使用 `Cmd+Esc`（Mac）或 `Ctrl+Esc`（Windows/Linux）在分割終端機視圖中開啟 CodePlane，如果已有終端機工作階段正在執行，則會自動聚焦到該工作階段。
-- **新建工作階段**：使用 `Cmd+Shift+Esc`（Mac）或 `Ctrl+Shift+Esc`（Windows/Linux）啟動新的 CodePlane 終端機工作階段，即使已有工作階段在執行也會新建。您也可以點選介面中的 CodePlane 按鈕。
-- **上下文感知**：自動將當前選取內容或分頁共享給 CodePlane。
-- **檔案參照快捷鍵**：使用 `Cmd+Option+K`（Mac）或 `Alt+Ctrl+K`（Linux/Windows）插入檔案參照。例如 `@File#L37-42`。
+CodePlane integrates with VS Code, Cursor, or any IDE that supports opening a local web app. Just run `codeplane` in the terminal to get started.
 
 ---
 
-## 安裝
+## Usage
 
-在 VS Code 及其常見分支（如 Cursor、Windsurf、VSCodium）上安裝 CodePlane：
-
-1. 開啟 VS Code
-2. 開啟整合終端機
-3. 執行 `codeplane`——擴充功能將自動安裝
-
-如果您希望在 TUI 中執行 `/editor` 或 `/export` 時使用自己的 IDE，需要設定 `export EDITOR="code --wait"`。[了解更多](/docs/tui/#editor-setup)。
+- **Quick Launch**: Use `Cmd+Esc` (Mac) or `Ctrl+Esc` (Windows/Linux) to open CodePlane.
+- **New Session**: Use `Cmd+Shift+Esc` (Mac) or `Ctrl+Shift+Esc` (Windows/Linux) to start a new CodePlane session. You can also click the CodePlane button in the UI.
+- **Context Awareness**: Automatically share your current selection or tab with CodePlane.
+- **File Reference Shortcuts**: Use `Cmd+Option+K` (Mac) or `Alt+Ctrl+K` (Linux/Windows) to insert file references. For example, `@File#L37-42`.
 
 ---
 
-### 手動安裝
+## Installation
 
-在擴充功能商店中搜尋 **CodePlane**，然後點選 **Install**。
+To install CodePlane on VS Code and popular forks like Cursor, Windsurf, VSCodium:
+
+1. Open VS Code
+2. Open the integrated terminal
+3. Run `codeplane` - the extension installs automatically
+
+To use VS Code as the editor for file-opening actions, set `export EDITOR="code --wait"`.
 
 ---
 
-### 疑難排解
+### Manual Install
 
-如果擴充功能未能自動安裝：
+Search for **CodePlane** in the Extension Marketplace and click **Install**.
 
-- 確保您是在整合終端機中執行的 `codeplane`。
-- 確認您的 IDE 對應的 CLI 指令已安裝：
-  - VS Code：`code` 指令
-  - Cursor：`cursor` 指令
-  - Windsurf：`windsurf` 指令
-  - VSCodium：`codium` 指令
-  - 如果未安裝，請按 `Cmd+Shift+P`（Mac）或 `Ctrl+Shift+P`（Windows/Linux），搜尋「Shell Command: Install 'code' command in PATH」（或您的 IDE 對應的指令）
-- 確保 VS Code 有權限安裝擴充功能
+---
+
+### Troubleshooting
+
+If the extension fails to install automatically:
+
+- Ensure you’re running `codeplane` in the integrated terminal.
+- Confirm the CLI for your IDE is installed:
+  - For VS Code: `code` command
+  - For Cursor: `cursor` command
+  - For Windsurf: `windsurf` command
+  - For VSCodium: `codium` command
+  - If not, run `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux) and search for "Shell Command: Install 'code' command in PATH" (or the equivalent for your IDE)
+- Ensure VS Code has permission to install extensions

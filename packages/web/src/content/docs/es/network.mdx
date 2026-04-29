@@ -1,15 +1,15 @@
 ---
-title: Red
-description: Configure proxies y certificados personalizados.
+title: Network
+description: Configure proxies and custom certificates.
 ---
 
-CodePlane admite variables de entorno de proxy estándar y certificados personalizados para entornos de red empresarial.
+CodePlane supports standard proxy environment variables and custom certificates for enterprise network environments.
 
 ---
 
 ## Proxy
 
-CodePlane respeta las variables de entorno de proxy estándar.
+CodePlane respects standard proxy environment variables.
 
 ```bash
 # HTTPS proxy (recommended)
@@ -23,35 +23,35 @@ export NO_PROXY=localhost,127.0.0.1
 ```
 
 :::caution
-El TUI se comunica con un servidor HTTP local. Debe omitir el proxy para esta conexión para evitar bucles de enrutamiento.
+The web app communicates with a local HTTP server. You must bypass the proxy for this connection to prevent routing loops.
 :::
 
-Puede configurar el puerto y el nombre de host del servidor usando [CLI flags](/docs/cli#run).
+You can configure the server's port and hostname using [CLI flags](/docs/cli#run).
 
 ---
 
-### Autenticación
+### Authenticate
 
-Si su proxy requiere autenticación básica, incluya las credenciales en la URL.
+If your proxy requires basic authentication, include credentials in the URL.
 
 ```bash
 export HTTPS_PROXY=http://username:password@proxy.example.com:8080
 ```
 
 :::caution
-Evite codificar contraseñas. Utilice variables de entorno o almacenamiento seguro de credenciales.
+Avoid hardcoding passwords. Use environment variables or secure credential storage.
 :::
 
-Para servidores proxy que requieren autenticación avanzada como NTLM o Kerberos, considere usar una puerta de enlace LLM que admita su método de autenticación.
+For proxies requiring advanced authentication like NTLM or Kerberos, consider using an LLM Gateway that supports your authentication method.
 
 ---
 
-## Certificados personalizados
+## Custom certificates
 
-Si su empresa utiliza CA personalizadas para conexiones HTTPS, configure CodePlane para confiar en ellas.
+If your enterprise uses custom CAs for HTTPS connections, configure CodePlane to trust them.
 
 ```bash
 export NODE_EXTRA_CA_CERTS=/path/to/ca-cert.pem
 ```
 
-Esto funciona tanto para conexiones proxy como para acceso directo a API.
+This works for both proxy connections and direct API access.

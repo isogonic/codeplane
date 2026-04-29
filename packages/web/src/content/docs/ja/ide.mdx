@@ -1,48 +1,48 @@
 ---
 title: IDE
-description: VS Code、Cursor、およびその他の IDE 用の CodePlane 拡張機能
+description: The CodePlane extension for VS Code, Cursor, and other IDEs
 ---
 
-CodePlane は、VS Code、Cursor、またはターミナルをサポートする任意の IDE と統合します。開始するには、ターミナルで `codeplane` を実行するだけです。
-
----
-
-## 使用法
-
-- **クイック起動**: `Cmd+Esc` (Mac) または `Ctrl+Esc` (Windows/Linux) を使用して、分割ターミナルビューで CodePlane を開くか、既存のターミナルセッションが既に実行されている場合はそれにフォーカスします。
-- **新しいセッション**: すでに開いている場合でも、`Cmd+Shift+Esc` (Mac) または `Ctrl+Shift+Esc` (Windows/Linux) を使用して、新しい CodePlane ターミナルセッションを開始します。 UI の [CodePlane] ボタンをクリックすることもできます。
-- **コンテキスト認識**: 現在の選択またはタブを CodePlane と自動的に共有します。
-- **ファイル参照のショートカット**: ファイル参照を挿入するには、`Cmd+Option+K` (Mac) または `Alt+Ctrl+K` (Linux/Windows) を使用します。たとえば、`@File#L37-42`。
+CodePlane integrates with VS Code, Cursor, or any IDE that supports opening a local web app. Just run `codeplane` in the terminal to get started.
 
 ---
 
-## インストール
+## Usage
 
-CodePlane を VS Code および Cursor、Windsurf、VSCodium などの一般的なフォークにインストールするには:
-
-1. VS Code を開く
-2. 統合ターミナルを開きます
-3. `codeplane` を実行します - 拡張機能は自動的にインストールされます
-
-一方、TUI から `/editor` または `/export` を実行するときに独自の IDE を使用したい場合は、`export EDITOR="code --wait"` を設定する必要があります。 [詳細はこちら](/docs/tui/#editor-setup)。
+- **Quick Launch**: Use `Cmd+Esc` (Mac) or `Ctrl+Esc` (Windows/Linux) to open CodePlane.
+- **New Session**: Use `Cmd+Shift+Esc` (Mac) or `Ctrl+Shift+Esc` (Windows/Linux) to start a new CodePlane session. You can also click the CodePlane button in the UI.
+- **Context Awareness**: Automatically share your current selection or tab with CodePlane.
+- **File Reference Shortcuts**: Use `Cmd+Option+K` (Mac) or `Alt+Ctrl+K` (Linux/Windows) to insert file references. For example, `@File#L37-42`.
 
 ---
 
-### 手動インストール
+## Installation
 
-Extension Marketplace で **CodePlane** を検索し、**インストール** をクリックします。
+To install CodePlane on VS Code and popular forks like Cursor, Windsurf, VSCodium:
+
+1. Open VS Code
+2. Open the integrated terminal
+3. Run `codeplane` - the extension installs automatically
+
+To use VS Code as the editor for file-opening actions, set `export EDITOR="code --wait"`.
 
 ---
 
-### トラブルシューティング
+### Manual Install
 
-拡張機能が自動的にインストールされない場合:
+Search for **CodePlane** in the Extension Marketplace and click **Install**.
 
-- 統合ターミナルで `codeplane` を実行していることを確認してください。
-- IDE の CLI がインストールされていることを確認します。
-  - VS Code の場合: `code` コマンド
-  - Cursor の場合: `cursor` コマンド
-  - Windsurf の場合: `windsurf` コマンド
-  - VSCodium の場合: `codium` コマンド
-  - そうでない場合は、`Cmd+Shift+P` (Mac) または `Ctrl+Shift+P` (Windows/Linux) を実行し、「Shell Command: Install 'code' command in PATH」(または IDE の同等のコマンド) を検索します。
-- VS Code に拡張機能をインストールする権限があることを確認してください
+---
+
+### Troubleshooting
+
+If the extension fails to install automatically:
+
+- Ensure you’re running `codeplane` in the integrated terminal.
+- Confirm the CLI for your IDE is installed:
+  - For VS Code: `code` command
+  - For Cursor: `cursor` command
+  - For Windsurf: `windsurf` command
+  - For VSCodium: `codium` command
+  - If not, run `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux) and search for "Shell Command: Install 'code' command in PATH" (or the equivalent for your IDE)
+- Ensure VS Code has permission to install extensions
