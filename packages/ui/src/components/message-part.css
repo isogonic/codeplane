@@ -571,6 +571,85 @@
   }
 }
 
+[data-component="bash-interactive"] {
+  width: 100%;
+  border: 1px solid var(--border-weak-base);
+  border-radius: 8px;
+  background: var(--surface-base);
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+  -webkit-user-select: text;
+  user-select: text;
+
+  &:hover {
+    border-color: var(--border-strong-base, var(--border-weak-base));
+  }
+
+  [data-slot="bash-scroll"] {
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 360px;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
+  }
+
+  [data-slot="bash-pre"] {
+    margin: 0;
+    padding: 12px;
+  }
+
+  [data-slot="bash-pre"] code {
+    font-family: var(--font-family-mono);
+    font-feature-settings: var(--font-family-mono--font-feature-settings);
+    font-size: 13px;
+    line-height: var(--line-height-large);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  [data-slot="bash-interactive-input"] {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-top: 1px solid var(--border-weak-base);
+    background: var(--background-base);
+  }
+
+  [data-slot="bash-interactive-prompt"] {
+    font-family: var(--font-family-mono);
+    color: var(--text-weak);
+    font-size: 13px;
+  }
+
+  [data-slot="bash-interactive-input"] input {
+    flex: 1 1 auto;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: var(--font-family-mono);
+    font-size: 13px;
+    color: var(--text-strong);
+  }
+
+  [data-slot="bash-interactive-input"] button {
+    border: 1px solid var(--border-weak-base);
+    border-radius: 4px;
+    background: transparent;
+    padding: 2px 8px;
+    font-size: 11px;
+    color: var(--text-weak);
+    cursor: pointer;
+  }
+
+  [data-slot="bash-interactive-input"] button:hover {
+    border-color: var(--border-strong-base, var(--border-weak-base));
+    color: var(--text-base);
+  }
+}
+
 [data-component="edit-trigger"],
 [data-component="write-trigger"] {
   display: flex;
