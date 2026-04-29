@@ -18,6 +18,7 @@ import { useServer } from "./server"
 type NotificationBase = {
   directory?: string
   session?: string
+  sessionTitle?: string
   metadata?: unknown
   time: number
   viewed: boolean
@@ -245,11 +246,16 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
           viewed: viewedInCurrentSession(directory, sessionID),
           type: "turn-complete",
           session: sessionID,
+          sessionTitle: session.title,
         })
 
         const href = `/${base64Encode(directory)}/session/${sessionID}`
         if (settings.notifications.agent()) {
-          void platform.notify(language.t("notification.session.responseReady.title"), session.title ?? sessionID, href)
+          void platform.notify(
+            language.t("notification.session.responseReady.title"),
+            session.title ?? language.t("notification.session.untitled"),
+            href,
+          )
         }
       })
     }
@@ -275,6 +281,7 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
           viewed: viewedInCurrentSession(directory, sessionID),
           type: "error",
           session: sessionID ?? "global",
+          sessionTitle: session?.title,
           error,
         })
         const description =

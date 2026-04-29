@@ -290,28 +290,18 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
         <div class="flex min-w-0 items-center gap-1">
           <div class="min-w-0 flex-1">
             <Show
-              when={props.mobile}
-              fallback={
-                <Tooltip placement="right" value={previewValue()} gutter={10} class="min-w-0 w-full" contentClass="p-3">
-                  {item}
-                </Tooltip>
-              }
+              when={!props.mobile || tooltip()}
+              fallback={item}
             >
-              <Show
-                when={!tooltip()}
-                fallback={
-                  <Tooltip
-                    placement="bottom"
-                    value={sessionTitle(props.session.title)}
-                    gutter={10}
-                    class="min-w-0 w-full"
-                  >
-                    {item}
-                  </Tooltip>
-                }
+              <Tooltip
+                placement={props.mobile ? "bottom" : "right"}
+                value={previewValue()}
+                gutter={10}
+                class="min-w-0 w-full"
+                contentClass="p-3"
               >
                 {item}
-              </Show>
+              </Tooltip>
             </Show>
           </div>
 

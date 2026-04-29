@@ -23,12 +23,12 @@ export default function Notifications() {
   const projectName = (item: AppNotification) => (item.directory ? getFilename(item.directory) : "codeplane")
   const sessionName = (item: AppNotification) => {
     if (!item.directory || !item.session || item.session === "global") return projectName(item)
-    return (
-      sessionTitle(
-        globalSync.child(item.directory, { bootstrap: false })[0].session.find((session) => session.id === item.session)
-          ?.title ?? item.session,
-      ) ?? item.session
-    )
+    const liveTitle = globalSync
+      .child(item.directory, { bootstrap: false })[0]
+      .session.find((session) => session.id === item.session)?.title
+    const title = sessionTitle(liveTitle ?? item.sessionTitle ?? "")
+    if (title) return title
+    return language.t("notification.session.untitled")
   }
   const errorDescription = (item: AppNotification) => {
     if (item.type !== "error") {

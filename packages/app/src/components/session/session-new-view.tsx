@@ -57,12 +57,14 @@ export function NewSessionView(props: NewSessionViewProps) {
             <div class="text-20-medium text-text-strong">{language.t("session.new.title")}</div>
           </div>
           <div class="w-full flex flex-col gap-4 items-center">
-            <div class="flex items-start justify-center gap-3 min-h-5">
-              <div class="text-12-medium text-text-weak select-text leading-5 min-w-0 max-w-160 break-words text-center">
-                {getDirectory(projectRoot())}
-                <span class="text-text-strong">{getFilename(projectRoot())}</span>
+            <Show when={getFilename(projectRoot()) || getDirectory(projectRoot()).replace(/^\/+$/, "")}>
+              <div class="flex items-start justify-center gap-3 min-h-5">
+                <div class="text-12-medium text-text-weak select-text leading-5 min-w-0 max-w-160 break-words text-center">
+                  {getDirectory(projectRoot())}
+                  <span class="text-text-strong">{getFilename(projectRoot())}</span>
+                </div>
               </div>
-            </div>
+            </Show>
             <div class="flex items-start justify-center gap-1.5 min-h-5">
               <Icon name="branch" size="small" class="mt-0.5 shrink-0" />
               <div class="text-12-medium text-text-weak select-text leading-5 min-w-0 max-w-160 break-words text-center">

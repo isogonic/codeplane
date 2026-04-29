@@ -1,6 +1,7 @@
 import { getFilename } from "@codeplane-ai/shared/util/path"
 import { type Session } from "@codeplane-ai/sdk/v2/client"
 import { directoryContains, directoryKey } from "@/context/global-sync/utils"
+import { isCronSessionInfo } from "./sidebar-cron-helpers"
 
 type SessionStore = {
   session?: Session[]
@@ -28,7 +29,8 @@ const sessionInDirectory = (session: Session, directory: string) => directoryCon
 const isRootVisibleSession = (session: Session, directories: string[]) =>
   directories.some((directory) => sessionInDirectory(session, directory)) &&
   !session.parentID &&
-  !session.time?.archived
+  !session.time?.archived &&
+  !isCronSessionInfo(session as Session & { cronRunID?: string })
 
 export const roots = (store: SessionStore, directory?: string) => {
   const directories = [directory, store.path.directory]

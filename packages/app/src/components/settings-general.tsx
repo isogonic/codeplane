@@ -1,11 +1,14 @@
-import { Component, Show, createMemo, onMount, type JSX } from "solid-js"
+import { Component, Show, createMemo, createResource, onMount, type JSX } from "solid-js"
+import { Button } from "@codeplane-ai/ui/button"
 import { Select } from "@codeplane-ai/ui/select"
 import { Switch } from "@codeplane-ai/ui/switch"
 import { TextField } from "@codeplane-ai/ui/text-field"
 import { useTheme, type ColorScheme } from "@codeplane-ai/ui/theme/context"
 import { useParams } from "@solidjs/router"
+import { useGlobalSDK } from "@/context/global-sdk"
 import { useLanguage } from "@/context/language"
 import { usePermission } from "@/context/permission"
+import { useUpdates } from "@/context/updates"
 import {
   monoDefault,
   monoFontFamily,
@@ -67,6 +70,15 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
   const permission = usePermission()
   const params = useParams()
   const settings = useSettings()
+  const globalSDK = useGlobalSDK()
+  const updates = useUpdates()
+
+  type VersionInfo = { current: string; latest: string | null; hasUpdate: boolean; method: string }
+  const [versionInfo, { refetch: refetchVersion }] = createResource<VersionInfo>(async () => {
+    const response = await fetch(`${globalSDK.url}/global/version`)
+    if (!response.ok) throw new Error(`Status ${response.status}`)
+    return response.json() as Promise<VersionInfo>
+  })
 
   onMount(() => {
     void theme.loadThemes()
@@ -557,6 +569,77 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
     </div>
   )
 
+  const versionDescription = () => {
+    const info = versionInfo()
+    if (versionInfo.loading && !info) return language.t("settings.general.row.version.descriptionLoading")
+    if (versionInfo.error) return language.t("settings.general.row.version.descriptionError")
+    if (!info) return language.t("settings.general.row.version.descriptionLoading")
+    const current =
+      info.current === "local" || info.current === "dev"
+        ? language.t("settings.general.row.version.developmentBuild")
+        : info.current
+    if (info.hasUpdate && info.latest)
+      return language.t("settings.general.row.version.descriptionHasUpdate", {
+        current,
+        latest: info.latest,
+      })
+    if (info.method === "unknown")
+      return language.t("settings.general.row.version.descriptionUnknownMethod", { current })
+    return language.t("settings.general.row.version.descriptionUpToDate", { current })
+  }
+
+  const UpdatesSection = () => (
+    <div class="flex flex-col gap-1">
+      <h3 class="text-14-medium text-text-strong pb-2">{language.t("settings.general.section.updates")}</h3>
+
+      <SettingsList>
+        <SettingsRow
+          title={language.t("settings.general.row.version.title")}
+          description={versionDescription()}
+        >
+          <div data-action="settings-check-update" class="flex gap-2">
+            <Show
+              when={versionInfo()?.hasUpdate && versionInfo()?.method !== "unknown"}
+              fallback={
+                <Button
+                  type="button"
+                  size="small"
+                  variant="secondary"
+                  onClick={(e: MouseEvent) => {
+                    e.preventDefault()
+                    void refetchVersion()
+                  }}
+                  disabled={versionInfo.loading || updates.isUpgrading()}
+                >
+                  {versionInfo.loading
+                    ? language.t("settings.general.row.version.action.checking")
+                    : language.t("settings.general.row.version.action.check")}
+                </Button>
+              }
+            >
+              <Button
+                type="button"
+                size="small"
+                variant="primary"
+                icon="download"
+                onClick={async (e: MouseEvent) => {
+                  e.preventDefault()
+                  await updates.startUpgrade(versionInfo()?.latest ?? undefined)
+                  await refetchVersion()
+                }}
+                disabled={updates.isUpgrading()}
+              >
+                {updates.isUpgrading()
+                  ? language.t("settings.general.row.version.action.updating")
+                  : language.t("settings.general.row.version.action.update")}
+              </Button>
+            </Show>
+          </div>
+        </SettingsRow>
+      </SettingsList>
+    </div>
+  )
+
   return (
     <div
       classList={{
@@ -582,19 +665,7 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
 
         <SoundsSection />
 
-        <SettingsList>
-          <SettingsRow
-            title={language.t("settings.general.row.releaseNotes.title")}
-            description={language.t("settings.general.row.releaseNotes.description")}
-          >
-            <div data-action="settings-release-notes">
-              <Switch
-                checked={settings.general.releaseNotes()}
-                onChange={(checked) => settings.general.setReleaseNotes(checked)}
-              />
-            </div>
-          </SettingsRow>
-        </SettingsList>
+        <UpdatesSection />
 
         <Show when={import.meta.env.VITE_CODEPLANE_CHANNEL === "beta"}>
           <AdvancedSection />

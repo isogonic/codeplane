@@ -41,6 +41,7 @@ import { PromptProvider } from "@/context/prompt"
 import { ServerConnection, ServerProvider, serverName, useServer } from "@/context/server"
 import { SettingsProvider } from "@/context/settings"
 import { TerminalProvider } from "@/context/terminal"
+import { UpdatesProvider } from "@/context/updates"
 import DirectoryLayout from "@/pages/directory-layout"
 import Layout from "@/pages/layout"
 import CronRoute from "@/pages/cron"
@@ -102,13 +103,15 @@ function AppShellProviders(props: ParentProps) {
       <PermissionProvider>
         <LayoutProvider>
           <NotificationProvider>
-            <ModelsProvider>
-              <CommandProvider>
-                <HighlightsProvider>
-                  <Layout>{props.children}</Layout>
-                </HighlightsProvider>
-              </CommandProvider>
-            </ModelsProvider>
+            <UpdatesProvider>
+              <ModelsProvider>
+                <CommandProvider>
+                  <HighlightsProvider>
+                    <Layout>{props.children}</Layout>
+                  </HighlightsProvider>
+                </CommandProvider>
+              </ModelsProvider>
+            </UpdatesProvider>
           </NotificationProvider>
         </LayoutProvider>
       </PermissionProvider>

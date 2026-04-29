@@ -392,7 +392,7 @@ export function DialogSelectFile(props: { mode?: DialogSelectFileMode; onOpenFil
           autofocus: true,
           hideIcon: true,
         }}
-        emptyMessage={language.t("palette.empty")}
+        emptyMessage={language.t(filesOnly() ? "palette.empty.filesPrompt" : "palette.empty")}
         loadingMessage={language.t("common.loading")}
         items={items}
         key={(item) => item.id}

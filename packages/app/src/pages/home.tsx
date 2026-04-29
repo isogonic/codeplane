@@ -269,7 +269,8 @@ function ActivityChart(props: {
                         "w-full rounded-sm transition-colors": true,
                         "bg-[color-mix(in_srgb,var(--text-interactive-base)_55%,transparent)] group-hover:bg-text-interactive-base":
                           filled(),
-                        "bg-surface-base group-hover:bg-surface-base-hover": !filled(),
+                        "bg-[color-mix(in_srgb,var(--text-weak)_18%,transparent)] group-hover:bg-[color-mix(in_srgb,var(--text-weak)_30%,transparent)]":
+                          !filled(),
                       }}
                       style={{ height: barHeight(bucket.count) }}
                     />
