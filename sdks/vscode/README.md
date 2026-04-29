@@ -8,10 +8,10 @@ This extension requires the [codeplane CLI](https://github.com/devinoldenburg/co
 
 ## Features
 
-- **Quick Launch**: Use `Cmd+Esc` (Mac) or `Ctrl+Esc` (Windows/Linux) to open codeplane in a split terminal view, or focus an existing terminal session if one is already running.
-- **New Session**: Use `Cmd+Shift+Esc` (Mac) or `Ctrl+Shift+Esc` (Windows/Linux) to start a new codeplane terminal session, even if one is already open. You can also click the codeplane button in the UI.
-- **Context Awareness**: Automatically share your current selection or tab with codeplane.
-- **File Reference Shortcuts**: Use `Cmd+Option+K` (Mac) or `Alt+Ctrl+K` (Linux/Windows) to insert file references. For example, `@File#L37-42`.
+- **Quick Launch**: Use `Cmd+Esc` (Mac) or `Ctrl+Esc` (Windows/Linux) to open the CodePlane web app for your current workspace.
+- **New Server**: Use `Cmd+Shift+Esc` (Mac) or `Ctrl+Shift+Esc` (Windows/Linux) to start a fresh local CodePlane web server.
+- **Context Awareness**: Automatically open CodePlane with your current selection or tab as prompt context.
+- **File Reference Shortcuts**: Use `Cmd+Option+K` (Mac) or `Alt+Ctrl+K` (Linux/Windows) to open CodePlane with a file reference like `@File#L37-42`.
 
 ## Support
 
@@ -25,7 +25,7 @@ This is an early release. If you encounter issues or have feedback, please creat
 
 #### Making Changes
 
-`tsc` and `esbuild` watchers run automatically during debugging (visible in the Terminal tab). Changes to the extension are automatically rebuilt in the background.
+`tsc` and `esbuild` watchers run automatically during debugging. Changes to the extension are automatically rebuilt in the background.
 
 To test your changes:
 

@@ -9,7 +9,7 @@
 - `CodePlane` (preserve casing in prose; keep `codeplane` only when it is part of commands, package names, paths, or code)
 - `CodePlane Zen`
 - `CodePlane CLI`
-- `CLI`, `TUI`, `MCP`, `OAuth`
+- `CLI`, `MCP`, `OAuth`
 - `Model Context Protocol` (prefer the English expansion when introducing `MCP`)
 
 ## Preferred Terms

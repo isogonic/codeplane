@@ -1,137 +1,176 @@
-// This method is called when your extension is deactivated
-export function deactivate() {}
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import * as vscode from "vscode";
 
-import * as vscode from "vscode"
+type ServerHandle = {
+  port: number
+  url: string
+  cwd?: string
+  process: ChildProcessWithoutNullStreams
+  output: vscode.OutputChannel
+}
 
-const TERMINAL_NAME = "codeplane"
+const servers = new Set<ServerHandle>();
+let activeServer: ServerHandle | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
-  const openNewTerminalDisposable = vscode.commands.registerCommand("codeplane.openNewTerminal", async () => {
-    await openTerminal()
-  })
+  context.subscriptions.push(
+    vscode.commands.registerCommand("codeplane.openWebApp", () => run(() => openWebApp({ reuse: true }))),
+    vscode.commands.registerCommand("codeplane.openNewWebApp", () => run(() => openWebApp({ reuse: false }))),
+    vscode.commands.registerCommand("codeplane.openWebAppWithFileReference", () =>
+      run(async () => {
+        const fileRef = getActiveFile();
+        await openWebApp({ reuse: true, prompt: fileRef ? `In ${fileRef}` : undefined });
+      }),
+    ),
+    { dispose: stopServers },
+  );
+}
 
-  const openTerminalDisposable = vscode.commands.registerCommand("codeplane.openTerminal", async () => {
-    // An codeplane terminal already exists => focus it
-    const existingTerminal = vscode.window.terminals.find((t) => t.name === TERMINAL_NAME)
-    if (existingTerminal) {
-      existingTerminal.show()
-      return
-    }
+export function deactivate() {
+  stopServers();
+}
 
-    await openTerminal()
-  })
+function run(task: () => Promise<void>) {
+  void task().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    void vscode.window.showErrorMessage(`CodePlane failed to open: ${message}`);
+  });
+}
 
-  let addFilepathDisposable = vscode.commands.registerCommand("codeplane.addFilepathToTerminal", async () => {
-    const fileRef = getActiveFile()
-    if (!fileRef) {
-      return
-    }
+async function openWebApp(input: { reuse: boolean; prompt?: string }) {
+  const cwd = getWorkspaceDirectory();
+  const server = await ensureServer(input.reuse, cwd);
+  await vscode.env.openExternal(vscode.Uri.parse(webUrl(server, cwd, input.prompt)));
+}
 
-    const terminal = vscode.window.activeTerminal
-    if (!terminal) {
-      return
-    }
-
-    if (terminal.name === TERMINAL_NAME) {
-      // @ts-ignore
-      const port = terminal.creationOptions.env?.["_EXTENSION_CODEPLANE_PORT"]
-      port ? await appendPrompt(parseInt(port), fileRef) : terminal.sendText(fileRef, false)
-      terminal.show()
-    }
-  })
-
-  context.subscriptions.push(openNewTerminalDisposable, openTerminalDisposable, addFilepathDisposable)
-
-  async function openTerminal() {
-    // Create a new terminal in split screen
-    const port = Math.floor(Math.random() * (65535 - 16384 + 1)) + 16384
-    const terminal = vscode.window.createTerminal({
-      name: TERMINAL_NAME,
-      iconPath: {
-        light: vscode.Uri.file(context.asAbsolutePath("images/button-dark.svg")),
-        dark: vscode.Uri.file(context.asAbsolutePath("images/button-light.svg")),
-      },
-      location: {
-        viewColumn: vscode.ViewColumn.Beside,
-        preserveFocus: false,
-      },
-      env: {
-        _EXTENSION_CODEPLANE_PORT: port.toString(),
-        CODEPLANE_CALLER: "vscode",
-      },
-    })
-
-    terminal.show()
-    terminal.sendText(`codeplane --port ${port}`)
-
-    const fileRef = getActiveFile()
-    if (!fileRef) {
-      return
-    }
-
-    // Wait for the terminal to be ready
-    let tries = 10
-    let connected = false
-    do {
-      await new Promise((resolve) => setTimeout(resolve, 200))
-      try {
-        await fetch(`http://localhost:${port}/app`)
-        connected = true
-        break
-      } catch {}
-
-      tries--
-    } while (tries > 0)
-
-    // If connected, append the prompt to the terminal
-    if (connected) {
-      await appendPrompt(port, `In ${fileRef}`)
-      terminal.show()
-    }
+async function ensureServer(reuse: boolean, cwd?: string) {
+  if (reuse && activeServer && activeServer.cwd === cwd && isRunning(activeServer)) {
+    return activeServer;
   }
 
-  async function appendPrompt(port: number, text: string) {
-    await fetch(`http://localhost:${port}/tui/append-prompt`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ text }),
-    })
+  const server = startServer(cwd);
+  activeServer = server;
+  await waitForServer(server);
+  return server;
+}
+
+function startServer(cwd?: string): ServerHandle {
+  const port = Math.floor(Math.random() * (65535 - 16384 + 1)) + 16384;
+  const output = vscode.window.createOutputChannel(`CodePlane ${port}`);
+  const proc = spawn("codeplane", ["serve", "--hostname=127.0.0.1", `--port=${port}`], {
+    cwd,
+    env: {
+      ...process.env,
+      CODEPLANE_CALLER: "vscode",
+    },
+    shell: process.platform === "win32",
+  });
+  const server = {
+    port,
+    cwd,
+    process: proc,
+    output,
+    url: `http://127.0.0.1:${port}`,
+  };
+
+  servers.add(server);
+  proc.stdout.on("data", (chunk) => output.append(chunk.toString()));
+  proc.stderr.on("data", (chunk) => output.append(chunk.toString()));
+  proc.once("error", (error) => {
+    output.appendLine(`Failed to start CodePlane: ${error.message}`);
+    output.show(true);
+  });
+  proc.once("exit", (code, signal) => {
+    servers.delete(server);
+    if (activeServer === server) {
+      activeServer = undefined;
+    }
+    output.appendLine(`CodePlane server exited with ${signal ?? code ?? "unknown"}`);
+  });
+
+  return server;
+}
+
+async function waitForServer(server: ServerHandle) {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    if (!isRunning(server)) {
+      throw new Error("server exited before becoming ready");
+    }
+    const healthy = await fetch(`${server.url}/global/health`)
+      .then((response) => response.ok)
+      .catch(() => false);
+    if (healthy) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
   }
 
-  function getActiveFile() {
-    const activeEditor = vscode.window.activeTextEditor
-    if (!activeEditor) {
-      return
+  server.output.show(true);
+  throw new Error(`server did not become ready at ${server.url}`);
+}
+
+function isRunning(server: ServerHandle) {
+  return server.process.exitCode === null && !server.process.killed;
+}
+
+function stopServers() {
+  for (const server of servers) {
+    if (isRunning(server)) {
+      server.process.kill();
     }
-
-    const document = activeEditor.document
-    const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri)
-    if (!workspaceFolder) {
-      return
-    }
-
-    // Get the relative path from workspace root
-    const relativePath = vscode.workspace.asRelativePath(document.uri)
-    let filepathWithAt = `@${relativePath}`
-
-    // Check if there's a selection and add line numbers
-    const selection = activeEditor.selection
-    if (!selection.isEmpty) {
-      // Convert to 1-based line numbers
-      const startLine = selection.start.line + 1
-      const endLine = selection.end.line + 1
-
-      if (startLine === endLine) {
-        // Single line selection
-        filepathWithAt += `#L${startLine}`
-      } else {
-        // Multi-line selection
-        filepathWithAt += `#L${startLine}-${endLine}`
-      }
-    }
-
-    return filepathWithAt
+    server.output.dispose();
   }
+  servers.clear();
+  activeServer = undefined;
+}
+
+function webUrl(server: ServerHandle, cwd?: string, prompt?: string) {
+  const url = new URL(server.url);
+  if (cwd) {
+    url.pathname = `/${base64Encode(cwd)}/session`;
+  }
+  if (prompt) {
+    url.searchParams.set("prompt", prompt);
+  }
+  return url.toString();
+}
+
+function base64Encode(value: string) {
+  return Buffer.from(value, "utf8").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
+
+function getWorkspaceDirectory() {
+  const activeEditor = vscode.window.activeTextEditor;
+  if (activeEditor) {
+    const folder = vscode.workspace.getWorkspaceFolder(activeEditor.document.uri);
+    if (folder) {
+      return folder.uri.fsPath;
+    }
+  }
+  return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+}
+
+function getActiveFile() {
+  const activeEditor = vscode.window.activeTextEditor;
+  if (!activeEditor) {
+    return;
+  }
+
+  const workspaceFolder = vscode.workspace.getWorkspaceFolder(activeEditor.document.uri);
+  if (!workspaceFolder) {
+    return;
+  }
+
+  const relativePath = vscode.workspace.asRelativePath(activeEditor.document.uri);
+  const selection = activeEditor.selection;
+  if (selection.isEmpty) {
+    return `@${relativePath}`;
+  }
+
+  const startLine = selection.start.line + 1;
+  const endLine = selection.end.line + 1;
+  if (startLine === endLine) {
+    return `@${relativePath}#L${startLine}`;
+  }
+  return `@${relativePath}#L${startLine}-${endLine}`;
 }

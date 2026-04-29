@@ -6,6 +6,643 @@
     "version": "26.4.28"
   },
   "paths": {
+    "/global/cron": {
+      "get": {
+        "operationId": "cron.list",
+        "summary": "List cron tasks",
+        "description": "List all cron tasks across all projects, optionally filtered by project or directory.",
+        "responses": {
+          "200": {
+            "description": "Cron tasks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CronTask"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "query",
+            "name": "projectID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.list({\n  ...\n})"
+          }
+        ]
+      },
+      "post": {
+        "operationId": "cron.create",
+        "summary": "Create cron task",
+        "description": "Create a new cron task scoped to a project.",
+        "responses": {
+          "200": {
+            "description": "Created cron task",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CronTask"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "projectID": {
+                    "type": "string"
+                  },
+                  "directory": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "prompt": {
+                    "type": "string"
+                  },
+                  "agent": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "schedule": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "cron"
+                          },
+                          "expression": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["kind", "expression"]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "interval"
+                          },
+                          "intervalMs": {
+                            "type": "number"
+                          }
+                        },
+                        "required": ["kind", "intervalMs"]
+                      }
+                    ]
+                  },
+                  "timezone": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "$ref": "#/components/schemas/CronStatus"
+                  },
+                  "timeoutMs": {
+                    "type": "number"
+                  },
+                  "maxRetries": {
+                    "type": "number"
+                  }
+                },
+                "required": ["name", "prompt", "schedule"]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.create({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/global/cron/{taskID}": {
+      "get": {
+        "operationId": "cron.get",
+        "summary": "Get cron task",
+        "responses": {
+          "200": {
+            "description": "Cron task",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CronTask"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "taskID",
+            "schema": {
+              "type": "string",
+              "pattern": "^cron.*"
+            },
+            "required": true
+          }
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.get({\n  ...\n})"
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "cron.update",
+        "summary": "Update cron task",
+        "responses": {
+          "200": {
+            "description": "Updated cron task",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CronTask"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "taskID",
+            "schema": {
+              "type": "string",
+              "pattern": "^cron.*"
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "prompt": {
+                    "type": "string"
+                  },
+                  "agent": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "schedule": {
+                    "$ref": "#/components/schemas/CronSchedule"
+                  },
+                  "timezone": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "status": {
+                    "$ref": "#/components/schemas/CronStatus"
+                  },
+                  "timeoutMs": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "maxRetries": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.update({\n  ...\n})"
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "cron.delete",
+        "summary": "Delete cron task",
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "taskID",
+            "schema": {
+              "type": "string",
+              "pattern": "^cron.*"
+            },
+            "required": true
+          }
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.delete({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/global/cron/{taskID}/status": {
+      "post": {
+        "operationId": "cron.setStatus",
+        "summary": "Set cron task status",
+        "responses": {
+          "200": {
+            "description": "Updated cron task",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CronTask"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "taskID",
+            "schema": {
+              "type": "string",
+              "pattern": "^cron.*"
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "$ref": "#/components/schemas/CronStatus"
+                  }
+                },
+                "required": ["status"]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.setStatus({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/global/cron/{taskID}/trigger": {
+      "post": {
+        "operationId": "cron.trigger",
+        "summary": "Trigger cron task now",
+        "description": "Queue an immediate run for this task, bypassing the schedule.",
+        "responses": {
+          "200": {
+            "description": "Queued run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CronRun"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "taskID",
+            "schema": {
+              "type": "string",
+              "pattern": "^cron.*"
+            },
+            "required": true
+          }
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.trigger({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/global/cron/{taskID}/runs": {
+      "get": {
+        "operationId": "cron.runs.list",
+        "summary": "List runs for a cron task",
+        "responses": {
+          "200": {
+            "description": "Cron runs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CronRun"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "taskID",
+            "schema": {
+              "type": "string",
+              "pattern": "^cron.*"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.runs.list({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/global/cron/runs/{runID}": {
+      "get": {
+        "operationId": "cron.runs.get",
+        "summary": "Get cron run",
+        "responses": {
+          "200": {
+            "description": "Cron run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CronRun"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "runID",
+            "schema": {
+              "type": "string",
+              "pattern": "^crun.*"
+            },
+            "required": true
+          }
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.runs.get({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/global/cron/runs/{runID}/cancel": {
+      "post": {
+        "operationId": "cron.runs.cancel",
+        "summary": "Cancel a cron run",
+        "responses": {
+          "200": {
+            "description": "Cancelled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "runID",
+            "schema": {
+              "type": "string",
+              "pattern": "^crun.*"
+            },
+            "required": true
+          }
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.runs.cancel({\n  ...\n})"
+          }
+        ]
+      }
+    },
     "/global/health": {
       "get": {
         "operationId": "global.health",
@@ -2374,6 +3011,10 @@
                   "workspaceID": {
                     "type": "string",
                     "pattern": "^wrk.*"
+                  },
+                  "cronRunID": {
+                    "type": "string",
+                    "pattern": "^crun.*"
                   }
                 }
               }
@@ -4972,6 +5613,12 @@
                         "$ref": "#/components/schemas/Provider"
                       }
                     },
+                    "catalog": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Provider"
+                      }
+                    },
                     "default": {
                       "type": "object",
                       "propertyNames": {
@@ -4988,7 +5635,7 @@
                       }
                     }
                   },
-                  "required": ["all", "default", "connected"]
+                  "required": ["all", "catalog", "default", "connected"]
                 }
               }
             }
@@ -6390,698 +7037,6 @@
         ]
       }
     },
-    "/tui/append-prompt": {
-      "post": {
-        "operationId": "tui.appendPrompt",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "directory",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "workspace",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "summary": "Append TUI prompt",
-        "description": "Append prompt to the TUI",
-        "responses": {
-          "200": {
-            "description": "Prompt processed successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "boolean"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BadRequestError"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "text": {
-                    "type": "string"
-                  }
-                },
-                "required": ["text"]
-              }
-            }
-          }
-        },
-        "x-codeSamples": [
-          {
-            "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.tui.appendPrompt({\n  ...\n})"
-          }
-        ]
-      }
-    },
-    "/tui/open-help": {
-      "post": {
-        "operationId": "tui.openHelp",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "directory",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "workspace",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "summary": "Open help dialog",
-        "description": "Open the help dialog in the TUI to display user assistance information.",
-        "responses": {
-          "200": {
-            "description": "Help dialog opened successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "boolean"
-                }
-              }
-            }
-          }
-        },
-        "x-codeSamples": [
-          {
-            "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.tui.openHelp({\n  ...\n})"
-          }
-        ]
-      }
-    },
-    "/tui/open-sessions": {
-      "post": {
-        "operationId": "tui.openSessions",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "directory",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "workspace",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "summary": "Open sessions dialog",
-        "description": "Open the session dialog",
-        "responses": {
-          "200": {
-            "description": "Session dialog opened successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "boolean"
-                }
-              }
-            }
-          }
-        },
-        "x-codeSamples": [
-          {
-            "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.tui.openSessions({\n  ...\n})"
-          }
-        ]
-      }
-    },
-    "/tui/open-themes": {
-      "post": {
-        "operationId": "tui.openThemes",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "directory",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "workspace",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "summary": "Open themes dialog",
-        "description": "Open the theme dialog",
-        "responses": {
-          "200": {
-            "description": "Theme dialog opened successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "boolean"
-                }
-              }
-            }
-          }
-        },
-        "x-codeSamples": [
-          {
-            "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.tui.openThemes({\n  ...\n})"
-          }
-        ]
-      }
-    },
-    "/tui/open-models": {
-      "post": {
-        "operationId": "tui.openModels",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "directory",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "workspace",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "summary": "Open models dialog",
-        "description": "Open the model dialog",
-        "responses": {
-          "200": {
-            "description": "Model dialog opened successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "boolean"
-                }
-              }
-            }
-          }
-        },
-        "x-codeSamples": [
-          {
-            "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.tui.openModels({\n  ...\n})"
-          }
-        ]
-      }
-    },
-    "/tui/submit-prompt": {
-      "post": {
-        "operationId": "tui.submitPrompt",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "directory",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "workspace",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "summary": "Submit TUI prompt",
-        "description": "Submit the prompt",
-        "responses": {
-          "200": {
-            "description": "Prompt submitted successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "boolean"
-                }
-              }
-            }
-          }
-        },
-        "x-codeSamples": [
-          {
-            "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.tui.submitPrompt({\n  ...\n})"
-          }
-        ]
-      }
-    },
-    "/tui/clear-prompt": {
-      "post": {
-        "operationId": "tui.clearPrompt",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "directory",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "workspace",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "summary": "Clear TUI prompt",
-        "description": "Clear the prompt",
-        "responses": {
-          "200": {
-            "description": "Prompt cleared successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "boolean"
-                }
-              }
-            }
-          }
-        },
-        "x-codeSamples": [
-          {
-            "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.tui.clearPrompt({\n  ...\n})"
-          }
-        ]
-      }
-    },
-    "/tui/execute-command": {
-      "post": {
-        "operationId": "tui.executeCommand",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "directory",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "workspace",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "summary": "Execute TUI command",
-        "description": "Execute a TUI command (e.g. agent_cycle)",
-        "responses": {
-          "200": {
-            "description": "Command executed successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "boolean"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BadRequestError"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "command": {
-                    "type": "string"
-                  }
-                },
-                "required": ["command"]
-              }
-            }
-          }
-        },
-        "x-codeSamples": [
-          {
-            "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.tui.executeCommand({\n  ...\n})"
-          }
-        ]
-      }
-    },
-    "/tui/show-toast": {
-      "post": {
-        "operationId": "tui.showToast",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "directory",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "workspace",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "summary": "Show TUI toast",
-        "description": "Show a toast notification in the TUI",
-        "responses": {
-          "200": {
-            "description": "Toast notification shown successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "boolean"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "title": {
-                    "type": "string"
-                  },
-                  "message": {
-                    "type": "string"
-                  },
-                  "variant": {
-                    "type": "string",
-                    "enum": ["info", "success", "warning", "error"]
-                  },
-                  "duration": {
-                    "description": "Duration in milliseconds",
-                    "type": "number"
-                  }
-                },
-                "required": ["message", "variant"]
-              }
-            }
-          }
-        },
-        "x-codeSamples": [
-          {
-            "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.tui.showToast({\n  ...\n})"
-          }
-        ]
-      }
-    },
-    "/tui/publish": {
-      "post": {
-        "operationId": "tui.publish",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "directory",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "workspace",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "summary": "Publish TUI event",
-        "description": "Publish a TUI event",
-        "responses": {
-          "200": {
-            "description": "Event published successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "boolean"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BadRequestError"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/Event.tui.prompt.append"
-                  },
-                  {
-                    "$ref": "#/components/schemas/Event.tui.command.execute"
-                  },
-                  {
-                    "$ref": "#/components/schemas/Event.tui.toast.show"
-                  },
-                  {
-                    "$ref": "#/components/schemas/Event.tui.session.select"
-                  }
-                ]
-              }
-            }
-          }
-        },
-        "x-codeSamples": [
-          {
-            "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.tui.publish({\n  ...\n})"
-          }
-        ]
-      }
-    },
-    "/tui/select-session": {
-      "post": {
-        "operationId": "tui.selectSession",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "directory",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "workspace",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "summary": "Select session",
-        "description": "Navigate the TUI to display the specified session.",
-        "responses": {
-          "200": {
-            "description": "Session selected successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "boolean"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BadRequestError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotFoundError"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "sessionID": {
-                    "description": "Session ID to navigate to",
-                    "type": "string",
-                    "pattern": "^ses.*"
-                  }
-                },
-                "required": ["sessionID"]
-              }
-            }
-          }
-        },
-        "x-codeSamples": [
-          {
-            "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.tui.selectSession({\n  ...\n})"
-          }
-        ]
-      }
-    },
-    "/tui/control/next": {
-      "get": {
-        "operationId": "tui.control.next",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "directory",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "workspace",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "summary": "Get next TUI request",
-        "description": "Retrieve the next TUI (Terminal User Interface) request from the queue for processing.",
-        "responses": {
-          "200": {
-            "description": "Next TUI request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "path": {
-                      "type": "string"
-                    },
-                    "body": {}
-                  },
-                  "required": ["path", "body"]
-                }
-              }
-            }
-          }
-        },
-        "x-codeSamples": [
-          {
-            "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.tui.control.next({\n  ...\n})"
-          }
-        ]
-      }
-    },
-    "/tui/control/response": {
-      "post": {
-        "operationId": "tui.control.response",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "directory",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "workspace",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "summary": "Submit TUI response",
-        "description": "Submit a response to the TUI request queue to complete a pending request.",
-        "responses": {
-          "200": {
-            "description": "Response submitted successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "boolean"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {}
-            }
-          }
-        },
-        "x-codeSamples": [
-          {
-            "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.tui.control.response({\n  ...\n})"
-          }
-        ]
-      }
-    },
     "/instance/dispose": {
       "post": {
         "operationId": "instance.dispose",
@@ -7496,6 +7451,208 @@
   },
   "components": {
     "schemas": {
+      "CronSchedule": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "cron"
+              },
+              "expression": {
+                "description": "Standard 5-field cron expression",
+                "type": "string"
+              }
+            },
+            "required": ["kind", "expression"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "interval"
+              },
+              "intervalMs": {
+                "description": "Run repeatedly every N milliseconds (>= 60000)",
+                "type": "number"
+              }
+            },
+            "required": ["kind", "intervalMs"]
+          }
+        ]
+      },
+      "CronStatus": {
+        "type": "string",
+        "enum": ["active", "paused", "disabled"]
+      },
+      "CronRunStatus": {
+        "type": "string",
+        "enum": ["queued", "running", "success", "failed", "timeout", "cancelled"]
+      },
+      "CronTask": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^cron.*"
+          },
+          "projectID": {
+            "type": "string"
+          },
+          "directory": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "agent": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/CronSchedule"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CronStatus"
+          },
+          "timeoutMs": {
+            "type": "number"
+          },
+          "maxRetries": {
+            "type": "number"
+          },
+          "lastRunID": {
+            "type": "string",
+            "pattern": "^crun.*"
+          },
+          "lastRunAt": {
+            "type": "number"
+          },
+          "lastRunStatus": {
+            "$ref": "#/components/schemas/CronRunStatus"
+          },
+          "lastError": {
+            "type": "string"
+          },
+          "nextRunAt": {
+            "type": "number"
+          },
+          "time": {
+            "type": "object",
+            "properties": {
+              "created": {
+                "type": "number"
+              },
+              "updated": {
+                "type": "number"
+              }
+            },
+            "required": ["created", "updated"]
+          }
+        },
+        "required": ["id", "projectID", "directory", "name", "prompt", "schedule", "status", "time"]
+      },
+      "BadRequestError": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {}
+            }
+          },
+          "success": {
+            "type": "boolean",
+            "const": false
+          }
+        },
+        "required": ["data", "errors", "success"]
+      },
+      "NotFoundError": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "const": "NotFoundError"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": ["message"]
+          }
+        },
+        "required": ["name", "data"]
+      },
+      "CronRun": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^crun.*"
+          },
+          "taskID": {
+            "type": "string",
+            "pattern": "^cron.*"
+          },
+          "sessionID": {
+            "type": "string",
+            "pattern": "^ses.*"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CronRunStatus"
+          },
+          "attempt": {
+            "type": "number"
+          },
+          "timeStarted": {
+            "type": "number"
+          },
+          "timeCompleted": {
+            "type": "number"
+          },
+          "errorMessage": {
+            "type": "string"
+          },
+          "logs": {
+            "type": "string"
+          },
+          "time": {
+            "type": "object",
+            "properties": {
+              "created": {
+                "type": "number"
+              },
+              "updated": {
+                "type": "number"
+              }
+            },
+            "required": ["created", "updated"]
+          }
+        },
+        "required": ["id", "taskID", "status", "attempt", "time"]
+      },
       "Project": {
         "type": "object",
         "properties": {
@@ -8424,120 +8581,6 @@
         },
         "required": ["type", "properties"]
       },
-      "Event.tui.prompt.append": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "tui.prompt.append"
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "text": {
-                "type": "string"
-              }
-            },
-            "required": ["text"]
-          }
-        },
-        "required": ["type", "properties"]
-      },
-      "Event.tui.command.execute": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "tui.command.execute"
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "command": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "enum": [
-                      "session.list",
-                      "session.new",
-                      "session.share",
-                      "session.interrupt",
-                      "session.compact",
-                      "session.page.up",
-                      "session.page.down",
-                      "session.line.up",
-                      "session.line.down",
-                      "session.half.page.up",
-                      "session.half.page.down",
-                      "session.first",
-                      "session.last",
-                      "prompt.clear",
-                      "prompt.submit",
-                      "agent.cycle"
-                    ]
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              }
-            },
-            "required": ["command"]
-          }
-        },
-        "required": ["type", "properties"]
-      },
-      "Event.tui.toast.show": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "tui.toast.show"
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "title": {
-                "type": "string"
-              },
-              "message": {
-                "type": "string"
-              },
-              "variant": {
-                "type": "string",
-                "enum": ["info", "success", "warning", "error"]
-              },
-              "duration": {
-                "description": "Duration in milliseconds",
-                "type": "number"
-              }
-            },
-            "required": ["message", "variant"]
-          }
-        },
-        "required": ["type", "properties"]
-      },
-      "Event.tui.session.select": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "tui.session.select"
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "sessionID": {
-                "description": "Session ID to navigate to",
-                "type": "string",
-                "pattern": "^ses.*"
-              }
-            },
-            "required": ["sessionID"]
-          }
-        },
-        "required": ["type", "properties"]
-      },
       "Event.mcp.tools.changed": {
         "type": "object",
         "properties": {
@@ -8777,6 +8820,81 @@
               }
             },
             "required": ["id"]
+          }
+        },
+        "required": ["type", "properties"]
+      },
+      "Event.cron.task.created": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "cron.task.created"
+          },
+          "properties": {
+            "$ref": "#/components/schemas/CronTask"
+          }
+        },
+        "required": ["type", "properties"]
+      },
+      "Event.cron.task.updated": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "cron.task.updated"
+          },
+          "properties": {
+            "$ref": "#/components/schemas/CronTask"
+          }
+        },
+        "required": ["type", "properties"]
+      },
+      "Event.cron.task.deleted": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "cron.task.deleted"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "taskID": {
+                "type": "string",
+                "pattern": "^cron.*"
+              },
+              "projectID": {
+                "type": "string"
+              }
+            },
+            "required": ["taskID", "projectID"]
+          }
+        },
+        "required": ["type", "properties"]
+      },
+      "Event.cron.run.created": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "cron.run.created"
+          },
+          "properties": {
+            "$ref": "#/components/schemas/CronRun"
+          }
+        },
+        "required": ["type", "properties"]
+      },
+      "Event.cron.run.updated": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "cron.run.updated"
+          },
+          "properties": {
+            "$ref": "#/components/schemas/CronRun"
           }
         },
         "required": ["type", "properties"]
@@ -10169,6 +10287,10 @@
               }
             },
             "required": ["messageID"]
+          },
+          "cronRunID": {
+            "type": "string",
+            "pattern": "^crun.*"
           }
         },
         "required": ["id", "slug", "projectID", "directory", "title", "version", "time"]
@@ -11417,6 +11539,17 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "cronRunID": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^crun.*"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 }
               }
@@ -12448,18 +12581,6 @@
                 "$ref": "#/components/schemas/Event.session.compacted"
               },
               {
-                "$ref": "#/components/schemas/Event.tui.prompt.append"
-              },
-              {
-                "$ref": "#/components/schemas/Event.tui.command.execute"
-              },
-              {
-                "$ref": "#/components/schemas/Event.tui.toast.show"
-              },
-              {
-                "$ref": "#/components/schemas/Event.tui.session.select"
-              },
-              {
                 "$ref": "#/components/schemas/Event.mcp.tools.changed"
               },
               {
@@ -12488,6 +12609,21 @@
               },
               {
                 "$ref": "#/components/schemas/Event.pty.deleted"
+              },
+              {
+                "$ref": "#/components/schemas/Event.cron.task.created"
+              },
+              {
+                "$ref": "#/components/schemas/Event.cron.task.updated"
+              },
+              {
+                "$ref": "#/components/schemas/Event.cron.task.deleted"
+              },
+              {
+                "$ref": "#/components/schemas/Event.cron.run.created"
+              },
+              {
+                "$ref": "#/components/schemas/Event.cron.run.updated"
               },
               {
                 "$ref": "#/components/schemas/Event.workspace.ready"
@@ -13696,27 +13832,6 @@
         },
         "additionalProperties": false
       },
-      "BadRequestError": {
-        "type": "object",
-        "properties": {
-          "data": {},
-          "errors": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "propertyNames": {
-                "type": "string"
-              },
-              "additionalProperties": {}
-            }
-          },
-          "success": {
-            "type": "boolean",
-            "const": false
-          }
-        },
-        "required": ["data", "errors", "success"]
-      },
       "OAuth": {
         "type": "object",
         "properties": {
@@ -13839,25 +13954,6 @@
           }
         },
         "required": ["id", "type", "name", "branch", "directory", "extra", "projectID"]
-      },
-      "NotFoundError": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "const": "NotFoundError"
-          },
-          "data": {
-            "type": "object",
-            "properties": {
-              "message": {
-                "type": "string"
-              }
-            },
-            "required": ["message"]
-          }
-        },
-        "required": ["name", "data"]
       },
       "Model": {
         "type": "object",
@@ -14324,6 +14420,10 @@
               }
             },
             "required": ["messageID"]
+          },
+          "cronRunID": {
+            "type": "string",
+            "pattern": "^crun.*"
           },
           "project": {
             "anyOf": [
@@ -14831,18 +14931,6 @@
             "$ref": "#/components/schemas/Event.session.compacted"
           },
           {
-            "$ref": "#/components/schemas/Event.tui.prompt.append"
-          },
-          {
-            "$ref": "#/components/schemas/Event.tui.command.execute"
-          },
-          {
-            "$ref": "#/components/schemas/Event.tui.toast.show"
-          },
-          {
-            "$ref": "#/components/schemas/Event.tui.session.select"
-          },
-          {
             "$ref": "#/components/schemas/Event.mcp.tools.changed"
           },
           {
@@ -14871,6 +14959,21 @@
           },
           {
             "$ref": "#/components/schemas/Event.pty.deleted"
+          },
+          {
+            "$ref": "#/components/schemas/Event.cron.task.created"
+          },
+          {
+            "$ref": "#/components/schemas/Event.cron.task.updated"
+          },
+          {
+            "$ref": "#/components/schemas/Event.cron.task.deleted"
+          },
+          {
+            "$ref": "#/components/schemas/Event.cron.run.created"
+          },
+          {
+            "$ref": "#/components/schemas/Event.cron.run.updated"
           },
           {
             "$ref": "#/components/schemas/Event.workspace.ready"

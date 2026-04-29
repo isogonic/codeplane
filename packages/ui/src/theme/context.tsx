@@ -4,7 +4,7 @@ import { makeEventListener } from "@solid-primitives/event-listener"
 import { createSimpleContext } from "../context/helper"
 import oc2ThemeJson from "./themes/oc-2.json"
 import { resolveThemeVariant, themeToCss } from "./resolve"
-import type { DesktopTheme } from "./types"
+import type { WebTheme } from "./types"
 
 export type ColorScheme = "light" | "dark" | "system"
 
@@ -16,13 +16,13 @@ const STORAGE_KEYS = {
 } as const
 
 const THEME_STYLE_ID = "oc-theme"
-let files: Record<string, () => Promise<{ default: DesktopTheme }>> | undefined
+let files: Record<string, () => Promise<{ default: WebTheme }>> | undefined
 let ids: string[] | undefined
 let known: Set<string> | undefined
 
 function getFiles() {
   if (files) return files
-  files = import.meta.glob<{ default: DesktopTheme }>("./themes/*.json")
+  files = import.meta.glob<{ default: WebTheme }>("./themes/*.json")
   return files
 }
 
@@ -79,7 +79,7 @@ const names: Record<string, string> = {
   vesper: "Vesper",
   zenburn: "Zenburn",
 }
-const oc2Theme = oc2ThemeJson as DesktopTheme
+const oc2Theme = oc2ThemeJson as WebTheme
 
 function normalize(id: string | null | undefined) {
   return id === "oc-1" ? "oc-2" : id
@@ -127,7 +127,7 @@ function getSystemMode(): "light" | "dark" {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
 }
 
-function applyThemeCss(theme: DesktopTheme, themeId: string, mode: "light" | "dark") {
+function applyThemeCss(theme: WebTheme, themeId: string, mode: "light" | "dark") {
   const isDark = mode === "dark"
   const variant = isDark ? theme.dark : theme.light
   const tokens = resolveThemeVariant(variant, isDark)
@@ -149,7 +149,7 @@ function applyThemeCss(theme: DesktopTheme, themeId: string, mode: "light" | "da
   document.documentElement.dataset.colorScheme = mode
 }
 
-function cacheThemeVariants(theme: DesktopTheme, themeId: string) {
+function cacheThemeVariants(theme: WebTheme, themeId: string) {
   if (themeId === "oc-2") return
   for (const mode of ["light", "dark"] as const) {
     const isDark = mode === "dark"
@@ -162,14 +162,14 @@ function cacheThemeVariants(theme: DesktopTheme, themeId: string) {
 
 export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
   name: "Theme",
-  init: (props: { defaultTheme?: string; onThemeApplied?: (theme: DesktopTheme, mode: "light" | "dark") => void }) => {
+  init: (props: { defaultTheme?: string; onThemeApplied?: (theme: WebTheme, mode: "light" | "dark") => void }) => {
     const themeId = normalize(read(STORAGE_KEYS.THEME_ID) ?? props.defaultTheme) ?? "oc-2"
     const colorScheme = (read(STORAGE_KEYS.COLOR_SCHEME) as ColorScheme | null) ?? "system"
     const mode = colorScheme === "system" ? getSystemMode() : colorScheme
     const [store, setStore] = createStore({
       themes: {
         "oc-2": oc2Theme,
-      } as Record<string, DesktopTheme>,
+      } as Record<string, WebTheme>,
       themeId,
       colorScheme,
       mode,
@@ -177,7 +177,7 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
       previewScheme: null as ColorScheme | null,
     })
 
-    const loads = new Map<string, Promise<DesktopTheme | undefined>>()
+    const loads = new Map<string, Promise<WebTheme | undefined>>()
 
     const load = (id: string) => {
       const next = normalize(id)
@@ -201,7 +201,7 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
       return task
     }
 
-    const applyTheme = (theme: DesktopTheme, themeId: string, mode: "light" | "dark") => {
+    const applyTheme = (theme: WebTheme, themeId: string, mode: "light" | "dark") => {
       applyThemeCss(theme, themeId, mode)
       props.onThemeApplied?.(theme, mode)
     }
@@ -309,7 +309,7 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
       themes: () => store.themes,
       setTheme,
       setColorScheme,
-      registerTheme: (theme: DesktopTheme) => setStore("themes", theme.id, theme),
+      registerTheme: (theme: WebTheme) => setStore("themes", theme.id, theme),
       previewTheme: (id: string) => {
         const next = normalize(id)
         if (!next) return

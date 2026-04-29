@@ -351,19 +351,17 @@ export async function CopilotAuthPlugin(input: PluginInput): Promise<Hooks> {
 
       const parts = await sdk.session
         .message({
-          path: {
-            id: incoming.message.sessionID,
-            messageID: incoming.message.id,
-          },
-          query: {
-            directory: input.directory,
-          },
+          sessionID: incoming.message.sessionID,
+          messageID: incoming.message.id,
+          directory: input.directory,
+        }, {
           throwOnError: true,
         })
+        .then((result) => result.data)
         .catch(() => undefined)
 
       if (
-        parts?.data.parts?.some(
+        parts?.parts.some(
           (part) =>
             part.type === "compaction" ||
             // Auto-compaction resumes via a synthetic user text part. Treat only
@@ -377,16 +375,14 @@ export async function CopilotAuthPlugin(input: PluginInput): Promise<Hooks> {
 
       const session = await sdk.session
         .get({
-          path: {
-            id: incoming.sessionID,
-          },
-          query: {
-            directory: input.directory,
-          },
+          sessionID: incoming.sessionID,
+          directory: input.directory,
+        }, {
           throwOnError: true,
         })
+        .then((result) => result.data)
         .catch(() => undefined)
-      if (!session || !session.data.parentID) return
+      if (!session?.parentID) return
       // mark subagent sessions as agent initiated matching standard that other copilot tools have
       output.headers["x-initiator"] = "agent"
     },

@@ -119,6 +119,11 @@ export const layer = Layer.effect(
         }
 
         const { Server } = yield* Effect.promise(() => import("../server/server"))
+        const serverFetch = Object.assign(
+          async (requestInput: RequestInfo | URL, init?: RequestInit) =>
+            (await Server.Default()).app.fetch(new Request(requestInput, init)),
+          { preconnect: fetch.preconnect },
+        ) satisfies typeof fetch
 
         const client = createCodeplaneClient({
           baseUrl: "http://localhost:4096",
@@ -128,7 +133,7 @@ export const layer = Layer.effect(
                 Authorization: `Basic ${Buffer.from(`${Flag.CODEPLANE_SERVER_USERNAME ?? "codeplane"}:${Flag.CODEPLANE_SERVER_PASSWORD}`).toString("base64")}`,
               }
             : undefined,
-          fetch: async (...args) => (await Server.Default()).app.fetch(...args),
+          fetch: serverFetch,
         })
         const cfg = yield* config.get()
         const input: PluginInput = {

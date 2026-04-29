@@ -1,7 +1,7 @@
-import type { DesktopTheme, ResolvedTheme } from "./types"
+import type { WebTheme, ResolvedTheme } from "./types"
 import { resolveThemeVariant, themeToCss } from "./resolve"
 
-let activeTheme: DesktopTheme | null = null
+let activeTheme: WebTheme | null = null
 const THEME_STYLE_ID = "codeplane-theme"
 
 function ensureLoaderStyleElement(): HTMLStyleElement {
@@ -15,7 +15,7 @@ function ensureLoaderStyleElement(): HTMLStyleElement {
   return element
 }
 
-export function applyTheme(theme: DesktopTheme, themeId?: string): void {
+export function applyTheme(theme: WebTheme, themeId?: string): void {
   activeTheme = theme
   const lightTokens = resolveThemeVariant(theme.light, false)
   const darkTokens = resolveThemeVariant(theme.dark, true)
@@ -66,7 +66,7 @@ html[data-theme="${themeId}"] {
 `
 }
 
-export async function loadThemeFromUrl(url: string): Promise<DesktopTheme> {
+export async function loadThemeFromUrl(url: string): Promise<WebTheme> {
   const response = await fetch(url)
   if (!response.ok) {
     throw new Error(`Failed to load theme from ${url}: ${response.statusText}`)
@@ -74,7 +74,7 @@ export async function loadThemeFromUrl(url: string): Promise<DesktopTheme> {
   return response.json()
 }
 
-export function getActiveTheme(): DesktopTheme | null {
+export function getActiveTheme(): WebTheme | null {
   const activeId = document.documentElement.getAttribute("data-theme")
   if (!activeId) {
     return null

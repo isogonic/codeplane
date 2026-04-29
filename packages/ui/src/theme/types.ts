@@ -40,7 +40,7 @@ export type ThemeVariant =
   | ({ seeds: ThemeSeedColors; palette?: never } & ThemeVariantBase)
   | ({ palette: ThemePaletteColors; seeds?: never } & ThemeVariantBase)
 
-export interface DesktopTheme {
+export interface WebTheme {
   $schema?: string
   name: string
   id: string

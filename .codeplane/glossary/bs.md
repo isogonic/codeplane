@@ -8,7 +8,7 @@
 
 - `CodePlane` (preserve casing in prose; keep `codeplane` only in commands, package names, paths, or code)
 - `CodePlane CLI`
-- `CLI`, `TUI`, `MCP`, `OAuth`
+- `CLI`, `MCP`, `OAuth`
 - Commands, flags, file paths, and code literals (keep exactly as written)
 
 ## Preferred Terms

@@ -20,7 +20,6 @@ const FOLDERS = new Set([
   ".idea",
   ".turbo",
   ".output",
-  "desktop",
   ".sst",
   ".cache",
   ".webkit-cache",

@@ -8,7 +8,7 @@
 
 - `CodePlane` (preserve casing in prose; keep `codeplane` only in commands, package names, paths, or code)
 - `CodePlane CLI`
-- `CLI`, `TUI`, `MCP`, `OAuth`
+- `CLI`, `MCP`, `OAuth`
 - Locale code `br` in repo config, code, and paths (repo alias for Brazilian Portuguese)
 
 ## Preferred Terms
