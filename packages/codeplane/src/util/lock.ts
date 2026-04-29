@@ -1,12 +1,11 @@
-const locks = new Map<
-  string,
-  {
-    readers: number
-    writer: boolean
-    waitingReaders: (() => void)[]
-    waitingWriters: (() => void)[]
-  }
->()
+type State = {
+  readers: number
+  writer: boolean
+  waitingReaders: (() => void)[]
+  waitingWriters: (() => void)[]
+}
+
+const locks = new Map<string, State>()
 
 function get(key: string) {
   if (!locks.has(key)) {
@@ -20,7 +19,7 @@ function get(key: string) {
   return locks.get(key)!
 }
 
-function process(key: string) {
+function processQueue(key: string) {
   const lock = locks.get(key)
   if (!lock || lock.writer || lock.readers > 0) return
 
@@ -43,29 +42,43 @@ function process(key: string) {
   }
 }
 
+function reader(key: string, lock: State): Disposable {
+  let disposed = false
+  return {
+    [Symbol.dispose]: () => {
+      if (disposed) return
+      disposed = true
+      lock.readers--
+      processQueue(key)
+    },
+  }
+}
+
+function writer(key: string, lock: State): Disposable {
+  let disposed = false
+  return {
+    [Symbol.dispose]: () => {
+      if (disposed) return
+      disposed = true
+      lock.writer = false
+      processQueue(key)
+    },
+  }
+}
+
 export async function read(key: string): Promise<Disposable> {
   const lock = get(key)
 
   return new Promise((resolve) => {
     if (!lock.writer && lock.waitingWriters.length === 0) {
       lock.readers++
-      resolve({
-        [Symbol.dispose]: () => {
-          lock.readers--
-          process(key)
-        },
-      })
-    } else {
-      lock.waitingReaders.push(() => {
-        lock.readers++
-        resolve({
-          [Symbol.dispose]: () => {
-            lock.readers--
-            process(key)
-          },
-        })
-      })
+      resolve(reader(key, lock))
+      return
     }
+    lock.waitingReaders.push(() => {
+      lock.readers++
+      resolve(reader(key, lock))
+    })
   })
 }
 
@@ -75,22 +88,12 @@ export async function write(key: string): Promise<Disposable> {
   return new Promise((resolve) => {
     if (!lock.writer && lock.readers === 0) {
       lock.writer = true
-      resolve({
-        [Symbol.dispose]: () => {
-          lock.writer = false
-          process(key)
-        },
-      })
-    } else {
-      lock.waitingWriters.push(() => {
-        lock.writer = true
-        resolve({
-          [Symbol.dispose]: () => {
-            lock.writer = false
-            process(key)
-          },
-        })
-      })
+      resolve(writer(key, lock))
+      return
     }
+    lock.waitingWriters.push(() => {
+      lock.writer = true
+      resolve(writer(key, lock))
+    })
   })
 }

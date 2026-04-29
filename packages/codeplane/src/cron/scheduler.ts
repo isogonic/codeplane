@@ -11,7 +11,7 @@ import { InstanceBootstrap } from "@/project/bootstrap"
 import { AppRuntime } from "@/effect/app-runtime"
 import { Log } from "@/util"
 import type { Task, Run } from "./cron"
-import type { CronRunID } from "./schema"
+import type { CronRunID, CronTaskID } from "./schema"
 import type { ProjectID } from "@/project/schema"
 
 const log = Log.create({ service: "cron.scheduler" })
@@ -33,6 +33,8 @@ export interface Interface {
   readonly start: () => Effect.Effect<void>
   readonly stop: () => Effect.Effect<void>
   readonly tick: () => Effect.Effect<void>
+  readonly cancelRun: (runID: CronRunID) => Effect.Effect<void>
+  readonly cancelTask: (taskID: CronTaskID) => Effect.Effect<void>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@codeplane/CronScheduler") {}
@@ -42,10 +44,12 @@ type Active = {
   timeoutHandle: ReturnType<typeof setTimeout> | undefined
   detachQuestion: () => void
   sessionID?: string
+  taskID: CronTaskID
   projectID: ProjectID
 }
 
 const active = new Map<CronRunID, Active>()
+const terminalStatuses = new Set<Run["status"]>(["success", "failed", "timeout", "cancelled"])
 
 const countActiveForProject = (projectID: ProjectID): number => {
   let n = 0
@@ -61,7 +65,9 @@ export const layer = Layer.effect(
     const cron = yield* Cron.Service
 
     let timer: ReturnType<typeof setInterval> | undefined
+    let startupTimer: ReturnType<typeof setTimeout> | undefined
     let started = false
+    const retryTimers = new Set<ReturnType<typeof setTimeout>>()
 
     /**
      * On restart, any run that was "running" or "queued" should be re-queued
@@ -105,6 +111,24 @@ export const layer = Layer.effect(
       const stamp = new Date().toISOString()
       const next = (run.logs ? run.logs + "\n" : "") + `[${stamp}] ${line}`
       return cron.recordRun({ runID: run.id, patch: { logs: next } })
+    }
+
+    const scheduleRetry = (task: Task, run: Run, nextAttempt: number) => {
+      if (!started) return
+      const retryTimer = setTimeout(() => {
+        retryTimers.delete(retryTimer)
+        if (!started) return
+        AppRuntime.runPromise(
+          cron.requeue({ taskID: task.id, attempt: nextAttempt }),
+        ).catch((err) => {
+          log.error("retry requeue failed", {
+            taskID: task.id,
+            runID: run.id,
+            error: err instanceof Error ? err.message : String(err),
+          })
+        })
+      }, RETRY_BACKOFF_MS)
+      retryTimers.add(retryTimer)
     }
 
     /**
@@ -165,7 +189,12 @@ export const layer = Layer.effect(
                 ...(task.agent ? { agent: task.agent } : {}),
                 ...(ref ? { model: ref } : {}),
               } as SessionPrompt.PromptInput
-              yield* sessions.prompt(promptInput)
+              yield* Effect.gen(function* () {
+                abort.signal.throwIfAborted()
+                yield* sessions.prompt(promptInput)
+              }).pipe(
+                Effect.ensuring(Effect.sync(() => abort.signal.removeEventListener("abort", onAbort))),
+              )
               return created.id
             }),
           ),
@@ -189,6 +218,7 @@ export const layer = Layer.effect(
         timeoutHandle,
         detachQuestion: slot?.detachQuestion ?? (() => undefined),
         sessionID: slot?.sessionID,
+        taskID: task.id,
         projectID: task.projectID,
       })
 
@@ -201,27 +231,43 @@ export const layer = Layer.effect(
         }
       }
 
-      const exit = yield* Effect.tryPromise({
-        try: () => runInsideInstance(task, run, abort),
-        catch: (error) => (error instanceof Error ? error : new Error(String(error))),
-      }).pipe(Effect.exit)
+      yield* Effect.gen(function* () {
+        const exit = yield* Effect.tryPromise({
+          try: () => runInsideInstance(task, run, abort),
+          catch: (error) => (error instanceof Error ? error : new Error(String(error))),
+        }).pipe(Effect.exit)
 
-      if (Exit.isSuccess(exit)) {
-        const sessionID = exit.value
-        const completedAt = Date.now()
-        yield* cron.recordRun({
-          runID: run.id,
-          patch: { status: "success", timeCompleted: completedAt },
-        })
-        const fresh = yield* cron.getRun(run.id)
-        yield* appendLog(fresh, `Completed (session ${sessionID})`).pipe(Effect.ignore)
-        yield* cron.markTaskAfterRun({
-          taskID: task.id,
-          runID: run.id,
-          runStatus: "success",
-          completedAt,
-        })
-      } else {
+        if (Exit.isSuccess(exit)) {
+          const sessionID = exit.value
+          const completedAt = Date.now()
+          const current = yield* cron.getRun(run.id).pipe(
+            Effect.catch(() => Effect.succeed(undefined as Run | undefined)),
+          )
+          if (!current) {
+            log.warn("cron run disappeared before completion", { runID: run.id, taskID: task.id })
+            return
+          }
+          if (terminalStatuses.has(current.status) && current.status !== "success") {
+            yield* appendLog(current, `Session ${sessionID} completed after run was ${current.status}`).pipe(
+              Effect.ignore,
+            )
+            return
+          }
+          yield* cron.recordRun({
+            runID: run.id,
+            patch: { status: "success", timeCompleted: completedAt },
+          })
+          const fresh = yield* cron.getRun(run.id)
+          yield* appendLog(fresh, `Completed (session ${sessionID})`).pipe(Effect.ignore)
+          yield* cron.markTaskAfterRun({
+            taskID: task.id,
+            runID: run.id,
+            runStatus: "success",
+            completedAt,
+          })
+          return
+        }
+
         const squashed = Cause.squash(exit.cause)
         const message = squashed instanceof Error ? squashed.message : String(squashed)
         log.error("cron run failed", {
@@ -235,13 +281,14 @@ export const layer = Layer.effect(
         const current = yield* cron.getRun(run.id).pipe(
           Effect.catch(() => Effect.succeed(undefined as Run | undefined)),
         )
-        const isTimeout = abort.signal.aborted
         const wasCancelled = current?.status === "cancelled"
-        const finalStatus: "cancelled" | "timeout" | "failed" = wasCancelled
-          ? "cancelled"
-          : isTimeout
-            ? "timeout"
-            : "failed"
+        if (wasCancelled) {
+          yield* appendLog(current, "Cancelled").pipe(Effect.ignore)
+          return
+        }
+
+        const isTimeout = abort.signal.aborted
+        const finalStatus: "timeout" | "failed" = isTimeout ? "timeout" : "failed"
         yield* cron
           .recordRun({
             runID: run.id,
@@ -265,28 +312,17 @@ export const layer = Layer.effect(
         // Retry policy: only retry on real failures (not user cancellation, not timeout).
         const maxRetries = task.maxRetries ?? DEFAULT_MAX_RETRIES
         const canRetry = !wasCancelled && !isTimeout && run.attempt <= maxRetries
-        if (canRetry) {
-          const nextAttempt = run.attempt + 1
-          log.info("scheduling retry", {
-            taskID: task.id,
-            previousRunID: run.id,
-            nextAttempt,
-            maxRetries,
-            backoffMs: RETRY_BACKOFF_MS,
-          })
-          setTimeout(() => {
-            AppRuntime.runPromise(
-              cron.requeue({ taskID: task.id, attempt: nextAttempt }),
-            ).catch((err) => {
-              log.error("retry requeue failed", {
-                taskID: task.id,
-                error: err instanceof Error ? err.message : String(err),
-              })
-            })
-          }, RETRY_BACKOFF_MS)
-        }
-      }
-      cleanup()
+        if (!canRetry) return
+        const nextAttempt = run.attempt + 1
+        log.info("scheduling retry", {
+          taskID: task.id,
+          previousRunID: run.id,
+          nextAttempt,
+          maxRetries,
+          backoffMs: RETRY_BACKOFF_MS,
+        })
+        scheduleRetry(task, run, nextAttempt)
+      }).pipe(Effect.ensuring(Effect.sync(cleanup)))
     })
 
     const reserveSlot = (run: Run, projectID: ProjectID) => {
@@ -296,6 +332,7 @@ export const layer = Layer.effect(
         abort: new AbortController(),
         timeoutHandle: undefined,
         detachQuestion: () => undefined,
+        taskID: run.taskID,
         projectID,
       })
       return true
@@ -354,7 +391,7 @@ export const layer = Layer.effect(
 
     let ticking = false
     const safeTick = () => {
-      if (ticking) return
+      if (!started || ticking) return
       ticking = true
       AppRuntime.runPromise(tick())
         .catch((err) => {
@@ -369,27 +406,61 @@ export const layer = Layer.effect(
       if (started) return
       started = true
       yield* recoverIncompleteRuns()
+      if (!started) return
       timer = setInterval(safeTick, TICK_MS)
       // Kick an immediate tick so any orphan/queued runs don't wait for the first interval.
-      setTimeout(safeTick, 100)
+      startupTimer = setTimeout(() => {
+        startupTimer = undefined
+        safeTick()
+      }, 100)
       log.info("scheduler started", { tickMs: TICK_MS })
     })
 
+    const cancelRun = Effect.fn("CronScheduler.cancelRun")(function* (runID: CronRunID) {
+      yield* cron.cancelRun(runID)
+      const slot = active.get(runID)
+      if (slot) {
+        if (slot.timeoutHandle) {
+          clearTimeout(slot.timeoutHandle)
+          slot.timeoutHandle = undefined
+        }
+        slot.abort.abort()
+      }
+    })
+
+    const cancelTask = Effect.fn("CronScheduler.cancelTask")(function* (taskID: CronTaskID) {
+      for (const slot of active.values()) {
+        if (slot.taskID !== taskID) continue
+        if (slot.timeoutHandle) {
+          clearTimeout(slot.timeoutHandle)
+          slot.timeoutHandle = undefined
+        }
+        slot.abort.abort()
+      }
+    })
+
     const stop = Effect.fn("CronScheduler.stop")(function* () {
-      if (!started) return
+      const wasStarted = started
+      if (!started && !timer && !startupTimer && retryTimers.size === 0 && active.size === 0) return
       started = false
       if (timer) clearInterval(timer)
+      if (startupTimer) clearTimeout(startupTimer)
       timer = undefined
+      startupTimer = undefined
+      for (const retryTimer of retryTimers) {
+        clearTimeout(retryTimer)
+      }
+      retryTimers.clear()
       for (const [, slot] of active) {
         if (slot.timeoutHandle) clearTimeout(slot.timeoutHandle)
         slot.detachQuestion()
         slot.abort.abort()
       }
       active.clear()
-      log.info("scheduler stopped")
+      if (wasStarted) log.info("scheduler stopped")
     })
 
-    return Service.of({ start, stop, tick })
+    return Service.of({ start, stop, tick, cancelRun, cancelTask })
   }),
 )
 

@@ -246,14 +246,41 @@ export function validateSchedule(schedule: Schedule): void {
       field: "schedule.expression",
     })
   }
+  try {
+    CronExpression.next(schedule.expression)
+  } catch (error) {
+    throw new CronValidationError({
+      message: error instanceof Error ? error.message : `Invalid cron expression: ${schedule.expression}`,
+      field: "schedule.expression",
+    })
+  }
 }
 
-export function validateInput(input: { name?: string; prompt?: string }): void {
+export function validateInput(input: {
+  name?: string
+  prompt?: string
+  timeoutMs?: number | null
+  maxRetries?: number | null
+}): void {
   if (input.name !== undefined && !input.name.trim()) {
     throw new CronValidationError({ message: "Name is required", field: "name" })
   }
   if (input.prompt !== undefined && !input.prompt.trim()) {
     throw new CronValidationError({ message: "Prompt is required", field: "prompt" })
+  }
+  if (
+    input.timeoutMs !== undefined &&
+    input.timeoutMs !== null &&
+    (!Number.isFinite(input.timeoutMs) || input.timeoutMs <= 0)
+  ) {
+    throw new CronValidationError({ message: "Timeout must be a positive number", field: "timeoutMs" })
+  }
+  if (
+    input.maxRetries !== undefined &&
+    input.maxRetries !== null &&
+    (!Number.isInteger(input.maxRetries) || input.maxRetries < 0)
+  ) {
+    throw new CronValidationError({ message: "Max retries must be a non-negative integer", field: "maxRetries" })
   }
 }
 
@@ -371,7 +398,12 @@ export const layer = Layer.effect(
 
     const create = Effect.fn("Cron.create")(function* (input: CreateInput) {
       yield* Effect.sync(() => {
-        validateInput({ name: input.name, prompt: input.prompt })
+        validateInput({
+          name: input.name,
+          prompt: input.prompt,
+          timeoutMs: input.timeoutMs,
+          maxRetries: input.maxRetries,
+        })
         validateSchedule(input.schedule)
       })
       const project = yield* resolveProject(input)
@@ -421,7 +453,14 @@ export const layer = Layer.effect(
     })
 
     const update = Effect.fn("Cron.update")(function* (input: UpdateInput) {
-      yield* Effect.sync(() => validateInput({ name: input.name, prompt: input.prompt }))
+      yield* Effect.sync(() =>
+        validateInput({
+          name: input.name,
+          prompt: input.prompt,
+          timeoutMs: input.timeoutMs,
+          maxRetries: input.maxRetries,
+        }),
+      )
       const existing = yield* get(input.taskID)
       const next: Partial<typeof CronTaskTable.$inferInsert> = {}
       if (input.name !== undefined) next.name = input.name
@@ -620,43 +659,64 @@ export const layer = Layer.effect(
      */
     const claimDueTasks = Effect.fn("Cron.claimDueTasks")(function* (now: number, limit = 200) {
       const claimed = yield* Effect.sync(() =>
-        Database.transaction((d) => {
-          const rows = d
-            .select()
-            .from(CronTaskTable)
-            .where(and(eq(CronTaskTable.status, "active"), lte(CronTaskTable.next_run_at, now)))
-            .orderBy(CronTaskTable.next_run_at)
-            .limit(limit)
-            .all()
-          const claimedRows: { task: Task; runID: CronRunID }[] = []
-          for (const row of rows) {
-            const task = taskFromRow(row)
-            // bump next_run_at so we don't double-claim
-            const projected = computeNextRunAt(task.schedule, now)
-            d.update(CronTaskTable)
-              .set({ next_run_at: projected, time_updated: now })
-              .where(eq(CronTaskTable.id, task.id))
-              .run()
-            const runID = CronRunID.ascending()
-            d.insert(CronRunTable)
-              .values({
-                id: runID,
-                task_id: task.id,
-                session_id: null,
-                status: "queued",
-                attempt: 1,
-                time_started: null,
-                time_completed: null,
-                error_message: null,
-                logs: null,
-                time_created: now,
-                time_updated: now,
-              })
-              .run()
-            claimedRows.push({ task, runID })
-          }
-          return claimedRows
-        }),
+        Database.transaction(
+          (d) => {
+            const rows = d
+              .select()
+              .from(CronTaskTable)
+              .where(and(eq(CronTaskTable.status, "active"), lte(CronTaskTable.next_run_at, now)))
+              .orderBy(CronTaskTable.next_run_at)
+              .limit(limit)
+              .all()
+            const claimedRows: { task: Task; runID: CronRunID }[] = []
+            for (const row of rows) {
+              const claimed = (() => {
+                try {
+                  const task = taskFromRow(row)
+                  return { task, projected: computeNextRunAt(task.schedule, now) }
+                } catch (error) {
+                  const message = error instanceof Error ? error.message : String(error)
+                  log.error("disabling invalid cron task", { taskID: row.id, error: message })
+                  d.update(CronTaskTable)
+                    .set({
+                      status: "disabled",
+                      last_error: message,
+                      next_run_at: null,
+                      time_updated: now,
+                    })
+                    .where(eq(CronTaskTable.id, row.id))
+                    .run()
+                  return undefined
+                }
+              })()
+              if (!claimed) continue
+              // bump next_run_at so we don't double-claim
+              d.update(CronTaskTable)
+                .set({ next_run_at: claimed.projected, time_updated: now })
+                .where(eq(CronTaskTable.id, claimed.task.id))
+                .run()
+              const runID = CronRunID.ascending()
+              d.insert(CronRunTable)
+                .values({
+                  id: runID,
+                  task_id: claimed.task.id,
+                  session_id: null,
+                  status: "queued",
+                  attempt: 1,
+                  time_started: null,
+                  time_completed: null,
+                  error_message: null,
+                  logs: null,
+                  time_created: now,
+                  time_updated: now,
+                })
+                .run()
+              claimedRows.push({ task: claimed.task, runID })
+            }
+            return claimedRows
+          },
+          { behavior: "immediate" },
+        ),
       )
 
       const result: { task: Task; run: Run }[] = []

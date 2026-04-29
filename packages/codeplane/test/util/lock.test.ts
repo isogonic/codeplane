@@ -69,4 +69,53 @@ describe("util.lock", () => {
 
     reader[Symbol.dispose]()
   })
+
+  test("read disposal is idempotent", async () => {
+    const key = "lock:" + Math.random().toString(36).slice(2)
+    const reader1 = await Lock.read(key)
+    const reader2 = await Lock.read(key)
+    let writerAcquired = false
+    const writerTask = Lock.write(key).then((writer) => {
+      writerAcquired = true
+      return writer
+    })
+
+    reader1[Symbol.dispose]()
+    reader1[Symbol.dispose]()
+    await flush()
+    expect(writerAcquired).toBe(false)
+
+    reader2[Symbol.dispose]()
+    const writer = await writerTask
+    expect(writerAcquired).toBe(true)
+    writer[Symbol.dispose]()
+  })
+
+  test("write disposal is idempotent", async () => {
+    const key = "lock:" + Math.random().toString(36).slice(2)
+    const writer1 = await Lock.write(key)
+    let writer2Acquired = false
+    let readerAcquired = false
+    const writer2Task = Lock.write(key).then((writer) => {
+      writer2Acquired = true
+      return writer
+    })
+    const readerTask = Lock.read(key).then((reader) => {
+      readerAcquired = true
+      return reader
+    })
+
+    writer1[Symbol.dispose]()
+    const writer2 = await writer2Task
+    expect(writer2Acquired).toBe(true)
+
+    writer1[Symbol.dispose]()
+    await flush()
+    expect(readerAcquired).toBe(false)
+
+    writer2[Symbol.dispose]()
+    const reader = await readerTask
+    expect(readerAcquired).toBe(true)
+    reader[Symbol.dispose]()
+  })
 })

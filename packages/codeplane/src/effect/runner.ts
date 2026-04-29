@@ -48,6 +48,7 @@ export const make = <A, E = never>(
   const busy = opts?.onBusy ?? Effect.void
   const onInterrupt = opts?.onInterrupt
   let ids = 0
+  const cancelledShells = new Set<number>()
 
   const state = () => SynchronizedRef.getUnsafe(ref)
   const next = () => {
@@ -104,16 +105,32 @@ export const make = <A, E = never>(
     SynchronizedRef.modifyEffect(
       ref,
       Effect.fnUntraced(function* (st) {
-        if (st._tag === "Shell" && st.shell.id === id) return [idle, { _tag: "Idle" }] as const
+        if (st._tag === "Shell" && st.shell.id === id)
+          return [
+            Effect.gen(function* () {
+              cancelledShells.delete(id)
+              yield* idle
+            }),
+            { _tag: "Idle" },
+          ] as const
         if (st._tag === "ShellThenRun" && st.shell.id === id) {
           const run = yield* startRun(st.run.work, st.run.done)
-          return [Effect.void, { _tag: "Running", run }] as const
+          return [
+            Effect.sync(() => {
+              cancelledShells.delete(id)
+            }),
+            { _tag: "Running", run },
+          ] as const
         }
         return [Effect.void, st] as const
       }),
     ).pipe(Effect.flatten)
 
-  const stopShell = (shell: ShellHandle<A, E>) => Fiber.interrupt(shell.fiber)
+  const stopShell = (shell: ShellHandle<A, E>) =>
+    Effect.gen(function* () {
+      cancelledShells.add(shell.id)
+      yield* Fiber.interrupt(shell.fiber)
+    })
 
   const ensureRunning = (work: Effect.Effect<A, E>, options?: { queue?: boolean }) =>
     SynchronizedRef.modifyEffect(
@@ -172,12 +189,13 @@ export const make = <A, E = never>(
         const fiber = yield* work.pipe(Effect.ensuring(finishShell(id)), Effect.forkChild)
         const shell = { id, fiber } satisfies ShellHandle<A, E>
         return [
-          Effect.gen(function* () {
+          Effect.uninterruptible(Effect.gen(function* () {
             const exit = yield* Fiber.await(fiber)
             if (Exit.isSuccess(exit)) return exit.value
-            if (Cause.hasInterruptsOnly(exit.cause) && onInterrupt) return yield* onInterrupt
+            const cancelled = cancelledShells.delete(id)
+            if ((cancelled || Cause.hasInterruptsOnly(exit.cause)) && onInterrupt) return yield* onInterrupt
             return yield* Effect.failCause(exit.cause)
-          }),
+          })),
           { _tag: "Shell", shell },
         ] as const
       }),

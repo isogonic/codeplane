@@ -10,6 +10,7 @@ import { Instance } from "@/project/instance"
 import { Session } from "@/session"
 import { SessionID } from "@/session/schema"
 import { AppRuntime } from "@/effect/app-runtime"
+import { BootstrapRuntime } from "@/effect/bootstrap-runtime"
 import { Effect } from "effect"
 import { Log } from "@/util"
 import { ServerProxy } from "./proxy"
@@ -88,7 +89,7 @@ export function WorkspaceRouterMiddleware(upgrade: UpgradeWebSocket): Middleware
         fn: () =>
           Instance.provide({
             directory: target.directory,
-            init: () => AppRuntime.runPromise(InstanceBootstrap),
+            init: () => BootstrapRuntime.runPromise(InstanceBootstrap),
             async fn() {
               return next()
             },

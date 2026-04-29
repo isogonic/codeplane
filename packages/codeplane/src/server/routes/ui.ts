@@ -10,11 +10,16 @@ const embeddedUIPromise = Flag.CODEPLANE_DISABLE_EMBEDDED_WEB_UI
   : // @ts-expect-error - generated file at build time
     import("codeplane-web-ui.gen.ts").then((module) => module.default as Record<string, string>).catch(() => null)
 
-const DEFAULT_CSP =
-  "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self' data:"
+const themePreloadScript =
+  /<script\b(?![^>]*\bsrc\s*=)[^>]*\bid=(['"])oc-theme-preload-script\1[^>]*>([\s\S]*?)<\/script>/i
 
 const csp = (hash = "") =>
   `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${hash ? ` 'sha256-${hash}'` : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self' data:`
+
+const cspForHTML = (html: string) => {
+  const match = html.match(themePreloadScript)
+  return csp(match ? createHash("sha256").update(match[2]).digest("base64") : "")
+}
 
 export const UIRoutes = (): Hono =>
   new Hono().all("/*", async (c) => {
@@ -29,7 +34,9 @@ export const UIRoutes = (): Hono =>
         const mime = getMimeType(match) ?? "text/plain"
         c.header("Content-Type", mime)
         if (mime.startsWith("text/html")) {
-          c.header("Content-Security-Policy", DEFAULT_CSP)
+          const html = await fs.readFile(match, "utf8")
+          c.header("Content-Security-Policy", cspForHTML(html))
+          return c.body(html)
         }
         return c.body(new Uint8Array(await fs.readFile(match)))
       } else {
@@ -43,13 +50,12 @@ export const UIRoutes = (): Hono =>
           host: "app.example.invalid",
         },
       })
-      const match = response.headers.get("content-type")?.includes("text/html")
-        ? (await response.clone().text()).match(
-            /<script\b(?![^>]*\bsrc\s*=)[^>]*\bid=(['"])oc-theme-preload-script\1[^>]*>([\s\S]*?)<\/script>/i,
-          )
-        : undefined
-      const hash = match ? createHash("sha256").update(match[2]).digest("base64") : ""
-      response.headers.set("Content-Security-Policy", csp(hash))
+      response.headers.set(
+        "Content-Security-Policy",
+        response.headers.get("content-type")?.includes("text/html")
+          ? cspForHTML(await response.clone().text())
+          : csp(),
+      )
       return response
     }
   })

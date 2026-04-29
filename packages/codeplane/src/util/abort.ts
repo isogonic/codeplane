@@ -28,8 +28,21 @@ export function abortAfter(ms: number) {
 export function abortAfterAny(ms: number, ...signals: AbortSignal[]) {
   const timeout = abortAfter(ms)
   const signal = AbortSignal.any([timeout.signal, ...signals])
+  let cleared = false
+  const clear = () => {
+    if (cleared) return
+    cleared = true
+    timeout.clearTimeout()
+  }
+
+  if (signal.aborted) clear()
+  else signal.addEventListener("abort", clear, { once: true })
+
   return {
     signal,
-    clearTimeout: timeout.clearTimeout,
+    clearTimeout: () => {
+      signal.removeEventListener("abort", clear)
+      clear()
+    },
   }
 }

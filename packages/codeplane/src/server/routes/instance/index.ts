@@ -29,6 +29,9 @@ import { EventRoutes } from "./event"
 import { SyncRoutes } from "./sync"
 import { InstanceMiddleware } from "./middleware"
 import { jsonRequest } from "./trace"
+import { makeRuntime } from "@/effect/run-service"
+
+const skillRuntime = makeRuntime(Skill.Service, Skill.defaultLayer)
 
 export const InstanceRoutes = (upgrade: UpgradeWebSocket): Hono => {
   const app = new Hono()
@@ -247,11 +250,7 @@ export const InstanceRoutes = (upgrade: UpgradeWebSocket): Hono => {
           },
         },
       }),
-      async (c) =>
-        jsonRequest("InstanceRoutes.skill.list", c, function* () {
-          const skill = yield* Skill.Service
-          return yield* skill.all()
-        }),
+      async (c) => c.json(await skillRuntime.runPromise((svc) => svc.all())),
     )
     .get(
       "/lsp",

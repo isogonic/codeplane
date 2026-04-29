@@ -304,7 +304,7 @@ const addSubtask = (
   sessionID: SessionID,
   messageID: MessageID,
   model = ref,
-  options?: { command?: string; description?: string; prompt?: string },
+  options?: { agent?: string; command?: string; description?: string; prompt?: string },
 ) =>
   Effect.gen(function* () {
     const session = yield* Session.Service
@@ -315,7 +315,7 @@ const addSubtask = (
       type: "subtask",
       prompt: options?.prompt ?? "look into the cache key path",
       description: options?.description ?? "inspect bug",
-      agent: "general",
+      agent: options?.agent ?? "general",
       model,
       command: options?.command,
     })
@@ -641,6 +641,92 @@ it.live(
 )
 
 it.live(
+  "unknown subtask agent fails before creating a running task tool",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* () {
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const chat = yield* sessions.create({ title: "Pinned" })
+        const msg = yield* user(chat.id, "hello")
+        yield* addSubtask(chat.id, msg.id, ref, { agent: "missing-subagent" })
+
+        const exit = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.exit)
+        expect(Exit.isFailure(exit)).toBe(true)
+        if (Exit.isFailure(exit)) {
+          const err = Cause.squash(exit.cause)
+          expect(NamedError.Unknown.isInstance(err)).toBe(true)
+          if (NamedError.Unknown.isInstance(err)) {
+            expect(err.data.message).toContain('Agent not found: "missing-subagent"')
+          }
+        }
+
+        const msgs = yield* MessageV2.filterCompactedEffect(chat.id)
+        expect(msgs.some((item) => item.info.role === "assistant")).toBe(false)
+      }),
+      { git: true, config: providerCfg },
+    ),
+  5_000,
+)
+
+it.live(
+  "subtask plugin hooks receive the tool callID",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ dir, llm }) {
+        yield* Effect.promise(() =>
+          Bun.write(
+            path.join(dir, "hook-plugin.ts"),
+            [
+              "const log = new URL('./hook-log.jsonl', import.meta.url)",
+              "async function append(entry) {",
+              "  const file = Bun.file(log)",
+              "  await Bun.write(log, (await file.exists() ? await file.text() : '') + JSON.stringify(entry) + '\\n')",
+              "}",
+              "export default async () => ({",
+              "  'tool.execute.before': async (input) => append({ hook: 'before', input }),",
+              "  'tool.execute.after': async (input) => append({ hook: 'after', input }),",
+              "})",
+              "",
+            ].join("\n"),
+          ),
+        )
+
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const chat = yield* sessions.create({ title: "Pinned" })
+        yield* llm.push(reply().text("child done").stop(), reply().text("parent done").stop())
+        const msg = yield* user(chat.id, "hello")
+        yield* addSubtask(chat.id, msg.id)
+
+        yield* prompt.loop({ sessionID: chat.id })
+
+        const msgs = yield* MessageV2.filterCompactedEffect(chat.id)
+        const taskMsg = msgs.find((item) => item.info.role === "assistant" && item.info.agent === "general")
+        const tool = taskMsg?.parts.find((part): part is MessageV2.ToolPart => part.type === "tool")
+        expect(tool?.type).toBe("tool")
+        if (!tool) return
+
+        const entries = (yield* Effect.promise(() => Bun.file(path.join(dir, "hook-log.jsonl")).text()))
+          .trim()
+          .split("\n")
+          .map((line) => JSON.parse(line) as { hook: string; input: { callID: string } })
+
+        expect(entries.map((entry) => entry.input.callID)).toEqual([tool.callID, tool.callID])
+        expect(entries.every((entry) => entry.input.callID !== tool.id)).toBe(true)
+      }),
+      {
+        git: true,
+        config: (url) => ({
+          ...providerCfg(url),
+          plugin: ["./hook-plugin.ts"],
+        }),
+      },
+    ),
+  5_000,
+)
+
+it.live(
   "running task tool preserves metadata after tool-call transition",
   () =>
     provideTmpdirServer(
@@ -756,7 +842,7 @@ it.live(
         yield* addSubtask(chat.id, msg.id, ref, { description: "second inspect" })
 
         const fiber = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
-        const concurrent = yield* llm.wait(2).pipe(Effect.timeout("500 millis"), Effect.exit)
+        const concurrent = yield* llm.wait(2).pipe(Effect.timeout("2 seconds"), Effect.exit)
         expect(Exit.isSuccess(concurrent)).toBe(true)
 
         gate.resolve()

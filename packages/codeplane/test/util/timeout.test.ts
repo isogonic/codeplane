@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, spyOn, test } from "bun:test"
 import { withTimeout } from "../../src/util/timeout"
 
 describe("util.timeout", () => {
@@ -17,5 +17,18 @@ describe("util.timeout", () => {
     })
 
     await expect(withTimeout(slowPromise, 50)).rejects.toThrow("Operation timed out after 50ms")
+  })
+
+  test("should clear timeout when promise rejects first", async () => {
+    const clear = spyOn(globalThis, "clearTimeout")
+
+    try {
+      const error = await withTimeout(Promise.reject(new Error("boom")), 100).catch((error) => error)
+      expect(error).toBeInstanceOf(Error)
+      expect(error.message).toBe("boom")
+      expect(clear).toHaveBeenCalledTimes(1)
+    } finally {
+      clear.mockRestore()
+    }
   })
 })

@@ -98,16 +98,11 @@ export const Client = lazy(() => {
     typeof CODEPLANE_MIGRATIONS !== "undefined"
       ? CODEPLANE_MIGRATIONS
       : migrations(path.join(import.meta.dirname, "../../migration"))
-  if (entries.length > 0) {
+  if (entries.length > 0 && !Flag.CODEPLANE_SKIP_MIGRATIONS) {
     log.info("applying migrations", {
       count: entries.length,
       mode: typeof CODEPLANE_MIGRATIONS !== "undefined" ? "bundled" : "dev",
     })
-    if (Flag.CODEPLANE_SKIP_MIGRATIONS) {
-      for (const item of entries) {
-        item.sql = "select 1;"
-      }
-    }
     migrate(db, entries)
   }
 

@@ -155,6 +155,7 @@ export const CronRoutes = lazy(() =>
       validator("param", z.object({ taskID: CronTaskID.zod })),
       async (c) => {
         const { taskID } = c.req.valid("param")
+        await AppRuntime.runPromise(CronScheduler.Service.use((svc) => svc.cancelTask(taskID))).catch(() => undefined)
         await AppRuntime.runPromise(Cron.Service.use((svc) => svc.remove(taskID)))
         return c.json(true)
       },
@@ -272,7 +273,7 @@ export const CronRoutes = lazy(() =>
       validator("param", z.object({ runID: CronRunID.zod })),
       async (c) => {
         const { runID } = c.req.valid("param")
-        await AppRuntime.runPromise(Cron.Service.use((svc) => svc.cancelRun(runID)))
+        await AppRuntime.runPromise(CronScheduler.Service.use((svc) => svc.cancelRun(runID)))
         return c.json(true)
       },
     ),

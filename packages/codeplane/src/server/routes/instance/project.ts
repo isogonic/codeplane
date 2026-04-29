@@ -8,7 +8,7 @@ import { ProjectID } from "@/project/schema"
 import { errors } from "../../error"
 import { lazy } from "@/util/lazy"
 import { InstanceBootstrap } from "@/project/bootstrap"
-import { AppRuntime } from "@/effect/app-runtime"
+import { BootstrapRuntime } from "@/effect/bootstrap-runtime"
 import { jsonRequest, runRequest } from "./trace"
 
 export const ProjectRoutes = lazy(() =>
@@ -86,7 +86,7 @@ export const ProjectRoutes = lazy(() =>
           directory: dir,
           worktree: dir,
           project: next,
-          init: () => AppRuntime.runPromise(InstanceBootstrap),
+          init: () => BootstrapRuntime.runPromise(InstanceBootstrap),
         })
         return c.json(next)
       },

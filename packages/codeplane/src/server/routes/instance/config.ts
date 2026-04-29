@@ -1,11 +1,14 @@
 import { Hono } from "hono"
 import { describeRoute, validator, resolver } from "hono-openapi"
-import z from "zod"
 import { Config } from "@/config"
 import { Provider } from "@/provider"
 import { errors } from "../../error"
 import { lazy } from "@/util/lazy"
-import { jsonRequest } from "./trace"
+import { makeRuntime } from "@/effect/run-service"
+import { Effect } from "effect"
+
+const configRuntime = makeRuntime(Config.Service, Config.defaultLayer)
+const providerRuntime = makeRuntime(Provider.Service, Provider.defaultLayer)
 
 export const ConfigRoutes = lazy(() =>
   new Hono()
@@ -26,11 +29,7 @@ export const ConfigRoutes = lazy(() =>
           },
         },
       }),
-      async (c) =>
-        jsonRequest("ConfigRoutes.get", c, function* () {
-          const cfg = yield* Config.Service
-          return yield* cfg.get()
-        }),
+      async (c) => c.json(await configRuntime.runPromise((svc) => svc.get())),
     )
     .patch(
       "/",
@@ -52,12 +51,15 @@ export const ConfigRoutes = lazy(() =>
       }),
       validator("json", Config.Info.zod),
       async (c) =>
-        jsonRequest("ConfigRoutes.update", c, function* () {
-          const config = c.req.valid("json")
-          const cfg = yield* Config.Service
-          yield* cfg.update(config)
-          return config
-        }),
+        c.json(
+          await configRuntime.runPromise((svc) =>
+            Effect.gen(function* () {
+              const config = c.req.valid("json")
+              yield* svc.update(config)
+              return config
+            }),
+          ),
+        ),
     )
     .get(
       "/providers",
@@ -77,13 +79,16 @@ export const ConfigRoutes = lazy(() =>
         },
       }),
       async (c) =>
-        jsonRequest("ConfigRoutes.providers", c, function* () {
-          const svc = yield* Provider.Service
-          const providers = yield* svc.list()
-          return {
-            providers: Object.values(providers),
-            default: Provider.defaultModelIDs(providers),
-          }
-        }),
+        c.json(
+          await providerRuntime.runPromise((svc) =>
+            Effect.gen(function* () {
+              const providers = yield* svc.list()
+              return {
+                providers: Object.values(providers),
+                default: Provider.defaultModelIDs(providers),
+              }
+            }),
+          ),
+        ),
     ),
 )
