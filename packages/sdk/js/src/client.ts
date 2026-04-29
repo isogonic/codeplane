@@ -1,7 +1,7 @@
 export * from "./gen/types.gen.js"
 
 import { createClient } from "./gen/client/client.gen.js"
-import { type Config } from "./gen/client/types.gen.js"
+import { type Config, type ResolvedRequestOptions } from "./gen/client/types.gen.js"
 import { CodeplaneClient } from "./gen/sdk.gen.js"
 export { type Config as CodeplaneClientConfig, CodeplaneClient }
 
@@ -13,7 +13,29 @@ function pick(value: string | null, fallback?: string) {
   return value
 }
 
-function rewrite(request: Request, directory?: string) {
+function initFromRequest(request: Request, options: ResolvedRequestOptions): RequestInit {
+  const body =
+    request.method === "GET" || request.method === "HEAD"
+      ? undefined
+      : ((options.serializedBody ?? options.body) as BodyInit | null | undefined)
+
+  return {
+    body,
+    cache: request.cache,
+    credentials: request.credentials,
+    headers: request.headers,
+    integrity: request.integrity,
+    keepalive: request.keepalive,
+    method: request.method,
+    mode: request.mode,
+    redirect: request.redirect,
+    referrer: request.referrer,
+    referrerPolicy: request.referrerPolicy,
+    signal: request.signal,
+  }
+}
+
+function rewrite(request: Request, options: ResolvedRequestOptions, directory?: string) {
   const json =
     request.credentials === "include" &&
     request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() === "application/json"
@@ -25,7 +47,7 @@ function rewrite(request: Request, directory?: string) {
     url.searchParams.set("directory", value)
   }
 
-  const next = new Request(value ? url : request.url, request)
+  const next = new Request(value ? url : request.url, initFromRequest(request, options))
   next.headers.delete("x-codeplane-directory")
   if (json) next.headers.set("content-type", "text/plain")
   return next
@@ -52,6 +74,6 @@ export function createCodeplaneClient(config?: Config & { directory?: string }) 
   }
 
   const client = createClient(config)
-  client.interceptors.request.use((request) => rewrite(request, config?.directory))
+  client.interceptors.request.use((request, options) => rewrite(request, options, config?.directory))
   return new CodeplaneClient({ client })
 }
