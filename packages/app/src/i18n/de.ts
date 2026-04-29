@@ -262,11 +262,18 @@ export const dict = {
   "prompt.context.removeActiveFile": "Aktive Datei aus dem Kontext entfernen",
   "prompt.context.removeFile": "Datei aus dem Kontext entfernen",
   "prompt.action.attachFile": "Datei anhängen",
+  "prompt.action.screenshot": "Screenshot aufnehmen",
   "prompt.attachment.remove": "Anhang entfernen",
   "prompt.action.send": "Senden",
   "prompt.action.stop": "Stopp",
   "prompt.toast.pasteUnsupported.title": "Nicht unterstützter Anhang",
   "prompt.toast.pasteUnsupported.description": "Hier können nur Bilder, PDFs oder Textdateien angehängt werden.",
+  "prompt.toast.screenshotUnsupported.title": "Screenshots nicht unterstützt",
+  "prompt.toast.screenshotUnsupported.description":
+    "Dieser Browser stellt die Screen-Capture-API nicht bereit. Ziehen oder fügen Sie stattdessen ein Bild ein.",
+  "prompt.toast.screenshotFailed.title": "Screenshot fehlgeschlagen",
+  "prompt.toast.screenshotFailed.description":
+    "Der ausgewählte Bildschirm konnte nicht erfasst werden. Bitte erneut versuchen oder das Bild manuell anhängen.",
   "prompt.toast.modelAgentRequired.title": "Wählen Sie einen Agenten und ein Modell",
   "prompt.toast.modelAgentRequired.description":
     "Wählen Sie einen Agenten und ein Modell, bevor Sie eine Eingabe senden.",

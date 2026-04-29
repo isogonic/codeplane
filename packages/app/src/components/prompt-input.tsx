@@ -479,6 +479,14 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       onSelect: pick,
     },
     {
+      id: "file.screenshot",
+      title: language.t("prompt.action.screenshot"),
+      category: language.t("command.category.file"),
+      keybind: "mod+shift+s",
+      disabled: store.mode !== "normal",
+      onSelect: () => void captureScreenshot(),
+    },
+    {
       id: "prompt.mode.shell",
       title: language.t("command.prompt.mode.shell"),
       category: language.t("command.category.session"),
@@ -1066,7 +1074,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     return true
   }
 
-  const { addAttachments, removeAttachment, handlePaste } = createPromptAttachments({
+  const { addAttachments, removeAttachment, handlePaste, captureScreenshot } = createPromptAttachments({
     editor: () => editorRef,
     isDialogActive: () => !!dialog.active,
     setDraggingType: (type) => setStore("draggingType", type),
@@ -1461,7 +1469,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
           <div class="pointer-events-none absolute bottom-2 left-2">
             <div
               aria-hidden={store.mode !== "normal"}
-              class="pointer-events-auto"
+              class="pointer-events-auto flex items-center gap-1"
               style={{
                 "pointer-events": buttonsSpring() > 0.5 ? "auto" : "none",
               }}
@@ -1483,6 +1491,25 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                   aria-label={language.t("prompt.action.attachFile")}
                 >
                   <Icon name="plus" class="size-4.5" />
+                </Button>
+              </TooltipKeybind>
+              <TooltipKeybind
+                placement="top"
+                title={language.t("prompt.action.screenshot")}
+                keybind={command.keybind("file.screenshot")}
+              >
+                <Button
+                  data-action="prompt-screenshot"
+                  type="button"
+                  variant="ghost"
+                  class="size-8 p-0"
+                  style={buttons()}
+                  onClick={() => void captureScreenshot()}
+                  disabled={store.mode !== "normal"}
+                  tabIndex={store.mode === "normal" ? undefined : -1}
+                  aria-label={language.t("prompt.action.screenshot")}
+                >
+                  <Icon name="screenshot" class="size-4.5" />
                 </Button>
               </TooltipKeybind>
             </div>
