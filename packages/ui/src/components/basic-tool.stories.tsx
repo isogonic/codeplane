@@ -114,6 +114,30 @@ export const HideDetails = {
   },
 }
 
+export const WrappedRows = {
+  render: () => (
+    <div style={{ width: "360px", display: "grid", gap: "4px" }}>
+      {[
+        "Check actual workspace path and code-server config",
+        "Look for monitoring ports and process names",
+        "Read csp-proxy and tunnel-mcp config",
+      ].map((description) => (
+        <mod.BasicTool
+          icon="mcp"
+          trigger={{
+            title: "Called `ssh-devin-host_exec`",
+            subtitle: description,
+            args: [
+              'command=echo "===ENV===" && printenv | sort && echo "===WORKSPACE===" && find /workspace -maxdepth 3 -type f 2>/dev/null | head -50 && echo "===NETWORK===" && ss -tulpn 2>/dev/null',
+            ],
+          }}
+          hideDetails
+        />
+      ))}
+    </div>
+  ),
+}
+
 export const SubtitleAction = {
   render: () => {
     const [message, setMessage] = createSignal("Subtitle not clicked")

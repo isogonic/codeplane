@@ -42,7 +42,7 @@ export const PermissionApi = HttpApi.make("permission")
   .annotateMerge(
     OpenApi.annotations({
       title: "codeplane experimental HttpApi",
-      version: "26.5.12",
+      version: "26.5.13",
       description: "Experimental HttpApi surface for selected instance routes.",
     }),
   )
