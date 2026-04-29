@@ -1,0 +1,14 @@
+Headless-browser navigation with visual capture.
+
+Use this tool to:
+- Inspect a live URL the way a user would see it (real DOM rendering, JS executed).
+- Take a screenshot of the rendered page so a vision-capable model can look at the layout, spot design issues, or compare against a target.
+- Pull readable text content from the page in one shot (the same path webfetch uses for plain HTTP, but rendered after JS).
+
+Returns:
+- output: extracted readable text (HTML stripped, scripts/styles removed)
+- attachments: a single PNG screenshot of the rendered viewport (only when screenshot=true and a chromium binary is available on the host)
+
+Set screenshot=false if you only need the text and want the call to be cheaper / not require chromium.
+
+Requires a chromium binary on the host (chromium / chromium-browser / google-chrome). On Debian/Ubuntu: `apt-get install -y chromium`. Path can be overridden with the CODEPLANE_CHROMIUM_BIN env var.

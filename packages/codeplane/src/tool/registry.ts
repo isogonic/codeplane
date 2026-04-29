@@ -9,6 +9,7 @@ import { ReadTool } from "./read"
 import { TaskTool } from "./task"
 import { TodoWriteTool } from "./todo"
 import { WebFetchTool } from "./webfetch"
+import { BrowseTool } from "./browse"
 import { WriteTool } from "./write"
 import { InvalidTool } from "./invalid"
 import { SkillTool } from "./skill"
@@ -107,6 +108,7 @@ export const layer: Layer.Layer<
     const plan = yield* PlanExitTool
     const webfetch = yield* WebFetchTool
     const websearch = yield* WebSearchTool
+    const browse = yield* BrowseTool
     const bash = yield* BashTool
     const codesearch = yield* CodeSearchTool
     const globtool = yield* GlobTool
@@ -214,6 +216,7 @@ export const layer: Layer.Layer<
           write: Tool.init(writetool),
           task: Tool.init(task),
           fetch: Tool.init(webfetch),
+          browse: Tool.init(browse),
           todo: Tool.init(todo),
           search: Tool.init(websearch),
           code: Tool.init(codesearch),
@@ -237,6 +240,7 @@ export const layer: Layer.Layer<
             tool.write,
             tool.task,
             tool.fetch,
+            tool.browse,
             tool.todo,
             tool.search,
             tool.code,
