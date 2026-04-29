@@ -72,6 +72,7 @@ import type {
   GlobalHealthResponses,
   GlobalUpgradeErrors,
   GlobalUpgradeResponses,
+  GlobalVersionResponses,
   InstanceDisposeResponses,
   LspStatusResponses,
   McpAddErrors,
@@ -591,6 +592,18 @@ export class Global extends HeyApiClient {
   public health<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
     return (options?.client ?? this.client).get<GlobalHealthResponses, unknown, ThrowOnError>({
       url: "/global/health",
+      ...options,
+    })
+  }
+
+  /**
+   * Get installation version
+   *
+   * Get current and latest available codeplane versions and the detected install method.
+   */
+  public version<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
+    return (options?.client ?? this.client).get<GlobalVersionResponses, unknown, ThrowOnError>({
+      url: "/global/version",
       ...options,
     })
   }

@@ -29,10 +29,15 @@ if [[ ! -x "$DEST_BIN" ]]; then
 fi
 
 mkdir -p "$WORK_DIR"
-cd "$WORK_DIR"
 
-EXTRACT_DIR="codeplane-${VERSION}"
-rm -rf "$EXTRACT_DIR"
+# Use a fresh per-run staging dir so we never pick up a stale extraction from
+# an earlier run (e.g. codeplane-26.5.4 left over alphabetically would get
+# mistakenly renamed to the new version's dir by a generic find).
+STAGE_DIR=$(mktemp -d "$WORK_DIR/stage-${VERSION}.XXXXXX")
+cleanup() { rm -rf "$STAGE_DIR"; }
+trap cleanup EXIT
+
+cd "$STAGE_DIR"
 
 # Private repos require auth. Prefer GITHUB_TOKEN env, fall back to gh CLI.
 GH_AUTH_TOKEN="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
@@ -42,22 +47,28 @@ fi
 
 # shellcheck disable=SC2059
 TARBALL_URL=$(printf "$TARBALL_URL_TEMPLATE" "$VERSION")
-log "downloading $TARBALL_URL"
+log "downloading $TARBALL_URL into $STAGE_DIR"
 CURL_AUTH=()
 if [[ -n "$GH_AUTH_TOKEN" ]]; then
   CURL_AUTH=(-H "Authorization: Bearer $GH_AUTH_TOKEN" -H "Accept: application/vnd.github+json")
 fi
 curl -fsSL "${CURL_AUTH[@]}" "$TARBALL_URL" | tar -xz
 
-# Tarball extracts to a directory like codeplane-<sha> or devinoldenburg-codeplane-<sha>; rename it.
-if [[ ! -d "$EXTRACT_DIR" ]]; then
-  CANDIDATE=$(find . -maxdepth 1 -type d \( -name 'codeplane-*' -o -name 'devinoldenburg-codeplane-*' \) -not -name "$EXTRACT_DIR" | head -1)
-  if [[ -n "$CANDIDATE" ]]; then
-    mv "$CANDIDATE" "$EXTRACT_DIR"
-  fi
+# The tarball extracts to a single top-level directory (codeplane-<sha> or
+# devinoldenburg-codeplane-<sha>). Pick whichever dir tar produced.
+SRC_DIR=$(find . -maxdepth 1 -mindepth 1 -type d | head -n 1)
+if [[ -z "$SRC_DIR" || ! -d "$SRC_DIR" ]]; then
+  log "tarball did not produce an extracted directory - aborting"
+  exit 1
 fi
 
-cd "$EXTRACT_DIR"
+cd "$SRC_DIR"
+
+# Sanity-check: the extracted source must actually contain the workspace.
+if [[ ! -f packages/codeplane/package.json ]]; then
+  log "extracted source missing packages/codeplane/package.json - aborting"
+  exit 1
+fi
 
 export CODEPLANE_VERSION="$VERSION"
 export CODEPLANE_CHANNEL=latest

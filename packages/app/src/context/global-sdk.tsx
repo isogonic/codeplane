@@ -115,7 +115,7 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
     let attempt: AbortController | undefined
     let run: Promise<void> | undefined
     let started = false
-    const HEARTBEAT_TIMEOUT_MS = 15_000
+    const HEARTBEAT_TIMEOUT_MS = 45_000
     let lastEventAt = Date.now()
     let heartbeat: ReturnType<typeof setTimeout> | undefined
     const resetHeartbeat = () => {

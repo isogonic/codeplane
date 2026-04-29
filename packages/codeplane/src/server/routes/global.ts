@@ -20,6 +20,7 @@ import { CronRoutes } from "./cron"
 
 const log = Log.create({ service: "server" })
 const configRuntime = makeRuntime(Config.Service, Config.defaultLayer)
+const eventHeartbeatMs = 5_000
 
 export const GlobalDisposedEvent = BusEvent.define("global.disposed", Schema.Struct({}))
 
@@ -37,7 +38,8 @@ async function streamEvents(c: Context, subscribe: (q: AsyncQueue<string | null>
       }),
     )
 
-    // Send heartbeat every 10s to prevent stalled proxy streams.
+    // Send heartbeats frequently so browsers and access proxies do not treat
+    // quiet sessions as stalled while a task is still running.
     const heartbeat = setInterval(() => {
       q.push(
         JSON.stringify({
@@ -47,7 +49,7 @@ async function streamEvents(c: Context, subscribe: (q: AsyncQueue<string | null>
           },
         }),
       )
-    }, 10_000)
+    }, eventHeartbeatMs)
 
     const stop = () => {
       if (done) return
@@ -265,6 +267,8 @@ export const GlobalRoutes = lazy(() =>
                     z.object({
                       success: z.literal(true),
                       version: z.string(),
+                      restart: z.boolean().optional(),
+                      skipped: z.boolean().optional(),
                     }),
                     z.object({
                       success: z.literal(false),
@@ -275,16 +279,19 @@ export const GlobalRoutes = lazy(() =>
               },
             },
           },
-          ...errors(400),
+          ...errors(400, 500),
         },
       }),
       validator(
         "json",
-        z.object({
-          target: z.string().optional(),
-        }),
+        z
+          .object({
+            target: z.string().optional(),
+          })
+          .optional(),
       ),
       async (c) => {
+        const body = c.req.valid("json") ?? {}
         const result = await AppRuntime.runPromise(
           Installation.Service.use((svc) =>
             Effect.gen(function* () {
@@ -298,7 +305,17 @@ export const GlobalRoutes = lazy(() =>
                 }
               }
 
-              const target = c.req.valid("json").target || (yield* svc.latest(method))
+              const target = (body.target || (yield* svc.latest(method))).replace(/^v/, "")
+              if (target === InstallationVersion) {
+                return {
+                  success: true as const,
+                  status: 200 as const,
+                  version: target,
+                  method,
+                  skipped: true as const,
+                }
+              }
+
               const result = yield* Effect.catch(
                 svc.upgrade(method, target).pipe(Effect.as({ success: true as const, version: target, method })),
                 (err) =>
@@ -318,20 +335,23 @@ export const GlobalRoutes = lazy(() =>
           return c.json({ success: false, error: result.error }, result.status)
         }
         const target = result.version
-        GlobalBus.emit("event", {
-          directory: "global",
-          payload: {
-            type: Installation.Event.Updated.type,
-            properties: { version: target },
-          },
-        })
+        if (!result.skipped) {
+          GlobalBus.emit("event", {
+            directory: "global",
+            payload: {
+              type: Installation.Event.Updated.type,
+              properties: { version: target },
+            },
+          })
+        }
+        const restart = result.method === "selfhosted" && !result.skipped
         // For self-hosted deployments, the upgrade script swaps the binary on disk
         // but the in-process binary is unchanged. Exit so the container's restart
         // policy brings us back on the new binary. Delay so the response flushes.
-        if (result.method === "selfhosted") {
+        if (restart) {
           setTimeout(() => process.exit(0), 3000)
         }
-        return c.json({ success: true, version: target })
+        return c.json({ success: true, version: target, restart, skipped: result.skipped || undefined })
       },
     ),
 )
