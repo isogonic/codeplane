@@ -1,0 +1,19 @@
+Run an interactive shell command and let the user answer prompts mid-execution.
+
+Use this when a CLI is going to ask the user for something at runtime — auth flows that need a one-time code or device-login URL pasted back, `gh auth login`, `npm login`, `vercel login`, `aws sso login`, package installers that prompt y/N, or any tool that pauses waiting on stdin. The agent describes the prompts ahead of time; while the command runs, the tool watches the output for each pattern, pauses, asks the user the question via the standard question dialog, and pipes the answer (followed by a newline) back into the command's stdin.
+
+Differences from `bash`:
+- Spawns the command in a PTY (so CLIs that only prompt when stdin is a TTY work correctly).
+- Streams output in chunks so the prompt-detection loop can react.
+- Supports interactive prompts via the `prompts` parameter; each prompt has a regex pattern to match against new output and a question to ask the user when it matches. Answers are written to the process's stdin.
+
+Parameters:
+- command: the shell command line to run.
+- prompts: optional array of { pattern, question } pairs. `pattern` is a JS regex matched against new output (case-insensitive). `question` is the human-readable text shown to the user. Each prompt fires at most once per match — re-add it to handle repeated prompts.
+- timeout: ms to allow the command to run (default 120000, max 600000).
+- cwd: working directory.
+- description: short description shown in the UI.
+
+Returns the full captured output (stdout + stderr interleaved as the PTY produced it) and the exit code in metadata. The tool aborts and reports a timeout error if the command runs past `timeout`.
+
+Don't use this for non-interactive commands — use `bash` instead. Don't use this for long-running servers — there's no streaming back to the model after exit.
