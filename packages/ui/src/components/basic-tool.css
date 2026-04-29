@@ -95,7 +95,11 @@
   }
 
   [data-slot="basic-tool-tool-title"] {
-    flex-shrink: 0;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-family: var(--font-family-sans);
     font-size: 14px;
     font-style: normal;
