@@ -3,7 +3,7 @@ title: GitHub
 description: Brug CodePlane i GitHub-problemer og Pull Requests.
 ---
 
-CodePlane integreres med din GitHub arbejdsgang. Nævn `/codeplane` eller `/oc` i din kommentar, og CodePlane vil udføre opgaver i din GitHub Actions-løber.
+CodePlane integreres med din GitHub arbejdsgang. Nævn `/codeplane` i din kommentar, og CodePlane vil udføre opgaver i din GitHub Actions-løber.
 
 ---
 
@@ -51,7 +51,6 @@ Eller du kan indstille det manuelt.
    jobs:
      codeplane:
        if: |
-         contains(github.event.comment.body, '/oc') ||
          contains(github.event.comment.body, '/codeplane')
        runs-on: ubuntu-latest
        permissions:
@@ -105,10 +104,10 @@ Eller du kan indstille det manuelt.
 
 CodePlane kan udløses af følgende GitHub hændelser:
 
-| Begivenhedstype               | Udløst af                               | Detaljer                                                                                                                |
-| ----------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `issue_comment`               | Kommentarer og problemer eller PR       | Nævn `/codeplane` eller `/oc` i din kommentar. CodePlane læser kontekst og kan oprette brancher, åbne PR'er eller svare.  |
-| `pull_request_review_comment` | Kommenter specifikke kodelinjer i en PR | Nævn `/codeplane` eller `/oc`, mens du gennemgår koden. CodePlane modtager filsti, linjenumre og diff-kontekst.           |
+| Begivenhedstype               | Udløst af                               | Detaljer                                                                                                                 |
+| ----------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `issue_comment`               | Kommentarer og problemer eller PR       | Nævn `/codeplane` i din kommentar. CodePlane læser kontekst og kan oprette brancher, åbne PR'er eller svare.             |
+| `pull_request_review_comment` | Kommenter specifikke kodelinjer i en PR | Nævn `/codeplane`, mens du gennemgår koden. CodePlane modtager filsti, linjenumre og diff-kontekst.                      |
 | `issues`                      | Udgave åbnet eller redigeret            | Udløs automatisk CodePlane, når problemer oprettes eller ændres. Kræver `prompt` input.                                  |
 | `pull_request`                | PR åbnet eller opdateret                | Udløs automatisk CodePlane, når PR'er åbnes, synkroniseres eller genåbnes. Nyttigt til automatiserede kodegennemgange.   |
 | `schedule`                    | Cron-baseret tidsplan                   | Kør CodePlane efter en tidsplan. Kræver `prompt` input. Output går til logfiler og PR'er (intet problem ved kommentere). |
@@ -298,7 +297,7 @@ Her er nogle eksempler på, hvordan du kan bruge CodePlane i GitHub.
   Efterlad følgende kommentar på en GitHub PR.
 
   ```
-  Delete the attachment from S3 when the note is removed /oc
+  Delete the attachment from S3 when the note is removed /codeplane
   ```
 
   CodePlane vil implementere den ønskede ændring og forpligtelse til den samme PR.
@@ -309,7 +308,7 @@ Her er nogle eksempler på, hvordan du kan bruge CodePlane i GitHub.
 
   ```
   [Comment on specific lines in Files tab]
-  /oc add error handling here
+  /codeplane add error handling here
   ```
 
   Når du kommenterer på specifikke linjer, modtager CodePlane:

@@ -3,7 +3,7 @@ title: GitHub
 description: 在 GitHub Issue 和 Pull Request 中使用 CodePlane。
 ---
 
-CodePlane 可以與您的 GitHub 工作流程整合。在評論中提及 `/codeplane` 或 `/oc`，CodePlane 就會在您的 GitHub Actions Runner 中執行任務。
+CodePlane 可以與您的 GitHub 工作流程整合。在評論中提及 `/codeplane`，CodePlane 就會在您的 GitHub Actions Runner 中執行任務。
 
 ---
 
@@ -51,7 +51,6 @@ codeplane github install
    jobs:
      codeplane:
        if: |
-         contains(github.event.comment.body, '/oc') ||
          contains(github.event.comment.body, '/codeplane')
        runs-on: ubuntu-latest
        permissions:
@@ -105,10 +104,10 @@ codeplane github install
 
 CodePlane 可以由以下 GitHub 事件觸發：
 
-| 事件類型                      | 觸發方式                       | 詳情                                                                                      |
-| ----------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------- |
-| `issue_comment`               | 在 Issue 或 PR 上發表評論      | 在評論中提及 `/codeplane` 或 `/oc`。CodePlane 會讀取上下文，並可建立分支、提交 PR 或回覆。  |
-| `pull_request_review_comment` | 在 PR 中對特定程式碼行發表評論 | 在程式碼審查時提及 `/codeplane` 或 `/oc`。CodePlane 會接收檔案路徑、行號和 diff 上下文。    |
+| 事件類型                      | 觸發方式                       | 詳情                                                                                       |
+| ----------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------ |
+| `issue_comment`               | 在 Issue 或 PR 上發表評論      | 在評論中提及 `/codeplane`。CodePlane 會讀取上下文，並可建立分支、提交 PR 或回覆。          |
+| `pull_request_review_comment` | 在 PR 中對特定程式碼行發表評論 | 在程式碼審查時提及 `/codeplane`。CodePlane 會接收檔案路徑、行號和 diff 上下文。            |
 | `issues`                      | Issue 被建立或編輯             | 在 Issue 建立或修改時自動觸發 CodePlane。需要提供 `prompt` 輸入。                          |
 | `pull_request`                | PR 被建立或更新                | 在 PR 被開啟、同步或重新開啟時自動觸發 CodePlane。適用於自動化審查情境。                   |
 | `schedule`                    | 基於 Cron 的定時任務           | 按排程執行 CodePlane。需要提供 `prompt` 輸入。輸出會寫入日誌和 PR（沒有 Issue 可供評論）。 |
@@ -298,7 +297,7 @@ jobs:
   在 GitHub PR 上留下以下評論：
 
   ```
-  Delete the attachment from S3 when the note is removed /oc
+  Delete the attachment from S3 when the note is removed /codeplane
   ```
 
   CodePlane 會實作所請求的變更並將其提交到同一個 PR 中。
@@ -309,7 +308,7 @@ jobs:
 
   ```
   [Comment on specific lines in Files tab]
-  /oc add error handling here
+  /codeplane add error handling here
   ```
 
   當您對特定程式碼行發表評論時，CodePlane 會接收到：

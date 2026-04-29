@@ -3,7 +3,7 @@ title: GitHub
 description: Verwenden Sie CodePlane in GitHub-Problemen und Pull-Requests.
 ---
 
-CodePlane lässt sich in Ihren GitHub-Workflow integrieren. Erwähnen Sie `/codeplane` oder `/oc` in Ihrem Kommentar, und CodePlane führt Aufgaben in Ihrem GitHub Actions-Runner aus.
+CodePlane lässt sich in Ihren GitHub-Workflow integrieren. Erwähnen Sie `/codeplane` in Ihrem Kommentar, und CodePlane führt Aufgaben in Ihrem GitHub Actions-Runner aus.
 
 ---
 
@@ -51,7 +51,6 @@ Oder Sie können es manuell einrichten.
    jobs:
      codeplane:
        if: |
-         contains(github.event.comment.body, '/oc') ||
          contains(github.event.comment.body, '/codeplane')
        runs-on: ubuntu-latest
        permissions:
@@ -105,10 +104,10 @@ Oder Sie können es manuell einrichten.
 
 CodePlane kann durch die folgenden GitHub-Events ausgelöst werden:
 
-| Ereignistyp                   | Ausgelöst durch                                   | Einzelheiten                                                                                                                                        |
-| ----------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `issue_comment`               | Kommentieren Sie ein Problem oder PR              | Erwähnen Sie `/codeplane` oder `/oc` in Ihrem Kommentar. CodePlane liest den Kontext und kann Branches erstellen, PRs öffnen oder antworten.          |
-| `pull_request_review_comment` | Kommentieren Sie bestimmte Codezeilen in einem PR | Erwähnen Sie `/codeplane` oder `/oc` beim Überprüfen des Codes. CodePlane empfängt Dateipfad, Zeilennummern und Diff Context.                         |
+| Ereignistyp                   | Ausgelöst durch                                   | Einzelheiten                                                                                                                                         |
+| ----------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `issue_comment`               | Kommentieren Sie ein Problem oder PR              | Erwähnen Sie `/codeplane` in Ihrem Kommentar. CodePlane liest den Kontext und kann Branches erstellen, PRs öffnen oder antworten.                    |
+| `pull_request_review_comment` | Kommentieren Sie bestimmte Codezeilen in einem PR | Erwähnen Sie `/codeplane` beim Überprüfen des Codes. CodePlane empfängt Dateipfad, Zeilennummern und Diff Context.                                   |
 | `issues`                      | Problem geöffnet oder bearbeitet                  | Lösen Sie CodePlane automatisch aus, wenn Probleme erstellt oder geändert werden. Erfordert `prompt`-Eingabe.                                        |
 | `pull_request`                | PR geöffnet oder aktualisiert                     | Lösen Sie CodePlane automatisch aus, wenn PRs geöffnet, synchronisiert oder erneut geöffnet werden. Nützlich für automatisierte Bewertungen.         |
 | `schedule`                    | Cron-basierter Zeitplan                           | Führen Sie CodePlane nach einem Zeitplan aus. Erfordert `prompt`-Eingabe. Die Ausgabe geht an Protokolle und PRs (kein Kommentar zu diesem Problem). |
@@ -298,7 +297,7 @@ Hier sind einige Beispiele, wie Sie CodePlane in GitHub verwenden können.
   Hinterlassen Sie den folgenden Kommentar auf einem GitHub PR.
 
   ```
-  Delete the attachment from S3 when the note is removed /oc
+  Delete the attachment from S3 when the note is removed /codeplane
   ```
 
   CodePlane implementiert die angeforderte Änderung und schreibt sie an denselben PR fest.
@@ -309,7 +308,7 @@ Hier sind einige Beispiele, wie Sie CodePlane in GitHub verwenden können.
 
   ```
   [Comment on specific lines in Files tab]
-  /oc add error handling here
+  /codeplane add error handling here
   ```
 
   Beim Kommentieren bestimmter Zeilen erhält CodePlane:

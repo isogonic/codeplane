@@ -3,7 +3,7 @@ title: GitHub
 description: Use CodePlane in GitHub issues and pull-requests.
 ---
 
-CodePlane integrates with your GitHub workflow. Mention `/codeplane` or `/oc` in your comment, and CodePlane will execute tasks within your GitHub Actions runner.
+CodePlane integrates with your GitHub workflow. Mention `/codeplane` in your comment, and CodePlane will execute tasks within your GitHub Actions runner.
 
 ---
 
@@ -51,7 +51,6 @@ Or you can set it up manually.
    jobs:
      codeplane:
        if: |
-         contains(github.event.comment.body, '/oc') ||
          contains(github.event.comment.body, '/codeplane')
        runs-on: ubuntu-latest
        permissions:
@@ -105,14 +104,14 @@ Or you can set it up manually.
 
 CodePlane can be triggered by the following GitHub events:
 
-| Event Type                    | Triggered By                           | Details                                                                                                           |
-| ----------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `issue_comment`               | Comment on an issue or PR              | Mention `/codeplane` or `/oc` in your comment. CodePlane reads context and can create branches, open PRs, or reply. |
-| `pull_request_review_comment` | Comment on specific code lines in a PR | Mention `/codeplane` or `/oc` while reviewing code. CodePlane receives file path, line numbers, and diff context.   |
-| `issues`                      | Issue opened or edited                 | Automatically trigger CodePlane when issues are created or modified. Requires `prompt` input.                      |
-| `pull_request`                | PR opened or updated                   | Automatically trigger CodePlane when PRs are opened, synchronized, or reopened. Useful for automated reviews.      |
-| `schedule`                    | Cron-based schedule                    | Run CodePlane on a schedule. Requires `prompt` input. Output goes to logs and PRs (no issue to comment on).        |
-| `workflow_dispatch`           | Manual trigger from GitHub UI          | Trigger CodePlane on demand via Actions tab. Requires `prompt` input. Output goes to logs and PRs.                 |
+| Event Type                    | Triggered By                           | Details                                                                                                       |
+| ----------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `issue_comment`               | Comment on an issue or PR              | Mention `/codeplane` in your comment. CodePlane reads context and can create branches, open PRs, or reply.    |
+| `pull_request_review_comment` | Comment on specific code lines in a PR | Mention `/codeplane` while reviewing code. CodePlane receives file path, line numbers, and diff context.      |
+| `issues`                      | Issue opened or edited                 | Automatically trigger CodePlane when issues are created or modified. Requires `prompt` input.                 |
+| `pull_request`                | PR opened or updated                   | Automatically trigger CodePlane when PRs are opened, synchronized, or reopened. Useful for automated reviews. |
+| `schedule`                    | Cron-based schedule                    | Run CodePlane on a schedule. Requires `prompt` input. Output goes to logs and PRs (no issue to comment on).   |
+| `workflow_dispatch`           | Manual trigger from GitHub UI          | Trigger CodePlane on demand via Actions tab. Requires `prompt` input. Output goes to logs and PRs.            |
 
 ### Schedule Example
 
@@ -298,7 +297,7 @@ Here are some examples of how you can use CodePlane in GitHub.
   Leave the following comment on a GitHub PR.
 
   ```
-  Delete the attachment from S3 when the note is removed /oc
+  Delete the attachment from S3 when the note is removed /codeplane
   ```
 
   CodePlane will implement the requested change and commit it to the same PR.
@@ -309,7 +308,7 @@ Here are some examples of how you can use CodePlane in GitHub.
 
   ```
   [Comment on specific lines in Files tab]
-  /oc add error handling here
+  /codeplane add error handling here
   ```
 
   When commenting on specific lines, CodePlane receives:

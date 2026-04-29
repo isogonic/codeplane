@@ -3,7 +3,7 @@ title: GitHub
 description: استخدم CodePlane في GitHub Issues وPull Requests.
 ---
 
-يتكامل CodePlane مع سير عمل GitHub لديك. اذكر `/codeplane` أو `/oc` في تعليقك، وسيقوم CodePlane بتنفيذ المهام داخل GitHub Actions runner لديك.
+يتكامل CodePlane مع سير عمل GitHub لديك. اذكر `/codeplane` في تعليقك، وسيقوم CodePlane بتنفيذ المهام داخل GitHub Actions runner لديك.
 
 ---
 
@@ -51,7 +51,6 @@ codeplane github install
    jobs:
      codeplane:
        if: |
-         contains(github.event.comment.body, '/oc') ||
          contains(github.event.comment.body, '/codeplane')
        runs-on: ubuntu-latest
        permissions:
@@ -105,10 +104,10 @@ codeplane github install
 
 يمكن تشغيل CodePlane عبر أحداث GitHub التالية:
 
-| نوع الحدث                     | يتم تشغيله عبر                 | التفاصيل                                                                                                |
-| ----------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| `issue_comment`               | تعليق على Issue أو PR          | اذكر `/codeplane` أو `/oc` في تعليقك. يقرأ CodePlane السياق ويمكنه إنشاء فروع، وفتح PRs، أو الرد.         |
-| `pull_request_review_comment` | تعليق على أسطر كود محددة في PR | اذكر `/codeplane` أو `/oc` أثناء مراجعة الكود. يستلم CodePlane مسار الملف وأرقام الأسطر وسياق الـdiff.    |
+| نوع الحدث                     | يتم تشغيله عبر                 | التفاصيل                                                                                                 |
+| ----------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `issue_comment`               | تعليق على Issue أو PR          | اذكر `/codeplane` في تعليقك. يقرأ CodePlane السياق ويمكنه إنشاء فروع، وفتح PRs، أو الرد.                 |
+| `pull_request_review_comment` | تعليق على أسطر كود محددة في PR | اذكر `/codeplane` أثناء مراجعة الكود. يستلم CodePlane مسار الملف وأرقام الأسطر وسياق الـdiff.            |
 | `issues`                      | فتح Issue أو تعديلها           | تشغيل CodePlane تلقائيًا عند إنشاء Issues أو تعديلها. يتطلب إدخال `prompt`.                              |
 | `pull_request`                | فتح PR أو تحديثه               | تشغيل CodePlane تلقائيًا عند فتح PRs أو مزامنتها أو إعادة فتحها. مفيد للمراجعات الآلية.                  |
 | `schedule`                    | جدول يعتمد على Cron            | تشغيل CodePlane وفق جدول. يتطلب إدخال `prompt`. يذهب الناتج إلى logs وPRs (لا يوجد Issue للتعليق عليها). |
@@ -298,7 +297,7 @@ jobs:
   اترك التعليق التالي على GitHub PR.
 
   ```
-  Delete the attachment from S3 when the note is removed /oc
+  Delete the attachment from S3 when the note is removed /codeplane
   ```
 
   سينفّذ CodePlane التغيير المطلوب ويعمل له commit إلى نفس PR.
@@ -309,7 +308,7 @@ jobs:
 
   ```
   [Comment on specific lines in Files tab]
-  /oc add error handling here
+  /codeplane add error handling here
   ```
 
   عند التعليق على أسطر محددة، يستلم CodePlane:

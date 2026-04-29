@@ -3,7 +3,7 @@ title: GitHub
 description: Utilisez CodePlane dans les issues et les pull-requests GitHub.
 ---
 
-CodePlane s'intègre à votre flux de travail GitHub. Mentionnez `/codeplane` ou `/oc` dans votre commentaire, et CodePlane exécutera des tâches dans votre runner GitHub Actions.
+CodePlane s'intègre à votre flux de travail GitHub. Mentionnez `/codeplane` dans votre commentaire, et CodePlane exécutera des tâches dans votre runner GitHub Actions.
 
 ---
 
@@ -51,7 +51,6 @@ Ajoutez le fichier de workflow suivant à `.github/workflows/codeplane.yml` dans
    jobs:
      codeplane:
        if: |
-         contains(github.event.comment.body, '/oc') ||
          contains(github.event.comment.body, '/codeplane')
        runs-on: ubuntu-latest
        permissions:
@@ -105,14 +104,14 @@ Vous pouvez également utiliser un [jeton d'accès personnel](https://docs.githu
 
 CodePlane peut être déclenché par les événements GitHub suivants :
 
-| Type d'événement              | Déclenché par                                              | Détails                                                                                                                                                |
-| ----------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `issue_comment`               | Commentaire sur une issue ou une PR                        | Mentionnez `/codeplane` ou `/oc` dans votre commentaire. CodePlane lit le contexte et peut créer des branches, ouvrir des PR ou répondre.                |
-| `pull_request_review_comment` | Commentaire sur des lignes de code spécifiques dans une PR | Mentionnez `/codeplane` ou `/oc` lors de la révision du code. CodePlane reçoit le chemin du fichier, les numéros de ligne et le contexte de comparaison. |
-| `issues`                      | Issue ouverte ou modifiée                                  | Déclenchez automatiquement CodePlane lorsque des issues sont créées ou modifiées. Nécessite une entrée `prompt`.                                        |
-| `pull_request`                | PR ouverte ou mise à jour                                  | Déclenchez automatiquement CodePlane lorsque les PR sont ouvertes, synchronisées ou rouvertes. Utile pour les revues automatisées.                      |
-| `schedule`                    | Planification basée sur Cron                               | Exécutez CodePlane selon un planning. Nécessite une entrée `prompt`. La sortie va aux journaux et aux PR (pas de commentaire sur les issues).           |
-| `workflow_dispatch`           | Déclenchement manuel depuis l'interface utilisateur GitHub | Déclenchez CodePlane à la demande via l'onglet Actions. Nécessite une entrée `prompt`. La sortie va aux journaux et aux PR.                             |
+| Type d'événement              | Déclenché par                                              | Détails                                                                                                                                         |
+| ----------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `issue_comment`               | Commentaire sur une issue ou une PR                        | Mentionnez `/codeplane` dans votre commentaire. CodePlane lit le contexte et peut créer des branches, ouvrir des PR ou répondre.                |
+| `pull_request_review_comment` | Commentaire sur des lignes de code spécifiques dans une PR | Mentionnez `/codeplane` lors de la révision du code. CodePlane reçoit le chemin du fichier, les numéros de ligne et le contexte de comparaison. |
+| `issues`                      | Issue ouverte ou modifiée                                  | Déclenchez automatiquement CodePlane lorsque des issues sont créées ou modifiées. Nécessite une entrée `prompt`.                                |
+| `pull_request`                | PR ouverte ou mise à jour                                  | Déclenchez automatiquement CodePlane lorsque les PR sont ouvertes, synchronisées ou rouvertes. Utile pour les revues automatisées.              |
+| `schedule`                    | Planification basée sur Cron                               | Exécutez CodePlane selon un planning. Nécessite une entrée `prompt`. La sortie va aux journaux et aux PR (pas de commentaire sur les issues).   |
+| `workflow_dispatch`           | Déclenchement manuel depuis l'interface utilisateur GitHub | Déclenchez CodePlane à la demande via l'onglet Actions. Nécessite une entrée `prompt`. La sortie va aux journaux et aux PR.                     |
 
 ### Exemple de planification
 
@@ -298,7 +297,7 @@ Et CodePlane créera une nouvelle branche, mettra en œuvre les modifications et
 Laissez le commentaire suivant sur une PR GitHub.
 
 ```
-  Delete the attachment from S3 when the note is removed /oc
+  Delete the attachment from S3 when the note is removed /codeplane
 ```
 
 CodePlane mettra en œuvre la modification demandée et la validera dans la même PR.
@@ -309,7 +308,7 @@ Laissez un commentaire directement sur les lignes de code dans l'onglet "Fichier
 
 ```
   [Comment on specific lines in Files tab]
-  /oc add error handling here
+  /codeplane add error handling here
 ```
 
 Lorsqu'il commente des lignes spécifiques, CodePlane reçoit :
