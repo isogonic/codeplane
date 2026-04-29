@@ -25,9 +25,6 @@ import { decode64 } from "@/utils/base64"
 import { playSoundById, SOUND_OPTIONS } from "@/utils/sound"
 import { Link } from "./link"
 import { SettingsList } from "./settings-list"
-import { useProviders } from "@/hooks/use-providers"
-import { getVoiceModel, setVoiceModel } from "./prompt-input/voice"
-import { createSignal } from "solid-js"
 
 let demoSoundState = {
   cleanup: undefined as (() => void) | undefined,
@@ -591,73 +588,6 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
     return language.t("settings.general.row.version.descriptionUpToDate", { current })
   }
 
-  const allProviders = useProviders()
-  const initialVoice = getVoiceModel()
-  const [voiceProviderID, setVoiceProviderID] = createSignal(initialVoice?.provider ?? "")
-  const [voiceModelID, setVoiceModelID] = createSignal(initialVoice?.model ?? "")
-  const voiceProviderOptions = createMemo(() =>
-    allProviders.connected().map((p) => ({ value: p.id, label: p.name || p.id })),
-  )
-  const voiceModelOptions = createMemo(() => {
-    const provider = allProviders.connected().find((p) => p.id === voiceProviderID())
-    if (!provider) return []
-    return Object.entries(provider.models).map(([id, model]) => ({
-      value: id,
-      label: model.name || id,
-    }))
-  })
-
-  const VoiceSection = () => (
-    <div class="flex flex-col gap-1">
-      <h3 class="text-14-medium text-text-strong pb-2">{language.t("settings.general.section.voice")}</h3>
-      <SettingsList>
-        <SettingsRow
-          title={language.t("settings.general.row.voiceModel.title")}
-          description={language.t("settings.general.row.voiceModel.description")}
-        >
-          <div class="flex gap-2 items-center">
-            <Select
-              options={[
-                { value: "", label: language.t("settings.general.row.voiceModel.providerPlaceholder") },
-                ...voiceProviderOptions(),
-              ]}
-              current={[
-                { value: "", label: language.t("settings.general.row.voiceModel.providerPlaceholder") },
-                ...voiceProviderOptions(),
-              ].find((o) => o.value === voiceProviderID())}
-              value={(o) => o.value}
-              label={(o) => o.label}
-              onSelect={(option) => {
-                if (!option) return
-                setVoiceProviderID(option.value)
-                setVoiceModelID("")
-              }}
-              variant="secondary"
-            />
-            <Select
-              options={[
-                { value: "", label: language.t("settings.general.row.voiceModel.modelPlaceholder") },
-                ...voiceModelOptions(),
-              ]}
-              current={[
-                { value: "", label: language.t("settings.general.row.voiceModel.modelPlaceholder") },
-                ...voiceModelOptions(),
-              ].find((o) => o.value === voiceModelID())}
-              value={(o) => o.value}
-              label={(o) => o.label}
-              onSelect={(option) => {
-                if (!option) return
-                setVoiceModelID(option.value)
-                if (voiceProviderID() && option.value) setVoiceModel(voiceProviderID(), option.value)
-              }}
-              variant="secondary"
-            />
-          </div>
-        </SettingsRow>
-      </SettingsList>
-    </div>
-  )
-
   const UpdatesSection = () => (
     <div class="flex flex-col gap-1">
       <h3 class="text-14-medium text-text-strong pb-2">{language.t("settings.general.section.updates")}</h3>
@@ -735,7 +665,6 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
 
         <SoundsSection />
 
-        <VoiceSection />
 
         <UpdatesSection />
 

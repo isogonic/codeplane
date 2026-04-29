@@ -15,9 +15,11 @@ import { InstallationVersion } from "@/installation/version"
 import { Log } from "../../util"
 import { lazy } from "../../util/lazy"
 import { Config } from "../../config"
-import { Provider } from "../../provider"
-import { ProviderID as ProviderIDBrand } from "../../provider/schema"
 import { errors } from "../error"
+import {
+  writeInput as bashInteractiveWriteInput,
+  killProc as bashInteractiveKill,
+} from "../../tool/bash_interactive_runtime"
 import { CronRoutes } from "./cron"
 
 const log = Log.create({ service: "server" })
@@ -357,100 +359,50 @@ export const GlobalRoutes = lazy(() =>
       },
     )
     .post(
-      "/transcribe",
+      "/bash-interactive/:callID/stdin",
       describeRoute({
-        summary: "Transcribe audio to text",
+        summary: "Send stdin to a running bash_interactive tool call",
         description:
-          "Forwards a multipart audio upload to an OpenAI-compatible /v1/audio/transcriptions endpoint and returns the transcript. Configure with CODEPLANE_TRANSCRIBE_API_KEY (required), CODEPLANE_TRANSCRIBE_BASE_URL (default https://api.openai.com), CODEPLANE_TRANSCRIBE_MODEL (default whisper-1).",
-        operationId: "global.transcribe",
+          "Writes the given 'data' (raw text — append \\r yourself for Enter) to the stdin of the PTY-backed bash_interactive tool call identified by callID. Returns 404 if the call has already exited.",
+        operationId: "global.bashInteractive.stdin",
         responses: {
           200: {
-            description: "Transcription result",
-            content: {
-              "application/json": {
-                schema: resolver(z.object({ text: z.string() })),
-              },
-            },
+            description: "Bytes were written to the running command's stdin.",
+            content: { "application/json": { schema: resolver(z.object({ ok: z.literal(true) })) } },
           },
-          ...errors(400, 502),
+          ...errors(400, 404),
         },
       }),
+      validator("param", z.object({ callID: z.string() })),
+      validator("json", z.object({ data: z.string() })),
       async (c) => {
-        const incoming = await c.req.formData()
-        const file = incoming.get("file")
-        if (!(file instanceof File)) {
-          return c.json({ error: "Missing 'file' part in multipart body." }, 400)
-        }
-        const providerID = String(incoming.get("provider") ?? "").trim()
-        const modelID = String(incoming.get("model") ?? "").trim()
-        if (!providerID || !modelID) {
-          return c.json(
-            {
-              error:
-                "Missing 'provider' and/or 'model' fields. Pick a transcription model in Settings → Voice and retry.",
-            },
-            400,
-          )
-        }
-
-        // Resolve apiKey + baseURL from the configured provider so the user
-        // doesn't have to set anything env-side. Reads the same provider
-        // options the chat models use (apiKey + optional baseURL/endpoint).
-        const provider = (await AppRuntime.runPromise(
-          Provider.Service.use((svc) =>
-            svc
-              .getProvider(ProviderIDBrand.make(providerID))
-              .pipe(Effect.catch(() => Effect.succeed(undefined as unknown as Provider.Info))),
-          ),
-        )) as Provider.Info | undefined
-        if (!provider) {
-          return c.json({ error: `Provider '${providerID}' is not configured.` }, 400)
-        }
-        const apiKey =
-          (provider.options?.apiKey as string | undefined) ??
-          provider.key ??
-          process.env[provider.env?.[0] ?? ""]
-        if (!apiKey || apiKey === "public") {
-          return c.json(
-            {
-              error: `Provider '${providerID}' has no API key configured. Set it in Settings → Providers and retry.`,
-            },
-            400,
-          )
-        }
-        const baseUrl = (
-          (provider.options?.endpoint as string | undefined) ||
-          (provider.options?.baseURL as string | undefined) ||
-          "https://api.openai.com"
-        ).replace(/\/+$/, "")
-
-        const requestedLanguage = incoming.get("language")
-        const promptValue = incoming.get("prompt")
-
-        const forward = new FormData()
-        forward.set("file", file, file.name || "audio.webm")
-        forward.set("model", modelID)
-        forward.set("response_format", "json")
-        if (typeof requestedLanguage === "string" && requestedLanguage) forward.set("language", requestedLanguage)
-        if (typeof promptValue === "string" && promptValue) forward.set("prompt", promptValue)
-
-        let upstream: Response
-        try {
-          upstream = await fetch(`${baseUrl}/v1/audio/transcriptions`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${apiKey}` },
-            body: forward,
-          })
-        } catch (err) {
-          return c.json({ error: `Transcription upstream unreachable: ${err instanceof Error ? err.message : String(err)}` }, 502)
-        }
-        if (!upstream.ok) {
-          const body = await upstream.text().catch(() => "")
-          return c.json({ error: `Transcription failed (${upstream.status}): ${body.slice(0, 500)}` }, 502)
-        }
-        const json = (await upstream.json().catch(() => null)) as { text?: string } | null
-        const text = (json?.text ?? "").trim()
-        return c.json({ text })
+        const { callID } = c.req.valid("param")
+        const { data } = c.req.valid("json")
+        const ok = bashInteractiveWriteInput(callID, data)
+        if (!ok) return c.json({ error: "No active bash_interactive call with that id." }, 404)
+        return c.json({ ok: true as const })
+      },
+    )
+    .post(
+      "/bash-interactive/:callID/kill",
+      describeRoute({
+        summary: "Kill a running bash_interactive tool call",
+        description: "Sends SIGTERM to the PTY-backed bash_interactive tool call identified by callID.",
+        operationId: "global.bashInteractive.kill",
+        responses: {
+          200: {
+            description: "Signal was sent.",
+            content: { "application/json": { schema: resolver(z.object({ ok: z.literal(true) })) } },
+          },
+          ...errors(404),
+        },
+      }),
+      validator("param", z.object({ callID: z.string() })),
+      async (c) => {
+        const { callID } = c.req.valid("param")
+        const ok = bashInteractiveKill(callID)
+        if (!ok) return c.json({ error: "No active bash_interactive call with that id." }, 404)
+        return c.json({ ok: true as const })
       },
     ),
 )

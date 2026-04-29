@@ -263,11 +263,6 @@ export const dict = {
   "prompt.context.removeFile": "Datei aus dem Kontext entfernen",
   "prompt.action.attachFile": "Datei anhängen",
   "prompt.action.screenshot": "Screenshot aufnehmen",
-  "prompt.action.voiceStart": "Spracheingabe starten",
-  "prompt.action.voiceStop": "Stoppen und senden",
-  "prompt.action.voiceTranscribing": "Transkribiere…",
-  "prompt.voice.listening": "Höre zu… klicken zum Senden",
-  "prompt.voice.transcribing": "Transkribiere…",
   "prompt.attachment.remove": "Anhang entfernen",
   "prompt.action.send": "Senden",
   "prompt.action.stop": "Stopp",
@@ -279,19 +274,6 @@ export const dict = {
   "prompt.toast.screenshotFailed.title": "Screenshot fehlgeschlagen",
   "prompt.toast.screenshotFailed.description":
     "Der ausgewählte Bildschirm konnte nicht erfasst werden. Bitte erneut versuchen oder das Bild manuell anhängen.",
-  "prompt.toast.voiceUnsupported.title": "Sprache nicht unterstützt",
-  "prompt.toast.voiceUnsupported.description":
-    "Dieser Browser stellt die Mikrofon- oder Audio-API für Spracheingabe nicht bereit.",
-  "prompt.toast.voiceFailed.title": "Spracheingabe fehlgeschlagen",
-  "prompt.toast.voiceModelMissing.title": "Kein Sprachmodell ausgewählt",
-  "prompt.toast.voiceModelMissing.description":
-    "Wähle ein Transkriptionsmodell in Einstellungen → Sprache (oder setze localStorage 'codeplane-voice-model' auf 'providerID:modelID', z. B. 'openai:whisper-1').",
-  "settings.general.section.voice": "Sprache",
-  "settings.general.row.voiceModel.title": "Transkriptionsmodell",
-  "settings.general.row.voiceModel.description":
-    "Wird für die Mikrofontaste im Eingabefeld verwendet. Wähle einen verbundenen Provider und ein Modell, das Audiotranskription unterstützt (z. B. openai / whisper-1).",
-  "settings.general.row.voiceModel.providerPlaceholder": "Provider…",
-  "settings.general.row.voiceModel.modelPlaceholder": "Modell…",
   "prompt.toast.modelAgentRequired.title": "Wählen Sie einen Agenten und ein Modell",
   "prompt.toast.modelAgentRequired.description":
     "Wählen Sie einen Agenten und ein Modell, bevor Sie eine Eingabe senden.",
