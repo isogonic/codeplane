@@ -353,5 +353,72 @@ export const GlobalRoutes = lazy(() =>
         }
         return c.json({ success: true, version: target, restart, skipped: result.skipped || undefined })
       },
+    )
+    .post(
+      "/transcribe",
+      describeRoute({
+        summary: "Transcribe audio to text",
+        description:
+          "Forwards a multipart audio upload to an OpenAI-compatible /v1/audio/transcriptions endpoint and returns the transcript. Configure with CODEPLANE_TRANSCRIBE_API_KEY (required), CODEPLANE_TRANSCRIBE_BASE_URL (default https://api.openai.com), CODEPLANE_TRANSCRIBE_MODEL (default whisper-1).",
+        operationId: "global.transcribe",
+        responses: {
+          200: {
+            description: "Transcription result",
+            content: {
+              "application/json": {
+                schema: resolver(z.object({ text: z.string() })),
+              },
+            },
+          },
+          ...errors(400, 502),
+        },
+      }),
+      async (c) => {
+        const apiKey = process.env.CODEPLANE_TRANSCRIBE_API_KEY
+        if (!apiKey) {
+          return c.json(
+            {
+              error:
+                "CODEPLANE_TRANSCRIBE_API_KEY is not set. Set it (and optionally CODEPLANE_TRANSCRIBE_BASE_URL / CODEPLANE_TRANSCRIBE_MODEL) to enable voice transcription.",
+            },
+            400,
+          )
+        }
+        const baseUrl = (process.env.CODEPLANE_TRANSCRIBE_BASE_URL || "https://api.openai.com").replace(/\/+$/, "")
+        const model = process.env.CODEPLANE_TRANSCRIBE_MODEL || "whisper-1"
+
+        const incoming = await c.req.formData()
+        const file = incoming.get("file")
+        if (!(file instanceof File)) {
+          return c.json({ error: "Missing 'file' part in multipart body." }, 400)
+        }
+        const requestedLanguage = incoming.get("language")
+        const promptValue = incoming.get("prompt")
+
+        const forward = new FormData()
+        forward.set("file", file, file.name || "audio.webm")
+        forward.set("model", model)
+        forward.set("response_format", "json")
+        if (typeof requestedLanguage === "string" && requestedLanguage) forward.set("language", requestedLanguage)
+        if (typeof promptValue === "string" && promptValue) forward.set("prompt", promptValue)
+
+        let upstream: Response
+        try {
+          upstream = await fetch(`${baseUrl}/v1/audio/transcriptions`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${apiKey}` },
+            body: forward,
+          })
+        } catch (err) {
+          return c.json({ error: `Transcription upstream unreachable: ${err instanceof Error ? err.message : String(err)}` }, 502)
+        }
+        if (!upstream.ok) {
+          const body = await upstream.text().catch(() => "")
+          return c.json({ error: `Transcription failed (${upstream.status}): ${body.slice(0, 500)}` }, 502)
+        }
+        const json = (await upstream.json().catch(() => null)) as { text?: string } | null
+        const text = (json?.text ?? "").trim()
+        return c.json({ text })
+      },
     ),
 )

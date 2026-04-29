@@ -263,6 +263,11 @@ export const dict = {
   "prompt.context.removeFile": "Datei aus dem Kontext entfernen",
   "prompt.action.attachFile": "Datei anhängen",
   "prompt.action.screenshot": "Screenshot aufnehmen",
+  "prompt.action.voiceStart": "Spracheingabe starten",
+  "prompt.action.voiceStop": "Stoppen und senden",
+  "prompt.action.voiceTranscribing": "Transkribiere…",
+  "prompt.voice.listening": "Höre zu… klicken zum Senden",
+  "prompt.voice.transcribing": "Transkribiere…",
   "prompt.attachment.remove": "Anhang entfernen",
   "prompt.action.send": "Senden",
   "prompt.action.stop": "Stopp",
@@ -274,6 +279,10 @@ export const dict = {
   "prompt.toast.screenshotFailed.title": "Screenshot fehlgeschlagen",
   "prompt.toast.screenshotFailed.description":
     "Der ausgewählte Bildschirm konnte nicht erfasst werden. Bitte erneut versuchen oder das Bild manuell anhängen.",
+  "prompt.toast.voiceUnsupported.title": "Sprache nicht unterstützt",
+  "prompt.toast.voiceUnsupported.description":
+    "Dieser Browser stellt die Mikrofon- oder Audio-API für Spracheingabe nicht bereit.",
+  "prompt.toast.voiceFailed.title": "Spracheingabe fehlgeschlagen",
   "prompt.toast.modelAgentRequired.title": "Wählen Sie einen Agenten und ein Modell",
   "prompt.toast.modelAgentRequired.description":
     "Wählen Sie einen Agenten und ein Modell, bevor Sie eine Eingabe senden.",
