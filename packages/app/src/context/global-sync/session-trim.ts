@@ -25,7 +25,20 @@ export function trimSessions(
   const limit = Math.max(0, options.limit)
   const cutoff = (options.now ?? Date.now()) - SESSION_RECENT_WINDOW
   const preserve = new Set(options.preserve ?? [])
-  const all = input.filter((s) => !!s?.id).filter((s) => !s.time?.archived || preserve.has(s.id))
+  // Dedup by id up front. Callers concatenate sessions from several sources
+  // (rootSessions / existing childSessions / freshly loaded children /
+  // preservedSessions) and only dedup some of those pairwise, so the same
+  // session id can appear multiple times in `input` — without this the
+  // sidebar's child list rendered each subsession duplicated 2-8x.
+  const seen = new Set<string>()
+  const all = input
+    .filter((s): s is Session => !!s?.id)
+    .filter((s) => {
+      if (seen.has(s.id)) return false
+      seen.add(s.id)
+      return true
+    })
+    .filter((s) => !s.time?.archived || preserve.has(s.id))
   const roots = all
     .filter((s) => !s.parentID)
     .filter((s) => !s.time?.archived)
