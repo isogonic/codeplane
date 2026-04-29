@@ -35,6 +35,10 @@ export interface BasicToolProps {
   defer?: boolean
   locked?: boolean
   animated?: boolean
+  /** When true, do NOT auto-open the body while the tool is pending/running.
+      The collapsed trigger keeps showing the shimmering title + elapsed label
+      so the user knows it's running, and the body only expands on click. */
+  collapseWhilePending?: boolean
   onSubtitleClick?: () => void
   onTriggerClick?: JSX.EventHandlerUnion<HTMLElement, MouseEvent>
   triggerHref?: string
@@ -52,17 +56,19 @@ function formatToolElapsed(seconds: number) {
 
 export function BasicTool(props: BasicToolProps) {
   const initiallyPending = props.status === "pending" || props.status === "running"
-  const initialOpenState = props.defaultOpen ?? initiallyPending
+  const collapseWhilePending = !!props.collapseWhilePending
+  const initialOpenState = props.defaultOpen ?? (collapseWhilePending ? false : initiallyPending)
   const [state, setState] = createStore({
     open: initialOpenState,
     ready: initialOpenState,
-    autoOpened: initiallyPending,
+    autoOpened: initiallyPending && !collapseWhilePending,
   })
   const open = () => state.open
   const ready = () => state.ready
   const pending = () => props.status === "pending" || props.status === "running"
 
   createEffect(() => {
+    if (collapseWhilePending) return
     if (pending()) {
       if (!state.open) {
         setState({ open: true, autoOpened: true })
@@ -243,7 +249,7 @@ export function BasicTool(props: BasicToolProps) {
           </Switch>
         </div>
       </div>
-      <Show when={props.children && !props.hideDetails && !props.locked && !pending()}>
+      <Show when={props.children && !props.hideDetails && !props.locked && (!pending() || collapseWhilePending)}>
         <Collapsible.Arrow />
       </Show>
     </div>

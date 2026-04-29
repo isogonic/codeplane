@@ -124,6 +124,7 @@
 
   &[data-variant="ghost"][data-scope="filetree"] {
     > [data-slot="collapsible-trigger"] {
+      min-height: 24px;
       height: 24px;
     }
   }

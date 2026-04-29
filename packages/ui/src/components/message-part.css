@@ -362,7 +362,7 @@
   [data-slot="collapsible-trigger"] {
     min-width: 0;
     flex: 1 1 auto;
-    height: 28px;
+    min-height: 28px;
   }
 
   [data-slot="reasoning-trigger-content"] {
@@ -1317,7 +1317,7 @@
     position: sticky;
     top: var(--sticky-accordion-top, 0px);
     z-index: 20;
-    height: calc(32px + var(--tool-content-gap));
+    min-height: calc(32px + var(--tool-content-gap));
     padding-bottom: var(--tool-content-gap);
     background-color: var(--background-stronger);
   }
