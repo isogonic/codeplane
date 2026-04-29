@@ -90,6 +90,118 @@ export function createPromptAttachments(input: PromptAttachmentsInput) {
     prompt.set(next, prompt.cursor())
   }
 
+  /**
+   * Capture a screenshot of the user's selected screen / window / tab via the
+   * Screen Capture API and attach it to the prompt as a PNG. Picks the very
+   * first frame from the granted MediaStream, draws it to a canvas, and
+   * uploads the result through the existing add() pipeline.
+   *
+   * Returns true if a frame was captured + attached. Returns false (and
+   * shows a toast) if the API isn't available, the user cancelled the
+   * picker, or the capture failed.
+   */
+  const captureScreenshot = async (): Promise<boolean> => {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getDisplayMedia) {
+      showToast({
+        variant: "error",
+        title: language.t("prompt.toast.screenshotUnsupported.title"),
+        description: language.t("prompt.toast.screenshotUnsupported.description"),
+      })
+      return false
+    }
+
+    let stream: MediaStream
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: "browser" } as MediaTrackConstraints,
+        audio: false,
+      })
+    } catch (err) {
+      // User cancelled the picker; that's not an error worth a toast.
+      if (err instanceof DOMException && (err.name === "NotAllowedError" || err.name === "AbortError")) {
+        return false
+      }
+      showToast({
+        variant: "error",
+        title: language.t("prompt.toast.screenshotFailed.title"),
+        description: language.t("prompt.toast.screenshotFailed.description"),
+      })
+      return false
+    }
+
+    try {
+      const track = stream.getVideoTracks()[0]
+      if (!track) throw new Error("no video track")
+
+      // Prefer ImageCapture if the browser has it (Chromium); fall back to
+      // <video> + <canvas> on Safari/Firefox where ImageCapture isn't there.
+      let blob: Blob | null = null
+      const ImageCaptureCtor = (globalThis as { ImageCapture?: new (track: MediaStreamTrack) => unknown })
+        .ImageCapture
+      if (ImageCaptureCtor) {
+        try {
+          const capture = new ImageCaptureCtor(track) as { grabFrame(): Promise<ImageBitmap> }
+          const bitmap = await capture.grabFrame()
+          const canvas = document.createElement("canvas")
+          canvas.width = bitmap.width
+          canvas.height = bitmap.height
+          const ctx = canvas.getContext("2d")
+          if (!ctx) throw new Error("no 2d context")
+          ctx.drawImage(bitmap, 0, 0)
+          bitmap.close?.()
+          blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"))
+        } catch {
+          // fall through to <video> path
+        }
+      }
+      if (!blob) {
+        blob = await new Promise<Blob | null>((resolve, reject) => {
+          const video = document.createElement("video")
+          video.muted = true
+          video.playsInline = true
+          video.srcObject = stream
+          video.onloadedmetadata = () => {
+            video
+              .play()
+              .then(() => {
+                const canvas = document.createElement("canvas")
+                canvas.width = video.videoWidth
+                canvas.height = video.videoHeight
+                const ctx = canvas.getContext("2d")
+                if (!ctx) {
+                  reject(new Error("no 2d context"))
+                  return
+                }
+                ctx.drawImage(video, 0, 0)
+                canvas.toBlob(resolve, "image/png")
+              })
+              .catch(reject)
+          }
+          video.onerror = () => reject(new Error("video error"))
+        })
+      }
+
+      if (!blob) throw new Error("no blob")
+
+      const stamp = new Date()
+        .toISOString()
+        .replace(/[:.]/g, "-")
+        .replace("T", "_")
+        .slice(0, 19)
+      const file = new File([blob], `screenshot-${stamp}.png`, { type: "image/png" })
+      return await add(file)
+    } catch {
+      showToast({
+        variant: "error",
+        title: language.t("prompt.toast.screenshotFailed.title"),
+        description: language.t("prompt.toast.screenshotFailed.description"),
+      })
+      return false
+    } finally {
+      for (const track of stream.getTracks()) track.stop()
+    }
+  }
+
   const handlePaste = async (event: ClipboardEvent) => {
     const clipboardData = event.clipboardData
     if (!clipboardData) return
@@ -192,5 +304,6 @@ export function createPromptAttachments(input: PromptAttachmentsInput) {
     addAttachments,
     removeAttachment,
     handlePaste,
+    captureScreenshot,
   }
 }
