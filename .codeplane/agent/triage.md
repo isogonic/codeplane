@@ -32,14 +32,15 @@ Performance-related issues:
 
 **Only** add if it's likely a RAM or CPU issue. **Do not** add for LLM slowness.
 
-#### desktop
+#### web
 
-Desktop app issues:
+Web app issues:
 
 - `codeplane web` command
-- The desktop app itself
+- Browser UI bugs
+- Web app routing, rendering, and session workflow issues
 
-**Only** add if it's specifically about the Desktop application or `codeplane web` view. **Do not** add for terminal, TUI, or general codeplane issues.
+**Only** add if it's specifically about the Web App or `codeplane web` view. **Do not** add for general codeplane issues.
 
 #### nix
 
@@ -57,7 +58,7 @@ If the issue doesn't have "zen" or "codeplane black" in it then don't add zen la
 
 #### core
 
-Use for core server issues in `packages/codeplane/`, excluding `packages/codeplane/src/cli/cmd/tui/`.
+Use for core server issues in `packages/codeplane/`.
 
 Examples:
 
@@ -77,21 +78,10 @@ If the issue mentions acp support, assign acp label.
 
 Add if the issue requests better documentation or docs updates.
 
-#### opentui
-
-TUI issues potentially caused by our underlying TUI library:
-
-- Keybindings not working
-- Scroll speed issues (too fast/slow/laggy)
-- Screen flickering
-- Crashes with opentui in the log
-
-**Do not** add for general TUI bugs.
-
 When assigning to people here are the following rules:
 
-Desktop / Web:
-Use for desktop-labeled issues only.
+Web:
+Use for web-labeled issues only.
 
 - adamdotdevin
 - iamdavidhill
@@ -104,13 +94,7 @@ ONLY assign if the issue will have the "zen" label.
 - fwang
 - MrMushrooooom
 
-TUI (`packages/codeplane/src/cli/cmd/tui/...`):
-
-- thdxr for TUI UX/UI product decisions and interaction flow
-- kommander for OpenTUI engine issues: rendering artifacts, keybind handling, terminal compatibility, SSH behavior, and low-level perf bottlenecks
-- rekram1-node for TUI bugs that are not clearly OpenTUI engine issues
-
-Core (`packages/codeplane/...`, excluding TUI subtree):
+Core (`packages/codeplane/...`):
 
 - thdxr for sqlite/snapshot/memory bugs and larger architectural core features
 - jlongster for codeplane server + API feature work (tool currently remaps jlongster -> thdxr until assignable)
@@ -131,7 +115,7 @@ Determinism rules:
 - If title + body does not contain "zen", do not add the "zen" label
 - If "nix" label is added but title + body does not mention nix/nixos, the tool will drop "nix"
 - If title + body mentions nix/nixos, assign to `rekram1-node`
-- If "desktop" label is added, the tool will override assignee and randomly pick one Desktop / Web owner
+- If "web" label is added, the tool will override assignee and randomly pick one Web owner
 
 In all other cases, choose the team/section with the most overlap with the issue and assign a member from that team at random.
 

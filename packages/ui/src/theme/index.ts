@@ -1,5 +1,5 @@
 export type {
-  DesktopTheme,
+  WebTheme,
   ThemePaletteColors,
   ThemeSeedColors,
   ThemeVariant,

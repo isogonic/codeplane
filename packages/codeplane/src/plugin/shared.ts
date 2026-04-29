@@ -247,9 +247,6 @@ export function readV1Plugin(
   if (server !== undefined && typeof server !== "function") {
     throw new TypeError(`Plugin ${spec} has invalid server export`)
   }
-  if ("tui" in value) {
-    throw new TypeError(`Plugin ${spec} uses an unsupported tui export`)
-  }
   if (kind === "server" && server === undefined) {
     throw new TypeError(`Plugin ${spec} must default export an object with server()`)
   }

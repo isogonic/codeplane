@@ -1,4 +1,4 @@
-import type { DesktopTheme } from "./types"
+import type { WebTheme } from "./types"
 import oc2ThemeJson from "./themes/oc-2.json"
 import amoledThemeJson from "./themes/amoled.json"
 import auraThemeJson from "./themes/aura.json"
@@ -37,45 +37,45 @@ import vercelThemeJson from "./themes/vercel.json"
 import vesperThemeJson from "./themes/vesper.json"
 import zenburnThemeJson from "./themes/zenburn.json"
 
-export const oc2Theme = oc2ThemeJson as DesktopTheme
-export const amoledTheme = amoledThemeJson as DesktopTheme
-export const auraTheme = auraThemeJson as DesktopTheme
-export const ayuTheme = ayuThemeJson as DesktopTheme
-export const carbonfoxTheme = carbonfoxThemeJson as DesktopTheme
-export const catppuccinTheme = catppuccinThemeJson as DesktopTheme
-export const catppuccinFrappeTheme = catppuccinFrappeThemeJson as DesktopTheme
-export const catppuccinMacchiatoTheme = catppuccinMacchiatoThemeJson as DesktopTheme
-export const cobalt2Theme = cobalt2ThemeJson as DesktopTheme
-export const cursorTheme = cursorThemeJson as DesktopTheme
-export const draculaTheme = draculaThemeJson as DesktopTheme
-export const everforestTheme = everforestThemeJson as DesktopTheme
-export const flexokiTheme = flexokiThemeJson as DesktopTheme
-export const githubTheme = githubThemeJson as DesktopTheme
-export const gruvboxTheme = gruvboxThemeJson as DesktopTheme
-export const kanagawaTheme = kanagawaThemeJson as DesktopTheme
-export const lucentOrngTheme = lucentOrngThemeJson as DesktopTheme
-export const materialTheme = materialThemeJson as DesktopTheme
-export const matrixTheme = matrixThemeJson as DesktopTheme
-export const mercuryTheme = mercuryThemeJson as DesktopTheme
-export const monokaiTheme = monokaiThemeJson as DesktopTheme
-export const nightowlTheme = nightowlThemeJson as DesktopTheme
-export const nordTheme = nordThemeJson as DesktopTheme
-export const oneDarkTheme = oneDarkThemeJson as DesktopTheme
-export const oneDarkProTheme = oneDarkProThemeJson as DesktopTheme
-export const codeplaneTheme = codeplaneThemeJson as DesktopTheme
-export const orngTheme = orngThemeJson as DesktopTheme
-export const osakaJadeTheme = osakaJadeThemeJson as DesktopTheme
-export const palenightTheme = palenightThemeJson as DesktopTheme
-export const rosepineTheme = rosepineThemeJson as DesktopTheme
-export const shadesOfPurpleTheme = shadesOfPurpleThemeJson as DesktopTheme
-export const solarizedTheme = solarizedThemeJson as DesktopTheme
-export const synthwave84Theme = synthwave84ThemeJson as DesktopTheme
-export const tokyonightTheme = tokyonightThemeJson as DesktopTheme
-export const vercelTheme = vercelThemeJson as DesktopTheme
-export const vesperTheme = vesperThemeJson as DesktopTheme
-export const zenburnTheme = zenburnThemeJson as DesktopTheme
+export const oc2Theme = oc2ThemeJson as WebTheme
+export const amoledTheme = amoledThemeJson as WebTheme
+export const auraTheme = auraThemeJson as WebTheme
+export const ayuTheme = ayuThemeJson as WebTheme
+export const carbonfoxTheme = carbonfoxThemeJson as WebTheme
+export const catppuccinTheme = catppuccinThemeJson as WebTheme
+export const catppuccinFrappeTheme = catppuccinFrappeThemeJson as WebTheme
+export const catppuccinMacchiatoTheme = catppuccinMacchiatoThemeJson as WebTheme
+export const cobalt2Theme = cobalt2ThemeJson as WebTheme
+export const cursorTheme = cursorThemeJson as WebTheme
+export const draculaTheme = draculaThemeJson as WebTheme
+export const everforestTheme = everforestThemeJson as WebTheme
+export const flexokiTheme = flexokiThemeJson as WebTheme
+export const githubTheme = githubThemeJson as WebTheme
+export const gruvboxTheme = gruvboxThemeJson as WebTheme
+export const kanagawaTheme = kanagawaThemeJson as WebTheme
+export const lucentOrngTheme = lucentOrngThemeJson as WebTheme
+export const materialTheme = materialThemeJson as WebTheme
+export const matrixTheme = matrixThemeJson as WebTheme
+export const mercuryTheme = mercuryThemeJson as WebTheme
+export const monokaiTheme = monokaiThemeJson as WebTheme
+export const nightowlTheme = nightowlThemeJson as WebTheme
+export const nordTheme = nordThemeJson as WebTheme
+export const oneDarkTheme = oneDarkThemeJson as WebTheme
+export const oneDarkProTheme = oneDarkProThemeJson as WebTheme
+export const codeplaneTheme = codeplaneThemeJson as WebTheme
+export const orngTheme = orngThemeJson as WebTheme
+export const osakaJadeTheme = osakaJadeThemeJson as WebTheme
+export const palenightTheme = palenightThemeJson as WebTheme
+export const rosepineTheme = rosepineThemeJson as WebTheme
+export const shadesOfPurpleTheme = shadesOfPurpleThemeJson as WebTheme
+export const solarizedTheme = solarizedThemeJson as WebTheme
+export const synthwave84Theme = synthwave84ThemeJson as WebTheme
+export const tokyonightTheme = tokyonightThemeJson as WebTheme
+export const vercelTheme = vercelThemeJson as WebTheme
+export const vesperTheme = vesperThemeJson as WebTheme
+export const zenburnTheme = zenburnThemeJson as WebTheme
 
-export const DEFAULT_THEMES: Record<string, DesktopTheme> = {
+export const DEFAULT_THEMES: Record<string, WebTheme> = {
   "oc-2": oc2Theme,
   amoled: amoledTheme,
   aura: auraTheme,

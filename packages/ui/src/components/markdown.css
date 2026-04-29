@@ -352,7 +352,7 @@
 
   th,
   td {
-    /* Minimal borders for structure, matching TUI "lines" roughly but keeping it web-clean */
+    /* Minimal borders for structure while keeping markdown tables web-clean. */
     border-bottom: 1px solid var(--border-weaker-base);
     padding: 12px;
     text-align: left;

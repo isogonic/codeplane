@@ -1,4 +1,4 @@
-import type { ColorValue, DesktopTheme, HexColor, ResolvedTheme, ThemeVariant } from "./types"
+import type { ColorValue, WebTheme, HexColor, ResolvedTheme, ThemeVariant } from "./types"
 import { blend, generateNeutralScale, generateScale, hexToOklch, hexToRgb, shift, withAlpha } from "./color"
 
 export function resolveThemeVariant(variant: ThemeVariant, isDark: boolean): ResolvedTheme {
@@ -526,7 +526,7 @@ function getHex(value: ColorValue | undefined): HexColor | undefined {
   return value as HexColor
 }
 
-export function resolveTheme(theme: DesktopTheme): { light: ResolvedTheme; dark: ResolvedTheme } {
+export function resolveTheme(theme: WebTheme): { light: ResolvedTheme; dark: ResolvedTheme } {
   return {
     light: resolveThemeVariant(theme.light, false),
     dark: resolveThemeVariant(theme.dark, true),

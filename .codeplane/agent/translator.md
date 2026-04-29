@@ -155,7 +155,6 @@ OpenChamber
 CodePlane
 CodePlane config
 CodePlane Config
-CodePlane TUI with the codeplane theme
 CodePlane Web - Active Session
 CodePlane Web - New Session
 CodePlane Web - See Servers
@@ -253,7 +252,6 @@ SSE
 SSO
 TS
 TTY
-TUI
 UI
 URL
 US
@@ -303,7 +301,6 @@ OpenAPI
 OpenChamber
 CodePlane
 OpenRouter
-OpenTUI
 OpenWork
 ownUserPermissions
 PowerShell
@@ -462,18 +459,6 @@ codeplane.server.close()
 /share
 /summarize
 /theme
-/tui
-/tui/append-prompt
-/tui/clear-prompt
-/tui/control/next
-/tui/control/response
-/tui/execute-command
-/tui/open-help
-/tui/open-models
-/tui/open-sessions
-/tui/open-themes
-/tui/show-toast
-/tui/submit-prompt
 /undo
 /Users/username
 /Users/username/projects/*

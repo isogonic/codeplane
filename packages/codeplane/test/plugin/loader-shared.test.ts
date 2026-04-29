@@ -172,44 +172,6 @@ describe("plugin.loader.shared", () => {
     expect(called).toBe(false)
   })
 
-  test("rejects v1 plugin that exports server and tui together", async () => {
-    await using tmp = await tmpdir({
-      init: async (dir) => {
-        const file = path.join(dir, "plugin.ts")
-        const mark = path.join(dir, "called.txt")
-        await Bun.write(
-          file,
-          [
-            "export default {",
-            '  id: "demo.mixed",',
-            "  server: async () => {",
-            `    await Bun.write(${JSON.stringify(mark)}, "server")`,
-            "    return {}",
-            "  },",
-            "  tui: async () => {},",
-            "}",
-            "",
-          ].join("\n"),
-        )
-
-        await Bun.write(
-          path.join(dir, "codeplane.json"),
-          JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2),
-        )
-
-        return { mark }
-      },
-    })
-
-    await load(tmp.path)
-    const called = await Bun.file(tmp.extra.mark)
-      .text()
-      .then(() => true)
-      .catch(() => false)
-
-    expect(called).toBe(false)
-  })
-
   test("resolves npm plugin specs with explicit and default versions", async () => {
     await using tmp = await tmpdir({
       init: async (dir) => {

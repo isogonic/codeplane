@@ -1,5 +1,2 @@
-# web + desktop packages
+# web packages
 packages/app/      @adamdotdevin
-packages/tauri/    @adamdotdevin
-packages/desktop/src-tauri/  @brendonovich
-packages/desktop/  @adamdotdevin

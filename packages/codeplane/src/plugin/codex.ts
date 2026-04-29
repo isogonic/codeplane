@@ -1,6 +1,5 @@
 import type { Hooks, PluginInput } from "@codeplane-ai/plugin"
 import { Log } from "../util"
-import { Installation } from "../installation"
 import { InstallationVersion } from "../installation/version"
 import { OAUTH_DUMMY_KEY } from "../auth"
 import os from "os"
@@ -395,7 +394,6 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
           if (model.id.includes("gpt-5.5")) {
             model.limit = {
               context: 400_000,
-              //@ts-expect-error incorrect type for v1 sdk but works
               input: 272_000,
               output: 128_000,
             }
@@ -430,8 +428,8 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
               const tokens = await refreshAccessToken(currentAuth.refresh)
               const newAccountId = extractAccountId(tokens) || authWithAccount.accountId
               await input.client.auth.set({
-                path: { id: "openai" },
-                body: {
+                providerID: "openai",
+                auth: {
                   type: "oauth",
                   refresh: tokens.refresh_token,
                   access: tokens.access_token,

@@ -14,7 +14,6 @@ import { Env } from "../../src/env"
 import { provideTmpdirInstance } from "../fixture/fixture"
 import { tmpdir } from "../fixture/fixture"
 import * as CrossSpawnSpawner from "../../src/effect/cross-spawn-spawner"
-import { testEffect } from "../lib/effect"
 
 /** Infra layer that provides FileSystem, Path, ChildProcessSpawner for test fixtures */
 const infra = CrossSpawnSpawner.defaultLayer.pipe(
@@ -50,8 +49,6 @@ const layer = Config.layer.pipe(
   Layer.provide(Npm.defaultLayer),
 )
 
-const it = testEffect(layer)
-
 const load = () => Effect.runPromise(Config.Service.use((svc) => svc.get()).pipe(Effect.scoped, Effect.provide(layer)))
 const save = (config: Config.Info) =>
   Effect.runPromise(Config.Service.use((svc) => svc.update(config)).pipe(Effect.scoped, Effect.provide(layer)))
@@ -59,9 +56,6 @@ const clear = (wait = false) =>
   Effect.runPromise(Config.Service.use((svc) => svc.invalidate(wait)).pipe(Effect.scoped, Effect.provide(layer)))
 const listDirs = () =>
   Effect.runPromise(Config.Service.use((svc) => svc.directories()).pipe(Effect.scoped, Effect.provide(layer)))
-const ready = () =>
-  Effect.runPromise(Config.Service.use((svc) => svc.waitForDependencies()).pipe(Effect.scoped, Effect.provide(layer)))
-
 // Get managed config directory from environment (set in preload.ts)
 const managedConfigDir = process.env.CODEPLANE_TEST_MANAGED_CONFIG_DIR!
 
@@ -192,28 +186,6 @@ test("loads project config from Cygwin paths on Windows", async () => {
     const drive = dir[0].toLowerCase()
     const rest = dir.slice(2).replaceAll("\\", "/")
     return `/cygdrive/${drive}${rest}`
-  })
-})
-
-test("ignores legacy tui keys in codeplane config", async () => {
-  await using tmp = await tmpdir({
-    init: async (dir) => {
-      await writeConfig(dir, {
-        $schema: "https://example.invalid/config.json",
-        model: "test/model",
-        theme: "legacy",
-        tui: { scroll_speed: 4 },
-      })
-    },
-  })
-  await Instance.provide({
-    directory: tmp.path,
-    fn: async () => {
-      const config = await load()
-      expect(config.model).toBe("test/model")
-      expect((config as Record<string, unknown>).theme).toBeUndefined()
-      expect((config as Record<string, unknown>).tui).toBeUndefined()
-    },
   })
 })
 

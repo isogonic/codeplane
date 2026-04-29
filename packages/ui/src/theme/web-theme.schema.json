@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CodePlane Desktop Theme",
-  "description": "A theme definition for the CodePlane desktop application",
+  "title": "CodePlane Web Theme",
+  "description": "A theme definition for the CodePlane web application",
   "type": "object",
   "required": ["name", "id", "light", "dark"],
   "properties": {

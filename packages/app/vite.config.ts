@@ -1,8 +1,8 @@
 import { defineConfig } from "vite"
-import desktopPlugin from "./vite"
+import webPlugin from "./vite"
 
 export default defineConfig({
-  plugins: [desktopPlugin] as any,
+  plugins: webPlugin,
   server: {
     host: "0.0.0.0",
     allowedHosts: true,
