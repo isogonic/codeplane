@@ -26,6 +26,7 @@ import { Tooltip, TooltipKeybind } from "@codeplane-ai/ui/tooltip"
 import { IconButton } from "@codeplane-ai/ui/icon-button"
 import { Select } from "@codeplane-ai/ui/select"
 import { useDialog } from "@codeplane-ai/ui/context/dialog"
+import { showToast } from "@codeplane-ai/ui/toast"
 import { ModelSelectorPopover } from "@/components/dialog-select-model"
 import { useProviders } from "@/hooks/use-providers"
 import { useCommand } from "@/context/command"
@@ -38,6 +39,7 @@ import { useSessionLayout } from "@/pages/session/session-layout"
 import { createSessionTabs } from "@/pages/session/helpers"
 import { createTextFragment, getCursorPosition, setCursorPosition, setRangeEdge } from "./prompt-input/editor-dom"
 import { createPromptAttachments } from "./prompt-input/attachments"
+import { isVoiceSupported, playSendChime, startVoiceRecording, type VoiceRecording } from "./prompt-input/voice"
 import { ACCEPTED_FILE_TYPES } from "./prompt-input/files"
 import {
   canNavigateHistoryAtCursor,
@@ -1101,6 +1103,95 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     return permission.isAutoAccepting(id, sdk.directory)
   })
 
+  // ── Voice transcription ────────────────────────────────────────────────
+  const [voiceState, setVoiceState] = createSignal<"idle" | "starting" | "recording" | "transcribing">("idle")
+  const [voiceLevel, setVoiceLevel] = createSignal(0)
+  const [voiceError, setVoiceError] = createSignal<string | null>(null)
+  let voiceRecording: VoiceRecording | undefined
+
+  const voiceSupported = isVoiceSupported()
+
+  const stopVoice = async (autoSubmit = true) => {
+    if (!voiceRecording) {
+      setVoiceState("idle")
+      return
+    }
+    const rec = voiceRecording
+    voiceRecording = undefined
+    setVoiceState("transcribing")
+    try {
+      const text = await rec.finish()
+      setVoiceLevel(0)
+      if (text) {
+        // Insert as a fresh text block at the cursor.
+        const editor = editorRef
+        editor?.focus()
+        const ok = addPart({ type: "text", content: text, start: 0, end: 0 })
+        if (!ok && editor) {
+          editor.focus()
+          addPart({ type: "text", content: text, start: 0, end: 0 })
+        }
+        if (autoSubmit) {
+          // Wait one tick so the editor reflects the new content, then send.
+          requestAnimationFrame(() => {
+            playSendChime()
+            const form = editor?.closest("form") as HTMLFormElement | null
+            if (form) form.requestSubmit()
+          })
+        }
+      }
+      setVoiceState("idle")
+    } catch (err) {
+      setVoiceError(err instanceof Error ? err.message : String(err))
+      setVoiceState("idle")
+      showToast({
+        variant: "error",
+        title: language.t("prompt.toast.voiceFailed.title"),
+        description: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
+
+  const startVoice = async () => {
+    if (!voiceSupported) {
+      showToast({
+        variant: "error",
+        title: language.t("prompt.toast.voiceUnsupported.title"),
+        description: language.t("prompt.toast.voiceUnsupported.description"),
+      })
+      return
+    }
+    if (voiceState() !== "idle") return
+    setVoiceState("starting")
+    setVoiceError(null)
+    try {
+      voiceRecording = await startVoiceRecording({
+        onLevel: (lvl) => setVoiceLevel(lvl),
+        endpoint: "/global/transcribe",
+        fetch: platform.fetch,
+      })
+      setVoiceState("recording")
+    } catch (err) {
+      setVoiceState("idle")
+      showToast({
+        variant: "error",
+        title: language.t("prompt.toast.voiceFailed.title"),
+        description: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
+
+  const toggleVoice = () => {
+    const s = voiceState()
+    if (s === "idle") void startVoice()
+    else if (s === "recording") void stopVoice(true)
+  }
+
+  onCleanup(() => {
+    voiceRecording?.cancel()
+    voiceRecording = undefined
+  })
+
   const { abort, handleSubmit } = createPromptSubmit({
     info,
     imageAttachments,
@@ -1512,8 +1603,88 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                   <Icon name="screenshot" class="size-4.5" />
                 </Button>
               </TooltipKeybind>
+              <Show when={voiceSupported}>
+                <Tooltip
+                  placement="top"
+                  value={
+                    voiceState() === "recording"
+                      ? language.t("prompt.action.voiceStop")
+                      : voiceState() === "transcribing"
+                        ? language.t("prompt.action.voiceTranscribing")
+                        : language.t("prompt.action.voiceStart")
+                  }
+                >
+                  <Button
+                    data-action="prompt-voice"
+                    data-state={voiceState()}
+                    type="button"
+                    variant={voiceState() === "recording" ? "primary" : "ghost"}
+                    class="size-8 p-0"
+                    style={buttons()}
+                    onClick={() => toggleVoice()}
+                    disabled={store.mode !== "normal" || voiceState() === "starting" || voiceState() === "transcribing"}
+                    tabIndex={store.mode === "normal" ? undefined : -1}
+                    aria-label={
+                      voiceState() === "recording"
+                        ? language.t("prompt.action.voiceStop")
+                        : language.t("prompt.action.voiceStart")
+                    }
+                  >
+                    <Icon name={voiceState() === "recording" ? "stop" : "microphone"} class="size-4.5" />
+                  </Button>
+                </Tooltip>
+              </Show>
             </div>
           </div>
+          <Show when={voiceState() === "recording" || voiceState() === "transcribing"}>
+            <div
+              data-component="prompt-voice-meter"
+              style={{
+                position: "absolute",
+                inset: "8px 56px 8px 56px",
+                "border-radius": "8px",
+                background: "var(--surface-base)",
+                display: "flex",
+                "align-items": "center",
+                gap: "10px",
+                padding: "0 12px",
+                "pointer-events": "none",
+                "z-index": "5",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  "align-items": "center",
+                  gap: "3px",
+                  height: "24px",
+                  flex: "1 1 auto",
+                  "min-width": "0",
+                }}
+              >
+                {Array.from({ length: 28 }).map((_, i) => {
+                  const phase = i / 27
+                  return (
+                    <div
+                      style={{
+                        flex: "1 1 0",
+                        height: `${Math.max(3, Math.min(24, 6 + voiceLevel() * 24 * (0.6 + 0.8 * Math.sin(phase * Math.PI))))}px`,
+                        "border-radius": "2px",
+                        background: voiceState() === "recording" ? "var(--icon-interactive-base)" : "var(--text-weak)",
+                        opacity: voiceState() === "recording" ? "0.8" : "0.5",
+                        transition: "height 80ms ease-out",
+                      }}
+                    />
+                  )
+                })}
+              </div>
+              <span style={{ "font-size": "12px", color: "var(--text-weak)", "white-space": "nowrap" }}>
+                {voiceState() === "recording"
+                  ? language.t("prompt.voice.listening")
+                  : language.t("prompt.voice.transcribing")}
+              </span>
+            </div>
+          </Show>
         </div>
       </DockShellForm>
       <Show when={store.mode === "normal" || store.mode === "shell"}>
