@@ -82,4 +82,16 @@
       opacity: 1;
     }
   }
+
+  @keyframes voice-meter-pulse {
+    0%,
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--icon-interactive-base) 35%, transparent);
+    }
+    50% {
+      transform: scale(1.15);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--icon-interactive-base) 0%, transparent);
+    }
+  }
 }
