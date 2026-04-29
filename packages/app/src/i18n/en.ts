@@ -830,7 +830,7 @@ export const dict = {
   "debugBar.mem.tipUnavailable": "Used JS heap vs heap limit. Chromium only.",
   "debugBar.mem.tip": "Used JS heap vs heap limit. {{used}} of {{limit}}.",
 
-  "app.name.web": "CodePlane Web",
+  "app.name.web": "CodePlane",
 
   "settings.section.app": "App",
   "settings.section.server": "Server",

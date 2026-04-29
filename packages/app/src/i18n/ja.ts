@@ -539,7 +539,7 @@ export const dict = {
   "sidebar.project.recentSessions": "最近のセッション",
   "sidebar.project.viewAllSessions": "すべてのセッションを表示",
   "sidebar.project.clearNotifications": "通知をクリア",
-  "app.name.web": "CodePlane Web",
+  "app.name.web": "CodePlane",
   "settings.section.app": "App",
   "settings.section.server": "サーバー",
   "settings.tab.general": "一般",

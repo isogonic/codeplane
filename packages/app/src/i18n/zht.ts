@@ -594,7 +594,7 @@ export const dict = {
   "sidebar.project.viewAllSessions": "查看全部工作階段",
   "sidebar.project.clearNotifications": "清除通知",
 
-  "app.name.web": "CodePlane Web",
+  "app.name.web": "CodePlane",
   "settings.section.app": "App",
   "settings.section.server": "伺服器",
   "settings.tab.general": "一般",
