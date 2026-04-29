@@ -23,8 +23,8 @@
   }
 
   [data-slot="basic-tool-tool-trigger-content"] {
-    flex: 0 1 auto;
-    width: auto;
+    flex: 1 1 auto;
+    width: 100%;
     max-width: calc(100% - 24px);
     min-width: 0;
     display: flex;
@@ -68,7 +68,8 @@
   }
 
   [data-slot="basic-tool-tool-info"] {
-    flex: 0 1 auto;
+    flex: 1 1 auto;
+    width: 100%;
     min-width: 0;
     max-width: 100%;
     text-align: left;
@@ -76,11 +77,11 @@
   }
 
   [data-slot="basic-tool-tool-info-structured"] {
-    flex: 0 1 auto;
-    width: auto;
+    flex: 1 1 auto;
+    width: 100%;
     max-width: 100%;
     min-width: 0;
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 8px;
     justify-content: flex-start;
@@ -88,15 +89,18 @@
 
   [data-slot="basic-tool-tool-info-main"] {
     display: flex;
+    flex: 1 1 auto;
     align-items: baseline;
     gap: 8px;
     min-width: 0;
+    width: 100%;
     overflow: hidden;
   }
 
   [data-slot="basic-tool-tool-title"] {
-    flex-shrink: 1;
+    flex-shrink: 0;
     min-width: 0;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -144,7 +148,7 @@
   }
 
   [data-slot="basic-tool-tool-subtitle"] {
-    flex-shrink: 1;
+    flex: 1 1 0;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
