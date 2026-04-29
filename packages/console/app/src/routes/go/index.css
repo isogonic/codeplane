@@ -171,7 +171,7 @@ body {
       width: auto;
     }
 
-    [data-component="nav-desktop"] {
+    [data-component="nav-wide"] {
       ul {
         display: flex;
         justify-content: space-between;
@@ -326,7 +326,7 @@ body {
     }
   }
 
-  [data-component="desktop-app-banner"] {
+  [data-component="web-app-banner"] {
     display: flex;
     align-items: center;
     gap: 12px;

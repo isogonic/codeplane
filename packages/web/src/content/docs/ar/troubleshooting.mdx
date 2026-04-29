@@ -1,274 +1,141 @@
 ---
-title: استكشاف الأخطاء وإصلاحها
-description: المشكلات الشائعة وكيفية حلها.
+title: Troubleshooting
+description: Common issues and how to resolve them.
 ---
 
-لاستكشاف المشكلات في CodePlane وإصلاحها، ابدأ بالتحقق من السجلات والبيانات المحلية التي يخزنها على القرص.
+To debug issues with CodePlane, start by checking the logs and local data it stores on disk.
 
 ---
 
-## السجلات
+## Logs
 
-يتم حفظ ملفات السجل في:
+Log files are written to:
 
 - **macOS/Linux**: `~/.local/share/codeplane/log/`
-- **Windows**: اضغط `WIN+R` والصق `%USERPROFILE%\.local\share\codeplane\log`
+- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.local\share\codeplane\log`
 
-تتم تسمية ملفات السجل بطوابع زمنية (مثل `2025-01-09T123456.log`) ويتم الاحتفاظ بأحدث 10 ملفات سجل.
+Log files are named with timestamps (e.g., `2025-01-09T123456.log`) and the most recent 10 log files are kept.
 
-يمكنك ضبط مستوى السجل باستخدام خيار CLI `--log-level` للحصول على معلومات تصحيح أكثر تفصيلا. على سبيل المثال: `codeplane --log-level DEBUG`.
+You can set the log level with the `--log-level` command-line option to get more detailed debug information. For example, `codeplane --log-level DEBUG`.
 
 ---
 
-## التخزين
+## Storage
 
-يخزن codeplane بيانات الجلسات وبيانات التطبيق الأخرى على القرص في:
+codeplane stores session data and other application data on disk at:
 
 - **macOS/Linux**: `~/.local/share/codeplane/`
-- **Windows**: اضغط `WIN+R` والصق `%USERPROFILE%\.local\share\codeplane`
+- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.local\share\codeplane`
 
-يحتوي هذا الدليل على:
+This directory contains:
 
-- `auth.json` - بيانات المصادقة مثل مفاتيح API ورموز OAuth
-- `log/` - سجلات التطبيق
-- `project/` - بيانات خاصة بالمشروع مثل بيانات الجلسة والرسائل
-  - إذا كان المشروع داخل مستودع Git، فسيتم تخزينه في `./<project-slug>/storage/`
-  - إذا لم يكن داخل مستودع Git، فسيتم تخزينه في `./global/storage/`
+- `auth.json` - Authentication data like API keys, OAuth tokens
+- `log/` - Application logs
+- `project/` - Project-specific data like session and message data
+  - If the project is within a Git repo, it is stored in `./<project-slug>/storage/`
+  - If it is not a Git repo, it is stored in `./global/storage/`
 
----
+## Getting help
 
-## تطبيق سطح المكتب
+If you're experiencing issues with CodePlane:
 
-يشغل CodePlane Desktop خادما محليا لـ CodePlane (العملية الجانبية `codeplane-cli`) في الخلفية. معظم المشكلات سببها إضافة لا تعمل بشكل صحيح، أو ذاكرة تخزين مؤقت تالفة، أو إعداد خادم غير صحيح.
+1. **Report issues on GitHub**
 
-### فحوصات سريعة
-
-- أغلق التطبيق تماما ثم أعد تشغيله.
-- إذا عرض التطبيق شاشة خطأ، انقر **Restart** وانسخ تفاصيل الخطأ.
-- على macOS فقط: قائمة `CodePlane` -> **Reload Webview** (يفيد إذا كانت الواجهة فارغة/متجمدة).
-
----
-
-### تعطيل الإضافات
-
-إذا كان تطبيق سطح المكتب يتعطل عند التشغيل، أو يتوقف عن الاستجابة، أو يتصرف بشكل غريب، فابدأ بتعطيل الإضافات.
-
-#### تحقق من الإعدادات العامة
-
-افتح ملف الإعدادات العام وابحث عن المفتاح `plugin`.
-
-- **macOS/Linux**: `~/.config/codeplane/codeplane.jsonc` (أو `~/.config/codeplane/codeplane.json`)
-- **macOS/Linux** (عمليات تثبيت أقدم): `~/.local/share/codeplane/codeplane.jsonc`
-- **Windows**: اضغط `WIN+R` والصق `%USERPROFILE%\.config\codeplane\codeplane.jsonc`
-
-إذا كانت لديك إضافات مضبوطة، فقم بتعطيلها مؤقتا بإزالة المفتاح أو ضبطه على مصفوفة فارغة:
-
-```jsonc
-{
-  "$schema": "https://example.invalid/config.json",
-  "plugin": [],
-}
-```
-
-#### تحقق من أدلة الإضافات
-
-يمكن لـ CodePlane أيضا تحميل إضافات محلية من القرص. انقلها مؤقتا إلى مكان آخر (أو أعد تسمية المجلد) ثم أعد تشغيل تطبيق سطح المكتب:
-
-- **إضافات عامة**
-  - **macOS/Linux**: `~/.config/codeplane/plugins/`
-  - **Windows**: اضغط `WIN+R` والصق `%USERPROFILE%\.config\codeplane\plugins`
-- **إضافات المشروع** (فقط إذا كنت تستخدم إعدادات لكل مشروع)
-  - `<your-project>/.codeplane/plugins/`
-
-إذا عاد التطبيق للعمل، فأعد تفعيل الإضافات واحدة تلو الأخرى لمعرفة أيها يسبب المشكلة.
-
----
-
-### مسح ذاكرة التخزين المؤقت
-
-إذا لم يساعد تعطيل الإضافات (أو كانت عملية تثبيت إضافة عالقة)، فامسح ذاكرة التخزين المؤقت حتى يتمكن CodePlane من إعادة بنائها.
-
-1. أغلق CodePlane Desktop تماما.
-2. احذف دليل ذاكرة التخزين المؤقت:
-
-- **macOS**: Finder -> `Cmd+Shift+G` -> الصق `~/.cache/codeplane`
-- **Linux**: احذف `~/.cache/codeplane` (أو شغّل `rm -rf ~/.cache/codeplane`)
-- **Windows**: اضغط `WIN+R` والصق `%USERPROFILE%\.cache\codeplane`
-
-3. أعد تشغيل CodePlane Desktop.
-
----
-
-### إصلاح مشكلات اتصال الخادم
-
-يمكن لـ CodePlane Desktop إما تشغيل خادمه المحلي (افتراضيا) أو الاتصال بعنوان URL لخادم قمت بتهيئته.
-
-إذا ظهرت نافذة **"Connection Failed"** (أو لم يتجاوز التطبيق شاشة البداية)، فتحقق مما إذا كان هناك عنوان URL مخصص للخادم.
-
-#### مسح عنوان URL الافتراضي لخادم سطح المكتب
-
-من شاشة Home، انقر اسم الخادم (مع نقطة الحالة) لفتح محدد الخوادم. في قسم **Default server**، انقر **Clear**.
-
-#### إزالة `server.port` / `server.hostname` من الإعدادات
-
-إذا كان `codeplane.json(c)` يحتوي على قسم `server`، فأزله مؤقتا ثم أعد تشغيل تطبيق سطح المكتب.
-
-#### تحقق من متغيرات البيئة
-
-إذا كان `CODEPLANE_PORT` مضبوطا في بيئتك، فسيحاول تطبيق سطح المكتب استخدام ذلك المنفذ للخادم المحلي.
-
-- أزل ضبط `CODEPLANE_PORT` (أو اختر منفذا متاحا) ثم أعد التشغيل.
-
----
-
-### Linux: مشكلات Wayland / X11
-
-على Linux، قد تتسبب بعض إعدادات Wayland في نوافذ فارغة أو أخطاء في مدير التركيب (compositor).
-
-- إذا كنت تستخدم Wayland وكانت نافذة التطبيق فارغة/يتعطل، فجرّب التشغيل مع `OC_ALLOW_WAYLAND=1`.
-- إذا جعل ذلك الأمور أسوأ، فأزل هذا المتغير وجرّب التشغيل ضمن جلسة X11 بدلا من ذلك.
-
----
-
-### Windows: بيئة تشغيل WebView2
-
-على Windows، يتطلب CodePlane Desktop وجود **WebView2 Runtime** الخاصة بـ Microsoft Edge. إذا فتح التطبيق نافذة فارغة أو لم يبدأ، فقم بتثبيت/تحديث WebView2 ثم جرّب مجددا.
-
----
-
-### Windows: مشكلات الأداء العامة
-
-إذا كنت تواجه بطءا في الأداء، أو مشكلات في الوصول إلى الملفات، أو مشكلات في terminal على Windows، فجرّب استخدام [WSL (نظام Windows الفرعي لـ Linux)](/docs/windows-wsl). يوفر WSL بيئة Linux تعمل بسلاسة أكبر مع ميزات CodePlane.
-
----
-
-### الإشعارات لا تظهر
-
-لا يعرض CodePlane Desktop إشعارات النظام إلا عندما:
-
-- تكون الإشعارات مفعلة لـ CodePlane في إعدادات نظام التشغيل، و
-- تكون نافذة التطبيق غير نشطة.
-
----
-
-### إعادة تعيين تخزين تطبيق سطح المكتب (كحل أخير)
-
-إذا لم يبدأ التطبيق ولم تتمكن من مسح الإعدادات من داخل الواجهة، فأعد تعيين الحالة المحفوظة لتطبيق سطح المكتب.
-
-1. أغلق CodePlane Desktop.
-2. اعثر على هذه الملفات واحذفها (توجد في دليل بيانات تطبيق CodePlane Desktop):
-
-- `codeplane.settings.dat` (عنوان URL الافتراضي لخادم سطح المكتب)
-- `codeplane.global.dat` و `codeplane.workspace.*.dat` (حالة الواجهة مثل الخوادم/المشاريع الأخيرة)
-
-للعثور على الدليل بسرعة:
-
-- **macOS**: Finder -> `Cmd+Shift+G` -> `~/Library/Application Support` (ثم ابحث عن أسماء الملفات أعلاه)
-- **Linux**: ابحث ضمن `~/.local/share` عن أسماء الملفات أعلاه
-- **Windows**: اضغط `WIN+R` -> `%APPDATA%` (ثم ابحث عن أسماء الملفات أعلاه)
-
----
-
-## الحصول على المساعدة
-
-إذا كنت تواجه مشكلات مع CodePlane:
-
-1. **الإبلاغ عن المشكلات على GitHub**
-
-   أفضل طريقة للإبلاغ عن الأخطاء أو طلب الميزات هي عبر مستودعنا على GitHub:
+   The best way to report bugs or request features is through our GitHub repository:
 
    [**github.com/devinoldenburg/codeplane/issues**](https://github.com/devinoldenburg/codeplane/issues)
 
-   قبل إنشاء مشكلة جديدة، ابحث في المشكلات الموجودة لمعرفة ما إذا كانت مشكلتك قد تم الإبلاغ عنها بالفعل.
+   Before creating a new issue, search existing issues to see if your problem has already been reported.
 
 
 ---
 
-## مشكلات شائعة
+## Common issues
 
-فيما يلي بعض المشكلات الشائعة وكيفية حلها.
-
----
-
-### CodePlane لا يبدأ
-
-1. تحقق من السجلات بحثا عن رسائل الخطأ
-2. جرّب التشغيل مع `--print-logs` لرؤية المخرجات في terminal
-3. تأكد من أنك تستخدم أحدث إصدار عبر `codeplane upgrade`
+Here are some common issues and how to resolve them.
 
 ---
 
-### مشكلات المصادقة
+### CodePlane won't start
 
-1. جرّب إعادة المصادقة باستخدام الأمر `/connect` في واجهة TUI
-2. تحقق من أن مفاتيح API الخاصة بك صالحة
-3. تأكد من أن شبكتك تسمح بالاتصال بواجهة API الخاصة بالمزوّد
+1. Check the logs for error messages
+2. Try running with `--print-logs` to see output in the terminal
+3. Ensure you have the latest version with `codeplane upgrade`
 
 ---
 
-### النموذج غير متاح
+### Authentication issues
 
-1. تحقق من أنك قمت بالمصادقة مع المزوّد
-2. تأكد من أن اسم النموذج في الإعدادات صحيح
-3. قد تتطلب بعض النماذج صلاحيات وصول محددة أو اشتراكات
+1. Try re-authenticating from Settings -> Providers in the web app
+2. Check that your API keys are valid
+3. Ensure your network allows connections to the provider's API
 
-إذا واجهت `ProviderModelNotFoundError` فمن المرجح أنك تشير إلى نموذج بشكل غير صحيح في مكان ما.
-يجب الإشارة إلى النماذج بهذه الصيغة: `<providerId>/<modelId>`
+---
 
-أمثلة:
+### Model not available
+
+1. Check that you've authenticated with the provider
+2. Verify the model name in your config is correct
+3. Some models may require specific access or subscriptions
+
+If you encounter `ProviderModelNotFoundError` you are most likely incorrectly
+referencing a model somewhere.
+Models should be referenced like so: `<providerId>/<modelId>`
+
+Examples:
 
 - `openai/gpt-4.1`
 - `openrouter/google/gemini-2.5-flash`
 - `codeplane/kimi-k2`
 
-لمعرفة النماذج التي لديك صلاحية الوصول إليها، شغّل `codeplane models`
+To figure out what models you have access to, run `codeplane models`
 
 ---
 
 ### ProviderInitError
 
-إذا واجهت ProviderInitError، فمن المحتمل أن إعداداتك غير صالحة أو تالفة.
+If you encounter a ProviderInitError, you likely have an invalid or corrupted configuration.
 
-لحل ذلك:
+To resolve this:
 
-1. أولا، تحقق من أن المزوّد مضبوط بشكل صحيح باتباع [دليل المزوّدين](/docs/providers)
-2. إذا استمرت المشكلة، فجرّب مسح الإعدادات المخزنة لديك:
+1. First, verify your provider is set up correctly by following the [providers guide](/docs/providers)
+2. If the issue persists, try clearing your stored configuration:
 
    ```bash
    rm -rf ~/.local/share/codeplane
    ```
 
-   على Windows، اضغط `WIN+R` واحذف: `%USERPROFILE%\.local\share\codeplane`
+   On Windows, press `WIN+R` and delete: `%USERPROFILE%\.local\share\codeplane`
 
-3. أعد المصادقة مع المزوّد باستخدام الأمر `/connect` في واجهة TUI.
+3. Re-authenticate with your provider from Settings -> Providers in the web app.
 
 ---
 
-### AI_APICallError ومشكلات حزم المزوّد
+### AI_APICallError and provider package issues
 
-إذا واجهت أخطاء في استدعاءات API، فقد يكون السبب حزم مزوّد قديمة. يقوم codeplane بتثبيت حزم المزوّد (OpenAI و Anthropic و Google وغير ذلك) ديناميكيا عند الحاجة ويقوم بتخزينها مؤقتا محليا.
+If you encounter API call errors, this may be due to outdated provider packages. codeplane dynamically installs provider packages (OpenAI, Anthropic, Google, etc.) as needed and caches them locally.
 
-لحل مشكلات حزم المزوّد:
+To resolve provider package issues:
 
-1. امسح ذاكرة التخزين المؤقت لحزم المزوّد:
+1. Clear the provider package cache:
 
    ```bash
    rm -rf ~/.cache/codeplane
    ```
 
-   على Windows، اضغط `WIN+R` واحذف: `%USERPROFILE%\.cache\codeplane`
+   On Windows, press `WIN+R` and delete: `%USERPROFILE%\.cache\codeplane`
 
-2. أعد تشغيل codeplane لإعادة تثبيت أحدث حزم المزوّد
+2. Restart codeplane to reinstall the latest provider packages
 
-سيجبر ذلك codeplane على تنزيل أحدث إصدارات حزم المزوّد، وهو ما يحل غالبا مشكلات التوافق مع معاملات النماذج وتغييرات API.
+This will force codeplane to download the most recent versions of provider packages, which often resolves compatibility issues with model parameters and API changes.
 
 ---
 
-### النسخ/اللصق لا يعمل على Linux
+### Copy/paste not working on Linux
 
-يحتاج مستخدمو Linux إلى تثبيت إحدى أدوات الحافظة التالية حتى تعمل ميزة النسخ/اللصق:
+Linux users need to have one of the following clipboard utilities installed for copy/paste functionality to work:
 
-**لأنظمة X11:**
+**For X11 systems:**
 
 ```bash
 apt install -y xclip
@@ -276,13 +143,13 @@ apt install -y xclip
 apt install -y xsel
 ```
 
-**لأنظمة Wayland:**
+**For Wayland systems:**
 
 ```bash
 apt install -y wl-clipboard
 ```
 
-**للبيئات بدون واجهة رسومية (Headless):**
+**For headless environments:**
 
 ```bash
 apt install -y xvfb
@@ -291,4 +158,4 @@ Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
 export DISPLAY=:99.0
 ```
 
-سيكتشف codeplane ما إذا كنت تستخدم Wayland ويفضل `wl-clipboard`، وإلا فسيحاول العثور على أدوات الحافظة بالترتيب التالي: `xclip` ثم `xsel`.
+codeplane will detect if you're using Wayland and prefer `wl-clipboard`, otherwise it will try to find clipboard tools in order of: `xclip` and `xsel`.

@@ -1,39 +1,33 @@
 ---
 title: Web
-description: Verwenden Sie CodePlane in Ihrem Browser.
+description: Using CodePlane in your browser.
 ---
 
-CodePlane kann als Webanwendung in Ihrem Browser ausgeführt werden und bietet das gleiche leistungsstarke KI-Codierungserlebnis, ohne dass ein Terminal erforderlich ist.
+CodePlane can run as a web application in your browser, providing the same powerful AI coding experience without needing a terminal.
 
-![CodePlane Web – Neue Sitzung](../../../assets/web/web-homepage-new-session.png)
+![CodePlane Web - New Session](../../../assets/web/web-homepage-new-session.png)
 
-## Erste Schritte
+## Getting Started
 
-Starten Sie die Weboberfläche, indem Sie Folgendes ausführen:
+Start the web interface by running:
 
 ```bash
 codeplane web
 ```
 
-Dadurch wird ein lokaler Server auf `127.0.0.1` mit einem zufällig verfügbaren Port gestartet und CodePlane automatisch in Ihrem Standardbrowser geöffnet.
+This starts a local server on `127.0.0.1` with a random available port and automatically opens CodePlane in your default browser.
 
 :::caution
-Wenn `CODEPLANE_SERVER_PASSWORD` nicht gesetzt ist, ist der Server ungesichert. Dies ist für den lokalen Gebrauch in Ordnung, sollte aber für den Netzwerkzugriff eingestellt werden.
+If `CODEPLANE_SERVER_PASSWORD` is not set, the server will be unsecured. This is fine for local use but should be set for network access.
 :::
 
-:::tip[Windows-Nutzer]
-Um die beste Erfahrung zu erzielen, führen Sie `codeplane web` über [WSL](/docs/windows-wsl) und nicht über PowerShell aus. Dies gewährleistet den ordnungsgemäßen Zugriff auf das Dateisystem und die Terminalintegration.
-:::
+## Configuration
 
----
-
-## Konfiguration
-
-Sie können den Webserver mithilfe von Befehlszeilen-Flags oder in Ihrer [Konfigurationsdatei](/docs/config) konfigurieren.
+You can configure the web server using command line flags or in your [config file](/docs/config).
 
 ### Port
 
-Standardmäßig wählt CodePlane einen verfügbaren Port aus. Sie können einen Port angeben:
+By default, CodePlane picks an available port. You can specify a port:
 
 ```bash
 codeplane web --port 4096
@@ -41,30 +35,30 @@ codeplane web --port 4096
 
 ### Hostname
 
-Standardmäßig bindet der Server an `127.0.0.1` (nur localhost). So machen Sie CodePlane in Ihrem Netzwerk zugänglich:
+By default, the server binds to `127.0.0.1` (localhost only). To make CodePlane accessible on your network:
 
 ```bash
 codeplane web --hostname 0.0.0.0
 ```
 
-Bei Verwendung von `0.0.0.0` zeigt CodePlane sowohl lokale als auch Netzwerkadressen an:
+When using `0.0.0.0`, CodePlane will display both local and network addresses:
 
 ```
   Local access:       http://localhost:4096
   Network access:     http://192.168.1.100:4096
 ```
 
-### mDNS-Erkennung
+### mDNS Discovery
 
-Aktivieren Sie mDNS, um Ihren Server im lokalen Netzwerk erkennbar zu machen:
+Enable mDNS to make your server discoverable on the local network:
 
 ```bash
 codeplane web --mdns
 ```
 
-Dadurch wird der Hostname automatisch auf `0.0.0.0` gesetzt und der Server als `codeplane.local` angekündigt.
+This automatically sets the hostname to `0.0.0.0` and advertises the server as `codeplane.local`.
 
-Sie können den mDNS-Domänennamen anpassen, um mehrere Instanzen im selben Netzwerk auszuführen:
+You can customize the mDNS domain name to run multiple instances on the same network:
 
 ```bash
 codeplane web --mdns --mdns-domain myproject.local
@@ -72,61 +66,43 @@ codeplane web --mdns --mdns-domain myproject.local
 
 ### CORS
 
-So erlauben Sie zusätzliche Domänen für CORS (nützlich für benutzerdefinierte Frontends):
+To allow additional domains for CORS (useful for custom frontends):
 
 ```bash
 codeplane web --cors https://example.com
 ```
 
-### Authentifizierung
+### Authentication
 
-Um den Zugriff zu schützen, legen Sie mithilfe der Umgebungsvariablen `CODEPLANE_SERVER_PASSWORD` ein Passwort fest:
+To protect access, set a password using the `CODEPLANE_SERVER_PASSWORD` environment variable:
 
 ```bash
 CODEPLANE_SERVER_PASSWORD=secret codeplane web
 ```
 
-Der Benutzername ist standardmäßig `codeplane`, kann aber mit `CODEPLANE_SERVER_USERNAME` geändert werden.
+The username defaults to `codeplane` but can be changed with `CODEPLANE_SERVER_USERNAME`.
 
 ---
 
-## Verwenden der Weboberfläche
+## Using the Web Interface
 
-Nach dem Start bietet die Weboberfläche Zugriff auf Ihre CodePlane-Sitzungen.
+Once started, the web interface provides access to your CodePlane sessions.
 
-### Sitzungen
+### Sessions
 
-Zeigen Sie Ihre Sitzungen auf der Startseite an und verwalten Sie sie. Sie können aktive Sitzungen sehen und neue starten.
+View and manage your sessions from the homepage. You can see active sessions and start new ones.
 
-![CodePlane Web – Aktive Sitzung](../../../assets/web/web-homepage-active-session.png)
+![CodePlane Web - Active Session](../../../assets/web/web-homepage-active-session.png)
 
-### Serverstatus
+### Server Status
 
-Klicken Sie auf „Server anzeigen“, um verbundene Server und deren Status anzuzeigen.
+Click "See Servers" to view connected servers and their status.
 
-![CodePlane Web – Siehe Server](../../../assets/web/web-homepage-see-servers.png)
+![CodePlane Web - See Servers](../../../assets/web/web-homepage-see-servers.png)
 
----
+## Config File
 
-## Anschließen eines Terminals
-
-Sie können eine Terminal-TUI an einen laufenden Webserver anschließen:
-
-```bash
-# Start the web server
-codeplane web --port 4096
-
-# In another terminal, attach the TUI
-codeplane attach http://localhost:4096
-```
-
-Dadurch können Sie sowohl die Weboberfläche als auch das Terminal gleichzeitig verwenden und dieselben Sitzungen und denselben Status teilen.
-
----
-
-## Konfigurationsdatei
-
-Sie können Servereinstellungen auch in Ihrer `codeplane.json`-Konfigurationsdatei konfigurieren:
+You can also configure server settings in your `codeplane.json` config file:
 
 ```json
 {
@@ -139,4 +115,4 @@ Sie können Servereinstellungen auch in Ihrer `codeplane.json`-Konfigurationsdat
 }
 ```
 
-Befehlszeilenflags haben Vorrang vor Konfigurationsdateieinstellungen.
+Command line flags take precedence over config file settings.

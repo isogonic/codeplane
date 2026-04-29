@@ -1,41 +1,37 @@
 ---
-title: Modeller
-description: Konfigurere en LLM leverandør og modell.
+title: Models
+description: Configuring an LLM provider and model.
 ---
 
-CodePlane bruker [AI SDK](https://ai-sdk.dev/) og [Models.dev](https://models.dev) for å støtte **75+ LLM leverandører** og den støtter kjøring av lokale modeller.
-
----
-
-## Leverandører
-
-De fleste populære leverandørene er forhåndslastet som standard. Hvis du har lagt til legitimasjonen for en leverandør gjennom kommandoen `/connect`, vil den være tilgjengelig når du starter CodePlane.
-
-Finn ut mer om [leverandører](/docs/providers).
+CodePlane uses the [AI SDK](https://ai-sdk.dev/) and [Models.dev](https://models.dev) to support **75+ LLM providers** and it supports running local models.
 
 ---
 
-## Velge en modell
+## Providers
 
-Når du har konfigurert leverandøren din, kan du velge modellen du ønsker ved å skrive inn:
+Most popular providers are preloaded by default. If you've added provider credentials from Settings -> Providers, they'll be available when you start CodePlane.
 
-```bash frame="none"
-/models
-```
+Learn more about [providers](/docs/providers).
 
 ---
 
-## Anbefalte modeller
+## Select a model
 
-Det er mange modeller der ute, med nye modeller som kommer ut hver uke.
+Once you've configured your provider you can select the model you want from the model selector in the web app.
+
+---
+
+## Recommended models
+
+There are a lot of models out there, with new models coming out every week.
 
 :::tip
-Vurder å bruke en av modellene vi anbefaler.
+Consider using one of the models we recommend.
 :::
 
-Imidlertid er det bare noen få av dem som er gode til både å generere kode og verktøykalling.
+However, there are only a few of them that are good at both generating code and tool calling.
 
-Her er flere modeller som fungerer godt med CodePlane, uten spesiell rekkefølge. (Dette er ikke en uttømmende liste og er heller ikke nødvendigvis oppdatert):
+Here are several models that work well with CodePlane, in no particular order. (This is not an exhaustive list nor is it necessarily up to date):
 
 - GPT 5.2
 - GPT 5.1 Codex
@@ -46,10 +42,10 @@ Her er flere modeller som fungerer godt med CodePlane, uten spesiell rekkefølge
 
 ---
 
-## Angi en standard
+## Set a default
 
-For å angi en av disse som standardmodell, kan du angi `model`-tasten i din
-CodePlane-konfigurasjon.
+To set one of these as the default model, you can set the `model` key in your
+CodePlane config.
 
 ```json title="codeplane.json" {3}
 {
@@ -58,15 +54,15 @@ CodePlane-konfigurasjon.
 }
 ```
 
-Her er hele ID `provider_id/model_id`. For eksempel, hvis du bruker [CodePlane Zen](/docs/zen), vil du bruke `codeplane/gpt-5.1-codex` for GPT 5.1 Codex.
+Here the full ID is `provider_id/model_id`. For example, if you're using [CodePlane Zen](/docs/zen), you would use `codeplane/gpt-5.1-codex` for GPT 5.1 Codex.
 
-Hvis du har konfigurert en [egendefinert leverandør](/docs/providers#custom), er `provider_id` nøkkelen fra `provider`-delen av konfigurasjonen din, og `model_id` er nøkkelen fra `provider.models`.
+If you've configured a [custom provider](/docs/providers#custom), the `provider_id` is key from the `provider` part of your config, and the `model_id` is the key from `provider.models`.
 
 ---
 
-## Konfigurer modeller
+## Configure models
 
-Du kan konfigurere en modells alternativer globalt gjennom konfigurasjonen.
+You can globally configure a model's options through the config.
 
 ```jsonc title="codeplane.jsonc" {7-12,19-24}
 {
@@ -100,12 +96,12 @@ Du kan konfigurere en modells alternativer globalt gjennom konfigurasjonen.
 }
 ```
 
-Her konfigurerer vi globale innstillinger for to innebygde modeller: `gpt-5` når de åpnes via `openai`-leverandøren, og `claude-sonnet-4-20250514` når de åpnes via `anthropic`-leverandøren.
-De innebygde leverandør- og modellnavnene finnes på [Models.dev](https://models.dev).
+Here we're configuring global settings for two built-in models: `gpt-5` when accessed via the `openai` provider, and `claude-sonnet-4-20250514` when accessed via the `anthropic` provider.
+The built-in provider and model names can be found on [Models.dev](https://models.dev).
 
-Du kan også konfigurere disse alternativene for alle agenter du bruker. Agentkonfigurasjonen overstyrer alle globale alternativer her. [Finn ut mer](/docs/agents/#additional).
+You can also configure these options for any agents that you are using. The agent config overrides any global options here. [Learn more](/docs/agents/#additional).
 
-Du kan også definere tilpassede varianter som utvider de innebygde. Varianter lar deg konfigurere forskjellige innstillinger for samme modell uten å opprette dupliserte oppføringer:
+You can also define custom variants that extend built-in ones. Variants let you configure different settings for the same model without creating duplicate entries:
 
 ```jsonc title="codeplane.jsonc" {6-21}
 {
@@ -135,42 +131,42 @@ Du kan også definere tilpassede varianter som utvider de innebygde. Varianter l
 
 ---
 
-## Varianter
+## Variants
 
-Mange modeller støtter flere varianter med forskjellige konfigurasjoner. codeplane leveres med innebygde standardvarianter for populære leverandører.
+Many models support multiple variants with different configurations. CodePlane ships with built-in default variants for popular providers.
 
-### Innebygde varianter
+### Built-in variants
 
-CodePlane leveres med standardvarianter for mange leverandører:
+CodePlane ships with default variants for many providers:
 
 **Anthropic**:
 
-- `high` - Høyt tenkebudsjett (standard)
-- `max` - Maksimalt tenkebudsjett
+- `high` - High thinking budget (default)
+- `max` - Maximum thinking budget
 
 **OpenAI**:
 
-Varierer etter modell, men omtrent:
+Varies by model but roughly:
 
-- `none` - Ingen resonnement
-- `minimal` - Minimal resonnementinnsats
-- `low` - Lav resonnementinnsats
-- `medium` - Middels resonnementinnsats
-- `high` - Høy resonnementinnsats
-- `xhigh` - Ekstra høy resonnementinnsats
+- `none` - No reasoning
+- `minimal` - Minimal reasoning effort
+- `low` - Low reasoning effort
+- `medium` - Medium reasoning effort
+- `high` - High reasoning effort
+- `xhigh` - Extra high reasoning effort
 
 **Google**:
 
-- `low` - Lavere innsats/tokenbudsjett
-- `high` - Høyere innsats/tokenbudsjett
+- `low` - Lower effort/token budget
+- `high` - Higher effort/token budget
 
 :::tip
-Denne listen er ikke uttømmende. Mange andre leverandører har også innebygde standardinnstillinger.
+This list is not comprehensive. Many other providers have built-in defaults too.
 :::
 
-### Egendefinerte varianter
+### Custom variants
 
-Du kan overstyre eksisterende varianter eller legge til dine egne:
+You can override existing variants or add your own:
 
 ```jsonc title="codeplane.jsonc" {7-18}
 {
@@ -195,19 +191,19 @@ Du kan overstyre eksisterende varianter eller legge til dine egne:
 }
 ```
 
-### Bytt varianter
+### Cycle variants
 
-Bruk tastebindingen `variant_cycle` for raskt å bytte mellom varianter. [Finn ut mer](/docs/keybinds).
+Use the model selector to switch between variants.
 
 ---
 
-## Lasting av modeller
+## Loading models
 
-Når CodePlane starter opp, ser den etter modeller i følgende prioriterte rekkefølge:
+When CodePlane starts up, it checks for models in the following priority order:
 
-1. Kommandolinjeflagget `--model` eller `-m`. Formatet er det samme som i konfigurasjonsfilen: `provider_id/model_id`.
+1. The `--model` or `-m` command line flag. The format is the same as in the config file: `provider_id/model_id`.
 
-2. Modelllisten i CodePlane-konfigurasjonen.
+2. The model list in the CodePlane config.
 
    ```json title="codeplane.json"
    {
@@ -216,8 +212,8 @@ Når CodePlane starter opp, ser den etter modeller i følgende prioriterte rekke
    }
    ```
 
-   Formatet her er `provider/model`.
+   The format here is `provider/model`.
 
-3. Den sist brukte modellen.
+3. The last used model.
 
-4. Den første modellen bruker en intern prioritet.
+4. The first model using an internal priority.

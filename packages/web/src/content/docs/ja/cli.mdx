@@ -1,17 +1,17 @@
 ---
 title: CLI
-description: CodePlane CLI のオプションとコマンド。
+description: CodePlane CLI options and commands.
 ---
 
 import { Tabs, TabItem } from "@astrojs/starlight/components"
 
-CodePlane CLI は、引数なしで実行すると、デフォルトで [TUI](/docs/tui) を開始します。
+The CodePlane CLI starts the web app when run without any arguments.
 
 ```bash
 codeplane
 ```
 
-ただし、このページに記載されているようにコマンドも受け入れます。これにより、CodePlane をプログラム的に操作できるようになります。
+But it also accepts commands as documented on this page. This allows you to interact with CodePlane programmatically.
 
 ```bash
 codeplane run "Explain how closures work in JavaScript"
@@ -19,87 +19,35 @@ codeplane run "Explain how closures work in JavaScript"
 
 ---
 
-### tui
+## Commands
 
-CodePlane ターミナルユーザーインターフェイスを開始します。
-
-```bash
-codeplane [project]
-```
-
-#### フラグ
-
-| フラグ       | ショート    | 説明                                                       |
-| ------------ | ----------- | ---------------------------------------------------------- |
-| `--continue` | `-c`        | 最後のセッションを続行                                     |
-| `--session`  |             | 続行時にセッションをフォーク (`-s` または `--fork` と併用) |
-| `--continue` | `--session` | 続行するセッション ID                                      |
-| `--prompt`   |             | 使用のプロンプト                                           |
-| `--model`    | `-m`        | プロバイダー/モデルの形式で使用するモデル                  |
-| `--agent`    |             | 使用するエージェント                                       |
-| `--port`     |             | リッスンするポート                                         |
-| `--hostname` |             | リッスンするホスト名                                       |
-
----
-
-## コマンド
-
-CodePlane CLI には次のコマンドもあります。
+The CodePlane CLI also has the following commands.
 
 ---
 
 ### agent
 
-CodePlane のエージェントを管理します。
+Manage agents for CodePlane.
 
 ```bash
 codeplane agent [command]
 ```
 
----
-
-### attach
-
-`serve` または `web` コマンドを使用して起動された、すでに実行中の CodePlane バックエンドサーバーにターミナルを接続します。
-
-```bash
-codeplane attach [url]
-```
-
-これにより、リモート CodePlane バックエンドで TUI を使用できるようになります。例えば：
-
-```bash
-# Start the backend server for web/mobile access
-codeplane web --port 4096 --hostname 0.0.0.0
-
-# In another terminal, attach the TUI to the running backend
-codeplane attach http://10.20.30.40:4096
-```
-
-#### フラグ
-
-| フラグ      | ショート | 説明                           |
-| ----------- | -------- | ------------------------------ |
-| `--dir`     |          | TUI を開始する作業ディレクトリ |
-| `--session` | `-s`     | 続行するセッション ID          |
-
----
-
 #### create
 
-カスタム構成で新しいエージェントを作成します。
+Create a new agent with custom configuration.
 
 ```bash
 codeplane agent create
 ```
 
-このコマンドは、カスタムシステムプロンプトとツール構成を使用して新しいエージェントを作成する手順を示します。
+This command will guide you through creating a new agent with a custom system prompt and tool configuration.
 
 ---
 
 #### list
 
-利用可能なエージェントをすべてリストします。
+List all available agents.
 
 ```bash
 codeplane agent list
@@ -109,7 +57,7 @@ codeplane agent list
 
 ### auth
 
-プロバイダーの資格情報とログインを管理するコマンド。
+Command to manage credentials and login for providers.
 
 ```bash
 codeplane auth [command]
@@ -119,25 +67,25 @@ codeplane auth [command]
 
 #### login
 
-CodePlane は [Models.dev](https://models.dev) のプロバイダーリストを利用しているため、`codeplane auth login` を使用して、使用したいプロバイダーの API キーを構成できます。これは `~/.local/share/codeplane/auth.json` に保存されます。
+CodePlane is powered by the provider list at [Models.dev](https://models.dev), so you can use `codeplane auth login` to configure API keys for any provider you'd like to use. This is stored in `~/.local/share/codeplane/auth.json`.
 
 ```bash
 codeplane auth login
 ```
 
-CodePlane が起動すると、認証情報ファイルからプロバイダーがロードされます。また、環境またはプロジェクト内の `.env` ファイルで定義されたキーがあるかどうかも確認します。
+When CodePlane starts up it loads the providers from the credentials file. And if there are any keys defined in your environments or a `.env` file in your project.
 
 ---
 
 #### list
 
-認証情報ファイルに保存されているすべての認証されたプロバイダーをリストします。
+Lists all the authenticated providers as stored in the credentials file.
 
 ```bash
 codeplane auth list
 ```
 
-またはショートバージョン。
+Or the short version.
 
 ```bash
 codeplane auth ls
@@ -147,7 +95,7 @@ codeplane auth ls
 
 #### logout
 
-資格情報ファイルからプロバイダーをクリアすることで、プロバイダーからログアウトします。
+Logs you out of a provider by clearing it from the credentials file.
 
 ```bash
 codeplane auth logout
@@ -157,7 +105,7 @@ codeplane auth logout
 
 ### github
 
-リポジトリ自動化のための GitHub エージェントを管理します。
+Manage the GitHub agent for repository automation.
 
 ```bash
 codeplane github [command]
@@ -167,36 +115,36 @@ codeplane github [command]
 
 #### install
 
-GitHub エージェントをリポジトリにインストールします。
+Install the GitHub agent in your repository.
 
 ```bash
 codeplane github install
 ```
 
-これにより、必要な GitHub Actions ワークフローが設定され、構成プロセスがガイドされます。 [詳細はこちら](/docs/github)。
+This sets up the necessary GitHub Actions workflow and guides you through the configuration process. [Learn more](/docs/github).
 
 ---
 
 #### run
 
-GitHub エージェントを実行します。これは通常、GitHub Actions で使用されます。
+Run the GitHub agent. This is typically used in GitHub Actions.
 
 ```bash
 codeplane github run
 ```
 
-##### フラグ
+##### Flags
 
-| フラグ    | 説明                                                |
-| --------- | --------------------------------------------------- |
-| `--event` | エージェントを実行するための GitHub モック イベント |
-| `--token` | GitHub 個人アクセストークン                         |
+| Flag      | Description                            |
+| --------- | -------------------------------------- |
+| `--event` | GitHub mock event to run the agent for |
+| `--token` | GitHub personal access token           |
 
 ---
 
 ### mcp
 
-モデルコンテキストプロトコルサーバーを管理します。
+Manage Model Context Protocol servers.
 
 ```bash
 codeplane mcp [command]
@@ -206,25 +154,25 @@ codeplane mcp [command]
 
 #### add
 
-MCP サーバーを構成に追加します。
+Add an MCP server to your configuration.
 
 ```bash
 codeplane mcp add
 ```
 
-このコマンドは、ローカルまたはリモートの MCP サーバーを追加する手順を示します。
+This command will guide you through adding either a local or remote MCP server.
 
 ---
 
 #### list
 
-構成されているすべての MCP サーバーとその接続ステータスをリストします。
+List all configured MCP servers and their connection status.
 
 ```bash
 codeplane mcp list
 ```
 
-または、短いバージョンを使用してください。
+Or use the short version.
 
 ```bash
 codeplane mcp ls
@@ -234,21 +182,21 @@ codeplane mcp ls
 
 #### auth
 
-OAuth 対応の MCP サーバーで認証します。
+Authenticate with an OAuth-enabled MCP server.
 
 ```bash
 codeplane mcp auth [name]
 ```
 
-サーバー名を指定しない場合は、利用可能な OAuth 対応サーバーから選択するように求められます。
+If you don't provide a server name, you'll be prompted to select from available OAuth-capable servers.
 
-OAuth 対応サーバーとその認証ステータスを一覧表示することもできます。
+You can also list OAuth-capable servers and their authentication status.
 
 ```bash
 codeplane mcp auth list
 ```
 
-または、短いバージョンを使用してください。
+Or use the short version.
 
 ```bash
 codeplane mcp auth ls
@@ -258,7 +206,7 @@ codeplane mcp auth ls
 
 #### logout
 
-MCP サーバーの OAuth 資格情報を削除します。
+Remove OAuth credentials for an MCP server.
 
 ```bash
 codeplane mcp logout [name]
@@ -268,7 +216,7 @@ codeplane mcp logout [name]
 
 #### debug
 
-MCP サーバーの OAuth 接続の問題をデバッグします。
+Debug OAuth connection issues for an MCP server.
 
 ```bash
 codeplane mcp debug <name>
@@ -278,30 +226,30 @@ codeplane mcp debug <name>
 
 ### models
 
-構成されたプロバイダーから利用可能なすべてのモデルをリストします。
+List all available models from configured providers.
 
 ```bash
 codeplane models [provider]
 ```
 
-このコマンドは、構成されたプロバイダー全体で利用可能なすべてのモデルを `provider/model` の形式で表示します。
+This command displays all models available across your configured providers in the format `provider/model`.
 
-これは、[設定](/docs/config/) で使用する正確なモデル名を把握するのに役立ちます。
+This is useful for figuring out the exact model name to use in [your config](/docs/config/).
 
-オプションでプロバイダー ID を渡して、そのプロバイダーによってモデルをフィルターできます。
+You can optionally pass a provider ID to filter models by that provider.
 
 ```bash
 codeplane models anthropic
 ```
 
-#### フラグ
+#### Flags
 
-| フラグ      | 説明                                                            |
-| ----------- | --------------------------------------------------------------- |
-| `--refresh` | models.dev からモデルキャッシュを更新します。                   |
-| `--verbose` | より詳細なモデル出力を使用します (コストなどのメタデータを含む) |
+| Flag        | Description                                                  |
+| ----------- | ------------------------------------------------------------ |
+| `--refresh` | Refresh the models cache from models.dev                     |
+| `--verbose` | Use more verbose model output (includes metadata like costs) |
 
-`--refresh` フラグを使用して、キャッシュされたモデルリストを更新します。これは、新しいモデルがプロバイダーに追加され、それを CodePlane で確認したい場合に便利です。
+Use the `--refresh` flag to update the cached model list. This is useful when new models have been added to a provider and you want to see them in CodePlane.
 
 ```bash
 codeplane models --refresh
@@ -311,19 +259,19 @@ codeplane models --refresh
 
 ### run
 
-プロンプトを直接渡して、非対話モードで codeplane を実行します。
+Run codeplane in non-interactive mode by passing a prompt directly.
 
 ```bash
 codeplane run [message..]
 ```
 
-これは、スクリプト作成、自動化、または完全な TUI を起動せずに迅速な回答が必要な場合に便利です。例えば。
+This is useful for scripting, automation, or when you want a quick answer without opening the web app. For example.
 
 ```bash "codeplane run"
 codeplane run Explain the use of context in Go
 ```
 
-実行中の `codeplane serve` インスタンスにアタッチして、実行ごとの MCP サーバーのコールドブート時間を回避することもできます。
+You can also attach to a running `codeplane serve` instance to avoid MCP server cold boot times on every run:
 
 ```bash
 # Start a headless server in one terminal
@@ -333,49 +281,50 @@ codeplane serve
 codeplane run --attach http://localhost:4096 "Explain async/await in JavaScript"
 ```
 
-#### フラグ
+#### Flags
 
-| フラグ       | ショート | 説明                                                                                      |
-| ------------ | -------- | ----------------------------------------------------------------------------------------- |
-| `--command`  |          | 実行するコマンド。引数には message を使用します。                                         |
-| `--continue` | `-c`     | 最後のセッションを続行                                                                    |
-| `--session`  | `-s`     | 続行するセッション ID                                                                     |
-| `--fork`     |          | 続行時にセッションをフォーク (`--continue` または `--session` と併用)                     |
-| `--share`    |          | セッションを共有する                                                                      |
-| `--model`    | `-m`     | プロバイダー/モデルの形式で使用するモデル                                                 |
-| `--agent`    |          | 使用するエージェント                                                                      |
-| `--file`     | `-f`     | メッセージに添付するファイル                                                              |
-| `--format`   |          | 形式: デフォルト (フォーマット済み) または json (生の JSON イベント)                      |
-| `--title`    |          | セッションのタイトル (値が指定されていない場合は、切り詰められたプロンプトが使用されます) |
-| `--attach`   |          | 実行中の codeplane サーバー (http://localhost:4096 など) に接続します。                    |
-| `--port`     |          | ローカルサーバーのポート (デフォルトはランダムポート)                                     |
+| Flag                             | Short | Description                                                             |
+| -------------------------------- | ----- | ----------------------------------------------------------------------- |
+| `--command`                      |       | The command to run, use message for args                                |
+| `--continue`                     | `-c`  | Continue the last session                                               |
+| `--session`                      | `-s`  | Session ID to continue                                                  |
+| `--fork`                         |       | Fork the session when continuing (use with `--continue` or `--session`) |
+| `--share`                        |       | Share the session                                                       |
+| `--model`                        | `-m`  | Model to use in the form of provider/model                              |
+| `--agent`                        |       | Agent to use                                                            |
+| `--file`                         | `-f`  | File(s) to attach to message                                            |
+| `--format`                       |       | Format: default (formatted) or json (raw JSON events)                   |
+| `--title`                        |       | Title for the session (uses truncated prompt if no value provided)      |
+| `--attach`                       |       | Attach to a running codeplane server (e.g., http://localhost:4096)       |
+| `--port`                         |       | Port for the local server (defaults to random port)                     |
+| `--dangerously-skip-permissions` |       | Auto-approve permissions that are not explicitly denied (dangerous!)    |
 
 ---
 
 ### serve
 
-API アクセスのためにヘッドレス CodePlane サーバーを起動します。完全な HTTP インターフェイスについては、[サーバーのドキュメント](/docs/server) を確認してください。
+Start a headless CodePlane server for API access. Check out the [server docs](/docs/server) for the full HTTP interface.
 
 ```bash
 codeplane serve
 ```
 
-これにより、TUI インターフェイスを使用せずに codeplane 機能への API アクセスを提供する HTTP サーバーが起動します。 `CODEPLANE_SERVER_PASSWORD` を設定して HTTP 基本認証を有効にします (ユーザー名のデフォルトは `codeplane`)。
+This starts an HTTP server that provides API access to codeplane functionality without opening the browser UI. Set `CODEPLANE_SERVER_PASSWORD` to enable HTTP basic auth (username defaults to `codeplane`).
 
-#### フラグ
+#### Flags
 
-| フラグ       | 説明                                    |
-| ------------ | --------------------------------------- |
-| `--port`     | リッスンするポート                      |
-| `--hostname` | リッスンするホスト名                    |
-| `--mdns`     | mDNS 検出を有効にする                   |
-| `--cors`     | CORS を許可する追加のブラウザーオリジン |
+| Flag         | Description                                |
+| ------------ | ------------------------------------------ |
+| `--port`     | Port to listen on                          |
+| `--hostname` | Hostname to listen on                      |
+| `--mdns`     | Enable mDNS discovery                      |
+| `--cors`     | Additional browser origin(s) to allow CORS |
 
 ---
 
 ### session
 
-CodePlane セッションを管理します。
+Manage CodePlane sessions.
 
 ```bash
 codeplane session [command]
@@ -385,61 +334,61 @@ codeplane session [command]
 
 #### list
 
-すべての CodePlane セッションをリストします。
+List all CodePlane sessions.
 
 ```bash
 codeplane session list
 ```
 
-##### フラグ
+##### Flags
 
-| フラグ        | ショート | 説明                                     |
-| ------------- | -------- | ---------------------------------------- |
-| `--max-count` | `-n`     | 最新のセッションを N 個に制限            |
-| `--format`    |          | 出力形式: テーブルまたは json (テーブル) |
+| Flag          | Short | Description                          |
+| ------------- | ----- | ------------------------------------ |
+| `--max-count` | `-n`  | Limit to N most recent sessions      |
+| `--format`    |       | Output format: table or json (table) |
 
 ---
 
 ### stats
 
-CodePlane セッションのトークンの使用状況とコストの統計を表示します。
+Show token usage and cost statistics for your CodePlane sessions.
 
 ```bash
 codeplane stats
 ```
 
-#### フラグ
+#### Flags
 
-| フラグ      | 説明                                                                                       |
-| ----------- | ------------------------------------------------------------------------------------------ |
-| `--days`    | 過去 N 日間の統計を表示 (全期間)                                                           |
-| `--tools`   | 表示するツールの数 (すべて)                                                                |
-| `--models`  | モデルの使用状況の内訳を表示 (デフォルトでは非表示)。上位 N 件を表示するには数値を渡します |
-| `--project` | プロジェクトでフィルタリング (全プロジェクト、空文字列: 現在のプロジェクト)                |
+| Flag        | Description                                                                 |
+| ----------- | --------------------------------------------------------------------------- |
+| `--days`    | Show stats for the last N days (all time)                                   |
+| `--tools`   | Number of tools to show (all)                                               |
+| `--models`  | Show model usage breakdown (hidden by default). Pass a number to show top N |
+| `--project` | Filter by project (all projects, empty string: current project)             |
 
 ---
 
 ### export
 
-セッションデータを JSON としてエクスポートします。
+Export session data as JSON.
 
 ```bash
 codeplane export [sessionID]
 ```
 
-セッション ID を指定しない場合は、利用可能なセッションから選択するように求められます。
+If you don't provide a session ID, you'll be prompted to select from available sessions.
 
 ---
 
 ### import
 
-JSON ファイルまたは CodePlane 共有 URL からセッションデータをインポートします。
+Import session data from a JSON file or CodePlane share URL.
 
 ```bash
 codeplane import <file>
 ```
 
-ローカルファイルまたは CodePlane 共有 URL からインポートできます。
+You can import from a local file or an CodePlane share URL.
 
 ```bash
 codeplane import session.json
@@ -450,153 +399,152 @@ codeplane import https://opncd.ai/s/abc123
 
 ### web
 
-Web インターフェイスを使用してヘッドレス CodePlane サーバーを起動します。
+Start a headless CodePlane server with a web interface.
 
 ```bash
 codeplane web
 ```
 
-これにより、HTTP サーバーが起動し、Web ブラウザが開き、Web インターフェイスを通じて CodePlane にアクセスします。 `CODEPLANE_SERVER_PASSWORD` を設定して HTTP 基本認証を有効にします (ユーザー名のデフォルトは `codeplane`)。
+This starts an HTTP server and opens a web browser to access CodePlane through a web interface. Set `CODEPLANE_SERVER_PASSWORD` to enable HTTP basic auth (username defaults to `codeplane`).
 
-#### フラグ
+#### Flags
 
-| フラグ       | 説明                                    |
-| ------------ | --------------------------------------- |
-| `--port`     | リッスンするポート                      |
-| `--hostname` | リッスンするホスト名                    |
-| `--mdns`     | mDNS 検出を有効にする                   |
-| `--cors`     | CORS を許可する追加のブラウザーオリジン |
+| Flag         | Description                                |
+| ------------ | ------------------------------------------ |
+| `--port`     | Port to listen on                          |
+| `--hostname` | Hostname to listen on                      |
+| `--mdns`     | Enable mDNS discovery                      |
+| `--cors`     | Additional browser origin(s) to allow CORS |
 
 ---
 
 ### acp
 
-ACP (エージェントクライアントプロトコル) サーバーを起動します。
+Start an ACP (Agent Client Protocol) server.
 
 ```bash
 codeplane acp
 ```
 
-このコマンドは、nd-JSON を使用して stdin/stdout 経由で通信する ACP サーバーを起動します。
+This command starts an ACP server that communicates via stdin/stdout using nd-JSON.
 
-#### フラグ
+#### Flags
 
-| フラグ       | 説明                 |
-| ------------ | -------------------- |
-| `--cwd`      | 作業ディレクトリ     |
-| `--port`     | リッスンするポート   |
-| `--hostname` | リッスンするホスト名 |
+| Flag         | Description           |
+| ------------ | --------------------- |
+| `--cwd`      | Working directory     |
+| `--port`     | Port to listen on     |
+| `--hostname` | Hostname to listen on |
 
 ---
 
 ### uninstall
 
-CodePlane をアンインストールし、関連ファイルをすべて削除します。
+Uninstall CodePlane and remove all related files.
 
 ```bash
 codeplane uninstall
 ```
 
-#### フラグ
+#### Flags
 
-| フラグ          | ショート | 説明                                         |
-| --------------- | -------- | -------------------------------------------- |
-| `--keep-config` | `-c`     | 構成ファイルを保持する                       |
-| `--keep-data`   | `-d`     | セッションデータとスナップショットを保持する |
-| `--dry-run`     |          | 削除せずに削除される内容を表示する           |
-| `--force`       | `-f`     | 確認プロンプトをスキップする                 |
+| Flag            | Short | Description                                 |
+| --------------- | ----- | ------------------------------------------- |
+| `--keep-config` | `-c`  | Keep configuration files                    |
+| `--keep-data`   | `-d`  | Keep session data and snapshots             |
+| `--dry-run`     |       | Show what would be removed without removing |
+| `--force`       | `-f`  | Skip confirmation prompts                   |
 
 ---
 
 ### upgrade
 
-codeplane を最新バージョンまたは特定のバージョンに更新します。
+Updates codeplane to the latest version or a specific version.
 
 ```bash
 codeplane upgrade [target]
 ```
 
-最新バージョンにアップグレードするには。
+To upgrade to the latest version.
 
 ```bash
 codeplane upgrade
 ```
 
-特定のバージョンにアップグレードするには。
+To upgrade to a specific version.
 
 ```bash
 codeplane upgrade v0.1.48
 ```
 
-#### フラグ
+#### Flags
 
-| フラグ     | ショート | 説明                                                   |
-| ---------- | -------- | ------------------------------------------------------ |
-| `--method` | `-m`     | 使用されたインストール方法。curl, npm, pnpm, bun, brew |
-
----
-
-## グローバルフラグ
-
-codeplane CLI は次のグローバルフラグを受け取ります。
-
-| フラグ         | ショート | 説明                                  |
-| -------------- | -------- | ------------------------------------- |
-| `--help`       | `-h`     | ヘルプを表示                          |
-| `--version`    | `-v`     | バージョン番号を出力                  |
-| `--print-logs` |          | ログを標準エラー出力に出力            |
-| `--log-level`  |          | ログレベル (DEBUG、INFO、WARN、ERROR) |
+| Flag       | Short | Description                                                       |
+| ---------- | ----- | ----------------------------------------------------------------- |
+| `--method` | `-m`  | The installation method that was used; curl, npm, pnpm, bun, brew |
 
 ---
 
-## 環境変数
+## Global Flags
 
-CodePlane は環境変数を使用して構成できます。
+The codeplane CLI takes the following global flags.
 
-| 変数                                  | タイプ   | 説明                                                                |
-| ------------------------------------- | -------- | ------------------------------------------------------------------- |
-| `CODEPLANE_AUTO_SHARE`                 | ブール値 | セッションを自動的に共有する                                        |
-| `CODEPLANE_GIT_BASH_PATH`              | 文字列   | Windows 上で実行可能な Git Bash へのパス                            |
-| `CODEPLANE_CONFIG`                     | 文字列   | 構成ファイルへのパス                                                |
-| `CODEPLANE_CONFIG_DIR`                 | 文字列   | config ディレクトリへのパス                                         |
-| `CODEPLANE_CONFIG_CONTENT`             | 文字列   | インライン JSON 構成コンテンツ                                      |
-| `CODEPLANE_DISABLE_AUTOUPDATE`         | ブール値 | 自動更新チェックを無効にする                                        |
-| `CODEPLANE_DISABLE_PRUNE`              | ブール値 | 古いデータのプルーニングを無効にする                                |
-| `CODEPLANE_DISABLE_TERMINAL_TITLE`     | ブール値 | ターミナルタイトルの自動更新を無効にする                            |
-| `CODEPLANE_PERMISSION`                 | 文字列   | インライン化された json 権限設定                                    |
-| `CODEPLANE_DISABLE_DEFAULT_PLUGINS`    | ブール値 | デフォルトのプラグインを無効にする                                  |
-| `CODEPLANE_DISABLE_LSP_DOWNLOAD`       | ブール値 | LSP サーバーの自動ダウンロードを無効にする                          |
-| `CODEPLANE_ENABLE_EXPERIMENTAL_MODELS` | ブール値 | 実験モデルを有効にする                                              |
-| `CODEPLANE_DISABLE_AUTOCOMPACT`        | ブール値 | 自動コンテキスト圧縮を無効にする                                    |
-| `CODEPLANE_DISABLE_CLAUDE_CODE`        | ブール値 | `.claude` からの読み取りを無効にする (プロンプト + スキル)          |
-| `CODEPLANE_DISABLE_CLAUDE_CODE_PROMPT` | ブール値 | `~/.claude/CLAUDE.md` の読み取りを無効にする                        |
-| `CODEPLANE_DISABLE_CLAUDE_CODE_SKILLS` | ブール値 | `.claude/skills` のロードを無効にする                               |
-| `CODEPLANE_DISABLE_MODELS_FETCH`       | ブール値 | リモートソースからのモデルの取得を無効にする                        |
-| `CODEPLANE_FAKE_VCS`                   | 文字列   | テスト目的の偽の VCS プロバイダー                                   |
-| `CODEPLANE_CLIENT`                     | 文字列   | クライアント識別子 (デフォルトは `cli`)                             |
-| `CODEPLANE_ENABLE_EXA`                 | ブール値 | Exa Web 検索ツールを有効にする                                      |
-| `CODEPLANE_SERVER_PASSWORD`            | 文字列   | `serve`/`web` の基本認証を有効にする                                |
-| `CODEPLANE_SERVER_USERNAME`            | 文字列   | 基本認証ユーザー名 (デフォルト `codeplane`) をオーバーライドします。 |
-| `CODEPLANE_MODELS_URL`                 | 文字列   | モデル設定を取得するためのカスタム URL                              |
+| Flag           | Short | Description                          |
+| -------------- | ----- | ------------------------------------ |
+| `--help`       | `-h`  | Display help                         |
+| `--version`    | `-v`  | Print version number                 |
+| `--print-logs` |       | Print logs to stderr                 |
+| `--log-level`  |       | Log level (DEBUG, INFO, WARN, ERROR) |
 
 ---
 
-### 実験的
+## Environment variables
 
-これらの環境変数により、変更または削除される可能性のある実験的な機能が有効になります。
+CodePlane can be configured using environment variables.
 
-| 変数                                            | タイプ   | 説明                                             |
-| ----------------------------------------------- | -------- | ------------------------------------------------ |
-| `CODEPLANE_EXPERIMENTAL`                         | ブール値 | すべての実験的機能を有効にする                   |
-| `CODEPLANE_EXPERIMENTAL_ICON_DISCOVERY`          | ブール値 | アイコン検出を有効にする                         |
-| `CODEPLANE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT`  | ブール値 | TUI で選択時のコピーを無効にする                 |
-| `CODEPLANE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS` | 数値     | bash コマンドのデフォルトのタイムアウト (ミリ秒) |
-| `CODEPLANE_EXPERIMENTAL_OUTPUT_TOKEN_MAX`        | 数値     | LLM 応答の最大出力トークン                       |
-| `CODEPLANE_EXPERIMENTAL_FILEWATCHER`             | ブール値 | ディレクトリ全体のファイル監視を有効にする       |
-| `CODEPLANE_EXPERIMENTAL_OXFMT`                   | ブール値 | oxfmt フォーマッタを有効にする                   |
-| `CODEPLANE_EXPERIMENTAL_LSP_TOOL`                | ブール値 | 実験的な LSP ツールを有効にする                  |
-| `CODEPLANE_EXPERIMENTAL_DISABLE_FILEWATCHER`     | ブール値 | ファイルウォッチャーを無効にする                 |
-| `CODEPLANE_EXPERIMENTAL_EXA`                     | ブール値 | 実験的な Exa 機能を有効にする                    |
-| `CODEPLANE_EXPERIMENTAL_LSP_TY`                  | ブール値 | python ファイルの TY LSP を有効にする            |
-| `CODEPLANE_EXPERIMENTAL_MARKDOWN`                | ブール値 | 試験的な Markdown 機能を有効にする               |
-| `CODEPLANE_EXPERIMENTAL_PLAN_MODE`               | ブール値 | プランモードを有効にする                         |
+| Variable                              | Type    | Description                                       |
+| ------------------------------------- | ------- | ------------------------------------------------- |
+| `CODEPLANE_AUTO_SHARE`                 | boolean | Automatically share sessions                      |
+| `CODEPLANE_GIT_BASH_PATH`              | string  | Path to Git Bash executable on Windows            |
+| `CODEPLANE_CONFIG`                     | string  | Path to config file                               |
+| `CODEPLANE_CONFIG_DIR`                 | string  | Path to config directory                          |
+| `CODEPLANE_CONFIG_CONTENT`             | string  | Inline json config content                        |
+| `CODEPLANE_DISABLE_AUTOUPDATE`         | boolean | Disable automatic update checks                   |
+| `CODEPLANE_DISABLE_PRUNE`              | boolean | Disable pruning of old data                       |
+| `CODEPLANE_DISABLE_TERMINAL_TITLE`     | boolean | Disable automatic terminal title updates          |
+| `CODEPLANE_PERMISSION`                 | string  | Inlined json permissions config                   |
+| `CODEPLANE_DISABLE_DEFAULT_PLUGINS`    | boolean | Disable default plugins                           |
+| `CODEPLANE_DISABLE_LSP_DOWNLOAD`       | boolean | Disable automatic LSP server downloads            |
+| `CODEPLANE_ENABLE_EXPERIMENTAL_MODELS` | boolean | Enable experimental models                        |
+| `CODEPLANE_DISABLE_AUTOCOMPACT`        | boolean | Disable automatic context compaction              |
+| `CODEPLANE_DISABLE_CLAUDE_CODE`        | boolean | Disable reading from `.claude` (prompt + skills)  |
+| `CODEPLANE_DISABLE_CLAUDE_CODE_PROMPT` | boolean | Disable reading `~/.claude/CLAUDE.md`             |
+| `CODEPLANE_DISABLE_CLAUDE_CODE_SKILLS` | boolean | Disable loading `.claude/skills`                  |
+| `CODEPLANE_DISABLE_MODELS_FETCH`       | boolean | Disable fetching models from remote sources       |
+| `CODEPLANE_FAKE_VCS`                   | string  | Fake VCS provider for testing purposes            |
+| `CODEPLANE_CLIENT`                     | string  | Client identifier (defaults to `cli`)             |
+| `CODEPLANE_ENABLE_EXA`                 | boolean | Enable Exa web search tools                       |
+| `CODEPLANE_SERVER_PASSWORD`            | string  | Enable basic auth for `serve`/`web`               |
+| `CODEPLANE_SERVER_USERNAME`            | string  | Override basic auth username (default `codeplane`) |
+| `CODEPLANE_MODELS_URL`                 | string  | Custom URL for fetching models configuration      |
+
+---
+
+### Experimental
+
+These environment variables enable experimental features that may change or be removed.
+
+| Variable                                        | Type    | Description                             |
+| ----------------------------------------------- | ------- | --------------------------------------- |
+| `CODEPLANE_EXPERIMENTAL`                         | boolean | Enable all experimental features        |
+| `CODEPLANE_EXPERIMENTAL_ICON_DISCOVERY`          | boolean | Enable icon discovery                   |
+| `CODEPLANE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS` | number  | Default timeout for bash commands in ms |
+| `CODEPLANE_EXPERIMENTAL_OUTPUT_TOKEN_MAX`        | number  | Max output tokens for LLM responses     |
+| `CODEPLANE_EXPERIMENTAL_FILEWATCHER`             | boolean | Enable file watcher for entire dir      |
+| `CODEPLANE_EXPERIMENTAL_OXFMT`                   | boolean | Enable oxfmt formatter                  |
+| `CODEPLANE_EXPERIMENTAL_LSP_TOOL`                | boolean | Enable experimental LSP tool            |
+| `CODEPLANE_EXPERIMENTAL_DISABLE_FILEWATCHER`     | boolean | Disable file watcher                    |
+| `CODEPLANE_EXPERIMENTAL_EXA`                     | boolean | Enable experimental Exa features        |
+| `CODEPLANE_EXPERIMENTAL_LSP_TY`                  | boolean | Enable TY LSP for python files          |
+| `CODEPLANE_EXPERIMENTAL_MARKDOWN`                | boolean | Enable experimental markdown features   |
+| `CODEPLANE_EXPERIMENTAL_PLAN_MODE`               | boolean | Enable plan mode                        |

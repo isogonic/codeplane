@@ -1,15 +1,15 @@
 ---
-title: 网络
-description: 配置代理和自定义证书。
+title: Network
+description: Configure proxies and custom certificates.
 ---
 
-CodePlane 支持标准代理环境变量和自定义证书，适用于企业网络环境。
+CodePlane supports standard proxy environment variables and custom certificates for enterprise network environments.
 
 ---
 
-## 代理
+## Proxy
 
-CodePlane 遵循标准代理环境变量。
+CodePlane respects standard proxy environment variables.
 
 ```bash
 # HTTPS proxy (recommended)
@@ -23,35 +23,35 @@ export NO_PROXY=localhost,127.0.0.1
 ```
 
 :::caution
-TUI 与本地 HTTP 服务器进行通信。你必须为此连接绕过代理，以防止路由循环。
+The web app communicates with a local HTTP server. You must bypass the proxy for this connection to prevent routing loops.
 :::
 
-你可以使用 [CLI 标志](/docs/cli#run)来配置服务器的端口和主机名。
+You can configure the server's port and hostname using [CLI flags](/docs/cli#run).
 
 ---
 
-### 身份验证
+### Authenticate
 
-如果你的代理需要基本身份验证，请在 URL 中包含凭据。
+If your proxy requires basic authentication, include credentials in the URL.
 
 ```bash
 export HTTPS_PROXY=http://username:password@proxy.example.com:8080
 ```
 
 :::caution
-避免将密码硬编码在代码中。请使用环境变量或安全的凭据存储方式。
+Avoid hardcoding passwords. Use environment variables or secure credential storage.
 :::
 
-对于需要高级身份验证（如 NTLM 或 Kerberos）的代理，建议使用支持相应身份验证方式的 LLM 网关。
+For proxies requiring advanced authentication like NTLM or Kerberos, consider using an LLM Gateway that supports your authentication method.
 
 ---
 
-## 自定义证书
+## Custom certificates
 
-如果你的企业使用自定义 CA 进行 HTTPS 连接，请配置 CodePlane 以信任这些证书。
+If your enterprise uses custom CAs for HTTPS connections, configure CodePlane to trust them.
 
 ```bash
 export NODE_EXTRA_CA_CERTS=/path/to/ca-cert.pem
 ```
 
-此配置同时适用于代理连接和直接 API 访问。
+This works for both proxy connections and direct API access.

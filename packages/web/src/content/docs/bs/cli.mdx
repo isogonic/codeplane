@@ -1,17 +1,17 @@
 ---
 title: CLI
-description: CodePlane CLI opcije i naredbe.
+description: CodePlane CLI options and commands.
 ---
 
 import { Tabs, TabItem } from "@astrojs/starlight/components"
 
-CodePlane CLI po defaultu pokreće [TUI](/docs/tui) kada se pokrene bez ikakvih argumenata.
+The CodePlane CLI starts the web app when run without any arguments.
 
 ```bash
 codeplane
 ```
 
-Ali takođe prihvata naredbe kao što je dokumentovano na ovoj stranici. Ovo vam omogućava programsku interakciju sa CodePlane.
+But it also accepts commands as documented on this page. This allows you to interact with CodePlane programmatically.
 
 ```bash
 codeplane run "Explain how closures work in JavaScript"
@@ -19,87 +19,35 @@ codeplane run "Explain how closures work in JavaScript"
 
 ---
 
-### tui
+## Commands
 
-Pokrenite CodePlane terminalski korisnički interfejs.
-
-```bash
-codeplane [project]
-```
-
-#### Opcije
-
-| Opcija       | Kratko | Opis                                                                     |
-| ------------ | ------ | ------------------------------------------------------------------------ |
-| `--continue` | `-c`   | Nastavite posljednju sesiju                                              |
-| `--session`  | `-s`   | ID sesije za nastavak                                                    |
-| `--fork`     |        | Forkujte sesiju pri nastavku (koristiti sa `--continue` ili `--session`) |
-| `--prompt`   |        | Prompt za upotrebu                                                       |
-| `--model`    | `-m`   | Model za korištenje u obliku provider/model                              |
-| `--agent`    |        | Agent za korištenje                                                      |
-| `--port`     |        | Port na kojem treba slušati                                              |
-| `--hostname` |        | Hostname na kojem treba slušati                                          |
-
----
-
-## Naredbe
-
-CodePlane CLI takođe ima sljedeće naredbe.
+The CodePlane CLI also has the following commands.
 
 ---
 
 ### agent
 
-Upravljajte CodePlane agentima.
+Manage agents for CodePlane.
 
 ```bash
 codeplane agent [command]
 ```
 
----
-
-### attach
-
-Priključite terminal na već pokrenut CodePlane backend server pokrenut putem `serve` ili `web` naredbi.
-
-```bash
-codeplane attach [url]
-```
-
-Ovo omogućava korištenje TUI-ja sa udaljenim CodePlane backend-om. Na primjer:
-
-```bash
-# Start the backend server for web/mobile access
-codeplane web --port 4096 --hostname 0.0.0.0
-
-# In another terminal, attach the TUI to the running backend
-codeplane attach http://10.20.30.40:4096
-```
-
-#### Opcije
-
-| Opcija      | Kratko | Opis                                 |
-| ----------- | ------ | ------------------------------------ |
-| `--dir`     |        | Radni direktorij za pokretanje TUI-a |
-| `--session` | `-s`   | ID sesije za nastavak                |
-
----
-
 #### create
 
-Kreirajte novog agenta s prilagođenom konfiguracijom.
+Create a new agent with custom configuration.
 
 ```bash
 codeplane agent create
 ```
 
-Ova naredba će vas voditi kroz kreiranje novog agenta sa prilagođenim sistemskim promptom i konfiguracijom alata.
+This command will guide you through creating a new agent with a custom system prompt and tool configuration.
 
 ---
 
 #### list
 
-Navedite sve dostupne agente.
+List all available agents.
 
 ```bash
 codeplane agent list
@@ -109,7 +57,7 @@ codeplane agent list
 
 ### auth
 
-Naredba za upravljanje vjerodajnicama i prijavom za provajdere.
+Command to manage credentials and login for providers.
 
 ```bash
 codeplane auth [command]
@@ -119,25 +67,25 @@ codeplane auth [command]
 
 #### login
 
-CodePlane pokreće lista provajdera na [Models.dev](https://models.dev), tako da možete koristiti `codeplane auth login` da konfigurirate API ključeve za bilo kojeg provajdera kojeg želite koristiti. Ovo je pohranjeno u `~/.local/share/codeplane/auth.json`.
+CodePlane is powered by the provider list at [Models.dev](https://models.dev), so you can use `codeplane auth login` to configure API keys for any provider you'd like to use. This is stored in `~/.local/share/codeplane/auth.json`.
 
 ```bash
 codeplane auth login
 ```
 
-Kada se CodePlane pokrene, učitava dobavljače iz datoteke vjerodajnica. I ako postoje neki ključevi definirani u vašim okruženjima ili `.env` fajl u vašem projektu.
+When CodePlane starts up it loads the providers from the credentials file. And if there are any keys defined in your environments or a `.env` file in your project.
 
 ---
 
 #### list
 
-Navodi sve autentifikovane dobavljače pohranjene u datoteci vjerodajnica.
+Lists all the authenticated providers as stored in the credentials file.
 
 ```bash
 codeplane auth list
 ```
 
-Ili kratka verzija.
+Or the short version.
 
 ```bash
 codeplane auth ls
@@ -147,7 +95,7 @@ codeplane auth ls
 
 #### logout
 
-Odjavljuje vas s provajdera tako što ga briše iz datoteke vjerodajnica.
+Logs you out of a provider by clearing it from the credentials file.
 
 ```bash
 codeplane auth logout
@@ -157,7 +105,7 @@ codeplane auth logout
 
 ### github
 
-Upravljajte GitHub agentom za automatizaciju repozitorija.
+Manage the GitHub agent for repository automation.
 
 ```bash
 codeplane github [command]
@@ -167,36 +115,36 @@ codeplane github [command]
 
 #### install
 
-Instalirajte GitHub agenta u svoj repozitorij.
+Install the GitHub agent in your repository.
 
 ```bash
 codeplane github install
 ```
 
-Ovo postavlja neophodni tok rada GitHub Actions i vodi vas kroz proces konfiguracije. [Saznajte više](/docs/github).
+This sets up the necessary GitHub Actions workflow and guides you through the configuration process. [Learn more](/docs/github).
 
 ---
 
 #### run
 
-Pokrenite GitHub agent. Ovo se obično koristi u GitHub Actions.
+Run the GitHub agent. This is typically used in GitHub Actions.
 
 ```bash
 codeplane github run
 ```
 
-##### Opcije
+##### Flags
 
-| Opcija    | Opis                                   |
+| Flag      | Description                            |
 | --------- | -------------------------------------- |
-| `--event` | GitHub mock event za pokretanje agenta |
-| `--token` | GitHub Personal Access Token           |
+| `--event` | GitHub mock event to run the agent for |
+| `--token` | GitHub personal access token           |
 
 ---
 
 ### mcp
 
-Upravljajte Model Context Protocol (MCP) serverima.
+Manage Model Context Protocol servers.
 
 ```bash
 codeplane mcp [command]
@@ -206,25 +154,25 @@ codeplane mcp [command]
 
 #### add
 
-Dodajte MCP server svojoj konfiguraciji.
+Add an MCP server to your configuration.
 
 ```bash
 codeplane mcp add
 ```
 
-Ova naredba će vas voditi kroz dodavanje lokalnog ili udaljenog MCP servera.
+This command will guide you through adding either a local or remote MCP server.
 
 ---
 
 #### list
 
-Navedite sve konfigurirane MCP servere i njihov status veze.
+List all configured MCP servers and their connection status.
 
 ```bash
 codeplane mcp list
 ```
 
-Ili koristite kratku verziju.
+Or use the short version.
 
 ```bash
 codeplane mcp ls
@@ -234,20 +182,21 @@ codeplane mcp ls
 
 #### auth
 
-Autentifikujte se sa MCP serverom koji je omogućen za OAuth.
+Authenticate with an OAuth-enabled MCP server.
 
 ```bash
 codeplane mcp auth [name]
 ```
 
-Ako ne navedete ime servera, od vas će biti zatraženo da izaberete neki od dostupnih servera koji podržavaju OAuth.
-Također možete navesti servere koji podržavaju OAuth i njihov status autentifikacije.
+If you don't provide a server name, you'll be prompted to select from available OAuth-capable servers.
+
+You can also list OAuth-capable servers and their authentication status.
 
 ```bash
 codeplane mcp auth list
 ```
 
-Ili koristite kratku verziju.
+Or use the short version.
 
 ```bash
 codeplane mcp auth ls
@@ -257,7 +206,7 @@ codeplane mcp auth ls
 
 #### logout
 
-Uklonite OAuth vjerodajnice za MCP server.
+Remove OAuth credentials for an MCP server.
 
 ```bash
 codeplane mcp logout [name]
@@ -267,7 +216,7 @@ codeplane mcp logout [name]
 
 #### debug
 
-Otklanjanje grešaka (debug) OAuth veze sa MCP serverom.
+Debug OAuth connection issues for an MCP server.
 
 ```bash
 codeplane mcp debug <name>
@@ -277,28 +226,30 @@ codeplane mcp debug <name>
 
 ### models
 
-Navedite sve dostupne modele konfiguriranih provajdera.
+List all available models from configured providers.
 
 ```bash
 codeplane models [provider]
 ```
 
-Ova naredba prikazuje sve modele dostupne kod vaših konfiguriranih provajdera u formatu `provider/model`.
-Ovo je korisno za pronalaženje tačnog naziva modela za korištenje u [vašoj konfiguraciji](/docs/config/).
-Opciono možete proslijediti ID provajdera za filtriranje modela po tom dobavljaču.
+This command displays all models available across your configured providers in the format `provider/model`.
+
+This is useful for figuring out the exact model name to use in [your config](/docs/config/).
+
+You can optionally pass a provider ID to filter models by that provider.
 
 ```bash
 codeplane models anthropic
 ```
 
-#### Opcije
+#### Flags
 
-| Opcija      | Opis                                                                     |
-| ----------- | ------------------------------------------------------------------------ |
-| `--refresh` | Osvježite keš modela sa models.dev                                       |
-| `--verbose` | Koristite detaljniji izlaz modela (uključuje metapodatke poput troškova) |
+| Flag        | Description                                                  |
+| ----------- | ------------------------------------------------------------ |
+| `--refresh` | Refresh the models cache from models.dev                     |
+| `--verbose` | Use more verbose model output (includes metadata like costs) |
 
-Koristite `--refresh` zastavicu da ažurirate keširanu listu modela. Ovo je korisno kada su novi modeli dodani provajderu i želite da ih vidite u CodePlane.
+Use the `--refresh` flag to update the cached model list. This is useful when new models have been added to a provider and you want to see them in CodePlane.
 
 ```bash
 codeplane models --refresh
@@ -308,19 +259,19 @@ codeplane models --refresh
 
 ### run
 
-Pokrenite CodePlane u neinteraktivnom modu tako što ćete direktno proslijediti prompt.
+Run codeplane in non-interactive mode by passing a prompt directly.
 
 ```bash
 codeplane run [message..]
 ```
 
-Ovo je korisno za skriptiranje, automatizaciju ili kada želite brz odgovor bez pokretanja punog TUI-ja. Na primjer:
+This is useful for scripting, automation, or when you want a quick answer without opening the web app. For example.
 
 ```bash "codeplane run"
 codeplane run Explain the use of context in Go
 ```
 
-Također možete priključiti pokrenutu `codeplane serve` instancu kako biste izbjegli vrijeme hladnog pokretanja MCP servera pri svakom pokretanju:
+You can also attach to a running `codeplane serve` instance to avoid MCP server cold boot times on every run:
 
 ```bash
 # Start a headless server in one terminal
@@ -330,49 +281,50 @@ codeplane serve
 codeplane run --attach http://localhost:4096 "Explain async/await in JavaScript"
 ```
 
-#### Opcije
+#### Flags
 
-| Opcija       | Kratko | Opis                                                                     |
-| ------------ | ------ | ------------------------------------------------------------------------ |
-| `--command`  |        | Naredba za pokretanje, koristite poruku za argumente                     |
-| `--continue` | `-c`   | Nastavite posljednju sesiju                                              |
-| `--session`  | `-s`   | ID sesije za nastavak                                                    |
-| `--fork`     |        | Forkujte sesiju pri nastavku (koristiti sa `--continue` ili `--session`) |
-| `--share`    |        | Podijelite sesiju                                                        |
-| `--model`    | `-m`   | Model za korištenje u obliku provider/model                              |
-| `--agent`    |        | Agent za korištenje                                                      |
-| `--file`     | `-f`   | Fajlovi koje treba priložiti poruci                                      |
-| `--format`   |        | Format: default (formatiran) ili json (sirovi JSON događaji)             |
-| `--title`    |        | Naslov sesije (koristi skraćeni prompt ako nije navedena vrijednost)     |
-| `--attach`   |        | Priključite na pokrenuti CodePlane server (npr. http://localhost:4096)    |
-| `--port`     |        | Port za lokalni server (zadano na nasumični port)                        |
+| Flag                             | Short | Description                                                             |
+| -------------------------------- | ----- | ----------------------------------------------------------------------- |
+| `--command`                      |       | The command to run, use message for args                                |
+| `--continue`                     | `-c`  | Continue the last session                                               |
+| `--session`                      | `-s`  | Session ID to continue                                                  |
+| `--fork`                         |       | Fork the session when continuing (use with `--continue` or `--session`) |
+| `--share`                        |       | Share the session                                                       |
+| `--model`                        | `-m`  | Model to use in the form of provider/model                              |
+| `--agent`                        |       | Agent to use                                                            |
+| `--file`                         | `-f`  | File(s) to attach to message                                            |
+| `--format`                       |       | Format: default (formatted) or json (raw JSON events)                   |
+| `--title`                        |       | Title for the session (uses truncated prompt if no value provided)      |
+| `--attach`                       |       | Attach to a running codeplane server (e.g., http://localhost:4096)       |
+| `--port`                         |       | Port for the local server (defaults to random port)                     |
+| `--dangerously-skip-permissions` |       | Auto-approve permissions that are not explicitly denied (dangerous!)    |
 
 ---
 
 ### serve
 
-Pokrenite CodePlane headless server za API pristup. Pogledajte [server docs](/docs/server) za kompletan HTTP interfejs.
+Start a headless CodePlane server for API access. Check out the [server docs](/docs/server) for the full HTTP interface.
 
 ```bash
 codeplane serve
 ```
 
-Ovo pokreće HTTP server koji pruža API pristup funkcionalnosti CodePlane-a bez TUI interfejsa. Postavite `CODEPLANE_SERVER_PASSWORD` da omogućite HTTP osnovnu auth (korisničko ime je zadano na `codeplane`).
+This starts an HTTP server that provides API access to codeplane functionality without opening the browser UI. Set `CODEPLANE_SERVER_PASSWORD` to enable HTTP basic auth (username defaults to `codeplane`).
 
-#### Opcije
+#### Flags
 
-| Opcija       | Opis                                                  |
-| ------------ | ----------------------------------------------------- |
-| `--port`     | Port na kojem treba slušati                           |
-| `--hostname` | Hostname na kojem treba slušati                       |
-| `--mdns`     | Omogući mDNS otkrivanje                               |
-| `--cors`     | Dodatni origin(i) pretraživača koji dozvoljavaju CORS |
+| Flag         | Description                                |
+| ------------ | ------------------------------------------ |
+| `--port`     | Port to listen on                          |
+| `--hostname` | Hostname to listen on                      |
+| `--mdns`     | Enable mDNS discovery                      |
+| `--cors`     | Additional browser origin(s) to allow CORS |
 
 ---
 
 ### session
 
-Upravljajte CodePlane sesijama.
+Manage CodePlane sessions.
 
 ```bash
 codeplane session [command]
@@ -382,61 +334,61 @@ codeplane session [command]
 
 #### list
 
-Navedite sve CodePlane sesije.
+List all CodePlane sessions.
 
 ```bash
 codeplane session list
 ```
 
-##### Opcije
+##### Flags
 
-| Opcija        | Kratko | Opis                                   |
-| ------------- | ------ | -------------------------------------- |
-| `--max-count` | `-n`   | Ograničenje na N najnovijih sesija     |
-| `--format`    |        | Izlazni format: table ili json (table) |
+| Flag          | Short | Description                          |
+| ------------- | ----- | ------------------------------------ |
+| `--max-count` | `-n`  | Limit to N most recent sessions      |
+| `--format`    |       | Output format: table or json (table) |
 
 ---
 
 ### stats
 
-Prikaži statistiku upotrebe tokena i troškova za vaše CodePlane sesije.
+Show token usage and cost statistics for your CodePlane sessions.
 
 ```bash
 codeplane stats
 ```
 
-#### Opcije
+#### Flags
 
-| Opcija      | Opis                                                                                                       |
-| ----------- | ---------------------------------------------------------------------------------------------------------- |
-| `--days`    | Prikaži statistiku za zadnjih N dana (sva vremena)                                                         |
-| `--tools`   | Broj alata za prikaz (svi)                                                                                 |
-| `--models`  | Prikaži raščlambu korištenja modela (skriveno prema zadanim postavkama). Proslijedite broj za prikaz top N |
-| `--project` | Filtriraj po projektu (svi projekti, prazan niz: trenutni projekt)                                         |
+| Flag        | Description                                                                 |
+| ----------- | --------------------------------------------------------------------------- |
+| `--days`    | Show stats for the last N days (all time)                                   |
+| `--tools`   | Number of tools to show (all)                                               |
+| `--models`  | Show model usage breakdown (hidden by default). Pass a number to show top N |
+| `--project` | Filter by project (all projects, empty string: current project)             |
 
 ---
 
 ### export
 
-Izvezite podatke sesije kao JSON.
+Export session data as JSON.
 
 ```bash
 codeplane export [sessionID]
 ```
 
-Ako ne unesete ID sesije, od vas će biti zatraženo da odaberete neku od dostupnih sesija.
+If you don't provide a session ID, you'll be prompted to select from available sessions.
 
 ---
 
 ### import
 
-Uvezite podatke sesije iz JSON datoteke ili CodePlane dijeljenog URL-a.
+Import session data from a JSON file or CodePlane share URL.
 
 ```bash
 codeplane import <file>
 ```
 
-Možete uvesti iz lokalne datoteke ili CodePlane dijeljenog URL-a.
+You can import from a local file or an CodePlane share URL.
 
 ```bash
 codeplane import session.json
@@ -447,154 +399,152 @@ codeplane import https://opncd.ai/s/abc123
 
 ### web
 
-Pokrenite CodePlane headless server sa web interfejsom.
+Start a headless CodePlane server with a web interface.
 
 ```bash
 codeplane web
 ```
 
-Ovo pokreće HTTP server i otvara web pretraživač za pristup CodePlane-u preko web interfejsa. Postavite `CODEPLANE_SERVER_PASSWORD` da omogućite HTTP osnovnu auth (korisničko ime je zadano na `codeplane`).
+This starts an HTTP server and opens a web browser to access CodePlane through a web interface. Set `CODEPLANE_SERVER_PASSWORD` to enable HTTP basic auth (username defaults to `codeplane`).
 
-#### Opcije
+#### Flags
 
-| Opcija       | Opis                                                  |
-| ------------ | ----------------------------------------------------- |
-| `--port`     | Port na kojem treba slušati                           |
-| `--hostname` | Hostname na kojem treba slušati                       |
-| `--mdns`     | Omogući mDNS otkrivanje                               |
-| `--cors`     | Dodatni origin(i) pretraživača koji dozvoljavaju CORS |
+| Flag         | Description                                |
+| ------------ | ------------------------------------------ |
+| `--port`     | Port to listen on                          |
+| `--hostname` | Hostname to listen on                      |
+| `--mdns`     | Enable mDNS discovery                      |
+| `--cors`     | Additional browser origin(s) to allow CORS |
 
 ---
 
 ### acp
 
-Pokrenite ACP (Agent Client Protocol) server.
+Start an ACP (Agent Client Protocol) server.
 
 ```bash
 codeplane acp
 ```
 
-Ova naredba pokreće ACP server koji komunicira preko stdin/stdout koristeći nd-JSON.
+This command starts an ACP server that communicates via stdin/stdout using nd-JSON.
 
-#### Opcije
+#### Flags
 
-| Opcija       | Opis                        |
-| ------------ | --------------------------- |
-| `--cwd`      | Radni direktorij            |
-| `--port`     | Port na kojem treba slušati |
-| `--hostname` | Hostname na kojem slušati   |
+| Flag         | Description           |
+| ------------ | --------------------- |
+| `--cwd`      | Working directory     |
+| `--port`     | Port to listen on     |
+| `--hostname` | Hostname to listen on |
 
 ---
 
 ### uninstall
 
-Deinstalirajte CodePlane i uklonite sve povezane datoteke.
+Uninstall CodePlane and remove all related files.
 
 ```bash
 codeplane uninstall
 ```
 
-#### Opcije
+#### Flags
 
-| Opcija          | Kratko | Opis                                          |
-| --------------- | ------ | --------------------------------------------- |
-| `--keep-config` | `-c`   | Sačuvajte konfiguracijske datoteke            |
-| `--keep-data`   | `-d`   | Sačuvajte podatke i snimke sesije             |
-| `--dry-run`     |        | Pokažite šta bi bilo uklonjeno bez uklanjanja |
-| `--force`       | `-f`   | Preskoči upite za potvrdu                     |
+| Flag            | Short | Description                                 |
+| --------------- | ----- | ------------------------------------------- |
+| `--keep-config` | `-c`  | Keep configuration files                    |
+| `--keep-data`   | `-d`  | Keep session data and snapshots             |
+| `--dry-run`     |       | Show what would be removed without removing |
+| `--force`       | `-f`  | Skip confirmation prompts                   |
 
 ---
 
 ### upgrade
 
-Ažurira CodePlane na najnoviju verziju ili određenu verziju.
+Updates codeplane to the latest version or a specific version.
 
 ```bash
 codeplane upgrade [target]
 ```
 
-Za nadogradnju na najnoviju verziju.
+To upgrade to the latest version.
 
 ```bash
 codeplane upgrade
 ```
 
-Za nadogradnju na određenu verziju.
+To upgrade to a specific version.
 
 ```bash
 codeplane upgrade v0.1.48
 ```
 
-#### Opcije
+#### Flags
 
-| Opcija     | Kratko | Opis                                                    |
-| ---------- | ------ | ------------------------------------------------------- |
-| `--method` | `-m`   | Korišteni način instalacije; curl, npm, pnpm, bun, brew |
-
----
-
-## Globalne opcije
-
-CodePlane CLI prihvata sljedeće globalne zastavice.
-
-| Opcija         | Kratko | Opis                                      |
-| -------------- | ------ | ----------------------------------------- |
-| `--help`       | `-h`   | Prikaži pomoć                             |
-| `--version`    | `-v`   | Ispiši broj verzije                       |
-| `--print-logs` |        | Ispis logova u stderr                     |
-| `--log-level`  |        | Nivo logovanja (DEBUG, INFO, WARN, ERROR) |
+| Flag       | Short | Description                                                       |
+| ---------- | ----- | ----------------------------------------------------------------- |
+| `--method` | `-m`  | The installation method that was used; curl, npm, pnpm, bun, brew |
 
 ---
 
-## Varijable okruženja
+## Global Flags
 
-CodePlane se može konfigurirati pomoću varijabli okruženja.
+The codeplane CLI takes the following global flags.
 
-| Varijabla                             | Tip     | Opis                                                               |
-| ------------------------------------- | ------- | ------------------------------------------------------------------ |
-| `CODEPLANE_AUTO_SHARE`                 | boolean | Automatski dijeli sesije                                           |
-| `CODEPLANE_GIT_BASH_PATH`              | string  | Putanja do Git Bash izvršne datoteke na Windows-u                  |
-| `CODEPLANE_CONFIG`                     | string  | Putanja do konfiguracijskog fajla                                  |
-| `CODEPLANE_TUI_CONFIG`                 | string  | Putanja do TUI konfiguracijskog fajla                              |
-| `CODEPLANE_CONFIG_DIR`                 | string  | Putanja do konfiguracijskog direktorija                            |
-| `CODEPLANE_CONFIG_CONTENT`             | string  | Inline json konfiguracijski sadržaj                                |
-| `CODEPLANE_DISABLE_AUTOUPDATE`         | boolean | Onemogući automatske provjere ažuriranja                           |
-| `CODEPLANE_DISABLE_PRUNE`              | boolean | Onemogući brisanje (pruning) starih podataka                       |
-| `CODEPLANE_DISABLE_TERMINAL_TITLE`     | boolean | Onemogući automatsko ažuriranje naslova terminala                  |
-| `CODEPLANE_PERMISSION`                 | string  | Inline json konfiguracija dozvola                                  |
-| `CODEPLANE_DISABLE_DEFAULT_PLUGINS`    | boolean | Onemogući podrazumijevane dodatke (plugins)                        |
-| `CODEPLANE_DISABLE_LSP_DOWNLOAD`       | boolean | Onemogući automatsko preuzimanje LSP servera                       |
-| `CODEPLANE_ENABLE_EXPERIMENTAL_MODELS` | boolean | Omogući eksperimentalne modele                                     |
-| `CODEPLANE_DISABLE_AUTOCOMPACT`        | boolean | Onemogući automatsko sažimanje konteksta                           |
-| `CODEPLANE_DISABLE_CLAUDE_CODE`        | boolean | Onemogući čitanje iz `.claude` (prompt + vještine)                 |
-| `CODEPLANE_DISABLE_CLAUDE_CODE_PROMPT` | boolean | Onemogući čitanje `~/.claude/CLAUDE.md`                            |
-| `CODEPLANE_DISABLE_CLAUDE_CODE_SKILLS` | boolean | Onemogući učitavanje `.claude/skills`                              |
-| `CODEPLANE_DISABLE_MODELS_FETCH`       | boolean | Onemogući dohvaćanje modela iz udaljenih izvora                    |
-| `CODEPLANE_FAKE_VCS`                   | string  | Lažni VCS provajder za potrebe testiranja                          |
-| `CODEPLANE_CLIENT`                     | string  | Identifikator klijenta (zadano na `cli`)                           |
-| `CODEPLANE_ENABLE_EXA`                 | boolean | Omogući Exa alate za web pretraživanje                             |
-| `CODEPLANE_SERVER_PASSWORD`            | string  | Omogući osnovnu autentifikaciju za `serve`/`web`                   |
-| `CODEPLANE_SERVER_USERNAME`            | string  | Poništi osnovno korisničko ime autentifikacije (zadano `codeplane`) |
-| `CODEPLANE_MODELS_URL`                 | string  | Prilagođeni URL za dohvaćanje konfiguracije modela                 |
+| Flag           | Short | Description                          |
+| -------------- | ----- | ------------------------------------ |
+| `--help`       | `-h`  | Display help                         |
+| `--version`    | `-v`  | Print version number                 |
+| `--print-logs` |       | Print logs to stderr                 |
+| `--log-level`  |       | Log level (DEBUG, INFO, WARN, ERROR) |
 
 ---
 
-### Eksperimentalno
+## Environment variables
 
-Ove varijable okruženja omogućavaju eksperimentalne karakteristike koje se mogu promijeniti ili ukloniti.
+CodePlane can be configured using environment variables.
 
-| Varijabla                                       | Tip     | Opis                                              |
-| ----------------------------------------------- | ------- | ------------------------------------------------- |
-| `CODEPLANE_EXPERIMENTAL`                         | boolean | Omogući sve eksperimentalne funkcije              |
-| `CODEPLANE_EXPERIMENTAL_ICON_DISCOVERY`          | boolean | Omogući otkrivanje ikona                          |
-| `CODEPLANE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT`  | boolean | Onemogući kopiranje pri odabiru u TUI             |
-| `CODEPLANE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS` | number  | Zadano vremensko ograničenje za bash naredbe u ms |
-| `CODEPLANE_EXPERIMENTAL_OUTPUT_TOKEN_MAX`        | number  | Maksimalni izlazni tokeni za LLM odgovore         |
-| `CODEPLANE_EXPERIMENTAL_FILEWATCHER`             | boolean | Omogući praćenje datoteka za cijeli direktorij    |
-| `CODEPLANE_EXPERIMENTAL_OXFMT`                   | boolean | Omogući oxfmt formatter                           |
-| `CODEPLANE_EXPERIMENTAL_LSP_TOOL`                | boolean | Omogući eksperimentalni LSP alat                  |
-| `CODEPLANE_EXPERIMENTAL_DISABLE_FILEWATCHER`     | boolean | Onemogući praćenje datoteka                       |
-| `CODEPLANE_EXPERIMENTAL_EXA`                     | boolean | Omogući eksperimentalne Exa funkcije              |
-| `CODEPLANE_EXPERIMENTAL_LSP_TY`                  | boolean | Omogući TY LSP za python datoteke                 |
-| `CODEPLANE_EXPERIMENTAL_MARKDOWN`                | boolean | Omogući eksperimentalne Markdown funkcije         |
-| `CODEPLANE_EXPERIMENTAL_PLAN_MODE`               | boolean | Omogući Plan mod                                  |
+| Variable                              | Type    | Description                                       |
+| ------------------------------------- | ------- | ------------------------------------------------- |
+| `CODEPLANE_AUTO_SHARE`                 | boolean | Automatically share sessions                      |
+| `CODEPLANE_GIT_BASH_PATH`              | string  | Path to Git Bash executable on Windows            |
+| `CODEPLANE_CONFIG`                     | string  | Path to config file                               |
+| `CODEPLANE_CONFIG_DIR`                 | string  | Path to config directory                          |
+| `CODEPLANE_CONFIG_CONTENT`             | string  | Inline json config content                        |
+| `CODEPLANE_DISABLE_AUTOUPDATE`         | boolean | Disable automatic update checks                   |
+| `CODEPLANE_DISABLE_PRUNE`              | boolean | Disable pruning of old data                       |
+| `CODEPLANE_DISABLE_TERMINAL_TITLE`     | boolean | Disable automatic terminal title updates          |
+| `CODEPLANE_PERMISSION`                 | string  | Inlined json permissions config                   |
+| `CODEPLANE_DISABLE_DEFAULT_PLUGINS`    | boolean | Disable default plugins                           |
+| `CODEPLANE_DISABLE_LSP_DOWNLOAD`       | boolean | Disable automatic LSP server downloads            |
+| `CODEPLANE_ENABLE_EXPERIMENTAL_MODELS` | boolean | Enable experimental models                        |
+| `CODEPLANE_DISABLE_AUTOCOMPACT`        | boolean | Disable automatic context compaction              |
+| `CODEPLANE_DISABLE_CLAUDE_CODE`        | boolean | Disable reading from `.claude` (prompt + skills)  |
+| `CODEPLANE_DISABLE_CLAUDE_CODE_PROMPT` | boolean | Disable reading `~/.claude/CLAUDE.md`             |
+| `CODEPLANE_DISABLE_CLAUDE_CODE_SKILLS` | boolean | Disable loading `.claude/skills`                  |
+| `CODEPLANE_DISABLE_MODELS_FETCH`       | boolean | Disable fetching models from remote sources       |
+| `CODEPLANE_FAKE_VCS`                   | string  | Fake VCS provider for testing purposes            |
+| `CODEPLANE_CLIENT`                     | string  | Client identifier (defaults to `cli`)             |
+| `CODEPLANE_ENABLE_EXA`                 | boolean | Enable Exa web search tools                       |
+| `CODEPLANE_SERVER_PASSWORD`            | string  | Enable basic auth for `serve`/`web`               |
+| `CODEPLANE_SERVER_USERNAME`            | string  | Override basic auth username (default `codeplane`) |
+| `CODEPLANE_MODELS_URL`                 | string  | Custom URL for fetching models configuration      |
+
+---
+
+### Experimental
+
+These environment variables enable experimental features that may change or be removed.
+
+| Variable                                        | Type    | Description                             |
+| ----------------------------------------------- | ------- | --------------------------------------- |
+| `CODEPLANE_EXPERIMENTAL`                         | boolean | Enable all experimental features        |
+| `CODEPLANE_EXPERIMENTAL_ICON_DISCOVERY`          | boolean | Enable icon discovery                   |
+| `CODEPLANE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS` | number  | Default timeout for bash commands in ms |
+| `CODEPLANE_EXPERIMENTAL_OUTPUT_TOKEN_MAX`        | number  | Max output tokens for LLM responses     |
+| `CODEPLANE_EXPERIMENTAL_FILEWATCHER`             | boolean | Enable file watcher for entire dir      |
+| `CODEPLANE_EXPERIMENTAL_OXFMT`                   | boolean | Enable oxfmt formatter                  |
+| `CODEPLANE_EXPERIMENTAL_LSP_TOOL`                | boolean | Enable experimental LSP tool            |
+| `CODEPLANE_EXPERIMENTAL_DISABLE_FILEWATCHER`     | boolean | Disable file watcher                    |
+| `CODEPLANE_EXPERIMENTAL_EXA`                     | boolean | Enable experimental Exa features        |
+| `CODEPLANE_EXPERIMENTAL_LSP_TY`                  | boolean | Enable TY LSP for python files          |
+| `CODEPLANE_EXPERIMENTAL_MARKDOWN`                | boolean | Enable experimental markdown features   |
+| `CODEPLANE_EXPERIMENTAL_PLAN_MODE`               | boolean | Enable plan mode                        |

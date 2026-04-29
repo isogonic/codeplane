@@ -32,25 +32,25 @@ https://github.com/anomalyco/models.dev
 ## Developing CodePlane
 
 - Requirements: Bun 1.3+
-- Install dependencies and start the dev server from the repo root:
+- Install dependencies and start the server-backed web app from the repo root:
 
   ```bash
   bun install
-  bun dev
+  bun dev:server
   ```
 
 ### Running against a different directory
 
-By default, `bun dev` runs CodePlane in the `packages/codeplane` directory. To run it against a different directory or repository:
+By default, `bun dev:server` runs CodePlane in the current repository. To run it against a different directory or repository:
 
 ```bash
-bun dev <directory>
+bun dev:server -- <directory>
 ```
 
 To run CodePlane in the root of the codeplane repo itself:
 
 ```bash
-bun dev .
+bun dev:server -- .
 ```
 
 ### Building a "localcode"
@@ -71,27 +71,26 @@ Replace `<platform>` with your platform (e.g., `darwin-arm64`, `linux-x64`).
 
 - Core pieces:
   - `packages/codeplane`: CodePlane core business logic & server.
-  - `packages/codeplane/src/cli/cmd/tui/`: The TUI code, written in SolidJS with [opentui](https://github.com/sst/opentui)
-  - `packages/app`: The shared web UI components, written in SolidJS
-  - `packages/desktop`: The native desktop app, built with Tauri (wraps `packages/app`)
+  - `packages/app`: The web app, written in SolidJS.
+  - `packages/console/app`: The public website and account console.
+  - `packages/web`: The documentation site.
   - `packages/plugin`: Source for `@codeplane-ai/plugin`
 
-### Understanding bun dev vs codeplane
+### Understanding development commands
 
-During development, `bun dev` is the local equivalent of the built `codeplane` command. Both run the same CLI interface:
+The root scripts separate the web app frontend from the local CodePlane server:
 
 ```bash
 # Development (from project root)
-bun dev --help           # Show all available commands
-bun dev serve            # Start headless API server
-bun dev web              # Start server + open web interface
-bun dev <directory>      # Start TUI in specific directory
+bun dev:server           # Start server + open web interface
+bun dev:web              # Start the Vite web app
+bun --cwd packages/codeplane dev serve --port 4096
 
 # Production
 codeplane --help          # Show all available commands
 codeplane serve           # Start headless API server
 codeplane web             # Start server + open web interface
-codeplane <directory>     # Start TUI in specific directory
+codeplane <directory>     # Start server + open web interface for a directory
 ```
 
 ### Running the API Server
@@ -99,13 +98,13 @@ codeplane <directory>     # Start TUI in specific directory
 To start the CodePlane headless API server:
 
 ```bash
-bun dev serve
+bun --cwd packages/codeplane dev serve
 ```
 
 This starts the headless server on port 4096 by default. You can specify a different port:
 
 ```bash
-bun dev serve --port 8080
+bun --cwd packages/codeplane dev serve --port 8080
 ```
 
 ### Running the Web App
@@ -116,42 +115,13 @@ To test UI changes during development:
 2. **Then run the web app:**
 
 ```bash
-bun run --cwd packages/app dev
+bun dev:web
 ```
 
 This starts a local dev server at http://localhost:5173 (or similar port shown in output). Most UI changes can be tested here, but the server must be running for full functionality.
 
-### Running the Desktop App
-
-The desktop app is a native Tauri application that wraps the web UI.
-
-To run the native desktop app:
-
-```bash
-bun run --cwd packages/desktop tauri dev
-```
-
-This starts the web dev server on http://localhost:1420 and opens the native window.
-
-If you only want the web dev server (no native shell):
-
-```bash
-bun run --cwd packages/desktop dev
-```
-
-To create a production `dist/` and build the native app bundle:
-
-```bash
-bun run --cwd packages/desktop tauri build
-```
-
-This runs `bun run --cwd packages/desktop build` automatically via Tauri’s `beforeBuildCommand`.
-
 > [!NOTE]
-> Running the desktop app requires additional Tauri dependencies (Rust toolchain, platform-specific libraries). See the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for setup instructions.
-
-> [!NOTE]
-> If you make changes to the API or SDK (e.g. `packages/codeplane/src/server/server.ts`), run `./script/generate.ts` to regenerate the SDK and related files.
+> If you make changes to the API or SDK (e.g. `packages/codeplane/src/server/server.ts`), run `./packages/sdk/js/script/build.ts` to regenerate the JavaScript SDK and related files.
 
 Please try to follow the [style guide](./AGENTS.md)
 
@@ -164,12 +134,9 @@ your debugger via that URL. Other methods can result in breakpoints being mapped
 
 Caveats:
 
-- If you want to run the CodePlane TUI and have breakpoints triggered in the server code, you might need to run `bun dev spawn` instead of
-  the usual `bun dev`. This is because `bun dev` runs the server in a worker thread and breakpoints might not work there.
-- If `spawn` does not work for you, you can debug the server separately:
-  - Debug server: `bun run --inspect=ws://localhost:6499/ --cwd packages/codeplane ./src/index.ts serve --port 4096`,
-    then attach TUI with `codeplane attach http://localhost:4096`
-  - Debug TUI: `bun run --inspect=ws://localhost:6499/ --cwd packages/codeplane --conditions=browser ./src/index.ts`
+- If breakpoints do not attach through the root scripts, debug the server directly:
+  - `bun run --inspect=ws://localhost:6499/ --cwd packages/codeplane ./src/index.ts serve --port 4096`
+  - Then run `bun run dev:web` and connect the web app to that server.
 
 Other tips and tricks:
 
@@ -235,7 +202,6 @@ PR titles should follow conventional commit standards:
 You can optionally include a scope to indicate which package is affected:
 
 - `feat(app):` feature in the app package
-- `fix(desktop):` bug fix in the desktop package
 - `chore(codeplane):` maintenance in the codeplane package
 
 Examples:
@@ -244,7 +210,6 @@ Examples:
 - `fix: resolve crash on startup`
 - `feat: add dark mode support`
 - `feat(app): add dark mode support`
-- `fix(desktop): resolve crash on startup`
 - `chore: bump dependency versions`
 
 ### Style Preferences

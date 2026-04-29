@@ -129,7 +129,7 @@ export function Header(props: { zen?: boolean; go?: boolean; hideGetStarted?: bo
           </button>
         </div>
       </Show>
-      <nav data-component="nav-desktop">
+      <nav data-component="nav-wide">
         <ul>
           <li>
             <a href={config.github.repoUrl} target="_blank" style="white-space: nowrap;">

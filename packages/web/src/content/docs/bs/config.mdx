@@ -1,15 +1,15 @@
 ---
-title: Konfiguracija
-description: Korištenje CodePlane JSON konfiguracije.
+title: Config
+description: Using the CodePlane JSON config.
 ---
 
-Možete konfigurirati CodePlane koristeći JSON konfiguracijski fajl.
+You can configure CodePlane using a JSON config file.
 
 ---
 
 ## Format
 
-CodePlane podržava i **JSON** i **JSONC** (JSON sa komentarima) formate.
+CodePlane supports both **JSON** and **JSONC** (JSON with Comments) formats.
 
 ```jsonc title="codeplane.jsonc"
 {
@@ -24,46 +24,49 @@ CodePlane podržava i **JSON** i **JSONC** (JSON sa komentarima) formate.
 
 ---
 
-## Lokacije
+## Locations
 
-Možete postaviti svoju konfiguraciju na nekoliko različitih lokacija i one imaju drugačiji redoslijed prioriteta.
+You can place your config in a couple of different locations and they have a
+different order of precedence.
 
 :::note
-Konfiguracijski fajlovi se **spajaju**, ne zamjenjuju.
+Configuration files are **merged together**, not replaced.
 :::
 
-Konfiguracijski fajlovi se spajaju, ne zamjenjuju. Kombiniraju se postavke sa sljedećih konfiguracijskih lokacija. Kasnije konfiguracije poništavaju prethodne samo za konfliktne ključeve. Nekonfliktne postavke iz svih konfiguracija su sačuvane.
+Configuration files are merged together, not replaced. Settings from the following config locations are combined. Later configs override earlier ones only for conflicting keys. Non-conflicting settings from all configs are preserved.
 
-Na primjer, ako vaša globalna konfiguracija postavlja `autoupdate: true`, a vaša projektna konfiguracija postavlja `model: "anthropic/claude-sonnet-4-5"`, konačna konfiguracija će uključivati ​​obje postavke.
+For example, if your global config sets `autoupdate: true` and your project config sets `model: "anthropic/claude-sonnet-4-5"`, the final configuration will include both settings.
 
 ---
 
-### Redoslijed prioriteta
+### Precedence order
 
-Izvori konfiguracije se učitavaju ovim redoslijedom (kasniji izvori poništavaju ranije):
+Config sources are loaded in this order (later sources override earlier ones):
 
-1. **Udaljena konfiguracija** (od `.well-known/codeplane`) - organizacijske postavke
-2. **Globalna konfiguracija** (`~/.config/codeplane/codeplane.json`) - korisničke preferencije
-3. **Prilagođena konfiguracija** (`CODEPLANE_CONFIG` env var) - prilagođena preinačenja
-4. **Konfiguracija projekta** (`codeplane.json` u projektu) - postavke specifične za projekat
-5. **`.codeplane` direktoriji** - agenti, komande, dodaci
-6. **Inline konfiguracija** (`CODEPLANE_CONFIG_CONTENT` env var) - runtime preinačenja
+1. **Remote config** (from `.well-known/codeplane`) - organizational defaults
+2. **Global config** (`~/.config/codeplane/codeplane.json`) - user preferences
+3. **Custom config** (`CODEPLANE_CONFIG` env var) - custom overrides
+4. **Project config** (`codeplane.json` in project) - project-specific settings
+5. **`.codeplane` directories** - agents, commands, plugins
+6. **Inline config** (`CODEPLANE_CONFIG_CONTENT` env var) - runtime overrides
+7. **Managed config files** (`/Library/Application Support/codeplane/` on macOS) - admin-controlled
+8. **macOS managed preferences** (`.mobileconfig` via MDM) - highest priority, not user-overridable
 
-To znači da konfiguracije projekta mogu nadjačati globalne zadane postavke, a globalne konfiguracije mogu nadjačati postavke udaljene organizacije.
+This means project configs can override global defaults, and global configs can override remote organizational defaults. Managed settings override everything.
 
 :::note
-Direktoriji `.codeplane` i `~/.config/codeplane` koriste **imena u množini** za poddirektorije: `agents/`, `commands/`, `modes/`, `plugins/`, `skills/`, `tools/` i `themes/`. Pojedinačna imena (npr. `agent/`) su također podržana za kompatibilnost unatrag.
+The `.codeplane` and `~/.config/codeplane` directories use **plural names** for subdirectories: `agents/`, `commands/`, `modes/`, `plugins/`, `skills/`, `tools/`, and `themes/`. Singular names (e.g., `agent/`) are also supported for backwards compatibility.
 :::
 
 ---
 
-### Udaljeno (Remote)
+### Remote
 
-Organizacije mogu pružiti zadanu konfiguraciju preko `.well-known/codeplane` krajnje tačke. Ovo se automatski preuzima kada se autentifikujete kod provajdera koji to podržava.
+Organizations can provide default configuration via the `.well-known/codeplane` endpoint. This is fetched automatically when you authenticate with a provider that supports it.
 
-Prvo se učitava udaljena konfiguracija koja služi kao osnovni sloj. Svi ostali izvori konfiguracije (globalni, projektni) mogu nadjačati ove zadane postavke.
+Remote config is loaded first, serving as the base layer. All other config sources (global, project) can override these defaults.
 
-Na primjer, ako vaša organizacija nudi MCP servere koji su po defaultu onemogućeni:
+For example, if your organization provides MCP servers that are disabled by default:
 
 ```json title="Remote config from .well-known/codeplane"
 {
@@ -77,7 +80,7 @@ Na primjer, ako vaša organizacija nudi MCP servere koji su po defaultu onemogu�
 }
 ```
 
-Možete omogućiti određene servere u vašoj lokalnoj konfiguraciji:
+You can enable specific servers in your local config:
 
 ```json title="codeplane.json"
 {
@@ -93,94 +96,168 @@ Možete omogućiti određene servere u vašoj lokalnoj konfiguraciji:
 
 ---
 
-### Globalno
+### Global
 
-Postavite svoju globalnu CodePlane konfiguraciju u `~/.config/codeplane/codeplane.json`. Koristite globalnu konfiguraciju za korisničke preferencije kao što su provajderi, modeli i dozvole.
+Place your global CodePlane config in `~/.config/codeplane/codeplane.json`. Use global config for user-wide server/runtime preferences like providers, models, and permissions.
 
-Za postavke specifične za TUI, koristite `~/.config/codeplane/tui.json`.
-
-Globalna konfiguracija poništava zadane postavke udaljene organizacije.
+Global config overrides remote organizational defaults.
 
 ---
 
-### Projekt
+### Per project
 
-Dodajte `codeplane.json` u korijen projekta. Konfiguracija projekta ima najveći prioritet među standardnim konfiguracijskim datotekama - ona nadjačava globalne i udaljene konfiguracije.
-
-Za TUI postavke specifične za projekat, dodajte `tui.json` pored njega.
+Add `codeplane.json` in your project root. Project config has the highest precedence among standard config files - it overrides both global and remote configs.
 
 :::tip
-Postavite specifičnu konfiguraciju projekta u korijen vašeg projekta.
+Place project specific config in the root of your project.
 :::
 
-Kada se CodePlane pokrene, traži konfiguracijsku datoteku u trenutnom direktoriju ili prelazi do najbližeg Git direktorija.
+When CodePlane starts up, it looks for a config file in the current directory or traverse up to the nearest Git directory.
 
-Ovo je također sigurno provjeriti u Git i koristi istu shemu kao globalna.
+This is also safe to be checked into Git and uses the same schema as the global one.
 
 ---
 
-### Prilagođena konfiguracija
+### Custom path
 
-Navedite prilagođenu putanju konfiguracijske datoteke koristeći varijablu okruženja `CODEPLANE_CONFIG`.
+Specify a custom config file path using the `CODEPLANE_CONFIG` environment variable.
 
 ```bash
 export CODEPLANE_CONFIG=/path/to/my/custom-config.json
 codeplane run "Hello world"
 ```
 
-Prilagođena konfiguracija se učitava između globalne i projektne konfiguracije po redoslijedu prioriteta.
+Custom config is loaded between global and project configs in the precedence order.
 
 ---
 
-### Prilagođeni direktorij
+### Custom directory
 
-Navedite prilagođeni konfiguracijski direktorij koristeći `CODEPLANE_CONFIG_DIR` varijablu okruženja. U ovom direktoriju će se tražiti agenti, komande, modovi i dodaci baš kao standardni `.codeplane` direktorij, i trebali bi pratiti istu strukturu.
+Specify a custom config directory using the `CODEPLANE_CONFIG_DIR`
+environment variable. This directory will be searched for agents, commands,
+modes, and plugins just like the standard `.codeplane` directory, and should
+follow the same structure.
 
 ```bash
 export CODEPLANE_CONFIG_DIR=/path/to/my/config-directory
 codeplane run "Hello world"
 ```
 
-Prilagođeni direktorij se učitava nakon direktorija globalne konfiguracije i `.codeplane`, tako da **može nadjačati** njihove postavke.
+The custom directory is loaded after the global config and `.codeplane` directories, so it **can override** their settings.
 
 ---
 
-## Šema
+### Managed settings
 
-Konfiguracijski fajl ima šemu koja je definirana u [**`example.invalid/config.json`**](https://example.invalid/config.json).
+Organizations can enforce configuration that users cannot override. Managed settings are loaded at the highest priority tier.
 
-TUI konfiguracija koristi [**`example.invalid/tui.json`**]().
+#### File-based
 
-Vaš editor bi trebao biti u mogućnosti da validira i autodovršava na osnovu šeme.
+Drop an `codeplane.json` or `codeplane.jsonc` file in the system managed config directory:
 
----
+| Platform | Path                                     |
+| -------- | ---------------------------------------- |
+| macOS    | `/Library/Application Support/codeplane/` |
+| Linux    | `/etc/codeplane/`                         |
+| Windows  | `%ProgramData%\codeplane`                 |
 
-### TUI
+These directories require admin/root access to write, so users cannot modify them.
 
-Koristite namjenski `tui.json` (ili `tui.jsonc`) fajl za postavke specifične za TUI.
+#### macOS managed preferences
 
-```json title="tui.json"
-{
-  "$schema": "",
-  "scroll_speed": 3,
-  "scroll_acceleration": {
-    "enabled": true
-  },
-  "diff_style": "auto"
-}
+On macOS, CodePlane reads managed preferences from the `ai.codeplane.managed` preference domain. Deploy a `.mobileconfig` via MDM (Jamf, Kandji, FleetDM) and the settings are enforced automatically.
+
+CodePlane checks these paths:
+
+1. `/Library/Managed Preferences/<user>/ai.codeplane.managed.plist`
+2. `/Library/Managed Preferences/ai.codeplane.managed.plist`
+
+The plist keys map directly to `codeplane.json` fields. MDM metadata keys (`PayloadUUID`, `PayloadType`, etc.) are stripped automatically.
+
+**Creating a `.mobileconfig`**
+
+Use the `ai.codeplane.managed` PayloadType. The CodePlane config keys go directly in the payload dict:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>PayloadContent</key>
+  <array>
+    <dict>
+      <key>PayloadType</key>
+      <string>ai.codeplane.managed</string>
+      <key>PayloadIdentifier</key>
+      <string>com.example.codeplane.config</string>
+      <key>PayloadUUID</key>
+      <string>GENERATE-YOUR-OWN-UUID</string>
+      <key>PayloadVersion</key>
+      <integer>1</integer>
+      <key>share</key>
+      <string>disabled</string>
+      <key>server</key>
+      <dict>
+        <key>hostname</key>
+        <string>127.0.0.1</string>
+      </dict>
+      <key>permission</key>
+      <dict>
+        <key>*</key>
+        <string>ask</string>
+        <key>bash</key>
+        <dict>
+          <key>*</key>
+          <string>ask</string>
+          <key>rm -rf *</key>
+          <string>deny</string>
+        </dict>
+      </dict>
+    </dict>
+  </array>
+  <key>PayloadType</key>
+  <string>Configuration</string>
+  <key>PayloadIdentifier</key>
+  <string>com.example.codeplane</string>
+  <key>PayloadUUID</key>
+  <string>GENERATE-YOUR-OWN-UUID</string>
+  <key>PayloadVersion</key>
+  <integer>1</integer>
+</dict>
+</plist>
 ```
 
-Koristite `CODEPLANE_TUI_CONFIG` da pokažete na prilagođeni TUI konfiguracijski fajl.
+Generate unique UUIDs with `uuidgen`. Customize the settings to match your organization's requirements.
 
-Stari `theme`, `keybinds`, i `tui` ključevi u `codeplane.json` su zastarjeli i automatski će se migrirati kada je to moguće.
+**Deploying via MDM**
 
-[Saznajte više o korištenju TUI ovdje](/docs/tui#configure).
+- **Jamf Pro:** Computers > Configuration Profiles > Upload > scope to target devices or smart groups
+- **FleetDM:** Add the `.mobileconfig` to your gitops repo under `mdm.macos_settings.custom_settings` and run `fleetctl apply`
+
+**Verifying on a device**
+
+Double-click the `.mobileconfig` to install locally for testing (shows in System Settings > Privacy & Security > Profiles), then run:
+
+```bash
+codeplane debug config
+```
+
+All managed preference keys appear in the resolved config and cannot be overridden by user or project configuration.
+
+---
+
+## Schema
+
+The server/runtime config schema is defined in [**`example.invalid/config.json`**](https://example.invalid/config.json).
+
+Your editor should be able to validate and autocomplete based on the schema.
 
 ---
 
 ### Server
 
-Možete konfigurirati postavke servera za naredbe `codeplane serve` i `codeplane web` putem opcije `server`.
+You can configure server settings for the `codeplane serve` and `codeplane web` commands through the `server` option.
 
 ```json title="codeplane.json"
 {
@@ -195,21 +272,21 @@ Možete konfigurirati postavke servera za naredbe `codeplane serve` i `codeplane
 }
 ```
 
-Dostupne opcije:
+Available options:
 
-- `port` - Port za slušanje.
-- `hostname` - Hostname za slušanje. Kada je `mdns` omogućen i nije postavljeno ime hosta, podrazumevano je `0.0.0.0`.
-- `mdns` - Omogući mDNS otkrivanje servisa. Ovo omogućava drugim uređajima na mreži da otkriju vaš CodePlane server.
-- `mdnsDomain` - Prilagođeno ime domene za mDNS servis. Zadano je `codeplane.local`. Korisno za pokretanje više instanci na istoj mreži.
-- `cors` - Dodatni origini koji omogućavaju CORS kada koristite HTTP server iz klijenta baziranog na pretraživaču. Vrijednosti moraju biti puni origin (shema + host + opcijski port), npr. `https://app.example.com`.
+- `port` - Port to listen on.
+- `hostname` - Hostname to listen on. When `mdns` is enabled and no hostname is set, defaults to `0.0.0.0`.
+- `mdns` - Enable mDNS service discovery. This allows other devices on the network to discover your CodePlane server.
+- `mdnsDomain` - Custom domain name for mDNS service. Defaults to `codeplane.local`. Useful for running multiple instances on the same network.
+- `cors` - Additional origins to allow for CORS when using the HTTP server from a browser-based client. Values must be full origins (scheme + host + optional port), eg `https://app.example.com`.
 
-[Saznajte više o serveru ovdje](/docs/server).
+[Learn more about the server here](/docs/server).
 
 ---
 
-### Alati
+### Tools
 
-Možete upravljati alatima koje LLM može koristiti putem opcije `tools`.
+You can manage the tools an LLM can use through the `tools` option.
 
 ```json title="codeplane.json"
 {
@@ -221,13 +298,13 @@ Možete upravljati alatima koje LLM može koristiti putem opcije `tools`.
 }
 ```
 
-[Saznajte više o alatima ovdje](/docs/tools).
+[Learn more about tools here](/docs/tools).
 
 ---
 
-### Model
+### Models
 
-Možete konfigurirati dobavljače i modele koje želite koristiti u svojoj CodePlane konfiguraciji kroz opcije `provider`, `model` i `small_model`.
+You can configure the providers and models you want to use in your CodePlane config through the `provider`, `model` and `small_model` options.
 
 ```json title="codeplane.json"
 {
@@ -238,9 +315,9 @@ Možete konfigurirati dobavljače i modele koje želite koristiti u svojoj CodeP
 }
 ```
 
-Opcija `small_model` konfigurira poseban model za lagane zadatke poput generiranja naslova. Podrazumevano, CodePlane pokušava da koristi jeftiniji model ako je dostupan od vašeg provajdera, inače se vraća na vaš glavni model.
+The `small_model` option configures a separate model for lightweight tasks like title generation. By default, CodePlane tries to use a cheaper model if one is available from your provider, otherwise it falls back to your main model.
 
-Opcije provajdera mogu uključivati ​​`timeout` i `setCacheKey`:
+Provider options can include `timeout`, `chunkTimeout`, and `setCacheKey`:
 
 ```json title="codeplane.json"
 {
@@ -249,6 +326,7 @@ Opcije provajdera mogu uključivati ​​`timeout` i `setCacheKey`:
     "anthropic": {
       "options": {
         "timeout": 600000,
+        "chunkTimeout": 30000,
         "setCacheKey": true
       }
     }
@@ -256,20 +334,21 @@ Opcije provajdera mogu uključivati ​​`timeout` i `setCacheKey`:
 }
 ```
 
-- `timeout` - Vrijeme čekanja zahtjeva u milisekundama (podrazumevano: 300000). Postavite na `false` da onemogućite.
-- `setCacheKey` - Osigurajte da je ključ keš memorije uvijek postavljen za određenog provajdera.
+- `timeout` - Request timeout in milliseconds (default: 300000). Set to `false` to disable.
+- `chunkTimeout` - Timeout in milliseconds between streamed response chunks. If no chunk arrives in time, the request is aborted.
+- `setCacheKey` - Ensure a cache key is always set for designated provider.
 
-Također možete konfigurirati [lokalne modele](/docs/models#local). [Saznajte više](/docs/models).
+You can also configure [local models](/docs/models#local). [Learn more](/docs/models).
 
 ---
 
-#### Opcije specifične za provajdere
+#### Provider-Specific Options
 
-Neki provajderi podržavaju dodatne opcije konfiguracije osim generičkih postavki `timeout` i `apiKey`.
+Some providers support additional configuration options beyond the generic `timeout` and `apiKey` settings.
 
 ##### Amazon Bedrock
 
-Amazon Bedrock podržava konfiguraciju specifičnu za AWS:
+Amazon Bedrock supports AWS-specific configuration:
 
 ```json title="codeplane.json"
 {
@@ -286,36 +365,29 @@ Amazon Bedrock podržava konfiguraciju specifičnu za AWS:
 }
 ```
 
-- `region` - AWS regija za Bedrock (zadano na `AWS_REGION` env var ili `us-east-1`)
-- `profile` - AWS imenovani profil iz `~/.aws/credentials` (zadano na `AWS_PROFILE` env var)
-- `endpoint` - URL prilagođene krajnje tačke za VPC krajnje tačke. Ovo je alias za generičku opciju `baseURL` koristeći terminologiju specifičnu za AWS. Ako su oba navedena, `endpoint` ima prednost.
+- `region` - AWS region for Bedrock (defaults to `AWS_REGION` env var or `us-east-1`)
+- `profile` - AWS named profile from `~/.aws/credentials` (defaults to `AWS_PROFILE` env var)
+- `endpoint` - Custom endpoint URL for VPC endpoints. This is an alias for the generic `baseURL` option using AWS-specific terminology. If both are specified, `endpoint` takes precedence.
 
 :::note
-Tokeni nosioca (`AWS_BEARER_TOKEN_BEDROCK` ili `/connect`) imaju prednost nad autentifikacijom zasnovanom na profilu. Pogledajte [prednost autentifikacije](/docs/providers#authentication-precedence) za detalje.
+Bearer tokens (`AWS_BEARER_TOKEN_BEDROCK` or `/connect`) take precedence over profile-based authentication. See [authentication precedence](/docs/providers#authentication-precedence) for details.
 :::
 
-[Saznajte više o konfiguraciji Amazon Bedrock](/docs/providers#amazon-bedrock).
+[Learn more about Amazon Bedrock configuration](/docs/providers#amazon-bedrock).
 
 ---
 
-### Teme
+### Themes
 
-Postavite vašu UI temu u `tui.json`.
+Set your UI theme from the web app settings.
 
-```json title="tui.json"
-{
-  "$schema": "",
-  "theme": "tokyonight"
-}
-```
-
-[Saznajte više ovdje](/docs/themes).
+[Learn more here](/docs/themes).
 
 ---
 
-### Agenti
+### Agents
 
-Možete konfigurirati specijalizirane agente za određene zadatke putem opcije `agent`.
+You can configure specialized agents for specific tasks through the `agent` option.
 
 ```jsonc title="codeplane.jsonc"
 {
@@ -335,13 +407,13 @@ Možete konfigurirati specijalizirane agente za određene zadatke putem opcije `
 }
 ```
 
-Također možete definirati agente koristeći markdown datoteke u `~/.config/codeplane/agents/` ili `.codeplane/agents/`. [Saznajte više ovdje](/docs/agents).
+You can also define agents using markdown files in `~/.config/codeplane/agents/` or `.codeplane/agents/`. [Learn more here](/docs/agents).
 
 ---
 
-### Zadani agent
+### Default agent
 
-Možete postaviti zadanog agenta koristeći opciju `default_agent`. Ovo određuje koji se agent koristi kada nijedan nije eksplicitno specificiran.
+You can set the default agent using the `default_agent` option. This determines which agent is used when none is explicitly specified.
 
 ```json title="codeplane.json"
 {
@@ -350,15 +422,15 @@ Možete postaviti zadanog agenta koristeći opciju `default_agent`. Ovo određuj
 }
 ```
 
-Zadani agent mora biti primarni agent (ne podagent). Ovo može biti ugrađeni agent kao što je `"build"` ili `"plan"`, ili [prilagođeni agent](/docs/agents) koji ste definirali. Ako navedeni agent ne postoji ili je podagent, CodePlane će se vratiti na `"build"` s upozorenjem.
+The default agent must be a primary agent (not a subagent). This can be a built-in agent like `"build"` or `"plan"`, or a [custom agent](/docs/agents) you've defined. If the specified agent doesn't exist or is a subagent, CodePlane will fall back to `"build"` with a warning.
 
-Ova postavka se primjenjuje na sva sučelja: TUI, CLI (`codeplane run`), desktop aplikaciju i GitHub Action.
+This setting applies across the web app, CLI (`codeplane run`), and GitHub Action.
 
 ---
 
-### Dijeljenje
+### Sharing
 
-Možete konfigurirati funkciju [share](/docs/share) putem opcije `share`.
+You can configure the [share](/docs/share) feature through the `share` option.
 
 ```json title="codeplane.json"
 {
@@ -367,19 +439,19 @@ Možete konfigurirati funkciju [share](/docs/share) putem opcije `share`.
 }
 ```
 
-Ovo prihvata:
+This takes:
 
-- `"manual"` - Dozvoli ručno dijeljenje putem naredbi (podrazumevano)
-- `"auto"` - Automatski dijelite nove razgovore
-- `"disabled"` - Onemogući dijeljenje u potpunosti
+- `"manual"` - Allow manual sharing via commands (default)
+- `"auto"` - Automatically share new conversations
+- `"disabled"` - Disable sharing entirely
 
-Podrazumevano, dijeljenje je postavljeno na ručni način rada gdje trebate eksplicitno dijeliti razgovore pomoću naredbe `/share`.
+By default, sharing is set to manual mode where you need to explicitly share conversations using the `/share` command.
 
 ---
 
-### Naredbe
+### Commands
 
-Možete konfigurirati prilagođene naredbe za ponavljanje zadataka putem opcije `command`.
+You can configure custom commands for repetitive tasks through the `command` option.
 
 ```jsonc title="codeplane.jsonc"
 {
@@ -399,28 +471,30 @@ Možete konfigurirati prilagođene naredbe za ponavljanje zadataka putem opcije 
 }
 ```
 
-Također možete definirati naredbe koristeći markdown fajlove u `~/.config/codeplane/commands/` ili `.codeplane/commands/`. [Saznajte više ovdje](/docs/commands).
+You can also define commands using markdown files in `~/.config/codeplane/commands/` or `.codeplane/commands/`. [Learn more here](/docs/commands).
 
 ---
 
-### Prečice tipki
+### Snapshot
 
-Prilagodite prečice tipki u `tui.json`.
+CodePlane uses snapshots to track file changes during agent operations, enabling you to undo and revert changes within a session. Snapshots are enabled by default.
 
-```json title="tui.json"
+For large repositories or projects with many submodules, the snapshot system can cause slow indexing and significant disk usage as it tracks all changes using an internal git repository. You can disable snapshots using the `snapshot` option.
+
+```json title="codeplane.json"
 {
-  "$schema": "",
-  "keybinds": {}
+  "$schema": "https://example.invalid/config.json",
+  "snapshot": false
 }
 ```
 
-[Saznajte više ovdje](/docs/keybinds).
+Note that disabling snapshots means changes made by the agent cannot be rolled back through the UI.
 
 ---
 
-### Automatsko ažuriranje
+### Autoupdate
 
-CodePlane će automatski preuzeti sva nova ažuriranja kada se pokrene. Ovo možete onemogućiti opcijom `autoupdate`.
+CodePlane will automatically download any new updates when it starts up. You can disable this with the `autoupdate` option.
 
 ```json title="codeplane.json"
 {
@@ -429,14 +503,14 @@ CodePlane će automatski preuzeti sva nova ažuriranja kada se pokrene. Ovo mož
 }
 ```
 
-Ako ne želite ažuriranja, ali želite biti obaviješteni kada nova verzija bude dostupna, postavite `autoupdate` na `"notify"`.
-Imajte na umu da ovo funkcionira samo ako nije instalirano pomoću upravitelja paketa kao što je Homebrew.
+If you don't want updates but want to be notified when a new version is available, set `autoupdate` to `"notify"`.
+Notice that this only works if it was not installed using a package manager such as Homebrew.
 
 ---
 
-### Formateri
+### Formatters
 
-Možete konfigurirati formatere koda putem opcije `formatter`.
+You can configure code formatters through the `formatter` option.
 
 ```json title="codeplane.json"
 {
@@ -456,15 +530,15 @@ Možete konfigurirati formatere koda putem opcije `formatter`.
 }
 ```
 
-[Saznajte više o formaterima](/docs/formatters) ovdje.
+[Learn more about formatters here](/docs/formatters).
 
 ---
 
-### Dozvole
+### Permissions
 
-Prema zadanim postavkama, CodePlane **dopušta sve operacije** bez potrebe za eksplicitnim dopuštenjem. Ovo možete promijeniti koristeći opciju `permission`.
+By default, codeplane **allows all operations** without requiring explicit approval. You can change this using the `permission` option.
 
-Na primjer, da osigurate da alati `edit` i `bash` zahtijevaju odobrenje korisnika:
+For example, to ensure that the `edit` and `bash` tools require user approval:
 
 ```json title="codeplane.json"
 {
@@ -476,13 +550,13 @@ Na primjer, da osigurate da alati `edit` i `bash` zahtijevaju odobrenje korisnik
 }
 ```
 
-[Saznajte više o dozvolama](/docs/permissions) ovdje.
+[Learn more about permissions here](/docs/permissions).
 
 ---
 
-### Sažimanje
+### Compaction
 
-Možete kontrolirati ponašanje sažimanja konteksta putem opcije `compaction`.
+You can control context compaction behavior through the `compaction` option.
 
 ```json title="codeplane.json"
 {
@@ -495,15 +569,15 @@ Možete kontrolirati ponašanje sažimanja konteksta putem opcije `compaction`.
 }
 ```
 
-- `auto` - Automatski sažimanje sesije kada je kontekst pun (podrazumevano: `true`).
-- `prune` - Uklonite stare izlaze alata da sačuvate tokene (podrazumevano: `true`).
-- `reserved` - Token buffer za sažimanje. Ostavlja dovoljno prostora da se izbjegne prelijevanje tokom sažimanja
+- `auto` - Automatically compact the session when context is full (default: `true`).
+- `prune` - Remove old tool outputs to save tokens (default: `true`).
+- `reserved` - Token buffer for compaction. Leaves enough window to avoid overflow during compaction
 
 ---
 
-### Promatrač (Watcher)
+### Watcher
 
-Možete konfigurirati obrasce ignoriranja promatrača datoteka putem opcije `watcher`.
+You can configure file watcher ignore patterns through the `watcher` option.
 
 ```json title="codeplane.json"
 {
@@ -514,13 +588,13 @@ Možete konfigurirati obrasce ignoriranja promatrača datoteka putem opcije `wat
 }
 ```
 
-Obrasci prate glob sintaksu. Koristite ovo da isključite bučne direktorije iz pregleda datoteka.
+Patterns follow glob syntax. Use this to exclude noisy directories from file watching.
 
 ---
 
-### MCP serveri
+### MCP servers
 
-Možete konfigurirati MCP servere koje želite koristiti putem opcije `mcp`.
+You can configure MCP servers you want to use through the `mcp` option.
 
 ```json title="codeplane.json"
 {
@@ -529,15 +603,15 @@ Možete konfigurirati MCP servere koje želite koristiti putem opcije `mcp`.
 }
 ```
 
-[Saznajte više ovdje](/docs/mcp-servers).
+[Learn more here](/docs/mcp-servers).
 
 ---
 
-### Dodaci
+### Plugins
 
-[Plugins](/docs/plugins) proširuju CodePlane sa prilagođenim alatima, kukicama i integracijama.
+[Plugins](/docs/plugins) extend CodePlane with custom tools, hooks, and integrations.
 
-Postavite datoteke dodataka u `.codeplane/plugins/` ili `~/.config/codeplane/plugins/`. Također možete učitati dodatke iz npm-a preko opcije `plugin`.
+Place plugin files in `.codeplane/plugins/` or `~/.config/codeplane/plugins/`. You can also load plugins from npm through the `plugin` option.
 
 ```json title="codeplane.json"
 {
@@ -546,13 +620,13 @@ Postavite datoteke dodataka u `.codeplane/plugins/` ili `~/.config/codeplane/plu
 }
 ```
 
-[Saznajte više ovdje](/docs/plugins).
+[Learn more here](/docs/plugins).
 
 ---
 
-### Uputstva
+### Instructions
 
-Možete konfigurirati upute za model koji koristite putem opcije `instructions`.
+You can configure the instructions for the model you're using through the `instructions` option.
 
 ```json title="codeplane.json"
 {
@@ -561,13 +635,14 @@ Možete konfigurirati upute za model koji koristite putem opcije `instructions`.
 }
 ```
 
-Ovo uzima niz putanja i glob uzoraka do datoteka instrukcija. [Saznajte više o pravilima ovdje](/docs/rules).
+This takes an array of paths and glob patterns to instruction files. [Learn more
+about rules here](/docs/rules).
 
 ---
 
-### Onemogućeni provajderi
+### Disabled providers
 
-Možete onemogućiti dobavljače koji se automatski učitavaju preko opcije `disabled_providers`. Ovo je korisno kada želite spriječiti učitavanje određenih provajdera čak i ako su njihovi vjerodajnici dostupni.
+You can disable providers that are loaded automatically through the `disabled_providers` option. This is useful when you want to prevent certain providers from being loaded even if their credentials are available.
 
 ```json title="codeplane.json"
 {
@@ -577,20 +652,20 @@ Možete onemogućiti dobavljače koji se automatski učitavaju preko opcije `dis
 ```
 
 :::note
-`disabled_providers` ima prioritet nad `enabled_providers`.
+The `disabled_providers` takes priority over `enabled_providers`.
 :::
 
-Opcija `disabled_providers` prihvata niz ID-ova provajdera. Kada je provajder onemogućen:
+The `disabled_providers` option accepts an array of provider IDs. When a provider is disabled:
 
-- Neće se učitati čak i ako su varijable okruženja postavljene.
-- Neće se učitati čak i ako su API ključevi konfigurirani putem `/connect` naredbe.
-- Modeli dobavljača se neće pojaviti na listi za odabir modela.
+- It won't be loaded even if environment variables are set.
+- It won't be loaded even if API keys are configured through the web app.
+- The provider's models won't appear in the model selection list.
 
 ---
 
-### Omogućeni provajderi
+### Enabled providers
 
-Možete odrediti listu dozvoljenih dobavljača putem opcije `enabled_providers`. Kada se podesi, samo navedeni provajderi će biti omogućeni, a svi ostali će biti zanemareni.
+You can specify an allowlist of providers through the `enabled_providers` option. When set, only the specified providers will be enabled and all others will be ignored.
 
 ```json title="codeplane.json"
 {
@@ -599,19 +674,19 @@ Možete odrediti listu dozvoljenih dobavljača putem opcije `enabled_providers`.
 }
 ```
 
-Ovo je korisno kada želite da ograničite CodePlane da koristi samo određene provajdere umjesto da ih onemogućavate jednog po jednog.
+This is useful when you want to restrict CodePlane to only use specific providers rather than disabling them one by one.
 
 :::note
-`disabled_providers` ima prioritet nad `enabled_providers`.
+The `disabled_providers` takes priority over `enabled_providers`.
 :::
 
-Ako se provajder pojavljuje i u `enabled_providers` i `disabled_providers`, `disabled_providers` ima prioritet za kompatibilnost unatrag.
+If a provider appears in both `enabled_providers` and `disabled_providers`, the `disabled_providers` takes priority for backwards compatibility.
 
 ---
 
-### Eksperimentalno
+### Experimental
 
-Ključ `experimental` sadrži opcije koje su u aktivnom razvoju.
+The `experimental` key contains options that are under active development.
 
 ```json title="codeplane.json"
 {
@@ -621,20 +696,20 @@ Ključ `experimental` sadrži opcije koje su u aktivnom razvoju.
 ```
 
 :::caution
-Eksperimentalne opcije nisu stabilne. Mogu se promijeniti ili ukloniti bez prethodne najave.
+Experimental options are not stable. They may change or be removed without notice.
 :::
 
 ---
 
-## Varijable
+## Variables
 
-Možete koristiti zamjenu varijabli u vašim konfiguracijskim datotekama da biste referencirali varijable okruženja i sadržaj datoteke.
+You can use variable substitution in your config files to reference environment variables and file contents.
 
 ---
 
-### Varijable okruženja
+### Env vars
 
-Koristite `{env:VARIABLE_NAME}` za zamjenu varijabli okruženja:
+Use `{env:VARIABLE_NAME}` to substitute environment variables:
 
 ```json title="codeplane.json"
 {
@@ -651,13 +726,13 @@ Koristite `{env:VARIABLE_NAME}` za zamjenu varijabli okruženja:
 }
 ```
 
-Ako varijabla okruženja nije postavljena, bit će zamijenjena praznim nizom.
+If the environment variable is not set, it will be replaced with an empty string.
 
 ---
 
-### Datoteke
+### Files
 
-Koristite `{file:path/to/file}` da zamijenite sadržaj fajla:
+Use `{file:path/to/file}` to substitute the contents of a file:
 
 ```json title="codeplane.json"
 {
@@ -673,13 +748,13 @@ Koristite `{file:path/to/file}` da zamijenite sadržaj fajla:
 }
 ```
 
-Putanja fajla mogu biti:
+File paths can be:
 
-- U odnosu na direktorij konfiguracijskih datoteka
-- Ili apsolutne staze koje počinju sa `/` ili `~`
+- Relative to the config file directory
+- Or absolute paths starting with `/` or `~`
 
-Ovo je korisno za:
+These are useful for:
 
-- Pohranjivanje osjetljivih podataka poput API ključeva u odvojenim datotekama.
-- Uključujući velike datoteke instrukcija bez zatrpavanja vaše konfiguracije.
-- Dijeljenje zajedničkih isječaka konfiguracije u više konfiguracijskih datoteka.
+- Keeping sensitive data like API keys in separate files.
+- Including large instruction files without cluttering your config.
+- Sharing common configuration snippets across multiple config files.

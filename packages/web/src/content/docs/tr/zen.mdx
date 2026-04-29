@@ -1,57 +1,66 @@
 ---
 title: Zen
-description: codeplane tarafından sağlanan seçilmiş modeller listesi.
+description: Curated list of models provided by CodePlane.
 ---
 
 import config from "../../../../config.mjs"
 export const console = config.console
 export const email = `mailto:${config.email}`
 
-CodePlane Zen, CodePlane ekibi tarafından test edilip doğrulanmış modellerin bir listesidir.
+CodePlane Zen is a list of tested and verified models provided by the CodePlane team.
 
 :::note
-CodePlane Zen şu anda beta olarak mevcut.
+CodePlane Zen is currently in beta.
 :::
 
-Zen, CodePlane'daki diğer sağlayıcılar gibi çalışır. CodePlane Zen'de oturum açıp API anahtarınızı alırsınız. Bu **tamamen isteğe bağlıdır** ve CodePlane kullanmak için buna ihtiyacınız yoktur.
+Zen works like any other provider in CodePlane. You login to CodePlane Zen and get
+your API key. It's **completely optional** and you don't need to use it to use
+CodePlane.
 
 ---
 
-## Arka plan
+## Background
 
-Piyasada çok sayıda model var, ancak bunların yalnızca birkaçı kodlama ajanı olarak iyi çalışıyor. Ayrıca çoğu sağlayıcı çok farklı şekilde yapılandırılıyor; bu yüzden performans ve kalite de ciddi ölçüde değişiyor.
+There are a large number of models out there but only a few of
+these models work well as coding agents. Additionally, most providers are
+configured very differently; so you get very different performance and quality.
 
 :::tip
-CodePlane ile iyi çalışan seçili bir model ve sağlayıcı grubunu test ettik.
+We tested a select group of models and providers that work well with CodePlane.
 :::
 
-Bu yüzden, OpenRouter gibi bir şey üzerinden model kullanıyorsanız istediğiniz modelin en iyi sürümünü alıp almadığınızdan asla emin olamazsınız.
+So if you are using a model through something like OpenRouter, you can never be
+sure if you are getting the best version of the model you want.
 
-Bunu düzeltmek için birkaç şey yaptık:
+To fix this, we did a couple of things:
 
-1. Seçili bir model grubunu test ettik ve bunları en iyi şekilde nasıl çalıştıracaklarımız konusunda ekipleriyle görüştük.
-2. Ardından, bunların doğru şekilde sunulduğundan emin olmak için birkaç sağlayıcıyla birlikte çalıştık.
-3. Son olarak, model/sağlayıcı kombinasyonlarını benchmark edip gönül rahatlığıyla önerebileceğimiz bir liste çıkardık.
+1. We tested a select group of models and talked to their teams about how to
+   best run them.
+2. We then worked with a few providers to make sure these were being served
+   correctly.
+3. Finally, we benchmarked the combination of the model/provider and came up
+   with a list that we feel good recommending.
 
-CodePlane Zen, bu modellere erişmenizi sağlayan bir AI ağ geçididir.
-
----
-
-## Nasıl çalışır
-
-CodePlane Zen, CodePlane'daki diğer sağlayıcılar gibi çalışır.
-
-1. **<a href={console}>CodePlane Zen</a>**'de oturum açın, faturalandırma bilgilerinizi ekleyin ve API anahtarınızı kopyalayın.
-2. TUI'de `/connect` komutunu çalıştırın, CodePlane Zen'i seçin ve API anahtarınızı yapıştırın.
-3. Önerdiğimiz modellerin listesini görmek için TUI'de `/models` komutunu çalıştırın.
-
-İstek başına ücretlendirilirsiniz ve hesabınıza kredi ekleyebilirsiniz.
+CodePlane Zen is an AI gateway that gives you access to these models.
 
 ---
 
-## Uç noktalar
+## How it works
 
-Modellerimize aşağıdaki API uç noktaları aracılığıyla da erişebilirsiniz.
+CodePlane Zen works like any other provider in CodePlane.
+
+1. You sign in to **<a href={console}>CodePlane Zen</a>**, add your billing
+   details, and copy your API key.
+2. Open Settings -> Providers in the web app, select CodePlane Zen, and paste your API key.
+3. Open the model selector to see the list of models we recommend.
+
+You are charged per request and you can add credits to your account.
+
+---
+
+## Endpoints
+
+You can also access our models through the following API endpoints.
 
 | Model                 | Model ID              | Endpoint                                           | AI SDK Package              |
 | --------------------- | --------------------- | -------------------------------------------------- | --------------------------- |
@@ -85,9 +94,9 @@ Modellerimize aşağıdaki API uç noktaları aracılığıyla da erişebilirsin
 | Gemini 3 Flash        | gemini-3-flash        | `https://example.invalid/zen` | `@ai-sdk/google`            |
 | Qwen3.6 Plus          | qwen3.6-plus          | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | Qwen3.5 Plus          | qwen3.5-plus          | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
+| MiniMax M2.7          | minimax-m2.7          | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | MiniMax M2.5          | minimax-m2.5          | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | MiniMax M2.5 Free     | minimax-m2.5-free     | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
-| MiniMax M2.7          | minimax-m2.7          | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | GLM 5.1               | glm-5.1               | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | GLM 5                 | glm-5                 | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | Kimi K2.5             | kimi-k2.5             | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
@@ -97,13 +106,15 @@ Modellerimize aşağıdaki API uç noktaları aracılığıyla da erişebilirsin
 | Hy3 Preview Free      | hy3-preview-free      | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | Nemotron 3 Super Free | nemotron-3-super-free | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 
-CodePlane yapılandırmanızdaki [model id](/docs/config/#models) `codeplane/<model-id>` biçimini kullanır. Örneğin, GPT 5.5 için yapılandırmanızda `codeplane/gpt-5.5` kullanırsınız.
+The [model id](/docs/config/#models) in your CodePlane config
+uses the format `codeplane/<model-id>`. For example, for GPT 5.5, you would
+use `codeplane/gpt-5.5` in your config.
 
 ---
 
-### Modeller
+### Models
 
-Mevcut modellerin tam listesini ve metadata'larını şuradan alabilirsiniz:
+You can fetch the full list of available models and their metadata from:
 
 ```
 https://example.invalid/zen
@@ -111,9 +122,9 @@ https://example.invalid/zen
 
 ---
 
-## Fiyatlandırma
+## Pricing
 
-Kullandıkça öde modelini destekliyoruz. Aşağıda **1M token başına** fiyatlar yer alıyor.
+We support a pay-as-you-go model. Below are the prices **per 1M tokens**.
 
 | Model                             | Input  | Output  | Cached Read | Cached Write |
 | --------------------------------- | ------ | ------- | ----------- | ------------ |
@@ -164,114 +175,121 @@ Kullandıkça öde modelini destekliyoruz. Aşağıda **1M token başına** fiya
 | GPT 5 Codex                       | $1.07  | $8.50   | $0.107      | -            |
 | GPT 5 Nano                        | Free   | Free    | Free        | -            |
 
-Kullanım geçmişinizde _Claude Haiku 3.5_ görebilirsiniz. Bu, oturum başlıklarınızı oluşturmak için kullanılan [düşük maliyetli bir modeldir](/docs/config/#models).
+You might notice _Claude Haiku 3.5_ in your usage history. This is a [low cost model](/docs/config/#models) that's used to generate the titles of your sessions.
 
 :::note
-Kredi kartı ücretleri maliyet üzerinden yansıtılır (%4.4 + işlem başına $0.30); bunun dışında ekstra bir ücret almıyoruz.
+Credit card fees are passed along at cost (4.4% + $0.30 per transaction); we don't charge anything beyond that.
 :::
 
-Ücretsiz modeller:
+The free models:
 
-- MiniMax M2.5 Free, sınırlı bir süre için CodePlane'da ücretsizdir. Ekip bu süreyi geri bildirim toplamak ve modeli iyileştirmek için kullanıyor.
-- Ling 2.6 Flash Free, sınırlı bir süre için CodePlane'da ücretsizdir. Ekip bu süreyi geri bildirim toplamak ve modeli iyileştirmek için kullanıyor.
-- Hy3 Preview Free, sınırlı bir süre için CodePlane'da ücretsizdir. Ekip bu süreyi geri bildirim toplamak ve modeli iyileştirmek için kullanıyor.
-- Nemotron 3 Super Free, sınırlı bir süre için CodePlane'da ücretsizdir. Ekip bu süreyi geri bildirim toplamak ve modeli iyileştirmek için kullanıyor.
-- Big Pickle, sınırlı bir süre için CodePlane'da ücretsiz olan gizli bir modeldir. Ekip bu süreyi geri bildirim toplamak ve modeli iyileştirmek için kullanıyor.
+- MiniMax M2.5 Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Ling 2.6 Flash Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Hy3 Preview Flash Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Nemotron 3 Super Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Big Pickle is a stealth model that's free on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
 
-Sorularınız varsa <a href={email}>bizimle iletişime geçin</a>.
-
----
-
-### Otomatik yükleme
-
-Bakiyeniz $5'in altına düşerse, Zen otomatik olarak $20 yükler.
-
-Otomatik yükleme tutarını değiştirebilirsiniz. Otomatik yüklemeyi tamamen devre dışı da bırakabilirsiniz.
+<a href={email}>Contact us</a> if you have any questions.
 
 ---
 
-### Aylık limitler
+### Auto-reload
 
-Ayrıca tüm çalışma alanı için ve ekibinizdeki her üye için aylık kullanım limiti belirleyebilirsiniz.
+If your balance goes below $5, Zen will automatically reload $20.
 
-Örneğin, aylık kullanım limitini $20 olarak ayarladığınızı düşünelim; Zen bir ay içinde $20'den fazla kullanmaz. Ancak otomatik yükleme açıksa, bakiyeniz $5'in altına düşerse Zen sizden $20'den fazla ücret çekebilir.
-
----
-
-### Kullanımdan kaldırılan modeller
-
-| Model            | Kullanımdan kaldırılma tarihi |
-| ---------------- | ----------------------------- |
-| MiniMax M2.1     | March 15, 2026                |
-| GLM 4.7          | March 15, 2026                |
-| GLM 4.6          | March 15, 2026                |
-| Gemini 3 Pro     | March 9, 2026                 |
-| Kimi K2 Thinking | March 6, 2026                 |
-| Kimi K2          | March 6, 2026                 |
-| Qwen3 Coder 480B | Feb 6, 2026                   |
+You can change the auto-reload amount. You can also disable auto-reload entirely.
 
 ---
 
-## Gizlilik
+### Monthly limits
 
-Tüm modellerimiz US'de barındırılıyor. Sağlayıcılarımız zero-retention politikası uygular ve aşağıdaki istisnalar dışında verilerinizi model eğitimi için kullanmaz:
+You can also set a monthly usage limit for the entire workspace and for each
+member of your team.
 
-- Big Pickle: Ücretsiz döneminde toplanan veriler modeli iyileştirmek için kullanılabilir.
-- MiniMax M2.5 Free: Ücretsiz döneminde toplanan veriler modeli iyileştirmek için kullanılabilir.
-- Ling 2.6 Flash Free: Ücretsiz döneminde toplanan veriler modeli iyileştirmek için kullanılabilir.
-- Hy3 Preview Free: Ücretsiz döneminde toplanan veriler modeli iyileştirmek için kullanılabilir.
-- Nemotron 3 Super Free (ücretsiz NVIDIA uç noktaları): [NVIDIA API Trial Terms of Service](https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf) kapsamında sunulur. Yalnızca deneme amaçlıdır; üretim veya hassas veriler için uygun değildir. NVIDIA, modellerini ve hizmetlerini geliştirmek için promptları ve çıktıları kaydeder. Kişisel veya gizli veri göndermeyin.
-- OpenAI APIs: İstekler [OpenAI's Data Policies](https://platform.openai.com/docs/guides/your-data) uyarınca 30 gün boyunca saklanır.
-- Anthropic APIs: İstekler [Anthropic's Data Policies](https://docs.anthropic.com/en/docs/claude-code/data-usage) uyarınca 30 gün boyunca saklanır.
+For example, let's say you set a monthly usage limit to $20, Zen will not use
+more than $20 in a month. But if you have auto-reload enabled, Zen might end up
+charging you more than $20 if your balance goes below $5.
 
 ---
 
-## Ekipler için
+### Deprecated models
 
-Zen ekipler için de harika çalışır. Ekip arkadaşlarınızı davet edebilir, roller atayabilir, ekibinizin kullandığı modelleri düzenleyebilir ve daha fazlasını yapabilirsiniz.
+| Model            | Deprecation date |
+| ---------------- | ---------------- |
+| MiniMax M2.1     | March 15, 2026   |
+| GLM 4.7          | March 15, 2026   |
+| GLM 4.6          | March 15, 2026   |
+| Gemini 3 Pro     | March 9, 2026    |
+| Kimi K2 Thinking | March 6, 2026    |
+| Kimi K2          | March 6, 2026    |
+| Qwen3 Coder 480B | Feb 6, 2026      |
+
+---
+
+## Privacy
+
+All our models are hosted in the US. Our providers follow a zero-retention policy and do not use your data for model training, with the following exceptions:
+
+- Big Pickle: During its free period, collected data may be used to improve the model.
+- MiniMax M2.5 Free: During its free period, collected data may be used to improve the model.
+- Ling 2.6 Flash Free: During its free period, collected data may be used to improve the model.
+- Hy3 Preview Free: During its free period, collected data may be used to improve the model.
+- Nemotron 3 Super Free (NVIDIA free endpoints): Provided under the [NVIDIA API Trial Terms of Service](https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf). Trial use only — not for production or sensitive data. Prompts and outputs are logged by NVIDIA to improve its models and services. Do not submit personal or confidential data.
+- OpenAI APIs: Requests are retained for 30 days in accordance with [OpenAI's Data Policies](https://platform.openai.com/docs/guides/your-data).
+- Anthropic APIs: Requests are retained for 30 days in accordance with [Anthropic's Data Policies](https://docs.anthropic.com/en/docs/claude-code/data-usage).
+
+---
+
+## For Teams
+
+Zen also works great for teams. You can invite teammates, assign roles, curate
+the models your team uses, and more.
 
 :::note
-Çalışma alanları şu anda beta'nın bir parçası olarak ekipler için ücretsizdir.
+Workspaces are currently free for teams as a part of the beta.
 :::
 
-Çalışma alanınızı yönetmek şu anda beta'nın bir parçası olarak ekipler için ücretsizdir. Fiyatlandırma hakkında daha fazla ayrıntıyı yakında paylaşacağız.
+Managing your workspace is currently free for teams as a part of the beta. We'll be
+sharing more details on the pricing soon.
 
 ---
 
-### Roller
+### Roles
 
-Ekip arkadaşlarınızı çalışma alanınıza davet edip rol atayabilirsiniz:
+You can invite teammates to your workspace and assign roles:
 
-- **Admin**: Modelleri, üyeleri, API anahtarlarını ve faturalandırmayı yönetir
-- **Member**: Yalnızca kendi API anahtarlarını yönetir
+- **Admin**: Manage models, members, API keys, and billing
+- **Member**: Manage only their own API keys
 
-Admin'ler ayrıca maliyetleri kontrol altında tutmak için her üye için aylık harcama limiti belirleyebilir.
-
----
-
-### Model erişimi
-
-Admin'ler çalışma alanı için belirli modelleri etkinleştirebilir veya devre dışı bırakabilir. Devre dışı bırakılmış bir modele yapılan istekler hata döndürür.
-
-Bu, veri toplayan bir modelin kullanımını kapatmak istediğiniz durumlarda kullanışlıdır.
+Admins can also set monthly spending limits for each member to keep costs under control.
 
 ---
 
-### Kendi anahtarınızı getirin
+### Model access
 
-Zen'deki diğer modellere erişmeye devam ederken kendi OpenAI veya Anthropic API anahtarlarınızı kullanabilirsiniz.
+Admins can enable or disable specific models for the workspace. Requests made to a disabled model will return an error.
 
-Kendi anahtarlarınızı kullandığınızda token'lar Zen tarafından değil, doğrudan sağlayıcı tarafından faturalandırılır.
-
-Örneğin, kuruluşunuzun OpenAI veya Anthropic için zaten bir anahtarı olabilir ve Zen'in sağladığı anahtar yerine onu kullanmak isteyebilirsiniz.
+This is useful for cases where you want to disable the use of a model that
+collects data.
 
 ---
 
-## Hedefler
+### Bring your own key
 
-CodePlane Zen'i şunlar için oluşturduk:
+You can use your own OpenAI or Anthropic API keys while still accessing other models in Zen.
 
-1. Kodlama ajanları için en iyi modelleri/sağlayıcıları **kıyaslamak**.
-2. **En yüksek kaliteli** seçeneklere erişmek ve performansı düşürmemek ya da daha ucuz sağlayıcılara yönlendirmemek.
-3. Maliyetine satış yaparak tüm **fiyat düşüşlerini** yansıtmak; yani tek ek ücretimiz işlem ücretlerimizi karşılamak içindir.
-4. Başka herhangi bir kodlama ajanıyla kullanmanıza izin vererek **kilitlenme olmamasını** sağlamak. Ayrıca CodePlane ile her zaman başka herhangi bir sağlayıcıyı da kullanabilmenizi sağlamak.
+When you use your own keys, tokens are billed directly by the provider, not by Zen.
+
+For example, your organization might already have a key for OpenAI or Anthropic
+and you want to use that instead of the one that Zen provides.
+
+---
+
+## Goals
+
+We created CodePlane Zen to:
+
+1. **Benchmark** the best models/providers for coding agents.
+2. Have access to the **highest quality** options and not downgrade performance or route to cheaper providers.
+3. Pass along any **price drops** by selling at cost; so the only markup is to cover our processing fees.
+4. Have **no lock-in** by allowing you to use it with any other coding agent. And always let you use any other provider with CodePlane as well.

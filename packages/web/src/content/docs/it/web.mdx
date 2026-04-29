@@ -1,70 +1,64 @@
 ---
 title: Web
-description: Usa CodePlane nel browser.
+description: Using CodePlane in your browser.
 ---
 
-CodePlane puo funzionare come applicazione web nel browser, offrendo la stessa potente esperienza di coding AI senza bisogno di un terminale.
+CodePlane can run as a web application in your browser, providing the same powerful AI coding experience without needing a terminal.
 
-![CodePlane Web - Nuova sessione](../../../assets/web/web-homepage-new-session.png)
+![CodePlane Web - New Session](../../../assets/web/web-homepage-new-session.png)
 
-## Per iniziare
+## Getting Started
 
-Avvia l'interfaccia web eseguendo:
+Start the web interface by running:
 
 ```bash
 codeplane web
 ```
 
-Questo avvia un server locale su `127.0.0.1` con una porta disponibile scelta a caso e apre automaticamente CodePlane nel browser predefinito.
+This starts a local server on `127.0.0.1` with a random available port and automatically opens CodePlane in your default browser.
 
 :::caution
-Se `CODEPLANE_SERVER_PASSWORD` non e impostata, il server non sara protetto. Va bene per l'uso locale, ma va impostata per l'accesso in rete.
+If `CODEPLANE_SERVER_PASSWORD` is not set, the server will be unsecured. This is fine for local use but should be set for network access.
 :::
 
-:::tip[Utenti Windows]
-Per la migliore esperienza, esegui `codeplane web` da [WSL](/docs/windows-wsl) invece che da PowerShell. Questo garantisce accesso corretto al file system e integrazione col terminale.
-:::
+## Configuration
 
----
+You can configure the web server using command line flags or in your [config file](/docs/config).
 
-## Configurazione
+### Port
 
-Puoi configurare il server web con i flag della riga di comando o nel tuo [file di config](/docs/config).
-
-### Porta
-
-Per impostazione predefinita, CodePlane sceglie una porta disponibile. Puoi specificare una porta:
+By default, CodePlane picks an available port. You can specify a port:
 
 ```bash
 codeplane web --port 4096
 ```
 
-### Nome host
+### Hostname
 
-Per impostazione predefinita, il server si lega a `127.0.0.1` (solo localhost). Per rendere CodePlane accessibile sulla rete:
+By default, the server binds to `127.0.0.1` (localhost only). To make CodePlane accessible on your network:
 
 ```bash
 codeplane web --hostname 0.0.0.0
 ```
 
-Usando `0.0.0.0`, CodePlane mostrera sia l'indirizzo locale sia quello di rete:
+When using `0.0.0.0`, CodePlane will display both local and network addresses:
 
 ```
   Local access:       http://localhost:4096
   Network access:     http://192.168.1.100:4096
 ```
 
-### Scoperta mDNS
+### mDNS Discovery
 
-Abilita mDNS per rendere il server individuabile sulla rete locale:
+Enable mDNS to make your server discoverable on the local network:
 
 ```bash
 codeplane web --mdns
 ```
 
-Questo imposta automaticamente l'hostname a `0.0.0.0` e pubblicizza il server come `codeplane.local`.
+This automatically sets the hostname to `0.0.0.0` and advertises the server as `codeplane.local`.
 
-Puoi personalizzare il nome di dominio mDNS per eseguire piu istanze sulla stessa rete:
+You can customize the mDNS domain name to run multiple instances on the same network:
 
 ```bash
 codeplane web --mdns --mdns-domain myproject.local
@@ -72,61 +66,43 @@ codeplane web --mdns --mdns-domain myproject.local
 
 ### CORS
 
-Per consentire domini aggiuntivi per CORS (utile per frontend personalizzati):
+To allow additional domains for CORS (useful for custom frontends):
 
 ```bash
 codeplane web --cors https://example.com
 ```
 
-### Autenticazione
+### Authentication
 
-Per proteggere l'accesso, imposta una password usando la variabile d'ambiente `CODEPLANE_SERVER_PASSWORD`:
+To protect access, set a password using the `CODEPLANE_SERVER_PASSWORD` environment variable:
 
 ```bash
 CODEPLANE_SERVER_PASSWORD=secret codeplane web
 ```
 
-Lo username predefinito e `codeplane`, ma puo essere cambiato con `CODEPLANE_SERVER_USERNAME`.
+The username defaults to `codeplane` but can be changed with `CODEPLANE_SERVER_USERNAME`.
 
 ---
 
-## Usa l'interfaccia web
+## Using the Web Interface
 
-Una volta avviata, l'interfaccia web ti da accesso alle tue sessioni CodePlane.
+Once started, the web interface provides access to your CodePlane sessions.
 
-### Sessioni
+### Sessions
 
-Visualizza e gestisci le sessioni dalla homepage. Puoi vedere le sessioni attive e avviarne di nuove.
+View and manage your sessions from the homepage. You can see active sessions and start new ones.
 
-![CodePlane Web - Sessione attiva](../../../assets/web/web-homepage-active-session.png)
+![CodePlane Web - Active Session](../../../assets/web/web-homepage-active-session.png)
 
-### Stato del server
+### Server Status
 
-Fai clic su "See Servers" per vedere i server connessi e il loro stato.
+Click "See Servers" to view connected servers and their status.
 
 ![CodePlane Web - See Servers](../../../assets/web/web-homepage-see-servers.png)
 
----
+## Config File
 
-## Collegare un terminale
-
-Puoi collegare una TUI da terminale a un server web gia in esecuzione:
-
-```bash
-# Avvia il web server
-codeplane web --port 4096
-
-# In un altro terminale, collega la TUI
-codeplane attach http://localhost:4096
-```
-
-Questo ti permette di usare contemporaneamente interfaccia web e terminale, condividendo le stesse sessioni e lo stesso stato.
-
----
-
-## File di configurazione
-
-Puoi anche configurare le impostazioni del server nel file di config `codeplane.json`:
+You can also configure server settings in your `codeplane.json` config file:
 
 ```json
 {
@@ -139,4 +115,4 @@ Puoi anche configurare le impostazioni del server nel file di config `codeplane.
 }
 ```
 
-I flag della riga di comando hanno precedenza sulle impostazioni del file di config.
+Command line flags take precedence over config file settings.

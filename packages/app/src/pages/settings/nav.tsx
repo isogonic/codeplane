@@ -11,14 +11,14 @@ export const settingsSections = [
     icon: "sliders",
     titleKey: "settings.tab.general",
     descriptionKey: "settings.tab.general.description",
-    groupKey: "settings.section.desktop",
+    groupKey: "settings.section.app",
   },
   {
     value: "shortcuts",
     icon: "keyboard",
     titleKey: "settings.tab.shortcuts",
     descriptionKey: "settings.tab.shortcuts.description",
-    groupKey: "settings.section.desktop",
+    groupKey: "settings.section.app",
   },
   {
     value: "providers",
@@ -72,8 +72,8 @@ export const settingsSections = [
 
 const settingsGroups = [
   {
-    titleKey: "settings.section.desktop",
-    sections: settingsSections.filter((section) => section.groupKey === "settings.section.desktop"),
+    titleKey: "settings.section.app",
+    sections: settingsSections.filter((section) => section.groupKey === "settings.section.app"),
   },
   {
     titleKey: "settings.section.ai",
@@ -141,7 +141,7 @@ export function SettingsSidebarPanel(props: {
         <div class="flex flex-col min-w-0 gap-0.5 py-2 pl-2 pr-0">
           <div class="text-14-medium text-text-strong truncate">{language.t("sidebar.settings")}</div>
           <div class="text-12-regular text-text-base truncate">
-            {language.t("app.name.desktop")} v{platform.version}
+            {language.t("app.name.web")} v{platform.version}
           </div>
         </div>
       </div>

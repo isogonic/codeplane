@@ -1,275 +1,141 @@
 ---
-title: Fejlfinding
-description: Almindelige problemer, og hvordan de løses.
+title: Troubleshooting
+description: Common issues and how to resolve them.
 ---
 
-For at fejlfinde problemer med CodePlane, start med at tjekke logfilerne og de lokale data, den gemmer på disken.
+To debug issues with CodePlane, start by checking the logs and local data it stores on disk.
 
 ---
 
-## Logfiler
+## Logs
 
-Logfiler skrives til:
+Log files are written to:
 
 - **macOS/Linux**: `~/.local/share/codeplane/log/`
-- **Windows**: Tryk `WIN+R` og indsæt `%USERPROFILE%\.local\share\codeplane\log`
+- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.local\share\codeplane\log`
 
-Logfiler navngives med tidsstempler (f.eks. `2025-01-09T123456.log`) og de sidste 10 logfiler beholdes.
+Log files are named with timestamps (e.g., `2025-01-09T123456.log`) and the most recent 10 log files are kept.
 
-Du kan angive logniveauet med kommandolinjeflaget `--log-level` for at få mere detaljeret fejlfindingsinformation. For eksempel `codeplane --log-level DEBUG`.
+You can set the log level with the `--log-level` command-line option to get more detailed debug information. For example, `codeplane --log-level DEBUG`.
 
 ---
 
-## Lagring
+## Storage
 
-codeplane gemmer sessionsdata og andre applikationsdata på disken på:
+codeplane stores session data and other application data on disk at:
 
 - **macOS/Linux**: `~/.local/share/codeplane/`
-- **Windows**: Tryk `WIN+R` og indsæt `%USERPROFILE%\.local\share\codeplane`
+- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.local\share\codeplane`
 
-Denne mappe indeholder:
+This directory contains:
 
-- `auth.json` - Godkendelsesdata som API-nøgler, OAuth-tokens
-- `log/` - Applikationslogs
-- `project/` - Projektspecifikke data som sessions- og beskeddata
-  - Hvis projektet er inden for et Git-repo, gemmes det i `./<project-slug>/storage/`
-  - Hvis det ikke er et Git-repo, gemmes det i `./global/storage/`
+- `auth.json` - Authentication data like API keys, OAuth tokens
+- `log/` - Application logs
+- `project/` - Project-specific data like session and message data
+  - If the project is within a Git repo, it is stored in `./<project-slug>/storage/`
+  - If it is not a Git repo, it is stored in `./global/storage/`
 
----
+## Getting help
 
-## Desktop-app
+If you're experiencing issues with CodePlane:
 
-CodePlane Desktop kører en lokal CodePlane-server (`codeplane-cli` sidevognen) i baggrunden. De fleste problemer er forårsaget af et plugin, der fungerer dårligt, en ødelagt cache eller en dårlig serverindstilling.
+1. **Report issues on GitHub**
 
-### Hurtige tjek
-
-- Afslut og start appen på ny.
-- Hvis appen viser en fejlskærm, klikker du på **Start på ny** og kopierer fejldetaljerne.
-- Kun macOS: `CodePlane`-menu -> **Genindlæs webvisning** (hjælper hvis UI er tom/frosset).
-
----
-
-### Deaktiver plugins
-
-Hvis skrivebordsappen går ned ved opstart, hænger eller opfører sig mærkeligt, start med at deaktivere plugins.
-
-#### Tjek den globale konfiguration
-
-Åbn den globale konfigurationsfil og se efter en `plugin`-nøgle.
-
-- **macOS/Linux**: `~/.config/codeplane/codeplane.jsonc` (eller `~/.config/codeplane/codeplane.json`)
-- **macOS/Linux** (ældre installationer): `~/.local/share/codeplane/codeplane.jsonc`
-- **Windows**: Tryk `WIN+R` og indsæt `%USERPROFILE%\.config\codeplane\codeplane.jsonc`
-
-Hvis du har konfigureret plugins, deaktiver dem midlertidigt ved at fjerne nøglen eller sætte den til et tomt array:
-
-```jsonc
-{
-  "$schema": "https://example.invalid/config.json",
-  "plugin": [],
-}
-```
-
-#### Tjek plugin-mapper
-
-CodePlane kan også indlæse lokale plugins fra disken. Flyt disse midlertidigt væk (eller giv mappen nyt navn) og start skrivebordsappen på ny:
-
-- **Globale plugins**
-  - **macOS/Linux**: `~/.config/codeplane/plugins/`
-  - **Windows**: Tryk `WIN+R` og indsæt `%USERPROFILE%\.config\codeplane\plugins`
-- **Projektplugins** (kun hvis du bruger konfiguration per projekt)
-  - `<your-project>/.codeplane/plugins/`
-
-Hvis appen begynder at fungere igen, aktiverer du plugins én ad gangen for at finde ud af, hvilken som forårsager problemet.
-
----
-
-### Ryd cachen
-
-Hvis deaktivering af plugins ikke hjælper (eller en plugin-installation sidder fast), tøm cachen så CodePlane kan genopbygge den.
-
-1. Afslut CodePlane Desktop helt.
-2. Slet cache-mappen:
-
-- **macOS**: Finder -> `Cmd+Shift+G` -> indsæt `~/.cache/codeplane`
-- **Linux**: slet `~/.cache/codeplane` (eller kør `rm -rf ~/.cache/codeplane`)
-- **Windows**: Tryk `WIN+R` og indsæt `%USERPROFILE%\.cache\codeplane`
-
-3. Start CodePlane Desktop på ny.
-
----
-
-### Løs problemer med serverforbindelse
-
-CodePlane Desktop kan enten starte sin egen lokale server (standard) eller forbinde til en server URL, du har konfigureret.
-
-Hvis du ser en **"Forbindelse mislykkedes"**-dialogboks (eller appen kommer aldrig forbi splash-skærmen), se efter en brugerdefineret server URL.
-
-#### Slet standardserveren for skrivebordet URL
-
-Fra startskærmen klikker du på servernavnet (med statusprikken) for at åbne servervælgeren. I delen **Standardserver** klikker du på **Slet**.
-
-#### Fjern `server.port` / `server.hostname` fra din konfiguration
-
-Hvis `codeplane.json(c)` indeholder en `server`-del, fjern den midlertidigt og start skrivebordsappen på ny.
-
-#### Tjek miljøvariabler
-
-Hvis du har `CODEPLANE_PORT` sat i dit miljø, vil skrivebordsappen prøve at bruge den port for den lokale server.
-
-- Deaktiver `CODEPLANE_PORT` (eller vælg en ledig port) og start på ny.
-
----
-
-### Linux: Wayland / X11-problemer
-
-På Linux kan nogle Wayland-opsætninger forårsage tomme vinduer eller kompositorfejl.
-
-- Hvis du er på Wayland og appen er tom/crasher, prøv at starte med `OC_ALLOW_WAYLAND=1`.
-- Hvis det gør ting værre, fjern det og prøv at starte under en X11-session i stedet.
-
----
-
-### Windows: WebView2-runtime
-
-På Windows kræver CodePlane Desktop Microsoft Edge **WebView2 Runtime**. Hvis appen åbnes i et tomt vindue eller ikke starter, installer/opdater WebView2 og prøv igen.
-
----
-
-### Windows: Generelle ydeevneproblemer
-
-Hvis du oplever langsom ydeevne, problemer med filadgang eller terminalproblemer på Windows, kan du prøve at bruge [WSL (Windows Subsystem for Linux)](/docs/windows-wsl). WSL giver et Linux-miljø som fungerer mere sømløst med funktionerne i CodePlane.
-
----
-
-### Meddelelser vises ikke
-
-CodePlane Desktop viser kun systemvarsler når:
-
-- varsler er aktiveret for CodePlane i dine OS-indstillinger, og
-- appvinduet ikke er fokuseret.
-
----
-
-### Nulstil desktop-applagring (sidste udvej)
-
-Hvis appen ikke starter og du ikke kan slette indstillingerne fra UI, nulstil skrivebordsappens gemte tilstand.
-
-1. Afslut CodePlane Desktop.
-2. Find og slet disse filer (de findes i CodePlane Desktop-appens datamappe):
-
-- `codeplane.settings.dat` (skrivebordsstandardserver URL)
-- `codeplane.global.dat` og `codeplane.workspace.*.dat` (UI tilstand som nylige servere/projekter)
-
-Sådan finder du mappen hurtigt:
-
-- **macOS**: Finder -> `Cmd+Shift+G` -> `~/Library/Application Support` (søg derefter efter filnavnene ovenfor)
-- **Linux**: søg under `~/.local/share` efter filnavnene ovenfor
-- **Windows**: Tryk `WIN+R` -> `%APPDATA%` (søg derefter efter filnavnene ovenfor)
-
----
-
-## Få hjælp
-
-Hvis du oplever problemer med CodePlane:
-
-1. **Rapporter problemer på GitHub**
-
-   Den bedste måde at rapportere fejl eller bede om funktioner på er gennem vores GitHub-repo:
+   The best way to report bugs or request features is through our GitHub repository:
 
    [**github.com/devinoldenburg/codeplane/issues**](https://github.com/devinoldenburg/codeplane/issues)
 
-   Før du opretter et nyt issue, søg i eksisterende issues for at se om dit problem allerede er rapporteret.
+   Before creating a new issue, search existing issues to see if your problem has already been reported.
 
 
 ---
 
-## Almindelige problemer
+## Common issues
 
-Her er nogle almindelige problemer og hvordan du kan løse dem.
-
----
-
-### CodePlane vil ikke starte
-
-1. Tjek logfilerne for fejlmeddelelser
-2. Prøv at køre med `--print-logs` for at se output i terminalen
-3. Sørg for at du har den nyeste version med `codeplane upgrade`
+Here are some common issues and how to resolve them.
 
 ---
 
-### Godkendelsesproblemer
+### CodePlane won't start
 
-1. Prøv at godkende på ny med kommandoen `/connect` i TUI
-2. Tjek at dine API-nøgler er gyldige
-3. Sørg for at dit netværk tillader forbindelser til udbyderens API
+1. Check the logs for error messages
+2. Try running with `--print-logs` to see output in the terminal
+3. Ensure you have the latest version with `codeplane upgrade`
 
 ---
 
-### Modellen er ikke tilgængelig
+### Authentication issues
 
-1. Tjek at du har godkendt dig med udbyderen
-2. Kontroller at modelnavnet i konfigurationen er rigtigt
-3. Nogle modeller kan kræve specifik adgang eller abonnement
+1. Try re-authenticating from Settings -> Providers in the web app
+2. Check that your API keys are valid
+3. Ensure your network allows connections to the provider's API
 
-Hvis du støder på `ProviderModelNotFoundError` refererer du mest sandsynligt forkert
-til en model et sted.
-Modeller skal refereres sådan: `<providerId>/<modelId>`
+---
 
-Eksempler:
+### Model not available
+
+1. Check that you've authenticated with the provider
+2. Verify the model name in your config is correct
+3. Some models may require specific access or subscriptions
+
+If you encounter `ProviderModelNotFoundError` you are most likely incorrectly
+referencing a model somewhere.
+Models should be referenced like so: `<providerId>/<modelId>`
+
+Examples:
 
 - `openai/gpt-4.1`
 - `openrouter/google/gemini-2.5-flash`
 - `codeplane/kimi-k2`
 
-For at finde ud af hvilke modeller du har adgang til, kør `codeplane models`
+To figure out what models you have access to, run `codeplane models`
 
 ---
 
 ### ProviderInitError
 
-Hvis du støder på en ProviderInitError, har du sandsynligvis en ugyldig eller ødelagt konfiguration.
+If you encounter a ProviderInitError, you likely have an invalid or corrupted configuration.
 
-For at løse dette:
+To resolve this:
 
-1. Kontroller først at din udbyder er rigtigt konfigureret ved at følge [udbydervejledningen](/docs/providers)
-2. Hvis problemet vedvarer, prøv at tømme den gemte konfiguration:
+1. First, verify your provider is set up correctly by following the [providers guide](/docs/providers)
+2. If the issue persists, try clearing your stored configuration:
 
    ```bash
    rm -rf ~/.local/share/codeplane
    ```
 
-   På Windows, tryk `WIN+R` og slet: `%USERPROFILE%\.local\share\codeplane`
+   On Windows, press `WIN+R` and delete: `%USERPROFILE%\.local\share\codeplane`
 
-3. Godkend på ny med din udbyder ved at bruge kommandoen `/connect` i TUI.
+3. Re-authenticate with your provider from Settings -> Providers in the web app.
 
 ---
 
-### AI_APICallError og udbyderpakkeproblemer
+### AI_APICallError and provider package issues
 
-Hvis du støder på API-kaldsfejl, kan dette skyldes forældede udbyderpakker. codeplane installerer dynamisk udbyderpakker (OpenAI, Anthropic, Google, etc.) efter behov og cacher dem lokalt.
+If you encounter API call errors, this may be due to outdated provider packages. codeplane dynamically installs provider packages (OpenAI, Anthropic, Google, etc.) as needed and caches them locally.
 
-For at løse problemer med udbyderpakke:
+To resolve provider package issues:
 
-1. Tøm udbyderens pakkecache:
+1. Clear the provider package cache:
 
    ```bash
    rm -rf ~/.cache/codeplane
    ```
 
-   På Windows, tryk `WIN+R` og slet: `%USERPROFILE%\.cache\codeplane`
+   On Windows, press `WIN+R` and delete: `%USERPROFILE%\.cache\codeplane`
 
-2. Start codeplane på ny for at installere de nyeste udbyderpakker på ny
+2. Restart codeplane to reinstall the latest provider packages
 
-Dette vil tvinge codeplane til at downloade de nyeste versioner af udbyderpakkerne, som ofte løser kompatibilitetsproblemer med modelparametre og API-ændringer.
+This will force codeplane to download the most recent versions of provider packages, which often resolves compatibility issues with model parameters and API changes.
 
 ---
 
-### Kopier/indsæt virker ikke på Linux
+### Copy/paste not working on Linux
 
-Linux-brugere skal have et af følgende udklipsholderværktøjer installeret for at kopier/indsæt-funktionalitet skal fungere:
+Linux users need to have one of the following clipboard utilities installed for copy/paste functionality to work:
 
-**For X11-systemer:**
+**For X11 systems:**
 
 ```bash
 apt install -y xclip
@@ -277,13 +143,13 @@ apt install -y xclip
 apt install -y xsel
 ```
 
-**For Wayland-systemer:**
+**For Wayland systems:**
 
 ```bash
 apt install -y wl-clipboard
 ```
 
-**For hovedløse miljøer:**
+**For headless environments:**
 
 ```bash
 apt install -y xvfb
@@ -292,4 +158,4 @@ Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
 export DISPLAY=:99.0
 ```
 
-codeplane vil opdage om du bruger Wayland og foretrække `wl-clipboard`, ellers vil den prøve at finde udklipsholderværktøjer i rækkefølgen: `xclip` og `xsel`.
+codeplane will detect if you're using Wayland and prefer `wl-clipboard`, otherwise it will try to find clipboard tools in order of: `xclip` and `xsel`.

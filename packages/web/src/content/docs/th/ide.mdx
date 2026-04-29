@@ -1,48 +1,48 @@
 ---
 title: IDE
-description: ส่วนขยาย CodePlane สำหรับ VS Code, Cursor และ IDE อื่นๆ
+description: The CodePlane extension for VS Code, Cursor, and other IDEs
 ---
 
-CodePlane ทำงานร่วมกับ VS Code, Cursor หรือ IDE ใดๆ ที่รองรับ terminal เพียงเรียกใช้ `codeplane` ใน terminal เพื่อเริ่มต้น
-
----
-
-## การใช้งาน
-
-- **เปิดใช้ด่วน**: ใช้ `Cmd+Esc` (Mac) หรือ `Ctrl+Esc` (Windows/Linux) เพื่อเปิด CodePlane ในมุมมอง terminal แบบแยก หรือเน้นเซสชัน terminal ที่มีอยู่หากมีการทำงานอยู่แล้ว
-- **เซสชันใหม่**: ใช้ `Cmd+Shift+Esc` (Mac) หรือ `Ctrl+Shift+Esc` (Windows/Linux) เพื่อเริ่มเซสชัน terminal CodePlane ใหม่ แม้ว่าเซสชันหนึ่งจะเปิดอยู่แล้วก็ตาม คุณยังสามารถคลิกปุ่ม CodePlane ใน UI ได้ด้วย
-- **การรับรู้บริบท**: แชร์การเลือกหรือแท็บปัจจุบันของคุณโดยอัตโนมัติด้วย CodePlane
-- **ทางลัดการอ้างอิงไฟล์**: ใช้ `Cmd+Option+K` (Mac) หรือ `Alt+Ctrl+K` (Linux/Windows) เพื่อแทรกการอ้างอิงไฟล์ ตัวอย่างเช่น `@File#L37-42`
+CodePlane integrates with VS Code, Cursor, or any IDE that supports opening a local web app. Just run `codeplane` in the terminal to get started.
 
 ---
 
-## การติดตั้ง
+## Usage
 
-วิธีติดตั้ง CodePlane บน VS Code และทางแยกยอดนิยม เช่น Cursor, Windsurf, VSCodium:
-
-1. เปิด VS Code
-2. เปิด terminal รวม
-3. เรียกใช้ `codeplane` - ​​ส่วนขยายจะติดตั้งโดยอัตโนมัติ
-
-ในทางกลับกัน หากคุณต้องการใช้ IDE ของคุณเองเมื่อคุณเรียกใช้ `/editor` หรือ `/export` จาก TUI คุณจะต้องตั้งค่า `export EDITOR="code --wait"` [เรียนรู้เพิ่มเติม](/docs/tui/#editor-setup)
+- **Quick Launch**: Use `Cmd+Esc` (Mac) or `Ctrl+Esc` (Windows/Linux) to open CodePlane.
+- **New Session**: Use `Cmd+Shift+Esc` (Mac) or `Ctrl+Shift+Esc` (Windows/Linux) to start a new CodePlane session. You can also click the CodePlane button in the UI.
+- **Context Awareness**: Automatically share your current selection or tab with CodePlane.
+- **File Reference Shortcuts**: Use `Cmd+Option+K` (Mac) or `Alt+Ctrl+K` (Linux/Windows) to insert file references. For example, `@File#L37-42`.
 
 ---
 
-### ติดตั้งด้วยตนเอง
+## Installation
 
-ค้นหา **CodePlane** ใน Extension Marketplace แล้วคลิก **ติดตั้ง**
+To install CodePlane on VS Code and popular forks like Cursor, Windsurf, VSCodium:
+
+1. Open VS Code
+2. Open the integrated terminal
+3. Run `codeplane` - the extension installs automatically
+
+To use VS Code as the editor for file-opening actions, set `export EDITOR="code --wait"`.
 
 ---
 
-### การแก้ไขปัญหา
+### Manual Install
 
-หากส่วนขยายไม่สามารถติดตั้งได้โดยอัตโนมัติ:
+Search for **CodePlane** in the Extension Marketplace and click **Install**.
 
-- ตรวจสอบให้แน่ใจว่าคุณใช้งาน `codeplane` ใน terminal รวม
-- ยืนยันว่า CLI สำหรับ IDE ของคุณได้รับการติดตั้งแล้ว:
-  - สำหรับ VS Code: `code` คำสั่ง
-  - สำหรับ Cursor: `cursor` คำสั่ง
-  - สำหรับ Windsurf: `windsurf` คำสั่ง
-  - สำหรับ VSCodium: `codium` คำสั่ง
-  - ถ้าไม่เช่นนั้น ให้รัน `Cmd+Shift+P` (Mac) หรือ `Ctrl+Shift+P` (Windows/Linux) และค้นหา "Shell Command: Install 'code' command in PATH" (หรือเทียบเท่ากับ IDE ของคุณ)
-- ตรวจสอบให้แน่ใจว่ารหัส VS มีสิทธิ์ในการติดตั้งส่วนขยาย
+---
+
+### Troubleshooting
+
+If the extension fails to install automatically:
+
+- Ensure you’re running `codeplane` in the integrated terminal.
+- Confirm the CLI for your IDE is installed:
+  - For VS Code: `code` command
+  - For Cursor: `cursor` command
+  - For Windsurf: `windsurf` command
+  - For VSCodium: `codium` command
+  - If not, run `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux) and search for "Shell Command: Install 'code' command in PATH" (or the equivalent for your IDE)
+- Ensure VS Code has permission to install extensions

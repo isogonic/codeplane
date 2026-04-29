@@ -89,9 +89,6 @@ export const Flag = {
   get CODEPLANE_DISABLE_PROJECT_CONFIG() {
     return truthy("CODEPLANE_DISABLE_PROJECT_CONFIG")
   },
-  get CODEPLANE_TUI_CONFIG() {
-    return process.env["CODEPLANE_TUI_CONFIG"]
-  },
   get CODEPLANE_CONFIG_DIR() {
     return process.env["CODEPLANE_CONFIG_DIR"]
   },

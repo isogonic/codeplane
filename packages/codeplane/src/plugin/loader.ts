@@ -83,7 +83,7 @@ export namespace PluginLoader {
     }
     if (!target) return { ok: false, stage: "install", error: new Error(`Plugin ${plan.spec} target is empty`) }
 
-    // Then inspect the target for the requested server/tui entrypoint.
+    // Then inspect the target for the requested server entrypoint.
     let base
     try {
       base = await createPluginEntry(plan.spec, target, kind)
@@ -147,8 +147,7 @@ export namespace PluginLoader {
     const resolved = await resolve(plan, kind)
     if (!resolved.ok) {
       if (resolved.stage === "missing") {
-        // Missing entrypoints are handled separately so callers can still inspect package metadata,
-        // for example to load theme files from a tui plugin package that has no code entrypoint.
+        // Missing entrypoints are handled separately so callers can still inspect package metadata.
         if (missing) {
           const value = await missing(resolved.value, candidate.origin, retry)
           if (value !== undefined) return value

@@ -1,62 +1,62 @@
 ---
-title: Ferramentas Personalizadas
-description: Crie ferramentas que o LLM pode chamar no codeplane.
+title: Custom Tools
+description: Create tools the LLM can call in codeplane.
 ---
 
-Ferramentas personalizadas são funções que você cria e que o LLM pode chamar durante as conversas. Elas funcionam junto com as [ferramentas integradas](/docs/tools) do codeplane, como `read`, `write` e `bash`.
-
----
-
-## Criando uma ferramenta
-
-As ferramentas são definidas como arquivos **TypeScript** ou **JavaScript**. No entanto, a definição da ferramenta pode invocar scripts escritos em **qualquer linguagem** — TypeScript ou JavaScript é usado apenas para a definição da ferramenta em si.
+Custom tools are functions you create that the LLM can call during conversations. They work alongside codeplane's [built-in tools](/docs/tools) like `read`, `write`, and `bash`.
 
 ---
 
-### Localização
+## Creating a tool
 
-Elas podem ser definidas:
-
-- Localmente, colocando-as no diretório `.codeplane/tools/` do seu projeto.
-- Ou globalmente, colocando-as em `~/.config/codeplane/tools/`.
+Tools are defined as **TypeScript** or **JavaScript** files. However, the tool definition can invoke scripts written in **any language** — TypeScript or JavaScript is only used for the tool definition itself.
 
 ---
 
-### Estrutura
+### Location
 
-A maneira mais fácil de criar ferramentas é usando o helper `tool()`, que fornece segurança de tipo e validação.
+They can be defined:
+
+- Locally by placing them in the `.codeplane/tools/` directory of your project.
+- Or globally, by placing them in `~/.config/codeplane/tools/`.
+
+---
+
+### Structure
+
+The easiest way to create tools is using the `tool()` helper which provides type-safety and validation.
 
 ```ts title=".codeplane/tools/database.ts" {1}
 import { tool } from "@codeplane-ai/plugin"
 
 export default tool({
-  description: "Consultar o banco de dados do projeto",
+  description: "Query the project database",
   args: {
-    query: tool.schema.string().describe("Consulta SQL para executar"),
+    query: tool.schema.string().describe("SQL query to execute"),
   },
   async execute(args) {
-    // Sua lógica de banco de dados aqui
-    return `Consulta executada: ${args.query}`
+    // Your database logic here
+    return `Executed query: ${args.query}`
   },
 })
 ```
 
-O **nome do arquivo** se torna o **nome da ferramenta**. O acima cria uma ferramenta `database`.
+The **filename** becomes the **tool name**. The above creates a `database` tool.
 
 ---
 
-#### Múltiplas ferramentas por arquivo
+#### Multiple tools per file
 
-Você também pode exportar várias ferramentas de um único arquivo. Cada exportação se torna **uma ferramenta separada** com o nome **`<filename>_<exportname>`**:
+You can also export multiple tools from a single file. Each export becomes **a separate tool** with the name **`<filename>_<exportname>`**:
 
 ```ts title=".codeplane/tools/math.ts"
 import { tool } from "@codeplane-ai/plugin"
 
 export const add = tool({
-  description: "Adicionar dois números",
+  description: "Add two numbers",
   args: {
-    a: tool.schema.number().describe("Primeiro número"),
-    b: tool.schema.number().describe("Segundo número"),
+    a: tool.schema.number().describe("First number"),
+    b: tool.schema.number().describe("Second number"),
   },
   async execute(args) {
     return args.a + args.b
@@ -64,10 +64,10 @@ export const add = tool({
 })
 
 export const multiply = tool({
-  description: "Multiplicar dois números",
+  description: "Multiply two numbers",
   args: {
-    a: tool.schema.number().describe("Primeiro número"),
-    b: tool.schema.number().describe("Segundo número"),
+    a: tool.schema.number().describe("First number"),
+    b: tool.schema.number().describe("Second number"),
   },
   async execute(args) {
     return args.a * args.b
@@ -75,15 +75,15 @@ export const multiply = tool({
 })
 ```
 
-Isso cria duas ferramentas: `math_add` e `math_multiply`.
+This creates two tools: `math_add` and `math_multiply`.
 
 ---
 
-#### Colisões de nome com ferramentas integradas
+#### Name collisions with built-in tools
 
-Ferramentas personalizadas são chaveadas pelo nome da ferramenta. Se uma ferramenta personalizada usar o mesmo nome que uma ferramenta integrada, a ferramenta personalizada tem precedência.
+Custom tools are keyed by tool name. If a custom tool uses the same name as a built-in tool, the custom tool takes precedence.
 
-Por exemplo, este arquivo substitui a ferramenta `bash` integrada:
+For example, this file replaces the built-in `bash` tool:
 
 ```ts title=".codeplane/tools/bash.ts"
 import { tool } from "@codeplane-ai/plugin"
@@ -100,33 +100,33 @@ export default tool({
 ```
 
 :::note
-Prefira nomes únicos, a menos que você queira intencionalmente substituir uma ferramenta integrada. Se você quiser desabilitar uma ferramenta integrada, mas não substituí-la, use [permissões](/docs/permissions).
+Prefer unique names unless you intentionally want to replace a built-in tool. If you want to disable a built in tool but not override it, use [permissions](/docs/permissions).
 :::
 
 ---
 
-### Argumentos
+### Arguments
 
-Você pode usar `tool.schema`, que é apenas [Zod](https://zod.dev), para definir tipos de argumentos.
+You can use `tool.schema`, which is just [Zod](https://zod.dev), to define argument types.
 
 ```ts "tool.schema"
 args: {
-  query: tool.schema.string().describe("Consulta SQL para executar")
+  query: tool.schema.string().describe("SQL query to execute")
 }
 ```
 
-Você também pode importar [Zod](https://zod.dev) diretamente e retornar um objeto simples:
+You can also import [Zod](https://zod.dev) directly and return a plain object:
 
 ```ts {6}
 import { z } from "zod"
 
 export default {
-  description: "Descrição da ferramenta",
+  description: "Tool description",
   args: {
-    param: z.string().describe("Descrição do parâmetro"),
+    param: z.string().describe("Parameter description"),
   },
   async execute(args, context) {
-    // Implementação da ferramenta
+    // Tool implementation
     return "result"
   },
 }
@@ -134,36 +134,36 @@ export default {
 
 ---
 
-### Contexto
+### Context
 
-As ferramentas recebem contexto sobre a sessão atual:
+Tools receive context about the current session:
 
 ```ts title=".codeplane/tools/project.ts" {8}
 import { tool } from "@codeplane-ai/plugin"
 
 export default tool({
-  description: "Obter informações do projeto",
+  description: "Get project information",
   args: {},
   async execute(args, context) {
-    // Acessar informações de contexto
+    // Access context information
     const { agent, sessionID, messageID, directory, worktree } = context
     return `Agent: ${agent}, Session: ${sessionID}, Message: ${messageID}, Directory: ${directory}, Worktree: ${worktree}`
   },
 })
 ```
 
-Use `context.directory` para o diretório de trabalho da sessão.
-Use `context.worktree` para a raiz do worktree do git.
+Use `context.directory` for the session working directory.
+Use `context.worktree` for the git worktree root.
 
 ---
 
-## Exemplos
+## Examples
 
-### Escrevendo uma ferramenta em Python
+### Write a tool in Python
 
-Você pode escrever suas ferramentas em qualquer linguagem que desejar. Aqui está um exemplo que adiciona dois números usando Python.
+You can write your tools in any language you want. Here's an example that adds two numbers using Python.
 
-Primeiro, crie a ferramenta como um script Python:
+First, create the tool as a Python script:
 
 ```python title=".codeplane/tools/add.py"
 import sys
@@ -173,17 +173,17 @@ b = int(sys.argv[2])
 print(a + b)
 ```
 
-Em seguida, crie a definição da ferramenta que a invoca:
+Then create the tool definition that invokes it:
 
 ```ts title=".codeplane/tools/python-add.ts" {10}
 import { tool } from "@codeplane-ai/plugin"
 import path from "path"
 
 export default tool({
-  description: "Adicionar dois números usando Python",
+  description: "Add two numbers using Python",
   args: {
-    a: tool.schema.number().describe("Primeiro número"),
-    b: tool.schema.number().describe("Segundo número"),
+    a: tool.schema.number().describe("First number"),
+    b: tool.schema.number().describe("Second number"),
   },
   async execute(args, context) {
     const script = path.join(context.worktree, ".codeplane/tools/add.py")
@@ -193,4 +193,4 @@ export default tool({
 })
 ```
 
-Aqui estamos usando o utilitário [`Bun.$`](https://bun.com/docs/runtime/shell) para executar o script Python.
+Here we are using the [`Bun.$`](https://bun.com/docs/runtime/shell) utility to run the Python script.

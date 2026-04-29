@@ -409,9 +409,9 @@ export const Persist = {
 }
 
 export function removePersisted(target: { storage?: string; key: string }, platform?: Platform) {
-  const isDesktop = platform?.platform === "desktop" && !!platform.storage
+  const hasPlatformStorage = !!platform?.storage
 
-  if (isDesktop) {
+  if (hasPlatformStorage) {
     return platform.storage?.(target.storage)?.removeItem(target.key)
   }
 
@@ -433,10 +433,10 @@ export function persisted<T>(
   const defaults = snapshot(store[0])
   const legacy = config.legacy ?? []
 
-  const isDesktop = platform.platform === "desktop" && !!platform.storage
+  const hasPlatformStorage = !!platform.storage
 
   const storageFor = (storageName?: string) => {
-    if (isDesktop) return platform.storage?.(storageName)
+    if (hasPlatformStorage) return platform.storage?.(storageName)
     if (!storageName) return localStorageDirect()
     return localStorageWithPrefix(storageName)
   }
@@ -444,7 +444,7 @@ export function persisted<T>(
   const currentStorage = storageFor(config.storage)
 
   const legacyStorage = (() => {
-    if (!isDesktop) return localStorageDirect()
+    if (!hasPlatformStorage) return localStorageDirect()
     if (!config.storage) return platform.storage?.()
     return platform.storage?.(LEGACY_STORAGE)
   })()
@@ -459,7 +459,7 @@ export function persisted<T>(
   ]
 
   const storage = (() => {
-    if (!isDesktop) {
+    if (!hasPlatformStorage) {
       const current = currentStorage as SyncStorage
 
       const api: SyncStorage = {

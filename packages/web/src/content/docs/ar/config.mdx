@@ -1,69 +1,72 @@
 ---
-title: الإعدادات
-description: استخدام ملف إعدادات CodePlane بصيغة JSON.
+title: Config
+description: Using the CodePlane JSON config.
 ---
 
-يمكنك ضبط CodePlane باستخدام ملف إعدادات بصيغة JSON.
+You can configure CodePlane using a JSON config file.
 
 ---
 
-## التنسيق
+## Format
 
-يدعم CodePlane تنسيقي **JSON** و**JSONC** (JSON مع تعليقات).
+CodePlane supports both **JSON** and **JSONC** (JSON with Comments) formats.
 
 ```jsonc title="codeplane.jsonc"
 {
   "$schema": "https://example.invalid/config.json",
-  // إعدادات السمة
-  "theme": "codeplane",
   "model": "anthropic/claude-sonnet-4-5",
   "autoupdate": true,
+  "server": {
+    "port": 4096,
+  },
 }
 ```
 
 ---
 
-## المواقع
+## Locations
 
-يمكنك وضع ملف الإعدادات في عدة مواقع مختلفة، ولكل موقع
-ترتيب أولوية مختلف.
+You can place your config in a couple of different locations and they have a
+different order of precedence.
 
 :::note
-تُدمَج ملفات الإعدادات **معًا** ولا تُستبدَل.
+Configuration files are **merged together**, not replaced.
 :::
 
-تُدمَج ملفات الإعدادات معًا ولا تُستبدَل. يتم جمع الإعدادات من مواقع الإعدادات التالية. تتجاوز الإعدادات اللاحقة الإعدادات السابقة فقط عند تعارض المفاتيح. أما الإعدادات غير المتعارضة فتبقى محفوظة من جميع الملفات.
+Configuration files are merged together, not replaced. Settings from the following config locations are combined. Later configs override earlier ones only for conflicting keys. Non-conflicting settings from all configs are preserved.
 
-على سبيل المثال، إذا كان الإعداد العام يضبط `theme: "codeplane"` و`autoupdate: true`، وكان إعداد المشروع يضبط `model: "anthropic/claude-sonnet-4-5"`، فستتضمن الإعدادات النهائية الخيارات الثلاثة جميعها.
+For example, if your global config sets `autoupdate: true` and your project config sets `model: "anthropic/claude-sonnet-4-5"`, the final configuration will include both settings.
 
 ---
 
-### ترتيب الأولوية
+### Precedence order
 
-تُحمَّل مصادر الإعدادات بهذا الترتيب (المصادر اللاحقة تتجاوز السابقة):
+Config sources are loaded in this order (later sources override earlier ones):
 
-1. **الإعدادات البعيدة** (من `.well-known/codeplane`) - الإعدادات الافتراضية على مستوى المؤسسة
-2. **الإعدادات العامة** (`~/.config/codeplane/codeplane.json`) - تفضيلات المستخدم
-3. **إعدادات مخصصة** (`CODEPLANE_CONFIG` env var) - تجاوزات مخصصة
-4. **إعدادات المشروع** (`codeplane.json` داخل المشروع) - إعدادات خاصة بالمشروع
-5. **أدلة `.codeplane`** - الوكلاء، الأوامر، الإضافات
-6. **إعدادات ضمنية** (`CODEPLANE_CONFIG_CONTENT` env var) - تجاوزات وقت التشغيل
+1. **Remote config** (from `.well-known/codeplane`) - organizational defaults
+2. **Global config** (`~/.config/codeplane/codeplane.json`) - user preferences
+3. **Custom config** (`CODEPLANE_CONFIG` env var) - custom overrides
+4. **Project config** (`codeplane.json` in project) - project-specific settings
+5. **`.codeplane` directories** - agents, commands, plugins
+6. **Inline config** (`CODEPLANE_CONFIG_CONTENT` env var) - runtime overrides
+7. **Managed config files** (`/Library/Application Support/codeplane/` on macOS) - admin-controlled
+8. **macOS managed preferences** (`.mobileconfig` via MDM) - highest priority, not user-overridable
 
-هذا يعني أن إعدادات المشروع يمكنها تجاوز الإعدادات العامة، وأن الإعدادات العامة يمكنها تجاوز الإعدادات الافتراضية البعيدة على مستوى المؤسسة.
+This means project configs can override global defaults, and global configs can override remote organizational defaults. Managed settings override everything.
 
 :::note
-يستخدم الدليلان `.codeplane` و`~/.config/codeplane` **أسماء جمع** للأدلة الفرعية: `agents/` و`commands/` و`modes/` و`plugins/` و`skills/` و`tools/` و`themes/`. كما تُدعَم أسماء المفرد (مثل `agent/`) للتوافق مع الإصدارات السابقة.
+The `.codeplane` and `~/.config/codeplane` directories use **plural names** for subdirectories: `agents/`, `commands/`, `modes/`, `plugins/`, `skills/`, `tools/`, and `themes/`. Singular names (e.g., `agent/`) are also supported for backwards compatibility.
 :::
 
 ---
 
-### عن بُعد
+### Remote
 
-يمكن للمؤسسات توفير إعدادات افتراضية عبر نقطة النهاية `.well-known/codeplane`. يتم جلب ذلك تلقائيًا عندما تقوم بالمصادقة مع مزوّد يدعم هذه الميزة.
+Organizations can provide default configuration via the `.well-known/codeplane` endpoint. This is fetched automatically when you authenticate with a provider that supports it.
 
-تُحمَّل الإعدادات البعيدة أولًا لتكون طبقة الأساس. ويمكن لجميع مصادر الإعدادات الأخرى (العامة، وإعدادات المشروع) تجاوز هذه القيم الافتراضية.
+Remote config is loaded first, serving as the base layer. All other config sources (global, project) can override these defaults.
 
-على سبيل المثال، إذا كانت مؤسستك توفر خوادم MCP معطّلة افتراضيًا:
+For example, if your organization provides MCP servers that are disabled by default:
 
 ```json title="Remote config from .well-known/codeplane"
 {
@@ -77,7 +80,7 @@ description: استخدام ملف إعدادات CodePlane بصيغة JSON.
 }
 ```
 
-يمكنك تفعيل خوادم محددة في إعداداتك المحلية:
+You can enable specific servers in your local config:
 
 ```json title="codeplane.json"
 {
@@ -93,94 +96,168 @@ description: استخدام ملف إعدادات CodePlane بصيغة JSON.
 
 ---
 
-### عام
+### Global
 
-ضع إعدادات CodePlane العامة في `~/.config/codeplane/codeplane.json`. استخدم الإعدادات العامة للتفضيلات على مستوى المستخدم مثل السمات، والمزوّدين، أو اختصارات المفاتيح.
+Place your global CodePlane config in `~/.config/codeplane/codeplane.json`. Use global config for user-wide server/runtime preferences like providers, models, and permissions.
 
-تتجاوز الإعدادات العامة القيم الافتراضية البعيدة الخاصة بالمؤسسة.
+Global config overrides remote organizational defaults.
 
 ---
 
-### لكل مشروع
+### Per project
 
-أضف `codeplane.json` في جذر مشروعك. تمتلك إعدادات المشروع أعلى أولوية بين ملفات الإعدادات القياسية، إذ تتجاوز الإعدادات العامة والبعيدة معًا.
+Add `codeplane.json` in your project root. Project config has the highest precedence among standard config files - it overrides both global and remote configs.
 
 :::tip
-ضع إعدادات المشروع الخاصة في جذر مشروعك.
+Place project specific config in the root of your project.
 :::
 
-عند تشغيل CodePlane، يبحث عن ملف إعدادات في الدليل الحالي أو يصعد حتى أقرب دليل Git.
+When CodePlane starts up, it looks for a config file in the current directory or traverse up to the nearest Git directory.
 
-ومن الآمن أيضًا تضمينه في Git، كما يستخدم نفس المخطط الخاص بالإعدادات العامة.
+This is also safe to be checked into Git and uses the same schema as the global one.
 
 ---
 
-### مسار مخصص
+### Custom path
 
-حدّد مسار ملف إعدادات مخصصًا باستخدام متغير البيئة `CODEPLANE_CONFIG`.
+Specify a custom config file path using the `CODEPLANE_CONFIG` environment variable.
 
 ```bash
 export CODEPLANE_CONFIG=/path/to/my/custom-config.json
 codeplane run "Hello world"
 ```
 
-تُحمَّل الإعدادات المخصصة بين الإعدادات العامة وإعدادات المشروع ضمن ترتيب الأولوية.
+Custom config is loaded between global and project configs in the precedence order.
 
 ---
 
-### دليل مخصص
+### Custom directory
 
-حدّد دليل إعدادات مخصصًا باستخدام متغير البيئة `CODEPLANE_CONFIG_DIR`.
-سيتم البحث داخل هذا الدليل عن الوكلاء والأوامر والأوضاع والإضافات تمامًا مثل
-الدليل القياسي `.codeplane`، ويجب أن يتبع نفس البنية.
+Specify a custom config directory using the `CODEPLANE_CONFIG_DIR`
+environment variable. This directory will be searched for agents, commands,
+modes, and plugins just like the standard `.codeplane` directory, and should
+follow the same structure.
 
 ```bash
 export CODEPLANE_CONFIG_DIR=/path/to/my/config-directory
 codeplane run "Hello world"
 ```
 
-يُحمَّل الدليل المخصص بعد الإعدادات العامة وأدلة `.codeplane`، لذلك **يمكنه تجاوز** إعداداتها.
+The custom directory is loaded after the global config and `.codeplane` directories, so it **can override** their settings.
 
 ---
 
-## المخطط
+### Managed settings
 
-يحتوي ملف الإعدادات على مخطط مُعرَّف في [**`example.invalid/config.json`**](https://example.invalid/config.json).
+Organizations can enforce configuration that users cannot override. Managed settings are loaded at the highest priority tier.
 
-يفترض أن يتمكن محررك من التحقق والإكمال التلقائي اعتمادًا على هذا المخطط.
+#### File-based
 
----
+Drop an `codeplane.json` or `codeplane.jsonc` file in the system managed config directory:
 
-### TUI
+| Platform | Path                                     |
+| -------- | ---------------------------------------- |
+| macOS    | `/Library/Application Support/codeplane/` |
+| Linux    | `/etc/codeplane/`                         |
+| Windows  | `%ProgramData%\codeplane`                 |
 
-يمكنك ضبط الإعدادات الخاصة بـ TUI عبر الخيار `tui`.
+These directories require admin/root access to write, so users cannot modify them.
 
-```json title="codeplane.json"
-{
-  "$schema": "https://example.invalid/config.json",
-  "tui": {
-    "scroll_speed": 3,
-    "scroll_acceleration": {
-      "enabled": true
-    },
-    "diff_style": "auto"
-  }
-}
+#### macOS managed preferences
+
+On macOS, CodePlane reads managed preferences from the `ai.codeplane.managed` preference domain. Deploy a `.mobileconfig` via MDM (Jamf, Kandji, FleetDM) and the settings are enforced automatically.
+
+CodePlane checks these paths:
+
+1. `/Library/Managed Preferences/<user>/ai.codeplane.managed.plist`
+2. `/Library/Managed Preferences/ai.codeplane.managed.plist`
+
+The plist keys map directly to `codeplane.json` fields. MDM metadata keys (`PayloadUUID`, `PayloadType`, etc.) are stripped automatically.
+
+**Creating a `.mobileconfig`**
+
+Use the `ai.codeplane.managed` PayloadType. The CodePlane config keys go directly in the payload dict:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>PayloadContent</key>
+  <array>
+    <dict>
+      <key>PayloadType</key>
+      <string>ai.codeplane.managed</string>
+      <key>PayloadIdentifier</key>
+      <string>com.example.codeplane.config</string>
+      <key>PayloadUUID</key>
+      <string>GENERATE-YOUR-OWN-UUID</string>
+      <key>PayloadVersion</key>
+      <integer>1</integer>
+      <key>share</key>
+      <string>disabled</string>
+      <key>server</key>
+      <dict>
+        <key>hostname</key>
+        <string>127.0.0.1</string>
+      </dict>
+      <key>permission</key>
+      <dict>
+        <key>*</key>
+        <string>ask</string>
+        <key>bash</key>
+        <dict>
+          <key>*</key>
+          <string>ask</string>
+          <key>rm -rf *</key>
+          <string>deny</string>
+        </dict>
+      </dict>
+    </dict>
+  </array>
+  <key>PayloadType</key>
+  <string>Configuration</string>
+  <key>PayloadIdentifier</key>
+  <string>com.example.codeplane</string>
+  <key>PayloadUUID</key>
+  <string>GENERATE-YOUR-OWN-UUID</string>
+  <key>PayloadVersion</key>
+  <integer>1</integer>
+</dict>
+</plist>
 ```
 
-الخيارات المتاحة:
+Generate unique UUIDs with `uuidgen`. Customize the settings to match your organization's requirements.
 
-- `scroll_acceleration.enabled` - تفعيل تسارع التمرير بأسلوب macOS. **له أولوية على `scroll_speed`.**
-- `scroll_speed` - مُضاعِف سرعة تمرير مخصص (الافتراضي: `3`، الحد الأدنى: `1`). يتم تجاهله إذا كان `scroll_acceleration.enabled` مساويًا لـ `true`.
-- `diff_style` - التحكم في عرض `diff`. القيمة `"auto"` تتكيف مع عرض terminal، و`"stacked"` تعرض عمودًا واحدًا دائمًا.
+**Deploying via MDM**
 
-[تعرف على المزيد حول استخدام TUI هنا](/docs/tui).
+- **Jamf Pro:** Computers > Configuration Profiles > Upload > scope to target devices or smart groups
+- **FleetDM:** Add the `.mobileconfig` to your gitops repo under `mdm.macos_settings.custom_settings` and run `fleetctl apply`
+
+**Verifying on a device**
+
+Double-click the `.mobileconfig` to install locally for testing (shows in System Settings > Privacy & Security > Profiles), then run:
+
+```bash
+codeplane debug config
+```
+
+All managed preference keys appear in the resolved config and cannot be overridden by user or project configuration.
 
 ---
 
-### الخادم
+## Schema
 
-يمكنك ضبط إعدادات الخادم لأوامر `codeplane serve` و`codeplane web` عبر الخيار `server`.
+The server/runtime config schema is defined in [**`example.invalid/config.json`**](https://example.invalid/config.json).
+
+Your editor should be able to validate and autocomplete based on the schema.
+
+---
+
+### Server
+
+You can configure server settings for the `codeplane serve` and `codeplane web` commands through the `server` option.
 
 ```json title="codeplane.json"
 {
@@ -195,21 +272,21 @@ codeplane run "Hello world"
 }
 ```
 
-الخيارات المتاحة:
+Available options:
 
-- `port` - المنفذ الذي سيتم الاستماع عليه.
-- `hostname` - اسم المضيف الذي سيتم الاستماع عليه. عند تفعيل `mdns` وعدم ضبط اسم مضيف، تكون القيمة الافتراضية `0.0.0.0`.
-- `mdns` - تفعيل اكتشاف الخدمة عبر mDNS. يتيح ذلك للأجهزة الأخرى على الشبكة اكتشاف خادم CodePlane.
-- `mdnsDomain` - اسم نطاق مخصص لخدمة mDNS. القيمة الافتراضية هي `codeplane.local`. مفيد لتشغيل عدة نُسخ على نفس الشبكة.
-- `cors` - أصول إضافية مسموح بها لـ CORS عند استخدام خادم HTTP من عميل يعتمد على المتصفح. يجب أن تكون القيم أصولًا كاملة (البروتوكول + المضيف + منفذ اختياري)، مثل `https://app.example.com`.
+- `port` - Port to listen on.
+- `hostname` - Hostname to listen on. When `mdns` is enabled and no hostname is set, defaults to `0.0.0.0`.
+- `mdns` - Enable mDNS service discovery. This allows other devices on the network to discover your CodePlane server.
+- `mdnsDomain` - Custom domain name for mDNS service. Defaults to `codeplane.local`. Useful for running multiple instances on the same network.
+- `cors` - Additional origins to allow for CORS when using the HTTP server from a browser-based client. Values must be full origins (scheme + host + optional port), eg `https://app.example.com`.
 
-[تعرف على المزيد حول الخادم هنا](/docs/server).
+[Learn more about the server here](/docs/server).
 
 ---
 
-### الأدوات
+### Tools
 
-يمكنك إدارة الأدوات التي يمكن لـ LLM استخدامها عبر الخيار `tools`.
+You can manage the tools an LLM can use through the `tools` option.
 
 ```json title="codeplane.json"
 {
@@ -221,13 +298,13 @@ codeplane run "Hello world"
 }
 ```
 
-[تعرف على المزيد حول الأدوات هنا](/docs/tools).
+[Learn more about tools here](/docs/tools).
 
 ---
 
-### النماذج
+### Models
 
-يمكنك ضبط المزوّدين والنماذج التي تريد استخدامها في إعدادات CodePlane عبر الخيارات `provider` و`model` و`small_model`.
+You can configure the providers and models you want to use in your CodePlane config through the `provider`, `model` and `small_model` options.
 
 ```json title="codeplane.json"
 {
@@ -238,9 +315,9 @@ codeplane run "Hello world"
 }
 ```
 
-يضبط الخيار `small_model` نموذجًا منفصلًا للمهام الخفيفة مثل توليد العناوين. افتراضيًا يحاول CodePlane استخدام نموذج أقل تكلفة إذا كان متاحًا لدى مزوّدك، وإلا فسيعود إلى النموذج الرئيسي.
+The `small_model` option configures a separate model for lightweight tasks like title generation. By default, CodePlane tries to use a cheaper model if one is available from your provider, otherwise it falls back to your main model.
 
-قد تتضمن خيارات المزوّد `timeout` و`setCacheKey`:
+Provider options can include `timeout`, `chunkTimeout`, and `setCacheKey`:
 
 ```json title="codeplane.json"
 {
@@ -249,6 +326,7 @@ codeplane run "Hello world"
     "anthropic": {
       "options": {
         "timeout": 600000,
+        "chunkTimeout": 30000,
         "setCacheKey": true
       }
     }
@@ -256,20 +334,21 @@ codeplane run "Hello world"
 }
 ```
 
-- `timeout` - مهلة الطلب بالميلي ثانية (الافتراضي: 300000). اضبطه إلى `false` لتعطيله.
-- `setCacheKey` - يضمن تعيين مفتاح التخزين المؤقت دائمًا للمزوّد المحدد.
+- `timeout` - Request timeout in milliseconds (default: 300000). Set to `false` to disable.
+- `chunkTimeout` - Timeout in milliseconds between streamed response chunks. If no chunk arrives in time, the request is aborted.
+- `setCacheKey` - Ensure a cache key is always set for designated provider.
 
-يمكنك أيضًا ضبط [النماذج المحلية](/docs/models#local). [تعرف على المزيد](/docs/models).
+You can also configure [local models](/docs/models#local). [Learn more](/docs/models).
 
 ---
 
-#### خيارات خاصة بالمزوّد
+#### Provider-Specific Options
 
-يدعم بعض المزوّدين خيارات إعداد إضافية تتجاوز الإعدادات العامة مثل `timeout` و`apiKey`.
+Some providers support additional configuration options beyond the generic `timeout` and `apiKey` settings.
 
 ##### Amazon Bedrock
 
-يدعم Amazon Bedrock إعدادات خاصة بـ AWS:
+Amazon Bedrock supports AWS-specific configuration:
 
 ```json title="codeplane.json"
 {
@@ -286,36 +365,29 @@ codeplane run "Hello world"
 }
 ```
 
-- `region` - منطقة AWS لـ Bedrock (الافتراضي: متغير البيئة `AWS_REGION` أو `us-east-1`)
-- `profile` - ملف تعريف AWS المُسمّى من `~/.aws/credentials` (الافتراضي: متغير البيئة `AWS_PROFILE`)
-- `endpoint` - عنوان URL لنقطة نهاية مخصصة لنقاط نهاية VPC. هذا اسم بديل للخيار العام `baseURL` باستخدام مصطلحات AWS. إذا تم تحديدهما معًا، تكون أولوية `endpoint` أعلى.
+- `region` - AWS region for Bedrock (defaults to `AWS_REGION` env var or `us-east-1`)
+- `profile` - AWS named profile from `~/.aws/credentials` (defaults to `AWS_PROFILE` env var)
+- `endpoint` - Custom endpoint URL for VPC endpoints. This is an alias for the generic `baseURL` option using AWS-specific terminology. If both are specified, `endpoint` takes precedence.
 
 :::note
-لرموز Bearer (`AWS_BEARER_TOKEN_BEDROCK` أو `/connect`) أولوية أعلى من المصادقة القائمة على ملف التعريف. راجع [أولوية المصادقة](/docs/providers#authentication-precedence) للتفاصيل.
+Bearer tokens (`AWS_BEARER_TOKEN_BEDROCK` or `/connect`) take precedence over profile-based authentication. See [authentication precedence](/docs/providers#authentication-precedence) for details.
 :::
 
-[تعرف على المزيد حول إعداد Amazon Bedrock](/docs/providers#amazon-bedrock).
+[Learn more about Amazon Bedrock configuration](/docs/providers#amazon-bedrock).
 
 ---
 
-### السمات
+### Themes
 
-يمكنك ضبط السمة التي تريد استخدامها في إعدادات CodePlane عبر الخيار `theme`.
+Set your UI theme from the web app settings.
 
-```json title="codeplane.json"
-{
-  "$schema": "https://example.invalid/config.json",
-  "theme": ""
-}
-```
-
-[تعرف على المزيد هنا](/docs/themes).
+[Learn more here](/docs/themes).
 
 ---
 
-### الوكلاء
+### Agents
 
-يمكنك ضبط وكلاء متخصصين لمهام محددة عبر الخيار `agent`.
+You can configure specialized agents for specific tasks through the `agent` option.
 
 ```jsonc title="codeplane.jsonc"
 {
@@ -326,7 +398,7 @@ codeplane run "Hello world"
       "model": "anthropic/claude-sonnet-4-5",
       "prompt": "You are a code reviewer. Focus on security, performance, and maintainability.",
       "tools": {
-        // تعطيل أدوات تعديل الملفات لوكيل المراجعة فقط
+        // Disable file modification tools for review-only agent
         "write": false,
         "edit": false,
       },
@@ -335,13 +407,13 @@ codeplane run "Hello world"
 }
 ```
 
-يمكنك أيضًا تعريف الوكلاء باستخدام ملفات markdown في `~/.config/codeplane/agents/` أو `.codeplane/agents/`. [تعرف على المزيد هنا](/docs/agents).
+You can also define agents using markdown files in `~/.config/codeplane/agents/` or `.codeplane/agents/`. [Learn more here](/docs/agents).
 
 ---
 
-### الوكيل الافتراضي
+### Default agent
 
-يمكنك تعيين الوكيل الافتراضي باستخدام الخيار `default_agent`. يحدد ذلك أي وكيل سيتم استخدامه عندما لا يتم تحديد وكيل صراحةً.
+You can set the default agent using the `default_agent` option. This determines which agent is used when none is explicitly specified.
 
 ```json title="codeplane.json"
 {
@@ -350,15 +422,15 @@ codeplane run "Hello world"
 }
 ```
 
-يجب أن يكون الوكيل الافتراضي وكيلًا أساسيًا (وليس وكيلًا فرعيًا). يمكن أن يكون وكيلًا مدمجًا مثل `"build"` أو `"plan"`، أو [وكيلًا مخصصًا](/docs/agents) قمت بتعريفه. إذا لم يكن الوكيل المحدد موجودًا أو كان وكيلًا فرعيًا، فسيعود CodePlane إلى `"build"` مع تحذير.
+The default agent must be a primary agent (not a subagent). This can be a built-in agent like `"build"` or `"plan"`, or a [custom agent](/docs/agents) you've defined. If the specified agent doesn't exist or is a subagent, CodePlane will fall back to `"build"` with a warning.
 
-ينطبق هذا الإعداد على جميع الواجهات: TUI وCLI (`codeplane run`) وتطبيق سطح المكتب وGitHub Action.
+This setting applies across the web app, CLI (`codeplane run`), and GitHub Action.
 
 ---
 
-### المشاركة
+### Sharing
 
-يمكنك ضبط ميزة [share](/docs/share) عبر الخيار `share`.
+You can configure the [share](/docs/share) feature through the `share` option.
 
 ```json title="codeplane.json"
 {
@@ -367,19 +439,19 @@ codeplane run "Hello world"
 }
 ```
 
-يقبل هذا الإعداد القيم التالية:
+This takes:
 
-- `"manual"` - السماح بالمشاركة اليدوية عبر الأوامر (الافتراضي)
-- `"auto"` - مشاركة المحادثات الجديدة تلقائيًا
-- `"disabled"` - تعطيل المشاركة بالكامل
+- `"manual"` - Allow manual sharing via commands (default)
+- `"auto"` - Automatically share new conversations
+- `"disabled"` - Disable sharing entirely
 
-افتراضيًا تكون المشاركة في الوضع اليدوي، حيث تحتاج إلى مشاركة المحادثات صراحةً باستخدام الأمر `/share`.
+By default, sharing is set to manual mode where you need to explicitly share conversations using the `/share` command.
 
 ---
 
-### الأوامر
+### Commands
 
-يمكنك ضبط أوامر مخصصة للمهام المتكررة عبر الخيار `command`.
+You can configure custom commands for repetitive tasks through the `command` option.
 
 ```jsonc title="codeplane.jsonc"
 {
@@ -399,28 +471,30 @@ codeplane run "Hello world"
 }
 ```
 
-يمكنك أيضًا تعريف الأوامر باستخدام ملفات markdown في `~/.config/codeplane/commands/` أو `.codeplane/commands/`. [تعرف على المزيد هنا](/docs/commands).
+You can also define commands using markdown files in `~/.config/codeplane/commands/` or `.codeplane/commands/`. [Learn more here](/docs/commands).
 
 ---
 
-### اختصارات المفاتيح
+### Snapshot
 
-يمكنك تخصيص اختصارات المفاتيح عبر الخيار `keybinds`.
+CodePlane uses snapshots to track file changes during agent operations, enabling you to undo and revert changes within a session. Snapshots are enabled by default.
+
+For large repositories or projects with many submodules, the snapshot system can cause slow indexing and significant disk usage as it tracks all changes using an internal git repository. You can disable snapshots using the `snapshot` option.
 
 ```json title="codeplane.json"
 {
   "$schema": "https://example.invalid/config.json",
-  "keybinds": {}
+  "snapshot": false
 }
 ```
 
-[تعرف على المزيد هنا](/docs/keybinds).
+Note that disabling snapshots means changes made by the agent cannot be rolled back through the UI.
 
 ---
 
-### التحديث التلقائي
+### Autoupdate
 
-سيقوم CodePlane بتنزيل أي تحديثات جديدة تلقائيًا عند بدء التشغيل. يمكنك تعطيل ذلك عبر الخيار `autoupdate`.
+CodePlane will automatically download any new updates when it starts up. You can disable this with the `autoupdate` option.
 
 ```json title="codeplane.json"
 {
@@ -429,14 +503,14 @@ codeplane run "Hello world"
 }
 ```
 
-إذا لم تكن تريد التحديثات لكنك تريد الإشعار عند توفر نسخة جديدة، فاضبط `autoupdate` على `"notify"`.
-لاحظ أن هذا يعمل فقط إذا لم يتم تثبيته عبر مدير حزم مثل Homebrew.
+If you don't want updates but want to be notified when a new version is available, set `autoupdate` to `"notify"`.
+Notice that this only works if it was not installed using a package manager such as Homebrew.
 
 ---
 
-### المنسّقات
+### Formatters
 
-يمكنك ضبط منسّقات الشفرة عبر الخيار `formatter`.
+You can configure code formatters through the `formatter` option.
 
 ```json title="codeplane.json"
 {
@@ -456,15 +530,15 @@ codeplane run "Hello world"
 }
 ```
 
-[تعرف على المزيد حول المنسّقات هنا](/docs/formatters).
+[Learn more about formatters here](/docs/formatters).
 
 ---
 
-### الأذونات
+### Permissions
 
-افتراضيًا يسمح codeplane **بجميع العمليات** دون الحاجة إلى موافقة صريحة. يمكنك تغيير ذلك عبر الخيار `permission`.
+By default, codeplane **allows all operations** without requiring explicit approval. You can change this using the `permission` option.
 
-على سبيل المثال، لضمان أن أداتي `edit` و`bash` تتطلبان موافقة المستخدم:
+For example, to ensure that the `edit` and `bash` tools require user approval:
 
 ```json title="codeplane.json"
 {
@@ -476,33 +550,34 @@ codeplane run "Hello world"
 }
 ```
 
-[تعرف على المزيد حول الأذونات هنا](/docs/permissions).
+[Learn more about permissions here](/docs/permissions).
 
 ---
 
-### ضغط السياق
+### Compaction
 
-يمكنك التحكم في سلوك ضغط السياق عبر الخيار `compaction`.
+You can control context compaction behavior through the `compaction` option.
 
 ```json title="codeplane.json"
 {
   "$schema": "https://example.invalid/config.json",
   "compaction": {
     "auto": true,
-    "prune": true
+    "prune": true,
+    "reserved": 10000
   }
 }
 ```
 
-- `auto` - ضغط الجلسة تلقائيًا عند امتلاء السياق (الافتراضي: `true`).
-- `prune` - إزالة مخرجات الأدوات القديمة لتوفير الرموز (tokens) (الافتراضي: `true`).
-- `reserved` - مخزن مؤقت للرموز (tokens) من أجل الضغط. يترك نافذة كافية لتجنب الفيضان أثناء الضغط.
+- `auto` - Automatically compact the session when context is full (default: `true`).
+- `prune` - Remove old tool outputs to save tokens (default: `true`).
+- `reserved` - Token buffer for compaction. Leaves enough window to avoid overflow during compaction
 
 ---
 
-### المراقِب
+### Watcher
 
-يمكنك ضبط أنماط التجاهل لمراقِب الملفات عبر الخيار `watcher`.
+You can configure file watcher ignore patterns through the `watcher` option.
 
 ```json title="codeplane.json"
 {
@@ -513,13 +588,13 @@ codeplane run "Hello world"
 }
 ```
 
-تتبع الأنماط صياغة `glob`. استخدم ذلك لاستبعاد الأدلة المزدحمة من مراقبة الملفات.
+Patterns follow glob syntax. Use this to exclude noisy directories from file watching.
 
 ---
 
-### خوادم MCP
+### MCP servers
 
-يمكنك ضبط خوادم MCP التي تريد استخدامها عبر الخيار `mcp`.
+You can configure MCP servers you want to use through the `mcp` option.
 
 ```json title="codeplane.json"
 {
@@ -528,15 +603,15 @@ codeplane run "Hello world"
 }
 ```
 
-[تعرف على المزيد هنا](/docs/mcp-servers).
+[Learn more here](/docs/mcp-servers).
 
 ---
 
-### الإضافات
+### Plugins
 
-[الإضافات](/docs/plugins) توسّع CodePlane بأدوات وخُطافات وتكاملات مخصصة.
+[Plugins](/docs/plugins) extend CodePlane with custom tools, hooks, and integrations.
 
-ضع ملفات الإضافات في `.codeplane/plugins/` أو `~/.config/codeplane/plugins/`. يمكنك أيضًا تحميل إضافات من npm عبر الخيار `plugin`.
+Place plugin files in `.codeplane/plugins/` or `~/.config/codeplane/plugins/`. You can also load plugins from npm through the `plugin` option.
 
 ```json title="codeplane.json"
 {
@@ -545,13 +620,13 @@ codeplane run "Hello world"
 }
 ```
 
-[تعرف على المزيد هنا](/docs/plugins).
+[Learn more here](/docs/plugins).
 
 ---
 
-### التعليمات
+### Instructions
 
-يمكنك ضبط التعليمات الخاصة بالنموذج الذي تستخدمه عبر الخيار `instructions`.
+You can configure the instructions for the model you're using through the `instructions` option.
 
 ```json title="codeplane.json"
 {
@@ -560,14 +635,14 @@ codeplane run "Hello world"
 }
 ```
 
-يقبل هذا مصفوفة من المسارات وأنماط `glob` لملفات التعليمات. [تعرف على المزيد
-حول القواعد هنا](/docs/rules).
+This takes an array of paths and glob patterns to instruction files. [Learn more
+about rules here](/docs/rules).
 
 ---
 
-### المزوّدون المعطّلون
+### Disabled providers
 
-يمكنك تعطيل المزوّدين الذين يتم تحميلهم تلقائيًا عبر الخيار `disabled_providers`. هذا مفيد عندما تريد منع تحميل مزوّدين معينين حتى لو كانت بيانات الاعتماد الخاصة بهم متاحة.
+You can disable providers that are loaded automatically through the `disabled_providers` option. This is useful when you want to prevent certain providers from being loaded even if their credentials are available.
 
 ```json title="codeplane.json"
 {
@@ -577,20 +652,20 @@ codeplane run "Hello world"
 ```
 
 :::note
-الخيار `disabled_providers` له أولوية على `enabled_providers`.
+The `disabled_providers` takes priority over `enabled_providers`.
 :::
 
-يقبل الخيار `disabled_providers` مصفوفة من معرفات المزوّدين. عند تعطيل مزوّد:
+The `disabled_providers` option accepts an array of provider IDs. When a provider is disabled:
 
-- لن يتم تحميله حتى لو كانت متغيرات البيئة مضبوطة.
-- لن يتم تحميله حتى لو كانت مفاتيح API مضبوطة عبر الأمر `/connect`.
-- لن تظهر نماذج هذا المزوّد في قائمة اختيار النموذج.
+- It won't be loaded even if environment variables are set.
+- It won't be loaded even if API keys are configured through the web app.
+- The provider's models won't appear in the model selection list.
 
 ---
 
-### المزوّدون المفعّلون
+### Enabled providers
 
-يمكنك تحديد قائمة سماح للمزوّدين عبر الخيار `enabled_providers`. عند ضبطه، سيتم تفعيل المزوّدين المحددين فقط وسيتم تجاهل البقية.
+You can specify an allowlist of providers through the `enabled_providers` option. When set, only the specified providers will be enabled and all others will be ignored.
 
 ```json title="codeplane.json"
 {
@@ -599,19 +674,19 @@ codeplane run "Hello world"
 }
 ```
 
-هذا مفيد عندما تريد تقييد CodePlane لاستخدام مزوّدين محددين بدلًا من تعطيلهم واحدًا تلو الآخر.
+This is useful when you want to restrict CodePlane to only use specific providers rather than disabling them one by one.
 
 :::note
-الخيار `disabled_providers` له أولوية على `enabled_providers`.
+The `disabled_providers` takes priority over `enabled_providers`.
 :::
 
-إذا ظهر مزوّد ضمن كل من `enabled_providers` و`disabled_providers`، تكون أولوية `disabled_providers` أعلى للتوافق مع الإصدارات السابقة.
+If a provider appears in both `enabled_providers` and `disabled_providers`, the `disabled_providers` takes priority for backwards compatibility.
 
 ---
 
-### تجريبي
+### Experimental
 
-يحتوي المفتاح `experimental` على خيارات قيد التطوير النشط.
+The `experimental` key contains options that are under active development.
 
 ```json title="codeplane.json"
 {
@@ -621,20 +696,20 @@ codeplane run "Hello world"
 ```
 
 :::caution
-الخيارات التجريبية غير مستقرة. قد تتغير أو تُزال دون إشعار.
+Experimental options are not stable. They may change or be removed without notice.
 :::
 
 ---
 
-## المتغيرات
+## Variables
 
-يمكنك استخدام استبدال المتغيرات في ملفات الإعدادات للإشارة إلى متغيرات البيئة ومحتويات الملفات.
+You can use variable substitution in your config files to reference environment variables and file contents.
 
 ---
 
-### متغيرات البيئة
+### Env vars
 
-استخدم `{env:VARIABLE_NAME}` لاستبدال متغيرات البيئة:
+Use `{env:VARIABLE_NAME}` to substitute environment variables:
 
 ```json title="codeplane.json"
 {
@@ -651,13 +726,13 @@ codeplane run "Hello world"
 }
 ```
 
-إذا لم يكن متغير البيئة مضبوطًا، فسيتم استبداله بسلسلة فارغة.
+If the environment variable is not set, it will be replaced with an empty string.
 
 ---
 
-### الملفات
+### Files
 
-استخدم `{file:path/to/file}` لاستبدال محتويات ملف:
+Use `{file:path/to/file}` to substitute the contents of a file:
 
 ```json title="codeplane.json"
 {
@@ -673,13 +748,13 @@ codeplane run "Hello world"
 }
 ```
 
-يمكن أن تكون مسارات الملفات:
+File paths can be:
 
-- نسبية إلى دليل ملف الإعدادات
-- أو مسارات مطلقة تبدأ بـ `/` أو `~`
+- Relative to the config file directory
+- Or absolute paths starting with `/` or `~`
 
-يُفيد ذلك في:
+These are useful for:
 
-- الاحتفاظ بالبيانات الحساسة مثل مفاتيح API في ملفات منفصلة.
-- تضمين ملفات تعليمات كبيرة دون تشويش ملف الإعدادات.
-- مشاركة مقتطفات إعدادات مشتركة عبر عدة ملفات إعدادات.
+- Keeping sensitive data like API keys in separate files.
+- Including large instruction files without cluttering your config.
+- Sharing common configuration snippets across multiple config files.

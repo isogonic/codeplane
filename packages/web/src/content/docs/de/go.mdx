@@ -1,59 +1,67 @@
 ---
 title: Go
-description: Kostengünstiges Abonnement für offene Coding-Modelle.
+description: Low cost subscription for open coding models.
 ---
 
 import config from "../../../../config.mjs"
 export const console = config.console
 export const email = `mailto:${config.email}`
 
-CodePlane Go ist ein kostengünstiges Abonnement — **5 $ für deinen ersten Monat**, danach **10 $/Monat** —, das dir zuverlässigen Zugriff auf beliebte offene Coding-Modelle bietet.
+CodePlane Go is a low cost subscription — **$5 for your first month**, then **$10/month** — that gives you reliable access to popular open coding models.
 
 :::note
-CodePlane Go befindet sich derzeit in der Beta-Phase.
+CodePlane Go is currently in beta.
 :::
 
-Go funktioniert wie jeder andere Provider in CodePlane. Du abonnierst CodePlane Go und
-erhältst deinen API-Key. Es ist **völlig optional** und du musst es nicht nutzen, um
-CodePlane zu verwenden.
+Go works like any other provider in CodePlane. You subscribe to CodePlane Go and
+get your API key. It's **completely optional** and you don't need to use it to
+use CodePlane.
 
-Es wurde primär für internationale Nutzer entwickelt, wobei die Modelle für einen stabilen weltweiten Zugriff in den USA, der EU und Singapur gehostet werden.
+It is designed primarily for international users, with models hosted in the US, EU, and Singapore for stable global access.
 
 ---
 
-## Hintergrund
+## Background
 
-Offene Modelle sind richtig gut geworden. Sie erreichen bei Coding-Aufgaben mittlerweile eine Leistung, die nahe an proprietäre Modelle herankommt. Und da viele Provider sie wettbewerbsfähig anbieten können, sind sie in der Regel viel günstiger.
+Open models have gotten really good. They now reach performance close to
+proprietary models for coding tasks. And because many providers can serve them
+competitively, they are usually far cheaper.
 
-Allerdings kann es schwierig sein, zuverlässigen Zugriff mit geringer Latenz auf sie zu erhalten. Provider variieren in Qualität und Verfügbarkeit.
+However, getting reliable, low latency access to them can be difficult. Providers
+vary in quality and availability.
 
 :::tip
-Wir haben eine ausgewählte Gruppe von Modellen und Providern getestet, die gut mit CodePlane funktionieren.
+We tested a select group of models and providers that work well with CodePlane.
 :::
 
-Um dies zu beheben, haben wir einige Dinge getan:
+To fix this, we did a couple of things:
 
-1. Wir haben eine ausgewählte Gruppe offener Modelle getestet und mit ihren Teams darüber gesprochen, wie man sie am besten ausführt.
-2. Anschließend haben wir mit einigen Providern zusammengearbeitet, um sicherzustellen, dass diese korrekt bereitgestellt werden.
-3. Zuletzt haben wir die Kombination aus Modell und Provider einem Benchmark unterzogen und eine Liste erstellt, die wir mit gutem Gewissen empfehlen können.
+1. We tested a select group of open models and talked to their teams about how to
+   best run them.
+2. We then worked with a few providers to make sure these were being served
+   correctly.
+3. Finally, we benchmarked the combination of the model/provider and came up
+   with a list that we feel good recommending.
 
-CodePlane Go bietet dir Zugriff auf diese Modelle für **5 $ im ersten Monat**, danach **10 $/Monat**.
+CodePlane Go gives you access to these models for **$5 for your first month**, then **$10/month**.
 
 ---
 
-## Wie es funktioniert
+## How it works
 
-CodePlane Go funktioniert wie jeder andere Provider in CodePlane.
+CodePlane Go works like any other provider in CodePlane.
 
-1. Du meldest dich bei **<a href={console}>CodePlane Zen</a>** an, abonnierst Go und kopierst deinen API-Key.
-2. Du führst den Befehl `/connect` in der TUI aus, wählst `CodePlane Go` und fügst deinen API-Key ein.
-3. Führe `/models` in der TUI aus, um die Liste der über Go verfügbaren Modelle zu sehen.
+1. You sign in to **<a href={console}>CodePlane Zen</a>**, subscribe to Go, and
+   copy your API key.
+2. Open Settings -> Providers in the web app, select `CodePlane Go`, and paste
+   your API key.
+3. Open the model selector to see the list of models available through Go.
 
 :::note
-Nur ein Mitglied pro Workspace kann CodePlane Go abonnieren.
+Only one member per workspace can subscribe to CodePlane Go.
 :::
 
-Die aktuelle Liste der Modelle umfasst:
+The current list of models includes:
 
 - **GLM-5**
 - **GLM-5.1**
@@ -64,79 +72,81 @@ Die aktuelle Liste der Modelle umfasst:
 - **MiMo-V2.5-Pro**
 - **MiMo-V2.5**
 - **MiniMax M2.5**
+- **MiniMax M2.7**
 - **Qwen3.5 Plus**
 - **Qwen3.6 Plus**
-- **MiniMax M2.7**
 - **DeepSeek V4 Pro**
 - **DeepSeek V4 Flash**
 
-Die Liste der Modelle kann sich ändern, während wir neue testen und hinzufügen.
+The list of models may change as we test and add new ones.
 
 ---
 
-## Nutzungslimits
+## Usage limits
 
-CodePlane Go beinhaltet die folgenden Limits:
+CodePlane Go includes the following limits:
 
-- **5-Stunden-Limit** — 12 $ Nutzung
-- **Wöchentliches Limit** — 30 $ Nutzung
-- **Monatliches Limit** — 60 $ Nutzung
+- **5 hour limit** — $12 of usage
+- **Weekly limit** — $30 of usage
+- **Monthly limit** — $60 of usage
 
-Limits sind in Dollarwerten definiert. Das bedeutet, dass die tatsächliche Anzahl deiner Anfragen von dem von dir genutzten Modell abhängt. Günstigere Modelle wie MiniMax M2.5 erlauben mehr Anfragen, während teurere Modelle wie GLM-5.1 weniger erlauben.
+Limits are defined in dollar value. This means your actual request count depends on the model you use. Cheaper models like Qwen3.5 Plus allow for more requests, while higher-cost models like GLM-5.1 allow for fewer.
 
-Die folgende Tabelle zeigt eine geschätzte Anzahl von Anfragen basierend auf typischen Go-Nutzungsmustern:
+The table below provides an estimated request count based on typical Go usage patterns:
 
-| Model             | Anfragen pro 5 Stunden | Anfragen pro Woche | Anfragen pro Monat |
-| ----------------- | ---------------------- | ------------------ | ------------------ |
-| GLM-5.1           | 880                    | 2,150              | 4,300              |
-| GLM-5             | 1,150                  | 2,880              | 5,750              |
-| Kimi K2.5         | 1,850                  | 4,630              | 9,250              |
-| Kimi K2.6         | 1,150                  | 2,880              | 5,750              |
-| MiMo-V2-Pro       | 1,290                  | 3,225              | 6,450              |
-| MiMo-V2-Omni      | 2,150                  | 5,450              | 10,900             |
-| MiMo-V2.5-Pro     | 1,290                  | 3,225              | 6,450              |
-| MiMo-V2.5         | 2,150                  | 5,450              | 10,900             |
-| MiniMax M2.7      | 3,400                  | 8,500              | 17,000             |
-| MiniMax M2.5      | 6,300                  | 15,900             | 31,800             |
-| Qwen3.6 Plus      | 3,300                  | 8,200              | 16,300             |
-| Qwen3.5 Plus      | 10,200                 | 25,200             | 50,500             |
-| DeepSeek V4 Pro   | 1,300                  | 3,250              | 6,500              |
-| DeepSeek V4 Flash | 7,450                  | 18,600             | 37,300             |
+| Model             | requests per 5 hour | requests per week | requests per month |
+| ----------------- | ------------------- | ----------------- | ------------------ |
+| GLM-5.1           | 880                 | 2,150             | 4,300              |
+| GLM-5             | 1,150               | 2,880             | 5,750              |
+| Kimi K2.5         | 1,850               | 4,630             | 9,250              |
+| Kimi K2.6         | 1,150               | 2,880             | 5,750              |
+| MiMo-V2-Pro       | 1,290               | 3,225             | 6,450              |
+| MiMo-V2-Omni      | 2,150               | 5,450             | 10,900             |
+| MiMo-V2.5-Pro     | 1,290               | 3,225             | 6,450              |
+| MiMo-V2.5         | 2,150               | 5,450             | 10,900             |
+| MiniMax M2.7      | 3,400               | 8,500             | 17,000             |
+| MiniMax M2.5      | 6,300               | 15,900            | 31,800             |
+| Qwen3.6 Plus      | 3,300               | 8,200             | 16,300             |
+| Qwen3.5 Plus      | 10,200              | 25,200            | 50,500             |
+| DeepSeek V4 Pro   | 1,300               | 3,250             | 6,500              |
+| DeepSeek V4 Flash | 7,450               | 18,600            | 37,300             |
 
-Die Schätzungen basieren auf beobachteten durchschnittlichen Anfragemustern:
+Estimates are based on observed average request patterns:
 
-- GLM-5/5.1 — 700 Input-, 52.000 Cached-, 150 Output-Tokens pro Anfrage
-- Kimi K2.5/K2.6 — 870 Input-, 55.000 Cached-, 200 Output-Tokens pro Anfrage
+- GLM-5/5.1 — 700 input, 52,000 cached, 150 output tokens per request
+- Kimi K2.5/K2.6 — 870 input, 55,000 cached, 200 output tokens per request
 - DeepSeek V4 Pro/Flash — 700 input, 52,000 cached, 150 output tokens per request
-- MiniMax M2.7/M2.5 — 300 Input-, 55.000 Cached-, 125 Output-Tokens pro Anfrage
+- MiniMax M2.7/M2.5 — 300 input, 55,000 cached, 125 output tokens per request
+- MiMo-V2-Pro — 350 input, 41,000 cached, 250 output tokens per request
+- MiMo-V2-Omni — 1000 input, 60,000 cached, 140 output tokens per request
+- MiMo-V2.5-Pro — 350 input, 41,000 cached, 250 output tokens per request
+- MiMo-V2.5 — 1000 input, 60,000 cached, 140 output tokens per request
 - Qwen3.5 Plus — 410 input, 47,000 cached, 140 output tokens per request
 - Qwen3.6 Plus — 500 input, 57,000 cached, 190 output tokens per request
-- MiMo-V2-Pro — 350 Input-, 41.000 Cached-, 250 Output-Tokens pro Anfrage
-- MiMo-V2-Omni — 1.000 Input-, 60.000 Cached-, 140 Output-Tokens pro Anfrage
-- MiMo-V2.5-Pro — 350 Input-, 41.000 Cached-, 250 Output-Tokens pro Anfrage
-- MiMo-V2.5 — 1.000 Input-, 60.000 Cached-, 140 Output-Tokens pro Anfrage
 
-Du kannst deine aktuelle Nutzung in der **<a href={console}>Console</a>** verfolgen.
+You can track your current usage in the **<a href={console}>console</a>**.
 
 :::tip
-Wenn du das Nutzungslimit erreichst, kannst du weiterhin die kostenlosen Modelle verwenden.
+If you reach the usage limit, you can continue using the free models.
 :::
 
-Die Nutzungslimits können sich ändern, während wir aus der frühen Nutzung und dem Feedback lernen.
+Usage limits may change as we learn from early usage and feedback.
 
 ---
 
-### Nutzung über die Limits hinaus
+### Usage beyond limits
 
-Wenn du auch Guthaben auf deinem Zen-Konto hast, kannst du in der Console die Option **Use balance** aktivieren. Wenn diese aktiviert ist, greift Go auf dein Zen-Guthaben zurück, nachdem du deine Nutzungslimits erreicht hast, anstatt Anfragen zu blockieren.
+If you also have credits on your Zen balance, you can enable the **Use balance**
+option in the console. When enabled, Go will fall back to your Zen balance
+after you've reached your usage limits instead of blocking requests.
 
 ---
 
-## Endpunkte
+## Endpoints
 
-Du kannst auf die Go-Modelle auch über die folgenden API-Endpunkte zugreifen.
+You can also access Go models through the following API endpoints.
 
-| Modell            | Modell-ID         | Endpunkt                                         | AI SDK Package              |
+| Model             | Model ID          | Endpoint                                         | AI SDK Package              |
 | ----------------- | ----------------- | ------------------------------------------------ | --------------------------- |
 | GLM-5.1           | glm-5.1           | `https://example.invalid/zen` | `@ai-sdk/openai-compatible` |
 | GLM-5             | glm-5             | `https://example.invalid/zen` | `@ai-sdk/openai-compatible` |
@@ -153,21 +163,23 @@ Du kannst auf die Go-Modelle auch über die folgenden API-Endpunkte zugreifen.
 | Qwen3.6 Plus      | qwen3.6-plus      | `https://example.invalid/zen` | `@ai-sdk/alibaba`           |
 | Qwen3.5 Plus      | qwen3.5-plus      | `https://example.invalid/zen` | `@ai-sdk/alibaba`           |
 
-Die [Modell-ID](/docs/config/#models) in deiner CodePlane Config verwendet das Format `codeplane-go/<model-id>`. Für Kimi K2.6 würdest du beispielsweise `codeplane-go/kimi-k2.6` in deiner Config verwenden.
+The [model id](/docs/config/#models) in your CodePlane config
+uses the format `codeplane-go/<model-id>`. For example, for Kimi K2.6, you would
+use `codeplane-go/kimi-k2.6` in your config.
 
 ---
 
-## Datenschutz
+## Privacy
 
-Der Plan ist in erster Linie für internationale Nutzer konzipiert, mit in US, EU und Singapore gehosteten Modellen für einen stabilen weltweiten Zugriff. Unsere Anbieter befolgen eine Zero-Retention-Richtlinie und verwenden Ihre Daten nicht für das Modelltraining.
+The plan is designed primarily for international users, with models hosted in the US, EU, and Singapore for stable global access. Our providers follow a zero-retention policy and do not use your data for model training.
 
 ---
 
-## Ziele
+## Goals
 
-Wir haben CodePlane Go entwickelt, um:
+We created CodePlane Go to:
 
-1. AI Coding durch ein kostengünstiges Abonnement für mehr Menschen **zugänglich** zu machen.
-2. **Zuverlässigen** Zugriff auf die besten offenen Coding-Modelle zu bieten.
-3. Modelle zu kuratieren, die für den Einsatz als Coding Agent **getestet und einem Benchmark unterzogen** wurden.
-4. **Keinen Lock-in-Effekt** zu haben, indem wir dir ermöglichen, auch jeden anderen Provider mit CodePlane zu nutzen.
+1. Make AI coding **accessible** to more people with a low cost subscription.
+2. Provide **reliable** access to the best open coding models.
+3. Curate models that are **tested and benchmarked** for coding agent use.
+4. Have **no lock-in** by allowing you to use any other provider with CodePlane as well.

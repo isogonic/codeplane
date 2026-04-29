@@ -1,71 +1,64 @@
 ---
-title: ウェブ
-description: ブラウザで CodePlane を使用する。
+title: Web
+description: Using CodePlane in your browser.
 ---
 
-CodePlane はブラウザで Web アプリケーションとして実行でき、ターミナルを必要とせずに同じ強力な AI コーディングエクスペリエンスを提供します。
+CodePlane can run as a web application in your browser, providing the same powerful AI coding experience without needing a terminal.
 
-![CodePlane Web - 新しいセッション](../../../assets/web/web-homepage-new-session.png)
+![CodePlane Web - New Session](../../../assets/web/web-homepage-new-session.png)
 
----
+## Getting Started
 
-## はじめる
-
-以下を実行して Web インターフェースを開始します。
+Start the web interface by running:
 
 ```bash
 codeplane web
 ```
 
-これにより、利用可能なランダムなポートを使用して `127.0.0.1` でローカルサーバーが起動され、デフォルトのブラウザで CodePlane が自動的に開きます。
+This starts a local server on `127.0.0.1` with a random available port and automatically opens CodePlane in your default browser.
 
 :::caution
-`CODEPLANE_SERVER_PASSWORD` が設定されていない場合、サーバーは保護されません。これはローカルで使用する場合には問題ありませんが、ネットワークアクセス用に設定する必要があります。
-:::
-:::tip[Windows ユーザー]
-最高のエクスペリエンスを得るには、PowerShell ではなく [WSL](/docs/windows-wsl) から `codeplane web` を実行します。これにより、ファイルシステムへの適切なアクセスとターミナルの統合が保証されます。
+If `CODEPLANE_SERVER_PASSWORD` is not set, the server will be unsecured. This is fine for local use but should be set for network access.
 :::
 
----
+## Configuration
 
-## 設定
+You can configure the web server using command line flags or in your [config file](/docs/config).
 
-コマンドラインフラグを使用するか、[設定ファイル](/docs/config)で Web サーバーを設定できます。
+### Port
 
-### ポート
-
-デフォルトでは、CodePlane は使用可能なポートを選択します。ポートを指定できます。
+By default, CodePlane picks an available port. You can specify a port:
 
 ```bash
 codeplane web --port 4096
 ```
 
-### ホスト名
+### Hostname
 
-デフォルトでは、サーバーは `127.0.0.1` (localhost のみ) にバインドされます。ネットワーク上で CodePlane にアクセスできるようにするには:
+By default, the server binds to `127.0.0.1` (localhost only). To make CodePlane accessible on your network:
 
 ```bash
 codeplane web --hostname 0.0.0.0
 ```
 
-`0.0.0.0` を使用すると、CodePlane はローカルアドレスとネットワークアドレスの両方を表示します。
+When using `0.0.0.0`, CodePlane will display both local and network addresses:
 
 ```
   Local access:       http://localhost:4096
   Network access:     http://192.168.1.100:4096
 ```
 
-### mDNS 検出
+### mDNS Discovery
 
-mDNS を有効にして、ローカルネットワーク上でサーバーを検出できるようにします。
+Enable mDNS to make your server discoverable on the local network:
 
 ```bash
 codeplane web --mdns
 ```
 
-これにより、ホスト名が自動的に `0.0.0.0` に設定され、サーバーが `codeplane.local` としてアドバタイズされます。
+This automatically sets the hostname to `0.0.0.0` and advertises the server as `codeplane.local`.
 
-mDNS ドメイン名をカスタマイズして、同じネットワーク上で複数のインスタンスを実行できます。
+You can customize the mDNS domain name to run multiple instances on the same network:
 
 ```bash
 codeplane web --mdns --mdns-domain myproject.local
@@ -73,61 +66,43 @@ codeplane web --mdns --mdns-domain myproject.local
 
 ### CORS
 
-CORS の追加ドメインを許可するには (カスタムフロントエンドに便利):
+To allow additional domains for CORS (useful for custom frontends):
 
 ```bash
 codeplane web --cors https://example.com
 ```
 
-### 認証
+### Authentication
 
-アクセスを保護するには、`CODEPLANE_SERVER_PASSWORD` 環境変数を使用してパスワードを設定します。
+To protect access, set a password using the `CODEPLANE_SERVER_PASSWORD` environment variable:
 
 ```bash
 CODEPLANE_SERVER_PASSWORD=secret codeplane web
 ```
 
-ユーザー名のデフォルトは `codeplane` ですが、`CODEPLANE_SERVER_USERNAME` で変更できます。
+The username defaults to `codeplane` but can be changed with `CODEPLANE_SERVER_USERNAME`.
 
 ---
 
-## Web インターフェースの使用
+## Using the Web Interface
 
-開始すると、Web インターフェイスから CodePlane セッションにアクセスできるようになります。
+Once started, the web interface provides access to your CodePlane sessions.
 
-### セッション
+### Sessions
 
-ホームページからセッションを表示および管理します。アクティブなセッションを確認したり、新しいセッションを開始したりできます。
+View and manage your sessions from the homepage. You can see active sessions and start new ones.
 
-![CodePlane Web - アクティブなセッション](../../../assets/web/web-homepage-active-session.png)
+![CodePlane Web - Active Session](../../../assets/web/web-homepage-active-session.png)
 
-### サーバーステータス
+### Server Status
 
-「サーバーを表示」をクリックすると、接続されているサーバーとそのステータスが表示されます。
+Click "See Servers" to view connected servers and their status.
 
-![CodePlane Web - サーバー](../../../assets/web/web-homepage-see-servers.png)
+![CodePlane Web - See Servers](../../../assets/web/web-homepage-see-servers.png)
 
----
+## Config File
 
-## ターミナルの接続
-
-実行中の Web サーバーにターミナル TUI を接続できます。
-
-```bash
-# Start the web server
-codeplane web --port 4096
-
-# In another terminal, attach the TUI
-codeplane attach http://localhost:4096
-```
-
-これにより、Web インターフェイスとターミナルの両方を同時に使用し、同じセッションと状態を共有できるようになります。
-
----
-
-## 設定ファイル
-
-`codeplane.json` 設定ファイルでサーバー設定を構成することもできます。
+You can also configure server settings in your `codeplane.json` config file:
 
 ```json
 {
@@ -140,4 +115,4 @@ codeplane attach http://localhost:4096
 }
 ```
 
-コマンドラインフラグは、設定ファイルの設定よりも優先されます。
+Command line flags take precedence over config file settings.

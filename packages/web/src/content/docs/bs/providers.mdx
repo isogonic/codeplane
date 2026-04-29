@@ -1,37 +1,37 @@
 ---
-title: Provajderi
-description: Korištenje bilo kojeg LLM provajdera u CodePlane.
+title: Providers
+description: Using any LLM provider in CodePlane.
 ---
 
 import config from "../../../../config.mjs"
 export const console = config.console
 
-CodePlane koristi [AI SDK](https://ai-sdk.dev/) i [Models.dev](https://models.dev) za podršku **75+ LLM provajdera** i podržava pokretanje lokalnih modela.
+CodePlane uses the [AI SDK](https://ai-sdk.dev/) and [Models.dev](https://models.dev) to support **75+ LLM providers** and it supports running local models.
 
-Za dodavanje provajdera potrebno je:
+To add a provider you need to:
 
-1. Dodajte API ključeve za provajdera koristeći naredbu `/connect`.
-2. Konfigurirajte dobavljača u vašoj CodePlane konfiguraciji.
-
----
-
-### Vjerodajnice
-
-Kada dodate API ključeve dobavljača sa naredbom `/connect`, oni se pohranjuju
-u `~/.local/share/codeplane/auth.json`.
+1. Add the API keys for the provider from Settings -> Providers in the web app.
+2. Configure the provider in your CodePlane config.
 
 ---
 
-### Konfiguracija
+### Credentials
 
-Možete prilagoditi dobavljače putem odjeljka `provider` u vašem CodePlane
+When you add a provider's API keys from Settings -> Providers, they are stored
+in `~/.local/share/codeplane/auth.json`.
+
+---
+
+### Config
+
+You can customize the providers through the `provider` section in your CodePlane
 config.
 
 ---
 
-#### Osnovni URL
+#### Base URL
 
-Možete prilagoditi osnovni URL za bilo kojeg provajdera postavljanjem opcije `baseURL`. Ovo je korisno kada koristite proxy usluge ili prilagođene krajnje tačke.
+You can customize the base URL for any provider by setting the `baseURL` option. This is useful when using proxy services or custom endpoints.
 
 ```json title="codeplane.json" {6}
 {
@@ -50,53 +50,54 @@ Možete prilagoditi osnovni URL za bilo kojeg provajdera postavljanjem opcije `b
 
 ## CodePlane Zen
 
-CodePlane Zen je lista modela koje je obezbedio CodePlane tim koji su bili
-testirano i potvrđeno da dobro radi sa CodePlane. [Saznajte više](/docs/zen).
+CodePlane Zen is a list of models provided by the CodePlane team that have been
+tested and verified to work well with CodePlane. [Learn more](/docs/zen).
 
 :::tip
-Ako ste novi, preporučujemo da počnete sa CodePlane Zen.
+If you are new, we recommend starting with CodePlane Zen.
 :::
 
-1. Pokrenite naredbu `/connect` u TUI-u, odaberite codeplane i idite na [example.invalid/auth](https://example.invalid/auth).
+1. Open Settings -> Providers in the web app, select `CodePlane Zen`, and head to [example.invalid/auth](https://example.invalid/zen).
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-2. Prijavite se, dodajte svoje detalje naplate i kopirajte svoj API ključ.
+2. Sign in, add your billing details, and copy your API key.
 
-3. Zalijepite svoj API ključ.
+3. Paste your API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite `/models` u TUI da vidite listu modela koje preporučujemo.
+4. Open the model selector to see the list of models we recommend.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
-Radi kao i svaki drugi provajder u CodePlane i potpuno je opcionalan za korištenje.
+It works like any other provider in CodePlane and is completely optional to use.
 
 ---
 
 ## CodePlane Go
 
-CodePlane Go je jeftin plan pretplate koji pruža pouzdan pristup popularnim modelima otvorenog kodiranja koje pruža CodePlane tim i koji su testirani i verificirani da dobro rade s CodePlane-om.
+CodePlane Go is a low cost subscription plan that provides reliable access to popular open coding models provided by the CodePlane team that have been
+tested and verified to work well with CodePlane.
 
-1. Pokrenite naredbu `/connect` u TUI-u, odaberite `CodePlane Go` i idite na [example.invalid/auth](https://example.invalid/zen).
+1. Open Settings -> Providers in the web app, select `CodePlane Go`, and head to [example.invalid/auth](https://example.invalid/zen).
 
    ```txt
    /connect
    ```
 
-2. Prijavite se, dodajte svoje detalje naplate i kopirajte svoj API ključ.
+2. Sign in, add your billing details, and copy your API key.
 
-3. Zalijepite svoj API ključ.
+3. Paste your API key.
 
    ```txt
    ┌ API key
@@ -105,72 +106,74 @@ CodePlane Go je jeftin plan pretplate koji pruža pouzdan pristup popularnim mod
    └ enter
    ```
 
-4. Pokrenite naredbu `/models` u TUI da vidite listu modela koje preporučujemo.
+4. Open the model selector to see the list of models we recommend.
 
    ```txt
    /models
    ```
 
-Radi kao i svaki drugi provajder u CodePlane i potpuno je opcionalan za korištenje.
+It works like any other provider in CodePlane and is completely optional to use.
 
 ---
 
-## Direktorij
+## Directory
 
-Pogledajmo neke od provajdera detaljno. Ako želite dodati provajdera na
-listu, slobodno otvori PR.
+Let's look at some of the providers in detail. If you'd like to add a provider to the
+list, feel free to open a PR.
 
 :::note
-Ne vidite provajdera ovdje? Pošaljite PR.
+Don't see a provider here? Submit a PR.
 :::
 
 ---
 
 ### 302.AI
 
-1. Idite na [302.AI konzolu](https://302.ai/), kreirajte račun i generirajte API ključ.
+1. Head over to the [302.AI console](https://302.ai/), create an account, and generate an API key.
 
-2. Pokrenite naredbu `/connect` i potražite **302.AI**.
+2. Run the `/connect` command and search for **302.AI**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj 302.AI API ključ.
+3. Enter your 302.AI API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete model.
+4. Run the `/models` command to select a model.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### Amazon Bedrock
 
-Da biste koristili Amazon Bedrock s CodePlane:
+To use Amazon Bedrock with CodePlane:
 
-1. Idite na **Katalog modela** na Amazon Bedrock konzoli i zatražite
-   pristup modelima koje želite.
+1. Head over to the **Model catalog** in the Amazon Bedrock console and request
+   access to the models you want.
 
    :::tip
-   Morate imati pristup modelu koji želite u Amazon Bedrock.
+   You need to have access to the model you want in Amazon Bedrock.
    :::
 
-2. **Konfigurirajte autentifikaciju** koristeći jedan od sljedećih metoda:
+2. **Configure authentication** using one of the following methods:
 
-   #### Varijable okruženja (Brzi početak)
+   ***
 
-   Postavite jednu od ovih varijabli okruženja dok pokrećete codeplane:
+   #### Environment Variables (Quick Start)
 
-```bash
+   Set one of these environment variables while running codeplane:
+
+   ```bash
    # Option 1: Using AWS access keys
    AWS_ACCESS_KEY_ID=XXX AWS_SECRET_ACCESS_KEY=YYY codeplane
 
@@ -179,92 +182,98 @@ Da biste koristili Amazon Bedrock s CodePlane:
 
    # Option 3: Using Bedrock bearer token
    AWS_BEARER_TOKEN_BEDROCK=XXX codeplane
-```
+   ```
 
-Ili ih dodajte na svoj bash profil:
+   Or add them to your bash profile:
 
-```bash title="~/.bash_profile"
+   ```bash title="~/.bash_profile"
    export AWS_PROFILE=my-dev-profile
    export AWS_REGION=us-east-1
-```
+   ```
 
-#### Konfiguracijski fajl (Preporučeno)
+   ***
 
-Za konfiguraciju specifičnu za projekat ili trajnu konfiguraciju, koristite `codeplane.json`:
+   #### Configuration File (Recommended)
 
-```json title="codeplane.json"
-{
-  "$schema": "https://example.invalid/config.json",
-  "provider": {
-    "amazon-bedrock": {
-      "options": {
-        "region": "us-east-1",
-        "profile": "my-aws-profile"
-      }
-    }
-  }
-}
-```
+   For project-specific or persistent configuration, use `codeplane.json`:
 
-**Dostupne opcije:**
+   ```json title="codeplane.json"
+   {
+     "$schema": "https://example.invalid/config.json",
+     "provider": {
+       "amazon-bedrock": {
+         "options": {
+           "region": "us-east-1",
+           "profile": "my-aws-profile"
+         }
+       }
+     }
+   }
+   ```
 
-- `region` - ​​AWS regija (npr. `us-east-1`, `eu-west-1`)
-- `profile` - ​​AWS je imenovao profil od `~/.aws/credentials`
-- `endpoint` - ​​URL prilagođene krajnje tačke za VPC krajnje tačke (pseudonim za generičku opciju `baseURL`)
+   **Available options:**
+   - `region` - AWS region (e.g., `us-east-1`, `eu-west-1`)
+   - `profile` - AWS named profile from `~/.aws/credentials`
+   - `endpoint` - Custom endpoint URL for VPC endpoints (alias for generic `baseURL` option)
 
-:::tip
-Opcije konfiguracijske datoteke imaju prednost nad varijablama okruženja.
-:::
+   :::tip
+   Configuration file options take precedence over environment variables.
+   :::
 
-#### Napredno: VPC krajnje tačke
+   ***
 
-Ako koristite VPC krajnje tačke za Bedrock:
+   #### Advanced: VPC Endpoints
 
-```json title="codeplane.json"
-{
-  "$schema": "https://example.invalid/config.json",
-  "provider": {
-    "amazon-bedrock": {
-      "options": {
-        "region": "us-east-1",
-        "profile": "production",
-        "endpoint": "https://bedrock-runtime.us-east-1.vpce-xxxxx.amazonaws.com"
-      }
-    }
-  }
-}
-```
+   If you're using VPC endpoints for Bedrock:
 
-:::note
-Opcija `endpoint` je pseudonim za generičku opciju `baseURL`, koristeći terminologiju specifičnu za AWS. Ako su specificirani i `endpoint` i `baseURL`, `endpoint` ima prednost.
-:::
+   ```json title="codeplane.json"
+   {
+     "$schema": "https://example.invalid/config.json",
+     "provider": {
+       "amazon-bedrock": {
+         "options": {
+           "region": "us-east-1",
+           "profile": "production",
+           "endpoint": "https://bedrock-runtime.us-east-1.vpce-xxxxx.amazonaws.com"
+         }
+       }
+     }
+   }
+   ```
 
-#### Metode provjere autentičnosti
+   :::note
+   The `endpoint` option is an alias for the generic `baseURL` option, using AWS-specific terminology. If both `endpoint` and `baseURL` are specified, `endpoint` takes precedence.
+   :::
 
-- **`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`**: Kreirajte IAM korisnika i generirajte pristupne ključeve u AWS konzoli
-- **`AWS_PROFILE`**: Koristite imenovane profile od `~/.aws/credentials`. Prvo konfigurirajte sa `aws configure --profile my-profile` ili `aws sso login`
-- **`AWS_BEARER_TOKEN_BEDROCK`**: Generirajte dugoročne API ključeve sa Amazon Bedrock konzole
-- **`AWS_WEB_IDENTITY_TOKEN_FILE` / `AWS_ROLE_ARN`**: Za EKS IRSA (IAM uloge za servisne naloge) ili druga Kubernetes okruženja sa OIDC federacijom. Kubernetes automatski ubacuje ove varijable okruženja kada se koriste napomene naloga usluge.
+   ***
 
-#### Prioritet autentifikacije
+   #### Authentication Methods
+   - **`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`**: Create an IAM user and generate access keys in the AWS Console
+   - **`AWS_PROFILE`**: Use named profiles from `~/.aws/credentials`. First configure with `aws configure --profile my-profile` or `aws sso login`
+   - **`AWS_BEARER_TOKEN_BEDROCK`**: Generate long-term API keys from the Amazon Bedrock console
+   - **`AWS_WEB_IDENTITY_TOKEN_FILE` / `AWS_ROLE_ARN`**: For EKS IRSA (IAM Roles for Service Accounts) or other Kubernetes environments with OIDC federation. These environment variables are automatically injected by Kubernetes when using service account annotations.
 
-Amazon Bedrock koristi sljedeći prioritet autentifikacije:
+   ***
 
-1.  **Token nosioca** - `AWS_BEARER_TOKEN_BEDROCK` varijabla okruženja ili token iz naredbe `/connect`
-2.  **AWS lanac vjerodajnica** - profil, pristupni ključevi, dijeljeni vjerodajnici, IAM uloge, tokeni web identiteta (EKS IRSA), metapodaci instance
+   #### Authentication Precedence
 
-:::note
-Kada se postavi token nosioca (putem `/connect` ili `AWS_BEARER_TOKEN_BEDROCK`), on ima prednost nad svim AWS metodama akreditiva uključujući konfigurirane profile.
-:::
+   Amazon Bedrock uses the following authentication priority:
+   1. **Bearer Token** - `AWS_BEARER_TOKEN_BEDROCK` environment variable or token from `/connect` command
+   2. **AWS Credential Chain** - Profile, access keys, shared credentials, IAM roles, Web Identity Tokens (EKS IRSA), instance metadata
 
-3. Pokrenite naredbu `/models` da odaberete model koji želite.
+   :::note
+   When a bearer token is set (via `/connect` or `AWS_BEARER_TOKEN_BEDROCK`), it takes precedence over all AWS credential methods including configured profiles.
+   :::
 
-```txt
+3. Run the `/models` command to select the model you want.
+
+   ```txt
    /models
-```
+   ```
 
 :::note
-Za prilagođene profile zaključivanja, koristite ime modela i dobavljača u ključu i postavite svojstvo `id` na arn. Ovo osigurava ispravno keširanje:
+For custom inference profiles, use the model and provider name in the key and set the `id` property to the arn. This ensures correct caching.
+:::
 
 ```json title="codeplane.json"
 {
@@ -282,449 +291,519 @@ Za prilagođene profile zaključivanja, koristite ime modela i dobavljača u klj
 }
 ```
 
-:::
-
 ---
 
 ### Anthropic
 
-1. Nakon što ste se prijavili, pokrenite naredbu `/connect` i odaberite Anthropic.
+1. Once you've signed up, run the `/connect` command and select Anthropic.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-2. Ovdje možete odabrati opciju **Claude Pro/Max** i ona će otvoriti vaš pretraživač
-   i traži od vas da se autentifikujete.
+2. Here you can select the **Claude Pro/Max** option and it'll open your browser
+   and ask you to authenticate.
 
-```txt
+   ```txt
    ┌ Select auth method
    │
-   │ Claude Pro/Max
-   │ Create an API Key
    │ Manually enter API Key
    └
-```
+   ```
 
-3. Sada bi svi Anthropic modeli trebali biti dostupni kada koristite naredbu `/models`.
+3. Now all the Anthropic models should be available when you use the `/models` command.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 :::info
-[Anthropic] (https://anthropic.com) službeno ne podržava korištenje vaše Claude Pro/Max pretplate u CodePlane.
-:::
+There are plugins that allow you to use your Claude Pro/Max models with
+CodePlane. Anthropic explicitly prohibits this.
 
-##### Korištenje API ključeva
+Previous versions of CodePlane came bundled with these plugins but that is no
+longer the case as of 1.3.0
 
-Također možete odabrati **Kreiraj API ključ** ako nemate Pro/Max pretplatu. Također će otvoriti vaš pretraživač i zatražiti od vas da se prijavite na Anthropic i dati vam kod koji možete zalijepiti u svoj terminal.
+Other companies support freedom of choice with developer tooling - you can use
+the following subscriptions in CodePlane with zero setup:
 
-Ili ako već imate API ključ, možete odabrati **Ručno unesite API ključ** i zalijepite ga u svoj terminal.
+- ChatGPT Plus
+- Github Copilot
+- Gitlab Duo
+  :::
 
 ---
 
 ### Azure OpenAI
 
 :::note
-Ako naiđete na greške "Žao mi je, ali ne mogu pomoći s tim zahtjevom", pokušajte promijeniti filter sadržaja iz **DefaultV2** u **Default** u vašem Azure resursu.
+If you encounter "I'm sorry, but I cannot assist with that request" errors, try changing the content filter from **DefaultV2** to **Default** in your Azure resource.
 :::
 
-1. Idite na [Azure portal](https://portal.azure.com/) i kreirajte **Azure OpenAI** resurs. trebat će vam:
-   - **Naziv resursa**: Ovo postaje dio vaše krajnje tačke API-ja (`https://RESOURCE_NAME.openai.azure.com/`)
-   - **API ključ**: Ili `KEY 1` ili `KEY 2` sa vašeg izvora
+1. Head over to the [Azure portal](https://portal.azure.com/) and create an **Azure OpenAI** resource. You'll need:
+   - **Resource name**: This becomes part of your API endpoint (`https://RESOURCE_NAME.openai.azure.com/`)
+   - **API key**: Either `KEY 1` or `KEY 2` from your resource
 
-2. Idite na [Azure AI Foundry](https://ai.azure.com/) i implementirajte model.
+2. Go to [Azure AI Foundry](https://ai.azure.com/) and deploy a model.
 
    :::note
-   Ime implementacije mora odgovarati imenu modela da bi codeplane ispravno radio.
+   The deployment name must match the model name for codeplane to work properly.
    :::
 
-3. Pokrenite naredbu `/connect` i potražite **Azure**.
+3. Run the `/connect` command and search for **Azure**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-4. Unesite svoj API ključ.
+4. Enter your API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-5. Postavite ime vašeg resursa kao varijablu okruženja:
+5. Set your resource name as an environment variable:
 
-```bash
+   ```bash
    AZURE_RESOURCE_NAME=XXX codeplane
-```
+   ```
 
-Ili ga dodajte na svoj bash profil:
+   Or add it to your bash profile:
 
-```bash title="~/.bash_profile"
+   ```bash title="~/.bash_profile"
    export AZURE_RESOURCE_NAME=XXX
-```
+   ```
 
-6. Pokrenite naredbu `/models` da odaberete svoj raspoređeni model.
+6. Run the `/models` command to select your deployed model.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### Azure Cognitive Services
 
-1. Idite na [Azure portal](https://portal.azure.com/) i kreirajte **Azure OpenAI** resurs. trebat će vam:
-   - **Naziv resursa**: Ovo postaje dio vaše krajnje tačke API-ja (`https://AZURE_COGNITIVE_SERVICES_RESOURCE_NAME.cognitiveservices.azure.com/`)
-   - **API ključ**: Ili `KEY 1` ili `KEY 2` sa vašeg izvora
+1. Head over to the [Azure portal](https://portal.azure.com/) and create an **Azure OpenAI** resource. You'll need:
+   - **Resource name**: This becomes part of your API endpoint (`https://AZURE_COGNITIVE_SERVICES_RESOURCE_NAME.cognitiveservices.azure.com/`)
+   - **API key**: Either `KEY 1` or `KEY 2` from your resource
 
-2. Idite na [Azure AI Foundry](https://ai.azure.com/) i implementirajte model.
+2. Go to [Azure AI Foundry](https://ai.azure.com/) and deploy a model.
 
    :::note
-   Ime implementacije mora odgovarati imenu modela da bi codeplane ispravno radio.
+   The deployment name must match the model name for codeplane to work properly.
    :::
 
-3. Pokrenite naredbu `/connect` i potražite **Azure kognitivne usluge**.
+3. Run the `/connect` command and search for **Azure Cognitive Services**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-4. Unesite svoj API ključ.
+4. Enter your API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-5. Postavite ime vašeg resursa kao varijablu okruženja:
+5. Set your resource name as an environment variable:
 
-```bash
+   ```bash
    AZURE_COGNITIVE_SERVICES_RESOURCE_NAME=XXX codeplane
-```
+   ```
 
-Ili ga dodajte na svoj bash profil:
+   Or add it to your bash profile:
 
-```bash title="~/.bash_profile"
+   ```bash title="~/.bash_profile"
    export AZURE_COGNITIVE_SERVICES_RESOURCE_NAME=XXX
-```
+   ```
 
-6. Pokrenite naredbu `/models` da odaberete svoj raspoređeni model.
+6. Run the `/models` command to select your deployed model.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### Baseten
 
-1. Idite na [Baseten](https://app.baseten.co/), kreirajte račun i generirajte API ključ.
+1. Head over to the [Baseten](https://app.baseten.co/), create an account, and generate an API key.
 
-2. Pokrenite naredbu `/connect` i potražite **Baseten**.
+2. Run the `/connect` command and search for **Baseten**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj Baseten API ključ.
+3. Enter your Baseten API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete model.
+4. Run the `/models` command to select a model.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### Cerebras
 
-1. Idite na [Cerebras konzolu](https://inference.cerebras.ai/), kreirajte račun i generirajte API ključ.
+1. Head over to the [Cerebras console](https://inference.cerebras.ai/), create an account, and generate an API key.
 
-2. Pokrenite naredbu `/connect` i potražite **Cerebras**.
+2. Run the `/connect` command and search for **Cerebras**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj Cerebras API ključ.
+3. Enter your Cerebras API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete model kao što je _Qwen 3 Coder 480B_.
+4. Run the `/models` command to select a model like _Qwen 3 Coder 480B_.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### Cloudflare AI Gateway
 
-Cloudflare AI Gateway vam omogućava da pristupite modelima iz OpenAI, Anthropic, Workers AI i više preko objedinjene krajnje tačke. Sa [Unified Billing](https://developers.cloudflare.com/ai-gateway/features/unified-billing/) nisu vam potrebni posebni API ključevi za svakog provajdera.
+Cloudflare AI Gateway lets you access models from OpenAI, Anthropic, Workers AI, and more through a unified endpoint. With [Unified Billing](https://developers.cloudflare.com/ai-gateway/features/unified-billing/) you don't need separate API keys for each provider.
 
-1. Idite na [Cloudflare kontrolnu tablu](https://dash.cloudflare.com/), idite na **AI** > **AI Gateway** i kreirajte novi pristupnik.
+1. Head over to the [Cloudflare dashboard](https://dash.cloudflare.com/), navigate to **AI** > **AI Gateway**, and create a new gateway. Note your **Account ID** and **Gateway ID**.
 
-2. Postavite svoj ID naloga i ID pristupnika kao varijable okruženja.
+2. Run the `/connect` command and search for **Cloudflare AI Gateway**.
 
-```bash title="~/.bash_profile"
+   ```txt
+   /connect
+   ```
+
+3. Enter your **Account ID** when prompted.
+
+   ```txt
+   ┌ Enter your Cloudflare Account ID
+   │
+   │
+   └ enter
+   ```
+
+4. Enter your **Gateway ID** when prompted.
+
+   ```txt
+   ┌ Enter your Cloudflare AI Gateway ID
+   │
+   │
+   └ enter
+   ```
+
+5. Enter your **Cloudflare API token**.
+
+   ```txt
+   ┌ Gateway API token
+   │
+   │
+   └ enter
+   ```
+
+6. Run the `/models` command to select a model.
+
+   ```txt
+   /models
+   ```
+
+   You can also add models through your codeplane config.
+
+   ```json title="codeplane.json"
+   {
+     "$schema": "https://example.invalid/config.json",
+     "provider": {
+       "cloudflare-ai-gateway": {
+         "models": {
+           "openai/gpt-4o": {},
+           "anthropic/claude-sonnet-4": {}
+         }
+       }
+     }
+   }
+   ```
+
+   Alternatively, you can set environment variables instead of using `/connect`.
+
+   ```bash title="~/.bash_profile"
    export CLOUDFLARE_ACCOUNT_ID=your-32-character-account-id
    export CLOUDFLARE_GATEWAY_ID=your-gateway-id
-```
+   export CLOUDFLARE_API_TOKEN=your-api-token
+   ```
 
-3. Pokrenite naredbu `/connect` i potražite **Cloudflare AI Gateway**.
+---
 
-```txt
+### Cloudflare Workers AI
+
+Cloudflare Workers AI lets you run AI models on Cloudflare's global network directly via REST API, with no separate provider accounts needed for supported models.
+
+1. Head over to the [Cloudflare dashboard](https://dash.cloudflare.com/), navigate to **Workers AI**, and select **Use REST API** to get your **Account ID** and create an API token.
+
+2. Run the `/connect` command and search for **Cloudflare Workers AI**.
+
+   ```txt
    /connect
-```
+   ```
 
-4. Unesite svoj Cloudflare API token.
+3. Enter your **Account ID** when prompted.
 
-```txt
+   ```txt
+   ┌ Enter your Cloudflare Account ID
+   │
+   │
+   └ enter
+   ```
+
+4. Enter your **Cloudflare API key**.
+
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-Ili ga postavite kao varijablu okruženja.
+5. Run the `/models` command to select a model.
 
-```bash title="~/.bash_profile"
-   export CLOUDFLARE_API_TOKEN=your-api-token
-```
-
-5. Pokrenite naredbu `/models` da odaberete model.
-
-```txt
+   ```txt
    /models
-```
+   ```
 
-Također možete dodati modele kroz svoju codeplane konfiguraciju.
+   Alternatively, you can set environment variables instead of using `/connect`.
 
-```json title="codeplane.json"
-{
-  "$schema": "https://example.invalid/config.json",
-  "provider": {
-    "cloudflare-ai-gateway": {
-      "models": {
-        "openai/gpt-4o": {},
-        "anthropic/claude-sonnet-4": {}
-      }
-    }
-  }
-}
-```
+   ```bash title="~/.bash_profile"
+   export CLOUDFLARE_ACCOUNT_ID=your-32-character-account-id
+   export CLOUDFLARE_API_KEY=your-api-token
+   ```
 
 ---
 
 ### Cortecs
 
-1. Idite na [Cortecs konzolu](https://cortecs.ai/), kreirajte račun i generirajte API ključ.
+1. Head over to the [Cortecs console](https://cortecs.ai/), create an account, and generate an API key.
 
-2. Pokrenite naredbu `/connect` i potražite **Cortecs**.
+2. Run the `/connect` command and search for **Cortecs**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj Cortecs API ključ.
+3. Enter your Cortecs API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete model kao što je _Kimi K2 Instruct_.
+4. Run the `/models` command to select a model like _Kimi K2 Instruct_.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### DeepSeek
 
-1. Idite na [DeepSeek konzolu](https://platform.deepseek.com/), kreirajte nalog i kliknite na **Kreiraj novi API ključ**.
+1. Head over to the [DeepSeek console](https://platform.deepseek.com/), create an account, and click **Create new API key**.
 
-2. Pokrenite naredbu `/connect` i potražite **DeepSeek**.
+2. Run the `/connect` command and search for **DeepSeek**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj DeepSeek API ključ.
+3. Enter your DeepSeek API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete DeepSeek model kao što je _DeepSeek V4 Pro_.
+4. Run the `/models` command to select a DeepSeek model like _DeepSeek V4 Pro_.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### Deep Infra
 
-1. Idite na [Deep Infra kontrolnu tablu](https://deepinfra.com/dash), kreirajte nalog i generišite API ključ.
+1. Head over to the [Deep Infra dashboard](https://deepinfra.com/dash), create an account, and generate an API key.
 
-2. Pokrenite naredbu `/connect` i potražite **Deep Infra**.
+2. Run the `/connect` command and search for **Deep Infra**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj Deep Infra API ključ.
+3. Enter your Deep Infra API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete model.
+4. Run the `/models` command to select a model.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### Firmware
 
-1. Idite na [kontrolnu tablu firmvera](https://app.firmware.ai/signup), kreirajte nalog i generišite API ključ.
+1. Head over to the [Firmware dashboard](https://app.firmware.ai/signup), create an account, and generate an API key.
 
-2. Pokrenite naredbu `/connect` i potražite **Firmware**.
+2. Run the `/connect` command and search for **Firmware**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj Firmware API ključ.
+3. Enter your Firmware API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete model.
+4. Run the `/models` command to select a model.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### Fireworks AI
 
-1. Idite na [Fireworks AI konzolu](https://app.fireworks.ai/), kreirajte račun i kliknite na **Kreiraj API ključ**.
+1. Head over to the [Fireworks AI console](https://app.fireworks.ai/), create an account, and click **Create API Key**.
 
-2. Pokrenite naredbu `/connect` i potražite **Fireworks AI**.
+2. Run the `/connect` command and search for **Fireworks AI**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj Fireworks AI API ključ.
+3. Enter your Fireworks AI API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete model kao što je _Kimi K2 Instruct_.
+4. Run the `/models` command to select a model like _Kimi K2 Instruct_.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### GitLab Duo
 
-GitLab Duo pruža agentsko ćaskanje sa AI-om sa izvornim mogućnostima pozivanja alata preko GitLab-ovog Anthropic proxyja.
+:::caution[Experimental]
+GitLab Duo support in CodePlane is experimental. Features, configuration, and
+behavior may change in future releases.
+:::
 
-1. Pokrenite naredbu `/connect` i odaberite GitLab.
+CodePlane integrates with the [GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/),
+providing AI-powered agentic chat with native tool calling capabilities.
 
-```txt
+:::note[License requirements]
+GitLab Duo Agent Platform requires a **Premium** or **Ultimate** GitLab
+subscription. It is available on GitLab.com and GitLab Self-Managed.
+See [GitLab Duo Agent Platform prerequisites](https://docs.gitlab.com/user/duo_agent_platform/#prerequisites)
+for full requirements.
+:::
+
+1. Run the `/connect` command and select GitLab.
+
+   ```txt
    /connect
-```
+   ```
 
-2. Odaberite svoj način autentifikacije:
+2. Choose your authentication method:
 
-```txt
+   ```txt
    ┌ Select auth method
    │
    │ OAuth (Recommended)
    │ Personal Access Token
    └
-```
+   ```
 
-#### Korištenje OAuth-a (preporučeno)
+   #### Using OAuth (Recommended)
 
-Odaberite **OAuth** i vaš pretraživač će se otvoriti za autorizaciju.
+   Select **OAuth** and your browser will open for authorization.
 
-#### Korištenje tokena ličnog pristupa
+   #### Using Personal Access Token
+   1. Go to [GitLab User Settings > Access Tokens](https://gitlab.com/-/user_settings/personal_access_tokens)
+   2. Click **Add new token**
+   3. Name: `CodePlane`, Scopes: `api`
+   4. Copy the token (starts with `glpat-`)
+   5. Enter it in the terminal
 
-1.  Idite na [GitLab korisničke postavke > Pristupni tokeni](https://gitlab.com/-/user_settings/personal_access_tokens)
-2.  Kliknite **Dodaj novi token**
-3.  Naziv: `CodePlane`, opseg: `api`
-4.  Kopirajte token (počinje sa `glpat-`)
-5.  Unesite ga u terminal
+3. Run the `/models` command to see available models.
 
-6.  Pokrenite naredbu `/models` da vidite dostupne modele.
-
-```txt
+   ```txt
    /models
-```
+   ```
 
-Dostupna su tri modela bazirana na Claudeu:
-
-- **duo-chat-haiku-4-5** (zadano) - Brzi odgovori za brze zadatke
-- **duo-chat-sonnet-4-5** - Uravnotežene performanse za većinu tokova posla
-- **duo-chat-opus-4-5** - Najsposobniji za kompleksnu analizu
+   Three Claude-based models are available:
+   - **duo-chat-haiku-4-5** (Default) - Fast responses for quick tasks
+   - **duo-chat-sonnet-4-5** - Balanced performance for most workflows
+   - **duo-chat-opus-4-5** - Most capable for complex analysis
 
 :::note
-Također možete odrediti 'GITLAB_TOKEN' varijablu okruženja ako ne želite
-da pohrani token u codeplane auth memoriju.
+You can also specify 'GITLAB_TOKEN' environment variable if you don't want
+to store token in codeplane auth storage.
 :::
 
-##### Samostalni GitLab
+##### Self-Hosted GitLab
 
-:::note[Napomena o usklađenosti]
-CodePlane koristi mali model za neke AI zadatke kao što je generiranje naslova sesije.
-Podrazumevano je konfigurisan da koristi gpt-5-nano, a hostuje ga Zen. Da zaključate CodePlane
-da biste koristili samo svoju vlastitu instancu koju hostuje GitLab, dodajte sljedeće u svoju
-`codeplane.json` fajl. Također se preporučuje da onemogućite dijeljenje sesije.
+:::note[compliance note]
+CodePlane uses a small model for some AI tasks like generating the session title.
+It is configured to use gpt-5-nano by default, hosted by Zen. To lock CodePlane
+to only use your own GitLab-hosted instance, add the following to your
+`codeplane.json` file. It is also recommended to disable session sharing.
 
 ```json
 {
@@ -736,20 +815,20 @@ da biste koristili samo svoju vlastitu instancu koju hostuje GitLab, dodajte slj
 
 :::
 
-Za GitLab instance koje hostuju sami:
+For self-hosted GitLab instances:
 
 ```bash
 export GITLAB_INSTANCE_URL=https://gitlab.company.com
 export GITLAB_TOKEN=glpat-...
 ```
 
-Ako vaša instanca pokreće prilagođeni AI Gateway:
+If your instance runs a custom AI Gateway:
 
 ```bash
 GITLAB_AI_GATEWAY_URL=https://ai-gateway.company.com
 ```
 
-Ili dodajte na svoj bash profil:
+Or add to your bash profile:
 
 ```bash title="~/.bash_profile"
 export GITLAB_INSTANCE_URL=https://gitlab.company.com
@@ -758,35 +837,37 @@ export GITLAB_TOKEN=glpat-...
 ```
 
 :::note
-Vaš GitLab administrator mora omogućiti sljedeće:
+Your GitLab administrator must:
 
-1. [Duo Agent Platforma](https://docs.gitlab.com/user/duo_agent_platform/turn_on_off/) za korisnika, grupu ili instancu
-2. Zastavice funkcija (preko Rails konzole):
-   - `agent_platform_claude_code`
-   - `third_party_agents_enabled`
-     :::
+1. [Turn on GitLab Duo](https://docs.gitlab.com/user/duo_agent_platform/turn_on_off/#turn-gitlab-duo-on-or-off)
+   for the user, group, or instance
+2. [Turn on the Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/turn_on_off/#turn-gitlab-duo-agent-platform-on-or-off)
+   (GitLab 18.8+) or [enable beta and experimental features](https://docs.gitlab.com/user/duo_agent_platform/turn_on_off/#turn-on-beta-and-experimental-features)
+   (GitLab 18.7 and earlier)
+3. For Self-Managed, [configure your instance](https://docs.gitlab.com/administration/gitlab_duo/configure/gitlab_self_managed/)
+   :::
 
-##### OAuth za self-hosted instance
+##### OAuth for Self-Hosted instances
 
-Da bi Oauth radio za vašu instancu koju sami hostujete, morate kreirati
-novu aplikaciju (Podešavanja → Aplikacije) sa
-URL povratnog poziva `http://127.0.0.1:8080/callback` i sljedeći opseg:
+In order to make Oauth working for your self-hosted instance, you need to create
+a new application (Settings → Applications) with the
+callback URL `http://127.0.0.1:8080/callback` and following scopes:
 
-- api (pristupite API-ju u svoje ime)
-- read_user (Pročitajte svoje lične podatke)
-- read_repository (omogućava pristup spremištu samo za čitanje)
+- api (Access the API on your behalf)
+- read_user (Read your personal information)
+- read_repository (Allows read-only access to the repository)
 
-Zatim izložite ID aplikacije kao varijablu okruženja:
+Then expose application ID as environment variable:
 
 ```bash
 export GITLAB_OAUTH_CLIENT_ID=your_application_id_here
 ```
 
-Više dokumentacije na početnoj stranici [opencode-gitlab-auth](https://www.npmjs.com/package/opencode-gitlab-auth).
+More documentation on [opencode-gitlab-auth](https://www.npmjs.com/package/opencode-gitlab-auth) homepage.
 
-##### Konfiguracija
+##### Configuration
 
-Prilagodite putem `codeplane.json`:
+Customize through `codeplane.json`:
 
 ```json title="codeplane.json"
 {
@@ -801,9 +882,23 @@ Prilagodite putem `codeplane.json`:
 }
 ```
 
-##### GitLab API alati (opciono, ali se preporučuje)
+##### GitLab Duo Agent Platform (DAP) Workflow Models
 
-Za pristup GitLab alatima (zahtjevi za spajanje, problemi, cjevovodi, CI/CD, itd.):
+DAP workflow models provide an alternative execution path that routes tool calls
+through GitLab's Duo Workflow Service (DWS) instead of the standard agentic chat.
+When a `duo-workflow-*` model is selected, CodePlane will:
+
+1. Discover available models from your GitLab namespace
+2. Present a selection picker if multiple models are available
+3. Cache the selected model to disk for fast subsequent startups
+4. Route tool execution requests through CodePlane's permission-gated tool system
+
+Available DAP workflow models follow the `duo-workflow-*` naming convention and
+are dynamically discovered from your GitLab instance.
+
+##### GitLab API Tools (Optional, but highly recommended)
+
+To access GitLab tools (merge requests, issues, pipelines, CI/CD, etc.):
 
 ```json title="codeplane.json"
 {
@@ -812,30 +907,28 @@ Za pristup GitLab alatima (zahtjevi za spajanje, problemi, cjevovodi, CI/CD, itd
 }
 ```
 
-Ovaj dodatak pruža sveobuhvatne mogućnosti upravljanja GitLab repozitorijumom, uključujući MR preglede, praćenje problema, praćenje procesa i još mnogo toga.
+This plugin provides comprehensive GitLab repository management capabilities including MR reviews, issue tracking, pipeline monitoring, and more.
 
 ---
 
 ### GitHub Copilot
 
-Da biste koristili svoju GitHub Copilot pretplatu s codeplane:
+To use your GitHub Copilot subscription with codeplane:
 
 :::note
-Neki modeli će možda trebati [Pro+
-pretplata](https://github.com/features/copilot/plans) za korištenje.
-
-Neki modeli moraju biti ručno omogućeni u vašim [postavkama GitHub Copilot](https://docs.github.com/en/copilot/how-tos/use-ai-models/configure-access-to-ai-models#setup-for-individual-use).
+Some models might need a [Pro+
+subscription](https://github.com/features/copilot/plans) to use.
 :::
 
-1. Pokrenite naredbu `/connect` i potražite GitHub Copilot.
+1. Run the `/connect` command and search for GitHub Copilot.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-2. Idite na [github.com/login/device](https://github.com/login/device) i unesite kod.
+2. Navigate to [github.com/login/device](https://github.com/login/device) and enter the code.
 
-```txt
+   ```txt
    ┌ Login with GitHub Copilot
    │
    │ https://github.com/login/device
@@ -843,150 +936,150 @@ Neki modeli moraju biti ručno omogućeni u vašim [postavkama GitHub Copilot](h
    │ Enter code: 8F43-6FCF
    │
    └ Waiting for authorization...
-```
+   ```
 
-3. Sada pokrenite naredbu `/models` da odaberete model koji želite.
+3. Now run the `/models` command to select the model you want.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### Google Vertex AI
 
-Za korištenje Google Vertex AI s CodePlane:
+To use Google Vertex AI with CodePlane:
 
-1. Idite do **Model Garden** u Google Cloud Console i provjerite
-   modeli dostupni u vašoj regiji.
+1. Head over to the **Model Garden** in the Google Cloud Console and check the
+   models available in your region.
 
    :::note
-   Morate imati Google Cloud projekat sa omogućenim Vertex AI API.
+   You need to have a Google Cloud project with Vertex AI API enabled.
    :::
 
-2. Postavite potrebne varijable okruženja:
-   - `GOOGLE_CLOUD_PROJECT`: ID vašeg Google Cloud projekta
-   - `VERTEX_LOCATION` (opciono): Region za Vertex AI (podrazumevano na `global`)
-   - Autentifikacija (odaberite jednu):
-     - `GOOGLE_APPLICATION_CREDENTIALS`: Put do JSON ključnog fajla vašeg naloga usluge
-     - Autentifikacija koristeći gcloud CLI: `gcloud auth application-default login`
+2. Set the required environment variables:
+   - `GOOGLE_CLOUD_PROJECT`: Your Google Cloud project ID
+   - `VERTEX_LOCATION` (optional): The region for Vertex AI (defaults to `global`)
+   - Authentication (choose one):
+     - `GOOGLE_APPLICATION_CREDENTIALS`: Path to your service account JSON key file
+     - Authenticate using gcloud CLI: `gcloud auth application-default login`
 
-   Postavite ih dok se pokreće codeplane.
+   Set them while running codeplane.
 
-```bash
+   ```bash
    GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json GOOGLE_CLOUD_PROJECT=your-project-id codeplane
-```
+   ```
 
-Ili ih dodajte svom bash profilu.
+   Or add them to your bash profile.
 
-```bash title="~/.bash_profile"
+   ```bash title="~/.bash_profile"
    export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
    export GOOGLE_CLOUD_PROJECT=your-project-id
    export VERTEX_LOCATION=global
-```
+   ```
 
 :::tip
-Regija `global` poboljšava dostupnost i smanjuje greške bez dodatnih troškova. Koristite regionalne krajnje tačke (npr. `us-central1`) za zahtjeve rezidentnosti podataka. [Saznajte više](https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-partner-models#regional_and_global_endpoints)
+The `global` region improves availability and reduces errors at no extra cost. Use regional endpoints (e.g., `us-central1`) for data residency requirements. [Learn more](https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-partner-models#regional_and_global_endpoints)
 :::
 
-3. Pokrenite naredbu `/models` da odaberete model koji želite.
+3. Run the `/models` command to select the model you want.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### Groq
 
-1. Idite na [Groq konzolu](https://console.groq.com/), kliknite **Kreiraj API ključ** i kopirajte ključ.
+1. Head over to the [Groq console](https://console.groq.com/), click **Create API Key**, and copy the key.
 
-2. Pokrenite naredbu `/connect` i potražite Groq.
+2. Run the `/connect` command and search for Groq.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite API ključ za provajdera.
+3. Enter the API key for the provider.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete onu koju želite.
+4. Run the `/models` command to select the one you want.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### Hugging Face
 
-[Hugging Face Inference Providers](https://huggingface.co/docs/inference-providers) omogućava pristup otvorenim modelima koje podržava 17+ provajdera.
+[Hugging Face Inference Providers](https://huggingface.co/docs/inference-providers) provides access to open models supported by 17+ providers.
 
-1. Idite na [Postavke zagrljaja](https://huggingface.co/settings/tokens/new?ownUserPermissions=inference.serverless.write&tokenType=fineGrained) da kreirate token s dozvolom za upućivanje poziva dobavljačima inference.
+1. Head over to [Hugging Face settings](https://huggingface.co/settings/tokens/new?ownUserPermissions=inference.serverless.write&tokenType=fineGrained) to create a token with permission to make calls to Inference Providers.
 
-2. Pokrenite naredbu `/connect` i potražite **Hugging Face**.
+2. Run the `/connect` command and search for **Hugging Face**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj token Hugging Face.
+3. Enter your Hugging Face token.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete model kao što je _Kimi-K2-Instruct_ ili _GLM-4.6_.
+4. Run the `/models` command to select a model like _Kimi-K2-Instruct_ or _GLM-4.6_.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### Helicone
 
-[Helicone](https://helicone.ai) je platforma za praćenje LLM koja pruža evidenciju, praćenje i analitiku za vaše AI aplikacije. Helicone AI Gateway automatski usmjerava vaše zahtjeve do odgovarajućeg provajdera na osnovu modela.
+[Helicone](https://helicone.ai) is an LLM observability platform that provides logging, monitoring, and analytics for your AI applications. The Helicone AI Gateway routes your requests to the appropriate provider automatically based on the model.
 
-1. Idite na [Helicone](https://helicone.ai), kreirajte račun i generirajte API ključ sa svoje kontrolne table.
+1. Head over to [Helicone](https://helicone.ai), create an account, and generate an API key from your dashboard.
 
-2. Pokrenite naredbu `/connect` i potražite **Helicone**.
+2. Run the `/connect` command and search for **Helicone**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj Helicone API ključ.
+3. Enter your Helicone API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete model.
+4. Run the `/models` command to select a model.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
-Za više provajdera i napredne funkcije kao što su keširanje i ograničavanje brzine, provjerite [Helicone dokumentaciju](https://docs.helicone.ai).
+For more providers and advanced features like caching and rate limiting, check the [Helicone documentation](https://docs.helicone.ai).
 
-#### Opcione konfiguracije
+#### Optional Configs
 
-U slučaju da vidite funkciju ili model iz Helicone-a koji nije automatski konfiguriran putem codeplanea, uvijek ga možete sami konfigurirati.
+In the event you see a feature or model from Helicone that isn't configured automatically through codeplane, you can always configure it yourself.
 
-Evo [Heliconeov katalog modela](https://helicone.ai/models), ovo će vam trebati da preuzmete ID-ove modela koje želite dodati.
+Here's [Helicone's Model Directory](https://helicone.ai/models), you'll need this to grab the IDs of the models you want to add.
 
 ```jsonc title="~/.config/codeplane/codeplane.jsonc"
 {
@@ -1012,9 +1105,9 @@ Evo [Heliconeov katalog modela](https://helicone.ai/models), ovo će vam trebati
 }
 ```
 
-#### Prilagođena zaglavlja
+#### Custom Headers
 
-Helicone podržava prilagođena zaglavlja za funkcije kao što su keširanje, praćenje korisnika i upravljanje sesijom. Dodajte ih u konfiguraciju svog provajdera koristeći `options.headers`:
+Helicone supports custom headers for features like caching, user tracking, and session management. Add them to your provider config using `options.headers`:
 
 ```jsonc title="~/.config/codeplane/codeplane.jsonc"
 {
@@ -1035,15 +1128,15 @@ Helicone podržava prilagođena zaglavlja za funkcije kao što su keširanje, pr
 }
 ```
 
-##### Praćenje sesije
+##### Session tracking
 
-Heliconeova funkcija [Sessions](https://docs.helicone.ai/features/sessions) vam omogućava da grupišete povezane LLM zahtjeve zajedno. Koristite dodatak [codeplane-helicone-session](https://github.com/H2Shami/codeplane-helicone-session) da automatski prijavite svaki CodePlane razgovor kao sesiju u Helicone-u.
+Helicone's [Sessions](https://docs.helicone.ai/features/sessions) feature lets you group related LLM requests together. Use the [codeplane-helicone-session](https://github.com/H2Shami/codeplane-helicone-session) plugin to automatically log each CodePlane conversation as a session in Helicone.
 
 ```bash
 npm install -g codeplane-helicone-session
 ```
 
-Dodajte ga u svoju konfiguraciju.
+Add it to your config.
 
 ```json title="codeplane.json"
 {
@@ -1051,24 +1144,24 @@ Dodajte ga u svoju konfiguraciju.
 }
 ```
 
-Dodatak ubacuje zaglavlja `Helicone-Session-Id` i `Helicone-Session-Name` u vaše zahtjeve. Na stranici Helicone Sessions, vidjet ćete svaki CodePlane razgovor naveden kao zasebna sesija.
+The plugin injects `Helicone-Session-Id` and `Helicone-Session-Name` headers into your requests. In Helicone's Sessions page, you'll see each CodePlane conversation listed as a separate session.
 
-##### Uobičajena Helicone zaglavlja
+##### Common Helicone headers
 
-| Header                     | Opis                                                                |
-| -------------------------- | ------------------------------------------------------------------- |
-| `Helicone-Cache-Enabled`   | Omogući keširanje odgovora (`true`/`false`)                         |
-| `Helicone-User-Id`         | Pratite metriku po korisniku                                        |
-| `Helicone-Property-[Name]` | Dodajte prilagođena svojstva (npr. `Helicone-Property-Environment`) |
-| `Helicone-Prompt-Id`       | Povezivanje zahtjeva sa brzim verzijama                             |
+| Header                     | Description                                                   |
+| -------------------------- | ------------------------------------------------------------- |
+| `Helicone-Cache-Enabled`   | Enable response caching (`true`/`false`)                      |
+| `Helicone-User-Id`         | Track metrics by user                                         |
+| `Helicone-Property-[Name]` | Add custom properties (e.g., `Helicone-Property-Environment`) |
+| `Helicone-Prompt-Id`       | Associate requests with prompt versions                       |
 
-Pogledajte [Helicone Header Directory](https://docs.helicone.ai/helicone-headers/header-directory) za sva dostupna zaglavlja.
+See the [Helicone Header Directory](https://docs.helicone.ai/helicone-headers/header-directory) for all available headers.
 
 ---
 
 ### llama.cpp
 
-Možete konfigurirati codeplane za korištenje lokalnih modela putem [llama.cpp's](https://github.com/ggml-org/llama.cpp) uslužnog programa llama-server
+You can configure codeplane to use local models through [llama.cpp's](https://github.com/ggml-org/llama.cpp) llama-server utility
 
 ```json title="codeplane.json" "llama.cpp" {5, 6, 8, 10-15}
 {
@@ -1094,48 +1187,48 @@ Možete konfigurirati codeplane za korištenje lokalnih modela putem [llama.cpp'
 }
 ```
 
-U ovom primjeru:
+In this example:
 
-- `llama.cpp` je ID prilagođenog provajdera. Ovo može biti bilo koji niz koji želite.
-- `npm` specificira paket koji će se koristiti za ovog provajdera. Ovdje se `@ai-sdk/openai-compatible` koristi za bilo koji OpenAI kompatibilan API.
-- `name` je ime za prikaz za provajdera u korisničkom sučelju.
-- `options.baseURL` je krajnja tačka za lokalni server.
-- `models` je mapa ID-ova modela prema njihovim konfiguracijama. Naziv modela će biti prikazan na listi za odabir modela.
+- `llama.cpp` is the custom provider ID. This can be any string you want.
+- `npm` specifies the package to use for this provider. Here, `@ai-sdk/openai-compatible` is used for any OpenAI-compatible API.
+- `name` is the display name for the provider in the UI.
+- `options.baseURL` is the endpoint for the local server.
+- `models` is a map of model IDs to their configurations. The model name will be displayed in the model selection list.
 
 ---
 
 ### IO.NET
 
-IO.NET nudi 17 modela optimiziranih za različite slučajeve upotrebe:
+IO.NET offers 17 models optimized for various use cases:
 
-1. Idite na [IO.NET konzolu](https://ai.io.net/), kreirajte račun i generirajte API ključ.
+1. Head over to the [IO.NET console](https://ai.io.net/), create an account, and generate an API key.
 
-2. Pokrenite naredbu `/connect` i potražite **IO.NET**.
+2. Run the `/connect` command and search for **IO.NET**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj IO.NET API ključ.
+3. Enter your IO.NET API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete model.
+4. Run the `/models` command to select a model.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### LM Studio
 
-Možete konfigurirati codeplane za korištenje lokalnih modela preko LM Studio.
+You can configure codeplane to use local models through LM Studio.
 
 ```json title="codeplane.json" "lmstudio" {5, 6, 8, 10-14}
 {
@@ -1157,105 +1250,159 @@ Možete konfigurirati codeplane za korištenje lokalnih modela preko LM Studio.
 }
 ```
 
-U ovom primjeru:
+In this example:
 
-- `lmstudio` je ID prilagođenog provajdera. Ovo može biti bilo koji niz koji želite.
-- `npm` specificira paket koji će se koristiti za ovog provajdera. Ovdje se `@ai-sdk/openai-compatible` koristi za bilo koji OpenAI kompatibilan API.
-- `name` je ime za prikaz za provajdera u korisničkom sučelju.
-- `options.baseURL` je krajnja tačka za lokalni server.
-- `models` je mapa ID-ova modela prema njihovim konfiguracijama. Naziv modela će biti prikazan na listi za odabir modela.
+- `lmstudio` is the custom provider ID. This can be any string you want.
+- `npm` specifies the package to use for this provider. Here, `@ai-sdk/openai-compatible` is used for any OpenAI-compatible API.
+- `name` is the display name for the provider in the UI.
+- `options.baseURL` is the endpoint for the local server.
+- `models` is a map of model IDs to their configurations. The model name will be displayed in the model selection list.
 
 ---
 
 ### Moonshot AI
 
-Da biste koristili Kimi K2 iz Moonshot AI:
+To use Kimi K2 from Moonshot AI:
 
-1. Idite na [Moonshot AI konzolu](https://platform.moonshot.ai/console), kreirajte nalog i kliknite na **Kreiraj API ključ**.
+1. Head over to the [Moonshot AI console](https://platform.moonshot.ai/console), create an account, and click **Create API key**.
 
-2. Pokrenite naredbu `/connect` i potražite **Moonshot AI**.
+2. Run the `/connect` command and search for **Moonshot AI**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj Moonshot API ključ.
+3. Enter your Moonshot API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete _Kimi K2_.
+4. Run the `/models` command to select _Kimi K2_.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### MiniMax
 
-1. Prijeđite na [MiniMax API konzolu](https://platform.minimax.io/login), kreirajte račun i generirajte API ključ.
+1. Head over to the [MiniMax API Console](https://platform.minimax.io/login), create an account, and generate an API key.
 
-2. Pokrenite naredbu `/connect` i potražite **MiniMax**.
+2. Run the `/connect` command and search for **MiniMax**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj MiniMax API ključ.
+3. Enter your MiniMax API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
+   ```
+
+4. Run the `/models` command to select a model like _M2.1_.
+
+   ```txt
+   /models
+   ```
+
+---
+
+### NVIDIA
+
+NVIDIA provides access to Nemotron models and many other open models through [build.nvidia.com](https://build.nvidia.com) for free.
+
+1. Head over to [build.nvidia.com](https://build.nvidia.com), create an account, and generate an API key.
+
+2. Run the `/connect` command and search for **NVIDIA**.
+
+   ```txt
+   /connect
+   ```
+
+3. Enter your NVIDIA API key.
+
+   ```txt
+   ┌ API key
+   │
+   │
+   └ enter
+   ```
+
+4. Run the `/models` command to select a model like nemotron-3-super-120b-a12b.
+
+   ```txt
+   /models
+   ```
+
+#### On-Prem / NIM
+
+You can also use NVIDIA models locally via [NVIDIA NIM](https://docs.nvidia.com/nim/) by setting a custom base URL.
+
+```json title="codeplane.json" {6}
+{
+  "$schema": "https://example.invalid/config.json",
+  "provider": {
+    "nvidia": {
+      "options": {
+        "baseURL": "http://localhost:8000/v1"
+      }
+    }
+  }
+}
 ```
 
-4. Pokrenite naredbu `/models` da odaberete model kao što je _M2.1_.
+#### Environment Variable
 
-```txt
-   /models
+Alternatively, set your API key as an environment variable.
+
+```bash frame="none"
+export NVIDIA_API_KEY=nvapi-your-key-here
 ```
 
 ---
 
 ### Nebius Token Factory
 
-1. Idite na [Nebius Token Factory konzolu](https://tokenfactory.nebius.com/), kreirajte nalog i kliknite na **Dodaj ključ**.
+1. Head over to the [Nebius Token Factory console](https://tokenfactory.nebius.com/), create an account, and click **Add Key**.
 
-2. Pokrenite naredbu `/connect` i potražite **Nebius Token Factory**.
+2. Run the `/connect` command and search for **Nebius Token Factory**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj Nebius Token Factory API ključ.
+3. Enter your Nebius Token Factory API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete model kao što je _Kimi K2 Instruct_.
+4. Run the `/models` command to select a model like _Kimi K2 Instruct_.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### Ollama
 
-Možete konfigurirati codeplane za korištenje lokalnih modela putem Ollame.
+You can configure codeplane to use local models through Ollama.
 
 :::tip
-Ollama se može automatski konfigurirati za CodePlane. Pogledajte [Ollama integracijske dokumente](https://docs.ollama.com/integrations/codeplane) za detalje.
+Ollama can automatically configure itself for CodePlane. See the [Ollama integration docs](https://docs.ollama.com/integrations/codeplane) for details.
 :::
 
 ```json title="codeplane.json" "ollama" {5, 6, 8, 10-14}
@@ -1278,233 +1425,301 @@ Ollama se može automatski konfigurirati za CodePlane. Pogledajte [Ollama integr
 }
 ```
 
-U ovom primjeru:
+In this example:
 
-- `ollama` je ID prilagođenog provajdera. Ovo može biti bilo koji niz koji želite.
-- `npm` specificira paket koji će se koristiti za ovog provajdera. Ovdje se `@ai-sdk/openai-compatible` koristi za bilo koji OpenAI kompatibilan API.
-- `name` je ime za prikaz za provajdera u korisničkom sučelju.
-- `options.baseURL` je krajnja tačka za lokalni server.
-- `models` je mapa ID-ova modela prema njihovim konfiguracijama. Naziv modela će biti prikazan na listi za odabir modela.
+- `ollama` is the custom provider ID. This can be any string you want.
+- `npm` specifies the package to use for this provider. Here, `@ai-sdk/openai-compatible` is used for any OpenAI-compatible API.
+- `name` is the display name for the provider in the UI.
+- `options.baseURL` is the endpoint for the local server.
+- `models` is a map of model IDs to their configurations. The model name will be displayed in the model selection list.
 
 :::tip
-Ako pozivi alata ne rade, pokušajte povećati `num_ctx` u Ollama. Počnite oko 16k - 32k.
+If tool calls aren't working, try increasing `num_ctx` in Ollama. Start around 16k - 32k.
 :::
 
 ---
 
 ### Ollama Cloud
 
-Da biste koristili Ollama Cloud s CodePlane:
+To use Ollama Cloud with CodePlane:
 
-1. Idite na [https://ollama.com/](https://ollama.com/) i prijavite se ili kreirajte račun.
+1. Head over to [https://ollama.com/](https://ollama.com/) and sign in or create an account.
 
-2. Idite na **Postavke** > **Ključevi** i kliknite na **Dodaj API ključ** da generišete novi API ključ.
+2. Navigate to **Settings** > **Keys** and click **Add API Key** to generate a new API key.
 
-3. Kopirajte API ključ za korištenje u CodePlane.
+3. Copy the API key for use in CodePlane.
 
-4. Pokrenite naredbu `/connect` i potražite **Ollama Cloud**.
+4. Run the `/connect` command and search for **Ollama Cloud**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-5. Unesite svoj Ollama Cloud API ključ.
+5. Enter your Ollama Cloud API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-6. **Važno**: Prije upotrebe modela oblaka u CodePlane, morate lokalno povući informacije o modelu:
+6. **Important**: Before using cloud models in CodePlane, you must pull the model information locally:
 
-```bash
+   ```bash
    ollama pull gpt-oss:20b-cloud
-```
+   ```
 
-7. Pokrenite naredbu `/models` da odaberete svoj model Ollama Cloud.
+7. Run the `/models` command to select your Ollama Cloud model.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### OpenAI
 
-Preporučujemo da se prijavite za [ChatGPT Plus ili Pro](https://chatgpt.com/pricing).
+We recommend signing up for [ChatGPT Plus or Pro](https://chatgpt.com/pricing).
 
-1. Nakon što ste se prijavili, pokrenite naredbu `/connect` i odaberite OpenAI.
+1. Once you've signed up, run the `/connect` command and select OpenAI.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-2. Ovdje možete odabrati opciju **ChatGPT Plus/Pro** i ona će otvoriti vaš pretraživač
-   i traži od vas da se autentifikujete.
+2. Here you can select the **ChatGPT Plus/Pro** option and it'll open your browser
+   and ask you to authenticate.
 
-```txt
+   ```txt
    ┌ Select auth method
    │
    │ ChatGPT Plus/Pro
    │ Manually enter API Key
    └
-```
+   ```
 
-3. Sada bi svi OpenAI modeli trebali biti dostupni kada koristite naredbu `/models`.
+3. Now all the OpenAI models should be available when you use the `/models` command.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
-##### Korištenje API ključeva
+##### Using API keys
 
-Ako već imate API ključ, možete odabrati **Ručno unesite API ključ** i zalijepite ga u svoj terminal.
+If you already have an API key, you can select **Manually enter API Key** and paste it in your terminal.
 
 ---
 
 ### CodePlane Zen
 
-CodePlane Zen je lista testiranih i verifikovanih modela koju je obezbedio CodePlane tim. [Saznajte više](/docs/zen).
+CodePlane Zen is a list of tested and verified models provided by the CodePlane team. [Learn more](/docs/zen).
 
-1. Prijavite se na **<a href={console}>CodePlane Zen</a>** i kliknite na **Kreiraj API ključ**.
+1. Sign in to **<a href={console}>CodePlane Zen</a>** and click **Create API Key**.
 
-2. Pokrenite naredbu `/connect` i potražite **CodePlane Zen**.
+2. Run the `/connect` command and search for **CodePlane Zen**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj CodePlane API ključ.
+3. Enter your CodePlane API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete model kao što je _Qwen 3 Coder 480B_.
+4. Run the `/models` command to select a model like _Qwen 3 Coder 480B_.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### OpenRouter
 
-1. Idite na [OpenRouter nadzornu ploču](https://openrouter.ai/settings/keys), kliknite na **Kreiraj API ključ** i kopirajte ključ.
+1. Head over to the [OpenRouter dashboard](https://openrouter.ai/settings/keys), click **Create API Key**, and copy the key.
 
-2. Pokrenite naredbu `/connect` i potražite OpenRouter.
+2. Run the `/connect` command and search for OpenRouter.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite API ključ za provajdera.
+3. Enter the API key for the provider.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Mnogi OpenRouter modeli su unapred učitani po defaultu, pokrenite naredbu `/models` da odaberete onaj koji želite.
+4. Many OpenRouter models are preloaded by default, run the `/models` command to select the one you want.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
-Također možete dodati dodatne modele putem vaše codeplane konfiguracije.
+   You can also add additional models through your codeplane config.
 
-```json title="codeplane.json" {6}
-{
-  "$schema": "https://example.invalid/config.json",
-  "provider": {
-    "openrouter": {
-      "models": {
-        "somecoolnewmodel": {}
-      }
-    }
-  }
-}
-```
+   ```json title="codeplane.json" {6}
+   {
+     "$schema": "https://example.invalid/config.json",
+     "provider": {
+       "openrouter": {
+         "models": {
+           "somecoolnewmodel": {}
+         }
+       }
+     }
+   }
+   ```
 
-5. Također ih možete prilagoditi putem vaše codeplane konfiguracije. Evo primjera navođenja provajdera
+5. You can also customize them through your codeplane config. Here's an example of specifying a provider
 
-```json title="codeplane.json"
-{
-  "$schema": "https://example.invalid/config.json",
-  "provider": {
-    "openrouter": {
-      "models": {
-        "moonshotai/kimi-k2": {
-          "options": {
-            "provider": {
-              "order": ["baseten"],
-              "allow_fallbacks": false
-            }
-          }
-        }
-      }
-    }
-  }
-}
-```
+   ```json title="codeplane.json"
+   {
+     "$schema": "https://example.invalid/config.json",
+     "provider": {
+       "openrouter": {
+         "models": {
+           "moonshotai/kimi-k2": {
+             "options": {
+               "provider": {
+                 "order": ["baseten"],
+                 "allow_fallbacks": false
+               }
+             }
+           }
+         }
+       }
+     }
+   }
+   ```
+
+---
+
+### LLM Gateway
+
+1. Head over to the [LLM Gateway dashboard](https://llmgateway.io/dashboard), click **Create API Key**, and copy the key.
+
+2. Run the `/connect` command and search for LLM Gateway.
+
+   ```txt
+   /connect
+   ```
+
+3. Enter the API key for the provider.
+
+   ```txt
+   ┌ API key
+   │
+   │
+   └ enter
+   ```
+
+4. Many LLM Gateway models are preloaded by default, run the `/models` command to select the one you want.
+
+   ```txt
+   /models
+   ```
+
+   You can also add additional models through your codeplane config.
+
+   ```json title="codeplane.json" {6}
+   {
+     "$schema": "https://example.invalid/config.json",
+     "provider": {
+       "llmgateway": {
+         "models": {
+           "somecoolnewmodel": {}
+         }
+       }
+     }
+   }
+   ```
+
+5. You can also customize them through your codeplane config. Here's an example of specifying a provider
+
+   ```json title="codeplane.json"
+   {
+     "$schema": "https://example.invalid/config.json",
+     "provider": {
+       "llmgateway": {
+         "models": {
+           "glm-4.7": {
+             "name": "GLM 4.7"
+           },
+           "gpt-5.2": {
+             "name": "GPT-5.2"
+           },
+           "gemini-2.5-pro": {
+             "name": "Gemini 2.5 Pro"
+           },
+           "claude-3-5-sonnet-20241022": {
+             "name": "Claude 3.5 Sonnet"
+           }
+         }
+       }
+     }
+   }
+   ```
 
 ---
 
 ### SAP AI Core
 
-SAP AI Core omogućava pristup preko 40+ modela iz OpenAI, Anthropic, Google, Amazon, Meta, Mistral i AI21 putem objedinjene platforme.
+SAP AI Core provides access to 40+ models from OpenAI, Anthropic, Google, Amazon, Meta, Mistral, and AI21 through a unified platform.
 
-1. Idite na vaš [SAP BTP Cockpit](https://account.hana.ondemand.com/), idite na instancu usluge SAP AI Core i kreirajte servisni ključ.
+1. Go to your [SAP BTP Cockpit](https://account.hana.ondemand.com/), navigate to your SAP AI Core service instance, and create a service key.
 
    :::tip
-   Servisni ključ je JSON objekat koji sadrži `clientid`, `clientsecret`, `url` i `serviceurls.AI_API_URL`. Svoju AI Core instancu možete pronaći pod **Usluge** > **Instance i pretplate** u BTP kokpitu.
+   The service key is a JSON object containing `clientid`, `clientsecret`, `url`, and `serviceurls.AI_API_URL`. You can find your AI Core instance under **Services** > **Instances and Subscriptions** in the BTP Cockpit.
    :::
 
-2. Pokrenite naredbu `/connect` i potražite **SAP AI Core**.
+2. Run the `/connect` command and search for **SAP AI Core**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite JSON svoj servisni ključ.
+3. Enter your service key JSON.
 
-```txt
+   ```txt
    ┌ Service key
    │
    │
    └ enter
-```
+   ```
 
-Ili postavite varijablu okruženja `AICORE_SERVICE_KEY`:
+   Or set the `AICORE_SERVICE_KEY` environment variable:
 
-```bash
+   ```bash
    AICORE_SERVICE_KEY='{"clientid":"...","clientsecret":"...","url":"...","serviceurls":{"AI_API_URL":"..."}}' codeplane
-```
+   ```
 
-Ili ga dodajte na svoj bash profil:
+   Or add it to your bash profile:
 
-```bash title="~/.bash_profile"
+   ```bash title="~/.bash_profile"
    export AICORE_SERVICE_KEY='{"clientid":"...","clientsecret":"...","url":"...","serviceurls":{"AI_API_URL":"..."}}'
-```
+   ```
 
-4. Opciono postavite ID implementacije i grupu resursa:
+4. Optionally set deployment ID and resource group:
 
-```bash
+   ```bash
    AICORE_DEPLOYMENT_ID=your-deployment-id AICORE_RESOURCE_GROUP=your-resource-group codeplane
-```
+   ```
 
-:::note
-Ove postavke su opcione i treba ih konfigurirati u skladu s vašim SAP AI Core postavkama.
-:::
+   :::note
+   These settings are optional and should be configured according to your SAP AI Core setup.
+   :::
 
-5. Pokrenite naredbu `/models` da odaberete između 40+ dostupnih modela.
+5. Run the `/models` command to select from 40+ available models.
 
    ```txt
    /models
@@ -1514,21 +1729,21 @@ Ove postavke su opcione i treba ih konfigurirati u skladu s vašim SAP AI Core p
 
 ### STACKIT
 
-STACKIT AI Model Serving pruža potpuno upravljano suvereno hosting okruženje za AI modele, fokusirajući se na LLM-ove kao što su Llama, Mistral i Qwen, uz maksimalan suverenitet podataka na evropskoj infrastrukturi.
+STACKIT AI Model Serving provides fully managed soverign hosting environment for AI models, focusing on LLMs like Llama, Mistral, and Qwen, with maximum data sovereignty on European infrastructure.
 
-1. Idite na [STACKIT Portal](https://portal.stackit.cloud), idite na **AI Model Serving** i kreirajte token za autentifikaciju za svoj projekat.
+1. Head over to [STACKIT Portal](https://portal.stackit.cloud), navigate to **AI Model Serving**, and create an auth token for your project.
 
    :::tip
-   Potreban vam je STACKIT korisnički račun, korisnički nalog i projekat prije kreiranja tokena za autentifikaciju.
+   You need a STACKIT customer account, user account, and project before creating auth tokens.
    :::
 
-2. Pokrenite naredbu `/connect` i potražite **STACKIT**.
+2. Run the `/connect` command and search for **STACKIT**.
 
    ```txt
    /connect
    ```
 
-3. Unesite svoj STACKIT AI Model Serving token za autentifikaciju.
+3. Enter your STACKIT AI Model Serving auth token.
 
    ```txt
    ┌ API key
@@ -1537,7 +1752,7 @@ STACKIT AI Model Serving pruža potpuno upravljano suvereno hosting okruženje z
    └ enter
    ```
 
-4. Pokrenite naredbu `/models` da odaberete dostupne modele kao što su _Qwen3-VL 235B_ ili _Llama 3.3 70B_.
+4. Run the `/models` command to select from available models like _Qwen3-VL 235B_ or _Llama 3.3 70B_.
 
    ```txt
    /models
@@ -1545,144 +1760,144 @@ STACKIT AI Model Serving pruža potpuno upravljano suvereno hosting okruženje z
 
 ---
 
-### OVHcloud AI krajnje tačke
+### OVHcloud AI Endpoints
 
-1. Idite na [OVHcloud panel](https://ovh.com/manager). Idite do odjeljka `Public Cloud`, `AI & Machine Learning` > `AI Endpoints` i na kartici `API Keys` kliknite na **Kreiraj novi API ključ**.
+1. Head over to the [OVHcloud panel](https://ovh.com/manager). Navigate to the `Public Cloud` section, `AI & Machine Learning` > `AI Endpoints` and in `API Keys` tab, click **Create a new API key**.
 
-2. Pokrenite naredbu `/connect` i potražite **OVHcloud AI krajnje točke**.
+2. Run the `/connect` command and search for **OVHcloud AI Endpoints**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj OVHcloud AI Endpoints API ključ.
+3. Enter your OVHcloud AI Endpoints API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete model kao što je _gpt-oss-120b_.
+4. Run the `/models` command to select a model like _gpt-oss-120b_.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### Scaleway
 
-Da biste koristili [Scaleway Generative APIs](https://www.scaleway.com/en/docs/generative-apis/) sa Codeplaneom:
+To use [Scaleway Generative APIs](https://www.scaleway.com/en/docs/generative-apis/) with Codeplane:
 
-1. Prijeđite na [Scaleway Console IAM postavke](https://console.scaleway.com/iam/api-keys) da generišete novi API ključ.
+1. Head over to the [Scaleway Console IAM settings](https://console.scaleway.com/iam/api-keys) to generate a new API key.
 
-2. Pokrenite naredbu `/connect` i potražite **Scaleway**.
+2. Run the `/connect` command and search for **Scaleway**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj Scaleway API ključ.
+3. Enter your Scaleway API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete model kao što je _devstral-2-123b-instruct-2512_ ili _gpt-oss-120b_.
+4. Run the `/models` command to select a model like _devstral-2-123b-instruct-2512_ or _gpt-oss-120b_.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### Together AI
 
-1. Idite na [Together AI console](https://api.together.ai), kreirajte nalog i kliknite na **Dodaj ključ**.
+1. Head over to the [Together AI console](https://api.together.ai), create an account, and click **Add Key**.
 
-2. Pokrenite naredbu `/connect` i potražite **Together AI**.
+2. Run the `/connect` command and search for **Together AI**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj Together AI API ključ.
+3. Enter your Together AI API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete model kao što je _Kimi K2 Instruct_.
+4. Run the `/models` command to select a model like _Kimi K2 Instruct_.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### Venice AI
 
-1. Idite na [Venice AI konzolu](https://venice.ai), kreirajte račun i generirajte API ključ.
+1. Head over to the [Venice AI console](https://venice.ai), create an account, and generate an API key.
 
-2. Pokrenite naredbu `/connect` i potražite **Venice AI**.
+2. Run the `/connect` command and search for **Venice AI**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj Venice AI API ključ.
+3. Enter your Venice AI API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete model kao što je _Llama 3.3 70B_.
+4. Run the `/models` command to select a model like _Llama 3.3 70B_.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### Vercel AI Gateway
 
-Vercel AI Gateway vam omogućava da pristupite modelima iz OpenAI, Anthropic, Google, xAI i drugih putem objedinjene krajnje tačke. Modeli se nude po kataloškim cijenama bez maraka.
+Vercel AI Gateway lets you access models from OpenAI, Anthropic, Google, xAI, and more through a unified endpoint. Models are offered at list price with no markup.
 
-1. Idite na [Vercel kontrolnu tablu](https://vercel.com/), idite na karticu **AI Gateway** i kliknite na **API ključevi** da kreirate novi API ključ.
+1. Head over to the [Vercel dashboard](https://vercel.com/), navigate to the **AI Gateway** tab, and click **API keys** to create a new API key.
 
-2. Pokrenite naredbu `/connect` i potražite **Vercel AI Gateway**.
+2. Run the `/connect` command and search for **Vercel AI Gateway**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj Vercel AI Gateway API ključ.
+3. Enter your Vercel AI Gateway API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete model.
+4. Run the `/models` command to select a model.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
-Također možete prilagoditi modele kroz svoju codeplane konfiguraciju. Evo primjera specificiranja redoslijeda usmjeravanja dobavljača.
+You can also customize models through your codeplane config. Here's an example of specifying provider routing order.
 
 ```json title="codeplane.json"
 {
@@ -1701,125 +1916,125 @@ Također možete prilagoditi modele kroz svoju codeplane konfiguraciju. Evo prim
 }
 ```
 
-Neke korisne opcije rutiranja:
+Some useful routing options:
 
-| Opcija              | Opis                                                               |
-| ------------------- | ------------------------------------------------------------------ |
-| `order`             | Redoslijed dobavljača za pokušaj                                   |
-| `only`              | Ograničiti na određene provajdere                                  |
-| `zeroDataRetention` | Koristite samo provajdere sa nultom politikom zadržavanja podataka |
+| Option              | Description                                          |
+| ------------------- | ---------------------------------------------------- |
+| `order`             | Provider sequence to try                             |
+| `only`              | Restrict to specific providers                       |
+| `zeroDataRetention` | Only use providers with zero data retention policies |
 
 ---
 
 ### xAI
 
-1. Prijeđite na [xAI konzolu](https://console.x.ai/), kreirajte račun i generirajte API ključ.
+1. Head over to the [xAI console](https://console.x.ai/), create an account, and generate an API key.
 
-2. Pokrenite naredbu `/connect` i potražite **xAI**.
+2. Run the `/connect` command and search for **xAI**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite svoj xAI API ključ.
+3. Enter your xAI API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete model kao što je _Grok Beta_.
+4. Run the `/models` command to select a model like _Grok Beta_.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### Z.AI
 
-1. Idite na [Z.AI API konzolu](https://z.ai/manage-apikey/apikey-list), kreirajte nalog i kliknite na **Kreiraj novi API ključ**.
+1. Head over to the [Z.AI API console](https://z.ai/manage-apikey/apikey-list), create an account, and click **Create a new API key**.
 
-2. Pokrenite naredbu `/connect` i potražite **Z.AI**.
+2. Run the `/connect` command and search for **Z.AI**.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-Ako ste pretplaćeni na **GLM plan kodiranja**, odaberite **Z.AI plan kodiranja**.
+   If you are subscribed to the **GLM Coding Plan**, select **Z.AI Coding Plan**.
 
-3. Unesite svoj Z.AI API ključ.
+3. Enter your Z.AI API key.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Pokrenite naredbu `/models` da odaberete model kao što je _GLM-4.7_.
+4. Run the `/models` command to select a model like _GLM-4.7_.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
 ---
 
 ### ZenMux
 
-1. Idite na [ZenMux kontrolnu tablu](https://zenmux.ai/settings/keys), kliknite na **Kreiraj API ključ** i kopirajte ključ.
+1. Head over to the [ZenMux dashboard](https://zenmux.ai/settings/keys), click **Create API Key**, and copy the key.
 
-2. Pokrenite naredbu `/connect` i potražite ZenMux.
+2. Run the `/connect` command and search for ZenMux.
 
-```txt
+   ```txt
    /connect
-```
+   ```
 
-3. Unesite API ključ za provajdera.
+3. Enter the API key for the provider.
 
-```txt
+   ```txt
    ┌ API key
    │
    │
    └ enter
-```
+   ```
 
-4. Mnogi ZenMux modeli su unaprijed učitani po defaultu, pokrenite naredbu `/models` da odaberete onaj koji želite.
+4. Many ZenMux models are preloaded by default, run the `/models` command to select the one you want.
 
-```txt
+   ```txt
    /models
-```
+   ```
 
-Također možete dodati dodatne modele putem vaše codeplane konfiguracije.
+   You can also add additional models through your codeplane config.
 
-```json title="codeplane.json" {6}
-{
-  "$schema": "https://example.invalid/config.json",
-  "provider": {
-    "zenmux": {
-      "models": {
-        "somecoolnewmodel": {}
-      }
-    }
-  }
-}
-```
+   ```json title="codeplane.json" {6}
+   {
+     "$schema": "https://example.invalid/config.json",
+     "provider": {
+       "zenmux": {
+         "models": {
+           "somecoolnewmodel": {}
+         }
+       }
+     }
+   }
+   ```
 
 ---
 
-## Prilagođeni provajder
+## Custom provider
 
-Da biste dodali bilo kojeg **OpenAI-kompatibilnog** provajdera koji nije naveden u naredbi `/connect`:
+To add any **OpenAI-compatible** provider that's not listed in the `/connect` command:
 
 :::tip
-Možete koristiti bilo kojeg OpenAI kompatibilnog provajdera s codeplane-om. Većina modernih AI provajdera nudi API-je kompatibilne sa OpenAI.
+You can use any OpenAI-compatible provider with codeplane. Most modern AI providers offer OpenAI-compatible APIs.
 :::
 
-1. Pokrenite naredbu `/connect` i pomaknite se prema dolje do **Ostalo**.
+1. Run the `/connect` command and scroll down to **Other**.
 
-```bash
+   ```bash
    $ /connect
 
    ┌  Add credential
@@ -1828,11 +2043,11 @@ Možete koristiti bilo kojeg OpenAI kompatibilnog provajdera s codeplane-om. Ve�
    │  ...
    │  ● Other
    └
-```
+   ```
 
-2. Unesite jedinstveni ID za provajdera.
+2. Enter a unique ID for the provider.
 
-```bash
+   ```bash
    $ /connect
 
    ┌  Add credential
@@ -1840,15 +2055,15 @@ Možete koristiti bilo kojeg OpenAI kompatibilnog provajdera s codeplane-om. Ve�
    ◇  Enter provider id
    │  myprovider
    └
-```
+   ```
 
-:::note
-Odaberite ID koji se pamti, to ćete koristiti u svom konfiguracijskom fajlu.
-:::
+   :::note
+   Choose a memorable ID, you'll use this in your config file.
+   :::
 
-3. Unesite svoj API ključ za provajdera.
+3. Enter your API key for the provider.
 
-```bash
+   ```bash
    $ /connect
 
    ┌  Add credential
@@ -1858,48 +2073,47 @@ Odaberite ID koji se pamti, to ćete koristiti u svom konfiguracijskom fajlu.
    ◇  Enter your API key
    │  sk-...
    └
-```
+   ```
 
-4. Kreirajte ili ažurirajte svoju `codeplane.json` datoteku u direktoriju projekta:
+4. Create or update your `codeplane.json` file in your project directory:
 
-```json title="codeplane.json" ""myprovider"" {5-15}
-{
-  "$schema": "https://example.invalid/config.json",
-  "provider": {
-    "myprovider": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "My AI ProviderDisplay Name",
-      "options": {
-        "baseURL": "https://api.myprovider.com/v1"
-      },
-      "models": {
-        "my-model-name": {
-          "name": "My Model Display Name"
-        }
-      }
-    }
-  }
-}
-```
+   ```json title="codeplane.json" ""myprovider"" {5-15}
+   {
+     "$schema": "https://example.invalid/config.json",
+     "provider": {
+       "myprovider": {
+         "npm": "@ai-sdk/openai-compatible",
+         "name": "My AI ProviderDisplay Name",
+         "options": {
+           "baseURL": "https://api.myprovider.com/v1"
+         },
+         "models": {
+           "my-model-name": {
+             "name": "My Model Display Name"
+           }
+         }
+       }
+     }
+   }
+   ```
 
-Evo opcija konfiguracije:
+   Here are the configuration options:
+   - **npm**: AI SDK package to use, `@ai-sdk/openai-compatible` for OpenAI-compatible providers (for `/v1/chat/completions`). If your provider/model uses `/v1/responses`, use `@ai-sdk/openai`.
+   - **name**: Display name in UI.
+   - **models**: Available models.
+   - **options.baseURL**: API endpoint URL.
+   - **options.apiKey**: Optionally set the API key, if not using auth.
+   - **options.headers**: Optionally set custom headers.
 
-- **npm**: AI SDK paket za korištenje, `@ai-sdk/openai-compatible` za OpenAI-kompatibilne provajdere
-- **name**: Ime za prikaz u korisničkom sučelju.
-- **modeli**: Dostupni modeli.
-- **options.baseURL**: URL krajnje tačke API-ja.
-- **options.apiKey**: Opciono postavite API ključ, ako ne koristite auth.
-- **options.headers**: Opciono postavite prilagođena zaglavlja.
+   More on the advanced options in the example below.
 
-Više o naprednim opcijama u primjeru ispod.
-
-5. Pokrenite naredbu `/models` i vaš prilagođeni provajder i modeli će se pojaviti na listi izbora.
+5. Run the `/models` command and your custom provider and models will appear in the selection list.
 
 ---
 
-##### Primjer
+##### Example
 
-Evo primjera postavljanja opcija `apiKey`, `headers` i modela `limit`.
+Here's an example setting the `apiKey`, `headers`, and model `limit` options.
 
 ```json title="codeplane.json" {9,11,17-20}
 {
@@ -1929,27 +2143,27 @@ Evo primjera postavljanja opcija `apiKey`, `headers` i modela `limit`.
 }
 ```
 
-Detalji konfiguracije:
+Configuration details:
 
-- **apiKey**: Postavite pomoću sintakse varijable `env`, [saznajte više](/docs/config#env-vars).
-- **zaglavlja**: Prilagođena zaglavlja se šalju sa svakim zahtjevom.
-- **limit.context**: Maksimalni ulazni tokeni koje model prihvata.
-- **limit.output**: Maksimalni tokeni koje model može generirati.
+- **apiKey**: Set using `env` variable syntax, [learn more](/docs/config#env-vars).
+- **headers**: Custom headers sent with each request.
+- **limit.context**: Maximum input tokens the model accepts.
+- **limit.output**: Maximum tokens the model can generate.
 
-Polja `limit` omogućavaju CodePlane da shvati koliko vam je konteksta ostalo. Standardni dobavljači ih automatski preuzimaju sa models.dev.
+The `limit` fields allow CodePlane to understand how much context you have left. Standard providers pull these from models.dev automatically.
 
 ---
 
-## Rješavanje problema
+## Troubleshooting
 
-Ako imate problema s konfiguracijom provajdera, provjerite sljedeće:
+If you are having trouble with configuring a provider, check the following:
 
-1. **Provjerite postavke autentifikacije**: Pokrenite `codeplane auth list` da vidite da li su vjerodajnice
-   za provajdera se dodaju u vašu konfiguraciju.
+1. **Check the auth setup**: Run `codeplane auth list` to see if the credentials
+   for the provider are added to your config.
 
-   Ovo se ne odnosi na dobavljače kao što je Amazon Bedrock, koji se oslanjaju na varijable okruženja za svoju autentifikaciju.
+   This doesn't apply to providers like Amazon Bedrock, that rely on environment variables for their auth.
 
-2. Za prilagođene provajdere, provjerite CodePlane konfiguraciju i:
-   - Uvjerite se da ID provajdera korišten u naredbi `/connect` odgovara ID-u u vašoj codeplane konfiguraciji.
-   - Za provajdera se koristi pravi npm paket. Na primjer, koristite `@ai-sdk/cerebras` za Cerebras. A za sve ostale OpenAI kompatibilne provajdere, koristite `@ai-sdk/openai-compatible`.
-   - Provjerite da li se ispravna krajnja tačka API-ja koristi u polju `options.baseURL`.
+2. For custom providers, check the codeplane config and:
+   - Make sure the provider ID used in the `/connect` command matches the ID in your codeplane config.
+   - The right npm package is used for the provider. For example, use `@ai-sdk/cerebras` for Cerebras. And for all other OpenAI-compatible providers, use `@ai-sdk/openai-compatible` (for `/v1/chat/completions`); if a model uses `/v1/responses`, use `@ai-sdk/openai`. For mixed setups under one provider, you can override per model via `provider.npm`.
+   - Check correct API endpoint is used in the `options.baseURL` field.

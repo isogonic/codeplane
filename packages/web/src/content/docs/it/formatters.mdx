@@ -1,64 +1,64 @@
 ---
-title: Formattatori
-description: CodePlane usa formattatori specifici per linguaggio.
+title: Formatters
+description: CodePlane uses language specific formatters.
 ---
 
-CodePlane formatta automaticamente i file dopo che vengono scritti o modificati usando formattatori specifici per linguaggio. Questo assicura che il codice generato segua lo stile del tuo progetto.
-
----
-
-## Integrati
-
-CodePlane include diversi formattatori integrati per linguaggi e framework popolari. Qui sotto trovi la lista dei formattatori, delle estensioni supportate e dei comandi o opzioni di config richiesti.
-
-| Formattatore         | Estensioni                                                                                               | Requisiti                                                                                                    |
-| -------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| air                  | .R                                                                                                       | comando `air` disponibile                                                                                    |
-| biome                | .js, .jsx, .ts, .tsx, .html, .css, .md, .json, .yaml, and [more](https://biomejs.dev/)                   | file di configurazione `biome.json(c)`                                                                       |
-| cargofmt             | .rs                                                                                                      | comando `cargo fmt` disponibile                                                                              |
-| clang-format         | .c, .cpp, .h, .hpp, .ino, and [more](https://clang.llvm.org/docs/ClangFormat.html)                       | file di configurazione `.clang-format`                                                                       |
-| cljfmt               | .clj, .cljs, .cljc, .edn                                                                                 | comando `cljfmt` disponibile                                                                                 |
-| dart                 | .dart                                                                                                    | comando `dart` disponibile                                                                                   |
-| dfmt                 | .d                                                                                                       | comando `dfmt` disponibile                                                                                   |
-| gleam                | .gleam                                                                                                   | comando `gleam` disponibile                                                                                  |
-| gofmt                | .go                                                                                                      | comando `gofmt` disponibile                                                                                  |
-| htmlbeautifier       | .erb, .html.erb                                                                                          | comando `htmlbeautifier` disponibile                                                                         |
-| ktlint               | .kt, .kts                                                                                                | comando `ktlint` disponibile                                                                                 |
-| mix                  | .ex, .exs, .eex, .heex, .leex, .neex, .sface                                                             | comando `mix` disponibile                                                                                    |
-| nixfmt               | .nix                                                                                                     | comando `nixfmt` disponibile                                                                                 |
-| ocamlformat          | .ml, .mli                                                                                                | comando `ocamlformat` disponibile e file di configurazione `.ocamlformat`                                    |
-| ormolu               | .hs                                                                                                      | comando `ormolu` disponibile                                                                                 |
-| oxfmt (Experimental) | .js, .jsx, .ts, .tsx                                                                                     | dipendenza `oxfmt` in `package.json` e una [flag variabile d'ambiente sperimentale](/docs/cli/#experimental) |
-| pint                 | .php                                                                                                     | dipendenza `laravel/pint` in `composer.json`                                                                 |
-| prettier             | .js, .jsx, .ts, .tsx, .html, .css, .md, .json, .yaml, and [more](https://prettier.io/docs/en/index.html) | dipendenza `prettier` in `package.json`                                                                      |
-| rubocop              | .rb, .rake, .gemspec, .ru                                                                                | comando `rubocop` disponibile                                                                                |
-| ruff                 | .py, .pyi                                                                                                | comando `ruff` disponibile con config                                                                        |
-| rustfmt              | .rs                                                                                                      | comando `rustfmt` disponibile                                                                                |
-| shfmt                | .sh, .bash                                                                                               | comando `shfmt` disponibile                                                                                  |
-| standardrb           | .rb, .rake, .gemspec, .ru                                                                                | comando `standardrb` disponibile                                                                             |
-| terraform            | .tf, .tfvars                                                                                             | comando `terraform` disponibile                                                                              |
-| uv                   | .py, .pyi                                                                                                | comando `uv` disponibile                                                                                     |
-| zig                  | .zig, .zon                                                                                               | comando `zig` disponibile                                                                                    |
-
-Quindi, se il progetto ha `prettier` in `package.json`, CodePlane lo usera automaticamente.
+CodePlane automatically formats files after they are written or edited using language-specific formatters. This ensures that the code that is generated follows the code styles of your project.
 
 ---
 
-## Come funziona
+## Built-in
 
-Quando CodePlane scrive o modifica un file:
+CodePlane comes with several built-in formatters for popular languages and frameworks. Below is a list of the formatters, supported file extensions, and commands or config options it needs.
 
-1. Controlla l'estensione del file rispetto a tutti i formattatori abilitati.
-2. Esegue il comando del formattatore appropriato sul file.
-3. Applica automaticamente le modifiche di formattazione.
+| Formatter            | Extensions                                                                                               | Requirements                                                                                          |
+| -------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| air                  | .R                                                                                                       | `air` command available                                                                               |
+| biome                | .js, .jsx, .ts, .tsx, .html, .css, .md, .json, .yaml, and [more](https://biomejs.dev/)                   | `biome.json(c)` config file                                                                           |
+| cargofmt             | .rs                                                                                                      | `cargo fmt` command available                                                                         |
+| clang-format         | .c, .cpp, .h, .hpp, .ino, and [more](https://clang.llvm.org/docs/ClangFormat.html)                       | `.clang-format` config file                                                                           |
+| cljfmt               | .clj, .cljs, .cljc, .edn                                                                                 | `cljfmt` command available                                                                            |
+| dart                 | .dart                                                                                                    | `dart` command available                                                                              |
+| dfmt                 | .d                                                                                                       | `dfmt` command available                                                                              |
+| gleam                | .gleam                                                                                                   | `gleam` command available                                                                             |
+| gofmt                | .go                                                                                                      | `gofmt` command available                                                                             |
+| htmlbeautifier       | .erb, .html.erb                                                                                          | `htmlbeautifier` command available                                                                    |
+| ktlint               | .kt, .kts                                                                                                | `ktlint` command available                                                                            |
+| mix                  | .ex, .exs, .eex, .heex, .leex, .neex, .sface                                                             | `mix` command available                                                                               |
+| nixfmt               | .nix                                                                                                     | `nixfmt` command available                                                                            |
+| ocamlformat          | .ml, .mli                                                                                                | `ocamlformat` command available and `.ocamlformat` config file                                        |
+| ormolu               | .hs                                                                                                      | `ormolu` command available                                                                            |
+| oxfmt (Experimental) | .js, .jsx, .ts, .tsx                                                                                     | `oxfmt` dependency in `package.json` and an [experimental env variable flag](/docs/cli/#experimental) |
+| pint                 | .php                                                                                                     | `laravel/pint` dependency in `composer.json`                                                          |
+| prettier             | .js, .jsx, .ts, .tsx, .html, .css, .md, .json, .yaml, and [more](https://prettier.io/docs/en/index.html) | `prettier` dependency in `package.json`                                                               |
+| rubocop              | .rb, .rake, .gemspec, .ru                                                                                | `rubocop` command available                                                                           |
+| ruff                 | .py, .pyi                                                                                                | `ruff` command available with config                                                                  |
+| rustfmt              | .rs                                                                                                      | `rustfmt` command available                                                                           |
+| shfmt                | .sh, .bash                                                                                               | `shfmt` command available                                                                             |
+| standardrb           | .rb, .rake, .gemspec, .ru                                                                                | `standardrb` command available                                                                        |
+| terraform            | .tf, .tfvars                                                                                             | `terraform` command available                                                                         |
+| uv                   | .py, .pyi                                                                                                | `uv` command available                                                                                |
+| zig                  | .zig, .zon                                                                                               | `zig` command available                                                                               |
 
-Questo processo avviene in background, mantenendo lo stile del codice senza passaggi manuali.
+So if your project has `prettier` in your `package.json`, CodePlane will automatically use it.
 
 ---
 
-## Configurazione
+## How it works
 
-Puoi personalizzare i formattatori nella sezione `formatter` della config di CodePlane.
+When CodePlane writes or edits a file, it:
+
+1. Checks the file extension against all enabled formatters.
+2. Runs the appropriate formatter command on the file.
+3. Applies the formatting changes automatically.
+
+This process happens in the background, ensuring your code styles are maintained without any manual steps.
+
+---
+
+## Configure
+
+You can customize formatters through the `formatter` section in your CodePlane config.
 
 ```json title="codeplane.json"
 {
@@ -67,22 +67,22 @@ Puoi personalizzare i formattatori nella sezione `formatter` della config di Cod
 }
 ```
 
-Ogni configurazione di formattatore supporta:
+Each formatter configuration supports the following:
 
-| Proprieta     | Tipo     | Descrizione                                         |
-| ------------- | -------- | --------------------------------------------------- |
-| `disabled`    | boolean  | Impostalo a `true` per disabilitare il formattatore |
-| `command`     | string[] | Il comando da eseguire per la formattazione         |
-| `environment` | object   | Variabili d'ambiente da impostare quando si esegue  |
-| `extensions`  | string[] | Estensioni file gestite da questo formattatore      |
+| Property      | Type     | Description                                             |
+| ------------- | -------- | ------------------------------------------------------- |
+| `disabled`    | boolean  | Set this to `true` to disable the formatter             |
+| `command`     | string[] | The command to run for formatting                       |
+| `environment` | object   | Environment variables to set when running the formatter |
+| `extensions`  | string[] | File extensions this formatter should handle            |
 
-Vediamo alcuni esempi.
+Let's look at some examples.
 
 ---
 
-### Disabilitare i formattatori
+### Disabling formatters
 
-Per disabilitare **tutti** i formattatori globalmente, imposta `formatter` a `false`:
+To disable **all** formatters globally, set `formatter` to `false`:
 
 ```json title="codeplane.json" {3}
 {
@@ -91,7 +91,7 @@ Per disabilitare **tutti** i formattatori globalmente, imposta `formatter` a `fa
 }
 ```
 
-Per disabilitare un formattatore **specifico**, imposta `disabled` a `true`:
+To disable a **specific** formatter, set `disabled` to `true`:
 
 ```json title="codeplane.json" {5}
 {
@@ -106,9 +106,9 @@ Per disabilitare un formattatore **specifico**, imposta `disabled` a `true`:
 
 ---
 
-### Formattatori personalizzati
+### Custom formatters
 
-Puoi sovrascrivere i formattatori integrati o aggiungerne di nuovi specificando comando, variabili d'ambiente ed estensioni file:
+You can override the built-in formatters or add new ones by specifying the command, environment variables, and file extensions:
 
 ```json title="codeplane.json" {4-14}
 {
@@ -129,4 +129,4 @@ Puoi sovrascrivere i formattatori integrati o aggiungerne di nuovi specificando 
 }
 ```
 
-Il **placeholder `$FILE`** nel comando viene sostituito con il percorso del file in fase di formattazione.
+The **`$FILE` placeholder** in the command will be replaced with the path to the file being formatted.

@@ -1,22 +1,23 @@
 ---
-title: Komande
-description: Kreirajte prilagođene komande za zadatke koji se ponavljaju.
+title: Commands
+description: Create custom commands for repetitive tasks.
 ---
 
-Prilagođene komande vam omogućavaju da odredite prompt koji želite da pokrenete kada se ta naredba izvrši u TUI-ju.
+Custom commands let you specify a prompt you want to run from the web app or CLI.
 
 ```bash frame="none"
 /my-command
 ```
 
-Prilagođene komande su dodatak ugrađenim komandama kao što su `/init`, `/undo`, `/redo`, `/share`, `/help`. [Saznajte više](/docs/tui#commands).
+Custom commands are in addition to the built-in commands like `/init`, `/undo`, `/redo`, `/share`, and `/help`.
 
 ---
 
-## Kreiranje datoteka naredbi
+## Create command files
 
-Kreirajte markdown fajlove u direktorijumu `commands/` da definišete prilagođene komande.
-Kreiraj `.codeplane/commands/test.md`:
+Create markdown files in the `commands/` directory to define custom commands.
+
+Create `.codeplane/commands/test.md`:
 
 ```md title=".codeplane/commands/test.md"
 ---
@@ -29,8 +30,9 @@ Run the full test suite with coverage report and show any failures.
 Focus on the failing tests and suggest fixes.
 ```
 
-Frontmatter definira svojstva komande. Sadržaj postaje predložak.
-Koristite komandu tako što ćete upisati `/` nakon čega slijedi naziv komande.
+The frontmatter defines command properties. The content becomes the template.
+
+Use the command by typing `/` followed by the command name.
 
 ```bash frame="none"
 "/test"
@@ -38,15 +40,15 @@ Koristite komandu tako što ćete upisati `/` nakon čega slijedi naziv komande.
 
 ---
 
-## Konfiguracija
+## Configure
 
-Možete dodati prilagođene komande kroz CodePlane konfiguraciju ili kreiranjem markdown datoteka u direktoriju `commands/`.
+You can add custom commands through the CodePlane config or by creating markdown files in the `commands/` directory.
 
 ---
 
 ### JSON
 
-Koristite opciju `command` u svom CodePlane [config](/docs/config):
+Use the `command` option in your CodePlane [config](/docs/config):
 
 ```json title="codeplane.jsonc" {4-12}
 {
@@ -56,7 +58,7 @@ Koristite opciju `command` u svom CodePlane [config](/docs/config):
     "test": {
       // This is the prompt that will be sent to the LLM
       "template": "Run the full test suite with coverage report and show any failures.\nFocus on the failing tests and suggest fixes.",
-      // This is shown as the description in the TUI
+      // This is shown as the description in command pickers
       "description": "Run tests with coverage",
       "agent": "build",
       "model": "anthropic/claude-3-5-sonnet-20241022"
@@ -65,7 +67,7 @@ Koristite opciju `command` u svom CodePlane [config](/docs/config):
 }
 ```
 
-Sada možete pokrenuti ovu naredbu u TUI:
+Now you can run this command from the web app:
 
 ```bash frame="none"
 /test
@@ -75,10 +77,10 @@ Sada možete pokrenuti ovu naredbu u TUI:
 
 ### Markdown
 
-Također možete definirati komande koristeći markdown datoteke. Stavite ih u:
+You can also define commands using markdown files. Place them in:
 
-- Globalno: `~/.config/codeplane/commands/`
-- Po projektu: `.codeplane/commands/`
+- Global: `~/.config/codeplane/commands/`
+- Per-project: `.codeplane/commands/`
 
 ```markdown title="~/.config/codeplane/commands/test.md"
 ---
@@ -91,7 +93,8 @@ Run the full test suite with coverage report and show any failures.
 Focus on the failing tests and suggest fixes.
 ```
 
-Ime markdown datoteke postaje ime naredbe. Na primjer, `test.md` vam omogućava da pokrenete:
+The markdown file name becomes the command name. For example, `test.md` lets
+you run:
 
 ```bash frame="none"
 /test
@@ -99,15 +102,15 @@ Ime markdown datoteke postaje ime naredbe. Na primjer, `test.md` vam omogućava 
 
 ---
 
-## Konfiguracija upita
+## Prompt config
 
-Promptovi za prilagođene komande podržavaju nekoliko posebnih čuvara mjesta i sintakse.
+The prompts for the custom commands support several special placeholders and syntax.
 
 ---
 
-### Argumenti
+### Arguments
 
-Proslijedite argumente naredbama koristeći čuvar mjesta `$ARGUMENTS`.
+Pass arguments to commands using the `$ARGUMENTS` placeholder.
 
 ```md title=".codeplane/commands/component.md"
 ---
@@ -118,21 +121,22 @@ Create a new React component named $ARGUMENTS with TypeScript support.
 Include proper typing and basic structure.
 ```
 
-Pokrenite naredbu s argumentima:
+Run the command with arguments:
 
 ```bash frame="none"
 /component Button
 ```
 
-I `$ARGUMENTS` će biti zamijenjen sa `Button`.
-Također možete pristupiti pojedinačnim argumentima koristeći pozicione parametre:
+And `$ARGUMENTS` will be replaced with `Button`.
 
-- `$1` - Prvi argument
-- `$2` - Drugi argument
-- `$3` - Treći argument
-- I tako dalje...
+You can also access individual arguments using positional parameters:
 
-Na primjer:
+- `$1` - First argument
+- `$2` - Second argument
+- `$3` - Third argument
+- And so on...
+
+For example:
 
 ```md title=".codeplane/commands/create-file.md"
 ---
@@ -143,24 +147,25 @@ Create a file named $1 in the directory $2
 with the following content: $3
 ```
 
-Pokrenite naredbu:
+Run the command:
 
 ```bash frame="none"
 /create-file config.json src "{ \"key\": \"value\" }"
 ```
 
-Ovo zamjenjuje:
+This replaces:
 
-- `$1` do `config.json`
-- `$2` do `src`
-- `$3` do `{ "key": "value" }`
+- `$1` with `config.json`
+- `$2` with `src`
+- `$3` with `{ "key": "value" }`
 
 ---
 
-### Shell izlaz
+### Shell output
 
-Koristite _!`command`_ da ubacite izlaz [bash command](/docs/tui#bash-commands) u svoj prompt.
-Na primjer, da kreirate prilagođenu naredbu koja analizira pokrivenost testom:
+Use _!`command`_ to inject shell command output into your prompt.
+
+For example, to create a custom command that analyzes test coverage:
 
 ```md title=".codeplane/commands/analyze-coverage.md"
 ---
@@ -173,7 +178,7 @@ Here are the current test results:
 Based on these results, suggest improvements to increase coverage.
 ```
 
-Ili da vidite nedavne promjene:
+Or to review recent changes:
 
 ```md title=".codeplane/commands/review-changes.md"
 ---
@@ -186,13 +191,13 @@ Recent git commits:
 Review these changes and suggest any improvements.
 ```
 
-Naredbe se pokreću u korijenskom direktoriju vašeg projekta i njihov izlaz postaje dio prompta.
+Commands run in your project's root directory and their output becomes part of the prompt.
 
 ---
 
-### Reference datoteka
+### File references
 
-Uključite datoteke u svoju naredbu koristeći `@` nakon čega slijedi naziv datoteke.
+Include files in your command using `@` followed by the filename.
 
 ```md title=".codeplane/commands/review-component.md"
 ---
@@ -203,19 +208,19 @@ Review the component in @src/components/Button.tsx.
 Check for performance issues and suggest improvements.
 ```
 
-Sadržaj datoteke se automatski uključuje u prompt.
+The file content gets included in the prompt automatically.
 
 ---
 
-## Opcije
+## Options
 
-Pogledajmo detaljno opcije konfiguracije.
+Let's look at the configuration options in detail.
 
 ---
 
-### Šablon
+### Template
 
-Opcija `template` definira prompt koji će biti poslan LLM-u kada se naredba izvrši.
+The `template` option defines the prompt that will be sent to the LLM when the command is executed.
 
 ```json title="codeplane.json"
 {
@@ -227,13 +232,13 @@ Opcija `template` definira prompt koji će biti poslan LLM-u kada se naredba izv
 }
 ```
 
-Ovo je **obavezna** opcija konfiguracije.
+This is a **required** config option.
 
 ---
 
-### Opis
+### Description
 
-Koristite opciju `description` da pružite kratak opis onoga što naredba radi.
+Use the `description` option to provide a brief description of what the command does.
 
 ```json title="codeplane.json"
 {
@@ -245,15 +250,15 @@ Koristite opciju `description` da pružite kratak opis onoga što naredba radi.
 }
 ```
 
-Ovo se prikazuje kao opis u TUI-u kada unesete naredbu.
+This is shown as the description when you type in the command.
 
 ---
 
 ### Agent
 
-Koristite `agent` konfiguraciju da opciono odredite koji [agent](/docs/agents) treba da izvrši ovu naredbu.
-Ako je ovo [subagent](/docs/agents/#subagents) naredba će po defaultu pokrenuti pozivanje subagenta.
-Da onemogućite ovo ponašanje, postavite `subtask` na `false`.
+Use the `agent` config to optionally specify which [agent](/docs/agents) should execute this command.
+If this is a [subagent](/docs/agents/#subagents) the command will trigger a subagent invocation by default.
+To disable this behavior, set `subtask` to `false`.
 
 ```json title="codeplane.json"
 {
@@ -265,15 +270,15 @@ Da onemogućite ovo ponašanje, postavite `subtask` na `false`.
 }
 ```
 
-Ovo je **opciona** opcija konfiguracije. Ako nije navedeno, podrazumevano je vaš trenutni agent.
+This is an **optional** config option. If not specified, defaults to your current agent.
 
 ---
 
-### Podzadatak
+### Subtask
 
-Koristite `subtask` boolean da prisilite naredbu da pokrene [subagent](/docs/agents/#subagents) pozivanje.
-Ovo je korisno ako želite da naredba ne zagađuje vaš primarni kontekst i da će **primorati** agenta da djeluje kao subagent,
-čak i ako je `mode` postavljeno na `primary` u konfiguraciji [agent](/docs/agents).
+Use the `subtask` boolean to force the command to trigger a [subagent](/docs/agents/#subagents) invocation.
+This is useful if you want the command to not pollute your primary context and will **force** the agent to act as a subagent,
+even if `mode` is set to `primary` on the [agent](/docs/agents) configuration.
 
 ```json title="codeplane.json"
 {
@@ -285,13 +290,13 @@ Ovo je korisno ako želite da naredba ne zagađuje vaš primarni kontekst i da �
 }
 ```
 
-Ovo je **opciona** opcija konfiguracije.
+This is an **optional** config option.
 
 ---
 
 ### Model
 
-Koristite `model` konfiguraciju da nadjačate zadani model za ovu naredbu.
+Use the `model` config to override the default model for this command.
 
 ```json title="codeplane.json"
 {
@@ -303,14 +308,16 @@ Koristite `model` konfiguraciju da nadjačate zadani model za ovu naredbu.
 }
 ```
 
-Ovo je **opciona** opcija konfiguracije.
+This is an **optional** config option.
 
 ---
 
-## Ugrađene naredbe
+## Built-in
 
-CodePlane uključuje nekoliko ugrađenih naredbi kao što su `/init`, `/undo`, `/redo`, `/share`, `/help`; [saznaj više](/docs/tui#commands).
+codeplane includes several built-in commands like `/init`, `/undo`, `/redo`, `/share`, and `/help`.
+
 :::note
-Prilagođene komande mogu nadjačati ugrađene komande.
+Custom commands can override built-in commands.
 :::
-Ako definirate prilagođenu naredbu s istim imenom, ona će nadjačati ugrađenu naredbu.
+
+If you define a custom command with the same name, it will override the built-in command.

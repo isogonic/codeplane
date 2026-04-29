@@ -1,95 +1,108 @@
 ---
 title: Web
-description: Bruke CodePlane i nettleseren din.
+description: Using CodePlane in your browser.
 ---
 
-CodePlane kan kjøres som en nettapplikasjon i nettleseren din, og gir den samme kraftige AI-kodingsopplevelsen uten at du trenger en terminal.
+CodePlane can run as a web application in your browser, providing the same powerful AI coding experience without needing a terminal.
 
-![CodePlane Web - Ny økt](../../../assets/web/web-homepage-new-session.png)
+![CodePlane Web - New Session](../../../assets/web/web-homepage-new-session.png)
 
-## Komme i gang
+## Getting Started
 
-Start web-grensesnittet ved å kjøre:
+Start the web interface by running:
 
 ```bash
 codeplane web
 ```
 
-Dette starter en lokal server på `127.0.0.1` med en tilfeldig tilgjengelig port og åpner automatisk CodePlane i standard nettleser.
+This starts a local server on `127.0.0.1` with a random available port and automatically opens CodePlane in your default browser.
 
----
+:::caution
+If `CODEPLANE_SERVER_PASSWORD` is not set, the server will be unsecured. This is fine for local use but should be set for network access.
+:::
 
-## Konfigurasjon
+## Configuration
 
-Du kan konfigurere webserveren ved å bruke kommandolinjeflagg eller i [konfigurasjonsfilen](/docs/config).
+You can configure the web server using command line flags or in your [config file](/docs/config).
 
 ### Port
 
-Som standard velger CodePlane en tilgjengelig port. Du kan spesifisere en port:
+By default, CodePlane picks an available port. You can specify a port:
 
 ```bash
 codeplane web --port 4096
 ```
 
-### Vertsnavn
+### Hostname
 
-Som standard binder serveren seg til `127.0.0.1` (kun localhost). Slik gjør du CodePlane tilgjengelig på nettverket ditt:
+By default, the server binds to `127.0.0.1` (localhost only). To make CodePlane accessible on your network:
 
 ```bash
 codeplane web --hostname 0.0.0.0
 ```
 
----
+When using `0.0.0.0`, CodePlane will display both local and network addresses:
 
-### Autentisering
+```
+  Local access:       http://localhost:4096
+  Network access:     http://192.168.1.100:4096
+```
 
-For å beskytte tilgang, angi et passord ved hjelp av miljøvariabelen `CODEPLANE_SERVER_PASSWORD`:
+### mDNS Discovery
+
+Enable mDNS to make your server discoverable on the local network:
+
+```bash
+codeplane web --mdns
+```
+
+This automatically sets the hostname to `0.0.0.0` and advertises the server as `codeplane.local`.
+
+You can customize the mDNS domain name to run multiple instances on the same network:
+
+```bash
+codeplane web --mdns --mdns-domain myproject.local
+```
+
+### CORS
+
+To allow additional domains for CORS (useful for custom frontends):
+
+```bash
+codeplane web --cors https://example.com
+```
+
+### Authentication
+
+To protect access, set a password using the `CODEPLANE_SERVER_PASSWORD` environment variable:
 
 ```bash
 CODEPLANE_SERVER_PASSWORD=secret codeplane web
 ```
 
-Brukernavnet er satt til `codeplane` som standard, men kan endres med `CODEPLANE_SERVER_USERNAME`.
+The username defaults to `codeplane` but can be changed with `CODEPLANE_SERVER_USERNAME`.
 
 ---
 
-## Bruke webgrensesnittet
+## Using the Web Interface
 
-Når den er startet, gir nettgrensesnittet tilgang til dine CodePlane-økter.
+Once started, the web interface provides access to your CodePlane sessions.
 
-### Sesjoner
+### Sessions
 
-Se og administrer øktene dine fra hjemmesiden. Du kan se aktive økter og starte nye.
+View and manage your sessions from the homepage. You can see active sessions and start new ones.
 
 ![CodePlane Web - Active Session](../../../assets/web/web-homepage-active-session.png)
 
-### Serverstatus
+### Server Status
 
-Klikk på "Se servere" for å se tilkoblede servere og deres status.
+Click "See Servers" to view connected servers and their status.
 
-![CodePlane Web - Se servere](../../../assets/web/web-homepage-see-servers.png)
+![CodePlane Web - See Servers](../../../assets/web/web-homepage-see-servers.png)
 
----
+## Config File
 
-## Koble til en terminal
-
-Du kan koble en terminal TUI til en kjørende webserver:
-
-```bash
-# Start the web server
-codeplane web --port 4096
-
-# In another terminal, attach the TUI
-codeplane attach http://localhost:4096
-```
-
-Dette lar deg bruke både nettgrensesnittet og terminalen samtidig, og deler samme økter og tilstand.
-
----
-
-## Konfigurasjonsfil
-
-Du kan også konfigurere serverinnstillinger i `codeplane.json` konfigurasjonsfilen:
+You can also configure server settings in your `codeplane.json` config file:
 
 ```json
 {
@@ -102,4 +115,4 @@ Du kan også konfigurere serverinnstillinger i `codeplane.json` konfigurasjonsfi
 }
 ```
 
-Kommandolinjeflagg har forrang over konfigurasjonsfilinnstillinger.
+Command line flags take precedence over config file settings.

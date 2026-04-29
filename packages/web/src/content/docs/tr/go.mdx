@@ -1,57 +1,67 @@
 ---
 title: Go
-description: Açık kodlama modelleri için düşük maliyetli abonelik.
+description: Low cost subscription for open coding models.
 ---
 
 import config from "../../../../config.mjs"
 export const console = config.console
 export const email = `mailto:${config.email}`
 
-CodePlane Go, popüler açık kodlama modellerine güvenilir erişim sağlayan düşük maliyetli bir aboneliktir — **ilk ayınız için 5$**, sonrasında **aylık 10$**.
+CodePlane Go is a low cost subscription — **$5 for your first month**, then **$10/month** — that gives you reliable access to popular open coding models.
 
 :::note
-CodePlane Go şu anda beta olarak mevcut.
+CodePlane Go is currently in beta.
 :::
 
-Go, CodePlane'daki diğer sağlayıcılar gibi çalışır. CodePlane Go'ya abone olur ve API anahtarınızı alırsınız. Bu **tamamen isteğe bağlıdır** ve CodePlane'u kullanmak için bunu kullanmanıza gerek yoktur.
+Go works like any other provider in CodePlane. You subscribe to CodePlane Go and
+get your API key. It's **completely optional** and you don't need to use it to
+use CodePlane.
 
-Dünya çapında istikrarlı erişim için ABD, AB ve Singapur'da barındırılan modellerle temel olarak uluslararası kullanıcılar için tasarlanmıştır.
+It is designed primarily for international users, with models hosted in the US, EU, and Singapore for stable global access.
 
 ---
 
-## Arka Plan
+## Background
 
-Açık modeller gerçekten çok iyi hale geldi. Artık kodlama görevleri için özel mülk modellere yakın bir performansa ulaşıyorlar. Ve birçok sağlayıcı onlara rekabetçi bir şekilde hizmet verebildiği için genellikle çok daha ucuzdurlar.
+Open models have gotten really good. They now reach performance close to
+proprietary models for coding tasks. And because many providers can serve them
+competitively, they are usually far cheaper.
 
-Ancak, bu modellere güvenilir, düşük gecikmeli erişim sağlamak zor olabilir. Sağlayıcılar kalite ve erişilebilirlik açısından farklılık gösterir.
+However, getting reliable, low latency access to them can be difficult. Providers
+vary in quality and availability.
 
 :::tip
-CodePlane ile iyi çalışan seçili bir model ve sağlayıcı grubunu test ettik.
+We tested a select group of models and providers that work well with CodePlane.
 :::
 
-Bunu çözmek için birkaç şey yaptık:
+To fix this, we did a couple of things:
 
-1. Seçili bir grup açık modeli test ettik ve bu modelleri en iyi nasıl çalıştırabileceğimizi öğrenmek için ekipleriyle görüştük.
-2. Ardından, bunların doğru şekilde sunulduğundan emin olmak için birkaç sağlayıcıyla birlikte çalıştık.
-3. Son olarak, model/sağlayıcı kombinasyonunu kıyasladık (benchmark) ve gönül rahatlığıyla önerebileceğimiz bir liste oluşturduk.
+1. We tested a select group of open models and talked to their teams about how to
+   best run them.
+2. We then worked with a few providers to make sure these were being served
+   correctly.
+3. Finally, we benchmarked the combination of the model/provider and came up
+   with a list that we feel good recommending.
 
-CodePlane Go, bu modellere **ilk ayınız için 5$**, ardından **aylık 10$** karşılığında erişmenizi sağlar.
+CodePlane Go gives you access to these models for **$5 for your first month**, then **$10/month**.
 
 ---
 
-## Nasıl çalışır?
+## How it works
 
-CodePlane Go, CodePlane'daki diğer sağlayıcılar gibi çalışır.
+CodePlane Go works like any other provider in CodePlane.
 
-1. **<a href={console}>CodePlane Zen</a>**'e giriş yapın, Go'ya abone olun ve API anahtarınızı kopyalayın.
-2. TUI'de `/connect` komutunu çalıştırın, `CodePlane Go`yu seçin ve API anahtarınızı yapıştırın.
-3. Go üzerinden kullanabileceğiniz modellerin listesini görmek için TUI'de `/models` komutunu çalıştırın.
+1. You sign in to **<a href={console}>CodePlane Zen</a>**, subscribe to Go, and
+   copy your API key.
+2. Open Settings -> Providers in the web app, select `CodePlane Go`, and paste
+   your API key.
+3. Open the model selector to see the list of models available through Go.
 
 :::note
-Her çalışma alanından yalnızca bir üye CodePlane Go'ya abone olabilir.
+Only one member per workspace can subscribe to CodePlane Go.
 :::
 
-Mevcut model listesi şunları içerir:
+The current list of models includes:
 
 - **GLM-5**
 - **GLM-5.1**
@@ -62,79 +72,81 @@ Mevcut model listesi şunları içerir:
 - **MiMo-V2.5-Pro**
 - **MiMo-V2.5**
 - **MiniMax M2.5**
+- **MiniMax M2.7**
 - **Qwen3.5 Plus**
 - **Qwen3.6 Plus**
-- **MiniMax M2.7**
 - **DeepSeek V4 Pro**
 - **DeepSeek V4 Flash**
 
-Test edip yenilerini ekledikçe model listesi değişebilir.
+The list of models may change as we test and add new ones.
 
 ---
 
-## Kullanım limitleri
+## Usage limits
 
-CodePlane Go aşağıdaki limitleri içerir:
+CodePlane Go includes the following limits:
 
-- **5 saatlik limit** — 12$ kullanım
-- **Haftalık limit** — 30$ kullanım
-- **Aylık limit** — 60$ kullanım
+- **5 hour limit** — $12 of usage
+- **Weekly limit** — $30 of usage
+- **Monthly limit** — $60 of usage
 
-Limitler dolar değeri üzerinden belirlenmiştir. Bu, gerçek istek sayınızın kullandığınız modele bağlı olduğu anlamına gelir. MiniMax M2.5 gibi daha ucuz modeller daha fazla isteğe izin verirken, GLM-5.1 gibi yüksek maliyetli modeller daha azına izin verir.
+Limits are defined in dollar value. This means your actual request count depends on the model you use. Cheaper models like Qwen3.5 Plus allow for more requests, while higher-cost models like GLM-5.1 allow for fewer.
 
-Aşağıdaki tablo, tipik Go kullanım modellerine dayalı tahmini bir istek sayısı sunmaktadır:
+The table below provides an estimated request count based on typical Go usage patterns:
 
-| Model             | 5 saatte bir istek | haftalık istek | aylık istek |
-| ----------------- | ------------------ | -------------- | ----------- |
-| GLM-5.1           | 880                | 2,150          | 4,300       |
-| GLM-5             | 1,150              | 2,880          | 5,750       |
-| Kimi K2.5         | 1,850              | 4,630          | 9,250       |
-| Kimi K2.6         | 1,150              | 2,880          | 5,750       |
-| MiMo-V2-Pro       | 1,290              | 3,225          | 6,450       |
-| MiMo-V2-Omni      | 2,150              | 5,450          | 10,900      |
-| MiMo-V2.5-Pro     | 1,290              | 3,225          | 6,450       |
-| MiMo-V2.5         | 2,150              | 5,450          | 10,900      |
-| MiniMax M2.7      | 3,400              | 8,500          | 17,000      |
-| MiniMax M2.5      | 6,300              | 15,900         | 31,800      |
-| Qwen3.6 Plus      | 3,300              | 8,200          | 16,300      |
-| Qwen3.5 Plus      | 10,200             | 25,200         | 50,500      |
-| DeepSeek V4 Pro   | 1,300              | 3,250          | 6,500       |
-| DeepSeek V4 Flash | 7,450              | 18,600         | 37,300      |
+| Model             | requests per 5 hour | requests per week | requests per month |
+| ----------------- | ------------------- | ----------------- | ------------------ |
+| GLM-5.1           | 880                 | 2,150             | 4,300              |
+| GLM-5             | 1,150               | 2,880             | 5,750              |
+| Kimi K2.5         | 1,850               | 4,630             | 9,250              |
+| Kimi K2.6         | 1,150               | 2,880             | 5,750              |
+| MiMo-V2-Pro       | 1,290               | 3,225             | 6,450              |
+| MiMo-V2-Omni      | 2,150               | 5,450             | 10,900             |
+| MiMo-V2.5-Pro     | 1,290               | 3,225             | 6,450              |
+| MiMo-V2.5         | 2,150               | 5,450             | 10,900             |
+| MiniMax M2.7      | 3,400               | 8,500             | 17,000             |
+| MiniMax M2.5      | 6,300               | 15,900            | 31,800             |
+| Qwen3.6 Plus      | 3,300               | 8,200             | 16,300             |
+| Qwen3.5 Plus      | 10,200              | 25,200            | 50,500             |
+| DeepSeek V4 Pro   | 1,300               | 3,250             | 6,500              |
+| DeepSeek V4 Flash | 7,450               | 18,600            | 37,300             |
 
-Tahminler, gözlemlenen ortalama istek modellerine dayanmaktadır:
+Estimates are based on observed average request patterns:
 
-- GLM-5/5.1 — İstek başına 700 girdi, 52.000 önbelleğe alınmış, 150 çıktı token'ı
-- Kimi K2.5/K2.6 — İstek başına 870 girdi, 55.000 önbelleğe alınmış, 200 çıktı token'ı
+- GLM-5/5.1 — 700 input, 52,000 cached, 150 output tokens per request
+- Kimi K2.5/K2.6 — 870 input, 55,000 cached, 200 output tokens per request
 - DeepSeek V4 Pro/Flash — 700 input, 52,000 cached, 150 output tokens per request
-- MiniMax M2.7/M2.5 — İstek başına 300 girdi, 55.000 önbelleğe alınmış, 125 çıktı token'ı
+- MiniMax M2.7/M2.5 — 300 input, 55,000 cached, 125 output tokens per request
+- MiMo-V2-Pro — 350 input, 41,000 cached, 250 output tokens per request
+- MiMo-V2-Omni — 1000 input, 60,000 cached, 140 output tokens per request
+- MiMo-V2.5-Pro — 350 input, 41,000 cached, 250 output tokens per request
+- MiMo-V2.5 — 1000 input, 60,000 cached, 140 output tokens per request
 - Qwen3.5 Plus — 410 input, 47,000 cached, 140 output tokens per request
 - Qwen3.6 Plus — 500 input, 57,000 cached, 190 output tokens per request
-- MiMo-V2-Pro — İstek başına 350 girdi, 41.000 önbelleğe alınmış, 250 çıktı token'ı
-- MiMo-V2-Omni — İstek başına 1000 girdi, 60.000 önbelleğe alınmış, 140 çıktı token'ı
-- MiMo-V2.5-Pro — İstek başına 350 girdi, 41.000 önbelleğe alınmış, 250 çıktı token'ı
-- MiMo-V2.5 — İstek başına 1000 girdi, 60.000 önbelleğe alınmış, 140 çıktı token'ı
 
-Mevcut kullanımınızı **<a href={console}>konsoldan</a>** takip edebilirsiniz.
+You can track your current usage in the **<a href={console}>console</a>**.
 
 :::tip
-Kullanım sınırına ulaşırsanız, ücretsiz modelleri kullanmaya devam edebilirsiniz.
+If you reach the usage limit, you can continue using the free models.
 :::
 
-Erken kullanımlardan ve geri bildirimlerden edindiğimiz deneyimlere bağlı olarak kullanım limitleri değişebilir.
+Usage limits may change as we learn from early usage and feedback.
 
 ---
 
-### Limit dışı kullanım
+### Usage beyond limits
 
-Eğer Zen bakiyenizde kredileriniz varsa, konsoldan **Bakiye kullan (Use balance)** seçeneğini etkinleştirebilirsiniz. Bu özellik etkinleştirildiğinde, kullanım limitlerinize ulaştıktan sonra Go, istekleri engellemek yerine Zen bakiyenizi kullanmaya devam edecektir.
+If you also have credits on your Zen balance, you can enable the **Use balance**
+option in the console. When enabled, Go will fall back to your Zen balance
+after you've reached your usage limits instead of blocking requests.
 
 ---
 
-## Uç Noktalar
+## Endpoints
 
-Go modellerine aşağıdaki API uç noktaları aracılığıyla da erişebilirsiniz.
+You can also access Go models through the following API endpoints.
 
-| Model             | Model ID          | Uç Nokta                                         | AI SDK Paketi               |
+| Model             | Model ID          | Endpoint                                         | AI SDK Package              |
 | ----------------- | ----------------- | ------------------------------------------------ | --------------------------- |
 | GLM-5.1           | glm-5.1           | `https://example.invalid/zen` | `@ai-sdk/openai-compatible` |
 | GLM-5             | glm-5             | `https://example.invalid/zen` | `@ai-sdk/openai-compatible` |
@@ -151,21 +163,23 @@ Go modellerine aşağıdaki API uç noktaları aracılığıyla da erişebilirsi
 | Qwen3.6 Plus      | qwen3.6-plus      | `https://example.invalid/zen` | `@ai-sdk/alibaba`           |
 | Qwen3.5 Plus      | qwen3.5-plus      | `https://example.invalid/zen` | `@ai-sdk/alibaba`           |
 
-CodePlane yapılandırmanızdaki [model id](/docs/config/#models) formatı `codeplane-go/<model-id>` şeklindedir. Örneğin, Kimi K2.6 için yapılandırmanızda `codeplane-go/kimi-k2.6` kullanmalısınız.
+The [model id](/docs/config/#models) in your CodePlane config
+uses the format `codeplane-go/<model-id>`. For example, for Kimi K2.6, you would
+use `codeplane-go/kimi-k2.6` in your config.
 
 ---
 
-## Gizlilik
+## Privacy
 
-Plan, öncelikle uluslararası kullanıcılar için tasarlanmıştır; dünya genelinde istikrarlı erişim sağlamak için modeller US, EU ve Singapore'da barındırılır. Sağlayıcılarımız sıfır veri saklama politikası uygular ve verilerinizi model eğitimi için kullanmaz.
+The plan is designed primarily for international users, with models hosted in the US, EU, and Singapore for stable global access. Our providers follow a zero-retention policy and do not use your data for model training.
 
 ---
 
-## Hedefler
+## Goals
 
-CodePlane Go'yu şu amaçlarla oluşturduk:
+We created CodePlane Go to:
 
-1. Düşük maliyetli bir abonelik ile yapay zeka destekli kodlamayı daha fazla kişi için **erişilebilir** kılmak.
-2. En iyi açık kodlama modellerine **güvenilir** erişim sağlamak.
-3. Kodlama aracısı (agent) kullanımı için **test edilmiş ve kıyaslanmış** modelleri bir araya getirmek.
-4. CodePlane ile diğer sağlayıcıları da kullanmanıza olanak tanıyarak **kilitlenme (vendor lock-in) olmamasını** sağlamak.
+1. Make AI coding **accessible** to more people with a low cost subscription.
+2. Provide **reliable** access to the best open coding models.
+3. Curate models that are **tested and benchmarked** for coding agent use.
+4. Have **no lock-in** by allowing you to use any other provider with CodePlane as well.

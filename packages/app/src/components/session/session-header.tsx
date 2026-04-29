@@ -112,7 +112,7 @@ const LINUX_APPS = [
 ] as const
 
 const detectOS = (platform: ReturnType<typeof usePlatform>): OS => {
-  if (platform.platform === "desktop" && platform.os) return platform.os
+  if (platform.os) return platform.os
   if (typeof navigator !== "object") return "unknown"
   const value = navigator.platform || navigator.userAgent
   if (/Mac/i.test(value)) return "macos"
@@ -153,11 +153,11 @@ export function SessionHeader() {
   })
   const hotkey = createMemo(() => command.keybind("file.open"))
   const os = createMemo(() => detectOS(platform))
-  const isDesktopBeta = platform.platform === "desktop" && import.meta.env.VITE_CODEPLANE_CHANNEL === "beta"
-  const search = createMemo(() => !isDesktopBeta || settings.general.showSearch())
-  const tree = createMemo(() => !isDesktopBeta || settings.general.showFileTree())
-  const term = createMemo(() => !isDesktopBeta || settings.general.showTerminal())
-  const status = createMemo(() => !isDesktopBeta || settings.general.showStatus())
+  const configurableHeader = import.meta.env.VITE_CODEPLANE_CHANNEL === "beta"
+  const search = createMemo(() => !configurableHeader || settings.general.showSearch())
+  const tree = createMemo(() => !configurableHeader || settings.general.showFileTree())
+  const term = createMemo(() => !configurableHeader || settings.general.showTerminal())
+  const status = createMemo(() => !configurableHeader || settings.general.showStatus())
 
   const [exists, setExists] = createStore<Partial<Record<OpenApp, boolean>>>({
     finder: true,
@@ -176,7 +176,6 @@ export function SessionHeader() {
   })
 
   createEffect(() => {
-    if (platform.platform !== "desktop") return
     if (!platform.checkAppExists) return
 
     const list = apps()
@@ -220,7 +219,7 @@ export function SessionHeader() {
     app: undefined as OpenApp | undefined,
   })
 
-  const canOpen = createMemo(() => platform.platform === "desktop" && !!platform.openPath && server.isLocal())
+  const canOpen = createMemo(() => !!platform.openPath && server.isLocal())
   const current = createMemo(
     () =>
       options().find((o) => o.id === prefs.app) ??

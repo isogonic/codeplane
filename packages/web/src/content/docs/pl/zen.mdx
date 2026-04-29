@@ -1,68 +1,68 @@
 ---
 title: Zen
-description: Wyselekcjonowana lista modeli dostarczonych przez CodePlane.
+description: Curated list of models provided by CodePlane.
 ---
 
 import config from "../../../../config.mjs"
 export const console = config.console
 export const email = `mailto:${config.email}`
 
-CodePlane Zen to lista przetestowanych i zweryfikowanych modeli udostępniana przez zespół CodePlane.
+CodePlane Zen is a list of tested and verified models provided by the CodePlane team.
 
 :::note
-CodePlane Zen jest obecnie w wersji beta.
+CodePlane Zen is currently in beta.
 :::
 
-Zen działa jak każdy inny dostawca w CodePlane. Logujesz się do CodePlane Zen i otrzymujesz
-swój klucz API. To **całkowicie opcjonalne** i nie musisz z tego korzystać, aby używać
+Zen works like any other provider in CodePlane. You login to CodePlane Zen and get
+your API key. It's **completely optional** and you don't need to use it to use
 CodePlane.
 
 ---
 
-## Tło
+## Background
 
-Istnieje bardzo wiele modeli, ale tylko kilka z nich sprawdza się dobrze jako
-agenci kodujący. Dodatkowo większość dostawców jest skonfigurowana bardzo różnie,
-więc otrzymujesz bardzo różną wydajność i jakość.
+There are a large number of models out there but only a few of
+these models work well as coding agents. Additionally, most providers are
+configured very differently; so you get very different performance and quality.
 
 :::tip
-Przetestowaliśmy wybraną grupę modeli i dostawców, którzy dobrze współpracują z CodePlane.
+We tested a select group of models and providers that work well with CodePlane.
 :::
 
-Jeśli więc używasz modelu przez coś takiego jak OpenRouter, nigdy nie masz
-pewności, czy otrzymujesz najlepszą wersję modelu, którego chcesz używać.
+So if you are using a model through something like OpenRouter, you can never be
+sure if you are getting the best version of the model you want.
 
-Aby to naprawić, zrobiliśmy kilka rzeczy:
+To fix this, we did a couple of things:
 
-1. Przetestowaliśmy wybraną grupę modeli i rozmawialiśmy z ich zespołami o tym,
-   jak najlepiej je uruchamiać.
-2. Następnie współpracowaliśmy z kilkoma dostawcami, aby upewnić się, że są
-   serwowane poprawnie.
-3. Na końcu porównaliśmy wydajność kombinacji model/dostawca i stworzyliśmy
-   listę, którą z przekonaniem polecamy.
+1. We tested a select group of models and talked to their teams about how to
+   best run them.
+2. We then worked with a few providers to make sure these were being served
+   correctly.
+3. Finally, we benchmarked the combination of the model/provider and came up
+   with a list that we feel good recommending.
 
-CodePlane Zen to brama AI, która daje dostęp do tych modeli.
-
----
-
-## Jak to działa
-
-CodePlane Zen działa jak każdy inny dostawca w CodePlane.
-
-1. Logujesz się do **<a href={console}>CodePlane Zen</a>**, dodajesz dane
-   rozliczeniowe i kopiujesz swój klucz API.
-2. Uruchamiasz polecenie `/connect` w TUI, wybierasz CodePlane Zen i wklejasz swój klucz API.
-3. Uruchamiasz `/models` w TUI, aby zobaczyć listę modeli, które rekomendujemy.
-
-Płatność jest naliczana za każde żądanie i możesz doładować swoje konto.
+CodePlane Zen is an AI gateway that gives you access to these models.
 
 ---
 
-## Endpointy
+## How it works
 
-Możesz też uzyskać dostęp do naszych modeli przez poniższe endpointy API.
+CodePlane Zen works like any other provider in CodePlane.
 
-| Model                 | ID modelu             | Endpoint                                           | Pakiet AI SDK               |
+1. You sign in to **<a href={console}>CodePlane Zen</a>**, add your billing
+   details, and copy your API key.
+2. Open Settings -> Providers in the web app, select CodePlane Zen, and paste your API key.
+3. Open the model selector to see the list of models we recommend.
+
+You are charged per request and you can add credits to your account.
+
+---
+
+## Endpoints
+
+You can also access our models through the following API endpoints.
+
+| Model                 | Model ID              | Endpoint                                           | AI SDK Package              |
 | --------------------- | --------------------- | -------------------------------------------------- | --------------------------- |
 | GPT 5.5               | gpt-5.5               | `https://example.invalid/zen`             | `@ai-sdk/openai`            |
 | GPT 5.5 Pro           | gpt-5.5-pro           | `https://example.invalid/zen`             | `@ai-sdk/openai`            |
@@ -106,15 +106,15 @@ Możesz też uzyskać dostęp do naszych modeli przez poniższe endpointy API.
 | Hy3 Preview Free      | hy3-preview-free      | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | Nemotron 3 Super Free | nemotron-3-super-free | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 
-[ID modelu](/docs/config/#models) w Twojej konfiguracji CodePlane używa formatu
-`codeplane/<model-id>`. Na przykład dla GPT 5.5 użyjesz w konfiguracji
-`codeplane/gpt-5.5`.
+The [model id](/docs/config/#models) in your CodePlane config
+uses the format `codeplane/<model-id>`. For example, for GPT 5.5, you would
+use `codeplane/gpt-5.5` in your config.
 
 ---
 
-### Modele
+### Models
 
-Pełną listę dostępnych modeli i ich metadane możesz pobrać z:
+You can fetch the full list of available models and their metadata from:
 
 ```
 https://example.invalid/zen
@@ -122,94 +122,93 @@ https://example.invalid/zen
 
 ---
 
-## Cennik
+## Pricing
 
-Obsługujemy model pay-as-you-go. Poniżej znajdują się ceny **za 1M tokenów**.
+We support a pay-as-you-go model. Below are the prices **per 1M tokens**.
 
-| Model                             | Wejście | Wyjście | Odczyt z cache | Zapis do cache |
-| --------------------------------- | ------- | ------- | -------------- | -------------- |
-| Big Pickle                        | Free    | Free    | Free           | -              |
-| MiniMax M2.5 Free                 | Free    | Free    | Free           | -              |
-| Ling 2.6 Flash Free               | Free    | Free    | Free           | -              |
-| Hy3 Preview Free                  | Free    | Free    | Free           | -              |
-| Nemotron 3 Super Free             | Free    | Free    | Free           | -              |
-| MiniMax M2.7                      | $0.30   | $1.20   | $0.06          | $0.375         |
-| MiniMax M2.5                      | $0.30   | $1.20   | $0.06          | $0.375         |
-| GLM 5.1                           | $1.40   | $4.40   | $0.26          | -              |
-| GLM 5                             | $1.00   | $3.20   | $0.20          | -              |
-| Kimi K2.5                         | $0.60   | $3.00   | $0.10          | -              |
-| Kimi K2.6                         | $0.95   | $4.00   | $0.16          | -              |
-| Qwen3.6 Plus                      | $0.50   | $3.00   | $0.05          | $0.625         |
-| Qwen3.5 Plus                      | $0.20   | $1.20   | $0.02          | $0.25          |
-| Claude Opus 4.7                   | $5.00   | $25.00  | $0.50          | $6.25          |
-| Claude Opus 4.6                   | $5.00   | $25.00  | $0.50          | $6.25          |
-| Claude Opus 4.5                   | $5.00   | $25.00  | $0.50          | $6.25          |
-| Claude Opus 4.1                   | $15.00  | $75.00  | $1.50          | $18.75         |
-| Claude Sonnet 4.6                 | $3.00   | $15.00  | $0.30          | $3.75          |
-| Claude Sonnet 4.5 (≤ 200K tokens) | $3.00   | $15.00  | $0.30          | $3.75          |
-| Claude Sonnet 4.5 (> 200K tokens) | $6.00   | $22.50  | $0.60          | $7.50          |
-| Claude Sonnet 4 (≤ 200K tokens)   | $3.00   | $15.00  | $0.30          | $3.75          |
-| Claude Sonnet 4 (> 200K tokens)   | $6.00   | $22.50  | $0.60          | $7.50          |
-| Claude Haiku 4.5                  | $1.00   | $5.00   | $0.10          | $1.25          |
-| Claude Haiku 3.5                  | $0.80   | $4.00   | $0.08          | $1.00          |
-| Gemini 3.1 Pro (≤ 200K tokens)    | $2.00   | $12.00  | $0.20          | -              |
-| Gemini 3.1 Pro (> 200K tokens)    | $4.00   | $18.00  | $0.40          | -              |
-| Gemini 3 Flash                    | $0.50   | $3.00   | $0.05          | -              |
-| GPT 5.5 (≤ 272K tokens)           | $5.00   | $30.00  | $0.50          | -              |
-| GPT 5.5 (> 272K tokens)           | $10.00  | $45.00  | $1.00          | -              |
-| GPT 5.5 Pro                       | $30.00  | $180.00 | $30.00         | -              |
-| GPT 5.4 (≤ 272K tokens)           | $2.50   | $15.00  | $0.25          | -              |
-| GPT 5.4 (> 272K tokens)           | $5.00   | $22.50  | $0.50          | -              |
-| GPT 5.4 Pro                       | $30.00  | $180.00 | $30.00         | -              |
-| GPT 5.4 Mini                      | $0.75   | $4.50   | $0.075         | -              |
-| GPT 5.4 Nano                      | $0.20   | $1.25   | $0.02          | -              |
-| GPT 5.3 Codex Spark               | $1.75   | $14.00  | $0.175         | -              |
-| GPT 5.3 Codex                     | $1.75   | $14.00  | $0.175         | -              |
-| GPT 5.2                           | $1.75   | $14.00  | $0.175         | -              |
-| GPT 5.2 Codex                     | $1.75   | $14.00  | $0.175         | -              |
-| GPT 5.1                           | $1.07   | $8.50   | $0.107         | -              |
-| GPT 5.1 Codex                     | $1.07   | $8.50   | $0.107         | -              |
-| GPT 5.1 Codex Max                 | $1.25   | $10.00  | $0.125         | -              |
-| GPT 5.1 Codex Mini                | $0.25   | $2.00   | $0.025         | -              |
-| GPT 5                             | $1.07   | $8.50   | $0.107         | -              |
-| GPT 5 Codex                       | $1.07   | $8.50   | $0.107         | -              |
-| GPT 5 Nano                        | Free    | Free    | Free           | -              |
+| Model                             | Input  | Output  | Cached Read | Cached Write |
+| --------------------------------- | ------ | ------- | ----------- | ------------ |
+| Big Pickle                        | Free   | Free    | Free        | -            |
+| MiniMax M2.5 Free                 | Free   | Free    | Free        | -            |
+| Ling 2.6 Flash Free               | Free   | Free    | Free        | -            |
+| Hy3 Preview Free                  | Free   | Free    | Free        | -            |
+| Nemotron 3 Super Free             | Free   | Free    | Free        | -            |
+| MiniMax M2.7                      | $0.30  | $1.20   | $0.06       | $0.375       |
+| MiniMax M2.5                      | $0.30  | $1.20   | $0.06       | $0.375       |
+| GLM 5.1                           | $1.40  | $4.40   | $0.26       | -            |
+| GLM 5                             | $1.00  | $3.20   | $0.20       | -            |
+| Kimi K2.5                         | $0.60  | $3.00   | $0.10       | -            |
+| Kimi K2.6                         | $0.95  | $4.00   | $0.16       | -            |
+| Qwen3.6 Plus                      | $0.50  | $3.00   | $0.05       | $0.625       |
+| Qwen3.5 Plus                      | $0.20  | $1.20   | $0.02       | $0.25        |
+| Claude Opus 4.7                   | $5.00  | $25.00  | $0.50       | $6.25        |
+| Claude Opus 4.6                   | $5.00  | $25.00  | $0.50       | $6.25        |
+| Claude Opus 4.5                   | $5.00  | $25.00  | $0.50       | $6.25        |
+| Claude Opus 4.1                   | $15.00 | $75.00  | $1.50       | $18.75       |
+| Claude Sonnet 4.6                 | $3.00  | $15.00  | $0.30       | $3.75        |
+| Claude Sonnet 4.5 (≤ 200K tokens) | $3.00  | $15.00  | $0.30       | $3.75        |
+| Claude Sonnet 4.5 (> 200K tokens) | $6.00  | $22.50  | $0.60       | $7.50        |
+| Claude Sonnet 4 (≤ 200K tokens)   | $3.00  | $15.00  | $0.30       | $3.75        |
+| Claude Sonnet 4 (> 200K tokens)   | $6.00  | $22.50  | $0.60       | $7.50        |
+| Claude Haiku 4.5                  | $1.00  | $5.00   | $0.10       | $1.25        |
+| Claude Haiku 3.5                  | $0.80  | $4.00   | $0.08       | $1.00        |
+| Gemini 3.1 Pro (≤ 200K tokens)    | $2.00  | $12.00  | $0.20       | -            |
+| Gemini 3.1 Pro (> 200K tokens)    | $4.00  | $18.00  | $0.40       | -            |
+| Gemini 3 Flash                    | $0.50  | $3.00   | $0.05       | -            |
+| GPT 5.5 (≤ 272K tokens)           | $5.00  | $30.00  | $0.50       | -            |
+| GPT 5.5 (> 272K tokens)           | $10.00 | $45.00  | $1.00       | -            |
+| GPT 5.5 Pro                       | $30.00 | $180.00 | $30.00      | -            |
+| GPT 5.4 (≤ 272K tokens)           | $2.50  | $15.00  | $0.25       | -            |
+| GPT 5.4 (> 272K tokens)           | $5.00  | $22.50  | $0.50       | -            |
+| GPT 5.4 Pro                       | $30.00 | $180.00 | $30.00      | -            |
+| GPT 5.4 Mini                      | $0.75  | $4.50   | $0.075      | -            |
+| GPT 5.4 Nano                      | $0.20  | $1.25   | $0.02       | -            |
+| GPT 5.3 Codex Spark               | $1.75  | $14.00  | $0.175      | -            |
+| GPT 5.3 Codex                     | $1.75  | $14.00  | $0.175      | -            |
+| GPT 5.2                           | $1.75  | $14.00  | $0.175      | -            |
+| GPT 5.2 Codex                     | $1.75  | $14.00  | $0.175      | -            |
+| GPT 5.1                           | $1.07  | $8.50   | $0.107      | -            |
+| GPT 5.1 Codex                     | $1.07  | $8.50   | $0.107      | -            |
+| GPT 5.1 Codex Max                 | $1.25  | $10.00  | $0.125      | -            |
+| GPT 5.1 Codex Mini                | $0.25  | $2.00   | $0.025      | -            |
+| GPT 5                             | $1.07  | $8.50   | $0.107      | -            |
+| GPT 5 Codex                       | $1.07  | $8.50   | $0.107      | -            |
+| GPT 5 Nano                        | Free   | Free    | Free        | -            |
 
-Możesz zauważyć _Claude Haiku 3.5_ w historii użycia. To [niedrogi model](/docs/config/#models),
-który służy do generowania tytułów Twoich sesji.
+You might notice _Claude Haiku 3.5_ in your usage history. This is a [low cost model](/docs/config/#models) that's used to generate the titles of your sessions.
 
 :::note
-Opłaty za karty kredytowe są przenoszone po kosztach (4.4% + $0.30 per transaction); nie naliczamy nic ponad to.
+Credit card fees are passed along at cost (4.4% + $0.30 per transaction); we don't charge anything beyond that.
 :::
 
-Darmowe modele:
+The free models:
 
-- MiniMax M2.5 Free jest dostępny w CodePlane przez ograniczony czas. Zespół wykorzystuje ten czas do zbierania opinii i ulepszania modelu.
-- Ling 2.6 Flash Free jest dostępny w CodePlane przez ograniczony czas. Zespół wykorzystuje ten czas do zbierania opinii i ulepszania modelu.
-- Hy3 Preview Flash Free jest dostępny w CodePlane przez ograniczony czas. Zespół wykorzystuje ten czas do zbierania opinii i ulepszania modelu.
-- Nemotron 3 Super Free jest dostępny w CodePlane przez ograniczony czas. Zespół wykorzystuje ten czas do zbierania opinii i ulepszania modelu.
-- Big Pickle to stealth model, który jest darmowy w CodePlane przez ograniczony czas. Zespół wykorzystuje ten czas do zbierania opinii i ulepszania modelu.
+- MiniMax M2.5 Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Ling 2.6 Flash Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Hy3 Preview Flash Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Nemotron 3 Super Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Big Pickle is a stealth model that's free on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
 
-<a href={email}>Skontaktuj się z nami</a>, jeśli masz pytania.
+<a href={email}>Contact us</a> if you have any questions.
 
 ---
 
 ### Auto-reload
 
-Jeśli Twoje saldo spadnie poniżej $5, Zen automatycznie doładuje $20.
+If your balance goes below $5, Zen will automatically reload $20.
 
-Możesz zmienić kwotę automatycznego doładowania. Możesz też całkowicie wyłączyć auto-reload.
+You can change the auto-reload amount. You can also disable auto-reload entirely.
 
 ---
 
 ### Monthly limits
 
-Możesz też ustawić miesięczny limit użycia dla całego workspace i dla każdego
-członka swojego zespołu.
+You can also set a monthly usage limit for the entire workspace and for each
+member of your team.
 
-Na przykład, jeśli ustawisz miesięczny limit użycia na $20, Zen nie zużyje
-więcej niż $20 w miesiącu. Ale jeśli masz włączony auto-reload, Zen może
-ostatecznie obciążyć Cię kwotą wyższą niż $20, jeśli Twoje saldo spadnie poniżej $5.
+For example, let's say you set a monthly usage limit to $20, Zen will not use
+more than $20 in a month. But if you have auto-reload enabled, Zen might end up
+charging you more than $20 if your balance goes below $5.
 
 ---
 
@@ -227,69 +226,70 @@ ostatecznie obciążyć Cię kwotą wyższą niż $20, jeśli Twoje saldo spadni
 
 ---
 
-## Prywatność
+## Privacy
 
-Wszystkie nasze modele są hostowane w US. Nasi dostawcy stosują politykę zero-retention i nie wykorzystują Twoich danych do trenowania modeli, z następującymi wyjątkami:
+All our models are hosted in the US. Our providers follow a zero-retention policy and do not use your data for model training, with the following exceptions:
 
-- Big Pickle: W czasie darmowego okresu zebrane dane mogą być wykorzystywane do ulepszania modelu.
-- MiniMax M2.5 Free: W czasie darmowego okresu zebrane dane mogą być wykorzystywane do ulepszania modelu.
-- Ling 2.6 Flash Free: W czasie darmowego okresu zebrane dane mogą być wykorzystywane do ulepszania modelu.
-- Hy3 Preview Free: W czasie darmowego okresu zebrane dane mogą być wykorzystywane do ulepszania modelu.
-- Nemotron 3 Super Free (darmowe endpointy NVIDIA): Udostępniany zgodnie z [NVIDIA API Trial Terms of Service](https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf). Tylko do użytku próbnego, nie do produkcji ani danych wrażliwych. NVIDIA rejestruje prompty i odpowiedzi, aby ulepszać swoje modele i usługi. Nie przesyłaj danych osobowych ani poufnych.
-- OpenAI APIs: Żądania są przechowywane przez 30 dni zgodnie z [OpenAI's Data Policies](https://platform.openai.com/docs/guides/your-data).
-- Anthropic APIs: Żądania są przechowywane przez 30 dni zgodnie z [Anthropic's Data Policies](https://docs.anthropic.com/en/docs/claude-code/data-usage).
+- Big Pickle: During its free period, collected data may be used to improve the model.
+- MiniMax M2.5 Free: During its free period, collected data may be used to improve the model.
+- Ling 2.6 Flash Free: During its free period, collected data may be used to improve the model.
+- Hy3 Preview Free: During its free period, collected data may be used to improve the model.
+- Nemotron 3 Super Free (NVIDIA free endpoints): Provided under the [NVIDIA API Trial Terms of Service](https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf). Trial use only — not for production or sensitive data. Prompts and outputs are logged by NVIDIA to improve its models and services. Do not submit personal or confidential data.
+- OpenAI APIs: Requests are retained for 30 days in accordance with [OpenAI's Data Policies](https://platform.openai.com/docs/guides/your-data).
+- Anthropic APIs: Requests are retained for 30 days in accordance with [Anthropic's Data Policies](https://docs.anthropic.com/en/docs/claude-code/data-usage).
 
 ---
 
-## Dla zespołów
+## For Teams
 
-Zen świetnie sprawdza się też w zespołach. Możesz zapraszać członków zespołu,
-przypisywać role, dobierać modele używane przez zespół i nie tylko.
+Zen also works great for teams. You can invite teammates, assign roles, curate
+the models your team uses, and more.
 
 :::note
-Workspaces są obecnie darmowe dla zespołów w ramach wersji beta.
+Workspaces are currently free for teams as a part of the beta.
 :::
 
-Zarządzanie workspace jest obecnie darmowe dla zespołów w ramach wersji beta. Wkrótce
-udostępnimy więcej szczegółów dotyczących cen.
+Managing your workspace is currently free for teams as a part of the beta. We'll be
+sharing more details on the pricing soon.
 
 ---
 
-### Role
+### Roles
 
-Możesz zapraszać członków zespołu do swojego workspace i przypisywać role:
+You can invite teammates to your workspace and assign roles:
 
-- **Admin**: Zarządzanie modelami, członkami, kluczami API i rozliczeniami
-- **Member**: Zarządzanie tylko własnymi kluczami API
+- **Admin**: Manage models, members, API keys, and billing
+- **Member**: Manage only their own API keys
 
-Admini mogą też ustawiać miesięczne limity wydatków dla każdego członka, aby utrzymać koszty pod kontrolą.
-
----
-
-### Dostęp do modeli
-
-Admini mogą włączać lub wyłączać konkretne modele dla workspace. Żądania wysłane do wyłączonego modelu zwrócą błąd.
-
-To przydaje się wtedy, gdy chcesz wyłączyć używanie modelu, który zbiera dane.
+Admins can also set monthly spending limits for each member to keep costs under control.
 
 ---
 
-### Użyj własnego klucza
+### Model access
 
-Możesz używać własnych kluczy API OpenAI lub Anthropic, a jednocześnie mieć dostęp do innych modeli w Zen.
+Admins can enable or disable specific models for the workspace. Requests made to a disabled model will return an error.
 
-Gdy używasz własnych kluczy, tokeny są rozliczane bezpośrednio przez dostawcę, a nie przez Zen.
-
-Na przykład Twoja organizacja może już mieć klucz do OpenAI lub Anthropic i
-chcesz używać go zamiast tego, który udostępnia Zen.
+This is useful for cases where you want to disable the use of a model that
+collects data.
 
 ---
 
-## Cele
+### Bring your own key
 
-Stworzyliśmy CodePlane Zen, aby:
+You can use your own OpenAI or Anthropic API keys while still accessing other models in Zen.
 
-1. **Benchmarkować** najlepsze modele/dostawców dla agentów kodujących.
-2. Mieć dostęp do opcji o **najwyższej jakości** i nie obniżać wydajności ani nie kierować ruchu do tańszych dostawców.
-3. Przekazywać wszelkie **obniżki cen**, sprzedając po kosztach; jedyna marża pokrywa nasze opłaty za przetwarzanie.
-4. Nie tworzyć **lock-in**, pozwalając używać tego z dowolnym innym agentem kodującym. I zawsze pozwalać Ci używać w CodePlane także dowolnego innego dostawcy.
+When you use your own keys, tokens are billed directly by the provider, not by Zen.
+
+For example, your organization might already have a key for OpenAI or Anthropic
+and you want to use that instead of the one that Zen provides.
+
+---
+
+## Goals
+
+We created CodePlane Zen to:
+
+1. **Benchmark** the best models/providers for coding agents.
+2. Have access to the **highest quality** options and not downgrade performance or route to cheaper providers.
+3. Pass along any **price drops** by selling at cost; so the only markup is to cover our processing fees.
+4. Have **no lock-in** by allowing you to use it with any other coding agent. And always let you use any other provider with CodePlane as well.

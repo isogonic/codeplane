@@ -1,37 +1,37 @@
 ---
-title: Fournisseurs
-description: Utiliser n’importe quel fournisseur LLM en CodePlane.
+title: Providers
+description: Using any LLM provider in CodePlane.
 ---
 
 import config from "../../../../config.mjs"
 export const console = config.console
 
-CodePlane utilise [AI SDK](https://ai-sdk.dev/) et [Models.dev](https://models.dev) pour prendre en charge **75+ fournisseurs LLM** et prend en charge l'exécution de modèles locaux.
+CodePlane uses the [AI SDK](https://ai-sdk.dev/) and [Models.dev](https://models.dev) to support **75+ LLM providers** and it supports running local models.
 
-Pour ajouter un fournisseur, vous devez :
+To add a provider you need to:
 
-1. Ajoutez les clés API pour le fournisseur à l'aide de la commande `/connect`.
-2. Configurez le fournisseur dans votre configuration CodePlane.
-
----
-
-### Informations d'identification
-
-Lorsque vous ajoutez les clés API d'un fournisseur avec la commande `/connect`, elles sont stockées
-en `~/.local/share/codeplane/auth.json`.
+1. Add the API keys for the provider from Settings -> Providers in the web app.
+2. Configure the provider in your CodePlane config.
 
 ---
 
-### Configuration
+### Credentials
 
-Vous pouvez personnaliser les fournisseurs via la section `provider` de votre CodePlane
-configuration.
+When you add a provider's API keys from Settings -> Providers, they are stored
+in `~/.local/share/codeplane/auth.json`.
 
 ---
 
-#### Socle URL
+### Config
 
-Vous pouvez personnaliser la base URL pour n'importe quel fournisseur en définissant l'option `baseURL`. Ceci est utile lors de l'utilisation de services proxy ou de points de terminaison personnalisés.
+You can customize the providers through the `provider` section in your CodePlane
+config.
+
+---
+
+#### Base URL
+
+You can customize the base URL for any provider by setting the `baseURL` option. This is useful when using proxy services or custom endpoints.
 
 ```json title="codeplane.json" {6}
 {
@@ -50,22 +50,22 @@ Vous pouvez personnaliser la base URL pour n'importe quel fournisseur en défini
 
 ## CodePlane Zen
 
-CodePlane Zen est une liste de modèles fournis par l'équipe CodePlane qui ont été
-testé et vérifié pour fonctionner correctement avec CodePlane. [En savoir plus](/docs/zen).
+CodePlane Zen is a list of models provided by the CodePlane team that have been
+tested and verified to work well with CodePlane. [Learn more](/docs/zen).
 
 :::tip
-Si vous êtes nouveau, nous vous recommandons de commencer par CodePlane Zen.
+If you are new, we recommend starting with CodePlane Zen.
 :::
 
-1. Exécutez la commande `/connect` dans le TUI, sélectionnez codeplane et dirigez-vous vers [example.invalid/auth](https://example.invalid/auth).
+1. Open Settings -> Providers in the web app, select `CodePlane Zen`, and head to [example.invalid/auth](https://example.invalid/zen).
 
    ```txt
    /connect
    ```
 
-2. Connectez-vous, ajoutez vos informations de facturation et copiez votre clé API.
+2. Sign in, add your billing details, and copy your API key.
 
-3. Collez votre clé API.
+3. Paste your API key.
 
    ```txt
    ┌ API key
@@ -74,30 +74,30 @@ Si vous êtes nouveau, nous vous recommandons de commencer par CodePlane Zen.
    └ enter
    ```
 
-4. Exécutez `/models` dans le TUI pour voir la liste des modèles que nous recommandons.
+4. Open the model selector to see the list of models we recommend.
 
    ```txt
    /models
    ```
 
-Il fonctionne comme n’importe quel autre fournisseur dans CodePlane et son utilisation est totalement facultative.
+It works like any other provider in CodePlane and is completely optional to use.
 
 ---
 
 ## CodePlane Go
 
-CodePlane Go est un plan d'abonnement à faible coût qui offre un accès fiable aux modèles de codage ouverts populaires fournis par l'équipe CodePlane qui ont été
-testé et vérifié pour fonctionner correctement avec CodePlane.
+CodePlane Go is a low cost subscription plan that provides reliable access to popular open coding models provided by the CodePlane team that have been
+tested and verified to work well with CodePlane.
 
-1. Exécutez la commande `/connect` dans le TUI, sélectionnez `CodePlane Go` et rendez-vous sur [example.invalid/auth](https://example.invalid/zen).
+1. Open Settings -> Providers in the web app, select `CodePlane Go`, and head to [example.invalid/auth](https://example.invalid/zen).
 
    ```txt
    /connect
    ```
 
-2. Connectez-vous, ajoutez vos informations de facturation et copiez votre clé API.
+2. Sign in, add your billing details, and copy your API key.
 
-3. Collez votre clé API.
+3. Paste your API key.
 
    ```txt
    ┌ API key
@@ -106,38 +106,38 @@ testé et vérifié pour fonctionner correctement avec CodePlane.
    └ enter
    ```
 
-4. Exécutez `/models` dans le TUI pour voir la liste des modèles que nous recommandons.
+4. Open the model selector to see the list of models we recommend.
 
    ```txt
    /models
    ```
 
-Il fonctionne comme n’importe quel autre fournisseur dans CodePlane et son utilisation est totalement facultative.
+It works like any other provider in CodePlane and is completely optional to use.
 
 ---
 
-## Annuaire
+## Directory
 
-Examinons certains fournisseurs en détail. Si vous souhaitez ajouter un fournisseur au
-liste, n'hésitez pas à ouvrir un PR.
+Let's look at some of the providers in detail. If you'd like to add a provider to the
+list, feel free to open a PR.
 
 :::note
-Vous ne voyez pas de fournisseur ici ? Soumettez un PR.
+Don't see a provider here? Submit a PR.
 :::
 
 ---
 
 ### 302.AI
 
-1. Rendez-vous sur la [console 302.AI](https://302.ai/), créez un compte et générez une clé API.
+1. Head over to the [302.AI console](https://302.ai/), create an account, and generate an API key.
 
-2. Exécutez la commande `/connect` et recherchez **302.AI**.
+2. Run the `/connect` command and search for **302.AI**.
 
    ```txt
    /connect
    ```
 
-3. Saisissez votre clé 302.AI API.
+3. Enter your 302.AI API key.
 
    ```txt
    ┌ API key
@@ -146,7 +146,7 @@ Vous ne voyez pas de fournisseur ici ? Soumettez un PR.
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle.
+4. Run the `/models` command to select a model.
 
    ```txt
    /models
@@ -156,22 +156,24 @@ Vous ne voyez pas de fournisseur ici ? Soumettez un PR.
 
 ### Amazon Bedrock
 
-Pour utiliser Amazon Bedrock avec CodePlane :
+To use Amazon Bedrock with CodePlane:
 
-1. Rendez-vous sur le **Catalogue de modèles** dans la console Amazon Bedrock et demandez
-   accédez aux modèles que vous souhaitez.
+1. Head over to the **Model catalog** in the Amazon Bedrock console and request
+   access to the models you want.
 
    :::tip
-   Vous devez avoir accès au modèle souhaité dans Amazon Bedrock.
+   You need to have access to the model you want in Amazon Bedrock.
    :::
 
-2. **Configurez l'authentification** à l'aide de l'une des méthodes suivantes :
+2. **Configure authentication** using one of the following methods:
 
-   #### Variables d'environnement (démarrage rapide)
+   ***
 
-Définissez l'une de ces variables d'environnement lors de l'exécution de codeplane :
+   #### Environment Variables (Quick Start)
 
-```bash
+   Set one of these environment variables while running codeplane:
+
+   ```bash
    # Option 1: Using AWS access keys
    AWS_ACCESS_KEY_ID=XXX AWS_SECRET_ACCESS_KEY=YYY codeplane
 
@@ -180,92 +182,98 @@ Définissez l'une de ces variables d'environnement lors de l'exécution de codep
 
    # Option 3: Using Bedrock bearer token
    AWS_BEARER_TOKEN_BEDROCK=XXX codeplane
-```
+   ```
 
-Ou ajoutez-les à votre profil bash :
+   Or add them to your bash profile:
 
-```bash title="~/.bash_profile"
+   ```bash title="~/.bash_profile"
    export AWS_PROFILE=my-dev-profile
    export AWS_REGION=us-east-1
-```
+   ```
 
-#### Fichier de configuration (recommandé)
+   ***
 
-Pour une configuration spécifique au projet ou persistante, utilisez `codeplane.json` :
+   #### Configuration File (Recommended)
 
-```json title="codeplane.json"
-{
-  "$schema": "https://example.invalid/config.json",
-  "provider": {
-    "amazon-bedrock": {
-      "options": {
-        "region": "us-east-1",
-        "profile": "my-aws-profile"
-      }
-    }
-  }
-}
-```
+   For project-specific or persistent configuration, use `codeplane.json`:
 
-**Options disponibles :**
+   ```json title="codeplane.json"
+   {
+     "$schema": "https://example.invalid/config.json",
+     "provider": {
+       "amazon-bedrock": {
+         "options": {
+           "region": "us-east-1",
+           "profile": "my-aws-profile"
+         }
+       }
+     }
+   }
+   ```
 
-- `region` - Région AWS (par exemple, `us-east-1`, `eu-west-1`)
-- `profile` - Profil nommé AWS de `~/.aws/credentials`
-- `endpoint` - URL de point de terminaison personnalisée pour les endpoints VPC (alias de l'option générique `baseURL`)
+   **Available options:**
+   - `region` - AWS region (e.g., `us-east-1`, `eu-west-1`)
+   - `profile` - AWS named profile from `~/.aws/credentials`
+   - `endpoint` - Custom endpoint URL for VPC endpoints (alias for generic `baseURL` option)
 
-:::tip
-Les options du fichier de configuration sont prioritaires sur les variables d'environnement.
-:::
+   :::tip
+   Configuration file options take precedence over environment variables.
+   :::
 
-#### Avancé : points de terminaison d'un VPC
+   ***
 
-Si vous utilisez des points de terminaison d'un VPC pour Bedrock :
+   #### Advanced: VPC Endpoints
 
-```json title="codeplane.json"
-{
-  "$schema": "https://example.invalid/config.json",
-  "provider": {
-    "amazon-bedrock": {
-      "options": {
-        "region": "us-east-1",
-        "profile": "production",
-        "endpoint": "https://bedrock-runtime.us-east-1.vpce-xxxxx.amazonaws.com"
-      }
-    }
-  }
-}
-```
+   If you're using VPC endpoints for Bedrock:
 
-:::note
-L'option `endpoint` est un alias pour l'option générique `baseURL`, utilisant la terminologie spécifique à AWS. Si `endpoint` et `baseURL` sont spécifiés, `endpoint` est prioritaire.
-:::
+   ```json title="codeplane.json"
+   {
+     "$schema": "https://example.invalid/config.json",
+     "provider": {
+       "amazon-bedrock": {
+         "options": {
+           "region": "us-east-1",
+           "profile": "production",
+           "endpoint": "https://bedrock-runtime.us-east-1.vpce-xxxxx.amazonaws.com"
+         }
+       }
+     }
+   }
+   ```
 
-#### Méthodes d'authentification
+   :::note
+   The `endpoint` option is an alias for the generic `baseURL` option, using AWS-specific terminology. If both `endpoint` and `baseURL` are specified, `endpoint` takes precedence.
+   :::
 
-- **`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`** : créez un utilisateur IAM et générez des clés d'accès dans la console AWS
-- **`AWS_PROFILE`** : utilisez les profils nommés de `~/.aws/credentials`. Configurez d'abord avec `aws configure --profile my-profile` ou `aws sso login`
-- **`AWS_BEARER_TOKEN_BEDROCK`** : Générez des clés API à long terme à partir de la console Amazon Bedrock
-- **`AWS_WEB_IDENTITY_TOKEN_FILE` / `AWS_ROLE_ARN`** : pour EKS IRSA (rôles IAM pour les comptes de service) ou d'autres environnements Kubernetes avec fédération OIDC. Ces variables d'environnement sont automatiquement injectées par Kubernetes lors de l'utilisation des annotations de compte de service.
+   ***
 
-#### Priorité d'authentification
+   #### Authentication Methods
+   - **`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`**: Create an IAM user and generate access keys in the AWS Console
+   - **`AWS_PROFILE`**: Use named profiles from `~/.aws/credentials`. First configure with `aws configure --profile my-profile` or `aws sso login`
+   - **`AWS_BEARER_TOKEN_BEDROCK`**: Generate long-term API keys from the Amazon Bedrock console
+   - **`AWS_WEB_IDENTITY_TOKEN_FILE` / `AWS_ROLE_ARN`**: For EKS IRSA (IAM Roles for Service Accounts) or other Kubernetes environments with OIDC federation. These environment variables are automatically injected by Kubernetes when using service account annotations.
 
-Amazon Bedrock utilise la priorité d'authentification suivante :
+   ***
 
-1.  **Bearer Token** - Variable d'environnement `AWS_BEARER_TOKEN_BEDROCK` ou jeton de la commande `/connect`
-2.  **AWS Credential Chain** - Profil, clés d'accès, informations d'identification partagées, rôles IAM, jetons d'identité Web (EKS IRSA), métadonnées d'instance
+   #### Authentication Precedence
 
-:::note
-Lorsqu'un jeton de porteur est défini (via `/connect` ou `AWS_BEARER_TOKEN_BEDROCK`), il est prioritaire sur toutes les méthodes d'identification AWS, y compris les profils configurés.
-:::
+   Amazon Bedrock uses the following authentication priority:
+   1. **Bearer Token** - `AWS_BEARER_TOKEN_BEDROCK` environment variable or token from `/connect` command
+   2. **AWS Credential Chain** - Profile, access keys, shared credentials, IAM roles, Web Identity Tokens (EKS IRSA), instance metadata
 
-3. Exécutez la commande `/models` pour sélectionner le modèle souhaité.
+   :::note
+   When a bearer token is set (via `/connect` or `AWS_BEARER_TOKEN_BEDROCK`), it takes precedence over all AWS credential methods including configured profiles.
+   :::
+
+3. Run the `/models` command to select the model you want.
 
    ```txt
    /models
    ```
 
 :::note
-Pour les profils d'inférence personnalisés, utilisez le nom du modèle et du fournisseur dans la clé et définissez la propriété `id` sur l'arn. Cela garantit une mise en cache correcte :
+For custom inference profiles, use the model and provider name in the key and set the `id` property to the arn. This ensures correct caching.
+:::
 
 ```json title="codeplane.json"
 {
@@ -283,71 +291,72 @@ Pour les profils d'inférence personnalisés, utilisez le nom du modèle et du f
 }
 ```
 
-:::
-
 ---
 
 ### Anthropic
 
-1. Une fois inscrit, exécutez la commande `/connect` et sélectionnez Anthropic.
+1. Once you've signed up, run the `/connect` command and select Anthropic.
 
    ```txt
    /connect
    ```
 
-2. Ici, vous pouvez sélectionner l'option **Claude Pro/Max** et cela ouvrira votre navigateur.
-   et vous demande de vous authentifier.
+2. Here you can select the **Claude Pro/Max** option and it'll open your browser
+   and ask you to authenticate.
 
    ```txt
    ┌ Select auth method
    │
-   │ Claude Pro/Max
-   │ Create an API Key
    │ Manually enter API Key
    └
    ```
 
-3. Désormais, tous les modèles Anthropic devraient être disponibles lorsque vous utilisez la commande `/models`.
+3. Now all the Anthropic models should be available when you use the `/models` command.
 
    ```txt
    /models
    ```
 
 :::info
-L'utilisation de votre abonnement Claude Pro/Max dans CodePlane n'est pas officiellement prise en charge par [Anthropic](https://anthropic.com).
-:::
+There are plugins that allow you to use your Claude Pro/Max models with
+CodePlane. Anthropic explicitly prohibits this.
 
-##### Utilisation des clés API
+Previous versions of CodePlane came bundled with these plugins but that is no
+longer the case as of 1.3.0
 
-Vous pouvez également sélectionner **Créer une clé API** si vous n'avez pas d'abonnement Pro/Max. Il ouvrira également votre navigateur et vous demandera de vous connecter à Anthropic et vous donnera un code que vous pourrez coller dans votre terminal.
+Other companies support freedom of choice with developer tooling - you can use
+the following subscriptions in CodePlane with zero setup:
 
-Ou si vous disposez déjà d'une clé API, vous pouvez sélectionner **Entrer manuellement la clé API** et la coller dans votre terminal.
+- ChatGPT Plus
+- Github Copilot
+- Gitlab Duo
+  :::
 
 ---
 
 ### Azure OpenAI
 
 :::note
-Si vous rencontrez des erreurs « Je suis désolé, mais je ne peux pas vous aider avec cette demande », essayez de modifier le filtre de contenu de **DefaultV2** à **Default** dans votre ressource Azure.
+If you encounter "I'm sorry, but I cannot assist with that request" errors, try changing the content filter from **DefaultV2** to **Default** in your Azure resource.
 :::
 
-1. Rendez-vous sur le [portail Azure](https://portal.azure.com/) et créez une ressource **Azure OpenAI**. Vous aurez besoin de :
-   - **Nom de la ressource** : cela fait partie de votre point de terminaison API (`https://RESOURCE_NAME.openai.azure.com/`)
-   - **Clé API** : soit `KEY 1` ou `KEY 2` de votre ressource
+1. Head over to the [Azure portal](https://portal.azure.com/) and create an **Azure OpenAI** resource. You'll need:
+   - **Resource name**: This becomes part of your API endpoint (`https://RESOURCE_NAME.openai.azure.com/`)
+   - **API key**: Either `KEY 1` or `KEY 2` from your resource
 
-2. Accédez à [Azure AI Foundry](https://ai.azure.com/) et déployez un modèle.
+2. Go to [Azure AI Foundry](https://ai.azure.com/) and deploy a model.
 
    :::note
-   Le nom du déploiement doit correspondre au nom du modèle pour que codeplane fonctionne correctement.
+   The deployment name must match the model name for codeplane to work properly.
    :::
 
-3. Exécutez la commande `/connect` et recherchez **Azure**.
+3. Run the `/connect` command and search for **Azure**.
 
    ```txt
    /connect
    ```
 
-4. Entrez votre clé API.
+4. Enter your API key.
 
    ```txt
    ┌ API key
@@ -356,19 +365,19 @@ Si vous rencontrez des erreurs « Je suis désolé, mais je ne peux pas vous aid
    └ enter
    ```
 
-5. Définissez le nom de votre ressource comme variable d'environnement :
+5. Set your resource name as an environment variable:
 
    ```bash
    AZURE_RESOURCE_NAME=XXX codeplane
    ```
 
-Ou ajoutez-le à votre profil bash :
+   Or add it to your bash profile:
 
-```bash title="~/.bash_profile"
+   ```bash title="~/.bash_profile"
    export AZURE_RESOURCE_NAME=XXX
-```
+   ```
 
-6. Exécutez la commande `/models` pour sélectionner votre modèle déployé.
+6. Run the `/models` command to select your deployed model.
 
    ```txt
    /models
@@ -378,23 +387,23 @@ Ou ajoutez-le à votre profil bash :
 
 ### Azure Cognitive Services
 
-1. Rendez-vous sur le [portail Azure](https://portal.azure.com/) et créez une ressource **Azure OpenAI**. Vous aurez besoin de :
-   - **Nom de la ressource** : cela fait partie de votre point de terminaison API (`https://AZURE_COGNITIVE_SERVICES_RESOURCE_NAME.cognitiveservices.azure.com/`)
-   - **Clé API** : soit `KEY 1` ou `KEY 2` de votre ressource
+1. Head over to the [Azure portal](https://portal.azure.com/) and create an **Azure OpenAI** resource. You'll need:
+   - **Resource name**: This becomes part of your API endpoint (`https://AZURE_COGNITIVE_SERVICES_RESOURCE_NAME.cognitiveservices.azure.com/`)
+   - **API key**: Either `KEY 1` or `KEY 2` from your resource
 
-2. Accédez à [Azure AI Foundry](https://ai.azure.com/) et déployez un modèle.
+2. Go to [Azure AI Foundry](https://ai.azure.com/) and deploy a model.
 
    :::note
-   Le nom du déploiement doit correspondre au nom du modèle pour que codeplane fonctionne correctement.
+   The deployment name must match the model name for codeplane to work properly.
    :::
 
-3. Exécutez la commande `/connect` et recherchez **Azure Cognitive Services**.
+3. Run the `/connect` command and search for **Azure Cognitive Services**.
 
    ```txt
    /connect
    ```
 
-4. Entrez votre clé API.
+4. Enter your API key.
 
    ```txt
    ┌ API key
@@ -403,19 +412,19 @@ Ou ajoutez-le à votre profil bash :
    └ enter
    ```
 
-5. Définissez le nom de votre ressource comme variable d'environnement :
+5. Set your resource name as an environment variable:
 
    ```bash
    AZURE_COGNITIVE_SERVICES_RESOURCE_NAME=XXX codeplane
    ```
 
-Ou ajoutez-le à votre profil bash :
+   Or add it to your bash profile:
 
-```bash title="~/.bash_profile"
+   ```bash title="~/.bash_profile"
    export AZURE_COGNITIVE_SERVICES_RESOURCE_NAME=XXX
-```
+   ```
 
-6. Exécutez la commande `/models` pour sélectionner votre modèle déployé.
+6. Run the `/models` command to select your deployed model.
 
    ```txt
    /models
@@ -425,15 +434,15 @@ Ou ajoutez-le à votre profil bash :
 
 ### Baseten
 
-1. Rendez-vous sur [Baseten](https://app.baseten.co/), créez un compte et générez une clé API.
+1. Head over to the [Baseten](https://app.baseten.co/), create an account, and generate an API key.
 
-2. Exécutez la commande `/connect` et recherchez **Baseten**.
+2. Run the `/connect` command and search for **Baseten**.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre clé Baseten API.
+3. Enter your Baseten API key.
 
    ```txt
    ┌ API key
@@ -442,7 +451,7 @@ Ou ajoutez-le à votre profil bash :
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle.
+4. Run the `/models` command to select a model.
 
    ```txt
    /models
@@ -452,15 +461,15 @@ Ou ajoutez-le à votre profil bash :
 
 ### Cerebras
 
-1. Rendez-vous sur la [console Cerebras](https://inference.cerebras.ai/), créez un compte et générez une clé API.
+1. Head over to the [Cerebras console](https://inference.cerebras.ai/), create an account, and generate an API key.
 
-2. Exécutez la commande `/connect` et recherchez **Cerebras**.
+2. Run the `/connect` command and search for **Cerebras**.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre clé Cerebras API.
+3. Enter your Cerebras API key.
 
    ```txt
    ┌ API key
@@ -469,7 +478,7 @@ Ou ajoutez-le à votre profil bash :
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle tel que _Qwen 3 Coder 480B_.
+4. Run the `/models` command to select a model like _Qwen 3 Coder 480B_.
 
    ```txt
    /models
@@ -479,73 +488,97 @@ Ou ajoutez-le à votre profil bash :
 
 ### Cloudflare AI Gateway
 
-Cloudflare AI Gateway vous permet d'accéder aux modèles de OpenAI, Anthropic, Workers AI et bien plus encore via un point de terminaison unifié. Avec [Unified Billing](https://developers.cloudflare.com/ai-gateway/features/unified-billing/), vous n'avez pas besoin de clés API distinctes pour chaque fournisseur.
+Cloudflare AI Gateway lets you access models from OpenAI, Anthropic, Workers AI, and more through a unified endpoint. With [Unified Billing](https://developers.cloudflare.com/ai-gateway/features/unified-billing/) you don't need separate API keys for each provider.
 
-1. Rendez-vous sur le [tableau de bord Cloudflare](https://dash.cloudflare.com/), accédez à **AI** > **AI Gateway** et créez une nouvelle passerelle.
+1. Head over to the [Cloudflare dashboard](https://dash.cloudflare.com/), navigate to **AI** > **AI Gateway**, and create a new gateway. Note your **Account ID** and **Gateway ID**.
 
-2. Définissez votre ID de compte et votre ID de passerelle comme variables d'environnement.
-
-   ```bash title="~/.bash_profile"
-   export CLOUDFLARE_ACCOUNT_ID=your-32-character-account-id
-   export CLOUDFLARE_GATEWAY_ID=your-gateway-id
-   ```
-
-3. Exécutez la commande `/connect` et recherchez **Cloudflare AI Gateway**.
+2. Run the `/connect` command and search for **Cloudflare AI Gateway**.
 
    ```txt
    /connect
    ```
 
-4. Entrez votre jeton Cloudflare API.
+3. Enter your **Account ID** when prompted.
 
    ```txt
-   ┌ API key
+   ┌ Enter your Cloudflare Account ID
    │
    │
    └ enter
    ```
 
-Ou définissez-le comme variable d'environnement.
+4. Enter your **Gateway ID** when prompted.
 
-```bash title="~/.bash_profile"
-   export CLOUDFLARE_API_TOKEN=your-api-token
-```
+   ```txt
+   ┌ Enter your Cloudflare AI Gateway ID
+   │
+   │
+   └ enter
+   ```
 
-5. Exécutez la commande `/models` pour sélectionner un modèle.
+5. Enter your **Cloudflare API token**.
+
+   ```txt
+   ┌ Gateway API token
+   │
+   │
+   └ enter
+   ```
+
+6. Run the `/models` command to select a model.
 
    ```txt
    /models
    ```
 
-Vous pouvez également ajouter des modèles via votre configuration codeplane.
+   You can also add models through your codeplane config.
 
-```json title="codeplane.json"
-{
-  "$schema": "https://example.invalid/config.json",
-  "provider": {
-    "cloudflare-ai-gateway": {
-      "models": {
-        "openai/gpt-4o": {},
-        "anthropic/claude-sonnet-4": {}
-      }
-    }
-  }
-}
-```
+   ```json title="codeplane.json"
+   {
+     "$schema": "https://example.invalid/config.json",
+     "provider": {
+       "cloudflare-ai-gateway": {
+         "models": {
+           "openai/gpt-4o": {},
+           "anthropic/claude-sonnet-4": {}
+         }
+       }
+     }
+   }
+   ```
+
+   Alternatively, you can set environment variables instead of using `/connect`.
+
+   ```bash title="~/.bash_profile"
+   export CLOUDFLARE_ACCOUNT_ID=your-32-character-account-id
+   export CLOUDFLARE_GATEWAY_ID=your-gateway-id
+   export CLOUDFLARE_API_TOKEN=your-api-token
+   ```
 
 ---
 
-### Cortecs
+### Cloudflare Workers AI
 
-1. Rendez-vous sur la [console Cortecs](https://cortecs.ai/), créez un compte et générez une clé API.
+Cloudflare Workers AI lets you run AI models on Cloudflare's global network directly via REST API, with no separate provider accounts needed for supported models.
 
-2. Exécutez la commande `/connect` et recherchez **Cortecs**.
+1. Head over to the [Cloudflare dashboard](https://dash.cloudflare.com/), navigate to **Workers AI**, and select **Use REST API** to get your **Account ID** and create an API token.
+
+2. Run the `/connect` command and search for **Cloudflare Workers AI**.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre clé Cortecs API.
+3. Enter your **Account ID** when prompted.
+
+   ```txt
+   ┌ Enter your Cloudflare Account ID
+   │
+   │
+   └ enter
+   ```
+
+4. Enter your **Cloudflare API key**.
 
    ```txt
    ┌ API key
@@ -554,7 +587,41 @@ Vous pouvez également ajouter des modèles via votre configuration codeplane.
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle tel que _Kimi K2 Instruct_.
+5. Run the `/models` command to select a model.
+
+   ```txt
+   /models
+   ```
+
+   Alternatively, you can set environment variables instead of using `/connect`.
+
+   ```bash title="~/.bash_profile"
+   export CLOUDFLARE_ACCOUNT_ID=your-32-character-account-id
+   export CLOUDFLARE_API_KEY=your-api-token
+   ```
+
+---
+
+### Cortecs
+
+1. Head over to the [Cortecs console](https://cortecs.ai/), create an account, and generate an API key.
+
+2. Run the `/connect` command and search for **Cortecs**.
+
+   ```txt
+   /connect
+   ```
+
+3. Enter your Cortecs API key.
+
+   ```txt
+   ┌ API key
+   │
+   │
+   └ enter
+   ```
+
+4. Run the `/models` command to select a model like _Kimi K2 Instruct_.
 
    ```txt
    /models
@@ -564,15 +631,15 @@ Vous pouvez également ajouter des modèles via votre configuration codeplane.
 
 ### DeepSeek
 
-1. Rendez-vous sur la [console DeepSeek](https://platform.deepseek.com/), créez un compte et cliquez sur **Créer une nouvelle clé API**.
+1. Head over to the [DeepSeek console](https://platform.deepseek.com/), create an account, and click **Create new API key**.
 
-2. Exécutez la commande `/connect` et recherchez **DeepSeek**.
+2. Run the `/connect` command and search for **DeepSeek**.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre clé DeepSeek API.
+3. Enter your DeepSeek API key.
 
    ```txt
    ┌ API key
@@ -581,7 +648,7 @@ Vous pouvez également ajouter des modèles via votre configuration codeplane.
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle DeepSeek tel que _DeepSeek V4 Pro_.
+4. Run the `/models` command to select a DeepSeek model like _DeepSeek V4 Pro_.
 
    ```txt
    /models
@@ -591,15 +658,15 @@ Vous pouvez également ajouter des modèles via votre configuration codeplane.
 
 ### Deep Infra
 
-1. Rendez-vous sur le [tableau de bord Deep Infra](https://deepinfra.com/dash), créez un compte et générez une clé API.
+1. Head over to the [Deep Infra dashboard](https://deepinfra.com/dash), create an account, and generate an API key.
 
-2. Exécutez la commande `/connect` et recherchez **Deep Infra**.
+2. Run the `/connect` command and search for **Deep Infra**.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre clé Deep Infra API.
+3. Enter your Deep Infra API key.
 
    ```txt
    ┌ API key
@@ -608,7 +675,7 @@ Vous pouvez également ajouter des modèles via votre configuration codeplane.
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle.
+4. Run the `/models` command to select a model.
 
    ```txt
    /models
@@ -618,15 +685,15 @@ Vous pouvez également ajouter des modèles via votre configuration codeplane.
 
 ### Firmware
 
-1. Rendez-vous sur le [Tableau de bord du micrologiciel](https://app.firmware.ai/signup), créez un compte et générez une clé API.
+1. Head over to the [Firmware dashboard](https://app.firmware.ai/signup), create an account, and generate an API key.
 
-2. Exécutez la commande `/connect` et recherchez **Firmware**.
+2. Run the `/connect` command and search for **Firmware**.
 
    ```txt
    /connect
    ```
 
-3. Entrez la clé API de votre micrologiciel.
+3. Enter your Firmware API key.
 
    ```txt
    ┌ API key
@@ -635,7 +702,7 @@ Vous pouvez également ajouter des modèles via votre configuration codeplane.
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle.
+4. Run the `/models` command to select a model.
 
    ```txt
    /models
@@ -645,15 +712,15 @@ Vous pouvez également ajouter des modèles via votre configuration codeplane.
 
 ### Fireworks AI
 
-1. Rendez-vous sur la [console Fireworks AI](https://app.fireworks.ai/), créez un compte et cliquez sur **Créer une clé API**.
+1. Head over to the [Fireworks AI console](https://app.fireworks.ai/), create an account, and click **Create API Key**.
 
-2. Exécutez la commande `/connect` et recherchez **Fireworks AI**.
+2. Run the `/connect` command and search for **Fireworks AI**.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre clé Fireworks AI API.
+3. Enter your Fireworks AI API key.
 
    ```txt
    ┌ API key
@@ -662,7 +729,7 @@ Vous pouvez également ajouter des modèles via votre configuration codeplane.
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle tel que _Kimi K2 Instruct_.
+4. Run the `/models` command to select a model like _Kimi K2 Instruct_.
 
    ```txt
    /models
@@ -672,15 +739,28 @@ Vous pouvez également ajouter des modèles via votre configuration codeplane.
 
 ### GitLab Duo
 
-GitLab Duo fournit un chat agent basé sur l'IA avec des capacités d'appel d'outils natives via le proxy Anthropic de GitLab.
+:::caution[Experimental]
+GitLab Duo support in CodePlane is experimental. Features, configuration, and
+behavior may change in future releases.
+:::
 
-1. Exécutez la commande `/connect` et sélectionnez GitLab.
+CodePlane integrates with the [GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/),
+providing AI-powered agentic chat with native tool calling capabilities.
+
+:::note[License requirements]
+GitLab Duo Agent Platform requires a **Premium** or **Ultimate** GitLab
+subscription. It is available on GitLab.com and GitLab Self-Managed.
+See [GitLab Duo Agent Platform prerequisites](https://docs.gitlab.com/user/duo_agent_platform/#prerequisites)
+for full requirements.
+:::
+
+1. Run the `/connect` command and select GitLab.
 
    ```txt
    /connect
    ```
 
-2. Choisissez votre méthode d'authentification :
+2. Choose your authentication method:
 
    ```txt
    ┌ Select auth method
@@ -690,69 +770,65 @@ GitLab Duo fournit un chat agent basé sur l'IA avec des capacités d'appel d'ou
    └
    ```
 
-   #### Utilisation de OAuth (recommandé)
+   #### Using OAuth (Recommended)
 
-Sélectionnez **OAuth** et votre navigateur s'ouvrira pour autorisation.
+   Select **OAuth** and your browser will open for authorization.
 
-#### Utilisation d'un jeton d'accès personnel
+   #### Using Personal Access Token
+   1. Go to [GitLab User Settings > Access Tokens](https://gitlab.com/-/user_settings/personal_access_tokens)
+   2. Click **Add new token**
+   3. Name: `CodePlane`, Scopes: `api`
+   4. Copy the token (starts with `glpat-`)
+   5. Enter it in the terminal
 
-1.  Accédez à [GitLab Paramètres utilisateur > Jetons d'accès](https://gitlab.com/-/user_settings/personal_access_tokens)
-2.  Cliquez sur **Ajouter un nouveau jeton**
-3.  Nom : `CodePlane`, Portées : `api`
-4.  Copiez le jeton (commence par `glpat-`)
-5.  Entrez-le dans le terminal
+3. Run the `/models` command to see available models.
 
-6.  Exécutez la commande `/models` pour voir les modèles disponibles.
+   ```txt
+   /models
+   ```
 
-    ```txt
-    /models
-    ```
-
-````
-
-Trois modèles basés sur Claude sont disponibles :
-
-- **duo-chat-haiku-4-5** (Par défaut) - Réponses rapides pour des tâches rapides
-- **duo-chat-sonnet-4-5** - Performances équilibrées pour la plupart des flux de travail
-- **duo-chat-opus-4-5** - Le plus capable pour les analyses complexes
+   Three Claude-based models are available:
+   - **duo-chat-haiku-4-5** (Default) - Fast responses for quick tasks
+   - **duo-chat-sonnet-4-5** - Balanced performance for most workflows
+   - **duo-chat-opus-4-5** - Most capable for complex analysis
 
 :::note
-Vous pouvez également spécifier la variable d'environnement 'GITLAB_TOKEN' si vous ne souhaitez pas
-pour stocker le jeton dans le stockage d'authentification codeplane.
+You can also specify 'GITLAB_TOKEN' environment variable if you don't want
+to store token in codeplane auth storage.
 :::
 
-##### GitLab auto-hébergé
+##### Self-Hosted GitLab
 
-:::note[note de conformité]
-CodePlane utilise un petit modèle pour certaines tâches d'IA telles que la génération du titre de la session.
-Il est configuré pour utiliser gpt-5-nano par défaut, hébergé par Zen. Pour verrouiller CodePlane
-pour utiliser uniquement votre propre instance hébergée par GitLab, ajoutez ce qui suit à votre
-Fichier `codeplane.json`. Il est également recommandé de désactiver le partage de session.
+:::note[compliance note]
+CodePlane uses a small model for some AI tasks like generating the session title.
+It is configured to use gpt-5-nano by default, hosted by Zen. To lock CodePlane
+to only use your own GitLab-hosted instance, add the following to your
+`codeplane.json` file. It is also recommended to disable session sharing.
 
 ```json
 {
-"$schema": "https://example.invalid/config.json",
-"small_model": "gitlab/duo-chat-haiku-4-5",
-"share": "disabled"
+  "$schema": "https://example.invalid/config.json",
+  "small_model": "gitlab/duo-chat-haiku-4-5",
+  "share": "disabled"
 }
-````
+```
 
 :::
 
-Pour les instances GitLab auto-hébergées :
+For self-hosted GitLab instances:
 
 ```bash
 export GITLAB_INSTANCE_URL=https://gitlab.company.com
 export GITLAB_TOKEN=glpat-...
 ```
 
-Si votre instance exécute une AI Gateway personnalisée :
+If your instance runs a custom AI Gateway:
 
 ```bash
 GITLAB_AI_GATEWAY_URL=https://ai-gateway.company.com
 ```
 
-Ou ajoutez à votre profil bash :
+Or add to your bash profile:
 
 ```bash title="~/.bash_profile"
 export GITLAB_INSTANCE_URL=https://gitlab.company.com
@@ -761,35 +837,37 @@ export GITLAB_TOKEN=glpat-...
 ```
 
 :::note
-Votre administrateur GitLab doit activer les éléments suivants :
+Your GitLab administrator must:
 
-1. [Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/turn_on_off/) pour l'utilisateur, le groupe ou l'instance
-2. Indicateurs de fonctionnalités (via la console Rails) :
-   - `agent_platform_claude_code`
-   - `third_party_agents_enabled`
-     :::
+1. [Turn on GitLab Duo](https://docs.gitlab.com/user/duo_agent_platform/turn_on_off/#turn-gitlab-duo-on-or-off)
+   for the user, group, or instance
+2. [Turn on the Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/turn_on_off/#turn-gitlab-duo-agent-platform-on-or-off)
+   (GitLab 18.8+) or [enable beta and experimental features](https://docs.gitlab.com/user/duo_agent_platform/turn_on_off/#turn-on-beta-and-experimental-features)
+   (GitLab 18.7 and earlier)
+3. For Self-Managed, [configure your instance](https://docs.gitlab.com/administration/gitlab_duo/configure/gitlab_self_managed/)
+   :::
 
-##### OAuth pour les instances auto-hébergées
+##### OAuth for Self-Hosted instances
 
-Afin que Oauth fonctionne pour votre instance auto-hébergée, vous devez créer
-une nouvelle application (Paramètres → Applications) avec le
-rappel URL `http://127.0.0.1:8080/callback` et étendues suivantes :
+In order to make Oauth working for your self-hosted instance, you need to create
+a new application (Settings → Applications) with the
+callback URL `http://127.0.0.1:8080/callback` and following scopes:
 
-- api (Accédez au API en votre nom)
-- read_user (Lire vos informations personnelles)
-- read_repository (Autorise l'accès en lecture seule au référentiel)
+- api (Access the API on your behalf)
+- read_user (Read your personal information)
+- read_repository (Allows read-only access to the repository)
 
-Exposez ensuite l'ID de l'application en tant que variable d'environnement :
+Then expose application ID as environment variable:
 
 ```bash
 export GITLAB_OAUTH_CLIENT_ID=your_application_id_here
 ```
 
-Plus de documentation sur la page d'accueil [opencode-gitlab-auth](https://www.npmjs.com/package/opencode-gitlab-auth).
+More documentation on [opencode-gitlab-auth](https://www.npmjs.com/package/opencode-gitlab-auth) homepage.
 
 ##### Configuration
 
-Personnalisez via `codeplane.json` :
+Customize through `codeplane.json`:
 
 ```json title="codeplane.json"
 {
@@ -804,9 +882,23 @@ Personnalisez via `codeplane.json` :
 }
 ```
 
-##### Outils GitLab API (facultatif, mais fortement recommandé)
+##### GitLab Duo Agent Platform (DAP) Workflow Models
 
-Pour accéder aux outils GitLab (demandes de fusion, tickets, pipelines, CI/CD, etc.) :
+DAP workflow models provide an alternative execution path that routes tool calls
+through GitLab's Duo Workflow Service (DWS) instead of the standard agentic chat.
+When a `duo-workflow-*` model is selected, CodePlane will:
+
+1. Discover available models from your GitLab namespace
+2. Present a selection picker if multiple models are available
+3. Cache the selected model to disk for fast subsequent startups
+4. Route tool execution requests through CodePlane's permission-gated tool system
+
+Available DAP workflow models follow the `duo-workflow-*` naming convention and
+are dynamically discovered from your GitLab instance.
+
+##### GitLab API Tools (Optional, but highly recommended)
+
+To access GitLab tools (merge requests, issues, pipelines, CI/CD, etc.):
 
 ```json title="codeplane.json"
 {
@@ -815,28 +907,26 @@ Pour accéder aux outils GitLab (demandes de fusion, tickets, pipelines, CI/CD, 
 }
 ```
 
-Ce plugin fournit des fonctionnalités complètes de gestion du référentiel GitLab, notamment les examens MR, le suivi des problèmes, la surveillance du pipeline, etc.
+This plugin provides comprehensive GitLab repository management capabilities including MR reviews, issue tracking, pipeline monitoring, and more.
 
 ---
 
 ### GitHub Copilot
 
-Pour utiliser votre abonnement GitHub Copilot avec codeplane :
+To use your GitHub Copilot subscription with codeplane:
 
 :::note
-Certains modèles peuvent avoir besoin d'un [Pro+
-abonnement](https://github.com/features/copilot/plans) à utiliser.
-
-Certains modèles doivent être activés manuellement dans vos [GitHub Copilot paramètres](https://docs.github.com/en/copilot/how-tos/use-ai-models/configure-access-to-ai-models#setup-for-individual-use).
+Some models might need a [Pro+
+subscription](https://github.com/features/copilot/plans) to use.
 :::
 
-1. Exécutez la commande `/connect` et recherchez GitHub Copilot.
+1. Run the `/connect` command and search for GitHub Copilot.
 
    ```txt
    /connect
    ```
 
-2. Accédez à [github.com/login/device](https://github.com/login/device) et entrez le code.
+2. Navigate to [github.com/login/device](https://github.com/login/device) and enter the code.
 
    ```txt
    ┌ Login with GitHub Copilot
@@ -848,7 +938,7 @@ Certains modèles doivent être activés manuellement dans vos [GitHub Copilot p
    └ Waiting for authorization...
    ```
 
-3. Exécutez maintenant la commande `/models` pour sélectionner le modèle souhaité.
+3. Now run the `/models` command to select the model you want.
 
    ```txt
    /models
@@ -856,43 +946,43 @@ Certains modèles doivent être activés manuellement dans vos [GitHub Copilot p
 
 ---
 
-### Google Vertex AI
+### Google Vertex AI
 
-Pour utiliser Google Vertex AI avec CodePlane :
+To use Google Vertex AI with CodePlane:
 
-1. Rendez-vous sur **Model Garden** dans Google Cloud Console et vérifiez les
-   modèles disponibles dans votre région.
+1. Head over to the **Model Garden** in the Google Cloud Console and check the
+   models available in your region.
 
    :::note
-   Vous devez disposer d'un projet Google Cloud avec Vertex AI API activé.
+   You need to have a Google Cloud project with Vertex AI API enabled.
    :::
 
-2. Définissez les variables d'environnement requises :
-   - `GOOGLE_CLOUD_PROJECT` : ID de votre projet Google Cloud
-   - `VERTEX_LOCATION` (facultatif) : région pour Vertex AI (par défaut : `global`)
-   - Authentification (au choix) :
-     - `GOOGLE_APPLICATION_CREDENTIALS` : chemin d'accès au fichier de clé JSON de votre compte de service
-     - Authentifiez-vous à l'aide de gcloud CLI : `gcloud auth application-default login`
+2. Set the required environment variables:
+   - `GOOGLE_CLOUD_PROJECT`: Your Google Cloud project ID
+   - `VERTEX_LOCATION` (optional): The region for Vertex AI (defaults to `global`)
+   - Authentication (choose one):
+     - `GOOGLE_APPLICATION_CREDENTIALS`: Path to your service account JSON key file
+     - Authenticate using gcloud CLI: `gcloud auth application-default login`
 
-Définissez-les lors de l'exécution de codeplane.
+   Set them while running codeplane.
 
-```bash
+   ```bash
    GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json GOOGLE_CLOUD_PROJECT=your-project-id codeplane
-```
+   ```
 
-Ou ajoutez-les à votre profil bash.
+   Or add them to your bash profile.
 
-```bash title="~/.bash_profile"
+   ```bash title="~/.bash_profile"
    export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
    export GOOGLE_CLOUD_PROJECT=your-project-id
    export VERTEX_LOCATION=global
-```
+   ```
 
 :::tip
-La région `global` améliore la disponibilité et réduit les erreurs sans frais supplémentaires. Utilisez des points de terminaison régionaux (par exemple, `us-central1`) pour les exigences de résidence des données. [En savoir plus](https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-partner-models#regional_and_global_endpoints)
+The `global` region improves availability and reduces errors at no extra cost. Use regional endpoints (e.g., `us-central1`) for data residency requirements. [Learn more](https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-partner-models#regional_and_global_endpoints)
 :::
 
-3. Exécutez la commande `/models` pour sélectionner le modèle souhaité.
+3. Run the `/models` command to select the model you want.
 
    ```txt
    /models
@@ -902,15 +992,15 @@ La région `global` améliore la disponibilité et réduit les erreurs sans frai
 
 ### Groq
 
-1. Rendez-vous sur la [console Groq](https://console.groq.com/), cliquez sur **Créer une clé API** et copiez la clé.
+1. Head over to the [Groq console](https://console.groq.com/), click **Create API Key**, and copy the key.
 
-2. Exécutez la commande `/connect` et recherchez Groq.
+2. Run the `/connect` command and search for Groq.
 
    ```txt
    /connect
    ```
 
-3. Saisissez la clé API du fournisseur.
+3. Enter the API key for the provider.
 
    ```txt
    ┌ API key
@@ -919,7 +1009,7 @@ La région `global` améliore la disponibilité et réduit les erreurs sans frai
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner celle que vous souhaitez.
+4. Run the `/models` command to select the one you want.
 
    ```txt
    /models
@@ -929,17 +1019,17 @@ La région `global` améliore la disponibilité et réduit les erreurs sans frai
 
 ### Hugging Face
 
-[Hugging Face Inference Providers](https://huggingface.co/docs/inference-providers) donne accès à des modèles ouverts pris en charge par plus de 17 fournisseurs.
+[Hugging Face Inference Providers](https://huggingface.co/docs/inference-providers) provides access to open models supported by 17+ providers.
 
-1. Rendez-vous sur [Hugging Face settings](https://huggingface.co/settings/tokens/new?ownUserPermissions=inference.serverless.write&tokenType=fineGrained) pour créer un jeton avec l'autorisation de passer des appels aux fournisseurs d'inférence.
+1. Head over to [Hugging Face settings](https://huggingface.co/settings/tokens/new?ownUserPermissions=inference.serverless.write&tokenType=fineGrained) to create a token with permission to make calls to Inference Providers.
 
-2. Exécutez la commande `/connect` et recherchez **Hugging Face**.
+2. Run the `/connect` command and search for **Hugging Face**.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre jeton Hugging Face.
+3. Enter your Hugging Face token.
 
    ```txt
    ┌ API key
@@ -948,7 +1038,7 @@ La région `global` améliore la disponibilité et réduit les erreurs sans frai
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle comme _Kimi-K2-Instruct_ ou _GLM-4.6_.
+4. Run the `/models` command to select a model like _Kimi-K2-Instruct_ or _GLM-4.6_.
 
    ```txt
    /models
@@ -958,17 +1048,17 @@ La région `global` améliore la disponibilité et réduit les erreurs sans frai
 
 ### Helicone
 
-[Helicone](https://helicone.ai) est une plate-forme d'observabilité LLM qui fournit la journalisation, la surveillance et l'analyse de vos applications d'IA. L'Helicone AI Gateway achemine automatiquement vos demandes vers le fournisseur approprié en fonction du modèle.
+[Helicone](https://helicone.ai) is an LLM observability platform that provides logging, monitoring, and analytics for your AI applications. The Helicone AI Gateway routes your requests to the appropriate provider automatically based on the model.
 
-1. Rendez-vous sur [Helicone](https://helicone.ai), créez un compte et générez une clé API à partir de votre tableau de bord.
+1. Head over to [Helicone](https://helicone.ai), create an account, and generate an API key from your dashboard.
 
-2. Exécutez la commande `/connect` et recherchez **Helicone**.
+2. Run the `/connect` command and search for **Helicone**.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre clé Helicone API.
+3. Enter your Helicone API key.
 
    ```txt
    ┌ API key
@@ -977,19 +1067,19 @@ La région `global` améliore la disponibilité et réduit les erreurs sans frai
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle.
+4. Run the `/models` command to select a model.
 
    ```txt
    /models
    ```
 
-Pour plus de fournisseurs et de fonctionnalités avancées telles que la mise en cache et la limitation de débit, consultez la [documentation Helicone](https://docs.helicone.ai).
+For more providers and advanced features like caching and rate limiting, check the [Helicone documentation](https://docs.helicone.ai).
 
-#### Configurations facultatives
+#### Optional Configs
 
-Si vous voyez une fonctionnalité ou un modèle d'Helicone qui n'est pas configuré automatiquement via codeplane, vous pouvez toujours le configurer vous-même.
+In the event you see a feature or model from Helicone that isn't configured automatically through codeplane, you can always configure it yourself.
 
-Voici le [Répertoire des modèles d'Helicone](https://helicone.ai/models), vous en aurez besoin pour récupérer les identifiants des modèles que vous souhaitez ajouter.
+Here's [Helicone's Model Directory](https://helicone.ai/models), you'll need this to grab the IDs of the models you want to add.
 
 ```jsonc title="~/.config/codeplane/codeplane.jsonc"
 {
@@ -1015,9 +1105,9 @@ Voici le [Répertoire des modèles d'Helicone](https://helicone.ai/models), vous
 }
 ```
 
-#### En-têtes personnalisés
+#### Custom Headers
 
-Helicone prend en charge les en-têtes personnalisés pour des fonctionnalités telles que la mise en cache, le suivi des utilisateurs et la gestion des sessions. Ajoutez-les à la configuration de votre fournisseur en utilisant `options.headers` :
+Helicone supports custom headers for features like caching, user tracking, and session management. Add them to your provider config using `options.headers`:
 
 ```jsonc title="~/.config/codeplane/codeplane.jsonc"
 {
@@ -1038,15 +1128,15 @@ Helicone prend en charge les en-têtes personnalisés pour des fonctionnalités 
 }
 ```
 
-##### Suivi des sessions
+##### Session tracking
 
-La fonctionnalité [Sessions](https://docs.helicone.ai/features/sessions) d'Helicone vous permet de regrouper les requêtes LLM associées. Utilisez le plugin [codeplane-helicone-session](https://github.com/H2Shami/codeplane-helicone-session) pour enregistrer automatiquement chaque conversation CodePlane en tant que session dans Helicone.
+Helicone's [Sessions](https://docs.helicone.ai/features/sessions) feature lets you group related LLM requests together. Use the [codeplane-helicone-session](https://github.com/H2Shami/codeplane-helicone-session) plugin to automatically log each CodePlane conversation as a session in Helicone.
 
 ```bash
 npm install -g codeplane-helicone-session
 ```
 
-Ajoutez-le à votre configuration.
+Add it to your config.
 
 ```json title="codeplane.json"
 {
@@ -1054,24 +1144,24 @@ Ajoutez-le à votre configuration.
 }
 ```
 
-Le plugin injecte les en-têtes `Helicone-Session-Id` et `Helicone-Session-Name` dans vos requêtes. Sur la page Sessions d'Helicone, vous verrez chaque conversation CodePlane répertoriée comme une session distincte.
+The plugin injects `Helicone-Session-Id` and `Helicone-Session-Name` headers into your requests. In Helicone's Sessions page, you'll see each CodePlane conversation listed as a separate session.
 
-##### En-têtes Helicone communs
+##### Common Helicone headers
 
-| En-tête                    | Descriptif                                                                           |
-| -------------------------- | ------------------------------------------------------------------------------------ |
-| `Helicone-Cache-Enabled`   | Activer la mise en cache des réponses (`true`/`false`)                               |
-| `Helicone-User-Id`         | Suivre les métriques par utilisateur                                                 |
-| `Helicone-Property-[Name]` | Ajouter des propriétés personnalisées (par exemple, `Helicone-Property-Environment`) |
-| `Helicone-Prompt-Id`       | Associer les requêtes aux versions d'invite                                          |
+| Header                     | Description                                                   |
+| -------------------------- | ------------------------------------------------------------- |
+| `Helicone-Cache-Enabled`   | Enable response caching (`true`/`false`)                      |
+| `Helicone-User-Id`         | Track metrics by user                                         |
+| `Helicone-Property-[Name]` | Add custom properties (e.g., `Helicone-Property-Environment`) |
+| `Helicone-Prompt-Id`       | Associate requests with prompt versions                       |
 
-Consultez le [Helicone Header Directory](https://docs.helicone.ai/helicone-headers/header-directory) pour tous les en-têtes disponibles.
+See the [Helicone Header Directory](https://docs.helicone.ai/helicone-headers/header-directory) for all available headers.
 
 ---
 
 ### llama.cpp
 
-Vous pouvez configurer codeplane pour utiliser des modèles locaux via l'utilitaire llama-server de [llama.cpp's](https://github.com/ggml-org/llama.cpp)
+You can configure codeplane to use local models through [llama.cpp's](https://github.com/ggml-org/llama.cpp) llama-server utility
 
 ```json title="codeplane.json" "llama.cpp" {5, 6, 8, 10-15}
 {
@@ -1097,29 +1187,29 @@ Vous pouvez configurer codeplane pour utiliser des modèles locaux via l'utilita
 }
 ```
 
-Dans cet exemple :
+In this example:
 
-- `llama.cpp` est l'ID du fournisseur personnalisé. Cela peut être n’importe quelle chaîne de votre choix.
-- `npm` spécifie le package à utiliser pour ce fournisseur. Ici, `@ai-sdk/openai-compatible` est utilisé pour tout API compatible OpenAI.
-- `name` est le nom d'affichage du fournisseur dans l'interface utilisateur.
-- `options.baseURL` est le point de terminaison du serveur local.
-- `models` est une carte des ID de modèle avec leurs configurations. Le nom du modèle sera affiché dans la liste de sélection du modèle.
+- `llama.cpp` is the custom provider ID. This can be any string you want.
+- `npm` specifies the package to use for this provider. Here, `@ai-sdk/openai-compatible` is used for any OpenAI-compatible API.
+- `name` is the display name for the provider in the UI.
+- `options.baseURL` is the endpoint for the local server.
+- `models` is a map of model IDs to their configurations. The model name will be displayed in the model selection list.
 
 ---
 
 ### IO.NET
 
-IO.NET propose 17 modèles optimisés pour différents cas d'utilisation :
+IO.NET offers 17 models optimized for various use cases:
 
-1. Rendez-vous sur la [console IO.NET](https://ai.io.net/), créez un compte et générez une clé API.
+1. Head over to the [IO.NET console](https://ai.io.net/), create an account, and generate an API key.
 
-2. Exécutez la commande `/connect` et recherchez **IO.NET**.
+2. Run the `/connect` command and search for **IO.NET**.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre clé IO.NET API.
+3. Enter your IO.NET API key.
 
    ```txt
    ┌ API key
@@ -1128,7 +1218,7 @@ IO.NET propose 17 modèles optimisés pour différents cas d'utilisation :
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle.
+4. Run the `/models` command to select a model.
 
    ```txt
    /models
@@ -1138,7 +1228,7 @@ IO.NET propose 17 modèles optimisés pour différents cas d'utilisation :
 
 ### LM Studio
 
-Vous pouvez configurer codeplane pour utiliser des modèles locaux via LM Studio.
+You can configure codeplane to use local models through LM Studio.
 
 ```json title="codeplane.json" "lmstudio" {5, 6, 8, 10-14}
 {
@@ -1160,29 +1250,29 @@ Vous pouvez configurer codeplane pour utiliser des modèles locaux via LM Studio
 }
 ```
 
-Dans cet exemple :
+In this example:
 
-- `lmstudio` est l'ID du fournisseur personnalisé. Cela peut être n’importe quelle chaîne de votre choix.
-- `npm` spécifie le package à utiliser pour ce fournisseur. Ici, `@ai-sdk/openai-compatible` est utilisé pour tout API compatible OpenAI.
-- `name` est le nom d'affichage du fournisseur dans l'interface utilisateur.
-- `options.baseURL` est le point de terminaison du serveur local.
-- `models` est une carte des ID de modèle avec leurs configurations. Le nom du modèle sera affiché dans la liste de sélection du modèle.
+- `lmstudio` is the custom provider ID. This can be any string you want.
+- `npm` specifies the package to use for this provider. Here, `@ai-sdk/openai-compatible` is used for any OpenAI-compatible API.
+- `name` is the display name for the provider in the UI.
+- `options.baseURL` is the endpoint for the local server.
+- `models` is a map of model IDs to their configurations. The model name will be displayed in the model selection list.
 
 ---
 
 ### Moonshot AI
 
-Pour utiliser Kimi K2 de Moonshot AI :
+To use Kimi K2 from Moonshot AI:
 
-1. Rendez-vous sur la [console Moonshot AI](https://platform.moonshot.ai/console), créez un compte et cliquez sur **Créer une clé API**.
+1. Head over to the [Moonshot AI console](https://platform.moonshot.ai/console), create an account, and click **Create API key**.
 
-2. Exécutez la commande `/connect` et recherchez **Moonshot AI**.
+2. Run the `/connect` command and search for **Moonshot AI**.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre clé Moonshot API.
+3. Enter your Moonshot API key.
 
    ```txt
    ┌ API key
@@ -1191,7 +1281,7 @@ Pour utiliser Kimi K2 de Moonshot AI :
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner _Kimi K2_.
+4. Run the `/models` command to select _Kimi K2_.
 
    ```txt
    /models
@@ -1201,15 +1291,15 @@ Pour utiliser Kimi K2 de Moonshot AI :
 
 ### MiniMax
 
-1. Rendez-vous sur la [Console MiniMax API](https://platform.minimax.io/login), créez un compte et générez une clé API.
+1. Head over to the [MiniMax API Console](https://platform.minimax.io/login), create an account, and generate an API key.
 
-2. Exécutez la commande `/connect` et recherchez **MiniMax**.
+2. Run the `/connect` command and search for **MiniMax**.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre clé MiniMax API.
+3. Enter your MiniMax API key.
 
    ```txt
    ┌ API key
@@ -1218,7 +1308,7 @@ Pour utiliser Kimi K2 de Moonshot AI :
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle tel que _M2.1_.
+4. Run the `/models` command to select a model like _M2.1_.
 
    ```txt
    /models
@@ -1226,17 +1316,19 @@ Pour utiliser Kimi K2 de Moonshot AI :
 
 ---
 
-### Nebius Token Factory
+### NVIDIA
 
-1. Rendez-vous sur la [console Nebius Token Factory](https://tokenfactory.nebius.com/), créez un compte et cliquez sur **Ajouter une clé**.
+NVIDIA provides access to Nemotron models and many other open models through [build.nvidia.com](https://build.nvidia.com) for free.
 
-2. Exécutez la commande `/connect` et recherchez **Nebius Token Factory**.
+1. Head over to [build.nvidia.com](https://build.nvidia.com), create an account, and generate an API key.
+
+2. Run the `/connect` command and search for **NVIDIA**.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre clé Nebius Token Factory API.
+3. Enter your NVIDIA API key.
 
    ```txt
    ┌ API key
@@ -1245,7 +1337,59 @@ Pour utiliser Kimi K2 de Moonshot AI :
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle tel que _Kimi K2 Instruct_.
+4. Run the `/models` command to select a model like nemotron-3-super-120b-a12b.
+
+   ```txt
+   /models
+   ```
+
+#### On-Prem / NIM
+
+You can also use NVIDIA models locally via [NVIDIA NIM](https://docs.nvidia.com/nim/) by setting a custom base URL.
+
+```json title="codeplane.json" {6}
+{
+  "$schema": "https://example.invalid/config.json",
+  "provider": {
+    "nvidia": {
+      "options": {
+        "baseURL": "http://localhost:8000/v1"
+      }
+    }
+  }
+}
+```
+
+#### Environment Variable
+
+Alternatively, set your API key as an environment variable.
+
+```bash frame="none"
+export NVIDIA_API_KEY=nvapi-your-key-here
+```
+
+---
+
+### Nebius Token Factory
+
+1. Head over to the [Nebius Token Factory console](https://tokenfactory.nebius.com/), create an account, and click **Add Key**.
+
+2. Run the `/connect` command and search for **Nebius Token Factory**.
+
+   ```txt
+   /connect
+   ```
+
+3. Enter your Nebius Token Factory API key.
+
+   ```txt
+   ┌ API key
+   │
+   │
+   └ enter
+   ```
+
+4. Run the `/models` command to select a model like _Kimi K2 Instruct_.
 
    ```txt
    /models
@@ -1255,10 +1399,10 @@ Pour utiliser Kimi K2 de Moonshot AI :
 
 ### Ollama
 
-Vous pouvez configurer codeplane pour utiliser des modèles locaux via Ollama.
+You can configure codeplane to use local models through Ollama.
 
 :::tip
-Ollama peut se configurer automatiquement pour CodePlane. Voir les [documents d'intégration Ollama](https://docs.ollama.com/integrations/codeplane) pour plus de détails.
+Ollama can automatically configure itself for CodePlane. See the [Ollama integration docs](https://docs.ollama.com/integrations/codeplane) for details.
 :::
 
 ```json title="codeplane.json" "ollama" {5, 6, 8, 10-14}
@@ -1281,37 +1425,37 @@ Ollama peut se configurer automatiquement pour CodePlane. Voir les [documents d'
 }
 ```
 
-Dans cet exemple :
+In this example:
 
-- `ollama` est l'ID du fournisseur personnalisé. Cela peut être n’importe quelle chaîne de votre choix.
-- `npm` spécifie le package à utiliser pour ce fournisseur. Ici, `@ai-sdk/openai-compatible` est utilisé pour tout API compatible OpenAI.
-- `name` est le nom d'affichage du fournisseur dans l'interface utilisateur.
-- `options.baseURL` est le point de terminaison du serveur local.
-- `models` est une carte des ID de modèle avec leurs configurations. Le nom du modèle sera affiché dans la liste de sélection du modèle.
+- `ollama` is the custom provider ID. This can be any string you want.
+- `npm` specifies the package to use for this provider. Here, `@ai-sdk/openai-compatible` is used for any OpenAI-compatible API.
+- `name` is the display name for the provider in the UI.
+- `options.baseURL` is the endpoint for the local server.
+- `models` is a map of model IDs to their configurations. The model name will be displayed in the model selection list.
 
 :::tip
-Si les appels d'outils ne fonctionnent pas, essayez d'augmenter `num_ctx` dans Ollama. Commencez vers 16k - 32k.
+If tool calls aren't working, try increasing `num_ctx` in Ollama. Start around 16k - 32k.
 :::
 
 ---
 
 ### Ollama Cloud
 
-Pour utiliser Ollama Cloud avec CodePlane :
+To use Ollama Cloud with CodePlane:
 
-1. Rendez-vous sur [https://ollama.com/](https://ollama.com/) et connectez-vous ou créez un compte.
+1. Head over to [https://ollama.com/](https://ollama.com/) and sign in or create an account.
 
-2. Accédez à **Paramètres** > **Clés** et cliquez sur **Ajouter une clé API** pour générer une nouvelle clé API.
+2. Navigate to **Settings** > **Keys** and click **Add API Key** to generate a new API key.
 
-3. Copiez la clé API à utiliser dans CodePlane.
+3. Copy the API key for use in CodePlane.
 
-4. Exécutez la commande `/connect` et recherchez **Ollama Cloud**.
+4. Run the `/connect` command and search for **Ollama Cloud**.
 
    ```txt
    /connect
    ```
 
-5. Entrez votre clé Ollama Cloud API.
+5. Enter your Ollama Cloud API key.
 
    ```txt
    ┌ API key
@@ -1320,13 +1464,13 @@ Pour utiliser Ollama Cloud avec CodePlane :
    └ enter
    ```
 
-6. **Important** : Avant d'utiliser des modèles cloud dans CodePlane, vous devez extraire les informations du modèle localement :
+6. **Important**: Before using cloud models in CodePlane, you must pull the model information locally:
 
    ```bash
    ollama pull gpt-oss:20b-cloud
    ```
 
-7. Exécutez la commande `/models` pour sélectionner votre modèle Ollama Cloud.
+7. Run the `/models` command to select your Ollama Cloud model.
 
    ```txt
    /models
@@ -1336,16 +1480,16 @@ Pour utiliser Ollama Cloud avec CodePlane :
 
 ### OpenAI
 
-Nous vous recommandons de vous inscrire à [ChatGPT Plus ou Pro](https://chatgpt.com/pricing).
+We recommend signing up for [ChatGPT Plus or Pro](https://chatgpt.com/pricing).
 
-1. Une fois inscrit, exécutez la commande `/connect` et sélectionnez OpenAI.
+1. Once you've signed up, run the `/connect` command and select OpenAI.
 
    ```txt
    /connect
    ```
 
-2. Ici, vous pouvez sélectionner l'option **ChatGPT Plus/Pro** et cela ouvrira votre navigateur.
-   et vous demande de vous authentifier.
+2. Here you can select the **ChatGPT Plus/Pro** option and it'll open your browser
+   and ask you to authenticate.
 
    ```txt
    ┌ Select auth method
@@ -1355,31 +1499,31 @@ Nous vous recommandons de vous inscrire à [ChatGPT Plus ou Pro](https://chatgpt
    └
    ```
 
-3. Désormais, tous les modèles OpenAI devraient être disponibles lorsque vous utilisez la commande `/models`.
+3. Now all the OpenAI models should be available when you use the `/models` command.
 
    ```txt
    /models
    ```
 
-##### Utilisation des clés API
+##### Using API keys
 
-Si vous disposez déjà d'une clé API, vous pouvez sélectionner **Entrer manuellement la clé API** et la coller dans votre terminal.
+If you already have an API key, you can select **Manually enter API Key** and paste it in your terminal.
 
 ---
 
 ### CodePlane Zen
 
-CodePlane Zen est une liste de modèles testés et vérifiés fournie par l'équipe CodePlane. [En savoir plus](/docs/zen).
+CodePlane Zen is a list of tested and verified models provided by the CodePlane team. [Learn more](/docs/zen).
 
-1. Connectez-vous à **<a href={console}>CodePlane Zen</a>** et cliquez sur **Créer une clé API**.
+1. Sign in to **<a href={console}>CodePlane Zen</a>** and click **Create API Key**.
 
-2. Exécutez la commande `/connect` et recherchez **CodePlane Zen**.
+2. Run the `/connect` command and search for **CodePlane Zen**.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre clé CodePlane API.
+3. Enter your CodePlane API key.
 
    ```txt
    ┌ API key
@@ -1388,7 +1532,7 @@ CodePlane Zen est une liste de modèles testés et vérifiés fournie par l'équ
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle tel que _Qwen 3 Coder 480B_.
+4. Run the `/models` command to select a model like _Qwen 3 Coder 480B_.
 
    ```txt
    /models
@@ -1398,15 +1542,15 @@ CodePlane Zen est une liste de modèles testés et vérifiés fournie par l'équ
 
 ### OpenRouter
 
-1. Rendez-vous sur le [tableau de bord OpenRouter](https://openrouter.ai/settings/keys), cliquez sur **Créer une clé API** et copiez la clé.
+1. Head over to the [OpenRouter dashboard](https://openrouter.ai/settings/keys), click **Create API Key**, and copy the key.
 
-2. Exécutez la commande `/connect` et recherchez OpenRouter.
+2. Run the `/connect` command and search for OpenRouter.
 
    ```txt
    /connect
    ```
 
-3. Saisissez la clé API du fournisseur.
+3. Enter the API key for the provider.
 
    ```txt
    ┌ API key
@@ -1415,28 +1559,28 @@ CodePlane Zen est une liste de modèles testés et vérifiés fournie par l'équ
    └ enter
    ```
 
-4. De nombreux modèles OpenRouter sont préchargés par défaut, exécutez la commande `/models` pour sélectionner celui que vous souhaitez.
+4. Many OpenRouter models are preloaded by default, run the `/models` command to select the one you want.
 
    ```txt
    /models
    ```
 
-Vous pouvez également ajouter des modèles supplémentaires via votre configuration codeplane.
+   You can also add additional models through your codeplane config.
 
-```json title="codeplane.json" {6}
-{
-  "$schema": "https://example.invalid/config.json",
-  "provider": {
-    "openrouter": {
-      "models": {
-        "somecoolnewmodel": {}
-      }
-    }
-  }
-}
-```
+   ```json title="codeplane.json" {6}
+   {
+     "$schema": "https://example.invalid/config.json",
+     "provider": {
+       "openrouter": {
+         "models": {
+           "somecoolnewmodel": {}
+         }
+       }
+     }
+   }
+   ```
 
-5. Vous pouvez également les personnaliser via votre configuration codeplane. Voici un exemple de spécification d'un fournisseur
+5. You can also customize them through your codeplane config. Here's an example of specifying a provider
 
    ```json title="codeplane.json"
    {
@@ -1460,23 +1604,91 @@ Vous pouvez également ajouter des modèles supplémentaires via votre configura
 
 ---
 
-### SAP AI Core
+### LLM Gateway
 
-SAP AI Core donne accès à plus de 40 modèles de OpenAI, Anthropic, Google, Amazon, Meta, Mistral et AI21 via une plateforme unifiée.
+1. Head over to the [LLM Gateway dashboard](https://llmgateway.io/dashboard), click **Create API Key**, and copy the key.
 
-1. Accédez à votre [SAP BTP Cockpit](https://account.hana.ondemand.com/), accédez à votre instance de service SAP AI Core et créez une clé de service.
-
-   :::tip
-   La clé de service est un objet JSON contenant `clientid`, `clientsecret`, `url` et `serviceurls.AI_API_URL`. Vous pouvez trouver votre instance AI Core sous **Services** > **Instances et abonnements** dans le cockpit BTP.
-   :::
-
-2. Exécutez la commande `/connect` et recherchez **SAP AI Core**.
+2. Run the `/connect` command and search for LLM Gateway.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre clé de service JSON.
+3. Enter the API key for the provider.
+
+   ```txt
+   ┌ API key
+   │
+   │
+   └ enter
+   ```
+
+4. Many LLM Gateway models are preloaded by default, run the `/models` command to select the one you want.
+
+   ```txt
+   /models
+   ```
+
+   You can also add additional models through your codeplane config.
+
+   ```json title="codeplane.json" {6}
+   {
+     "$schema": "https://example.invalid/config.json",
+     "provider": {
+       "llmgateway": {
+         "models": {
+           "somecoolnewmodel": {}
+         }
+       }
+     }
+   }
+   ```
+
+5. You can also customize them through your codeplane config. Here's an example of specifying a provider
+
+   ```json title="codeplane.json"
+   {
+     "$schema": "https://example.invalid/config.json",
+     "provider": {
+       "llmgateway": {
+         "models": {
+           "glm-4.7": {
+             "name": "GLM 4.7"
+           },
+           "gpt-5.2": {
+             "name": "GPT-5.2"
+           },
+           "gemini-2.5-pro": {
+             "name": "Gemini 2.5 Pro"
+           },
+           "claude-3-5-sonnet-20241022": {
+             "name": "Claude 3.5 Sonnet"
+           }
+         }
+       }
+     }
+   }
+   ```
+
+---
+
+### SAP AI Core
+
+SAP AI Core provides access to 40+ models from OpenAI, Anthropic, Google, Amazon, Meta, Mistral, and AI21 through a unified platform.
+
+1. Go to your [SAP BTP Cockpit](https://account.hana.ondemand.com/), navigate to your SAP AI Core service instance, and create a service key.
+
+   :::tip
+   The service key is a JSON object containing `clientid`, `clientsecret`, `url`, and `serviceurls.AI_API_URL`. You can find your AI Core instance under **Services** > **Instances and Subscriptions** in the BTP Cockpit.
+   :::
+
+2. Run the `/connect` command and search for **SAP AI Core**.
+
+   ```txt
+   /connect
+   ```
+
+3. Enter your service key JSON.
 
    ```txt
    ┌ Service key
@@ -1485,29 +1697,29 @@ SAP AI Core donne accès à plus de 40 modèles de OpenAI, Anthropic, Google, Am
    └ enter
    ```
 
-Ou définissez la variable d'environnement `AICORE_SERVICE_KEY` :
+   Or set the `AICORE_SERVICE_KEY` environment variable:
 
-```bash
+   ```bash
    AICORE_SERVICE_KEY='{"clientid":"...","clientsecret":"...","url":"...","serviceurls":{"AI_API_URL":"..."}}' codeplane
-```
+   ```
 
-Ou ajoutez-le à votre profil bash :
+   Or add it to your bash profile:
 
-```bash title="~/.bash_profile"
+   ```bash title="~/.bash_profile"
    export AICORE_SERVICE_KEY='{"clientid":"...","clientsecret":"...","url":"...","serviceurls":{"AI_API_URL":"..."}}'
-```
+   ```
 
-4. Définissez éventuellement l'ID de déploiement et le groupe de ressources :
+4. Optionally set deployment ID and resource group:
 
    ```bash
    AICORE_DEPLOYMENT_ID=your-deployment-id AICORE_RESOURCE_GROUP=your-resource-group codeplane
    ```
 
    :::note
-   Ces paramètres sont facultatifs et doivent être configurés en fonction de votre configuration SAP AI Core.
+   These settings are optional and should be configured according to your SAP AI Core setup.
    :::
 
-5. Exécutez la commande `/models` pour sélectionner parmi plus de 40 modèles disponibles.
+5. Run the `/models` command to select from 40+ available models.
 
    ```txt
    /models
@@ -1517,21 +1729,21 @@ Ou ajoutez-le à votre profil bash :
 
 ### STACKIT
 
-STACKIT AI Model Serving fournit un environnement d'hébergement souverain entièrement géré pour les modèles d'IA, se concentrant sur les LLM comme Llama, Mistral et Qwen, avec une souveraineté maximale des données sur l'infrastructure européenne.
+STACKIT AI Model Serving provides fully managed soverign hosting environment for AI models, focusing on LLMs like Llama, Mistral, and Qwen, with maximum data sovereignty on European infrastructure.
 
-1. Rendez-vous sur le [portail STACKIT](https://portal.stackit.cloud), accédez à **AI Model Serving** et créez un jeton d'authentification pour votre projet.
+1. Head over to [STACKIT Portal](https://portal.stackit.cloud), navigate to **AI Model Serving**, and create an auth token for your project.
 
    :::tip
-   Vous avez besoin d'un compte client STACKIT, d'un compte utilisateur et d'un projet avant de créer des jetons d'authentification.
+   You need a STACKIT customer account, user account, and project before creating auth tokens.
    :::
 
-2. Exécutez la commande `/connect` et recherchez **STACKIT**.
+2. Run the `/connect` command and search for **STACKIT**.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre jeton d'authentification STACKIT AI Model Serving.
+3. Enter your STACKIT AI Model Serving auth token.
 
    ```txt
    ┌ API key
@@ -1540,7 +1752,7 @@ STACKIT AI Model Serving fournit un environnement d'hébergement souverain enti�
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner parmi les modèles disponibles tels que _Qwen3-VL 235B_ ou _Llama 3.3 70B_.
+4. Run the `/models` command to select from available models like _Qwen3-VL 235B_ or _Llama 3.3 70B_.
 
    ```txt
    /models
@@ -1550,15 +1762,15 @@ STACKIT AI Model Serving fournit un environnement d'hébergement souverain enti�
 
 ### OVHcloud AI Endpoints
 
-1. Rendez-vous sur le [Panneau OVHcloud](https://ovh.com/manager). Accédez à la section `Public Cloud`, `AI & Machine Learning` > `AI Endpoints` et dans l'onglet `API Keys`, cliquez sur **Créer une nouvelle clé API**.
+1. Head over to the [OVHcloud panel](https://ovh.com/manager). Navigate to the `Public Cloud` section, `AI & Machine Learning` > `AI Endpoints` and in `API Keys` tab, click **Create a new API key**.
 
-2. Exécutez la commande `/connect` et recherchez **OVHcloud AI Endpoints**.
+2. Run the `/connect` command and search for **OVHcloud AI Endpoints**.
 
    ```txt
    /connect
    ```
 
-3. Saisissez votre clé OVHcloud AI Endpoints API.
+3. Enter your OVHcloud AI Endpoints API key.
 
    ```txt
    ┌ API key
@@ -1567,7 +1779,7 @@ STACKIT AI Model Serving fournit un environnement d'hébergement souverain enti�
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle tel que _gpt-oss-120b_.
+4. Run the `/models` command to select a model like _gpt-oss-120b_.
 
    ```txt
    /models
@@ -1577,17 +1789,17 @@ STACKIT AI Model Serving fournit un environnement d'hébergement souverain enti�
 
 ### Scaleway
 
-Pour utiliser [Scaleway Generative APIs](https://www.scaleway.com/en/docs/generative-apis/) avec Codeplane :
+To use [Scaleway Generative APIs](https://www.scaleway.com/en/docs/generative-apis/) with Codeplane:
 
-1. Rendez-vous dans les [Paramètres IAM de la console Scaleway](https://console.scaleway.com/iam/api-keys) pour générer une nouvelle clé API.
+1. Head over to the [Scaleway Console IAM settings](https://console.scaleway.com/iam/api-keys) to generate a new API key.
 
-2. Exécutez la commande `/connect` et recherchez **Scaleway**.
+2. Run the `/connect` command and search for **Scaleway**.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre clé Scaleway API.
+3. Enter your Scaleway API key.
 
    ```txt
    ┌ API key
@@ -1596,7 +1808,7 @@ Pour utiliser [Scaleway Generative APIs](https://www.scaleway.com/en/docs/genera
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle tel que _devstral-2-123b-instruct-2512_ ou _gpt-oss-120b_.
+4. Run the `/models` command to select a model like _devstral-2-123b-instruct-2512_ or _gpt-oss-120b_.
 
    ```txt
    /models
@@ -1606,15 +1818,15 @@ Pour utiliser [Scaleway Generative APIs](https://www.scaleway.com/en/docs/genera
 
 ### Together AI
 
-1. Rendez-vous sur [Together AI console](https://api.together.ai), créez un compte et cliquez sur **Ajouter une clé**.
+1. Head over to the [Together AI console](https://api.together.ai), create an account, and click **Add Key**.
 
-2. Exécutez la commande `/connect` et recherchez **Together AI**.
+2. Run the `/connect` command and search for **Together AI**.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre clé Together AI API.
+3. Enter your Together AI API key.
 
    ```txt
    ┌ API key
@@ -1623,7 +1835,7 @@ Pour utiliser [Scaleway Generative APIs](https://www.scaleway.com/en/docs/genera
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle tel que _Kimi K2 Instruct_.
+4. Run the `/models` command to select a model like _Kimi K2 Instruct_.
 
    ```txt
    /models
@@ -1633,15 +1845,15 @@ Pour utiliser [Scaleway Generative APIs](https://www.scaleway.com/en/docs/genera
 
 ### Venice AI
 
-1. Rendez-vous sur la [Venice AI console](https://venice.ai), créez un compte et générez une clé API.
+1. Head over to the [Venice AI console](https://venice.ai), create an account, and generate an API key.
 
-2. Exécutez la commande `/connect` et recherchez **Venice AI**.
+2. Run the `/connect` command and search for **Venice AI**.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre clé Venise AI API.
+3. Enter your Venice AI API key.
 
    ```txt
    ┌ API key
@@ -1650,7 +1862,7 @@ Pour utiliser [Scaleway Generative APIs](https://www.scaleway.com/en/docs/genera
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle tel que _Llama 3.3 70B_.
+4. Run the `/models` command to select a model like _Llama 3.3 70B_.
 
    ```txt
    /models
@@ -1660,17 +1872,17 @@ Pour utiliser [Scaleway Generative APIs](https://www.scaleway.com/en/docs/genera
 
 ### Vercel AI Gateway
 
-Vercel AI Gateway vous permet d'accéder aux modèles de OpenAI, Anthropic, Google, xAI et plus encore via un point de terminaison unifié. Les modèles sont proposés au prix catalogue sans majoration.
+Vercel AI Gateway lets you access models from OpenAI, Anthropic, Google, xAI, and more through a unified endpoint. Models are offered at list price with no markup.
 
-1. Rendez-vous sur le [tableau de bord Vercel](https://vercel.com/), accédez à l'onglet **AI Gateway** et cliquez sur **API Keys** pour créer une nouvelle clé API.
+1. Head over to the [Vercel dashboard](https://vercel.com/), navigate to the **AI Gateway** tab, and click **API keys** to create a new API key.
 
-2. Exécutez la commande `/connect` et recherchez **Vercel AI Gateway**.
+2. Run the `/connect` command and search for **Vercel AI Gateway**.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre clé Vercel AI Gateway API.
+3. Enter your Vercel AI Gateway API key.
 
    ```txt
    ┌ API key
@@ -1679,13 +1891,13 @@ Vercel AI Gateway vous permet d'accéder aux modèles de OpenAI, Anthropic, Goog
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle.
+4. Run the `/models` command to select a model.
 
    ```txt
    /models
    ```
 
-Vous pouvez également personnaliser les modèles via votre configuration codeplane. Voici un exemple de spécification de l'ordre de routage du fournisseur.
+You can also customize models through your codeplane config. Here's an example of specifying provider routing order.
 
 ```json title="codeplane.json"
 {
@@ -1704,27 +1916,27 @@ Vous pouvez également personnaliser les modèles via votre configuration codepl
 }
 ```
 
-Quelques options de routage utiles :
+Some useful routing options:
 
-| Options             | Descriptif                                                                                  |
-| ------------------- | ------------------------------------------------------------------------------------------- |
-| `order`             | Séquence de fournisseur à essayer                                                           |
-| `only`              | Restreindre à des fournisseurs spécifiques                                                  |
-| `zeroDataRetention` | Utilisez uniquement des fournisseurs avec des politiques de conservation des données nulles |
+| Option              | Description                                          |
+| ------------------- | ---------------------------------------------------- |
+| `order`             | Provider sequence to try                             |
+| `only`              | Restrict to specific providers                       |
+| `zeroDataRetention` | Only use providers with zero data retention policies |
 
 ---
 
 ### xAI
 
-1. Rendez-vous sur la [console xAI](https://console.x.ai/), créez un compte et générez une clé API.
+1. Head over to the [xAI console](https://console.x.ai/), create an account, and generate an API key.
 
-2. Exécutez la commande `/connect` et recherchez **xAI**.
+2. Run the `/connect` command and search for **xAI**.
 
    ```txt
    /connect
    ```
 
-3. Entrez votre clé xAI API.
+3. Enter your xAI API key.
 
    ```txt
    ┌ API key
@@ -1733,7 +1945,7 @@ Quelques options de routage utiles :
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle tel que _Grok Beta_.
+4. Run the `/models` command to select a model like _Grok Beta_.
 
    ```txt
    /models
@@ -1743,17 +1955,17 @@ Quelques options de routage utiles :
 
 ### Z.AI
 
-1. Rendez-vous sur la [console Z.AI API](https://z.ai/manage-apikey/apikey-list), créez un compte et cliquez sur **Créer une nouvelle clé API**.
+1. Head over to the [Z.AI API console](https://z.ai/manage-apikey/apikey-list), create an account, and click **Create a new API key**.
 
-2. Exécutez la commande `/connect` et recherchez **Z.AI**.
+2. Run the `/connect` command and search for **Z.AI**.
 
    ```txt
    /connect
    ```
 
-Si vous êtes abonné au **Plan de codage GLM**, sélectionnez **Plan de codage Z.AI**.
+   If you are subscribed to the **GLM Coding Plan**, select **Z.AI Coding Plan**.
 
-3. Entrez votre clé Z.AI API.
+3. Enter your Z.AI API key.
 
    ```txt
    ┌ API key
@@ -1762,7 +1974,7 @@ Si vous êtes abonné au **Plan de codage GLM**, sélectionnez **Plan de codage 
    └ enter
    ```
 
-4. Exécutez la commande `/models` pour sélectionner un modèle tel que _GLM-4.7_.
+4. Run the `/models` command to select a model like _GLM-4.7_.
 
    ```txt
    /models
@@ -1772,15 +1984,15 @@ Si vous êtes abonné au **Plan de codage GLM**, sélectionnez **Plan de codage 
 
 ### ZenMux
 
-1. Rendez-vous sur le [tableau de bord ZenMux](https://zenmux.ai/settings/keys), cliquez sur **Créer une clé API** et copiez la clé.
+1. Head over to the [ZenMux dashboard](https://zenmux.ai/settings/keys), click **Create API Key**, and copy the key.
 
-2. Exécutez la commande `/connect` et recherchez ZenMux.
+2. Run the `/connect` command and search for ZenMux.
 
    ```txt
    /connect
    ```
 
-3. Saisissez la clé API du fournisseur.
+3. Enter the API key for the provider.
 
    ```txt
    ┌ API key
@@ -1789,38 +2001,38 @@ Si vous êtes abonné au **Plan de codage GLM**, sélectionnez **Plan de codage 
    └ enter
    ```
 
-4. De nombreux modèles ZenMux sont préchargés par défaut, exécutez la commande `/models` pour sélectionner celui que vous souhaitez.
+4. Many ZenMux models are preloaded by default, run the `/models` command to select the one you want.
 
    ```txt
    /models
    ```
 
-Vous pouvez également ajouter des modèles supplémentaires via votre configuration codeplane.
+   You can also add additional models through your codeplane config.
 
-```json title="codeplane.json" {6}
-{
-  "$schema": "https://example.invalid/config.json",
-  "provider": {
-    "zenmux": {
-      "models": {
-        "somecoolnewmodel": {}
-      }
-    }
-  }
-}
-```
+   ```json title="codeplane.json" {6}
+   {
+     "$schema": "https://example.invalid/config.json",
+     "provider": {
+       "zenmux": {
+         "models": {
+           "somecoolnewmodel": {}
+         }
+       }
+     }
+   }
+   ```
 
 ---
 
-## Fournisseur personnalisé
+## Custom provider
 
-Pour ajouter un fournisseur **OpenAI-compatible** qui n'est pas répertorié dans la commande `/connect` :
+To add any **OpenAI-compatible** provider that's not listed in the `/connect` command:
 
 :::tip
-Vous pouvez utiliser n'importe quel fournisseur compatible OpenAI avec codeplane. La plupart des fournisseurs d'IA modernes proposent des API compatibles OpenAI.
+You can use any OpenAI-compatible provider with codeplane. Most modern AI providers offer OpenAI-compatible APIs.
 :::
 
-1. Exécutez la commande `/connect` et faites défiler jusqu'à **Autre**.
+1. Run the `/connect` command and scroll down to **Other**.
 
    ```bash
    $ /connect
@@ -1833,7 +2045,7 @@ Vous pouvez utiliser n'importe quel fournisseur compatible OpenAI avec codeplane
    └
    ```
 
-2. Saisissez un identifiant unique pour le fournisseur.
+2. Enter a unique ID for the provider.
 
    ```bash
    $ /connect
@@ -1846,10 +2058,10 @@ Vous pouvez utiliser n'importe quel fournisseur compatible OpenAI avec codeplane
    ```
 
    :::note
-   Choisissez un identifiant mémorable, vous l'utiliserez dans votre fichier de configuration.
+   Choose a memorable ID, you'll use this in your config file.
    :::
 
-3. Entrez votre clé API pour le fournisseur.
+3. Enter your API key for the provider.
 
    ```bash
    $ /connect
@@ -1863,7 +2075,7 @@ Vous pouvez utiliser n'importe quel fournisseur compatible OpenAI avec codeplane
    └
    ```
 
-4. Créez ou mettez à jour votre fichier `codeplane.json` dans le répertoire de votre projet :
+4. Create or update your `codeplane.json` file in your project directory:
 
    ```json title="codeplane.json" ""myprovider"" {5-15}
    {
@@ -1885,24 +2097,23 @@ Vous pouvez utiliser n'importe quel fournisseur compatible OpenAI avec codeplane
    }
    ```
 
-Voici les options de configuration :
+   Here are the configuration options:
+   - **npm**: AI SDK package to use, `@ai-sdk/openai-compatible` for OpenAI-compatible providers (for `/v1/chat/completions`). If your provider/model uses `/v1/responses`, use `@ai-sdk/openai`.
+   - **name**: Display name in UI.
+   - **models**: Available models.
+   - **options.baseURL**: API endpoint URL.
+   - **options.apiKey**: Optionally set the API key, if not using auth.
+   - **options.headers**: Optionally set custom headers.
 
-- **npm** : package AI SDK à utiliser, `@ai-sdk/openai-compatible` pour les fournisseurs compatibles OpenAI
-- **nom** : nom à afficher dans l'interface utilisateur.
-- **modèles** : Modèles disponibles.
-- **options.baseURL** : URL de l'endpoint API.
-- **options.apiKey** : définissez éventuellement la clé API, si vous n'utilisez pas d'authentification.
-- **options.headers** : définissez éventuellement des en-têtes personnalisés.
+   More on the advanced options in the example below.
 
-En savoir plus sur les options avancées dans l'exemple ci-dessous.
-
-5. Exécutez la commande `/models` et votre fournisseur et vos modèles personnalisés apparaîtront dans la liste de sélection.
+5. Run the `/models` command and your custom provider and models will appear in the selection list.
 
 ---
 
-##### Exemple
+##### Example
 
-Voici un exemple de définition des options `apiKey`, `headers` et modèle `limit`.
+Here's an example setting the `apiKey`, `headers`, and model `limit` options.
 
 ```json title="codeplane.json" {9,11,17-20}
 {
@@ -1932,27 +2143,27 @@ Voici un exemple de définition des options `apiKey`, `headers` et modèle `limi
 }
 ```
 
-Détails de configuration :
+Configuration details:
 
-- **apiKey** : défini à l'aide de la syntaxe de variable `env`, [en savoir plus](/docs/config#env-vars).
-- **headers** : en-têtes personnalisés envoyés avec chaque requête.
-- **limit.context** : nombre maximal de jetons d'entrée acceptés par le modèle.
-- **limit.output** : nombre maximal de jetons que le modèle peut générer.
+- **apiKey**: Set using `env` variable syntax, [learn more](/docs/config#env-vars).
+- **headers**: Custom headers sent with each request.
+- **limit.context**: Maximum input tokens the model accepts.
+- **limit.output**: Maximum tokens the model can generate.
 
-Les champs `limit` permettent à CodePlane de comprendre la quantité de contexte qu'il vous reste. Les fournisseurs standard les extraient automatiquement de models.dev.
+The `limit` fields allow CodePlane to understand how much context you have left. Standard providers pull these from models.dev automatically.
 
 ---
 
-## Dépannage
+## Troubleshooting
 
-Si vous rencontrez des difficultés lors de la configuration d'un fournisseur, vérifiez les points suivants :
+If you are having trouble with configuring a provider, check the following:
 
-1. **Vérifiez la configuration de l'authentification** : exécutez `codeplane auth list` pour voir si les informations d'identification
-   pour le fournisseur sont ajoutés à votre configuration.
+1. **Check the auth setup**: Run `codeplane auth list` to see if the credentials
+   for the provider are added to your config.
 
-Cela ne s'applique pas aux fournisseurs comme Amazon Bedrock, qui s'appuient sur des variables d'environnement pour leur authentification.
+   This doesn't apply to providers like Amazon Bedrock, that rely on environment variables for their auth.
 
-2. Pour les fournisseurs personnalisés, vérifiez la configuration codeplane et :
-   - Assurez-vous que l'ID du fournisseur utilisé dans la commande `/connect` correspond à l'ID de votre configuration codeplane.
-   - Le bon package npm est utilisé pour le fournisseur. Par exemple, utilisez `@ai-sdk/cerebras` pour Cerebras. Et pour tous les autres fournisseurs compatibles OpenAI, utilisez `@ai-sdk/openai-compatible`.
-   - Vérifiez que le point de terminaison API correct est utilisé dans le champ `options.baseURL`.
+2. For custom providers, check the codeplane config and:
+   - Make sure the provider ID used in the `/connect` command matches the ID in your codeplane config.
+   - The right npm package is used for the provider. For example, use `@ai-sdk/cerebras` for Cerebras. And for all other OpenAI-compatible providers, use `@ai-sdk/openai-compatible` (for `/v1/chat/completions`); if a model uses `/v1/responses`, use `@ai-sdk/openai`. For mixed setups under one provider, you can override per model via `provider.npm`.
+   - Check correct API endpoint is used in the `options.baseURL` field.

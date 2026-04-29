@@ -1,62 +1,62 @@
 ---
-title: "Habilidades do Agente"
-description: "Defina comportamentos reutilizáveis via definições de SKILL.md"
+title: "Agent Skills"
+description: "Define reusable behavior via SKILL.md definitions"
 ---
 
-As habilidades do agente permitem que o codeplane descubra instruções reutilizáveis do seu repositório ou diretório pessoal.
-As habilidades são carregadas sob demanda através da ferramenta nativa `skill`—os agentes veem as habilidades disponíveis e podem carregar o conteúdo completo quando necessário.
-
----
-
-## Colocar arquivos
-
-Crie uma pasta por nome de habilidade e coloque um `SKILL.md` dentro dela.
-O codeplane pesquisa nesses locais:
-
-- Configuração do projeto: `.codeplane/skills/<name>/SKILL.md`
-- Configuração global: `~/.config/codeplane/skills/<name>/SKILL.md`
-- Projeto compatível com Claude: `.claude/skills/<name>/SKILL.md`
-- Global compatível com Claude: `~/.claude/skills/<name>/SKILL.md`
-- Projeto compatível com agente: `.agents/skills/<name>/SKILL.md`
-- Global compatível com agente: `~/.agents/skills/<name>/SKILL.md`
+Agent skills let CodePlane discover reusable instructions from your repo or home directory.
+Skills are loaded on-demand via the native `skill` tool—agents see available skills and can load the full content when needed.
 
 ---
 
-## Entender a descoberta
+## Place files
 
-Para caminhos locais do projeto, o codeplane sobe a partir do seu diretório de trabalho atual até alcançar a árvore de trabalho do git.
-Ele carrega qualquer `skills/*/SKILL.md` correspondente em `.codeplane/` e qualquer `.claude/skills/*/SKILL.md` ou `.agents/skills/*/SKILL.md` ao longo do caminho.
+Create one folder per skill name and put a `SKILL.md` inside it.
+CodePlane searches these locations:
 
-As definições globais também são carregadas de `~/.config/codeplane/skills/*/SKILL.md`, `~/.claude/skills/*/SKILL.md` e `~/.agents/skills/*/SKILL.md`.
-
----
-
-## Escrever frontmatter
-
-Cada `SKILL.md` deve começar com frontmatter YAML.
-Somente estes campos são reconhecidos:
-
-- `name` (obrigatório)
-- `description` (obrigatório)
-- `license` (opcional)
-- `compatibility` (opcional)
-- `metadata` (opcional, mapa de string para string)
-
-Campos de frontmatter desconhecidos são ignorados.
+- Project config: `.codeplane/skills/<name>/SKILL.md`
+- Global config: `~/.config/codeplane/skills/<name>/SKILL.md`
+- Project Claude-compatible: `.claude/skills/<name>/SKILL.md`
+- Global Claude-compatible: `~/.claude/skills/<name>/SKILL.md`
+- Project agent-compatible: `.agents/skills/<name>/SKILL.md`
+- Global agent-compatible: `~/.agents/skills/<name>/SKILL.md`
 
 ---
 
-## Validar nomes
+## Understand discovery
 
-`name` deve:
+For project-local paths, CodePlane walks up from your current working directory until it reaches the git worktree.
+It loads any matching `skills/*/SKILL.md` in `.codeplane/` and any matching `.claude/skills/*/SKILL.md` or `.agents/skills/*/SKILL.md` along the way.
 
-- Ter de 1 a 64 caracteres
-- Ser alfanumérico em minúsculas com separadores de hífen simples
-- Não começar ou terminar com `-`
-- Não conter `--` consecutivos
-- Combinar com o nome do diretório que contém `SKILL.md`
+Global definitions are also loaded from `~/.config/codeplane/skills/*/SKILL.md`, `~/.claude/skills/*/SKILL.md`, and `~/.agents/skills/*/SKILL.md`.
 
-Regex equivalente:
+---
+
+## Write frontmatter
+
+Each `SKILL.md` must start with YAML frontmatter.
+Only these fields are recognized:
+
+- `name` (required)
+- `description` (required)
+- `license` (optional)
+- `compatibility` (optional)
+- `metadata` (optional, string-to-string map)
+
+Unknown frontmatter fields are ignored.
+
+---
+
+## Validate names
+
+`name` must:
+
+- Be 1–64 characters
+- Be lowercase alphanumeric with single hyphen separators
+- Not start or end with `-`
+- Not contain consecutive `--`
+- Match the directory name that contains `SKILL.md`
+
+Equivalent regex:
 
 ```text
 ^[a-z0-9]+(-[a-z0-9]+)*$
@@ -64,16 +64,16 @@ Regex equivalente:
 
 ---
 
-## Seguir regras de comprimento
+## Follow length rules
 
-`description` deve ter de 1 a 1024 caracteres.
-Mantenha-a específica o suficiente para que o agente escolha corretamente.
+`description` must be 1-1024 characters.
+Keep it specific enough for the agent to choose correctly.
 
 ---
 
-## Usar um exemplo
+## Use an example
 
-Crie `.codeplane/skills/git-release/SKILL.md` assim:
+Create `.codeplane/skills/git-release/SKILL.md` like this:
 
 ```markdown
 ---
@@ -100,10 +100,10 @@ Ask clarifying questions if the target versioning scheme is unclear.
 
 ---
 
-## Reconhecer descrição da ferramenta
+## Recognize tool description
 
-O codeplane lista as habilidades disponíveis na descrição da ferramenta `skill`.
-Cada entrada inclui o nome e a descrição da habilidade:
+CodePlane lists available skills in the `skill` tool description.
+Each entry includes the skill name and description:
 
 ```xml
 <available_skills>
@@ -114,7 +114,7 @@ Cada entrada inclui o nome e a descrição da habilidade:
 </available_skills>
 ```
 
-O agente carrega uma habilidade chamando a ferramenta:
+The agent loads a skill by calling the tool:
 
 ```
 skill({ name: "git-release" })
@@ -122,9 +122,9 @@ skill({ name: "git-release" })
 
 ---
 
-## Configurar permissões
+## Configure permissions
 
-Controle quais habilidades os agentes podem acessar usando permissões baseadas em padrões em `codeplane.json`:
+Control which skills agents can access using pattern-based permissions in `codeplane.json`:
 
 ```json
 {
@@ -139,21 +139,21 @@ Controle quais habilidades os agentes podem acessar usando permissões baseadas 
 }
 ```
 
-| Permissão | Comportamento                                       |
-| --------- | --------------------------------------------------- |
-| `allow`   | Habilidade carrega imediatamente                    |
-| `deny`    | Habilidade oculta do agente, acesso rejeitado       |
-| `ask`     | Usuário solicitado para aprovação antes de carregar |
+| Permission | Behavior                                  |
+| ---------- | ----------------------------------------- |
+| `allow`    | Skill loads immediately                   |
+| `deny`     | Skill hidden from agent, access rejected  |
+| `ask`      | User prompted for approval before loading |
 
-Padrões suportam curingas: `internal-*` corresponde a `internal-docs`, `internal-tools`, etc.
+Patterns support wildcards: `internal-*` matches `internal-docs`, `internal-tools`, etc.
 
 ---
 
-## Substituir por agente
+## Override per agent
 
-Dê a agentes específicos permissões diferentes das configurações globais padrão.
+Give specific agents different permissions than the global defaults.
 
-**Para agentes personalizados** (no frontmatter do agente):
+**For custom agents** (in agent frontmatter):
 
 ```yaml
 ---
@@ -163,7 +163,7 @@ permission:
 ---
 ```
 
-**Para agentes embutidos** (em `codeplane.json`):
+**For built-in agents** (in `codeplane.json`):
 
 ```json
 {
@@ -181,11 +181,11 @@ permission:
 
 ---
 
-## Desativar a ferramenta de habilidades
+## Disable the skill tool
 
-Desative completamente as habilidades para agentes que não devem usá-las:
+Completely disable skills for agents that shouldn't use them:
 
-**Para agentes personalizados**:
+**For custom agents**:
 
 ```yaml
 ---
@@ -194,7 +194,7 @@ tools:
 ---
 ```
 
-**Para agentes embutidos**:
+**For built-in agents**:
 
 ```json
 {
@@ -208,15 +208,15 @@ tools:
 }
 ```
 
-Quando desativado, a seção `<available_skills>` é omitida completamente.
+When disabled, the `<available_skills>` section is omitted entirely.
 
 ---
 
-## Solucionar problemas de carregamento
+## Troubleshoot loading
 
-Se uma habilidade não aparecer:
+If a skill does not show up:
 
-1. Verifique se `SKILL.md` está escrito em letras maiúsculas
-2. Verifique se o frontmatter inclui `name` e `description`
-3. Certifique-se de que os nomes das habilidades sejam únicos em todos os locais
-4. Verifique as permissões—habilidades com `deny` estão ocultas dos agentes
+1. Verify `SKILL.md` is spelled in all caps
+2. Check that frontmatter includes `name` and `description`
+3. Ensure skill names are unique across all locations
+4. Check permissions—skills with `deny` are hidden from agents

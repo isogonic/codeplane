@@ -201,14 +201,6 @@ Plugins can subscribe to events as seen below in the Examples section. Here is a
 - `tool.execute.after`
 - `tool.execute.before`
 
-#### TUI Events
-
-- `tui.prompt.append`
-- `tui.command.execute`
-- `tui.toast.show`
-
----
-
 ## Examples
 
 Here are some examples of plugins you can use to extend codeplane.
@@ -233,10 +225,6 @@ export const NotificationPlugin = async ({ project, client, $, directory, worktr
 ```
 
 We are using `osascript` to run AppleScript on macOS. Here we are using it to send notifications.
-
-:::note
-If you’re using the CodePlane desktop app, it can send system notifications automatically when a response is ready or when a session errors.
-:::
 
 ---
 

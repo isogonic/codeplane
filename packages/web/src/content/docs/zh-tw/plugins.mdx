@@ -1,34 +1,34 @@
 ---
-title: 外掛
-description: 編寫自己的外掛來擴展 CodePlane。
+title: Plugins
+description: Write your own plugins to extend CodePlane.
 ---
 
-外掛允許您透過掛鉤各種事件和自訂行為來擴展 CodePlane。您可以建立外掛來新增新功能、整合外部服務，或修改 CodePlane 的預設行為。
+Plugins allow you to extend CodePlane by hooking into various events and customizing behavior. You can create plugins to add new features, integrate with external services, or modify CodePlane's default behavior.
 
-如需了解範例，請查看社群建立的[外掛](/docs/ecosystem#plugins)。
-
----
-
-## 使用外掛
-
-有兩種方式載入外掛。
+For examples, check out the [plugins](/docs/ecosystem#plugins) created by the community.
 
 ---
 
-### 從本地檔案載入
+## Use a plugin
 
-將 JavaScript 或 TypeScript 檔案放置在外掛目錄中。
-
-- `.codeplane/plugins/` - 專案級外掛
-- `~/.config/codeplane/plugins/` - 全域外掛
-
-這些目錄中的檔案會在啟動時自動載入。
+There are two ways to load plugins.
 
 ---
 
-### 從 npm 載入
+### From local files
 
-在設定檔中指定 npm 套件。
+Place JavaScript or TypeScript files in the plugin directory.
+
+- `.codeplane/plugins/` - Project-level plugins
+- `~/.config/codeplane/plugins/` - Global plugins
+
+Files in these directories are automatically loaded at startup.
+
+---
+
+### From npm
+
+Specify npm packages in your config file.
 
 ```json title="codeplane.json"
 {
@@ -37,42 +37,43 @@ description: 編寫自己的外掛來擴展 CodePlane。
 }
 ```
 
-支援常規和帶作用域的 npm 套件。
+Both regular and scoped npm packages are supported.
 
-瀏覽[生態系統](/docs/ecosystem#plugins)中的可用外掛。
-
----
-
-### 外掛的安裝方式
-
-**npm 外掛**在啟動時使用 Bun 自動安裝。套件及其相依套件會快取在 `~/.cache/codeplane/node_modules/` 中。
-
-**本地外掛**直接從外掛目錄載入。如果需要使用外部套件，您必須在設定目錄中建立 `package.json`（參見[相依套件](#dependencies)），或者將外掛發布到 npm 並[將其新增到設定中](/docs/config#plugins)。
+Browse available plugins in the [ecosystem](/docs/ecosystem#plugins).
 
 ---
 
-### 載入順序
+### How plugins are installed
 
-外掛從所有來源載入，所有鉤子按順序執行。載入順序為：
+**npm plugins** are installed automatically using Bun at startup. Packages and their dependencies are cached in `~/.cache/codeplane/node_modules/`.
 
-1. 全域設定 (`~/.config/codeplane/codeplane.json`)
-2. 專案設定 (`codeplane.json`)
-3. 全域外掛目錄 (`~/.config/codeplane/plugins/`)
-4. 專案外掛目錄 (`.codeplane/plugins/`)
-
-名稱和版本相同的重複 npm 套件只會載入一次。但本地外掛和名稱相似的 npm 外掛會分別獨立載入。
+**Local plugins** are loaded directly from the plugin directory. To use external packages, you must create a `package.json` within your config directory (see [Dependencies](#dependencies)), or publish the plugin to npm and [add it to your config](/docs/config#plugins).
 
 ---
 
-## 建立外掛
+### Load order
 
-外掛是一個 **JavaScript/TypeScript 模組**，它匯出一個或多個外掛函式。每個函式接收一個上下文物件，並回傳一個鉤子物件。
+Plugins are loaded from all sources and all hooks run in sequence. The load order is:
+
+1. Global config (`~/.config/codeplane/codeplane.json`)
+2. Project config (`codeplane.json`)
+3. Global plugin directory (`~/.config/codeplane/plugins/`)
+4. Project plugin directory (`.codeplane/plugins/`)
+
+Duplicate npm packages with the same name and version are loaded once. However, a local plugin and an npm plugin with similar names are both loaded separately.
 
 ---
 
-### 相依套件
+## Create a plugin
 
-本地外掛和自訂工具可以使用外部 npm 套件。在設定目錄中新增一個 `package.json`，列出所需的相依套件。
+A plugin is a **JavaScript/TypeScript module** that exports one or more plugin
+functions. Each function receives a context object and returns a hooks object.
+
+---
+
+### Dependencies
+
+Local plugins and custom tools can use external npm packages. Add a `package.json` to your config directory with the dependencies you need.
 
 ```json title=".codeplane/package.json"
 {
@@ -82,7 +83,7 @@ description: 編寫自己的外掛來擴展 CodePlane。
 }
 ```
 
-CodePlane 會在啟動時執行 `bun install` 來安裝這些相依套件。之後您的外掛和工具就可以匯入它們了。
+CodePlane runs `bun install` at startup to install these. Your plugins and tools can then import them.
 
 ```ts title=".codeplane/plugins/my-plugin.ts"
 import { escape } from "shescape"
@@ -100,7 +101,7 @@ export const MyPlugin = async (ctx) => {
 
 ---
 
-### 基本結構
+### Basic structure
 
 ```js title=".codeplane/plugins/example.js"
 export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
@@ -112,19 +113,19 @@ export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
 }
 ```
 
-外掛函式接收以下參數：
+The plugin function receives:
 
-- `project`：當前專案資訊。
-- `directory`：當前工作目錄。
-- `worktree`：git 工作樹路徑。
-- `client`：用於與 AI 互動的 CodePlane SDK 用戶端。
-- `$`：Bun 的 [Shell API](https://bun.com/docs/runtime/shell)，用於執行指令。
+- `project`: The current project information.
+- `directory`: The current working directory.
+- `worktree`: The git worktree path.
+- `client`: An codeplane SDK client for interacting with the AI.
+- `$`: Bun's [shell API](https://bun.com/docs/runtime/shell) for executing commands.
 
 ---
 
-### TypeScript 支援
+### TypeScript support
 
-對於 TypeScript 外掛，您可以從外掛套件中匯入類型：
+For TypeScript plugins, you can import types from the plugin package:
 
 ```ts title="my-plugin.ts" {1}
 import type { Plugin } from "@codeplane-ai/plugin"
@@ -138,45 +139,45 @@ export const MyPlugin: Plugin = async ({ project, client, $, directory, worktree
 
 ---
 
-### 事件
+### Events
 
-外掛可以訂閱事件，如下方範例部分所示。以下是所有可用事件的列表。
+Plugins can subscribe to events as seen below in the Examples section. Here is a list of the different events available.
 
-#### 指令事件
+#### Command Events
 
 - `command.executed`
 
-#### 檔案事件
+#### File Events
 
 - `file.edited`
 - `file.watcher.updated`
 
-#### 安裝事件
+#### Installation Events
 
 - `installation.updated`
 
-#### LSP 事件
+#### LSP Events
 
 - `lsp.client.diagnostics`
 - `lsp.updated`
 
-#### 訊息事件
+#### Message Events
 
 - `message.part.removed`
 - `message.part.updated`
 - `message.removed`
 - `message.updated`
 
-#### 權限事件
+#### Permission Events
 
 - `permission.asked`
 - `permission.replied`
 
-#### 伺服器事件
+#### Server Events
 
 - `server.connected`
 
-#### 工作階段事件
+#### Session Events
 
 - `session.created`
 - `session.compacted`
@@ -187,36 +188,28 @@ export const MyPlugin: Plugin = async ({ project, client, $, directory, worktree
 - `session.status`
 - `session.updated`
 
-#### 待辦事項事件
+#### Todo Events
 
 - `todo.updated`
 
-#### Shell 事件
+#### Shell Events
 
 - `shell.env`
 
-#### 工具事件
+#### Tool Events
 
 - `tool.execute.after`
 - `tool.execute.before`
 
-#### TUI 事件
+## Examples
 
-- `tui.prompt.append`
-- `tui.command.execute`
-- `tui.toast.show`
+Here are some examples of plugins you can use to extend codeplane.
 
 ---
 
-## 範例
+### Send notifications
 
-以下是一些可用於擴展 CodePlane 的外掛範例。
-
----
-
-### 傳送通知
-
-在特定事件發生時傳送通知：
+Send notifications when certain events occur:
 
 ```js title=".codeplane/plugins/notification.js"
 export const NotificationPlugin = async ({ project, client, $, directory, worktree }) => {
@@ -231,17 +224,13 @@ export const NotificationPlugin = async ({ project, client, $, directory, worktr
 }
 ```
 
-這裡使用 `osascript` 在 macOS 上執行 AppleScript 來傳送通知。
-
-:::note
-如果您使用 CodePlane 桌面應用程式，它可以在回應就緒或工作階段出錯時自動傳送系統通知。
-:::
+We are using `osascript` to run AppleScript on macOS. Here we are using it to send notifications.
 
 ---
 
-### .env 保護
+### .env protection
 
-阻止 CodePlane 讀取 `.env` 檔案：
+Prevent codeplane from reading `.env` files:
 
 ```javascript title=".codeplane/plugins/env-protection.js"
 export const EnvProtection = async ({ project, client, $, directory, worktree }) => {
@@ -257,9 +246,9 @@ export const EnvProtection = async ({ project, client, $, directory, worktree })
 
 ---
 
-### 注入環境變數
+### Inject environment variables
 
-將環境變數注入所有 Shell 執行（AI 工具和使用者終端機）：
+Inject environment variables into all shell execution (AI tools and user terminals):
 
 ```javascript title=".codeplane/plugins/inject-env.js"
 export const InjectEnvPlugin = async () => {
@@ -274,9 +263,9 @@ export const InjectEnvPlugin = async () => {
 
 ---
 
-### 自訂工具
+### Custom tools
 
-外掛還可以為 CodePlane 新增自訂工具：
+Plugins can also add custom tools to codeplane:
 
 ```ts title=".codeplane/plugins/custom-tools.ts"
 import { type Plugin, tool } from "@codeplane-ai/plugin"
@@ -299,23 +288,23 @@ export const CustomToolsPlugin: Plugin = async (ctx) => {
 }
 ```
 
-`tool` 輔助函式用於建立 CodePlane 可呼叫的自訂工具。它接受一個 Zod schema 函式，並回傳一個工具定義，包含：
+The `tool` helper creates a custom tool that codeplane can call. It takes a Zod schema function and returns a tool definition with:
 
-- `description`：工具的功能描述
-- `args`：工具參數的 Zod schema
-- `execute`：工具被呼叫時執行的函式
+- `description`: What the tool does
+- `args`: Zod schema for the tool's arguments
+- `execute`: Function that runs when the tool is called
 
-您的自訂工具將與內建工具一起在 CodePlane 中可用。
+Your custom tools will be available to codeplane alongside built-in tools.
 
 :::note
-如果外掛工具使用與內建工具相同的名稱，則外掛工具具有優先權。
+If a plugin tool uses the same name as a built-in tool, the plugin tool takes precedence.
 :::
 
 ---
 
-### 日誌記錄
+### Logging
 
-使用 `client.app.log()` 代替 `console.log` 進行結構化日誌記錄：
+Use `client.app.log()` instead of `console.log` for structured logging:
 
 ```ts title=".codeplane/plugins/my-plugin.ts"
 export const MyPlugin = async ({ client }) => {
@@ -330,13 +319,13 @@ export const MyPlugin = async ({ client }) => {
 }
 ```
 
-日誌層級：`debug`、`info`、`warn`、`error`。詳情請參閱 [SDK 文件](https://github.com/devinoldenburg/codeplane)。
+Levels: `debug`, `info`, `warn`, `error`. See [SDK documentation](https://github.com/devinoldenburg/codeplane) for details.
 
 ---
 
-### 壓縮鉤子
+### Compaction hooks
 
-自訂工作階段壓縮時包含的上下文：
+Customize the context included when a session is compacted:
 
 ```ts title=".codeplane/plugins/compaction.ts"
 import type { Plugin } from "@codeplane-ai/plugin"
@@ -358,9 +347,9 @@ Include any state that should persist across compaction:
 }
 ```
 
-`experimental.session.compacting` 鉤子在 LLM 生成續接摘要之前觸發。使用它來注入預設壓縮提示詞可能遺漏的領域特定上下文。
+The `experimental.session.compacting` hook fires before the LLM generates a continuation summary. Use it to inject domain-specific context that the default compaction prompt would miss.
 
-您還可以透過設定 `output.prompt` 來完全替換壓縮提示詞：
+You can also replace the compaction prompt entirely by setting `output.prompt`:
 
 ```ts title=".codeplane/plugins/custom-compaction.ts"
 import type { Plugin } from "@codeplane-ai/plugin"
@@ -385,4 +374,4 @@ Format as a structured prompt that a new agent can use to resume work.
 }
 ```
 
-當設定了 `output.prompt` 時，它會完全替換預設的壓縮提示詞。在這種情況下，`output.context` 陣列將被忽略。
+When `output.prompt` is set, it completely replaces the default compaction prompt. The `output.context` array is ignored in this case.

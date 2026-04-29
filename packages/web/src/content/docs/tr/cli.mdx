@@ -1,17 +1,17 @@
 ---
 title: CLI
-description: codeplane CLI seçenekleri ve komutları.
+description: CodePlane CLI options and commands.
 ---
 
 import { Tabs, TabItem } from "@astrojs/starlight/components"
 
-codeplane CLI herhangi bir argüman olmadan çalıştırıldığında varsayılan olarak [TUI](/docs/tui)'yi başlatır.
+The CodePlane CLI starts the web app when run without any arguments.
 
 ```bash
 codeplane
 ```
 
-Ancak bu sayfada belgelendiği gibi komutları da kabul eder. Bu, codeplane ile programlı olarak etkileşim kurmanıza olanak tanır.
+But it also accepts commands as documented on this page. This allows you to interact with CodePlane programmatically.
 
 ```bash
 codeplane run "Explain how closures work in JavaScript"
@@ -19,87 +19,35 @@ codeplane run "Explain how closures work in JavaScript"
 
 ---
 
-### tui
+## Commands
 
-codeplane terminal kullanıcı arayüzünü başlatır.
-
-```bash
-codeplane [project]
-```
-
-#### Bayraklar
-
-| Bayrak       | Kısa | Açıklama                                                                    |
-| ------------ | ---- | --------------------------------------------------------------------------- |
-| `--continue` | `-c` | Son oturuma devam et                                                        |
-| `--session`  | `-s` | Devam edecek oturum kimliği                                                 |
-| `--fork`     |      | Devam ederken oturumu fork'lar (`--continue` veya `--session` ile kullanın) |
-| `--prompt`   |      | Kullanılacak prompt                                                         |
-| `--model`    | `-m` | provider/model biçiminde kullanılacak model                                 |
-| `--agent`    |      | Kullanılacak agent                                                          |
-| `--port`     |      | Dinlenecek port                                                             |
-| `--hostname` |      | Dinlenecek host adı                                                         |
-
----
-
-## Komutlar
-
-codeplane CLI ayrıca aşağıdaki komutlara da sahiptir.
+The CodePlane CLI also has the following commands.
 
 ---
 
 ### agent
 
-codeplane için agent'ları yönetin.
+Manage agents for CodePlane.
 
 ```bash
 codeplane agent [command]
 ```
 
----
-
-### attach
-
-`serve` veya `web` komutlarıyla başlatılan, halihazırda çalışan bir codeplane arka uç sunucusuna bir terminal ekleyin.
-
-```bash
-codeplane attach [url]
-```
-
-Bu, TUI öğesinin uzak bir codeplane arka ucuyla kullanılmasına olanak tanır. Örneğin:
-
-```bash
-# Start the backend server for web/mobile access
-codeplane web --port 4096 --hostname 0.0.0.0
-
-# In another terminal, attach the TUI to the running backend
-codeplane attach http://10.20.30.40:4096
-```
-
-#### Bayraklar
-
-| Bayrak      | Kısa | Tanım                                |
-| ----------- | ---- | ------------------------------------ |
-| `--dir`     |      | TUI'yi başlatmak için çalışma dizini |
-| `--session` | `-s` | Devam edecek oturum açma bilgileri   |
-
----
-
 #### create
 
-Özel yapılandırmaya sahip yeni bir agent oluşturun.
+Create a new agent with custom configuration.
 
 ```bash
 codeplane agent create
 ```
 
-Bu komut, özel sistem istemi ve araç yapılandırmasıyla yeni bir agent oluşturma konusunda size yol gösterecektir.
+This command will guide you through creating a new agent with a custom system prompt and tool configuration.
 
 ---
 
 #### list
 
-Mevcut tüm agent'ları listeleyin.
+List all available agents.
 
 ```bash
 codeplane agent list
@@ -109,7 +57,7 @@ codeplane agent list
 
 ### auth
 
-Sağlayıcılar için kimlik bilgilerini ve oturum açmayı yönetme komutu.
+Command to manage credentials and login for providers.
 
 ```bash
 codeplane auth [command]
@@ -119,25 +67,25 @@ codeplane auth [command]
 
 #### login
 
-codeplane, [Models.dev](https://models.dev) adresindeki sağlayıcı listesi tarafından desteklenmektedir, dolayısıyla kullanmak istediğiniz herhangi bir sağlayıcı için API anahtarlarını ayarlamak üzere `codeplane auth login` kullanabilirsiniz. Bu `~/.local/share/codeplane/auth.json`'de saklanıyor.
+CodePlane is powered by the provider list at [Models.dev](https://models.dev), so you can use `codeplane auth login` to configure API keys for any provider you'd like to use. This is stored in `~/.local/share/codeplane/auth.json`.
 
 ```bash
 codeplane auth login
 ```
 
-codeplane başlatıldığında sağlayıcıları kimlik bilgileri dosyasından yükler. Ayrıca ortam değişkenlerindeki veya projenizdeki `.env` dosyasındaki anahtarları da kullanır.
+When CodePlane starts up it loads the providers from the credentials file. And if there are any keys defined in your environments or a `.env` file in your project.
 
 ---
 
 #### list
 
-Kimlik bilgileri dosyasında depolanan tüm kimliği doğrulanmış sağlayıcıları listeler.
+Lists all the authenticated providers as stored in the credentials file.
 
 ```bash
 codeplane auth list
 ```
 
-Veya kısa versiyonu.
+Or the short version.
 
 ```bash
 codeplane auth ls
@@ -147,7 +95,7 @@ codeplane auth ls
 
 #### logout
 
-Bir sağlayıcıyı kimlik bilgileri dosyasından temizleyerek oturumunuzu kapatır.
+Logs you out of a provider by clearing it from the credentials file.
 
 ```bash
 codeplane auth logout
@@ -157,7 +105,7 @@ codeplane auth logout
 
 ### github
 
-Depo otomasyonu için GitHub aracısını yönetin.
+Manage the GitHub agent for repository automation.
 
 ```bash
 codeplane github [command]
@@ -167,36 +115,36 @@ codeplane github [command]
 
 #### install
 
-GitHub aracısını deponuza yükleyin.
+Install the GitHub agent in your repository.
 
 ```bash
 codeplane github install
 ```
 
-Bu komut gerekli GitHub Actions workflow'unu kurar ve yapılandırma adımlarında size rehberlik eder. [Daha fazla bilgi](/docs/github).
+This sets up the necessary GitHub Actions workflow and guides you through the configuration process. [Learn more](/docs/github).
 
 ---
 
 #### run
 
-GitHub aracısını çalıştırın. Bu genellikle GitHub Eylemlerinde kullanılır.
+Run the GitHub agent. This is typically used in GitHub Actions.
 
 ```bash
 codeplane github run
 ```
 
-##### Bayraklar
+##### Flags
 
-| Bayrak    | Açıklama                                    |
-| --------- | ------------------------------------------- |
-| `--event` | Aracıyı çalıştırmak için GitHub sahte olayı |
-| `--token` | GitHub personal access token                |
+| Flag      | Description                            |
+| --------- | -------------------------------------- |
+| `--event` | GitHub mock event to run the agent for |
+| `--token` | GitHub personal access token           |
 
 ---
 
 ### mcp
 
-Model Bağlam Protokolü sunucularını yönetin.
+Manage Model Context Protocol servers.
 
 ```bash
 codeplane mcp [command]
@@ -206,25 +154,25 @@ codeplane mcp [command]
 
 #### add
 
-Yapılandırmanıza bir MCP sunucusu ekleyin.
+Add an MCP server to your configuration.
 
 ```bash
 codeplane mcp add
 ```
 
-Bu komut, yerel veya uzak bir MCP sunucusu ekleme konusunda size yol gösterecektir.
+This command will guide you through adding either a local or remote MCP server.
 
 ---
 
 #### list
 
-Yapılandırılmış tüm MCP sunucularını ve bağlantı durumlarını listeleyin.
+List all configured MCP servers and their connection status.
 
 ```bash
 codeplane mcp list
 ```
 
-Veya kısa versiyonunu kullanın.
+Or use the short version.
 
 ```bash
 codeplane mcp ls
@@ -234,21 +182,21 @@ codeplane mcp ls
 
 #### auth
 
-OAuth'un etkin olduğu bir MCP sunucusuyla kimlik doğrulaması yapın.
+Authenticate with an OAuth-enabled MCP server.
 
 ```bash
 codeplane mcp auth [name]
 ```
 
-Sunucu adı belirtmezseniz mevcut OAuth özellikli sunucular arasından seçim yapmanız istenir.
+If you don't provide a server name, you'll be prompted to select from available OAuth-capable servers.
 
-Ayrıca OAuth özellikli sunucuları ve bunların kimlik doğrulama durumlarını da listeleyebilirsiniz.
+You can also list OAuth-capable servers and their authentication status.
 
 ```bash
 codeplane mcp auth list
 ```
 
-Veya kısa versiyonunu kullanın.
+Or use the short version.
 
 ```bash
 codeplane mcp auth ls
@@ -258,7 +206,7 @@ codeplane mcp auth ls
 
 #### logout
 
-MCP sunucusu için OAuth kimlik bilgilerini kaldırın.
+Remove OAuth credentials for an MCP server.
 
 ```bash
 codeplane mcp logout [name]
@@ -268,7 +216,7 @@ codeplane mcp logout [name]
 
 #### debug
 
-MCP sunucusu için OAuth bağlantı sorunlarının hatalarını ayıklayın.
+Debug OAuth connection issues for an MCP server.
 
 ```bash
 codeplane mcp debug <name>
@@ -278,30 +226,30 @@ codeplane mcp debug <name>
 
 ### models
 
-Yapılandırılmış sağlayıcıların tüm mevcut modellerini listeleyin.
+List all available models from configured providers.
 
 ```bash
 codeplane models [provider]
 ```
 
-Bu komut, yapılandırdığınız sağlayıcılardaki modelleri `provider/model` formatında listeler.
+This command displays all models available across your configured providers in the format `provider/model`.
 
-Bu, [config dosyanızda](/docs/config/) kullanmanız gereken tam model adını bulmak için kullanışlıdır.
+This is useful for figuring out the exact model name to use in [your config](/docs/config/).
 
-Modelleri bu sağlayıcıya göre filtrelemek için isteğe bağlı olarak bir sağlayıcı kimliğini iletebilirsiniz.
+You can optionally pass a provider ID to filter models by that provider.
 
 ```bash
 codeplane models anthropic
 ```
 
-#### Bayraklar
+#### Flags
 
-| Bayrak      | Tanım                                                                       |
-| ----------- | --------------------------------------------------------------------------- |
-| `--refresh` | Modeller.dev'den model önbelleğini yenileyin                                |
-| `--verbose` | Daha ayrıntılı model çıktısı kullanın (maliyetler gibi meta veriler içerir) |
+| Flag        | Description                                                  |
+| ----------- | ------------------------------------------------------------ |
+| `--refresh` | Refresh the models cache from models.dev                     |
+| `--verbose` | Use more verbose model output (includes metadata like costs) |
 
-Önbelleğe alınan model listesini güncellemek için `--refresh` bayrağını kullanın. Bu, bir sağlayıcıya yeni modeller eklendiğinde ve bunları codeplane'da görmek istediğinizde kullanışlıdır.
+Use the `--refresh` flag to update the cached model list. This is useful when new models have been added to a provider and you want to see them in CodePlane.
 
 ```bash
 codeplane models --refresh
@@ -311,19 +259,19 @@ codeplane models --refresh
 
 ### run
 
-Doğrudan bir istem ileterek codeplane'u etkileşimli olmayan modda çalıştırın.
+Run codeplane in non-interactive mode by passing a prompt directly.
 
 ```bash
 codeplane run [message..]
 ```
 
-Bu, komut dosyası oluşturma, otomasyon veya TUI'un tamamını başlatmadan hızlı bir yanıt istediğinizde kullanışlıdır. Örneğin.
+This is useful for scripting, automation, or when you want a quick answer without opening the web app. For example.
 
 ```bash "codeplane run"
 codeplane run Explain the use of context in Go
 ```
 
-Ayrıca, her çalıştırmada MCP sunucusunun soğuk önyükleme sürelerini önlemek için çalışan bir `codeplane serve` örneğine de ekleyebilirsiniz:
+You can also attach to a running `codeplane serve` instance to avoid MCP server cold boot times on every run:
 
 ```bash
 # Start a headless server in one terminal
@@ -333,49 +281,50 @@ codeplane serve
 codeplane run --attach http://localhost:4096 "Explain async/await in JavaScript"
 ```
 
-#### Bayraklar
+#### Flags
 
-| Bayrak       | Kısa | Açıklama                                                                          |
-| ------------ | ---- | --------------------------------------------------------------------------------- |
-| `--command`  |      | Çalıştırılacak komut, args için mesajı kullanın                                   |
-| `--continue` | `-c` | Son oturuma devam et                                                              |
-| `--session`  | `-s` | Devam edecek oturum kimliği                                                       |
-| `--fork`     |      | Devam ederken oturumu fork'lar (`--continue` veya `--session` ile kullanın)       |
-| `--share`    |      | Oturumu paylaşın                                                                  |
-| `--model`    | `-m` | provider/model biçiminde kullanılacak model                                       |
-| `--agent`    |      | Kullanılacak temsilci                                                             |
-| `--file`     | `-f` | Mesaja eklenecek dosya(lar)                                                       |
-| `--format`   |      | Biçim: varsayılan (biçimlendirilmiş) veya json (ham JSON olayları)                |
-| `--title`    |      | Oturumun başlığı (değer sağlanmazsa kısaltılmış bilgi istemi kullanılır)          |
-| `--attach`   |      | Çalışan bir codeplane sunucusuna ekleyin (ör. http://localhost:4096)               |
-| `--port`     |      | Yerel sunucunun bağlantı noktası (varsayılan olarak rastgele bağlantı noktasıdır) |
+| Flag                             | Short | Description                                                             |
+| -------------------------------- | ----- | ----------------------------------------------------------------------- |
+| `--command`                      |       | The command to run, use message for args                                |
+| `--continue`                     | `-c`  | Continue the last session                                               |
+| `--session`                      | `-s`  | Session ID to continue                                                  |
+| `--fork`                         |       | Fork the session when continuing (use with `--continue` or `--session`) |
+| `--share`                        |       | Share the session                                                       |
+| `--model`                        | `-m`  | Model to use in the form of provider/model                              |
+| `--agent`                        |       | Agent to use                                                            |
+| `--file`                         | `-f`  | File(s) to attach to message                                            |
+| `--format`                       |       | Format: default (formatted) or json (raw JSON events)                   |
+| `--title`                        |       | Title for the session (uses truncated prompt if no value provided)      |
+| `--attach`                       |       | Attach to a running codeplane server (e.g., http://localhost:4096)       |
+| `--port`                         |       | Port for the local server (defaults to random port)                     |
+| `--dangerously-skip-permissions` |       | Auto-approve permissions that are not explicitly denied (dangerous!)    |
 
 ---
 
 ### serve
 
-API erişimi için headless bir codeplane sunucusu başlatır. Tam HTTP arayüzü için [server docs](/docs/server) sayfasına bakın.
+Start a headless CodePlane server for API access. Check out the [server docs](/docs/server) for the full HTTP interface.
 
 ```bash
 codeplane serve
 ```
 
-Bu, TUI arayüzü olmadan codeplane işlevselliğine API erişimi sağlayan bir HTTP sunucusunu başlatır. HTTP temel kimlik doğrulamasını etkinleştirmek için `CODEPLANE_SERVER_PASSWORD` öğesini ayarlayın (kullanıcı adı varsayılan olarak `codeplane` şeklindedir).
+This starts an HTTP server that provides API access to codeplane functionality without opening the browser UI. Set `CODEPLANE_SERVER_PASSWORD` to enable HTTP basic auth (username defaults to `codeplane`).
 
-#### Bayraklar
+#### Flags
 
-| Bayrak       | Tanım                                      |
+| Flag         | Description                                |
 | ------------ | ------------------------------------------ |
-| `--port`     | Dinlenecek bağlantı noktası                |
-| `--hostname` | Dinlenecek ana bilgisayar adı              |
-| `--mdns`     | mDNS bulmayı etkinleştir                   |
-| `--cors`     | CORS'a izin verecek ek tarayıcı kaynakları |
+| `--port`     | Port to listen on                          |
+| `--hostname` | Hostname to listen on                      |
+| `--mdns`     | Enable mDNS discovery                      |
+| `--cors`     | Additional browser origin(s) to allow CORS |
 
 ---
 
 ### session
 
-codeplane oturumlarını yönetin.
+Manage CodePlane sessions.
 
 ```bash
 codeplane session [command]
@@ -385,61 +334,61 @@ codeplane session [command]
 
 #### list
 
-Tüm codeplane oturumlarını listeleyin.
+List all CodePlane sessions.
 
 ```bash
 codeplane session list
 ```
 
-##### Bayraklar
+##### Flags
 
-| Bayrak        | Kısa | Tanım                                  |
-| ------------- | ---- | -------------------------------------- |
-| `--max-count` | `-n` | En son N oturumla sınırla              |
-| `--format`    |      | Çıkış formatı: tablo veya json (tablo) |
+| Flag          | Short | Description                          |
+| ------------- | ----- | ------------------------------------ |
+| `--max-count` | `-n`  | Limit to N most recent sessions      |
+| `--format`    |       | Output format: table or json (table) |
 
 ---
 
 ### stats
 
-codeplane oturumlarınız için belirteç kullanımı ve maliyet istatistiklerini gösterin.
+Show token usage and cost statistics for your CodePlane sessions.
 
 ```bash
 codeplane stats
 ```
 
-#### Bayraklar
+#### Flags
 
-| Bayrak      | Açıklama                                                                                                    |
-| ----------- | ----------------------------------------------------------------------------------------------------------- |
-| `--days`    | Son N güne ait istatistikleri göster (tüm zamanlar)                                                         |
-| `--tools`   | Gösterilecek araç sayısı (tümü)                                                                             |
-| `--models`  | Model kullanım dökümünü göster (varsayılan olarak gizlidir). En üstteki N'yi göstermek için bir sayı iletin |
-| `--project` | Projeye göre filtrele (tüm projeler, boş değer: mevcut proje)                                               |
+| Flag        | Description                                                                 |
+| ----------- | --------------------------------------------------------------------------- |
+| `--days`    | Show stats for the last N days (all time)                                   |
+| `--tools`   | Number of tools to show (all)                                               |
+| `--models`  | Show model usage breakdown (hidden by default). Pass a number to show top N |
+| `--project` | Filter by project (all projects, empty string: current project)             |
 
 ---
 
 ### export
 
-Oturum verilerini JSON olarak dışa aktarın.
+Export session data as JSON.
 
 ```bash
 codeplane export [sessionID]
 ```
 
-Bir oturum kimliği sağlamazsanız mevcut oturumlar arasından seçim yapmanız istenir.
+If you don't provide a session ID, you'll be prompted to select from available sessions.
 
 ---
 
 ### import
 
-Bir JSON dosyasından veya codeplane paylaşımından URL oturum verilerini içe aktarın.
+Import session data from a JSON file or CodePlane share URL.
 
 ```bash
 codeplane import <file>
 ```
 
-Yerel bir dosyadan veya codeplane paylaşımından (URL) içe aktarabilirsiniz.
+You can import from a local file or an CodePlane share URL.
 
 ```bash
 codeplane import session.json
@@ -450,154 +399,152 @@ codeplane import https://opncd.ai/s/abc123
 
 ### web
 
-Web arayüzüyle başsız bir codeplane sunucusu başlatın.
+Start a headless CodePlane server with a web interface.
 
 ```bash
 codeplane web
 ```
 
-Bu, bir HTTP sunucusunu başlatır ve bir web arayüzü aracılığıyla codeplane'a erişmek için bir web tarayıcısı açar. HTTP temel kimlik doğrulamasını etkinleştirmek için `CODEPLANE_SERVER_PASSWORD` öğesini ayarlayın (kullanıcı adı varsayılan olarak `codeplane` şeklindedir).
+This starts an HTTP server and opens a web browser to access CodePlane through a web interface. Set `CODEPLANE_SERVER_PASSWORD` to enable HTTP basic auth (username defaults to `codeplane`).
 
-#### Bayraklar
+#### Flags
 
-| Bayrak       | Tanım                                      |
+| Flag         | Description                                |
 | ------------ | ------------------------------------------ |
-| `--port`     | Dinlenecek bağlantı noktası                |
-| `--hostname` | Dinlenecek ana bilgisayar adı              |
-| `--mdns`     | mDNS bulmayı etkinleştir                   |
-| `--cors`     | CORS'a izin verecek ek tarayıcı kaynakları |
+| `--port`     | Port to listen on                          |
+| `--hostname` | Hostname to listen on                      |
+| `--mdns`     | Enable mDNS discovery                      |
+| `--cors`     | Additional browser origin(s) to allow CORS |
 
 ---
 
 ### acp
 
-Bir ACP (Ajan İstemci Protokolü) sunucusu başlatın.
+Start an ACP (Agent Client Protocol) server.
 
 ```bash
 codeplane acp
 ```
 
-Bu komut, nd-JSON kullanarak stdin/stdout aracılığıyla iletişim kuran bir ACP sunucusunu başlatır.
+This command starts an ACP server that communicates via stdin/stdout using nd-JSON.
 
-#### Bayraklar
+#### Flags
 
-| Bayrak       | Açıklama            |
-| ------------ | ------------------- |
-| `--cwd`      | Çalışma dizini      |
-| `--port`     | Dinlenecek port     |
-| `--hostname` | Dinlenecek host adı |
+| Flag         | Description           |
+| ------------ | --------------------- |
+| `--cwd`      | Working directory     |
+| `--port`     | Port to listen on     |
+| `--hostname` | Hostname to listen on |
 
 ---
 
 ### uninstall
 
-codeplane'u kaldırın ve ilgili tüm dosyaları kaldırın.
+Uninstall CodePlane and remove all related files.
 
 ```bash
 codeplane uninstall
 ```
 
-#### Bayraklar
+#### Flags
 
-| Bayrak          | Kısa | Tanım                                           |
-| --------------- | ---- | ----------------------------------------------- |
-| `--keep-config` | `-c` | Yapılandırma dosyalarını sakla                  |
-| `--keep-data`   | `-d` | Oturum verilerini ve anlık görüntüleri saklayın |
-| `--dry-run`     |      | Nelerin kaldırılmadan kaldırılacağı göster      |
-| `--force`       | `-f` | Onay istemlerini atla                           |
+| Flag            | Short | Description                                 |
+| --------------- | ----- | ------------------------------------------- |
+| `--keep-config` | `-c`  | Keep configuration files                    |
+| `--keep-data`   | `-d`  | Keep session data and snapshots             |
+| `--dry-run`     |       | Show what would be removed without removing |
+| `--force`       | `-f`  | Skip confirmation prompts                   |
 
 ---
 
 ### upgrade
 
-codeplane'u en son sürüme veya belirli bir sürüme günceller.
+Updates codeplane to the latest version or a specific version.
 
 ```bash
 codeplane upgrade [target]
 ```
 
-En son sürüme yükseltmek için.
+To upgrade to the latest version.
 
 ```bash
 codeplane upgrade
 ```
 
-Belirli bir sürüme yükseltmek için:
+To upgrade to a specific version.
 
 ```bash
 codeplane upgrade v0.1.48
 ```
 
-#### Bayraklar
+#### Flags
 
-| Bayrak     | Kısa | Açıklama                                               |
-| ---------- | ---- | ------------------------------------------------------ |
-| `--method` | `-m` | Kullanılan kurulum yöntemi: curl, npm, pnpm, bun, brew |
-
----
-
-## Global bayraklar
-
-codeplane CLI aşağıdaki global bayrakları destekler.
-
-| Bayrak         | Kısa | Tanım                                    |
-| -------------- | ---- | ---------------------------------------- |
-| `--help`       | `-h` | Yardımı görüntüle                        |
-| `--version`    | `-v` | Sürüm numarasını yazdır                  |
-| `--print-logs` |      | Günlükleri stderr'e yazdır               |
-| `--log-level`  |      | Günlük düzeyi (DEBUG, INFO, WARN, ERROR) |
+| Flag       | Short | Description                                                       |
+| ---------- | ----- | ----------------------------------------------------------------- |
+| `--method` | `-m`  | The installation method that was used; curl, npm, pnpm, bun, brew |
 
 ---
 
-## Ortam değişkenleri
+## Global Flags
 
-codeplane ortam değişkenleri kullanılarak yapılandırılabilir.
+The codeplane CLI takes the following global flags.
 
-| Değişken                              | Tip     | Açıklama                                                                    |
-| ------------------------------------- | ------- | --------------------------------------------------------------------------- |
-| `CODEPLANE_AUTO_SHARE`                 | boolean | Oturumları otomatik olarak paylaş                                           |
-| `CODEPLANE_GIT_BASH_PATH`              | string  | Windows'ta yürütülebilir Git Bash'in Yolu                                   |
-| `CODEPLANE_CONFIG`                     | string  | Yapılandırma dosyasının yolu                                                |
-| `CODEPLANE_TUI_CONFIG`                 | string  | TUI yapılandırma dosyasının yolu                                            |
-| `CODEPLANE_CONFIG_DIR`                 | string  | Yapılandırma dizinine giden yol                                             |
-| `CODEPLANE_CONFIG_CONTENT`             | string  | Satır içi JSON config içeriği                                               |
-| `CODEPLANE_DISABLE_AUTOUPDATE`         | boolean | Otomatik güncelleme kontrollerini devre dışı bırak                          |
-| `CODEPLANE_DISABLE_PRUNE`              | boolean | Eski verilerin temizlenmesini devre dışı bırak                              |
-| `CODEPLANE_DISABLE_TERMINAL_TITLE`     | boolean | Otomatik terminal başlığı güncellemelerini devre dışı bırakın               |
-| `CODEPLANE_PERMISSION`                 | string  | Satır içi JSON izin config'i                                                |
-| `CODEPLANE_DISABLE_DEFAULT_PLUGINS`    | boolean | Varsayılan eklentileri devre dışı bırakın                                   |
-| `CODEPLANE_DISABLE_LSP_DOWNLOAD`       | boolean | Otomatik LSP sunucu indirmelerini devre dışı bırakın                        |
-| `CODEPLANE_ENABLE_EXPERIMENTAL_MODELS` | boolean | Deneysel modelleri etkinleştir                                              |
-| `CODEPLANE_DISABLE_AUTOCOMPACT`        | boolean | Otomatik context sıkıştırmayı devre dışı bırak                              |
-| `CODEPLANE_DISABLE_CLAUDE_CODE`        | boolean | `.claude`'den okumayı devre dışı bırak (istem + beceriler)                  |
-| `CODEPLANE_DISABLE_CLAUDE_CODE_PROMPT` | boolean | `~/.claude/CLAUDE.md` dosyasını okumayı devre dışı bırak                    |
-| `CODEPLANE_DISABLE_CLAUDE_CODE_SKILLS` | boolean | `.claude/skills` yüklemesini devre dışı bırak                               |
-| `CODEPLANE_DISABLE_MODELS_FETCH`       | boolean | Uzak kaynaklardan model getirmeyi devre dışı bırakın                        |
-| `CODEPLANE_FAKE_VCS`                   | string  | Test amaçlı sahte VCS sağlayıcısı                                           |
-| `CODEPLANE_CLIENT`                     | string  | Client kimliği (varsayılan: `cli`)                                          |
-| `CODEPLANE_ENABLE_EXA`                 | boolean | Exa web arama araçlarını etkinleştir                                        |
-| `CODEPLANE_SERVER_PASSWORD`            | string  | `serve`/`web` için temel kimlik doğrulamayı etkinleştirin                   |
-| `CODEPLANE_SERVER_USERNAME`            | string  | Temel kimlik doğrulama kullanıcı adını geçersiz kıl (varsayılan `codeplane`) |
-| `CODEPLANE_MODELS_URL`                 | string  | Model yapılandırmasını almak için özel URL                                  |
+| Flag           | Short | Description                          |
+| -------------- | ----- | ------------------------------------ |
+| `--help`       | `-h`  | Display help                         |
+| `--version`    | `-v`  | Print version number                 |
+| `--print-logs` |       | Print logs to stderr                 |
+| `--log-level`  |       | Log level (DEBUG, INFO, WARN, ERROR) |
 
 ---
 
-### Deneysel
+## Environment variables
 
-Bu ortam değişkenleri değişebilecek veya kaldırılabilecek deneysel özellikleri etkinleştirir.
+CodePlane can be configured using environment variables.
 
-| Değişken                                        | Tip     | Tanım                                                   |
-| ----------------------------------------------- | ------- | ------------------------------------------------------- |
-| `CODEPLANE_EXPERIMENTAL`                         | boolean | Tüm deneysel özellikleri etkinleştir                    |
-| `CODEPLANE_EXPERIMENTAL_ICON_DISCOVERY`          | boolean | Simge bulmayı etkinleştir                               |
-| `CODEPLANE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT`  | boolean | TUI'da seçim yapıldığında kopyalamayı devre dışı bırak  |
-| `CODEPLANE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS` | number  | MS cinsinden bash komutları için varsayılan zaman aşımı |
-| `CODEPLANE_EXPERIMENTAL_OUTPUT_TOKEN_MAX`        | number  | LLM yanıtları için maksimum çıktı belirteçleri          |
-| `CODEPLANE_EXPERIMENTAL_FILEWATCHER`             | boolean | Tüm dizin için dosya izleyiciyi etkinleştir             |
-| `CODEPLANE_EXPERIMENTAL_OXFMT`                   | boolean | Oxfmt biçimlendiriciyi etkinleştir                      |
-| `CODEPLANE_EXPERIMENTAL_LSP_TOOL`                | boolean | Deneysel LSP aracını etkinleştir                        |
-| `CODEPLANE_EXPERIMENTAL_DISABLE_FILEWATCHER`     | boolean | Dosya izleyiciyi devre dışı bırak                       |
-| `CODEPLANE_EXPERIMENTAL_EXA`                     | boolean | Deneysel Exa özelliklerini etkinleştirin                |
-| `CODEPLANE_EXPERIMENTAL_LSP_TY`                  | boolean | python dosyaları için TY LSP'yi etkinleştir             |
-| `CODEPLANE_EXPERIMENTAL_MARKDOWN`                | boolean | Deneysel işaretleme özelliklerini etkinleştir           |
-| `CODEPLANE_EXPERIMENTAL_PLAN_MODE`               | boolean | Plan modunu etkinleştir                                 |
+| Variable                              | Type    | Description                                       |
+| ------------------------------------- | ------- | ------------------------------------------------- |
+| `CODEPLANE_AUTO_SHARE`                 | boolean | Automatically share sessions                      |
+| `CODEPLANE_GIT_BASH_PATH`              | string  | Path to Git Bash executable on Windows            |
+| `CODEPLANE_CONFIG`                     | string  | Path to config file                               |
+| `CODEPLANE_CONFIG_DIR`                 | string  | Path to config directory                          |
+| `CODEPLANE_CONFIG_CONTENT`             | string  | Inline json config content                        |
+| `CODEPLANE_DISABLE_AUTOUPDATE`         | boolean | Disable automatic update checks                   |
+| `CODEPLANE_DISABLE_PRUNE`              | boolean | Disable pruning of old data                       |
+| `CODEPLANE_DISABLE_TERMINAL_TITLE`     | boolean | Disable automatic terminal title updates          |
+| `CODEPLANE_PERMISSION`                 | string  | Inlined json permissions config                   |
+| `CODEPLANE_DISABLE_DEFAULT_PLUGINS`    | boolean | Disable default plugins                           |
+| `CODEPLANE_DISABLE_LSP_DOWNLOAD`       | boolean | Disable automatic LSP server downloads            |
+| `CODEPLANE_ENABLE_EXPERIMENTAL_MODELS` | boolean | Enable experimental models                        |
+| `CODEPLANE_DISABLE_AUTOCOMPACT`        | boolean | Disable automatic context compaction              |
+| `CODEPLANE_DISABLE_CLAUDE_CODE`        | boolean | Disable reading from `.claude` (prompt + skills)  |
+| `CODEPLANE_DISABLE_CLAUDE_CODE_PROMPT` | boolean | Disable reading `~/.claude/CLAUDE.md`             |
+| `CODEPLANE_DISABLE_CLAUDE_CODE_SKILLS` | boolean | Disable loading `.claude/skills`                  |
+| `CODEPLANE_DISABLE_MODELS_FETCH`       | boolean | Disable fetching models from remote sources       |
+| `CODEPLANE_FAKE_VCS`                   | string  | Fake VCS provider for testing purposes            |
+| `CODEPLANE_CLIENT`                     | string  | Client identifier (defaults to `cli`)             |
+| `CODEPLANE_ENABLE_EXA`                 | boolean | Enable Exa web search tools                       |
+| `CODEPLANE_SERVER_PASSWORD`            | string  | Enable basic auth for `serve`/`web`               |
+| `CODEPLANE_SERVER_USERNAME`            | string  | Override basic auth username (default `codeplane`) |
+| `CODEPLANE_MODELS_URL`                 | string  | Custom URL for fetching models configuration      |
+
+---
+
+### Experimental
+
+These environment variables enable experimental features that may change or be removed.
+
+| Variable                                        | Type    | Description                             |
+| ----------------------------------------------- | ------- | --------------------------------------- |
+| `CODEPLANE_EXPERIMENTAL`                         | boolean | Enable all experimental features        |
+| `CODEPLANE_EXPERIMENTAL_ICON_DISCOVERY`          | boolean | Enable icon discovery                   |
+| `CODEPLANE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS` | number  | Default timeout for bash commands in ms |
+| `CODEPLANE_EXPERIMENTAL_OUTPUT_TOKEN_MAX`        | number  | Max output tokens for LLM responses     |
+| `CODEPLANE_EXPERIMENTAL_FILEWATCHER`             | boolean | Enable file watcher for entire dir      |
+| `CODEPLANE_EXPERIMENTAL_OXFMT`                   | boolean | Enable oxfmt formatter                  |
+| `CODEPLANE_EXPERIMENTAL_LSP_TOOL`                | boolean | Enable experimental LSP tool            |
+| `CODEPLANE_EXPERIMENTAL_DISABLE_FILEWATCHER`     | boolean | Disable file watcher                    |
+| `CODEPLANE_EXPERIMENTAL_EXA`                     | boolean | Enable experimental Exa features        |
+| `CODEPLANE_EXPERIMENTAL_LSP_TY`                  | boolean | Enable TY LSP for python files          |
+| `CODEPLANE_EXPERIMENTAL_MARKDOWN`                | boolean | Enable experimental markdown features   |
+| `CODEPLANE_EXPERIMENTAL_PLAN_MODE`               | boolean | Enable plan mode                        |

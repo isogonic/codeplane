@@ -1,70 +1,64 @@
 ---
-title: الويب
-description: استخدام CodePlane في متصفحك.
+title: Web
+description: Using CodePlane in your browser.
 ---
 
-يمكن تشغيل CodePlane كتطبيق ويب داخل متصفحك، ليمنحك تجربة البرمجة القوية بالذكاء الاصطناعي نفسها دون الحاجة إلى terminal.
+CodePlane can run as a web application in your browser, providing the same powerful AI coding experience without needing a terminal.
 
-![CodePlane Web - جلسة جديدة](../../../assets/web/web-homepage-new-session.png)
+![CodePlane Web - New Session](../../../assets/web/web-homepage-new-session.png)
 
-## البدء
+## Getting Started
 
-ابدأ تشغيل واجهة الويب عبر تنفيذ:
+Start the web interface by running:
 
 ```bash
 codeplane web
 ```
 
-يؤدي ذلك إلى تشغيل خادم محلي على `127.0.0.1` بمنفذ عشوائي متاح، ويفتح CodePlane تلقائيا في المتصفح الافتراضي لديك.
+This starts a local server on `127.0.0.1` with a random available port and automatically opens CodePlane in your default browser.
 
 :::caution
-إذا لم يتم تعيين `CODEPLANE_SERVER_PASSWORD` فسيكون الخادم دون حماية. هذا مناسب للاستخدام المحلي، لكنه يجب أن يكون مُعينا عند إتاحة الوصول عبر الشبكة.
+If `CODEPLANE_SERVER_PASSWORD` is not set, the server will be unsecured. This is fine for local use but should be set for network access.
 :::
 
-:::tip[مستخدمو Windows]
-لأفضل تجربة، شغّل `codeplane web` من [WSL](/docs/windows-wsl) بدلا من PowerShell. يضمن ذلك وصولا صحيحا إلى نظام الملفات وتكاملا أفضل مع terminal.
-:::
+## Configuration
 
----
+You can configure the web server using command line flags or in your [config file](/docs/config).
 
-## الإعدادات
+### Port
 
-يمكنك ضبط خادم الويب باستخدام خيارات CLI أو عبر [ملف الإعدادات](/docs/config).
-
-### المنفذ
-
-افتراضيا، يختار CodePlane منفذا متاحا. يمكنك تحديد منفذ:
+By default, CodePlane picks an available port. You can specify a port:
 
 ```bash
 codeplane web --port 4096
 ```
 
-### اسم المضيف
+### Hostname
 
-افتراضيا، يرتبط الخادم بـ `127.0.0.1` (للاستخدام المحلي فقط). لجعل CodePlane متاحا على شبكتك:
+By default, the server binds to `127.0.0.1` (localhost only). To make CodePlane accessible on your network:
 
 ```bash
 codeplane web --hostname 0.0.0.0
 ```
 
-عند استخدام `0.0.0.0` سيعرض CodePlane كلا من عناوين الوصول المحلي وعناوين الشبكة:
+When using `0.0.0.0`, CodePlane will display both local and network addresses:
 
 ```
   Local access:       http://localhost:4096
   Network access:     http://192.168.1.100:4096
 ```
 
-### اكتشاف mDNS
+### mDNS Discovery
 
-فعّل mDNS لجعل خادمك قابلا للاكتشاف على الشبكة المحلية:
+Enable mDNS to make your server discoverable on the local network:
 
 ```bash
 codeplane web --mdns
 ```
 
-يضبط ذلك تلقائيا اسم المضيف إلى `0.0.0.0` ويعلن عن الخادم باسم `codeplane.local`.
+This automatically sets the hostname to `0.0.0.0` and advertises the server as `codeplane.local`.
 
-يمكنك تخصيص اسم نطاق mDNS لتشغيل عدة نسخ على الشبكة نفسها:
+You can customize the mDNS domain name to run multiple instances on the same network:
 
 ```bash
 codeplane web --mdns --mdns-domain myproject.local
@@ -72,61 +66,43 @@ codeplane web --mdns --mdns-domain myproject.local
 
 ### CORS
 
-للسماح بنطاقات إضافية عبر CORS (مفيد للواجهات الأمامية المخصصة):
+To allow additional domains for CORS (useful for custom frontends):
 
 ```bash
 codeplane web --cors https://example.com
 ```
 
-### المصادقة
+### Authentication
 
-لحماية الوصول، عيّن كلمة مرور عبر متغير البيئة `CODEPLANE_SERVER_PASSWORD`:
+To protect access, set a password using the `CODEPLANE_SERVER_PASSWORD` environment variable:
 
 ```bash
 CODEPLANE_SERVER_PASSWORD=secret codeplane web
 ```
 
-اسم المستخدم الافتراضي هو `codeplane`، ويمكن تغييره عبر `CODEPLANE_SERVER_USERNAME`.
+The username defaults to `codeplane` but can be changed with `CODEPLANE_SERVER_USERNAME`.
 
 ---
 
-## استخدام واجهة الويب
+## Using the Web Interface
 
-بعد التشغيل، تتيح لك واجهة الويب الوصول إلى جلسات CodePlane الخاصة بك.
+Once started, the web interface provides access to your CodePlane sessions.
 
-### الجلسات
+### Sessions
 
-اعرض جلساتك وأدرها من الصفحة الرئيسية. يمكنك رؤية الجلسات النشطة وبدء جلسات جديدة.
+View and manage your sessions from the homepage. You can see active sessions and start new ones.
 
-![CodePlane Web - جلسة نشطة](../../../assets/web/web-homepage-active-session.png)
+![CodePlane Web - Active Session](../../../assets/web/web-homepage-active-session.png)
 
-### حالة الخادم
+### Server Status
 
-انقر على "See Servers" لعرض الخوادم المتصلة وحالتها.
+Click "See Servers" to view connected servers and their status.
 
-![CodePlane Web - See Servers (عرض الخوادم)](../../../assets/web/web-homepage-see-servers.png)
+![CodePlane Web - See Servers](../../../assets/web/web-homepage-see-servers.png)
 
----
+## Config File
 
-## إرفاق terminal
-
-يمكنك إرفاق واجهة terminal (TUI) بخادم ويب قيد التشغيل:
-
-```bash
-# ابدأ خادم الويب
-codeplane web --port 4096
-
-# في محطة طرفية أخرى، اربط TUI
-codeplane attach http://localhost:4096
-```
-
-يتيح لك ذلك استخدام واجهة الويب وterminal في الوقت نفسه، مع مشاركة الجلسات والحالة نفسها.
-
----
-
-## ملف الإعدادات
-
-يمكنك أيضا ضبط إعدادات الخادم داخل ملف الإعدادات `codeplane.json`:
+You can also configure server settings in your `codeplane.json` config file:
 
 ```json
 {
@@ -139,4 +115,4 @@ codeplane attach http://localhost:4096
 }
 ```
 
-تكون خيارات CLI ذات أولوية أعلى من إعدادات ملف الإعدادات.
+Command line flags take precedence over config file settings.

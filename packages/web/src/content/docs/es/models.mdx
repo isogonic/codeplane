@@ -1,41 +1,37 @@
 ---
-title: Modelos
-description: Configuración de un proveedor y modelo LLM.
+title: Models
+description: Configuring an LLM provider and model.
 ---
 
-CodePlane usa el [AI SDK](https://ai-sdk.dev/) y [Models.dev](https://models.dev) para admitir **75+ proveedores LLM** y admite la ejecución de modelos locales.
-
----
-
-## Proveedores
-
-Los proveedores más populares están precargados de forma predeterminada. Si agregó las credenciales de un proveedor mediante el comando `/connect`, estarán disponibles cuando inicie CodePlane.
-
-Obtenga más información sobre [proveedores](/docs/providers).
+CodePlane uses the [AI SDK](https://ai-sdk.dev/) and [Models.dev](https://models.dev) to support **75+ LLM providers** and it supports running local models.
 
 ---
 
-## Seleccionar un modelo
+## Providers
 
-Una vez que hayas configurado tu proveedor podrás seleccionar el modelo que desees escribiendo:
+Most popular providers are preloaded by default. If you've added provider credentials from Settings -> Providers, they'll be available when you start CodePlane.
 
-```bash frame="none"
-/models
-```
+Learn more about [providers](/docs/providers).
 
 ---
 
-## Modelos recomendados
+## Select a model
 
-Hay muchos modelos disponibles y cada semana salen nuevos modelos.
+Once you've configured your provider you can select the model you want from the model selector in the web app.
+
+---
+
+## Recommended models
+
+There are a lot of models out there, with new models coming out every week.
 
 :::tip
-Considere utilizar uno de los modelos que recomendamos.
+Consider using one of the models we recommend.
 :::
 
-Sin embargo, sólo unos pocos de ellos son buenos tanto para generar código como para llamar a herramientas.
+However, there are only a few of them that are good at both generating code and tool calling.
 
-Aqui tienes varios modelos que funcionan bien con CodePlane, sin orden particular. (Esta no es una lista exhaustiva ni necesariamente actualizada):
+Here are several models that work well with CodePlane, in no particular order. (This is not an exhaustive list nor is it necessarily up to date):
 
 - GPT 5.2
 - GPT 5.1 Codex
@@ -46,10 +42,10 @@ Aqui tienes varios modelos que funcionan bien con CodePlane, sin orden particula
 
 ---
 
-## Establecer un valor predeterminado
+## Set a default
 
-Para configurar uno de estos como modelo predeterminado, puedes definir la clave `model` en tu
-configuracion de CodePlane.
+To set one of these as the default model, you can set the `model` key in your
+CodePlane config.
 
 ```json title="codeplane.json" {3}
 {
@@ -58,15 +54,15 @@ configuracion de CodePlane.
 }
 ```
 
-Aquí el ID completo es `provider_id/model_id`. Por ejemplo, si usa [CodePlane Zen](/docs/zen), usaría `codeplane/gpt-5.1-codex` para GPT 5.1 Codex.
+Here the full ID is `provider_id/model_id`. For example, if you're using [CodePlane Zen](/docs/zen), you would use `codeplane/gpt-5.1-codex` for GPT 5.1 Codex.
 
-Si ha configurado un [proveedor personalizado](/docs/providers#custom), `provider_id` es la clave de la parte `provider` de su configuración y `model_id` es la clave de `provider.models`.
+If you've configured a [custom provider](/docs/providers#custom), the `provider_id` is key from the `provider` part of your config, and the `model_id` is the key from `provider.models`.
 
 ---
 
-## Configurar modelos
+## Configure models
 
-Puede configurar globalmente las opciones de un modelo a través de la configuración.
+You can globally configure a model's options through the config.
 
 ```jsonc title="codeplane.jsonc" {7-12,19-24}
 {
@@ -100,12 +96,12 @@ Puede configurar globalmente las opciones de un modelo a través de la configura
 }
 ```
 
-Aquí estamos configurando ajustes globales para dos modelos integrados: `gpt-5` cuando se accede a través del proveedor `openai` y `claude-sonnet-4-20250514` cuando se accede a través del proveedor `anthropic`.
-Los nombres de modelo y proveedor integrados se pueden encontrar en [Models.dev](https://models.dev).
+Here we're configuring global settings for two built-in models: `gpt-5` when accessed via the `openai` provider, and `claude-sonnet-4-20250514` when accessed via the `anthropic` provider.
+The built-in provider and model names can be found on [Models.dev](https://models.dev).
 
-También puede configurar estas opciones para cualquier agente que esté utilizando. La configuración del agente anula cualquier opción global aquí. [Más información](/docs/agents/#additional).
+You can also configure these options for any agents that you are using. The agent config overrides any global options here. [Learn more](/docs/agents/#additional).
 
-También puede definir variantes personalizadas que amplíen las integradas. Las variantes le permiten configurar diferentes ajustes para el mismo modelo sin crear entradas duplicadas:
+You can also define custom variants that extend built-in ones. Variants let you configure different settings for the same model without creating duplicate entries:
 
 ```jsonc title="codeplane.jsonc" {6-21}
 {
@@ -135,42 +131,42 @@ También puede definir variantes personalizadas que amplíen las integradas. Las
 
 ---
 
-## Variantes
+## Variants
 
-Muchos modelos admiten múltiples variantes con diferentes configuraciones. CodePlane se envía con variantes predeterminadas integradas para proveedores populares.
+Many models support multiple variants with different configurations. CodePlane ships with built-in default variants for popular providers.
 
-### Variantes integradas
+### Built-in variants
 
-CodePlane se envía con variantes predeterminadas para muchos proveedores:
+CodePlane ships with default variants for many providers:
 
 **Anthropic**:
 
-- `high` - Presupuesto de pensamiento alto (predeterminado)
-- `max` - Presupuesto de pensamiento máximo
+- `high` - High thinking budget (default)
+- `max` - Maximum thinking budget
 
 **OpenAI**:
 
-Varía según el modelo, pero aproximadamente:
+Varies by model but roughly:
 
-- `none` - Sin razonamiento
-- `minimal` - Mínimo esfuerzo de razonamiento
-- `low` - Bajo esfuerzo de razonamiento
-- `medium` - Esfuerzo de razonamiento medio
-- `high` - Alto esfuerzo de razonamiento
-- `xhigh` - Esfuerzo de razonamiento extra alto
+- `none` - No reasoning
+- `minimal` - Minimal reasoning effort
+- `low` - Low reasoning effort
+- `medium` - Medium reasoning effort
+- `high` - High reasoning effort
+- `xhigh` - Extra high reasoning effort
 
 **Google**:
 
-- `low` - Menor esfuerzo/presupuesto simbólico
-- `high` - Mayor esfuerzo/presupuesto simbólico
+- `low` - Lower effort/token budget
+- `high` - Higher effort/token budget
 
 :::tip
-Esta lista no es exhaustiva. Muchos otros proveedores también tienen valores predeterminados integrados.
+This list is not comprehensive. Many other providers have built-in defaults too.
 :::
 
-### Variantes personalizadas
+### Custom variants
 
-Puede anular las variantes existentes o agregar las suyas propias:
+You can override existing variants or add your own:
 
 ```jsonc title="codeplane.jsonc" {7-18}
 {
@@ -195,19 +191,19 @@ Puede anular las variantes existentes o agregar las suyas propias:
 }
 ```
 
-### Alternar variantes
+### Cycle variants
 
-Utilice la combinación de teclas `variant_cycle` para cambiar rápidamente entre variantes. [Más información](/docs/keybinds).
+Use the model selector to switch between variants.
 
 ---
 
-## Carga de modelos
+## Loading models
 
-Cuando se inicia CodePlane, busca modelos en el siguiente orden de prioridad:
+When CodePlane starts up, it checks for models in the following priority order:
 
-1. El indicador de línea de comando `--model` o `-m`. El formato es el mismo que en el archivo de configuración: `provider_id/model_id`.
+1. The `--model` or `-m` command line flag. The format is the same as in the config file: `provider_id/model_id`.
 
-2. La lista de modelos en la configuración CodePlane.
+2. The model list in the CodePlane config.
 
    ```json title="codeplane.json"
    {
@@ -216,8 +212,8 @@ Cuando se inicia CodePlane, busca modelos en el siguiente orden de prioridad:
    }
    ```
 
-   El formato aquí es `provider/model`.
+   The format here is `provider/model`.
 
-3. El último modelo utilizado.
+3. The last used model.
 
-4. El primer modelo que utiliza una prioridad interna.
+4. The first model using an internal priority.

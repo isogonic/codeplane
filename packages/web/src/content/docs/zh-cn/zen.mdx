@@ -1,59 +1,68 @@
 ---
 title: Zen
-description: 由 CodePlane 提供的精选模型列表。
+description: Curated list of models provided by CodePlane.
 ---
 
 import config from "../../../../config.mjs"
 export const console = config.console
 export const email = `mailto:${config.email}`
 
-CodePlane Zen 是由 CodePlane 团队提供的一组经过测试和验证的模型。
+CodePlane Zen is a list of tested and verified models provided by the CodePlane team.
 
 :::note
-CodePlane Zen 目前处于测试版阶段。
+CodePlane Zen is currently in beta.
 :::
 
-Zen 的工作方式与 CodePlane 中的任何其他提供商相同。你登录 CodePlane Zen 并获取 API 密钥。它是**完全可选的**，即使不用它，你也可以照常使用 CodePlane。
+Zen works like any other provider in CodePlane. You login to CodePlane Zen and get
+your API key. It's **completely optional** and you don't need to use it to use
+CodePlane.
 
 ---
 
-## 背景
+## Background
 
-现在市面上有大量模型，但其中只有少数模型适合作为编码代理使用。此外，大多数提供商的配置方式差异很大，因此你获得的性能和质量也会非常不同。
+There are a large number of models out there but only a few of
+these models work well as coding agents. Additionally, most providers are
+configured very differently; so you get very different performance and quality.
 
 :::tip
-我们测试了一组与 CodePlane 配合良好的精选模型和提供商。
+We tested a select group of models and providers that work well with CodePlane.
 :::
 
-所以，如果你通过 OpenRouter 之类的服务使用模型，你无法确定自己拿到的是否是目标模型的最佳版本。
+So if you are using a model through something like OpenRouter, you can never be
+sure if you are getting the best version of the model you want.
 
-为了解决这个问题，我们做了几件事：
+To fix this, we did a couple of things:
 
-1. 我们测试了一组选定的模型，并与它们的团队讨论了如何以最佳方式运行这些模型。
-2. 然后我们与几家提供商合作，确保这些模型被正确提供。
-3. 最后，我们对模型和提供商的组合进行了基准测试，并整理出了一份我们认为值得推荐的列表。
+1. We tested a select group of models and talked to their teams about how to
+   best run them.
+2. We then worked with a few providers to make sure these were being served
+   correctly.
+3. Finally, we benchmarked the combination of the model/provider and came up
+   with a list that we feel good recommending.
 
-CodePlane Zen 是一个 AI 网关，让你可以访问这些模型。
-
----
-
-## 工作原理
-
-CodePlane Zen 的工作方式与 CodePlane 中的任何其他提供商相同。
-
-1. 登录 **<a href={console}>CodePlane Zen</a>**，添加你的账单信息，然后复制你的 API 密钥。
-2. 在 TUI 中运行 `/connect` 命令，选择 CodePlane Zen，然后粘贴你的 API 密钥。
-3. 在 TUI 中运行 `/models`，查看我们推荐的模型列表。
-
-你按请求付费，也可以向账户充值。
+CodePlane Zen is an AI gateway that gives you access to these models.
 
 ---
 
-## 端点
+## How it works
 
-你也可以通过以下 API 端点访问我们的模型。
+CodePlane Zen works like any other provider in CodePlane.
 
-| 模型                  | 模型 ID               | 端点                                               | AI SDK 包                   |
+1. You sign in to **<a href={console}>CodePlane Zen</a>**, add your billing
+   details, and copy your API key.
+2. Open Settings -> Providers in the web app, select CodePlane Zen, and paste your API key.
+3. Open the model selector to see the list of models we recommend.
+
+You are charged per request and you can add credits to your account.
+
+---
+
+## Endpoints
+
+You can also access our models through the following API endpoints.
+
+| Model                 | Model ID              | Endpoint                                           | AI SDK Package              |
 | --------------------- | --------------------- | -------------------------------------------------- | --------------------------- |
 | GPT 5.5               | gpt-5.5               | `https://example.invalid/zen`             | `@ai-sdk/openai`            |
 | GPT 5.5 Pro           | gpt-5.5-pro           | `https://example.invalid/zen`             | `@ai-sdk/openai`            |
@@ -97,13 +106,15 @@ CodePlane Zen 的工作方式与 CodePlane 中的任何其他提供商相同。
 | Hy3 Preview Free      | hy3-preview-free      | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 | Nemotron 3 Super Free | nemotron-3-super-free | `https://example.invalid/zen`      | `@ai-sdk/openai-compatible` |
 
-在你的 CodePlane 配置中，[模型 ID](/docs/config/#models) 使用 `codeplane/<model-id>` 格式。例如，对于 GPT 5.5，你需要在配置中使用 `codeplane/gpt-5.5`。
+The [model id](/docs/config/#models) in your CodePlane config
+uses the format `codeplane/<model-id>`. For example, for GPT 5.5, you would
+use `codeplane/gpt-5.5` in your config.
 
 ---
 
-### 模型
+### Models
 
-你可以从以下地址获取可用模型及其元数据的完整列表：
+You can fetch the full list of available models and their metadata from:
 
 ```
 https://example.invalid/zen
@@ -111,167 +122,174 @@ https://example.invalid/zen
 
 ---
 
-## 定价
+## Pricing
 
-我们支持按量付费模式。以下是**每 1M tokens** 的价格。
+We support a pay-as-you-go model. Below are the prices **per 1M tokens**.
 
-| 模型                              | 输入   | 输出    | 缓存读取 | 缓存写入 |
-| --------------------------------- | ------ | ------- | -------- | -------- |
-| Big Pickle                        | Free   | Free    | Free     | -        |
-| MiniMax M2.5 Free                 | Free   | Free    | Free     | -        |
-| Ling 2.6 Flash Free               | Free   | Free    | Free     | -        |
-| Hy3 Preview Free                  | Free   | Free    | Free     | -        |
-| Nemotron 3 Super Free             | Free   | Free    | Free     | -        |
-| MiniMax M2.7                      | $0.30  | $1.20   | $0.06    | $0.375   |
-| MiniMax M2.5                      | $0.30  | $1.20   | $0.06    | $0.375   |
-| GLM 5.1                           | $1.40  | $4.40   | $0.26    | -        |
-| GLM 5                             | $1.00  | $3.20   | $0.20    | -        |
-| Kimi K2.5                         | $0.60  | $3.00   | $0.10    | -        |
-| Kimi K2.6                         | $0.95  | $4.00   | $0.16    | -        |
-| Qwen3.6 Plus                      | $0.50  | $3.00   | $0.05    | $0.625   |
-| Qwen3.5 Plus                      | $0.20  | $1.20   | $0.02    | $0.25    |
-| Claude Opus 4.7                   | $5.00  | $25.00  | $0.50    | $6.25    |
-| Claude Opus 4.6                   | $5.00  | $25.00  | $0.50    | $6.25    |
-| Claude Opus 4.5                   | $5.00  | $25.00  | $0.50    | $6.25    |
-| Claude Opus 4.1                   | $15.00 | $75.00  | $1.50    | $18.75   |
-| Claude Sonnet 4.6                 | $3.00  | $15.00  | $0.30    | $3.75    |
-| Claude Sonnet 4.5 (≤ 200K tokens) | $3.00  | $15.00  | $0.30    | $3.75    |
-| Claude Sonnet 4.5 (> 200K tokens) | $6.00  | $22.50  | $0.60    | $7.50    |
-| Claude Sonnet 4 (≤ 200K tokens)   | $3.00  | $15.00  | $0.30    | $3.75    |
-| Claude Sonnet 4 (> 200K tokens)   | $6.00  | $22.50  | $0.60    | $7.50    |
-| Claude Haiku 4.5                  | $1.00  | $5.00   | $0.10    | $1.25    |
-| Claude Haiku 3.5                  | $0.80  | $4.00   | $0.08    | $1.00    |
-| Gemini 3.1 Pro (≤ 200K tokens)    | $2.00  | $12.00  | $0.20    | -        |
-| Gemini 3.1 Pro (> 200K tokens)    | $4.00  | $18.00  | $0.40    | -        |
-| Gemini 3 Flash                    | $0.50  | $3.00   | $0.05    | -        |
-| GPT 5.5 (≤ 272K tokens)           | $5.00  | $30.00  | $0.50    | -        |
-| GPT 5.5 (> 272K tokens)           | $10.00 | $45.00  | $1.00    | -        |
-| GPT 5.5 Pro                       | $30.00 | $180.00 | $30.00   | -        |
-| GPT 5.4 (≤ 272K tokens)           | $2.50  | $15.00  | $0.25    | -        |
-| GPT 5.4 (> 272K tokens)           | $5.00  | $22.50  | $0.50    | -        |
-| GPT 5.4 Pro                       | $30.00 | $180.00 | $30.00   | -        |
-| GPT 5.4 Mini                      | $0.75  | $4.50   | $0.075   | -        |
-| GPT 5.4 Nano                      | $0.20  | $1.25   | $0.02    | -        |
-| GPT 5.3 Codex Spark               | $1.75  | $14.00  | $0.175   | -        |
-| GPT 5.3 Codex                     | $1.75  | $14.00  | $0.175   | -        |
-| GPT 5.2                           | $1.75  | $14.00  | $0.175   | -        |
-| GPT 5.2 Codex                     | $1.75  | $14.00  | $0.175   | -        |
-| GPT 5.1                           | $1.07  | $8.50   | $0.107   | -        |
-| GPT 5.1 Codex                     | $1.07  | $8.50   | $0.107   | -        |
-| GPT 5.1 Codex Max                 | $1.25  | $10.00  | $0.125   | -        |
-| GPT 5.1 Codex Mini                | $0.25  | $2.00   | $0.025   | -        |
-| GPT 5                             | $1.07  | $8.50   | $0.107   | -        |
-| GPT 5 Codex                       | $1.07  | $8.50   | $0.107   | -        |
-| GPT 5 Nano                        | Free   | Free    | Free     | -        |
+| Model                             | Input  | Output  | Cached Read | Cached Write |
+| --------------------------------- | ------ | ------- | ----------- | ------------ |
+| Big Pickle                        | Free   | Free    | Free        | -            |
+| MiniMax M2.5 Free                 | Free   | Free    | Free        | -            |
+| Ling 2.6 Flash Free               | Free   | Free    | Free        | -            |
+| Hy3 Preview Free                  | Free   | Free    | Free        | -            |
+| Nemotron 3 Super Free             | Free   | Free    | Free        | -            |
+| MiniMax M2.7                      | $0.30  | $1.20   | $0.06       | $0.375       |
+| MiniMax M2.5                      | $0.30  | $1.20   | $0.06       | $0.375       |
+| GLM 5.1                           | $1.40  | $4.40   | $0.26       | -            |
+| GLM 5                             | $1.00  | $3.20   | $0.20       | -            |
+| Kimi K2.5                         | $0.60  | $3.00   | $0.10       | -            |
+| Kimi K2.6                         | $0.95  | $4.00   | $0.16       | -            |
+| Qwen3.6 Plus                      | $0.50  | $3.00   | $0.05       | $0.625       |
+| Qwen3.5 Plus                      | $0.20  | $1.20   | $0.02       | $0.25        |
+| Claude Opus 4.7                   | $5.00  | $25.00  | $0.50       | $6.25        |
+| Claude Opus 4.6                   | $5.00  | $25.00  | $0.50       | $6.25        |
+| Claude Opus 4.5                   | $5.00  | $25.00  | $0.50       | $6.25        |
+| Claude Opus 4.1                   | $15.00 | $75.00  | $1.50       | $18.75       |
+| Claude Sonnet 4.6                 | $3.00  | $15.00  | $0.30       | $3.75        |
+| Claude Sonnet 4.5 (≤ 200K tokens) | $3.00  | $15.00  | $0.30       | $3.75        |
+| Claude Sonnet 4.5 (> 200K tokens) | $6.00  | $22.50  | $0.60       | $7.50        |
+| Claude Sonnet 4 (≤ 200K tokens)   | $3.00  | $15.00  | $0.30       | $3.75        |
+| Claude Sonnet 4 (> 200K tokens)   | $6.00  | $22.50  | $0.60       | $7.50        |
+| Claude Haiku 4.5                  | $1.00  | $5.00   | $0.10       | $1.25        |
+| Claude Haiku 3.5                  | $0.80  | $4.00   | $0.08       | $1.00        |
+| Gemini 3.1 Pro (≤ 200K tokens)    | $2.00  | $12.00  | $0.20       | -            |
+| Gemini 3.1 Pro (> 200K tokens)    | $4.00  | $18.00  | $0.40       | -            |
+| Gemini 3 Flash                    | $0.50  | $3.00   | $0.05       | -            |
+| GPT 5.5 (≤ 272K tokens)           | $5.00  | $30.00  | $0.50       | -            |
+| GPT 5.5 (> 272K tokens)           | $10.00 | $45.00  | $1.00       | -            |
+| GPT 5.5 Pro                       | $30.00 | $180.00 | $30.00      | -            |
+| GPT 5.4 (≤ 272K tokens)           | $2.50  | $15.00  | $0.25       | -            |
+| GPT 5.4 (> 272K tokens)           | $5.00  | $22.50  | $0.50       | -            |
+| GPT 5.4 Pro                       | $30.00 | $180.00 | $30.00      | -            |
+| GPT 5.4 Mini                      | $0.75  | $4.50   | $0.075      | -            |
+| GPT 5.4 Nano                      | $0.20  | $1.25   | $0.02       | -            |
+| GPT 5.3 Codex Spark               | $1.75  | $14.00  | $0.175      | -            |
+| GPT 5.3 Codex                     | $1.75  | $14.00  | $0.175      | -            |
+| GPT 5.2                           | $1.75  | $14.00  | $0.175      | -            |
+| GPT 5.2 Codex                     | $1.75  | $14.00  | $0.175      | -            |
+| GPT 5.1                           | $1.07  | $8.50   | $0.107      | -            |
+| GPT 5.1 Codex                     | $1.07  | $8.50   | $0.107      | -            |
+| GPT 5.1 Codex Max                 | $1.25  | $10.00  | $0.125      | -            |
+| GPT 5.1 Codex Mini                | $0.25  | $2.00   | $0.025      | -            |
+| GPT 5                             | $1.07  | $8.50   | $0.107      | -            |
+| GPT 5 Codex                       | $1.07  | $8.50   | $0.107      | -            |
+| GPT 5 Nano                        | Free   | Free    | Free        | -            |
 
-你可能会在使用记录中看到 _Claude Haiku 3.5_。这是一个[低成本模型](/docs/config/#models)，用于生成会话标题。
-
-:::note
-信用卡手续费按成本转嫁（每笔交易 4.4% + $0.30）；除此之外我们不会额外收费。
-:::
-
-免费模型：
-
-- MiniMax M2.5 Free 目前在 CodePlane 上限时免费提供。团队正在利用这段时间收集反馈并改进模型。
-- Ling 2.6 Flash Free 目前在 CodePlane 上限时免费提供。团队正在利用这段时间收集反馈并改进模型。
-- Hy3 Preview Flash Free 目前在 CodePlane 上限时免费提供。团队正在利用这段时间收集反馈并改进模型。
-- Nemotron 3 Super Free 目前在 CodePlane 上限时免费提供。团队正在利用这段时间收集反馈并改进模型。
-- Big Pickle 是一个隐身模型，目前在 CodePlane 上限时免费提供。团队正在利用这段时间收集反馈并改进模型。
-
-如果你有任何问题，请<a href={email}>联系我们</a>。
-
----
-
-### 自动充值
-
-如果你的余额低于 $5，Zen 将自动充值 $20。
-
-你可以更改自动充值金额，也可以完全禁用自动充值。
-
----
-
-### 月度限额
-
-你还可以为整个工作区以及团队中的每位成员设置月度使用限额。
-
-例如，假设你将月度使用限额设置为 $20，那么 Zen 在一个月内的使用金额不会超过 $20。但如果你启用了自动充值，当余额低于 $5 时，Zen 最终向你收取的金额可能会超过 $20。
-
----
-
-### 已弃用模型
-
-| 模型             | 弃用日期       |
-| ---------------- | -------------- |
-| MiniMax M2.1     | March 15, 2026 |
-| GLM 4.7          | March 15, 2026 |
-| GLM 4.6          | March 15, 2026 |
-| Gemini 3 Pro     | March 9, 2026  |
-| Kimi K2 Thinking | March 6, 2026  |
-| Kimi K2          | March 6, 2026  |
-| Qwen3 Coder 480B | Feb 6, 2026    |
-
----
-
-## 隐私
-
-我们所有模型都托管在 US。我们的提供商遵循零保留政策，不会将你的数据用于模型训练，但以下情况除外：
-
-- Big Pickle：在免费期间，收集的数据可能会被用于改进模型。
-- MiniMax M2.5 Free：在免费期间，收集的数据可能会被用于改进模型。
-- Ling 2.6 Flash Free：在免费期间，收集的数据可能会被用于改进模型。
-- Hy3 Preview Free：在免费期间，收集的数据可能会被用于改进模型。
-- Nemotron 3 Super Free（NVIDIA 免费端点）：根据 [NVIDIA API Trial Terms of Service](https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf) 提供。仅供试用，不适用于生产环境或敏感数据。NVIDIA 会记录提示词和输出内容，以改进其模型和服务。请勿提交个人或机密数据。
-- OpenAI APIs：请求会根据 [OpenAI's Data Policies](https://platform.openai.com/docs/guides/your-data) 保留 30 天。
-- Anthropic APIs：请求会根据 [Anthropic's Data Policies](https://docs.anthropic.com/en/docs/claude-code/data-usage) 保留 30 天。
-
----
-
-## 团队
-
-Zen 也非常适合团队使用。你可以邀请队友、分配角色、管理团队使用的模型，等等。
+You might notice _Claude Haiku 3.5_ in your usage history. This is a [low cost model](/docs/config/#models) that's used to generate the titles of your sessions.
 
 :::note
-作为测试版的一部分，工作区目前对团队免费开放。
+Credit card fees are passed along at cost (4.4% + $0.30 per transaction); we don't charge anything beyond that.
 :::
 
-作为测试版的一部分，团队目前可以免费管理工作区。我们很快会分享更多定价细节。
+The free models:
+
+- MiniMax M2.5 Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Ling 2.6 Flash Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Hy3 Preview Flash Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Nemotron 3 Super Free is available on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+- Big Pickle is a stealth model that's free on CodePlane for a limited time. The team is using this time to collect feedback and improve the model.
+
+<a href={email}>Contact us</a> if you have any questions.
 
 ---
 
-### 角色
+### Auto-reload
 
-你可以邀请队友加入工作区并分配角色：
+If your balance goes below $5, Zen will automatically reload $20.
 
-- **Admin**：管理模型、成员、API 密钥和账单
-- **Member**：仅管理自己的 API 密钥
-
-Admin 还可以为每位成员设置月度支出限额，以便控制成本。
+You can change the auto-reload amount. You can also disable auto-reload entirely.
 
 ---
 
-### 模型访问
+### Monthly limits
 
-Admin 可以为工作区启用或禁用特定模型。向已禁用模型发出的请求会返回错误。
+You can also set a monthly usage limit for the entire workspace and for each
+member of your team.
 
-这在你想禁用会收集数据的模型时很有用。
-
----
-
-### 自带密钥
-
-你可以使用自己的 OpenAI 或 Anthropic API 密钥，同时仍然访问 Zen 中的其他模型。
-
-当你使用自己的密钥时，tokens 由提供商直接计费，而不是由 Zen 计费。
-
-例如，你的组织可能已经拥有 OpenAI 或 Anthropic 的密钥，并且你想使用它，而不是使用 Zen 提供的密钥。
+For example, let's say you set a monthly usage limit to $20, Zen will not use
+more than $20 in a month. But if you have auto-reload enabled, Zen might end up
+charging you more than $20 if your balance goes below $5.
 
 ---
 
-## 目标
+### Deprecated models
 
-我们创建 CodePlane Zen，是为了：
+| Model            | Deprecation date |
+| ---------------- | ---------------- |
+| MiniMax M2.1     | March 15, 2026   |
+| GLM 4.7          | March 15, 2026   |
+| GLM 4.6          | March 15, 2026   |
+| Gemini 3 Pro     | March 9, 2026    |
+| Kimi K2 Thinking | March 6, 2026    |
+| Kimi K2          | March 6, 2026    |
+| Qwen3 Coder 480B | Feb 6, 2026      |
 
-1. 为编码代理**基准测试**最佳模型和提供商。
-2. 提供**最高质量**的选项，而不是降低性能或路由到更便宜的提供商。
-3. 通过按成本销售来传递任何**降价**；因此唯一的加价只是为了覆盖我们的处理费用。
-4. 保持**无锁定**，允许你将它与任何其他编码代理一起使用。同时也始终允许你在 CodePlane 中使用任何其他提供商。
+---
+
+## Privacy
+
+All our models are hosted in the US. Our providers follow a zero-retention policy and do not use your data for model training, with the following exceptions:
+
+- Big Pickle: During its free period, collected data may be used to improve the model.
+- MiniMax M2.5 Free: During its free period, collected data may be used to improve the model.
+- Ling 2.6 Flash Free: During its free period, collected data may be used to improve the model.
+- Hy3 Preview Free: During its free period, collected data may be used to improve the model.
+- Nemotron 3 Super Free (NVIDIA free endpoints): Provided under the [NVIDIA API Trial Terms of Service](https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf). Trial use only — not for production or sensitive data. Prompts and outputs are logged by NVIDIA to improve its models and services. Do not submit personal or confidential data.
+- OpenAI APIs: Requests are retained for 30 days in accordance with [OpenAI's Data Policies](https://platform.openai.com/docs/guides/your-data).
+- Anthropic APIs: Requests are retained for 30 days in accordance with [Anthropic's Data Policies](https://docs.anthropic.com/en/docs/claude-code/data-usage).
+
+---
+
+## For Teams
+
+Zen also works great for teams. You can invite teammates, assign roles, curate
+the models your team uses, and more.
+
+:::note
+Workspaces are currently free for teams as a part of the beta.
+:::
+
+Managing your workspace is currently free for teams as a part of the beta. We'll be
+sharing more details on the pricing soon.
+
+---
+
+### Roles
+
+You can invite teammates to your workspace and assign roles:
+
+- **Admin**: Manage models, members, API keys, and billing
+- **Member**: Manage only their own API keys
+
+Admins can also set monthly spending limits for each member to keep costs under control.
+
+---
+
+### Model access
+
+Admins can enable or disable specific models for the workspace. Requests made to a disabled model will return an error.
+
+This is useful for cases where you want to disable the use of a model that
+collects data.
+
+---
+
+### Bring your own key
+
+You can use your own OpenAI or Anthropic API keys while still accessing other models in Zen.
+
+When you use your own keys, tokens are billed directly by the provider, not by Zen.
+
+For example, your organization might already have a key for OpenAI or Anthropic
+and you want to use that instead of the one that Zen provides.
+
+---
+
+## Goals
+
+We created CodePlane Zen to:
+
+1. **Benchmark** the best models/providers for coding agents.
+2. Have access to the **highest quality** options and not downgrade performance or route to cheaper providers.
+3. Pass along any **price drops** by selling at cost; so the only markup is to cover our processing fees.
+4. Have **no lock-in** by allowing you to use it with any other coding agent. And always let you use any other provider with CodePlane as well.

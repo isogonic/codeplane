@@ -11,7 +11,7 @@
 <h1 align="center">CodePlane</h1>
 
 <p align="center">
-  <strong>The AI coding agent built for the terminal.</strong>
+  <strong>The AI coding agent built for the web.</strong>
 </p>
 
 <p align="center">
@@ -19,8 +19,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/devinoldenburg/codeplane/actions/workflows/publish.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/devinoldenburg/codeplane/publish.yml?style=flat-square&branch=main" /></a>
-  <a href="https://github.com/devinoldenburg/codeplane/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/devinoldenburg/codeplane?style=flat-square" /></a>
+  <a href="https://github.com/devinoldenburg/codeplane/actions/workflows/publish.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/devinoldenburg/codeplane/publish.yml?style=flat-square&branch=dev" /></a>
+  <a href="https://github.com/devinoldenburg/codeplane/blob/dev/LICENSE"><img alt="License" src="https://img.shields.io/github/license/devinoldenburg/codeplane?style=flat-square" /></a>
   <a href="https://github.com/devinoldenburg/codeplane/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/devinoldenburg/codeplane?style=flat-square" /></a>
 </p>
 
@@ -29,7 +29,7 @@
   <a href="#-installation">Install</a> ·
   <a href="#-features">Features</a> ·
   <a href="#-agents">Agents</a> ·
-  <a href="#-desktop-app">Desktop</a>
+  <a href="#-web-app">Web App</a>
 </p>
 
 <br />
@@ -38,11 +38,11 @@
 
 ## What is CodePlane?
 
-CodePlane is a fully open-source AI coding agent that lives in your terminal — and anywhere else you want it.
+CodePlane is a fully open-source AI coding agent built around a web app.
 
-It runs as a TUI, a native desktop application, or a headless server. Because it ships with a client/server architecture, any frontend (terminal, desktop, web, mobile) can drive the same engine.
+The CLI starts the local server and opens the web interface. The same server can also run headlessly for automation and remote workflows.
 
-> Forked from [opencode](https://github.com/sst/opencode) by [SST](https://sst.dev), with a focus on a polished desktop client, multi-session workflows, and first-class scheduling.
+> Forked from [opencode](https://github.com/sst/opencode) by [SST](https://sst.dev), with a focus on a polished web app, multi-session workflows, and first-class scheduling.
 
 ---
 
@@ -53,11 +53,11 @@ It runs as a TUI, a native desktop application, or a headless server. Because it
 git clone https://github.com/devinoldenburg/codeplane.git
 cd codeplane && bun install
 
-# 2. Run it in any project
-bun run dev
+# 2. Start the server-backed web app
+bun run dev:server -- .
 ```
 
-Press `Tab` to switch between the **build** and **plan** agents. Use `@general` in a prompt to delegate research to a subagent.
+Use the web app to switch agents, manage parallel sessions, schedule recurring work, and review changes.
 
 ---
 
@@ -90,23 +90,15 @@ The install script (when published) will resolve the target path in this order:
 
 ---
 
-## 🖥 Desktop App <sup>Beta</sup>
+## 🌐 Web App
 
-A native desktop client with multi-session, scheduling, and a sidebar for orchestration.
+CodePlane's primary product surface is the web app.
 
-Download from the [releases page](https://github.com/devinoldenburg/codeplane/releases) once installers are published.
-
-| Platform | Installer |
-| :--- | :--- |
-| macOS — Apple Silicon | `codeplane-desktop-darwin-aarch64.dmg` |
-| macOS — Intel | `codeplane-desktop-darwin-x64.dmg` |
-| Windows | `codeplane-desktop-windows-x64.exe` |
-| Linux | `.deb`, `.rpm`, `.AppImage` |
-
-Or run it from source:
+For UI development, run the API server and Vite app in separate terminals:
 
 ```bash
-bun run dev:desktop
+bun run dev:server
+bun run dev:web
 ```
 
 ---
@@ -126,7 +118,7 @@ Anthropic, OpenAI, Google, Bedrock, Groq, Mistral, Azure, local models, and [75+
 - 🪟 **Multiple agents in parallel** on the same project
 - 🔗 **Session sharing** — generate a link for any conversation
 - ⏰ **Cron / schedules** — run agents on a cadence with full scope control
-- 📡 **Client/server** — the TUI is just one client; drive the same server from desktop, web, or mobile
+- 📡 **Client/server** — run the web app locally, remotely, or against a headless server
 
 #### Extend without forking
 - 📝 **Skills** — drop Markdown into `.codeplane/skills/` to teach the agent project-specific workflows
@@ -149,7 +141,7 @@ A **general** subagent handles complex search and multi-step research. Invoke it
 
 ## 🛠 Contributing
 
-Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull request. The default branch is `main`.
+Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull request. The default branch is `dev`.
 
 For security disclosures, see [SECURITY.md](./SECURITY.md).
 
@@ -166,8 +158,8 @@ Capabilities are comparable. The differences:
 - **100% open source** (MIT)
 - **Not locked to a provider** — Claude, OpenAI, Gemini, or local models
 - **Native LSP** out of the box
-- **Terminal-first** — built by neovim users
-- **Client/server** — run the server headlessly and connect from anywhere
+- **Web-app first** — built for multi-session orchestration in the browser
+- **Client/server** — run the server headlessly and connect from the web app
 
 </details>
 
@@ -177,9 +169,9 @@ Capabilities are comparable. The differences:
 
 CodePlane stays close to upstream for the core agent loop, but ships:
 
-- A polished desktop client with multi-session orchestration
+- A polished web app with multi-session orchestration
 - A first-class scheduling / cron surface for recurring agent runs
-- A different release cadence focused on the desktop + server experience
+- A different release cadence focused on the web app + server experience
 
 </details>
 

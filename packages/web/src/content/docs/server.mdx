@@ -46,9 +46,9 @@ CODEPLANE_SERVER_PASSWORD=your-password codeplane serve
 
 ### How it works
 
-When you run `codeplane` it starts a TUI and a server. Where the TUI is the
-client that talks to the server. The server exposes an OpenAPI 3.1 spec
-endpoint. This endpoint is also used to generate an [SDK](/docs/sdk).
+When you run `codeplane` it starts the web app and a local server. The web app
+talks to that server, which exposes an OpenAPI 3.1 spec endpoint. This endpoint
+is also used to generate an [SDK](/docs/sdk).
 
 :::tip
 Use the codeplane server to interact with codeplane programmatically.
@@ -56,16 +56,14 @@ Use the codeplane server to interact with codeplane programmatically.
 
 This architecture lets codeplane support multiple clients and allows you to interact with codeplane programmatically.
 
-You can run `codeplane serve` to start a standalone server. If you have the
-codeplane TUI running, `codeplane serve` will start a new server.
+You can run `codeplane serve` to start a standalone server without opening the
+web app.
 
 ---
 
 #### Connect to an existing server
 
-When you start the TUI it randomly assigns a port and hostname. You can instead pass in the `--hostname` and `--port` [flags](/docs/cli). Then use this to connect to its server.
-
-The [`/tui`](#tui) endpoint can be used to drive the TUI through the server. For example, you can prefill or run a prompt. This setup is used by the CodePlane [IDE](/docs/ide) plugins.
+When you start the web app it randomly assigns a port and hostname. You can instead pass in the `--hostname` and `--port` [flags](/docs/cli), then connect browser clients or SDK clients to that server.
 
 ---
 
@@ -243,24 +241,6 @@ The codeplane server exposes the following APIs.
 | Method | Path   | Description                                                  | Response  |
 | ------ | ------ | ------------------------------------------------------------ | --------- |
 | `POST` | `/log` | Write log entry. Body: `{ service, level, message, extra? }` | `boolean` |
-
----
-
-### TUI
-
-| Method | Path                    | Description                                 | Response               |
-| ------ | ----------------------- | ------------------------------------------- | ---------------------- |
-| `POST` | `/tui/append-prompt`    | Append text to the prompt                   | `boolean`              |
-| `POST` | `/tui/open-help`        | Open the help dialog                        | `boolean`              |
-| `POST` | `/tui/open-sessions`    | Open the session selector                   | `boolean`              |
-| `POST` | `/tui/open-themes`      | Open the theme selector                     | `boolean`              |
-| `POST` | `/tui/open-models`      | Open the model selector                     | `boolean`              |
-| `POST` | `/tui/submit-prompt`    | Submit the current prompt                   | `boolean`              |
-| `POST` | `/tui/clear-prompt`     | Clear the prompt                            | `boolean`              |
-| `POST` | `/tui/execute-command`  | Execute a command (`{ command }`)           | `boolean`              |
-| `POST` | `/tui/show-toast`       | Show toast (`{ title?, message, variant }`) | `boolean`              |
-| `GET`  | `/tui/control/next`     | Wait for the next control request           | Control request object |
-| `POST` | `/tui/control/response` | Respond to a control request (`{ body }`)   | `boolean`              |
 
 ---
 

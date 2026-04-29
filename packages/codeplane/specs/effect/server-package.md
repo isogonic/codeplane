@@ -23,7 +23,7 @@ Target package layout:
 
 - `packages/core` - all codeplane services, Effect-first source of truth
 - `packages/server` - codeplane server, with separate contract and implementation, still producing `openapi.json`
-- `packages/cli` - TUI + CLI entrypoints
+- `packages/cli` - web-first CLI entrypoints
 - `packages/sdk` - generated from the server OpenAPI spec, may add higher-level wrappers
 - `packages/plugin` - generated or semi-hand-rolled non-Effect package built from core plugin definitions
 

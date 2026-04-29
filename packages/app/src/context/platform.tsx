@@ -7,13 +7,12 @@ type PickerPaths = string | string[] | null
 type OpenDirectoryPickerOptions = { title?: string; multiple?: boolean }
 type OpenFilePickerOptions = { title?: string; multiple?: boolean; accept?: string[]; extensions?: string[] }
 type SaveFilePickerOptions = { title?: string; defaultPath?: string }
-type UpdateInfo = { updateAvailable: boolean; version?: string }
 
 export type Platform = {
   /** Platform discriminator */
-  platform: "web" | "desktop"
+  platform: "web"
 
-  /** Desktop OS (Tauri only) */
+  /** Host OS when running through a native wrapper */
   os?: "macos" | "windows" | "linux"
 
   /** App version */
@@ -22,7 +21,7 @@ export type Platform = {
   /** Open a URL in the default browser */
   openLink(url: string): void
 
-  /** Open a local path in a local app (desktop only) */
+  /** Open a local path in a local app */
   openPath?(path: string, app?: string): Promise<void>
 
   /** Restart the app  */
@@ -37,29 +36,17 @@ export type Platform = {
   /** Send a system notification (optional deep link) */
   notify(title: string, description?: string, href?: string): Promise<void>
 
-  /** Open directory picker dialog (native on Tauri, server-backed on web) */
+  /** Open directory picker dialog */
   openDirectoryPickerDialog?(opts?: OpenDirectoryPickerOptions): Promise<PickerPaths>
 
-  /** Open native file picker dialog (Tauri only) */
+  /** Open file picker dialog */
   openFilePickerDialog?(opts?: OpenFilePickerOptions): Promise<PickerPaths>
 
-  /** Save file picker dialog (Tauri only) */
+  /** Save file picker dialog */
   saveFilePickerDialog?(opts?: SaveFilePickerOptions): Promise<string | null>
 
   /** Storage mechanism, defaults to localStorage */
   storage?: (name?: string) => SyncStorage | AsyncStorage
-
-  /** Check for a downloadable desktop update */
-  checkUpdate?(): Promise<UpdateInfo>
-
-  /** Install the downloaded update using the platform restart flow */
-  updateAndRestart?(): Promise<void>
-
-  /** Whether a write-only GitHub token has been configured for desktop updates */
-  getUpdateGitHubTokenConfigured?(): Promise<boolean>
-
-  /** Persist a replacement GitHub token for desktop updates */
-  setUpdateGitHubToken?(token: string): Promise<void>
 
   /** Fetch override */
   fetch?: typeof fetch
@@ -70,32 +57,18 @@ export type Platform = {
   /** Set the default server URL to use on app startup (platform-specific) */
   setDefaultServer?(url: ServerConnection.Key | null): Promise<void> | void
 
-  /** Get the configured WSL integration (desktop only) */
-  getWslEnabled?(): Promise<boolean>
-
-  /** Set the configured WSL integration (desktop only) */
-  setWslEnabled?(config: boolean): Promise<void> | void
-
-  /** Get the preferred display backend (desktop only) */
-  getDisplayBackend?(): Promise<DisplayBackend | null> | DisplayBackend | null
-
-  /** Set the preferred display backend (desktop only) */
-  setDisplayBackend?(backend: DisplayBackend): Promise<void>
-
-  /** Parse markdown to HTML using native parser (desktop only, returns unprocessed code blocks) */
+  /** Parse markdown to HTML using a host parser, returning unprocessed code blocks */
   parseMarkdown?(markdown: string): Promise<string>
 
-  /** Webview zoom level (desktop only) */
+  /** Webview zoom level when provided by the host */
   webviewZoom?: Accessor<number>
 
-  /** Check if an editor app exists (desktop only) */
+  /** Check if an editor app exists */
   checkAppExists?(appName: string): Promise<boolean>
 
-  /** Read image from clipboard (desktop only) */
+  /** Read image from clipboard */
   readClipboardImage?(): Promise<File | null>
 }
-
-export type DisplayBackend = "auto" | "wayland"
 
 export const { use: usePlatform, provider: PlatformProvider } = createSimpleContext({
   name: "Platform",

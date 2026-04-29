@@ -81,7 +81,7 @@
       width: auto;
     }
 
-    [data-component="nav-desktop"] {
+    [data-component="nav-wide"] {
       ul {
         display: flex;
         justify-content: space-between;

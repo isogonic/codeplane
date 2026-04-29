@@ -1,15 +1,15 @@
 ---
-title: Konfigurasjon
-description: Ved å bruke codeplane JSON-konfigurasjonen.
+title: Config
+description: Using the CodePlane JSON config.
 ---
 
-Du kan konfigurere CodePlane ved å bruke en JSON konfigurasjonsfil.
+You can configure CodePlane using a JSON config file.
 
 ---
 
 ## Format
 
-CodePlane støtter både **JSON** og **JSONC** (JSON med kommentarer) formater.
+CodePlane supports both **JSON** and **JSONC** (JSON with Comments) formats.
 
 ```jsonc title="codeplane.jsonc"
 {
@@ -24,47 +24,49 @@ CodePlane støtter både **JSON** og **JSONC** (JSON med kommentarer) formater.
 
 ---
 
-## Plasseringer
+## Locations
 
-Du kan plassere konfigurasjonen på et par forskjellige steder, og de har en
-annen rekkefølge.
+You can place your config in a couple of different locations and they have a
+different order of precedence.
 
 :::note
-Konfigurasjonsfiler er **slått sammen**, ikke erstattet.
+Configuration files are **merged together**, not replaced.
 :::
 
-Konfigurasjonsfiler slås sammen, ikke erstattes. Innstillinger fra følgende konfigurasjonsplasseringer kombineres. Senere konfigurasjoner overstyrer tidligere kun for motstridende nøkler. Ikke-motstridende innstillinger fra alle konfigurasjoner er bevart.
+Configuration files are merged together, not replaced. Settings from the following config locations are combined. Later configs override earlier ones only for conflicting keys. Non-conflicting settings from all configs are preserved.
 
-For eksempel, hvis din globale konfigurasjon setter `theme: "codeplane"` og `autoupdate: true`, og prosjektkonfigurasjonen setter `model: "anthropic/claude-sonnet-4-5"`, vil den endelige konfigurasjonen inkludere alle tre innstillingene.
+For example, if your global config sets `autoupdate: true` and your project config sets `model: "anthropic/claude-sonnet-4-5"`, the final configuration will include both settings.
 
 ---
 
-### Prioritetsrekkefølge
+### Precedence order
 
-Konfigurasjonskilder lastes inn i denne rekkefølgen (senere kilder overstyrer tidligere):
+Config sources are loaded in this order (later sources override earlier ones):
 
-1. **Ekstern konfigurasjon** (fra `.well-known/codeplane`) - organisasjonsstandarder
-2. **Global konfigurasjon** (`~/.config/codeplane/codeplane.json`) - brukerinnstillinger
-3. **Egendefinert konfigurasjon** (`CODEPLANE_CONFIG` env var) - egendefinerte overstyringer
-4. **Prosjektkonfigurasjon** (`codeplane.json` i prosjekt) - prosjektspesifikke innstillinger
-5. **`.codeplane` kataloger** - agenter, kommandoer, plugins
-6. **Inline config** (`CODEPLANE_CONFIG_CONTENT` env var) - kjøretidsoverstyringer
+1. **Remote config** (from `.well-known/codeplane`) - organizational defaults
+2. **Global config** (`~/.config/codeplane/codeplane.json`) - user preferences
+3. **Custom config** (`CODEPLANE_CONFIG` env var) - custom overrides
+4. **Project config** (`codeplane.json` in project) - project-specific settings
+5. **`.codeplane` directories** - agents, commands, plugins
+6. **Inline config** (`CODEPLANE_CONFIG_CONTENT` env var) - runtime overrides
+7. **Managed config files** (`/Library/Application Support/codeplane/` on macOS) - admin-controlled
+8. **macOS managed preferences** (`.mobileconfig` via MDM) - highest priority, not user-overridable
 
-Dette betyr at prosjektkonfigurasjoner kan overstyre globale standardinnstillinger, og globale konfigurasjoner kan overstyre eksterne organisasjonsstandarder.
+This means project configs can override global defaults, and global configs can override remote organizational defaults. Managed settings override everything.
 
 :::note
-`.codeplane` og `~/.config/codeplane` katalogene bruker **flertallsnavn** på underkataloger: `agents/`, `commands/`, `modes/`, `plugins/`, `skills/`, `tools/` og `themes/`. Enkeltnavn (f.eks. `agent/`) støttes også for bakoverkompatibilitet.
+The `.codeplane` and `~/.config/codeplane` directories use **plural names** for subdirectories: `agents/`, `commands/`, `modes/`, `plugins/`, `skills/`, `tools/`, and `themes/`. Singular names (e.g., `agent/`) are also supported for backwards compatibility.
 :::
 
 ---
 
-### Ekstern konfigurasjon
+### Remote
 
-Organisasjoner kan tilby standardkonfigurasjon via `.well-known/codeplane`-endepunktet. Dette hentes automatisk når du autentiserer med en leverandør som støtter det.
+Organizations can provide default configuration via the `.well-known/codeplane` endpoint. This is fetched automatically when you authenticate with a provider that supports it.
 
-Ekstern konfigurasjon lastes først, og fungerer som grunnlaget. Alle andre konfigurasjonskilder (global, prosjekt) kan overstyre disse standardinnstillingene.
+Remote config is loaded first, serving as the base layer. All other config sources (global, project) can override these defaults.
 
-For eksempel, hvis organisasjonen din tilbyr MCP servere som er deaktivert som standard:
+For example, if your organization provides MCP servers that are disabled by default:
 
 ```json title="Remote config from .well-known/codeplane"
 {
@@ -78,7 +80,7 @@ For eksempel, hvis organisasjonen din tilbyr MCP servere som er deaktivert som s
 }
 ```
 
-Du kan aktivere spesifikke servere i din lokale konfigurasjon:
+You can enable specific servers in your local config:
 
 ```json title="codeplane.json"
 {
@@ -94,95 +96,168 @@ Du kan aktivere spesifikke servere i din lokale konfigurasjon:
 
 ---
 
-### Global konfigurasjon
+### Global
 
-Plasser din globale CodePlane-konfigurasjon i `~/.config/codeplane/codeplane.json`. Bruk global konfigurasjon for brukerspesifikke preferanser som temaer, leverandører eller nøkkelbindinger.
+Place your global CodePlane config in `~/.config/codeplane/codeplane.json`. Use global config for user-wide server/runtime preferences like providers, models, and permissions.
 
-Global konfigurasjon overstyrer eksterne organisasjonsstandarder.
+Global config overrides remote organizational defaults.
 
 ---
 
-### Per prosjekt
+### Per project
 
-Legg til `codeplane.json` i prosjektroten din. Prosjektkonfigurasjon har den høyeste prioritet blant standard config-filer - den overstyrer både globale og eksterne konfigurasjoner.
+Add `codeplane.json` in your project root. Project config has the highest precedence among standard config files - it overrides both global and remote configs.
 
 :::tip
-Plasser prosjektspesifikk konfigurasjon i roten til prosjektet ditt.
+Place project specific config in the root of your project.
 :::
 
-Når CodePlane starter opp, ser den etter en konfigurasjonsfil i gjeldende katalog eller går opp til nærmeste Git-katalog.
+When CodePlane starts up, it looks for a config file in the current directory or traverse up to the nearest Git directory.
 
-Det er også trygt å sjekke inn dette i Git og bruker samme skjema som det globale.
+This is also safe to be checked into Git and uses the same schema as the global one.
 
 ---
 
-### Egendefinert bane
+### Custom path
 
-Spesifiser en tilpasset konfigurasjonsfilbane ved å bruke miljøvariabelen `CODEPLANE_CONFIG`.
+Specify a custom config file path using the `CODEPLANE_CONFIG` environment variable.
 
 ```bash
 export CODEPLANE_CONFIG=/path/to/my/custom-config.json
 codeplane run "Hello world"
 ```
 
-Egendefinert konfigurasjon lastes inn mellom globale og prosjektkonfigurasjoner i prioritetsrekkefølge.
+Custom config is loaded between global and project configs in the precedence order.
 
 ---
 
-### Egendefinert katalog
+### Custom directory
 
-Spesifiser en tilpasset konfigurasjonskatalog ved å bruke `CODEPLANE_CONFIG_DIR`
-miljøvariabel. Denne katalogen vil bli søkt etter agenter, kommandoer,
-moduser og plugins akkurat som standard `.codeplane` katalog, og bør
-følge samme struktur.
+Specify a custom config directory using the `CODEPLANE_CONFIG_DIR`
+environment variable. This directory will be searched for agents, commands,
+modes, and plugins just like the standard `.codeplane` directory, and should
+follow the same structure.
 
 ```bash
 export CODEPLANE_CONFIG_DIR=/path/to/my/config-directory
 codeplane run "Hello world"
 ```
 
-Den egendefinerte katalogen lastes inn etter den globale konfigurasjonen og `.codeplane`-katalogene, slik at den **kan overstyre** innstillingene deres.
+The custom directory is loaded after the global config and `.codeplane` directories, so it **can override** their settings.
 
 ---
 
-## Skjema
+### Managed settings
 
-Konfigurasjonsfilen har et skjema som er definert i [**`example.invalid/config.json`**](https://example.invalid/config.json).
+Organizations can enforce configuration that users cannot override. Managed settings are loaded at the highest priority tier.
 
-Redaktøren din skal kunne validere og autofullføre basert på skjemaet.
+#### File-based
 
----
+Drop an `codeplane.json` or `codeplane.jsonc` file in the system managed config directory:
 
-### TUI
+| Platform | Path                                     |
+| -------- | ---------------------------------------- |
+| macOS    | `/Library/Application Support/codeplane/` |
+| Linux    | `/etc/codeplane/`                         |
+| Windows  | `%ProgramData%\codeplane`                 |
 
-Du kan konfigurere TUI-spesifikke innstillinger gjennom alternativet `tui`.
+These directories require admin/root access to write, so users cannot modify them.
 
-```json title="codeplane.json"
-{
-  "$schema": "https://example.invalid/config.json",
-  "tui": {
-    "scroll_speed": 3,
-    "scroll_acceleration": {
-      "enabled": true
-    },
-    "diff_style": "auto"
-  }
-}
+#### macOS managed preferences
+
+On macOS, CodePlane reads managed preferences from the `ai.codeplane.managed` preference domain. Deploy a `.mobileconfig` via MDM (Jamf, Kandji, FleetDM) and the settings are enforced automatically.
+
+CodePlane checks these paths:
+
+1. `/Library/Managed Preferences/<user>/ai.codeplane.managed.plist`
+2. `/Library/Managed Preferences/ai.codeplane.managed.plist`
+
+The plist keys map directly to `codeplane.json` fields. MDM metadata keys (`PayloadUUID`, `PayloadType`, etc.) are stripped automatically.
+
+**Creating a `.mobileconfig`**
+
+Use the `ai.codeplane.managed` PayloadType. The CodePlane config keys go directly in the payload dict:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>PayloadContent</key>
+  <array>
+    <dict>
+      <key>PayloadType</key>
+      <string>ai.codeplane.managed</string>
+      <key>PayloadIdentifier</key>
+      <string>com.example.codeplane.config</string>
+      <key>PayloadUUID</key>
+      <string>GENERATE-YOUR-OWN-UUID</string>
+      <key>PayloadVersion</key>
+      <integer>1</integer>
+      <key>share</key>
+      <string>disabled</string>
+      <key>server</key>
+      <dict>
+        <key>hostname</key>
+        <string>127.0.0.1</string>
+      </dict>
+      <key>permission</key>
+      <dict>
+        <key>*</key>
+        <string>ask</string>
+        <key>bash</key>
+        <dict>
+          <key>*</key>
+          <string>ask</string>
+          <key>rm -rf *</key>
+          <string>deny</string>
+        </dict>
+      </dict>
+    </dict>
+  </array>
+  <key>PayloadType</key>
+  <string>Configuration</string>
+  <key>PayloadIdentifier</key>
+  <string>com.example.codeplane</string>
+  <key>PayloadUUID</key>
+  <string>GENERATE-YOUR-OWN-UUID</string>
+  <key>PayloadVersion</key>
+  <integer>1</integer>
+</dict>
+</plist>
 ```
 
-Tilgjengelige alternativer:
+Generate unique UUIDs with `uuidgen`. Customize the settings to match your organization's requirements.
 
-- `scroll_acceleration.enabled` - Aktiver rulleakselerasjon i macOS-stil. **Tar forrang over `scroll_speed`.**
-- `scroll_speed` - Egendefinert rullehastighetsmultiplikator (standard: `3`, minimum: `1`). Ignorert hvis `scroll_acceleration.enabled` er `true`.
-- `diff_style` - Kontroller diff-gjengivelse. `"auto"` tilpasser seg terminalbredden, `"stacked"` viser alltid en kolonne.
+**Deploying via MDM**
 
-[Les mer om bruk av TUI her](/docs/tui).
+- **Jamf Pro:** Computers > Configuration Profiles > Upload > scope to target devices or smart groups
+- **FleetDM:** Add the `.mobileconfig` to your gitops repo under `mdm.macos_settings.custom_settings` and run `fleetctl apply`
+
+**Verifying on a device**
+
+Double-click the `.mobileconfig` to install locally for testing (shows in System Settings > Privacy & Security > Profiles), then run:
+
+```bash
+codeplane debug config
+```
+
+All managed preference keys appear in the resolved config and cannot be overridden by user or project configuration.
 
 ---
 
-### Tjener
+## Schema
 
-Du kan konfigurere serverinnstillinger for kommandoene `codeplane serve` og `codeplane web` gjennom alternativet `server`.
+The server/runtime config schema is defined in [**`example.invalid/config.json`**](https://example.invalid/config.json).
+
+Your editor should be able to validate and autocomplete based on the schema.
+
+---
+
+### Server
+
+You can configure server settings for the `codeplane serve` and `codeplane web` commands through the `server` option.
 
 ```json title="codeplane.json"
 {
@@ -197,21 +272,21 @@ Du kan konfigurere serverinnstillinger for kommandoene `codeplane serve` og `cod
 }
 ```
 
-Tilgjengelige alternativer:
+Available options:
 
-- `port` - Port å lytte på.
-- `hostname` - Vertsnavn å lytte på. Når `mdns` er aktivert og ingen vertsnavn er angitt, er standard `0.0.0.0`.
-- `mdns` - Aktiver mDNS-tjenesteoppdagelse. Dette lar andre enheter på nettverket oppdage CodePlane-serveren din.
-- `mdnsDomain` - Egendefinert domenenavn for mDNS-tjeneste. Standard er `codeplane.local`. Nyttig for å kjøre flere forekomster på samme nettverk.
-- `cors` - Ytterligere opprinnelser for å tillate CORS når du bruker HTTP-serveren fra en nettleserbasert klient. Verdiene må være fullstendige opprinnelser (skjema + vert + valgfri port), f.eks. `https://app.example.com`.
+- `port` - Port to listen on.
+- `hostname` - Hostname to listen on. When `mdns` is enabled and no hostname is set, defaults to `0.0.0.0`.
+- `mdns` - Enable mDNS service discovery. This allows other devices on the network to discover your CodePlane server.
+- `mdnsDomain` - Custom domain name for mDNS service. Defaults to `codeplane.local`. Useful for running multiple instances on the same network.
+- `cors` - Additional origins to allow for CORS when using the HTTP server from a browser-based client. Values must be full origins (scheme + host + optional port), eg `https://app.example.com`.
 
-[Les mer om serveren her](/docs/server).
+[Learn more about the server here](/docs/server).
 
 ---
 
-### Verktøy
+### Tools
 
-Du kan administrere verktøyene en LLM kan bruke gjennom alternativet `tools`.
+You can manage the tools an LLM can use through the `tools` option.
 
 ```json title="codeplane.json"
 {
@@ -223,13 +298,13 @@ Du kan administrere verktøyene en LLM kan bruke gjennom alternativet `tools`.
 }
 ```
 
-[Les mer om verktøy her](/docs/tools).
+[Learn more about tools here](/docs/tools).
 
 ---
 
-### Modeller
+### Models
 
-Du kan konfigurere leverandørene og modellene du vil bruke i CodePlane-konfigurasjonen gjennom alternativene `provider`, `model` og `small_model`.
+You can configure the providers and models you want to use in your CodePlane config through the `provider`, `model` and `small_model` options.
 
 ```json title="codeplane.json"
 {
@@ -240,9 +315,9 @@ Du kan konfigurere leverandørene og modellene du vil bruke i CodePlane-konfigur
 }
 ```
 
-Alternativet `small_model` konfigurerer en egen modell for lette oppgaver som tittelgenerering. Som standard prøver CodePlane å bruke en rimeligere modell hvis en er tilgjengelig fra leverandøren din, ellers faller den tilbake til hovedmodellen din.
+The `small_model` option configures a separate model for lightweight tasks like title generation. By default, CodePlane tries to use a cheaper model if one is available from your provider, otherwise it falls back to your main model.
 
-Leverandøralternativer kan inkludere `timeout` og `setCacheKey`:
+Provider options can include `timeout`, `chunkTimeout`, and `setCacheKey`:
 
 ```json title="codeplane.json"
 {
@@ -251,6 +326,7 @@ Leverandøralternativer kan inkludere `timeout` og `setCacheKey`:
     "anthropic": {
       "options": {
         "timeout": 600000,
+        "chunkTimeout": 30000,
         "setCacheKey": true
       }
     }
@@ -258,20 +334,21 @@ Leverandøralternativer kan inkludere `timeout` og `setCacheKey`:
 }
 ```
 
-- `timeout` - Tidsavbrudd for forespørsler i millisekunder (standard: 300 000). Sett til `false` for å deaktivere.
-- `setCacheKey` - Sørg for at en hurtigbuffernøkkel alltid settes for valgt leverandør.
+- `timeout` - Request timeout in milliseconds (default: 300000). Set to `false` to disable.
+- `chunkTimeout` - Timeout in milliseconds between streamed response chunks. If no chunk arrives in time, the request is aborted.
+- `setCacheKey` - Ensure a cache key is always set for designated provider.
 
-Du kan også konfigurere [lokale modeller](/docs/models#local). [Finn ut mer](/docs/models).
+You can also configure [local models](/docs/models#local). [Learn more](/docs/models).
 
 ---
 
-#### Leverandørspesifikke alternativer
+#### Provider-Specific Options
 
-Noen leverandører støtter flere konfigurasjonsalternativer utover de generiske innstillingene `timeout` og `apiKey`.
+Some providers support additional configuration options beyond the generic `timeout` and `apiKey` settings.
 
 ##### Amazon Bedrock
 
-Amazon Bedrock støtter AWS-spesifikk konfigurasjon:
+Amazon Bedrock supports AWS-specific configuration:
 
 ```json title="codeplane.json"
 {
@@ -288,36 +365,29 @@ Amazon Bedrock støtter AWS-spesifikk konfigurasjon:
 }
 ```
 
-- `region` - AWS-region for Bedrock (standard er `AWS_REGION` env var eller `us-east-1`)
-- `profile` - AWS navngitt profil fra `~/.aws/credentials` (standard til `AWS_PROFILE` env var)
-- `endpoint` - Egendefinert endepunkt URL for VPC endepunkter. Dette er et alias for det generiske `baseURL`-alternativet som bruker AWS-spesifikk terminologi. Hvis begge er spesifisert, har `endpoint` forrang.
+- `region` - AWS region for Bedrock (defaults to `AWS_REGION` env var or `us-east-1`)
+- `profile` - AWS named profile from `~/.aws/credentials` (defaults to `AWS_PROFILE` env var)
+- `endpoint` - Custom endpoint URL for VPC endpoints. This is an alias for the generic `baseURL` option using AWS-specific terminology. If both are specified, `endpoint` takes precedence.
 
 :::note
-Bærer-tokens (`AWS_BEARER_TOKEN_BEDROCK` eller `/connect`) har forrang over profilbasert autentisering. Se [autentiseringsprioritet](/docs/providers#authentication-precedence) for detaljer.
+Bearer tokens (`AWS_BEARER_TOKEN_BEDROCK` or `/connect`) take precedence over profile-based authentication. See [authentication precedence](/docs/providers#authentication-precedence) for details.
 :::
 
-[Les mer om konfigurasjon av Amazon Bedrock](/docs/providers#amazon-bedrock).
+[Learn more about Amazon Bedrock configuration](/docs/providers#amazon-bedrock).
 
 ---
 
-### Temaer
+### Themes
 
-Angi UI-temaet ditt i `tui.json`.
+Set your UI theme from the web app settings.
 
-```json title="tui.json"
-{
-  "$schema": "",
-  "theme": "tokyonight"
-}
-```
-
-[Les mer her](/docs/themes).
+[Learn more here](/docs/themes).
 
 ---
 
-### Agenter
+### Agents
 
-Du kan konfigurere spesialiserte agenter for spesifikke oppgaver gjennom alternativet `agent`.
+You can configure specialized agents for specific tasks through the `agent` option.
 
 ```jsonc title="codeplane.jsonc"
 {
@@ -337,13 +407,13 @@ Du kan konfigurere spesialiserte agenter for spesifikke oppgaver gjennom alterna
 }
 ```
 
-Du kan også definere agenter ved å bruke markdown-filer i `~/.config/codeplane/agents/` eller `.codeplane/agents/`. [Les mer her](/docs/agents).
+You can also define agents using markdown files in `~/.config/codeplane/agents/` or `.codeplane/agents/`. [Learn more here](/docs/agents).
 
 ---
 
-### Standardagent
+### Default agent
 
-Du kan angi standard agent ved å bruke alternativet `default_agent`. Dette bestemmer hvilken agent som brukes når ingen er eksplisitt spesifisert.
+You can set the default agent using the `default_agent` option. This determines which agent is used when none is explicitly specified.
 
 ```json title="codeplane.json"
 {
@@ -352,15 +422,15 @@ Du kan angi standard agent ved å bruke alternativet `default_agent`. Dette best
 }
 ```
 
-Standardagenten må være en primæragent (ikke en underagent). Dette kan være en innebygd agent som `"build"` eller `"plan"`, eller en [egendefinert agent](/docs/agents) du har definert. Hvis den angitte agenten ikke eksisterer eller er en subagent, vil CodePlane falle tilbake til `"build"` med en advarsel.
+The default agent must be a primary agent (not a subagent). This can be a built-in agent like `"build"` or `"plan"`, or a [custom agent](/docs/agents) you've defined. If the specified agent doesn't exist or is a subagent, CodePlane will fall back to `"build"` with a warning.
 
-Denne innstillingen gjelder for alle grensesnitt: TUI, CLI (`codeplane run`), skrivebordsapp og GitHub Action.
+This setting applies across the web app, CLI (`codeplane run`), and GitHub Action.
 
 ---
 
-### Deling
+### Sharing
 
-Du kan konfigurere [share](/docs/share)-funksjonen gjennom alternativet `share`.
+You can configure the [share](/docs/share) feature through the `share` option.
 
 ```json title="codeplane.json"
 {
@@ -369,19 +439,19 @@ Du kan konfigurere [share](/docs/share)-funksjonen gjennom alternativet `share`.
 }
 ```
 
-Dette krever:
+This takes:
 
-- `"manual"` - Tillat manuell deling via kommandoer (standard)
-- `"auto"` - Del nye samtaler automatisk
-- `"disabled"` - Deaktiver deling helt
+- `"manual"` - Allow manual sharing via commands (default)
+- `"auto"` - Automatically share new conversations
+- `"disabled"` - Disable sharing entirely
 
-Som standard er deling satt til manuell modus der du eksplisitt må dele samtaler ved å bruke kommandoen `/share`.
+By default, sharing is set to manual mode where you need to explicitly share conversations using the `/share` command.
 
 ---
 
-### Kommandoer
+### Commands
 
-Du kan konfigurere egendefinerte kommandoer for repeterende oppgaver gjennom alternativet `command`.
+You can configure custom commands for repetitive tasks through the `command` option.
 
 ```jsonc title="codeplane.jsonc"
 {
@@ -401,28 +471,30 @@ Du kan konfigurere egendefinerte kommandoer for repeterende oppgaver gjennom alt
 }
 ```
 
-Du kan også definere kommandoer ved å bruke markdown-filer i `~/.config/codeplane/commands/` eller `.codeplane/commands/`. [Les mer her](/docs/commands).
+You can also define commands using markdown files in `~/.config/codeplane/commands/` or `.codeplane/commands/`. [Learn more here](/docs/commands).
 
 ---
 
-### Tastebindinger
+### Snapshot
 
-Tilpass tastebindinger i `tui.json`.
+CodePlane uses snapshots to track file changes during agent operations, enabling you to undo and revert changes within a session. Snapshots are enabled by default.
 
-```json title="tui.json"
+For large repositories or projects with many submodules, the snapshot system can cause slow indexing and significant disk usage as it tracks all changes using an internal git repository. You can disable snapshots using the `snapshot` option.
+
+```json title="codeplane.json"
 {
-  "$schema": "",
-  "keybinds": {}
+  "$schema": "https://example.invalid/config.json",
+  "snapshot": false
 }
 ```
 
-[Les mer her](/docs/keybinds).
+Note that disabling snapshots means changes made by the agent cannot be rolled back through the UI.
 
 ---
 
-### Autooppdatering
+### Autoupdate
 
-CodePlane vil automatisk laste ned eventuelle nye oppdateringer når den starter opp. Du kan deaktivere dette med alternativet `autoupdate`.
+CodePlane will automatically download any new updates when it starts up. You can disable this with the `autoupdate` option.
 
 ```json title="codeplane.json"
 {
@@ -431,14 +503,14 @@ CodePlane vil automatisk laste ned eventuelle nye oppdateringer når den starter
 }
 ```
 
-Hvis du ikke vil ha oppdateringer, men ønsker å bli varslet når en ny versjon er tilgjengelig, sett `autoupdate` til `"notify"`.
-Legg merke til at dette bare fungerer hvis det ikke ble installert med en pakkebehandling som Homebrew.
+If you don't want updates but want to be notified when a new version is available, set `autoupdate` to `"notify"`.
+Notice that this only works if it was not installed using a package manager such as Homebrew.
 
 ---
 
-### Formatere
+### Formatters
 
-Du kan konfigurere kodeformatere gjennom alternativet `formatter`.
+You can configure code formatters through the `formatter` option.
 
 ```json title="codeplane.json"
 {
@@ -458,15 +530,15 @@ Du kan konfigurere kodeformatere gjennom alternativet `formatter`.
 }
 ```
 
-[Les mer om formattere her](/docs/formatters).
+[Learn more about formatters here](/docs/formatters).
 
 ---
 
-### Tillatelser
+### Permissions
 
-Som standard **tillater CodePlane alle operasjoner** uten å kreve eksplisitt godkjenning. Du kan endre dette ved å bruke alternativet `permission`.
+By default, codeplane **allows all operations** without requiring explicit approval. You can change this using the `permission` option.
 
-Slik sikrer du at verktøyene `edit` og `bash` krever brukergodkjenning:
+For example, to ensure that the `edit` and `bash` tools require user approval:
 
 ```json title="codeplane.json"
 {
@@ -478,13 +550,13 @@ Slik sikrer du at verktøyene `edit` og `bash` krever brukergodkjenning:
 }
 ```
 
-[Les mer om tillatelser her](/docs/permissions).
+[Learn more about permissions here](/docs/permissions).
 
 ---
 
-### Komprimering
+### Compaction
 
-Du kan styre kontekstkomprimering gjennom alternativet `compaction`.
+You can control context compaction behavior through the `compaction` option.
 
 ```json title="codeplane.json"
 {
@@ -497,15 +569,15 @@ Du kan styre kontekstkomprimering gjennom alternativet `compaction`.
 }
 ```
 
-- `auto` - Komprimer økten automatisk når konteksten er full (standard: `true`).
-- `prune` - Fjern gamle verktøyutdata for å spare tokens (standard: `true`).
-- `reserved` - Token-buffer for komprimering. Etterlater nok vindu til å unngå overflyt under komprimering
+- `auto` - Automatically compact the session when context is full (default: `true`).
+- `prune` - Remove old tool outputs to save tokens (default: `true`).
+- `reserved` - Token buffer for compaction. Leaves enough window to avoid overflow during compaction
 
 ---
 
-### Filovervåker
+### Watcher
 
-Du kan konfigurere ignoreringsmønstre for filovervåking gjennom alternativet `watcher`.
+You can configure file watcher ignore patterns through the `watcher` option.
 
 ```json title="codeplane.json"
 {
@@ -516,13 +588,13 @@ Du kan konfigurere ignoreringsmønstre for filovervåking gjennom alternativet `
 }
 ```
 
-Mønstre følger glob-syntaks. Bruk dette for å ekskludere støyende kataloger fra filovervåking.
+Patterns follow glob syntax. Use this to exclude noisy directories from file watching.
 
 ---
 
-### MCP servere
+### MCP servers
 
-Du kan konfigurere MCP-servere du vil bruke gjennom alternativet `mcp`.
+You can configure MCP servers you want to use through the `mcp` option.
 
 ```json title="codeplane.json"
 {
@@ -531,15 +603,15 @@ Du kan konfigurere MCP-servere du vil bruke gjennom alternativet `mcp`.
 }
 ```
 
-[Les mer her](/docs/mcp-servers).
+[Learn more here](/docs/mcp-servers).
 
 ---
 
-### Utvidelser
+### Plugins
 
-[Plugins](/docs/plugins) utvider CodePlane med tilpassede verktøy, kroker og integrasjoner.
+[Plugins](/docs/plugins) extend CodePlane with custom tools, hooks, and integrations.
 
-Plasser plugin-filer i `.codeplane/plugins/` eller `~/.config/codeplane/plugins/`. Du kan også laste inn plugins fra npm gjennom alternativet `plugin`.
+Place plugin files in `.codeplane/plugins/` or `~/.config/codeplane/plugins/`. You can also load plugins from npm through the `plugin` option.
 
 ```json title="codeplane.json"
 {
@@ -548,13 +620,13 @@ Plasser plugin-filer i `.codeplane/plugins/` eller `~/.config/codeplane/plugins/
 }
 ```
 
-[Les mer her](/docs/plugins).
+[Learn more here](/docs/plugins).
 
 ---
 
-### Instruksjoner
+### Instructions
 
-Du kan konfigurere instruksjoner for modellen du bruker gjennom alternativet `instructions`.
+You can configure the instructions for the model you're using through the `instructions` option.
 
 ```json title="codeplane.json"
 {
@@ -563,14 +635,14 @@ Du kan konfigurere instruksjoner for modellen du bruker gjennom alternativet `in
 }
 ```
 
-Dette krever en liste med baner og globmønstre til instruksjonsfiler. [Les mer
-om regler her](/docs/rules).
+This takes an array of paths and glob patterns to instruction files. [Learn more
+about rules here](/docs/rules).
 
 ---
 
-### Deaktiverte leverandører
+### Disabled providers
 
-Du kan deaktivere leverandører som lastes automatisk gjennom alternativet `disabled_providers`. Dette er nyttig når du vil forhindre at enkelte leverandører lastes inn selv om deres legitimasjon er tilgjengelig.
+You can disable providers that are loaded automatically through the `disabled_providers` option. This is useful when you want to prevent certain providers from being loaded even if their credentials are available.
 
 ```json title="codeplane.json"
 {
@@ -580,20 +652,20 @@ Du kan deaktivere leverandører som lastes automatisk gjennom alternativet `disa
 ```
 
 :::note
-`disabled_providers` har prioritet over `enabled_providers`.
+The `disabled_providers` takes priority over `enabled_providers`.
 :::
 
-Alternativet `disabled_providers` godtar en rekke leverandør-ID-er. Når en leverandør er deaktivert:
+The `disabled_providers` option accepts an array of provider IDs. When a provider is disabled:
 
-- Den blir ikke lastet selv om miljøvariabler er angitt.
-- Den vil ikke bli lastet inn selv om API-nøkler er konfigurert gjennom `/connect`-kommandoen.
-- Leverandørens modeller vises ikke i modellvalglisten.
+- It won't be loaded even if environment variables are set.
+- It won't be loaded even if API keys are configured through the web app.
+- The provider's models won't appear in the model selection list.
 
 ---
 
-### Aktiverte leverandører
+### Enabled providers
 
-Du kan spesifisere en godkjenningsliste over leverandører gjennom alternativet `enabled_providers`. Når angitt, vil bare de angitte leverandørene være aktivert og alle andre vil bli ignorert.
+You can specify an allowlist of providers through the `enabled_providers` option. When set, only the specified providers will be enabled and all others will be ignored.
 
 ```json title="codeplane.json"
 {
@@ -602,19 +674,19 @@ Du kan spesifisere en godkjenningsliste over leverandører gjennom alternativet 
 }
 ```
 
-Dette er nyttig når du vil begrense CodePlane til kun å bruke spesifikke leverandører i stedet for å deaktivere dem én etter én.
+This is useful when you want to restrict CodePlane to only use specific providers rather than disabling them one by one.
 
 :::note
-`disabled_providers` har prioritet over `enabled_providers`.
+The `disabled_providers` takes priority over `enabled_providers`.
 :::
 
-Hvis en leverandør vises i både `enabled_providers` og `disabled_providers`, har `disabled_providers` prioritet for bakoverkompatibilitet.
+If a provider appears in both `enabled_providers` and `disabled_providers`, the `disabled_providers` takes priority for backwards compatibility.
 
 ---
 
-### Eksperimentelt
+### Experimental
 
-`experimental`-nøkkelen inneholder alternativer som er under aktiv utvikling.
+The `experimental` key contains options that are under active development.
 
 ```json title="codeplane.json"
 {
@@ -624,20 +696,20 @@ Hvis en leverandør vises i både `enabled_providers` og `disabled_providers`, h
 ```
 
 :::caution
-Eksperimentelle alternativer er ikke stabile. De kan endres eller fjernes uten varsel.
+Experimental options are not stable. They may change or be removed without notice.
 :::
 
 ---
 
-## Variabler
+## Variables
 
-Du kan bruke variabelerstatning i konfigurasjonsfilene dine for å referere til miljøvariabler og filinnhold.
+You can use variable substitution in your config files to reference environment variables and file contents.
 
 ---
 
-### Miljøvariabler
+### Env vars
 
-Bruk `{env:VARIABLE_NAME}` for å erstatte miljøvariabler:
+Use `{env:VARIABLE_NAME}` to substitute environment variables:
 
 ```json title="codeplane.json"
 {
@@ -654,13 +726,13 @@ Bruk `{env:VARIABLE_NAME}` for å erstatte miljøvariabler:
 }
 ```
 
-Hvis miljøvariabelen ikke er angitt, vil den bli erstattet med en tom streng.
+If the environment variable is not set, it will be replaced with an empty string.
 
 ---
 
-### Filer
+### Files
 
-Bruk `{file:path/to/file}` for å erstatte innholdet i en fil:
+Use `{file:path/to/file}` to substitute the contents of a file:
 
 ```json title="codeplane.json"
 {
@@ -676,13 +748,13 @@ Bruk `{file:path/to/file}` for å erstatte innholdet i en fil:
 }
 ```
 
-Filbaner kan være:
+File paths can be:
 
-- I forhold til konfigurasjonsfilkatalogen
-- Eller absolutte baner som begynner med `/` eller `~`
+- Relative to the config file directory
+- Or absolute paths starting with `/` or `~`
 
-Disse er nyttige for:
+These are useful for:
 
-- Oppbevaring av sensitive data som API-nøkler i separate filer.
-- Inkludert store instruksjonsfiler uten å rote konfigurasjonen din.
-- Deling av vanlige konfigurasjonsbiter på tvers av flere konfigurasjonsfiler.
+- Keeping sensitive data like API keys in separate files.
+- Including large instruction files without cluttering your config.
+- Sharing common configuration snippets across multiple config files.

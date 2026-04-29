@@ -1,275 +1,141 @@
 ---
-title: Dépannage
-description: Problèmes courants et comment les résoudre.
+title: Troubleshooting
+description: Common issues and how to resolve them.
 ---
 
-Pour déboguer les problèmes avec CodePlane, commencez par vérifier les journaux et les données locales qu'il stocke sur le disque.
-
----
-
-## Journaux
-
-Les fichiers journaux sont écrits dans :
-
-- **macOS/Linux** : `~/.local/share/codeplane/log/`
-- **Windows** : appuyez sur `WIN+R` et collez `%USERPROFILE%\.local\share\codeplane\log`
-
-Les fichiers journaux sont nommés avec des horodatages (par exemple, `2025-01-09T123456.log`) et les 10 fichiers journaux les plus récents sont conservés.
-
-Vous pouvez définir le niveau de journalisation avec l'option de ligne de commande `--log-level` pour obtenir des informations de débogage plus détaillées. Par exemple, `codeplane --log-level DEBUG`.
+To debug issues with CodePlane, start by checking the logs and local data it stores on disk.
 
 ---
 
-## Stockage
+## Logs
 
-codeplane stocke les données de session et autres données d'application sur le disque à l'emplacement :
+Log files are written to:
 
-- **macOS/Linux** : `~/.local/share/codeplane/`
-- **Windows** : appuyez sur `WIN+R` et collez `%USERPROFILE%\.local\share\codeplane`
+- **macOS/Linux**: `~/.local/share/codeplane/log/`
+- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.local\share\codeplane\log`
 
-Ce répertoire contient :
+Log files are named with timestamps (e.g., `2025-01-09T123456.log`) and the most recent 10 log files are kept.
 
-- `auth.json` - Données d'authentification telles que les clés API, les jetons OAuth
-- `log/` - Journaux d'applications
-- `project/` - Données spécifiques au projet telles que les données de session et de message
-  - Si le projet se trouve dans un dépôt Git, il est stocké dans `./<project-slug>/storage/`
-  - S'il ne s'agit pas d'un dépôt Git, il est stocké dans `./global/storage/`
+You can set the log level with the `--log-level` command-line option to get more detailed debug information. For example, `codeplane --log-level DEBUG`.
 
 ---
 
-## Application de bureau
+## Storage
 
-CodePlane Desktop exécute un serveur CodePlane local (le side-car `codeplane-cli`) en arrière-plan. La plupart des problèmes sont causés par un plugin qui se comporte mal, un cache corrompu ou un mauvais paramètre du serveur.
+codeplane stores session data and other application data on disk at:
 
-### Vérifications rapides
+- **macOS/Linux**: `~/.local/share/codeplane/`
+- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.local\share\codeplane`
 
-- Quittez complètement et relancez l'application.
-- Si l'application affiche un écran d'erreur, cliquez sur **Redémarrer** et copiez les détails de l'erreur.
-- macOS uniquement : menu `CodePlane` -> **Recharger la vue Web** (aide si l'interface utilisateur est vide/gelée).
+This directory contains:
 
----
+- `auth.json` - Authentication data like API keys, OAuth tokens
+- `log/` - Application logs
+- `project/` - Project-specific data like session and message data
+  - If the project is within a Git repo, it is stored in `./<project-slug>/storage/`
+  - If it is not a Git repo, it is stored in `./global/storage/`
 
-### Désactiver les plugins
+## Getting help
 
-Si l'application de bureau plante au lancement, se bloque ou se comporte étrangement, commencez par désactiver les plugins.
+If you're experiencing issues with CodePlane:
 
-#### Vérifiez la configuration globale
+1. **Report issues on GitHub**
 
-Ouvrez votre fichier de configuration global et recherchez une clé `plugin`.
+   The best way to report bugs or request features is through our GitHub repository:
 
-- **macOS/Linux** : `~/.config/codeplane/codeplane.jsonc` (ou `~/.config/codeplane/codeplane.json`)
-- **macOS/Linux** (anciennes installations) : `~/.local/share/codeplane/codeplane.jsonc`
-- **Windows** : appuyez sur `WIN+R` et collez `%USERPROFILE%\.config\codeplane\codeplane.jsonc`
+   [**github.com/devinoldenburg/codeplane/issues**](https://github.com/devinoldenburg/codeplane/issues)
 
-Si vous avez configuré des plugins, désactivez-les temporairement en supprimant la clé ou en la définissant sur un tableau vide :
-
-```jsonc
-{
-  "$schema": "https://example.invalid/config.json",
-  "plugin": [],
-}
-```
-
-#### Vérifiez les répertoires des plugins
-
-CodePlane peut également charger des plugins locaux à partir du disque. Écartez-les temporairement (ou renommez le dossier) et redémarrez l'application de bureau :
-
-- **Plugins mondiaux**
-  - **macOS/Linux** : `~/.config/codeplane/plugins/`
-  - **Windows** : appuyez sur `WIN+R` et collez `%USERPROFILE%\.config\codeplane\plugins`
-- **Plugins de projet** (uniquement si vous utilisez une configuration par projet)
-  - `<your-project>/.codeplane/plugins/`
-
-Si l'application recommence à fonctionner, réactivez les plugins un par un pour trouver celui à l'origine du problème.
-
----
-
-### Vider le cache
-
-Si la désactivation des plugins ne résout pas le problème (ou si l'installation d'un plugin est bloquée), videz le cache afin que CodePlane puisse le reconstruire.
-
-1. Quittez complètement CodePlane Desktop.
-2. Supprimez le répertoire cache :
-
-- **macOS** : Finder -> `Cmd+Shift+G` -> coller `~/.cache/codeplane`
-- **Linux** : supprimez `~/.cache/codeplane` (ou exécutez `rm -rf ~/.cache/codeplane`)
-- **Windows** : appuyez sur `WIN+R` et collez `%USERPROFILE%\.cache\codeplane`
-
-3. Redémarrez le bureau CodePlane.
-
----
-
-### Résoudre les problèmes de connexion au serveur
-
-CodePlane Desktop peut soit démarrer son propre serveur local (par défaut), soit se connecter à un serveur URL que vous avez configuré.
-
-Si vous voyez une boîte de dialogue **« Échec de la connexion »** (ou si l'application ne dépasse jamais l'écran de démarrage), recherchez un serveur personnalisé URL.
-
-#### Effacer le serveur par défaut du bureau URL
-
-Depuis l'écran d'accueil, cliquez sur le nom du serveur (avec le point d'état) pour ouvrir le sélecteur de serveur. Dans la section **Serveur par défaut**, cliquez sur **Effacer**.
-
-#### Supprimez `server.port` / `server.hostname` de votre configuration
-
-Si votre `codeplane.json(c)` contient une section `server`, supprimez-la temporairement et redémarrez l'application de bureau.
-
-#### Vérifier les variables d'environnement
-
-Si `CODEPLANE_PORT` est défini dans votre environnement, l'application de bureau tentera d'utiliser ce port pour le serveur local.
-
-- Désactivez `CODEPLANE_PORT` (ou choisissez un port libre) et redémarrez.
-
----
-
-### Linux : Problèmes Wayland / X11
-
-Sur Linux, certaines configurations Wayland peuvent provoquer des fenêtres vides ou des erreurs de composition.
-
-- Si vous êtes sur Wayland et que l'application est vide/plante, essayez de la lancer avec `OC_ALLOW_WAYLAND=1`.
-- Si cela aggrave les choses, supprimez-le et essayez plutôt de le lancer sous une session X11.
-
----
-
-### Windows : exécution WebView2
-
-Sur Windows, CodePlane Desktop nécessite Microsoft Edge **WebView2 Runtime**. Si l'application s'ouvre sur une fenêtre vide ou ne démarre pas, installez/mettez à jour WebView2 et réessayez.
-
----
-
-### Windows : problèmes de performances généraux
-
-Si vous rencontrez des performances lentes, des problèmes d'accès aux fichiers ou des problèmes de terminal sur Windows, essayez d'utiliser [WSL (Windows Sous-système pour Linux)](/docs/windows-wsl). WSL fournit un environnement Linux qui fonctionne de manière plus transparente avec les fonctionnalités de CodePlane.
-
----
-
-### Les notifications ne s'affichent pas
-
-CodePlane Desktop affiche uniquement les notifications système lorsque :
-
-- les notifications sont activées pour CodePlane dans les paramètres de votre système d'exploitation, et
-- la fenêtre de l'application n'est pas ciblée.
-
----
-
-### Réinitialiser le stockage des applications de bureau (dernier recours)
-
-Si l'application ne démarre pas et que vous ne pouvez pas effacer les paramètres depuis l'interface utilisateur, réinitialisez l'état enregistré de l'application de bureau.
-
-1. Quittez le bureau CodePlane.
-2. Recherchez et supprimez ces fichiers (ils se trouvent dans le répertoire de données de l'application CodePlane Desktop) :
-
-- `codeplane.settings.dat` (serveur de bureau par défaut URL)
-- `codeplane.global.dat` et `codeplane.workspace.*.dat` (état de l'interface utilisateur comme les serveurs/projets récents)
-
-Pour trouver rapidement le répertoire :
-
-- **macOS** : Finder -> `Cmd+Shift+G` -> `~/Library/Application Support` (puis recherchez les noms de fichiers ci-dessus)
-- **Linux** : recherchez sous `~/.local/share` les noms de fichiers ci-dessus
-- **Windows** : appuyez sur `WIN+R` -> `%APPDATA%` (puis recherchez les noms de fichiers ci-dessus)
-
----
-
-## Obtenir de l'aide
-
-Si vous rencontrez des problèmes avec CodePlane :
-
-1. **Signaler les problèmes le GitHub**
-
-La meilleure façon de signaler des bogues ou de demander des fonctionnalités consiste à utiliser notre référentiel GitHub :
-
-[**github.com/devinoldenburg/codeplane/issues**](https://github.com/devinoldenburg/codeplane/issues)
-
-Avant de créer un nouveau problème, recherchez les problèmes existants pour voir si votre problème a déjà été signalé.
+   Before creating a new issue, search existing issues to see if your problem has already been reported.
 
 
 ---
 
-## Problèmes courants
+## Common issues
 
-Voici quelques problèmes courants et comment les résoudre.
-
----
-
-### CodePlane ne démarre pas
-
-1. Vérifiez les journaux pour les messages d'erreur
-2. Essayez d'exécuter avec `--print-logs` pour voir la sortie dans le terminal
-3. Assurez-vous d'avoir la dernière version avec `codeplane upgrade`
+Here are some common issues and how to resolve them.
 
 ---
 
-### Problèmes d'authentification
+### CodePlane won't start
 
-1. Essayez de vous réauthentifier avec la commande `/connect` dans le TUI
-2. Vérifiez que vos clés API sont valides
-3. Assurez-vous que votre réseau autorise les connexions au API du fournisseur.
+1. Check the logs for error messages
+2. Try running with `--print-logs` to see output in the terminal
+3. Ensure you have the latest version with `codeplane upgrade`
 
 ---
 
-### Modèle non disponible
+### Authentication issues
 
-1. Vérifiez que vous êtes authentifié auprès du fournisseur
-2. Vérifiez que le nom du modèle dans votre configuration est correct
-3. Certains modèles peuvent nécessiter un accès ou des abonnements spécifiques
+1. Try re-authenticating from Settings -> Providers in the web app
+2. Check that your API keys are valid
+3. Ensure your network allows connections to the provider's API
 
-Si vous rencontrez `ProviderModelNotFoundError`, vous avez probablement tort
-faire référence à un modèle quelque part.
-Les modèles doivent être référencés comme suit : `<providerId>/<modelId>`
+---
 
-Exemples :
+### Model not available
+
+1. Check that you've authenticated with the provider
+2. Verify the model name in your config is correct
+3. Some models may require specific access or subscriptions
+
+If you encounter `ProviderModelNotFoundError` you are most likely incorrectly
+referencing a model somewhere.
+Models should be referenced like so: `<providerId>/<modelId>`
+
+Examples:
 
 - `openai/gpt-4.1`
 - `openrouter/google/gemini-2.5-flash`
 - `codeplane/kimi-k2`
 
-Pour déterminer à quels modèles vous avez accès, exécutez `codeplane models`
+To figure out what models you have access to, run `codeplane models`
 
 ---
 
-### ErreurInit du fournisseur
+### ProviderInitError
 
-Si vous rencontrez une ProviderInitError, vous avez probablement une configuration non valide ou corrompue.
+If you encounter a ProviderInitError, you likely have an invalid or corrupted configuration.
 
-Pour résoudre ce problème :
+To resolve this:
 
-1. Tout d'abord, vérifiez que votre fournisseur est correctement configuré en suivant le [guide du fournisseur](/docs/providers)
-2. Si le problème persiste, essayez d'effacer votre configuration stockée :
+1. First, verify your provider is set up correctly by following the [providers guide](/docs/providers)
+2. If the issue persists, try clearing your stored configuration:
 
    ```bash
    rm -rf ~/.local/share/codeplane
    ```
 
-Sur Windows, appuyez sur `WIN+R` et supprimez : `%USERPROFILE%\.local\share\codeplane`
+   On Windows, press `WIN+R` and delete: `%USERPROFILE%\.local\share\codeplane`
 
-3. Ré-authentifiez-vous auprès de votre fournisseur à l'aide de la commande `/connect` dans le TUI.
+3. Re-authenticate with your provider from Settings -> Providers in the web app.
 
 ---
 
-### Problèmes liés à AI_APICallError et au package du fournisseur
+### AI_APICallError and provider package issues
 
-Si vous rencontrez des erreurs d’appel API, cela peut être dû à des packages de fournisseurs obsolètes. codeplane installe dynamiquement les packages du fournisseur (OpenAI, Anthropic, Google, etc.) selon les besoins et les met en cache localement.
+If you encounter API call errors, this may be due to outdated provider packages. codeplane dynamically installs provider packages (OpenAI, Anthropic, Google, etc.) as needed and caches them locally.
 
-Pour résoudre les problèmes liés au package du fournisseur :
+To resolve provider package issues:
 
-1. Videz le cache du package du fournisseur :
+1. Clear the provider package cache:
 
    ```bash
    rm -rf ~/.cache/codeplane
    ```
 
-Sur Windows, appuyez sur `WIN+R` et supprimez : `%USERPROFILE%\.cache\codeplane`
+   On Windows, press `WIN+R` and delete: `%USERPROFILE%\.cache\codeplane`
 
-2. Redémarrez codeplane pour réinstaller les derniers packages du fournisseur
+2. Restart codeplane to reinstall the latest provider packages
 
-Cela forcera codeplane à télécharger les versions les plus récentes des packages du fournisseur, ce qui résout souvent les problèmes de compatibilité avec les paramètres du modèle et les modifications de API.
+This will force codeplane to download the most recent versions of provider packages, which often resolves compatibility issues with model parameters and API changes.
 
 ---
 
-### Le copier/coller ne fonctionne pas sur Linux
+### Copy/paste not working on Linux
 
-Les utilisateurs de Linux doivent disposer de l'un des utilitaires de presse-papiers suivants installés pour que la fonctionnalité copier/coller fonctionne :
+Linux users need to have one of the following clipboard utilities installed for copy/paste functionality to work:
 
-**Pour les systèmes X11 :**
+**For X11 systems:**
 
 ```bash
 apt install -y xclip
@@ -277,13 +143,13 @@ apt install -y xclip
 apt install -y xsel
 ```
 
-**Pour les systèmes Wayland :**
+**For Wayland systems:**
 
 ```bash
 apt install -y wl-clipboard
 ```
 
-**Pour les environnements sans tête :**
+**For headless environments:**
 
 ```bash
 apt install -y xvfb
@@ -292,4 +158,4 @@ Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
 export DISPLAY=:99.0
 ```
 
-codeplane détectera si vous utilisez Wayland et préférez `wl-clipboard`, sinon il essaiera de trouver les outils du presse-papiers dans l'ordre : `xclip` et `xsel`.
+codeplane will detect if you're using Wayland and prefer `wl-clipboard`, otherwise it will try to find clipboard tools in order of: `xclip` and `xsel`.
