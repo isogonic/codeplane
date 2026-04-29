@@ -336,6 +336,8 @@ export function GenericTool(props: {
       icon="mcp"
       status={props.status}
       startTime={props.startTime}
+      animated
+      collapseWhilePending
       trigger={{
         title: i18n.t("ui.basicTool.called", { tool: props.tool }),
         subtitle: label(props.input),
