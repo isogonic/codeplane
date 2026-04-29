@@ -14,10 +14,11 @@ function pick(value: string | null, fallback?: string, encode?: (value: string) 
 }
 
 function rewrite(request: Request, values: { directory?: string; workspace?: string }) {
-  if (request.method !== "GET" && request.method !== "HEAD") return request
-
   const url = new URL(request.url)
   let changed = false
+  const json =
+    request.credentials === "include" &&
+    request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() === "application/json"
 
   for (const [name, key] of [
     ["x-codeplane-directory", "directory"],
@@ -35,11 +36,12 @@ function rewrite(request: Request, values: { directory?: string; workspace?: str
     changed = true
   }
 
-  if (!changed) return request
+  if (!changed && !json) return request
 
-  const next = new Request(url, request)
+  const next = new Request(changed ? url : request.url, request)
   next.headers.delete("x-codeplane-directory")
   next.headers.delete("x-codeplane-workspace")
+  if (json) next.headers.set("content-type", "text/plain")
   return next
 }
 

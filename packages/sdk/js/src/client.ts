@@ -14,18 +14,20 @@ function pick(value: string | null, fallback?: string) {
 }
 
 function rewrite(request: Request, directory?: string) {
-  if (request.method !== "GET" && request.method !== "HEAD") return request
-
+  const json =
+    request.credentials === "include" &&
+    request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() === "application/json"
   const value = pick(request.headers.get("x-codeplane-directory"), directory)
-  if (!value) return request
+  if (!value && !json) return request
 
   const url = new URL(request.url)
-  if (!url.searchParams.has("directory")) {
+  if (value && !url.searchParams.has("directory")) {
     url.searchParams.set("directory", value)
   }
 
-  const next = new Request(url, request)
+  const next = new Request(value ? url : request.url, request)
   next.headers.delete("x-codeplane-directory")
+  if (json) next.headers.set("content-type", "text/plain")
   return next
 }
 
