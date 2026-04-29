@@ -15,6 +15,8 @@ import { InstallationVersion } from "@/installation/version"
 import { Log } from "../../util"
 import { lazy } from "../../util/lazy"
 import { Config } from "../../config"
+import { Provider } from "../../provider"
+import { ProviderID as ProviderIDBrand } from "../../provider/schema"
 import { errors } from "../error"
 import { CronRoutes } from "./cron"
 
@@ -374,30 +376,60 @@ export const GlobalRoutes = lazy(() =>
         },
       }),
       async (c) => {
-        const apiKey = process.env.CODEPLANE_TRANSCRIBE_API_KEY
-        if (!apiKey) {
-          return c.json(
-            {
-              error:
-                "CODEPLANE_TRANSCRIBE_API_KEY is not set. Set it (and optionally CODEPLANE_TRANSCRIBE_BASE_URL / CODEPLANE_TRANSCRIBE_MODEL) to enable voice transcription.",
-            },
-            400,
-          )
-        }
-        const baseUrl = (process.env.CODEPLANE_TRANSCRIBE_BASE_URL || "https://api.openai.com").replace(/\/+$/, "")
-        const model = process.env.CODEPLANE_TRANSCRIBE_MODEL || "whisper-1"
-
         const incoming = await c.req.formData()
         const file = incoming.get("file")
         if (!(file instanceof File)) {
           return c.json({ error: "Missing 'file' part in multipart body." }, 400)
         }
+        const providerID = String(incoming.get("provider") ?? "").trim()
+        const modelID = String(incoming.get("model") ?? "").trim()
+        if (!providerID || !modelID) {
+          return c.json(
+            {
+              error:
+                "Missing 'provider' and/or 'model' fields. Pick a transcription model in Settings → Voice and retry.",
+            },
+            400,
+          )
+        }
+
+        // Resolve apiKey + baseURL from the configured provider so the user
+        // doesn't have to set anything env-side. Reads the same provider
+        // options the chat models use (apiKey + optional baseURL/endpoint).
+        const provider = (await AppRuntime.runPromise(
+          Provider.Service.use((svc) =>
+            svc
+              .getProvider(ProviderIDBrand.make(providerID))
+              .pipe(Effect.catch(() => Effect.succeed(undefined as unknown as Provider.Info))),
+          ),
+        )) as Provider.Info | undefined
+        if (!provider) {
+          return c.json({ error: `Provider '${providerID}' is not configured.` }, 400)
+        }
+        const apiKey =
+          (provider.options?.apiKey as string | undefined) ??
+          provider.key ??
+          process.env[provider.env?.[0] ?? ""]
+        if (!apiKey || apiKey === "public") {
+          return c.json(
+            {
+              error: `Provider '${providerID}' has no API key configured. Set it in Settings → Providers and retry.`,
+            },
+            400,
+          )
+        }
+        const baseUrl = (
+          (provider.options?.endpoint as string | undefined) ||
+          (provider.options?.baseURL as string | undefined) ||
+          "https://api.openai.com"
+        ).replace(/\/+$/, "")
+
         const requestedLanguage = incoming.get("language")
         const promptValue = incoming.get("prompt")
 
         const forward = new FormData()
         forward.set("file", file, file.name || "audio.webm")
-        forward.set("model", model)
+        forward.set("model", modelID)
         forward.set("response_format", "json")
         if (typeof requestedLanguage === "string" && requestedLanguage) forward.set("language", requestedLanguage)
         if (typeof promptValue === "string" && promptValue) forward.set("prompt", promptValue)

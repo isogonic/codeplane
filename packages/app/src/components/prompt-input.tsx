@@ -39,7 +39,14 @@ import { useSessionLayout } from "@/pages/session/session-layout"
 import { createSessionTabs } from "@/pages/session/helpers"
 import { createTextFragment, getCursorPosition, setCursorPosition, setRangeEdge } from "./prompt-input/editor-dom"
 import { createPromptAttachments } from "./prompt-input/attachments"
-import { isVoiceSupported, playSendChime, startVoiceRecording, type VoiceRecording } from "./prompt-input/voice"
+import {
+  getVoiceModel,
+  isVoiceSupported,
+  playSendChime,
+  startVoiceRecording,
+  VOICE_BANDS,
+  type VoiceRecording,
+} from "./prompt-input/voice"
 import { ACCEPTED_FILE_TYPES } from "./prompt-input/files"
 import {
   canNavigateHistoryAtCursor,
@@ -1104,10 +1111,32 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   })
 
   // ── Voice transcription ────────────────────────────────────────────────
-  const [voiceState, setVoiceState] = createSignal<"idle" | "starting" | "recording" | "transcribing">("idle")
+  const debugVoice = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debugVoice")
+  const [voiceState, setVoiceState] = createSignal<"idle" | "starting" | "recording" | "transcribing">(
+    debugVoice === "recording" || debugVoice === "transcribing" ? (debugVoice as "recording" | "transcribing") : "idle",
+  )
   const [voiceLevel, setVoiceLevel] = createSignal(0)
+  const [voiceBands, setVoiceBands] = createSignal<number[]>(new Array(VOICE_BANDS).fill(0))
   const [voiceError, setVoiceError] = createSignal<string | null>(null)
   let voiceRecording: VoiceRecording | undefined
+
+  // Debug-only: drive the meter with a smooth sine pattern so we can review the
+  // recording-state UI without microphone access.
+  if (debugVoice === "recording" && typeof window !== "undefined") {
+    let t = 0
+    const drive = () => {
+      t += 0.06
+      const next = new Array<number>(VOICE_BANDS).fill(0).map((_, i) => {
+        const phase = i / Math.max(1, VOICE_BANDS - 1)
+        const a = 0.5 + 0.5 * Math.sin(t * 2 + phase * 4)
+        const b = 0.5 + 0.5 * Math.sin(t * 1.3 + phase * 7 + 1.7)
+        return Math.max(0, Math.min(1, 0.25 + 0.55 * (a * 0.6 + b * 0.4)))
+      })
+      setVoiceBands(next)
+      requestAnimationFrame(drive)
+    }
+    requestAnimationFrame(drive)
+  }
 
   const voiceSupported = isVoiceSupported()
 
@@ -1122,6 +1151,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     try {
       const text = await rec.finish()
       setVoiceLevel(0)
+      setVoiceBands(new Array(VOICE_BANDS).fill(0))
       if (text) {
         // Insert as a fresh text block at the cursor.
         const editor = editorRef
@@ -1162,13 +1192,27 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       return
     }
     if (voiceState() !== "idle") return
+    const voiceModel = getVoiceModel()
+    if (!voiceModel) {
+      showToast({
+        variant: "error",
+        title: language.t("prompt.toast.voiceModelMissing.title"),
+        description: language.t("prompt.toast.voiceModelMissing.description"),
+      })
+      return
+    }
     setVoiceState("starting")
     setVoiceError(null)
     try {
       voiceRecording = await startVoiceRecording({
-        onLevel: (lvl) => setVoiceLevel(lvl),
+        onLevel: (lvl, bands) => {
+          setVoiceLevel(lvl)
+          setVoiceBands(bands.slice())
+        },
         endpoint: "/global/transcribe",
         fetch: platform.fetch,
+        provider: voiceModel.provider,
+        model: voiceModel.model,
       })
       setVoiceState("recording")
     } catch (err) {
@@ -1511,7 +1555,12 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
             <div
               class="absolute top-0 inset-x-0 pl-3 pr-2 pt-2 text-14-regular text-text-weak pointer-events-none whitespace-nowrap truncate"
               classList={{ "font-mono!": store.mode === "shell" }}
-              style={{ "padding-bottom": space, display: prompt.dirty() ? "none" : undefined }}
+              style={{
+                "padding-bottom": space,
+                display: prompt.dirty() || voiceState() === "recording" || voiceState() === "transcribing"
+                  ? "none"
+                  : undefined,
+              }}
             >
               {placeholder()}
             </div>
@@ -1639,50 +1688,74 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
           <Show when={voiceState() === "recording" || voiceState() === "transcribing"}>
             <div
               data-component="prompt-voice-meter"
+              data-state={voiceState()}
+              class="absolute inset-x-0 top-0 flex items-center gap-3 pl-3 pr-3 pointer-events-none"
               style={{
-                position: "absolute",
-                inset: "8px 56px 8px 56px",
-                "border-radius": "8px",
-                background: "var(--surface-base)",
-                display: "flex",
-                "align-items": "center",
-                gap: "10px",
-                padding: "0 12px",
-                "pointer-events": "none",
-                "z-index": "5",
+                bottom: space,
+                "min-height": "40px",
+                animation: "fade-in 160ms ease-out",
               }}
+              aria-live="polite"
+              aria-label={
+                voiceState() === "recording"
+                  ? language.t("prompt.voice.listening")
+                  : language.t("prompt.voice.transcribing")
+              }
             >
               <div
-                style={{
-                  display: "flex",
-                  "align-items": "center",
-                  gap: "3px",
-                  height: "24px",
-                  flex: "1 1 auto",
-                  "min-width": "0",
-                }}
+                class="flex items-center justify-center flex-1 min-w-0"
+                style={{ gap: "3px", height: "20px" }}
               >
-                {Array.from({ length: 28 }).map((_, i) => {
-                  const phase = i / 27
+                {Array.from({ length: VOICE_BANDS }).map((_, i) => {
+                  const phase = i / Math.max(1, VOICE_BANDS - 1)
+                  // Soft envelope so edge bars feel anchored, middle bars breathe more
+                  const envelope = 0.45 + 0.55 * Math.sin(phase * Math.PI)
                   return (
                     <div
                       style={{
-                        flex: "1 1 0",
-                        height: `${Math.max(3, Math.min(24, 6 + voiceLevel() * 24 * (0.6 + 0.8 * Math.sin(phase * Math.PI))))}px`,
-                        "border-radius": "2px",
-                        background: voiceState() === "recording" ? "var(--icon-interactive-base)" : "var(--text-weak)",
-                        opacity: voiceState() === "recording" ? "0.8" : "0.5",
-                        transition: "height 80ms ease-out",
+                        width: "2px",
+                        "border-radius": "1px",
+                        height: (() => {
+                          const recording = voiceState() === "recording"
+                          if (!recording) return "3px"
+                          const band = voiceBands()[i] ?? 0
+                          const h = 3 + band * 17 * envelope
+                          return `${Math.max(2, Math.min(20, h))}px`
+                        })(),
+                        background:
+                          voiceState() === "recording"
+                            ? "var(--icon-interactive-base)"
+                            : "var(--text-weaker)",
+                        opacity: voiceState() === "recording" ? 0.85 : 0.6,
+                        transition:
+                          voiceState() === "recording"
+                            ? "height 70ms cubic-bezier(0.22, 1, 0.36, 1)"
+                            : "height 200ms ease-out, opacity 200ms ease-out",
                       }}
                     />
                   )
                 })}
               </div>
-              <span style={{ "font-size": "12px", color: "var(--text-weak)", "white-space": "nowrap" }}>
-                {voiceState() === "recording"
-                  ? language.t("prompt.voice.listening")
-                  : language.t("prompt.voice.transcribing")}
-              </span>
+              <div class="flex items-center gap-1.5 shrink-0 text-13-regular text-text-weak">
+                <Show when={voiceState() === "recording"}>
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      width: "6px",
+                      height: "6px",
+                      "border-radius": "999px",
+                      background: "var(--icon-interactive-base)",
+                      "box-shadow": "0 0 0 0 color-mix(in srgb, var(--icon-interactive-base) 45%, transparent)",
+                      animation: "voice-meter-pulse 1.2s ease-in-out infinite",
+                    }}
+                  />
+                </Show>
+                <span class="truncate">
+                  {voiceState() === "recording"
+                    ? language.t("prompt.voice.listening")
+                    : language.t("prompt.voice.transcribing")}
+                </span>
+              </div>
             </div>
           </Show>
         </div>

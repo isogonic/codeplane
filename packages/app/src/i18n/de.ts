@@ -283,6 +283,15 @@ export const dict = {
   "prompt.toast.voiceUnsupported.description":
     "Dieser Browser stellt die Mikrofon- oder Audio-API für Spracheingabe nicht bereit.",
   "prompt.toast.voiceFailed.title": "Spracheingabe fehlgeschlagen",
+  "prompt.toast.voiceModelMissing.title": "Kein Sprachmodell ausgewählt",
+  "prompt.toast.voiceModelMissing.description":
+    "Wähle ein Transkriptionsmodell in Einstellungen → Sprache (oder setze localStorage 'codeplane-voice-model' auf 'providerID:modelID', z. B. 'openai:whisper-1').",
+  "settings.general.section.voice": "Sprache",
+  "settings.general.row.voiceModel.title": "Transkriptionsmodell",
+  "settings.general.row.voiceModel.description":
+    "Wird für die Mikrofontaste im Eingabefeld verwendet. Wähle einen verbundenen Provider und ein Modell, das Audiotranskription unterstützt (z. B. openai / whisper-1).",
+  "settings.general.row.voiceModel.providerPlaceholder": "Provider…",
+  "settings.general.row.voiceModel.modelPlaceholder": "Modell…",
   "prompt.toast.modelAgentRequired.title": "Wählen Sie einen Agenten und ein Modell",
   "prompt.toast.modelAgentRequired.description":
     "Wählen Sie einen Agenten und ein Modell, bevor Sie eine Eingabe senden.",
