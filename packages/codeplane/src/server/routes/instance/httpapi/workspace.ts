@@ -56,7 +56,7 @@ export const WorkspaceApi = HttpApi.make("workspace")
   .annotateMerge(
     OpenApi.annotations({
       title: "codeplane experimental HttpApi",
-      version: "26.5.14",
+      version: "26.5.15",
       description: "Experimental HttpApi surface for selected instance routes.",
     }),
   )
