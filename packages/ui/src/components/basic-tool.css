@@ -1,6 +1,9 @@
 [data-component="tool-trigger"] {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 32px;
+  /* content-visibility removed — it caches an intrinsic size for offscreen
+     elements which becomes wrong as rows grow variable-height with wrapped
+     subtitles / streaming args, causing siblings to render at the wrong
+     vertical offset and overlap. Correctness > the small offscreen-skip
+     perf win. */
   width: 100%;
   min-width: 0;
   max-width: 100%;
