@@ -9,6 +9,14 @@ import { DialogReleaseNotes, type Highlight } from "@/components/dialog-release-
 
 const CHANGELOG_URL = "https://example.invalid/changelog.json"
 
+function isPlaceholderUrl(url: string) {
+  try {
+    return new URL(url).hostname.endsWith("example.invalid")
+  } catch {
+    return true
+  }
+}
+
 type Store = {
   version?: string
 }
@@ -176,6 +184,11 @@ export const { use: useHighlights, provider: HighlightsProvider } = createSimple
         controller.abort()
         clearTimer()
       })
+
+      if (isPlaceholderUrl(CHANGELOG_URL)) {
+        markSeen()
+        return
+      }
 
       fetcher(CHANGELOG_URL, {
         signal: controller.signal,

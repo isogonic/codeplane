@@ -180,7 +180,7 @@ export const CronSidebarPanel = (props: {
               <div class="flex items-center gap-2 px-2 py-2 min-w-0">
                 <Icon name="arrow-left" size="small" class="shrink-0 icon-strong-base" />
                 <span class="text-14-medium text-text-strong truncate">
-                  Back
+                  {language.t("common.back")}
                 </span>
               </div>
             </A>
@@ -190,7 +190,11 @@ export const CronSidebarPanel = (props: {
       <div class="shrink-0 px-1">
         <A
           href={tasksHref()}
-          class="block w-full rounded-md transition-colors hover:bg-surface-raised-base-hover"
+          class="block w-full rounded-md transition-colors"
+          classList={{
+            "bg-surface-base-active": onTasksPage(),
+            "hover:bg-surface-raised-base-hover": !onTasksPage(),
+          }}
         >
           <div class="flex items-center gap-2 px-2 py-2 min-w-0">
             <Icon name="bell" size="small" class="shrink-0 icon-strong-base" />

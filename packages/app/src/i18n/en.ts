@@ -41,6 +41,8 @@ export const dict = {
   "cron.empty": "No scheduled tasks yet. Create one to run the agent automatically.",
   "cron.empty.project": "No scheduled tasks for this project yet.",
   "cron.create": "New scheduled task",
+  "cron.create.noProject": "No project available — open a project first.",
+  "common.back": "Back",
   "cron.delete.confirm": "Delete this scheduled task and all its runs?",
   "cron.action.pause": "Pause",
   "cron.action.resume": "Resume",
@@ -52,6 +54,7 @@ export const dict = {
   "cron.action.cancel": "Cancel run",
   "cron.action.openSession": "Open session",
   "cron.field.name": "Name",
+  "cron.field.name.placeholder": "Daily code review",
   "cron.field.description": "Description",
   "cron.field.prompt": "Task prompt",
   "cron.field.prompt.placeholder": "Describe exactly what the agent should do.",
@@ -146,6 +149,7 @@ export const dict = {
 
   "palette.search.placeholder": "Search files, commands, and sessions",
   "palette.empty": "No results found",
+  "palette.empty.filesPrompt": "Type to search files",
   "palette.group.commands": "Commands",
   "palette.group.files": "Files",
 
@@ -511,6 +515,20 @@ export const dict = {
   "toast.session.listFailed.title": "Failed to load sessions for {{project}}",
   "toast.project.reloadFailed.title": "Failed to reload {{project}}",
 
+  "toast.update.available.title": "Update available",
+  "toast.update.available.description": "Version {{version}} is ready to install.",
+  "toast.update.installing.title": "Installing update",
+  "toast.update.installing.description": "Hang tight — this can take a moment.",
+  "toast.update.installed.title": "Update installed",
+  "toast.update.installed.description": "Restart to start using version {{version}}.",
+  "toast.update.installed.descriptionFallback": "Restart to apply the update.",
+  "toast.update.failed.title": "Update failed",
+  "toast.update.failed.description": "Could not install the update.",
+  "toast.update.action.updateNow": "Update now",
+  "toast.update.action.later": "Later",
+  "toast.update.action.restart": "Restart",
+  "toast.update.action.dismiss": "Dismiss",
+
 
   "error.page.title": "Something went wrong",
   "error.page.description": "An error occurred while loading the application.",
@@ -564,6 +582,7 @@ export const dict = {
   "notification.session.responseReady.title": "Response ready",
   "notification.session.error.title": "Session error",
   "notification.session.error.fallbackDescription": "An error occurred",
+  "notification.session.untitled": "Untitled session",
   "notification.center.title": "Notifications",
   "notification.center.count": "{{count}} notifications",
   "notification.center.markAllRead": "Mark all read",
@@ -896,6 +915,20 @@ export const dict = {
 
   "settings.general.row.releaseNotes.title": "Release notes",
   "settings.general.row.releaseNotes.description": "Show What's New popups after updates",
+
+  "settings.general.section.updates": "Updates",
+  "settings.general.row.version.title": "Application version",
+  "settings.general.row.version.developmentBuild": "Development build",
+  "settings.general.row.version.descriptionLoading": "Checking for updates…",
+  "settings.general.row.version.descriptionError": "Could not check for updates. Try again.",
+  "settings.general.row.version.descriptionUpToDate": "You are on version {{current}} — up to date.",
+  "settings.general.row.version.descriptionHasUpdate": "Version {{latest}} is available. You are on {{current}}.",
+  "settings.general.row.version.descriptionUnknownMethod":
+    "You are on version {{current}}. Automatic updates are unavailable for this install — update manually.",
+  "settings.general.row.version.action.check": "Check for updates",
+  "settings.general.row.version.action.checking": "Checking…",
+  "settings.general.row.version.action.update": "Update now",
+  "settings.general.row.version.action.updating": "Updating…",
 
   "sound.option.none": "None",
   "sound.option.alert01": "Alert 01",

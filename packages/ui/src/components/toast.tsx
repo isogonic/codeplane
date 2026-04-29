@@ -113,11 +113,45 @@ export interface ToastOptions {
   duration?: number
   persistent?: boolean
   actions?: ToastAction[]
+  /** Stable id — replaces an existing toast with the same id instead of stacking. */
+  id?: string
 }
 
+function formatToastValue(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined
+  if (typeof value === "string") return value
+  if (typeof value === "number" || typeof value === "boolean") return String(value)
+  if (value instanceof Error) return value.message
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>
+    if (typeof obj.message === "string") return obj.message
+    if (typeof obj.error === "string") return obj.error
+    if (typeof obj.title === "string") return obj.title
+    try {
+      const json = JSON.stringify(value)
+      if (json && json !== "{}") return json
+    } catch {
+      /* fall through */
+    }
+    return undefined
+  }
+  return String(value)
+}
+
+const activeToastsById = new Map<string, number>()
+
 export function showToast(options: ToastOptions | string) {
-  const opts = typeof options === "string" ? { description: options } : options
-  return toaster.show((props) => (
+  const raw = typeof options === "string" ? { description: options } : options
+  const opts: ToastOptions = {
+    ...raw,
+    title: formatToastValue(raw.title),
+    description: formatToastValue(raw.description),
+  }
+  if (opts.id) {
+    const previous = activeToastsById.get(opts.id)
+    if (previous !== undefined) toaster.dismiss(previous)
+  }
+  const toastId = toaster.show((props) => (
     <Toast
       toastId={props.toastId}
       duration={opts.duration}
@@ -155,6 +189,10 @@ export function showToast(options: ToastOptions | string) {
       <Toast.CloseButton />
     </Toast>
   ))
+  if (opts.id) {
+    activeToastsById.set(opts.id, toastId)
+  }
+  return toastId
 }
 
 export interface ToastPromiseOptions<T, U = unknown> {

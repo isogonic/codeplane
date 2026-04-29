@@ -196,6 +196,39 @@ describe("layout workspace helpers", () => {
     expect(result.map((item) => item.id)).toEqual(["kept"])
   })
 
+  test("excludes cron sessions from the root session list", () => {
+    const result = sortedRootSessions(
+      {
+        path: { directory: "/workspace" },
+        session: [
+          session({
+            id: "regular",
+            directory: "/workspace",
+            title: "Hello world",
+            time: { created: 1, updated: 1, archived: undefined },
+          }),
+          session({
+            id: "cron-by-id",
+            directory: "/workspace",
+            title: "any title",
+            time: { created: 2, updated: 2, archived: undefined },
+            ...({ cronRunID: "run-1" } as Partial<Session>),
+          }),
+          session({
+            id: "cron-by-title",
+            directory: "/workspace",
+            title: "[Cron] daily report",
+            time: { created: 3, updated: 3, archived: undefined },
+          }),
+        ],
+      },
+      120_000,
+      "/workspace",
+    )
+
+    expect(result.map((item) => item.id)).toEqual(["regular"])
+  })
+
   test("detects project permissions with a filter", () => {
     const result = hasProjectPermissions(
       {

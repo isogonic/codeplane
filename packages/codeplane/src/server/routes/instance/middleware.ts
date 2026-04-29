@@ -27,6 +27,11 @@ export function InstanceMiddleware(workspaceID?: WorkspaceID): MiddlewareHandler
       "/tui",
       "/instance",
       "/path",
+      "/agent",
+      "/command",
+      "/vcs",
+      "/lsp",
+      "/formatter",
     ].some((prefix) => path === prefix || path.startsWith(prefix + "/"))
     if (!workspaceID && !instancePath) return next()
 

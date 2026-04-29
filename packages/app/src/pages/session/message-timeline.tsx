@@ -251,6 +251,27 @@ export function MessageTimeline(props: {
     if (!id) return emptyMessages
     return sync.data.message[id] ?? emptyMessages
   })
+  const turnSlices = createMemo(() => {
+    const all = sessionMessages()
+    const map = new Map<string, MessageType[]>()
+    for (let i = 0; i < all.length; i++) {
+      const msg = all[i]
+      if (!msg) continue
+      if (msg.role === "user") {
+        const slice: MessageType[] = [msg]
+        for (let j = i + 1; j < all.length; j++) {
+          const next = all[j]
+          if (!next) continue
+          if (next.role === "user") break
+          if (next.role === "assistant" && (next as AssistantMessage).parentID === msg.id) {
+            slice.push(next)
+          }
+        }
+        map.set(msg.id, slice)
+      }
+    }
+    return map
+  })
   const sessionStatus = createMemo(() => {
     const id = sessionID()
     if (!id) return idle
@@ -263,7 +284,23 @@ export function MessageTimeline(props: {
     )
   })
   const working = createMemo(() => sessionStatus().type !== "idle")
-  const tint = createMemo(() => messageAgentColor(sessionMessages(), sync.data.agent))
+  const lastUserAgent = createMemo(
+    () => {
+      const all = sessionMessages()
+      for (let i = all.length - 1; i >= 0; i--) {
+        const m = all[i] as { role: string; agent?: string } | undefined
+        if (m?.role === "user" && m.agent) return m.agent
+      }
+      return undefined
+    },
+    undefined,
+    { equals: (a, b) => a === b },
+  )
+  const tint = createMemo(() => {
+    const agent = lastUserAgent()
+    if (!agent) return undefined
+    return messageAgentColor([{ role: "user", agent }], sync.data.agent)
+  })
 
   const [timeoutDone, setTimeoutDone] = createSignal(true)
 
@@ -1059,6 +1096,15 @@ export function MessageTimeline(props: {
               <For each={rendered()}>
                 {(messageID) => {
                   const active = createMemo(() => activeMessageID() === messageID)
+                  const turnMessages = createMemo(
+                    () => turnSlices().get(messageID) ?? emptyMessages,
+                    emptyMessages,
+                    {
+                      equals: (a, b) =>
+                        a === b ||
+                        (a.length === b.length && a.every((m, i) => m === b[i])),
+                    },
+                  )
                   const comments = createMemo(() => messageComments(sync.data.part[messageID] ?? []), [], {
                     equals: (a, b) =>
                       a.length === b.length &&
@@ -1131,7 +1177,7 @@ export function MessageTimeline(props: {
                       <SessionTurn
                         sessionID={sessionID() ?? ""}
                         messageID={messageID}
-                        messages={sessionMessages()}
+                        messages={turnMessages()}
                         actions={props.actions}
                         active={active()}
                         status={active() ? sessionStatus() : undefined}

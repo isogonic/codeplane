@@ -172,7 +172,7 @@ function CronPageHeader(props: {
       showToast({
         variant: "error",
         title: language.t("common.requestFailed"),
-        description: "No project available — open a project first.",
+        description: language.t("cron.create.noProject"),
       })
       return
     }
@@ -646,7 +646,7 @@ function CronEditorDialog(props: {
           <TextField
             autofocus
             label={language.t("cron.field.name")}
-            placeholder="Daily code review"
+            placeholder={language.t("cron.field.name.placeholder")}
             value={store.name}
             onChange={(v: string) => setStore("name", v)}
             error={store.errors.name}

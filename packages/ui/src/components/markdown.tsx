@@ -60,7 +60,10 @@ function fallback(markdown: string) {
   return escape(markdown).replace(/\r\n?/g, "\n").replace(/\n/g, "<br>")
 }
 
-function wrapWords(text: string) {
+const wrapCache = new Map<string, string>()
+const wrapMax = 200
+
+function wrapWordsRaw(text: string) {
   const escaped = escape(text).replace(/\r\n?/g, "\n")
   let out = ""
   let buffer = ""
@@ -96,6 +99,25 @@ function wrapWords(text: string) {
     i++
   }
   flush()
+  return out
+}
+
+function wrapWords(text: string) {
+  if (text.length < 32) return wrapWordsRaw(text)
+  const key = checksum(text)
+  if (!key) return wrapWordsRaw(text)
+  const hit = wrapCache.get(key)
+  if (hit !== undefined) {
+    wrapCache.delete(key)
+    wrapCache.set(key, hit)
+    return hit
+  }
+  const out = wrapWordsRaw(text)
+  wrapCache.set(key, out)
+  if (wrapCache.size > wrapMax) {
+    const first = wrapCache.keys().next().value
+    if (first !== undefined) wrapCache.delete(first)
+  }
   return out
 }
 
@@ -729,6 +751,8 @@ export function Markdown(
 
   let copyCleanup: (() => void) | undefined
   let fileReferenceCleanup: (() => void) | undefined
+  let lastContent: string | undefined
+  let lastLocale: string | undefined
 
   createEffect(() => {
     const container = root()
@@ -740,18 +764,26 @@ export function Markdown(
     if (isServer) return
 
     if (!content) {
-      container.innerHTML = ""
+      if (lastContent !== "") {
+        container.innerHTML = ""
+        lastContent = ""
+      }
       return
     }
+
+    const locale = i18n.t("ui.message.copyCode")
+    if (content === lastContent && locale === lastLocale) return
 
     const labels = {
       copy: i18n.t("ui.message.copy"),
       copied: i18n.t("ui.message.copied"),
-      copyCode: i18n.t("ui.message.copyCode"),
+      copyCode: locale,
       copiedCode: i18n.t("ui.message.copiedCode"),
       copyPath: i18n.t("ui.message.copyPath"),
       copiedPath: i18n.t("ui.message.copiedPath"),
     }
+    lastContent = content
+    lastLocale = locale
     const temp = document.createElement("div")
     temp.innerHTML = content
     decorate(temp, labels)

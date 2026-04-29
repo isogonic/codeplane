@@ -98,6 +98,40 @@ export const GlobalRoutes = lazy(() =>
       },
     )
     .get(
+      "/version",
+      describeRoute({
+        summary: "Get installation version",
+        description: "Get current and latest available codeplane versions and the detected install method.",
+        operationId: "global.version",
+        responses: {
+          200: {
+            description: "Version information",
+            content: {
+              "application/json": {
+                schema: resolver(
+                  z.object({
+                    current: z.string(),
+                    latest: z.string().nullable(),
+                    hasUpdate: z.boolean(),
+                    method: z.string(),
+                  }),
+                ),
+              },
+            },
+          },
+        },
+      }),
+      async (c) => {
+        const method = await AppRuntime.runPromise(Installation.Service.use((svc) => svc.method()))
+        const latest = await AppRuntime.runPromise(Installation.Service.use((svc) => svc.latest(method))).catch(
+          () => null as string | null,
+        )
+        const current = InstallationVersion
+        const hasUpdate = !!latest && latest !== current
+        return c.json({ current, latest, hasUpdate, method })
+      },
+    )
+    .get(
       "/event",
       describeRoute({
         summary: "Get global events",

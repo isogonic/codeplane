@@ -373,6 +373,7 @@ export async function bootstrapDirectory(input: {
                 if (providerRev.get(revKey) !== rev) console.error("Failed to refresh provider list", err)
                 const project = getFilename(input.directory)
                 showToast({
+                  id: `bootstrap.reloadFailed:${input.directory}`,
                   variant: "error",
                   title: input.translate("toast.project.reloadFailed.title", { project }),
                   description: formatServerError(err, input.translate),
@@ -388,6 +389,7 @@ export async function bootstrapDirectory(input: {
       console.error("Failed to finish bootstrap instance", slowErrs[0])
       const project = getFilename(input.directory)
       showToast({
+        id: `bootstrap.reloadFailed:${input.directory}`,
         variant: "error",
         title: input.translate("toast.project.reloadFailed.title", { project }),
         description: formatServerError(slowErrs[0], input.translate),
