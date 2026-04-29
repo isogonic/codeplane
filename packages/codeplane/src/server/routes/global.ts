@@ -290,17 +290,23 @@ export const GlobalRoutes = lazy(() =>
             Effect.gen(function* () {
               const method = yield* svc.method()
               if (method === "unknown") {
-                return { success: false as const, status: 400 as const, error: "Unknown installation method" }
+                return {
+                  success: false as const,
+                  status: 400 as const,
+                  error: "Unknown installation method",
+                  method,
+                }
               }
 
               const target = c.req.valid("json").target || (yield* svc.latest(method))
               const result = yield* Effect.catch(
-                svc.upgrade(method, target).pipe(Effect.as({ success: true as const, version: target })),
+                svc.upgrade(method, target).pipe(Effect.as({ success: true as const, version: target, method })),
                 (err) =>
                   Effect.succeed({
                     success: false as const,
                     status: 500 as const,
                     error: err instanceof Error ? err.message : String(err),
+                    method,
                   }),
               )
               if (!result.success) return result
@@ -319,6 +325,12 @@ export const GlobalRoutes = lazy(() =>
             properties: { version: target },
           },
         })
+        // For self-hosted deployments, the upgrade script swaps the binary on disk
+        // but the in-process binary is unchanged. Exit so the container's restart
+        // policy brings us back on the new binary. Delay so the response flushes.
+        if (result.method === "selfhosted") {
+          setTimeout(() => process.exit(0), 3000)
+        }
         return c.json({ success: true, version: target })
       },
     ),

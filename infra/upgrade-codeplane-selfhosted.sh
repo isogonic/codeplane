@@ -87,16 +87,4 @@ chmod +x "$DEST_BIN.new"
 mv -f "$DEST_BIN.new" "$DEST_BIN"
 
 log "binary swapped to v${VERSION}"
-
-# Schedule a restart so the running process picks up the new binary.
-# Docker's restart policy (unless-stopped) brings the container back.
-# Detach with setsid + nohup so the subshell survives the codeplane child-process
-# scope teardown (otherwise Bun reaps it before sleep finishes).
-if [[ -n "$PARENT_PID" ]] && kill -0 "$PARENT_PID" 2>/dev/null; then
-  log "scheduling restart of pid $PARENT_PID in 5s"
-  setsid nohup bash -c "sleep 5; kill -TERM $PARENT_PID 2>/dev/null; sleep 5; kill -KILL $PARENT_PID 2>/dev/null || true" \
-    </dev/null >/dev/null 2>&1 &
-  disown || true
-fi
-
-log "upgrade to v${VERSION} complete"
+log "upgrade to v${VERSION} complete — codeplane will self-exit so the container restarts"
