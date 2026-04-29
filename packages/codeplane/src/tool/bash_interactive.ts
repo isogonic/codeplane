@@ -3,7 +3,8 @@ import { spawn as ptySpawn } from "#pty"
 import * as Tool from "./tool"
 import { Bus } from "../bus"
 import { BusEvent } from "../bus/bus-event"
-import { EffectBridge } from "@/effect"
+import { GlobalBus } from "../bus/global"
+import { InstanceState } from "@/effect"
 import {
   appendOutput,
   killProc,
@@ -71,7 +72,13 @@ export const BashInteractiveTool = Tool.define(
       parameters: Parameters,
       execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
         Effect.gen(function* () {
-          const bridge = yield* EffectBridge.make()
+          // Capture instance values up-front so we can emit chunk events to
+          // the global bus directly from the (synchronous) PTY data callback
+          // without needing an Effect context.
+          const instanceCtx = yield* InstanceState.context
+          const directory = instanceCtx.directory
+          const projectID = instanceCtx.project.id
+          const workspace = yield* InstanceState.workspaceID
           const command = params.command
           const callID = ctx.callID
           if (!callID) {
@@ -139,17 +146,23 @@ export const BashInteractiveTool = Tool.define(
                 const dataDisp = proc.onData((chunk) => {
                   allOutput += chunk
                   appendOutput(callID, chunk)
-                  // We're inside a JS callback. Use the EffectBridge captured
-                  // above so bus.publish runs with the correct InstanceState
-                  // / workspace context — without it the publish would fail
-                  // silently and the chunk would never reach SSE subscribers.
-                  bridge.fork(
-                    bus.publish(InteractiveChunk, {
-                      sessionID: ctx.sessionID,
-                      callID,
-                      chunk,
-                    }),
-                  )
+                  // Synchronous JS callback — emit straight to GlobalBus so
+                  // SSE subscribers see the chunk without round-tripping
+                  // through the Effect runtime (where the context required
+                  // by bus.publish is not available from this callback).
+                  GlobalBus.emit("event", {
+                    directory,
+                    project: projectID,
+                    workspace,
+                    payload: {
+                      type: InteractiveChunk.type,
+                      properties: {
+                        sessionID: ctx.sessionID,
+                        callID,
+                        chunk,
+                      },
+                    },
+                  })
                 })
 
                 const exitDisp = proc.onExit(({ exitCode, signal }) => {
