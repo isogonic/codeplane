@@ -52,7 +52,7 @@
     justify-content: flex-end;
     gap: 8px;
     width: fit-content;
-    max-width: min(82%, 64ch);
+    max-width: min(92%, 88ch);
     margin-left: auto;
   }
 
@@ -137,7 +137,7 @@
 
   [data-slot="user-message-body"] {
     width: fit-content;
-    max-width: min(82%, 64ch);
+    max-width: min(92%, 88ch);
     margin-left: auto;
     display: flex;
     flex-direction: column;
