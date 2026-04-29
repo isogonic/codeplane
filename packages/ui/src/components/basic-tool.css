@@ -40,32 +40,6 @@
     background-color: var(--surface-base);
   }
 
-  /* Subtle animated accent bar on the running row — Claude-like cue without
-     being noisy. Sits in the negative-margin gutter so it doesn't push the
-     content. */
-  &[data-pending="true"]::before {
-    content: "";
-    position: absolute;
-    left: 2px;
-    top: 8px;
-    bottom: 8px;
-    width: 2px;
-    border-radius: 2px;
-    background: var(--icon-interactive-base);
-    opacity: 0.85;
-    animation: tool-trigger-pending-pulse 1.6s ease-in-out infinite;
-  }
-
-  @keyframes tool-trigger-pending-pulse {
-    0%,
-    100% {
-      opacity: 0.45;
-    }
-    50% {
-      opacity: 0.95;
-    }
-  }
-
   &[data-hide-details="true"] {
     [data-slot="basic-tool-tool-trigger-content"] {
       flex: 1 1 auto;
