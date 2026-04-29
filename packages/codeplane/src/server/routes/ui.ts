@@ -14,12 +14,15 @@ const themePreloadScript =
   /<script\b(?![^>]*\bsrc\s*=)[^>]*\bid=(['"])oc-theme-preload-script\1[^>]*>([\s\S]*?)<\/script>/i
 
 const csp = (hash = "") =>
-  `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${hash ? ` 'sha256-${hash}'` : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self' data:`
+  `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${hash ? ` 'sha256-${hash}'` : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self' data: https: ws: wss:`
 
 const cspForHTML = (html: string) => {
   const match = html.match(themePreloadScript)
   return csp(match ? createHash("sha256").update(match[2]).digest("base64") : "")
 }
+
+const indexAsset = (embeddedWebUI: Record<string, string>) =>
+  Object.keys(embeddedWebUI).find((key) => /^assets\/index-[^/]+\.js$/.test(key))
 
 export const UIRoutes = (): Hono =>
   new Hono().all("/*", async (c) => {
@@ -27,12 +30,24 @@ export const UIRoutes = (): Hono =>
     const path = c.req.path
 
     if (embeddedWebUI) {
-      const match = embeddedWebUI[path.replace(/^\//, "")] ?? embeddedWebUI["index.html"] ?? null
+      const requested = path.replace(/^\//, "")
+      const match =
+        embeddedWebUI[requested] ??
+        (requested.startsWith("assets/index-") && requested.endsWith(".js")
+          ? embeddedWebUI[indexAsset(embeddedWebUI) ?? ""]
+          : undefined) ??
+        (requested.startsWith("assets/") ? undefined : embeddedWebUI["index.html"]) ??
+        null
       if (!match) return c.json({ error: "Not Found" }, 404)
 
       if (await fs.exists(match)) {
         const mime = getMimeType(match) ?? "text/plain"
         c.header("Content-Type", mime)
+        if (requested === "" || requested === "index.html" || mime.startsWith("text/html")) {
+          c.header("Cache-Control", "no-store, no-cache, must-revalidate")
+        } else if (requested.startsWith("assets/index-")) {
+          c.header("Cache-Control", "no-store, no-cache, must-revalidate")
+        }
         if (mime.startsWith("text/html")) {
           const html = await fs.readFile(match, "utf8")
           c.header("Content-Security-Policy", cspForHTML(html))

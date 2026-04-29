@@ -23,13 +23,10 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
 
     const eventFetch = (() => {
       if (!platform.fetch || !server.current) return
-      try {
-        const url = new URL(server.current.http.url)
-        const loopback = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "::1"
-        if (url.protocol === "http:" && !loopback) return platform.fetch
-      } catch {
-        return
-      }
+      if (!URL.canParse(server.current.http.url)) return
+      const url = new URL(server.current.http.url)
+      const loopback = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "::1"
+      if (!loopback) return platform.fetch
     })()
 
     const currentServer = server.current

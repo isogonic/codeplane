@@ -81,6 +81,13 @@ export function CorsMiddleware(opts?: { cors?: string[] }): MiddlewareHandler {
   })
 }
 
+export const TextJsonMiddleware: MiddlewareHandler = (c, next) => {
+  if (c.req.header("content-type")?.split(";")[0].trim().toLowerCase() === "text/plain") {
+    c.req.raw.headers.set("content-type", "application/json")
+  }
+  return next()
+}
+
 const zipped = compress()
 export const CompressionMiddleware: MiddlewareHandler = (c, next) => {
   const path = c.req.path
