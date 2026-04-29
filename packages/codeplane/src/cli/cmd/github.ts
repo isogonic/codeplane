@@ -245,7 +245,7 @@ export const GithubInstallCommand = cmd({
                 `    1. Commit the \`${WORKFLOW_FILE}\` file and push`,
                 step2,
                 "",
-                "    3. Go to a GitHub issue and comment `/oc summarize` to see the agent in action",
+                "    3. Go to a GitHub issue and comment `/codeplane summarize` to see the agent in action",
                 "",
                 "   Learn more about the GitHub agent - https://github.com/devinoldenburg/codeplane",
               ].join("\n"),
@@ -367,9 +367,7 @@ export const GithubInstallCommand = cmd({
             s.stop("Installed GitHub app")
 
             async function getInstallation() {
-              return await fetch(
-                `https://example.invalid/api?owner=${app.owner}&repo=${app.repo}`,
-              )
+              return await fetch(`https://example.invalid/api?owner=${app.owner}&repo=${app.repo}`)
                 .then((res) => res.json())
                 .then((data) => data.installation)
             }
@@ -394,8 +392,6 @@ on:
 jobs:
   codeplane:
     if: |
-      contains(github.event.comment.body, ' /oc') ||
-      startsWith(github.event.comment.body, '/oc') ||
       contains(github.event.comment.body, ' /codeplane') ||
       startsWith(github.event.comment.body, '/codeplane')
     runs-on: ubuntu-latest
@@ -794,7 +790,7 @@ export const GithubRunCommand = cmd({
         }
 
         const reviewContext = getReviewCommentContext()
-        const mentions = (process.env["MENTIONS"] || "/codeplane,/oc")
+        const mentions = (process.env["MENTIONS"] || "/codeplane")
           .split(",")
           .map((m) => m.trim().toLowerCase())
           .filter(Boolean)

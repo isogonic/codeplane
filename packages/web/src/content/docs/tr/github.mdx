@@ -3,7 +3,7 @@ title: GitHub
 description: GitHub sorunlarında ve çekme isteklerinde codeplane'u kullanın.
 ---
 
-codeplane, GitHub iş akışınızla bütünleşir. Yorumunuzda `/codeplane` veya `/oc`'den bahsedin; codeplane, GitHub Actions çalıştırıcınızdaki görevleri yürütecektir.
+codeplane, GitHub iş akışınızla bütünleşir. Yorumunuzda `/codeplane`'den bahsedin; codeplane, GitHub Actions çalıştırıcınızdaki görevleri yürütecektir.
 
 ---
 
@@ -51,7 +51,6 @@ Veya manuel olarak ayarlayabilirsiniz.
    jobs:
      codeplane:
        if: |
-         contains(github.event.comment.body, '/oc') ||
          contains(github.event.comment.body, '/codeplane')
        runs-on: ubuntu-latest
        permissions:
@@ -105,10 +104,10 @@ Veya manuel olarak ayarlayabilirsiniz.
 
 codeplane aşağıdaki GitHub olayları tarafından tetiklenebilir:
 
-| Olay Tipi                     | Tetikleyen                                    | Detaylar                                                                                                                                            |
-| ----------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `issue_comment`               | Bir soruna veya halkla ilişkilere yorum yapın | Yorumunuzda `/codeplane` veya `/oc`'den bahsedin. codeplane bağlamı okur ve şubeler oluşturabilir, PR'leri açabilir veya yanıt verebilir.             |
-| `pull_request_review_comment` | PR'deki belirli kod satırlarına yorum yapın   | Kodu incelerken `/codeplane` veya `/oc`'den bahsedin. codeplane dosya yolunu, satır numaralarını ve fark içeriğini alır.                              |
+| Olay Tipi                     | Tetikleyen                                    | Detaylar                                                                                                                                             |
+| ----------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `issue_comment`               | Bir soruna veya halkla ilişkilere yorum yapın | Yorumunuzda `/codeplane`'den bahsedin. codeplane bağlamı okur ve şubeler oluşturabilir, PR'leri açabilir veya yanıt verebilir.                       |
+| `pull_request_review_comment` | PR'deki belirli kod satırlarına yorum yapın   | Kodu incelerken `/codeplane`'den bahsedin. codeplane dosya yolunu, satır numaralarını ve fark içeriğini alır.                                        |
 | `issues`                      | Sayı açıldı veya düzenlendi                   | Sorunlar oluşturulduğunda veya değiştirildiğinde codeplane'u otomatik olarak tetikleyin. `prompt` girişi gerektirir.                                 |
 | `pull_request`                | PR açıldı veya güncellendi                    | PR'ler açıldığında, senkronize edildiğinde veya yeniden açıldığında codeplane'u otomatik olarak tetikleyin. Otomatik incelemeler için kullanışlıdır. |
 | `schedule`                    | Cron tabanlı program                          | codeplane'u bir programa göre çalıştırın. `prompt` girişi gerektirir. Çıktı, günlüklere ve PR'lere gider (yorum yapılacak bir sorun yoktur).         |
@@ -298,7 +297,7 @@ GitHub'da codeplane'u nasıl kullanabileceğinize dair bazı örnekleri burada b
   GitHub PR'a aşağıdaki yorumu bırakın.
 
   ```
-  Delete the attachment from S3 when the note is removed /oc
+  Delete the attachment from S3 when the note is removed /codeplane
   ```
 
   codeplane istenen değişikliği uygulayacak ve aynı PR'ye uygulayacaktır.
@@ -309,7 +308,7 @@ GitHub'da codeplane'u nasıl kullanabileceğinize dair bazı örnekleri burada b
 
   ```
   [Comment on specific lines in Files tab]
-  /oc add error handling here
+  /codeplane add error handling here
   ```
 
   Belirli satırlara yorum yaparken codeplane şunları alır:

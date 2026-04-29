@@ -3,7 +3,7 @@ title: GitHub
 description: Koristite CodePlane u GitHub problemima i zahtjevima za povlačenjem.
 ---
 
-CodePlane se integriše sa vašim GitHub tokovom rada. Spomenite `/codeplane` ili `/oc` u svom komentaru i CodePlane će izvršiti zadatke unutar vašeg GitHub Actions runnera.
+CodePlane se integriše sa vašim GitHub tokovom rada. Spomenite `/codeplane` u svom komentaru i CodePlane će izvršiti zadatke unutar vašeg GitHub Actions runnera.
 
 ---
 
@@ -48,7 +48,6 @@ Ili ga možete postaviti ručno.
    jobs:
      codeplane:
        if: |
-         contains(github.event.comment.body, '/oc') ||
          contains(github.event.comment.body, '/codeplane')
        runs-on: ubuntu-latest
        permissions:
@@ -101,8 +100,8 @@ Također možete koristiti [Personal Access Tokens](https://docs.github.com/en/a
 CodePlane se može pokrenuti sljedećim GitHub događajima:
 | Vrsta događaja | Pokrenuo | Detalji
 |----------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `issue_comment` | Komentirajte problem ili PR | Navedite `/codeplane` ili `/oc` u svom komentaru. CodePlane čita kontekst i može kreirati grane, otvarati PR-ove ili odgovarati. |
-| `pull_request_review_comment` | Komentirajte određene linije koda u PR-u | Navedite `/codeplane` ili `/oc` dok pregledavate kod. CodePlane prima putanju datoteke, brojeve redova i kontekst razlike. |
+| `issue_comment` | Komentirajte problem ili PR | Navedite `/codeplane` u svom komentaru. CodePlane čita kontekst i može kreirati grane, otvarati PR-ove ili odgovarati. |
+| `pull_request_review_comment` | Komentirajte određene linije koda u PR-u | Navedite `/codeplane` dok pregledavate kod. CodePlane prima putanju datoteke, brojeve redova i kontekst razlike. |
 | `issues` | Broj otvoren ili uređen | Automatski pokrenite CodePlane kada se problemi kreiraju ili modificiraju. Zahtijeva `prompt` unos. |
 | `pull_request` | PR otvoren ili ažuriran | Automatski pokrenite CodePlane kada se PR-ovi otvore, sinkroniziraju ili ponovo otvore. Korisno za automatske recenzije. |
 | `schedule` | Cron baziran raspored | Pokrenite CodePlane prema rasporedu. Zahtijeva `prompt` unos. Izlaz ide u dnevnike i PR-ove (nema problema za komentarisanje). |
@@ -289,7 +288,7 @@ I CodePlane će kreirati novu granu, implementirati promjene i otvoriti PR sa pr
   Ostavite sljedeći komentar na GitHub PR-u.
 
 ```
-  Delete the attachment from S3 when the note is removed /oc
+  Delete the attachment from S3 when the note is removed /codeplane
 ```
 
 CodePlane će implementirati traženu promjenu i posvetiti je istom PR-u.
@@ -299,7 +298,7 @@ CodePlane će implementirati traženu promjenu i posvetiti je istom PR-u.
 
 ```
   [Comment on specific lines in Files tab]
-  /oc add error handling here
+  /codeplane add error handling here
 ```
 
 Kada komentarišete određene linije, CodePlane prima:

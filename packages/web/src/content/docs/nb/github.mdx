@@ -3,7 +3,7 @@ title: GitHub
 description: Bruk codeplane i GitHub-problemer og pull-forespørsler.
 ---
 
-CodePlane integreres med GitHub-arbeidsflyten din. Nevn `/codeplane` eller `/oc` i kommentaren din, og CodePlane vil utføre oppgaver i din GitHub Actions-løper.
+CodePlane integreres med GitHub-arbeidsflyten din. Nevn `/codeplane` i kommentaren din, og CodePlane vil utføre oppgaver i din GitHub Actions-løper.
 
 ---
 
@@ -51,7 +51,6 @@ Eller du kan sette den opp manuelt.
    jobs:
      codeplane:
        if: |
-         contains(github.event.comment.body, '/oc') ||
          contains(github.event.comment.body, '/codeplane')
        runs-on: ubuntu-latest
        permissions:
@@ -105,14 +104,14 @@ Eller du kan sette den opp manuelt.
 
 CodePlane kan utløses av følgende GitHub-hendelser:
 
-| Hendelsestype                 | Utløst av                               | Detaljer                                                                                                                |
-| ----------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `issue_comment`               | Kommentar på sak eller PR               | Nevn `/codeplane` eller `/oc` i kommentaren din. CodePlane leser kontekst og kan opprette grener, åpne PR-er eller svare. |
-| `pull_request_review_comment` | Kommenter spesifikke kodelinjer i en PR | Nevn `/codeplane` eller `/oc` mens du ser gjennom koden. CodePlane mottar filbane, linjenummer og diff-kontekst.          |
-| `issues`                      | Sak åpnet eller redigert                | Utløs CodePlane automatisk når saker opprettes eller endres. Krever `prompt` inngang.                                    |
-| `pull_request`                | PR åpnet eller oppdatert                | Utløs CodePlane automatisk når PR-er åpnes, synkroniseres eller gjenåpnes. Nyttig for automatiserte anmeldelser.         |
-| `schedule`                    | Cron-basert tidsplan                    | Kjør CodePlane etter en tidsplan. Krever `prompt` inngang. Utdata går til logger og PR (ingen sak å kommentere).         |
-| `workflow_dispatch`           | Manuell utløser fra GitHub UI           | Utløs CodePlane på forespørsel via fanen Handlinger. Krever `prompt` inngang. Utdata går til logger og PR-er.            |
+| Hendelsestype                 | Utløst av                               | Detaljer                                                                                                         |
+| ----------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `issue_comment`               | Kommentar på sak eller PR               | Nevn `/codeplane` i kommentaren din. CodePlane leser kontekst og kan opprette grener, åpne PR-er eller svare.    |
+| `pull_request_review_comment` | Kommenter spesifikke kodelinjer i en PR | Nevn `/codeplane` mens du ser gjennom koden. CodePlane mottar filbane, linjenummer og diff-kontekst.             |
+| `issues`                      | Sak åpnet eller redigert                | Utløs CodePlane automatisk når saker opprettes eller endres. Krever `prompt` inngang.                            |
+| `pull_request`                | PR åpnet eller oppdatert                | Utløs CodePlane automatisk når PR-er åpnes, synkroniseres eller gjenåpnes. Nyttig for automatiserte anmeldelser. |
+| `schedule`                    | Cron-basert tidsplan                    | Kjør CodePlane etter en tidsplan. Krever `prompt` inngang. Utdata går til logger og PR (ingen sak å kommentere). |
+| `workflow_dispatch`           | Manuell utløser fra GitHub UI           | Utløs CodePlane på forespørsel via fanen Handlinger. Krever `prompt` inngang. Utdata går til logger og PR-er.    |
 
 ### Eksempel på tidsplan
 
@@ -302,7 +301,7 @@ Du kan konfigurere til å bruke en annen triggerfrase enn `@codeplane`.
   Legg igjen følgende kommentar på en GitHub PR.
 
   ```
-  Delete the attachment from S3 when the note is removed /oc
+  Delete the attachment from S3 when the note is removed /codeplane
   ```
 
   CodePlane vil implementere den forespurte endringen og committe den til samme PR.
@@ -313,7 +312,7 @@ Du kan konfigurere til å bruke en annen triggerfrase enn `@codeplane`.
 
   ```
   [Comment on specific lines in Files tab]
-  /oc add error handling here
+  /codeplane add error handling here
   ```
 
   Når du kommenterer spesifikke linjer, mottar CodePlane:

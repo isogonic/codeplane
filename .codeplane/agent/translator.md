@@ -424,7 +424,6 @@ codeplane.server.close()
 /mnt/c/
 /mnt/d/
 /models
-/oc
 /codeplane
 /path
 /project

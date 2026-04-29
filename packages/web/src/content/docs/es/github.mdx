@@ -3,7 +3,7 @@ title: GitHub
 description: Utilice CodePlane en problemas y solicitudes de extracción de GitHub.
 ---
 
-CodePlane se integra con su flujo de trabajo GitHub. Mencione `/codeplane` o `/oc` en su comentario y CodePlane ejecutará tareas dentro de su corredor de acciones GitHub.
+CodePlane se integra con su flujo de trabajo GitHub. Mencione `/codeplane` en su comentario y CodePlane ejecutará tareas dentro de su corredor de acciones GitHub.
 
 ---
 
@@ -51,7 +51,6 @@ O puede configurarlo manualmente.
    jobs:
      codeplane:
        if: |
-         contains(github.event.comment.body, '/oc') ||
          contains(github.event.comment.body, '/codeplane')
        runs-on: ubuntu-latest
        permissions:
@@ -105,10 +104,10 @@ O puede configurarlo manualmente.
 
 CodePlane puede desencadenarse por los siguientes eventos GitHub:
 
-| Tipo de evento                | Activado por                                  | Detalles                                                                                                                                        |
-| ----------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `issue_comment`               | Comentar sobre un tema o PR                   | Mencione `/codeplane` o `/oc` en su comentario. CodePlane lee el contexto y puede crear ramas, abrir relaciones públicas o responder.             |
-| `pull_request_review_comment` | Comente líneas de código específicas en un PR | Mencione `/codeplane` o `/oc` mientras revisa el código. CodePlane recibe la ruta del archivo, los números de línea y el contexto de diferencias. |
+| Tipo de evento                | Activado por                                  | Detalles                                                                                                                                         |
+| ----------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `issue_comment`               | Comentar sobre un tema o PR                   | Mencione `/codeplane` en su comentario. CodePlane lee el contexto y puede crear ramas, abrir relaciones públicas o responder.                    |
+| `pull_request_review_comment` | Comente líneas de código específicas en un PR | Mencione `/codeplane` mientras revisa el código. CodePlane recibe la ruta del archivo, los números de línea y el contexto de diferencias.        |
 | `issues`                      | Número abierto o editado                      | Activa automáticamente CodePlane cuando se crean o modifican problemas. Requiere entrada `prompt`.                                               |
 | `pull_request`                | PR abierto o actualizado                      | Activa automáticamente CodePlane cuando los PR se abren, sincronizan o vuelven a abrir. Útil para revisiones automatizadas.                      |
 | `schedule`                    | Programación basada en cron                   | Ejecute CodePlane según una programación. Requiere entrada `prompt`. La salida va a registros y relaciones públicas (no hay temas que comentar). |
@@ -298,7 +297,7 @@ A continuación se muestran algunos ejemplos de cómo puede utilizar CodePlane e
   Deja el siguiente comentario en un GitHub PR.
 
   ```
-  Delete the attachment from S3 when the note is removed /oc
+  Delete the attachment from S3 when the note is removed /codeplane
   ```
 
   CodePlane implementará el cambio solicitado y lo comprometerá con el mismo PR.
@@ -309,7 +308,7 @@ A continuación se muestran algunos ejemplos de cómo puede utilizar CodePlane e
 
   ```
   [Comment on specific lines in Files tab]
-  /oc add error handling here
+  /codeplane add error handling here
   ```
 
   Al comentar líneas específicas, CodePlane recibe:
