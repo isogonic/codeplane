@@ -542,7 +542,7 @@ export const dict = {
   "sidebar.project.recentSessions": "Sessões recentes",
   "sidebar.project.viewAllSessions": "Ver todas as sessões",
   "sidebar.project.clearNotifications": "Limpar notificações",
-  "app.name.web": "CodePlane Web",
+  "app.name.web": "CodePlane",
   "settings.section.app": "App",
   "settings.section.server": "Servidor",
   "settings.tab.general": "Geral",

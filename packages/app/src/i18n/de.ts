@@ -602,7 +602,7 @@ export const dict = {
   "sidebar.sessionPreview.loading": "Lade Vorschau...",
   "sidebar.sessionPreview.empty": "Noch kein Prompt",
   "sidebar.sessionPreview.duration": "Dauer",
-  "app.name.web": "CodePlane Web",
+  "app.name.web": "CodePlane",
   "settings.section.app": "App",
   "settings.section.server": "Server",
   "settings.section.ai": "KI",

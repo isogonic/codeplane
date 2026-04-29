@@ -536,7 +536,7 @@ export const dict = {
   "sidebar.project.recentSessions": "최근 세션",
   "sidebar.project.viewAllSessions": "모든 세션 보기",
   "sidebar.project.clearNotifications": "알림 지우기",
-  "app.name.web": "CodePlane Web",
+  "app.name.web": "CodePlane",
   "settings.section.app": "App",
   "settings.section.server": "서버",
   "settings.tab.general": "일반",
