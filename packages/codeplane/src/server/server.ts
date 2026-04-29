@@ -93,7 +93,7 @@ export async function openapi() {
     documentation: {
       info: {
         title: "codeplane",
-        version: "26.5.1",
+        version: "26.5.2",
         description: "codeplane api",
       },
       openapi: "3.1.1",
@@ -113,13 +113,10 @@ export async function listen(opts: {
 }): Promise<Listener> {
   const built = create(opts)
 
-  // Pre-warm AppRuntime and start the cron scheduler before accepting connections.
-  // This ensures no HTTP request ever waits for layer initialization.
+  const server = await built.runtime.listen(opts)
   await AppRuntime.runPromise(CronScheduler.Service.use((svc) => svc.start())).catch((err) => {
     log.error("failed to start cron scheduler", { error: err instanceof Error ? err.message : String(err) })
   })
-
-  const server = await built.runtime.listen(opts)
 
   const next = new URL("http://localhost")
   next.hostname = opts.hostname

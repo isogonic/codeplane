@@ -398,7 +398,7 @@ export async function waitForSync(workspaceID: WorkspaceID, state: Record<string
       timeout: TIMEOUT,
       signal,
       fn(event) {
-        if (event.workspace !== workspaceID && event.payload.type !== "sync") {
+        if (event.workspace !== workspaceID || event.payload.type !== "sync") {
           return false
         }
         return synced(state)
@@ -472,11 +472,14 @@ async function syncHistory(space: Info, url: URL | string, headers: HeadersInit 
   }
 
   const events = await res.json()
+  if (!Array.isArray(events)) throw new Error("Workspace history response must be an array")
+  const rows = events.filter(isHistoryEvent)
+  if (rows.length !== events.length) throw new Error("Workspace history response included invalid events")
 
-  return WorkspaceContext.provide({
+  const result = WorkspaceContext.provide({
     workspaceID: space.id,
     fn: () => {
-      for (const event of events) {
+      for (const event of rows) {
         SyncEvent.replay(
           {
             id: event.id,
@@ -493,8 +496,31 @@ async function syncHistory(space: Info, url: URL | string, headers: HeadersInit 
 
   log.info("workspace history synced", {
     workspaceID: space.id,
-    events: events.length,
+    events: rows.length,
   })
+  return result
+}
+
+type HistoryEvent = {
+  id: string
+  aggregate_id: string
+  seq: number
+  type: string
+  data: Record<string, unknown>
+}
+
+function isHistoryEvent(event: unknown): event is HistoryEvent {
+  if (!event || typeof event !== "object") return false
+  const row = event as Record<string, unknown>
+  return (
+    typeof row.id === "string" &&
+    typeof row.aggregate_id === "string" &&
+    Number.isInteger(row.seq) &&
+    typeof row.type === "string" &&
+    !!row.data &&
+    typeof row.data === "object" &&
+    !Array.isArray(row.data)
+  )
 }
 
 async function syncWorkspaceLoop(space: Info, signal: AbortSignal) {
@@ -514,6 +540,7 @@ async function syncWorkspaceLoop(space: Info, signal: AbortSignal) {
       stream = await connectSSE(target.url, target.headers, signal)
       await syncHistory(space, target.url, target.headers, signal)
     } catch (err) {
+      if (signal.aborted) break
       stream = null
       setStatus(space.id, "error")
       log.info("failed to connect to global sync", {
@@ -551,13 +578,20 @@ async function syncWorkspaceLoop(space: Info, signal: AbortSignal) {
         }
       })
 
+      if (signal.aborted) break
+
       log.info("disconnected from global sync: " + space.id)
       setStatus(space.id, "disconnected")
     }
 
+    if (signal.aborted) break
+
     // Back off reconnect attempts up to 2 minutes while the workspace
     // stays unavailable.
-    await sleep(Math.min(120_000, 1_000 * 2 ** attempt))
+    await sleep(Math.min(120_000, 1_000 * 2 ** attempt), undefined, { signal }).catch((error) => {
+      if (signal.aborted) return
+      throw error
+    })
     attempt += 1
   }
 }
@@ -584,6 +618,7 @@ async function startSync(space: Info) {
 
   void syncWorkspaceLoop(space, abort.signal).catch((error) => {
     aborts.delete(space.id)
+    if (abort.signal.aborted) return
 
     setStatus(space.id, "error")
     log.warn("workspace listener failed", {

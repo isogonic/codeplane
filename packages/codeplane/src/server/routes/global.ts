@@ -7,6 +7,7 @@ import { BusEvent } from "@/bus/bus-event"
 import { SyncEvent } from "@/sync"
 import { GlobalBus } from "@/bus/global"
 import { AppRuntime } from "@/effect/app-runtime"
+import { makeRuntime } from "@/effect/run-service"
 import { AsyncQueue } from "@/util/queue"
 import { Instance } from "../../project/instance"
 import { Installation } from "@/installation"
@@ -18,6 +19,7 @@ import { errors } from "../error"
 import { CronRoutes } from "./cron"
 
 const log = Log.create({ service: "server" })
+const configRuntime = makeRuntime(Config.Service, Config.defaultLayer)
 
 export const GlobalDisposedEvent = BusEvent.define("global.disposed", Schema.Struct({}))
 
@@ -156,7 +158,7 @@ export const GlobalRoutes = lazy(() =>
         },
       }),
       async (c) => {
-        return c.json(await AppRuntime.runPromise(Config.Service.use((cfg) => cfg.getGlobal())))
+        return c.json(await configRuntime.runPromise((cfg) => cfg.getGlobal()))
       },
     )
     .patch(
@@ -180,7 +182,7 @@ export const GlobalRoutes = lazy(() =>
       validator("json", Config.Info.zod),
       async (c) => {
         const config = c.req.valid("json")
-        const next = await AppRuntime.runPromise(Config.Service.use((cfg) => cfg.updateGlobal(config)))
+        const next = await configRuntime.runPromise((cfg) => cfg.updateGlobal(config))
         return c.json(next)
       },
     )

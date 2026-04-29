@@ -10,7 +10,11 @@ import { mapValues } from "remeda"
 import { errors } from "../../error"
 import { lazy } from "@/util/lazy"
 import { Effect } from "effect"
-import { jsonRequest } from "./trace"
+import { makeRuntime } from "@/effect/run-service"
+
+const configRuntime = makeRuntime(Config.Service, Config.defaultLayer)
+const providerRuntime = makeRuntime(Provider.Service, Provider.defaultLayer)
+const providerAuthRuntime = makeRuntime(ProviderAuth.Service, ProviderAuth.defaultLayer)
 
 export const ProviderRoutes = lazy(() =>
   new Hono()
@@ -31,30 +35,28 @@ export const ProviderRoutes = lazy(() =>
           },
         },
       }),
-      async (c) =>
-        jsonRequest("ProviderRoutes.list", c, function* () {
-          const svc = yield* Provider.Service
-          const cfg = yield* Config.Service
-          const config = yield* cfg.get()
-          const all = yield* Effect.promise(() => ModelsDev.get())
-          const disabled = new Set(config.disabled_providers ?? [])
-          const enabled = config.enabled_providers ? new Set(config.enabled_providers) : undefined
-          const filtered: Record<string, (typeof all)[string]> = {}
-          for (const [key, value] of Object.entries(all)) {
-            if ((enabled ? enabled.has(key) : true) && !disabled.has(key)) {
-              filtered[key] = value
-            }
-          }
-          const connected = yield* svc.list()
-          const catalog = mapValues(filtered, (x) => Provider.catalogProvider(Provider.fromModelsDevProvider(x)))
-          const providers = Object.assign({}, catalog, connected)
-          return {
-            all: Object.values(providers),
-            catalog: Object.values(catalog),
-            default: Provider.defaultModelIDs(providers),
-            connected: Object.keys(connected),
-          }
-        }),
+      async (c) => {
+        const [config, all, connected] = await Promise.all([
+          configRuntime.runPromise((svc) => svc.get()),
+          ModelsDev.get(),
+          providerRuntime.runPromise((svc) => svc.list()),
+        ])
+        const disabled = new Set(config.disabled_providers ?? [])
+        const enabled = config.enabled_providers ? new Set(config.enabled_providers) : undefined
+        const catalog = mapValues(
+          Object.fromEntries(
+            Object.entries(all).filter(([key]) => (enabled ? enabled.has(key) : true) && !disabled.has(key)),
+          ),
+          (x) => Provider.catalogProvider(Provider.fromModelsDevProvider(x)),
+        )
+        const providers = Object.assign({}, catalog, connected)
+        return c.json({
+          all: Object.values(providers),
+          catalog: Object.values(catalog),
+          default: Provider.defaultModelIDs(providers),
+          connected: Object.keys(connected),
+        })
+      },
     )
     .get(
       "/auth",
@@ -73,11 +75,7 @@ export const ProviderRoutes = lazy(() =>
           },
         },
       }),
-      async (c) =>
-        jsonRequest("ProviderRoutes.auth", c, function* () {
-          const svc = yield* ProviderAuth.Service
-          return yield* svc.methods()
-        }),
+      async (c) => c.json(await providerAuthRuntime.runPromise((svc) => svc.methods())),
     )
     .post(
       "/:providerID/oauth/authorize",
@@ -105,16 +103,19 @@ export const ProviderRoutes = lazy(() =>
       ),
       validator("json", ProviderAuth.AuthorizeInput.zod),
       async (c) =>
-        jsonRequest("ProviderRoutes.oauth.authorize", c, function* () {
-          const providerID = c.req.valid("param").providerID
-          const { method, inputs } = c.req.valid("json")
-          const svc = yield* ProviderAuth.Service
-          return yield* svc.authorize({
-            providerID,
-            method,
-            inputs,
-          })
-        }),
+        c.json(
+          await providerAuthRuntime.runPromise((svc) =>
+            Effect.gen(function* () {
+              const providerID = c.req.valid("param").providerID
+              const { method, inputs } = c.req.valid("json")
+              return yield* svc.authorize({
+                providerID,
+                method,
+                inputs,
+              })
+            }),
+          ),
+        ),
     )
     .post(
       "/:providerID/oauth/callback",
@@ -142,16 +143,19 @@ export const ProviderRoutes = lazy(() =>
       ),
       validator("json", ProviderAuth.CallbackInput.zod),
       async (c) =>
-        jsonRequest("ProviderRoutes.oauth.callback", c, function* () {
-          const providerID = c.req.valid("param").providerID
-          const { method, code } = c.req.valid("json")
-          const svc = yield* ProviderAuth.Service
-          yield* svc.callback({
-            providerID,
-            method,
-            code,
-          })
-          return true
-        }),
+        c.json(
+          await providerAuthRuntime.runPromise((svc) =>
+            Effect.gen(function* () {
+              const providerID = c.req.valid("param").providerID
+              const { method, code } = c.req.valid("json")
+              yield* svc.callback({
+                providerID,
+                method,
+                code,
+              })
+              return true
+            }),
+          ),
+        ),
     ),
 )

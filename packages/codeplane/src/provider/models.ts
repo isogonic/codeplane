@@ -8,6 +8,7 @@ import { lazy } from "@/util/lazy"
 import { Filesystem } from "../util"
 import { Flock } from "@codeplane-ai/shared/util/flock"
 import { Hash } from "@codeplane-ai/shared/util/hash"
+import { isRecord } from "@/util/record"
 
 // Try to import bundled snapshot (generated at build time)
 // Falls back to undefined in dev mode when snapshot doesn't exist
@@ -118,7 +119,17 @@ const fetchApi = async () => {
     headers: { "User-Agent": Installation.USER_AGENT },
     signal: AbortSignal.timeout(10000),
   })
-  return { ok: result.ok, text: await result.text() }
+  return { ok: result.ok, status: result.status, text: await result.text() }
+}
+
+const parseApi = async (text: string) => {
+  const parsed = (await new Response(text).json().catch((error) => {
+    log.error("Failed to parse models.dev response", { error })
+    return undefined
+  })) as unknown
+  if (isRecord(parsed)) return parsed
+  log.error("Failed to parse models.dev response", { error: "response was not an object" })
+  return undefined
 }
 
 export const Data = lazy(async () => {
@@ -133,13 +144,21 @@ export const Data = lazy(async () => {
   return Flock.withLock(`models-dev:${filepath}`, async () => {
     const result = await Filesystem.readJson(Flag.CODEPLANE_MODELS_PATH ?? filepath).catch(() => {})
     if (result) return result
-    const result2 = await fetchApi()
-    if (result2.ok) {
-      await Filesystem.write(filepath, result2.text).catch((e) => {
-        log.error("Failed to write models cache", { error: e })
-      })
+    const result2 = await fetchApi().catch((error) => {
+      log.error("Failed to fetch models.dev", { error })
+      return undefined
+    })
+    if (!result2) return {}
+    if (!result2.ok) {
+      log.error("Failed to fetch models.dev", { status: result2.status })
+      return {}
     }
-    return JSON.parse(result2.text)
+    const parsed = await parseApi(result2.text)
+    if (!parsed) return {}
+    await Filesystem.write(filepath, result2.text).catch((e) => {
+      log.error("Failed to write models cache", { error: e })
+    })
+    return parsed
   })
 })
 
@@ -154,6 +173,8 @@ export async function refresh(force = false) {
     if (skip(force)) return Data.reset()
     const result = await fetchApi()
     if (!result.ok) return
+    const parsed = await parseApi(result.text)
+    if (!parsed) return
     await Filesystem.write(filepath, result.text)
     Data.reset()
   }).catch((e) => {

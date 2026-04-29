@@ -37,6 +37,15 @@ export function withNetworkOptions<T>(yargs: Argv<T>) {
   return yargs.options(options)
 }
 export async function resolveNetworkOptions(args: NetworkOptions) {
+  const portExplicitlySet = process.argv.includes("--port")
+  const hostnameExplicitlySet = process.argv.includes("--hostname")
+  const mdnsExplicitlySet = process.argv.includes("--mdns")
+  const mdnsDomainExplicitlySet = process.argv.includes("--mdns-domain")
+  const corsExplicitlySet = process.argv.includes("--cors")
+  if (portExplicitlySet && hostnameExplicitlySet && !mdnsExplicitlySet && !mdnsDomainExplicitlySet && !corsExplicitlySet) {
+    return resolveNetworkOptionsNoConfig(args)
+  }
+
   const config = await AppRuntime.runPromise(Config.Service.use((cfg) => cfg.getGlobal()))
   return resolveNetworkOptionsNoConfig(args, config)
 }

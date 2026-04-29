@@ -1,7 +1,7 @@
 import { Effect, Layer, Schema } from "effect"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { HttpRouter, HttpServer, HttpServerRequest } from "effect/unstable/http"
-import { AppRuntime } from "@/effect/app-runtime"
+import { BootstrapRuntime } from "@/effect/bootstrap-runtime"
 import { InstanceRef, WorkspaceRef } from "@/effect/instance-ref"
 import { Observability } from "@/effect"
 import { InstanceBootstrap } from "@/project/bootstrap"
@@ -49,7 +49,7 @@ const instance = HttpRouter.middleware()(
         const ctx = yield* Effect.promise(() =>
           Instance.provide({
             directory: Filesystem.resolve(decode(raw)),
-            init: () => AppRuntime.runPromise(InstanceBootstrap),
+            init: () => BootstrapRuntime.runPromise(InstanceBootstrap),
             fn: () => Instance.current,
           }),
         )

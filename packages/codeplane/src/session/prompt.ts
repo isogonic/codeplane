@@ -637,6 +637,14 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       const ctx = yield* InstanceState.context
       const promptOps = yield* ops()
       const { task: taskTool } = yield* registry.named()
+      const taskAgent = yield* agents.get(task.agent)
+      if (!taskAgent) {
+        const available = (yield* agents.list()).filter((a) => !a.hidden).map((a) => a.name)
+        const hint = available.length ? ` Available agents: ${available.join(", ")}` : ""
+        const error = new NamedError.Unknown({ message: `Agent not found: "${task.agent}".${hint}` })
+        yield* bus.publish(Session.Event.Error, { sessionID, error: error.toObject() })
+        throw error
+      }
       const taskModel = task.model ? yield* getModel(task.model.providerID, task.model.modelID, sessionID) : model
       const assistantMessage: MessageV2.Assistant = yield* sessions.updateMessage({
         id: MessageID.ascending(),
@@ -679,18 +687,9 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       }
       yield* plugin.trigger(
         "tool.execute.before",
-        { tool: TaskTool.id, sessionID, callID: part.id },
+        { tool: TaskTool.id, sessionID, callID: part.callID },
         { args: taskArgs },
       )
-
-      const taskAgent = yield* agents.get(task.agent)
-      if (!taskAgent) {
-        const available = (yield* agents.list()).filter((a) => !a.hidden).map((a) => a.name)
-        const hint = available.length ? ` Available agents: ${available.join(", ")}` : ""
-        const error = new NamedError.Unknown({ message: `Agent not found: "${task.agent}".${hint}` })
-        yield* bus.publish(Session.Event.Error, { sessionID, error: error.toObject() })
-        throw error
-      }
 
       let error: Error | undefined
       const taskAbort = new AbortController()
@@ -757,11 +756,12 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         messageID: assistantMessage.id,
       }))
 
-      yield* plugin.trigger(
-        "tool.execute.after",
-        { tool: TaskTool.id, sessionID, callID: part.id, args: taskArgs },
-        result,
-      )
+      if (result)
+        yield* plugin.trigger(
+          "tool.execute.after",
+          { tool: TaskTool.id, sessionID, callID: part.callID, args: taskArgs },
+          result,
+        )
 
       assistantMessage.finish = "tool-calls"
       assistantMessage.time.completed = Date.now()
@@ -995,7 +995,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         Effect.exit,
       )
 
-      if (Exit.isFailure(exit) && !Cause.hasInterruptsOnly(exit.cause)) {
+      if (Exit.isFailure(exit) && !aborted && !Cause.hasInterruptsOnly(exit.cause)) {
         return yield* Effect.failCause(exit.cause)
       }
 

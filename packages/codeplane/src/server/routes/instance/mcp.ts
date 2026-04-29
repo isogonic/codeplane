@@ -6,7 +6,9 @@ import { ConfigMCP } from "@/config/mcp"
 import { errors } from "../../error"
 import { lazy } from "@/util/lazy"
 import { Effect } from "effect"
-import { jsonRequest, runRequest } from "./trace"
+import { makeRuntime } from "@/effect/run-service"
+
+const mcpRuntime = makeRuntime(MCP.Service, MCP.defaultLayer)
 
 export const McpRoutes = lazy(() =>
   new Hono()
@@ -27,11 +29,7 @@ export const McpRoutes = lazy(() =>
           },
         },
       }),
-      async (c) =>
-        jsonRequest("McpRoutes.status", c, function* () {
-          const mcp = yield* MCP.Service
-          return yield* mcp.status()
-        }),
+      async (c) => c.json(await mcpRuntime.runPromise((svc) => svc.status())),
     )
     .post(
       "/",
@@ -59,12 +57,15 @@ export const McpRoutes = lazy(() =>
         }),
       ),
       async (c) =>
-        jsonRequest("McpRoutes.add", c, function* () {
-          const { name, config } = c.req.valid("json")
-          const mcp = yield* MCP.Service
-          const result = yield* mcp.add(name, config)
-          return result.status
-        }),
+        c.json(
+          await mcpRuntime.runPromise((svc) =>
+            Effect.gen(function* () {
+              const { name, config } = c.req.valid("json")
+              const result = yield* svc.add(name, config)
+              return result.status
+            }),
+          ),
+        ),
     )
     .post(
       "/:name/auth",
@@ -90,16 +91,13 @@ export const McpRoutes = lazy(() =>
       }),
       async (c) => {
         const name = c.req.param("name")
-        const result = await runRequest(
-          "McpRoutes.auth.start",
-          c,
+        const result = await mcpRuntime.runPromise((svc) =>
           Effect.gen(function* () {
-            const mcp = yield* MCP.Service
-            const supports = yield* mcp.supportsOAuth(name)
+            const supports = yield* svc.supportsOAuth(name)
             if (!supports) return { supports }
             return {
               supports,
-              auth: yield* mcp.startAuth(name),
+              auth: yield* svc.startAuth(name),
             }
           }),
         )
@@ -135,12 +133,15 @@ export const McpRoutes = lazy(() =>
         }),
       ),
       async (c) =>
-        jsonRequest("McpRoutes.auth.callback", c, function* () {
-          const name = c.req.param("name")
-          const { code } = c.req.valid("json")
-          const mcp = yield* MCP.Service
-          return yield* mcp.finishAuth(name, code)
-        }),
+        c.json(
+          await mcpRuntime.runPromise((svc) =>
+            Effect.gen(function* () {
+              const name = c.req.param("name")
+              const { code } = c.req.valid("json")
+              return yield* svc.finishAuth(name, code)
+            }),
+          ),
+        ),
     )
     .post(
       "/:name/auth/authenticate",
@@ -162,16 +163,13 @@ export const McpRoutes = lazy(() =>
       }),
       async (c) => {
         const name = c.req.param("name")
-        const result = await runRequest(
-          "McpRoutes.auth.authenticate",
-          c,
+        const result = await mcpRuntime.runPromise((svc) =>
           Effect.gen(function* () {
-            const mcp = yield* MCP.Service
-            const supports = yield* mcp.supportsOAuth(name)
+            const supports = yield* svc.supportsOAuth(name)
             if (!supports) return { supports }
             return {
               supports,
-              status: yield* mcp.authenticate(name),
+              status: yield* svc.authenticate(name),
             }
           }),
         )
@@ -200,12 +198,14 @@ export const McpRoutes = lazy(() =>
         },
       }),
       async (c) =>
-        jsonRequest("McpRoutes.auth.remove", c, function* () {
-          const name = c.req.param("name")
-          const mcp = yield* MCP.Service
-          yield* mcp.removeAuth(name)
-          return { success: true as const }
-        }),
+        c.json(
+          await mcpRuntime.runPromise((svc) =>
+            Effect.gen(function* () {
+              yield* svc.removeAuth(c.req.param("name"))
+              return { success: true as const }
+            }),
+          ),
+        ),
     )
     .post(
       "/:name/connect",
@@ -225,12 +225,14 @@ export const McpRoutes = lazy(() =>
       }),
       validator("param", z.object({ name: z.string() })),
       async (c) =>
-        jsonRequest("McpRoutes.connect", c, function* () {
-          const { name } = c.req.valid("param")
-          const mcp = yield* MCP.Service
-          yield* mcp.connect(name)
-          return true
-        }),
+        c.json(
+          await mcpRuntime.runPromise((svc) =>
+            Effect.gen(function* () {
+              yield* svc.connect(c.req.valid("param").name)
+              return true
+            }),
+          ),
+        ),
     )
     .post(
       "/:name/disconnect",
@@ -250,11 +252,13 @@ export const McpRoutes = lazy(() =>
       }),
       validator("param", z.object({ name: z.string() })),
       async (c) =>
-        jsonRequest("McpRoutes.disconnect", c, function* () {
-          const { name } = c.req.valid("param")
-          const mcp = yield* MCP.Service
-          yield* mcp.disconnect(name)
-          return true
-        }),
+        c.json(
+          await mcpRuntime.runPromise((svc) =>
+            Effect.gen(function* () {
+              yield* svc.disconnect(c.req.valid("param").name)
+              return true
+            }),
+          ),
+        ),
     ),
 )

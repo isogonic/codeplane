@@ -47,4 +47,18 @@ describe("util.lazy", () => {
     expect(lazyNull()).toBe(null)
     expect(lazyUndefined()).toBe(undefined)
   })
+
+  test("should retry async initialization after rejection", async () => {
+    let attempts = 0
+    const lazyValue = lazy(async () => {
+      attempts++
+      if (attempts === 1) throw new Error("boom")
+      return "ok"
+    })
+
+    await expect(lazyValue()).rejects.toThrow("boom")
+    expect(await lazyValue()).toBe("ok")
+    expect(await lazyValue()).toBe("ok")
+    expect(attempts).toBe(2)
+  })
 })

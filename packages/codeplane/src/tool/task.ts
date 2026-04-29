@@ -6,7 +6,9 @@ import { MessageV2 } from "../session/message-v2"
 import { Agent } from "../agent/agent"
 import type { SessionPrompt } from "../session/prompt"
 import { Config } from "../config"
-import { Effect, Schema } from "effect"
+import { NotFoundError } from "../storage"
+import { Permission } from "../permission"
+import { Cause, Effect, Schema } from "effect"
 
 export interface TaskPromptOps {
   cancel(sessionID: SessionID): void
@@ -94,15 +96,34 @@ export const TaskTool = Tool.define(
         })
       }
 
-      const canTask = next.permission.some((rule) => rule.permission === id)
-      const canTodo = next.permission.some((rule) => rule.permission === "todowrite")
+      const enabled = (tool: string) => !Permission.disabled([tool], next.permission).has(tool)
+      const canTask = enabled(id)
+      const canTodo = enabled("todowrite")
+
+      const msg = yield* Effect.sync(() => MessageV2.get({ sessionID: ctx.sessionID, messageID: ctx.messageID }))
+      if (msg.info.role !== "assistant") return yield* Effect.fail(new Error("Not an assistant message"))
+
+      const ops = ctx.extra?.promptOps as TaskPromptOps
+      if (!ops) return yield* Effect.fail(new Error("TaskTool requires promptOps in ctx.extra"))
 
       const taskID = params.task_id
       const session = taskID
-        ? yield* sessions.get(SessionID.make(taskID)).pipe(Effect.catchCause(() => Effect.succeed(undefined)))
+        ? yield* sessions
+            .get(SessionID.make(taskID))
+            .pipe(
+              Effect.catchCause((cause) => {
+                const error = Cause.squash(cause)
+                if (NotFoundError.isInstance(error)) return Effect.succeed(undefined)
+                return Effect.failCause(cause)
+              }),
+            )
         : undefined
+      if (session?.id === ctx.sessionID) {
+        return yield* Effect.fail(new Error(`Invalid task_id: ${taskID} is not a task session for ${ctx.sessionID}`))
+      }
+      const taskSession = session?.parentID === ctx.sessionID ? session : undefined
       const nextSession =
-        session ??
+        taskSession ??
         (yield* sessions.create({
           parentID: ctx.sessionID,
           title: params.description + ` (@${next.name} subagent)`,
@@ -133,9 +154,6 @@ export const TaskTool = Tool.define(
           ],
         }))
 
-      const msg = yield* Effect.sync(() => MessageV2.get({ sessionID: ctx.sessionID, messageID: ctx.messageID }))
-      if (msg.info.role !== "assistant") return yield* Effect.fail(new Error("Not an assistant message"))
-
       const model = next.model ?? {
         modelID: msg.info.modelID,
         providerID: msg.info.providerID,
@@ -154,9 +172,6 @@ export const TaskTool = Tool.define(
         title: params.description,
         metadata: metadata("running"),
       })
-
-      const ops = ctx.extra?.promptOps as TaskPromptOps
-      if (!ops) return yield* Effect.fail(new Error("TaskTool requires promptOps in ctx.extra"))
 
       const messageID = MessageID.ascending()
 
