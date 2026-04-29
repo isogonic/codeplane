@@ -678,6 +678,53 @@
         ]
       }
     },
+    "/global/version": {
+      "get": {
+        "operationId": "global.version",
+        "summary": "Get installation version",
+        "description": "Get current and latest available codeplane versions and the detected install method.",
+        "responses": {
+          "200": {
+            "description": "Version information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "current": {
+                      "type": "string"
+                    },
+                    "latest": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "hasUpdate": {
+                      "type": "boolean"
+                    },
+                    "method": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["current", "latest", "hasUpdate", "method"]
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.global.version({\n  ...\n})"
+          }
+        ]
+      }
+    },
     "/global/event": {
       "get": {
         "operationId": "global.event",
@@ -816,6 +863,12 @@
                         },
                         "version": {
                           "type": "string"
+                        },
+                        "restart": {
+                          "type": "boolean"
+                        },
+                        "skipped": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["success", "version"]
