@@ -14,7 +14,7 @@ import { InstallationChannel, InstallationVersion } from "./version"
 
 const log = Log.create({ service: "installation" })
 
-export type Method = "curl" | "npm" | "yarn" | "pnpm" | "bun" | "brew" | "scoop" | "choco" | "unknown"
+export type Method = "curl" | "selfhosted" | "npm" | "yarn" | "pnpm" | "bun" | "brew" | "scoop" | "choco" | "unknown"
 
 export type ReleaseType = "patch" | "minor" | "major"
 
@@ -153,7 +153,10 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
 
       const upgradeCurl = Effect.fnUntraced(
         function* (target: string) {
-          const response = yield* httpOk.execute(HttpClientRequest.get("https://example.invalid/install"))
+          const installUrl =
+            process.env.CODEPLANE_INSTALL_URL ||
+            "https://raw.githubusercontent.com/devinoldenburg/codeplane/main/install"
+          const response = yield* httpOk.execute(HttpClientRequest.get(installUrl))
           const body = yield* response.text
           const bodyBytes = new TextEncoder().encode(body)
           const proc = ChildProcess.make("bash", [], {
@@ -174,6 +177,7 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
       )
 
       const methodImpl = Effect.fn("Installation.method")(function* () {
+        if (process.env.CODEPLANE_UPGRADE_SCRIPT) return "selfhosted" as Method
         if (process.execPath.includes(path.join(".codeplane", "bin"))) return "curl" as Method
         if (process.execPath.includes(path.join(".local", "bin"))) return "curl" as Method
         const exec = process.execPath.toLowerCase()
@@ -251,9 +255,12 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
           return data.version
         }
 
+        const ghToken = process.env.GITHUB_TOKEN || process.env.GH_TOKEN
+        const ghHeaders: Record<string, string> = { Accept: "application/json" }
+        if (ghToken) ghHeaders.Authorization = `Bearer ${ghToken}`
         const response = yield* httpOk.execute(
           HttpClientRequest.get("https://api.github.com/repos/devinoldenburg/codeplane/releases/latest").pipe(
-            HttpClientRequest.acceptJson,
+            HttpClientRequest.setHeaders(ghHeaders),
           ),
         )
         const data = yield* HttpClientResponse.schemaBodyJson(GitHubRelease)(response)
@@ -266,6 +273,16 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
           case "curl":
             result = yield* upgradeCurl(target)
             break
+          case "selfhosted": {
+            const script = process.env.CODEPLANE_UPGRADE_SCRIPT
+            if (!script) {
+              return yield* new UpgradeFailedError({ stderr: "CODEPLANE_UPGRADE_SCRIPT is not set" })
+            }
+            result = yield* run(["bash", script], {
+              env: { VERSION: target, CODEPLANE_PARENT_PID: String(process.pid) },
+            })
+            break
+          }
           case "npm":
             result = yield* run(["npm", "install", "-g", `codeplane-ai@${target}`])
             break
