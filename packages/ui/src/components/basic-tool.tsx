@@ -202,45 +202,53 @@ export function BasicTool(props: BasicToolProps) {
                     >
                       <TextShimmer text={title().title} active={pending()} />
                     </span>
-                    <Show when={pending() && elapsedLabel()}>
-                      <span data-slot="basic-tool-tool-elapsed" aria-live="polite">
-                        {elapsedLabel()}
-                      </span>
+                    <Show when={pending() ? elapsedLabel() : undefined}>
+                      {(label) => (
+                        <span data-slot="basic-tool-tool-elapsed" aria-live="polite">
+                          {label()}
+                        </span>
+                      )}
                     </Show>
                     <Show when={title().subtitle}>
-                      <span
-                        data-slot="basic-tool-tool-subtitle"
-                        classList={{
-                          [title().subtitleClass ?? ""]: !!title().subtitleClass,
-                          clickable: !!props.onSubtitleClick,
-                        }}
-                        onClick={(e) => {
-                          if (props.onSubtitleClick) {
-                            e.stopPropagation()
-                            props.onSubtitleClick()
-                          }
-                        }}
-                      >
-                        {title().subtitle}
-                      </span>
+                      {(subtitle) => (
+                        <span
+                          data-slot="basic-tool-tool-subtitle"
+                          classList={{
+                            [title().subtitleClass ?? ""]: !!title().subtitleClass,
+                            clickable: !!props.onSubtitleClick,
+                          }}
+                          onClick={(e) => {
+                            if (props.onSubtitleClick) {
+                              e.stopPropagation()
+                              props.onSubtitleClick()
+                            }
+                          }}
+                        >
+                          {subtitle()}
+                        </span>
+                      )}
                     </Show>
-                    <Show when={title().args?.length}>
-                      <For each={title().args}>
-                        {(arg) => (
-                          <span
-                            data-slot="basic-tool-tool-arg"
-                            classList={{
-                              [title().argsClass ?? ""]: !!title().argsClass,
-                            }}
-                          >
-                            {arg}
-                          </span>
-                        )}
-                      </For>
+                    <Show when={title().args}>
+                      {(argsList) => (
+                        <Show when={argsList().length > 0}>
+                          <For each={argsList()}>
+                            {(arg) => (
+                              <span
+                                data-slot="basic-tool-tool-arg"
+                                classList={{
+                                  [title().argsClass ?? ""]: !!title().argsClass,
+                                }}
+                              >
+                                {arg}
+                              </span>
+                            )}
+                          </For>
+                        </Show>
+                      )}
                     </Show>
                   </div>
-                  <Show when={!pending() && title().action}>
-                    <span data-slot="basic-tool-tool-action">{title().action}</span>
+                  <Show when={!pending() ? title().action : undefined}>
+                    {(action) => <span data-slot="basic-tool-tool-action">{action()}</span>}
                   </Show>
                 </div>
               )}
@@ -337,7 +345,6 @@ export function GenericTool(props: {
       status={props.status}
       startTime={props.startTime}
       animated
-      collapseWhilePending
       trigger={{
         title: i18n.t("ui.basicTool.called", { tool: props.tool }),
         subtitle: label(props.input),

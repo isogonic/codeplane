@@ -193,12 +193,11 @@
   }
 
   [data-slot="basic-tool-tool-subtitle"] {
-    flex: 1 1 200px;
+    flex: 1 1 0;
     min-width: 0;
-    overflow: visible;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-family: var(--font-family-sans);
     font-variant-numeric: tabular-nums;
     font-size: 14px;
