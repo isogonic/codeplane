@@ -2143,53 +2143,21 @@ ToolRegistry.register({
           </div>
         }
       >
-        <div
-          data-component="bash-interactive"
-          style={{
-            display: "flex",
-            "flex-direction": "column",
-            gap: "8px",
-            border: "1px solid var(--border-weak-base)",
-            "border-radius": "8px",
-            background: "var(--surface-base)",
-            overflow: "hidden",
-          }}
-        >
-          <pre
-            ref={(el) => (preRef = el)}
-            style={{
-              margin: 0,
-              padding: "10px 12px",
-              "max-height": "360px",
-              "overflow-y": "auto",
-              "white-space": "pre-wrap",
-              "overflow-wrap": "anywhere",
-              "font-family": "var(--font-family-mono)",
-              "font-size": "12.5px",
-              "line-height": "18px",
-              color: "var(--text-base)",
-            }}
-          >
-            {display() || "Starting…"}
-          </pre>
+        <div data-component="bash-interactive">
+          <div data-slot="bash-scroll" data-scrollable>
+            <pre data-slot="bash-pre" ref={(el) => (preRef = el)}>
+              <code>{display() || "Starting…"}</code>
+            </pre>
+          </div>
           <Show when={isRunning()}>
             <form
+              data-slot="bash-interactive-input"
               onSubmit={(e) => {
                 e.preventDefault()
                 void submit()
               }}
-              style={{
-                display: "flex",
-                "align-items": "center",
-                gap: "6px",
-                padding: "6px 8px",
-                "border-top": "1px solid var(--border-weak-base)",
-                background: "var(--background-base)",
-              }}
             >
-              <span style={{ "font-family": "var(--font-family-mono)", color: "var(--text-weak)", "font-size": "12.5px" }}>
-                ›
-              </span>
+              <span data-slot="bash-interactive-prompt">›</span>
               <input
                 ref={(el) => (inputRef = el)}
                 type="text"

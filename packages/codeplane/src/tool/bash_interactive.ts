@@ -3,6 +3,7 @@ import { spawn as ptySpawn } from "#pty"
 import * as Tool from "./tool"
 import { Bus } from "../bus"
 import { BusEvent } from "../bus/bus-event"
+import { EffectBridge } from "@/effect"
 import {
   appendOutput,
   killProc,
@@ -70,6 +71,7 @@ export const BashInteractiveTool = Tool.define(
       parameters: Parameters,
       execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
         Effect.gen(function* () {
+          const bridge = yield* EffectBridge.make()
           const command = params.command
           const callID = ctx.callID
           if (!callID) {
@@ -137,10 +139,11 @@ export const BashInteractiveTool = Tool.define(
                 const dataDisp = proc.onData((chunk) => {
                   allOutput += chunk
                   appendOutput(callID, chunk)
-                  // Fire the chunk event — we're inside a JS callback, so
-                  // surface it onto the bus via an unscoped fork. Errors are
-                  // swallowed; transcript is preserved in allOutput regardless.
-                  Effect.runFork(
+                  // We're inside a JS callback. Use the EffectBridge captured
+                  // above so bus.publish runs with the correct InstanceState
+                  // / workspace context — without it the publish would fail
+                  // silently and the chunk would never reach SSE subscribers.
+                  bridge.fork(
                     bus.publish(InteractiveChunk, {
                       sessionID: ctx.sessionID,
                       callID,
