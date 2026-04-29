@@ -1,4 +1,14 @@
-[data-component="tool-trigger"] {
+/* IMPORTANT: keep the outer block's own properties in a SEPARATE flat rule.
+   Our build pipeline silently drops the parent's own declarations when a
+   nested block contains both top-level properties and `& nested {}` rules.
+   v26.5.10–v26.5.16 lost width/display/padding/margin on this selector
+   because they sat alongside the nested rules below — the bundle ended up
+   with only [data-clickable=true] / [data-pending=true] etc. and tool-trigger
+   defaulted to display: block, shrink-wrapping to its content and forcing
+   info-main to wrap (Shell title + subtitle stacked). */
+[data-component="tool-trigger"],
+[data-component="tool-trigger"][data-pending="true"],
+[data-component="tool-trigger"][data-clickable="true"] {
   width: 100%;
   min-width: 0;
   max-width: 100%;
@@ -15,7 +25,9 @@
   transition:
     background-color 0.16s cubic-bezier(0.4, 0, 0.2, 1),
     box-shadow 0.16s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
+[data-component="tool-trigger"] {
   &[data-clickable="true"] {
     cursor: pointer;
   }
@@ -266,7 +278,11 @@
   }
 }
 
-[data-component="task-tool-card"] {
+/* Same hoist-pattern as tool-trigger above — see comment there. Without
+   this flat duplicate, the build pipeline drops the parent's own
+   declarations and task tool cards collapse to display: block. */
+[data-component="task-tool-card"],
+[data-component="task-tool-card"]:hover {
   width: 100%;
   min-width: 0;
   display: flex;
@@ -280,7 +296,9 @@
     border-color 0.15s ease,
     background-color 0.15s ease,
     color 0.15s ease;
+}
 
+[data-component="task-tool-card"] {
   [data-slot="basic-tool-tool-info-structured"] {
     flex: 1 1 auto;
     min-width: 0;
