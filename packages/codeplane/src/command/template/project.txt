@@ -1,0 +1,7 @@
+Use the native project tool to inspect, configure, check, or run project-local commands.
+
+Prefer the project tool over raw shell commands when the user asks about available project commands, start/dev/test/typecheck/build/lint commands, labels, command context, or editable project configuration.
+
+If the user provided arguments, interpret them as a project tool operation, command name, or configuration request. Use operation="commands" when unclear.
+
+Arguments: $ARGUMENTS

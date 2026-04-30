@@ -1,0 +1,16 @@
+Inspect the live native tool surface and diagnose why tools are or are not callable.
+
+Use this tool when you need to know:
+- which native tools exist in this session
+- which tools are callable right now
+- why a known tool is blocked
+- what exact config or credential enables a blocked tool
+- whether Git host credentials are configured for forge API use
+- whether required local binaries such as git, shell, and ripgrep are available
+
+The status is live for the current agent, model, session permissions, and config. If a config or credential is changed, call this tool again on the next step to see the updated tool surface.
+
+Operations:
+- status: fast local report; does not make network calls
+- check: status plus credential/API reachability checks where possible
+- doctor: same as check, with a compact recommendations section

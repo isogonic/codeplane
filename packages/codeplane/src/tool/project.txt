@@ -1,0 +1,15 @@
+Inspect, configure, and run project-local commands.
+
+Use this tool instead of guessing package-manager commands. It detects runnable commands from the current project, merges them with project-specific command configuration, explains what is blocked, and can persist editable project commands that the app and agent can both use.
+
+Common operations:
+- info: current project, worktree, configured command summary
+- detect: package-manager/script detection from the current project
+- commands: merged configured + detected command list
+- check: command readiness, including missing binaries and required environment variables
+- run: run a configured or detected command by name
+- config_set: add or update a project command such as start, typecheck, test, lint, build, dev, or a custom command
+- config_remove: remove a configured project command
+- context: show only commands currently injected into agent context
+
+Prefer config_set for durable project commands. These commands are scoped to the current CodePlane project, can include labels/descriptions/tags/cwd/env requirements, and can be edited later by this tool or by app project settings.

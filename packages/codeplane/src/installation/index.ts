@@ -10,7 +10,7 @@ import { Flag } from "../flag/flag"
 import { Log } from "../util"
 
 import semver from "semver"
-import { InstallationChannel, InstallationVersion } from "./version"
+import { cleanVersion, comparableVersion, InstallationChannel, InstallationVersion } from "./version"
 
 const log = Log.create({ service: "installation" })
 
@@ -34,10 +34,13 @@ export const Event = {
 }
 
 export function getReleaseType(current: string, latest: string): ReleaseType {
-  const currMajor = semver.major(current)
-  const currMinor = semver.minor(current)
-  const newMajor = semver.major(latest)
-  const newMinor = semver.minor(latest)
+  const currentComparable = comparableVersion(current)
+  const latestComparable = comparableVersion(latest)
+  if (!currentComparable || !latestComparable) return "patch"
+  const currMajor = semver.major(currentComparable)
+  const currMinor = semver.minor(currentComparable)
+  const newMajor = semver.major(latestComparable)
+  const newMinor = semver.minor(latestComparable)
 
   if (newMajor > currMajor) return "major"
   if (newMinor > currMinor) return "minor"
@@ -140,7 +143,7 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
             stderr: result.stderr || result.stdout || `Failed to resolve ${spec}`,
           })
         }
-        return yield* Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.String))(result.stdout)
+        return cleanVersion(yield* Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.String))(result.stdout))
       })
 
       const getBrewFormula = Effect.fnUntraced(function* () {
@@ -220,7 +223,7 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
           if (formula.includes("/")) {
             const infoJson = yield* text(["brew", "info", "--json=v2", formula])
             const info = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(BrewInfoV2))(infoJson)
-            return info.formulae[0].versions.stable
+            return cleanVersion(info.formulae[0].versions.stable)
           }
           const response = yield* httpOk.execute(
             HttpClientRequest.get("https://formulae.brew.sh/api/formula/codeplane.json").pipe(
@@ -228,7 +231,7 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
             ),
           )
           const data = yield* HttpClientResponse.schemaBodyJson(BrewFormula)(response)
-          return data.versions.stable
+          return cleanVersion(data.versions.stable)
         }
 
         if (detectedMethod === "npm" || detectedMethod === "bun" || detectedMethod === "pnpm") {
@@ -242,7 +245,7 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
             ).pipe(HttpClientRequest.setHeaders({ Accept: "application/json;odata=verbose" })),
           )
           const data = yield* HttpClientResponse.schemaBodyJson(ChocoPackage)(response)
-          return data.d.results[0].Version
+          return cleanVersion(data.d.results[0].Version)
         }
 
         if (detectedMethod === "scoop") {
@@ -252,7 +255,7 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
             ).pipe(HttpClientRequest.setHeaders({ Accept: "application/json" })),
           )
           const data = yield* HttpClientResponse.schemaBodyJson(ScoopManifest)(response)
-          return data.version
+          return cleanVersion(data.version)
         }
 
         const ghToken = process.env.GITHUB_TOKEN || process.env.GH_TOKEN
@@ -264,7 +267,7 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
           ),
         )
         const data = yield* HttpClientResponse.schemaBodyJson(GitHubRelease)(response)
-        return data.tag_name.replace(/^v/, "")
+        return cleanVersion(data.tag_name)
       }, Effect.orDie)
 
       const upgradeImpl = Effect.fn("Installation.upgrade")(function* (m: Method, target: string) {
@@ -355,4 +358,5 @@ export const defaultLayer = layer.pipe(
   Layer.provide(CrossSpawnSpawner.defaultLayer),
 )
 
+export { cleanVersion, comparableVersion, hasUpdate, isSameVersion } from "./version"
 export * as Installation from "."

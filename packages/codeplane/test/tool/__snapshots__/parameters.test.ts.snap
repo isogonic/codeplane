@@ -111,6 +111,356 @@ exports[`tool parameters JSON Schema (wire shape) edit 1`] = `
 }
 `;
 
+exports[`tool parameters JSON Schema (wire shape) forge 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "assignees": {
+      "description": "Assignees for issue create/update operations.",
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "base": {
+      "description": "Base/target branch.",
+      "type": "string",
+    },
+    "body": {
+      "description": "Body, description, comment, or release notes.",
+      "type": "string",
+    },
+    "cwd": {
+      "description": "Working directory used to infer the git remote. Defaults to the current project directory.",
+      "type": "string",
+    },
+    "data": {
+      "additionalProperties": {},
+      "description": "JSON request body for create/update/raw operations.",
+      "propertyNames": {
+        "type": "string",
+      },
+      "type": "object",
+    },
+    "deleteBranch": {
+      "description": "Delete/remove source branch when merging if provider supports it.",
+      "type": "boolean",
+    },
+    "draft": {
+      "description": "Create a draft pull request/release when supported.",
+      "type": "boolean",
+    },
+    "head": {
+      "description": "Head/source branch.",
+      "type": "string",
+    },
+    "host": {
+      "description": "Forge host name, for example github.com.",
+      "type": "string",
+    },
+    "id": {
+      "description": "Provider-specific id such as a workflow run, job, or pipeline id.",
+      "type": "string",
+    },
+    "instance": {
+      "description": "Named Git host instance from git config, for example github or company-gitlab.",
+      "type": "string",
+    },
+    "labels": {
+      "description": "Labels for issue filters or writes.",
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "limit": {
+      "description": "Maximum items per page. Defaults to 30, max 100.",
+      "type": "number",
+    },
+    "mergeMethod": {
+      "description": "GitHub merge method for pull_request_merge.",
+      "enum": [
+        "merge",
+        "squash",
+        "rebase",
+      ],
+      "type": "string",
+    },
+    "method": {
+      "description": "HTTP method for operation=raw. Defaults to GET.",
+      "enum": [
+        "GET",
+        "POST",
+        "PATCH",
+        "PUT",
+        "DELETE",
+      ],
+      "type": "string",
+    },
+    "name": {
+      "description": "Release name or generic provider-specific name.",
+      "type": "string",
+    },
+    "number": {
+      "description": "Pull request, merge request, or issue number/IID.",
+      "type": "number",
+    },
+    "operation": {
+      "description": "Forge API operation to perform",
+      "enum": [
+        "info",
+        "pull_request_list",
+        "pull_request_get",
+        "pull_request_create",
+        "pull_request_update",
+        "pull_request_merge",
+        "pull_request_comment",
+        "pull_request_files",
+        "pull_request_reviews",
+        "pull_request_checks",
+        "issue_list",
+        "issue_get",
+        "issue_create",
+        "issue_update",
+        "issue_comment",
+        "ci_list",
+        "ci_get",
+        "ci_jobs",
+        "ci_log",
+        "ci_rerun",
+        "workflow_dispatch",
+        "release_list",
+        "release_get",
+        "release_create",
+        "raw",
+      ],
+      "type": "string",
+    },
+    "owner": {
+      "description": "Repository owner or organization for GitHub/Bitbucket.",
+      "type": "string",
+    },
+    "page": {
+      "description": "Page number for list operations.",
+      "type": "number",
+    },
+    "path": {
+      "description": "Provider API path for operation=raw.",
+      "type": "string",
+    },
+    "project": {
+      "description": "Project path for GitLab, for example group/subgroup/repo.",
+      "type": "string",
+    },
+    "provider": {
+      "description": "Forge provider. Inferred from git config or remote host when omitted.",
+      "enum": [
+        "github",
+        "gitlab",
+        "bitbucket",
+        "azure-devops",
+        "generic",
+      ],
+      "type": "string",
+    },
+    "query": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string",
+          },
+          {
+            "type": "number",
+          },
+          {
+            "type": "boolean",
+          },
+        ],
+      },
+      "description": "Query string parameters.",
+      "propertyNames": {
+        "type": "string",
+      },
+      "type": "object",
+    },
+    "ref": {
+      "description": "Branch, tag, commit SHA, or workflow dispatch ref.",
+      "type": "string",
+    },
+    "remote": {
+      "description": "Git remote name used for inference. Defaults to origin.",
+      "type": "string",
+    },
+    "repo": {
+      "description": "Repository name for GitHub/Bitbucket.",
+      "type": "string",
+    },
+    "sha": {
+      "description": "Commit SHA for check/status operations.",
+      "type": "string",
+    },
+    "squash": {
+      "description": "Squash when merging if provider supports it.",
+      "type": "boolean",
+    },
+    "state": {
+      "description": "State filter or update value, such as open, closed, all.",
+      "type": "string",
+    },
+    "tagName": {
+      "description": "Release tag name.",
+      "type": "string",
+    },
+    "title": {
+      "description": "Title for create/update operations.",
+      "type": "string",
+    },
+    "url": {
+      "description": "Forge base URL or git remote URL. Used to infer host, provider, owner, repo, or project.",
+      "type": "string",
+    },
+    "workflow": {
+      "description": "Workflow file name or id for workflow_dispatch.",
+      "type": "string",
+    },
+  },
+  "required": [
+    "operation",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`tool parameters JSON Schema (wire shape) git 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "all": {
+      "description": "Include all branches or all tracked files.",
+      "type": "boolean",
+    },
+    "args": {
+      "description": "Raw Git arguments for operation="run", or extra arguments appended to supported operations.",
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "branch": {
+      "description": "Branch name for branch, fetch, pull, push, etc.",
+      "type": "string",
+    },
+    "cwd": {
+      "description": "Working directory for the Git command. Defaults to the current project directory.",
+      "type": "string",
+    },
+    "files": {
+      "description": "Optional file pathspecs for operations such as status, diff, add, restore, or commit.",
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "host": {
+      "description": "Git host name, for example github.com or gitlab.company.test.",
+      "type": "string",
+    },
+    "instance": {
+      "description": "Named Git instance from git config, for example github or company-gitlab.",
+      "type": "string",
+    },
+    "limit": {
+      "description": "Maximum number of log entries. Defaults to 30.",
+      "type": "number",
+    },
+    "message": {
+      "description": "Commit message for commit operations.",
+      "type": "string",
+    },
+    "name": {
+      "description": "Name for config_set, credential_set, or credential_remove.",
+      "type": "string",
+    },
+    "operation": {
+      "description": "Git operation to perform",
+      "enum": [
+        "info",
+        "status",
+        "diff",
+        "log",
+        "show",
+        "branch",
+        "remote",
+        "fetch",
+        "pull",
+        "push",
+        "add",
+        "restore",
+        "commit",
+        "merge",
+        "rebase",
+        "tag",
+        "stash",
+        "config_set",
+        "config_list",
+        "credential_set",
+        "credential_list",
+        "credential_remove",
+        "run",
+      ],
+      "type": "string",
+    },
+    "provider": {
+      "description": "Git host provider for config_set or credential_set.",
+      "enum": [
+        "github",
+        "gitlab",
+        "bitbucket",
+        "azure-devops",
+        "generic",
+      ],
+      "type": "string",
+    },
+    "ref": {
+      "description": "Git revision or range.",
+      "type": "string",
+    },
+    "remote": {
+      "description": "Remote name, usually origin.",
+      "type": "string",
+    },
+    "setUpstream": {
+      "description": "Use -u/--set-upstream for push.",
+      "type": "boolean",
+    },
+    "sshCommand": {
+      "description": "GIT_SSH_COMMAND to use for SSH remotes, for example ssh -i ~/.ssh/id_ed25519.",
+      "type": "string",
+    },
+    "token": {
+      "description": "Token/password to save for credential_set. Prefer tokenEnv or interactive prompt when possible.",
+      "type": "string",
+    },
+    "tokenEnv": {
+      "description": "Environment variable containing the Git token/password.",
+      "type": "string",
+    },
+    "url": {
+      "description": "Git host base URL or remote URL, for example https://github.com.",
+      "type": "string",
+    },
+    "username": {
+      "description": "Username for HTTPS credentials. Defaults by provider when omitted.",
+      "type": "string",
+    },
+  },
+  "required": [
+    "operation",
+  ],
+  "type": "object",
+}
+`;
+
 exports[`tool parameters JSON Schema (wire shape) glob 1`] = `
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -174,6 +524,27 @@ exports[`tool parameters JSON Schema (wire shape) invalid 1`] = `
 }
 `;
 
+exports[`tool parameters JSON Schema (wire shape) list 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "limit": {
+      "description": "The maximum number of entries to list (defaults to 2000)",
+      "type": "number",
+    },
+    "offset": {
+      "description": "The entry number to start listing from (1-indexed)",
+      "type": "number",
+    },
+    "path": {
+      "description": "The directory to list. Defaults to the current working directory. Must be a directory path if provided.",
+      "type": "string",
+    },
+  },
+  "type": "object",
+}
+`;
+
 exports[`tool parameters JSON Schema (wire shape) lsp 1`] = `
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -220,11 +591,101 @@ exports[`tool parameters JSON Schema (wire shape) lsp 1`] = `
 }
 `;
 
-
 exports[`tool parameters JSON Schema (wire shape) plan 1`] = `
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {},
+  "type": "object",
+}
+`;
+
+exports[`tool parameters JSON Schema (wire shape) project 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "args": {
+      "description": "Optional shell arguments appended when operation=run.",
+      "type": "string",
+    },
+    "command": {
+      "description": "Shell command for config_set.",
+      "type": "string",
+    },
+    "context": {
+      "description": "Whether to put the command into agent context.",
+      "type": "boolean",
+    },
+    "cwd": {
+      "description": "Working directory for the command, relative to project root or absolute.",
+      "type": "string",
+    },
+    "description": {
+      "description": "What the command is for.",
+      "type": "string",
+    },
+    "env": {
+      "description": "Required environment variables for config_set or run validation.",
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "interactive": {
+      "description": "Whether the command is long-running.",
+      "type": "boolean",
+    },
+    "kind": {
+      "description": "Semantic command kind for config_set.",
+      "enum": [
+        "start",
+        "dev",
+        "test",
+        "typecheck",
+        "lint",
+        "build",
+        "format",
+        "install",
+        "custom",
+      ],
+      "type": "string",
+    },
+    "label": {
+      "description": "Human-readable label for config_set.",
+      "type": "string",
+    },
+    "labels": {
+      "description": "Labels/tags for config_set.",
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "name": {
+      "description": "Project command name, for example start, dev, test, typecheck, lint, build, or custom name.",
+      "type": "string",
+    },
+    "operation": {
+      "description": "Project command operation to perform",
+      "enum": [
+        "info",
+        "detect",
+        "commands",
+        "check",
+        "run",
+        "config_set",
+        "config_remove",
+        "context",
+      ],
+      "type": "string",
+    },
+    "timeout": {
+      "description": "Run timeout in milliseconds.",
+      "type": "number",
+    },
+  },
+  "required": [
+    "operation",
+  ],
   "type": "object",
 }
 `;
@@ -398,6 +859,36 @@ exports[`tool parameters JSON Schema (wire shape) todo 1`] = `
   "required": [
     "todos",
   ],
+  "type": "object",
+}
+`;
+
+exports[`tool parameters JSON Schema (wire shape) tools 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "cwd": {
+      "description": "Working directory for local binary checks. Defaults to the current project directory.",
+      "type": "string",
+    },
+    "instance": {
+      "description": "Optional Git host config instance to focus credential diagnostics on.",
+      "type": "string",
+    },
+    "operation": {
+      "description": "status is local only; check and doctor also test configured forge API credentials.",
+      "enum": [
+        "status",
+        "check",
+        "doctor",
+      ],
+      "type": "string",
+    },
+    "tool": {
+      "description": "Optional native tool id to focus on, for example forge, git, grep, or tools.",
+      "type": "string",
+    },
+  },
   "type": "object",
 }
 `;

@@ -1,0 +1,10 @@
+You are handling a code-hosting forge request for this repository.
+
+User arguments:
+$ARGUMENTS
+
+Use the native forge tool for GitHub, GitLab, Bitbucket, Azure DevOps, or self-hosted forge API work. Prefer structured operations like pull_request_list, pull_request_get, pull_request_create, pull_request_merge, issue_list, issue_create, ci_list, ci_jobs, release_list, and raw before using bash, curl, gh, or glab.
+
+Use the native git tool first only when you need local branch, remote, or credential configuration context. For credentials, reuse existing Git host config or ask the user to set it with the git tool; do not ask the user to paste secrets into normal chat text.
+
+After tool results, summarize the forge state or action taken and call out remaining risk before suggesting destructive operations like merge, close, delete, rerun, or release creation.

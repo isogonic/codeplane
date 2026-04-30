@@ -13,16 +13,21 @@ import { Parameters as ApplyPatch } from "../../src/tool/apply_patch"
 import { Parameters as Bash } from "../../src/tool/bash"
 import { Parameters as CodeSearch } from "../../src/tool/codesearch"
 import { Parameters as Edit } from "../../src/tool/edit"
+import { Parameters as Forge } from "../../src/tool/forge"
+import { Parameters as Git } from "../../src/tool/git"
 import { Parameters as Glob } from "../../src/tool/glob"
 import { Parameters as Grep } from "../../src/tool/grep"
 import { Parameters as Invalid } from "../../src/tool/invalid"
+import { Parameters as List } from "../../src/tool/list"
 import { Parameters as Lsp } from "../../src/tool/lsp"
 import { Parameters as Plan } from "../../src/tool/plan"
+import { Parameters as Project } from "../../src/tool/project"
 import { Parameters as Question } from "../../src/tool/question"
 import { Parameters as Read } from "../../src/tool/read"
 import { Parameters as Skill } from "../../src/tool/skill"
 import { Parameters as Task } from "../../src/tool/task"
 import { Parameters as Todo } from "../../src/tool/todo"
+import { Parameters as Tools } from "../../src/tool/tools"
 import { Parameters as WebFetch } from "../../src/tool/webfetch"
 import { Parameters as WebSearch } from "../../src/tool/websearch"
 import { Parameters as Write } from "../../src/tool/write"
@@ -39,16 +44,21 @@ describe("tool parameters", () => {
     test("bash", () => expect(toJsonSchema(Bash)).toMatchSnapshot())
     test("codesearch", () => expect(toJsonSchema(CodeSearch)).toMatchSnapshot())
     test("edit", () => expect(toJsonSchema(Edit)).toMatchSnapshot())
+    test("forge", () => expect(toJsonSchema(Forge)).toMatchSnapshot())
+    test("git", () => expect(toJsonSchema(Git)).toMatchSnapshot())
     test("glob", () => expect(toJsonSchema(Glob)).toMatchSnapshot())
     test("grep", () => expect(toJsonSchema(Grep)).toMatchSnapshot())
     test("invalid", () => expect(toJsonSchema(Invalid)).toMatchSnapshot())
+    test("list", () => expect(toJsonSchema(List)).toMatchSnapshot())
     test("lsp", () => expect(toJsonSchema(Lsp)).toMatchSnapshot())
     test("plan", () => expect(toJsonSchema(Plan)).toMatchSnapshot())
+    test("project", () => expect(toJsonSchema(Project)).toMatchSnapshot())
     test("question", () => expect(toJsonSchema(Question)).toMatchSnapshot())
     test("read", () => expect(toJsonSchema(Read)).toMatchSnapshot())
     test("skill", () => expect(toJsonSchema(Skill)).toMatchSnapshot())
     test("task", () => expect(toJsonSchema(Task)).toMatchSnapshot())
     test("todo", () => expect(toJsonSchema(Todo)).toMatchSnapshot())
+    test("tools", () => expect(toJsonSchema(Tools)).toMatchSnapshot())
     test("webfetch", () => expect(toJsonSchema(WebFetch)).toMatchSnapshot())
     test("websearch", () => expect(toJsonSchema(WebSearch)).toMatchSnapshot())
     test("write", () => expect(toJsonSchema(Write)).toMatchSnapshot())
@@ -118,6 +128,38 @@ describe("tool parameters", () => {
     })
   })
 
+  describe("git", () => {
+    test("accepts a simple operation", () => {
+      expect(parse(Git, { operation: "status" }).operation).toBe("status")
+    })
+    test("accepts raw args for run", () => {
+      const parsed = parse(Git, { operation: "run", args: ["status", "--short"] })
+      expect(parsed.args).toEqual(["status", "--short"])
+    })
+    test("rejects unknown operation", () => {
+      expect(accepts(Git, { operation: "bogus" })).toBe(false)
+    })
+  })
+
+  describe("forge", () => {
+    test("accepts a structured operation", () => {
+      expect(parse(Forge, { operation: "pull_request_list" }).operation).toBe("pull_request_list")
+    })
+    test("accepts raw requests", () => {
+      const parsed = parse(Forge, {
+        operation: "raw",
+        method: "POST",
+        path: "/repos/acme/project/issues",
+        data: { title: "x" },
+      })
+      expect(parsed.method).toBe("POST")
+      expect(parsed.data?.title).toBe("x")
+    })
+    test("rejects unknown operation", () => {
+      expect(accepts(Forge, { operation: "bogus" })).toBe(false)
+    })
+  })
+
   describe("glob", () => {
     test("accepts pattern-only", () => {
       expect(parse(Glob, { pattern: "**/*.ts" })).toEqual({ pattern: "**/*.ts" })
@@ -151,6 +193,56 @@ describe("tool parameters", () => {
     test("rejects missing fields", () => {
       expect(accepts(Invalid, { tool: "foo" })).toBe(false)
       expect(accepts(Invalid, { error: "bar" })).toBe(false)
+    })
+  })
+
+  describe("list", () => {
+    test("accepts empty object", () => {
+      expect(parse(List, {})).toEqual({})
+    })
+    test("accepts optional path + offset + limit", () => {
+      const parsed = parse(List, { path: "/tmp", offset: 10, limit: 100 })
+      expect(parsed.path).toBe("/tmp")
+      expect(parsed.offset).toBe(10)
+      expect(parsed.limit).toBe(100)
+    })
+  })
+
+  describe("tools", () => {
+    test("accepts empty object", () => {
+      expect(parse(Tools, {})).toEqual({})
+    })
+    test("accepts doctor mode and filters", () => {
+      const parsed = parse(Tools, { operation: "doctor", tool: "forge", instance: "github" })
+      expect(parsed.operation).toBe("doctor")
+      expect(parsed.tool).toBe("forge")
+      expect(parsed.instance).toBe("github")
+    })
+    test("rejects unknown operation", () => {
+      expect(accepts(Tools, { operation: "bogus" })).toBe(false)
+    })
+  })
+
+  describe("project", () => {
+    test("accepts a simple operation", () => {
+      expect(parse(Project, { operation: "commands" }).operation).toBe("commands")
+    })
+    test("accepts config_set fields", () => {
+      const parsed = parse(Project, {
+        operation: "config_set",
+        name: "typecheck",
+        command: "bun typecheck",
+        cwd: "packages/codeplane",
+        labels: ["quality"],
+        context: true,
+      })
+      expect(parsed.name).toBe("typecheck")
+      expect(parsed.cwd).toBe("packages/codeplane")
+      expect(parsed.labels).toEqual(["quality"])
+      expect(parsed.context).toBe(true)
+    })
+    test("rejects unknown operation", () => {
+      expect(accepts(Project, { operation: "bogus" })).toBe(false)
     })
   })
 

@@ -1,0 +1,5 @@
+Use the native project tool to run, check, or configure the project dev/start command.
+
+Call project operation="check" with name="dev" first. If dev is missing, check name="start". If a command is interactive or long-running, explain that it should be launched through the app's dev/start workflow instead of a short command run.
+
+Arguments: $ARGUMENTS

@@ -1,0 +1,10 @@
+List entries in a local filesystem directory.
+
+Usage:
+- The path parameter should be an absolute path, or omit it to list the current working directory.
+- Directory entries are returned one per line, with a trailing `/` for subdirectories.
+- By default, this tool returns up to 2000 entries from the start of the directory listing.
+- The offset parameter is the entry number to start from (1-indexed).
+- To read later sections, call this tool again with a larger offset.
+- Use the glob tool to find files by pattern, and the read tool to read file contents.
+- Call this tool in parallel when you know there are multiple directories you want to list.

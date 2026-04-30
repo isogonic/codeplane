@@ -1,0 +1,14 @@
+Run Git operations through a native, permissioned interface.
+
+Use this tool instead of bash for Git work whenever possible. It supports quick structured operations like status, diff, log, show, branch, remote, fetch, pull, push, commit, plus a raw run mode for advanced Git subcommands.
+
+Credential and host configuration:
+- Use config_set to save a named Git host in the global codeplane config.
+- Use credential_set to save a token/password for a named host in the local codeplane auth store, or configure tokenEnv to read the secret from an environment variable.
+- Stored credentials are only applied to Git invocations as ephemeral HTTP extra headers or GIT_SSH_COMMAND environment values. They are not written into .git/config.
+- For GitHub, GitLab, Bitbucket, Azure DevOps, or self-hosted instances, set url and provider. For unknown hosts use provider="generic".
+
+Safety:
+- Prefer specific operations before operation="run".
+- For operation="run", pass Git arguments only, without the leading "git".
+- Never print tokens or credential values in messages.

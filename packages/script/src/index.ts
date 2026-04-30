@@ -5,6 +5,11 @@ import path from "path"
 const rootPkgPath = path.resolve(import.meta.dir, "../../../package.json")
 const rootPkg = await Bun.file(rootPkgPath).json()
 const expectedBunVersion = rootPkg.packageManager?.split("@")[1]
+const releasePkg = (await Bun.file(
+  path.resolve(import.meta.dir, "../../../packages/codeplane/package.json"),
+).json()) as {
+  version?: string
+}
 
 if (!expectedBunVersion) {
   throw new Error("packageManager field not found in root package.json")
@@ -24,9 +29,35 @@ const env = {
   CODEPLANE_RELEASE: process.env["CODEPLANE_RELEASE"],
 }
 
-const todayVersion = () => {
-  const now = new Date()
-  return `${String(now.getUTCFullYear()).slice(2)}.${String(now.getUTCMonth() + 1)}.${String(now.getUTCDate())}`
+const BASE_VERSION = semver.valid(releasePkg.version?.replace(/^v/, ""))
+if (!BASE_VERSION) {
+  throw new Error(`packages/codeplane/package.json has an invalid version: ${releasePkg.version}`)
+}
+
+const cleanVersion = (input: string) => {
+  const version = semver.valid(input.replace(/^v/, ""))
+  if (!version) throw new Error(`Invalid release version: ${input}`)
+  return version
+}
+
+const safePrerelease = (input: string) =>
+  input
+    .toLowerCase()
+    .replace(/[^0-9a-z-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+
+const gitSuffix = () =>
+  $`git rev-parse --short=12 HEAD`
+    .text()
+    .then((output) => output.trim())
+    .catch(() => "local")
+
+const bumpVersion = (input: string) => {
+  const exact = semver.valid(input.replace(/^v/, ""))
+  if (exact) return exact
+  const version = semver.inc(BASE_VERSION, input as semver.ReleaseType)
+  if (!version) throw new Error(`Invalid release bump: ${input}`)
+  return version
 }
 
 const CHANNEL = await (async () => {
@@ -40,9 +71,10 @@ const CHANNEL = await (async () => {
 const IS_PREVIEW = CHANNEL !== "latest"
 
 const VERSION = await (async () => {
-  if (env.CODEPLANE_VERSION) return env.CODEPLANE_VERSION
-  if (IS_PREVIEW) return `0.0.0-${CHANNEL}-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "")}`
-  return todayVersion()
+  if (env.CODEPLANE_VERSION) return cleanVersion(env.CODEPLANE_VERSION)
+  if (env.CODEPLANE_BUMP) return bumpVersion(env.CODEPLANE_BUMP)
+  if (IS_PREVIEW) return `${BASE_VERSION}-${safePrerelease(CHANNEL) || "preview"}.${await gitSuffix()}`
+  return BASE_VERSION
 })()
 
 const bot = ["actions-user", "codeplane", "codeplane-agent[bot]"]

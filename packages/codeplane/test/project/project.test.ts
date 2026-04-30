@@ -408,6 +408,34 @@ describe("Project.update", () => {
     expect(fromDb?.commands?.start).toBe("npm run dev")
   })
 
+  test("should update rich command configuration", async () => {
+    await using tmp = await tmpdir({ git: true })
+    const { project } = await run((svc) => svc.fromDirectory(tmp.path))
+
+    const updated = await run((svc) =>
+      svc.update({
+        projectID: project.id,
+        commands: {
+          typecheck: {
+            command: "bun typecheck",
+            label: "Typecheck CodePlane",
+            description: "Run package type checking",
+            cwd: "packages/codeplane",
+            labels: ["quality"],
+            env: ["CI"],
+            context: true,
+          },
+        },
+      }),
+    )
+
+    expect(Project.commandText(updated.commands?.typecheck)).toBe("bun typecheck")
+    const info = Project.commandInfo("typecheck", updated.commands!.typecheck)
+    expect(info.label).toBe("Typecheck CodePlane")
+    expect(info.cwd).toBe("packages/codeplane")
+    expect(info.labels).toEqual(["quality"])
+  })
+
   test("should throw error when project not found", async () => {
     await expect(
       run((svc) =>

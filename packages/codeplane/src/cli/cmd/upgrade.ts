@@ -45,10 +45,10 @@ export const UpgradeCommand = {
     }
     prompts.log.info("Using method: " + method)
     const target = args.target
-      ? args.target.replace(/^v/, "")
+      ? Installation.cleanVersion(args.target)
       : await AppRuntime.runPromise(Installation.Service.use((svc) => svc.latest()))
 
-    if (InstallationVersion === target) {
+    if (Installation.isSameVersion(InstallationVersion, target)) {
       prompts.log.warn(`codeplane upgrade skipped: ${target} is already installed`)
       prompts.outro("Done")
       return

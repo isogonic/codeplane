@@ -1,0 +1,7 @@
+Run the native tools tool with operation="doctor".
+
+Use it to diagnose the current agent's native tool access, Git host credentials, forge API readiness, local binaries, and exact enablement steps.
+
+If the user provided arguments, treat them as a focused tool id or Git host instance when obvious.
+
+Arguments: $ARGUMENTS

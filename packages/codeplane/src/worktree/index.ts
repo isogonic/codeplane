@@ -465,7 +465,7 @@ export const layer: Layer.Layer<
         Database.use((db) => db.select().from(ProjectTable).where(eq(ProjectTable.id, input.projectID)).get()),
       )
       const project = row ? Project.fromRow(row) : undefined
-      const startup = project?.commands?.start?.trim() ?? ""
+      const startup = Project.commandText(project?.commands?.start)?.trim() ?? ""
       const ok = yield* runStartScript(directory, startup, "project")
       if (!ok) return false
       yield* runStartScript(directory, input.extra ?? "", "worktree")

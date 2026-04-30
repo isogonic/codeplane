@@ -531,6 +531,46 @@ test("handles command configuration", async () => {
   })
 })
 
+test("handles git host configuration", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await writeConfig(dir, {
+        $schema: "https://example.invalid/config.json",
+        git: {
+          company: {
+            url: "https://gitlab.company.test",
+            provider: "gitlab",
+            hosts: ["git.company.test"],
+            defaultRemote: "origin",
+            credential: {
+              type: "env",
+              env: "COMPANY_GIT_TOKEN",
+              username: "oauth2",
+            },
+          },
+        },
+      })
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await load()
+      expect(config.git?.company).toEqual({
+        url: "https://gitlab.company.test",
+        provider: "gitlab",
+        hosts: ["git.company.test"],
+        defaultRemote: "origin",
+        credential: {
+          type: "env",
+          env: "COMPANY_GIT_TOKEN",
+          username: "oauth2",
+        },
+      })
+    },
+  })
+})
+
 test("migrates autoshare to share field", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {

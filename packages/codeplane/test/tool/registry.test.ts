@@ -4,6 +4,8 @@ import fs from "fs/promises"
 import { Effect, Layer } from "effect"
 import { Instance } from "../../src/project/instance"
 import * as CrossSpawnSpawner from "../../src/effect/cross-spawn-spawner"
+import { Permission } from "../../src/permission"
+import { ModelID, ProviderID } from "../../src/provider/schema"
 import { ToolRegistry } from "../../src/tool"
 import { provideTmpdirInstance } from "../fixture/fixture"
 import { testEffect } from "../lib/effect"
@@ -11,12 +13,85 @@ import { testEffect } from "../lib/effect"
 const node = CrossSpawnSpawner.defaultLayer
 
 const it = testEffect(Layer.mergeAll(ToolRegistry.defaultLayer, node))
+const toolInput = {
+  providerID: ProviderID.codeplane,
+  modelID: ModelID.make("gpt-5"),
+  agent: {
+    name: "build",
+    mode: "primary" as const,
+    options: {},
+    permission: Permission.fromConfig({ "*": "allow" }),
+  },
+}
 
 afterEach(async () => {
   await Instance.disposeAll()
 })
 
 describe("tool.registry", () => {
+  it.live("includes the built-in list, project, tools, git, and forge tools", () =>
+    provideTmpdirInstance(() =>
+      Effect.gen(function* () {
+        const registry = yield* ToolRegistry.Service
+        const ids = yield* registry.ids()
+        expect(ids).toContain("list")
+        expect(ids).toContain("project")
+        expect(ids).toContain("tools")
+        expect(ids).toContain("git")
+        expect(ids).toContain("forge")
+      }),
+    ),
+  )
+
+  it.live("keeps forge uncallable until Git host API credentials are configured", () =>
+    provideTmpdirInstance(() =>
+      Effect.gen(function* () {
+        const registry = yield* ToolRegistry.Service
+
+        const availability = yield* registry.availability(toolInput)
+        expect(availability.known).toContain("forge")
+        expect(availability.available).not.toContain("forge")
+        expect(availability.blocked.find((item) => item.id === "forge")?.reason).toContain("No Git host config")
+        expect((yield* registry.tools(toolInput)).map((tool) => tool.id)).not.toContain("forge")
+      }),
+    ),
+  )
+
+  it.live("makes forge callable as soon as configured credentials exist", () =>
+    provideTmpdirInstance(
+      () =>
+        Effect.gen(function* () {
+          const previous = process.env.CODEPLANE_TEST_FORGE_TOKEN
+          process.env.CODEPLANE_TEST_FORGE_TOKEN = "token"
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              if (previous === undefined) delete process.env.CODEPLANE_TEST_FORGE_TOKEN
+              else process.env.CODEPLANE_TEST_FORGE_TOKEN = previous
+            }),
+          )
+
+          const registry = yield* ToolRegistry.Service
+
+          const availability = yield* registry.availability(toolInput)
+          expect(availability.available).toContain("forge")
+          expect(availability.blocked.find((item) => item.id === "forge")).toBeUndefined()
+          expect((yield* registry.tools(toolInput)).map((tool) => tool.id)).toContain("forge")
+        }),
+      {
+        config: {
+          git: {
+            github: {
+              url: "https://github.com",
+              provider: "github",
+              hosts: ["github.com"],
+              credential: { type: "env", env: "CODEPLANE_TEST_FORGE_TOKEN" },
+            },
+          },
+        },
+      },
+    ),
+  )
+
   it.live("loads tools from .codeplane/tool (singular)", () =>
     provideTmpdirInstance((dir) =>
       Effect.gen(function* () {

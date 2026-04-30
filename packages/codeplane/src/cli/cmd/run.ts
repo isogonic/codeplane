@@ -19,6 +19,12 @@ import { ReadTool } from "../../tool/read"
 import { WebFetchTool } from "../../tool/webfetch"
 import { EditTool } from "../../tool/edit"
 import { WriteTool } from "../../tool/write"
+import { ListTool } from "../../tool/list"
+import { ProjectTool } from "../../tool/project"
+import { ToolsTool } from "../../tool/tools"
+import { GitTool } from "../../tool/git"
+import { ForgeTool } from "../../tool/forge"
+import { BashInteractiveTool } from "../../tool/bash_interactive"
 import { CodeSearchTool } from "../../tool/codesearch"
 import { WebSearchTool } from "../../tool/websearch"
 import { TaskTool } from "../../tool/task"
@@ -116,6 +122,64 @@ function read(info: ToolProps<typeof ReadTool>) {
   })
 }
 
+function list(info: ToolProps<typeof ListTool>) {
+  const output = info.part.state.status === "completed" ? info.part.state.output?.trim() : undefined
+  const count = info.metadata.count
+  block(
+    {
+      icon: "≡",
+      title: `List ${normalizePath(info.input.path ?? ".") || "."}`,
+      ...(count !== undefined && { description: `${count} entries` }),
+    },
+    output,
+  )
+}
+
+function project(info: ToolProps<typeof ProjectTool>) {
+  const output = info.part.state.status === "completed" ? info.part.state.output?.trim() : undefined
+  const suffix = [info.input.name, info.input.kind].filter(Boolean).join(" ")
+  block(
+    {
+      icon: "◇",
+      title: `Project ${info.input.operation}${suffix ? ` ${suffix}` : ""}`,
+    },
+    output,
+  )
+}
+
+function tools(info: ToolProps<typeof ToolsTool>) {
+  const output = info.part.state.status === "completed" ? info.part.state.output?.trim() : undefined
+  block(
+    {
+      icon: "◇",
+      title: `Tools ${info.input.operation ?? "status"}${info.input.tool ? ` ${info.input.tool}` : ""}`,
+    },
+    output,
+  )
+}
+
+function git(info: ToolProps<typeof GitTool>) {
+  const output = info.part.state.status === "completed" ? info.part.state.output?.trim() : undefined
+  block(
+    {
+      icon: "⎇",
+      title: `Git ${info.input.operation}${info.input.branch ? ` ${info.input.branch}` : ""}`,
+    },
+    output,
+  )
+}
+
+function forge(info: ToolProps<typeof ForgeTool>) {
+  const output = info.part.state.status === "completed" ? info.part.state.output?.trim() : undefined
+  block(
+    {
+      icon: "◇",
+      title: `Forge ${info.input.operation}`,
+    },
+    output,
+  )
+}
+
 function write(info: ToolProps<typeof WriteTool>) {
   block(
     {
@@ -189,6 +253,18 @@ function bash(info: ToolProps<typeof BashTool>) {
     {
       icon: "$",
       title: `${info.input.command}`,
+    },
+    output,
+  )
+}
+
+function bashInteractive(info: ToolProps<typeof BashInteractiveTool>) {
+  const output = info.part.state.status === "completed" ? info.part.state.output?.trim() : undefined
+  block(
+    {
+      icon: "$",
+      title: `${info.input.command}`,
+      description: "interactive",
     },
     output,
   )
@@ -409,9 +485,15 @@ export const RunCommand = cmd({
       function tool(part: ToolPart) {
         try {
           if (part.tool === "bash") return bash(props<typeof BashTool>(part))
+          if (part.tool === "bash_interactive") return bashInteractive(props<typeof BashInteractiveTool>(part))
           if (part.tool === "glob") return glob(props<typeof GlobTool>(part))
           if (part.tool === "grep") return grep(props<typeof GrepTool>(part))
           if (part.tool === "read") return read(props<typeof ReadTool>(part))
+          if (part.tool === "list") return list(props<typeof ListTool>(part))
+          if (part.tool === "project") return project(props<typeof ProjectTool>(part))
+          if (part.tool === "tools") return tools(props<typeof ToolsTool>(part))
+          if (part.tool === "git") return git(props<typeof GitTool>(part))
+          if (part.tool === "forge") return forge(props<typeof ForgeTool>(part))
           if (part.tool === "write") return write(props<typeof WriteTool>(part))
           if (part.tool === "webfetch") return webfetch(props<typeof WebFetchTool>(part))
           if (part.tool === "edit") return edit(props<typeof EditTool>(part))

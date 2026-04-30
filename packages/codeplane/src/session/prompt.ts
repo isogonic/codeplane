@@ -60,6 +60,7 @@ import { InstanceState } from "@/effect"
 import { TaskTool, type TaskPromptOps } from "@/tool/task"
 import { SessionRunState } from "./run-state"
 import { EffectBridge } from "@/effect"
+import { Project } from "@/project"
 
 // @ts-ignore
 globalThis.AI_SDK_LOG_WARNINGS = false
@@ -105,6 +106,7 @@ export const layer = Layer.effect(
     const mcp = yield* MCP.Service
     const lsp = yield* LSP.Service
     const registry = yield* ToolRegistry.Service
+    const projectSvc = yield* Project.Service
     const truncate = yield* Truncate.Service
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
     const scope = yield* Scope.Scope
@@ -431,15 +433,14 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       const tools: Record<string, AITool> = {}
       const run = yield* runner()
       const promptOps = makeOps(run)
-      const [nativeTools, mcpTools] = yield* Effect.all(
-        [
-          registry.tools({
-            modelID: ModelID.make(input.model.api.id),
-            providerID: input.model.providerID,
-            agent: input.agent,
-          }),
-          mcp.tools(),
-        ],
+      const toolInput = {
+        modelID: ModelID.make(input.model.api.id),
+        providerID: input.model.providerID,
+        agent: input.agent,
+        sessionPermission: input.session.permission,
+      }
+      const [nativeTools, nativeAvailability, mcpTools] = yield* Effect.all(
+        [registry.tools(toolInput), registry.availability(toolInput), mcp.tools()],
         { concurrency: "unbounded" },
       )
 
@@ -448,7 +449,12 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         abort: options.abortSignal!,
         messageID: input.processor.message.id,
         callID: options.toolCallId,
-        extra: { model: input.model, bypassAgentCheck: input.bypassAgentCheck, promptOps },
+        extra: {
+          model: input.model,
+          bypassAgentCheck: input.bypassAgentCheck,
+          promptOps,
+          toolAvailability: nativeAvailability,
+        },
         agent: input.agent.name,
         messages: input.messages,
         metadata: (val) =>
@@ -623,6 +629,71 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       }
 
       return tools
+    })
+
+    const toolAvailabilitySystem = Effect.fn("SessionPrompt.toolAvailabilitySystem")(function* (input: {
+      agent: Agent.Info
+      model: Provider.Model
+      session: Session.Info
+    }) {
+      const status = yield* registry.availability({
+        modelID: ModelID.make(input.model.api.id),
+        providerID: input.model.providerID,
+        agent: input.agent,
+        sessionPermission: input.session.permission,
+      })
+      return [
+        "<tool-availability>",
+        "The native tool list below is live for this exact step. Only callable tools are exposed as tool calls.",
+        `Callable native tools: ${status.available.length ? status.available.join(", ") : "(none)"}`,
+        ...(status.blocked.length
+          ? [
+              "Known native tools not currently callable:",
+              ...status.blocked.map((item) =>
+                [`- ${item.id}: ${item.reason}`, item.setup ? `  Enablement: ${item.setup}` : undefined]
+                  .filter(Boolean)
+                  .join("\n"),
+              ),
+            ]
+          : ["Known native tools not currently callable: (none)"]),
+        "If a blocked tool becomes enabled after config changes or credential setup, it will become callable on the next agent step.",
+        "</tool-availability>",
+      ].join("\n")
+    })
+
+    const projectCommandsSystem = Effect.fn("SessionPrompt.projectCommandsSystem")(function* () {
+      const ctx = yield* InstanceState.context
+      const project =
+        (yield* projectSvc.get(ctx.project.id).pipe(Effect.catch(() => Effect.succeed(undefined)))) ?? ctx.project
+      const commands = Object.entries(project.commands ?? {})
+        .map(([name, command]) => Project.commandInfo(name, command))
+        .filter((command) => command.context !== false)
+        .toSorted((a, b) => a.name.localeCompare(b.name))
+
+      if (commands.length === 0) return
+      return [
+        "<project-commands>",
+        "These project commands are configured for the current project and are safe entry points to prefer over guessing raw shell commands.",
+        "Use the project tool to inspect, edit, check, or run them.",
+        ...commands
+          .slice(0, 40)
+          .map((command) =>
+            [
+              `- ${command.name}: ${command.command}`,
+              command.cwd ? `  cwd: ${command.cwd}` : undefined,
+              command.label ? `  label: ${command.label}` : undefined,
+              command.description ? `  description: ${command.description}` : undefined,
+              command.labels?.length ? `  labels: ${command.labels.join(", ")}` : undefined,
+              command.env?.length ? `  required_env: ${command.env.join(", ")}` : undefined,
+            ]
+              .filter(Boolean)
+              .join("\n"),
+          ),
+        commands.length > 40 ? `(${commands.length - 40} more project commands omitted.)` : undefined,
+        "</project-commands>",
+      ]
+        .filter((item): item is string => Boolean(item))
+        .join("\n")
     })
 
     const handleSubtask = Effect.fn("SessionPrompt.handleSubtask")(function* (input: {
@@ -1542,11 +1613,10 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             const batch = (end === -1 ? pendingTasks : pendingTasks.slice(0, end)).filter(
               (item): item is MessageV2.SubtaskPart => item.type === "subtask",
             )
-            yield* Effect.forEach(
-              batch,
-              (task) => handleSubtask({ task, model, lastUser, sessionID, session, msgs }),
-              { concurrency: isCommand ? 1 : "unbounded", discard: true },
-            )
+            yield* Effect.forEach(batch, (task) => handleSubtask({ task, model, lastUser, sessionID, session, msgs }), {
+              concurrency: isCommand ? 1 : "unbounded",
+              discard: true,
+            })
             continue
           }
 
@@ -1656,7 +1726,17 @@ NOTE: At any point in time through this workflow you should feel free to ask the
               instruction.system().pipe(Effect.orDie),
               MessageV2.toModelMessagesEffect(msgs, model),
             ])
-            const system = [...env, ...(skills ? [skills] : []), ...instructions]
+            const toolAvailability = model.capabilities.toolcall
+              ? yield* toolAvailabilitySystem({ agent, model, session })
+              : undefined
+            const projectCommands = yield* projectCommandsSystem()
+            const system = [
+              ...env,
+              ...(toolAvailability ? [toolAvailability] : []),
+              ...(projectCommands ? [projectCommands] : []),
+              ...(skills ? [skills] : []),
+              ...instructions,
+            ]
             const format = lastUser.format ?? { type: "text" as const }
             if (format.type === "json_schema") system.push(STRUCTURED_OUTPUT_SYSTEM_PROMPT)
             const result = yield* handle.process({
@@ -1865,6 +1945,7 @@ export const defaultLayer = Layer.suspend(() =>
     Layer.provide(Truncate.defaultLayer),
     Layer.provide(Provider.defaultLayer),
     Layer.provide(Instruction.defaultLayer),
+    Layer.provide(Project.defaultLayer),
     Layer.provide(AppFileSystem.defaultLayer),
     Layer.provide(Plugin.defaultLayer),
     Layer.provide(Session.defaultLayer),

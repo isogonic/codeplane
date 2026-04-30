@@ -468,6 +468,79 @@ describe("bash_interactive", () => {
     expect(result.output).toContain("OK=RIGHT")
   }, 20_000)
 
+  test("retry enter prompt preserves an immediate next declared prompt", async () => {
+    const tool = await initTool()
+    await using sandbox = await tmpdir()
+    const dir = sandbox.path
+
+    const sessionID = SessionID.make("ses_enter_retry_immediate_test")
+    const messageID = MessageID.make("msg_enter_retry_immediate_test")
+    const askedQuestions: string[] = []
+    const answers = ["blue", "green"]
+
+    const result = await Instance.provide({
+      directory: dir,
+      fn: () =>
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const q = yield* Question.Service
+            const bus = yield* Bus.Service
+
+            const reply = Instance.bind((requestID: any, answer: string) =>
+              runtime.runPromise(q.reply({ requestID, answers: [[answer]] })),
+            )
+            const unsubscribe = yield* bus.subscribeCallback(Question.Event.Asked, (payload) => {
+              const req = payload.properties
+              if (req.sessionID !== sessionID) return
+              askedQuestions.push(req.questions[0]?.question ?? "")
+              setTimeout(() => void reply(req.id, answers.shift() ?? "green"), 5)
+            })
+
+            try {
+              return yield* tool.execute(
+                {
+                  command: [
+                    "printf 'Favorite color: ';",
+                    "read first;",
+                    "echo 'Invalid choice. Please try again.';",
+                    "printf 'Press Enter to retry. ';",
+                    "read retry;",
+                    "printf 'Favorite color: ';",
+                    "read second;",
+                    "printf 'retry-enter-color:first=%s retry=%s second=%s\\n' \"$first\" \"$retry\" \"$second\";",
+                  ].join(" "),
+                  timeout: 30_000,
+                  prompts: [
+                    { pattern: "Favorite color:", question: "Enter the first color", header: "Color 1" },
+                    { pattern: "Favorite color:", question: "Enter the second color", header: "Color 2" },
+                  ],
+                  description: "Local retry prompt flow",
+                } as any,
+                {
+                  sessionID,
+                  messageID,
+                  callID: "call_enter_retry_immediate_test",
+                  agent: "build",
+                  abort: new AbortController().signal,
+                  messages: [],
+                  metadata: () => Effect.void,
+                  ask: () => Effect.void,
+                } as any,
+              )
+            } finally {
+              unsubscribe()
+            }
+          }),
+        ),
+    })
+
+    expect(askedQuestions.length).toBe(2)
+    expect(askedQuestions[0]).toContain("first color")
+    expect(askedQuestions[1]).toContain("second color")
+    expect(result.output).toContain("retry-enter-color:first=blue retry= second=green")
+    expect(result.output).not.toContain("timed out")
+  }, 20_000)
+
   test("auth service matrix works through agent-controlled terminal input", async () => {
     const scenarios = [
       {
@@ -611,7 +684,7 @@ describe("bash_interactive", () => {
     }
   }, 120_000)
 
-  test("OAuth URL-only auth flow shows a browser sign-in prompt without stdin input", async () => {
+  test("OAuth URL-only auth flow shows a code-capable browser prompt without stdin input", async () => {
     const tool = await initTool()
     await using sandbox = await tmpdir()
     const dir = sandbox.path
@@ -668,6 +741,7 @@ describe("bash_interactive", () => {
 
     expect(askedQuestions.length).toBe(1)
     expect(askedQuestions[0]).toContain("Complete this CLI sign-in in the browser")
+    expect(askedQuestions[0]).toContain("If the browser shows an authorization code, paste it here.")
     expect(askedQuestions[0]).toContain("https://claude.com/cai/oauth/authorize?code=true&client_id=demo&state=xyz")
     expect(askedQuestions[0]).not.toContain("state=xyzOK")
     expect(result.output).toContain("Waiting for browser callback")
@@ -675,7 +749,7 @@ describe("bash_interactive", () => {
     expect(result.output).not.toContain("timed out")
   }, 20_000)
 
-  test("OAuth URL-only auth flow uses the browser prompt instead of a declared URL prompt", async () => {
+  test("OAuth URL-only auth flow uses the code-capable prompt instead of a declared URL prompt", async () => {
     const tool = await initTool()
     await using sandbox = await tmpdir()
     const dir = sandbox.path
@@ -737,9 +811,157 @@ describe("bash_interactive", () => {
 
     expect(askedQuestions.length).toBe(1)
     expect(askedQuestions[0]).toContain("Complete this CLI sign-in in the browser")
+    expect(askedQuestions[0]).toContain("If the browser shows an authorization code, paste it here.")
     expect(askedQuestions[0]).not.toContain("Paste the authorization code from the browser")
     expect(result.output).toContain("Waiting for browser callback")
     expect(result.output).toContain("Login successful")
+    expect(result.output).not.toContain("timed out")
+  }, 20_000)
+
+  test("OAuth URL code answer is buffered until a later terminal paste prompt reads stdin", async () => {
+    const tool = await initTool()
+    await using sandbox = await tmpdir()
+    const dir = sandbox.path
+
+    const sessionID = SessionID.make("ses_oauth_delayed_code_test")
+    const messageID = MessageID.make("msg_oauth_delayed_code_test")
+    const askedQuestions: string[] = []
+
+    const result = await Instance.provide({
+      directory: dir,
+      fn: () =>
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const q = yield* Question.Service
+            const bus = yield* Bus.Service
+
+            const reply = Instance.bind((requestID: any, answer: string) =>
+              runtime.runPromise(q.reply({ requestID, answers: [[answer]] })),
+            )
+            const unsubscribe = yield* bus.subscribeCallback(Question.Event.Asked, (payload) => {
+              const req = payload.properties
+              if (req.sessionID !== sessionID) return
+              askedQuestions.push(req.questions[0]?.question ?? "")
+              setTimeout(() => void reply(req.id, "CLAUDE-DELAYED-CODE"), 5)
+            })
+
+            try {
+              return yield* tool.execute(
+                {
+                  command: [
+                    "echo 'Opening browser to sign in...';",
+                    'echo "If the browser didn\'t open, visit: https://claude.com/cai/oauth/authorize?code=true&client_id=demo&state=xyz";',
+                    "sleep 1;",
+                    "printf 'Paste code here if prompted > ';",
+                    "read code;",
+                    "printf 'GOT=%s\\n' \"$code\";",
+                    "echo 'Authentication successful. Logged in.';",
+                  ].join(" "),
+                  timeout: 10_000,
+                  prompts: [],
+                  description: "Claude auth delayed code prompt",
+                } as any,
+                {
+                  sessionID,
+                  messageID,
+                  callID: "call_oauth_delayed_code_test",
+                  agent: "build",
+                  abort: new AbortController().signal,
+                  messages: [],
+                  metadata: () => Effect.void,
+                  ask: () => Effect.void,
+                } as any,
+              )
+            } finally {
+              unsubscribe()
+            }
+          }),
+        ),
+    })
+
+    expect(askedQuestions.length).toBe(1)
+    expect(askedQuestions[0]).toContain("If the browser shows an authorization code, paste it here.")
+    expect(askedQuestions[0]).toContain("https://claude.com/cai/oauth/authorize?code=true&client_id=demo&state=xyz")
+    expect(result.output).toContain("CLAUDE-DELAYED-CODE")
+    expect(result.output).toContain("GOT=CLAUDE-DELAYED-CODE")
+    expect(result.output).toContain("Authentication successful")
+    expect(result.output).not.toContain("timed out")
+  }, 20_000)
+
+  test("OAuth retry prompt presses enter and asks for the next code", async () => {
+    const tool = await initTool()
+    await using sandbox = await tmpdir()
+    const dir = sandbox.path
+
+    const sessionID = SessionID.make("ses_oauth_retry_code_test")
+    const messageID = MessageID.make("msg_oauth_retry_code_test")
+    const askedQuestions: string[] = []
+    const answers = ["EXPIRED-CODE", "FRESH-CODE"]
+
+    const result = await Instance.provide({
+      directory: dir,
+      fn: () =>
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const q = yield* Question.Service
+            const bus = yield* Bus.Service
+
+            const reply = Instance.bind((requestID: any, answer: string) =>
+              runtime.runPromise(q.reply({ requestID, answers: [[answer]] })),
+            )
+            const unsubscribe = yield* bus.subscribeCallback(Question.Event.Asked, (payload) => {
+              const req = payload.properties
+              if (req.sessionID !== sessionID) return
+              askedQuestions.push(req.questions[0]?.question ?? "")
+              setTimeout(() => void reply(req.id, answers.shift() ?? "FRESH-CODE"), 5)
+            })
+
+            try {
+              return yield* tool.execute(
+                {
+                  command: [
+                    "echo 'Opening browser to sign in...';",
+                    'echo "https://claude.com/cai/oauth/authorize?code=true&client_id=demo&state=first";',
+                    "printf 'Paste code here if prompted > ';",
+                    "read first;",
+                    "echo 'OAuth error: Invalid code. Please make sure the full code was copied';",
+                    "printf 'Press Enter to retry. ';",
+                    "read retry;",
+                    "echo 'Opening browser to sign in again...';",
+                    'echo "https://claude.com/cai/oauth/authorize?code=true&client_id=demo&state=second";',
+                    "sleep 1;",
+                    "printf 'Paste code here if prompted > ';",
+                    "read second;",
+                    "printf 'first=%s retry=%s second=%s\\n' \"$first\" \"$retry\" \"$second\";",
+                    "echo 'Authentication successful. Logged in.';",
+                  ].join(" "),
+                  timeout: 10_000,
+                  prompts: [],
+                  description: "Claude auth retry code prompt",
+                } as any,
+                {
+                  sessionID,
+                  messageID,
+                  callID: "call_oauth_retry_code_test",
+                  agent: "build",
+                  abort: new AbortController().signal,
+                  messages: [],
+                  metadata: () => Effect.void,
+                  ask: () => Effect.void,
+                } as any,
+              )
+            } finally {
+              unsubscribe()
+            }
+          }),
+        ),
+    })
+
+    expect(askedQuestions.length).toBe(2)
+    expect(askedQuestions[0]).toContain("state=first")
+    expect(askedQuestions[1]).toContain("state=second")
+    expect(result.output).toContain("first=EXPIRED-CODE retry= second=FRESH-CODE")
+    expect(result.output).toContain("Authentication successful")
     expect(result.output).not.toContain("timed out")
   }, 20_000)
 

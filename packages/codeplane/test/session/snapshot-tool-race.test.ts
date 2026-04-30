@@ -30,6 +30,7 @@ import { TestLLMServer } from "../lib/llm-server"
 // Same layer setup as prompt-effect.test.ts
 import { NodeFileSystem } from "@effect/platform-node"
 import { Agent as AgentSvc } from "../../src/agent/agent"
+import { Auth } from "../../src/auth"
 import { Bus } from "../../src/bus"
 import { Command } from "../../src/command"
 import { Config } from "../../src/config"
@@ -55,6 +56,8 @@ import { AppFileSystem } from "@codeplane-ai/shared/filesystem"
 import * as CrossSpawnSpawner from "../../src/effect/cross-spawn-spawner"
 import { Ripgrep } from "../../src/file/ripgrep"
 import { Format } from "../../src/format"
+import { Git } from "../../src/git"
+import { Project } from "../../src/project"
 
 void Log.init({ print: false })
 
@@ -116,6 +119,9 @@ function makeHttp() {
     Permission.defaultLayer,
     Plugin.defaultLayer,
     Config.defaultLayer,
+    Auth.defaultLayer,
+    Git.defaultLayer,
+    Project.defaultLayer,
     ProviderSvc.defaultLayer,
     lsp,
     mcp,
