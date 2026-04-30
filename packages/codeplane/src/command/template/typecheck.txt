@@ -1,0 +1,5 @@
+Use the native project tool to run or configure the project typecheck command.
+
+First call project with operation="check" and name="typecheck". If callable, run project with operation="run" and name="typecheck". If missing or blocked, call project operation="commands" and explain the exact project command configuration needed.
+
+Arguments: $ARGUMENTS

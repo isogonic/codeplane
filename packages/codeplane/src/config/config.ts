@@ -29,6 +29,7 @@ import { NonNegativeInt, PositiveInt, withStatics, type DeepMutable } from "@/ut
 import { ConfigAgent } from "./agent"
 import { ConfigCommand } from "./command"
 import { ConfigFormatter } from "./formatter"
+import { ConfigGit } from "./git"
 import { ConfigLayout } from "./layout"
 import { ConfigLSP } from "./lsp"
 import { ConfigManaged } from "./managed"
@@ -177,6 +178,9 @@ export const Info = Schema.Struct({
     ),
   ).annotate({ description: "MCP (Model Context Protocol) server configurations" }),
   formatter: Schema.optional(ConfigFormatter.Info),
+  git: Schema.optional(ConfigGit.Info).annotate({
+    description: "Named Git host configuration for native git tool operations and credentials",
+  }),
   lsp: Schema.optional(ConfigLSP.Info),
   instructions: Schema.optional(Schema.mutable(Schema.Array(Schema.String))).annotate({
     description: "Additional instruction files or patterns to include",

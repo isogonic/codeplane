@@ -1,0 +1,43 @@
+Run the local full-stack Tetris agent audit.
+
+Use the current project configuration and native tools.
+
+Important workspace rule:
+- If the current directory has no `package.json` and no application source files, it is already a clean audit workspace. Build directly in the current directory. Do not create a `tetris-agent-audit/` subdirectory.
+- Only create a dedicated `tetris-agent-audit/` subdirectory when the current directory already contains unrelated application code. If you create the subdirectory, configure project commands with that cwd.
+
+Primary task:
+- Build a playable Tetris game with a real web UI and a local backend.
+- The UI must support keyboard controls, pause/resume, restart, score, level, next piece, hold piece, line clears, game over, and responsive layout.
+- The backend must run locally and expose at least `/api/health`, `/api/scores`, and one endpoint used by the UI for score/session state.
+- Prefer Bun-native tooling unless the existing project clearly uses another stack.
+- Keep everything local; do not require hosted services.
+- Do not add an `install` package script that runs `bun install`; package-manager lifecycle install scripts can recurse. It is fine to omit an install script.
+
+Required tool flow:
+1. Use the native tools doctor/status path first: call the native tools tool with operation="doctor" or operation="status" and explain any blocked tools that matter.
+2. Use the native project tool to inspect existing configured/detected commands.
+3. Configure editable project commands with the native project tool for `install`, `dev`, `build`, `test`, and `typecheck` whenever they are missing or stale. Use labels, descriptions, command kind, cwd, context, timeout, and interactive metadata.
+4. Use configured project commands where possible instead of raw shell commands.
+5. Use `bash_interactive` for the long-running local dev server. Capture the localhost URL and stop the server after verification.
+
+Verification:
+- Install dependencies when needed.
+- Run typecheck, tests, and build.
+- Start the web UI/backend locally.
+- Verify the backend health endpoint with curl/fetch.
+- Verify GET and POST on `/api/scores` with curl/fetch.
+- Verify the UI route responds.
+- Verify the served HTML/JS contains visible Tetris UI labels: score, level, next, hold, pause, and restart.
+- If browser tooling is available, inspect the page enough to prove it is not blank and that controls/score/game state are present.
+- Record every failed command, blocked permission, missing binary, flaky step, or workaround.
+
+Audit report:
+- State the model/provider used for the run.
+- Summarize tool usage and whether native project/tool/git/forge availability was accurate.
+- Identify agent behavior flaws: missed obvious command, wrong tool choice, permission friction, context confusion, weak verification, excessive retries, unsafe command, stale tool listing, or poor final reporting.
+- Identify product improvements that would make future runs better.
+- Include exact commands configured and exact commands run.
+- Include final local paths and localhost URLs.
+
+Arguments: $ARGUMENTS

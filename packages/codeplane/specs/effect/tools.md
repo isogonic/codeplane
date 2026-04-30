@@ -42,23 +42,28 @@ These exported tool definitions currently use `Tool.define(...)` in `src/tool`:
 - [x] `bash.ts`
 - [x] `codesearch.ts`
 - [x] `edit.ts`
+- [x] `forge.ts`
+- [x] `git.ts`
 - [x] `glob.ts`
 - [x] `grep.ts`
 - [x] `invalid.ts`
+- [x] `list.ts`
 - [x] `lsp.ts`
 - [x] `plan.ts`
+- [x] `project.ts`
 - [x] `question.ts`
 - [x] `read.ts`
 - [x] `skill.ts`
 - [x] `task.ts`
 - [x] `todo.ts`
+- [x] `tools.ts`
 - [x] `webfetch.ts`
 - [x] `websearch.ts`
 - [x] `write.ts`
 
 Notes:
 
-- There is no current `ls.ts` tool file on this branch.
+- Directory listing is exposed through `list.ts`; `read.ts` keeps legacy directory behavior for compatibility.
 - `truncate.ts` is an Effect service used by tools, not a tool definition itself.
 - `mcp-exa.ts`, `external-directory.ts`, and `schema.ts` are support modules, not standalone tool definitions.
 

@@ -6,13 +6,14 @@ How it works:
 - Spawns the command in a PTY (so CLIs that only prompt when stdin is a TTY work correctly).
 - Streams output live so the renderer shows the running terminal as it happens.
 - Watches for prompt patterns you declare. When a prompt matches, the agent either writes a known `answer` directly into the PTY, or asks the user with the standard question dock and then writes the user's answer into the PTY.
-- Browser-only OAuth flows, such as current `claude auth login` output that prints an `/oauth/authorize?...code=true...` URL but no paste prompt, complete in the browser. The tool automatically shows the user a browser sign-in question with the OAuth URL and keeps waiting for the callback. Do not ask the user for a terminal code unless the CLI prints an actual stdin prompt.
+- OAuth flows that print an `/oauth/authorize?...code=true...` URL automatically show a code-capable browser sign-in question with the OAuth URL. If the browser displays a code, the user's answer is written into the terminal even if the CLI prints its paste prompt later. If the browser completes automatically, the question closes when the terminal exits.
 - If a CLI prints an obvious stdin prompt for a code, token, OTP, passcode, or password and no declared prompt matched, the tool automatically asks the user and writes the answer into the terminal. This covers Claude variants that show a browser code and then print `Paste code here...` without the agent having declared a pattern.
+- If a CLI prints a plain `Press Enter to retry/continue` prompt after a failed auth attempt, the tool sends Enter automatically so the flow can return to the next code prompt instead of freezing.
 - The user never types directly into the terminal. Terminal input is controlled by the agent/tool.
 
 Required prep:
 1. Probe the command FIRST with the regular `bash` tool (or read the CLI's `--help` / docs) to learn what prompts it actually prints — verbatim. Don't guess.
-2. Call `bash_interactive` with `prompts` covering each prompt you saw. The `pattern` is a JS regex matched case-insensitively against new PTY output; pick something distinctive enough to not match surrounding chatter. Do not invent a code/token prompt from an OAuth URL alone; only declare one when the CLI actually asks for stdin.
+2. Call `bash_interactive` with `prompts` covering each prompt you saw. The `pattern` is a JS regex matched case-insensitively against new PTY output; pick something distinctive enough to not match surrounding chatter. You do not need to declare a code prompt for Claude-style OAuth URLs; the tool handles that fallback automatically.
 3. For choices the agent already knows, set `answer`. Use an empty string to press Enter/select the CLI default. For choices the agent does not know, omit `answer` and phrase `question` for the user.
 
 Each prompt fires AT MOST ONCE per entry. If the same prompt can appear twice, include the entry twice.

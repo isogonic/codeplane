@@ -130,7 +130,7 @@ export const GlobalRoutes = lazy(() =>
           () => null as string | null,
         )
         const current = InstallationVersion
-        const hasUpdate = !!latest && latest !== current
+        const hasUpdate = !!latest && Installation.hasUpdate(current, latest)
         return c.json({ current, latest, hasUpdate, method })
       },
     )
@@ -306,8 +306,8 @@ export const GlobalRoutes = lazy(() =>
                 }
               }
 
-              const target = (body.target || (yield* svc.latest(method))).replace(/^v/, "")
-              if (target === InstallationVersion) {
+              const target = Installation.cleanVersion(body.target || (yield* svc.latest(method)))
+              if (Installation.isSameVersion(InstallationVersion, target)) {
                 return {
                   success: true as const,
                   status: 200 as const,

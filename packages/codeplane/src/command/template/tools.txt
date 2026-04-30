@@ -1,0 +1,11 @@
+Use the native tools tool to inspect the live tool surface.
+
+If the user provided arguments, treat them as a tool id, Git host instance, or requested mode when obvious:
+- "check" means operation="check"
+- "doctor" means operation="doctor"
+- a known native tool id means tool="<id>"
+- a Git host instance name means instance="<name>"
+
+Call the tools tool first. Report only the current callable tools, blocked tools, and concrete fixes that matter for this session.
+
+Arguments: $ARGUMENTS

@@ -25,10 +25,10 @@ const PROMPT_BUFFER_CAP = 4096
 const STRIP_ANSI_RE = /\x1B\[[0-?]*[ -/]*[@-~]/g
 const OAUTH_AUTHORIZE_RE =
   /https?:\/\/\S*(?:\/oauth\/authorize|\/cai\/oauth\/authorize)\S*(?:code=true|response_type=code)|https?:\/\/\S*(?:code=true|response_type=code)\S*(?:\/oauth\/authorize|\/cai\/oauth\/authorize)/i
-const STDIN_PROMPT_RE =
-  /(?:^|\n)\s*(?:paste|enter|input|type|provide).{0,80}(?:code|token|password|otp|passcode).{0,80}[:>]\s*$/i
 const STDIN_PROMPT_LINE_RE =
   /(?:^|\n)\s*([^\n]{0,220}(?:(?:(?:paste|enter|input|type|provide)[^\n]{0,120}(?:code|token|password|otp|passcode))|(?:(?:code|token|password|otp|passcode)[^\n]{0,120}(?:paste|enter|input|type|provide)))[^\n]{0,80}[:>]\s*)$/i
+const ENTER_PROMPT_RE =
+  /(?:^|\n)\s*(press|hit)\s+(enter|return)(?:\s+(?:to|for)\s+(?:retry|try again|continue|proceed|finish|close|dismiss))?[.!?>: ]*$/i
 const URL_CONTINUATION_RE = /^[A-Za-z0-9._~:/?#[\]@!$&'()*+,;=%-]+$/
 const URL_WRAP_RE = /^[?&=#%_.-]|^.{24,}$/
 const PromptEntry = Schema.Struct({
@@ -102,16 +102,13 @@ function extractBrowserOAuthUrl(value: string): string | undefined {
   }
 }
 
-function browserOnlyOAuthUrl(value: string): string | undefined {
-  const url = extractBrowserOAuthUrl(value)
-  if (!url) return
-  if (STDIN_PROMPT_RE.test(value.replace(STRIP_ANSI_RE, ""))) return
-  return url
-}
-
 function autoStdinPrompt(value: string): string | undefined {
   const match = value.replace(STRIP_ANSI_RE, "").replace(/\r/g, "\n").match(STDIN_PROMPT_LINE_RE)
   return match?.[1]?.trim()
+}
+
+function autoEnterPrompt(value: string): boolean {
+  return ENTER_PROMPT_RE.test(value.replace(STRIP_ANSI_RE, "").replace(/\r/g, "\n"))
 }
 
 function autoStdinHeader(prompt: string): string {
@@ -255,14 +252,15 @@ export const BashInteractiveTool = Tool.define(
             // Sanitize paste/input text. Empty string is meaningful: it sends
             // Enter to accept the highlighted/default option in menu CLIs.
             const clean = value.replace(/\s+/g, " ").trim()
+            // Consume the prompt that triggered this input before writing.
+            // Some CLIs print the next prompt synchronously as soon as Enter is
+            // sent; clearing after proc.write can erase that prompt and freeze.
+            scanBuffer = ""
             // Real terminals send \r when Enter is pressed; the PTY's TTY
             // discipline translates CR→NL via ICRNL for cooked-mode reads.
             try {
               proc.write(clean + "\r")
             } catch {}
-            // Don't auto-reset declared-prompt latches here. The CLI's PTY echo
-            // can replay prompt text on the same line as the answer.
-            scanBuffer = ""
           }
 
           // cleanup() inside the Promise toggles this so the question catch
@@ -289,9 +287,6 @@ export const BashInteractiveTool = Tool.define(
                 }),
               )
               writeInputToPty((answers[0]?.[0] ?? "").trim())
-              // Consume the buffer so the post-input echo + new output starts
-              // a clean scan window for the next declared prompt.
-              scanBuffer = ""
               return true
             } catch {
               // If the proc has already exited (stop button, timeout, abort,
@@ -308,9 +303,9 @@ export const BashInteractiveTool = Tool.define(
             }
           }
 
-          const askBrowserOAuth = async (url: string) => {
+          const askOAuthCode = async (url: string) => {
             try {
-              await bridge.promise(
+              const answers = await bridge.promise(
                 question.ask({
                   sessionID: ctx.sessionID,
                   questions: [
@@ -318,27 +313,25 @@ export const BashInteractiveTool = Tool.define(
                       question: [
                         "Complete this CLI sign-in in the browser.",
                         "",
-                        "The terminal is waiting for the OAuth browser callback, not for typed terminal input.",
-                        "",
                         "If the browser did not open, open this URL:",
                         url,
                         "",
-                        "After the browser flow finishes, the terminal should continue automatically.",
+                        "If the browser shows an authorization code, paste it here.",
+                        "The agent will send that code into the running terminal.",
+                        "",
+                        "If sign-in completes automatically without showing a code, leave this unanswered; the prompt will close when the terminal exits.",
                       ].join("\n"),
-                      header: "Browser sign-in",
-                      options: [
-                        {
-                          label: "I completed sign-in",
-                          description: "Continue waiting for the browser callback",
-                        },
-                      ],
+                      header: "Auth code",
+                      options: [],
                       multiple: false,
-                      custom: false,
+                      custom: true,
                     },
                   ],
                   tool: { messageID: ctx.messageID, callID },
                 }),
               )
+              const code = (answers[0]?.[0] ?? "").trim()
+              if (code) writeInputToPty(code)
               return true
             } catch {
               if (cleanedRef.cleaned) return false
@@ -371,19 +364,27 @@ export const BashInteractiveTool = Tool.define(
             try {
               while (true) {
                 const haystack = scanBuffer.replace(STRIP_ANSI_RE, "")
-                const oauthUrl = oauthPrompted ? undefined : browserOnlyOAuthUrl(haystack)
-                if (oauthUrl) {
-                  oauthPrompted = true
+                const autoPrompt = autoStdinPrompt(haystack)
+                const next = compiled.find((p) => !p.fired && p.re.test(haystack))
+                if (autoPrompt && next) {
+                  next.fired = true
                   scanBuffer = ""
-                  const ok = await askBrowserOAuth(oauthUrl)
+
+                  if (next.answer !== undefined) {
+                    writeInputToPty(next.answer)
+                    continue
+                  }
+
+                  const { tail: head } = recentOutputSnapshot()
+                  const enriched = head
+                    ? `${next.question}\n\n— Recent terminal output —\n${head}\n\nThe agent will send your answer into the running terminal.`
+                    : `${next.question}\n\nThe agent will send your answer into the running terminal.`
+                  const ok = await askInput(enriched, next.header ?? next.question)
                   if (!ok) return
                   continue
                 }
 
-                const next = compiled.find((p) => !p.fired && p.re.test(haystack))
-                if (!next) {
-                  const autoPrompt = autoStdinPrompt(haystack)
-                  if (!autoPrompt) break
+                if (autoPrompt) {
                   scanBuffer = ""
                   const { tail: head } = recentOutputSnapshot()
                   const enriched = head
@@ -393,6 +394,24 @@ export const BashInteractiveTool = Tool.define(
                   if (!ok) return
                   continue
                 }
+
+                if (autoEnterPrompt(haystack)) {
+                  scanBuffer = ""
+                  oauthPrompted = false
+                  writeInputToPty("")
+                  continue
+                }
+
+                const oauthUrl = oauthPrompted ? undefined : extractBrowserOAuthUrl(haystack)
+                if (oauthUrl) {
+                  oauthPrompted = true
+                  scanBuffer = ""
+                  const ok = await askOAuthCode(oauthUrl)
+                  if (!ok) return
+                  continue
+                }
+
+                if (!next) break
                 next.fired = true
                 scanBuffer = ""
 

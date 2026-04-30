@@ -50,6 +50,18 @@ function testLayer(
 }
 
 describe("installation", () => {
+  describe("version ordering", () => {
+    test("uses semantic release ordering after legacy calendar versions", () => {
+      expect(Installation.hasUpdate("26.5.44", "27.0.0")).toBe(true)
+      expect(Installation.getReleaseType("26.5.44", "27.0.0")).toBe("major")
+    })
+
+    test("normalizes v-prefixed targets without rejecting old versions", () => {
+      expect(Installation.isSameVersion("v26.5.44", "26.5.44")).toBe(true)
+      expect(Installation.cleanVersion("v27.0.0")).toBe("27.0.0")
+    })
+  })
+
   describe("latest", () => {
     test("reads release version from GitHub releases", async () => {
       const layer = testLayer(() => jsonResponse({ tag_name: "v1.2.3" }))
@@ -171,7 +183,8 @@ describe("installation", () => {
       const layer = testLayer(
         () => jsonResponse({}), // HTTP not used for tap formula
         (cmd, args) => {
-          if (cmd === "brew" && args.includes("devinoldenburg/tap/codeplane") && args.includes("--formula")) return "codeplane"
+          if (cmd === "brew" && args.includes("devinoldenburg/tap/codeplane") && args.includes("--formula"))
+            return "codeplane"
           if (cmd === "brew" && args.includes("--json=v2")) return brewInfoJson
           return ""
         },

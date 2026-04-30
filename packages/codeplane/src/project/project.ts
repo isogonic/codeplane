@@ -39,11 +39,74 @@ const ProjectIcon = Schema.Struct({
   color: Schema.optional(Schema.String),
 })
 
-const ProjectCommands = Schema.Struct({
-  start: Schema.optional(
-    Schema.String.annotate({ description: "Startup script to run when creating a new workspace (worktree)" }),
-  ),
+export const ProjectCommand = Schema.Struct({
+  command: Schema.String.annotate({ description: "Shell command to run" }),
+  label: Schema.optional(Schema.String).annotate({ description: "Human-readable label shown in the app" }),
+  description: Schema.optional(Schema.String).annotate({ description: "What this command is for" }),
+  cwd: Schema.optional(Schema.String).annotate({
+    description: "Working directory relative to the project worktree or absolute path. Defaults to the project root.",
+  }),
+  env: Schema.optional(Schema.mutable(Schema.Array(Schema.String))).annotate({
+    description: "Environment variables that must be present before the command can run",
+  }),
+  labels: Schema.optional(Schema.mutable(Schema.Array(Schema.String))).annotate({
+    description: "Additional labels/tags for grouping commands in the app and agent context",
+  }),
+  kind: Schema.optional(Schema.String).annotate({
+    description: "Semantic command kind such as start, dev, test, typecheck, lint, build, or custom",
+  }),
+  context: Schema.optional(Schema.Boolean).annotate({
+    description: "Whether to include this command in the agent's project command context. Defaults to true.",
+  }),
+  timeout: Schema.optional(Schema.Number).annotate({
+    description: "Suggested timeout in milliseconds when the command is run by automation",
+  }),
+  interactive: Schema.optional(Schema.Boolean).annotate({
+    description: "Whether this command is expected to stay interactive or long-running",
+  }),
 })
+export type ProjectCommand = Schema.Schema.Type<typeof ProjectCommand>
+
+export const ProjectCommandValue = Schema.Union([Schema.String, ProjectCommand])
+export type ProjectCommandValue = Schema.Schema.Type<typeof ProjectCommandValue>
+
+const ProjectCommands = Schema.Record(Schema.String, ProjectCommandValue)
+export type ProjectCommands = Schema.Schema.Type<typeof ProjectCommands>
+
+export function commandText(command: ProjectCommandValue | undefined) {
+  return typeof command === "string" ? command : command?.command
+}
+
+export function commandInfo(name: string, command: ProjectCommandValue) {
+  return typeof command === "string"
+    ? {
+        name,
+        command,
+        label: name,
+        description: undefined as string | undefined,
+        cwd: undefined as string | undefined,
+        env: undefined as string[] | undefined,
+        labels: undefined as string[] | undefined,
+        kind: name,
+        context: undefined as boolean | undefined,
+        timeout: undefined as number | undefined,
+        interactive: undefined as boolean | undefined,
+      }
+    : {
+        name,
+        command: command.command,
+        label: command.label ?? name,
+        description: command.description,
+        cwd: command.cwd,
+        env: command.env,
+        labels: command.labels,
+        kind: command.kind ?? name,
+        context: command.context,
+        timeout: command.timeout,
+        interactive: command.interactive,
+      }
+}
+export type CommandInfo = ReturnType<typeof commandInfo>
 
 const ProjectTime = Schema.Struct({
   created: Schema.Number,
@@ -340,10 +403,8 @@ export const layer: Layer.Layer<
                 eq(SessionTable.project_id, ProjectID.global),
                 data.sandbox === data.worktree
                   ? sessionDirectoryCondition(data.worktree)
-                  : (or(
-                      sessionDirectoryCondition(data.worktree),
-                      sessionDirectoryCondition(data.sandbox),
-                    ) ?? sessionDirectoryCondition(data.worktree)),
+                  : (or(sessionDirectoryCondition(data.worktree), sessionDirectoryCondition(data.sandbox)) ??
+                      sessionDirectoryCondition(data.worktree)),
               ),
             )
             .run(),

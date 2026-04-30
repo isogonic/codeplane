@@ -3,11 +3,16 @@ import { Session } from "../session"
 import { QuestionTool } from "./question"
 import { BashTool } from "./bash"
 import { EditTool } from "./edit"
+import { ForgeTool } from "./forge"
+import { GitTool } from "./git"
 import { GlobTool } from "./glob"
 import { GrepTool } from "./grep"
+import { ListTool } from "./list"
+import { ProjectTool } from "./project"
 import { ReadTool } from "./read"
 import { TaskTool } from "./task"
 import { TodoWriteTool } from "./todo"
+import { ToolsTool } from "./tools"
 import { WebFetchTool } from "./webfetch"
 import { BrowseTool } from "./browse"
 import { BashInteractiveTool } from "./bash_interactive"
@@ -49,6 +54,9 @@ import { Bus } from "../bus"
 import { Agent } from "../agent/agent"
 import { Skill } from "../skill"
 import { Permission } from "@/permission"
+import { Git } from "@/git"
+import { Auth } from "@/auth"
+import { Project } from "@/project"
 
 const log = Log.create({ service: "tool.registry" })
 
@@ -62,11 +70,29 @@ type State = {
   read: ReadDef
 }
 
+type ToolInput = {
+  providerID: ProviderID
+  modelID: ModelID
+  agent: Agent.Info
+  sessionPermission?: Permission.Ruleset
+}
+
+export type Availability = {
+  known?: string[]
+  available: string[]
+  blocked: Array<{
+    id: string
+    reason: string
+    setup?: string
+  }>
+}
+
 export interface Interface {
   readonly ids: () => Effect.Effect<string[]>
   readonly all: () => Effect.Effect<Tool.Def[]>
   readonly named: () => Effect.Effect<{ task: TaskDef; read: ReadDef }>
-  readonly tools: (model: { providerID: ProviderID; modelID: ModelID; agent: Agent.Info }) => Effect.Effect<Tool.Def[]>
+  readonly availability: (input: ToolInput) => Effect.Effect<Availability>
+  readonly tools: (input: ToolInput) => Effect.Effect<Tool.Def[]>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@codeplane/ToolRegistry") {}
@@ -85,7 +111,10 @@ export const layer: Layer.Layer<
   | LSP.Service
   | Instruction.Service
   | AppFileSystem.Service
+  | Auth.Service
   | Bus.Service
+  | Git.Service
+  | Project.Service
   | HttpClient.HttpClient
   | ChildProcessSpawner
   | Ripgrep.Service
@@ -95,6 +124,7 @@ export const layer: Layer.Layer<
   Service,
   Effect.gen(function* () {
     const config = yield* Config.Service
+    const auth = yield* Auth.Service
     const plugin = yield* Plugin.Service
     const agents = yield* Agent.Service
     const skill = yield* Skill.Service
@@ -103,6 +133,11 @@ export const layer: Layer.Layer<
     const invalid = yield* InvalidTool
     const task = yield* TaskTool
     const read = yield* ReadTool
+    const list = yield* ListTool
+    const projecttool = yield* ProjectTool
+    const gittool = yield* GitTool
+    const forgetool = yield* ForgeTool
+    const toolstatus = yield* ToolsTool
     const question = yield* QuestionTool
     const todo = yield* TodoWriteTool
     const lsptool = yield* LspTool
@@ -212,6 +247,11 @@ export const layer: Layer.Layer<
           invalid: Tool.init(invalid),
           bash: Tool.init(bash),
           read: Tool.init(read),
+          list: Tool.init(list),
+          project: Tool.init(projecttool),
+          git: Tool.init(gittool),
+          forge: Tool.init(forgetool),
+          tools: Tool.init(toolstatus),
           glob: Tool.init(globtool),
           grep: Tool.init(greptool),
           edit: Tool.init(edit),
@@ -237,6 +277,11 @@ export const layer: Layer.Layer<
             ...(questionEnabled ? [tool.question] : []),
             tool.bash,
             tool.read,
+            tool.list,
+            tool.project,
+            tool.tools,
+            tool.git,
+            tool.forge,
             tool.glob,
             tool.grep,
             tool.edit,
@@ -318,10 +363,10 @@ export const layer: Layer.Layer<
       })
     })
 
-    const tools: Interface["tools"] = Effect.fn("ToolRegistry.tools")(function* (input) {
+    const candidateTools = Effect.fn("ToolRegistry.candidateTools")(function* (input: ToolInput) {
       const usePatch =
         input.modelID.includes("gpt-") && !input.modelID.includes("oss") && !input.modelID.includes("gpt-4")
-      const filtered = (yield* all()).filter((tool) => {
+      return (yield* all()).filter((tool) => {
         if (tool.id === CodeSearchTool.id || tool.id === WebSearchTool.id) {
           return input.providerID === ProviderID.codeplane || Flag.CODEPLANE_ENABLE_EXA
         }
@@ -331,6 +376,118 @@ export const layer: Layer.Layer<
 
         return true
       })
+    })
+
+    const candidateBlockReason = (tool: Tool.Def, input: ToolInput) => {
+      const usePatch =
+        input.modelID.includes("gpt-") && !input.modelID.includes("oss") && !input.modelID.includes("gpt-4")
+      if (tool.id === CodeSearchTool.id || tool.id === WebSearchTool.id) {
+        if (input.providerID === ProviderID.codeplane || Flag.CODEPLANE_ENABLE_EXA) return
+        return {
+          id: tool.id,
+          reason: "Unavailable for the current provider unless Exa/search support is enabled.",
+          setup: "Use the codeplane provider or enable CODEPLANE_ENABLE_EXA.",
+        }
+      }
+      if (tool.id === ApplyPatchTool.id && !usePatch) {
+        return {
+          id: tool.id,
+          reason: "The current model uses edit/write for file changes instead of apply_patch.",
+          setup: "Use edit or write for file changes with this model.",
+        }
+      }
+      if ((tool.id === EditTool.id || tool.id === WriteTool.id) && usePatch) {
+        return {
+          id: tool.id,
+          reason: "The current model uses apply_patch for file changes instead of edit/write.",
+          setup: "Use apply_patch for file changes with this model.",
+        }
+      }
+    }
+
+    const forgeUnavailable = Effect.fn("ToolRegistry.forgeUnavailable")(function* () {
+      const items = Object.entries((yield* config.get()).git ?? {})
+      if (items.length === 0) {
+        return {
+          reason: "No Git host config exists.",
+          setup:
+            'Use the git tool with operation="config_set" and operation="credential_set" to add a GitHub, GitLab, Bitbucket, Azure DevOps, or generic forge instance.',
+        }
+      }
+
+      const reasons = yield* Effect.forEach(
+        items,
+        Effect.fnUntraced(function* ([name, item]) {
+          const credential = item.credential
+          if (credential?.type === "env" && credential.env) {
+            if (process.env[credential.env]) return
+            return `${name} reads ${credential.env}, but that environment variable is not set.`
+          }
+          if (credential?.type === "stored" && credential.key) {
+            const stored = yield* auth.get(credential.key).pipe(Effect.catch(() => Effect.succeed(undefined)))
+            if (stored?.type === "api" && stored.key) return
+            return `${name} references ${credential.key}, but no API credential is stored there.`
+          }
+          if (credential?.type === "ssh") {
+            return `${name} uses SSH credentials, which work for git transport but not forge HTTP APIs.`
+          }
+          return `${name} has no forge API credential.`
+        }),
+        { concurrency: "unbounded" },
+      )
+
+      if (reasons.some((reason) => reason === undefined)) return
+      return {
+        reason: reasons.filter(Boolean).join(" "),
+        setup:
+          'Use the git tool with operation="credential_set" and a token or tokenEnv on one configured host to enable forge.',
+      }
+    })
+
+    const blockReason = Effect.fn("ToolRegistry.blockReason")(function* (tool: Tool.Def, input: ToolInput) {
+      const ruleset = Permission.merge(input.agent.permission, input.sessionPermission ?? [])
+      if (Permission.disabled([tool.id], ruleset).has(tool.id)) {
+        return {
+          id: tool.id,
+          reason: "Denied by the current agent or session permission rules.",
+          setup: "Change the agent/session permission config if this tool should be callable.",
+        }
+      }
+      if (tool.id === ForgeTool.id) {
+        const unavailable = yield* forgeUnavailable()
+        if (unavailable) return { id: tool.id, ...unavailable }
+      }
+    })
+
+    const splitAvailability = Effect.fn("ToolRegistry.splitAvailability")(function* (input: ToolInput) {
+      const [known, candidates] = yield* Effect.all([all(), candidateTools(input)], { concurrency: "unbounded" })
+      const candidateIDs = new Set(candidates.map((tool) => tool.id))
+      const checked = yield* Effect.forEach(
+        known,
+        Effect.fnUntraced(function* (tool) {
+          const unavailable = candidateIDs.has(tool.id) ? undefined : candidateBlockReason(tool, input)
+          return { tool, blocked: unavailable ?? (yield* blockReason(tool, input)) }
+        }),
+        { concurrency: "unbounded" },
+      )
+      return {
+        known,
+        tools: checked.flatMap((item) => (item.blocked ? [] : [item.tool])),
+        blocked: checked.flatMap((item) => (item.blocked ? [item.blocked] : [])),
+      }
+    })
+
+    const availability: Interface["availability"] = Effect.fn("ToolRegistry.availability")(function* (input) {
+      const result = yield* splitAvailability(input)
+      return {
+        known: result.known.map((tool) => tool.id).toSorted((a, b) => a.localeCompare(b)),
+        available: result.tools.map((tool) => tool.id).toSorted((a, b) => a.localeCompare(b)),
+        blocked: result.blocked.toSorted((a, b) => a.id.localeCompare(b.id)),
+      }
+    })
+
+    const tools: Interface["tools"] = Effect.fn("ToolRegistry.tools")(function* (input) {
+      const filtered = (yield* splitAvailability(input)).tools
 
       return yield* Effect.forEach(
         filtered,
@@ -364,7 +521,7 @@ export const layer: Layer.Layer<
       return { task: s.task, read: s.read }
     })
 
-    return Service.of({ ids, all, named, tools })
+    return Service.of({ ids, all, named, availability, tools })
   }),
 )
 
@@ -381,7 +538,10 @@ export const defaultLayer = Layer.suspend(() =>
     Layer.provide(LSP.defaultLayer),
     Layer.provide(Instruction.defaultLayer),
     Layer.provide(AppFileSystem.defaultLayer),
+    Layer.provide(Auth.defaultLayer),
     Layer.provide(Bus.layer),
+    Layer.provide(Git.defaultLayer),
+    Layer.provide(Project.defaultLayer),
     Layer.provide(FetchHttpClient.layer),
     Layer.provide(Format.defaultLayer),
     Layer.provide(CrossSpawnSpawner.defaultLayer),

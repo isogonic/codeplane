@@ -1,0 +1,20 @@
+Operate on Git hosting forges through a native, permissioned interface.
+
+Use this tool for repository host APIs instead of shelling out to curl or gh/glab when possible. It can infer the repository from the current git remote and reuse named Git host configuration from the global codeplane config.
+
+Supported providers:
+- github and GitHub Enterprise
+- gitlab and self-hosted GitLab
+- bitbucket, azure-devops, and generic hosts through raw API mode
+
+Structured operations cover repository info, pull requests / merge requests, issues, CI runs and jobs, releases, and comments. For provider-specific gaps, use operation="raw" with method, path, query, and data.
+
+Credential handling:
+- Reuses credentials from the Git host config created by the git tool.
+- Stored credentials are read from the local codeplane auth store.
+- Environment-backed credentials are read from the configured environment variable.
+- Tokens are sent only as HTTP headers and are never included in output metadata.
+
+Safety:
+- Prefer structured operations before operation="raw".
+- Never print tokens, passwords, Authorization headers, PRIVATE-TOKEN headers, or encoded credentials.

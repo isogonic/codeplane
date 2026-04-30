@@ -1,0 +1,5 @@
+Use the native project tool to run or configure the project build command.
+
+First call project with operation="check" and name="build". If callable, run project with operation="run" and name="build". If missing or blocked, call project operation="commands" and explain the exact project command configuration needed.
+
+Arguments: $ARGUMENTS

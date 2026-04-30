@@ -17,7 +17,7 @@ export async function upgrade() {
     return
   }
 
-  if (InstallationVersion === latest) return
+  if (!Installation.hasUpdate(InstallationVersion, latest)) return
 
   const kind = Installation.getReleaseType(InstallationVersion, latest)
 

@@ -6,6 +6,7 @@ import path from "path"
 import { fileURLToPath } from "url"
 import { NamedError } from "@codeplane-ai/shared/util/error"
 import { Agent as AgentSvc } from "../../src/agent/agent"
+import { Auth } from "../../src/auth"
 import { Bus } from "../../src/bus"
 import { Command } from "../../src/command"
 import { Config } from "../../src/config"
@@ -41,6 +42,9 @@ import { Log } from "../../src/util"
 import * as CrossSpawnSpawner from "../../src/effect/cross-spawn-spawner"
 import { Ripgrep } from "../../src/file/ripgrep"
 import { Format } from "../../src/format"
+import { Git } from "../../src/git"
+import { Project } from "../../src/project"
+import { Instance } from "../../src/project/instance"
 import { provideTmpdirInstance, provideTmpdirServer } from "../fixture/fixture"
 import { testEffect } from "../lib/effect"
 import { reply, TestLLMServer } from "../lib/llm-server"
@@ -163,6 +167,9 @@ function makeHttp() {
     Permission.defaultLayer,
     Plugin.defaultLayer,
     Config.defaultLayer,
+    Auth.defaultLayer,
+    Git.defaultLayer,
+    Project.defaultLayer,
     ProviderSvc.defaultLayer,
     lsp,
     mcp,
@@ -373,6 +380,83 @@ it.live("loop calls LLM and returns assistant message", () =>
       const parts = result.parts.filter((p) => p.type === "text")
       expect(parts.some((p) => p.type === "text" && p.text === "world")).toBe(true)
       expect(yield* llm.hits).toHaveLength(1)
+    }),
+    { git: true, config: providerCfg },
+  ),
+)
+
+it.live("loop tells the model why blocked native tools are not callable", () =>
+  provideTmpdirServer(
+    Effect.fnUntraced(function* ({ llm }) {
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const chat = yield* sessions.create({
+        title: "Tool availability",
+        permission: [{ permission: "*", pattern: "*", action: "allow" }],
+      })
+      yield* prompt.prompt({
+        sessionID: chat.id,
+        agent: "build",
+        noReply: true,
+        parts: [{ type: "text", text: "hello" }],
+      })
+      yield* llm.text("world")
+
+      yield* prompt.loop({ sessionID: chat.id })
+      const input = JSON.stringify((yield* llm.inputs).at(-1))
+      expect(input).toContain("<tool-availability>")
+      expect(input).toContain("Callable native tools:")
+      expect(input).toContain("- forge: No Git host config exists.")
+      expect(input).toContain("config_set")
+      expect(input).toContain("credential_set")
+    }),
+    { git: true, config: providerCfg },
+  ),
+)
+
+it.live("loop includes configured project commands in context", () =>
+  provideTmpdirServer(
+    Effect.fnUntraced(function* ({ llm }) {
+      const project = yield* Project.Service
+      yield* project.update({
+        projectID: Instance.project.id,
+        commands: {
+          typecheck: {
+            command: "bun typecheck",
+            label: "Typecheck CodePlane",
+            description: "Run package type checking",
+            cwd: "packages/codeplane",
+            labels: ["quality"],
+            context: true,
+          },
+          hidden: {
+            command: "echo hidden",
+            context: false,
+          },
+        },
+      })
+
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const chat = yield* sessions.create({
+        title: "Project commands",
+        permission: [{ permission: "*", pattern: "*", action: "allow" }],
+      })
+      yield* prompt.prompt({
+        sessionID: chat.id,
+        agent: "build",
+        noReply: true,
+        parts: [{ type: "text", text: "hello" }],
+      })
+      yield* llm.text("world")
+
+      yield* prompt.loop({ sessionID: chat.id })
+      const input = JSON.stringify((yield* llm.inputs).at(-1))
+      expect(input).toContain("<project-commands>")
+      expect(input).toContain("Typecheck CodePlane")
+      expect(input).toContain("packages/codeplane")
+      expect(input).toContain("quality")
+      expect(input).not.toContain("echo hidden")
     }),
     { git: true, config: providerCfg },
   ),
@@ -794,9 +878,9 @@ it.live(
 
         yield* prompt.loop({ sessionID: chat.id })
         const msgs = yield* MessageV2.filterCompactedEffect(chat.id)
-        const tool = msgs.flatMap((item) => item.parts).find(
-          (part): part is MessageV2.ToolPart => part.type === "tool" && part.tool === "task",
-        )
+        const tool = msgs
+          .flatMap((item) => item.parts)
+          .find((part): part is MessageV2.ToolPart => part.type === "tool" && part.tool === "task")
 
         expect(tool?.state.status).toBe("error")
         if (tool?.state.status !== "error") return
