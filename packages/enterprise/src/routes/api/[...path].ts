@@ -17,7 +17,7 @@ app
       documentation: {
         info: {
           title: "Codeplane Enterprise API",
-          version: "26.5.43",
+          version: "26.5.44",
           description: "Codeplane Enterprise API endpoints",
         },
         openapi: "3.1.1",

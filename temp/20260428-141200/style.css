@@ -1,0 +1,117 @@
+:root {
+  --bg: linear-gradient(140deg, #071120 0%, #102c49 50%, #204a72 100%);
+  --panel: rgba(11, 24, 45, 0.75);
+  --panel-border: rgba(152, 241, 255, 0.35);
+  --panel-accent: #8ee4ff;
+  --text: #ecf7ff;
+  --cell: rgba(255, 255, 255, 0.05);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  color: var(--text);
+  background: var(--bg);
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.frame {
+  width: min(92vw, 920px);
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  align-items: center;
+  gap: 1.2rem;
+  position: relative;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  padding: 1.2rem;
+  backdrop-filter: blur(6px);
+}
+
+h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.8rem;
+  letter-spacing: 0.08em;
+  color: var(--panel-accent);
+}
+
+.meta {
+  margin: 0.2rem 0;
+  color: #d5edff;
+}
+
+.stats {
+  margin-top: 1rem;
+  line-height: 1.4;
+}
+
+button {
+  margin-top: 1rem;
+  border: 1px solid var(--panel-accent);
+  background: rgba(142, 228, 255, 0.15);
+  color: var(--text);
+  font: inherit;
+  border-radius: 10px;
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+}
+
+#game {
+  border: 2px solid #d2f1ff;
+  border-radius: 8px;
+  background:
+    repeating-linear-gradient(
+      to right,
+      transparent,
+      transparent 29px,
+      var(--cell) 29px,
+      var(--cell) 30px
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent 29px,
+      var(--cell) 29px,
+      var(--cell) 30px
+    ),
+    #08192b;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.32);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  color: #ffe38f;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 760px) {
+  .frame {
+    grid-template-columns: 1fr;
+  }
+
+  #game {
+    width: min(92vw, 320px);
+    height: auto;
+  }
+}

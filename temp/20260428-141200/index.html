@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+    />
+    <title>Tetris</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="frame">
+      <section class="panel">
+        <h1>Tetris</h1>
+        <p class="meta">Move: ← → / A D</p>
+        <p class="meta">Rotate: ↑ / W</p>
+        <p class="meta">Soft Drop: ↓ / S</p>
+        <p class="meta">Hard Drop: Space</p>
+        <div class="stats">
+          <p id="score">Score: 0</p>
+          <p id="lines">Lines: 0</p>
+          <p id="level">Level: 1</p>
+        </div>
+        <button id="restart">Restart</button>
+      </section>
+      <canvas id="game" width="300" height="600" aria-label="Tetris playfield"></canvas>
+      <div id="status" class="overlay" hidden>Game Over</div>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>

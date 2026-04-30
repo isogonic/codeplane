@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tetris</title>
+    <style>
+      :root {
+        --bg: #0d1021;
+        --panel: rgba(14, 19, 43, 0.92);
+        --text: #d6e4ff;
+        --muted: #9aa6cc;
+        --accent: #72ffe7;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at 20% 20%, #252f66, var(--bg) 55%);
+      }
+
+      .wrap {
+        width: min(100%, 360px);
+        padding: 18px;
+        border-radius: 16px;
+        background: var(--panel);
+        border: 1px solid rgba(114, 255, 231, 0.25);
+        box-shadow: 0 18px 35px rgba(0, 0, 0, 0.25);
+        backdrop-filter: blur(3px);
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 30px;
+        letter-spacing: 0.05em;
+        color: var(--accent);
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        margin-bottom: 12px;
+        gap: 8px;
+      }
+
+      .stat {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+        padding: 8px;
+        text-align: center;
+      }
+
+      .stat strong {
+        display: block;
+        font-size: 18px;
+        margin-bottom: 2px;
+      }
+
+      .stat span {
+        color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      canvas {
+        width: 300px;
+        height: 600px;
+        display: block;
+        margin: 0 auto;
+        border-radius: 10px;
+        background: #060913;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+      }
+
+      .hint {
+        margin: 10px 0 0;
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .overlay {
+        position: fixed;
+        inset: 0;
+        display: none;
+        place-items: center;
+        background: rgba(5, 8, 21, 0.78);
+        backdrop-filter: blur(2px);
+      }
+
+      .overlay.show {
+        display: grid;
+      }
+
+      .overlay-box {
+        text-align: center;
+        background: var(--panel);
+        border: 1px solid rgba(114, 255, 231, 0.4);
+        border-radius: 14px;
+        padding: 16px 18px;
+      }
+
+      button {
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 10px;
+        color: var(--text);
+        background: transparent;
+        padding: 8px 12px;
+        cursor: pointer;
+        margin-top: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Tetris</h1>
+      <div class="stats">
+        <div class="stat"><strong id="score">0</strong><span>Score</span></div>
+        <div class="stat"><strong id="lines">0</strong><span>Lines</span></div>
+        <div class="stat"><strong id="level">1</strong><span>Level</span></div>
+        <div class="stat"><strong id="best">0</strong><span>Best</span></div>
+      </div>
+      <canvas id="board" width="300" height="600"></canvas>
+      <p class="hint">
+        A/D or ArrowLeft/ArrowRight, W or ArrowUp to rotate, S/ArrowDown to soft drop, Space hard drop, R restart.
+      </p>
+    </div>
+
+    <div id="overlay" class="overlay">
+      <div class="overlay-box">
+        <h2 id="overlay-title">Game Over</h2>
+        <p id="overlay-message">Press Enter to try again.</p>
+        <button id="restart">Restart</button>
+      </div>
+    </div>
+
+    <script>
+      const COLORS = [
+        null,
+        "#41a0ff",
+        "#ffcc4f",
+        "#66ef82",
+        "#ff7eb6",
+        "#a47bff",
+        "#ff8f4f",
+        "#46e6d5"
+      ]
+      const SHAPES = [
+        [[1, 1, 1, 1]],
+        [[1, 1], [1, 1]],
+        [[0, 1, 0], [1, 1, 1]],
+        [[1, 0, 0], [1, 1, 1]],
+        [[0, 0, 1], [1, 1, 1]],
+        [[1, 1, 0], [0, 1, 1]],
+        [[0, 1, 1], [1, 1, 0]],
+      ]
+
+      const cols = 10
+      const rows = 20
+      const cell = 30
+
+      const canvas = document.getElementById("board")
+      const ctx = canvas.getContext("2d")
+      const scoreEl = document.getElementById("score")
+      const linesEl = document.getElementById("lines")
+      const levelEl = document.getElementById("level")
+      const bestEl = document.getElementById("best")
+      const overlay = document.getElementById("overlay")
+      const overlayTitle = document.getElementById("overlay-title")
+      const restartButton = document.getElementById("restart")
+
+      const boardState = Array.from({ length: rows }, () => Array(cols).fill(0))
+      const player = {
+        piece: null,
+        color: 0,
+        x: 0,
+        y: 0
+      }
+
+      let score = 0
+      let lines = 0
+      let level = 1
+      let dropTimer = 0
+      let lastTime = 0
+      let gameOver = false
+
+      let best = Number(localStorage.getItem("tetris-best")) || 0
+
+      ctx.fillStyle = "#060913"
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      updateStatus()
+
+      function clone(shape) {
+        return shape.map((r) => r.slice())
+      }
+
+      function nextPiece() {
+        const index = Math.floor(Math.random() * SHAPES.length)
+        return {
+          shape: clone(SHAPES[index]),
+          color: index + 1
+        }
+      }
+
+      function resetPlayer() {
+        const next = nextPiece()
+        player.piece = next.shape
+        player.color = next.color
+        player.x = Math.floor(cols / 2) - Math.ceil(player.piece[0].length / 2)
+        player.y = 0
+
+        if (collides(boardState, player)) {
+          gameOver = true
+          overlayTitle.textContent = `Score ${score}`
+          overlay.classList.add("show")
+        }
+      }
+
+      function collides(board, pieceState) {
+        const piece = pieceState.piece
+        for (let y = 0; y < piece.length; y++) {
+          for (let x = 0; x < piece[y].length; x++) {
+            if (piece[y][x] === 0) continue
+            const newX = pieceState.x + x
+            const newY = pieceState.y + y
+
+            if (newX < 0 || newX >= cols || newY >= rows) return true
+            if (newY < 0) continue
+            if (board[newY][newX] !== 0) return true
+          }
+        }
+        return false
+      }
+
+      function mergePiece() {
+        player.piece.forEach((row, dy) => {
+          row.forEach((value, dx) => {
+            if (value === 1) boardState[player.y + dy][player.x + dx] = player.color
+          })
+        })
+      }
+
+      function rotate() {
+        const rotated = player.piece[0].map((_, index) =>
+          player.piece.map((row) => row[index])
+        )
+        rotated.reverse()
+
+        const original = player.piece
+        const kicks = [0, 1, -1, 2, -2]
+        player.piece = rotated
+        for (const offset of kicks) {
+          player.x += offset
+          if (!collides(boardState, player)) return
+          player.x -= offset
+        }
+
+        player.piece = original
+      }
+
+      function clearLines() {
+        let removed = 0
+
+        for (let row = rows - 1; row >= 0; row--) {
+          if (boardState[row].every((cell) => cell !== 0)) {
+            boardState.splice(row, 1)
+            boardState.unshift(Array(cols).fill(0))
+            removed++
+            row++
+          }
+        }
+
+        if (removed === 0) return
+
+        const reward = removed === 1 ? 100 : removed === 2 ? 300 : removed === 3 ? 500 : 800
+        score += reward * level
+        lines += removed
+        level = Math.floor(lines / 10) + 1
+        best = Math.max(best, score)
+        localStorage.setItem("tetris-best", String(best))
+        updateStatus()
+      }
+
+      function moveHorizontal(delta) {
+        player.x += delta
+        if (collides(boardState, player)) player.x -= delta
+      }
+
+      function fall(distance = 1) {
+        player.y += distance
+        if (collides(boardState, player)) {
+          player.y -= distance
+          mergePiece()
+          clearLines()
+          resetPlayer()
+        }
+      }
+
+      function hardDrop() {
+        while (!collides(boardState, player)) {
+          player.y++
+        }
+        player.y--
+        mergePiece()
+        clearLines()
+        resetPlayer()
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.fillStyle = "#05070f"
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+        boardState.forEach((row, y) => {
+          row.forEach((color, x) => drawSquare(x, y, color))
+        })
+
+        player.piece.forEach((row, y) => {
+          row.forEach((value, x) => {
+            if (value) drawSquare(player.x + x, player.y + y, player.color)
+          })
+        })
+      }
+
+      function drawSquare(x, y, color) {
+        if (color === 0) return
+        ctx.fillStyle = COLORS[color]
+        ctx.strokeStyle = "rgba(255,255,255,0.25)"
+        const px = x * cell
+        const py = y * cell
+        ctx.fillRect(px, py, cell - 1, cell - 1)
+        ctx.strokeRect(px + 1, py + 1, cell - 3, cell - 3)
+      }
+
+      function updateStatus() {
+        scoreEl.textContent = String(score)
+        linesEl.textContent = String(lines)
+        levelEl.textContent = String(level)
+        bestEl.textContent = String(best)
+      }
+
+      function update(time) {
+        if (gameOver) return
+        const elapsed = time - lastTime
+        lastTime = time
+        dropTimer += elapsed
+
+        const speed = Math.max(120, 800 - level * 60)
+        if (dropTimer > speed) {
+          fall(1)
+          dropTimer = 0
+        }
+
+        draw()
+        requestAnimationFrame(update)
+      }
+
+      function restart() {
+        for (let y = 0; y < rows; y++) {
+          boardState[y].fill(0)
+        }
+        score = 0
+        lines = 0
+        level = 1
+        dropTimer = 0
+        lastTime = 0
+        gameOver = false
+        overlay.classList.remove("show")
+        updateStatus()
+        resetPlayer()
+        requestAnimationFrame(update)
+      }
+
+      function parseKey(input) {
+        switch (input.code) {
+          case "ArrowLeft":
+          case "KeyA":
+            moveHorizontal(-1)
+            return true
+          case "ArrowRight":
+          case "KeyD":
+            moveHorizontal(1)
+            return true
+          case "ArrowDown":
+          case "KeyS":
+            fall(1)
+            return true
+          case "ArrowUp":
+          case "KeyW":
+            rotate()
+            return true
+          case "Space":
+            hardDrop()
+            return true
+          case "KeyR":
+            restart()
+            return true
+          case "Enter":
+            if (gameOver) {
+              restart()
+              return true
+            }
+            return false
+          default:
+            return false
+        }
+      }
+
+      document.addEventListener("keydown", (event) => {
+        const handled = parseKey(event)
+        if (handled) event.preventDefault()
+      })
+
+      restartButton.addEventListener("click", restart)
+
+      resetPlayer()
+      requestAnimationFrame(update)
+    </script>
+  </body>
+</html>

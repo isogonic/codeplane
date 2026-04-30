@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tetris</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <h1>Tetris Stack</h1>
+        <p id="status">Press Space or Enter to start</p>
+      </header>
+
+      <section class="layout">
+        <canvas id="gameCanvas" width="300" height="600"></canvas>
+
+        <aside class="panel">
+          <div>
+            <h2>Score</h2>
+            <p>Score: <span id="score">0</span></p>
+            <p>Lines: <span id="lines">0</span></p>
+            <p>Level: <span id="level">1</span></p>
+          </div>
+
+          <div>
+            <h2>Next</h2>
+            <canvas id="nextCanvas" width="120" height="120"></canvas>
+          </div>
+
+          <div>
+            <h2>Controls</h2>
+            <p>Left/Right move</p>
+            <p>Down soft drop</p>
+            <p>Up rotate</p>
+            <p>Space hard drop</p>
+            <p>Enter pause</p>
+            <p>R reset</p>
+          </div>
+        </aside>
+      </section>
+
+      <section class="mobile-controls" aria-label="mobile controls">
+        <button data-action="left">L</button>
+        <button data-action="rotate">Rot</button>
+        <button data-action="right">R</button>
+        <button data-action="down">Down</button>
+        <button data-action="hardDrop">Drop</button>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -611,7 +611,7 @@ describe("bash_interactive", () => {
     }
   }, 120_000)
 
-  test("OAuth URL-only auth flow does not invent a stdin prompt", async () => {
+  test("OAuth URL-only auth flow shows a browser sign-in prompt without stdin input", async () => {
     const tool = await initTool()
     await using sandbox = await tmpdir()
     const dir = sandbox.path
@@ -639,7 +639,10 @@ describe("bash_interactive", () => {
                   command: [
                     "echo 'Opening browser to sign in...';",
                     'echo "If the browser didn\'t open, visit: https://claude.com/cai/oauth/authorize?code=true&client_id=demo&state=xyz";',
+                    "echo 'OK';",
                     "echo 'Waiting for browser callback...';",
+                    "sleep 1;",
+                    "echo 'Login successful.';",
                   ].join(" "),
                   timeout: 10_000,
                   prompts: [],
@@ -663,12 +666,16 @@ describe("bash_interactive", () => {
         ),
     })
 
-    expect(askedQuestions).toEqual([])
+    expect(askedQuestions.length).toBe(1)
+    expect(askedQuestions[0]).toContain("Complete this CLI sign-in in the browser")
+    expect(askedQuestions[0]).toContain("https://claude.com/cai/oauth/authorize?code=true&client_id=demo&state=xyz")
+    expect(askedQuestions[0]).not.toContain("state=xyzOK")
     expect(result.output).toContain("Waiting for browser callback")
+    expect(result.output).toContain("Login successful")
     expect(result.output).not.toContain("timed out")
   }, 20_000)
 
-  test("OAuth URL-only auth flow ignores a declared URL prompt", async () => {
+  test("OAuth URL-only auth flow uses the browser prompt instead of a declared URL prompt", async () => {
     const tool = await initTool()
     await using sandbox = await tmpdir()
     const dir = sandbox.path
@@ -697,6 +704,8 @@ describe("bash_interactive", () => {
                     "echo 'Opening browser to sign in...';",
                     'echo "If the browser didn\'t open, visit: https://claude.com/cai/oauth/authorize?code=true&client_id=demo&state=xyz";',
                     "echo 'Waiting for browser callback...';",
+                    "sleep 1;",
+                    "echo 'Login successful.';",
                   ].join(" "),
                   timeout: 10_000,
                   prompts: [
@@ -726,8 +735,79 @@ describe("bash_interactive", () => {
         ),
     })
 
-    expect(askedQuestions).toEqual([])
+    expect(askedQuestions.length).toBe(1)
+    expect(askedQuestions[0]).toContain("Complete this CLI sign-in in the browser")
+    expect(askedQuestions[0]).not.toContain("Paste the authorization code from the browser")
     expect(result.output).toContain("Waiting for browser callback")
+    expect(result.output).toContain("Login successful")
+    expect(result.output).not.toContain("timed out")
+  }, 20_000)
+
+  test("OAuth flow with an undeclared terminal code prompt asks and writes stdin", async () => {
+    const tool = await initTool()
+    await using sandbox = await tmpdir()
+    const dir = sandbox.path
+
+    const sessionID = SessionID.make("ses_oauth_auto_stdin_test")
+    const messageID = MessageID.make("msg_oauth_auto_stdin_test")
+    const askedQuestions: string[] = []
+
+    const result = await Instance.provide({
+      directory: dir,
+      fn: () =>
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const q = yield* Question.Service
+            const bus = yield* Bus.Service
+
+            const reply = Instance.bind((requestID: any, answer: string) =>
+              runtime.runPromise(q.reply({ requestID, answers: [[answer]] })),
+            )
+            const unsubscribe = yield* bus.subscribeCallback(Question.Event.Asked, (payload) => {
+              const req = payload.properties
+              if (req.sessionID !== sessionID) return
+              askedQuestions.push(req.questions[0]?.question ?? "")
+              setTimeout(() => void reply(req.id, "CLAUDE-COPIED-CODE"), 5)
+            })
+
+            try {
+              return yield* tool.execute(
+                {
+                  command: [
+                    "echo 'Opening browser to sign in...';",
+                    'echo "If the browser didn\'t open, visit: https://claude.com/cai/oauth/authorize?code=true&client_id=demo&state=xyz";',
+                    "printf 'Paste code here if prompted > ';",
+                    "read code;",
+                    "printf 'GOT=%s\\n' \"$code\";",
+                    "echo 'Authentication successful. Logged in.';",
+                  ].join(" "),
+                  timeout: 10_000,
+                  prompts: [],
+                  description: "Claude auth code prompt",
+                } as any,
+                {
+                  sessionID,
+                  messageID,
+                  callID: "call_oauth_auto_stdin_test",
+                  agent: "build",
+                  abort: new AbortController().signal,
+                  messages: [],
+                  metadata: () => Effect.void,
+                  ask: () => Effect.void,
+                } as any,
+              )
+            } finally {
+              unsubscribe()
+            }
+          }),
+        ),
+    })
+
+    expect(askedQuestions.length).toBe(1)
+    expect(askedQuestions[0]).toContain("Paste code here if prompted >")
+    expect(askedQuestions[0]).toContain("The agent will send your answer into the running terminal")
+    expect(result.output).toContain("GOT=CLAUDE-COPIED-CODE")
+    expect(result.output).toContain("Authentication successful")
     expect(result.output).not.toContain("timed out")
   }, 20_000)
 

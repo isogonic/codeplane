@@ -1,0 +1,133 @@
+:root {
+  --bg: #050914;
+  --panel: #101c3b;
+  --text: #e4ecff;
+  --muted: #94a3c8;
+  --grid: #1f2b52;
+  --overlay: rgba(7, 12, 31, 0.9);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  font-family: "Trebuchet MS", "Trebuchet", sans-serif;
+  color: var(--text);
+  background: radial-gradient(circle at 18% 14%, #1f2f6a 0%, #0a1129 35%, var(--bg) 74%);
+}
+
+.layout {
+  width: min(96vw, 360px);
+  display: grid;
+  gap: 12px;
+  justify-items: stretch;
+}
+
+.card {
+  border-radius: 14px;
+  border: 1px solid #23305e;
+  background: linear-gradient(165deg, #16234b, #0b1432);
+  box-shadow: 0 12px 24px rgba(3, 8, 26, 0.8);
+  padding: 12px;
+}
+
+h1 {
+  margin: 0;
+  letter-spacing: 0.05em;
+}
+
+.help {
+  margin: 6px 0 12px;
+  color: var(--muted);
+}
+
+.stats {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+}
+
+.stats div {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #23305e;
+}
+
+.stats dd,
+.stats dt {
+  margin: 0;
+}
+
+.stats dt {
+  color: var(--muted);
+}
+
+.stats dd {
+  color: #8de6ff;
+  font-weight: 700;
+}
+
+.board-wrap {
+  position: relative;
+  border-radius: 12px;
+  border: 1px solid #2b3971;
+  padding: 10px;
+  background: #0a1130;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 18px 30px rgba(0, 0, 0, 0.56);
+}
+
+#board {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: linear-gradient(160deg, #0a1d45, #0f2551);
+  border: 1px solid var(--grid);
+}
+
+.status {
+  position: absolute;
+  inset: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 34px;
+  letter-spacing: 0.1em;
+  color: #ff7b93;
+  background: var(--overlay);
+  text-shadow: 0 0 14px rgba(255, 123, 147, 0.8);
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+}
+
+button {
+  border: 1px solid #3657a0;
+  background: linear-gradient(180deg, #3b65c3, #213b77);
+  color: var(--text);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (max-width: 420px) {
+  .layout {
+    width: 92vw;
+  }
+
+  .stats {
+    grid-template-columns: 1fr;
+  }
+}

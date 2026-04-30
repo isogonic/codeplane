@@ -1,0 +1,136 @@
+:root {
+  --bg: radial-gradient(circle at 20% 10%, #16294f 0%, #0b1630 45%, #070b18 100%);
+  --panel: rgba(15, 30, 62, 0.82);
+  --line: rgba(140, 195, 255, 0.22);
+  --text: #ecf4ff;
+  --accent: #7de2ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  color: var(--text);
+  font-family: "Trebuchet MS", "Trebuchet", "Segoe UI", sans-serif;
+  background: var(--bg);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.shell {
+  width: min(94vw, 900px);
+  display: grid;
+  gap: 1rem;
+  place-items: center;
+}
+
+h1 {
+  margin: 0;
+  font-size: 2rem;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+}
+
+.grid-wrap {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  align-items: stretch;
+  gap: 1rem;
+  width: 100%;
+}
+
+.panel,
+.playfield-wrap {
+  background: var(--panel);
+  border: 1px solid rgba(125, 226, 255, 0.35);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.panel p,
+.panel li {
+  margin: 0.35rem 0;
+  font-size: 0.95rem;
+}
+
+.panel ul {
+  margin: 0.4rem 0 0.8rem;
+  padding-left: 1rem;
+}
+
+.muted {
+  color: #9ad0eb;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.6rem;
+}
+
+.panel button {
+  margin-top: 0.7rem;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: rgba(125, 226, 255, 0.16);
+  color: var(--text);
+  font: inherit;
+  padding: 0.55rem;
+  cursor: pointer;
+}
+
+.next-wrap {
+  margin-top: 0.9rem;
+}
+
+#next {
+  border: 1px solid rgba(125, 226, 255, 0.35);
+  border-radius: 8px;
+  background: #040a16;
+}
+
+#board {
+  display: block;
+  width: 300px;
+  height: 600px;
+  border-radius: 10px;
+  border: 2px solid #d6f1ff;
+  background: #050a16;
+  background-image: linear-gradient(to right, transparent 0 29px, var(--line) 29px, var(--line) 30px),
+    linear-gradient(to bottom, transparent 0 29px, var(--line) 29px, var(--line) 30px);
+}
+
+.playfield-wrap {
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  display: grid;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #ffd26a;
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+@media (max-width: 780px) {
+  .grid-wrap {
+    grid-template-columns: 1fr;
+  }
+
+  #board {
+    width: min(94vw, 320px);
+  }
+}

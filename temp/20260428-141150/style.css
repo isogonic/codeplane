@@ -1,0 +1,149 @@
+:root {
+  --bg: radial-gradient(140deg, #0f1530 0%, #090f21 46%, #060a14 100%);
+  --panel: rgba(16, 28, 56, 0.88);
+  --text: #e7eeff;
+  --muted: #9db0db;
+  --accent: #6ce9ff;
+  --accent-dark: #26b6d6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  font-family: "Trebuchet MS", "Avenir Next", Arial, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+main {
+  width: min(930px, 94vw);
+  padding: 1rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2rem, 1.4rem + 2vw, 3rem);
+  letter-spacing: 0.06em;
+}
+
+.subtitle {
+  margin: 0.2rem 0 1rem;
+  color: var(--muted);
+}
+
+.hud {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+}
+
+.hud div {
+  text-align: center;
+  border: 1px solid #2c4574;
+  border-radius: 10px;
+  padding: 0.5rem;
+  background: var(--panel);
+}
+
+.play-area {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 1rem;
+  justify-content: center;
+}
+
+#board,
+#next {
+  border: 3px solid #89a9d1;
+  border-radius: 8px;
+  background: #0c1430;
+}
+
+.side-panel {
+  width: 170px;
+  background: var(--panel);
+  border: 1px solid #2f4b7b;
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+
+.side-panel h2 {
+  margin: 0 0 0.7rem;
+  font-size: 1.1rem;
+}
+
+.controls-title {
+  margin: 0.85rem 0 0.35rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  line-height: 1.45;
+  font-size: 0.92rem;
+  color: #c6d5ee;
+}
+
+li {
+  margin-bottom: 0.35rem;
+}
+
+.actions {
+  margin-top: 0.8rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+button {
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  padding: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #04162f;
+  background: linear-gradient(145deg, var(--accent), var(--accent-dark));
+  cursor: pointer;
+}
+
+button:hover {
+  filter: brightness(1.08);
+}
+
+.status {
+  margin-top: 0.8rem;
+  min-height: 1.3rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .play-area {
+    grid-template-columns: 1fr;
+  }
+
+  .side-panel {
+    width: 300px;
+  }
+
+  .hud {
+    grid-template-columns: 1fr;
+  }
+
+  #board {
+    width: 280px;
+    height: 560px;
+  }
+}

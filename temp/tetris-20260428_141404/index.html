@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Temp Tetris</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <section class="card">
+        <h1>Retro Tetris</h1>
+        <p class="help">A/D: move · S: rotate · ↓: soft drop · Space: hard drop · R: restart</p>
+        <dl class="stats">
+          <div>
+            <dt>Score</dt>
+            <dd><span id="score">0</span></dd>
+          </div>
+          <div>
+            <dt>Lines</dt>
+            <dd><span id="lines">0</span></dd>
+          </div>
+          <div>
+            <dt>Level</dt>
+            <dd><span id="level">1</span></dd>
+          </div>
+        </dl>
+      </section>
+      <section class="board-wrap">
+        <canvas id="board" width="240" height="480" aria-label="Tetris board"></canvas>
+        <div id="status" class="status hidden" aria-live="polite">GAME OVER</div>
+      </section>
+      <div class="controls">
+        <button id="restart">Restart</button>
+      </div>
+    </main>
+    <script src="script.js"></script>
+  </body>
+</html>

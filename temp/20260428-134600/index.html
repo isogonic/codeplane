@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tetris</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="panel panel-game" aria-label="Tetris board">
+        <h1>Tetris</h1>
+        <div id="board" class="board" role="img" aria-live="polite"></div>
+        <p id="status" class="status">Press Enter to begin</p>
+      </section>
+
+      <aside class="panel panel-side" aria-label="Game statistics">
+        <div class="stat-row">
+          <h2>Score</h2>
+          <p id="score">0</p>
+        </div>
+        <div class="stat-row">
+          <h2>Level</h2>
+          <p id="level">1</p>
+        </div>
+        <div class="stat-row">
+          <h2>Lines</h2>
+          <p id="lines">0</p>
+        </div>
+
+        <h2>Next</h2>
+        <div id="next" class="next" aria-label="Next piece preview"></div>
+
+        <h2>Controls</h2>
+        <ul>
+          <li>← → move</li>
+          <li>↓ soft drop</li>
+          <li>↑ rotate</li>
+          <li>space hard drop</li>
+          <li>Enter start / pause</li>
+          <li>R restart</li>
+        </ul>
+      </aside>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tetris</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <section class="panel">
+      <h1>Tetris</h1>
+      <p class="meta">Controls: Arrow keys, Space for hard drop, R to reset, P to pause</p>
+      <p>Score: <span id="score">0</span></p>
+      <p>Lines: <span id="lines">0</span></p>
+      <p>Level: <span id="level">1</span></p>
+      <canvas id="board" width="300" height="600" aria-label="Tetris board"></canvas>
+      <button id="restart">Restart</button>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

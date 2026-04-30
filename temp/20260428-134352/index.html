@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arcade Tetris</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main>
+      <section class="hud">
+        <h1>Arcade Tetris</h1>
+        <ul class="stats" aria-label="Game stats">
+          <li>Score <strong id="score">0</strong></li>
+          <li>Lines <strong id="lines">0</strong></li>
+          <li>Level <strong id="level">1</strong></li>
+        </ul>
+        <canvas id="board" width="300" height="600" role="img" aria-label="Tetris board"></canvas>
+        <button id="restart">Restart</button>
+        <p class="controls">
+          Controls: ← → move, ↑ rotate, ↓ soft drop, Space hard drop, P pause, R restart
+        </p>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>

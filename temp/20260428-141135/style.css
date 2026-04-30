@@ -1,0 +1,125 @@
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap");
+
+:root {
+  --bg: #0a0f1c;
+  --panel: #121b32cc;
+  --text: #d5e8ff;
+  --muted: #8ea6cf;
+  --border: #5a89ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(90% 90% at 85% 10%, #2b2f5a44 0%, transparent 50%),
+    radial-gradient(80% 80% at 10% 85%, #14314d55 0%, transparent 55%),
+    linear-gradient(135deg, #0b1224 0%, #101d33 50%, #0a1430 100%);
+  color: var(--text);
+  font-family: "Orbitron", "Trebuchet MS", sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.tetris-app {
+  width: min(920px, 100% - 2rem);
+  display: grid;
+  grid-template-columns: auto 240px;
+  gap: 1rem;
+  align-items: start;
+}
+
+.game-shell,
+.hud {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 24px #00000060;
+  padding: 0.9rem 1.1rem;
+}
+
+h1,
+h2 {
+  margin: 0 0 0.8rem;
+  text-transform: uppercase;
+  color: #f3f8ff;
+}
+
+#board {
+  display: block;
+  width: 300px;
+  height: 600px;
+  image-rendering: pixelated;
+  border: 2px solid #7696ff;
+  background: linear-gradient(180deg, #0a1326 0%, #0b0f1f 100%);
+}
+
+.hud {
+  display: grid;
+  gap: 1rem;
+}
+
+.hud p {
+  margin: 0.4rem 0;
+  color: #b6d2ff;
+}
+
+#next {
+  background: #0b1430;
+  border: 1px solid #608cff;
+  width: 120px;
+  height: 120px;
+  image-rendering: pixelated;
+}
+
+.controls-hint ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  color: var(--muted);
+  display: grid;
+  gap: 0.35rem;
+}
+
+.controls-hint span {
+  color: #e4f0ff;
+  min-width: 3.8rem;
+  display: inline-block;
+}
+
+button {
+  font: inherit;
+  border: 1px solid #8ec7ff;
+  color: #101e45;
+  background: #8fd3ff;
+  border-radius: 8px;
+  padding: 0.55rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+button:hover {
+  filter: brightness(1.08);
+}
+
+@media (max-width: 760px) {
+  .tetris-app {
+    grid-template-columns: 1fr;
+  }
+
+  .hud {
+    width: 100%;
+  }
+}

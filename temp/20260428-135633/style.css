@@ -1,0 +1,142 @@
+:root {
+  --bg: radial-gradient(130deg, #0d1b37 0%, #060a17 55%, #040810 100%);
+  --panel: rgba(15, 24, 48, 0.88);
+  --text: #edf4ff;
+  --muted: #96a4cc;
+  --accent: #50f0ff;
+  --accent-2: #b48cff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Trebuchet MS", "Verdana", sans-serif;
+}
+
+.game-shell {
+  width: min(780px, 94vw);
+}
+
+.panel {
+  border-radius: 16px;
+  padding: 1rem;
+  background: var(--panel);
+  border: 1px solid #2d3e72;
+  box-shadow: 0 20px 44px rgba(3, 6, 20, 0.6);
+  animation: lift 700ms ease-out both;
+}
+
+h1 {
+  margin: 0;
+  letter-spacing: 0.08em;
+}
+
+h2 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.hint {
+  margin: 0.2rem 0 0.8rem;
+  color: var(--muted);
+  line-height: 1.4;
+  font-size: 0.86rem;
+}
+
+#board {
+  display: block;
+  width: 300px;
+  height: 600px;
+  border-radius: 10px;
+  border: 1px solid #33467f;
+  background: linear-gradient(180deg, #020713 0%, #090f2b 75%, #0d1540 100%);
+}
+
+.side-grid {
+  margin-top: 0.75rem;
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+}
+
+li {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #304071;
+  border-radius: 8px;
+  background: rgba(11, 16, 38, 0.6);
+  font-size: 0.93rem;
+}
+
+#next {
+  width: 120px;
+  height: 120px;
+  border: 1px solid #33467f;
+  border-radius: 8px;
+  background: #040816;
+}
+
+button {
+  border: 0;
+  width: 100%;
+  margin-top: 0.85rem;
+  border-radius: 8px;
+  padding: 0.62rem;
+  color: #07203a;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: linear-gradient(150deg, var(--accent), var(--accent-2));
+  cursor: pointer;
+}
+
+button:hover {
+  filter: brightness(1.07);
+}
+
+@keyframes lift {
+  from {
+    transform: translateY(10px);
+    opacity: 0.5;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 660px) {
+  .game-shell {
+    width: min(460px, 95vw);
+  }
+
+  .panel {
+    padding: 0.75rem;
+  }
+
+  #board {
+    width: 280px;
+    height: 560px;
+  }
+
+  .side-grid {
+    grid-template-columns: 1fr;
+  }
+}
