@@ -42,6 +42,23 @@ export function unregister(callID: string) {
   active.delete(callID)
 }
 
+/** Direct stdin write into the running PTY for the given tool call.
+ *  Used by the inline input bar in the renderer so the user has an
+ *  always-visible escape hatch when the agent's declared `prompts` don't
+ *  match the actual CLI output. The bash_interactive tool also notes
+ *  the input via lastInputAt so the idle fallback respects the grace
+ *  period after the user types something. */
+export function writeInput(callID: string, data: string): boolean {
+  const entry = active.get(callID)
+  if (!entry) return false
+  try {
+    entry.proc.write(data)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function killProc(callID: string, signal: string = "SIGTERM"): boolean {
   const entry = active.get(callID)
   if (!entry) return false
