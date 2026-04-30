@@ -620,24 +620,31 @@
   }
 
   /* Inline input bar at the bottom — always visible while the PTY is
-     running so the user has a guaranteed input path even when the
-     agent's declared prompts don't match. The chevron + monospace input
-     mirror a terminal prompt so the user immediately understands where
-     to paste. */
+     running. This is the user's guaranteed input path: type, press
+     Enter, the bytes go straight into the PTY's stdin. Highlighted
+     with a subtle interactive-tinted background + focus ring so it's
+     unmistakably the place to type. */
   [data-slot="bash-interactive-input"] {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 12px;
+    padding: 10px 12px;
     border-top: 1px solid var(--border-weak-base);
-    background: var(--background-base);
+    background: var(--surface-interactive-base);
+    transition: background 0.15s ease;
+  }
+
+  [data-slot="bash-interactive-input"]:focus-within {
+    background: var(--surface-interactive-base);
+    box-shadow: inset 0 1px 0 0 var(--border-interactive-base);
   }
 
   [data-slot="bash-interactive-prompt"] {
     flex: 0 0 auto;
     font-family: var(--font-family-mono);
-    color: var(--text-weak);
-    font-size: 13px;
+    color: var(--text-interactive-base);
+    font-size: 14px;
+    font-weight: 600;
     line-height: 1;
   }
 
@@ -655,6 +662,14 @@
 
   [data-slot="bash-interactive-input"] input::placeholder {
     color: var(--text-weak);
+  }
+
+  [data-slot="bash-interactive-hint"] {
+    flex: 0 0 auto;
+    font-family: var(--font-family-sans);
+    font-size: 11px;
+    color: var(--text-weak);
+    user-select: none;
   }
 }
 

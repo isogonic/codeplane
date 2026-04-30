@@ -2229,10 +2229,14 @@ ToolRegistry.register({
                 onInput={(e) => setPendingInput(e.currentTarget.value)}
                 placeholder={
                   i18n.t("ui.tool.bashInteractive.placeholder") ||
-                  "Paste your code or type and press Enter — sent into the running terminal"
+                  "Paste your code or type — Enter sends it into the terminal"
                 }
                 disabled={sendingInput()}
+                aria-keyshortcuts="Enter"
               />
+              <span data-slot="bash-interactive-hint" aria-hidden="true">
+                ↵ Enter
+              </span>
             </form>
           </Show>
         </div>
