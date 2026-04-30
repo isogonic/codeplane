@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { Show, createSignal } from "solid-js"
 import { createStore } from "solid-js/store"
 import { DataProvider } from "../context/data"
 import { FileComponentProvider } from "../context/file"
@@ -22,6 +23,13 @@ function InteractiveShellHarness() {
   return (
     <ShellHarness
       now={now}
+      question={{
+        callID: "call-1",
+        label: "Auth token",
+        placeholder: "Paste the auth token...",
+        response: (answer: string) => ["", answer, `accepted:${answer}`].join("\n"),
+        success: "Auth token accepted",
+      }}
       parts={[
         shellPart(now, {
           id: "part-1",
@@ -41,6 +49,20 @@ function AuthServiceMatrixHarness() {
   return (
     <ShellHarness
       now={now}
+      question={{
+        callID: "call-claude",
+        label: "Claude authorization code",
+        placeholder: "Paste the code from Claude...",
+        response: (answer: string) =>
+          [
+            "",
+            answer,
+            "Validating Claude authorization code...",
+            `claude code=${answer}`,
+            "Authentication successful. Logged in.",
+          ].join("\n"),
+        success: "Claude authorization completed",
+      }}
       parts={[
         shellPart(now, {
           id: "github-auth",
@@ -65,7 +87,7 @@ function AuthServiceMatrixHarness() {
           output: [
             "Opening browser to sign in...",
             "If the browser didn't open, visit: https://claude.com/cai/oauth/authorize?code=true&client_id=demo&state=xyz",
-            "Waiting for the agent to detect the OAuth URL and ask for the code...",
+            "Paste code here if prompted >",
           ].join("\n"),
           title: "Claude OAuth code",
         }),
@@ -132,7 +154,19 @@ function shellPart(now: number, props: any) {
   }
 }
 
-function ShellHarness(props: { now: number; parts: any[] }) {
+function ShellHarness(props: {
+  now: number
+  parts: any[]
+  question?: {
+    callID: string
+    label: string
+    placeholder: string
+    response: (answer: string) => string
+    success: string
+  }
+}) {
+  const [answer, setAnswer] = createSignal("")
+  const [answered, setAnswered] = createSignal(false)
   const [store, setStore] = createStore({
     data: {
       agent: [],
@@ -176,6 +210,12 @@ function ShellHarness(props: { now: number; parts: any[] }) {
     setStore("data", "part", "assistant-1", index, "state", "output", (value = "") => `${value}\n${line}`)
   }
   const kill = async ({ callID }: { callID: string }) => append(callID, "stopped")
+  const submitAnswer = () => {
+    const value = answer().trim()
+    if (!props.question || !value || answered()) return
+    append(props.question.callID, props.question.response(value))
+    setAnswered(true)
+  }
 
   return (
     <DataProvider
@@ -193,6 +233,86 @@ function ShellHarness(props: { now: number; parts: any[] }) {
             messages={store.data.message["session-1"]}
             shellToolDefaultOpen={true}
           />
+          <Show when={props.question && !answered()}>
+            <form
+              data-testid="auth-code-question"
+              onSubmit={(event) => {
+                event.preventDefault()
+                submitAnswer()
+              }}
+              style={{
+                display: "grid",
+                gap: "12px",
+                margin: "16px 0 0",
+                padding: "12px",
+                border: "1px solid var(--border-weak-base)",
+                "border-radius": "8px",
+                background: "var(--background-stronger)",
+              }}
+            >
+              <div style={{ display: "flex", "justify-content": "space-between", gap: "12px" }}>
+                <div style={{ "font-size": "13px", color: "var(--text-base)" }}>1 of 1 questions</div>
+                <div style={{ "font-size": "13px", color: "var(--text-weak)" }}>{props.question?.label}</div>
+              </div>
+              <label style={{ display: "grid", gap: "6px" }}>
+                <span style={{ "font-size": "12px", color: "var(--text-weak)" }}>Your answer goes into the running terminal.</span>
+                <textarea
+                  data-testid="auth-code-answer"
+                  placeholder={props.question?.placeholder}
+                  value={answer()}
+                  rows={1}
+                  onInput={(event) => setAnswer(event.currentTarget.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" || event.shiftKey) return
+                    event.preventDefault()
+                    submitAnswer()
+                  }}
+                  style={{
+                    resize: "none",
+                    width: "100%",
+                    padding: "10px 12px",
+                    "border-radius": "6px",
+                    border: "1px solid var(--border-weak-base)",
+                    background: "var(--background-base)",
+                    color: "var(--text-base)",
+                    "font-size": "13px",
+                  }}
+                />
+              </label>
+              <div style={{ display: "flex", "justify-content": "flex-end" }}>
+                <button
+                  type="submit"
+                  data-testid="auth-code-submit"
+                  style={{
+                    padding: "8px 14px",
+                    "border-radius": "6px",
+                    border: "1px solid var(--border-strong-base)",
+                    background: "var(--text-base)",
+                    color: "var(--background-base)",
+                    "font-size": "13px",
+                  }}
+                >
+                  Submit
+                </button>
+              </div>
+            </form>
+          </Show>
+          <Show when={answered()}>
+            <div
+              data-testid="auth-code-success"
+              style={{
+                margin: "16px 0 0",
+                padding: "10px 12px",
+                "border-radius": "8px",
+                border: "1px solid var(--border-weak-base)",
+                color: "var(--text-base)",
+                background: "var(--background-stronger)",
+                "font-size": "13px",
+              }}
+            >
+              {props.question?.success}
+            </div>
+          </Show>
         </div>
       </FileComponentProvider>
     </DataProvider>

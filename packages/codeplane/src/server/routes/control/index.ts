@@ -89,7 +89,7 @@ export function ControlPlaneRoutes(): Hono {
         documentation: {
           info: {
             title: "codeplane",
-            version: "26.5.42",
+            version: "26.5.43",
             description: "codeplane api",
           },
           openapi: "3.1.1",

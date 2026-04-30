@@ -1,17 +1,17 @@
 Run an interactive shell command and let the user answer prompts mid-execution.
 
-Use this when a CLI is going to ask the user for something at runtime — auth flows that need a one-time code or device-login URL pasted back, `gh auth login`, `npm login`, `vercel login`, `aws sso login`, package installers that prompt y/N, or any tool that pauses waiting on stdin.
+Use this when a CLI is going to ask the user for something at runtime — auth flows that need a one-time code, device-login code, token, password, `gh auth login`, `npm login`, `vercel login`, `aws sso login`, package installers that prompt y/N, or any tool that pauses waiting on stdin.
 
 How it works:
 - Spawns the command in a PTY (so CLIs that only prompt when stdin is a TTY work correctly).
 - Streams output live so the renderer shows the running terminal as it happens.
 - Watches for prompt patterns you declare. When a prompt matches, the agent either writes a known `answer` directly into the PTY, or asks the user with the standard question dock and then writes the user's answer into the PTY.
-- Detects common OAuth URL-only login flows, such as Claude auth output that prints an `/oauth/authorize?...code=true...` URL and then silently waits for the returned code. In that case it asks for the authorization code even if the CLI never prints a separate "paste code" prompt.
+- Browser-only OAuth flows, such as current `claude auth login` output that prints an `/oauth/authorize?...code=true...` URL but no paste prompt, must complete in the browser. Do not ask the user for a terminal answer unless the CLI prints an actual stdin prompt.
 - The user never types directly into the terminal. Terminal input is controlled by the agent/tool.
 
 Required prep:
 1. Probe the command FIRST with the regular `bash` tool (or read the CLI's `--help` / docs) to learn what prompts it actually prints — verbatim. Don't guess.
-2. Call `bash_interactive` with `prompts` covering each prompt you saw. The `pattern` is a JS regex matched case-insensitively against new PTY output; pick something distinctive enough to not match surrounding chatter. Common OAuth URL-only code prompts are detected automatically, but explicit prompts are still preferred when the CLI prints a stable prompt.
+2. Call `bash_interactive` with `prompts` covering each prompt you saw. The `pattern` is a JS regex matched case-insensitively against new PTY output; pick something distinctive enough to not match surrounding chatter. Do not invent a prompt from an OAuth URL alone; only declare a code/token prompt when the CLI actually asks for stdin.
 3. For choices the agent already knows, set `answer`. Use an empty string to press Enter/select the CLI default. For choices the agent does not know, omit `answer` and phrase `question` for the user.
 
 Each prompt fires AT MOST ONCE per entry. If the same prompt can appear twice, include the entry twice.

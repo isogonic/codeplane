@@ -23,14 +23,10 @@ const PROMPT_BUFFER_CAP = 4096
 // Strip ANSI escapes ONLY for prompt detection — the captured output keeps
 // them so the renderer can show colored prompts faithfully.
 const STRIP_ANSI_RE = /\x1B\[[0-?]*[ -/]*[@-~]/g
-const BUILTIN_PROMPTS = [
-  {
-    pattern: "https?:\\/\\/\\S*oauth\\/authorize[\\s\\S]{0,1200}(?:code=true|response_type=code)",
-    question: "Paste the authorization code from the browser sign-in flow",
-    header: "Auth code",
-  },
-]
-
+const OAUTH_AUTHORIZE_RE =
+  /https?:\/\/\S*(?:\/oauth\/authorize|\/cai\/oauth\/authorize)\S*(?:code=true|response_type=code)|https?:\/\/\S*(?:code=true|response_type=code)\S*(?:\/oauth\/authorize|\/cai\/oauth\/authorize)/i
+const STDIN_PROMPT_RE =
+  /(?:^|\n)\s*(?:paste|enter|input|type|provide).{0,80}(?:code|token|password|otp|passcode).{0,80}[:>]\s*$/i
 const PromptEntry = Schema.Struct({
   pattern: Schema.String.annotate({
     description: "JS regex source (no leading/trailing slashes) matched case-insensitively against new output.",
@@ -78,6 +74,10 @@ function sanitizeEnv(env: NodeJS.ProcessEnv): Record<string, string> {
 function tail(value: string, max: number): string {
   if (value.length <= max) return value
   return value.slice(-max)
+}
+
+function isBrowserOnlyOAuth(value: string): boolean {
+  return OAUTH_AUTHORIZE_RE.test(value) && !STDIN_PROMPT_RE.test(value)
 }
 
 export const BashInteractiveTool = Tool.define(
@@ -145,24 +145,14 @@ export const BashInteractiveTool = Tool.define(
           // Compile prompts up-front. `fired` ensures each prompt responds at
           // most once per match; the agent re-adds the entry to handle a
           // repeated prompt.
-          const compiled = [
-            ...prompts.map((p, i) => ({
-              id: i,
-              re: new RegExp(p.pattern, "i"),
-              question: p.question,
-              header: p.header,
-              answer: p.answer,
-              fired: false,
-            })),
-            ...BUILTIN_PROMPTS.map((p, i) => ({
-              id: `builtin:${i}`,
-              re: new RegExp(p.pattern, "i"),
-              question: p.question,
-              header: p.header,
-              answer: undefined,
-              fired: false,
-            })),
-          ]
+          const compiled = prompts.map((p, i) => ({
+            id: i,
+            re: new RegExp(p.pattern, "i"),
+            question: p.question,
+            header: p.header,
+            answer: p.answer,
+            fired: false,
+          }))
 
           let allOutput = ""
           let scanBuffer = ""
@@ -298,6 +288,10 @@ export const BashInteractiveTool = Tool.define(
                 const haystack = scanBuffer.replace(STRIP_ANSI_RE, "")
                 const next = compiled.find((p) => !p.fired && p.re.test(haystack))
                 if (!next) break
+                if (isBrowserOnlyOAuth(haystack)) {
+                  scanBuffer = ""
+                  break
+                }
                 next.fired = true
                 scanBuffer = ""
 
