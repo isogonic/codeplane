@@ -1117,6 +1117,32 @@
     line-height: var(--line-height-large);
     color: var(--text-strong);
     padding: 0 10px;
+    /* Preserve newlines from the agent so the bash_interactive embedded
+       output snippet stays multi-line, and break long unbreakable URLs
+       so the OAuth link inside the prompt doesn't trigger horizontal
+       overflow on the dock. */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  [data-slot="question-link"] {
+    color: var(--text-interactive-base);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-thickness: 1px;
+    /* Force the URL to wrap mid-string. Without this a single long OAuth
+       URL renders as one unbreakable inline-element and pushes the dock
+       horizontally past its container. */
+    word-break: break-all;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+  }
+
+  [data-slot="question-link"]:hover {
+    text-decoration-thickness: 2px;
+    background: var(--surface-interactive-base);
+    border-radius: 2px;
   }
 
   [data-slot="question-hint"] {
