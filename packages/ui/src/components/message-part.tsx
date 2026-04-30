@@ -32,7 +32,6 @@ import {
 import { useData } from "../context"
 import { useFileComponent, useFileReference, type FileReferenceSelection } from "../context/file"
 import { useDialog } from "../context/dialog"
-import { useBashInteractive } from "../context/bash-interactive"
 import { type UiI18n, useI18n } from "../context/i18n"
 import { BasicTool, GenericTool } from "./basic-tool"
 import { Accordion } from "./accordion"
@@ -2057,30 +2056,42 @@ ToolRegistry.register({
   render(props) {
     const i18n = useI18n()
     const pending = createMemo(() => props.status === "pending" || props.status === "running")
-    const cmd = createMemo(() => (typeof props.input.command === "string" ? props.input.command : ""))
-    const description = createMemo(() =>
-      typeof props.input.description === "string" ? props.input.description : "",
-    )
-    const callIDAccessor = createMemo(() => props.callID)
-    const live = useBashInteractive(callIDAccessor)
-    // Prefer the live PTY buffer while running; fall back to the saved tool
-    // output when the call has finished and the model has the final answer.
-    const display = createMemo(() => {
-      const liveState = live()
-      if (liveState && liveState.output) return stripAnsi(liveState.output)
-      if (typeof props.output === "string") return stripAnsi(props.output)
+    const sawPending = pending()
+    const cmd = createMemo(() => {
+      if (typeof props.input.command === "string") return props.input.command
+      if (typeof props.metadata.command === "string") return props.metadata.command
       return ""
     })
-    const isRunning = createMemo(() => {
-      const liveState = live()
-      if (liveState) return liveState.status === "running"
-      return pending()
+    const description = createMemo(() => {
+      if (typeof props.input.description === "string") return props.input.description
+      if (typeof props.metadata.description === "string") return props.metadata.description
+      return ""
     })
+    // Match bash tool: `$ command\n\noutput`. Live output streams in via
+    // props.metadata.output (ctx.metadata) and the final result lands in
+    // props.output once the PTY exits — same pipe the bash tool uses.
+    const text = createMemo(() => {
+      const command = cmd()
+      const live = typeof props.metadata.output === "string" ? props.metadata.output : ""
+      const final = typeof props.output === "string" ? props.output : ""
+      const out = stripAnsi(final || live || "")
+      return `$ ${command}${out ? "\n\n" + out : ""}`
+    })
+    const [copied, setCopied] = createSignal(false)
+
+    const handleCopy = async () => {
+      const content = text()
+      if (!content) return
+      await copyText(i18n, content, i18n.t("ui.message.copiedCode"))
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+
     let preRef: HTMLPreElement | undefined
     createEffect(() => {
       // Auto-scroll the live transcript to the bottom on each new chunk
       // so the user always sees the latest output without manual scrolling.
-      display()
+      text()
       if (preRef) preRef.scrollTop = preRef.scrollHeight
     })
 
@@ -2126,30 +2137,48 @@ ToolRegistry.register({
     return (
       <BasicTool
         {...props}
+        icon="console"
         animated
-        defaultOpen
-        forceOpen={isRunning()}
-        icon="terminal"
         trigger={
           <div data-slot="basic-tool-tool-info-structured">
             <div data-slot="basic-tool-tool-info-main">
               <span data-slot="basic-tool-tool-title">
-                <TextShimmer text={i18n.t("ui.tool.bashInteractive") || "Interactive shell"} active={isRunning()} />
+                <TextShimmer text={i18n.t("ui.tool.bashInteractive") || "Interactive shell"} active={pending()} />
               </span>
               <Show when={description() || cmd()}>
-                <span data-slot="basic-tool-tool-subtitle">{description() || cmd()}</span>
+                {(label) => (
+                  <Show when={pending()} fallback={<ShellSubmessage text={label()} animate={sawPending} />}>
+                    <span data-slot="basic-tool-tool-subtitle">{label()}</span>
+                  </Show>
+                )}
               </Show>
             </div>
           </div>
         }
       >
-        <div data-component="bash-interactive">
+        <div data-component="bash-output">
+          <div data-slot="bash-copy">
+            <Tooltip
+              value={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
+              placement="top"
+              gutter={4}
+            >
+              <IconButton
+                icon={copied() ? "check" : "copy"}
+                size="small"
+                variant="secondary"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={handleCopy}
+                aria-label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
+              />
+            </Tooltip>
+          </div>
           <div data-slot="bash-scroll" data-scrollable>
             <pre data-slot="bash-pre" ref={(el) => (preRef = el)}>
-              <code>{display() || "Starting…"}</code>
+              <code>{text()}</code>
             </pre>
           </div>
-          <Show when={isRunning()}>
+          <Show when={pending()}>
             <form
               data-slot="bash-interactive-input"
               onSubmit={(e) => {
@@ -2175,33 +2204,12 @@ ToolRegistry.register({
                     void sendStdin("") // raw Ctrl+D / EOF
                   }
                 }}
-                placeholder="Type and press Enter to send to the running command…"
+                placeholder={
+                  i18n.t("ui.tool.bashInteractive.placeholder") || "Type and press Enter to send to the running command…"
+                }
                 disabled={sending()}
-                style={{
-                  flex: "1 1 auto",
-                  "min-width": "0",
-                  background: "transparent",
-                  border: "none",
-                  outline: "none",
-                  "font-family": "var(--font-family-mono)",
-                  "font-size": "12.5px",
-                  color: "var(--text-strong)",
-                }}
               />
-              <button
-                type="button"
-                onClick={() => void sendKill()}
-                style={{
-                  border: "1px solid var(--border-weak-base)",
-                  "border-radius": "4px",
-                  background: "transparent",
-                  padding: "2px 8px",
-                  "font-size": "11px",
-                  color: "var(--text-weak)",
-                  cursor: "pointer",
-                }}
-                title="SIGTERM the running command"
-              >
+              <button type="button" onClick={() => void sendKill()} title="SIGTERM the running command">
                 kill
               </button>
             </form>
