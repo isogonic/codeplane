@@ -12,6 +12,7 @@ import { GlobalBus } from "../../src/bus/global"
 import { SessionID, MessageID } from "../../src/session/schema"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
+import { killProc } from "../../src/tool/bash_interactive_runtime"
 
 const runtime = ManagedRuntime.make(
   Layer.mergeAll(
@@ -264,6 +265,149 @@ describe("bash_interactive", () => {
       expect(askedQuestions.length).toBe(1)
       expect(askedQuestions[0]).toContain("Some weird prompt>")
       expect(result.output).toContain("GOT=fallback-typed")
+    },
+    20_000,
+  )
+
+  test(
+    "kill button while a question is pending → orphaned question gets rejected, dialog disappears, tool reports stopped-by-user",
+    async () => {
+      const tool = await initTool()
+      await using sandbox = await tmpdir()
+      const dir = sandbox.path
+
+      const sessionID = SessionID.make("ses_kill_test")
+      const messageID = MessageID.make("msg_kill_test")
+      const callID = "call_kill_test"
+
+      const askedIDs: string[] = []
+      const rejectedIDs: string[] = []
+
+      const result = await Instance.provide({
+        directory: dir,
+        fn: () =>
+          runtime.runPromise(
+            Effect.gen(function* () {
+              const bus = yield* Bus.Service
+
+              const unsubAsked = yield* bus.subscribeCallback(Question.Event.Asked, (payload) => {
+                if (payload.properties.sessionID !== sessionID) return
+                askedIDs.push(payload.properties.id)
+                // Simulate the kill button: 200 ms after the question is
+                // shown, the user clicks stop. Don't reply or reject the
+                // question — the tool itself must handle the orphan.
+                setTimeout(() => {
+                  killProc(callID)
+                }, 200)
+              })
+              const unsubRejected = yield* bus.subscribeCallback(Question.Event.Rejected, (payload) => {
+                if (payload.properties.sessionID !== sessionID) return
+                rejectedIDs.push(payload.properties.requestID)
+              })
+
+              try {
+                const command = "printf 'Code: '; read x; printf 'GOT=%s\\n' \"$x\""
+                return yield* tool.execute(
+                  {
+                    command,
+                    timeout: 30_000,
+                    prompts: [{ pattern: "Code:", question: "Enter the code", header: "Code" }],
+                  } as any,
+                  {
+                    sessionID,
+                    messageID,
+                    callID,
+                    agent: "build",
+                    abort: new AbortController().signal,
+                    messages: [],
+                    metadata: () => Effect.void,
+                    ask: () => Effect.void,
+                  } as any,
+                )
+              } finally {
+                unsubAsked()
+                unsubRejected()
+              }
+            }),
+          ),
+      })
+
+      // The question MUST have been auto-rejected when the proc died.
+      // Without that, the dialog would hang in the UI forever.
+      expect(askedIDs.length).toBe(1)
+      expect(rejectedIDs).toEqual(askedIDs)
+      // And the tool reports the stop explicitly so the agent doesn't
+      // mis-attribute the failure.
+      expect(result.output).toContain("stopped by user")
+      expect(result.output).not.toContain("GOT=")
+    },
+    20_000,
+  )
+
+  test(
+    "user dismisses the question dialog → tool kills the PTY, reports userRejected, and never hangs",
+    async () => {
+      const tool = await initTool()
+      await using sandbox = await tmpdir()
+      const dir = sandbox.path
+
+      const sessionID = SessionID.make("ses_dismiss_test")
+      const messageID = MessageID.make("msg_dismiss_test")
+      const callID = "call_dismiss_test"
+
+      const result = await Instance.provide({
+        directory: dir,
+        fn: () =>
+          runtime.runPromise(
+            Effect.gen(function* () {
+              const q = yield* Question.Service
+              const bus = yield* Bus.Service
+
+              // Reject (dismiss) every question that comes in.
+              const reject = Instance.bind((requestID: any) => runtime.runPromise(q.reject(requestID)))
+              const unsubscribe = yield* bus.subscribeCallback(Question.Event.Asked, (payload) => {
+                const req = payload.properties
+                if (req.sessionID !== sessionID) return
+                setTimeout(() => {
+                  void reject(req.id)
+                }, 5)
+              })
+
+              try {
+                // Use a long-running read so the PTY is genuinely stuck on
+                // input — we want to prove that dismiss kills the proc.
+                const command = "printf 'Code: '; read x; printf 'GOT=%s\\n' \"$x\""
+                return yield* tool.execute(
+                  {
+                    command,
+                    timeout: 30_000,
+                    prompts: [
+                      { pattern: "Code:", question: "Enter the code", header: "Code" },
+                    ],
+                  } as any,
+                  {
+                    sessionID,
+                    messageID,
+                    callID,
+                    agent: "build",
+                    abort: new AbortController().signal,
+                    messages: [],
+                    metadata: () => Effect.void,
+                    ask: () => Effect.void,
+                  } as any,
+                )
+              } finally {
+                unsubscribe()
+              }
+            }),
+          ),
+      })
+
+      // Tool returns the userRejected message and stays out of the PTY's
+      // read loop — proves dismiss really aborts the run instead of
+      // hanging or silently sending an empty answer.
+      expect(result.output).toContain("user dismissed")
+      expect(result.output).not.toContain("GOT=")
     },
     20_000,
   )

@@ -263,6 +263,11 @@ export const BashInteractiveTool = Tool.define(
               scanBuffer = ""
               return true
             } catch {
+              // If the proc has already exited (stop button, timeout, abort,
+              // natural exit), the rejection that just unblocked us is the
+              // orphan-cleanup the tool itself fired — not the user actively
+              // hitting Dismiss. Don't mis-report that as a user dismissal.
+              if (cleanedRef.cleaned) return false
               userRejected = true
               killed = true
               try { proc.kill("SIGTERM") } catch {}
@@ -430,6 +435,23 @@ export const BashInteractiveTool = Tool.define(
           )
 
           unregisterProc(callID)
+          // If the PTY exited (kill button, natural exit, abort, timeout)
+          // while a question was still showing in the chat dock, that
+          // dialog would otherwise sit there forever waiting for an answer
+          // the tool can no longer use. Reject every pending question
+          // associated with this tool call so the dialog disappears and
+          // the awaiting bridge.promise(question.ask) settles cleanly.
+          yield* Effect.catch(
+            Effect.gen(function* () {
+              const all = yield* question.list()
+              for (const item of all) {
+                if (item.tool?.callID === callID) {
+                  yield* question.reject(item.id)
+                }
+              }
+            }),
+            () => Effect.void,
+          )
           // Make sure any output produced after the last throttled flush
           // (typical for short-lived commands that exit before the throttle
           // window elapses) reaches the renderer before we return.
@@ -457,6 +479,18 @@ export const BashInteractiveTool = Tool.define(
             result.output.length > 200_000
               ? result.output.slice(-200_000) + "\n\n[…earlier output truncated…]"
               : result.output
+
+          // SIGTERM with no natural-exit path through ctx.abort means the
+          // user clicked the stop / kill button. Surface that explicitly so
+          // the agent doesn't loop "the command must have crashed, let me
+          // retry" — the user actively stopped it.
+          if (result.signal === "SIGTERM" && !ctx.abort.aborted) {
+            return {
+              title: params.description ?? command.slice(0, 60),
+              output: `bash_interactive: stopped by user (SIGTERM via kill button)\n\n${truncatedOutput}`,
+              metadata: { command, description: params.description, output: truncatedOutput },
+            }
+          }
 
           return {
             title: params.description ? params.description : command.length > 60 ? command.slice(0, 60) + "…" : command,
