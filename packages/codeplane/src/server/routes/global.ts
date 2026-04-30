@@ -16,10 +16,7 @@ import { Log } from "../../util"
 import { lazy } from "../../util/lazy"
 import { Config } from "../../config"
 import { errors } from "../error"
-import {
-  writeInput as bashInteractiveWriteInput,
-  killProc as bashInteractiveKill,
-} from "../../tool/bash_interactive_runtime"
+import { killProc as bashInteractiveKill } from "../../tool/bash_interactive_runtime"
 import { CronRoutes } from "./cron"
 
 const log = Log.create({ service: "server" })
@@ -356,31 +353,6 @@ export const GlobalRoutes = lazy(() =>
           setTimeout(() => process.exit(0), 3000)
         }
         return c.json({ success: true, version: target, restart, skipped: result.skipped || undefined })
-      },
-    )
-    .post(
-      "/bash-interactive/:callID/stdin",
-      describeRoute({
-        summary: "Send stdin to a running bash_interactive tool call",
-        description:
-          "Writes the given 'data' (raw text — append \\r yourself for Enter) to the stdin of the PTY-backed bash_interactive tool call identified by callID. Returns 404 if the call has already exited.",
-        operationId: "global.bashInteractive.stdin",
-        responses: {
-          200: {
-            description: "Bytes were written to the running command's stdin.",
-            content: { "application/json": { schema: resolver(z.object({ ok: z.literal(true) })) } },
-          },
-          ...errors(400, 404),
-        },
-      }),
-      validator("param", z.object({ callID: z.string() })),
-      validator("json", z.object({ data: z.string() })),
-      async (c) => {
-        const { callID } = c.req.valid("param")
-        const { data } = c.req.valid("json")
-        const ok = bashInteractiveWriteInput(callID, data)
-        if (!ok) return c.json({ error: "No active bash_interactive call with that id." }, 404)
-        return c.json({ ok: true as const })
       },
     )
     .post(
