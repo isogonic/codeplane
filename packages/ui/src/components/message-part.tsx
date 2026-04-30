@@ -2101,6 +2101,48 @@ ToolRegistry.register({
       await fetch(`/global/bash-interactive/${encodeURIComponent(id)}/kill`, { method: "POST" }).catch(() => {})
     }
 
+    // Inline input bar — always-visible escape hatch when the agent's
+    // declared `prompts` don't match what the CLI actually printed (or
+    // weren't declared at all). Sends the user's text + carriage return
+    // straight to the PTY's stdin via the /global/bash-interactive/:id/stdin
+    // endpoint. Faster and more reliable than waiting on the question
+    // dialog when the user already knows what to paste.
+    const [pendingInput, setPendingInput] = createSignal("")
+    const [sendingInput, setSendingInput] = createSignal(false)
+    let inputRef: HTMLInputElement | undefined
+
+    const sendStdin = async (raw: string) => {
+      const id = props.callID
+      if (!id) return
+      const res = await fetch(`/global/bash-interactive/${encodeURIComponent(id)}/stdin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: raw }),
+      })
+      if (!res.ok && res.status !== 404) {
+        const body = await res.text().catch(() => "")
+        throw new Error(`stdin failed (${res.status}): ${body.slice(0, 200)}`)
+      }
+    }
+
+    const submitInline = async () => {
+      const value = pendingInput()
+      if (sendingInput()) return
+      setSendingInput(true)
+      try {
+        // Sanitize the same way the server does — paste from email/Slack
+        // often carries stray newlines / tabs.
+        const clean = value.replace(/\s+/g, " ").trim()
+        await sendStdin(clean + "\r")
+        setPendingInput("")
+        inputRef?.focus()
+      } catch (err) {
+        console.error("[bash_interactive] failed to send stdin", err)
+      } finally {
+        setSendingInput(false)
+      }
+    }
+
     return (
       <BasicTool
         {...props}
@@ -2159,6 +2201,32 @@ ToolRegistry.register({
               <code>{text()}</code>
             </pre>
           </div>
+          <Show when={pending()}>
+            <form
+              data-slot="bash-interactive-input"
+              onSubmit={(e) => {
+                e.preventDefault()
+                void submitInline()
+              }}
+            >
+              <span data-slot="bash-interactive-prompt" aria-hidden="true">
+                ›
+              </span>
+              <input
+                ref={(el) => (inputRef = el)}
+                type="text"
+                autocomplete="off"
+                spellcheck={false}
+                value={pendingInput()}
+                onInput={(e) => setPendingInput(e.currentTarget.value)}
+                placeholder={
+                  i18n.t("ui.tool.bashInteractive.placeholder") ||
+                  "Paste your code or type and press Enter — sent into the running terminal"
+                }
+                disabled={sendingInput()}
+              />
+            </form>
+          </Show>
         </div>
       </BasicTool>
     )

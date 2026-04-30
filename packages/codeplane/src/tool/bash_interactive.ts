@@ -244,11 +244,14 @@ export const BashInteractiveTool = Tool.define(
             // readline, and the common interactive CLIs.
             try { proc.write(clean + "\r") } catch {}
             lastInputAt = Date.now()
-            // RESET the declared-prompt latches after every user reply so
-            // re-prompts (e.g. CLI rejecting the code with "invalid, try
-            // again") trigger the question dialog immediately instead of
-            // making the user wait through the grace period.
-            for (const p of compiled) p.fired = false
+            // Don't auto-reset declared-prompt latches here. The CLI's
+            // PTY echo + autocomplete redraws often replay the original
+            // prompt text on the same line as the user's input ("Paste
+            // code here > ABCD-1234"), and resetting fired would loop
+            // the question dialog endlessly. Re-prompts after rejection
+            // are handled by the agent providing multiple `prompts`
+            // entries, OR the idle fallback eventually firing — both
+            // safer than blanket resetting.
             scanBuffer = ""
           }
 

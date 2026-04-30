@@ -413,7 +413,7 @@ describe("bash_interactive", () => {
   )
 
   test(
-    "re-prompt: CLI rejects the user's first answer and asks again — the same declared prompt fires the question dialog a second time without the user having to wait out the grace period",
+    "re-prompt via duplicate entries: agent declares the same `Code:` prompt twice, CLI rejects WRONG → asks again → user gives RIGHT → command completes happily. Documented pattern for repeating prompts.",
     async () => {
       const tool = await initTool()
       await using sandbox = await tmpdir()
@@ -433,7 +433,6 @@ describe("bash_interactive", () => {
               const q = yield* Question.Service
               const bus = yield* Bus.Service
 
-              // First answer is wrong, second answer is right.
               let nth = 0
               const reply = Instance.bind((requestID: any, answer: string) =>
                 runtime.runPromise(q.reply({ requestID, answers: [[answer]] })),
@@ -448,11 +447,6 @@ describe("bash_interactive", () => {
               })
 
               try {
-                // Mimic a CLI that rejects "WRONG" and re-prompts, accepts
-                // "RIGHT" and exits successfully. The same "Code:" prompt
-                // appears twice; the agent declared a single prompt
-                // entry; the tool should reset and fire it again on the
-                // re-prompt.
                 const command = [
                   "printf 'Code: ';",
                   "read x;",
@@ -466,11 +460,17 @@ describe("bash_interactive", () => {
                   "fi",
                 ].join(" ")
 
+                // Declare the prompt TWICE — documented pattern for
+                // repeating prompts. Each entry fires once; the second
+                // entry fires for the second `Code:` after rejection.
                 return yield* tool.execute(
                   {
                     command,
                     timeout: 30_000,
-                    prompts: [{ pattern: "Code:", question: "Enter the code", header: "Code" }],
+                    prompts: [
+                      { pattern: "Code:", question: "Enter the code (first try)", header: "Code 1" },
+                      { pattern: "Code:", question: "Enter the code (retry)", header: "Code 2" },
+                    ],
                   } as any,
                   {
                     sessionID,
@@ -490,18 +490,64 @@ describe("bash_interactive", () => {
           ),
       })
 
-      // The same declared prompt must fire TWICE because the user gave a
-      // wrong answer the first time. Without the fired-reset on user
-      // input, the second prompt would never raise a dialog and the user
-      // would have to wait out the grace timer.
       expect(askedQuestions.length).toBe(2)
-      expect(askedQuestions[0]).toContain("Enter the code")
-      expect(askedQuestions[1]).toContain("Enter the code")
-      // And the second answer reached stdin and the command finished
-      // happily.
+      expect(askedQuestions[0]).toContain("first try")
+      expect(askedQuestions[1]).toContain("retry")
       expect(result.output).toContain("OK=RIGHT")
     },
     20_000,
+  )
+
+  test(
+    "inline input bar (writeInput): user types directly into the bar — bypasses Question.Service entirely. Always-available escape hatch when the agent's declared prompts don't match.",
+    async () => {
+      const tool = await initTool()
+      await using sandbox = await tmpdir()
+      const dir = sandbox.path
+
+      const sessionID = SessionID.make("ses_inline_test")
+      const messageID = MessageID.make("msg_inline_test")
+      const callID = "call_inline_test"
+
+      const result = await Instance.provide({
+        directory: dir,
+        fn: () =>
+          runtime.runPromise(
+            Effect.gen(function* () {
+              // Wait briefly for the PTY to start, then call writeInput
+              // directly (simulating the user typing into the inline
+              // input bar in the renderer).
+              setTimeout(() => {
+                const { writeInput } = require("../../src/tool/bash_interactive_runtime")
+                writeInput(callID, "INLINE-TYPED\r")
+              }, 300)
+
+              return yield* tool.execute(
+                {
+                  command: "printf 'go: '; read x; printf 'GOT=%s\\n' \"$x\"",
+                  timeout: 10_000,
+                  // No prompts at all — the inline bar is the only path.
+                  prompts: [],
+                } as any,
+                {
+                  sessionID,
+                  messageID,
+                  callID,
+                  agent: "build",
+                  abort: new AbortController().signal,
+                  messages: [],
+                  metadata: () => Effect.void,
+                  ask: () => Effect.void,
+                } as any,
+              )
+            }),
+          ),
+      })
+
+      // The inline write reached the PTY and the command echoed it back.
+      expect(result.output).toContain("GOT=INLINE-TYPED")
+    },
+    15_000,
   )
 
   test(

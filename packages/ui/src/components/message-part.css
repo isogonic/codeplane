@@ -618,6 +618,44 @@
   [data-slot="bash-interactive-kill"] [data-component="icon-button"][data-variant="secondary"] [data-slot="icon-svg"] {
     color: var(--icon-base);
   }
+
+  /* Inline input bar at the bottom — always visible while the PTY is
+     running so the user has a guaranteed input path even when the
+     agent's declared prompts don't match. The chevron + monospace input
+     mirror a terminal prompt so the user immediately understands where
+     to paste. */
+  [data-slot="bash-interactive-input"] {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-top: 1px solid var(--border-weak-base);
+    background: var(--background-base);
+  }
+
+  [data-slot="bash-interactive-prompt"] {
+    flex: 0 0 auto;
+    font-family: var(--font-family-mono);
+    color: var(--text-weak);
+    font-size: 13px;
+    line-height: 1;
+  }
+
+  [data-slot="bash-interactive-input"] input {
+    flex: 1 1 auto;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: var(--font-family-mono);
+    font-size: 13px;
+    color: var(--text-strong);
+    padding: 0;
+  }
+
+  [data-slot="bash-interactive-input"] input::placeholder {
+    color: var(--text-weak);
+  }
 }
 
 [data-component="edit-trigger"],
