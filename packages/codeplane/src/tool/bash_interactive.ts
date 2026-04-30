@@ -1,13 +1,9 @@
 import { Effect, Schema } from "effect"
 import { spawn as ptySpawn } from "#pty"
 import * as Tool from "./tool"
-import { Bus } from "../bus"
-import { BusEvent } from "../bus/bus-event"
-import { GlobalBus } from "../bus/global"
-import { InstanceState } from "@/effect"
+import { EffectBridge } from "@/effect"
 import {
   appendOutput,
-  killProc,
   register as registerProc,
   unregister as unregisterProc,
 } from "./bash_interactive_runtime"
@@ -15,6 +11,13 @@ import DESCRIPTION from "./bash_interactive.txt"
 
 const DEFAULT_TIMEOUT_MS = 120_000
 const MAX_TIMEOUT_MS = 600_000
+
+// Throttle metadata updates so a fast-talking PTY doesn't spam message.part.updated.
+const METADATA_THROTTLE_MS = 80
+// Cap how much of the captured PTY output is mirrored back through the
+// metadata channel each tick. Keeps update payloads bounded for very
+// chatty commands while still showing the live tail in the UI.
+const METADATA_OUTPUT_TAIL = 64 * 1024
 
 export const Parameters = Schema.Struct({
   command: Schema.String.annotate({ description: "Shell command to execute interactively." }),
@@ -24,33 +27,6 @@ export const Parameters = Schema.Struct({
   cwd: Schema.optional(Schema.String).annotate({ description: "Working directory." }),
   description: Schema.optional(Schema.String).annotate({ description: "Short description shown in the UI." }),
 })
-
-// Bus events the frontend renderer subscribes to so it can show live PTY
-// output and know when the command exited.
-export const InteractiveStarted = BusEvent.define(
-  "bash_interactive.started",
-  Schema.Struct({
-    sessionID: Schema.String,
-    callID: Schema.String,
-    command: Schema.String,
-  }),
-)
-export const InteractiveChunk = BusEvent.define(
-  "bash_interactive.chunk",
-  Schema.Struct({
-    sessionID: Schema.String,
-    callID: Schema.String,
-    chunk: Schema.String,
-  }),
-)
-export const InteractiveExited = BusEvent.define(
-  "bash_interactive.exited",
-  Schema.Struct({
-    sessionID: Schema.String,
-    callID: Schema.String,
-    exitCode: Schema.Number,
-  }),
-)
 
 function sanitizeEnv(env: NodeJS.ProcessEnv): Record<string, string> {
   const out: Record<string, string> = {}
@@ -62,30 +38,26 @@ function sanitizeEnv(env: NodeJS.ProcessEnv): Record<string, string> {
   return out
 }
 
+function tail(value: string, max: number): string {
+  if (value.length <= max) return value
+  return value.slice(-max)
+}
+
 export const BashInteractiveTool = Tool.define(
   "bash_interactive",
   Effect.gen(function* () {
-    const bus = yield* Bus.Service
-
     return {
       description: DESCRIPTION,
       parameters: Parameters,
       execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
         Effect.gen(function* () {
-          // Capture instance values up-front so we can emit chunk events to
-          // the global bus directly from the (synchronous) PTY data callback
-          // without needing an Effect context.
-          const instanceCtx = yield* InstanceState.context
-          const directory = instanceCtx.directory
-          const projectID = instanceCtx.project.id
-          const workspace = yield* InstanceState.workspaceID
           const command = params.command
           const callID = ctx.callID
           if (!callID) {
             return {
               title: "bash_interactive",
               output: "bash_interactive must be invoked through a tool call (missing callID).",
-              metadata: {},
+              metadata: { command, description: params.description, output: "" },
             }
           }
 
@@ -99,6 +71,17 @@ export const BashInteractiveTool = Tool.define(
             always: [],
             metadata: { command, description: params.description, interactive: true },
           })
+
+          // Pre-publish the empty body so the renderer can show "$ command"
+          // immediately while the PTY warms up — same pattern bash.ts uses.
+          yield* ctx.metadata({
+            title: params.description ?? command,
+            metadata: { command, description: params.description, output: "" },
+          })
+
+          // Bridge so the synchronous PTY data callback can call ctx.metadata
+          // (an Effect) without losing the workspace/instance context.
+          const bridge = yield* EffectBridge.make()
 
           const isWindows = process.platform === "win32"
           const file = isWindows ? "powershell.exe" : "/bin/sh"
@@ -114,24 +97,50 @@ export const BashInteractiveTool = Tool.define(
 
           registerProc(callID, { proc, sessionID: ctx.sessionID })
 
-          // Tell the frontend a new interactive session is running so it can
-          // mount the live terminal renderer for this tool call.
-          yield* bus.publish(InteractiveStarted, {
-            sessionID: ctx.sessionID,
-            callID,
-            command,
-          })
+          let allOutput = ""
+          let lastFlushAt = 0
+          let flushTimer: ReturnType<typeof setTimeout> | undefined
+
+          const publishMetadata = () => {
+            flushTimer = undefined
+            lastFlushAt = Date.now()
+            const snapshot = tail(allOutput, METADATA_OUTPUT_TAIL)
+            bridge.fork(
+              ctx.metadata({
+                title: params.description ?? command,
+                metadata: { command, description: params.description, output: snapshot },
+              }),
+            )
+          }
+
+          const scheduleFlush = () => {
+            const now = Date.now()
+            const since = now - lastFlushAt
+            if (since >= METADATA_THROTTLE_MS) {
+              if (flushTimer) {
+                clearTimeout(flushTimer)
+                flushTimer = undefined
+              }
+              publishMetadata()
+              return
+            }
+            if (flushTimer) return
+            flushTimer = setTimeout(publishMetadata, METADATA_THROTTLE_MS - since)
+          }
 
           const result = yield* Effect.promise(
             () =>
               new Promise<{ output: string; exitCode: number; signal?: number | string; timedOut: boolean }>((resolve) => {
-                let allOutput = ""
                 let timedOut = false
                 let cleaned = false
                 const cleanup = () => {
                   if (cleaned) return
                   cleaned = true
                   clearTimeout(overallTimer)
+                  if (flushTimer) {
+                    clearTimeout(flushTimer)
+                    flushTimer = undefined
+                  }
                   try { dataDisp.dispose() } catch {}
                   try { exitDisp.dispose() } catch {}
                   try { ctx.abort.removeEventListener("abort", abortListener) } catch {}
@@ -146,23 +155,7 @@ export const BashInteractiveTool = Tool.define(
                 const dataDisp = proc.onData((chunk) => {
                   allOutput += chunk
                   appendOutput(callID, chunk)
-                  // Synchronous JS callback — emit straight to GlobalBus so
-                  // SSE subscribers see the chunk without round-tripping
-                  // through the Effect runtime (where the context required
-                  // by bus.publish is not available from this callback).
-                  GlobalBus.emit("event", {
-                    directory,
-                    project: projectID,
-                    workspace,
-                    payload: {
-                      type: InteractiveChunk.type,
-                      properties: {
-                        sessionID: ctx.sessionID,
-                        callID,
-                        chunk,
-                      },
-                    },
-                  })
+                  scheduleFlush()
                 })
 
                 const exitDisp = proc.onExit(({ exitCode, signal }) => {
@@ -178,18 +171,13 @@ export const BashInteractiveTool = Tool.define(
           )
 
           unregisterProc(callID)
-          // Final exited event — the frontend renderer detaches its input bar.
-          yield* bus.publish(InteractiveExited, {
-            sessionID: ctx.sessionID,
-            callID,
-            exitCode: result.exitCode,
-          })
 
           if (result.timedOut) {
+            const truncated = tail(result.output, 200_000)
             return {
               title: params.description ?? command.slice(0, 60),
-              output: `bash_interactive: timed out after ${timeoutMs}ms\n\n${result.output.slice(-200_000)}`,
-              metadata: {},
+              output: `bash_interactive: timed out after ${timeoutMs}ms\n\n${truncated}`,
+              metadata: { command, description: params.description, output: truncated },
             }
           }
 
@@ -203,12 +191,12 @@ export const BashInteractiveTool = Tool.define(
             output:
               truncatedOutput ||
               `(no output) exit=${result.exitCode}${result.signal ? ` signal=${result.signal}` : ""}`,
-            metadata: {},
+            metadata: { command, description: params.description, output: truncatedOutput },
           }
         }).pipe(Effect.orDie),
     }
   }),
 )
 
-// expose for the HTTP /global/bash-interactive/:callID/stdin route
+// expose for the HTTP /global/bash-interactive/:callID/{stdin,kill} routes
 export { writeInput, killProc as kill } from "./bash_interactive_runtime"

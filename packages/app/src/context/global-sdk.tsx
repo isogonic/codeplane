@@ -1,10 +1,5 @@
 import type { Event } from "@codeplane-ai/sdk/v2/client"
 import { createSimpleContext } from "@codeplane-ai/ui/context"
-import {
-  pushBashInteractiveChunk,
-  pushBashInteractiveExited,
-  pushBashInteractiveStarted,
-} from "@codeplane-ai/ui/context/bash-interactive"
 import { createGlobalEmitter } from "@solid-primitives/event-bus"
 import { makeEventListener } from "@solid-primitives/event-listener"
 import { batch, onCleanup, onMount } from "solid-js"
@@ -94,21 +89,6 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
           if (skip && event.payload.type === "message.part.delta") {
             const props = event.payload.properties
             if (skip.has(deltaKey(event.directory, props.messageID, props.partID))) continue
-          }
-          // Mirror bash_interactive.* PTY events into the shared UI store so
-          // the tool renderer in @codeplane-ai/ui can show live output and a
-          // working stdin input bar. Cast through `string` because the SDK's
-          // event union is generated and doesn't yet include these events.
-          const t = event.payload.type as string
-          if (t === "bash_interactive.started") {
-            const p = (event.payload as unknown as { properties: { callID: string; command: string } }).properties
-            pushBashInteractiveStarted(p.callID, p.command)
-          } else if (t === "bash_interactive.chunk") {
-            const p = (event.payload as unknown as { properties: { callID: string; chunk: string } }).properties
-            pushBashInteractiveChunk(p.callID, p.chunk)
-          } else if (t === "bash_interactive.exited") {
-            const p = (event.payload as unknown as { properties: { callID: string; exitCode: number } }).properties
-            pushBashInteractiveExited(p.callID, p.exitCode)
           }
           emitter.emit(event.directory, event.payload)
         }
