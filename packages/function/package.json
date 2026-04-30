@@ -1,6 +1,6 @@
 {
   "name": "@codeplane-ai/function",
-  "version": "26.5.36",
+  "version": "26.5.37",
   "$schema": "https://json.schemastore.org/package.json",
   "private": true,
   "type": "module",

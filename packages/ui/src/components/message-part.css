@@ -508,7 +508,14 @@
 }
 
 [data-component="bash-output"] {
-  width: 100%;
+  /* Match the trigger's horizontal extent (margin -10 / width +20) so the
+     box left/right edges line up with the trigger row above. Without
+     this the box sits 10px right of the trigger's left edge — the
+     "still wrong aligned" complaint. */
+  margin-left: -10px;
+  margin-right: -10px;
+  width: calc(100% + 20px);
+  max-width: calc(100% + 20px);
   border: 1px solid var(--border-weak-base);
   border-radius: 8px;
   background: var(--surface-base);
