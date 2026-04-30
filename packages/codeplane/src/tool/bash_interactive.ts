@@ -26,7 +26,14 @@ const PROMPT_DEBOUNCE_MS = 250
 // declared prompt, the tool falls back to a generic "what should I send?"
 // question dialog so the user is never stuck. Long enough that slow-but-
 // productive commands don't trip it.
-const IDLE_FALLBACK_MS = 5_000
+const IDLE_FALLBACK_MS = 6_000
+// After we write the user's answer back into the PTY, give the command
+// breathing room before the idle fallback can fire again. Most CLIs sit
+// silent while they validate the input (network round-trip for auth, etc.);
+// without this grace period the tool would re-ask the user for input
+// during that silence and the user would think the original answer was
+// dropped — exactly the "I entered the code and now it just hangs" bug.
+const POST_INPUT_GRACE_MS = 20_000
 // Cap the regex haystack so pattern matching stays cheap on long output.
 const PROMPT_BUFFER_CAP = 4096
 // Strip ANSI escapes ONLY for prompt detection — the captured output keeps
@@ -206,15 +213,31 @@ export const BashInteractiveTool = Tool.define(
 
           // ---------------------------------------------------------------
           // Idle fallback: if no declared prompt matches and the PTY sits
-          // silent for IDLE_FALLBACK_MS, we still want the user to be able
-          // to respond — otherwise a wrong/missing pattern leaves them
-          // staring at "$ command" forever. Fire a generic question with
-          // the recent output as context. Resets on every chunk; only fires
-          // while no scan is in flight (so we never overlap with a
-          // declared-prompt question).
+          // silent, we still want the user to be able to respond. Fires
+          // a generic question with the recent output as context. Resets
+          // on every chunk; never fires while a scan/question is in
+          // flight; respects a post-input grace period so commands that
+          // sit silent while they validate the user's answer (claude
+          // auth, vercel auth, …) don't trigger a confusing repeat
+          // question while the answer is being processed.
           // ---------------------------------------------------------------
           let idleTimer: ReturnType<typeof setTimeout> | undefined
           let idleFiredAt: number | undefined
+          let lastInputAt = 0
+
+          const writeInputToPty = (value: string) => {
+            if (killed) return
+            // Real terminals send \r when Enter is pressed; the PTY's TTY
+            // discipline translates CR→NL via ICRNL for cooked-mode reads.
+            // A few CLIs flip ICRNL off — for those, sending \n works
+            // directly. Following both conventions makes the tool work
+            // with shell `read`, `inquirer`/`prompts`-style libraries,
+            // and CLIs that put the TTY into raw mode.
+            try {
+              proc.write(value + "\r")
+            } catch {}
+            lastInputAt = Date.now()
+          }
 
           const askInput = async (question_: string, header: string) => {
             try {
@@ -234,11 +257,9 @@ export const BashInteractiveTool = Tool.define(
                 }),
               )
               const value = (answers[0]?.[0] ?? "").trim()
-              if (!killed) {
-                proc.write(value + "\r")
-              }
-              // Subsequent output may match more declared prompts — clear
-              // the consumed buffer so a new scan window starts clean.
+              writeInputToPty(value)
+              // Consume the buffer so the post-input echo + new output
+              // starts a clean scan window for the next declared prompt.
               scanBuffer = ""
               return true
             } catch {
@@ -249,22 +270,43 @@ export const BashInteractiveTool = Tool.define(
             }
           }
 
+          const recentOutputSnapshot = () => {
+            const recent = tail(allOutput.replace(STRIP_ANSI_RE, ""), 2048)
+            const lines = recent.split(/\r?\n/).filter((l) => l.trim().length > 0)
+            return {
+              lastLine: lines[lines.length - 1] ?? "",
+              tail: lines.slice(-6).join("\n"),
+            }
+          }
+
           const fireIdleFallback = async () => {
             idleTimer = undefined
-            if (scanning) return
-            // Avoid asking again until new output arrives — guards against
-            // looping when the user's first answer doesn't unstick the PTY.
+            if (scanning || cleanedRef.cleaned || userRejected) return
+            // Don't fire if the user just sent an answer and the command
+            // hasn't had a chance to react yet — prevents the "I entered
+            // the code and got asked again" loop while auth round-trips.
+            if (lastInputAt > 0) {
+              const sinceInput = Date.now() - lastInputAt
+              if (sinceInput < POST_INPUT_GRACE_MS) {
+                idleTimer = setTimeout(() => void fireIdleFallback(), POST_INPUT_GRACE_MS - sinceInput)
+                return
+              }
+            }
+            // Already-fired latch — avoid loops if the user's first answer
+            // didn't unstick the PTY. Cleared by every fresh chunk.
             if (idleFiredAt && idleFiredAt > 0) return
+
             scanning = true
             try {
-              const recent = tail(allOutput.replace(STRIP_ANSI_RE, ""), 1024)
-              const lines = recent.split(/\r?\n/).filter((l) => l.trim().length > 0)
-              const lastLine = lines[lines.length - 1] ?? ""
-              const head = lines.slice(-3).join("\n")
+              const { lastLine, tail: head } = recentOutputSnapshot()
+              const cmdLabel = command.length > 50 ? command.slice(0, 50) + "…" : command
               const prompt = head
-                ? `The shell is waiting for input. Recent output:\n\n${head}\n\nWhat should I send?`
-                : "The shell is waiting for input. What should I send?"
-              const ok = await askInput(prompt, lastLine)
+                ? `The \`${cmdLabel}\` command is waiting for your input. Here's what it just printed:\n\n` +
+                  head +
+                  "\n\nType the value the command is asking for. Your answer goes into the running terminal — the agent will not see what you type, only that you replied."
+                : `The \`${cmdLabel}\` command is waiting for your input. Type whatever the command is asking for; it will be sent into the running terminal.`
+              const headerText = lastLine || `Input for ${cmdLabel}`
+              const ok = await askInput(prompt, headerText)
               if (ok) idleFiredAt = Date.now()
             } finally {
               scanning = false
@@ -277,11 +319,17 @@ export const BashInteractiveTool = Tool.define(
 
           const scheduleIdleFallback = () => {
             if (idleTimer) clearTimeout(idleTimer)
-            // Reset the "already fired" latch on every new chunk so the
+            // Fresh chunk arrived → reset the "already fired" latch so the
             // fallback can fire again if the PTY stalls a second time.
             idleFiredAt = undefined
             idleTimer = setTimeout(() => void fireIdleFallback(), IDLE_FALLBACK_MS)
           }
+
+          // Forward declaration: the cleanup closure inside the Promise sets
+          // .cleaned, but fireIdleFallback (above) needs to read it to bail
+          // out after the proc exits. Wrapped in an object so both sides
+          // see the same reference.
+          const cleanedRef: { cleaned: boolean } = { cleaned: false }
 
           // Kicks off prompt scanning; reentrant — if a chunk arrives while we
           // are awaiting the user's answer to a previous prompt, queue another
@@ -299,7 +347,13 @@ export const BashInteractiveTool = Tool.define(
                 if (!next) break
                 next.fired = true
                 scanBuffer = ""
-                const ok = await askInput(next.question, next.header ?? next.question)
+                // Show recent terminal output as context so the user knows
+                // what they're answering and why.
+                const { tail: head } = recentOutputSnapshot()
+                const enriched = head
+                  ? `${next.question}\n\n— Recent terminal output —\n${head}\n\nYour answer goes into the running terminal.`
+                  : `${next.question}\n\nYour answer goes into the running terminal.`
+                const ok = await askInput(enriched, next.header ?? next.question)
                 if (!ok) return
               }
             } finally {
@@ -315,10 +369,9 @@ export const BashInteractiveTool = Tool.define(
             () =>
               new Promise<{ output: string; exitCode: number; signal?: number | string; timedOut: boolean }>((resolve) => {
                 let timedOut = false
-                let cleaned = false
                 const cleanup = () => {
-                  if (cleaned) return
-                  cleaned = true
+                  if (cleanedRef.cleaned) return
+                  cleanedRef.cleaned = true
                   clearTimeout(overallTimer)
                   if (flushTimer) {
                     clearTimeout(flushTimer)

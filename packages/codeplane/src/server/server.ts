@@ -102,7 +102,7 @@ export async function openapi() {
     documentation: {
       info: {
         title: "codeplane",
-        version: "26.5.34",
+        version: "26.5.35",
         description: "codeplane api",
       },
       openapi: "3.1.1",

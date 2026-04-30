@@ -559,6 +559,17 @@
   [data-slot="bash-pre"] {
     margin: 0;
     padding: 12px;
+    /* The <pre> default is `white-space: pre` which never wraps and forces
+       horizontal overflow when a long unbreakable string (an OAuth URL, a
+       long stack trace path, …) shows up. Without this the parent's
+       overflow-x: hidden silently clips the URL on the right while the
+       outer chat region grows a horizontal scrollbar. Mirror the inner
+       <code> wrap rules so the box really stays inside its container. */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   [data-slot="bash-pre"] code {
@@ -568,6 +579,9 @@
     line-height: var(--line-height-large);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+    word-break: break-word;
+    max-width: 100%;
+    display: block;
   }
 }
 
