@@ -1,4 +1,11 @@
-import type { Message, Session, Part, SnapshotFileDiff, SessionStatus, ProviderListResponse } from "@codeplane-ai/sdk/v2"
+import type {
+  Message,
+  Session,
+  Part,
+  SnapshotFileDiff,
+  SessionStatus,
+  ProviderListResponse,
+} from "@codeplane-ai/sdk/v2"
 import { createSimpleContext } from "./helper"
 import { PreloadMultiFileDiffResult } from "@pierre/diffs/ssr"
 
@@ -31,7 +38,6 @@ export type NavigateToSessionFn = (sessionID: string) => void
 export type SessionHrefFn = (sessionID: string) => string
 
 export type BashInteractiveTransport = {
-  stdin: (input: { callID: string; data: string; signal?: AbortSignal }) => Promise<void>
   kill: (input: { callID: string }) => Promise<void>
 }
 

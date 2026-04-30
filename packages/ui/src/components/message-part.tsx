@@ -1447,13 +1447,9 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
               input={input()}
               tool={part().tool}
               // ToolPart has BOTH `id` (the message-part ID) and `callID`
-              // (the LLM's tool-call ID). The bash_interactive runtime
-              // and the /global/bash-interactive/:callID/stdin route
-              // both key off the LLM's callID, so we must pass that one
-              // — passing part.id silently fails every stdin / kill
-              // request because the runtime can't find a matching
-              // entry, which was the "I press Enter and nothing
-              // happens" bug.
+              // (the LLM's tool-call ID). The bash_interactive runtime keys
+              // kill/control actions off the LLM's callID, so we must pass
+              // that one.
               callID={part().callID || part().id}
               metadata={partMetadata()}
               // @ts-expect-error
@@ -1903,7 +1899,13 @@ ToolRegistry.register({
                 <img
                   src={src()}
                   alt={`Screenshot of ${url()}`}
-                  style={{ display: "block", width: "100%", height: "auto", "max-height": "480px", "object-fit": "contain" }}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    height: "auto",
+                    "max-height": "480px",
+                    "object-fit": "contain",
+                  }}
                 />
               </button>
             </div>
@@ -2104,63 +2106,6 @@ ToolRegistry.register({
       if (preRef) preRef.scrollTop = preRef.scrollHeight
     })
 
-    const [input, setInput] = createSignal("")
-    const [sending, setSending] = createSignal(false)
-    const [feedback, setFeedback] = createSignal<{ kind: "sent" | "error"; text: string }>()
-    let inputRef: HTMLInputElement | undefined
-    let feedbackTimer: number | undefined
-
-    const clearFeedbackLater = () => {
-      if (feedbackTimer) window.clearTimeout(feedbackTimer)
-      feedbackTimer = window.setTimeout(() => {
-        setFeedback(undefined)
-        feedbackTimer = undefined
-      }, 1800)
-    }
-
-    onCleanup(() => {
-      if (feedbackTimer) window.clearTimeout(feedbackTimer)
-    })
-
-    createEffect(() => {
-      if (!pending()) return
-      queueMicrotask(() => inputRef?.focus())
-    })
-
-    const withTimeout = (send: (signal: AbortSignal) => Promise<void>) => {
-      const controller = new AbortController()
-      const timer = window.setTimeout(() => controller.abort(), 12_000)
-      return send(controller.signal).finally(() => window.clearTimeout(timer))
-    }
-
-    const stdinError = (err: unknown) => {
-      if (err instanceof DOMException && err.name === "AbortError") return "Timed out while sending input."
-      if (err instanceof Error) return err.message
-      return String(err)
-    }
-
-    const sendStdin = async (raw: string) => {
-      const id = props.callID
-      if (!id) throw new Error("Interactive shell is missing a call ID.")
-      const transport = data.bashInteractive
-      if (transport) {
-        await withTimeout((signal) => transport.stdin({ callID: id, data: raw, signal }))
-        return
-      }
-      await withTimeout((signal) =>
-        fetch(`/global/bash-interactive/${encodeURIComponent(id)}/stdin`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data: raw }),
-          signal,
-        }).then(async (response) => {
-          if (response.ok) return
-          const body = await response.text().catch(() => "")
-          throw new Error(`stdin failed (${response.status}): ${body.slice(0, 200)}`)
-        }),
-      )
-    }
-
     const sendKill = async () => {
       const id = props.callID
       if (!id) return
@@ -2169,25 +2114,6 @@ ToolRegistry.register({
         return
       }
       await fetch(`/global/bash-interactive/${encodeURIComponent(id)}/kill`, { method: "POST" }).catch(() => {})
-    }
-
-    const submit = async () => {
-      const value = input()
-      if (sending()) return
-      setSending(true)
-      setFeedback(undefined)
-      await sendStdin(value + "\r")
-        .then(() => {
-          setInput("")
-          setFeedback({ kind: "sent", text: "Sent" })
-          clearFeedbackLater()
-          inputRef?.focus()
-        })
-        .catch((err) => {
-          console.error("[bash_interactive] failed to send stdin", err)
-          setFeedback({ kind: "error", text: stdinError(err) })
-        })
-        .finally(() => setSending(false))
     }
 
     return (
@@ -2213,7 +2139,7 @@ ToolRegistry.register({
           </div>
         }
       >
-        <div data-component="bash-interactive" data-prevent-autofocus>
+        <div data-component="bash-interactive">
           <div data-component="bash-output">
             <Show when={pending()}>
               <div data-slot="bash-interactive-kill">
@@ -2250,64 +2176,6 @@ ToolRegistry.register({
                 <code>{text()}</code>
               </pre>
             </div>
-            <Show when={pending()}>
-              <form
-                data-slot="bash-interactive-input"
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  void submit()
-                }}
-              >
-                <span data-slot="bash-interactive-prompt" aria-hidden="true">
-                  ›
-                </span>
-                <input
-                  ref={(el) => (inputRef = el)}
-                  type="text"
-                  autocomplete="off"
-                  spellcheck={false}
-                  value={input()}
-                  onInput={(e) => setInput(e.currentTarget.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault()
-                      void submit()
-                      return
-                    }
-                    if (e.key === "c" && (e.ctrlKey || e.metaKey)) {
-                      e.preventDefault()
-                      void sendStdin("\u0003")
-                    }
-                    if (e.key === "d" && (e.ctrlKey || e.metaKey)) {
-                      e.preventDefault()
-                      void sendStdin("\u0004")
-                    }
-                  }}
-                  placeholder={
-                    i18n.t("ui.tool.bashInteractive.placeholder") || "Paste code or type input, then press Enter"
-                  }
-                  disabled={sending()}
-                  aria-keyshortcuts="Enter"
-                />
-                <Show when={feedback()}>
-                  {(state) => (
-                    <span data-slot="bash-interactive-feedback" data-kind={state().kind}>
-                      {state().text}
-                    </span>
-                  )}
-                </Show>
-                <button type="submit" disabled={sending()} title={i18n.t("ui.tool.bashInteractive.send") || "Send input"}>
-                  <Icon name={sending() ? "enter" : "arrow-up"} size="small" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void sendKill()}
-                  title={i18n.t("ui.tool.bashInteractive.kill") || "Stop"}
-                >
-                  <Icon name="stop" size="small" />
-                </button>
-              </form>
-            </Show>
           </div>
         </div>
       </BasicTool>
@@ -2349,10 +2217,7 @@ ToolRegistry.register({
               </span>
               <Show when={props.input.description}>
                 {(desc) => (
-                  <Show
-                    when={pending()}
-                    fallback={<ShellSubmessage text={desc()} animate={sawPending} />}
-                  >
+                  <Show when={pending()} fallback={<ShellSubmessage text={desc()} animate={sawPending} />}>
                     <span data-slot="basic-tool-tool-subtitle">{desc()}</span>
                   </Show>
                 )}

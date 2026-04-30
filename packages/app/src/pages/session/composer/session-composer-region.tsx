@@ -23,7 +23,7 @@ export function SessionComposerRegion(props: {
   state: SessionComposerState
   ready: boolean
   centered: boolean
-  shellActive: boolean
+  shellActive?: boolean
   inputRef: (el: HTMLDivElement) => void
   newSessionWorktree: string
   onNewSessionWorktreeReset: () => void

@@ -3,7 +3,7 @@
   "info": {
     "title": "codeplane",
     "description": "codeplane api",
-    "version": "26.5.41"
+    "version": "26.5.42"
   },
   "paths": {
     "/global/cron": {
@@ -920,83 +920,6 @@
           {
             "lang": "js",
             "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.global.upgrade({\n  ...\n})"
-          }
-        ]
-      }
-    },
-    "/global/bash-interactive/{callID}/stdin": {
-      "post": {
-        "operationId": "global.bashInteractive.stdin",
-        "summary": "Send stdin to a running bash_interactive tool call",
-        "description": "Writes the given 'data' (raw text — append \\r yourself for Enter) to the stdin of the PTY-backed bash_interactive tool call identified by callID. Returns 404 if the call has already exited. Used by the inline input bar in the renderer as a guaranteed input path even when the agent's declared `prompts` don't match the actual CLI output.",
-        "responses": {
-          "200": {
-            "description": "Bytes were written to the running command's stdin.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "ok": {
-                      "type": "boolean",
-                      "const": true
-                    }
-                  },
-                  "required": ["ok"]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BadRequestError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotFoundError"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "in": "path",
-            "name": "callID",
-            "schema": {
-              "type": "string"
-            },
-            "required": true
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "data": {
-                    "type": "string"
-                  }
-                },
-                "required": ["data"]
-              }
-            }
-          }
-        },
-        "x-codeSamples": [
-          {
-            "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.global.bashInteractive.stdin({\n  ...\n})"
           }
         ]
       }

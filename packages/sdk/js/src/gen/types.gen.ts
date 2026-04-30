@@ -3303,42 +3303,6 @@ export type GlobalUpgradeResponses = {
 
 export type GlobalUpgradeResponse = GlobalUpgradeResponses[keyof GlobalUpgradeResponses]
 
-export type GlobalBashInteractiveStdinData = {
-  body?: {
-    data: string
-  }
-  path: {
-    callID: string
-  }
-  query?: never
-  url: "/global/bash-interactive/{callID}/stdin"
-}
-
-export type GlobalBashInteractiveStdinErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type GlobalBashInteractiveStdinError = GlobalBashInteractiveStdinErrors[keyof GlobalBashInteractiveStdinErrors]
-
-export type GlobalBashInteractiveStdinResponses = {
-  /**
-   * Bytes were written to the running command's stdin.
-   */
-  200: {
-    ok: true
-  }
-}
-
-export type GlobalBashInteractiveStdinResponse =
-  GlobalBashInteractiveStdinResponses[keyof GlobalBashInteractiveStdinResponses]
-
 export type GlobalBashInteractiveKillData = {
   body?: never
   path: {

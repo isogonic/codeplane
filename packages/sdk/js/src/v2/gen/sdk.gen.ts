@@ -66,8 +66,6 @@ import type {
   FormatterStatusResponses,
   GlobalBashInteractiveKillErrors,
   GlobalBashInteractiveKillResponses,
-  GlobalBashInteractiveStdinErrors,
-  GlobalBashInteractiveStdinResponses,
   GlobalConfigGetResponses,
   GlobalConfigUpdateErrors,
   GlobalConfigUpdateResponses,
@@ -588,45 +586,6 @@ export class Config extends HeyApiClient {
 }
 
 export class BashInteractive extends HeyApiClient {
-  /**
-   * Send stdin to a running bash_interactive tool call
-   *
-   * Writes the given 'data' (raw text — append \r yourself for Enter) to the stdin of the PTY-backed bash_interactive tool call identified by callID. Returns 404 if the call has already exited. Used by the inline input bar in the renderer as a guaranteed input path even when the agent's declared `prompts` don't match the actual CLI output.
-   */
-  public stdin<ThrowOnError extends boolean = false>(
-    parameters: {
-      callID: string
-      data?: string
-    },
-    options?: Options<never, ThrowOnError>,
-  ) {
-    const params = buildClientParams(
-      [parameters],
-      [
-        {
-          args: [
-            { in: "path", key: "callID" },
-            { in: "body", key: "data" },
-          ],
-        },
-      ],
-    )
-    return (options?.client ?? this.client).post<
-      GlobalBashInteractiveStdinResponses,
-      GlobalBashInteractiveStdinErrors,
-      ThrowOnError
-    >({
-      url: "/global/bash-interactive/{callID}/stdin",
-      ...options,
-      ...params,
-      headers: {
-        "Content-Type": "application/json",
-        ...options?.headers,
-        ...params.headers,
-      },
-    })
-  }
-
   /**
    * Kill a running bash_interactive tool call
    *

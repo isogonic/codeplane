@@ -1,10 +1,7 @@
 // Tracks live bash_interactive PTY processes by tool-call ID so the HTTP
-// /global/bash-interactive/:callID/kill endpoint can SIGTERM the process
-// when the user clicks the "kill" button in the renderer. Input itself
-// flows through Question.Service (chat dialog) — the agent declares each
-// expected prompt up-front, the tool detects them in the PTY output, and
-// the user's answer is written back via the same callback that owns the
-// proc. So callers never need direct stdin access from outside the tool.
+// /global/bash-interactive/:callID/kill endpoint can SIGTERM the process and
+// internal routes can locate the running PTY. User-facing terminal input is
+// mediated by bash_interactive prompt handling, not by a direct input field.
 
 import type { Proc } from "#pty"
 
@@ -43,11 +40,8 @@ export function unregister(callID: string) {
 }
 
 /** Direct stdin write into the running PTY for the given tool call.
- *  Used by the inline input bar in the renderer so the user has an
- *  always-visible escape hatch when the agent's declared `prompts` don't
- *  match the actual CLI output. The bash_interactive tool also notes
- *  the input via lastInputAt so the idle fallback respects the grace
- *  period after the user types something. */
+ *  Kept as a low-level runtime primitive; the app UI should not expose it as
+ *  a direct terminal input field. */
 export function writeInput(callID: string, data: string): boolean {
   const entry = active.get(callID)
   if (!entry) return false
