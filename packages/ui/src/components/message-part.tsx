@@ -1446,7 +1446,15 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
               component={render()}
               input={input()}
               tool={part().tool}
-              callID={part().id}
+              // ToolPart has BOTH `id` (the message-part ID) and `callID`
+              // (the LLM's tool-call ID). The bash_interactive runtime
+              // and the /global/bash-interactive/:callID/stdin route
+              // both key off the LLM's callID, so we must pass that one
+              // — passing part.id silently fails every stdin / kill
+              // request because the runtime can't find a matching
+              // entry, which was the "I press Enter and nothing
+              // happens" bug.
+              callID={part().callID || part().id}
               metadata={partMetadata()}
               // @ts-expect-error
               output={part().state.output}
