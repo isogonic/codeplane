@@ -23,7 +23,6 @@ export function SessionComposerRegion(props: {
   state: SessionComposerState
   ready: boolean
   centered: boolean
-  shellActive?: boolean
   inputRef: (el: HTMLDivElement) => void
   newSessionWorktree: string
   onNewSessionWorktreeReset: () => void
@@ -62,7 +61,7 @@ export function SessionComposerRegion(props: {
   const child = createMemo(() => !!parentID())
   const isCronSession = createMemo(() => !!(info() as { cronRunID?: string } | undefined)?.cronRunID)
   const archived = createMemo(() => !!info()?.time.archived || isCronSession())
-  const showComposer = createMemo(() => !archived() && !props.shellActive && (!props.state.blocked() || child()))
+  const showComposer = createMemo(() => !archived() && (!props.state.blocked() || child()))
 
   const previewPrompt = () =>
     prompt

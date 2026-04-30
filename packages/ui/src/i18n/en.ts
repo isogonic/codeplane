@@ -112,8 +112,6 @@ export const dict: Record<string, string> = {
   "ui.tool.shell": "Shell",
   "ui.tool.bashInteractive": "Interactive shell",
   "ui.tool.bashInteractive.kill": "Stop",
-  "ui.tool.bashInteractive.placeholder": "Paste code or type input, then press Enter",
-  "ui.tool.bashInteractive.send": "Send input",
   "ui.tool.patch": "Patch",
   "ui.tool.todos": "To-dos",
   "ui.tool.todos.read": "Read to-dos",

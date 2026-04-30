@@ -454,16 +454,6 @@ export default function Page() {
   const activeFileTab = tabState.activeFileTab
   const revertMessageID = createMemo(() => info()?.revert?.messageID)
   const messages = createMemo(() => (params.id ? (sync.data.message[params.id] ?? []) : []))
-  const interactiveShellRunning = createMemo(() =>
-    messages().some((message) =>
-      (sync.data.part[message.id] ?? []).some(
-        (part) =>
-          part.type === "tool" &&
-          part.tool === "bash_interactive" &&
-          (part.state.status === "pending" || part.state.status === "running"),
-      ),
-    ),
-  )
   const messagesReady = createMemo(() => {
     const id = params.id
     if (!id) return true
@@ -1004,9 +994,6 @@ export default function Page() {
     }
 
     if (event.key.length === 1 && event.key !== "Unidentified" && !(event.ctrlKey || event.metaKey)) {
-      if (interactiveShellRunning()) {
-        return
-      }
       if (composer.blocked() || isChildSession() || archived()) return
       inputRef?.focus()
     }
@@ -1969,7 +1956,6 @@ export default function Page() {
               state={composer}
               ready={!store.deferRender && messagesReady()}
               centered={centered()}
-              shellActive={interactiveShellRunning()}
               inputRef={(el) => {
                 inputRef = el
               }}
