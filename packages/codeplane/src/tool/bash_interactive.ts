@@ -32,8 +32,11 @@ const IDLE_FALLBACK_MS = 6_000
 // silent while they validate the input (network round-trip for auth, etc.);
 // without this grace period the tool would re-ask the user for input
 // during that silence and the user would think the original answer was
-// dropped — exactly the "I entered the code and now it just hangs" bug.
-const POST_INPUT_GRACE_MS = 20_000
+// dropped. Kept short enough that an invalid answer (CLI re-prompts after
+// rejecting) doesn't leave the user staring at nothing — the declared
+// prompts also reset their `fired` flag on each input so re-prompts
+// re-trigger immediately.
+const POST_INPUT_GRACE_MS = 8_000
 // Cap the regex haystack so pattern matching stays cheap on long output.
 const PROMPT_BUFFER_CAP = 4096
 // Strip ANSI escapes ONLY for prompt detection — the captured output keeps
@@ -227,16 +230,26 @@ export const BashInteractiveTool = Tool.define(
 
           const writeInputToPty = (value: string) => {
             if (killed) return
+            // Sanitize — paste from email/Slack/iMessage often comes with
+            // stray newlines, tabs, or smart-quote whitespace. Collapse
+            // every whitespace run to a single space then trim.
+            const clean = value.replace(/\s+/g, " ").trim()
             // Real terminals send \r when Enter is pressed; the PTY's TTY
             // discipline translates CR→NL via ICRNL for cooked-mode reads.
-            // A few CLIs flip ICRNL off — for those, sending \n works
-            // directly. Following both conventions makes the tool work
-            // with shell `read`, `inquirer`/`prompts`-style libraries,
-            // and CLIs that put the TTY into raw mode.
-            try {
-              proc.write(value + "\r")
-            } catch {}
+            // Send only \r — sending an additional \n later was causing
+            // commands with multiple `read` steps (re-prompt flows) to
+            // consume the extra newline as an empty answer for the next
+            // prompt. Stick with the single-CR convention `expect`/
+            // `pexpect` use; works for shell `read`, inquirer/prompts,
+            // readline, and the common interactive CLIs.
+            try { proc.write(clean + "\r") } catch {}
             lastInputAt = Date.now()
+            // RESET the declared-prompt latches after every user reply so
+            // re-prompts (e.g. CLI rejecting the code with "invalid, try
+            // again") trigger the question dialog immediately instead of
+            // making the user wait through the grace period.
+            for (const p of compiled) p.fired = false
+            scanBuffer = ""
           }
 
           const askInput = async (question_: string, header: string) => {

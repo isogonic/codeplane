@@ -18,8 +18,18 @@
   align-self: stretch;
   gap: 0px;
   padding: 6px 10px;
+  /* Negative margins make the hover background bleed slightly past the
+     parent on each side; without matching width adjustment they only
+     shift the box left, leaving the trigger 10px LEFT-aligned vs the
+     bash-output box below. Use calc-based width so the bleed is
+     symmetric — trigger spans parent.left-10 to parent.right+10, which
+     keeps the trigger center-aligned over the chat column even if it
+     extends. The bash-output box gets the same horizontal extent below
+     so the two are pixel-aligned. */
   margin-left: -10px;
   margin-right: -10px;
+  width: calc(100% + 20px);
+  max-width: calc(100% + 20px);
   justify-content: flex-start;
   border-radius: 8px;
   transition:

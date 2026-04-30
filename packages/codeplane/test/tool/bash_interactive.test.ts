@@ -413,6 +413,98 @@ describe("bash_interactive", () => {
   )
 
   test(
+    "re-prompt: CLI rejects the user's first answer and asks again — the same declared prompt fires the question dialog a second time without the user having to wait out the grace period",
+    async () => {
+      const tool = await initTool()
+      await using sandbox = await tmpdir()
+      const dir = sandbox.path
+
+      const sessionID = SessionID.make("ses_reprompt_test")
+      const messageID = MessageID.make("msg_reprompt_test")
+      const callID = "call_reprompt_test"
+
+      const askedQuestions: string[] = []
+
+      const result = await Instance.provide({
+        directory: dir,
+        fn: () =>
+          runtime.runPromise(
+            Effect.gen(function* () {
+              const q = yield* Question.Service
+              const bus = yield* Bus.Service
+
+              // First answer is wrong, second answer is right.
+              let nth = 0
+              const reply = Instance.bind((requestID: any, answer: string) =>
+                runtime.runPromise(q.reply({ requestID, answers: [[answer]] })),
+              )
+              const unsubscribe = yield* bus.subscribeCallback(Question.Event.Asked, (payload) => {
+                const req = payload.properties
+                if (req.sessionID !== sessionID) return
+                askedQuestions.push(req.questions[0]?.question ?? "")
+                const answer = nth === 0 ? "WRONG" : "RIGHT"
+                nth++
+                setTimeout(() => void reply(req.id, answer), 5)
+              })
+
+              try {
+                // Mimic a CLI that rejects "WRONG" and re-prompts, accepts
+                // "RIGHT" and exits successfully. The same "Code:" prompt
+                // appears twice; the agent declared a single prompt
+                // entry; the tool should reset and fire it again on the
+                // re-prompt.
+                const command = [
+                  "printf 'Code: ';",
+                  "read x;",
+                  "if [ \"$x\" = \"RIGHT\" ]; then",
+                  "  printf 'OK=%s\\n' \"$x\";",
+                  "else",
+                  "  printf 'invalid, try again\\n';",
+                  "  printf 'Code: ';",
+                  "  read y;",
+                  "  printf 'OK=%s\\n' \"$y\";",
+                  "fi",
+                ].join(" ")
+
+                return yield* tool.execute(
+                  {
+                    command,
+                    timeout: 30_000,
+                    prompts: [{ pattern: "Code:", question: "Enter the code", header: "Code" }],
+                  } as any,
+                  {
+                    sessionID,
+                    messageID,
+                    callID,
+                    agent: "build",
+                    abort: new AbortController().signal,
+                    messages: [],
+                    metadata: () => Effect.void,
+                    ask: () => Effect.void,
+                  } as any,
+                )
+              } finally {
+                unsubscribe()
+              }
+            }),
+          ),
+      })
+
+      // The same declared prompt must fire TWICE because the user gave a
+      // wrong answer the first time. Without the fired-reset on user
+      // input, the second prompt would never raise a dialog and the user
+      // would have to wait out the grace timer.
+      expect(askedQuestions.length).toBe(2)
+      expect(askedQuestions[0]).toContain("Enter the code")
+      expect(askedQuestions[1]).toContain("Enter the code")
+      // And the second answer reached stdin and the command finished
+      // happily.
+      expect(result.output).toContain("OK=RIGHT")
+    },
+    20_000,
+  )
+
+  test(
     "claude-auth-style end-to-end: prompts for code, user replies, command does silent work, then prints success and exits — no second confusing question fires during the silent processing window",
     async () => {
       const tool = await initTool()
