@@ -22,21 +22,6 @@ const METADATA_OUTPUT_TAIL = 64 * 1024
 // Wait for output to settle before scanning for prompt patterns. Stops us
 // firing the prompt dialog mid-line (e.g. before the trailing "?" arrives).
 const PROMPT_DEBOUNCE_MS = 250
-// If the PTY produces no new output for this long AND nothing has matched a
-// declared prompt, the tool falls back to a generic "what should I send?"
-// question dialog so the user is never stuck. Long enough that slow-but-
-// productive commands don't trip it.
-const IDLE_FALLBACK_MS = 6_000
-// After we write the user's answer back into the PTY, give the command
-// breathing room before the idle fallback can fire again. Most CLIs sit
-// silent while they validate the input (network round-trip for auth, etc.);
-// without this grace period the tool would re-ask the user for input
-// during that silence and the user would think the original answer was
-// dropped. Kept short enough that an invalid answer (CLI re-prompts after
-// rejecting) doesn't leave the user staring at nothing — the declared
-// prompts also reset their `fired` flag on each input so re-prompts
-// re-trigger immediately.
-const POST_INPUT_GRACE_MS = 8_000
 // Cap the regex haystack so pattern matching stays cheap on long output.
 const PROMPT_BUFFER_CAP = 4096
 // Strip ANSI escapes ONLY for prompt detection — the captured output keeps
@@ -214,19 +199,17 @@ export const BashInteractiveTool = Tool.define(
             flushTimer = setTimeout(publishMetadata, METADATA_THROTTLE_MS - since)
           }
 
-          // ---------------------------------------------------------------
-          // Idle fallback: if no declared prompt matches and the PTY sits
-          // silent, we still want the user to be able to respond. Fires
-          // a generic question with the recent output as context. Resets
-          // on every chunk; never fires while a scan/question is in
-          // flight; respects a post-input grace period so commands that
-          // sit silent while they validate the user's answer (claude
-          // auth, vercel auth, …) don't trigger a confusing repeat
-          // question while the answer is being processed.
-          // ---------------------------------------------------------------
-          let idleTimer: ReturnType<typeof setTimeout> | undefined
-          let idleFiredAt: number | undefined
-          let lastInputAt = 0
+          // The renderer ALWAYS shows an inline `›` input bar at the
+          // bottom of the bash_interactive box while running; that bar
+          // POSTs to /global/bash-interactive/:callID/stdin (which calls
+          // writeInput on the bash_interactive_runtime). So even when no
+          // declared prompt matches, the user has a guaranteed input
+          // path right there in the terminal. We deliberately do NOT
+          // fire an idle-fallback question dialog on top of it — having
+          // both at once was the "double input, neither works"
+          // confusion the user reported. Declared prompts still raise
+          // a chat question because they carry agent-supplied context;
+          // everything else flows through the inline bar.
 
           const writeInputToPty = (value: string) => {
             if (killed) return
@@ -243,7 +226,6 @@ export const BashInteractiveTool = Tool.define(
             // `pexpect` use; works for shell `read`, inquirer/prompts,
             // readline, and the common interactive CLIs.
             try { proc.write(clean + "\r") } catch {}
-            lastInputAt = Date.now()
             // Don't auto-reset declared-prompt latches here. The CLI's
             // PTY echo + autocomplete redraws often replay the original
             // prompt text on the same line as the user's input ("Paste
@@ -300,56 +282,11 @@ export const BashInteractiveTool = Tool.define(
             }
           }
 
-          const fireIdleFallback = async () => {
-            idleTimer = undefined
-            if (scanning || cleanedRef.cleaned || userRejected) return
-            // Don't fire if the user just sent an answer and the command
-            // hasn't had a chance to react yet — prevents the "I entered
-            // the code and got asked again" loop while auth round-trips.
-            if (lastInputAt > 0) {
-              const sinceInput = Date.now() - lastInputAt
-              if (sinceInput < POST_INPUT_GRACE_MS) {
-                idleTimer = setTimeout(() => void fireIdleFallback(), POST_INPUT_GRACE_MS - sinceInput)
-                return
-              }
-            }
-            // Already-fired latch — avoid loops if the user's first answer
-            // didn't unstick the PTY. Cleared by every fresh chunk.
-            if (idleFiredAt && idleFiredAt > 0) return
-
-            scanning = true
-            try {
-              const { lastLine, tail: head } = recentOutputSnapshot()
-              const cmdLabel = command.length > 50 ? command.slice(0, 50) + "…" : command
-              const prompt = head
-                ? `The \`${cmdLabel}\` command is waiting for your input. Here's what it just printed:\n\n` +
-                  head +
-                  "\n\nType the value the command is asking for. Your answer goes into the running terminal — the agent will not see what you type, only that you replied."
-                : `The \`${cmdLabel}\` command is waiting for your input. Type whatever the command is asking for; it will be sent into the running terminal.`
-              const headerText = lastLine || `Input for ${cmdLabel}`
-              const ok = await askInput(prompt, headerText)
-              if (ok) idleFiredAt = Date.now()
-            } finally {
-              scanning = false
-              if (scanQueued) {
-                scanQueued = false
-                void scan()
-              }
-            }
-          }
-
-          const scheduleIdleFallback = () => {
-            if (idleTimer) clearTimeout(idleTimer)
-            // Fresh chunk arrived → reset the "already fired" latch so the
-            // fallback can fire again if the PTY stalls a second time.
-            idleFiredAt = undefined
-            idleTimer = setTimeout(() => void fireIdleFallback(), IDLE_FALLBACK_MS)
-          }
-
-          // Forward declaration: the cleanup closure inside the Promise sets
-          // .cleaned, but fireIdleFallback (above) needs to read it to bail
-          // out after the proc exits. Wrapped in an object so both sides
-          // see the same reference.
+          // cleanup() inside the Promise toggles this so the askInput
+          // catch handler can tell whether a question rejection is the
+          // user actively dismissing or the orphan-cleanup the tool fires
+          // when the proc has already exited. Wrapped in an object so both
+          // sides share the reference.
           const cleanedRef: { cleaned: boolean } = { cleaned: false }
 
           // Kicks off prompt scanning; reentrant — if a chunk arrives while we
@@ -402,10 +339,6 @@ export const BashInteractiveTool = Tool.define(
                     clearTimeout(scanTimer)
                     scanTimer = undefined
                   }
-                  if (idleTimer) {
-                    clearTimeout(idleTimer)
-                    idleTimer = undefined
-                  }
                   try { dataDisp.dispose() } catch {}
                   try { exitDisp.dispose() } catch {}
                   try { ctx.abort.removeEventListener("abort", abortListener) } catch {}
@@ -417,16 +350,10 @@ export const BashInteractiveTool = Tool.define(
                   setTimeout(() => { try { proc.kill("SIGKILL") } catch {} }, 1500)
                 }, timeoutMs)
 
-                // Start the idle countdown immediately so a command that
-                // pauses for input before producing any output still gets
-                // a fallback question.
-                scheduleIdleFallback()
-
                 const dataDisp = proc.onData((chunk) => {
                   allOutput += chunk
                   appendOutput(callID, chunk)
                   scheduleFlush()
-                  scheduleIdleFallback()
 
                   scanBuffer += chunk
                   if (scanBuffer.length > PROMPT_BUFFER_CAP) scanBuffer = scanBuffer.slice(-PROMPT_BUFFER_CAP)
