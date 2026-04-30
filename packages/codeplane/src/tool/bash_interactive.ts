@@ -22,6 +22,11 @@ const METADATA_OUTPUT_TAIL = 64 * 1024
 // Wait for output to settle before scanning for prompt patterns. Stops us
 // firing the prompt dialog mid-line (e.g. before the trailing "?" arrives).
 const PROMPT_DEBOUNCE_MS = 250
+// If the PTY produces no new output for this long AND nothing has matched a
+// declared prompt, the tool falls back to a generic "what should I send?"
+// question dialog so the user is never stuck. Long enough that slow-but-
+// productive commands don't trip it.
+const IDLE_FALLBACK_MS = 5_000
 // Cap the regex haystack so pattern matching stays cheap on long output.
 const PROMPT_BUFFER_CAP = 4096
 // Strip ANSI escapes ONLY for prompt detection — the captured output keeps
@@ -199,6 +204,85 @@ export const BashInteractiveTool = Tool.define(
             flushTimer = setTimeout(publishMetadata, METADATA_THROTTLE_MS - since)
           }
 
+          // ---------------------------------------------------------------
+          // Idle fallback: if no declared prompt matches and the PTY sits
+          // silent for IDLE_FALLBACK_MS, we still want the user to be able
+          // to respond — otherwise a wrong/missing pattern leaves them
+          // staring at "$ command" forever. Fire a generic question with
+          // the recent output as context. Resets on every chunk; only fires
+          // while no scan is in flight (so we never overlap with a
+          // declared-prompt question).
+          // ---------------------------------------------------------------
+          let idleTimer: ReturnType<typeof setTimeout> | undefined
+          let idleFiredAt: number | undefined
+
+          const askInput = async (question_: string, header: string) => {
+            try {
+              const answers = await bridge.promise(
+                question.ask({
+                  sessionID: ctx.sessionID,
+                  questions: [
+                    {
+                      question: question_,
+                      header: header.slice(0, 30) || "Input",
+                      options: [],
+                      multiple: false,
+                      custom: true,
+                    },
+                  ],
+                  tool: { messageID: ctx.messageID, callID },
+                }),
+              )
+              const value = (answers[0]?.[0] ?? "").trim()
+              if (!killed) {
+                proc.write(value + "\r")
+              }
+              // Subsequent output may match more declared prompts — clear
+              // the consumed buffer so a new scan window starts clean.
+              scanBuffer = ""
+              return true
+            } catch {
+              userRejected = true
+              killed = true
+              try { proc.kill("SIGTERM") } catch {}
+              return false
+            }
+          }
+
+          const fireIdleFallback = async () => {
+            idleTimer = undefined
+            if (scanning) return
+            // Avoid asking again until new output arrives — guards against
+            // looping when the user's first answer doesn't unstick the PTY.
+            if (idleFiredAt && idleFiredAt > 0) return
+            scanning = true
+            try {
+              const recent = tail(allOutput.replace(STRIP_ANSI_RE, ""), 1024)
+              const lines = recent.split(/\r?\n/).filter((l) => l.trim().length > 0)
+              const lastLine = lines[lines.length - 1] ?? ""
+              const head = lines.slice(-3).join("\n")
+              const prompt = head
+                ? `The shell is waiting for input. Recent output:\n\n${head}\n\nWhat should I send?`
+                : "The shell is waiting for input. What should I send?"
+              const ok = await askInput(prompt, lastLine)
+              if (ok) idleFiredAt = Date.now()
+            } finally {
+              scanning = false
+              if (scanQueued) {
+                scanQueued = false
+                void scan()
+              }
+            }
+          }
+
+          const scheduleIdleFallback = () => {
+            if (idleTimer) clearTimeout(idleTimer)
+            // Reset the "already fired" latch on every new chunk so the
+            // fallback can fire again if the PTY stalls a second time.
+            idleFiredAt = undefined
+            idleTimer = setTimeout(() => void fireIdleFallback(), IDLE_FALLBACK_MS)
+          }
+
           // Kicks off prompt scanning; reentrant — if a chunk arrives while we
           // are awaiting the user's answer to a previous prompt, queue another
           // scan to run after the current one resolves.
@@ -215,33 +299,8 @@ export const BashInteractiveTool = Tool.define(
                 if (!next) break
                 next.fired = true
                 scanBuffer = ""
-                try {
-                  const answers = await bridge.promise(
-                    question.ask({
-                      sessionID: ctx.sessionID,
-                      questions: [
-                        {
-                          question: next.question,
-                          header: (next.header ?? next.question).slice(0, 30),
-                          options: [],
-                          multiple: false,
-                          custom: true,
-                        },
-                      ],
-                      tool: { messageID: ctx.messageID, callID },
-                    }),
-                  )
-                  const value = (answers[0]?.[0] ?? "").trim()
-                  if (!killed) {
-                    proc.write(value + "\r")
-                  }
-                } catch {
-                  // User dismissed the question — abort the command.
-                  userRejected = true
-                  killed = true
-                  try { proc.kill("SIGTERM") } catch {}
-                  return
-                }
+                const ok = await askInput(next.question, next.header ?? next.question)
+                if (!ok) return
               }
             } finally {
               scanning = false
@@ -269,6 +328,10 @@ export const BashInteractiveTool = Tool.define(
                     clearTimeout(scanTimer)
                     scanTimer = undefined
                   }
+                  if (idleTimer) {
+                    clearTimeout(idleTimer)
+                    idleTimer = undefined
+                  }
                   try { dataDisp.dispose() } catch {}
                   try { exitDisp.dispose() } catch {}
                   try { ctx.abort.removeEventListener("abort", abortListener) } catch {}
@@ -280,14 +343,20 @@ export const BashInteractiveTool = Tool.define(
                   setTimeout(() => { try { proc.kill("SIGKILL") } catch {} }, 1500)
                 }, timeoutMs)
 
+                // Start the idle countdown immediately so a command that
+                // pauses for input before producing any output still gets
+                // a fallback question.
+                scheduleIdleFallback()
+
                 const dataDisp = proc.onData((chunk) => {
                   allOutput += chunk
                   appendOutput(callID, chunk)
                   scheduleFlush()
+                  scheduleIdleFallback()
 
-                  if (compiled.length === 0) return
                   scanBuffer += chunk
                   if (scanBuffer.length > PROMPT_BUFFER_CAP) scanBuffer = scanBuffer.slice(-PROMPT_BUFFER_CAP)
+                  if (compiled.length === 0) return
                   if (scanTimer) clearTimeout(scanTimer)
                   scanTimer = setTimeout(() => {
                     scanTimer = undefined
