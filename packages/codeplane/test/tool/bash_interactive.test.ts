@@ -170,7 +170,11 @@ describe("bash_interactive", () => {
       })
 
       try {
-        expect(askedQuestions).toEqual(["Enter the verification code"])
+        // The tool wraps the agent's question with additional context
+        // (recent output + a note that the answer goes into the running
+        // terminal), so use toContain instead of strict equality.
+        expect(askedQuestions.length).toBe(1)
+        expect(askedQuestions[0]).toContain("Enter the verification code")
         expect(result.output).toContain("GOT=alpha")
 
         // Critical: the question.asked event MUST reach GlobalBus. The SSE
@@ -181,7 +185,7 @@ describe("bash_interactive", () => {
         const first = askedOnGlobalBus[0]
         expect(first.payload.properties.sessionID).toBe(sessionID)
         expect(first.payload.properties.tool?.callID).toBe(callID)
-        expect(first.payload.properties.questions?.[0]?.question).toBe("Enter the verification code")
+        expect(first.payload.properties.questions?.[0]?.question).toContain("Enter the verification code")
       } finally {
         GlobalBus.off("event", captureGlobal)
       }
@@ -262,5 +266,104 @@ describe("bash_interactive", () => {
       expect(result.output).toContain("GOT=fallback-typed")
     },
     20_000,
+  )
+
+  test(
+    "claude-auth-style end-to-end: prompts for code, user replies, command does silent work, then prints success and exits — no second confusing question fires during the silent processing window",
+    async () => {
+      const tool = await initTool()
+      await using sandbox = await tmpdir()
+      const dir = sandbox.path
+
+      const sessionID = SessionID.make("ses_authflow_test")
+      const messageID = MessageID.make("msg_authflow_test")
+      const callID = "call_authflow_test"
+
+      const askedQuestions: string[] = []
+
+      const result = await Instance.provide({
+        directory: dir,
+        fn: () =>
+          runtime.runPromise(
+            Effect.gen(function* () {
+              const q = yield* Question.Service
+              const bus = yield* Bus.Service
+
+              const reply = Instance.bind((requestID: any, answer: string) =>
+                runtime.runPromise(q.reply({ requestID, answers: [[answer]] })),
+              )
+              const unsubscribe = yield* bus.subscribeCallback(Question.Event.Asked, (payload) => {
+                const req = payload.properties
+                if (req.sessionID !== sessionID) return
+                askedQuestions.push(req.questions[0]?.question ?? "")
+                setTimeout(() => {
+                  void reply(req.id, "AUTH-CODE-12345")
+                }, 5)
+              })
+
+              try {
+                // Mimics `claude auth login`: prints URL + prompt, reads
+                // a code, simulates a slow auth round-trip (sleep 2 — long
+                // enough that without the post-input grace period the
+                // idle timer would fire a second question), then prints
+                // success and exits.
+                const command = [
+                  "echo 'Browser did not open? Use the url below to sign in (c to copy)';",
+                  "echo '';",
+                  "echo 'https://claude.com/cai/oauth/authorize?code=true&client_id=demo&state=xyz';",
+                  "echo '';",
+                  "printf 'Paste code here if prompted > ';",
+                  "read code;",
+                  "echo '';",
+                  "echo 'Validating...';",
+                  // 2s of silent work — verifies the post-input grace
+                  // period prevents the idle fallback from re-firing.
+                  "sleep 2;",
+                  "printf 'GOT=%s\\n' \"$code\";",
+                  "echo 'Authentication successful. Logged in.';",
+                ].join(" ")
+
+                return yield* tool.execute(
+                  {
+                    command,
+                    timeout: 30_000,
+                    prompts: [
+                      {
+                        pattern: "Paste code here",
+                        question: "Paste the verification code from the browser",
+                        header: "Auth code",
+                      },
+                    ],
+                  } as any,
+                  {
+                    sessionID,
+                    messageID,
+                    callID,
+                    agent: "build",
+                    abort: new AbortController().signal,
+                    messages: [],
+                    metadata: () => Effect.void,
+                    ask: () => Effect.void,
+                  } as any,
+                )
+              } finally {
+                unsubscribe()
+              }
+            }),
+          ),
+      })
+
+      // Exactly ONE question should have fired — the declared "paste code"
+      // prompt. The 2s silent-work window after the user's answer must NOT
+      // trigger a second question.
+      expect(askedQuestions.length).toBe(1)
+      expect(askedQuestions[0]).toContain("Paste the verification code from the browser")
+
+      // The user's answer reached stdin and the script printed both the
+      // captured value and the success message before exiting cleanly.
+      expect(result.output).toContain("GOT=AUTH-CODE-12345")
+      expect(result.output).toContain("Authentication successful")
+    },
+    30_000,
   )
 })
