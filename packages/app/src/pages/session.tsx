@@ -600,9 +600,7 @@ export default function Page() {
   const mobileActivity = createMemo(() => !isWide() && store.mobileTab === "activity")
   const mobilePanel = createMemo(() => !isWide() && store.mobileTab !== "session")
   const wantsReview = createMemo(() =>
-    isWide()
-      ? wideFileTreeOpen() || (wideReviewOpen() && activeTab() === "review")
-      : store.mobileTab === "changes",
+    isWide() ? wideFileTreeOpen() || (wideReviewOpen() && activeTab() === "review") : store.mobileTab === "changes",
   )
   const vcsMode = createMemo<VcsMode | undefined>(() => {
     if (store.changes === "git" || store.changes === "branch") return store.changes
@@ -971,15 +969,6 @@ export default function Page() {
     return current instanceof HTMLElement ? current : undefined
   }
 
-  const focusInteractiveShell = () => {
-    const input = document.querySelector<HTMLInputElement>(
-      '[data-component="bash-interactive"] [data-slot="bash-interactive-input"] input:not(:disabled)',
-    )
-    if (!input) return false
-    input.focus()
-    return true
-  }
-
   const handleKeyDown = (event: KeyboardEvent) => {
     const path = event.composedPath()
     const target = path.find((item): item is HTMLElement => item instanceof HTMLElement)
@@ -1016,7 +1005,6 @@ export default function Page() {
 
     if (event.key.length === 1 && event.key !== "Unidentified" && !(event.ctrlKey || event.metaKey)) {
       if (interactiveShellRunning()) {
-        focusInteractiveShell()
         return
       }
       if (composer.blocked() || isChildSession() || archived()) return
@@ -1614,7 +1602,9 @@ export default function Page() {
   const queueEnabled = createMemo(() => {
     const id = params.id
     if (!id) return false
-    return settings.general.followup() === "queue" && busy(id) && !composer.blocked() && !isChildSession() && !archived()
+    return (
+      settings.general.followup() === "queue" && busy(id) && !composer.blocked() && !isChildSession() && !archived()
+    )
   })
 
   const followupText = (item: FollowupDraft) => {

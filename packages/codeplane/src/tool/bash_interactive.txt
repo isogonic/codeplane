@@ -5,23 +5,24 @@ Use this when a CLI is going to ask the user for something at runtime — auth f
 How it works:
 - Spawns the command in a PTY (so CLIs that only prompt when stdin is a TTY work correctly).
 - Streams output live so the renderer shows the running terminal as it happens.
-- Watches for prompt patterns you declare; on match it pauses the loop, asks the user via the standard chat-side question dialog, and writes the user's answer (followed by \r) back into the PTY's stdin. The user never types directly into the terminal — every keystroke flows through this tool, so you stay in control.
+- Watches for prompt patterns you declare. When a prompt matches, the agent either writes a known `answer` directly into the PTY, or asks the user with the standard question dock and then writes the user's answer into the PTY.
+- The user never types directly into the terminal. Terminal input is controlled by the agent/tool.
 
-REQUIRED prep:
+Required prep:
 1. Probe the command FIRST with the regular `bash` tool (or read the CLI's `--help` / docs) to learn what prompts it actually prints — verbatim. Don't guess.
-2. Then call `bash_interactive` with `prompts` covering each prompt you saw. The `pattern` is a JS regex matched case-insensitively against new PTY output; pick something distinctive enough to not match the surrounding chatter (e.g. "Enter the verification code:" not just "Enter").
-3. The `question` is shown verbatim in the chat dialog the user sees, so phrase it for the user, not for the model. The optional `header` is a ≤30-char label rendered above it.
+2. Call `bash_interactive` with `prompts` covering each prompt you saw. The `pattern` is a JS regex matched case-insensitively against new PTY output; pick something distinctive enough to not match surrounding chatter.
+3. For choices the agent already knows, set `answer`. Use an empty string to press Enter/select the CLI default. For choices the agent does not know, omit `answer` and phrase `question` for the user.
 
-Each prompt fires AT MOST ONCE per match. If the same prompt appears twice (e.g. "Continue? [y/N]" asked for two files), include the entry twice — the second copy will fire on the second match.
+Each prompt fires AT MOST ONCE per entry. If the same prompt can appear twice, include the entry twice.
 
 Differences from `bash`:
 - PTY-backed (real TTY).
 - Streams output as it happens via the message metadata channel — the renderer shows the running terminal live.
-- Mid-command user input via `prompts` instead of stdin redirection.
+- Mid-command input via agent-known `answer` values or user answers collected through the standard question dock.
 
 Parameters:
 - command: the shell command line to run.
-- prompts: array of { pattern, question, header? }. Required for any flow that pauses for user input.
+- prompts: array of { pattern, question, header?, answer? }. Required for any flow that pauses for input.
 - timeout: ms to allow the command to run (default 120000, max 600000).
 - cwd: working directory.
 - description: short description shown in the UI.

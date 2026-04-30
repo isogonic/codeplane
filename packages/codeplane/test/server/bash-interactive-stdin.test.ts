@@ -2,23 +2,24 @@ import { describe, expect, test } from "bun:test"
 import { spawn as ptySpawn } from "bun-pty"
 import { register, writeInput, killProc } from "../../src/tool/bash_interactive_runtime"
 
-// Drive the inline-input-bar HTTP path end-to-end without the LLM:
+// Drive the low-level runtime stdin primitive end-to-end without the LLM:
 //   1. Spawn a real PTY through bun-pty.
 //   2. Register it with the bash_interactive_runtime under a known callID.
-//   3. Call writeInput(callID, …) — same code path /global/bash-interactive/:callID/stdin
-//      hits when the user presses Enter on the inline bar.
+//   3. Call writeInput(callID, …) — same primitive the bash_interactive tool
+//      uses internally after the agent supplies an answer or asks a question.
 //   4. Assert the PTY's `read` / shell process actually saw the bytes by
 //      capturing stdout and looking for the echo.
-describe("bash_interactive_runtime stdin round-trip (covers what /global/.../stdin does)", () => {
+describe("bash_interactive_runtime stdin round-trip", () => {
   if (process.platform === "win32") return
 
-  test("writeInput delivers the user's typed value into the running PTY's stdin and the command sees it", async () => {
+  test("writeInput delivers raw data into the running PTY's stdin and the command sees it", async () => {
     const callID = "rt-test-" + Math.random().toString(36).slice(2, 8)
-    const proc = ptySpawn(
-      "/bin/sh",
-      ["-c", "printf 'go: '; read x; printf 'GOT=%s\\n' \"$x\""],
-      { name: "xterm-256color", cols: 80, rows: 24, cwd: process.cwd() },
-    )
+    const proc = ptySpawn("/bin/sh", ["-c", "printf 'go: '; read x; printf 'GOT=%s\\n' \"$x\""], {
+      name: "xterm-256color",
+      cols: 80,
+      rows: 24,
+      cwd: process.cwd(),
+    })
 
     let output = ""
     proc.onData((chunk) => {
@@ -34,9 +35,6 @@ describe("bash_interactive_runtime stdin round-trip (covers what /global/.../std
     }
     expect(output).toContain("go: ")
 
-    // This is the single line of code the user's Enter on the inline bar
-    // ultimately runs (after the renderer's fetch + the /stdin route +
-    // the bashInteractiveWriteInput handler).
     const ok = writeInput(callID, "MY-CODE\r")
     expect(ok).toBe(true)
 
@@ -49,7 +47,7 @@ describe("bash_interactive_runtime stdin round-trip (covers what /global/.../std
     expect(output).toContain("GOT=MY-CODE")
   }, 10_000)
 
-  test("writeInput returns false for an unknown callID (so the HTTP route can map to 404 cleanly)", () => {
+  test("writeInput returns false for an unknown callID", () => {
     expect(writeInput("definitely-not-registered", "anything")).toBe(false)
   })
 

@@ -57,10 +57,6 @@ function DirectoryDataProvider(props: ParentProps<{ directory: string }>) {
       onNavigateToSession={(sessionID: string) => navigate(`${sessionBase()}/session/${sessionID}${sessionSearch()}`)}
       onSessionHref={(sessionID: string) => `${sessionBase()}/session/${sessionID}${sessionSearch()}`}
       bashInteractive={{
-        stdin: (input) =>
-          globalSDK.client.global.bashInteractive
-            .stdin({ callID: input.callID, data: input.data }, { signal: input.signal })
-            .then(() => {}),
         kill: (input) => globalSDK.client.global.bashInteractive.kill({ callID: input.callID }).then(() => {}),
       }}
     >

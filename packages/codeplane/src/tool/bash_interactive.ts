@@ -3,11 +3,7 @@ import { spawn as ptySpawn } from "#pty"
 import * as Tool from "./tool"
 import { EffectBridge } from "@/effect"
 import { Question } from "../question"
-import {
-  appendOutput,
-  register as registerProc,
-  unregister as unregisterProc,
-} from "./bash_interactive_runtime"
+import { appendOutput, register as registerProc, unregister as unregisterProc } from "./bash_interactive_runtime"
 import DESCRIPTION from "./bash_interactive.txt"
 
 const DEFAULT_TIMEOUT_MS = 120_000
@@ -30,14 +26,18 @@ const STRIP_ANSI_RE = /\x1B\[[0-?]*[ -/]*[@-~]/g
 
 const PromptEntry = Schema.Struct({
   pattern: Schema.String.annotate({
-    description:
-      "JS regex source (no leading/trailing slashes) matched case-insensitively against new output. When matched, the user is asked the corresponding question via the chat dialog and the answer is written into the PTY's stdin.",
+    description: "JS regex source (no leading/trailing slashes) matched case-insensitively against new output.",
   }),
   question: Schema.String.annotate({
-    description: "Plain-language question shown to the user when this pattern matches.",
+    description:
+      "Plain-language question shown to the user when this prompt needs a human decision. Still required when answer is set so the intent is documented.",
   }),
   header: Schema.optional(Schema.String).annotate({
     description: "Short header (max 30 chars) shown above the question.",
+  }),
+  answer: Schema.optional(Schema.String).annotate({
+    description:
+      "Optional agent-known answer to write directly into the PTY when the pattern matches. Use an empty string to press Enter/select the CLI default. If omitted, the user is asked via the question dock.",
   }),
 })
 
@@ -47,11 +47,13 @@ export const Parameters = Schema.Struct({
     .pipe(Schema.optional, Schema.withDecodingDefault(Effect.succeed([] as ReadonlyArray<typeof PromptEntry.Type>)))
     .annotate({
       description:
-        "REQUIRED for any flow that pauses for user input. Probe the command first with `bash` to discover what prompts it prints, then declare each one here. Each entry fires at most once per match — re-add it to handle repeats. The pattern is matched against new PTY output (case-insensitive); on match the tool pauses, asks the user the question via the standard chat dialog, and writes the answer + \\r into the PTY's stdin. The user's input never reaches the terminal directly — it goes through this tool, so the agent stays in the loop.",
+        "REQUIRED for any flow that pauses for input. Probe the command first with `bash` to discover what prompts it prints, then declare each one here. If the agent already knows the response, set `answer` and the tool writes it into the terminal. If `answer` is omitted, the tool asks the user via the standard question dock and writes that answer into the terminal. The user never types directly into the terminal.",
     }),
-  timeout: Schema.Number.pipe(Schema.optional, Schema.withDecodingDefault(Effect.succeed(DEFAULT_TIMEOUT_MS))).annotate({
-    description: `Milliseconds to allow the command to run (default ${DEFAULT_TIMEOUT_MS}, max ${MAX_TIMEOUT_MS}).`,
-  }),
+  timeout: Schema.Number.pipe(Schema.optional, Schema.withDecodingDefault(Effect.succeed(DEFAULT_TIMEOUT_MS))).annotate(
+    {
+      description: `Milliseconds to allow the command to run (default ${DEFAULT_TIMEOUT_MS}, max ${MAX_TIMEOUT_MS}).`,
+    },
+  ),
   cwd: Schema.optional(Schema.String).annotate({ description: "Working directory." }),
   description: Schema.optional(Schema.String).annotate({ description: "Short description shown in the UI." }),
 })
@@ -115,9 +117,8 @@ export const BashInteractiveTool = Tool.define(
             metadata: { command, description: params.description, output: "" },
           })
 
-          // Bridge so the synchronous PTY data callback can call ctx.metadata
-          // and Question.Service.ask (Effects) without losing the workspace
-          // / instance context.
+          // Bridge so synchronous PTY callbacks can run Effects without
+          // losing the workspace / instance context.
           const bridge = yield* EffectBridge.make()
 
           const isWindows = process.platform === "win32"
@@ -134,7 +135,7 @@ export const BashInteractiveTool = Tool.define(
 
           registerProc(callID, { proc, sessionID: ctx.sessionID })
 
-          // Compile prompts up-front. `fired` ensures each prompt asks at
+          // Compile prompts up-front. `fired` ensures each prompt responds at
           // most once per match; the agent re-adds the entry to handle a
           // repeated prompt.
           const compiled = prompts.map((p, i) => ({
@@ -142,6 +143,7 @@ export const BashInteractiveTool = Tool.define(
             re: new RegExp(p.pattern, "i"),
             question: p.question,
             header: p.header,
+            answer: p.answer,
             fired: false,
           }))
 
@@ -199,41 +201,18 @@ export const BashInteractiveTool = Tool.define(
             flushTimer = setTimeout(publishMetadata, METADATA_THROTTLE_MS - since)
           }
 
-          // The renderer ALWAYS shows an inline `›` input bar at the
-          // bottom of the bash_interactive box while running; that bar
-          // POSTs to /global/bash-interactive/:callID/stdin (which calls
-          // writeInput on the bash_interactive_runtime). So even when no
-          // declared prompt matches, the user has a guaranteed input
-          // path right there in the terminal. We deliberately do NOT
-          // fire an idle-fallback question dialog on top of it — having
-          // both at once was the "double input, neither works"
-          // confusion the user reported. Declared prompts still raise
-          // a chat question because they carry agent-supplied context;
-          // everything else flows through the inline bar.
-
           const writeInputToPty = (value: string) => {
             if (killed) return
-            // Sanitize — paste from email/Slack/iMessage often comes with
-            // stray newlines, tabs, or smart-quote whitespace. Collapse
-            // every whitespace run to a single space then trim.
+            // Sanitize paste/input text. Empty string is meaningful: it sends
+            // Enter to accept the highlighted/default option in menu CLIs.
             const clean = value.replace(/\s+/g, " ").trim()
             // Real terminals send \r when Enter is pressed; the PTY's TTY
             // discipline translates CR→NL via ICRNL for cooked-mode reads.
-            // Send only \r — sending an additional \n later was causing
-            // commands with multiple `read` steps (re-prompt flows) to
-            // consume the extra newline as an empty answer for the next
-            // prompt. Stick with the single-CR convention `expect`/
-            // `pexpect` use; works for shell `read`, inquirer/prompts,
-            // readline, and the common interactive CLIs.
-            try { proc.write(clean + "\r") } catch {}
-            // Don't auto-reset declared-prompt latches here. The CLI's
-            // PTY echo + autocomplete redraws often replay the original
-            // prompt text on the same line as the user's input ("Paste
-            // code here > ABCD-1234"), and resetting fired would loop
-            // the question dialog endlessly. Re-prompts after rejection
-            // are handled by the agent providing multiple `prompts`
-            // entries, OR the idle fallback eventually firing — both
-            // safer than blanket resetting.
+            try {
+              proc.write(clean + "\r")
+            } catch {}
+            // Don't auto-reset declared-prompt latches here. The CLI's PTY echo
+            // can replay prompt text on the same line as the answer.
             scanBuffer = ""
           }
 
@@ -254,10 +233,9 @@ export const BashInteractiveTool = Tool.define(
                   tool: { messageID: ctx.messageID, callID },
                 }),
               )
-              const value = (answers[0]?.[0] ?? "").trim()
-              writeInputToPty(value)
-              // Consume the buffer so the post-input echo + new output
-              // starts a clean scan window for the next declared prompt.
+              writeInputToPty((answers[0]?.[0] ?? "").trim())
+              // Consume the buffer so the post-input echo + new output starts
+              // a clean scan window for the next declared prompt.
               scanBuffer = ""
               return true
             } catch {
@@ -268,25 +246,25 @@ export const BashInteractiveTool = Tool.define(
               if (cleanedRef.cleaned) return false
               userRejected = true
               killed = true
-              try { proc.kill("SIGTERM") } catch {}
+              try {
+                proc.kill("SIGTERM")
+              } catch {}
               return false
             }
           }
 
           const recentOutputSnapshot = () => {
             const recent = tail(allOutput.replace(STRIP_ANSI_RE, ""), 2048)
-            const lines = recent.split(/\r?\n/).filter((l) => l.trim().length > 0)
+            const lines = recent.split(/\r?\n/).filter((line) => line.trim().length > 0)
             return {
-              lastLine: lines[lines.length - 1] ?? "",
               tail: lines.slice(-6).join("\n"),
             }
           }
 
-          // cleanup() inside the Promise toggles this so the askInput
-          // catch handler can tell whether a question rejection is the
-          // user actively dismissing or the orphan-cleanup the tool fires
-          // when the proc has already exited. Wrapped in an object so both
-          // sides share the reference.
+          // cleanup() inside the Promise toggles this so the askInput catch
+          // handler can tell whether a question rejection is the user actively
+          // dismissing or the orphan-cleanup the tool fires when the proc has
+          // already exited. Wrapped in an object so both sides share it.
           const cleanedRef: { cleaned: boolean } = { cleaned: false }
 
           // Kicks off prompt scanning; reentrant — if a chunk arrives while we
@@ -305,12 +283,16 @@ export const BashInteractiveTool = Tool.define(
                 if (!next) break
                 next.fired = true
                 scanBuffer = ""
-                // Show recent terminal output as context so the user knows
-                // what they're answering and why.
+
+                if (next.answer !== undefined) {
+                  writeInputToPty(next.answer)
+                  continue
+                }
+
                 const { tail: head } = recentOutputSnapshot()
                 const enriched = head
-                  ? `${next.question}\n\n— Recent terminal output —\n${head}\n\nYour answer goes into the running terminal.`
-                  : `${next.question}\n\nYour answer goes into the running terminal.`
+                  ? `${next.question}\n\n— Recent terminal output —\n${head}\n\nThe agent will send your answer into the running terminal.`
+                  : `${next.question}\n\nThe agent will send your answer into the running terminal.`
                 const ok = await askInput(enriched, next.header ?? next.question)
                 if (!ok) return
               }
@@ -325,65 +307,78 @@ export const BashInteractiveTool = Tool.define(
 
           const result = yield* Effect.promise(
             () =>
-              new Promise<{ output: string; exitCode: number; signal?: number | string; timedOut: boolean }>((resolve) => {
-                let timedOut = false
-                const cleanup = () => {
-                  if (cleanedRef.cleaned) return
-                  cleanedRef.cleaned = true
-                  clearTimeout(overallTimer)
-                  if (flushTimer) {
-                    clearTimeout(flushTimer)
-                    flushTimer = undefined
+              new Promise<{ output: string; exitCode: number; signal?: number | string; timedOut: boolean }>(
+                (resolve) => {
+                  let timedOut = false
+                  const cleanup = () => {
+                    if (cleanedRef.cleaned) return
+                    cleanedRef.cleaned = true
+                    clearTimeout(overallTimer)
+                    if (flushTimer) {
+                      clearTimeout(flushTimer)
+                      flushTimer = undefined
+                    }
+                    if (scanTimer) {
+                      clearTimeout(scanTimer)
+                      scanTimer = undefined
+                    }
+                    try {
+                      dataDisp.dispose()
+                    } catch {}
+                    try {
+                      exitDisp.dispose()
+                    } catch {}
+                    try {
+                      ctx.abort.removeEventListener("abort", abortListener)
+                    } catch {}
                   }
-                  if (scanTimer) {
-                    clearTimeout(scanTimer)
-                    scanTimer = undefined
+
+                  const overallTimer = setTimeout(() => {
+                    timedOut = true
+                    try {
+                      proc.kill("SIGTERM")
+                    } catch {}
+                    setTimeout(() => {
+                      try {
+                        proc.kill("SIGKILL")
+                      } catch {}
+                    }, 1500)
+                  }, timeoutMs)
+
+                  const dataDisp = proc.onData((chunk) => {
+                    allOutput += chunk
+                    appendOutput(callID, chunk)
+                    scheduleFlush()
+
+                    scanBuffer += chunk
+                    if (scanBuffer.length > PROMPT_BUFFER_CAP) scanBuffer = scanBuffer.slice(-PROMPT_BUFFER_CAP)
+                    if (compiled.length === 0) return
+                    if (scanTimer) clearTimeout(scanTimer)
+                    scanTimer = setTimeout(() => {
+                      scanTimer = undefined
+                      void scan()
+                    }, PROMPT_DEBOUNCE_MS)
+                  })
+
+                  const exitDisp = proc.onExit(({ exitCode, signal }) => {
+                    cleanup()
+                    resolve({ output: allOutput, exitCode: exitCode ?? -1, signal, timedOut })
+                  })
+
+                  const abortListener = () => {
+                    try {
+                      proc.kill("SIGTERM")
+                    } catch {}
                   }
-                  try { dataDisp.dispose() } catch {}
-                  try { exitDisp.dispose() } catch {}
-                  try { ctx.abort.removeEventListener("abort", abortListener) } catch {}
-                }
-
-                const overallTimer = setTimeout(() => {
-                  timedOut = true
-                  try { proc.kill("SIGTERM") } catch {}
-                  setTimeout(() => { try { proc.kill("SIGKILL") } catch {} }, 1500)
-                }, timeoutMs)
-
-                const dataDisp = proc.onData((chunk) => {
-                  allOutput += chunk
-                  appendOutput(callID, chunk)
-                  scheduleFlush()
-
-                  scanBuffer += chunk
-                  if (scanBuffer.length > PROMPT_BUFFER_CAP) scanBuffer = scanBuffer.slice(-PROMPT_BUFFER_CAP)
-                  if (compiled.length === 0) return
-                  if (scanTimer) clearTimeout(scanTimer)
-                  scanTimer = setTimeout(() => {
-                    scanTimer = undefined
-                    void scan()
-                  }, PROMPT_DEBOUNCE_MS)
-                })
-
-                const exitDisp = proc.onExit(({ exitCode, signal }) => {
-                  cleanup()
-                  resolve({ output: allOutput, exitCode: exitCode ?? -1, signal, timedOut })
-                })
-
-                const abortListener = () => {
-                  try { proc.kill("SIGTERM") } catch {}
-                }
-                ctx.abort.addEventListener("abort", abortListener)
-              }),
+                  ctx.abort.addEventListener("abort", abortListener)
+                },
+              ),
           )
 
           unregisterProc(callID)
           // If the PTY exited (kill button, natural exit, abort, timeout)
-          // while a question was still showing in the chat dock, that
-          // dialog would otherwise sit there forever waiting for an answer
-          // the tool can no longer use. Reject every pending question
-          // associated with this tool call so the dialog disappears and
-          // the awaiting bridge.promise(question.ask) settles cleanly.
+          // while a question was still showing in the chat dock, reject every
+          // pending question associated with this tool call so it disappears.
           yield* Effect.catch(
             Effect.gen(function* () {
               const all = yield* question.list()
@@ -396,8 +391,7 @@ export const BashInteractiveTool = Tool.define(
             () => Effect.void,
           )
           // Make sure any output produced after the last throttled flush
-          // (typical for short-lived commands that exit before the throttle
-          // window elapses) reaches the renderer before we return.
+          // reaches the renderer before we return.
           yield* Effect.promise(() => Promise.resolve(finalFlush()).catch(() => {}))
 
           if (userRejected) {
@@ -425,8 +419,7 @@ export const BashInteractiveTool = Tool.define(
 
           // SIGTERM with no natural-exit path through ctx.abort means the
           // user clicked the stop / kill button. Surface that explicitly so
-          // the agent doesn't loop "the command must have crashed, let me
-          // retry" — the user actively stopped it.
+          // the agent doesn't mis-attribute the failure.
           if (result.signal === "SIGTERM" && !ctx.abort.aborted) {
             return {
               title: params.description ?? command.slice(0, 60),

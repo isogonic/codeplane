@@ -287,7 +287,8 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     followupMode: undefined,
   })
 
-  const buttonsSpring = useSpring(() => (store.mode === "normal" ? 1 : 0), { visualDuration: 0.2, bounce: 0 })
+  const inputMode = createMemo(() => store.mode)
+  const buttonsSpring = useSpring(() => (inputMode() === "normal" ? 1 : 0), { visualDuration: 0.2, bounce: 0 })
   const motion = (value: number) => ({
     opacity: value,
     transform: `scale(${0.98 + value * 0.02})`,
@@ -299,7 +300,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const control = createMemo(() => ({ height: "28px", ...buttons() }))
 
   const commentCount = createMemo(() => {
-    if (store.mode === "shell") return 0
+    if (inputMode() === "shell") return 0
     return prompt.context.items().filter((item) => !!item.comment?.trim()).length
   })
   const blank = createMemo(() => {
@@ -330,7 +331,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
   const contextItems = createMemo(() => {
     const items = prompt.context.items()
-    if (store.mode !== "shell") return items
+    if (inputMode() !== "shell") return items
     return items.filter((item) => !item.comment?.trim())
   })
 
@@ -361,15 +362,15 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
   const suggest = createMemo(() => !hasUserPrompt())
 
-  const placeholder = createMemo(() =>
-    promptPlaceholder({
-      mode: store.mode,
+  const placeholder = createMemo(() => {
+    return promptPlaceholder({
+      mode: inputMode(),
       commentCount: commentCount(),
-      example: suggest() ? (store.mode === "shell" ? "git status" : language.t(EXAMPLES[store.placeholder])) : "",
+      example: suggest() ? (inputMode() === "shell" ? "git status" : language.t(EXAMPLES[store.placeholder])) : "",
       suggest: suggest(),
       t: (key, params) => language.t(key as Parameters<typeof language.t>[0], params as never),
-    }),
-  )
+    })
+  })
 
   const historyComments = () => {
     const byID = new Map(comments.all().map((item) => [`${item.file}\n${item.id}`, item] as const))
@@ -476,7 +477,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       title: language.t("prompt.action.attachFile"),
       category: language.t("command.category.file"),
       keybind: "mod+u",
-      disabled: store.mode !== "normal",
+      disabled: inputMode() !== "normal",
       onSelect: pick,
     },
     {
@@ -484,7 +485,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       title: language.t("prompt.action.screenshot"),
       category: language.t("command.category.file"),
       keybind: "mod+shift+s",
-      disabled: store.mode !== "normal",
+      disabled: inputMode() !== "normal",
       onSelect: () => void captureScreenshot(),
     },
     {
@@ -492,7 +493,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       title: language.t("command.prompt.mode.shell"),
       category: language.t("command.category.session"),
       keybind: shellModeKey,
-      disabled: store.mode === "shell",
+      disabled: inputMode() === "shell",
       onSelect: () => setMode("shell"),
     },
     {
@@ -500,7 +501,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       title: language.t("command.prompt.mode.normal"),
       category: language.t("command.category.session"),
       keybind: normalModeKey,
-      disabled: store.mode === "normal",
+      disabled: inputMode() === "normal",
       onSelect: () => setMode("normal"),
     },
   ])
@@ -905,7 +906,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       return
     }
 
-    const shellMode = store.mode === "shell"
+    const shellMode = inputMode() === "shell"
 
     if (!shellMode) {
       const atMatch = rawText.substring(0, cursorPosition).match(/@(\S*)$/)
@@ -1062,7 +1063,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const navigateHistory = (direction: "up" | "down") => {
     const result = navigatePromptHistory({
       direction,
-      entries: store.mode === "shell" ? shellHistory.entries : history.entries,
+      entries: inputMode() === "shell" ? shellHistory.entries : history.entries,
       historyIndex: store.historyIndex,
       currentPrompt: prompt.current(),
       currentComments: historyComments(),
@@ -1130,10 +1131,14 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     onSubmit: props.onSubmit,
   })
 
+  const submitCurrentInput = (event: Event) => {
+    return handleSubmit(event)
+  }
+
   const handleKeyDown = (event: KeyboardEvent) => {
     if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "u") {
       event.preventDefault()
-      if (store.mode !== "normal") return
+      if (inputMode() !== "normal") return
       pick()
       return
     }
@@ -1277,7 +1282,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       event.preventDefault()
       if (event.repeat) return
       setStore("followupMode", settings.general.followup() === "queue" ? "steer" : "queue")
-      void handleSubmit(event).finally(() => setStore("followupMode", undefined))
+      void submitCurrentInput(event).finally(() => setStore("followupMode", undefined))
       return
     }
 
@@ -1297,7 +1302,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       ) {
         return
       }
-      void handleSubmit(event)
+      void submitCurrentInput(event)
     }
   }
 
@@ -1338,7 +1343,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
         t={(key) => language.t(key as Parameters<typeof language.t>[0])}
       />
       <DockShellForm
-        onSubmit={handleSubmit}
+        onSubmit={submitCurrentInput}
         classList={{
           "group/prompt-input": true,
           "focus-within:shadow-xs-border": true,
@@ -1397,9 +1402,9 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
               aria-multiline="true"
               aria-label={placeholder()}
               contenteditable="true"
-              autocapitalize={store.mode === "normal" ? "sentences" : "off"}
-              autocorrect={store.mode === "normal" ? "on" : "off"}
-              spellcheck={store.mode === "normal"}
+              autocapitalize={inputMode() === "normal" ? "sentences" : "off"}
+              autocorrect={inputMode() === "normal" ? "on" : "off"}
+              spellcheck={inputMode() === "normal"}
               inputMode="text"
               // @ts-expect-error
               autocomplete="off"
@@ -1414,13 +1419,13 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 "w-full pl-3 pr-2 pt-2 text-14-regular text-text-strong focus:outline-none whitespace-pre-wrap": true,
                 "[&_[data-type=file]]:text-syntax-property": true,
                 "[&_[data-type=agent]]:text-syntax-type": true,
-                "font-mono!": store.mode === "shell",
+                "font-mono!": inputMode() === "shell",
               }}
               style={{ "padding-bottom": space }}
             />
             <div
               class="absolute top-0 inset-x-0 pl-3 pr-2 pt-2 text-14-regular text-text-weak pointer-events-none whitespace-nowrap truncate"
-              classList={{ "font-mono!": store.mode === "shell" }}
+              classList={{ "font-mono!": inputMode() === "shell" }}
               style={{
                 "padding-bottom": space,
                 display: prompt.dirty() ? "none" : undefined,
@@ -1460,8 +1465,8 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                   data-action="prompt-submit"
                   type="submit"
                   disabled={!working() && blank()}
-                  tabIndex={store.mode === "normal" ? undefined : -1}
-                  icon={stopping() ? "stop" : store.mode === "shell" ? "arrow-undo-down" : "arrow-up"}
+                  tabIndex={inputMode() === "normal" ? undefined : -1}
+                  icon={stopping() ? "stop" : inputMode() === "shell" ? "arrow-undo-down" : "arrow-up"}
                   variant="primary"
                   class="size-8"
                   aria-label={stopping() ? language.t("prompt.action.stop") : language.t("prompt.action.send")}
@@ -1472,7 +1477,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
           <div class="pointer-events-none absolute bottom-2 left-2">
             <div
-              aria-hidden={store.mode !== "normal"}
+              aria-hidden={inputMode() !== "normal"}
               class="pointer-events-auto flex items-center gap-1"
               style={{
                 "pointer-events": buttonsSpring() > 0.5 ? "auto" : "none",
@@ -1490,8 +1495,8 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                   class="size-8 p-0"
                   style={buttons()}
                   onClick={pick}
-                  disabled={store.mode !== "normal"}
-                  tabIndex={store.mode === "normal" ? undefined : -1}
+                  disabled={inputMode() !== "normal"}
+                  tabIndex={inputMode() === "normal" ? undefined : -1}
                   aria-label={language.t("prompt.action.attachFile")}
                 >
                   <Icon name="plus" class="size-4.5" />
@@ -1509,8 +1514,8 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                   class="size-8 p-0"
                   style={buttons()}
                   onClick={() => void captureScreenshot()}
-                  disabled={store.mode !== "normal"}
-                  tabIndex={store.mode === "normal" ? undefined : -1}
+                  disabled={inputMode() !== "normal"}
+                  tabIndex={inputMode() === "normal" ? undefined : -1}
                   aria-label={language.t("prompt.action.screenshot")}
                 >
                   <Icon name="screenshot" class="size-4.5" />
@@ -1520,7 +1525,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
           </div>
         </div>
       </DockShellForm>
-      <Show when={store.mode === "normal" || store.mode === "shell"}>
+      <Show when={inputMode() === "normal" || inputMode() === "shell"}>
         <DockTray attach="top">
           <div class="px-1.75 pt-5.5 pb-2 flex items-center gap-2 min-w-0">
             <div class="flex items-center gap-1.5 min-w-0 flex-1 relative">
@@ -1574,7 +1579,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                   </div>
                 </Show>
                 <Show when={!providersLoading()}>
-                  <Show when={store.mode !== "shell"}>
+                  <Show when={inputMode() !== "shell"}>
                     <div
                       data-component="prompt-model-control"
                       style={providersShouldFadeIn() ? { animation: "fade-in 0.3s" } : undefined}

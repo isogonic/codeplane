@@ -345,9 +345,11 @@ export const dict = {
   "prompt.toast.pasteUnsupported.title": "Unsupported attachment",
   "prompt.toast.pasteUnsupported.description": "Only images, PDFs, or text files can be attached here.",
   "prompt.toast.screenshotUnsupported.title": "Screenshots not supported",
-  "prompt.toast.screenshotUnsupported.description": "This browser doesn't expose the Screen Capture API. Drop or paste an image instead.",
+  "prompt.toast.screenshotUnsupported.description":
+    "This browser doesn't expose the Screen Capture API. Drop or paste an image instead.",
   "prompt.toast.screenshotFailed.title": "Screenshot failed",
-  "prompt.toast.screenshotFailed.description": "Couldn't capture the selected screen. Try again or attach the image manually.",
+  "prompt.toast.screenshotFailed.description":
+    "Couldn't capture the selected screen. Try again or attach the image manually.",
   "prompt.toast.modelAgentRequired.title": "Select an agent and model",
   "prompt.toast.modelAgentRequired.description": "Choose an agent and model before sending a prompt.",
   "prompt.toast.worktreeCreateFailed.title": "Failed to create worktree",
@@ -533,7 +535,6 @@ export const dict = {
   "toast.update.action.later": "Later",
   "toast.update.action.restart": "Restart",
   "toast.update.action.dismiss": "Dismiss",
-
 
   "error.page.title": "Something went wrong",
   "error.page.description": "An error occurred while loading the application.",
@@ -796,7 +797,8 @@ export const dict = {
   "archiveSessions.error": "Some archived sessions could not be loaded",
   "archiveSessions.archivedAt": "Archived {{time}}",
   "archiveSessions.deletesIn": "Deletes in {{count}}d",
-  "archiveSessions.retention": "Archived sessions are view-only. They are deleted after 30 days and cannot be restored.",
+  "archiveSessions.retention":
+    "Archived sessions are view-only. They are deleted after 30 days and cannot be restored.",
   "archiveSessions.restore.success.title": "Session restored",
   "archiveSessions.restore.success.description": "The session is back in the sidebar.",
   "archiveSessions.restore.failed.title": "Failed to restore session",
@@ -916,7 +918,6 @@ export const dict = {
   "settings.general.row.showSessionProgressBar.title": "Show session progress bar",
   "settings.general.row.showSessionProgressBar.description":
     "Display the animated progress bar at the top of the session when the agent is working",
-
 
   "settings.general.row.releaseNotes.title": "Release notes",
   "settings.general.row.releaseNotes.description": "Show What's New popups after updates",
