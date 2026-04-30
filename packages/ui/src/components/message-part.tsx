@@ -2062,6 +2062,7 @@ ToolRegistry.register({
 ToolRegistry.register({
   name: "bash_interactive",
   render(props) {
+    const data = useData()
     const i18n = useI18n()
     const pending = createMemo(() => props.status === "pending" || props.status === "running")
     const sawPending = pending()
@@ -2103,52 +2104,90 @@ ToolRegistry.register({
       if (preRef) preRef.scrollTop = preRef.scrollHeight
     })
 
-    const sendKill = async () => {
-      const id = props.callID
-      if (!id) return
-      await fetch(`/global/bash-interactive/${encodeURIComponent(id)}/kill`, { method: "POST" }).catch(() => {})
+    const [input, setInput] = createSignal("")
+    const [sending, setSending] = createSignal(false)
+    const [feedback, setFeedback] = createSignal<{ kind: "sent" | "error"; text: string }>()
+    let inputRef: HTMLInputElement | undefined
+    let feedbackTimer: number | undefined
+
+    const clearFeedbackLater = () => {
+      if (feedbackTimer) window.clearTimeout(feedbackTimer)
+      feedbackTimer = window.setTimeout(() => {
+        setFeedback(undefined)
+        feedbackTimer = undefined
+      }, 1800)
     }
 
-    // Inline input bar — always-visible escape hatch when the agent's
-    // declared `prompts` don't match what the CLI actually printed (or
-    // weren't declared at all). Sends the user's text + carriage return
-    // straight to the PTY's stdin via the /global/bash-interactive/:id/stdin
-    // endpoint. Faster and more reliable than waiting on the question
-    // dialog when the user already knows what to paste.
-    const [pendingInput, setPendingInput] = createSignal("")
-    const [sendingInput, setSendingInput] = createSignal(false)
-    let inputRef: HTMLInputElement | undefined
+    onCleanup(() => {
+      if (feedbackTimer) window.clearTimeout(feedbackTimer)
+    })
+
+    createEffect(() => {
+      if (!pending()) return
+      queueMicrotask(() => inputRef?.focus())
+    })
+
+    const withTimeout = (send: (signal: AbortSignal) => Promise<void>) => {
+      const controller = new AbortController()
+      const timer = window.setTimeout(() => controller.abort(), 12_000)
+      return send(controller.signal).finally(() => window.clearTimeout(timer))
+    }
+
+    const stdinError = (err: unknown) => {
+      if (err instanceof DOMException && err.name === "AbortError") return "Timed out while sending input."
+      if (err instanceof Error) return err.message
+      return String(err)
+    }
 
     const sendStdin = async (raw: string) => {
       const id = props.callID
-      if (!id) return
-      const res = await fetch(`/global/bash-interactive/${encodeURIComponent(id)}/stdin`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: raw }),
-      })
-      if (!res.ok && res.status !== 404) {
-        const body = await res.text().catch(() => "")
-        throw new Error(`stdin failed (${res.status}): ${body.slice(0, 200)}`)
+      if (!id) throw new Error("Interactive shell is missing a call ID.")
+      const transport = data.bashInteractive
+      if (transport) {
+        await withTimeout((signal) => transport.stdin({ callID: id, data: raw, signal }))
+        return
       }
+      await withTimeout((signal) =>
+        fetch(`/global/bash-interactive/${encodeURIComponent(id)}/stdin`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data: raw }),
+          signal,
+        }).then(async (response) => {
+          if (response.ok) return
+          const body = await response.text().catch(() => "")
+          throw new Error(`stdin failed (${response.status}): ${body.slice(0, 200)}`)
+        }),
+      )
     }
 
-    const submitInline = async () => {
-      const value = pendingInput()
-      if (sendingInput()) return
-      setSendingInput(true)
-      try {
-        // Sanitize the same way the server does — paste from email/Slack
-        // often carries stray newlines / tabs.
-        const clean = value.replace(/\s+/g, " ").trim()
-        await sendStdin(clean + "\r")
-        setPendingInput("")
-        inputRef?.focus()
-      } catch (err) {
-        console.error("[bash_interactive] failed to send stdin", err)
-      } finally {
-        setSendingInput(false)
+    const sendKill = async () => {
+      const id = props.callID
+      if (!id) return
+      if (data.bashInteractive) {
+        await data.bashInteractive.kill({ callID: id }).catch(() => {})
+        return
       }
+      await fetch(`/global/bash-interactive/${encodeURIComponent(id)}/kill`, { method: "POST" }).catch(() => {})
+    }
+
+    const submit = async () => {
+      const value = input()
+      if (sending()) return
+      setSending(true)
+      setFeedback(undefined)
+      await sendStdin(value + "\r")
+        .then(() => {
+          setInput("")
+          setFeedback({ kind: "sent", text: "Sent" })
+          clearFeedbackLater()
+          inputRef?.focus()
+        })
+        .catch((err) => {
+          console.error("[bash_interactive] failed to send stdin", err)
+          setFeedback({ kind: "error", text: stdinError(err) })
+        })
+        .finally(() => setSending(false))
     }
 
     return (
@@ -2156,6 +2195,7 @@ ToolRegistry.register({
         {...props}
         icon="console"
         animated
+        forceOpen={pending()}
         trigger={
           <div data-slot="basic-tool-tool-info-structured">
             <div data-slot="basic-tool-tool-info-main">
@@ -2173,72 +2213,102 @@ ToolRegistry.register({
           </div>
         }
       >
-        <div data-component="bash-output">
-          <Show when={pending()}>
-            <div data-slot="bash-interactive-kill">
-              <Tooltip value={i18n.t("ui.tool.bashInteractive.kill") || "Stop"} placement="top" gutter={4}>
+        <div data-component="bash-interactive" data-prevent-autofocus>
+          <div data-component="bash-output">
+            <Show when={pending()}>
+              <div data-slot="bash-interactive-kill">
+                <Tooltip value={i18n.t("ui.tool.bashInteractive.kill") || "Stop"} placement="top" gutter={4}>
+                  <IconButton
+                    icon="stop"
+                    size="small"
+                    variant="secondary"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => void sendKill()}
+                    aria-label={i18n.t("ui.tool.bashInteractive.kill") || "Stop"}
+                  />
+                </Tooltip>
+              </div>
+            </Show>
+            <div data-slot="bash-copy">
+              <Tooltip
+                value={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
+                placement="top"
+                gutter={4}
+              >
                 <IconButton
-                  icon="stop"
+                  icon={copied() ? "check" : "copy"}
                   size="small"
                   variant="secondary"
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => void sendKill()}
-                  aria-label={i18n.t("ui.tool.bashInteractive.kill") || "Stop"}
+                  onClick={handleCopy}
+                  aria-label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
                 />
               </Tooltip>
             </div>
-          </Show>
-          <div data-slot="bash-copy">
-            <Tooltip
-              value={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
-              placement="top"
-              gutter={4}
-            >
-              <IconButton
-                icon={copied() ? "check" : "copy"}
-                size="small"
-                variant="secondary"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={handleCopy}
-                aria-label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
-              />
-            </Tooltip>
+            <div data-slot="bash-scroll" data-scrollable>
+              <pre data-slot="bash-pre" ref={(el) => (preRef = el)}>
+                <code>{text()}</code>
+              </pre>
+            </div>
+            <Show when={pending()}>
+              <form
+                data-slot="bash-interactive-input"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  void submit()
+                }}
+              >
+                <span data-slot="bash-interactive-prompt" aria-hidden="true">
+                  ›
+                </span>
+                <input
+                  ref={(el) => (inputRef = el)}
+                  type="text"
+                  autocomplete="off"
+                  spellcheck={false}
+                  value={input()}
+                  onInput={(e) => setInput(e.currentTarget.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      void submit()
+                      return
+                    }
+                    if (e.key === "c" && (e.ctrlKey || e.metaKey)) {
+                      e.preventDefault()
+                      void sendStdin("\u0003")
+                    }
+                    if (e.key === "d" && (e.ctrlKey || e.metaKey)) {
+                      e.preventDefault()
+                      void sendStdin("\u0004")
+                    }
+                  }}
+                  placeholder={
+                    i18n.t("ui.tool.bashInteractive.placeholder") || "Paste code or type input, then press Enter"
+                  }
+                  disabled={sending()}
+                  aria-keyshortcuts="Enter"
+                />
+                <Show when={feedback()}>
+                  {(state) => (
+                    <span data-slot="bash-interactive-feedback" data-kind={state().kind}>
+                      {state().text}
+                    </span>
+                  )}
+                </Show>
+                <button type="submit" disabled={sending()} title={i18n.t("ui.tool.bashInteractive.send") || "Send input"}>
+                  <Icon name={sending() ? "enter" : "arrow-up"} size="small" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void sendKill()}
+                  title={i18n.t("ui.tool.bashInteractive.kill") || "Stop"}
+                >
+                  <Icon name="stop" size="small" />
+                </button>
+              </form>
+            </Show>
           </div>
-          <div data-slot="bash-scroll" data-scrollable>
-            <pre data-slot="bash-pre" ref={(el) => (preRef = el)}>
-              <code>{text()}</code>
-            </pre>
-          </div>
-          <Show when={pending()}>
-            <form
-              data-slot="bash-interactive-input"
-              onSubmit={(e) => {
-                e.preventDefault()
-                void submitInline()
-              }}
-            >
-              <span data-slot="bash-interactive-prompt" aria-hidden="true">
-                ›
-              </span>
-              <input
-                ref={(el) => (inputRef = el)}
-                type="text"
-                autocomplete="off"
-                spellcheck={false}
-                value={pendingInput()}
-                onInput={(e) => setPendingInput(e.currentTarget.value)}
-                placeholder={
-                  i18n.t("ui.tool.bashInteractive.placeholder") ||
-                  "Paste your code or type — Enter sends it into the terminal"
-                }
-                disabled={sendingInput()}
-                aria-keyshortcuts="Enter"
-              />
-              <span data-slot="bash-interactive-hint" aria-hidden="true">
-                ↵ Enter
-              </span>
-            </form>
-          </Show>
         </div>
       </BasicTool>
     )

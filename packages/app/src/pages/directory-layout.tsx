@@ -5,6 +5,7 @@ import { useLocation, useNavigate, useParams } from "@solidjs/router"
 import { createEffect, createMemo, createResource, type ParentProps, Show } from "solid-js"
 import { useLanguage } from "@/context/language"
 import { LocalProvider } from "@/context/local"
+import { useGlobalSDK } from "@/context/global-sdk"
 import { SDKProvider } from "@/context/sdk"
 import { SyncProvider, useSync } from "@/context/sync"
 import { decode64 } from "@/utils/base64"
@@ -14,6 +15,7 @@ function DirectoryDataProvider(props: ParentProps<{ directory: string }>) {
   const navigate = useNavigate()
   const params = useParams()
   const sync = useSync()
+  const globalSDK = useGlobalSDK()
   const slug = createMemo(() => base64Encode(props.directory))
   const sessionBase = createMemo(() =>
     location.pathname.startsWith(`/cron/worktree/${slug()}`) ? `/cron/worktree/${slug()}` : `/${slug()}`,
@@ -54,6 +56,13 @@ function DirectoryDataProvider(props: ParentProps<{ directory: string }>) {
       directory={props.directory}
       onNavigateToSession={(sessionID: string) => navigate(`${sessionBase()}/session/${sessionID}${sessionSearch()}`)}
       onSessionHref={(sessionID: string) => `${sessionBase()}/session/${sessionID}${sessionSearch()}`}
+      bashInteractive={{
+        stdin: (input) =>
+          globalSDK.client.global.bashInteractive
+            .stdin({ callID: input.callID, data: input.data }, { signal: input.signal })
+            .then(() => {}),
+        kill: (input) => globalSDK.client.global.bashInteractive.kill({ callID: input.callID }).then(() => {}),
+      }}
     >
       <LocalProvider>{props.children}</LocalProvider>
     </DataProvider>

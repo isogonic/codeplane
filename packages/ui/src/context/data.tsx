@@ -30,6 +30,11 @@ export type NavigateToSessionFn = (sessionID: string) => void
 
 export type SessionHrefFn = (sessionID: string) => string
 
+export type BashInteractiveTransport = {
+  stdin: (input: { callID: string; data: string; signal?: AbortSignal }) => Promise<void>
+  kill: (input: { callID: string }) => Promise<void>
+}
+
 export const { use: useData, provider: DataProvider } = createSimpleContext({
   name: "Data",
   init: (props: {
@@ -37,6 +42,7 @@ export const { use: useData, provider: DataProvider } = createSimpleContext({
     directory: string
     onNavigateToSession?: NavigateToSessionFn
     onSessionHref?: SessionHrefFn
+    bashInteractive?: BashInteractiveTransport
   }) => {
     return {
       get store() {
@@ -47,6 +53,7 @@ export const { use: useData, provider: DataProvider } = createSimpleContext({
       },
       navigateToSession: props.onNavigateToSession,
       sessionHref: props.onSessionHref,
+      bashInteractive: props.bashInteractive,
     }
   },
 })

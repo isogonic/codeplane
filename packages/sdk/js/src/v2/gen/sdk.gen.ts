@@ -64,6 +64,10 @@ import type {
   FindSymbolsResponses,
   FindTextResponses,
   FormatterStatusResponses,
+  GlobalBashInteractiveKillErrors,
+  GlobalBashInteractiveKillResponses,
+  GlobalBashInteractiveStdinErrors,
+  GlobalBashInteractiveStdinResponses,
   GlobalConfigGetResponses,
   GlobalConfigUpdateErrors,
   GlobalConfigUpdateResponses,
@@ -583,6 +587,70 @@ export class Config extends HeyApiClient {
   }
 }
 
+export class BashInteractive extends HeyApiClient {
+  /**
+   * Send stdin to a running bash_interactive tool call
+   *
+   * Writes the given 'data' (raw text — append \r yourself for Enter) to the stdin of the PTY-backed bash_interactive tool call identified by callID. Returns 404 if the call has already exited. Used by the inline input bar in the renderer as a guaranteed input path even when the agent's declared `prompts` don't match the actual CLI output.
+   */
+  public stdin<ThrowOnError extends boolean = false>(
+    parameters: {
+      callID: string
+      data?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "callID" },
+            { in: "body", key: "data" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      GlobalBashInteractiveStdinResponses,
+      GlobalBashInteractiveStdinErrors,
+      ThrowOnError
+    >({
+      url: "/global/bash-interactive/{callID}/stdin",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Kill a running bash_interactive tool call
+   *
+   * Sends SIGTERM to the PTY-backed bash_interactive tool call identified by callID.
+   */
+  public kill<ThrowOnError extends boolean = false>(
+    parameters: {
+      callID: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "path", key: "callID" }] }])
+    return (options?.client ?? this.client).post<
+      GlobalBashInteractiveKillResponses,
+      GlobalBashInteractiveKillErrors,
+      ThrowOnError
+    >({
+      url: "/global/bash-interactive/{callID}/kill",
+      ...options,
+      ...params,
+    })
+  }
+}
+
 export class Global extends HeyApiClient {
   /**
    * Get health
@@ -659,6 +727,11 @@ export class Global extends HeyApiClient {
   private _config?: Config
   get config(): Config {
     return (this._config ??= new Config({ client: this.client }))
+  }
+
+  private _bashInteractive?: BashInteractive
+  get bashInteractive(): BashInteractive {
+    return (this._bashInteractive ??= new BashInteractive({ client: this.client }))
   }
 }
 
