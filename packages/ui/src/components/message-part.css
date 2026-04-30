@@ -572,7 +572,7 @@
 }
 
 [data-component="bash-output"] {
-  [data-slot="bash-interactive-input"] {
+  [data-slot="bash-interactive-status"] {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -581,24 +581,19 @@
     background: var(--background-base);
   }
 
-  [data-slot="bash-interactive-prompt"] {
-    font-family: var(--font-family-mono);
-    color: var(--text-weak);
-    font-size: 13px;
-  }
-
-  [data-slot="bash-interactive-input"] input {
+  [data-slot="bash-interactive-status-text"] {
     flex: 1 1 auto;
     min-width: 0;
-    background: transparent;
-    border: none;
-    outline: none;
     font-family: var(--font-family-mono);
-    font-size: 13px;
-    color: var(--text-strong);
+    font-size: 12px;
+    color: var(--text-weak);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  [data-slot="bash-interactive-input"] button {
+  [data-slot="bash-interactive-status"] button {
+    flex: 0 0 auto;
     border: 1px solid var(--border-weak-base);
     border-radius: 4px;
     background: transparent;
@@ -608,7 +603,7 @@
     cursor: pointer;
   }
 
-  [data-slot="bash-interactive-input"] button:hover {
+  [data-slot="bash-interactive-status"] button:hover {
     border-color: var(--border-strong-base, var(--border-weak-base));
     color: var(--text-base);
   }

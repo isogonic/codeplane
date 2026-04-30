@@ -7,6 +7,7 @@ import * as CrossSpawnSpawner from "../../src/effect/cross-spawn-spawner"
 import { AppFileSystem } from "@codeplane-ai/shared/filesystem"
 import { Plugin } from "../../src/plugin"
 import { Bus } from "../../src/bus"
+import { Question } from "../../src/question"
 import { SessionID, MessageID } from "../../src/session/schema"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
@@ -19,6 +20,7 @@ const runtime = ManagedRuntime.make(
     Truncate.defaultLayer,
     Agent.defaultLayer,
     Bus.layer,
+    Question.defaultLayer,
   ),
 )
 
@@ -46,7 +48,7 @@ describe("bash_interactive", () => {
         fn: () =>
           runtime.runPromise(
             tool.execute(
-              { command: "printf 'first\\n'; sleep 0.05; printf 'second\\n'", timeout: 5_000 } as any,
+              { command: "printf 'first\\n'; sleep 0.05; printf 'second\\n'", timeout: 5_000, prompts: [] } as any,
               {
                 sessionID: SessionID.make("ses_test"),
                 messageID: MessageID.make("msg_test"),
@@ -69,25 +71,99 @@ describe("bash_interactive", () => {
 
       expect(askCalled).toBe(true)
 
-      // First call must be the priming "" so the renderer can show "$ command"
-      // immediately while the PTY warms up.
       expect(metadataCalls.length).toBeGreaterThanOrEqual(1)
       expect(metadataCalls[0]?.output).toBe("")
       expect(metadataCalls[0]?.command).toBe("printf 'first\\n'; sleep 0.05; printf 'second\\n'")
 
-      // Subsequent calls must include the live output as it grows.
       const outputs = metadataCalls.map((m) => m.output ?? "").filter((o) => o.length > 0)
       expect(outputs.length).toBeGreaterThanOrEqual(1)
       const lastOutput = outputs[outputs.length - 1]
       expect(lastOutput).toContain("first")
       expect(lastOutput).toContain("second")
 
-      // The final return must contain the full output and a usable metadata.output.
       expect(result.output).toContain("first")
       expect(result.output).toContain("second")
       expect((result.metadata as any).output).toContain("first")
       expect((result.metadata as any).output).toContain("second")
-      expect((result.metadata as any).command).toBe("printf 'first\\n'; sleep 0.05; printf 'second\\n'")
+    },
+    20_000,
+  )
+
+  test(
+    "prompts: when a pattern matches the PTY output, asks the user via Question.Service and writes the answer back into stdin",
+    async () => {
+      const tool = await initTool()
+      await using sandbox = await tmpdir()
+      const dir = sandbox.path
+
+      const sessionID = SessionID.make("ses_prompts_test")
+      const messageID = MessageID.make("msg_prompts_test")
+      const callID = "call_prompts_test"
+
+      const askedQuestions: string[] = []
+
+      // The Bus + Question services are instance-scoped, so the responder
+      // and the tool execution must live inside the same Instance.provide
+      // call, otherwise their PubSubs are different.
+      const result = await Instance.provide({
+        directory: dir,
+        fn: () =>
+          runtime.runPromise(
+            Effect.gen(function* () {
+              const q = yield* Question.Service
+              const bus = yield* Bus.Service
+
+              let answered = 0
+              // Bind the current Instance ALS so the deferred reply runs
+              // inside the same instance context the responder lives in.
+              const reply = Instance.bind((requestID: any) =>
+                runtime.runPromise(q.reply({ requestID, answers: [["alpha"]] })),
+              )
+              const unsubscribe = yield* bus.subscribeCallback(Question.Event.Asked, (payload) => {
+                const req = payload.properties
+                if (req.sessionID !== sessionID) return
+                if (answered >= 1) return
+                answered++
+                askedQuestions.push(req.questions[0]?.question ?? "")
+                setTimeout(() => {
+                  void reply(req.id)
+                }, 5)
+              })
+
+              try {
+                const command = "printf 'Code: '; read code; printf 'GOT=%s\\n' \"$code\""
+                return yield* tool.execute(
+                  {
+                    command,
+                    timeout: 10_000,
+                    prompts: [
+                      {
+                        pattern: "Code:",
+                        question: "Enter the verification code",
+                        header: "Code",
+                      },
+                    ],
+                  } as any,
+                  {
+                    sessionID,
+                    messageID,
+                    callID,
+                    agent: "build",
+                    abort: new AbortController().signal,
+                    messages: [],
+                    metadata: () => Effect.void,
+                    ask: () => Effect.void,
+                  } as any,
+                )
+              } finally {
+                unsubscribe()
+              }
+            }),
+          ),
+      })
+
+      expect(askedQuestions).toEqual(["Enter the verification code"])
+      expect(result.output).toContain("GOT=alpha")
     },
     20_000,
   )

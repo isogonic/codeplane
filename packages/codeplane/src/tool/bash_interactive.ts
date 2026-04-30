@@ -2,6 +2,7 @@ import { Effect, Schema } from "effect"
 import { spawn as ptySpawn } from "#pty"
 import * as Tool from "./tool"
 import { EffectBridge } from "@/effect"
+import { Question } from "../question"
 import {
   appendOutput,
   register as registerProc,
@@ -15,12 +16,39 @@ const MAX_TIMEOUT_MS = 600_000
 // Throttle metadata updates so a fast-talking PTY doesn't spam message.part.updated.
 const METADATA_THROTTLE_MS = 80
 // Cap how much of the captured PTY output is mirrored back through the
-// metadata channel each tick. Keeps update payloads bounded for very
+// metadata channel each tick — keeps update payloads bounded for very
 // chatty commands while still showing the live tail in the UI.
 const METADATA_OUTPUT_TAIL = 64 * 1024
+// Wait for output to settle before scanning for prompt patterns. Stops us
+// firing the prompt dialog mid-line (e.g. before the trailing "?" arrives).
+const PROMPT_DEBOUNCE_MS = 250
+// Cap the regex haystack so pattern matching stays cheap on long output.
+const PROMPT_BUFFER_CAP = 4096
+// Strip ANSI escapes ONLY for prompt detection — the captured output keeps
+// them so the renderer can show colored prompts faithfully.
+const STRIP_ANSI_RE = /\x1B\[[0-?]*[ -/]*[@-~]/g
+
+const PromptEntry = Schema.Struct({
+  pattern: Schema.String.annotate({
+    description:
+      "JS regex source (no leading/trailing slashes) matched case-insensitively against new output. When matched, the user is asked the corresponding question via the chat dialog and the answer is written into the PTY's stdin.",
+  }),
+  question: Schema.String.annotate({
+    description: "Plain-language question shown to the user when this pattern matches.",
+  }),
+  header: Schema.optional(Schema.String).annotate({
+    description: "Short header (max 30 chars) shown above the question.",
+  }),
+})
 
 export const Parameters = Schema.Struct({
   command: Schema.String.annotate({ description: "Shell command to execute interactively." }),
+  prompts: Schema.Array(PromptEntry)
+    .pipe(Schema.optional, Schema.withDecodingDefault(Effect.succeed([] as ReadonlyArray<typeof PromptEntry.Type>)))
+    .annotate({
+      description:
+        "REQUIRED for any flow that pauses for user input. Probe the command first with `bash` to discover what prompts it prints, then declare each one here. Each entry fires at most once per match — re-add it to handle repeats. The pattern is matched against new PTY output (case-insensitive); on match the tool pauses, asks the user the question via the standard chat dialog, and writes the answer + \\r into the PTY's stdin. The user's input never reaches the terminal directly — it goes through this tool, so the agent stays in the loop.",
+    }),
   timeout: Schema.Number.pipe(Schema.optional, Schema.withDecodingDefault(Effect.succeed(DEFAULT_TIMEOUT_MS))).annotate({
     description: `Milliseconds to allow the command to run (default ${DEFAULT_TIMEOUT_MS}, max ${MAX_TIMEOUT_MS}).`,
   }),
@@ -46,6 +74,8 @@ function tail(value: string, max: number): string {
 export const BashInteractiveTool = Tool.define(
   "bash_interactive",
   Effect.gen(function* () {
+    const question = yield* Question.Service
+
     return {
       description: DESCRIPTION,
       parameters: Parameters,
@@ -64,12 +94,18 @@ export const BashInteractiveTool = Tool.define(
           const timeoutMs = Math.min(MAX_TIMEOUT_MS, Math.max(1_000, Math.floor(params.timeout ?? DEFAULT_TIMEOUT_MS)))
           const cwd = params.cwd && params.cwd.length > 0 ? params.cwd : process.cwd()
           const env = sanitizeEnv(process.env)
+          const prompts = params.prompts ?? []
 
           yield* ctx.ask({
             permission: "bash",
             patterns: [command],
             always: [],
-            metadata: { command, description: params.description, interactive: true },
+            metadata: {
+              command,
+              description: params.description,
+              interactive: true,
+              prompts: prompts.map((p) => p.pattern),
+            },
           })
 
           // Pre-publish the empty body so the renderer can show "$ command"
@@ -80,7 +116,8 @@ export const BashInteractiveTool = Tool.define(
           })
 
           // Bridge so the synchronous PTY data callback can call ctx.metadata
-          // (an Effect) without losing the workspace/instance context.
+          // and Question.Service.ask (Effects) without losing the workspace
+          // / instance context.
           const bridge = yield* EffectBridge.make()
 
           const isWindows = process.platform === "win32"
@@ -97,15 +134,49 @@ export const BashInteractiveTool = Tool.define(
 
           registerProc(callID, { proc, sessionID: ctx.sessionID })
 
+          // Compile prompts up-front. `fired` ensures each prompt asks at
+          // most once per match; the agent re-adds the entry to handle a
+          // repeated prompt.
+          const compiled = prompts.map((p, i) => ({
+            id: i,
+            re: new RegExp(p.pattern, "i"),
+            question: p.question,
+            header: p.header,
+            fired: false,
+          }))
+
           let allOutput = ""
+          let scanBuffer = ""
+          let scanTimer: ReturnType<typeof setTimeout> | undefined
+          let scanning = false
+          let scanQueued = false
+          let killed = false
+          let userRejected = false
+
           let lastFlushAt = 0
+          let lastFlushedLen = 0
           let flushTimer: ReturnType<typeof setTimeout> | undefined
 
           const publishMetadata = () => {
             flushTimer = undefined
             lastFlushAt = Date.now()
+            lastFlushedLen = allOutput.length
             const snapshot = tail(allOutput, METADATA_OUTPUT_TAIL)
             bridge.fork(
+              ctx.metadata({
+                title: params.description ?? command,
+                metadata: { command, description: params.description, output: snapshot },
+              }),
+            )
+          }
+          const finalFlush = () => {
+            if (allOutput.length === lastFlushedLen) return
+            const snapshot = tail(allOutput, METADATA_OUTPUT_TAIL)
+            lastFlushedLen = allOutput.length
+            // Use bridge.promise so we can await the final metadata write and
+            // guarantee the renderer sees the trailing chunk before the tool
+            // returns its result.
+            return bridge.promise(
               ctx.metadata({
                 title: params.description ?? command,
                 metadata: { command, description: params.description, output: snapshot },
@@ -128,6 +199,59 @@ export const BashInteractiveTool = Tool.define(
             flushTimer = setTimeout(publishMetadata, METADATA_THROTTLE_MS - since)
           }
 
+          // Kicks off prompt scanning; reentrant — if a chunk arrives while we
+          // are awaiting the user's answer to a previous prompt, queue another
+          // scan to run after the current one resolves.
+          const scan = async () => {
+            if (scanning) {
+              scanQueued = true
+              return
+            }
+            scanning = true
+            try {
+              while (true) {
+                const haystack = scanBuffer.replace(STRIP_ANSI_RE, "")
+                const next = compiled.find((p) => !p.fired && p.re.test(haystack))
+                if (!next) break
+                next.fired = true
+                scanBuffer = ""
+                try {
+                  const answers = await bridge.promise(
+                    question.ask({
+                      sessionID: ctx.sessionID,
+                      questions: [
+                        {
+                          question: next.question,
+                          header: (next.header ?? next.question).slice(0, 30),
+                          options: [],
+                          multiple: false,
+                          custom: true,
+                        },
+                      ],
+                      tool: { messageID: ctx.messageID, callID },
+                    }),
+                  )
+                  const value = (answers[0]?.[0] ?? "").trim()
+                  if (!killed) {
+                    proc.write(value + "\r")
+                  }
+                } catch {
+                  // User dismissed the question — abort the command.
+                  userRejected = true
+                  killed = true
+                  try { proc.kill("SIGTERM") } catch {}
+                  return
+                }
+              }
+            } finally {
+              scanning = false
+              if (scanQueued) {
+                scanQueued = false
+                void scan()
+              }
+            }
+          }
+
           const result = yield* Effect.promise(
             () =>
               new Promise<{ output: string; exitCode: number; signal?: number | string; timedOut: boolean }>((resolve) => {
@@ -140,6 +264,10 @@ export const BashInteractiveTool = Tool.define(
                   if (flushTimer) {
                     clearTimeout(flushTimer)
                     flushTimer = undefined
+                  }
+                  if (scanTimer) {
+                    clearTimeout(scanTimer)
+                    scanTimer = undefined
                   }
                   try { dataDisp.dispose() } catch {}
                   try { exitDisp.dispose() } catch {}
@@ -156,6 +284,15 @@ export const BashInteractiveTool = Tool.define(
                   allOutput += chunk
                   appendOutput(callID, chunk)
                   scheduleFlush()
+
+                  if (compiled.length === 0) return
+                  scanBuffer += chunk
+                  if (scanBuffer.length > PROMPT_BUFFER_CAP) scanBuffer = scanBuffer.slice(-PROMPT_BUFFER_CAP)
+                  if (scanTimer) clearTimeout(scanTimer)
+                  scanTimer = setTimeout(() => {
+                    scanTimer = undefined
+                    void scan()
+                  }, PROMPT_DEBOUNCE_MS)
                 })
 
                 const exitDisp = proc.onExit(({ exitCode, signal }) => {
@@ -171,6 +308,19 @@ export const BashInteractiveTool = Tool.define(
           )
 
           unregisterProc(callID)
+          // Make sure any output produced after the last throttled flush
+          // (typical for short-lived commands that exit before the throttle
+          // window elapses) reaches the renderer before we return.
+          yield* Effect.promise(() => Promise.resolve(finalFlush()).catch(() => {}))
+
+          if (userRejected) {
+            const truncated = tail(result.output, 200_000)
+            return {
+              title: params.description ?? command.slice(0, 60),
+              output: `bash_interactive: user dismissed the prompt; the command was aborted.\n\n${truncated}`,
+              metadata: { command, description: params.description, output: truncated },
+            }
+          }
 
           if (result.timedOut) {
             const truncated = tail(result.output, 200_000)
@@ -198,5 +348,5 @@ export const BashInteractiveTool = Tool.define(
   }),
 )
 
-// expose for the HTTP /global/bash-interactive/:callID/{stdin,kill} routes
-export { writeInput, killProc as kill } from "./bash_interactive_runtime"
+// expose for the HTTP /global/bash-interactive/:callID/kill route
+export { killProc as kill } from "./bash_interactive_runtime"

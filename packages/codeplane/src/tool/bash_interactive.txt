@@ -1,19 +1,31 @@
 Run an interactive shell command and let the user answer prompts mid-execution.
 
-Use this when a CLI is going to ask the user for something at runtime — auth flows that need a one-time code or device-login URL pasted back, `gh auth login`, `npm login`, `vercel login`, `aws sso login`, package installers that prompt y/N, or any tool that pauses waiting on stdin. The agent describes the prompts ahead of time; while the command runs, the tool watches the output for each pattern, pauses, asks the user the question via the standard question dialog, and pipes the answer (followed by a newline) back into the command's stdin.
+Use this when a CLI is going to ask the user for something at runtime — auth flows that need a one-time code or device-login URL pasted back, `gh auth login`, `npm login`, `vercel login`, `aws sso login`, package installers that prompt y/N, or any tool that pauses waiting on stdin.
+
+How it works:
+- Spawns the command in a PTY (so CLIs that only prompt when stdin is a TTY work correctly).
+- Streams output live so the renderer shows the running terminal as it happens.
+- Watches for prompt patterns you declare; on match it pauses the loop, asks the user via the standard chat-side question dialog, and writes the user's answer (followed by \r) back into the PTY's stdin. The user never types directly into the terminal — every keystroke flows through this tool, so you stay in control.
+
+REQUIRED prep:
+1. Probe the command FIRST with the regular `bash` tool (or read the CLI's `--help` / docs) to learn what prompts it actually prints — verbatim. Don't guess.
+2. Then call `bash_interactive` with `prompts` covering each prompt you saw. The `pattern` is a JS regex matched case-insensitively against new PTY output; pick something distinctive enough to not match the surrounding chatter (e.g. "Enter the verification code:" not just "Enter").
+3. The `question` is shown verbatim in the chat dialog the user sees, so phrase it for the user, not for the model. The optional `header` is a ≤30-char label rendered above it.
+
+Each prompt fires AT MOST ONCE per match. If the same prompt appears twice (e.g. "Continue? [y/N]" asked for two files), include the entry twice — the second copy will fire on the second match.
 
 Differences from `bash`:
-- Spawns the command in a PTY (so CLIs that only prompt when stdin is a TTY work correctly).
-- Streams output in chunks so the prompt-detection loop can react.
-- Supports interactive prompts via the `prompts` parameter; each prompt has a regex pattern to match against new output and a question to ask the user when it matches. Answers are written to the process's stdin.
+- PTY-backed (real TTY).
+- Streams output as it happens via the message metadata channel — the renderer shows the running terminal live.
+- Mid-command user input via `prompts` instead of stdin redirection.
 
 Parameters:
 - command: the shell command line to run.
-- prompts: optional array of { pattern, question } pairs. `pattern` is a JS regex matched against new output (case-insensitive). `question` is the human-readable text shown to the user. Each prompt fires at most once per match — re-add it to handle repeated prompts.
+- prompts: array of { pattern, question, header? }. Required for any flow that pauses for user input.
 - timeout: ms to allow the command to run (default 120000, max 600000).
 - cwd: working directory.
 - description: short description shown in the UI.
 
-Returns the full captured output (stdout + stderr interleaved as the PTY produced it) and the exit code in metadata. The tool aborts and reports a timeout error if the command runs past `timeout`.
+Returns the full captured output (stdout + stderr interleaved as the PTY produced it) and the exit code in metadata. The tool aborts and reports an error if the command runs past `timeout` or the user dismisses a prompt.
 
 Don't use this for non-interactive commands — use `bash` instead. Don't use this for long-running servers — there's no streaming back to the model after exit.

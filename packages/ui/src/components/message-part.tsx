@@ -2095,43 +2095,10 @@ ToolRegistry.register({
       if (preRef) preRef.scrollTop = preRef.scrollHeight
     })
 
-    const [input, setInput] = createSignal("")
-    const [sending, setSending] = createSignal(false)
-    let inputRef: HTMLInputElement | undefined
-
-    const sendStdin = async (raw: string) => {
-      const id = props.callID
-      if (!id) return
-      const res = await fetch(`/global/bash-interactive/${encodeURIComponent(id)}/stdin`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: raw }),
-      })
-      if (!res.ok && res.status !== 404) {
-        const body = await res.text().catch(() => "")
-        throw new Error(`stdin failed (${res.status}): ${body.slice(0, 200)}`)
-      }
-    }
-
     const sendKill = async () => {
       const id = props.callID
       if (!id) return
       await fetch(`/global/bash-interactive/${encodeURIComponent(id)}/kill`, { method: "POST" }).catch(() => {})
-    }
-
-    const submit = async () => {
-      const value = input()
-      if (sending()) return
-      setSending(true)
-      try {
-        await sendStdin(value + "\r")
-        setInput("")
-        inputRef?.focus()
-      } catch (err) {
-        console.error("[bash_interactive] failed to send stdin", err)
-      } finally {
-        setSending(false)
-      }
     }
 
     return (
@@ -2179,40 +2146,15 @@ ToolRegistry.register({
             </pre>
           </div>
           <Show when={pending()}>
-            <form
-              data-slot="bash-interactive-input"
-              onSubmit={(e) => {
-                e.preventDefault()
-                void submit()
-              }}
-            >
-              <span data-slot="bash-interactive-prompt">›</span>
-              <input
-                ref={(el) => (inputRef = el)}
-                type="text"
-                autocomplete="off"
-                spellcheck={false}
-                value={input()}
-                onInput={(e) => setInput(e.currentTarget.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "c" && (e.ctrlKey || e.metaKey)) {
-                    e.preventDefault()
-                    void sendStdin("") // raw Ctrl+C to the PTY
-                  }
-                  if (e.key === "d" && (e.ctrlKey || e.metaKey)) {
-                    e.preventDefault()
-                    void sendStdin("") // raw Ctrl+D / EOF
-                  }
-                }}
-                placeholder={
-                  i18n.t("ui.tool.bashInteractive.placeholder") || "Type and press Enter to send to the running command…"
-                }
-                disabled={sending()}
-              />
+            <div data-slot="bash-interactive-status">
+              <span data-slot="bash-interactive-status-text">
+                {i18n.t("ui.tool.bashInteractive.waiting") ||
+                  "Live — input flows through the question dialog when the agent expects a prompt."}
+              </span>
               <button type="button" onClick={() => void sendKill()} title="SIGTERM the running command">
                 kill
               </button>
-            </form>
+            </div>
           </Show>
         </div>
       </BasicTool>
