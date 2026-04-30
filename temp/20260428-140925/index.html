@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tetris</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: 'Trebuchet MS', 'Gill Sans', 'Segoe UI', sans-serif;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: radial-gradient(circle at 20% 15%, #1f2444 0%, #090d21 50%, #050710 100%);
+        color: #e7ecff;
+      }
+
+      .board {
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: start;
+      }
+
+      canvas {
+        background: #061029;
+        border-radius: 16px;
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+      }
+
+      .hud {
+        width: 180px;
+        padding: 16px;
+        border-radius: 16px;
+        background: linear-gradient(155deg, #121936, #0a1030);
+        border: 1px solid rgba(151, 175, 255, 0.2);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+      }
+
+      h1 {
+        margin-top: 0;
+      }
+
+      .stat {
+        display: flex;
+        justify-content: space-between;
+        margin: 10px 0;
+      }
+
+      button {
+        margin-top: 8px;
+        width: 100%;
+        border: 0;
+        background: linear-gradient(130deg, #4b67ff, #6c88ff);
+        color: white;
+        font-size: 14px;
+        font-family: inherit;
+        border-radius: 10px;
+        padding: 8px;
+      }
+
+      .help {
+        font-size: 13px;
+        line-height: 1.4;
+        color: #a8b6ff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="board">
+      <canvas id="playfield" width="320" height="640" aria-label="Tetris playfield"></canvas>
+      <div class="hud">
+        <h1>Tetris</h1>
+        <div class="stat"><span>Score</span><strong id="score">0</strong></div>
+        <div class="stat"><span>Lines</span><strong id="lines">0</strong></div>
+        <div class="stat"><span>Level</span><strong id="level">1</strong></div>
+        <button id="reset">New Game</button>
+        <p class="help">Controls:<br />A/D: move, S: soft drop, W: rotate, Space: hard drop</p>
+      </div>
+    </div>
+
+    <script>
+      const canvas = document.getElementById('playfield')
+      const context = canvas.getContext('2d')
+      const scoreEl = document.getElementById('score')
+      const linesEl = document.getElementById('lines')
+      const levelEl = document.getElementById('level')
+      const resetBtn = document.getElementById('reset')
+
+      const COLS = 10
+      const ROWS = 20
+      const BLOCK = 32
+
+      const palette = [
+        '#000000',
+        '#0ea5e9',
+        '#facc15',
+        '#f97316',
+        '#84cc16',
+        '#a855f7',
+        '#ec4899',
+        '#ef4444',
+      ]
+
+      const shapes = {
+        I: [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]],
+        J: [[2, 0, 0], [2, 2, 2], [0, 0, 0]],
+        L: [[0, 0, 3], [3, 3, 3], [0, 0, 0]],
+        O: [[4, 4], [4, 4]],
+        S: [[0, 5, 5], [5, 5, 0], [0, 0, 0]],
+        T: [[0, 6, 0], [6, 6, 6], [0, 0, 0]],
+        Z: [[7, 7, 0], [0, 7, 7], [0, 0, 0]],
+      }
+
+      const pieceTypes = Object.keys(shapes)
+
+      const state = {
+        arena: createArena(),
+        piece: randomPiece(),
+        score: 0,
+        lines: 0,
+        level: 1,
+        dropInterval: 700,
+        dropCounter: 0,
+        lastTime: 0,
+        running: true,
+      }
+
+      function createArena() {
+        return Array.from({ length: ROWS }, () => Array.from({ length: COLS }, () => 0))
+      }
+
+      function randomPiece() {
+        const type = pieceTypes[Math.floor(Math.random() * pieceTypes.length)]
+        const matrix = shapes[type].map((row) => [...row])
+
+        return {
+          matrix,
+          x: Math.floor(COLS / 2) - Math.ceil(matrix[0].length / 2),
+          y: -1,
+        }
+      }
+
+      function draw() {
+        context.fillStyle = '#061029'
+        context.fillRect(0, 0, canvas.width, canvas.height)
+
+        drawGrid(state.arena, 0, 0)
+        drawGrid(state.piece.matrix, state.piece.x, state.piece.y)
+      }
+
+      function drawGrid(matrix, offsetX, offsetY) {
+        matrix.forEach((row, y) =>
+          row.forEach((value, x) => {
+            if (!value) return
+            const px = (x + offsetX) * BLOCK
+            const py = (y + offsetY) * BLOCK
+            if (py < 0) return
+
+            context.fillStyle = palette[value]
+            context.fillRect(px, py, BLOCK, BLOCK)
+
+            context.strokeStyle = 'rgba(255,255,255,0.2)'
+            context.lineWidth = 2
+            context.strokeRect(px, py, BLOCK, BLOCK)
+          }),
+        )
+      }
+
+      function merge() {
+        state.piece.matrix.forEach((row, y) =>
+          row.forEach((value, x) => {
+            if (!value) return
+
+            const ax = x + state.piece.x
+            const ay = y + state.piece.y
+            if (ay < 0) {
+              state.running = false
+              return
+            }
+
+            state.arena[ay][ax] = value
+          }),
+        )
+      }
+
+      function collide(nextX = state.piece.x, nextY = state.piece.y, matrix = state.piece.matrix) {
+        return matrix.some((row, y) =>
+          row.some((value, x) => {
+            if (!value) return false
+            const nx = x + nextX
+            const ny = y + nextY
+            if (nx < 0 || nx >= COLS || ny >= ROWS) return true
+            if (ny < 0) return false
+            return state.arena[ny][nx] !== 0
+          }),
+        )
+      }
+
+      function rotate(matrix) {
+        return matrix[0].map((_, i) => matrix.map((row) => row[matrix.length - i - 1]))
+      }
+
+      function drop() {
+        state.piece.y += 1
+        if (!collide()) {
+          draw()
+          return
+        }
+
+        state.piece.y -= 1
+        merge()
+        if (!state.running) return endGame()
+        state.piece = randomPiece()
+        if (collide()) {
+          state.running = false
+          return endGame()
+        }
+        clearLines()
+      }
+
+      function hardDrop() {
+        while (!collide(state.piece.x, state.piece.y + 1)) {
+          state.piece.y += 1
+          state.score += 2
+        }
+        merge()
+        if (!state.running) return endGame()
+        state.piece = randomPiece()
+        clearLines()
+      }
+
+      function clearLines() {
+        const fullRows = []
+
+        state.arena.forEach((row, y) => {
+          const complete = row.every((cell) => cell !== 0)
+          if (complete) fullRows.push(y)
+        })
+
+        fullRows.forEach((row) => {
+          state.arena.splice(row, 1)
+          state.arena.unshift(Array.from({ length: COLS }, () => 0))
+          state.lines += 1
+          state.score += 100 * state.level
+          if (state.lines % 10 === 0) {
+            state.level += 1
+            state.dropInterval = Math.max(90, 700 - (state.level - 1) * 70)
+          }
+        })
+
+        scoreEl.textContent = String(state.score)
+        linesEl.textContent = String(state.lines)
+        levelEl.textContent = String(state.level)
+      }
+
+      function move(offset) {
+        state.piece.x += offset
+        if (collide()) state.piece.x -= offset
+      }
+
+      function rotatePiece() {
+        const rotated = rotate(state.piece.matrix)
+        const original = state.piece.matrix
+        state.piece.matrix = rotated
+        if (collide()) {
+          state.piece.matrix = original
+        }
+      }
+
+      function update(time = 0) {
+        if (!state.running) return
+
+        const delta = time - state.lastTime
+        state.lastTime = time
+        state.dropCounter += delta
+
+        if (state.dropCounter > state.dropInterval) {
+          state.dropCounter = 0
+          drop()
+        }
+
+        draw()
+        requestAnimationFrame(update)
+      }
+
+      function reset() {
+        state.arena = createArena()
+        state.piece = randomPiece()
+        state.score = 0
+        state.lines = 0
+        state.level = 1
+        state.dropInterval = 700
+        state.dropCounter = 0
+        state.running = true
+        state.lastTime = 0
+        scoreEl.textContent = '0'
+        linesEl.textContent = '0'
+        levelEl.textContent = '1'
+        draw()
+        requestAnimationFrame(update)
+      }
+
+      function endGame() {
+        state.running = false
+        context.fillStyle = 'rgba(4, 8, 24, 0.8)'
+        context.fillRect(0, 0, canvas.width, canvas.height)
+        context.fillStyle = '#f8fbff'
+        context.font = 'bold 42px Trebuchet MS'
+        context.textAlign = 'center'
+        context.fillText('Game Over', canvas.width / 2, canvas.height / 2)
+      }
+
+      window.addEventListener('keydown', (event) => {
+        if (!state.running) return
+
+        if (event.key === 'a' || event.key === 'ArrowLeft') {
+          event.preventDefault()
+          move(-1)
+          draw()
+        }
+
+        if (event.key === 'd' || event.key === 'ArrowRight') {
+          event.preventDefault()
+          move(1)
+          draw()
+        }
+
+        if (event.key === 's' || event.key === 'ArrowDown') {
+          event.preventDefault()
+          drop()
+        }
+
+        if (event.key === 'w' || event.key.toLowerCase() === 'w' || event.key === 'ArrowUp') {
+          event.preventDefault()
+          rotatePiece()
+          draw()
+        }
+
+        if (event.code === 'Space') {
+          event.preventDefault()
+          hardDrop()
+          draw()
+        }
+      })
+
+      resetBtn.addEventListener('click', reset)
+
+      reset()
+    </script>
+  </body>
+</html>

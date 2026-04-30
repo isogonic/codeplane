@@ -1,0 +1,130 @@
+:root {
+  --bg: #08152d;
+  --panel: #101f46;
+  --text: #e6efff;
+  --muted: #9fb0da;
+  --line: #27437b;
+  --accent: #77e2ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  font-family: "Trebuchet MS", "Avenir Next", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at 10% 10%, #2f4bcf26, transparent 30%),
+    radial-gradient(circle at 95% 0%, #08e0ff2c, transparent 28%),
+    linear-gradient(140deg, #060f29, var(--bg));
+}
+
+.game-shell {
+  width: min(980px, 92vw);
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 1rem;
+}
+
+.board-panel,
+.side-panel {
+  border: 1px solid #334b8d;
+  border-radius: 12px;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--panel) 92%, #ffffff10);
+  box-shadow: 0 16px 35px #0000004f;
+}
+
+h1,
+h2 {
+  margin: 0 0 0.75rem;
+}
+
+.board-panel {
+  display: grid;
+  justify-items: center;
+}
+
+.board {
+  width: 300px;
+  height: 600px;
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  grid-template-rows: repeat(20, 1fr);
+  border: 2px solid #4960a8;
+  background:
+    repeating-linear-gradient(to right, #0a17542f 0 1px, transparent 1px 29px),
+    repeating-linear-gradient(to bottom, #0a17542f 0 1px, transparent 1px 29px),
+    #0a1945;
+  margin-bottom: 0.8rem;
+}
+
+.cell {
+  border: 1px solid #12205a;
+  transition: background-color 80ms linear;
+}
+
+.filled {
+  animation: pop 120ms ease-out;
+}
+
+@keyframes pop {
+  from { transform: scale(0.94); }
+  to { transform: scale(1); }
+}
+
+.status {
+  margin: 0;
+  color: var(--muted);
+}
+
+.side-panel {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.metric {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.metric strong {
+  color: var(--accent);
+}
+
+.next {
+  width: 140px;
+  height: 108px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  border: 1px dashed #41599e;
+  background: #0d1740;
+}
+
+.side-panel ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--muted);
+}
+
+li {
+  margin: 0.2rem 0;
+}
+
+@media (max-width: 800px) {
+  .game-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .board {
+    width: min(95vw, 340px);
+    height: min(70vh, 640px);
+  }
+}

@@ -1,0 +1,131 @@
+* {
+  box-sizing: border-box;
+  font-family: "Trebuchet MS", "Verdana", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at 20% 0%, #24345f 0%, #0c1130 48%, #060915 100%);
+  color: #e8eefc;
+  display: grid;
+  place-items: center;
+}
+
+.app-shell {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  padding: 20px;
+}
+
+.hud,
+.playfield-wrap {
+  background: rgba(13, 20, 45, 0.86);
+  border: 1px solid rgba(130, 170, 255, 0.35);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 32px;
+  letter-spacing: 0.04em;
+}
+
+.subtitle {
+  margin: 8px 0;
+  color: #adbbff;
+  font-weight: 700;
+}
+
+#next {
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  border: 1px solid rgba(130, 170, 255, 0.35);
+  margin-bottom: 14px;
+  image-rendering: pixelated;
+  background: #0d1330;
+}
+
+.stats {
+  margin: 0;
+}
+
+.stats div {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 8px;
+}
+
+.stats dt {
+  margin: 0;
+}
+
+.stats dd {
+  margin: 0;
+  color: #d3dcff;
+}
+
+.hint-list p {
+  margin: 4px 0;
+  color: #b6c4ff;
+  font-size: 13px;
+}
+
+button {
+  margin-top: 14px;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  background: linear-gradient(150deg, #3f78ff 0%, #8a53ff 100%);
+  color: #fff;
+}
+
+.playfield-wrap {
+  position: relative;
+  padding: 12px;
+}
+
+#board {
+  width: 300px;
+  height: 600px;
+  image-rendering: pixelated;
+  border-radius: 8px;
+  display: block;
+  border: 2px solid rgba(147, 201, 255, 0.75);
+  background: #090d23;
+}
+
+.overlay {
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  transform: translateX(-50%);
+  background: rgba(255, 86, 86, 0.9);
+  border: 1px solid rgba(255, 200, 200, 0.8);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.hidden {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  #board {
+    width: min(92vw, 360px);
+    height: calc(min(92vw, 360px) * 2);
+  }
+}

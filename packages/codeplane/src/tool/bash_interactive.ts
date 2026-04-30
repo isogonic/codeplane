@@ -27,6 +27,10 @@ const OAUTH_AUTHORIZE_RE =
   /https?:\/\/\S*(?:\/oauth\/authorize|\/cai\/oauth\/authorize)\S*(?:code=true|response_type=code)|https?:\/\/\S*(?:code=true|response_type=code)\S*(?:\/oauth\/authorize|\/cai\/oauth\/authorize)/i
 const STDIN_PROMPT_RE =
   /(?:^|\n)\s*(?:paste|enter|input|type|provide).{0,80}(?:code|token|password|otp|passcode).{0,80}[:>]\s*$/i
+const STDIN_PROMPT_LINE_RE =
+  /(?:^|\n)\s*([^\n]{0,220}(?:(?:(?:paste|enter|input|type|provide)[^\n]{0,120}(?:code|token|password|otp|passcode))|(?:(?:code|token|password|otp|passcode)[^\n]{0,120}(?:paste|enter|input|type|provide)))[^\n]{0,80}[:>]\s*)$/i
+const URL_CONTINUATION_RE = /^[A-Za-z0-9._~:/?#[\]@!$&'()*+,;=%-]+$/
+const URL_WRAP_RE = /^[?&=#%_.-]|^.{24,}$/
 const PromptEntry = Schema.Struct({
   pattern: Schema.String.annotate({
     description: "JS regex source (no leading/trailing slashes) matched case-insensitively against new output.",
@@ -76,8 +80,45 @@ function tail(value: string, max: number): string {
   return value.slice(-max)
 }
 
-function isBrowserOnlyOAuth(value: string): boolean {
-  return OAUTH_AUTHORIZE_RE.test(value) && !STDIN_PROMPT_RE.test(value)
+function extractBrowserOAuthUrl(value: string): string | undefined {
+  const lines = value
+    .replace(STRIP_ANSI_RE, "")
+    .replace(/\r/g, "")
+    .split("\n")
+
+  for (let i = 0; i < lines.length; i++) {
+    const start = lines[i]?.search(/https?:\/\//i) ?? -1
+    if (start < 0) continue
+
+    let url = lines[i]!.slice(start).trim()
+    for (const line of lines.slice(i + 1)) {
+      const next = line.trim()
+      if (!next || !URL_CONTINUATION_RE.test(next) || !URL_WRAP_RE.test(next)) break
+      url += next
+    }
+
+    url = url.replace(/[.,;:!?)\]}'"]+$/, "")
+    if (OAUTH_AUTHORIZE_RE.test(url)) return url
+  }
+}
+
+function browserOnlyOAuthUrl(value: string): string | undefined {
+  const url = extractBrowserOAuthUrl(value)
+  if (!url) return
+  if (STDIN_PROMPT_RE.test(value.replace(STRIP_ANSI_RE, ""))) return
+  return url
+}
+
+function autoStdinPrompt(value: string): string | undefined {
+  const match = value.replace(STRIP_ANSI_RE, "").replace(/\r/g, "\n").match(STDIN_PROMPT_LINE_RE)
+  return match?.[1]?.trim()
+}
+
+function autoStdinHeader(prompt: string): string {
+  if (/password/i.test(prompt)) return "Password"
+  if (/token/i.test(prompt)) return "Token"
+  if (/(otp|passcode|code)/i.test(prompt)) return "Auth code"
+  return "Input"
 }
 
 export const BashInteractiveTool = Tool.define(
@@ -161,6 +202,7 @@ export const BashInteractiveTool = Tool.define(
           let scanQueued = false
           let killed = false
           let userRejected = false
+          let oauthPrompted = false
 
           let lastFlushAt = 0
           let lastFlushedLen = 0
@@ -223,6 +265,12 @@ export const BashInteractiveTool = Tool.define(
             scanBuffer = ""
           }
 
+          // cleanup() inside the Promise toggles this so the question catch
+          // handlers can tell whether a question rejection is the user
+          // actively dismissing or the orphan-cleanup fired after the proc has
+          // already exited. Wrapped in an object so both sides share it.
+          const cleanedRef: { cleaned: boolean } = { cleaned: false }
+
           const askInput = async (question_: string, header: string) => {
             try {
               const answers = await bridge.promise(
@@ -260,6 +308,49 @@ export const BashInteractiveTool = Tool.define(
             }
           }
 
+          const askBrowserOAuth = async (url: string) => {
+            try {
+              await bridge.promise(
+                question.ask({
+                  sessionID: ctx.sessionID,
+                  questions: [
+                    {
+                      question: [
+                        "Complete this CLI sign-in in the browser.",
+                        "",
+                        "The terminal is waiting for the OAuth browser callback, not for typed terminal input.",
+                        "",
+                        "If the browser did not open, open this URL:",
+                        url,
+                        "",
+                        "After the browser flow finishes, the terminal should continue automatically.",
+                      ].join("\n"),
+                      header: "Browser sign-in",
+                      options: [
+                        {
+                          label: "I completed sign-in",
+                          description: "Continue waiting for the browser callback",
+                        },
+                      ],
+                      multiple: false,
+                      custom: false,
+                    },
+                  ],
+                  tool: { messageID: ctx.messageID, callID },
+                }),
+              )
+              return true
+            } catch {
+              if (cleanedRef.cleaned) return false
+              userRejected = true
+              killed = true
+              try {
+                proc.kill("SIGTERM")
+              } catch {}
+              return false
+            }
+          }
+
           const recentOutputSnapshot = () => {
             const recent = tail(allOutput.replace(STRIP_ANSI_RE, ""), 2048)
             const lines = recent.split(/\r?\n/).filter((line) => line.trim().length > 0)
@@ -267,12 +358,6 @@ export const BashInteractiveTool = Tool.define(
               tail: lines.slice(-6).join("\n"),
             }
           }
-
-          // cleanup() inside the Promise toggles this so the askInput catch
-          // handler can tell whether a question rejection is the user actively
-          // dismissing or the orphan-cleanup the tool fires when the proc has
-          // already exited. Wrapped in an object so both sides share it.
-          const cleanedRef: { cleaned: boolean } = { cleaned: false }
 
           // Kicks off prompt scanning; reentrant — if a chunk arrives while we
           // are awaiting the user's answer to a previous prompt, queue another
@@ -286,11 +371,27 @@ export const BashInteractiveTool = Tool.define(
             try {
               while (true) {
                 const haystack = scanBuffer.replace(STRIP_ANSI_RE, "")
-                const next = compiled.find((p) => !p.fired && p.re.test(haystack))
-                if (!next) break
-                if (isBrowserOnlyOAuth(haystack)) {
+                const oauthUrl = oauthPrompted ? undefined : browserOnlyOAuthUrl(haystack)
+                if (oauthUrl) {
+                  oauthPrompted = true
                   scanBuffer = ""
-                  break
+                  const ok = await askBrowserOAuth(oauthUrl)
+                  if (!ok) return
+                  continue
+                }
+
+                const next = compiled.find((p) => !p.fired && p.re.test(haystack))
+                if (!next) {
+                  const autoPrompt = autoStdinPrompt(haystack)
+                  if (!autoPrompt) break
+                  scanBuffer = ""
+                  const { tail: head } = recentOutputSnapshot()
+                  const enriched = head
+                    ? `The command is waiting for terminal input at this prompt: ${autoPrompt}\n\n— Recent terminal output —\n${head}\n\nThe agent will send your answer into the running terminal.`
+                    : `The command is waiting for terminal input at this prompt: ${autoPrompt}\n\nThe agent will send your answer into the running terminal.`
+                  const ok = await askInput(enriched, autoStdinHeader(autoPrompt))
+                  if (!ok) return
+                  continue
                 }
                 next.fired = true
                 scanBuffer = ""

@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tetris</title>
+  <style>
+    :root {
+      --bg-dark: #0f0d24;
+      --panel: #1f1a3a;
+      --text: #f6f6ff;
+      --line: #5b3cff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      color: var(--text);
+      font-family: "Trebuchet MS", "Segoe UI", "Fira Sans", sans-serif;
+      background:
+        radial-gradient(circle at 10% 20%, #2a2360, transparent 45%),
+        radial-gradient(circle at 90% 80%, #1b0e35, transparent 35%),
+        linear-gradient(160deg, #0b0820, #1d1630 45%, #151024);
+    }
+
+    .game-wrap {
+      width: min(90vw, 840px);
+      display: grid;
+      grid-template-columns: 1fr 170px;
+      gap: 1.2rem;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    .panel {
+      position: relative;
+      border: 2px solid #3a2a70;
+      border-radius: 12px;
+      background: #090816;
+      padding: 0.9rem;
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4);
+      overflow: hidden;
+    }
+
+    @media (max-width: 760px) {
+      .game-wrap {
+        grid-template-columns: 1fr;
+        width: min(95vw, 380px);
+      }
+
+      .hud {
+        order: 2;
+      }
+    }
+
+    .board {
+      width: 100%;
+      aspect-ratio: 1 / 2;
+      border: 3px solid #7c67db;
+      border-radius: 10px;
+      background: var(--panel);
+    }
+
+    .hud {
+      border: 2px solid #3a2a70;
+      border-radius: 12px;
+      background: var(--panel);
+      padding: 0.9rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      letter-spacing: 0.06em;
+    }
+
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.95rem;
+    }
+
+    .line {
+      width: 100%;
+      height: 1px;
+      background: #3a2a70;
+      margin: 0.25rem 0;
+    }
+
+    canvas {
+      image-rendering: pixelated;
+    }
+
+    #status {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: 1.8rem;
+      background: rgba(11, 8, 28, 0.86);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 180ms ease;
+      text-align: center;
+    }
+
+    #status.show {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .keys {
+      margin-top: 0.3rem;
+      color: #ddd9ff;
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+
+    kbd {
+      padding: 0.05rem 0.35rem;
+      border: 1px solid #7460c5;
+      border-bottom-width: 3px;
+      border-radius: 6px;
+      background: #2c2553;
+      font-size: 0.78rem;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="game-wrap">
+    <div class="panel">
+      <canvas id="board" class="board" width="300" height="600"></canvas>
+      <div id="status" class="show"></div>
+    </div>
+
+    <aside class="hud">
+      <h1>Tetris</h1>
+      <div class="metric"><span>Score</span><strong id="score">0</strong></div>
+      <div class="metric"><span>Lines</span><strong id="lines">0</strong></div>
+      <div class="metric"><span>Level</span><strong id="level">1</strong></div>
+      <div class="metric"><span>State</span><strong id="state">Ready</strong></div>
+      <div class="line"></div>
+      <p class="keys">
+        <kbd>←</kbd> <kbd>→</kbd> move
+        <br />
+        <kbd>↑</kbd> rotate
+        <br />
+        <kbd>↓</kbd> soft drop
+        <br />
+        <kbd>Space</kbd> hard drop
+        <br />
+        <kbd>P</kbd> pause
+      </p>
+    </aside>
+  </div>
+
+  <script>
+    const board = document.getElementById("board")
+    const ctx = board.getContext("2d")
+    const status = document.getElementById("status")
+    const scoreEl = document.getElementById("score")
+    const linesEl = document.getElementById("lines")
+    const levelEl = document.getElementById("level")
+    const stateEl = document.getElementById("state")
+
+    const SIZE = 30
+    const COLS = 10
+    const ROWS = 20
+    const dropspeedBase = 850
+    const linePoints = [0, 40, 100, 300, 1200]
+
+    const palette = {
+      I: "#59f9ff",
+      J: "#5865f9",
+      L: "#ff9f43",
+      O: "#f0df72",
+      S: "#56cc9d",
+      T: "#cf58f9",
+      Z: "#ff4f6f"
+    }
+
+    const colorByValue = {
+      1: palette.I,
+      2: palette.J,
+      3: palette.L,
+      4: palette.O,
+      5: palette.S,
+      6: palette.T,
+      7: palette.Z
+    }
+
+    const pieces = {
+      I: [[1, 1, 1, 1]],
+      J: [[2, 0, 0], [2, 2, 2]],
+      L: [[0, 0, 3], [3, 3, 3]],
+      O: [[4, 4], [4, 4]],
+      S: [[0, 5, 5], [5, 5, 0]],
+      T: [[0, 6, 0], [6, 6, 6]],
+      Z: [[7, 7, 0], [0, 7, 7]],
+    }
+
+    const keys = Object.keys(pieces)
+    const empty = () => Array.from({ length: ROWS }, () => Array.from({ length: COLS }, () => 0))
+
+    const game = {
+      grid: empty(),
+      score: 0,
+      lines: 0,
+      level: 1,
+      dropCounter: 0,
+      dropInterval: dropspeedBase,
+      lastTime: 0,
+      running: true,
+      paused: false,
+      over: false,
+      piece: null
+    }
+
+    const clone = (value) => value.map((row) => [...row])
+
+    const createPiece = () => {
+      const key = keys[Math.floor(Math.random() * keys.length)]
+      return {
+        name: key,
+        shape: clone(pieces[key]),
+        x: Math.floor(COLS / 2) - Math.ceil(pieces[key][0].length / 2),
+        y: 0
+      }
+    }
+
+    const intersects = (piece) =>
+      piece.shape.some((row, y) =>
+        row.some((value, x) => {
+          if (!value) return false
+          const gx = piece.x + x
+          const gy = piece.y + y
+          return gx < 0 || gx >= COLS || gy >= ROWS || (gy >= 0 && game.grid[gy][gx])
+        })
+      )
+
+    const rotate = (matrix) => matrix[0].map((_, i) => matrix.map((row) => row[i]).reverse())
+
+    const dropPiece = () => {
+      game.piece.y += 1
+      if (intersects(game.piece)) {
+        game.piece.y -= 1
+        placePiece()
+        resetPiece()
+      }
+    }
+
+    const move = (direction) => {
+      if (!game.running || game.paused || game.over) return
+      game.piece.x += direction
+      if (intersects(game.piece)) game.piece.x -= direction
+    }
+
+    const rotatePiece = () => {
+      if (!game.running || game.paused || game.over) return
+
+      const rotated = rotate(game.piece.shape)
+      const original = game.piece.shape
+
+      const offsets = [0, -1, 1, -2, 2]
+      for (const offset of offsets) {
+        game.piece.shape = rotated
+        game.piece.x += offset
+        if (!intersects(game.piece)) return
+        game.piece.x -= offset
+      }
+
+      game.piece.shape = original
+    }
+
+    const hardDrop = () => {
+      if (!game.running || game.paused || game.over) return
+      while (!intersects(game.piece)) game.piece.y += 1
+      game.piece.y -= 1
+      placePiece()
+      resetPiece()
+    }
+
+    const placePiece = () => {
+      game.piece.shape.forEach((row, y) => {
+        row.forEach((value, x) => {
+          if (value) game.grid[game.piece.y + y][game.piece.x + x] = value
+        })
+      })
+      clearLines()
+    }
+
+    const clearLines = () => {
+      let cleared = 0
+
+      for (let y = game.grid.length - 1; y >= 0; y--) {
+        const full = game.grid[y].every((cell) => cell)
+        if (!full) continue
+
+        game.grid.splice(y, 1)
+        game.grid.unshift(Array.from({ length: COLS }, () => 0))
+        cleared += 1
+        y += 1
+      }
+
+      if (cleared === 0) return
+
+      game.lines += cleared
+      game.score += linePoints[cleared] * game.level
+      game.level = Math.floor(game.lines / 10) + 1
+      game.dropInterval = Math.max(140, dropspeedBase - (game.level - 1) * 70)
+
+      scoreEl.textContent = String(game.score)
+      linesEl.textContent = String(game.lines)
+      levelEl.textContent = String(game.level)
+    }
+
+    const resetPiece = () => {
+      game.piece = createPiece()
+      if (intersects(game.piece)) game.over = true
+    }
+
+    const paintGrid = () => {
+      game.grid.forEach((row, y) => {
+        row.forEach((value, x) => {
+          fill(x, y, value)
+        })
+      })
+      game.piece.shape.forEach((row, y) => {
+        row.forEach((value, x) => {
+          if (value) fill(game.piece.x + x, game.piece.y + y, value)
+        })
+      })
+    }
+
+    const fill = (x, y, value) => {
+      const px = x * SIZE
+      const py = y * SIZE
+      ctx.fillStyle = value ? colorFor(value) : "transparent"
+      ctx.strokeStyle = value ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.08)"
+      ctx.fillRect(px + 1, py + 1, SIZE - 2, SIZE - 2)
+      ctx.strokeRect(px + 1.5, py + 1.5, SIZE - 3, SIZE - 3)
+
+      if (!value) return
+      ctx.fillStyle = "rgba(255,255,255,0.28)"
+      ctx.fillRect(px + 6, py + 6, SIZE - 12, 6)
+      ctx.fillRect(px + 6, py + 18, SIZE - 12, 4)
+    }
+
+    const colorFor = (value) => {
+      return colorByValue[value]
+    }
+
+    const render = () => {
+      ctx.clearRect(0, 0, board.width, board.height)
+      ctx.fillStyle = "#090816"
+      ctx.fillRect(0, 0, board.width, board.height)
+      paintGrid()
+
+      for (let x = 1; x < COLS; x++) {
+        ctx.strokeStyle = "rgba(255,255,255,0.05)"
+        ctx.beginPath()
+        ctx.moveTo(x * SIZE, 0)
+        ctx.lineTo(x * SIZE, board.height)
+        ctx.stroke()
+      }
+      for (let y = 1; y < ROWS; y++) {
+        ctx.strokeStyle = "rgba(255,255,255,0.05)"
+        ctx.beginPath()
+        ctx.moveTo(0, y * SIZE)
+        ctx.lineTo(board.width, y * SIZE)
+        ctx.stroke()
+      }
+
+      status.textContent = game.over
+        ? "GAME OVER"
+        : game.paused
+        ? "PAUSED"
+        : game.running
+        ? ""
+        : "READY"
+      status.classList.toggle("show", game.over || game.paused)
+      stateEl.textContent = game.over ? "Over" : game.paused ? "Paused" : "Running"
+    }
+
+    const loop = (timestamp) => {
+      const delta = timestamp - game.lastTime
+      game.lastTime = timestamp
+      game.dropCounter += delta
+      if (!game.over && !game.paused && game.dropCounter > game.dropInterval) {
+        dropPiece()
+        game.dropCounter = 0
+      }
+
+      render()
+      requestAnimationFrame(loop)
+    }
+
+    const start = () => {
+      game.piece = createPiece()
+      if (!game.piece) return
+      status.classList.remove("show")
+      game.running = true
+      render()
+      requestAnimationFrame(loop)
+    }
+
+    document.addEventListener("keydown", (event) => {
+      if (game.over) return
+
+      if (event.key === "p" || event.key === "P") {
+        game.paused = !game.paused
+        status.classList.toggle("show", game.paused)
+        return
+      }
+
+      if (!game.running || game.paused) return
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault()
+        move(-1)
+      }
+      if (event.key === "ArrowRight") {
+        event.preventDefault()
+        move(1)
+      }
+      if (event.key === "ArrowDown") {
+        event.preventDefault()
+        dropPiece()
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault()
+        rotatePiece()
+      }
+      if (event.key === " ") {
+        event.preventDefault()
+        hardDrop()
+      }
+    })
+
+    start()
+  </script>
+</body>
+</html>

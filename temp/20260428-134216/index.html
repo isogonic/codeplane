@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Classic Tetris</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main>
+      <section class="panel">
+        <h1>Classic Tetris</h1>
+        <p class="controls">Controls: Left/Right move, Up rotate, Down soft drop, Space hard drop, P pause, R restart</p>
+        <ul class="stats" aria-label="game stats">
+          <li>Score: <strong id="score">0</strong></li>
+          <li>Lines: <strong id="lines">0</strong></li>
+          <li>Level: <strong id="level">1</strong></li>
+        </ul>
+        <canvas id="board" width="300" height="600" role="img" aria-label="Tetris board"></canvas>
+        <button id="restart">Restart</button>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

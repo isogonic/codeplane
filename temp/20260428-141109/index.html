@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tetris</title>
+    <style>
+      :root {
+        --bg: #060917;
+        --panel: #121a36;
+        --panel-soft: #0f1735;
+        --text: #ecf1ff;
+        --muted: #9aa6cb;
+        --accent: #74ffd0;
+        --accent-2: #72d2ff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Trebuchet MS", "Trebuchet", "Segoe UI", sans-serif;
+        color: var(--text);
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at 18% 12%, rgba(114, 210, 255, 0.24), transparent 40%),
+          radial-gradient(circle at 88% 12%, rgba(114, 255, 208, 0.15), transparent 32%),
+          linear-gradient(160deg, #08112b, var(--bg));
+      }
+
+      .screen {
+        width: min(100%, 920px);
+        padding: 16px;
+        display: grid;
+        gap: 16px;
+      }
+
+      .hud {
+        background: color-mix(in srgb, var(--panel) 82%, transparent);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 18px;
+        padding: 14px;
+        box-shadow: 0 22px 48px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(4px);
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        color: var(--accent);
+        letter-spacing: 0.12em;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: start;
+        gap: 14px;
+      }
+
+      canvas {
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 14px;
+        background: #050814;
+        width: 300px;
+        height: 600px;
+        display: block;
+      }
+
+      .side {
+        width: 200px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .card {
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 14px;
+        padding: 10px 12px;
+        background: var(--panel-soft);
+      }
+
+      .stats {
+        display: grid;
+        gap: 8px;
+      }
+
+      .stat {
+        display: flex;
+        justify-content: space-between;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .stat span {
+        color: var(--text);
+        font-weight: 700;
+      }
+
+      .title {
+        color: var(--accent-2);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin: 2px 0 8px;
+        font-size: 12px;
+      }
+
+      .next {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto;
+        display: block;
+        background: #050814;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 10px;
+      }
+
+      .hint {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      button {
+        margin-top: 8px;
+        width: 100%;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 10px;
+        background: transparent;
+        color: var(--text);
+        padding: 8px;
+        cursor: pointer;
+      }
+
+      .overlay {
+        position: fixed;
+        inset: 0;
+        display: none;
+        place-items: center;
+        background: rgba(4, 8, 20, 0.82);
+        backdrop-filter: blur(2px);
+      }
+
+      .overlay.show {
+        display: grid;
+      }
+
+      .overlay .panel {
+        width: min(90%, 320px);
+        border: 1px solid rgba(114, 255, 208, 0.45);
+        border-radius: 14px;
+        padding: 14px;
+        text-align: center;
+        background: var(--panel);
+      }
+
+      .overlay h2 {
+        margin: 0;
+      }
+
+      @media (max-width: 760px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .side {
+          width: 100%;
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="hud">
+      <h1>Tetris</h1>
+      <div class="layout">
+        <canvas id="board" width="300" height="600"></canvas>
+
+        <div class="side">
+          <div class="card">
+            <div class="title">Score</div>
+            <div class="stats">
+              <div class="stat"><span>Score</span><strong id="score">0</strong></div>
+              <div class="stat"><span>Lines</span><strong id="lines">0</strong></div>
+              <div class="stat"><span>Level</span><strong id="level">1</strong></div>
+              <div class="stat"><span>Best</span><strong id="best">0</strong></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="title">Next</div>
+            <canvas id="next" class="next" width="120" height="120"></canvas>
+          </div>
+
+          <div class="card">
+            <p class="hint">Move: A/D or ← →<br/>Rotate: W/↑</p>
+            <p class="hint">Soft drop: S/↓ · Hard drop: Space · Restart: R</p>
+            <button id="restart">Restart</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <section id="overlay" class="overlay">
+      <div class="panel">
+        <h2 id="overlay-title">Game Over</h2>
+        <p id="overlay-message">Press Enter or Restart to begin.</p>
+        <button id="overlay-restart">Restart</button>
+      </div>
+    </section>
+
+    <script>
+      const COLORS = [
+        null,
+        "#4d9eff",
+        "#ffcc4d",
+        "#66f19f",
+        "#ff7ad5",
+        "#b38fff",
+        "#ff8f4f",
+        "#45e7d2",
+      ]
+
+      const SHAPES = [
+        [[1, 1, 1, 1]],
+        [[1, 1], [1, 1]],
+        [[0, 1, 0], [1, 1, 1]],
+        [[1, 0, 0], [1, 1, 1]],
+        [[0, 0, 1], [1, 1, 1]],
+        [[1, 1, 0], [0, 1, 1]],
+        [[0, 1, 1], [1, 1, 0]],
+      ]
+
+      const COLUMNS = 10
+      const ROWS = 20
+      const CELL = 30
+
+      const boardCanvas = document.getElementById("board")
+      const boardCtx = boardCanvas.getContext("2d")
+      const nextCanvas = document.getElementById("next")
+      const nextCtx = nextCanvas.getContext("2d")
+      const scoreEl = document.getElementById("score")
+      const linesEl = document.getElementById("lines")
+      const levelEl = document.getElementById("level")
+      const bestEl = document.getElementById("best")
+      const restartButton = document.getElementById("restart")
+      const overlay = document.getElementById("overlay")
+      const overlayTitle = document.getElementById("overlay-title")
+      const overlayMessage = document.getElementById("overlay-message")
+      const overlayRestart = document.getElementById("overlay-restart")
+
+      const grid = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(0))
+      const piece = { shape: null, color: 0, x: 0, y: 0 }
+      let score = 0
+      let lines = 0
+      let level = 1
+      let timer = 0
+      let last = 0
+      let done = false
+      let next = null
+      let best = Number(localStorage.getItem("temp-tetris-best")) || 0
+
+      function cloneShape(shape) {
+        return shape.map((row) => row.slice())
+      }
+
+      function randomPiece() {
+        const i = Math.floor(Math.random() * SHAPES.length)
+        return { shape: cloneShape(SHAPES[i]), color: i + 1 }
+      }
+
+      function drawCell(context, size, x, y, color) {
+        if (color === 0) return
+        context.fillStyle = color
+        context.strokeStyle = "rgba(255, 255, 255, 0.26)"
+        context.fillRect(x * size, y * size, size - 1, size - 1)
+        context.strokeRect(x * size + 1, y * size + 1, size - 3, size - 3)
+      }
+
+      function drawBoard() {
+        boardCtx.fillStyle = "#050814"
+        boardCtx.fillRect(0, 0, boardCanvas.width, boardCanvas.height)
+
+        grid.forEach((row, y) => row.forEach((value, x) => drawCell(boardCtx, CELL, x, y, COLORS[value])))
+
+        piece.shape.forEach((row, y) => {
+          row.forEach((value, x) => {
+            if (value) drawCell(boardCtx, CELL, piece.x + x, piece.y + y, COLORS[piece.color])
+          })
+        })
+      }
+
+      function drawNext() {
+        nextCtx.fillStyle = "#050814"
+        nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height)
+        const size = 20
+
+        next.shape.forEach((row, y) => {
+          row.forEach((value, x) => {
+            if (!value) return
+            drawCell(nextCtx, size, x + 1, y + 1, COLORS[next.color])
+          })
+        })
+      }
+
+      function collides(nextGrid, nextPiece) {
+        for (let y = 0; y < nextPiece.shape.length; y++) {
+          for (let x = 0; x < nextPiece.shape[y].length; x++) {
+            if (!nextPiece.shape[y][x]) continue
+            const targetX = nextPiece.x + x
+            const targetY = nextPiece.y + y
+            if (targetX < 0 || targetX >= COLUMNS || targetY >= ROWS) return true
+            if (targetY < 0) continue
+            if (nextGrid[targetY][targetX] !== 0) return true
+          }
+        }
+        return false
+      }
+
+      function spawnPiece() {
+        const incoming = next ?? randomPiece()
+        piece.shape = incoming.shape
+        piece.color = incoming.color
+        piece.x = Math.floor(COLUMNS / 2) - Math.ceil(piece.shape[0].length / 2)
+        piece.y = 0
+
+        next = randomPiece()
+        drawNext()
+
+        if (collides(grid, piece)) {
+          done = true
+          overlayTitle.textContent = "Game Over"
+          overlayMessage.textContent = `Your score: ${score}`
+          overlay.classList.add("show")
+        }
+      }
+
+      function mergePiece() {
+        piece.shape.forEach((row, y) => {
+          row.forEach((value, x) => {
+            if (value) grid[piece.y + y][piece.x + x] = piece.color
+          })
+        })
+      }
+
+      function clearCompleted() {
+        let count = 0
+
+        for (let row = ROWS - 1; row >= 0; row--) {
+          if (grid[row].every((cell) => cell !== 0)) {
+            grid.splice(row, 1)
+            grid.unshift(Array(COLUMNS).fill(0))
+            count += 1
+            row += 1
+          }
+        }
+
+        if (!count) return
+        score += (count === 1 ? 100 : count === 2 ? 300 : count === 3 ? 500 : 800) * level
+        lines += count
+        level = Math.floor(lines / 10) + 1
+        best = Math.max(best, score)
+        localStorage.setItem("temp-tetris-best", String(best))
+        refreshStats()
+      }
+
+      function moveX(delta) {
+        piece.x += delta
+        if (collides(grid, piece)) piece.x -= delta
+      }
+
+      function fall(steps = 1) {
+        piece.y += steps
+        if (collides(grid, piece)) {
+          piece.y -= steps
+          mergePiece()
+          clearCompleted()
+          spawnPiece()
+        }
+      }
+
+      function hardDrop() {
+        while (!collides(grid, piece)) piece.y += 1
+        piece.y -= 1
+        mergePiece()
+        clearCompleted()
+        spawnPiece()
+      }
+
+      function rotatePiece() {
+        const rotated = piece.shape[0].map((_, i) => piece.shape.map((row) => row[i]))
+        rotated.reverse()
+
+        const original = piece.shape
+        const kicks = [0, 1, -1, 2, -2]
+
+        piece.shape = rotated
+        for (const kick of kicks) {
+          piece.x += kick
+          if (!collides(grid, piece)) return
+          piece.x -= kick
+        }
+
+        piece.shape = original
+      }
+
+      function refreshStats() {
+        scoreEl.textContent = String(score)
+        linesEl.textContent = String(lines)
+        levelEl.textContent = String(level)
+        bestEl.textContent = String(best)
+      }
+
+      function tick(time) {
+        if (done) return
+        const dt = time - last
+        last = time
+        timer += dt
+        const speed = Math.max(90, 860 - level * 60)
+
+        if (timer >= speed) {
+          fall(1)
+          timer = 0
+        }
+
+        drawBoard()
+        requestAnimationFrame(tick)
+      }
+
+      function restart() {
+        for (const row of grid) row.fill(0)
+        score = 0
+        lines = 0
+        level = 1
+        timer = 0
+        last = 0
+        done = false
+        overlay.classList.remove("show")
+        refreshStats()
+        next = randomPiece()
+        spawnPiece()
+        requestAnimationFrame(tick)
+      }
+
+      function handleKey(event) {
+        const handled = (() => {
+          switch (event.code) {
+            case "ArrowLeft":
+            case "KeyA":
+              moveX(-1)
+              return true
+            case "ArrowRight":
+            case "KeyD":
+              moveX(1)
+              return true
+            case "ArrowDown":
+            case "KeyS":
+              fall(1)
+              return true
+            case "ArrowUp":
+            case "KeyW":
+              rotatePiece()
+              return true
+            case "Space":
+              hardDrop()
+              return true
+            case "KeyR":
+              restart()
+              return true
+            case "Enter":
+              if (done) restart()
+              return done
+            default:
+              return false
+          }
+        })()
+
+        if (handled) event.preventDefault()
+      }
+
+      bestEl.textContent = String(best)
+      refreshStats()
+      next = randomPiece()
+      spawnPiece()
+      drawBoard()
+      drawNext()
+
+      document.addEventListener("keydown", handleKey)
+      restartButton.addEventListener("click", restart)
+      overlayRestart.addEventListener("click", restart)
+      requestAnimationFrame(tick)
+    </script>
+  </body>
+</html>

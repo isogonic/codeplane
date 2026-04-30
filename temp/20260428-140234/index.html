@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tetris Studio</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="board-card" aria-labelledby="title">
+        <h1 id="title">Tetris Studio</h1>
+        <p class="subtitle">Arrow keys: move/rotate/drop · R: restart · P: pause</p>
+
+        <div class="info-grid">
+          <div>Score <span id="score">0</span></div>
+          <div>Lines <span id="lines">0</span></div>
+          <div>Level <span id="level">1</span></div>
+        </div>
+
+        <div class="playfield-wrap">
+          <canvas id="board" width="300" height="600" role="img" aria-label="Tetris board"></canvas>
+          <aside>
+            <div>
+              <h2>Next</h2>
+              <canvas id="next" width="120" height="120" aria-label="Next piece preview"></canvas>
+            </div>
+            <button id="restart">Restart</button>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

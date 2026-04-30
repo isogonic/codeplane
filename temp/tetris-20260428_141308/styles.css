@@ -1,0 +1,122 @@
+:root {
+  --bg: radial-gradient(140% 140% at 20% 20%, #1d2d4f 0%, #07101f 55%, #030711 100%);
+  --panel: rgba(9, 14, 32, 0.85);
+  --panel-soft: rgba(22, 40, 74, 0.82);
+  --text: #eaf2ff;
+  --accent: #7af4db;
+  --font: 'Trebuchet MS', 'Segoe UI', Tahoma, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+}
+
+.shell {
+  width: min(940px, 95vw);
+  display: grid;
+  gap: 0.8rem;
+  padding: 1rem;
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  box-shadow: 0 28px 60px rgba(2, 4, 16, 0.5);
+}
+
+.topbar h1,
+.topbar p {
+  margin: 0.2rem 0;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 1rem;
+  align-items: start;
+}
+
+#gameCanvas {
+  width: 100%;
+  max-width: 300px;
+  aspect-ratio: 1 / 2;
+  justify-self: center;
+  border-radius: 12px;
+  border: 3px solid rgba(194, 209, 255, 0.66);
+  background: linear-gradient(180deg, #050b16 0%, #090f1d 70%, #02050c 100%);
+  box-shadow: inset 0 0 34px rgba(4, 11, 27, 0.85);
+  image-rendering: pixelated;
+}
+
+.panel {
+  display: grid;
+  gap: 0.7rem;
+  align-content: start;
+}
+
+.panel div {
+  background: var(--panel-soft);
+  padding: 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.panel h2,
+.panel p {
+  margin: 0.2rem 0;
+}
+
+#nextCanvas {
+  width: 120px;
+  height: 120px;
+  border: 2px solid rgba(255, 255, 255, 0.26);
+  background: #040914;
+}
+
+.mobile-controls {
+  display: none;
+  gap: 0.5rem;
+  grid-template-columns: repeat(5, 1fr);
+  margin-top: 0.2rem;
+}
+
+.mobile-controls button {
+  border: 0;
+  border-radius: 10px;
+  background: #0c182f;
+  color: var(--text);
+  font-size: 1.2rem;
+  padding: 0.6rem 0;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.mobile-controls button:active {
+  background: #132347;
+}
+
+@media (max-width: 820px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  #gameCanvas {
+    max-width: 100%;
+  }
+
+  .mobile-controls {
+    display: grid;
+  }
+}

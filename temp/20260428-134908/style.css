@@ -1,0 +1,132 @@
+:root {
+  --bg: #08122f;
+  --panel: #111d42;
+  --text: #e2ebff;
+  --muted: #90a4d7;
+  --line: #24376d;
+  --accent: #7de2ff;
+  font-family: "Trebuchet MS", "Avenir Next", "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 10% 8%, #2c4ca622, transparent 36%),
+    radial-gradient(circle at 90% 10%, #00ffe522, transparent 32%),
+    linear-gradient(145deg, #050e27, var(--bg));
+}
+
+.wrap {
+  width: min(980px, 92vw);
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 1rem;
+}
+
+.panel {
+  background: color-mix(in srgb, var(--panel) 92%, #ffffff08);
+  border: 1px solid #304a94;
+  box-shadow: 0 12px 30px #00000052;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.panel h1,
+.panel h2 {
+  margin: 0 0 0.7rem;
+  letter-spacing: 0.03em;
+}
+
+.game-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.board {
+  width: 300px;
+  height: 600px;
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  grid-template-rows: repeat(20, 1fr);
+  border: 2px solid #4f66b8;
+  background:
+    repeating-linear-gradient(to right, #0b184280 0 1px, transparent 1px 29px),
+    repeating-linear-gradient(to bottom, #0b184280 0 1px, transparent 1px 29px),
+    #0a1c45;
+  gap: 0;
+}
+
+.cell {
+  border: 1px solid #0e1d4c;
+  transition: background-color 80ms linear, border-color 80ms linear;
+}
+
+.filled {
+  animation: pop 120ms ease-out;
+}
+
+@keyframes pop {
+  from { transform: scale(0.94); }
+  to { transform: scale(1); }
+}
+
+.status {
+  margin: 0.8rem 0 0;
+  color: var(--muted);
+}
+
+.info-panel {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.stat-row strong {
+  color: var(--accent);
+}
+
+.next {
+  width: 140px;
+  height: 108px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  border: 1px dashed #41599e;
+  background: #0b1538;
+}
+
+.panel ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.panel li {
+  margin: 0.15rem 0;
+}
+
+@media (max-width: 780px) {
+  .wrap {
+    grid-template-columns: 1fr;
+  }
+
+  .board {
+    width: min(95vw, 320px);
+    height: min(64vh, 620px);
+  }
+}

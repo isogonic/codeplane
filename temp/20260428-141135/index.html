@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tetris</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="tetris-app">
+      <section class="game-shell">
+        <h1>Tetris</h1>
+        <canvas id="board" width="300" height="600" role="img" aria-label="Tetris board"></canvas>
+      </section>
+
+      <aside class="hud">
+        <div>
+          <h2>Stats</h2>
+          <p id="score">Score: 0</p>
+          <p id="lines">Lines: 0</p>
+          <p id="level">Level: 1</p>
+        </div>
+
+        <div>
+          <h2>Next</h2>
+          <canvas id="next" width="120" height="120"></canvas>
+        </div>
+
+        <div class="controls-hint">
+          <h2>Controls</h2>
+          <ul>
+            <li><span>← →</span> Move</li>
+            <li><span>↓</span> Soft drop</li>
+            <li><span>↑</span> Rotate</li>
+            <li><span>Space</span> Hard drop</li>
+            <li><span>P</span> Pause</li>
+            <li><span>R</span> Restart</li>
+          </ul>
+        </div>
+
+        <button id="restart">Restart</button>
+      </aside>
+    </main>
+
+    <script src="main.js"></script>
+  </body>
+</html>
