@@ -2124,6 +2124,20 @@ ToolRegistry.register({
         }
       >
         <div data-component="bash-output">
+          <Show when={pending()}>
+            <div data-slot="bash-interactive-kill">
+              <Tooltip value={i18n.t("ui.tool.bashInteractive.kill") || "Stop"} placement="top" gutter={4}>
+                <IconButton
+                  icon="stop"
+                  size="small"
+                  variant="secondary"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => void sendKill()}
+                  aria-label={i18n.t("ui.tool.bashInteractive.kill") || "Stop"}
+                />
+              </Tooltip>
+            </div>
+          </Show>
           <div data-slot="bash-copy">
             <Tooltip
               value={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
@@ -2145,17 +2159,6 @@ ToolRegistry.register({
               <code>{text()}</code>
             </pre>
           </div>
-          <Show when={pending()}>
-            <div data-slot="bash-interactive-status">
-              <span data-slot="bash-interactive-status-text">
-                {i18n.t("ui.tool.bashInteractive.waiting") ||
-                  "Live — input flows through the question dialog when the agent expects a prompt."}
-              </span>
-              <button type="button" onClick={() => void sendKill()} title="SIGTERM the running command">
-                kill
-              </button>
-            </div>
-          </Show>
         </div>
       </BasicTool>
     )

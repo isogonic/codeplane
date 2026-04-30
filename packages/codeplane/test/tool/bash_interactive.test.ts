@@ -8,6 +8,7 @@ import { AppFileSystem } from "@codeplane-ai/shared/filesystem"
 import { Plugin } from "../../src/plugin"
 import { Bus } from "../../src/bus"
 import { Question } from "../../src/question"
+import { GlobalBus } from "../../src/bus/global"
 import { SessionID, MessageID } from "../../src/session/schema"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
@@ -101,6 +102,12 @@ describe("bash_interactive", () => {
       const callID = "call_prompts_test"
 
       const askedQuestions: string[] = []
+      // The SSE stream subscribes to GlobalBus.on("event"). To prove the
+      // question reaches the UI, capture every payload emitted to GlobalBus
+      // and assert "question.asked" shows up with the right shape.
+      const globalEvents: any[] = []
+      const captureGlobal = (evt: any) => globalEvents.push(evt)
+      GlobalBus.on("event", captureGlobal)
 
       // The Bus + Question services are instance-scoped, so the responder
       // and the tool execution must live inside the same Instance.provide
@@ -162,8 +169,97 @@ describe("bash_interactive", () => {
           ),
       })
 
-      expect(askedQuestions).toEqual(["Enter the verification code"])
-      expect(result.output).toContain("GOT=alpha")
+      try {
+        expect(askedQuestions).toEqual(["Enter the verification code"])
+        expect(result.output).toContain("GOT=alpha")
+
+        // Critical: the question.asked event MUST reach GlobalBus. The SSE
+        // stream subscribes to GlobalBus and forwards to the UI; if the event
+        // never lands here, the UI question dock can never show up.
+        const askedOnGlobalBus = globalEvents.filter((e) => e?.payload?.type === "question.asked")
+        expect(askedOnGlobalBus.length).toBeGreaterThanOrEqual(1)
+        const first = askedOnGlobalBus[0]
+        expect(first.payload.properties.sessionID).toBe(sessionID)
+        expect(first.payload.properties.tool?.callID).toBe(callID)
+        expect(first.payload.properties.questions?.[0]?.question).toBe("Enter the verification code")
+      } finally {
+        GlobalBus.off("event", captureGlobal)
+      }
+    },
+    20_000,
+  )
+
+  test(
+    "idle fallback: when no declared prompt matches, after IDLE_FALLBACK_MS the tool asks the user generically — so a wrong/missing pattern never strands the user",
+    async () => {
+      const tool = await initTool()
+      await using sandbox = await tmpdir()
+      const dir = sandbox.path
+
+      const sessionID = SessionID.make("ses_idle_test")
+      const messageID = MessageID.make("msg_idle_test")
+      const callID = "call_idle_test"
+
+      const askedQuestions: string[] = []
+
+      const result = await Instance.provide({
+        directory: dir,
+        fn: () =>
+          runtime.runPromise(
+            Effect.gen(function* () {
+              const q = yield* Question.Service
+              const bus = yield* Bus.Service
+
+              let answered = 0
+              const reply = Instance.bind((requestID: any) =>
+                runtime.runPromise(q.reply({ requestID, answers: [["fallback-typed"]] })),
+              )
+              const unsubscribe = yield* bus.subscribeCallback(Question.Event.Asked, (payload) => {
+                const req = payload.properties
+                if (req.sessionID !== sessionID) return
+                if (answered >= 1) return
+                answered++
+                askedQuestions.push(req.questions[0]?.question ?? "")
+                setTimeout(() => {
+                  void reply(req.id)
+                }, 5)
+              })
+
+              try {
+                // Print a custom prompt the agent did NOT declare (so the
+                // declared-prompt scan misses), then read whatever the user
+                // sends and echo it back.
+                const command = "printf 'Some weird prompt> '; read x; printf 'GOT=%s\\n' \"$x\""
+                return yield* tool.execute(
+                  {
+                    command,
+                    timeout: 15_000,
+                    // Empty prompts on purpose — exercises the idle fallback.
+                    prompts: [],
+                  } as any,
+                  {
+                    sessionID,
+                    messageID,
+                    callID,
+                    agent: "build",
+                    abort: new AbortController().signal,
+                    messages: [],
+                    metadata: () => Effect.void,
+                    ask: () => Effect.void,
+                  } as any,
+                )
+              } finally {
+                unsubscribe()
+              }
+            }),
+          ),
+      })
+
+      // The fallback question must have fired and the user's typed answer
+      // must have made it into the PTY's stdin.
+      expect(askedQuestions.length).toBe(1)
+      expect(askedQuestions[0]).toContain("Some weird prompt>")
+      expect(result.output).toContain("GOT=fallback-typed")
     },
     20_000,
   )

@@ -572,40 +572,30 @@
 }
 
 [data-component="bash-output"] {
-  [data-slot="bash-interactive-status"] {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border-top: 1px solid var(--border-weak-base);
-    background: var(--background-base);
+  /* Kill button sits in the top-right corner alongside the copy button while
+     the bash_interactive PTY is running. Same hover-reveal behavior as copy. */
+  [data-slot="bash-interactive-kill"] {
+    position: absolute;
+    top: 4px;
+    right: 36px; /* leave room for the copy button at right: 4px */
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
   }
 
-  [data-slot="bash-interactive-status-text"] {
-    flex: 1 1 auto;
-    min-width: 0;
-    font-family: var(--font-family-mono);
-    font-size: 12px;
-    color: var(--text-weak);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  &:hover [data-slot="bash-interactive-kill"],
+  &:focus-within [data-slot="bash-interactive-kill"] {
+    opacity: 1;
+    pointer-events: auto;
   }
 
-  [data-slot="bash-interactive-status"] button {
-    flex: 0 0 auto;
+  [data-slot="bash-interactive-kill"] [data-component="icon-button"][data-variant="secondary"] {
+    box-shadow: none;
     border: 1px solid var(--border-weak-base);
-    border-radius: 4px;
-    background: transparent;
-    padding: 2px 8px;
-    font-size: 11px;
-    color: var(--text-weak);
-    cursor: pointer;
   }
 
-  [data-slot="bash-interactive-status"] button:hover {
-    border-color: var(--border-strong-base, var(--border-weak-base));
-    color: var(--text-base);
+  [data-slot="bash-interactive-kill"] [data-component="icon-button"][data-variant="secondary"] [data-slot="icon-svg"] {
+    color: var(--icon-base);
   }
 }
 
