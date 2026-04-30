@@ -64,9 +64,8 @@ function AuthServiceMatrixHarness() {
           description: "Claude OAuth code",
           output: [
             "Opening browser to sign in...",
-            "https://claude.com/cai/oauth/authorize?code=true&client_id=demo&state=xyz",
-            "Paste code here if prompted >",
-            "Waiting for the agent to send the OAuth code from the question dock...",
+            "If the browser didn't open, visit: https://claude.com/cai/oauth/authorize?code=true&client_id=demo&state=xyz",
+            "Waiting for the agent to detect the OAuth URL and ask for the code...",
           ].join("\n"),
           title: "Claude OAuth code",
         }),

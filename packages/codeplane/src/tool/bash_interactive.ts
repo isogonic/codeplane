@@ -23,6 +23,13 @@ const PROMPT_BUFFER_CAP = 4096
 // Strip ANSI escapes ONLY for prompt detection — the captured output keeps
 // them so the renderer can show colored prompts faithfully.
 const STRIP_ANSI_RE = /\x1B\[[0-?]*[ -/]*[@-~]/g
+const BUILTIN_PROMPTS = [
+  {
+    pattern: "https?:\\/\\/\\S*oauth\\/authorize[\\s\\S]{0,1200}(?:code=true|response_type=code)",
+    question: "Paste the authorization code from the browser sign-in flow",
+    header: "Auth code",
+  },
+]
 
 const PromptEntry = Schema.Struct({
   pattern: Schema.String.annotate({
@@ -138,14 +145,24 @@ export const BashInteractiveTool = Tool.define(
           // Compile prompts up-front. `fired` ensures each prompt responds at
           // most once per match; the agent re-adds the entry to handle a
           // repeated prompt.
-          const compiled = prompts.map((p, i) => ({
-            id: i,
-            re: new RegExp(p.pattern, "i"),
-            question: p.question,
-            header: p.header,
-            answer: p.answer,
-            fired: false,
-          }))
+          const compiled = [
+            ...prompts.map((p, i) => ({
+              id: i,
+              re: new RegExp(p.pattern, "i"),
+              question: p.question,
+              header: p.header,
+              answer: p.answer,
+              fired: false,
+            })),
+            ...BUILTIN_PROMPTS.map((p, i) => ({
+              id: `builtin:${i}`,
+              re: new RegExp(p.pattern, "i"),
+              question: p.question,
+              header: p.header,
+              answer: undefined,
+              fired: false,
+            })),
+          ]
 
           let allOutput = ""
           let scanBuffer = ""
@@ -352,7 +369,6 @@ export const BashInteractiveTool = Tool.define(
 
                     scanBuffer += chunk
                     if (scanBuffer.length > PROMPT_BUFFER_CAP) scanBuffer = scanBuffer.slice(-PROMPT_BUFFER_CAP)
-                    if (compiled.length === 0) return
                     if (scanTimer) clearTimeout(scanTimer)
                     scanTimer = setTimeout(() => {
                       scanTimer = undefined
