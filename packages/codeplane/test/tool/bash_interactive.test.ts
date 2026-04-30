@@ -8,6 +8,7 @@ import { AppFileSystem } from "@codeplane-ai/shared/filesystem"
 import { Plugin } from "../../src/plugin"
 import { Bus } from "../../src/bus"
 import { Question } from "../../src/question"
+import { QuestionID } from "../../src/question/schema"
 import { GlobalBus } from "../../src/bus/global"
 import { SessionID, MessageID } from "../../src/session/schema"
 import { Instance } from "../../src/project/instance"
@@ -205,8 +206,8 @@ describe("bash_interactive", () => {
       const messageID = MessageID.make("msg_kill_test")
       const callID = "call_kill_test"
 
-      const askedIDs: string[] = []
-      const rejectedIDs: string[] = []
+      const askedIDs: QuestionID[] = []
+      const rejectedIDs: QuestionID[] = []
 
       const result = await Instance.provide({
         directory: dir,
