@@ -278,7 +278,7 @@ const user = Effect.fn("test.user")(function* (sessionID: SessionID, text: strin
   return msg
 })
 
-const seed = Effect.fn("test.seed")(function* (sessionID: SessionID, opts?: { finish?: string }) {
+const seed = Effect.fn("test.seed")(function* (sessionID: SessionID, opts?: { finish?: string; completed?: boolean }) {
   const session = yield* Session.Service
   const msg = yield* user(sessionID, "hello")
   const assistant: MessageV2.Assistant = {
@@ -293,7 +293,7 @@ const seed = Effect.fn("test.seed")(function* (sessionID: SessionID, opts?: { fi
     tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
     modelID: ref.modelID,
     providerID: ref.providerID,
-    time: { created: Date.now() },
+    time: { created: Date.now(), ...(opts?.completed ? { completed: Date.now() } : {}) },
     ...(opts?.finish ? { finish: opts.finish } : {}),
   }
   yield* session.updateMessage(assistant)
@@ -559,6 +559,27 @@ it.live("loop continues when finish is tool-calls", () =>
         expect(result.parts.some((part) => part.type === "text" && part.text === "second")).toBe(true)
         expect(result.info.finish).toBe("stop")
       }
+    }),
+    { git: true, config: providerCfg },
+  ),
+)
+
+it.live("loop exits immediately when last assistant completed without finish or tools", () =>
+  provideTmpdirServer(
+    Effect.fnUntraced(function* ({ llm }) {
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const session = yield* sessions.create({ title: "Pinned" })
+      yield* seed(session.id, { completed: true })
+
+      const result = yield* prompt.loop({ sessionID: session.id })
+      expect(result.info.role).toBe("assistant")
+      if (result.info.role === "assistant") {
+        expect(result.parts.some((part) => part.type === "text" && part.text === "hi there")).toBe(true)
+        expect(result.info.finish).toBeUndefined()
+        expect(result.info.time.completed).toBeDefined()
+      }
+      expect(yield* llm.calls).toBe(0)
     }),
     { git: true, config: providerCfg },
   ),

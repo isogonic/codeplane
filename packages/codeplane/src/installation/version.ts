@@ -1,4 +1,5 @@
 import semver from "semver"
+import { CodeplaneDesktopReleaseSuffix } from "@codeplane-ai/shared/version"
 
 declare global {
   const CODEPLANE_VERSION: string
@@ -8,9 +9,14 @@ declare global {
 export const InstallationVersion = typeof CODEPLANE_VERSION === "string" ? CODEPLANE_VERSION : "local"
 export const InstallationChannel = typeof CODEPLANE_CHANNEL === "string" ? CODEPLANE_CHANNEL : "local"
 export const InstallationLocal = InstallationChannel === "local"
+export const DesktopReleaseSuffix = CodeplaneDesktopReleaseSuffix
 
 export function cleanVersion(input: string) {
   return input.trim().replace(/^v/, "")
+}
+
+export function isDesktopReleaseVersion(input: string) {
+  return cleanVersion(input).endsWith(DesktopReleaseSuffix)
 }
 
 export function comparableVersion(input: string) {

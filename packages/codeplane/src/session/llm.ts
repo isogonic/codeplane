@@ -159,6 +159,17 @@ const live: Layer.Layer<
               ...input.messages,
             ]
 
+      // LiteLLM and some Anthropic proxies require the tools parameter to be present
+      // when message history contains tool calls, even if no tools are being used.
+      // Add a dummy tool that is never called to satisfy this validation.
+      // This is enabled for:
+      // 1. Providers with "litellm" in their ID or API ID (auto-detected)
+      // 2. Providers with explicit "litellmProxy: true" option (opt-in for custom gateways)
+      const isLiteLLMProxy =
+        item.options?.["litellmProxy"] === true ||
+        input.model.providerID.toLowerCase().includes("litellm") ||
+        input.model.api.id.toLowerCase().includes("litellm")
+
       const params = yield* plugin.trigger(
         "chat.params",
         {
@@ -179,6 +190,17 @@ const live: Layer.Layer<
         },
       )
 
+      const maxOutputTokens =
+        isLiteLLMProxy &&
+        input.model.capabilities.reasoning &&
+        (input.model.family === "openai" || input.model.api.id.includes("gpt") || /\bo[1-9]/.test(input.model.api.id))
+          ? undefined
+          : params.maxOutputTokens
+
+      if (maxOutputTokens === undefined && isLiteLLMProxy) {
+        delete params.options.reasoningSummary
+      }
+
       const { headers } = yield* plugin.trigger(
         "chat.headers",
         {
@@ -194,17 +216,6 @@ const live: Layer.Layer<
       )
 
       const tools = input.model.capabilities.toolcall ? resolveTools(input) : {}
-
-      // LiteLLM and some Anthropic proxies require the tools parameter to be present
-      // when message history contains tool calls, even if no tools are being used.
-      // Add a dummy tool that is never called to satisfy this validation.
-      // This is enabled for:
-      // 1. Providers with "litellm" in their ID or API ID (auto-detected)
-      // 2. Providers with explicit "litellmProxy: true" option (opt-in for custom gateways)
-      const isLiteLLMProxy =
-        item.options?.["litellmProxy"] === true ||
-        input.model.providerID.toLowerCase().includes("litellm") ||
-        input.model.api.id.toLowerCase().includes("litellm")
 
       // LiteLLM/Bedrock rejects requests where the message history contains tool
       // calls but no tools param is present. When there are no active tools (e.g.
@@ -365,7 +376,7 @@ const live: Layer.Layer<
         activeTools: Object.keys(tools).filter((x) => x !== "invalid"),
         tools,
         toolChoice: input.toolChoice,
-        maxOutputTokens: params.maxOutputTokens,
+        maxOutputTokens,
         abortSignal: input.abort,
         headers: {
           ...(input.model.providerID.startsWith("codeplane")

@@ -170,10 +170,10 @@ function Header(props: {
         <div class="text-20-medium text-text-strong truncate">{language.t("home.title")}</div>
         <div class="text-12-regular text-text-weak">{props.subtitleText()}</div>
       </div>
-      <Show when={props.lastActivity()}>
+      <Show when={props.lastActivity()} keyed>
         {(time) => (
           <div class="shrink-0 text-12-regular text-text-weak">
-            {language.t("home.subtitle.lastActivity", { time: props.formatRelative(time()) })}
+            {language.t("home.subtitle.lastActivity", { time: props.formatRelative(time) })}
           </div>
         )}
       </Show>
@@ -220,8 +220,8 @@ function Stat(props: { label: string; value: string; hint?: () => string | undef
     <div class="min-w-0 border-b border-r border-border-weaker-base px-4 py-3 last:border-r-0 sm:border-b-0 [&:nth-child(2)]:border-r-0 sm:[&:nth-child(2)]:border-r [&:nth-child(3)]:border-b-0 sm:[&:nth-child(3)]:border-b-0">
       <div class="text-20-medium text-text-strong tabular-nums">{props.value}</div>
       <div class="pt-0.5 text-12-regular text-text-weak truncate">{props.label}</div>
-      <Show when={props.hint?.()}>
-        {(hint) => <div class="pt-1 text-12-regular text-text-base tabular-nums truncate">{hint()}</div>}
+      <Show when={props.hint?.()} keyed>
+        {(hint) => <div class="pt-1 text-12-regular text-text-base tabular-nums truncate">{hint}</div>}
       </Show>
     </div>
   )
@@ -346,8 +346,8 @@ function ProjectsSection(props: {
                   </div>
                   <div class="mt-1.5 flex items-center justify-between gap-3 text-12-regular text-text-weak">
                     <span class="truncate">
-                      <Show when={project.lastActivity} fallback={props.tNever}>
-                        {(time) => <span>{props.formatRelative(time())}</span>}
+                      <Show when={project.lastActivity} keyed fallback={props.tNever}>
+                        {(time) => <span>{props.formatRelative(time)}</span>}
                       </Show>
                     </span>
                     <Show when={project.additions + project.deletions > 0}>

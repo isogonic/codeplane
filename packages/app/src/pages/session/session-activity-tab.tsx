@@ -321,10 +321,10 @@ export function SessionActivityTab(props: {
               : language.t("session.activity.model.switch")}
           </div>
           <div class="pt-1 text-12-regular text-text-base break-all">
-            <Show when={props.event.from} fallback={<span>{props.event.to}</span>}>
+            <Show when={props.event.from} keyed fallback={<span>{props.event.to}</span>}>
               {(from) => (
                 <span>
-                  {from()} -&gt; {props.event.to}
+                  {from} -&gt; {props.event.to}
                 </span>
               )}
             </Show>
@@ -348,8 +348,8 @@ export function SessionActivityTab(props: {
               {props.event.tool}
             </span>
           </div>
-          <Show when={props.event.subtitle}>
-            {(subtitle) => <div class="pt-1 text-12-regular text-text-weak truncate">{subtitle()}</div>}
+          <Show when={props.event.subtitle} keyed>
+            {(subtitle) => <div class="pt-1 text-12-regular text-text-weak truncate">{subtitle}</div>}
           </Show>
         </div>
         <div class="shrink-0 text-12-regular text-text-weak tabular-nums">
@@ -359,8 +359,8 @@ export function SessionActivityTab(props: {
       <div class="pt-2 flex items-center gap-2 text-12-regular">
         <span class="size-1.5 rounded-full" style={statusDotStyle(props.event.status)} />
         <span class={statusClass(props.event.status)}>{language.t(toolStatusKey(props.event.status))}</span>
-        <Show when={duration(props.event.duration)}>
-          {(value) => <span class="text-text-weak tabular-nums">{value()}</span>}
+        <Show when={duration(props.event.duration)} keyed>
+          {(value) => <span class="text-text-weak tabular-nums">{value}</span>}
         </Show>
       </div>
     </>

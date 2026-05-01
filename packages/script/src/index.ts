@@ -1,15 +1,11 @@
 import { $ } from "bun"
 import semver from "semver"
 import path from "path"
+import { CodeplaneVersion } from "@codeplane-ai/shared/version"
 
 const rootPkgPath = path.resolve(import.meta.dir, "../../../package.json")
 const rootPkg = await Bun.file(rootPkgPath).json()
 const expectedBunVersion = rootPkg.packageManager?.split("@")[1]
-const releasePkg = (await Bun.file(
-  path.resolve(import.meta.dir, "../../../packages/codeplane/package.json"),
-).json()) as {
-  version?: string
-}
 
 if (!expectedBunVersion) {
   throw new Error("packageManager field not found in root package.json")
@@ -29,9 +25,9 @@ const env = {
   CODEPLANE_RELEASE: process.env["CODEPLANE_RELEASE"],
 }
 
-const BASE_VERSION = semver.valid(releasePkg.version?.replace(/^v/, ""))
+const BASE_VERSION = semver.valid(CodeplaneVersion.replace(/^v/, ""))
 if (!BASE_VERSION) {
-  throw new Error(`packages/codeplane/package.json has an invalid version: ${releasePkg.version}`)
+  throw new Error(`packages/shared/src/version.ts has an invalid version: ${CodeplaneVersion}`)
 }
 
 const cleanVersion = (input: string) => {

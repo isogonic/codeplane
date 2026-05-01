@@ -2,8 +2,9 @@
   "$schema": "https://json.schemastore.org/package.json",
   "name": "@codeplane-ai/desktop",
   "private": true,
-  "version": "27.0.12",
-  "description": "Native desktop wrapper for the CodePlane web UI",
+  "version": "27.0.13",
+  "productName": "Codeplane",
+  "description": "Codeplane Desktop connects to remote Codeplane servers and caches the matching UI locally for fast native use.",
   "license": "MIT",
   "homepage": "https://codeplane.ai",
   "repository": {
@@ -18,11 +19,12 @@
     "email": "devin@logicplanes.com",
     "url": "https://github.com/devinoldenburg"
   },
-  "main": "dist/main/main.js",
+  "main": "dist/main/main.cjs",
   "type": "module",
   "scripts": {
     "build": "rm -rf dist release && bun run build:main && bun run build:setup",
-    "build:main": "bun build src/main/main.ts src/main/preload.ts --outdir dist/main --target node --external electron --format cjs --minify",
+    "build:icons": "bun ./build/generate-icons.ts",
+    "build:main": "bun build src/main/main.ts src/main/preload.ts --outdir dist/main --target node --external electron --format cjs --minify && mv dist/main/main.js dist/main/main.cjs && mv dist/main/preload.js dist/main/preload.cjs",
     "build:setup": "vite build",
     "dev:setup": "vite",
     "package": "electron-builder",
@@ -31,11 +33,16 @@
     "package:linux": "electron-builder --linux",
     "publish": "electron-builder --publish always",
     "dev": "bun run build && electron .",
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "tsgo --noEmit",
+    "test:e2e": "bun run build && playwright test",
+    "test:e2e:ui": "bun run build && playwright test --ui",
+    "test:e2e:report": "playwright show-report e2e/playwright-report"
   },
   "dependencies": {},
   "devDependencies": {
+    "@codeplane-ai/shared": "workspace:*",
     "@codeplane-ai/ui": "workspace:*",
+    "@playwright/test": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@types/node": "catalog:",
     "@typescript/native-preview": "catalog:",
@@ -51,7 +58,9 @@
   },
   "build": {
     "appId": "ai.codeplane.desktop",
-    "productName": "CodePlane",
+    "productName": "Codeplane",
+    "executableName": "Codeplane",
+    "copyright": "Copyright © 2026 Devin Oldenburg",
     "asar": true,
     "beforeBuild": "./build/before-build.js",
     "directories": {
@@ -60,10 +69,11 @@
     },
     "files": [
       "dist/**/*",
+      "build/icon.png",
       "package.json"
     ],
     "extraMetadata": {
-      "main": "dist/main/main.js",
+      "main": "dist/main/main.cjs",
       "type": "commonjs"
     },
     "publish": [
@@ -76,40 +86,103 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
+      "executableName": "Codeplane",
       "target": [
-        { "target": "dmg", "arch": ["x64", "arm64"] },
-        { "target": "zip", "arch": ["x64", "arm64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "icon": "build/icon.icns",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "darkModeSupport": true,
+      "extendInfo": {
+        "CFBundleGetInfoString": "Codeplane Desktop",
+        "CFBundleSpokenName": "Codeplane",
+        "NSHumanReadableCopyright": "Copyright © 2026 Devin Oldenburg"
+      },
       "artifactName": "codeplane-desktop-${version}-mac-${arch}.${ext}"
     },
     "win": {
+      "executableName": "Codeplane",
       "target": [
-        { "target": "nsis", "arch": ["x64", "arm64"] },
-        { "target": "zip", "arch": ["x64", "arm64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "icon": "build/icon.ico",
       "artifactName": "codeplane-desktop-${version}-win-${arch}.${ext}"
     },
     "linux": {
+      "executableName": "codeplane",
+      "synopsis": "Native desktop shell for remote Codeplane servers",
+      "description": "Codeplane Desktop connects to remote Codeplane servers, downloads the matching web UI for each server version, and reuses cached UI bundles locally for faster launches and switching.",
       "target": [
-        { "target": "AppImage", "arch": ["x64", "arm64"] },
-        { "target": "deb", "arch": ["x64", "arm64"] },
-        { "target": "tar.gz", "arch": ["x64", "arm64"] }
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "tar.gz",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "icon": "build/icon.png",
       "category": "Development",
       "maintainer": "Devin Oldenburg <devin@logicplanes.com>",
+      "desktop": {
+        "entry": {
+          "Name": "Codeplane",
+          "GenericName": "AI development desktop app",
+          "Comment": "Connect to remote Codeplane servers with a native desktop shell",
+          "StartupWMClass": "Codeplane",
+          "X-GNOME-FullName": "Codeplane Desktop"
+        }
+      },
       "artifactName": "codeplane-desktop-${version}-linux-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "allowElevation": true
+      "allowElevation": true,
+      "shortcutName": "Codeplane",
+      "uninstallDisplayName": "Codeplane"
     }
   }
 }

@@ -160,6 +160,7 @@ export function DialogEditProject(props: { project: LocalProject }) {
                 >
                   <Show
                     when={getProjectAvatarSource({ override: store.iconOverride })}
+                    keyed
                     fallback={
                       <div class="size-full flex items-center justify-center">
                         <Avatar
@@ -172,7 +173,7 @@ export function DialogEditProject(props: { project: LocalProject }) {
                   >
                     {(src) => (
                       <img
-                        src={src()}
+                        src={src}
                         alt={language.t("dialog.project.edit.icon.alt")}
                         class="size-full object-cover"
                       />

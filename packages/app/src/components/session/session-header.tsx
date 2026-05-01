@@ -277,9 +277,9 @@ export function SessionHeader() {
 
   return (
     <>
-      <Show when={search() && centerMount()}>
+      <Show when={search() && centerMount()} keyed>
         {(mount) => (
-          <Portal mount={mount()}>
+          <Portal mount={mount}>
             <Button
               type="button"
               variant="ghost"
@@ -296,10 +296,10 @@ export function SessionHeader() {
                 </span>
               </div>
 
-              <Show when={hotkey()}>
+              <Show when={hotkey()} keyed>
                 {(keybind) => (
                   <Keybind class="shrink-0 !border-0 !bg-transparent !shadow-none px-0 text-text-weaker">
-                    {keybind()}
+                    {keybind}
                   </Keybind>
                 )}
               </Show>
@@ -307,9 +307,9 @@ export function SessionHeader() {
           </Portal>
         )}
       </Show>
-      <Show when={rightMount()}>
+      <Show when={rightMount()} keyed>
         {(mount) => (
-          <Portal mount={mount()}>
+          <Portal mount={mount}>
             <div class="flex items-center gap-2">
               <Show when={projectDirectory()}>
                 <div class="hidden xl:flex items-center">

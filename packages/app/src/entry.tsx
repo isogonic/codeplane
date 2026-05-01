@@ -2,17 +2,28 @@
 
 import { render } from "solid-js/web"
 import { AppBaseProviders, AppInterface } from "@/app"
-import { type Platform, PlatformProvider } from "@/context/platform"
+import { type Platform, type PlatformServerManager, type PlatformUpdater, PlatformProvider } from "@/context/platform"
 import { dict as en } from "@/i18n/en"
 import { dict as zh } from "@/i18n/zh"
 import { handleNotificationClick } from "@/utils/notification-click"
 import { silenceResizeObserverNoise } from "@/utils/silence-resize-observer"
-import pkg from "../package.json"
+import { CodeplaneVersion } from "@codeplane-ai/shared/version"
 import { ServerConnection } from "./context/server"
 
 silenceResizeObserverNoise()
 
 const DEFAULT_SERVER_URL_KEY = "codeplane.settings.dat:defaultServerUrl"
+
+declare global {
+  interface Window {
+    codeplaneDesktop?: {
+      platform?: string
+      version?: string
+      updater?: PlatformUpdater
+      serverManager?: PlatformServerManager
+    }
+  }
+}
 
 const getLocale = () => {
   if (typeof navigator !== "object") return "en" as const
@@ -116,32 +127,78 @@ const getDefaultUrl = () => {
   return getCurrentUrl()
 }
 
+const getDesktopOS = (value: string) => {
+  if (value === "darwin" || /mac/i.test(value)) return "macos" as const
+  if (value === "win32" || /win/i.test(value)) return "windows" as const
+  if (value === "linux" || /linux/i.test(value)) return "linux" as const
+}
+
+const getDesktopHost = () => {
+  const exposed = window.codeplaneDesktop?.platform
+  if (exposed) return { desktop: true as const, os: getDesktopOS(exposed) }
+  if (typeof navigator !== "object" || !/electron/i.test(navigator.userAgent)) return
+  return { desktop: true as const, os: getDesktopOS(navigator.platform || navigator.userAgent) }
+}
+
+const desktopServerManager = window.codeplaneDesktop?.serverManager
+const desktopServerList = () =>
+  (desktopServerManager?.instances ?? []).map(
+    (instance): ServerConnection.Http => ({
+      type: "http",
+      displayName: instance.label,
+      http: {
+        key: instance.key,
+        remoteUrl: instance.remoteUrl,
+        url: instance.proxyUrl,
+      },
+    }),
+  )
+
+const desktopActiveKey = () =>
+  desktopServerManager?.currentKey ??
+  desktopServerManager?.defaultKey ??
+  desktopServerManager?.instances[0]?.key ??
+  null
+
 const platform: Platform = {
   platform: "web",
-  version: pkg.version,
+  ...getDesktopHost(),
+  version: window.codeplaneDesktop?.version ?? CodeplaneVersion,
+  updater: window.codeplaneDesktop?.updater,
+  serverManager: desktopServerManager,
   openLink,
   back,
   forward,
   restart,
   notify,
   getDefaultServer: async () => {
+    if (desktopServerManager) {
+      const key = await desktopServerManager.getDefaultKey()
+      return key ? ServerConnection.Key.make(key) : null
+    }
     if (import.meta.env.DEV && isLocalDevHost()) return ServerConnection.Key.make(getCurrentUrl())
     const stored = readDefaultServerUrl()
     return stored ? ServerConnection.Key.make(stored) : null
   },
-  setDefaultServer: writeDefaultServerUrl,
+  setDefaultServer: (value) => {
+    if (desktopServerManager) {
+      return desktopServerManager.setDefaultKey(value ?? null).then(() => undefined)
+    }
+    writeDefaultServerUrl(value)
+  },
 }
 
 if (root instanceof HTMLElement) {
-  const server: ServerConnection.Http = { type: "http", http: { url: getCurrentUrl() } }
+  const servers = desktopServerManager ? desktopServerList() : ([{ type: "http", http: { url: getCurrentUrl() } }] as const)
+  const defaultServer = desktopServerManager ? desktopActiveKey() : ServerConnection.Key.make(getDefaultUrl())
   render(
     () => (
       <PlatformProvider value={platform}>
         <AppBaseProviders>
           <AppInterface
-            defaultServer={ServerConnection.Key.make(getDefaultUrl())}
-            servers={[server]}
-            disableHealthCheck
+            defaultServer={ServerConnection.Key.make(defaultServer ?? getDefaultUrl())}
+            servers={[...servers]}
+            disableHealthCheck={!desktopServerManager}
           />
         </AppBaseProviders>
       </PlatformProvider>

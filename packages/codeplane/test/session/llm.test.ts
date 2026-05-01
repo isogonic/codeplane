@@ -395,6 +395,96 @@ describe("session.llm.stream", () => {
     })
   })
 
+  test("omits explicit token caps for LiteLLM-backed openai-compatible gpt-5 models", async () => {
+    const server = state.server
+    if (!server) {
+      throw new Error("Server not initialized")
+    }
+
+    const providerID = "logicplanes"
+    const source = await loadFixture("openai", "gpt-5.4")
+    const model = source.model
+
+    const request = waitRequest(
+      "/chat/completions",
+      new Response(createChatStream("Hello"), {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      }),
+    )
+
+    await using tmp = await tmpdir({
+      init: async (dir) => {
+        await Bun.write(
+          path.join(dir, "codeplane.json"),
+          JSON.stringify({
+            $schema: "https://example.invalid/config.json",
+            enabled_providers: [providerID],
+            provider: {
+              [providerID]: {
+                name: "LogicPlanes",
+                npm: "@ai-sdk/openai-compatible",
+                models: {
+                  [model.id]: model,
+                },
+                options: {
+                  apiKey: "test-key",
+                  baseURL: `${server.url.origin}/v1`,
+                  litellmProxy: true,
+                },
+              },
+            },
+          }),
+        )
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const resolved = await getModel(ProviderID.make(providerID), ModelID.make(model.id))
+        const sessionID = SessionID.make("session-test-litellm-gpt-5")
+        const agent = {
+          name: "test",
+          mode: "primary",
+          options: {},
+          permission: [{ permission: "*", pattern: "*", action: "allow" }],
+          temperature: 0.4,
+        } satisfies Agent.Info
+
+        const user = {
+          id: MessageID.make("user-litellm-gpt-5"),
+          sessionID,
+          role: "user",
+          time: { created: Date.now() },
+          agent: agent.name,
+          model: { providerID: ProviderID.make(providerID), modelID: resolved.id, variant: "high" },
+        } satisfies MessageV2.User
+
+        await drain({
+          user,
+          sessionID,
+          model: resolved,
+          agent,
+          system: ["You are a helpful assistant."],
+          messages: [{ role: "user", content: "Hello" }],
+          tools: {},
+        })
+
+        const capture = await request
+        const body = capture.body
+
+        expect(capture.url.pathname.endsWith("/chat/completions")).toBe(true)
+        expect(body.model).toBe(resolved.api.id)
+        expect(body.max_tokens).toBe(undefined)
+        expect(body.max_output_tokens).toBe(undefined)
+        expect((body.reasoningEffort as string | undefined) ?? (body.reasoning_effort as string | undefined)).toBe(
+          "high",
+        )
+      },
+    })
+  })
+
   test("service stream cancellation cancels provider response body promptly", async () => {
     const server = state.server
     if (!server) throw new Error("Server not initialized")

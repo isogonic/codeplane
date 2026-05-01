@@ -1248,6 +1248,7 @@ function HighlightedText(props: {
       {(segment) => (
         <Show
           when={segment.type === "file" && segment.path}
+          keyed
           fallback={<span data-highlight={segment.type}>{segment.text}</span>}
         >
           {(path) => (
@@ -1256,10 +1257,10 @@ function HighlightedText(props: {
                 type="button"
                 data-slot="file-reference-open"
                 data-highlight="file"
-                title={path()}
+                title={path}
                 onClick={(event) => {
                   event.stopPropagation()
-                  props.onOpenFile?.(path(), segment.selection)
+                  props.onOpenFile?.(path, segment.selection)
                 }}
               >
                 {segment.text}
@@ -1273,7 +1274,7 @@ function HighlightedText(props: {
                   data-slot="file-reference-copy"
                   onClick={(event) => {
                     event.stopPropagation()
-                    void props.onCopyPath?.(path())
+                    void props.onCopyPath?.(path)
                   }}
                   aria-label={i18n.t("ui.message.copyPath")}
                 />
@@ -1874,14 +1875,14 @@ ToolRegistry.register({
           </div>
         }
       >
-        <Show when={screenshot()}>
+        <Show when={screenshot()} keyed>
           {(src) => (
             <div data-component="browse-screenshot">
               <button
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation()
-                  dialog.show(() => <ImagePreview src={src()} alt={`Screenshot of ${url()}`} />)
+                  dialog.show(() => <ImagePreview src={src} alt={`Screenshot of ${url()}`} />)
                 }}
                 style={{
                   display: "block",
@@ -1897,7 +1898,7 @@ ToolRegistry.register({
                 aria-label={`Screenshot of ${url()}`}
               >
                 <img
-                  src={src()}
+                  src={src}
                   alt={`Screenshot of ${url()}`}
                   style={{
                     display: "block",
@@ -2128,10 +2129,10 @@ ToolRegistry.register({
               <span data-slot="basic-tool-tool-title">
                 <TextShimmer text={i18n.t("ui.tool.bashInteractive") || "Interactive shell"} active={pending()} />
               </span>
-              <Show when={description() || cmd()}>
+              <Show when={description() || cmd()} keyed>
                 {(label) => (
-                  <Show when={pending()} fallback={<ShellSubmessage text={label()} animate={sawPending} />}>
-                    <span data-slot="basic-tool-tool-subtitle">{label()}</span>
+                  <Show when={pending()} fallback={<ShellSubmessage text={label} animate={sawPending} />}>
+                    <span data-slot="basic-tool-tool-subtitle">{label}</span>
                   </Show>
                 )}
               </Show>
@@ -2215,10 +2216,10 @@ ToolRegistry.register({
               <span data-slot="basic-tool-tool-title">
                 <TextShimmer text={i18n.t("ui.tool.shell")} active={pending()} />
               </span>
-              <Show when={props.input.description}>
+              <Show when={props.input.description} keyed>
                 {(desc) => (
-                  <Show when={pending()} fallback={<ShellSubmessage text={desc()} animate={sawPending} />}>
-                    <span data-slot="basic-tool-tool-subtitle">{desc()}</span>
+                  <Show when={pending()} fallback={<ShellSubmessage text={desc} animate={sawPending} />}>
+                    <span data-slot="basic-tool-tool-subtitle">{desc}</span>
                   </Show>
                 )}
               </Show>
@@ -2333,10 +2334,10 @@ ToolRegistry.register({
               <span data-slot="basic-tool-tool-title">
                 <TextShimmer text={i18n.t("ui.tool.ssh")} active={pending()} />
               </span>
-              <Show when={subtitle()}>
+              <Show when={subtitle()} keyed>
                 {(value) => (
-                  <Show when={pending()} fallback={<ShellSubmessage text={value()} animate={sawPending} />}>
-                    <span data-slot="basic-tool-tool-subtitle">{value()}</span>
+                  <Show when={pending()} fallback={<ShellSubmessage text={value} animate={sawPending} />}>
+                    <span data-slot="basic-tool-tool-subtitle">{value}</span>
                   </Show>
                 )}
               </Show>

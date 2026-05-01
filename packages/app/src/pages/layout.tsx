@@ -1197,12 +1197,16 @@ export default function Layout(props: ParentProps) {
         category: language.t("command.category.provider"),
         onSelect: () => connectProvider(),
       },
-      {
-        id: "server.switch",
-        title: language.t("command.server.switch"),
-        category: language.t("command.category.server"),
-        onSelect: () => openServer(),
-      },
+      ...(platform.desktop
+        ? [
+            {
+              id: "server.switch",
+              title: language.t("command.server.switch"),
+              category: language.t("command.category.server"),
+              onSelect: () => openServer(),
+            },
+          ]
+        : []),
       {
         id: "settings.open",
         title: language.t("command.settings.open"),
@@ -1355,6 +1359,11 @@ export default function Layout(props: ParentProps) {
   }
 
   function openServer() {
+    if (!platform.desktop) return
+    if (platform.serverManager) {
+      void platform.serverManager.show()
+      return
+    }
     const run = ++dialogRun
     void import("@/components/dialog-select-server").then((x) => {
       if (dialogDead || dialogRun !== run) return
@@ -2255,6 +2264,7 @@ export default function Layout(props: ParentProps) {
       >
         <Show
           when={project()}
+          keyed
           fallback={
             <Show when={empty()}>
               <div class="flex-1 min-h-0 -mt-4 flex items-center justify-center px-6 pb-64 text-center">
@@ -2282,9 +2292,7 @@ export default function Layout(props: ParentProps) {
                       id={`project:${projectId()}`}
                       value={projectName}
                       onSave={(next) => {
-                        const item = project()
-                        if (!item) return
-                        void renameProject(item, next)
+                        void renameProject(project, next)
                       }}
                       class="text-14-medium text-text-strong truncate"
                       displayClass="text-14-medium text-text-strong truncate"
@@ -2326,9 +2334,7 @@ export default function Layout(props: ParentProps) {
                       <DropdownMenu.Content class="mt-1">
                         <DropdownMenu.Item
                           onSelect={() => {
-                            const item = project()
-                            if (!item) return
-                            showEditProjectDialog(item)
+                            showEditProjectDialog(project)
                           }}
                         >
                           <DropdownMenu.ItemLabel>{language.t("common.edit")}</DropdownMenu.ItemLabel>
@@ -2338,9 +2344,7 @@ export default function Layout(props: ParentProps) {
                           data-project={slug()}
                           disabled={!canToggle()}
                           onSelect={() => {
-                            const item = project()
-                            if (!item) return
-                            toggleProjectWorkspaces(item)
+                            toggleProjectWorkspaces(project)
                           }}
                         >
                           <DropdownMenu.ItemLabel>
@@ -2363,9 +2367,7 @@ export default function Layout(props: ParentProps) {
                           data-action="project-archived-sessions"
                           data-project={slug()}
                           onSelect={() => {
-                            const item = project()
-                            if (!item) return
-                            showArchivedSessionsDialog(item)
+                            showArchivedSessionsDialog(project)
                           }}
                         >
                           <DropdownMenu.ItemLabel>{language.t("command.session.archived")}</DropdownMenu.ItemLabel>
@@ -2410,7 +2412,7 @@ export default function Layout(props: ParentProps) {
                       <div class="flex-1 min-h-0">
                         <LocalWorkspace
                           ctx={workspaceSidebarCtx}
-                          project={project()}
+                          project={project}
                           sortNow={sortNow}
                           mobile={panelProps.mobile}
                         />
@@ -2425,9 +2427,7 @@ export default function Layout(props: ParentProps) {
                         icon="plus-small"
                         class="w-full"
                         onClick={() => {
-                          const item = project()
-                          if (!item) return
-                          void createWorkspace(item)
+                          void createWorkspace(project)
                         }}
                       >
                         {language.t("workspace.new")}
@@ -2454,7 +2454,7 @@ export default function Layout(props: ParentProps) {
                                 <SortableWorkspace
                                   ctx={workspaceSidebarCtx}
                                   directory={directory}
-                                  project={project()}
+                                  project={project}
                                   sortNow={sortNow}
                                   mobile={panelProps.mobile}
                                 />

@@ -45,6 +45,7 @@ export const DialogWhatsNew: Component<{ notes: ReleaseNotes; previousVersion?: 
             <span class="text-12-regular text-text-weak inline-flex items-center gap-2">
               <Show
                 when={props.previousVersion}
+                keyed
                 fallback={
                   <Show when={published()}>
                     <span>{published()}</span>
@@ -54,7 +55,7 @@ export const DialogWhatsNew: Component<{ notes: ReleaseNotes; previousVersion?: 
                 {(prev) => (
                   <span class="inline-flex items-center gap-1.5">
                     <span class="rounded bg-surface-raised-base px-1.5 py-0.5 font-mono text-11-regular text-text-base">
-                      v{prev()}
+                      v{prev}
                     </span>
                     <Icon name="arrow-right" size="x-small" class="text-icon-weak" />
                     <span class="rounded bg-surface-interactive-base-subtle px-1.5 py-0.5 font-mono text-11-regular text-text-interactive">
@@ -88,10 +89,10 @@ export const DialogWhatsNew: Component<{ notes: ReleaseNotes; previousVersion?: 
           data-component="whats-new-footer"
           class="flex shrink-0 items-center justify-between gap-3 border-t border-border-weak-base px-6 py-3"
         >
-          <Show when={props.notes.url} fallback={<span />}>
+          <Show when={props.notes.url} keyed fallback={<span />}>
             {(url) => (
               <a
-                href={url()}
+                href={url}
                 target="_blank"
                 rel="noopener noreferrer"
                 class="inline-flex items-center gap-1 text-13-medium text-text-interactive hover:underline"

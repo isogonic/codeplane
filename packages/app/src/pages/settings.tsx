@@ -1,20 +1,25 @@
 import { useNavigate, useParams } from "@solidjs/router"
-import { createEffect, createMemo, type Component } from "solid-js"
+import { createEffect, createMemo, lazy, Suspense, type Component } from "solid-js"
 import { Dynamic } from "solid-js/web"
 import { useLanguage } from "@/context/language"
-import { SettingsGeneral } from "@/components/settings-general"
-import { SettingsKeybinds } from "@/components/settings-keybinds"
-import { SettingsProviders } from "@/components/settings-providers"
-import { ModesSettings } from "@/pages/agents"
-import { McpSettings } from "@/pages/mcp"
-import { ModelsSettings } from "@/pages/models"
-import { PluginsSettings } from "@/pages/plugins"
-import { SkillsSettings } from "@/pages/skills"
 import { normalizeSettingsSection, settingsPath, settingsSection, type SettingsSection } from "./settings/nav"
 
 type SettingsContentProps = {
   layout?: "dialog" | "page"
 }
+
+const SettingsGeneral = lazy(() => import("@/components/settings-general").then((module) => ({ default: module.SettingsGeneral })))
+const SettingsKeybinds = lazy(() =>
+  import("@/components/settings-keybinds").then((module) => ({ default: module.SettingsKeybinds })),
+)
+const SettingsProviders = lazy(() =>
+  import("@/components/settings-providers").then((module) => ({ default: module.SettingsProviders })),
+)
+const ModesSettings = lazy(() => import("@/pages/agents").then((module) => ({ default: module.ModesSettings })))
+const McpSettings = lazy(() => import("@/pages/mcp").then((module) => ({ default: module.McpSettings })))
+const ModelsSettings = lazy(() => import("@/pages/models").then((module) => ({ default: module.ModelsSettings })))
+const PluginsSettings = lazy(() => import("@/pages/plugins").then((module) => ({ default: module.PluginsSettings })))
+const SkillsSettings = lazy(() => import("@/pages/skills").then((module) => ({ default: module.SkillsSettings })))
 
 const settingsContent: Record<
   SettingsSection,
@@ -70,7 +75,9 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <Dynamic component={Content()} layout="page" />
+        <Suspense fallback={<div class="h-full min-h-[240px]" />}>
+          <Dynamic component={Content()} layout="page" />
+        </Suspense>
       </div>
     </div>
   )

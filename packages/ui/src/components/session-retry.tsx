@@ -64,7 +64,7 @@ export function SessionRetry(props: { status: SessionStatus; show?: boolean }) {
                   </div>
                 </Tooltip>
               </Show>
-              <Show when={info()}>{(line) => <div data-slot="session-turn-retry-info">{line()}</div>}</Show>
+              <Show when={info()} keyed>{(line) => <div data-slot="session-turn-retry-info">{line}</div>}</Show>
             </div>
           </div>
         </Card>

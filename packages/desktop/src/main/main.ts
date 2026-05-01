@@ -1,29 +1,45 @@
-import { app, BrowserWindow, ipcMain, Menu, session, shell, dialog, type Session, type WebContents } from "electron"
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  Menu,
+  nativeImage,
+  session,
+  shell,
+  dialog,
+  type MessageBoxOptions,
+  type Session,
+  type WebContents,
+} from "electron"
 import { autoUpdater, type UpdateInfo, type ProgressInfo } from "electron-updater"
 import Store from "electron-store"
+import { CodeplaneDesktopReleaseSuffix, codeplaneDesktopReleaseTag } from "@codeplane-ai/shared/version"
+import { existsSync } from "node:fs"
 import path from "path"
 import { pathToFileURL } from "url"
+import { createDesktopLogger } from "./log"
+import {
+  createDesktopUIHost,
+  DesktopVersionAuthRequiredError,
+  type DesktopHostInstance,
+  type DesktopUIPrepareProgress,
+} from "./ui-host"
 
 /**
  * CodePlane desktop shell.
  *
  * The desktop app bundles no backend. It is a thin Electron wrapper that
- * loads the user's chosen CodePlane web UI from their own hosted instance
- * (or any compatible deployment). The login flow is intentionally
- * delegated to the page itself — Electron's persistent session carries
- * cookies, IndexedDB, and localStorage across launches, so any web-based
- * sign-in works out of the box: OAuth/OIDC, SAML, magic links, basic
- * auth dialogs, Cloudflare Access (cookie + service-token), Tailscale-
- * fronted instances, mTLS, etc.
+ * always starts on the instance picker, downloads the matching web UI for
+ * the selected server version into a local cache, and serves that UI from
+ * a local host for fast subsequent launches.
  *
  * Users can additionally configure per-instance auth headers (e.g. CF
  * Access service tokens, internal API keys) that get attached to every
- * outbound request to that instance via the webRequest API.
+ * outbound request to that instance via the session's webRequest API.
  *
- * Auto-update mirrors the plain GitHub release line (`vX.Y.Z`), but
- * downloads installers from sibling `vX.Y.Z-desktop` releases in the
- * same repo. The shell never embeds the backend, so updating the
- * desktop app and updating the self-hosted instance are independent.
+ * Auto-update tracks dedicated desktop releases (`vX.Y.Z-desktop`)
+ * from the same repo. The shell never embeds the backend, so updating
+ * the desktop app and updating the self-hosted instance are independent.
  */
 
 const SESSION_PARTITION_PREFIX = "persist:codeplane:"
@@ -34,7 +50,20 @@ const GITHUB_API_HEADERS = {
 }
 const GITHUB_RELEASES_API_URL = "https://api.github.com/repos/devinoldenburg/codeplane/releases"
 const GITHUB_RELEASE_DOWNLOAD_URL = "https://github.com/devinoldenburg/codeplane/releases/download"
-const DESKTOP_RELEASE_SUFFIX = "-desktop"
+const DESKTOP_RELEASE_SUFFIX = CodeplaneDesktopReleaseSuffix
+const APP_ID = "ai.codeplane.desktop"
+const APP_NAME = "Codeplane"
+const APP_COPYRIGHT = "Copyright © 2026 Devin Oldenburg"
+const APP_WEBSITE = "https://codeplane.ai"
+const USER_DATA_OVERRIDE = process.env.CODEPLANE_DESKTOP_USER_DATA_DIR?.trim()
+const LEGACY_USER_DATA_NAME = "@codeplane-ai/desktop"
+
+if (USER_DATA_OVERRIDE) {
+  app.setPath("userData", USER_DATA_OVERRIDE)
+} else {
+  const legacyUserData = path.join(app.getPath("appData"), LEGACY_USER_DATA_NAME)
+  if (existsSync(legacyUserData)) app.setPath("userData", legacyUserData)
+}
 
 type SavedInstance = {
   id: string
@@ -63,6 +92,12 @@ type Schema = {
 
 type GitHubRelease = {
   tag_name?: string
+  draft?: boolean
+  prerelease?: boolean
+  name?: string | null
+  body?: string | null
+  html_url?: string | null
+  published_at?: string | null
 }
 
 const store = new Store<Schema>({
@@ -71,17 +106,101 @@ const store = new Store<Schema>({
     instances: [],
   },
 })
+const logger = createDesktopLogger(process.env.CODEPLANE_DESKTOP_LOG_DIR?.trim() || path.join(app.getPath("userData"), "logs"))
 
 let mainWindow: BrowserWindow | undefined
+let currentInstanceID: string | undefined
+const configuredPartitions = new Set<string>()
+const uiHost = createDesktopUIHost({
+  cacheDir: app.getPath("userData"),
+  getInstance,
+  getSession: ensureSession,
+  log: (event, data) => logger.log("ui-host", event, data),
+})
+
+app.setName(APP_NAME)
+app.setAppUserModelId(APP_ID)
+logger.log("main", "bootstrap", {
+  appName: APP_NAME,
+  cwd: process.cwd(),
+  logPath: logger.path(),
+  userData: app.getPath("userData"),
+})
 
 function getInstance(id: string | undefined): SavedInstance | undefined {
   if (!id) return undefined
   return store.get("instances", []).find((entry) => entry.id === id)
 }
 
+function instanceSummary(instance: SavedInstance | DesktopHostInstance) {
+  return {
+    id: instance.id,
+    url: instance.url,
+    label: instance.label,
+    hasHeaders: !!instance.headers && Object.keys(instance.headers).length > 0,
+    ignoreCertificateErrors: !!instance.ignoreCertificateErrors,
+    clientCertConfigured: !!instance.clientCertSubject,
+  }
+}
+
+function mockUpdaterMode() {
+  return process.env.CODEPLANE_DESKTOP_TEST_UPDATE?.trim()
+}
+
+function mockUpdateStatus() {
+  const mode = mockUpdaterMode()
+  if (!mode) return
+  if (mode === "latest") {
+    return {
+      current: app.getVersion(),
+      latest: app.getVersion(),
+      hasUpdate: false,
+      method: "desktop-mock",
+    }
+  }
+  if (mode.startsWith("available:")) {
+    const latest = mode.slice("available:".length) || app.getVersion()
+    return {
+      current: app.getVersion(),
+      latest,
+      hasUpdate: compareVersions(latest, app.getVersion()) > 0,
+      method: "desktop-mock",
+    }
+  }
+}
+
+function mockUpdateCheckResult() {
+  const mode = mockUpdaterMode()
+  if (!mode) return
+  if (mode === "latest") {
+    return { ok: true as const, updateAvailable: false }
+  }
+  if (mode.startsWith("available:")) {
+    const version = mode.slice("available:".length) || app.getVersion()
+    return { ok: true as const, updateAvailable: true, version }
+  }
+  if (mode.startsWith("error:")) {
+    return { ok: false as const, error: mode.slice("error:".length) || "Mock update failure" }
+  }
+}
+
+function activeWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  return mainWindow
+}
+
+function showMessageBox(options: MessageBoxOptions) {
+  const window = activeWindow()
+  if (window) return dialog.showMessageBox(window, options)
+  return dialog.showMessageBox(options)
+}
+
 function ensureSession(instance: SavedInstance): Session {
   const partition = `${SESSION_PARTITION_PREFIX}${instance.id}`
   const ses = session.fromPartition(partition, { cache: true })
+  if (configuredPartitions.has(partition)) return ses
+  configuredPartitions.add(partition)
+  const target = asUrl(instance.url)
 
   // Inject per-instance auth headers (CF Access, bearer tokens, …) on all
   // outbound HTTP requests for this session. We never overwrite headers the
@@ -89,11 +208,19 @@ function ensureSession(instance: SavedInstance): Session {
   // break CORS/credentials behaviour.
   ses.webRequest.onBeforeSendHeaders((details, callback) => {
     const headers = { ...details.requestHeaders }
+    const current = target ? asUrl(details.url) : undefined
+    const targetPath = target?.pathname.replace(/\/+$/, "") || "/"
+    const matchesTarget =
+      !!target &&
+      !!current &&
+      current.origin === target.origin &&
+      (current.pathname === targetPath || current.pathname.startsWith(`${targetPath === "/" ? "" : targetPath}/`))
     if (instance.headers) {
       for (const [name, value] of Object.entries(instance.headers)) {
         if (!name) continue
         if (HEADER_PREFIX_BLOCKED.some((blocked) => name.toLowerCase() === blocked)) continue
         if (headers[name] !== undefined) continue
+        if (!matchesTarget && details.url !== target?.toString()) continue
         headers[name] = value
       }
     }
@@ -126,22 +253,79 @@ function asUrl(input: string): URL | undefined {
   }
 }
 
-function loadInstance(window: BrowserWindow, instance: SavedInstance) {
-  const target = asUrl(instance.url)
-  if (!target) {
-    void dialog.showMessageBox(window, {
-      type: "error",
-      message: "Invalid instance URL",
-      detail: instance.url,
-    })
-    return
-  }
-  store.set("lastInstanceId", instance.id)
-  void window.loadURL(target.toString())
-}
-
 function getAppAssetPath(...parts: string[]) {
   return path.join(app.getAppPath(), ...parts)
+}
+
+function iconPath() {
+  return [getAppAssetPath("build", "icon.png"), path.join(process.cwd(), "build", "icon.png")].find(existsSync)
+}
+
+function applyRuntimeIcon() {
+  const icon = iconPath()
+  if (!icon) return
+  const image = nativeImage.createFromPath(icon)
+  if (image.isEmpty()) return
+  logger.log("main", "icon.applied", { icon })
+  if (process.platform === "darwin") app.dock?.setIcon(image)
+}
+
+function applyRuntimeMetadata() {
+  app.setAboutPanelOptions({
+    applicationName: APP_NAME,
+    applicationVersion: app.getVersion(),
+    copyright: APP_COPYRIGHT,
+    version: app.getVersion(),
+    website: APP_WEBSITE,
+  })
+}
+
+function attachWindowDebugLogging(window: BrowserWindow, name: string) {
+  logger.log("window", "created", { id: window.id, name })
+  window.on("close", () => logger.log("window", "close", { id: window.id, name }))
+  window.on("closed", () => logger.log("window", "closed", { id: window.id, name }))
+  window.on("unresponsive", () => logger.log("window", "unresponsive", { id: window.id, name }))
+  window.webContents.on("console-message", (_event, level, message, line, sourceId) => {
+    logger.log("window.console", "message", {
+      id: window.id,
+      level,
+      line,
+      sourceId,
+      message,
+      name,
+      url: window.webContents.getURL(),
+    })
+  })
+  window.webContents.on("did-finish-load", () => {
+    logger.log("window", "did-finish-load", {
+      id: window.id,
+      name,
+      title: window.getTitle(),
+      url: window.webContents.getURL(),
+    })
+  })
+  window.webContents.on(
+    "did-fail-load",
+    (_event, code, description, validatedURL, isMainFrame, frameProcessId, frameRoutingId) => {
+      logger.log("window", "did-fail-load", {
+        code,
+        current: window.webContents.getURL(),
+        description,
+        frameProcessId,
+        frameRoutingId,
+        id: window.id,
+        isMainFrame,
+        name,
+        validatedURL,
+      })
+    },
+  )
+  window.webContents.on("did-navigate-in-page", (_event, url, isMainFrame) => {
+    logger.log("window", "did-navigate-in-page", { id: window.id, isMainFrame, name, url })
+  })
+  window.webContents.on("render-process-gone", (_event, details) => {
+    logger.log("window", "render-process-gone", { details, id: window.id, name })
+  })
 }
 
 function showSetup(window: BrowserWindow, opts?: { editId?: string }) {
@@ -149,34 +333,78 @@ function showSetup(window: BrowserWindow, opts?: { editId?: string }) {
   if (opts?.editId) {
     url.searchParams.set("edit", opts.editId)
   }
+  logger.log("main", "setup.show", { editId: opts?.editId, url: url.toString(), windowId: window.id })
   void window.loadURL(url.toString())
 }
 
+function desktopReleaseVersion(input: string) {
+  return input.trim().replace(/^v/, "").replace(new RegExp(`${DESKTOP_RELEASE_SUFFIX}$`), "")
+}
+
+function compareVersions(a: string, b: string) {
+  const left = desktopReleaseVersion(a)
+    .split(".")
+    .map((value) => Number.parseInt(value, 10))
+    .map((value) => (Number.isFinite(value) ? value : 0))
+  const right = desktopReleaseVersion(b)
+    .split(".")
+    .map((value) => Number.parseInt(value, 10))
+    .map((value) => (Number.isFinite(value) ? value : 0))
+  for (let i = 0; i < Math.max(left.length, right.length); i++) {
+    const next = (left[i] ?? 0) - (right[i] ?? 0)
+    if (next !== 0) return next
+  }
+  return 0
+}
+
+function desktopReleaseTag(version: string) {
+  return codeplaneDesktopReleaseTag(desktopReleaseVersion(version))
+}
+
 async function resolveDesktopReleaseTag() {
-  const latestResponse = await fetch(`${GITHUB_RELEASES_API_URL}/latest`, {
+  const releasesResponse = await fetch(`${GITHUB_RELEASES_API_URL}?per_page=100`, {
     headers: GITHUB_API_HEADERS,
   })
-  if (!latestResponse.ok) {
-    throw new Error(`GitHub latest release lookup failed with HTTP ${latestResponse.status}`)
+  if (!releasesResponse.ok) {
+    throw new Error(`GitHub desktop release lookup failed with HTTP ${releasesResponse.status}`)
   }
-  const latestRelease = (await latestResponse.json()) as GitHubRelease
-  if (!latestRelease.tag_name) {
-    throw new Error("GitHub latest release response did not include a tag name")
+  const releases = ((await releasesResponse.json()) as GitHubRelease[])
+    .filter((release) => release.tag_name?.endsWith(DESKTOP_RELEASE_SUFFIX) && !release.draft && !release.prerelease)
+    .sort((a, b) => compareVersions(b.tag_name ?? "", a.tag_name ?? ""))
+  return releases[0]?.tag_name
+}
+
+async function getDesktopUpdateStatus() {
+  const mocked = mockUpdateStatus()
+  if (mocked) return mocked
+  const current = app.getVersion()
+  const latestTag = await resolveDesktopReleaseTag()
+  const latest = latestTag ? desktopReleaseVersion(latestTag) : null
+  return {
+    current,
+    latest,
+    hasUpdate: !!latest && compareVersions(latest, current) > 0,
+    method: "desktop",
   }
-  if (latestRelease.tag_name.endsWith(DESKTOP_RELEASE_SUFFIX)) {
-    return latestRelease.tag_name
-  }
-  const desktopTag = `${latestRelease.tag_name}${DESKTOP_RELEASE_SUFFIX}`
-  const desktopResponse = await fetch(`${GITHUB_RELEASES_API_URL}/tags/${desktopTag}`, {
+}
+
+async function getDesktopReleaseNotes(version: string) {
+  const response = await fetch(`${GITHUB_RELEASES_API_URL}/tags/${desktopReleaseTag(version)}`, {
     headers: GITHUB_API_HEADERS,
   })
-  if (desktopResponse.status === 404) {
-    return undefined
+  if (response.status === 404) return null
+  if (!response.ok) {
+    throw new Error(`GitHub desktop release notes lookup failed with HTTP ${response.status}`)
   }
-  if (!desktopResponse.ok) {
-    throw new Error(`GitHub desktop release lookup failed with HTTP ${desktopResponse.status}`)
+  const release = (await response.json()) as GitHubRelease
+  if (!release.tag_name) return null
+  return {
+    tag: release.tag_name,
+    name: release.name ?? null,
+    body: release.body ?? null,
+    url: release.html_url ?? null,
+    publishedAt: release.published_at ?? null,
   }
-  return desktopTag
 }
 
 function configureDesktopUpdater(desktopTag: string) {
@@ -332,7 +560,7 @@ function buildMenu(reload: () => void, openSetup: () => void, openInstanceSwitch
       label: "Help",
       submenu: [
         {
-          label: "CodePlane on GitHub",
+          label: "Codeplane on GitHub",
           click: () => void shell.openExternal("https://github.com/devinoldenburg/codeplane"),
         },
         {
@@ -347,9 +575,9 @@ function buildMenu(reload: () => void, openSetup: () => void, openInstanceSwitch
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
-function createWindow() {
+function createWindowOptions(ses?: Session) {
   const bounds = store.get("windowBounds")
-  const window = new BrowserWindow({
+  return {
     x: bounds?.x,
     y: bounds?.y,
     width: bounds?.width ?? 1280,
@@ -358,71 +586,260 @@ function createWindow() {
     minHeight: 480,
     backgroundColor: "#0e0e0e",
     show: false,
+    icon: iconPath(),
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     webPreferences: {
-      preload: getAppAssetPath("dist", "main", "preload.js"),
+      preload: getAppAssetPath("dist", "main", "preload.cjs"),
       contextIsolation: true,
       sandbox: true,
       // The web app never sees Node, but persistent session storage (cookies,
       // indexedDB) is allowed so logins survive restarts.
       nodeIntegration: false,
+      ...(ses ? { session: ses } : {}),
     },
-  })
+  } satisfies ConstructorParameters<typeof BrowserWindow>[0]
+}
 
+function createWindow(editId?: string) {
+  currentInstanceID = undefined
+  const window = new BrowserWindow(createWindowOptions())
+  attachWindowDebugLogging(window, "setup")
   window.once("ready-to-show", () => window.show())
-
   attachWindowHandlers(window)
-
-  // Pick the right page on launch.
-  const last = getInstance(store.get("lastInstanceId"))
-  const instances = store.get("instances", [])
-  if (last) {
-    // Re-create the BrowserWindow on the right partition so per-instance
-    // headers and cookie isolation kick in.
-    window.close()
-    void openInstance(last)
-    return
-  }
-  if (instances.length === 1) {
-    window.close()
-    void openInstance(instances[0])
-    return
-  }
-  showSetup(window)
+  showSetup(window, editId ? { editId } : undefined)
   mainWindow = window
+  return window
+}
+
+function loadWindowUrl(window: BrowserWindow, url: string) {
+  return new Promise<void>((resolve, reject) => {
+    let done = false
+    const cleanup = () => {
+      window.webContents.removeListener("did-fail-load", fail)
+      window.webContents.removeListener("did-finish-load", finish)
+    }
+    const finish = () => {
+      if (done) return
+      done = true
+      cleanup()
+      logger.log("main", "window.load.success", { url, windowId: window.id })
+      resolve()
+    }
+    const fail = (
+      _event: Electron.Event,
+      code: number,
+      description: string,
+      validatedURL: string,
+      isMainFrame: boolean,
+    ) => {
+      if (done || !isMainFrame || validatedURL !== url) return
+      queueMicrotask(() => {
+        if (done) return
+        if (!window.isDestroyed() && window.webContents.getURL()) {
+          finish()
+          return
+        }
+        done = true
+        cleanup()
+        logger.log("main", "window.load.fail", {
+          code,
+          description,
+          url,
+          validatedURL,
+          windowId: window.id,
+        })
+        reject(new Error(`${description} (${code}) loading '${validatedURL}'`))
+      })
+    }
+    window.webContents.once("did-finish-load", finish)
+    window.webContents.on("did-fail-load", fail)
+    void window.loadURL(url).catch((error) => {
+      queueMicrotask(() => {
+        if (done) return
+        if (!window.isDestroyed() && window.webContents.getURL()) {
+          finish()
+          return
+        }
+        done = true
+        cleanup()
+        logger.log("main", "window.load.reject", { error, url, windowId: window.id })
+        reject(error)
+      })
+    })
+  })
+}
+
+function attachInteractiveBootstrap(window: BrowserWindow, instance: SavedInstance) {
+  let closed = false
+  let inflight: Promise<void> | undefined
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const currentOrigin = asUrl(instance.url)?.origin
+
+  const cleanup = () => {
+    closed = true
+    if (timer) clearTimeout(timer)
+    timer = undefined
+    window.webContents.removeListener("did-finish-load", onLoad)
+    window.webContents.removeListener("did-navigate", onNavigate)
+    window.webContents.removeListener("did-navigate-in-page", onNavigateInPage)
+    window.removeListener("closed", cleanup)
+  }
+
+  const attempt = () => {
+    if (closed || inflight || window.isDestroyed()) return
+    inflight = uiHost
+      .prepare(instance)
+      .then(async (prepared) => {
+        logger.log("main", "instance.bootstrap.ready", { prepared, ...instanceSummary(instance) })
+        cleanup()
+        await loadWindowUrl(window, prepared.url)
+        logger.log("main", "instance.bootstrap.success", { prepared, ...instanceSummary(instance) })
+      })
+      .catch((error) => {
+        if (error instanceof DesktopVersionAuthRequiredError) {
+          logger.log("main", "instance.bootstrap.wait-auth", {
+            authUrl: error.authUrl,
+            ...instanceSummary(instance),
+          })
+          return
+        }
+        logger.log("main", "instance.bootstrap.error", { error, ...instanceSummary(instance) })
+      })
+      .finally(() => {
+        inflight = undefined
+      })
+  }
+
+  const schedule = () => {
+    if (closed || timer) return
+    timer = setTimeout(() => {
+      timer = undefined
+      attempt()
+    }, 150)
+  }
+
+  const onLoad = () => schedule()
+  const onNavigate = (_event: Electron.Event, url: string) => {
+    if (!currentOrigin) {
+      schedule()
+      return
+    }
+    if (asUrl(url)?.origin !== currentOrigin) return
+    schedule()
+  }
+  const onNavigateInPage = (_event: Electron.Event, url: string) => {
+    if (!currentOrigin) {
+      schedule()
+      return
+    }
+    if (asUrl(url)?.origin !== currentOrigin) return
+    schedule()
+  }
+
+  window.on("closed", cleanup)
+  window.webContents.on("did-finish-load", onLoad)
+  window.webContents.on("did-navigate", onNavigate)
+  window.webContents.on("did-navigate-in-page", onNavigateInPage)
 }
 
 async function openInstance(instance: SavedInstance) {
-  const ses = ensureSession(instance)
-  const bounds = store.get("windowBounds")
-  const window = new BrowserWindow({
-    x: bounds?.x,
-    y: bounds?.y,
-    width: bounds?.width ?? 1280,
-    height: bounds?.height ?? 800,
-    minWidth: 800,
-    minHeight: 480,
-    backgroundColor: "#0e0e0e",
-    show: false,
-    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
-    webPreferences: {
-      preload: getAppAssetPath("dist", "main", "preload.js"),
-      contextIsolation: true,
-      sandbox: true,
-      nodeIntegration: false,
-      session: ses,
-    },
-  })
-  window.once("ready-to-show", () => window.show())
-  attachWindowHandlers(window)
-  loadInstance(window, instance)
-  mainWindow = window
+  const target = asUrl(instance.url)
+  if (!target) {
+    await showMessageBox({
+      type: "error",
+      message: "Invalid instance URL",
+      detail: instance.url,
+    })
+    return false
+  }
+
+  try {
+    logger.log("main", "instance.open.start", instanceSummary(instance))
+    const ses = ensureSession(instance)
+    const window = new BrowserWindow(createWindowOptions(ses))
+    attachWindowDebugLogging(window, "instance")
+    window.once("ready-to-show", () => window.show())
+    attachWindowHandlers(window)
+    const previous = mainWindow
+    mainWindow = window
+    currentInstanceID = instance.id
+    store.set("lastInstanceId", instance.id)
+    if (previous && previous !== window && !previous.isDestroyed()) previous.hide()
+    const prepared = await uiHost.prepare(instance).catch(async (error) => {
+      if (!(error instanceof DesktopVersionAuthRequiredError)) throw error
+      logger.log("main", "instance.open.auth-required", {
+        authUrl: error.authUrl,
+        ...instanceSummary(instance),
+      })
+      attachInteractiveBootstrap(window, instance)
+      await loadWindowUrl(window, error.authUrl)
+      return
+    })
+    if (prepared) await loadWindowUrl(window, prepared.url)
+    if (previous && previous !== window && !previous.isDestroyed()) {
+      setTimeout(() => {
+        if (!previous.isDestroyed()) previous.close()
+      }, 0)
+    }
+    logger.log("main", "instance.open.success", { prepared, ...instanceSummary(instance) })
+    return true
+  } catch (error) {
+    logger.log("main", "instance.open.error", { error, ...instanceSummary(instance) })
+    await showMessageBox({
+      type: "error",
+      message: "Couldn't open this instance",
+      detail: error instanceof Error ? error.message : String(error),
+    })
+    return false
+  }
+}
+
+function showSetupWindow(editId?: string) {
+  logger.log("main", "setup.open-window", { editId })
+  const previous = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined
+  const next = createWindow(editId)
+  if (previous && previous !== next && !previous.isDestroyed()) previous.close()
 }
 
 function setupIpc() {
+  ipcMain.on("app:version", (event) => {
+    event.returnValue = app.getVersion()
+  })
+  ipcMain.on("desktop:log", (_event, payload: { event?: string; data?: unknown; scope?: string }) => {
+    if (!payload.event) return
+    logger.log(payload.scope || "renderer", payload.event, payload.data)
+  })
+  ipcMain.on("desktop:bootstrap", (event) => {
+    try {
+      const instances = store.get("instances", [])
+      const bootstrap = uiHost.bootstrap(instances, currentInstanceID)
+      const defaultID = store.get("lastInstanceId")
+      event.returnValue = {
+        ...bootstrap,
+        defaultKey: defaultID ? uiHost.proxyKey(defaultID) : null,
+      }
+      logger.log("main", "ipc.bootstrap", {
+        currentInstanceID,
+        defaultID,
+        instanceCount: instances.length,
+      })
+    } catch {
+      event.returnValue = {
+        currentKey: null,
+        defaultKey: store.get("lastInstanceId") ? uiHost.proxyKey(store.get("lastInstanceId")!) : null,
+        instances: [],
+      }
+    }
+  })
+  ipcMain.handle("desktop:log-path", () => logger.path())
   ipcMain.handle("instances:list", () => store.get("instances", []))
+  ipcMain.handle("instances:get-default-key", () => {
+    const defaultID = store.get("lastInstanceId")
+    return defaultID ? uiHost.proxyKey(defaultID) : null
+  })
   ipcMain.handle("instances:get-last", () => store.get("lastInstanceId"))
   ipcMain.handle("instances:save", (_event, instance: SavedInstance) => {
+    logger.log("main", "instances.save", instanceSummary(instance))
     const list = store.get("instances", [])
     const idx = list.findIndex((entry) => entry.id === instance.id)
     if (idx === -1) list.push(instance)
@@ -430,76 +847,165 @@ function setupIpc() {
     store.set("instances", list)
     return list
   })
+  ipcMain.handle("instances:prepare", async (event, instance: SavedInstance) => {
+    logger.log("main", "instances.prepare.start", instanceSummary(instance))
+    try {
+      const prepared = await uiHost.prepare(instance, (progress: DesktopUIPrepareProgress) => {
+        event.sender.send("instances:prepare-progress", {
+          instanceID: instance.id,
+          ...progress,
+        })
+      })
+      logger.log("main", "instances.prepare.success", { prepared, ...instanceSummary(instance) })
+      return { ok: true as const, ...prepared }
+    } catch (error) {
+      if (error instanceof DesktopVersionAuthRequiredError) {
+        logger.log("main", "instances.prepare.auth-required", {
+          authUrl: error.authUrl,
+          ...instanceSummary(instance),
+        })
+        return {
+          ok: false as const,
+          error: "Sign-in is required before the desktop app can cache this UI. The instance was saved.",
+          authUrl: error.authUrl,
+        }
+      }
+      logger.log("main", "instances.prepare.error", { error, ...instanceSummary(instance) })
+      return {
+        ok: false as const,
+        error: error instanceof Error ? error.message : String(error),
+      }
+    }
+  })
   ipcMain.handle("instances:remove", (_event, id: string) => {
+    logger.log("main", "instances.remove", { id })
     const next = store.get("instances", []).filter((entry) => entry.id !== id)
     store.set("instances", next)
     if (store.get("lastInstanceId") === id) store.delete("lastInstanceId")
     return next
   })
-  ipcMain.handle("instances:open", (_event, id: string) => {
-    const instance = getInstance(id)
-    if (!instance) return false
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.close()
-      mainWindow = undefined
+  ipcMain.handle("instances:set-default-key", async (_event, key: string | null) => {
+    logger.log("main", "instances.set-default-key", { key })
+    const instances = store.get("instances", [])
+    const match = key ? instances.find((instance) => uiHost.proxyKey(instance.id) === key) : undefined
+    if (match) {
+      store.set("lastInstanceId", match.id)
+      return true
     }
-    void openInstance(instance)
+    store.delete("lastInstanceId")
     return true
   })
-  ipcMain.handle("instances:probe", async (_event, url: string) => {
-    const target = asUrl(url)
+  ipcMain.handle("instances:open", async (_event, id: string) => {
+    logger.log("main", "instances.open", { id })
+    const instance = getInstance(id)
+    if (!instance) return false
+    return openInstance(instance)
+  })
+  ipcMain.handle("instances:show-setup", (_event, editId?: string) => {
+    logger.log("main", "instances.show-setup", { editId })
+    setTimeout(() => showSetupWindow(editId), 0)
+    return true
+  })
+  ipcMain.handle("instances:probe", async (_event, input: string | DesktopHostInstance) => {
+    const instance =
+      typeof input === "string"
+        ? ({ id: `probe:${Date.now()}`, url: input } satisfies DesktopHostInstance)
+        : { ...input, id: input.id || `probe:${Date.now()}` }
+    const target = asUrl(instance.url)
     if (!target) return { ok: false, error: "Invalid URL" }
     try {
-      const response = await fetch(`${target.origin}/global/version`, {
+      logger.log("main", "instances.probe.start", instanceSummary(instance))
+      const ses = ensureSession(instance)
+      const nativeFetch =
+        "fetch" in ses && typeof ses.fetch === "function"
+          ? ses.fetch.bind(ses)
+          : fetch
+      const response = await nativeFetch(new URL("global/version", target).toString(), {
         method: "GET",
         redirect: "follow",
       })
-      if (!response.ok) {
-        return { ok: false, error: `HTTP ${response.status}`, status: response.status }
-      }
+      if (!response.ok) return { ok: false, error: `HTTP ${response.status}`, status: response.status }
       const data = (await response.json().catch(() => ({}))) as { current?: string; latest?: string }
+      logger.log("main", "instances.probe.success", {
+        latest: data.latest ?? null,
+        status: response.status,
+        version: data.current ?? null,
+        ...instanceSummary(instance),
+      })
       return { ok: true, version: data.current ?? null, latest: data.latest ?? null }
     } catch (error) {
+      logger.log("main", "instances.probe.error", { error, ...instanceSummary(instance) })
       return { ok: false, error: error instanceof Error ? error.message : String(error) }
     }
   })
   ipcMain.handle("auth:open-external", async (_event, url: string) => {
     const target = asUrl(url)
     if (!target) return false
+    logger.log("main", "auth.open-external", { url: target.toString() })
     await shell.openExternal(target.toString())
     return true
   })
+  ipcMain.handle("updater:status", async () => {
+    const status = await getDesktopUpdateStatus()
+    logger.log("main", "updater.status", status)
+    return status
+  })
   ipcMain.handle("updater:check", async () => {
+    const mocked = mockUpdateCheckResult()
+    if (mocked) {
+      logger.log("main", "updater.check.mock", mocked)
+      return mocked
+    }
     try {
       const result = await runDesktopUpdateCheck(() => autoUpdater.checkForUpdates())
-      return { ok: true, updateAvailable: !!result?.updateInfo, version: result?.updateInfo?.version }
+      const response = { ok: true as const, updateAvailable: !!result?.updateInfo, version: result?.updateInfo?.version }
+      logger.log("main", "updater.check", response)
+      return response
     } catch (error) {
-      return { ok: false, error: error instanceof Error ? error.message : String(error) }
+      const response = { ok: false as const, error: error instanceof Error ? error.message : String(error) }
+      logger.log("main", "updater.check.error", response)
+      return response
     }
+  })
+  ipcMain.handle("updater:release-notes", async (_event, version: string) => {
+    const result = await getDesktopReleaseNotes(version)
+    logger.log("main", "updater.release-notes", { found: !!result, version })
+    return result
   })
 }
 
 function setupAutoUpdater() {
+  if (process.env.CODEPLANE_DESKTOP_DISABLE_AUTO_UPDATE === "1" || mockUpdaterMode()) {
+    logger.log("main", "updater.disabled", {
+      disableEnv: process.env.CODEPLANE_DESKTOP_DISABLE_AUTO_UPDATE === "1",
+      mockMode: mockUpdaterMode() || null,
+    })
+    return
+  }
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
   autoUpdater.allowPrerelease = false
 
   autoUpdater.on("update-available", (info: UpdateInfo) => {
+    logger.log("main", "updater.update-available", info)
     mainWindow?.webContents.send("updater:update-available", info)
   })
   autoUpdater.on("update-not-available", () => {
+    logger.log("main", "updater.update-not-available")
     mainWindow?.webContents.send("updater:update-not-available")
   })
   autoUpdater.on("download-progress", (progress: ProgressInfo) => {
+    logger.log("main", "updater.download-progress", progress)
     mainWindow?.webContents.send("updater:download-progress", progress)
   })
   autoUpdater.on("update-downloaded", (info: UpdateInfo) => {
+    logger.log("main", "updater.update-downloaded", info)
     mainWindow?.webContents.send("updater:update-downloaded", info)
     void dialog
       .showMessageBox({
         type: "info",
         title: "Update ready",
-        message: `CodePlane ${info.version} is ready to install.`,
+        message: `Codeplane ${info.version} is ready to install.`,
         detail: "Restart the app to apply the update.",
         buttons: ["Restart now", "Later"],
         defaultId: 0,
@@ -510,6 +1016,7 @@ function setupAutoUpdater() {
       })
   })
   autoUpdater.on("error", (error) => {
+    logger.log("main", "updater.error", error)
     mainWindow?.webContents.send("updater:error", error.message ?? String(error))
   })
 
@@ -521,9 +1028,11 @@ function setupAutoUpdater() {
 // Single-instance lock so opening another shortcut focuses the existing window.
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
+  logger.log("main", "single-instance-lock.denied")
   app.quit()
 } else {
   app.on("second-instance", () => {
+    logger.log("main", "single-instance-lock.second-instance")
     if (mainWindow && !mainWindow.isDestroyed()) {
       if (mainWindow.isMinimized()) mainWindow.restore()
       mainWindow.focus()
@@ -535,6 +1044,7 @@ if (!gotLock) {
   // chosen identity is associated with the per-instance session for the
   // rest of the lifetime of the window.
   app.on("select-client-certificate", (event, _webContents: WebContents, _url, certificateList, callback) => {
+    logger.log("main", "select-client-certificate", { count: certificateList.length })
     if (certificateList.length === 0) return
     event.preventDefault()
     callback(certificateList[0])
@@ -543,6 +1053,7 @@ if (!gotLock) {
   // HTTP basic auth prompt — let the OS-style dialog handle it. The web
   // page can also handle this itself if it owns the URL.
   app.on("login", (event, _webContents, _request, authInfo, callback) => {
+    logger.log("main", "login", { host: authInfo.host, isProxy: authInfo.isProxy, realm: authInfo.realm })
     if (authInfo.isProxy) return
     // Surface the prompt by not preventing default; Electron renders the
     // native dialog. If the page wants to handle it, it can listen on the
@@ -552,22 +1063,28 @@ if (!gotLock) {
   })
 
   app.whenReady().then(() => {
+    logger.log("main", "ready")
+    applyRuntimeIcon()
+    applyRuntimeMetadata()
     setupIpc()
     setupAutoUpdater()
+    void uiHost.cleanup()
     createWindow()
 
     buildMenu(
       () => mainWindow?.webContents.reload(),
-      () => mainWindow && showSetup(mainWindow),
-      () => mainWindow && showSetup(mainWindow),
+      () => showSetupWindow(),
+      () => showSetupWindow(),
     )
 
     app.on("activate", () => {
+      logger.log("main", "activate")
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
     })
   })
 
   app.on("window-all-closed", () => {
+    logger.log("main", "window-all-closed", { platform: process.platform })
     if (process.platform !== "darwin") app.quit()
   })
 }

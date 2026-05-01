@@ -3,34 +3,18 @@
 import { Script } from "@codeplane-ai/script"
 import { $ } from "bun"
 import { fileURLToPath } from "url"
+import { codeplaneReleaseTag } from "../packages/shared/src/version"
+import { syncVersionFiles } from "./sync-version"
 
 console.log("=== publishing ===\n")
 
 const dir = fileURLToPath(new URL("..", import.meta.url))
 process.chdir(dir)
-const tag = `v${Script.version}`
-
-const pkgjsons = await Array.fromAsync(
-  new Bun.Glob("**/package.json").scan({
-    absolute: true,
-  }),
-).then((arr) => arr.filter((x) => !x.includes("node_modules") && !x.includes("dist")))
+const tag = codeplaneReleaseTag(Script.version)
 
 async function prepareReleaseFiles() {
-  for (const file of pkgjsons) {
-    let pkg = await Bun.file(file).text()
-    pkg = pkg.replaceAll(/"version": "[^"]+"/g, `"version": "${Script.version}"`)
-    console.log("updated:", file)
-    await Bun.file(file).write(pkg)
-  }
-
-  const extensionToml = fileURLToPath(new URL("../packages/extensions/zed/extension.toml", import.meta.url))
-  let toml = await Bun.file(extensionToml).text()
-  toml = toml.replace(/^version = "[^"]+"/m, `version = "${Script.version}"`)
-  toml = toml.replaceAll(/releases\/download\/v[^/]+\//g, `releases/download/v${Script.version}/`)
-  console.log("updated:", extensionToml)
-  await Bun.file(extensionToml).write(toml)
-
+  const synced = await syncVersionFiles(Script.version)
+  console.log("synced versions:", synced)
   await $`bun install`
   await $`./packages/sdk/js/script/build.ts`
 }

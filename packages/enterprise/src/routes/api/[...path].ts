@@ -4,6 +4,7 @@ import { describeRoute, openAPIRouteHandler, resolver } from "hono-openapi"
 import { validator } from "hono-openapi"
 import z from "zod"
 import { cors } from "hono/cors"
+import { CodeplaneVersion } from "@codeplane-ai/shared/version"
 import { Share } from "~/core/share"
 
 const app = new Hono()
@@ -17,7 +18,7 @@ app
       documentation: {
         info: {
           title: "Codeplane Enterprise API",
-          version: "27.0.12",
+          version: CodeplaneVersion,
           description: "Codeplane Enterprise API endpoints",
         },
         openapi: "3.1.1",

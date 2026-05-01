@@ -3,6 +3,7 @@ import { PermissionID } from "@/permission/schema"
 import { Effect, Layer, Schema } from "effect"
 import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { Authorization } from "./auth"
+import { ExperimentalInstanceHttpApiAnnotations } from "./openapi"
 
 const root = "/permission"
 
@@ -39,13 +40,7 @@ export const PermissionApi = HttpApi.make("permission")
       )
       .middleware(Authorization),
   )
-  .annotateMerge(
-    OpenApi.annotations({
-      title: "codeplane experimental HttpApi",
-      version: "27.0.12",
-      description: "Experimental HttpApi surface for selected instance routes.",
-    }),
-  )
+  .annotateMerge(ExperimentalInstanceHttpApiAnnotations)
 
 export const permissionHandlers = Layer.unwrap(
   Effect.gen(function* () {

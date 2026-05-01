@@ -10,7 +10,13 @@ import { Flag } from "../flag/flag"
 import { Log } from "../util"
 
 import semver from "semver"
-import { cleanVersion, comparableVersion, InstallationChannel, InstallationVersion } from "./version"
+import {
+  cleanVersion,
+  comparableVersion,
+  InstallationChannel,
+  InstallationVersion,
+  isDesktopReleaseVersion,
+} from "./version"
 
 const log = Log.create({ service: "installation" })
 
@@ -72,7 +78,13 @@ export class UpgradeFailedError extends Schema.TaggedErrorClass<UpgradeFailedErr
 }) {}
 
 // Response schemas for external version APIs
-const GitHubRelease = Schema.Struct({ tag_name: Schema.String })
+const GitHubReleaseList = Schema.Array(
+  Schema.Struct({
+    tag_name: Schema.String,
+    draft: Schema.optional(Schema.Boolean),
+    prerelease: Schema.optional(Schema.Boolean),
+  }),
+)
 const GitHubReleaseFull = Schema.Struct({
   tag_name: Schema.String,
   name: Schema.optional(Schema.NullOr(Schema.String)),
@@ -278,15 +290,22 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
         const ghHeaders: Record<string, string> = { Accept: "application/json" }
         if (ghToken) ghHeaders.Authorization = `Bearer ${ghToken}`
         const response = yield* httpOk.execute(
-          HttpClientRequest.get("https://api.github.com/repos/devinoldenburg/codeplane/releases/latest").pipe(
+          HttpClientRequest.get("https://api.github.com/repos/devinoldenburg/codeplane/releases?per_page=20").pipe(
             HttpClientRequest.setHeaders(ghHeaders),
           ),
         )
-        const data = yield* HttpClientResponse.schemaBodyJson(GitHubRelease)(response)
-        return cleanVersion(data.tag_name)
+        const data = yield* HttpClientResponse.schemaBodyJson(GitHubReleaseList)(response)
+        const release = data.find((item) => !item.draft && !item.prerelease && !isDesktopReleaseVersion(item.tag_name))
+        if (!release) return yield* Effect.fail(new Error("No non-desktop GitHub release found"))
+        return cleanVersion(release.tag_name)
       }, Effect.orDie)
 
       const upgradeImpl = Effect.fn("Installation.upgrade")(function* (m: Method, target: string) {
+        if (isDesktopReleaseVersion(target)) {
+          return yield* new UpgradeFailedError({
+            stderr: `Desktop release targets (${target}) cannot be installed through CodePlane updates`,
+          })
+        }
         let result: { code: ChildProcessSpawner.ExitCode; stdout: string; stderr: string } | undefined
         switch (m) {
           case "curl":
@@ -398,5 +417,5 @@ export const defaultLayer = layer.pipe(
   Layer.provide(CrossSpawnSpawner.defaultLayer),
 )
 
-export { cleanVersion, comparableVersion, hasUpdate, isSameVersion } from "./version"
+export { cleanVersion, comparableVersion, hasUpdate, isDesktopReleaseVersion, isSameVersion } from "./version"
 export * as Installation from "."

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import { CodeplaneVersion, codeplaneDesktopReleaseTag, codeplaneReleaseTag } from "@codeplane-ai/shared/version"
 import { Effect, Layer, Stream } from "effect"
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
@@ -64,7 +65,7 @@ describe("installation", () => {
 
   describe("latest", () => {
     test("reads release version from GitHub releases", async () => {
-      const layer = testLayer(() => jsonResponse({ tag_name: "v1.2.3" }))
+      const layer = testLayer(() => jsonResponse([{ tag_name: "v1.2.3" }]))
 
       const result = await Effect.runPromise(
         Installation.Service.use((svc) => svc.latest("unknown")).pipe(Effect.provide(layer)),
@@ -73,12 +74,27 @@ describe("installation", () => {
     })
 
     test("strips v prefix from GitHub release tag", async () => {
-      const layer = testLayer(() => jsonResponse({ tag_name: "v4.0.0-beta.1" }))
+      const layer = testLayer(() => jsonResponse([{ tag_name: "v4.0.0-beta.1" }]))
 
       const result = await Effect.runPromise(
         Installation.Service.use((svc) => svc.latest("curl")).pipe(Effect.provide(layer)),
       )
       expect(result).toBe("4.0.0-beta.1")
+    })
+
+    test("ignores desktop sibling releases when selecting the latest GitHub tag", async () => {
+      const layer = testLayer(() =>
+        jsonResponse([
+          { tag_name: codeplaneDesktopReleaseTag() },
+          { tag_name: codeplaneReleaseTag() },
+          { tag_name: "v27.0.11" },
+        ]),
+      )
+
+      const result = await Effect.runPromise(
+        Installation.Service.use((svc) => svc.latest("selfhosted")).pipe(Effect.provide(layer)),
+      )
+      expect(result).toBe(CodeplaneVersion)
     })
 
     test("reads npm versions via npm view", async () => {
@@ -194,6 +210,24 @@ describe("installation", () => {
         Installation.Service.use((svc) => svc.latest("brew")).pipe(Effect.provide(layer)),
       )
       expect(result).toBe("2.1.0")
+    })
+  })
+
+  describe("upgrade", () => {
+    test("rejects desktop release targets", async () => {
+      const layer = testLayer(() => {
+        throw new Error("unexpected http request")
+      })
+
+      const error = await Effect.runPromise(
+        Installation.Service.use((svc) => svc.upgrade("selfhosted", codeplaneDesktopReleaseTag())).pipe(
+          Effect.provide(layer),
+          Effect.flip,
+        ),
+      )
+
+      expect(error).toBeInstanceOf(Installation.UpgradeFailedError)
+      expect(error.stderr).toContain("Desktop release targets")
     })
   })
 })
