@@ -18,6 +18,7 @@ import {
   type ToolExecutionOptions,
   asSchema,
   type Schema as AISchema,
+  type ModelMessage,
 } from "ai"
 import type { JSONSchema7 } from "@ai-sdk/provider"
 import { SessionCompaction } from "./compaction"
@@ -246,43 +247,107 @@ export const layer = Layer.effect(
       const subtasks = firstUser.parts.filter((p): p is MessageV2.SubtaskPart => p.type === "subtask")
       const onlySubtasks = subtasks.length > 0 && firstUser.parts.every((p) => p.type === "subtask")
 
-      const ag = yield* agents.get("title")
-      if (!ag) return
-      const mdl = ag.model
-        ? yield* provider.getModel(ag.model.providerID, ag.model.modelID)
-        : ((yield* provider.getSmallModel(input.providerID)) ??
-          (yield* provider.getModel(input.providerID, input.modelID)))
+      // Fallback title derived from the first user message — used when the LLM
+      // path fails or returns empty so the session is never stuck on
+      // "New session - <ISO>" forever.
+      const deriveFallback = (): string | undefined => {
+        const sources: string[] = []
+        for (const part of firstUser.parts) {
+          if (part.type === "text" && !("synthetic" in part && part.synthetic)) sources.push(part.text)
+          else if (part.type === "subtask") sources.push(part.prompt)
+        }
+        const raw = sources.join(" ").replace(/\s+/g, " ").trim()
+        if (!raw) return undefined
+        return raw.length > 60 ? raw.slice(0, 57) + "..." : raw
+      }
+
+      const setFinalTitle = (value: string) =>
+        sessions
+          .setTitle({ sessionID: input.session.id, title: value })
+          .pipe(Effect.catchCause((cause) => elog.error("failed to set title", { error: Cause.squash(cause) })))
+
+      const ag = yield* agents.get("title").pipe(Effect.catch(() => Effect.succeed(undefined)))
+      if (!ag) {
+        const fallback = deriveFallback()
+        if (fallback) yield* setFinalTitle(fallback)
+        return
+      }
+      const mdlOption = yield* (ag.model
+        ? provider.getModel(ag.model.providerID, ag.model.modelID)
+        : provider
+            .getSmallModel(input.providerID)
+            .pipe(Effect.flatMap((small) => (small ? Effect.succeed(small) : provider.getModel(input.providerID, input.modelID))))
+      ).pipe(Effect.catch(() => Effect.succeed(undefined)))
+      if (!mdlOption) {
+        const fallback = deriveFallback()
+        if (fallback) yield* setFinalTitle(fallback)
+        return
+      }
+      const mdl = mdlOption
       const msgs = onlySubtasks
         ? [{ role: "user" as const, content: subtasks.map((p) => p.prompt).join("\n") }]
-        : yield* MessageV2.toModelMessagesEffect(context, mdl)
-      const text = yield* llm
-        .stream({
-          agent: ag,
-          user: firstInfo,
-          system: [],
-          small: true,
-          tools: {},
-          model: mdl,
-          sessionID: input.session.id,
-          retries: 2,
-          messages: [{ role: "user", content: "Generate a title for this conversation:\n" }, ...msgs],
-        })
-        .pipe(
-          Stream.filter((e): e is Extract<LLM.Event, { type: "text-delta" }> => e.type === "text-delta"),
-          Stream.map((e) => e.text),
-          Stream.mkString,
-          Effect.orDie,
+        : yield* MessageV2.toModelMessagesEffect(context, mdl).pipe(
+            Effect.catch(() => Effect.succeed([] as ModelMessage[])),
+          )
+
+      const tryStream = Effect.fnUntraced(function* () {
+        return yield* llm
+          .stream({
+            agent: ag,
+            user: firstInfo,
+            system: [],
+            small: true,
+            tools: {},
+            model: mdl,
+            sessionID: input.session.id,
+            retries: 1,
+            messages: [{ role: "user", content: "Generate a title for this conversation:\n" }, ...msgs],
+          })
+          .pipe(
+            // Capture both text and reasoning so reasoning-only models still
+            // contribute something extractable. The cleanup step strips
+            // <think> blocks before we look for the title line.
+            Stream.filter(
+              (e): e is Extract<LLM.Event, { type: "text-delta" | "reasoning-delta" }> =>
+                e.type === "text-delta" || e.type === "reasoning-delta",
+            ),
+            Stream.map((e) => e.text),
+            Stream.mkString,
+          )
+      })
+
+      const cleanText = (raw: string) => {
+        const stripped = raw.replace(/<think>[\s\S]*?<\/think>\s*/gi, "").replace(/^["'`]+|["'`]+$/g, "")
+        return stripped
+          .split("\n")
+          .map((line) => line.trim().replace(/^["'`]+|["'`]+$/g, ""))
+          .find((line) => line.length > 0)
+      }
+
+      let cleaned: string | undefined
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const text = yield* tryStream().pipe(
+          Effect.catchCause((cause) => {
+            elog.warn("title stream failed", { attempt, error: Cause.squash(cause) })
+            return Effect.succeed("")
+          }),
         )
-      const cleaned = text
-        .replace(/<think>[\s\S]*?<\/think>\s*/g, "")
-        .split("\n")
-        .map((line) => line.trim())
-        .find((line) => line.length > 0)
-      if (!cleaned) return
+        cleaned = cleanText(text)
+        if (cleaned) break
+      }
+
+      if (!cleaned) {
+        const fallback = deriveFallback()
+        if (fallback) {
+          elog.info("falling back to derived title")
+          yield* setFinalTitle(fallback)
+        } else {
+          elog.warn("no title generated and no fallback derivable")
+        }
+        return
+      }
       const t = cleaned.length > 100 ? cleaned.substring(0, 97) + "..." : cleaned
-      yield* sessions
-        .setTitle({ sessionID: input.session.id, title: t })
-        .pipe(Effect.catchCause((cause) => elog.error("failed to generate title", { error: Cause.squash(cause) })))
+      yield* setFinalTitle(t)
     })
 
     const insertReminders = Effect.fn("SessionPrompt.insertReminders")(function* (input: {
@@ -1605,7 +1670,13 @@ NOTE: At any point in time through this workflow you should feel free to ask the
               modelID: lastUser.model.modelID,
               providerID: lastUser.model.providerID,
               history: msgs,
-            }).pipe(Effect.ignore, Effect.forkIn(scope))
+            }).pipe(
+              Effect.catchCause((cause) => {
+                slog.warn("title generator failed", { error: Cause.squash(cause) })
+                return Effect.void
+              }),
+              Effect.forkIn(scope),
+            )
 
           const model = yield* getModel(lastUser.model.providerID, lastUser.model.modelID, sessionID)
           const pendingTasks = [...loopState.tasks].reverse()
