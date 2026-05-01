@@ -1,5 +1,6 @@
 import { type ComponentProps, createMemo, Show, splitProps } from "solid-js"
 import { createStore } from "solid-js/store"
+import stripAnsi from "strip-ansi"
 import { Card, CardDescription } from "./card"
 import { Collapsible } from "./collapsible"
 import { Icon } from "./icon"
@@ -44,7 +45,7 @@ export function ToolErrorCard(props: ToolErrorCardProps) {
     if (!key.includes(".")) return key
     return i18n.t(key)
   })
-  const cleaned = createMemo(() => split.error.replace(/^Error:\s*/, "").trim())
+  const cleaned = createMemo(() => stripAnsi(split.error).replace(/^Error:\s*/, "").trim())
   const tail = createMemo(() => {
     const value = cleaned()
     const prefix = `${split.tool} `
