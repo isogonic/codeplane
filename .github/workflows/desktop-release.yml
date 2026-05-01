@@ -67,7 +67,7 @@ jobs:
     if: ${{ needs.resolve.outputs.enabled == 'true' }}
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: refs/tags/${{ needs.resolve.outputs.source_tag }}
 
@@ -122,11 +122,11 @@ jobs:
             package_command: bunx electron-builder --win nsis zip --x64 --publish never
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: refs/tags/${{ needs.resolve.outputs.source_tag }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.repository.default_branch }}
           path: .github-workflow
