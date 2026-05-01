@@ -2,6 +2,7 @@ import { File } from "@/file"
 import { Effect, Layer, Schema } from "effect"
 import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { Authorization } from "./auth"
+import { ExperimentalInstanceHttpApiAnnotations } from "./openapi"
 
 const FileQuery = Schema.Struct({
   path: Schema.String,
@@ -55,13 +56,7 @@ export const FileApi = HttpApi.make("file")
       )
       .middleware(Authorization),
   )
-  .annotateMerge(
-    OpenApi.annotations({
-      title: "codeplane experimental HttpApi",
-      version: "27.0.12",
-      description: "Experimental HttpApi surface for selected instance routes.",
-    }),
-  )
+  .annotateMerge(ExperimentalInstanceHttpApiAnnotations)
 
 export const fileHandlers = Layer.unwrap(
   Effect.gen(function* () {

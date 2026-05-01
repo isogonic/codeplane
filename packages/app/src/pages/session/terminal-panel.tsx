@@ -277,11 +277,11 @@ export function TerminalPanel() {
                   {(id) => {
                     const ops = terminal.bind()
                     return (
-                      <Show when={all().find((pty) => pty.id === id)}>
+                      <Show when={all().find((pty) => pty.id === id)} keyed>
                         {(pty) => (
                           <div id={`terminal-wrapper-${id}`} class="absolute inset-0">
                             <Terminal
-                              pty={pty()}
+                              pty={pty}
                               autoFocus={opened()}
                               onConnect={() => ops.trim(id)}
                               onCleanup={ops.update}
@@ -298,12 +298,12 @@ export function TerminalPanel() {
             <DragOverlay>
               <Show when={store.activeDraggable} keyed>
                 {(id) => (
-                  <Show when={all().find((pty) => pty.id === id)}>
+                  <Show when={all().find((pty) => pty.id === id)} keyed>
                     {(t) => (
                       <div class="relative p-1 h-10 flex items-center bg-background-stronger text-14-regular">
                         {terminalTabLabel({
-                          title: t().title,
-                          titleNumber: t().titleNumber,
+                          title: t.title,
+                          titleNumber: t.titleNumber,
                           t: language.t as (key: string, vars?: Record<string, string | number | boolean>) => string,
                         })}
                       </div>

@@ -202,14 +202,14 @@ export function BasicTool(props: BasicToolProps) {
                     >
                       <TextShimmer text={title().title} active={pending()} />
                     </span>
-                    <Show when={pending() ? elapsedLabel() : undefined}>
+                    <Show when={pending() ? elapsedLabel() : undefined} keyed>
                       {(label) => (
                         <span data-slot="basic-tool-tool-elapsed" aria-live="polite">
-                          {label()}
+                          {label}
                         </span>
                       )}
                     </Show>
-                    <Show when={title().subtitle}>
+                    <Show when={title().subtitle} keyed>
                       {(subtitle) => (
                         <span
                           data-slot="basic-tool-tool-subtitle"
@@ -224,14 +224,14 @@ export function BasicTool(props: BasicToolProps) {
                             }
                           }}
                         >
-                          {subtitle()}
+                          {subtitle}
                         </span>
                       )}
                     </Show>
-                    <Show when={title().args}>
+                    <Show when={title().args} keyed>
                       {(argsList) => (
-                        <Show when={argsList().length > 0}>
-                          <For each={argsList()}>
+                        <Show when={argsList.length > 0}>
+                          <For each={argsList}>
                             {(arg) => (
                               <span
                                 data-slot="basic-tool-tool-arg"
@@ -247,8 +247,8 @@ export function BasicTool(props: BasicToolProps) {
                       )}
                     </Show>
                   </div>
-                  <Show when={!pending() ? title().action : undefined}>
-                    {(action) => <span data-slot="basic-tool-tool-action">{action()}</span>}
+                  <Show when={!pending() ? title().action : undefined} keyed>
+                    {(action) => <span data-slot="basic-tool-tool-action">{action}</span>}
                   </Show>
                 </div>
               )}
@@ -267,6 +267,7 @@ export function BasicTool(props: BasicToolProps) {
     <Collapsible open={open()} onOpenChange={handleOpenChange} class="tool-collapsible">
       <Show
         when={props.triggerHref}
+        keyed
         fallback={
           <Collapsible.Trigger
             data-hide-details={props.hideDetails ? "true" : undefined}
@@ -279,7 +280,7 @@ export function BasicTool(props: BasicToolProps) {
         {(href) => (
           <Collapsible.Trigger
             as="a"
-            href={href()}
+            href={href}
             data-hide-details={props.hideDetails ? "true" : undefined}
             onClick={props.onTriggerClick}
           >

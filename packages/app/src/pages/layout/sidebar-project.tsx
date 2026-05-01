@@ -40,10 +40,10 @@ export const ProjectDragOverlay = (props: {
 }): JSX.Element => {
   const project = createMemo(() => props.projects().find((p) => p.worktree === props.activeProject()))
   return (
-    <Show when={project()}>
+    <Show when={project()} keyed>
       {(p) => (
         <div class="bg-background-base rounded-xl p-1">
-          <ProjectIcon project={p()} />
+          <ProjectIcon project={p} />
         </div>
       )}
     </Show>

@@ -7,6 +7,7 @@ import { mapValues } from "remeda"
 import { Effect, Layer, Schema } from "effect"
 import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiError, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { Authorization } from "./auth"
+import { ExperimentalInstanceHttpApiAnnotations } from "./openapi"
 
 const root = "/provider"
 
@@ -63,13 +64,7 @@ export const ProviderApi = HttpApi.make("provider")
       )
       .middleware(Authorization),
   )
-  .annotateMerge(
-    OpenApi.annotations({
-      title: "codeplane experimental HttpApi",
-      version: "27.0.12",
-      description: "Experimental HttpApi surface for selected instance routes.",
-    }),
-  )
+  .annotateMerge(ExperimentalInstanceHttpApiAnnotations)
 
 export const providerHandlers = Layer.unwrap(
   Effect.gen(function* () {

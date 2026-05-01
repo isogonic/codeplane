@@ -144,7 +144,7 @@ export function ToolErrorCard(props: ToolErrorCardProps) {
                 </Tooltip>
               </div>
             </Show>
-            <Show when={body()}>{(value) => <CardDescription>{value()}</CardDescription>}</Show>
+            <Show when={body()} keyed>{(value) => <CardDescription>{value}</CardDescription>}</Show>
           </div>
         </Collapsible.Content>
       </Collapsible>

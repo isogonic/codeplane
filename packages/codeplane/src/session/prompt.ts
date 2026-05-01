@@ -1611,6 +1611,14 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       return { lastUser, lastAssistant, lastFinished, tasks }
     }
 
+    const requiresAssistantFollowup = (
+      assistant: MessageV2.Assistant | undefined,
+      parts: MessageV2.Part[] | undefined,
+    ) =>
+      !!assistant &&
+      (assistant.finish === "tool-calls" ||
+        (parts?.some((part) => part.type === "tool" && !part.metadata?.providerExecuted) ?? false))
+
     const runLoop: (sessionID: SessionID) => Effect.Effect<MessageV2.WithParts> = Effect.fn("SessionPrompt.run")(
       function* (sessionID: SessionID) {
         const ctx = yield* InstanceState.context
@@ -1636,21 +1644,9 @@ NOTE: At any point in time through this workflow you should feel free to ask the
           const lastAssistantMsg = msgs.findLast(
             (msg) => msg.info.role === "assistant" && msg.info.id === lastAssistant?.id,
           )
-          // Some providers return "stop" even when the assistant message contains tool calls.
-          // Keep the loop running so tool results can be sent back to the model.
-          // Skip provider-executed tool parts — those were fully handled within the
-          // provider's stream (e.g. DWS Agent Platform) and don't need a re-loop.
-          const hasToolCalls =
-            lastAssistantMsg?.parts.some((part) => part.type === "tool" && !part.metadata?.providerExecuted) ?? false
-
-          // "unknown" is not a definitive stop: it surfaces from streaming
-          // interruptions, partial provider responses, or upstream quirks.
-          // Treat it the same as "tool-calls" — keep looping so the agent
-          // can recover instead of abandoning the task mid-flight.
           if (
-            lastAssistant?.finish &&
-            !["tool-calls", "unknown"].includes(lastAssistant.finish) &&
-            !hasToolCalls &&
+            lastAssistant &&
+            !requiresAssistantFollowup(lastAssistant, lastAssistantMsg?.parts) &&
             lastUser.id < lastAssistant.id
           ) {
             yield* slog.info("exiting loop")
@@ -1828,18 +1824,6 @@ NOTE: At any point in time through this workflow you should feel free to ask the
               return "break" as const
             }
 
-            const finished = handle.message.finish && !["tool-calls", "unknown"].includes(handle.message.finish)
-            if (finished && !handle.message.error) {
-              if (format.type === "json_schema") {
-                handle.message.error = new MessageV2.StructuredOutputError({
-                  message: "Model did not produce structured output",
-                  retries: 0,
-                }).toObject()
-                yield* sessions.updateMessage(handle.message)
-                return "break" as const
-              }
-            }
-
             if (result === "stop") return "break" as const
             if (result === "compact") {
               yield* compaction.create({
@@ -1850,6 +1834,16 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                 overflow: !handle.message.finish,
               })
             }
+            const needsFollowup = requiresAssistantFollowup(handle.message, MessageV2.parts(handle.message.id))
+            if (!needsFollowup && !handle.message.error && format.type === "json_schema") {
+              handle.message.error = new MessageV2.StructuredOutputError({
+                message: "Model did not produce structured output",
+                retries: 0,
+              }).toObject()
+              yield* sessions.updateMessage(handle.message)
+              return "break" as const
+            }
+            if (!needsFollowup) return "break" as const
             return "continue" as const
           }).pipe(Effect.ensuring(instruction.clear(handle.message.id)))
           if (outcome === "break") break

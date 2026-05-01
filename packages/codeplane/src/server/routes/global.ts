@@ -380,6 +380,14 @@ export const GlobalRoutes = lazy(() =>
               }
 
               const target = Installation.cleanVersion(body.target || (yield* svc.latest(method)))
+              if (Installation.isDesktopReleaseVersion(target)) {
+                return {
+                  success: false as const,
+                  status: 400 as const,
+                  error: `Desktop release targets (${target}) are only valid for the desktop shell`,
+                  method,
+                }
+              }
               if (Installation.isSameVersion(InstallationVersion, target)) {
                 return {
                   success: true as const,

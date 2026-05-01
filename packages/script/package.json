@@ -3,6 +3,7 @@
   "name": "@codeplane-ai/script",
   "license": "MIT",
   "dependencies": {
+    "@codeplane-ai/shared": "workspace:*",
     "semver": "^7.6.3"
   },
   "devDependencies": {

@@ -3,6 +3,7 @@ import { QuestionID } from "@/question/schema"
 import { Effect, Layer, Schema } from "effect"
 import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { Authorization } from "./auth"
+import { InstanceHttpApiAnnotations } from "./openapi"
 
 const root = "/question"
 
@@ -49,13 +50,7 @@ export const QuestionApi = HttpApi.make("question")
       )
       .middleware(Authorization),
   )
-  .annotateMerge(
-    OpenApi.annotations({
-      title: "codeplane HttpApi",
-      version: "27.0.12",
-      description: "Effect HttpApi surface for instance routes.",
-    }),
-  )
+  .annotateMerge(InstanceHttpApiAnnotations)
 
 export const questionHandlers = Layer.unwrap(
   Effect.gen(function* () {

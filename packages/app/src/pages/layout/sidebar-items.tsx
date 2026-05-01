@@ -202,6 +202,7 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
       >
         <Show
           when={preview().prompt}
+          keyed
           fallback={
             <div class="text-12-regular text-text-invert-base">{language.t("sidebar.sessionPreview.empty")}</div>
           }
@@ -215,7 +216,7 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
                 "-webkit-box-orient": "vertical",
               }}
             >
-              {prompt()}
+              {prompt}
             </div>
           )}
         </Show>

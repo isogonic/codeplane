@@ -37,6 +37,7 @@ import { LayoutProvider } from "@/context/layout"
 import { ModelsProvider } from "@/context/models"
 import { NotificationProvider } from "@/context/notification"
 import { PermissionProvider } from "@/context/permission"
+import { usePlatform } from "@/context/platform"
 import { PromptProvider } from "@/context/prompt"
 import { ServerConnection, ServerProvider, serverName, useServer } from "@/context/server"
 import { SettingsProvider } from "@/context/settings"
@@ -231,6 +232,7 @@ function ConnectionGate(props: ParentProps<{ disableHealthCheck?: boolean }>) {
 
 function ConnectionError(props: { onRetry?: () => void; onServerSelected?: (key: ServerConnection.Key) => void }) {
   const language = useLanguage()
+  const platform = usePlatform()
   const server = useServer()
   const others = () => server.list.filter((s) => ServerConnection.key(s) !== server.key)
   const name = createMemo(() => server.name || server.key)
@@ -262,7 +264,14 @@ function ConnectionError(props: { onRetry?: () => void; onServerSelected?: (key:
                   <button
                     type="button"
                     class="flex items-center gap-3 w-full px-3 py-2 rounded-md hover:bg-surface-raised-base-hover transition-colors text-left"
-                    onClick={() => props.onServerSelected?.(key)}
+                    onClick={() => {
+                      const desktop = platform.serverManager?.instances.find((instance) => instance.key === key)
+                      if (desktop) {
+                        void platform.serverManager?.open(desktop.id)
+                        return
+                      }
+                      props.onServerSelected?.(key)
+                    }}
                   >
                     <span class="text-14-regular text-text-strong truncate">{serverName(conn)}</span>
                   </button>

@@ -4,23 +4,11 @@ import { showToast } from "@codeplane-ai/ui/toast"
 import { useDialog } from "@codeplane-ai/ui/context/dialog"
 import { useGlobalSDK } from "./global-sdk"
 import { useLanguage } from "./language"
+import { usePlatform, type PlatformReleaseNotes, type PlatformUpdateStatus } from "./platform"
 import { formatServerError } from "@/utils/server-errors"
 import { DialogWhatsNew } from "@/components/dialog-whats-new"
 
-type Status = {
-  current: string
-  latest: string | null
-  hasUpdate: boolean
-  method: string
-}
-
-export type ReleaseNotes = {
-  tag: string
-  name: string | null
-  body: string | null
-  url: string | null
-  publishedAt: string | null
-}
+export type ReleaseNotes = PlatformReleaseNotes
 
 const LAST_SEEN_KEY = "codeplane:last-seen-version"
 
@@ -72,21 +60,26 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
   init: () => {
     const globalSDK = useGlobalSDK()
     const language = useLanguage()
+    const platform = usePlatform()
     const dialog = useDialog()
     const announcedAvailable = new Set<string>()
     const announcedInstalled = new Set<string>()
     const whatsNewShown = new Set<string>()
     const [upgrading, setUpgrading] = createSignal(false)
-    const [status, setStatus] = createSignal<Status | undefined>(undefined)
+    const [status, setStatus] = createSignal<PlatformUpdateStatus | undefined>(undefined)
     let reloadTimer: ReturnType<typeof setTimeout> | undefined
 
-    const fetchReleaseNotes = async (version: string): Promise<ReleaseNotes | null> => {
+    const fetchReleaseNotes = async (version: string): Promise<PlatformReleaseNotes | null> => {
+      if (platform.desktop) {
+        if (!platform.updater) return null
+        return platform.updater.releaseNotes(version)
+      }
       try {
         const response = await fetch(
           `${globalSDK.url}/global/release-notes/${encodeURIComponent(version.replace(/^v/, ""))}`,
         )
         if (!response.ok) return null
-        return (await response.json()) as ReleaseNotes
+        return (await response.json()) as PlatformReleaseNotes
       } catch {
         return null
       }
@@ -114,11 +107,28 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
     }
 
     const fetchStatus = async (refresh = false) => {
+      if (platform.desktop) {
+        try {
+          const next = platform.updater
+            ? await platform.updater.status()
+            : {
+                current: platform.version ?? "local",
+                latest: null,
+                hasUpdate: false,
+                method: "desktop",
+              }
+          setStatus(next)
+          checkPostUpdate(next.current)
+          return next
+        } catch {
+          return undefined
+        }
+      }
       try {
         const url = `${globalSDK.url}/global/version${refresh ? "?refresh=1" : ""}`
         const response = await fetch(url)
         if (!response.ok) throw new Error(`Status ${response.status}`)
-        const next = (await response.json()) as Status
+        const next = (await response.json()) as PlatformUpdateStatus
         setStatus(next)
         checkPostUpdate(next.current)
         return next
@@ -149,8 +159,9 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
     }
 
     const showInstalled = (version?: string, restart?: boolean, restartRequired?: boolean) => {
+      const desktopDownloaded = platform.desktop && restart
       const key = `${version ?? "unknown"}:${restart ? "restart" : restartRequired ? "manual" : "ok"}`
-      if (announcedInstalled.has(key) && !restart) return
+      if (announcedInstalled.has(key) && !restart && !desktopDownloaded) return
       announcedInstalled.add(key)
       const description = restartRequired
         ? language.t("toast.update.installed.descriptionRestartRequired", {
@@ -182,10 +193,10 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
         description,
         variant: "success",
         icon: "check",
-        persistent: !restart,
-        actions: restart ? undefined : baseActions,
+        persistent: desktopDownloaded ? false : !restart,
+        actions: restart ? (desktopDownloaded ? baseActions : undefined) : baseActions,
       })
-      if (!restart) return
+      if (!restart || desktopDownloaded) return
       if (reloadTimer) clearTimeout(reloadTimer)
       reloadTimer = setTimeout(() => window.location.reload(), 4_500)
     }
@@ -201,6 +212,54 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
         persistent: true,
       })
       try {
+        if (platform.desktop) {
+          if (!platform.updater) {
+            showToast({
+              id: "codeplane.update",
+              title: language.t("toast.update.failed.title"),
+              description: language.t("toast.update.failed.description"),
+              variant: "error",
+              icon: "warning",
+            })
+            return
+          }
+          const result = await platform.updater.check()
+          if (!result.ok) {
+            showToast({
+              id: "codeplane.update",
+              title: language.t("toast.update.failed.title"),
+              description: result.error,
+              variant: "error",
+              icon: "warning",
+              actions: [
+                {
+                  label: language.t("toast.update.action.retry"),
+                  onClick: () => void startUpgrade(target),
+                },
+                {
+                  label: language.t("toast.update.action.dismiss"),
+                  onClick: "dismiss",
+                },
+              ],
+            })
+            return
+          }
+          if (!result.updateAvailable) {
+            const next = await fetchStatus(true)
+            showToast({
+              id: "codeplane.update",
+              title: language.t("toast.update.upToDate.title"),
+              description: language.t("settings.general.row.version.descriptionUpToDate", {
+                current: next?.current ?? platform.version ?? language.t("settings.general.row.version.developmentBuild"),
+              }),
+              variant: "success",
+              icon: "check",
+            })
+            return
+          }
+          await fetchStatus(true)
+          return
+        }
         const result = await globalSDK.client.global.upgrade(target ? { target } : undefined)
         const data = result.data
         if (!data || ("success" in data && data.success === false)) {
@@ -267,25 +326,68 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
       return next
     }
 
-    const unsub = globalSDK.event.listen((e) => {
-      const event = e.details
-      if (event.type === "installation.update-available") {
-        const version = event.properties?.version
-        if (!version) return
-        setStatus((prev) =>
-          prev ? { ...prev, latest: version, hasUpdate: true } : { current: "", latest: version, hasUpdate: true, method: "unknown" },
-        )
-        showAvailable(version)
-        return
-      }
+    const unsub = platform.desktop
+      ? platform.updater
+        ? [
+            platform.updater.onUpdateAvailable((info) => {
+              const version = info.version
+              if (!version) return
+              setStatus((prev) =>
+                prev
+                  ? { ...prev, latest: version, hasUpdate: true, method: "desktop" }
+                  : {
+                      current: platform.version ?? "",
+                      latest: version,
+                      hasUpdate: true,
+                      method: "desktop",
+                    },
+              )
+              if (!upgrading()) showAvailable(version)
+            }),
+            platform.updater.onUpdateDownloaded((info) => {
+              const version = info.version
+              if (version) announcedAvailable.delete(version)
+              showInstalled(version, true, true)
+              void fetchStatus(true)
+            }),
+            platform.updater.onError((message) => {
+              showToast({
+                id: "codeplane.update",
+                title: language.t("toast.update.failed.title"),
+                description: message || language.t("toast.update.failed.description"),
+                variant: "error",
+                icon: "warning",
+              })
+            }),
+          ].reduce(
+            (all, stop) => () => {
+              all()
+              stop()
+            },
+            () => {},
+          )
+        : () => {}
+      : globalSDK.event.listen((e) => {
+            const event = e.details
+            if (event.type === "installation.update-available") {
+              const version = event.properties?.version
+              if (!version) return
+              setStatus((prev) =>
+                prev
+                  ? { ...prev, latest: version, hasUpdate: true }
+                  : { current: "", latest: version, hasUpdate: true, method: "unknown" },
+              )
+              showAvailable(version)
+              return
+            }
 
-      if (event.type === "installation.updated") {
-        const version = event.properties?.version
-        if (version) announcedAvailable.delete(version)
-        showInstalled(version)
-        void fetchStatus(true)
-      }
-    })
+            if (event.type === "installation.updated") {
+              const version = event.properties?.version
+              if (version) announcedAvailable.delete(version)
+              showInstalled(version)
+              void fetchStatus(true)
+            }
+          })
 
     void fetchStatus(false)
 

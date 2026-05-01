@@ -18,7 +18,7 @@ export function normalizeServerUrl(input: string) {
 export function serverName(conn?: ServerConnection.Any, ignoreDisplayName = false) {
   if (!conn) return ""
   if (conn.displayName && !ignoreDisplayName) return conn.displayName
-  return conn.http.url.replace(/^https?:\/\//, "").replace(/\/+$/, "")
+  return (conn.http.remoteUrl ?? conn.http.url).replace(/^https?:\/\//, "").replace(/\/+$/, "")
 }
 
 function projectsKey(key: ServerConnection.Key) {
@@ -59,6 +59,8 @@ export namespace ServerConnection {
 
   export type HttpBase = {
     url: string
+    key?: string
+    remoteUrl?: string
     username?: string
     password?: string
   }
@@ -99,7 +101,7 @@ export namespace ServerConnection {
   export const key = (conn: Any): Key => {
     switch (conn.type) {
       case "http":
-        return Key.make(conn.http.url)
+        return Key.make(conn.http.key ?? conn.http.url)
       case "sidecar": {
         if (conn.variant === "wsl") return Key.make(`wsl:${conn.distro}`)
         return Key.make("sidecar")
@@ -120,7 +122,7 @@ export namespace ServerConnection {
   export const storageScope = (conn: Any): StorageScope => {
     switch (conn.type) {
       case "http": {
-        const key = scopeUrl(conn.http.url)
+        const key = conn.http.key ?? scopeUrl(conn.http.url)
         return { key, legacy: loopback(key) }
       }
       case "sidecar": {

@@ -7,16 +7,66 @@ type PickerPaths = string | string[] | null
 type OpenDirectoryPickerOptions = { title?: string; multiple?: boolean }
 type OpenFilePickerOptions = { title?: string; multiple?: boolean; accept?: string[]; extensions?: string[] }
 type SaveFilePickerOptions = { title?: string; defaultPath?: string }
+export type PlatformUpdateStatus = {
+  current: string
+  latest: string | null
+  hasUpdate: boolean
+  method: string
+}
+export type PlatformUpdateCheckResult =
+  | { ok: true; updateAvailable: boolean; version?: string }
+  | { ok: false; error: string }
+export type PlatformReleaseNotes = {
+  tag: string
+  name: string | null
+  body: string | null
+  url: string | null
+  publishedAt: string | null
+}
+export type PlatformServerInstance = {
+  id: string
+  key: string
+  label?: string
+  proxyUrl: string
+  remoteUrl: string
+}
+export type PlatformServerManager = {
+  currentKey: string | null
+  defaultKey: string | null
+  instances: PlatformServerInstance[]
+  getDefaultKey(): Promise<string | null>
+  setDefaultKey(key: string | null): Promise<boolean>
+  open(id: string): Promise<boolean>
+  show(editId?: string): Promise<boolean>
+}
+export type PlatformUpdater = {
+  status(): Promise<PlatformUpdateStatus>
+  check(): Promise<PlatformUpdateCheckResult>
+  releaseNotes(version: string): Promise<PlatformReleaseNotes | null>
+  onUpdateAvailable(cb: (info: { version: string }) => void): () => void
+  onUpdateDownloaded(cb: (info: { version: string }) => void): () => void
+  onProgress(cb: (info: { percent: number; transferred: number; total: number }) => void): () => void
+  onError(cb: (message: string) => void): () => void
+}
 
 export type Platform = {
   /** Platform discriminator */
   platform: "web"
+
+  /** Whether the app is hosted inside the native desktop shell */
+  desktop?: boolean
 
   /** Host OS when running through a native wrapper */
   os?: "macos" | "windows" | "linux"
 
   /** App version */
   version?: string
+
+  /** Native updater bridge when the host app owns releases separately from the connected server */
+  updater?: PlatformUpdater
+
+  /** Desktop instance bridge when the host app owns server switching/versioned UI */
+  serverManager?: PlatformServerManager
 
   /** Open a URL in the default browser */
   openLink(url: string): void

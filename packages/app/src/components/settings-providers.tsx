@@ -216,8 +216,8 @@ export const SettingsProviders: Component<{ layout?: "dialog" | "page" }> = (pro
                         <Tag>{language.t("dialog.provider.tag.recommended")}</Tag>
                       </Show>
                     </div>
-                    <Show when={note(item.id)}>
-                      {(key) => <span class="text-12-regular text-text-weak pl-8">{language.t(key())}</span>}
+                    <Show when={note(item.id)} keyed>
+                      {(key) => <span class="text-12-regular text-text-weak pl-8">{language.t(key)}</span>}
                     </Show>
                   </div>
                   <Button

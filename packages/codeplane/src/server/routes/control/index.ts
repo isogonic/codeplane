@@ -3,6 +3,7 @@ import { AppRuntime } from "@/effect/app-runtime"
 import { Log } from "@/util"
 import { Effect } from "effect"
 import { ProviderID } from "@/provider/schema"
+import { CodeplaneVersion } from "@codeplane-ai/shared/version"
 import { Hono } from "hono"
 import { describeRoute, resolver, validator, openAPIRouteHandler } from "hono-openapi"
 import z from "zod"
@@ -89,7 +90,7 @@ export function ControlPlaneRoutes(): Hono {
         documentation: {
           info: {
             title: "codeplane",
-            version: "27.0.12",
+            version: CodeplaneVersion,
             description: "codeplane api",
           },
           openapi: "3.1.1",

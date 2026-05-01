@@ -9,6 +9,14 @@
 }
 
 @layer components {
+  [data-desktop-titlebar="macos"] {
+    -webkit-app-region: drag;
+  }
+
+  [data-desktop-titlebar="macos"] [data-no-window-drag] {
+    -webkit-app-region: no-drag;
+  }
+
   @keyframes session-progress-whip {
     0% {
       clip-path: inset(0 100% 0 0 round 999px);

@@ -164,6 +164,7 @@ export function FileMedia(props: { media?: FileMediaOptions; fallback: () => JSX
       <Match when={kind() === "image" || kind() === "audio"}>
         <Show
           when={src()}
+          keyed
           fallback={(() => {
             const media = cfg()
             const k = kind()
@@ -205,7 +206,7 @@ export function FileMedia(props: { media?: FileMediaOptions; fallback: () => JSX
               return (
                 <div class="flex justify-center bg-background-stronger px-6 py-4">
                   <img
-                    src={value()}
+                    src={value}
                     alt={cfg()?.path}
                     class="max-h-[60vh] max-w-full rounded border border-border-weak-base bg-background-base object-contain"
                     onLoad={onLoad}
@@ -217,7 +218,7 @@ export function FileMedia(props: { media?: FileMediaOptions; fallback: () => JSX
             return (
               <div class="flex justify-center bg-background-stronger px-6 py-4">
                 <audio class="w-full max-w-xl" controls preload="metadata" onLoadedMetadata={onLoad}>
-                  <source src={value()} type={audioMime()} />
+                  <source src={value} type={audioMime()} />
                 </audio>
               </div>
             )
@@ -231,11 +232,11 @@ export function FileMedia(props: { media?: FileMediaOptions; fallback: () => JSX
           return (
             <div class="flex flex-col gap-4 px-6 py-4">
               <Show when={svgSource() !== undefined}>{props.fallback()}</Show>
-              <Show when={svgSrc()}>
+              <Show when={svgSrc()} keyed>
                 {(value) => (
                   <div class="flex justify-center">
                     <img
-                      src={value()}
+                      src={value}
                       alt={cfg()?.path}
                       class="max-h-[60vh] max-w-full rounded border border-border-weak-base bg-background-base object-contain"
                       onLoad={onLoad}

@@ -28,6 +28,7 @@ export function InstanceMiddleware(workspaceID?: WorkspaceID): MiddlewareHandler
       "/instance",
       "/path",
       "/agent",
+      "/skill",
       "/command",
       "/vcs",
       "/lsp",

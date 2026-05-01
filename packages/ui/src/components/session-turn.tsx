@@ -540,14 +540,14 @@ export function SessionTurn(
               <Show when={showThinking()}>
                 <div data-slot="session-turn-thinking" data-long={thinkingIsLong() || undefined}>
                   <LogoLoader />
-                  <Show when={currentActivity()} fallback={<TextShimmer text={i18n.t("ui.sessionTurn.status.thinking")} />}>
+                  <Show when={currentActivity()} keyed fallback={<TextShimmer text={i18n.t("ui.sessionTurn.status.thinking")} />}>
                     {(activity) => (
-                      <span data-slot="session-turn-thinking-headline" data-kind={activity().kind}>
+                      <span data-slot="session-turn-thinking-headline" data-kind={activity.kind}>
                         <Show
-                          when={activity().kind === "running"}
+                          when={activity.kind === "running"}
                           fallback={<TextShimmer text={i18n.t("ui.sessionTurn.status.thinking")} />}
                         >
-                          <TextShimmer text={activity().label} />
+                          <TextShimmer text={activity.label} />
                         </Show>
                       </span>
                     )}

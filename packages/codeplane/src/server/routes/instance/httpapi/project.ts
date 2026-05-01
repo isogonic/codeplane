@@ -3,6 +3,7 @@ import { Project } from "@/project"
 import { Effect, Layer, Schema } from "effect"
 import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { Authorization } from "./auth"
+import { ExperimentalInstanceHttpApiAnnotations } from "./openapi"
 
 const root = "/project"
 
@@ -37,13 +38,7 @@ export const ProjectApi = HttpApi.make("project")
       )
       .middleware(Authorization),
   )
-  .annotateMerge(
-    OpenApi.annotations({
-      title: "codeplane experimental HttpApi",
-      version: "27.0.12",
-      description: "Experimental HttpApi surface for selected instance routes.",
-    }),
-  )
+  .annotateMerge(ExperimentalInstanceHttpApiAnnotations)
 
 export const projectHandlers = Layer.unwrap(
   Effect.gen(function* () {

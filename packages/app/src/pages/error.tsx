@@ -253,9 +253,9 @@ export const ErrorPage: Component<ErrorPageProps> = (props) => {
               <div>{language.t("error.page.report.issues")}</div>
             </button>
           </div>
-          <Show when={platform.version}>
+          <Show when={platform.version} keyed>
             {(version) => (
-              <p class="text-xs text-text-weak">{language.t("error.page.version", { version: version() })}</p>
+              <p class="text-xs text-text-weak">{language.t("error.page.version", { version })}</p>
             )}
           </Show>
         </div>
