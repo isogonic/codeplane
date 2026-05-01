@@ -15,6 +15,14 @@ const NOISE = "ResizeObserver loop"
 
 let installed = false
 
+export function isResizeObserverNoise(value: unknown): boolean {
+  if (typeof value === "string") return value.includes(NOISE)
+  if (value instanceof Error) return value.message.includes(NOISE)
+  if (!value || typeof value !== "object") return false
+  if ("message" in value && typeof value.message === "string") return value.message.includes(NOISE)
+  return false
+}
+
 export function silenceResizeObserverNoise() {
   if (installed) return
   if (typeof window === "undefined") return
@@ -23,7 +31,7 @@ export function silenceResizeObserverNoise() {
   window.addEventListener(
     "error",
     (event) => {
-      if (typeof event.message === "string" && event.message.includes(NOISE)) {
+      if (isResizeObserverNoise(event)) {
         event.stopImmediatePropagation()
         event.preventDefault()
       }
@@ -32,15 +40,20 @@ export function silenceResizeObserverNoise() {
   )
 
   window.addEventListener("unhandledrejection", (event) => {
-    const reason = event.reason
-    const message =
-      typeof reason === "string"
-        ? reason
-        : reason && typeof reason === "object" && "message" in reason
-          ? String((reason as { message: unknown }).message ?? "")
-          : ""
-    if (message.includes(NOISE)) {
-      event.preventDefault()
-    }
+    if (!isResizeObserverNoise(event.reason)) return
+    event.preventDefault()
   })
+
+  const error = console.error.bind(console)
+  console.error = (...input: unknown[]) => {
+    if (input.some(isResizeObserverNoise)) return
+    error(...input)
+  }
+
+  const report = window.reportError?.bind(window)
+  if (!report) return
+  window.reportError = ((error: unknown) => {
+    if (isResizeObserverNoise(error)) return
+    report(error)
+  }) as typeof window.reportError
 }

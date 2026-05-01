@@ -7,7 +7,7 @@ import { useSpring } from "@codeplane-ai/ui/motion-spring"
 import { TextReveal } from "@codeplane-ai/ui/text-reveal"
 import { TextStrikethrough } from "@codeplane-ai/ui/text-strikethrough"
 import { createResizeObserver } from "@solid-primitives/resize-observer"
-import { Index, createEffect, createMemo } from "solid-js"
+import { Index, createEffect, createMemo, onCleanup } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useLanguage } from "@/context/language"
 
@@ -81,16 +81,32 @@ export function SessionTodoDock(props: {
   const turn = createMemo(() => Math.max(0, Math.min(1, value())))
   const full = createMemo(() => Math.max(78, store.height))
   let contentRef: HTMLDivElement | undefined
+  let contentFrame: number | undefined
 
   createEffect(() => {
     const el = contentRef
     if (!el) return
-    const update = () => {
-      setStore("height", el.getBoundingClientRect().height)
-    }
-    update()
-    createResizeObserver(el, update)
+    setStore("height", el.getBoundingClientRect().height)
   })
+
+  onCleanup(() => {
+    if (contentFrame === undefined) return
+    cancelAnimationFrame(contentFrame)
+  })
+
+  createResizeObserver(
+    () => contentRef,
+    () => {
+      const el = contentRef
+      if (!el) return
+      if (contentFrame !== undefined) cancelAnimationFrame(contentFrame)
+      contentFrame = requestAnimationFrame(() => {
+        contentFrame = undefined
+        if (contentRef !== el) return
+        setStore("height", el.getBoundingClientRect().height)
+      })
+    },
+  )
 
   return (
     <DockTray

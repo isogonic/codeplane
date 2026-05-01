@@ -28,6 +28,7 @@ import type { ProjectMeta } from "./global-sync/types"
 import { SESSION_ALL_LIMIT, SESSION_RECENT_LIMIT } from "./global-sync/types"
 import { formatServerError } from "@/utils/server-errors"
 import { diffs as listDiffs } from "@/utils/diffs"
+import { createRecentSessionErrorGate, describeSessionError, isIgnorableSessionError } from "@/utils/session-error"
 import { queryOptions, skipToken, useQueryClient } from "@tanstack/solid-query"
 import { useServer } from "./server"
 
@@ -60,6 +61,7 @@ function createGlobalSync() {
   const booting = new Map<string, Promise<void>>()
   const sessionLoads = new Map<string, Promise<void>>()
   const diffLoads = new Map<string, Promise<void>>()
+  const shouldReportSessionError = createRecentSessionErrorGate()
 
   const [globalStore, setGlobalStore] = createStore<GlobalStore>({
     ready: false,
@@ -361,13 +363,13 @@ function createGlobalSync() {
 
     if (event.type === "session.error") {
       const error = event.properties.error
-      if (error?.name !== "MessageAbortedError") {
-        console.error("[global-sync] session error", {
+      if (!isIgnorableSessionError(error) && shouldReportSessionError({ directory, sessionID: event.properties.sessionID, error })) {
+        console.warn(`[global-sync] session error: ${describeSessionError(error)}`, {
           scope: directory === "global" ? "global" : "workspace",
           directory: directory === "global" ? undefined : directory,
           project: directory === "global" ? undefined : getFilename(directory),
           sessionID: event.properties.sessionID,
-          error,
+          errorName: error?.name,
         })
       }
     }

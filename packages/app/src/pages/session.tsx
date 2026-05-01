@@ -1367,6 +1367,9 @@ export default function Page() {
   let scrollStateFrame: number | undefined
   let scrollStateTarget: HTMLDivElement | undefined
   let fillFrame: number | undefined
+  let contentResizeFrame: number | undefined
+  let promptResizeFrame: number | undefined
+  let pendingDockHeight = 0
 
   const jumpThreshold = (el: HTMLDivElement) => Math.max(400, el.clientHeight)
 
@@ -1435,9 +1438,13 @@ export default function Page() {
   createResizeObserver(
     () => content,
     () => {
-      const el = scroller
-      if (el) scheduleScrollState(el)
-      fill()
+      if (contentResizeFrame !== undefined) return
+      contentResizeFrame = requestAnimationFrame(() => {
+        contentResizeFrame = undefined
+        const el = scroller
+        if (el) scheduleScrollState(el)
+        fill()
+      })
     },
   )
 
@@ -1778,24 +1785,34 @@ export default function Page() {
   createResizeObserver(
     () => promptDock,
     ({ height }) => {
-      const next = Math.ceil(height)
+      pendingDockHeight = Math.ceil(height)
+      if (promptResizeFrame !== undefined) return
+      promptResizeFrame = requestAnimationFrame(() => {
+        promptResizeFrame = undefined
+        const next = pendingDockHeight
 
-      if (next === dockHeight) return
+        if (next === dockHeight) return
 
-      const el = scroller
-      const delta = next - dockHeight
-      const stick = el
-        ? !autoScroll.userScrolled() || el.scrollHeight - el.clientHeight - el.scrollTop < 10 + Math.max(0, delta)
-        : false
+        const el = scroller
+        const delta = next - dockHeight
+        const stick = el
+          ? !autoScroll.userScrolled() || el.scrollHeight - el.clientHeight - el.scrollTop < 10 + Math.max(0, delta)
+          : false
 
-      dockHeight = next
+        dockHeight = next
 
-      if (stick) autoScroll.forceScrollToBottom()
+        if (stick) autoScroll.forceScrollToBottom()
 
-      if (el) scheduleScrollState(el)
-      fill()
+        if (el) scheduleScrollState(el)
+        fill()
+      })
     },
   )
+
+  onCleanup(() => {
+    if (contentResizeFrame !== undefined) cancelAnimationFrame(contentResizeFrame)
+    if (promptResizeFrame !== undefined) cancelAnimationFrame(promptResizeFrame)
+  })
 
   const { clearMessageHash, scrollToMessage } = useSessionHashScroll({
     sessionKey,
