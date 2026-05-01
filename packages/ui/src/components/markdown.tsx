@@ -3,6 +3,7 @@ import { useI18n } from "../context/i18n"
 import { useFileReference, type FileReferenceSelection } from "../context/file"
 import DOMPurify from "dompurify"
 import morphdom from "morphdom"
+import stripAnsi from "strip-ansi"
 import { checksum } from "@codeplane-ai/shared/util/encode"
 import { ComponentProps, createEffect, createMemo, createResource, createSignal, onCleanup, splitProps } from "solid-js"
 import { isServer } from "solid-js/web"
@@ -646,6 +647,13 @@ function touch(key: string, value: Entry) {
   cache.delete(first)
 }
 
+function normalizeText(input: string) {
+  if (!input) return input
+  // Strip ANSI escape sequences so terminal output (e.g. test runners,
+  // shell tools) doesn't render ESC bytes as visible glyphs in chat.
+  return stripAnsi(input)
+}
+
 export function Markdown(
   props: ComponentProps<"div"> & {
     text: string
@@ -662,7 +670,7 @@ export function Markdown(
   const [root, setRoot] = createSignal<HTMLDivElement>()
   const cachedHtml = createMemo(() => {
     if (isServer) return undefined
-    const text = local.text
+    const text = normalizeText(local.text)
     if (!text) return ""
     const base = local.cacheKey ?? checksum(text)
     if (!base) return undefined
@@ -684,7 +692,7 @@ export function Markdown(
   const liveHtml = createMemo(() => {
     if (isServer) return undefined
     if (!local.streaming) return undefined
-    const text = local.text
+    const text = normalizeText(local.text)
     if (!text) return undefined
     const base = local.cacheKey ?? checksum(text)
     if (!base) return undefined
@@ -713,7 +721,7 @@ export function Markdown(
       const cached = cachedHtml()
       if (cached !== undefined) return null
       return {
-        text: local.text,
+        text: normalizeText(local.text),
         key: local.cacheKey,
         streaming: local.streaming ?? false,
       }
@@ -746,7 +754,7 @@ export function Markdown(
         .then((list) => list.join(""))
         .catch(() => fallback(src.text))
     },
-    { initialValue: fallback(local.text) },
+    { initialValue: fallback(normalizeText(local.text)) },
   )
 
   let copyCleanup: (() => void) | undefined
