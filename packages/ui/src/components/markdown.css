@@ -407,3 +407,71 @@
     animation: none;
   }
 }
+
+/* Release-notes / What's-new variant: real heading hierarchy and looser
+ * spacing so the dialog reads like a polished release page rather than a
+ * single dense paragraph. Scoped to the variant so other markdown surfaces
+ * are unaffected. */
+[data-component="markdown"].whats-new-markdown {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-base);
+
+  h1,
+  h2 {
+    font-size: 16px;
+    font-weight: var(--font-weight-semibold, 600);
+    color: var(--text-strong);
+    margin-top: 24px;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    letter-spacing: var(--letter-spacing-tight);
+    border-bottom: 1px solid var(--border-weak-base);
+  }
+
+  h3,
+  h4 {
+    font-size: 13px;
+    font-weight: var(--font-weight-medium);
+    color: var(--text-strong);
+    margin-top: 16px;
+    margin-bottom: 6px;
+  }
+
+  p {
+    margin-top: 0;
+    margin-bottom: 10px;
+  }
+
+  ul,
+  ol {
+    margin-top: 4px;
+    margin-bottom: 12px;
+    padding-left: 1.25rem;
+  }
+
+  li {
+    margin-bottom: 6px;
+  }
+
+  li > p {
+    margin-bottom: 4px;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--border-weak-base);
+    margin: 16px 0;
+  }
+
+  > *:first-child {
+    margin-top: 0;
+  }
+
+  code:not(pre code) {
+    background: var(--surface-raised-base);
+    padding: 1px 4px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+}

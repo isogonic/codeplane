@@ -2255,6 +2255,124 @@ ToolRegistry.register({
 })
 
 ToolRegistry.register({
+  name: "ssh",
+  render(props) {
+    const i18n = useI18n()
+    const pending = () => props.status === "pending" || props.status === "running"
+    const sawPending = pending()
+    const operation = createMemo<string>(() => {
+      const fromInput = typeof props.input.operation === "string" ? props.input.operation : undefined
+      const fromMeta = typeof props.metadata?.operation === "string" ? props.metadata.operation : undefined
+      return fromInput || fromMeta || "exec"
+    })
+    const host = createMemo<string>(() => {
+      const fromInput = typeof props.input.host === "string" ? props.input.host : ""
+      const fromMeta = typeof props.metadata?.host === "string" ? props.metadata.host : ""
+      return fromInput || fromMeta || ""
+    })
+    const summary = createMemo(() => {
+      const op = operation()
+      if (op === "exec" && typeof props.input.command === "string") {
+        const line = props.input.command.split("\n")[0] ?? ""
+        return line.trim()
+      }
+      if (op === "script" && typeof props.input.script === "string") {
+        const line = props.input.script
+          .split("\n")
+          .map((entry) => entry.trim())
+          .find((entry) => entry && !entry.startsWith("#"))
+        return line ?? "script"
+      }
+      const local = typeof props.input.localPath === "string" ? props.input.localPath : ""
+      const remote = typeof props.input.remotePath === "string" ? props.input.remotePath : ""
+      if (op === "upload") return `${local} → ${remote}`
+      if (op === "download") return `${remote} → ${local}`
+      if (op === "sync") return `${local} ⇄ ${remote}`
+      return ""
+    })
+    const subtitle = createMemo(() => {
+      const h = host()
+      const s = summary()
+      if (h && s) return `${h} · ${s}`
+      return h || s || ""
+    })
+    const text = createMemo(() => {
+      const op = operation()
+      const cmd =
+        op === "exec"
+          ? typeof props.input.command === "string"
+            ? props.input.command
+            : ""
+          : op === "script"
+            ? typeof props.input.script === "string"
+              ? `# ${props.input.interpreter ?? "bash"}\n${props.input.script}`
+              : ""
+            : summary()
+      const header = `# ssh ${operation()} ${host()}\n`
+      const out = stripAnsi(props.output || (typeof props.metadata?.output === "string" ? props.metadata.output : "") || "")
+      const body = cmd ? `${header}${cmd}` : header.trim()
+      return `${body}${out ? "\n\n" + out : ""}`
+    })
+    const [copied, setCopied] = createSignal(false)
+    const handleCopy = async () => {
+      const content = text()
+      if (!content) return
+      await copyText(i18n, content, i18n.t("ui.message.copiedCode"))
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+
+    return (
+      <BasicTool
+        {...props}
+        icon="ssh"
+        animated
+        trigger={
+          <div data-slot="basic-tool-tool-info-structured">
+            <div data-slot="basic-tool-tool-info-main">
+              <span data-slot="basic-tool-tool-title">
+                <TextShimmer text={i18n.t("ui.tool.ssh")} active={pending()} />
+              </span>
+              <Show when={subtitle()}>
+                {(value) => (
+                  <Show when={pending()} fallback={<ShellSubmessage text={value()} animate={sawPending} />}>
+                    <span data-slot="basic-tool-tool-subtitle">{value()}</span>
+                  </Show>
+                )}
+              </Show>
+            </div>
+          </div>
+        }
+      >
+        <div data-component="bash-output">
+          <div data-slot="bash-copy">
+            <Tooltip
+              value={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
+              placement="top"
+              gutter={4}
+            >
+              <IconButton
+                icon={copied() ? "check" : "copy"}
+                size="small"
+                variant="secondary"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={handleCopy}
+                aria-label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
+              />
+            </Tooltip>
+          </div>
+          <div data-slot="bash-scroll" data-scrollable>
+            <pre data-slot="bash-pre">
+              <code>{text()}</code>
+            </pre>
+          </div>
+        </div>
+      </BasicTool>
+    )
+  },
+})
+
+ToolRegistry.register({
   name: "edit",
   render(props) {
     const i18n = useI18n()

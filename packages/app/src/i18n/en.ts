@@ -543,7 +543,7 @@ export const dict = {
   "dialog.whatsNew.title": "What's new in {{version}}",
   "dialog.whatsNew.subtitle": "Updated from {{previous}} → {{current}}",
   "dialog.whatsNew.empty": "No release notes available for this version.",
-  "dialog.whatsNew.action.viewFull": "View full release on GitHub →",
+  "dialog.whatsNew.action.viewFull": "View full release on GitHub",
   "dialog.whatsNew.action.dismiss": "Got it",
 
   "error.page.title": "Something went wrong",

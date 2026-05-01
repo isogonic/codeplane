@@ -101,14 +101,16 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
       dialog.show(() => DialogWhatsNew({ notes, previousVersion: previous }))
     }
 
+    // We used to auto-open the "What's new" dialog the first time the user
+    // ran a newer release. People found it intrusive, so now we silently
+    // bookmark the version they're on and only surface release notes when
+    // they explicitly click the toast action or the Settings → Updates
+    // "What's new" button. That marker still avoids showing the dialog for
+    // versions older than the one already running.
     const checkPostUpdate = (current: string | undefined) => {
       if (!current || !isReleaseVersion(current)) return
       const previous = readLastSeen()
-      if (previous === current) return
-      writeLastSeen(current)
-      if (isNewer(current, previous)) {
-        void showWhatsNew(current, previous ?? undefined)
-      }
+      if (previous !== current) writeLastSeen(current)
     }
 
     const fetchStatus = async (refresh = false) => {
