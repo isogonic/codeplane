@@ -6,8 +6,11 @@ import { type Platform, PlatformProvider } from "@/context/platform"
 import { dict as en } from "@/i18n/en"
 import { dict as zh } from "@/i18n/zh"
 import { handleNotificationClick } from "@/utils/notification-click"
+import { silenceResizeObserverNoise } from "@/utils/silence-resize-observer"
 import pkg from "../package.json"
 import { ServerConnection } from "./context/server"
+
+silenceResizeObserverNoise()
 
 const DEFAULT_SERVER_URL_KEY = "codeplane.settings.dat:defaultServerUrl"
 
