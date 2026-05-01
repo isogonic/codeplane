@@ -691,8 +691,9 @@ test("logs setup actions and opens cached desktop UI", async ({}, testInfo) => {
     await expect(page.getByTestId("fixture-view")).toHaveText("settings")
 
     page = await openSetupFromInstance(app, page)
-    await expect(page.locator('[data-desktop-action="updates-check"]')).toBeVisible()
-    await page.locator('[data-desktop-action="updates-check"]').click()
+    await expect(page.locator('[data-desktop-section="desktop-update"]')).toBeVisible()
+    await expect(page.locator('[data-desktop-action="desktop-update-check"]')).toBeVisible()
+    await page.locator('[data-desktop-action="desktop-update-check"]').click()
 
     const reopenPromise = app.waitForEvent("window")
     await page.locator('[data-desktop-action="instance-open"]').first().click()
@@ -733,7 +734,7 @@ test("logs setup actions and opens cached desktop UI", async ({}, testInfo) => {
     expect(hasAction("form-cancel")).toBe(true)
     expect(hasAction("advanced-toggle")).toBe(true)
     expect(hasAction("instance-save")).toBe(true)
-    expect(hasAction("updates-check")).toBe(true)
+    expect(hasAction("desktop-update-check")).toBe(true)
     expect(hasAction("instance-open")).toBe(true)
     expect(hasAction("instance-remove")).toBe(true)
     expect(logEntries.some((entry) => entry.scope === "setup" && entry.event === "prepare.progress")).toBe(true)

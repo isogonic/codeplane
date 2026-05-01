@@ -39,16 +39,6 @@ export type PlatformServerManager = {
   open(id: string): Promise<boolean>
   show(editId?: string): Promise<boolean>
 }
-export type PlatformUpdater = {
-  status(): Promise<PlatformUpdateStatus>
-  check(): Promise<PlatformUpdateCheckResult>
-  releaseNotes(version: string): Promise<PlatformReleaseNotes | null>
-  onUpdateAvailable(cb: (info: { version: string }) => void): () => void
-  onUpdateDownloaded(cb: (info: { version: string }) => void): () => void
-  onProgress(cb: (info: { percent: number; transferred: number; total: number }) => void): () => void
-  onError(cb: (message: string) => void): () => void
-}
-
 export type Platform = {
   /** Platform discriminator */
   platform: "web"
@@ -62,8 +52,15 @@ export type Platform = {
   /** App version */
   version?: string
 
-  /** Native updater bridge when the host app owns releases separately from the connected server */
-  updater?: PlatformUpdater
+  /**
+   * Desktop shell version when running inside the Electron host. The
+   * Electron app updates its shell on a different release line
+   * (`vX.Y.Z-desktop`) than the connected server. Surfaced read-only here
+   * so in-instance UIs can show "Desktop X.Y.Z" alongside the server
+   * version. The actual desktop-update lifecycle lives on the selector
+   * page and never reaches this context.
+   */
+  desktopAppVersion?: string
 
   /** Desktop instance bridge when the host app owns server switching/versioned UI */
   serverManager?: PlatformServerManager

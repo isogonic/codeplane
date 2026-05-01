@@ -543,8 +543,15 @@ export default function Page() {
 
   createComputed((prev) => {
     const key = sessionKey()
-    if (key !== prev && store.deferRender) {
-      setStore("deferRender", false)
+    if (prev !== undefined && key !== prev) {
+      const id = params.id
+      const ready = !id || sync.data.message[id] !== undefined
+      if (!ready) setStore("deferRender", true)
+      else if (store.deferRender) setStore("deferRender", false)
+    } else if (store.deferRender) {
+      const id = params.id
+      const ready = !id || sync.data.message[id] !== undefined
+      if (ready) setStore("deferRender", false)
     }
     return key
   }, sessionKey())

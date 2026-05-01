@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  desktopCapturer,
   ipcMain,
   Menu,
   nativeImage,
@@ -15,8 +16,12 @@ import { autoUpdater, type UpdateInfo, type ProgressInfo } from "electron-update
 import Store from "electron-store"
 import { CodeplaneDesktopReleaseSuffix, codeplaneDesktopReleaseTag } from "@codeplane-ai/shared/version"
 import { existsSync } from "node:fs"
+import { execFile } from "node:child_process"
+import { promisify } from "node:util"
 import path from "path"
 import { pathToFileURL } from "url"
+
+const execFileAsync = promisify(execFile)
 import { createDesktopLogger } from "./log"
 import {
   createDesktopUIHost,
@@ -24,6 +29,8 @@ import {
   type DesktopHostInstance,
   type DesktopUIPrepareProgress,
 } from "./ui-host"
+import { createLocalInstanceManager, type LocalInstanceProgress } from "./local-instance"
+import { CodeplaneVersion } from "@codeplane-ai/shared/version"
 
 /**
  * CodePlane desktop shell.
@@ -47,6 +54,57 @@ const HEADER_PREFIX_BLOCKED = ["host", "origin", "referer", "user-agent", "conte
 const GITHUB_API_HEADERS = {
   accept: "application/vnd.github+json",
   "user-agent": "codeplane-desktop-updater",
+}
+
+let githubTokenCache: { token: string | null; resolvedAt: number } | undefined
+const GITHUB_TOKEN_TTL_MS = 5 * 60 * 1000
+
+async function resolveGithubToken(): Promise<string | null> {
+  if (githubTokenCache && Date.now() - githubTokenCache.resolvedAt < GITHUB_TOKEN_TTL_MS) {
+    return githubTokenCache.token
+  }
+  const fromEnv = process.env.GITHUB_TOKEN?.trim() || process.env.GH_TOKEN?.trim()
+  if (fromEnv) {
+    githubTokenCache = { token: fromEnv, resolvedAt: Date.now() }
+    return fromEnv
+  }
+  const candidates = [
+    async () => {
+      const { stdout } = await execFileAsync("gh", ["auth", "token"], { timeout: 4000 })
+      return stdout.trim() || null
+    },
+    async () => {
+      const { stdout } = await execFileAsync(
+        "git",
+        ["credential", "fill"],
+        {
+          timeout: 4000,
+          input: "protocol=https\nhost=github.com\n\n",
+        } as Parameters<typeof execFileAsync>[2] & { input?: string },
+      )
+      const match = /^password=(.+)$/m.exec(stdout)
+      return match?.[1]?.trim() || null
+    },
+  ]
+  for (const candidate of candidates) {
+    try {
+      const value = await candidate()
+      if (value) {
+        githubTokenCache = { token: value, resolvedAt: Date.now() }
+        return value
+      }
+    } catch {
+      // try the next strategy
+    }
+  }
+  githubTokenCache = { token: null, resolvedAt: Date.now() }
+  return null
+}
+
+async function githubApiHeaders(): Promise<Record<string, string>> {
+  const token = await resolveGithubToken()
+  if (!token) return { ...GITHUB_API_HEADERS }
+  return { ...GITHUB_API_HEADERS, authorization: `Bearer ${token}` }
 }
 const GITHUB_RELEASES_API_URL = "https://api.github.com/repos/devinoldenburg/codeplane/releases"
 const GITHUB_RELEASE_DOWNLOAD_URL = "https://github.com/devinoldenburg/codeplane/releases/download"
@@ -82,6 +140,16 @@ type SavedInstance = {
   // matching certificate's subject CN / issuer; the OS keychain provides
   // the actual key material.
   clientCertSubject?: string
+  // Optional user-supplied icon image, stored as a data URL. Lives only
+  // on this device — never round-tripped to any server.
+  iconDataUrl?: string
+  // When set, this instance is managed locally: the desktop app downloads
+  // the matching codeplane binary, spawns it as a child process, and
+  // connects to the resulting localhost URL. The `url` field is rewritten
+  // to the live `http://127.0.0.1:<port>` each time the binary starts.
+  local?: {
+    binaryVersion: string
+  }
 }
 
 type Schema = {
@@ -111,10 +179,20 @@ const logger = createDesktopLogger(process.env.CODEPLANE_DESKTOP_LOG_DIR?.trim()
 let mainWindow: BrowserWindow | undefined
 let currentInstanceID: string | undefined
 const configuredPartitions = new Set<string>()
+const localManager = createLocalInstanceManager({
+  binariesDir: path.join(app.getPath("userData"), "local-binaries"),
+  dataDir: app.getPath("userData"),
+  log: (event, data) => logger.log("local-instance", event, data),
+})
 const uiHost = createDesktopUIHost({
   cacheDir: app.getPath("userData"),
-  getInstance,
+  getInstance: getInstanceLive,
   getSession: ensureSession,
+  ensureReady: async (instance) => {
+    const saved = getInstance(instance.id)
+    if (!saved?.local) return instance
+    return ensureLocalRunning(saved)
+  },
   log: (event, data) => logger.log("ui-host", event, data),
 })
 
@@ -132,7 +210,31 @@ function getInstance(id: string | undefined): SavedInstance | undefined {
   return store.get("instances", []).find((entry) => entry.id === id)
 }
 
+// For local instances, the persisted URL is a placeholder. Whenever the
+// binary is running, swap in the live `http://127.0.0.1:<port>` so the
+// proxy / UI host / probe code paths stay URL-driven.
+function getInstanceLive(id: string | undefined): SavedInstance | undefined {
+  const instance = getInstance(id)
+  if (!instance) return undefined
+  if (!instance.local) return instance
+  const running = localManager.getRunning(instance.id)
+  if (!running) return instance
+  return { ...instance, url: running.url }
+}
+
+async function ensureLocalRunning(instance: SavedInstance): Promise<SavedInstance> {
+  if (!instance.local) return instance
+  const existing = localManager.getRunning(instance.id)
+  if (existing) return { ...instance, url: existing.url }
+  const running = await localManager.start({
+    id: instance.id,
+    binaryVersion: instance.local.binaryVersion,
+  })
+  return { ...instance, url: running.url }
+}
+
 function instanceSummary(instance: SavedInstance | DesktopHostInstance) {
+  const local = (instance as SavedInstance).local
   return {
     id: instance.id,
     url: instance.url,
@@ -140,6 +242,7 @@ function instanceSummary(instance: SavedInstance | DesktopHostInstance) {
     hasHeaders: !!instance.headers && Object.keys(instance.headers).length > 0,
     ignoreCertificateErrors: !!instance.ignoreCertificateErrors,
     clientCertConfigured: !!instance.clientCertSubject,
+    local: local ? { binaryVersion: local.binaryVersion } : undefined,
   }
 }
 
@@ -238,6 +341,30 @@ function ensureSession(instance: SavedInstance): Session {
     }
     callback(-3)
   })
+
+  // Wire up `navigator.mediaDevices.getDisplayMedia` so the in-app screenshot
+  // button works. Without this handler Electron denies every request, which
+  // surfaces as a generic "Screenshot fehlgeschlagen" toast in the renderer.
+  // `useSystemPicker` lets macOS 15+ show its native ScreenCaptureKit picker
+  // (window/screen/area). On older macOS, Windows, and Linux Electron falls
+  // back to invoking the handler, where we capture the primary screen — the
+  // user explicitly clicked the screenshot button, so consent is unambiguous.
+  ses.setDisplayMediaRequestHandler(
+    (_request, callback) => {
+      desktopCapturer
+        .getSources({ types: ["screen"] })
+        .then((sources) => {
+          const source = sources[0]
+          if (!source) {
+            callback({})
+            return
+          }
+          callback({ video: source })
+        })
+        .catch(() => callback({}))
+    },
+    { useSystemPicker: true },
+  )
 
   return ses
 }
@@ -363,7 +490,7 @@ function desktopReleaseTag(version: string) {
 
 async function resolveDesktopReleaseTag() {
   const releasesResponse = await fetch(`${GITHUB_RELEASES_API_URL}?per_page=100`, {
-    headers: GITHUB_API_HEADERS,
+    headers: await githubApiHeaders(),
   })
   if (!releasesResponse.ok) {
     throw new Error(`GitHub desktop release lookup failed with HTTP ${releasesResponse.status}`)
@@ -390,7 +517,7 @@ async function getDesktopUpdateStatus() {
 
 async function getDesktopReleaseNotes(version: string) {
   const response = await fetch(`${GITHUB_RELEASES_API_URL}/tags/${desktopReleaseTag(version)}`, {
-    headers: GITHUB_API_HEADERS,
+    headers: await githubApiHeaders(),
   })
   if (response.status === 404) return null
   if (!response.ok) {
@@ -407,18 +534,20 @@ async function getDesktopReleaseNotes(version: string) {
   }
 }
 
-function configureDesktopUpdater(desktopTag: string) {
+async function configureDesktopUpdater(desktopTag: string) {
+  const token = await resolveGithubToken()
   autoUpdater.setFeedURL({
     provider: "generic",
     url: `${GITHUB_RELEASE_DOWNLOAD_URL}/${desktopTag}`,
-  })
+    ...(token ? { requestHeaders: { Authorization: `Bearer ${token}` } } : {}),
+  } as Parameters<typeof autoUpdater.setFeedURL>[0])
   autoUpdater.previousBlockmapBaseUrlOverride = `${GITHUB_RELEASE_DOWNLOAD_URL}/v${app.getVersion()}${DESKTOP_RELEASE_SUFFIX}`
 }
 
 async function runDesktopUpdateCheck<T>(action: () => Promise<T>) {
   const desktopTag = await resolveDesktopReleaseTag()
   if (!desktopTag) return null
-  configureDesktopUpdater(desktopTag)
+  await configureDesktopUpdater(desktopTag)
   return action()
 }
 
@@ -461,6 +590,25 @@ function attachWindowHandlers(window: BrowserWindow) {
   window.on("move", saveBounds)
   window.on("maximize", saveBounds)
   window.on("unmaximize", saveBounds)
+
+  // Forward macOS-relevant window state to the renderer so CSS can react —
+  // fullscreen hides traffic lights (drop the 88px reserved gutter) and
+  // focus blur lets us dim the chrome the way native apps do.
+  const sendWindowState = () => {
+    if (window.isDestroyed()) return
+    window.webContents.send("window:state", {
+      fullscreen: window.isFullScreen(),
+      focused: window.isFocused(),
+      maximized: window.isMaximized(),
+    })
+  }
+  window.on("enter-full-screen", sendWindowState)
+  window.on("leave-full-screen", sendWindowState)
+  window.on("focus", sendWindowState)
+  window.on("blur", sendWindowState)
+  window.on("maximize", sendWindowState)
+  window.on("unmaximize", sendWindowState)
+  window.webContents.once("did-finish-load", sendWindowState)
 
   function saveBounds() {
     if (!window || window.isDestroyed()) return
@@ -577,6 +725,7 @@ function buildMenu(reload: () => void, openSetup: () => void, openInstanceSwitch
 
 function createWindowOptions(ses?: Session) {
   const bounds = store.get("windowBounds")
+  const isMac = process.platform === "darwin"
   return {
     x: bounds?.x,
     y: bounds?.y,
@@ -584,10 +733,27 @@ function createWindowOptions(ses?: Session) {
     height: bounds?.height ?? 800,
     minWidth: 800,
     minHeight: 480,
-    backgroundColor: "#0e0e0e",
+    // On macOS we let the native NSVisualEffectView material show through —
+    // a transparent backgroundColor lets the renderer paint translucent
+    // surfaces (titlebar, sidebar) on top of vibrancy. Other platforms keep
+    // the opaque fallback so first paint never flashes white.
+    backgroundColor: isMac ? "#00000000" : "#0e0e0e",
     show: false,
     icon: iconPath(),
-    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
+    titleBarStyle: isMac ? "hiddenInset" : "default",
+    // Align the traffic light cluster vertically with our 44px titlebar so
+    // the close/min/zoom dots sit centered against the toolbar contents.
+    ...(isMac ? { trafficLightPosition: { x: 18, y: 14 } } : {}),
+    // Native macOS material — feels like a real Cocoa app instead of an
+    // Electron shell painted with a flat color. `under-window` blends the
+    // desktop wallpaper into the chrome, matching Finder / Mail / Notes.
+    ...(isMac
+      ? {
+          vibrancy: "under-window" as const,
+          visualEffectState: "followWindow" as const,
+        }
+      : {}),
+    roundedCorners: true,
     webPreferences: {
       preload: getAppAssetPath("dist", "main", "preload.cjs"),
       contextIsolation: true,
@@ -742,9 +908,31 @@ function attachInteractiveBootstrap(window: BrowserWindow, instance: SavedInstan
   window.webContents.on("did-navigate-in-page", onNavigateInPage)
 }
 
-async function openInstance(instance: SavedInstance) {
+async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebContents }) {
+  const emit = (payload: Record<string, unknown>) => {
+    const wc = opts?.progressTo
+    if (!wc || wc.isDestroyed()) return
+    wc.send("instances:open-progress", { instanceID: saved.id, ...payload })
+  }
+  let instance = saved
+  if (saved.local) {
+    try {
+      emit({ phase: "probe", message: "Starting local server…", percent: 4 })
+      instance = await ensureLocalRunning(saved)
+    } catch (error) {
+      logger.log("main", "instance.local.start-failed", { error, ...instanceSummary(saved) })
+      emit({ phase: "error", message: error instanceof Error ? error.message : String(error), percent: 0 })
+      await showMessageBox({
+        type: "error",
+        message: "Couldn't start the local Codeplane server",
+        detail: error instanceof Error ? error.message : String(error),
+      })
+      return false
+    }
+  }
   const target = asUrl(instance.url)
   if (!target) {
+    emit({ phase: "error", message: "Invalid URL", percent: 0 })
     await showMessageBox({
       type: "error",
       message: "Invalid instance URL",
@@ -755,17 +943,39 @@ async function openInstance(instance: SavedInstance) {
 
   try {
     logger.log("main", "instance.open.start", instanceSummary(instance))
+    emit({ phase: "probe", message: "Connecting…", percent: 8 })
     const ses = ensureSession(instance)
-    const window = new BrowserWindow(createWindowOptions(ses))
-    attachWindowDebugLogging(window, "instance")
-    window.once("ready-to-show", () => window.show())
-    attachWindowHandlers(window)
+
+    // Match the previous (setup) window's bounds + state so the new window
+    // appears in the exact same place. Combined with the post-load fade,
+    // this hides the fact that we recreate the window for the per-instance
+    // session — the user perceives a single seamless transition.
     const previous = mainWindow
+    const previousBounds = previous && !previous.isDestroyed() ? previous.getBounds() : undefined
+    const previousFullscreen = previous && !previous.isDestroyed() ? previous.isFullScreen() : false
+    const previousMaximized = previous && !previous.isDestroyed() ? previous.isMaximized() : false
+
+    const winOpts = createWindowOptions(ses)
+    if (previousBounds) {
+      winOpts.x = previousBounds.x
+      winOpts.y = previousBounds.y
+      winOpts.width = previousBounds.width
+      winOpts.height = previousBounds.height
+    }
+    const window = new BrowserWindow(winOpts)
+    attachWindowDebugLogging(window, "instance")
+    // We deliberately do NOT auto-show on ready-to-show. The setup window
+    // stays in front showing the loading overlay until the instance UI
+    // is fully loaded, then we swap atomically below.
+    attachWindowHandlers(window)
+    if (previousFullscreen) window.setFullScreen(true)
+    else if (previousMaximized) window.maximize()
     mainWindow = window
     currentInstanceID = instance.id
     store.set("lastInstanceId", instance.id)
-    if (previous && previous !== window && !previous.isDestroyed()) previous.hide()
-    const prepared = await uiHost.prepare(instance).catch(async (error) => {
+    const prepared = await uiHost
+      .prepare(instance, (progress: DesktopUIPrepareProgress) => emit(progress))
+      .catch(async (error) => {
       if (!(error instanceof DesktopVersionAuthRequiredError)) throw error
       logger.log("main", "instance.open.auth-required", {
         authUrl: error.authUrl,
@@ -775,16 +985,38 @@ async function openInstance(instance: SavedInstance) {
       await loadWindowUrl(window, error.authUrl)
       return
     })
-    if (prepared) await loadWindowUrl(window, prepared.url)
-    if (previous && previous !== window && !previous.isDestroyed()) {
-      setTimeout(() => {
-        if (!previous.isDestroyed()) previous.close()
-      }, 0)
+    if (prepared) {
+      emit({ phase: "done", message: "Loading…", percent: 100, version: prepared.version })
+      await loadWindowUrl(window, prepared.url)
+    }
+
+    // Atomically swap setup → instance. Hidden window starts at opacity 0
+    // so the OS doesn't draw a frame before our crossfade begins.
+    if (!window.isDestroyed()) {
+      window.setOpacity(0)
+      window.show()
+      window.focus()
+      const fadeMs = 220
+      const fadeStart = Date.now()
+      const fadeStep = () => {
+        if (window.isDestroyed()) return
+        const t = Math.min(1, (Date.now() - fadeStart) / fadeMs)
+        // smooth ease-out so it feels like a real native fade
+        const eased = 1 - Math.pow(1 - t, 3)
+        window.setOpacity(eased)
+        if (previous && previous !== window && !previous.isDestroyed()) {
+          previous.setOpacity(1 - eased)
+        }
+        if (t < 1) setTimeout(fadeStep, 16)
+        else if (previous && previous !== window && !previous.isDestroyed()) previous.close()
+      }
+      fadeStep()
     }
     logger.log("main", "instance.open.success", { prepared, ...instanceSummary(instance) })
     return true
   } catch (error) {
     logger.log("main", "instance.open.error", { error, ...instanceSummary(instance) })
+    emit({ phase: "error", message: error instanceof Error ? error.message : String(error), percent: 0 })
     await showMessageBox({
       type: "error",
       message: "Couldn't open this instance",
@@ -804,6 +1036,17 @@ function showSetupWindow(editId?: string) {
 function setupIpc() {
   ipcMain.on("app:version", (event) => {
     event.returnValue = app.getVersion()
+  })
+  ipcMain.on("window:state-snapshot", (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    event.returnValue = window
+      ? {
+          fullscreen: window.isFullScreen(),
+          focused: window.isFocused(),
+          maximized: window.isMaximized(),
+          platform: process.platform,
+        }
+      : { fullscreen: false, focused: true, maximized: false, platform: process.platform }
   })
   ipcMain.on("desktop:log", (_event, payload: { event?: string; data?: unknown; scope?: string }) => {
     if (!payload.event) return
@@ -847,8 +1090,20 @@ function setupIpc() {
     store.set("instances", list)
     return list
   })
-  ipcMain.handle("instances:prepare", async (event, instance: SavedInstance) => {
-    logger.log("main", "instances.prepare.start", instanceSummary(instance))
+  ipcMain.handle("instances:prepare", async (event, saved: SavedInstance) => {
+    logger.log("main", "instances.prepare.start", instanceSummary(saved))
+    let instance = saved
+    if (saved.local) {
+      try {
+        instance = await ensureLocalRunning(saved)
+      } catch (error) {
+        logger.log("main", "instances.prepare.local-start-error", { error, ...instanceSummary(saved) })
+        return {
+          ok: false as const,
+          error: error instanceof Error ? error.message : String(error),
+        }
+      }
+    }
     try {
       const prepared = await uiHost.prepare(instance, (progress: DesktopUIPrepareProgress) => {
         event.sender.send("instances:prepare-progress", {
@@ -877,11 +1132,19 @@ function setupIpc() {
       }
     }
   })
-  ipcMain.handle("instances:remove", (_event, id: string) => {
+  ipcMain.handle("instances:remove", async (_event, id: string) => {
     logger.log("main", "instances.remove", { id })
-    const next = store.get("instances", []).filter((entry) => entry.id !== id)
+    const list = store.get("instances", [])
+    const target = list.find((entry) => entry.id === id)
+    const next = list.filter((entry) => entry.id !== id)
     store.set("instances", next)
     if (store.get("lastInstanceId") === id) store.delete("lastInstanceId")
+    if (target?.local) {
+      await localManager.stop(id).catch((error) => logger.log("main", "instances.remove.stop-error", { error, id }))
+      await localManager
+        .removeData(id)
+        .catch((error) => logger.log("main", "instances.remove.data-error", { error, id }))
+    }
     return next
   })
   ipcMain.handle("instances:set-default-key", async (_event, key: string | null) => {
@@ -895,16 +1158,65 @@ function setupIpc() {
     store.delete("lastInstanceId")
     return true
   })
-  ipcMain.handle("instances:open", async (_event, id: string) => {
+  ipcMain.handle("instances:open", async (event, id: string) => {
     logger.log("main", "instances.open", { id })
     const instance = getInstance(id)
     if (!instance) return false
-    return openInstance(instance)
+    return openInstance(instance, { progressTo: event.sender })
   })
   ipcMain.handle("instances:show-setup", (_event, editId?: string) => {
     logger.log("main", "instances.show-setup", { editId })
     setTimeout(() => showSetupWindow(editId), 0)
     return true
+  })
+  ipcMain.handle("local:target", () => ({
+    archiveName: localManager.target.archiveName,
+    archiveExt: localManager.target.archiveExt,
+    binaryName: localManager.target.binaryName,
+    os: localManager.target.os,
+    arch: localManager.target.arch,
+    defaultVersion: CodeplaneVersion,
+  }))
+  ipcMain.handle("local:status", async (_event, version: string) => {
+    const status = await localManager.status(version || CodeplaneVersion)
+    logger.log("main", "local.status", status)
+    return status
+  })
+  ipcMain.handle("local:install", async (event, input: { version?: string }) => {
+    const version = input?.version || CodeplaneVersion
+    logger.log("main", "local.install.start", { version })
+    try {
+      const result = await localManager.download(version, (progress: LocalInstanceProgress) => {
+        event.sender.send("local:install-progress", { version, ...progress })
+      })
+      logger.log("main", "local.install.success", result)
+      return { ok: true as const, ...result }
+    } catch (error) {
+      logger.log("main", "local.install.error", { error, version })
+      return { ok: false as const, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle("local:start", async (_event, input: { id: string; binaryVersion: string }) => {
+    logger.log("main", "local.start.request", input)
+    try {
+      const running = await localManager.start(input)
+      return { ok: true as const, ...running }
+    } catch (error) {
+      logger.log("main", "local.start.error", { error, ...input })
+      return { ok: false as const, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle("local:stop", async (_event, id: string) => {
+    logger.log("main", "local.stop.request", { id })
+    await localManager.stop(id).catch((error) => logger.log("main", "local.stop.error", { error, id }))
+    return true
+  })
+  ipcMain.handle("local:running", () => {
+    const ids: string[] = []
+    for (const instance of store.get("instances", [])) {
+      if (instance.local && localManager.isRunning(instance.id)) ids.push(instance.id)
+    }
+    return ids
   })
   ipcMain.handle("instances:probe", async (_event, input: string | DesktopHostInstance) => {
     const instance =
@@ -972,6 +1284,37 @@ function setupIpc() {
     logger.log("main", "updater.release-notes", { found: !!result, version })
     return result
   })
+  // Manually start the download. Auto-update already flips `autoDownload`
+  // on, so this is mostly here so the renderer can drive the flow with
+  // explicit user intent and stay in lockstep with the inline UI.
+  ipcMain.handle("updater:download", async () => {
+    if (mockUpdaterMode()) {
+      logger.log("main", "updater.download.mock")
+      return { ok: true as const, mocked: true }
+    }
+    try {
+      await runDesktopUpdateCheck(async () => {
+        await autoUpdater.downloadUpdate()
+      })
+      logger.log("main", "updater.download.requested")
+      return { ok: true as const }
+    } catch (error) {
+      const response = { ok: false as const, error: error instanceof Error ? error.message : String(error) }
+      logger.log("main", "updater.download.error", response)
+      return response
+    }
+  })
+  // Quit and apply the downloaded installer. The renderer decides when —
+  // we never auto-restart the user out from under their work.
+  ipcMain.handle("updater:install", () => {
+    if (mockUpdaterMode()) {
+      logger.log("main", "updater.install.mock")
+      return { ok: true as const, mocked: true }
+    }
+    logger.log("main", "updater.install.requested")
+    setImmediate(() => autoUpdater.quitAndInstall())
+    return { ok: true as const }
+  })
 }
 
 function setupAutoUpdater() {
@@ -986,38 +1329,35 @@ function setupAutoUpdater() {
   autoUpdater.autoInstallOnAppQuit = true
   autoUpdater.allowPrerelease = false
 
+  // Broadcast updater events to every open window so each surface
+  // (selector card, instance window banners) can render its own state.
+  const broadcastUpdater = (channel: string, payload?: unknown) => {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (window.isDestroyed()) continue
+      window.webContents.send(channel, payload)
+    }
+  }
   autoUpdater.on("update-available", (info: UpdateInfo) => {
     logger.log("main", "updater.update-available", info)
-    mainWindow?.webContents.send("updater:update-available", info)
+    broadcastUpdater("updater:update-available", info)
   })
-  autoUpdater.on("update-not-available", () => {
-    logger.log("main", "updater.update-not-available")
-    mainWindow?.webContents.send("updater:update-not-available")
+  autoUpdater.on("update-not-available", (info: UpdateInfo) => {
+    logger.log("main", "updater.update-not-available", info)
+    broadcastUpdater("updater:update-not-available", info)
   })
   autoUpdater.on("download-progress", (progress: ProgressInfo) => {
     logger.log("main", "updater.download-progress", progress)
-    mainWindow?.webContents.send("updater:download-progress", progress)
+    broadcastUpdater("updater:download-progress", progress)
   })
   autoUpdater.on("update-downloaded", (info: UpdateInfo) => {
     logger.log("main", "updater.update-downloaded", info)
-    mainWindow?.webContents.send("updater:update-downloaded", info)
-    void dialog
-      .showMessageBox({
-        type: "info",
-        title: "Update ready",
-        message: `Codeplane ${info.version} is ready to install.`,
-        detail: "Restart the app to apply the update.",
-        buttons: ["Restart now", "Later"],
-        defaultId: 0,
-        cancelId: 1,
-      })
-      .then((response) => {
-        if (response.response === 0) autoUpdater.quitAndInstall()
-      })
+    broadcastUpdater("updater:update-downloaded", info)
+    // No native dialog — the renderer owns the install UX. We still apply
+    // on quit via `autoInstallOnAppQuit` so the update is never lost.
   })
   autoUpdater.on("error", (error) => {
     logger.log("main", "updater.error", error)
-    mainWindow?.webContents.send("updater:error", error.message ?? String(error))
+    broadcastUpdater("updater:error", error.message ?? String(error))
   })
 
   // Check on launch and then once per hour.
@@ -1086,5 +1426,12 @@ if (!gotLock) {
   app.on("window-all-closed", () => {
     logger.log("main", "window-all-closed", { platform: process.platform })
     if (process.platform !== "darwin") app.quit()
+  })
+
+  // Tear down any local Codeplane processes the desktop spawned so they
+  // don't outlive the app and squat on their state directories.
+  app.on("before-quit", () => {
+    logger.log("main", "before-quit.local-stop", { count: store.get("instances", []).filter((i) => i.local).length })
+    void localManager.stopAll()
   })
 }
