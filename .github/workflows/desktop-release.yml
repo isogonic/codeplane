@@ -110,7 +110,7 @@ jobs:
         include:
           - os: macos-14
             target: mac
-            package_command: bunx electron-builder --mac dmg zip --publish never
+            package_command: bunx electron-builder --mac dmg zip --x64 --arm64 --publish never
           - os: ubuntu-24.04
             target: linux
             package_command: bunx electron-builder --linux AppImage deb tar.gz --x64 --publish never
