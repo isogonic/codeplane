@@ -32,7 +32,7 @@ export const McpApi = HttpApi.make("mcp")
   .annotateMerge(
     OpenApi.annotations({
       title: "codeplane experimental HttpApi",
-      version: "27.0.10",
+      version: "27.0.11",
       description: "Experimental HttpApi surface for selected instance routes.",
     }),
   )

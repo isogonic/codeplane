@@ -91,10 +91,50 @@ export type Project = {
     color?: string
   }
   commands?: {
-    /**
-     * Startup script to run when creating a new workspace (worktree)
-     */
-    start?: string
+    [key: string]:
+      | string
+      | {
+          /**
+           * Shell command to run
+           */
+          command: string
+          /**
+           * Human-readable label shown in the app
+           */
+          label?: string
+          /**
+           * What this command is for
+           */
+          description?: string
+          /**
+           * Working directory relative to the project worktree or absolute path. Defaults to the project root.
+           */
+          cwd?: string
+          /**
+           * Environment variables that must be present before the command can run
+           */
+          env?: Array<string>
+          /**
+           * Additional labels/tags for grouping commands in the app and agent context
+           */
+          labels?: Array<string>
+          /**
+           * Semantic command kind such as start, dev, test, typecheck, lint, build, or custom
+           */
+          kind?: string
+          /**
+           * Whether to include this command in the agent's project command context. Defaults to true.
+           */
+          context?: boolean
+          /**
+           * Suggested timeout in milliseconds when the command is run by automation
+           */
+          timeout?: number
+          /**
+           * Whether this command is expected to stay interactive or long-running
+           */
+          interactive?: boolean
+        }
   }
   time: {
     created: number
@@ -383,6 +423,13 @@ export type EventQuestionRejected = {
   properties: QuestionRejected
 }
 
+export type EventVcsBranchUpdated = {
+  type: "vcs.branch.updated"
+  properties: {
+    branch?: string
+  }
+}
+
 export type Todo = {
   /**
    * Brief description of the task
@@ -464,13 +511,6 @@ export type EventCommandExecuted = {
     sessionID: string
     arguments: string
     messageID: string
-  }
-}
-
-export type EventVcsBranchUpdated = {
-  type: "vcs.branch.updated"
-  properties: {
-    branch?: string
   }
 }
 
@@ -1737,6 +1777,7 @@ export type GlobalEvent = {
     | EventQuestionAsked
     | EventQuestionReplied
     | EventQuestionRejected
+    | EventVcsBranchUpdated
     | EventTodoUpdated
     | EventSessionStatus
     | EventSessionIdle
@@ -1744,7 +1785,6 @@ export type GlobalEvent = {
     | EventMcpToolsChanged
     | EventMcpBrowserOpenFailed
     | EventCommandExecuted
-    | EventVcsBranchUpdated
     | EventWorktreeReady
     | EventWorktreeFailed
     | EventPtyCreated
@@ -1863,6 +1903,10 @@ export type PermissionConfig =
       glob?: PermissionRuleConfig
       grep?: PermissionRuleConfig
       list?: PermissionRuleConfig
+      project?: PermissionRuleConfig
+      tools?: PermissionRuleConfig
+      git?: PermissionRuleConfig
+      forge?: PermissionRuleConfig
       bash?: PermissionRuleConfig
       task?: PermissionRuleConfig
       external_directory?: PermissionRuleConfig
@@ -2111,6 +2155,52 @@ export type McpRemoteConfig = {
   timeout?: number
 }
 
+export type GitProviderConfig = "github" | "gitlab" | "bitbucket" | "azure-devops" | "generic"
+
+export type GitCredentialConfig = {
+  type?: "stored" | "env" | "ssh" | "none"
+  /**
+   * Key in the local codeplane auth store, usually git:<instance-name>
+   */
+  key?: string
+  /**
+   * Environment variable containing the token/password for this Git host
+   */
+  env?: string
+  /**
+   * Username used with HTTPS basic auth. Defaults to oauth2 for GitLab and x-access-token otherwise.
+   */
+  username?: string
+  /**
+   * Optional GIT_SSH_COMMAND for SSH remotes, for example ssh -i ~/.ssh/id_ed25519
+   */
+  sshCommand?: string
+}
+
+export type GitInstanceConfig = {
+  /**
+   * Base URL for the Git host, for example https://github.com or https://gitlab.example.com
+   */
+  url: string
+  provider?: GitProviderConfig
+  /**
+   * Additional hostnames that should match this instance
+   */
+  hosts?: Array<string>
+  /**
+   * Preferred remote name for operations that need a remote
+   */
+  defaultRemote?: string
+  credential?: GitCredentialConfig
+}
+
+/**
+ * Named Git host configuration for native git tool operations and credentials
+ */
+export type GitConfig = {
+  [key: string]: GitInstanceConfig
+}
+
 /**
  * @deprecated Always uses stretch layout.
  */
@@ -2250,6 +2340,7 @@ export type Config = {
           extensions?: Array<string>
         }
       }
+  git?: GitConfig
   lsp?:
     | boolean
     | {
@@ -2703,6 +2794,7 @@ export type Event =
   | EventQuestionAsked
   | EventQuestionReplied
   | EventQuestionRejected
+  | EventVcsBranchUpdated
   | EventTodoUpdated
   | EventSessionStatus
   | EventSessionIdle
@@ -2710,7 +2802,6 @@ export type Event =
   | EventMcpToolsChanged
   | EventMcpBrowserOpenFailed
   | EventCommandExecuted
-  | EventVcsBranchUpdated
   | EventWorktreeReady
   | EventWorktreeFailed
   | EventPtyCreated
@@ -3193,6 +3284,41 @@ export type GlobalVersionResponses = {
 
 export type GlobalVersionResponse = GlobalVersionResponses[keyof GlobalVersionResponses]
 
+export type GlobalReleaseNotesData = {
+  body?: never
+  path: {
+    version: string
+  }
+  query?: never
+  url: "/global/release-notes/{version}"
+}
+
+export type GlobalReleaseNotesErrors = {
+  /**
+   * No release notes found
+   */
+  404: {
+    error: string
+  }
+}
+
+export type GlobalReleaseNotesError = GlobalReleaseNotesErrors[keyof GlobalReleaseNotesErrors]
+
+export type GlobalReleaseNotesResponses = {
+  /**
+   * Release notes
+   */
+  200: {
+    tag: string
+    name: string | null
+    body: string | null
+    url: string | null
+    publishedAt: string | null
+  }
+}
+
+export type GlobalReleaseNotesResponse = GlobalReleaseNotesResponses[keyof GlobalReleaseNotesResponses]
+
 export type GlobalEventData = {
   body?: never
   path?: never
@@ -3672,10 +3798,50 @@ export type ProjectUpdateData = {
       color?: string
     }
     commands?: {
-      /**
-       * Startup script to run when creating a new workspace (worktree)
-       */
-      start?: string
+      [key: string]:
+        | string
+        | {
+            /**
+             * Shell command to run
+             */
+            command: string
+            /**
+             * Human-readable label shown in the app
+             */
+            label?: string
+            /**
+             * What this command is for
+             */
+            description?: string
+            /**
+             * Working directory relative to the project worktree or absolute path. Defaults to the project root.
+             */
+            cwd?: string
+            /**
+             * Environment variables that must be present before the command can run
+             */
+            env?: Array<string>
+            /**
+             * Additional labels/tags for grouping commands in the app and agent context
+             */
+            labels?: Array<string>
+            /**
+             * Semantic command kind such as start, dev, test, typecheck, lint, build, or custom
+             */
+            kind?: string
+            /**
+             * Whether to include this command in the agent's project command context. Defaults to true.
+             */
+            context?: boolean
+            /**
+             * Suggested timeout in milliseconds when the command is run by automation
+             */
+            timeout?: number
+            /**
+             * Whether this command is expected to stay interactive or long-running
+             */
+            interactive?: boolean
+          }
     }
   }
   path: {

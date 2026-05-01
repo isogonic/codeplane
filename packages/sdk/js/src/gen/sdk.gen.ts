@@ -72,6 +72,8 @@ import type {
   GlobalDisposeResponses,
   GlobalEventResponses,
   GlobalHealthResponses,
+  GlobalReleaseNotesErrors,
+  GlobalReleaseNotesResponses,
   GlobalUpgradeErrors,
   GlobalUpgradeResponses,
   GlobalVersionResponses,
@@ -632,6 +634,25 @@ export class Global extends HeyApiClient {
     return (options?.client ?? this.client).get<GlobalVersionResponses, unknown, ThrowOnError>({
       url: "/global/version",
       ...options,
+    })
+  }
+
+  /**
+   * Get release notes for a version
+   *
+   * Fetch the GitHub release notes for the given codeplane version (cached in-process).
+   */
+  public releaseNotes<ThrowOnError extends boolean = false>(
+    parameters: {
+      version: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "path", key: "version" }] }])
+    return (options?.client ?? this.client).get<GlobalReleaseNotesResponses, GlobalReleaseNotesErrors, ThrowOnError>({
+      url: "/global/release-notes/{version}",
+      ...options,
+      ...params,
     })
   }
 
@@ -1389,10 +1410,50 @@ export class Project extends HeyApiClient {
         color?: string
       }
       commands?: {
-        /**
-         * Startup script to run when creating a new workspace (worktree)
-         */
-        start?: string
+        [key: string]:
+          | string
+          | {
+              /**
+               * Shell command to run
+               */
+              command: string
+              /**
+               * Human-readable label shown in the app
+               */
+              label?: string
+              /**
+               * What this command is for
+               */
+              description?: string
+              /**
+               * Working directory relative to the project worktree or absolute path. Defaults to the project root.
+               */
+              cwd?: string
+              /**
+               * Environment variables that must be present before the command can run
+               */
+              env?: Array<string>
+              /**
+               * Additional labels/tags for grouping commands in the app and agent context
+               */
+              labels?: Array<string>
+              /**
+               * Semantic command kind such as start, dev, test, typecheck, lint, build, or custom
+               */
+              kind?: string
+              /**
+               * Whether to include this command in the agent's project command context. Defaults to true.
+               */
+              context?: boolean
+              /**
+               * Suggested timeout in milliseconds when the command is run by automation
+               */
+              timeout?: number
+              /**
+               * Whether this command is expected to stay interactive or long-running
+               */
+              interactive?: boolean
+            }
       }
     },
     options?: Options<never, ThrowOnError>,

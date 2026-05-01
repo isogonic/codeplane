@@ -1,0 +1,141 @@
+name: desktop-release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing v* tag to build and publish"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ inputs.tag || github.ref_name }}"
+          if [ -z "$tag" ]; then
+            echo "A release tag is required." >&2
+            exit 1
+          fi
+          if [[ "$tag" != v* ]]; then
+            echo "Release tags must start with v." >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+  create-release:
+    needs: resolve
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Create draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "${{ needs.resolve.outputs.tag }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            exit 0
+          fi
+          gh release create "${{ needs.resolve.outputs.tag }}" \
+            --draft \
+            --generate-notes \
+            --title "${{ needs.resolve.outputs.tag }}" \
+            --repo "${{ github.repository }}"
+
+  build-desktop:
+    needs:
+      - resolve
+      - create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: mac
+          - os: ubuntu-24.04
+            target: linux
+          - os: windows-2025
+            target: win
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ needs.resolve.outputs.tag }}
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Verify desktop version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(bun --eval 'console.log((await Bun.file("packages/desktop/package.json").json()).version)')
+          if [ "$version" != "${{ needs.resolve.outputs.version }}" ]; then
+            echo "packages/desktop/package.json version $version does not match ${{ needs.resolve.outputs.version }}" >&2
+            exit 1
+          fi
+
+      - name: Build desktop bundle
+        working-directory: packages/desktop
+        run: bun run build
+        env:
+          CODEPLANE_VERSION: ${{ needs.resolve.outputs.version }}
+
+      - name: Package desktop binaries
+        working-directory: packages/desktop
+        run: bun run package:${{ matrix.target }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          CODEPLANE_VERSION: ${{ needs.resolve.outputs.version }}
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Upload desktop binaries
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          cd packages/desktop/release
+          files=(codeplane-desktop-*)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No desktop binaries were produced." >&2
+            exit 1
+          fi
+          gh release upload "${{ needs.resolve.outputs.tag }}" "${files[@]}" \
+            --clobber \
+            --repo "${{ github.repository }}"
+
+  publish-release:
+    needs:
+      - resolve
+      - build-desktop
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "${{ needs.resolve.outputs.tag }}" --draft=false --repo "${{ github.repository }}"
