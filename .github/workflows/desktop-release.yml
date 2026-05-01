@@ -70,10 +70,13 @@ jobs:
         include:
           - os: macos-14
             target: mac
+            package_command: bunx electron-builder --mac dmg zip
           - os: ubuntu-24.04
             target: linux
+            package_command: bunx electron-builder --linux AppImage deb tar.gz --x64
           - os: windows-2025
             target: win
+            package_command: bunx electron-builder --win nsis zip --x64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -103,12 +106,44 @@ jobs:
 
       - name: Package desktop binaries
         working-directory: packages/desktop
-        run: bun run package:${{ matrix.target }}
+        run: ${{ matrix.package_command }}
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
           CODEPLANE_VERSION: ${{ needs.resolve.outputs.version }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Create stable download aliases
+        working-directory: packages/desktop/release
+        shell: bash
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          resolve() {
+            local pattern="$1"
+            local file
+            file=$(compgen -G "$pattern" | head -n 1 || true)
+            if [ -z "$file" ]; then
+              echo "No file matched: $pattern" >&2
+              exit 1
+            fi
+            printf '%s\n' "$file"
+          }
+
+          case "${{ matrix.target }}" in
+            mac)
+              cp "$(resolve "codeplane-desktop-${VERSION}-mac-arm64.dmg")" codeplane-desktop-macos-apple-silicon.dmg
+              cp "$(resolve "codeplane-desktop-${VERSION}-mac-x64.dmg")" codeplane-desktop-macos-intel.dmg
+              ;;
+            linux)
+              cp "$(resolve "codeplane-desktop-${VERSION}-linux-*.AppImage")" codeplane-desktop-linux-x64.AppImage
+              ;;
+            win)
+              cp "$(resolve "codeplane-desktop-${VERSION}-win-x64.exe")" codeplane-desktop-windows-x64.exe
+              ;;
+          esac
 
       - name: Upload desktop binaries
         shell: bash

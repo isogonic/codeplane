@@ -19,13 +19,14 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/devinoldenburg/codeplane/actions/workflows/publish.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/devinoldenburg/codeplane/publish.yml?style=flat-square&branch=dev" /></a>
-  <a href="https://github.com/devinoldenburg/codeplane/blob/dev/LICENSE"><img alt="License" src="https://img.shields.io/github/license/devinoldenburg/codeplane?style=flat-square" /></a>
+  <a href="https://github.com/devinoldenburg/codeplane/actions/workflows/desktop-release.yml"><img alt="Desktop release" src="https://img.shields.io/github/actions/workflow/status/devinoldenburg/codeplane/desktop-release.yml?style=flat-square" /></a>
+  <a href="https://github.com/devinoldenburg/codeplane/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/devinoldenburg/codeplane?style=flat-square" /></a>
   <a href="https://github.com/devinoldenburg/codeplane/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/devinoldenburg/codeplane?style=flat-square" /></a>
 </p>
 
 <p align="center">
   <a href="#-quick-start">Quick start</a> ·
+  <a href="#-desktop-app">Desktop App</a> ·
   <a href="#-installation">Install</a> ·
   <a href="#-features">Features</a> ·
   <a href="#-agents">Agents</a> ·
@@ -61,9 +62,28 @@ Use the web app to switch agents, manage parallel sessions, schedule recurring w
 
 ---
 
+## 💻 Desktop App
+
+<p align="center">
+  <a href="https://github.com/devinoldenburg/codeplane/releases/latest/download/codeplane-desktop-macos-apple-silicon.dmg"><img alt="Download for macOS Apple Silicon" src="https://img.shields.io/badge/Download-macOS%20Apple%20Silicon-000000?style=for-the-badge&logo=apple" /></a>
+  <a href="https://github.com/devinoldenburg/codeplane/releases/latest/download/codeplane-desktop-macos-intel.dmg"><img alt="Download for macOS Intel" src="https://img.shields.io/badge/Download-macOS%20Intel-555555?style=for-the-badge&logo=apple" /></a>
+  <a href="https://github.com/devinoldenburg/codeplane/releases/latest/download/codeplane-desktop-windows-x64.exe"><img alt="Download for Windows x64" src="https://img.shields.io/badge/Download-Windows%20x64-0078D4?style=for-the-badge&logo=windows&logoColor=white" /></a>
+  <a href="https://github.com/devinoldenburg/codeplane/releases/latest/download/codeplane-desktop-linux-x64.AppImage"><img alt="Download for Linux x64" src="https://img.shields.io/badge/Download-Linux%20x64-FCC624?style=for-the-badge&logo=linux&logoColor=black" /></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/devinoldenburg/codeplane/releases"><img alt="All desktop downloads" src="https://img.shields.io/badge/All%20Desktop%20Downloads-GitHub%20Releases-24292F?style=for-the-badge&logo=github" /></a>
+</p>
+
+Native desktop builds are published on GitHub Releases. The buttons above always target the newest published installers.
+
+Use the full releases page for alternate archive formats and any extra platform variants.
+
+---
+
 ## 📦 Installation
 
-Install from source until prebuilt binaries are published:
+Use the desktop app above if you want a prebuilt GUI install. For the CLI and server, build from source:
 
 ```bash
 git clone https://github.com/devinoldenburg/codeplane.git
@@ -73,7 +93,7 @@ bun run --cwd packages/codeplane build
 ```
 
 > [!TIP]
-> Prebuilt binaries, Homebrew/Scoop/AUR packages, and an install script are planned. For now, build from source with [Bun](https://bun.sh).
+> Desktop installers are published on GitHub Releases. CLI package-manager distribution is still evolving, so building from source with [Bun](https://bun.sh) remains the most reliable path for the server and local development.
 
 <details>
 <summary><strong>Custom install directory</strong></summary>
