@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/package.json",
   "name": "@codeplane-ai/desktop",
   "private": true,
-  "version": "27.0.10",
+  "version": "27.0.11",
   "description": "Native desktop wrapper for the CodePlane web UI",
   "main": "dist/main/main.js",
   "type": "module",

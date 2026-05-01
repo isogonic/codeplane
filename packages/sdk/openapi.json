@@ -3,7 +3,7 @@
   "info": {
     "title": "codeplane",
     "description": "codeplane api",
-    "version": "27.0.10"
+    "version": "27.0.11"
   },
   "paths": {
     "/global/cron": {
@@ -721,6 +721,103 @@
           {
             "lang": "js",
             "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.global.version({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/global/release-notes/{version}": {
+      "get": {
+        "operationId": "global.releaseNotes",
+        "summary": "Get release notes for a version",
+        "description": "Fetch the GitHub release notes for the given codeplane version (cached in-process).",
+        "responses": {
+          "200": {
+            "description": "Release notes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tag": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "body": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "url": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "publishedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": ["tag", "name", "body", "url", "publishedAt"]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No release notes found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.global.releaseNotes({\n  ...\n})"
           }
         ]
       }
@@ -1760,11 +1857,67 @@
                   },
                   "commands": {
                     "type": "object",
-                    "properties": {
-                      "start": {
-                        "description": "Startup script to run when creating a new workspace (worktree)",
-                        "type": "string"
-                      }
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "command": {
+                              "description": "Shell command to run",
+                              "type": "string"
+                            },
+                            "label": {
+                              "description": "Human-readable label shown in the app",
+                              "type": "string"
+                            },
+                            "description": {
+                              "description": "What this command is for",
+                              "type": "string"
+                            },
+                            "cwd": {
+                              "description": "Working directory relative to the project worktree or absolute path. Defaults to the project root.",
+                              "type": "string"
+                            },
+                            "env": {
+                              "description": "Environment variables that must be present before the command can run",
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "labels": {
+                              "description": "Additional labels/tags for grouping commands in the app and agent context",
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "kind": {
+                              "description": "Semantic command kind such as start, dev, test, typecheck, lint, build, or custom",
+                              "type": "string"
+                            },
+                            "context": {
+                              "description": "Whether to include this command in the agent's project command context. Defaults to true.",
+                              "type": "boolean"
+                            },
+                            "timeout": {
+                              "description": "Suggested timeout in milliseconds when the command is run by automation",
+                              "type": "number"
+                            },
+                            "interactive": {
+                              "description": "Whether this command is expected to stay interactive or long-running",
+                              "type": "boolean"
+                            }
+                          },
+                          "required": ["command"]
+                        }
+                      ]
                     }
                   }
                 }
@@ -7796,11 +7949,67 @@
           },
           "commands": {
             "type": "object",
-            "properties": {
-              "start": {
-                "description": "Startup script to run when creating a new workspace (worktree)",
-                "type": "string"
-              }
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "command": {
+                      "description": "Shell command to run",
+                      "type": "string"
+                    },
+                    "label": {
+                      "description": "Human-readable label shown in the app",
+                      "type": "string"
+                    },
+                    "description": {
+                      "description": "What this command is for",
+                      "type": "string"
+                    },
+                    "cwd": {
+                      "description": "Working directory relative to the project worktree or absolute path. Defaults to the project root.",
+                      "type": "string"
+                    },
+                    "env": {
+                      "description": "Environment variables that must be present before the command can run",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "labels": {
+                      "description": "Additional labels/tags for grouping commands in the app and agent context",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "kind": {
+                      "description": "Semantic command kind such as start, dev, test, typecheck, lint, build, or custom",
+                      "type": "string"
+                    },
+                    "context": {
+                      "description": "Whether to include this command in the agent's project command context. Defaults to true.",
+                      "type": "boolean"
+                    },
+                    "timeout": {
+                      "description": "Suggested timeout in milliseconds when the command is run by automation",
+                      "type": "number"
+                    },
+                    "interactive": {
+                      "description": "Whether this command is expected to stay interactive or long-running",
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["command"]
+                }
+              ]
             }
           },
           "time": {
@@ -8542,6 +8751,24 @@
         },
         "required": ["type", "properties"]
       },
+      "Event.vcs.branch.updated": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "vcs.branch.updated"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "branch": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": ["type", "properties"]
+      },
       "Todo": {
         "type": "object",
         "properties": {
@@ -8759,24 +8986,6 @@
               }
             },
             "required": ["name", "sessionID", "arguments", "messageID"]
-          }
-        },
-        "required": ["type", "properties"]
-      },
-      "Event.vcs.branch.updated": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "vcs.branch.updated"
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "branch": {
-                "type": "string"
-              }
-            }
           }
         },
         "required": ["type", "properties"]
@@ -12680,6 +12889,9 @@
                 "$ref": "#/components/schemas/Event.question.rejected"
               },
               {
+                "$ref": "#/components/schemas/Event.vcs.branch.updated"
+              },
+              {
                 "$ref": "#/components/schemas/Event.todo.updated"
               },
               {
@@ -12699,9 +12911,6 @@
               },
               {
                 "$ref": "#/components/schemas/Event.command.executed"
-              },
-              {
-                "$ref": "#/components/schemas/Event.vcs.branch.updated"
               },
               {
                 "$ref": "#/components/schemas/Event.worktree.ready"
@@ -13000,6 +13209,18 @@
                     "$ref": "#/components/schemas/PermissionRuleConfig"
                   },
                   "list": {
+                    "$ref": "#/components/schemas/PermissionRuleConfig"
+                  },
+                  "project": {
+                    "$ref": "#/components/schemas/PermissionRuleConfig"
+                  },
+                  "tools": {
+                    "$ref": "#/components/schemas/PermissionRuleConfig"
+                  },
+                  "git": {
+                    "$ref": "#/components/schemas/PermissionRuleConfig"
+                  },
+                  "forge": {
                     "$ref": "#/components/schemas/PermissionRuleConfig"
                   },
                   "bash": {
@@ -13478,6 +13699,72 @@
         },
         "required": ["type", "url"]
       },
+      "GitProviderConfig": {
+        "type": "string",
+        "enum": ["github", "gitlab", "bitbucket", "azure-devops", "generic"]
+      },
+      "GitCredentialConfig": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["stored", "env", "ssh", "none"]
+          },
+          "key": {
+            "description": "Key in the local codeplane auth store, usually git:<instance-name>",
+            "type": "string"
+          },
+          "env": {
+            "description": "Environment variable containing the token/password for this Git host",
+            "type": "string"
+          },
+          "username": {
+            "description": "Username used with HTTPS basic auth. Defaults to oauth2 for GitLab and x-access-token otherwise.",
+            "type": "string"
+          },
+          "sshCommand": {
+            "description": "Optional GIT_SSH_COMMAND for SSH remotes, for example ssh -i ~/.ssh/id_ed25519",
+            "type": "string"
+          }
+        }
+      },
+      "GitInstanceConfig": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "description": "Base URL for the Git host, for example https://github.com or https://gitlab.example.com",
+            "type": "string"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/GitProviderConfig"
+          },
+          "hosts": {
+            "description": "Additional hostnames that should match this instance",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "defaultRemote": {
+            "description": "Preferred remote name for operations that need a remote",
+            "type": "string"
+          },
+          "credential": {
+            "$ref": "#/components/schemas/GitCredentialConfig"
+          }
+        },
+        "required": ["url"]
+      },
+      "GitConfig": {
+        "description": "Named Git host configuration for native git tool operations and credentials",
+        "type": "object",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {
+          "$ref": "#/components/schemas/GitInstanceConfig"
+        }
+      },
       "LayoutConfig": {
         "description": "@deprecated Always uses stretch layout.",
         "type": "string",
@@ -13762,6 +14049,9 @@
                 }
               }
             ]
+          },
+          "git": {
+            "$ref": "#/components/schemas/GitConfig"
           },
           "lsp": {
             "anyOf": [
@@ -15030,6 +15320,9 @@
             "$ref": "#/components/schemas/Event.question.rejected"
           },
           {
+            "$ref": "#/components/schemas/Event.vcs.branch.updated"
+          },
+          {
             "$ref": "#/components/schemas/Event.todo.updated"
           },
           {
@@ -15049,9 +15342,6 @@
           },
           {
             "$ref": "#/components/schemas/Event.command.executed"
-          },
-          {
-            "$ref": "#/components/schemas/Event.vcs.branch.updated"
           },
           {
             "$ref": "#/components/schemas/Event.worktree.ready"
