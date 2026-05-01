@@ -16,6 +16,20 @@ import { getProjectAvatarSource } from "@/pages/layout/project-avatar"
 
 const AVATAR_COLOR_KEYS = ["pink", "mint", "orange", "purple", "cyan", "lime"] as const
 
+function startupCommand(commands: LocalProject["commands"]) {
+  const start = commands?.start
+  if (typeof start === "string") return start
+  return start?.command ?? ""
+}
+
+function nextCommands(commands: LocalProject["commands"], start: string) {
+  const current = commands?.start
+  return {
+    ...(commands ?? {}),
+    start: !start || typeof current === "string" || !current ? start : { ...current, command: start },
+  }
+}
+
 export function DialogEditProject(props: { project: LocalProject }) {
   const dialog = useDialog()
   const globalSDK = useGlobalSDK()
@@ -29,7 +43,7 @@ export function DialogEditProject(props: { project: LocalProject }) {
     name: defaultName(),
     color: props.project.icon?.color,
     iconOverride: props.project.icon?.override,
-    startup: props.project.commands?.start ?? "",
+    startup: startupCommand(props.project.commands),
     dragOver: false,
     iconHover: false,
   })
@@ -83,7 +97,7 @@ export function DialogEditProject(props: { project: LocalProject }) {
           directory: props.project.worktree,
           name,
           icon: { color: store.color || "", override: store.iconOverride || "" },
-          commands: { start },
+          commands: nextCommands(props.project.commands, start),
         })
         globalSync.project.icon(props.project.worktree, store.iconOverride || undefined)
         dialog.close()
