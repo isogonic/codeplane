@@ -1,0 +1,54 @@
+/* Additive performance & layout polish.
+ *
+ * This file is loaded after the rest of the app stylesheets and only adds
+ * rules — it does not override or remove any existing styling. Every rule
+ * here is a hint to the browser (containment, compositor layers,
+ * non-scrollable clip) that the chat and surrounding chrome can paint and
+ * scroll cheaper without changing what the user sees.
+ *
+ * 1. Kill the horizontal side-scroll inside the chat without touching the
+ *    ScrollView component itself. `overflow-x: clip` is non-scrollable and
+ *    cheaper than `hidden`, so wide content (long inline code, long URLs,
+ *    tool transcripts) gets visually clipped at the chat boundary.
+ *
+ * 2. Promote off-screen message turns out of layout/paint. `content-visibility:
+ *    auto` lets the browser skip layout & paint for elements outside the
+ *    viewport while keeping a stable scroll position via
+ *    `contain-intrinsic-size`. On long chats this is the single biggest win.
+ *
+ * 3. Stable layout/paint boundaries on chat surfaces so streaming updates
+ *    inside one turn don't ripple to the rest of the page.
+ *
+ * 4. Compositor scroll hints on the main scroll viewports.
+ */
+
+[data-component="session-turn"] [data-slot="session-turn-content"],
+[data-component="session-turn"],
+.scroll-view__viewport {
+  overflow-x: clip;
+  overscroll-behavior: contain;
+}
+
+[data-component="session-turn"] [data-slot="session-turn-content"],
+.scroll-view__viewport {
+  will-change: scroll-position;
+}
+
+[data-component="session-turn"],
+.scroll-view {
+  contain: layout paint style;
+}
+
+[data-component="session-turn"] [data-slot="session-turn-message-content"] {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 320px;
+}
+
+/* Tool transcripts and code blocks already scroll horizontally inside their
+ * own bounding box — they don't need their inner content to leak into the
+ * chat-level horizontal scroll. */
+[data-component="markdown"] pre,
+[data-component="markdown"] table,
+[data-component="markdown"] [data-component="markdown-code"] {
+  max-width: 100%;
+}
