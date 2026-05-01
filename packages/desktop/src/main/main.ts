@@ -19,14 +19,21 @@ import path from "path"
  * Access service tokens, internal API keys) that get attached to every
  * outbound request to that instance via the webRequest API.
  *
- * Auto-update tracks the same GitHub releases as the CLI/web (one
- * version per release, no separate channel). The shell never embeds
- * the backend, so updating the desktop app and updating the
- * self-hosted instance are independent.
+ * Auto-update mirrors the plain GitHub release line (`vX.Y.Z`), but
+ * downloads installers from sibling `vX.Y.Z-desktop` releases in the
+ * same repo. The shell never embeds the backend, so updating the
+ * desktop app and updating the self-hosted instance are independent.
  */
 
 const SESSION_PARTITION_PREFIX = "persist:codeplane:"
 const HEADER_PREFIX_BLOCKED = ["host", "origin", "referer", "user-agent", "content-length"]
+const GITHUB_API_HEADERS = {
+  accept: "application/vnd.github+json",
+  "user-agent": "codeplane-desktop-updater",
+}
+const GITHUB_RELEASES_API_URL = "https://api.github.com/repos/devinoldenburg/codeplane/releases"
+const GITHUB_RELEASE_DOWNLOAD_URL = "https://github.com/devinoldenburg/codeplane/releases/download"
+const DESKTOP_RELEASE_SUFFIX = "-desktop"
 
 type SavedInstance = {
   id: string
@@ -51,6 +58,10 @@ type Schema = {
   instances: SavedInstance[]
   lastInstanceId?: string
   windowBounds?: { x?: number; y?: number; width: number; height: number; maximized?: boolean }
+}
+
+type GitHubRelease = {
+  tag_name?: string
 }
 
 const store = new Store<Schema>({
@@ -135,6 +146,48 @@ function showSetup(window: BrowserWindow, opts?: { editId?: string }) {
   void window.loadURL(url)
 }
 
+async function resolveDesktopReleaseTag() {
+  const latestResponse = await fetch(`${GITHUB_RELEASES_API_URL}/latest`, {
+    headers: GITHUB_API_HEADERS,
+  })
+  if (!latestResponse.ok) {
+    throw new Error(`GitHub latest release lookup failed with HTTP ${latestResponse.status}`)
+  }
+  const latestRelease = (await latestResponse.json()) as GitHubRelease
+  if (!latestRelease.tag_name) {
+    throw new Error("GitHub latest release response did not include a tag name")
+  }
+  if (latestRelease.tag_name.endsWith(DESKTOP_RELEASE_SUFFIX)) {
+    return latestRelease.tag_name
+  }
+  const desktopTag = `${latestRelease.tag_name}${DESKTOP_RELEASE_SUFFIX}`
+  const desktopResponse = await fetch(`${GITHUB_RELEASES_API_URL}/tags/${desktopTag}`, {
+    headers: GITHUB_API_HEADERS,
+  })
+  if (desktopResponse.status === 404) {
+    return undefined
+  }
+  if (!desktopResponse.ok) {
+    throw new Error(`GitHub desktop release lookup failed with HTTP ${desktopResponse.status}`)
+  }
+  return desktopTag
+}
+
+function configureDesktopUpdater(desktopTag: string) {
+  autoUpdater.setFeedURL({
+    provider: "generic",
+    url: `${GITHUB_RELEASE_DOWNLOAD_URL}/${desktopTag}`,
+  })
+  autoUpdater.previousBlockmapBaseUrlOverride = `${GITHUB_RELEASE_DOWNLOAD_URL}/v${app.getVersion()}${DESKTOP_RELEASE_SUFFIX}`
+}
+
+async function runDesktopUpdateCheck<T>(action: () => Promise<T>) {
+  const desktopTag = await resolveDesktopReleaseTag()
+  if (!desktopTag) return null
+  configureDesktopUpdater(desktopTag)
+  return action()
+}
+
 function attachWindowHandlers(window: BrowserWindow) {
   // Open external links in the user's default browser. This makes OAuth
   // popups, "open docs" buttons, etc. behave like a real native app.
@@ -206,7 +259,7 @@ function buildMenu(reload: () => void, openSetup: () => void, openInstanceSwitch
               {
                 label: "Check for updates…",
                 click: () => {
-                  void autoUpdater.checkForUpdatesAndNotify()
+                  void runDesktopUpdateCheck(() => autoUpdater.checkForUpdatesAndNotify())
                 },
               },
               { type: "separator" as const },
@@ -279,7 +332,7 @@ function buildMenu(reload: () => void, openSetup: () => void, openInstanceSwitch
         {
           label: "Check for updates…",
           click: () => {
-            void autoUpdater.checkForUpdatesAndNotify()
+            void runDesktopUpdateCheck(() => autoUpdater.checkForUpdatesAndNotify())
           },
         },
       ],
@@ -412,7 +465,7 @@ function setupIpc() {
   })
   ipcMain.handle("updater:check", async () => {
     try {
-      const result = await autoUpdater.checkForUpdates()
+      const result = await runDesktopUpdateCheck(() => autoUpdater.checkForUpdates())
       return { ok: true, updateAvailable: !!result?.updateInfo, version: result?.updateInfo?.version }
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : String(error) }
@@ -455,8 +508,8 @@ function setupAutoUpdater() {
   })
 
   // Check on launch and then once per hour.
-  setTimeout(() => void autoUpdater.checkForUpdatesAndNotify().catch(() => undefined), 5_000)
-  setInterval(() => void autoUpdater.checkForUpdatesAndNotify().catch(() => undefined), 60 * 60 * 1000)
+  setTimeout(() => void runDesktopUpdateCheck(() => autoUpdater.checkForUpdatesAndNotify()).catch(() => undefined), 5_000)
+  setInterval(() => void runDesktopUpdateCheck(() => autoUpdater.checkForUpdatesAndNotify()).catch(() => undefined), 60 * 60 * 1000)
 }
 
 // Single-instance lock so opening another shortcut focuses the existing window.

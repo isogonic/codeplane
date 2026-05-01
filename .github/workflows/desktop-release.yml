@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing v* tag to build and publish"
+        description: "Existing v* or v*-desktop tag to build and publish"
         required: true
         type: string
 
@@ -22,7 +22,9 @@ jobs:
   resolve:
     runs-on: ubuntu-24.04
     outputs:
-      tag: ${{ steps.resolve.outputs.tag }}
+      enabled: ${{ steps.resolve.outputs.enabled }}
+      source_tag: ${{ steps.resolve.outputs.source_tag }}
+      desktop_tag: ${{ steps.resolve.outputs.desktop_tag }}
       version: ${{ steps.resolve.outputs.version }}
     steps:
       - id: resolve
@@ -38,50 +40,88 @@ jobs:
             echo "Release tags must start with v." >&2
             exit 1
           fi
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          if [[ "$tag" == *-desktop ]]; then
+            source_tag="${tag%-desktop}"
+            desktop_tag="$tag"
+          else
+            source_tag="$tag"
+            desktop_tag="${tag}-desktop"
+          fi
+          if [[ "${{ github.event_name }}" == "push" && "$tag" == *-desktop ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "source_tag=$source_tag" >> "$GITHUB_OUTPUT"
+            echo "desktop_tag=$desktop_tag" >> "$GITHUB_OUTPUT"
+            echo "version=${source_tag#v}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+          echo "source_tag=$source_tag" >> "$GITHUB_OUTPUT"
+          echo "desktop_tag=$desktop_tag" >> "$GITHUB_OUTPUT"
+          echo "version=${source_tag#v}" >> "$GITHUB_OUTPUT"
 
   create-release:
     needs: resolve
+    if: ${{ needs.resolve.outputs.enabled == 'true' }}
     runs-on: ubuntu-24.04
     steps:
-      - name: Create draft release
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ needs.resolve.outputs.source_tag }}
+
+      - name: Create or sync desktop release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if gh release view "${{ needs.resolve.outputs.tag }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+          title="${{ needs.resolve.outputs.source_tag }}"
+          notes_file="$(mktemp)"
+          if gh release view "${{ needs.resolve.outputs.source_tag }}" --repo "${{ github.repository }}" --json name,body > base-release.json 2>/dev/null; then
+            source_title="$(jq -r '.name // empty' base-release.json)"
+            if [ -n "$source_title" ]; then
+              title="$source_title"
+            fi
+            jq -r '.body // ""' base-release.json > "$notes_file"
+          else
+            : > "$notes_file"
+          fi
+          if gh release view "${{ needs.resolve.outputs.desktop_tag }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release edit "${{ needs.resolve.outputs.desktop_tag }}" \
+              --title "$title" \
+              --notes-file "$notes_file" \
+              --repo "${{ github.repository }}"
             exit 0
           fi
-          gh release create "${{ needs.resolve.outputs.tag }}" \
+          gh release create "${{ needs.resolve.outputs.desktop_tag }}" \
             --draft \
-            --generate-notes \
-            --title "${{ needs.resolve.outputs.tag }}" \
+            --target "$(git rev-parse HEAD)" \
+            --title "$title" \
+            --notes-file "$notes_file" \
             --repo "${{ github.repository }}"
 
   build-desktop:
     needs:
       - resolve
       - create-release
+    if: ${{ needs.resolve.outputs.enabled == 'true' }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: macos-14
             target: mac
-            package_command: bunx electron-builder --mac dmg zip
+            package_command: bunx electron-builder --mac dmg zip --publish never
           - os: ubuntu-24.04
             target: linux
-            package_command: bunx electron-builder --linux AppImage deb tar.gz --x64
+            package_command: bunx electron-builder --linux AppImage deb tar.gz --x64 --publish never
           - os: windows-2025
             target: win
-            package_command: bunx electron-builder --win nsis zip --x64
+            package_command: bunx electron-builder --win nsis zip --x64 --publish never
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: refs/tags/${{ needs.resolve.outputs.tag }}
+          ref: refs/tags/${{ needs.resolve.outputs.source_tag }}
 
       - uses: ./.github/actions/setup-bun
 
@@ -108,8 +148,6 @@ jobs:
         working-directory: packages/desktop
         run: ${{ matrix.package_command }}
         env:
-          GH_TOKEN: ${{ github.token }}
-          GITHUB_TOKEN: ${{ github.token }}
           CODEPLANE_VERSION: ${{ needs.resolve.outputs.version }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
@@ -153,12 +191,12 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
           cd packages/desktop/release
-          files=(codeplane-desktop-*)
+          files=(codeplane-desktop-* latest*.yml)
           if [ ${#files[@]} -eq 0 ]; then
             echo "No desktop binaries were produced." >&2
             exit 1
           fi
-          gh release upload "${{ needs.resolve.outputs.tag }}" "${files[@]}" \
+          gh release upload "${{ needs.resolve.outputs.desktop_tag }}" "${files[@]}" \
             --clobber \
             --repo "${{ github.repository }}"
 
@@ -166,11 +204,29 @@ jobs:
     needs:
       - resolve
       - build-desktop
-    if: ${{ !cancelled() }}
+    if: ${{ needs.resolve.outputs.enabled == 'true' && !cancelled() }}
     runs-on: ubuntu-24.04
     steps:
       - name: Publish release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release edit "${{ needs.resolve.outputs.tag }}" --draft=false --repo "${{ github.repository }}"
+        run: |
+          set -euo pipefail
+          title="${{ needs.resolve.outputs.source_tag }}"
+          notes_file="$(mktemp)"
+          if gh release view "${{ needs.resolve.outputs.source_tag }}" --repo "${{ github.repository }}" --json name,body > base-release.json 2>/dev/null; then
+            source_title="$(jq -r '.name // empty' base-release.json)"
+            if [ -n "$source_title" ]; then
+              title="$source_title"
+            fi
+            jq -r '.body // ""' base-release.json > "$notes_file"
+          else
+            : > "$notes_file"
+          fi
+          gh release edit "${{ needs.resolve.outputs.desktop_tag }}" \
+            --draft=false \
+            --latest \
+            --title "$title" \
+            --notes-file "$notes_file" \
+            --repo "${{ github.repository }}"
