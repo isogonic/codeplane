@@ -1,0 +1,22 @@
+@import "@codeplane-ai/ui/styles/tailwind";
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: var(--background-base);
+  color: var(--text-base);
+  font-family: var(--font-family-sans);
+  font-size: 14px;
+  -webkit-app-region: no-drag;
+}
+
+/* Drag region just for the title bar area so the window stays movable
+ * without ever blocking interactive controls. */
+.drag {
+  -webkit-app-region: drag;
+}
+.drag * {
+  -webkit-app-region: no-drag;
+}

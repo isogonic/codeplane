@@ -109,6 +109,69 @@ jobs:
     outputs:
       version: ${{ needs.version.outputs.version }}
 
+  build-desktop:
+    needs: version
+    if: github.repository == 'devinoldenburg/codeplane'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: mac
+          - os: ubuntu-2404
+            target: linux
+          - os: windows-2025
+            target: win
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build desktop bundle
+        working-directory: packages/desktop
+        run: bun run build
+        env:
+          CODEPLANE_VERSION: ${{ needs.version.outputs.version }}
+
+      - name: Package desktop binaries
+        working-directory: packages/desktop
+        # electron-builder publishes to GitHub releases when --publish always
+        # is set and GH_TOKEN is in scope; the release tag was already created
+        # by the version job so the binaries get attached to the existing
+        # draft release alongside the CLI archives.
+        run: bun run package:${{ matrix.target }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CODEPLANE_VERSION: ${{ needs.version.outputs.version }}
+          # Skip macOS notarization in this pipeline; can be wired up later by
+          # adding APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID to
+          # the workflow secrets.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Upload desktop binaries to release
+        if: needs.version.outputs.release != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          cd packages/desktop/release
+          for file in $(ls -1 codeplane-desktop-* 2>/dev/null || true); do
+            echo "Uploading $file"
+            gh release upload "v${{ needs.version.outputs.version }}" "$file" \
+              --clobber --repo "${{ needs.version.outputs.repo }}"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codeplane-desktop-${{ matrix.target }}
+          path: packages/desktop/release/codeplane-desktop-*
+
   sign-cli-windows:
     needs:
       - build-cli

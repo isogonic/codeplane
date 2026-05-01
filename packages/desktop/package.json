@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@codeplane-ai/desktop",
+  "private": true,
+  "version": "27.0.10",
+  "description": "Native desktop wrapper for the CodePlane web UI",
+  "main": "dist/main/main.js",
+  "type": "module",
+  "scripts": {
+    "build": "rm -rf dist release && bun run build:main && bun run build:setup",
+    "build:main": "bun build src/main/main.ts src/main/preload.ts --outdir dist/main --target node --external electron --external electron-updater --external electron-store --format cjs --minify",
+    "build:setup": "vite build",
+    "dev:setup": "vite",
+    "package": "electron-builder",
+    "package:mac": "electron-builder --mac",
+    "package:win": "electron-builder --win",
+    "package:linux": "electron-builder --linux",
+    "publish": "electron-builder --publish always",
+    "dev": "bun run build && electron .",
+    "typecheck": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "@codeplane-ai/ui": "workspace:*",
+    "electron-store": "10.1.0",
+    "electron-updater": "6.6.8",
+    "solid-js": "catalog:"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "catalog:",
+    "@types/node": "catalog:",
+    "@typescript/native-preview": "catalog:",
+    "electron": "41.4.0",
+    "electron-builder": "26.0.20",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-solid": "catalog:"
+  },
+  "build": {
+    "appId": "ai.codeplane.desktop",
+    "productName": "CodePlane",
+    "asar": true,
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "dist/main/main.js",
+      "type": "commonjs"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "devinoldenburg",
+        "repo": "codeplane",
+        "releaseType": "draft"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] },
+        { "target": "zip", "arch": ["x64", "arm64"] }
+      ],
+      "icon": "build/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "darkModeSupport": true,
+      "artifactName": "codeplane-desktop-${version}-mac-${arch}.${ext}"
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64", "arm64"] },
+        { "target": "zip", "arch": ["x64", "arm64"] }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "codeplane-desktop-${version}-win-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        { "target": "AppImage", "arch": ["x64", "arm64"] },
+        { "target": "deb", "arch": ["x64", "arm64"] },
+        { "target": "tar.gz", "arch": ["x64", "arm64"] }
+      ],
+      "icon": "build/icon.png",
+      "category": "Development",
+      "artifactName": "codeplane-desktop-${version}-linux-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true
+    }
+  }
+}

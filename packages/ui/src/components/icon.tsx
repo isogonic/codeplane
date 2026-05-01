@@ -3,6 +3,7 @@ import { splitProps, type ComponentProps } from "solid-js"
 const icons = {
   "align-right": `<path d="M12.292 6.04167L16.2503 9.99998L12.292 13.9583M2.91699 9.99998H15.6253M17.0837 3.75V16.25" stroke="currentColor" stroke-linecap="square"/>`,
   sparkle: `<path fill-rule="evenodd" clip-rule="evenodd" d="M8.333 1.667l1.273 4.062a3.333 3.333 0 0 0 2.165 2.165l4.062 1.273-4.062 1.273a3.333 3.333 0 0 0-2.165 2.165L8.333 16.667l-1.273-4.062a3.333 3.333 0 0 0-2.165-2.165L0.833 9.167l4.062-1.273A3.333 3.333 0 0 0 7.06 5.729L8.333 1.667ZM15 11.667l.69 2.143a1.667 1.667 0 0 0 1.084 1.084L18.917 15.5l-2.143.69a1.667 1.667 0 0 0-1.084 1.084L15 19.417l-.69-2.143a1.667 1.667 0 0 0-1.084-1.084L11.083 15.5l2.143-.69a1.667 1.667 0 0 0 1.084-1.084L15 11.667Z" fill="currentColor"/>`,
+  globe: `<circle cx="10" cy="10" r="7.5" stroke="currentColor"/><path d="M10 2.5c2.5 2.5 2.5 12.5 0 15M10 2.5c-2.5 2.5-2.5 12.5 0 15M2.5 10h15" stroke="currentColor" stroke-linecap="square"/>`,
   "arrow-up": `<path fill-rule="evenodd" clip-rule="evenodd" d="M9.99991 2.24121L16.0921 8.33343L15.2083 9.21731L10.6249 4.63397V17.5001H9.37492V4.63398L4.7916 9.21731L3.90771 8.33343L9.99991 2.24121Z" fill="currentColor"/>`,
   "arrow-left": `<path d="M8.33464 4.58398L2.91797 10.0007L8.33464 15.4173M3.33464 10.0007H17.0846" stroke="currentColor" stroke-linecap="square"/>`,
   "arrow-right": `<path d="M11.6654 4.58398L17.082 10.0007L11.6654 15.4173M16.6654 10.0007H2.91536" stroke="currentColor" stroke-linecap="square"/>`,
