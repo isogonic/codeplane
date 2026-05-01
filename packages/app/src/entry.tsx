@@ -2,7 +2,7 @@
 
 import { render } from "solid-js/web"
 import { AppBaseProviders, AppInterface } from "@/app"
-import { type Platform, type PlatformServerManager, type PlatformUpdater, PlatformProvider } from "@/context/platform"
+import { type Platform, type PlatformServerManager, PlatformProvider } from "@/context/platform"
 import { dict as en } from "@/i18n/en"
 import { dict as zh } from "@/i18n/zh"
 import { handleNotificationClick } from "@/utils/notification-click"
@@ -14,13 +14,23 @@ silenceResizeObserverNoise()
 
 const DEFAULT_SERVER_URL_KEY = "codeplane.settings.dat:defaultServerUrl"
 
+// The desktop preload exposes a wider API surface (desktopUpdater for
+// the selector page, instances bridge, local-instance manager, etc.).
+// In-instance UI only needs the small subset below — typed loosely with
+// `unknown` so the rest of the bridge stays opaque to consumers here.
+type DesktopWindowState = { fullscreen: boolean; focused: boolean; maximized: boolean }
+type DesktopWindowApi = {
+  state: DesktopWindowState
+  onStateChange?: (cb: (state: DesktopWindowState) => void) => () => void
+}
 declare global {
   interface Window {
     codeplaneDesktop?: {
       platform?: string
       version?: string
-      updater?: PlatformUpdater
       serverManager?: PlatformServerManager
+      window?: DesktopWindowApi
+      [key: string]: unknown
     }
   }
 }
@@ -140,6 +150,29 @@ const getDesktopHost = () => {
   return { desktop: true as const, os: getDesktopOS(navigator.platform || navigator.userAgent) }
 }
 
+// Tag <html> with platform/OS so CSS can reliably target the macOS
+// desktop shell (vibrancy-aware backgrounds, native scrollbars, hairline
+// borders). Mirror window state so the chrome can dim on blur and drop
+// the traffic-light gutter when the user enters fullscreen.
+const desktopHostInfo = getDesktopHost()
+if (typeof document !== "undefined") {
+  const html = document.documentElement
+  if (desktopHostInfo) {
+    html.dataset.desktop = "true"
+    if (desktopHostInfo.os) html.dataset.os = desktopHostInfo.os
+  } else {
+    html.dataset.desktop = "false"
+  }
+  const win = window.codeplaneDesktop?.window
+  const applyState = (state: DesktopWindowState) => {
+    html.dataset.fullscreen = state.fullscreen ? "true" : "false"
+    html.dataset.windowFocused = state.focused ? "true" : "false"
+    html.dataset.maximized = state.maximized ? "true" : "false"
+  }
+  if (win?.state) applyState(win.state)
+  win?.onStateChange?.(applyState)
+}
+
 const desktopServerManager = window.codeplaneDesktop?.serverManager
 const desktopServerList = () =>
   (desktopServerManager?.instances ?? []).map(
@@ -164,7 +197,7 @@ const platform: Platform = {
   platform: "web",
   ...getDesktopHost(),
   version: window.codeplaneDesktop?.version ?? CodeplaneVersion,
-  updater: window.codeplaneDesktop?.updater,
+  desktopAppVersion: window.codeplaneDesktop?.version,
   serverManager: desktopServerManager,
   openLink,
   back,

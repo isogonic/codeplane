@@ -17,6 +17,114 @@
     -webkit-app-region: no-drag;
   }
 
+  .titlebar-shell {
+    background: var(--background-base);
+  }
+
+  .titlebar-shell[data-platform-desktop="true"] {
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--background-base) 96%, var(--background-strong)) 0%,
+      var(--background-base) 100%
+    );
+    box-shadow: inset 0 -1px 0 0 var(--border-weak-base);
+  }
+
+  /* macOS desktop: let the native NSVisualEffectView material shine
+   * through under the titlebar so the traffic lights sit on real Cocoa
+   * vibrancy instead of a flat tint. Body/app shells stay translucent
+   * only above the chrome — content surfaces still paint solid bg. */
+  html[data-os="macos"][data-desktop="true"],
+  html[data-os="macos"][data-desktop="true"] body,
+  html[data-os="macos"][data-desktop="true"] #root {
+    background: transparent;
+  }
+
+  html[data-os="macos"][data-desktop="true"] [data-component="layout-shell"] {
+    background: transparent;
+  }
+
+  /* Translucent titlebar — vibrancy from below shows through. The hairline
+   * is rendered with shadow rather than border so we get true 0.5px on
+   * retina without pushing layout. */
+  html[data-os="macos"][data-desktop="true"] .titlebar-shell,
+  html[data-os="macos"][data-desktop="true"] .titlebar-shell[data-platform-desktop="true"] {
+    background: transparent;
+    box-shadow: inset 0 -0.5px 0 0 color-mix(in srgb, var(--border-base) 35%, transparent);
+  }
+
+  /* Cocoa apps dim their chrome when the window loses focus. Mirror that
+   * subtly so the app feels alive. */
+  html[data-os="macos"][data-desktop="true"][data-window-focused="false"] .titlebar-shell {
+    opacity: 0.85;
+  }
+
+  .titlebar-cluster {
+    background: color-mix(in srgb, var(--surface-panel) 60%, transparent);
+    border: 1px solid var(--border-weak-base);
+    box-shadow: 0 1px 0 0 color-mix(in srgb, var(--background-base) 60%, transparent);
+    transition:
+      background-color 140ms ease-out,
+      border-color 140ms ease-out;
+  }
+
+  .titlebar-cluster:hover {
+    background: var(--surface-panel);
+    border-color: var(--border-base);
+  }
+
+  .titlebar-cluster [data-component="button"].titlebar-icon {
+    border: none;
+    box-shadow: none;
+  }
+
+  /* Native macOS system font, antialiasing, and overlay scrollbars. The
+   * SF text family is what every native AppKit app renders with — using
+   * it here is the single biggest perceptual change between "Electron app"
+   * and "real Mac app". */
+  html[data-os="macos"][data-desktop="true"] {
+    font-family:
+      ui-sans-serif,
+      -apple-system,
+      "SF Pro Text",
+      "SF Pro",
+      BlinkMacSystemFont,
+      "Helvetica Neue",
+      Helvetica,
+      Arial,
+      sans-serif;
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    letter-spacing: -0.005em;
+  }
+
+  /* Translucent overlay scrollbars — the native macOS "shrink to a
+   * sliver, fade in on hover" behaviour. WebKit honours these even
+   * inside Electron. */
+  html[data-os="macos"][data-desktop="true"] ::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+    background: transparent;
+  }
+  html[data-os="macos"][data-desktop="true"] ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  html[data-os="macos"][data-desktop="true"] ::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--text-base) 22%, transparent);
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    border-radius: 999px;
+    min-height: 32px;
+  }
+  html[data-os="macos"][data-desktop="true"] ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in srgb, var(--text-base) 42%, transparent);
+  }
+  html[data-os="macos"][data-desktop="true"] ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
   @keyframes session-progress-whip {
     0% {
       clip-path: inset(0 100% 0 0 round 999px);

@@ -166,7 +166,7 @@ function setOptimisticRemove(setStore: (...args: unknown[]) => void, input: Opti
   })
 }
 
-export const { use: useSync, provider: SyncProvider } = createSimpleContext({
+export const { use: useSync, useOptional: useSyncOptional, provider: SyncProvider } = createSimpleContext({
   name: "Sync",
   init: () => {
     const globalSync = useGlobalSync()
@@ -356,11 +356,23 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
             })
           })
         })
+        .catch((err) => {
+          setMeta(
+            produce((draft) => {
+              delete draft.loading[key]
+            }),
+          )
+          throw err
+        })
         .finally(() => {
           setMeta(
             produce((draft) => {
+              if (draft.loading[key] === undefined) return
               if (!tracked(input.directory, input.sessionID)) {
                 delete draft.loading[key]
+                delete draft.cursor[key]
+                delete draft.complete[key]
+                delete draft.limit[key]
                 return
               }
               draft.loading[key] = false

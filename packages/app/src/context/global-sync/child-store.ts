@@ -125,7 +125,7 @@ export function createChildStoreManager(input: {
   }
 
   function ensureChild(directory: string) {
-    if (!directory) console.error("No directory provided")
+    if (!directory && import.meta.env?.DEV) console.warn("[global-sync] ensureChild called without directory")
     if (!children[directory]) {
       const vcs = runWithOwner(input.owner, () =>
         persisted(

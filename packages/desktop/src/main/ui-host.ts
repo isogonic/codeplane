@@ -451,6 +451,7 @@ export function createDesktopUIHost(input: {
   cacheDir: string
   getInstance(id: string): DesktopHostInstance | undefined
   getSession(instance: DesktopHostInstance): Session
+  ensureReady?(instance: DesktopHostInstance): Promise<DesktopHostInstance>
   log?(event: string, data?: unknown): void
 }) {
   let activeID = ""
@@ -479,9 +480,10 @@ export function createDesktopUIHost(input: {
     request: http.IncomingMessage,
     response: http.ServerResponse<http.IncomingMessage>,
     reqUrl: URL,
-    instance: DesktopHostInstance,
+    rawInstance: DesktopHostInstance,
     pathname: string,
   ) => {
+    const instance = input.ensureReady ? await input.ensureReady(rawInstance) : rawInstance
     const session = input.getSession(instance)
     const remote = new URL(pathname.replace(/^\/+/, ""), baseUrl(instance.url))
     remote.search = reqUrl.search

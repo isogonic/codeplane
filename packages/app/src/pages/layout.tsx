@@ -3,12 +3,14 @@ import {
   createEffect,
   createMemo,
   createResource,
+  ErrorBoundary,
   For,
   on,
   onCleanup,
   onMount,
   ParentProps,
   Show,
+  Suspense,
   untrack,
   type Accessor,
 } from "solid-js"
@@ -333,10 +335,24 @@ export default function Layout(props: ParentProps) {
   const sortNow = () => state.sortNow
   let sizet: number | undefined
   let sortNowInterval: ReturnType<typeof setInterval> | undefined
+  const isDocumentHidden = () => typeof document === "object" && document.visibilityState === "hidden"
+  const tickSortNow = () => {
+    if (isDocumentHidden()) return
+    setState("sortNow", Date.now())
+  }
+  const startSortNowInterval = () => {
+    if (sortNowInterval !== undefined) return
+    sortNowInterval = setInterval(tickSortNow, 60_000)
+  }
+  const stopSortNowInterval = () => {
+    if (sortNowInterval === undefined) return
+    clearInterval(sortNowInterval)
+    sortNowInterval = undefined
+  }
   const sortNowTimeout = setTimeout(
     () => {
-      setState("sortNow", Date.now())
-      sortNowInterval = setInterval(() => setState("sortNow", Date.now()), 60_000)
+      tickSortNow()
+      if (!isDocumentHidden()) startSortNowInterval()
     },
     60_000 - (Date.now() % 60_000),
   )
@@ -366,7 +382,11 @@ export default function Layout(props: ParentProps) {
     const stop = () => setState("sizing", false)
     const blur = () => reset()
     const hide = () => {
-      if (document.visibilityState !== "hidden") return
+      if (document.visibilityState !== "hidden") {
+        startSortNowInterval()
+        return
+      }
+      stopSortNowInterval()
       reset()
     }
     makeEventListener(window, "pointerup", stop)
@@ -2574,7 +2594,10 @@ export default function Layout(props: ParentProps) {
   )
 
   return (
-    <div class="relative bg-background-base flex-1 min-h-0 min-w-0 flex flex-col select-none [&_input]:select-text [&_textarea]:select-text [&_[contenteditable]]:select-text">
+    <div
+      class="relative bg-background-base flex-1 min-h-0 min-w-0 flex flex-col select-none [&_input]:select-text [&_textarea]:select-text [&_[contenteditable]]:select-text"
+      data-component="layout-shell"
+    >
       {autoselecting() ?? ""}
       <Titlebar />
       <div class="flex-1 min-h-0 min-w-0 flex">
@@ -2674,7 +2697,21 @@ export default function Layout(props: ParentProps) {
                 }}
               >
                 <Show when={!autoselecting.loading} fallback={<div class="size-full" />}>
-                  {props.children}
+                  <ErrorBoundary
+                    fallback={(err, reset) => (
+                      <div class="size-full flex flex-col items-center justify-center gap-4 p-6 text-center">
+                        <div class="text-14-medium text-text-strong">
+                          {language.t("error.page.title")}
+                        </div>
+                        <div class="text-12-regular text-text-weak max-w-md break-words">
+                          {(err instanceof Error ? err.message : String(err)) || language.t("error.chain.unknown")}
+                        </div>
+                        <Button onClick={reset}>{language.t("common.refresh")}</Button>
+                      </div>
+                    )}
+                  >
+                    <Suspense fallback={<div class="size-full" />}>{props.children}</Suspense>
+                  </ErrorBoundary>
                 </Show>
               </main>
             </div>

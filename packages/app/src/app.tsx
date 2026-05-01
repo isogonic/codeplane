@@ -45,14 +45,18 @@ import { TerminalProvider } from "@/context/terminal"
 import { UpdatesProvider } from "@/context/updates"
 import DirectoryLayout from "@/pages/directory-layout"
 import Layout from "@/pages/layout"
-import CronRoute from "@/pages/cron"
 import { ErrorPage } from "./pages/error"
 import { useCheckServerHealth } from "./utils/server-health"
 
-const HomeRoute = lazy(() => import("@/pages/home"))
-const NotificationsRoute = lazy(() => import("@/pages/notifications"))
-const SettingsRoute = lazy(() => import("@/pages/settings"))
+const loadHome = () => import("@/pages/home")
+const loadNotifications = () => import("@/pages/notifications")
+const loadSettings = () => import("@/pages/settings")
+const loadCron = () => import("@/pages/cron")
 const loadSession = () => import("@/pages/session")
+const HomeRoute = lazy(loadHome)
+const NotificationsRoute = lazy(loadNotifications)
+const SettingsRoute = lazy(loadSettings)
+const CronRoute = lazy(loadCron)
 const Session = lazy(loadSession)
 const Loading = () => <div class="size-full" />
 const ModesRedirect = () => <Navigate href="/settings/modes" />
@@ -61,8 +65,31 @@ const McpRedirect = () => <Navigate href="/settings/mcp" />
 const PluginsRedirect = () => <Navigate href="/settings/plugins" />
 const SkillsRedirect = () => <Navigate href="/settings/skills" />
 
-if (typeof location === "object" && /\/session(?:\/|$)/.test(location.pathname)) {
-  void loadSession()
+if (typeof location === "object") {
+  const pathname = location.pathname
+  if (/\/session(?:\/|$)/.test(pathname)) void loadSession()
+  if (pathname.startsWith("/settings")) void loadSettings()
+  if (pathname === "/notifications") void loadNotifications()
+  if (pathname.startsWith("/cron")) void loadCron()
+}
+
+if (typeof window === "object" && typeof requestIdleCallback === "function") {
+  const preloadOthers = () => {
+    void loadHome()
+    void loadSettings()
+    void loadNotifications()
+    void loadCron()
+    void loadSession()
+  }
+  requestIdleCallback(preloadOthers, { timeout: 3000 })
+} else if (typeof window === "object") {
+  window.setTimeout(() => {
+    void loadHome()
+    void loadSettings()
+    void loadNotifications()
+    void loadCron()
+    void loadSession()
+  }, 1500)
 }
 
 const SessionRoute = () => (

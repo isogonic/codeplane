@@ -4,18 +4,19 @@ import { Popover } from "@codeplane-ai/ui/popover"
 import { Suspense, createMemo, createSignal, lazy, Show } from "solid-js"
 import { useLanguage } from "@/context/language"
 import { useServer } from "@/context/server"
-import { useSync } from "@/context/sync"
+import { useSyncOptional } from "@/context/sync"
 
 const Body = lazy(() => import("./status-popover-body").then((x) => ({ default: x.StatusPopoverBody })))
 
 export function StatusPopover() {
   const language = useLanguage()
   const server = useServer()
-  const sync = useSync()
+  const sync = useSyncOptional()
   const [shown, setShown] = createSignal(false)
-  const ready = createMemo(() => server.healthy() === false || sync.data.mcp_ready)
+  const ready = createMemo(() => server.healthy() === false || (sync ? sync.data.mcp_ready : true))
   const healthy = createMemo(() => {
     const serverHealthy = server.healthy() === true
+    if (!sync) return serverHealthy
     const mcp = Object.values(sync.data.mcp ?? {})
     const issue = mcp.some((item) => item.status !== "connected" && item.status !== "disabled")
     return serverHealthy && !issue
@@ -52,7 +53,7 @@ export function StatusPopover() {
       placement="bottom-end"
       shift={-168}
     >
-      <Show when={shown()}>
+      <Show when={shown() && sync}>
         <Suspense
           fallback={
             <div class="w-[360px] h-14 rounded-xl bg-background-strong shadow-[var(--shadow-lg-border-base)]" />
