@@ -1584,9 +1584,13 @@ NOTE: At any point in time through this workflow you should feel free to ask the
           const hasToolCalls =
             lastAssistantMsg?.parts.some((part) => part.type === "tool" && !part.metadata?.providerExecuted) ?? false
 
+          // "unknown" is not a definitive stop: it surfaces from streaming
+          // interruptions, partial provider responses, or upstream quirks.
+          // Treat it the same as "tool-calls" — keep looping so the agent
+          // can recover instead of abandoning the task mid-flight.
           if (
             lastAssistant?.finish &&
-            !["tool-calls"].includes(lastAssistant.finish) &&
+            !["tool-calls", "unknown"].includes(lastAssistant.finish) &&
             !hasToolCalls &&
             lastUser.id < lastAssistant.id
           ) {
