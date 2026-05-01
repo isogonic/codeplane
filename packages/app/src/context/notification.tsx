@@ -13,6 +13,7 @@ import { decode64 } from "@/utils/base64"
 import { EventSessionError } from "@codeplane-ai/sdk/v2"
 import { Persist, persisted } from "@/utils/persist"
 import { playSoundById } from "@/utils/sound"
+import { createRecentSessionErrorGate, describeSessionError, isIgnorableSessionError } from "@/utils/session-error"
 import { useServer } from "./server"
 
 type NotificationBase = {
@@ -125,6 +126,7 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
     })
 
     const currentSession = createMemo(() => params.id)
+    const shouldReportSessionError = createRecentSessionErrorGate()
 
     const [store, setStore, _, ready] = persisted(
       Persist.server(server.scope, "notification", ["notification.v1"]),
@@ -266,6 +268,8 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
       time: number,
     ) => {
       const sessionID = event.properties.sessionID
+      const error = "error" in event.properties ? event.properties.error : undefined
+      if (isIgnorableSessionError(error) || !shouldReportSessionError({ directory, sessionID, error })) return
       void lookup(directory, sessionID).then((session) => {
         if (meta.disposed) return
         if (session?.parentID) return
@@ -273,8 +277,6 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
         if (settings.sounds.errorsEnabled()) {
           void playSoundById(settings.sounds.errors())
         }
-
-        const error = "error" in event.properties ? event.properties.error : undefined
         append({
           directory,
           time,
@@ -285,8 +287,7 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
           error,
         })
         const description =
-          session?.title ??
-          (typeof error === "string" ? error : language.t("notification.session.error.fallbackDescription"))
+          session?.title ?? describeSessionError(error)
         const href = sessionID ? `/${base64Encode(directory)}/session/${sessionID}` : `/${base64Encode(directory)}`
         if (settings.notifications.errors()) {
           void platform.notify(language.t("notification.session.error.title"), description, href)

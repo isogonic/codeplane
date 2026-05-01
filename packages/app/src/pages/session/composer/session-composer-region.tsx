@@ -85,10 +85,15 @@ export function SessionComposerRegion(props: {
     height: 320,
     body: undefined as HTMLDivElement | undefined,
   })
+  let bodyFrame: number | undefined
   let timer: number | undefined
   let frame: number | undefined
 
   const clear = () => {
+    if (bodyFrame !== undefined) {
+      cancelAnimationFrame(bodyFrame)
+      bodyFrame = undefined
+    }
     if (timer !== undefined) {
       window.clearTimeout(timer)
       timer = undefined
@@ -136,10 +141,22 @@ export function SessionComposerRegion(props: {
   createEffect(() => {
     const el = store.body
     if (!el) return
-    const update = () => setStore("height", el.getBoundingClientRect().height)
-    createResizeObserver(store.body, update)
-    update()
+    setStore("height", el.getBoundingClientRect().height)
   })
+
+  createResizeObserver(
+    () => store.body,
+    () => {
+      const el = store.body
+      if (!el) return
+      if (bodyFrame !== undefined) cancelAnimationFrame(bodyFrame)
+      bodyFrame = requestAnimationFrame(() => {
+        bodyFrame = undefined
+        if (store.body !== el) return
+        setStore("height", el.getBoundingClientRect().height)
+      })
+    },
+  )
 
   return (
     <div
