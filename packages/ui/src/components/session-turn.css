@@ -6,9 +6,6 @@
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
-  /* Isolate the chat from the rest of the page so paint and layout don't
-   * propagate outwards while messages stream in. */
-  contain: layout paint style;
 
   [data-slot="session-turn-content"] {
     flex-grow: 1;
@@ -16,14 +13,7 @@
     height: 100%;
     min-width: 0;
     overflow-y: auto;
-    /* Chat content must never produce a horizontal scroll; long inline code
-     * and unwrappable URLs caused side-scroll bleed before. `clip` is
-     * non-scrollable and cheaper than `hidden`. */
-    overflow-x: clip;
-    overscroll-behavior: contain;
     scrollbar-width: none;
-    /* Hint compositor scrolling on the main chat surface. */
-    will-change: scroll-position;
   }
 
   [data-slot="session-turn-content"]::-webkit-scrollbar {
@@ -45,13 +35,6 @@
     width: 100%;
     min-width: 0;
     max-width: 100%;
-    /* Skip paint/layout for off-screen messages while keeping a placeholder
-     * so scroll position and accessibility don't break. Massive win on
-     * long chats — finalized turns cost nearly nothing once they leave
-     * the viewport. `contain-intrinsic-size` keeps a stable estimate so
-     * the scrollbar doesn't jump as turns enter/leave. */
-    content-visibility: auto;
-    contain-intrinsic-size: auto 320px;
   }
 
   [data-slot="session-turn-compaction"] {

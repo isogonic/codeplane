@@ -63,47 +63,34 @@ export function ScrollView(props: ScrollViewProps) {
   const thumbTop = () => state.thumbTop
   const showThumb = () => state.showThumb
 
-  // ResizeObserver fires synchronously between layout and paint. If the
-  // callback writes back into the store (which mutates inline styles), the
-  // browser flags it as another resize and re-fires next frame, surfacing as
-  // "ResizeObserver loop completed with undelivered notifications". rAF-batch
-  // the work so it runs at most once per frame and on a separate tick from the
-  // observer callback.
-  let pending = 0
   const updateThumb = () => {
-    if (pending) return
-    pending = requestAnimationFrame(() => {
-      pending = 0
-      if (!viewportRef) return
-      const { scrollTop, scrollHeight, clientHeight } = viewportRef
+    if (!viewportRef) return
+    const { scrollTop, scrollHeight, clientHeight } = viewportRef
 
-      if (scrollHeight <= clientHeight || scrollHeight === 0) {
-        if (state.showThumb) setState("showThumb", false)
-        return
-      }
+    if (scrollHeight <= clientHeight || scrollHeight === 0) {
+      setState("showThumb", false)
+      return
+    }
 
-      const trackPadding = 8
-      const trackHeight = clientHeight - trackPadding * 2
+    setState("showThumb", true)
+    const trackPadding = 8
+    const trackHeight = clientHeight - trackPadding * 2
 
-      const minThumbHeight = 32
-      let height = (clientHeight / scrollHeight) * trackHeight
-      height = Math.max(height, minThumbHeight)
+    const minThumbHeight = 32
+    // Calculate raw thumb height based on ratio
+    let height = (clientHeight / scrollHeight) * trackHeight
+    height = Math.max(height, minThumbHeight)
 
-      const maxScrollTop = scrollHeight - clientHeight
-      const maxThumbTop = trackHeight - height
+    const maxScrollTop = scrollHeight - clientHeight
+    const maxThumbTop = trackHeight - height
 
-      const top = maxScrollTop > 0 ? (scrollTop / maxScrollTop) * maxThumbTop : 0
-      const boundedTop = trackPadding + Math.max(0, Math.min(top, maxThumbTop))
+    const top = maxScrollTop > 0 ? (scrollTop / maxScrollTop) * maxThumbTop : 0
 
-      // Round to integer pixels so subpixel jitter doesn't repeatedly retrigger
-      // the ResizeObserver on parents that subscribe to this thumb's geometry.
-      const nextHeight = Math.round(height)
-      const nextTop = Math.round(boundedTop)
+    // Ensure thumb stays within bounds (shouldn't be necessary due to math above, but good for safety)
+    const boundedTop = trackPadding + Math.max(0, Math.min(top, maxThumbTop))
 
-      if (!state.showThumb) setState("showThumb", true)
-      if (state.thumbHeight !== nextHeight) setState("thumbHeight", nextHeight)
-      if (state.thumbTop !== nextTop) setState("thumbTop", nextTop)
-    })
+    setState("thumbHeight", height)
+    setState("thumbTop", boundedTop)
   }
 
   onMount(() => {
