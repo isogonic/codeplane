@@ -64,20 +64,39 @@ Use the web app to switch agents, manage parallel sessions, schedule recurring w
 
 ## 💻 Desktop App
 
-<p align="center">
-  <a href="https://github.com/devinoldenburg/codeplane/releases/latest/download/codeplane-desktop-macos-apple-silicon.dmg"><img alt="Download for macOS Apple Silicon" src="https://img.shields.io/badge/Download-macOS%20Apple%20Silicon-000000?style=for-the-badge&logo=apple" /></a>
-  <a href="https://github.com/devinoldenburg/codeplane/releases/latest/download/codeplane-desktop-macos-intel.dmg"><img alt="Download for macOS Intel" src="https://img.shields.io/badge/Download-macOS%20Intel-555555?style=for-the-badge&logo=apple" /></a>
-  <a href="https://github.com/devinoldenburg/codeplane/releases/latest/download/codeplane-desktop-windows-x64.exe"><img alt="Download for Windows x64" src="https://img.shields.io/badge/Download-Windows%20x64-0078D4?style=for-the-badge&logo=windows&logoColor=white" /></a>
-  <a href="https://github.com/devinoldenburg/codeplane/releases/latest/download/codeplane-desktop-linux-x64.AppImage"><img alt="Download for Linux x64" src="https://img.shields.io/badge/Download-Linux%20x64-FCC624?style=for-the-badge&logo=linux&logoColor=black" /></a>
-</p>
+<table align="center">
+  <tr>
+    <td align="center" width="25%">
+      <strong>macOS</strong><br />
+      <sub>Apple Silicon</sub><br /><br />
+      <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.0.14-desktop/codeplane-desktop-macos-apple-silicon.dmg"><img alt="Download macOS Apple Silicon DMG" src="https://img.shields.io/badge/Download-.dmg-111111?style=for-the-badge&logo=apple&logoColor=white" /></a>
+    </td>
+    <td align="center" width="25%">
+      <strong>macOS</strong><br />
+      <sub>Intel</sub><br /><br />
+      <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.0.14-desktop/codeplane-desktop-macos-intel.dmg"><img alt="Download macOS Intel DMG" src="https://img.shields.io/badge/Download-.dmg-4B5563?style=for-the-badge&logo=apple&logoColor=white" /></a>
+    </td>
+    <td align="center" width="25%">
+      <strong>Windows</strong><br />
+      <sub>x64</sub><br /><br />
+      <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.0.14-desktop/codeplane-desktop-windows-x64.exe"><img alt="Download Windows x64 EXE" src="https://img.shields.io/badge/Download-.exe-0078D4?style=for-the-badge&logo=windows&logoColor=white" /></a>
+    </td>
+    <td align="center" width="25%">
+      <strong>Linux</strong><br />
+      <sub>x64 AppImage</sub><br /><br />
+      <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.0.14-desktop/codeplane-desktop-linux-x64.AppImage"><img alt="Download Linux x64 AppImage" src="https://img.shields.io/badge/Download-.AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black" /></a>
+    </td>
+  </tr>
+</table>
 
 <p align="center">
-  <a href="https://github.com/devinoldenburg/codeplane/releases"><img alt="All desktop downloads" src="https://img.shields.io/badge/All%20Desktop%20Downloads-GitHub%20Releases-24292F?style=for-the-badge&logo=github" /></a>
+  <a href="https://github.com/devinoldenburg/codeplane/releases/tag/v27.0.14-desktop"><img alt="Current desktop release" src="https://img.shields.io/badge/Current%20Desktop%20Release-27.0.14--desktop-24292F?style=for-the-badge&logo=github" /></a>
+  <a href="https://github.com/devinoldenburg/codeplane/releases"><img alt="All releases" src="https://img.shields.io/badge/All%20Releases-GitHub-24292F?style=for-the-badge&logo=github" /></a>
 </p>
 
-Native desktop builds are published on GitHub Releases. The buttons above always target the newest published installers.
+Desktop installers are published on the dedicated `vX.Y.Z-desktop` release line on GitHub Releases.
 
-Use the full releases page for alternate archive formats and any extra platform variants.
+If a brand-new desktop build is still finishing, open the current desktop release page above for status and all available assets.
 
 ---
 

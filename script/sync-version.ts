@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { CodeplaneVersion } from "../packages/shared/src/version"
+import { CodeplaneVersion, codeplaneDesktopReleaseTag } from "../packages/shared/src/version"
 import { fileURLToPath } from "url"
 
 const root = fileURLToPath(new URL("..", import.meta.url))
@@ -37,14 +37,29 @@ async function syncZedExtension(version: string) {
   return true
 }
 
+async function syncReadme(version: string) {
+  const file = fileURLToPath(new URL("../README.md", import.meta.url))
+  const current = await Bun.file(file).text()
+  const desktopTag = codeplaneDesktopReleaseTag(version)
+  const next = current
+    .replaceAll(/releases\/download\/v[^/]+-desktop\//g, `releases/download/${desktopTag}/`)
+    .replaceAll(/releases\/tag\/v[^\s"]+-desktop/g, `releases/tag/${desktopTag}`)
+    .replaceAll(/Current%20Desktop%20Release-v[^-]+(?:\.[^-]+)*(?:-[^-]+)?--desktop/g, `Current%20Desktop%20Release-${version}--desktop`)
+  if (next === current) return false
+  await Bun.write(file, next)
+  return true
+}
+
 export async function syncVersionFiles(version = CodeplaneVersion) {
   const files = await packageJsonFiles()
   const updated = await Promise.all(files.map((file) => syncPackageJson(file, version)))
   const zed = await syncZedExtension(version)
+  const readme = await syncReadme(version)
   return {
     version,
     packageJsons: updated.filter(Boolean).length,
     zed,
+    readme,
   }
 }
 
