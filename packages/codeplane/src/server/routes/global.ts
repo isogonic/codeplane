@@ -12,6 +12,7 @@ import { AsyncQueue } from "@/util/queue"
 import { Instance } from "../../project/instance"
 import { Installation } from "@/installation"
 import { InstallationVersion } from "@/installation/version"
+import { UpdateChecker } from "@/installation/update-checker"
 import { Log } from "../../util"
 import { lazy } from "../../util/lazy"
 import { Config } from "../../config"
@@ -125,13 +126,15 @@ export const GlobalRoutes = lazy(() =>
         },
       }),
       async (c) => {
-        const method = await AppRuntime.runPromise(Installation.Service.use((svc) => svc.method()))
-        const latest = await AppRuntime.runPromise(Installation.Service.use((svc) => svc.latest(method))).catch(
-          () => null as string | null,
-        )
-        const current = InstallationVersion
-        const hasUpdate = !!latest && Installation.hasUpdate(current, latest)
-        return c.json({ current, latest, hasUpdate, method })
+        const force = c.req.query("refresh") === "1"
+        if (force) UpdateChecker.invalidate()
+        const snapshot = await UpdateChecker.current()
+        return c.json({
+          current: snapshot.current,
+          latest: snapshot.latest,
+          hasUpdate: snapshot.hasUpdate,
+          method: snapshot.method,
+        })
       },
     )
     .get(
@@ -269,7 +272,9 @@ export const GlobalRoutes = lazy(() =>
                       success: z.literal(true),
                       version: z.string(),
                       restart: z.boolean().optional(),
+                      restartRequired: z.boolean().optional(),
                       skipped: z.boolean().optional(),
+                      method: z.string().optional(),
                     }),
                     z.object({
                       success: z.literal(false),
@@ -344,15 +349,29 @@ export const GlobalRoutes = lazy(() =>
               properties: { version: target },
             },
           })
+          // Stop re-emitting "update available" for the version we just installed.
+          UpdateChecker.acknowledge(target)
+          UpdateChecker.invalidate()
         }
         const restart = result.method === "selfhosted" && !result.skipped
+        // Non-selfhosted upgrades swap the on-disk binary but the running process
+        // keeps the old version until the user restarts. Surface that explicitly
+        // so the UI can prompt rather than silently leaving the user on stale code.
+        const restartRequired = !result.skipped && !restart
         // For self-hosted deployments, the upgrade script swaps the binary on disk
         // but the in-process binary is unchanged. Exit so the container's restart
         // policy brings us back on the new binary. Delay so the response flushes.
         if (restart) {
           setTimeout(() => process.exit(0), 3000)
         }
-        return c.json({ success: true, version: target, restart, skipped: result.skipped || undefined })
+        return c.json({
+          success: true,
+          version: target,
+          restart,
+          restartRequired: restartRequired || undefined,
+          skipped: result.skipped || undefined,
+          method: result.method,
+        })
       },
     )
     .post(

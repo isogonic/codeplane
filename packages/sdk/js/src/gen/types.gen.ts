@@ -3293,7 +3293,9 @@ export type GlobalUpgradeResponses = {
         success: true
         version: string
         restart?: boolean
+        restartRequired?: boolean
         skipped?: boolean
+        method?: string
       }
     | {
         success: false

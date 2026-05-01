@@ -1,11 +1,10 @@
-import { Component, Show, createMemo, createResource, onMount, type JSX } from "solid-js"
+import { Component, Show, createMemo, createSignal, onMount, type JSX } from "solid-js"
 import { Button } from "@codeplane-ai/ui/button"
 import { Select } from "@codeplane-ai/ui/select"
 import { Switch } from "@codeplane-ai/ui/switch"
 import { TextField } from "@codeplane-ai/ui/text-field"
 import { useTheme, type ColorScheme } from "@codeplane-ai/ui/theme/context"
 import { useParams } from "@solidjs/router"
-import { useGlobalSDK } from "@/context/global-sdk"
 import { useLanguage } from "@/context/language"
 import { usePermission } from "@/context/permission"
 import { useUpdates } from "@/context/updates"
@@ -70,18 +69,23 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
   const permission = usePermission()
   const params = useParams()
   const settings = useSettings()
-  const globalSDK = useGlobalSDK()
   const updates = useUpdates()
 
   type VersionInfo = { current: string; latest: string | null; hasUpdate: boolean; method: string }
-  const [versionInfo, { refetch: refetchVersion }] = createResource<VersionInfo>(async () => {
-    const response = await fetch(`${globalSDK.url}/global/version`)
-    if (!response.ok) throw new Error(`Status ${response.status}`)
-    return response.json() as Promise<VersionInfo>
-  })
+  const [checkingVersion, setCheckingVersion] = createSignal(false)
+  const refetchVersion = async () => {
+    setCheckingVersion(true)
+    try {
+      return await updates.recheck(false)
+    } finally {
+      setCheckingVersion(false)
+    }
+  }
+  const versionInfo = (): VersionInfo | undefined => updates.status() as VersionInfo | undefined
 
   onMount(() => {
     void theme.loadThemes()
+    void refetchVersion()
   })
 
   const dir = createMemo(() => decode64(params.dir))
@@ -571,8 +575,7 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
 
   const versionDescription = () => {
     const info = versionInfo()
-    if (versionInfo.loading && !info) return language.t("settings.general.row.version.descriptionLoading")
-    if (versionInfo.error) return language.t("settings.general.row.version.descriptionError")
+    if (!info && checkingVersion()) return language.t("settings.general.row.version.descriptionLoading")
     if (!info) return language.t("settings.general.row.version.descriptionLoading")
     const current =
       info.current === "local" || info.current === "dev"
@@ -609,9 +612,9 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
                     e.preventDefault()
                     void refetchVersion()
                   }}
-                  disabled={versionInfo.loading || updates.isUpgrading()}
+                  disabled={checkingVersion() || updates.isUpgrading()}
                 >
-                  {versionInfo.loading
+                  {checkingVersion()
                     ? language.t("settings.general.row.version.action.checking")
                     : language.t("settings.general.row.version.action.check")}
                 </Button>

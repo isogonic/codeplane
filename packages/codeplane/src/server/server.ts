@@ -26,6 +26,7 @@ import { WorkspaceRoutes } from "./routes/control/workspace"
 import { ExperimentalHttpApiServer } from "./routes/instance/httpapi/server"
 import { WorkspacePaths } from "./routes/instance/httpapi/workspace"
 import { CronScheduler } from "@/cron"
+import { UpdateChecker } from "@/installation/update-checker"
 import { makeRuntime } from "@/effect/run-service"
 import { Context } from "effect"
 
@@ -102,7 +103,7 @@ export async function openapi() {
     documentation: {
       info: {
         title: "codeplane",
-        version: "27.0.2",
+        version: "27.0.3",
         description: "codeplane api",
       },
       openapi: "3.1.1",
@@ -126,6 +127,7 @@ export async function listen(opts: {
   await cronSchedulerRuntime.runPromise((svc) => svc.start()).catch((err) => {
     log.error("failed to start cron scheduler", { error: err instanceof Error ? err.message : String(err) })
   })
+  UpdateChecker.start()
 
   const next = new URL("http://localhost")
   next.hostname = opts.hostname
@@ -152,6 +154,7 @@ export async function listen(opts: {
     stop(close?: boolean) {
       closing ??= (async () => {
         if (mdns) MDNS.unpublish()
+        UpdateChecker.stop()
         await cronSchedulerRuntime.runPromise((svc) => svc.stop()).catch(() => undefined)
         await server.stop(close)
       })()
