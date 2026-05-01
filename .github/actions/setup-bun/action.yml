@@ -41,9 +41,51 @@ runs:
         restore-keys: |
           ${{ runner.os }}-bun-
 
-    - name: Install setuptools for distutils compatibility
-      run: python3 -m pip install setuptools || pip install setuptools || true
+    - name: Setup Python for node-gyp
       shell: bash
+      run: |
+        set -euo pipefail
+        python_cmd="$(command -v python3 || command -v python)"
+        python_root="$RUNNER_TEMP/node-gyp-python"
+        "$python_cmd" -m venv "$python_root"
+        python_bin="$python_root/bin/python"
+        [ -x "$python_bin" ] || python_bin="$python_root/Scripts/python.exe"
+        "$python_bin" -m pip install --disable-pip-version-check setuptools
+        [ -d "$python_root/bin" ] && echo "$python_root/bin" >> "$GITHUB_PATH"
+        [ -d "$python_root/Scripts" ] && echo "$python_root/Scripts" >> "$GITHUB_PATH"
+        {
+          echo "PYTHON=$python_bin"
+          echo "NODE_GYP_FORCE_PYTHON=$python_bin"
+          echo "npm_config_python=$python_bin"
+        } >> "$GITHUB_ENV"
+
+    - name: Use local Node headers for node-gyp
+      shell: bash
+      run: |
+        set -euo pipefail
+        node_root=$(node <<'EOF'
+        const fs = require("fs")
+        const path = require("path")
+
+        let current = path.dirname(process.execPath)
+        while (true) {
+          if (fs.existsSync(path.join(current, "include", "node", "node.h"))) {
+            process.stdout.write(current)
+            process.exit(0)
+          }
+          const parent = path.dirname(current)
+          if (parent === current) {
+            console.error(`No local Node headers found for ${process.execPath}`)
+            process.exit(1)
+          }
+          current = parent
+        }
+        EOF
+        )
+        {
+          echo "npm_config_nodedir=$node_root"
+          echo "node_gyp_nodedir=$node_root"
+        } >> "$GITHUB_ENV"
 
     - name: Install dependencies
       run: |
