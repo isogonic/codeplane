@@ -1,0 +1,62 @@
+Run shell commands and transfer files on a remote host over SSH.
+
+This tool is purpose-built for SSH workflows — prefer it over invoking `ssh`/`scp`/`rsync` through the `bash` tool, because it:
+
+- Reuses a single multiplexed control connection per host (OpenSSH ControlMaster), so back-to-back operations don't repeat the TCP/auth handshake.
+- Captures stdout, stderr, and exit code separately so you can read them independently.
+- Streams output incrementally with a configurable timeout, and writes the full transcript to a temp file when output is large.
+- Supports authentication via `~/.ssh/config`, identity files, agent forwarding, and jump hosts.
+- Handles file transfers in the same session via `scp` or `rsync` (auto-selected by mode), reusing the multiplex socket.
+- Can run a remote shell session through a heredoc / multi-line command without quoting headaches.
+
+Operations:
+
+- `exec`: run a single remote command. Default operation.
+  - `command` (required): the shell command to run on the remote host. Newlines are preserved; the command runs through the remote login shell.
+  - `stdin` (optional): string piped to the remote command's stdin.
+  - `timeout` (optional): milliseconds. Default 120000, cap 600000.
+
+- `upload`: copy a local path to the remote host (file or directory).
+  - `localPath` (required): absolute or workdir-relative path on this machine.
+  - `remotePath` (required): destination path on the remote host.
+  - `recursive` (optional): copy directories recursively. Default true when `localPath` is a directory.
+
+- `download`: copy a remote path to the local machine.
+  - `remotePath` (required): source path on the remote host.
+  - `localPath` (required): destination on this machine.
+  - `recursive` (optional): copy directories recursively. Default false.
+
+- `sync`: rsync a local directory to a remote path (delta-only). Use this for repeated syncs of large trees.
+  - `localPath` (required): local source directory.
+  - `remotePath` (required): remote destination directory.
+  - `delete` (optional): pass --delete to remove extraneous remote files. Default false.
+  - `exclude` (optional): array of rsync exclude patterns.
+
+- `script`: run a multi-line shell script on the remote host.
+  - `script` (required): full script body. Lines are sent as a heredoc, so quoting inside is preserved.
+  - `interpreter` (optional): the remote interpreter, default `bash`. Use `sh`, `python3`, `node`, etc.
+  - `stdin` (optional): string piped to the interpreter's stdin (after the script body).
+
+Connection options (apply to every operation):
+
+- `host` (required): destination as `[user@]host[:port]`, or a host alias defined in `~/.ssh/config`.
+- `identityFile` (optional): path to a private key file. Falls back to ssh-agent and the user's default key.
+- `port` (optional): override TCP port. Takes precedence over the `host:port` shorthand.
+- `jumpHost` (optional): one or more `[user@]host[:port]` strings forming an SSH jump chain (-J).
+- `forwardAgent` (optional): forward the local SSH agent (-A). Default false.
+- `strictHostKeyChecking` (optional): `yes` (default), `accept-new`, or `no`. Setting `no` is dangerous; only use for ephemeral hosts.
+- `extraOptions` (optional): array of `-o` style strings (e.g. `["ServerAliveInterval=30", "Compression=yes"]`).
+
+Permission
+
+Every invocation prompts via the `ssh` permission with the host as the pattern, so users can grant a specific host (`ssh: { "user@example.com": "allow" }`) or all hosts (`ssh: { "*": "allow" }`).
+
+Output
+
+Returns the remote command's stdout. The metadata contains `exit`, `stderr`, `host`, `operation`, and `duration_ms`. When output exceeds the truncation threshold, the full transcript is saved to a temp file and the path is included in the metadata.
+
+Notes for agents
+
+- Reuse the same `host` value across calls in a session; the ControlMaster keeps the connection warm for ~10 minutes after the last operation.
+- For long-running processes, prefer `script` with `nohup ... &` plus an explicit log file rather than running them through `exec` and timing out.
+- Never attempt interactive password prompts. If passwordless auth isn't configured, return an error and ask the user to set up keys.

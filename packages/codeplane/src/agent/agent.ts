@@ -101,6 +101,10 @@ export const layer = Layer.effect(
             "*.env.*": "ask",
             "*.env.example": "allow",
           },
+          // SSH operations touch remote machines, so default to prompting per
+          // host. Users can opt in to specific hosts in their config:
+          //   permission: { ssh: { "exec:user@host": "allow" } }
+          ssh: "ask",
         })
 
         const user = Permission.fromConfig(cfg.permission ?? {})

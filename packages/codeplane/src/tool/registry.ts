@@ -16,6 +16,7 @@ import { ToolsTool } from "./tools"
 import { WebFetchTool } from "./webfetch"
 import { BrowseTool } from "./browse"
 import { BashInteractiveTool } from "./bash_interactive"
+import { SshTool } from "./ssh"
 import { WriteTool } from "./write"
 import { InvalidTool } from "./invalid"
 import { SkillTool } from "./skill"
@@ -147,6 +148,7 @@ export const layer: Layer.Layer<
     const browse = yield* BrowseTool
     const bashInteractive = yield* BashInteractiveTool
     const bash = yield* BashTool
+    const ssh = yield* SshTool
     const codesearch = yield* CodeSearchTool
     const globtool = yield* GlobTool
     const writetool = yield* WriteTool
@@ -260,6 +262,7 @@ export const layer: Layer.Layer<
           fetch: Tool.init(webfetch),
           browse: Tool.init(browse),
           bashInteractive: Tool.init(bashInteractive),
+          ssh: Tool.init(ssh),
           todo: Tool.init(todo),
           search: Tool.init(websearch),
           code: Tool.init(codesearch),
@@ -290,6 +293,7 @@ export const layer: Layer.Layer<
             tool.fetch,
             tool.browse,
             tool.bashInteractive,
+            tool.ssh,
             tool.todo,
             tool.search,
             tool.code,
