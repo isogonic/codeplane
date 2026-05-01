@@ -537,7 +537,14 @@ export const dict = {
   "toast.update.action.later": "Later",
   "toast.update.action.restart": "Restart",
   "toast.update.action.retry": "Retry",
+  "toast.update.action.whatsNew": "What's new",
   "toast.update.action.dismiss": "Dismiss",
+
+  "dialog.whatsNew.title": "What's new in {{version}}",
+  "dialog.whatsNew.subtitle": "Updated from {{previous}} → {{current}}",
+  "dialog.whatsNew.empty": "No release notes available for this version.",
+  "dialog.whatsNew.action.viewFull": "View full release on GitHub →",
+  "dialog.whatsNew.action.dismiss": "Got it",
 
   "error.page.title": "Something went wrong",
   "error.page.description": "An error occurred while loading the application.",
@@ -938,6 +945,7 @@ export const dict = {
   "settings.general.row.version.action.checking": "Checking…",
   "settings.general.row.version.action.update": "Update now",
   "settings.general.row.version.action.updating": "Updating…",
+  "settings.general.row.version.action.whatsNew": "What's new",
 
   "sound.option.none": "None",
   "sound.option.alert01": "Alert 01",

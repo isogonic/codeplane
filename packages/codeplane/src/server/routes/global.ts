@@ -24,6 +24,33 @@ const log = Log.create({ service: "server" })
 const configRuntime = makeRuntime(Config.Service, Config.defaultLayer)
 const eventHeartbeatMs = 5_000
 
+// Small in-process cache for release-notes lookups. Notes are immutable per
+// version, so a long TTL is fine; we just want to avoid hammering GitHub when
+// many tabs/clients fetch the same version.
+const RELEASE_NOTES_TTL_MS = 6 * 60 * 60 * 1000
+const releaseNotesCache = new Map<string, { value: Installation.ReleaseNotes | null; fetchedAt: number }>()
+const releaseNotesInflight = new Map<string, Promise<Installation.ReleaseNotes | null>>()
+const ReleaseNotesCache = {
+  async get(version: string): Promise<Installation.ReleaseNotes | null> {
+    const key = Installation.cleanVersion(version)
+    const entry = releaseNotesCache.get(key)
+    if (entry && Date.now() - entry.fetchedAt < RELEASE_NOTES_TTL_MS) return entry.value
+    const inflight = releaseNotesInflight.get(key)
+    if (inflight) return inflight
+    const promise = AppRuntime.runPromise(Installation.Service.use((svc) => svc.releaseNotes(key)))
+      .catch(() => null)
+      .then((value) => {
+        releaseNotesCache.set(key, { value, fetchedAt: Date.now() })
+        return value
+      })
+      .finally(() => {
+        releaseNotesInflight.delete(key)
+      })
+    releaseNotesInflight.set(key, promise)
+    return promise
+  },
+}
+
 export const GlobalDisposedEvent = BusEvent.define("global.disposed", Schema.Struct({}))
 
 async function streamEvents(c: Context, subscribe: (q: AsyncQueue<string | null>) => () => void) {
@@ -135,6 +162,47 @@ export const GlobalRoutes = lazy(() =>
           hasUpdate: snapshot.hasUpdate,
           method: snapshot.method,
         })
+      },
+    )
+    .get(
+      "/release-notes/:version",
+      describeRoute({
+        summary: "Get release notes for a version",
+        description: "Fetch the GitHub release notes for the given codeplane version (cached in-process).",
+        operationId: "global.releaseNotes",
+        responses: {
+          200: {
+            description: "Release notes",
+            content: {
+              "application/json": {
+                schema: resolver(
+                  z.object({
+                    tag: z.string(),
+                    name: z.string().nullable(),
+                    body: z.string().nullable(),
+                    url: z.string().nullable(),
+                    publishedAt: z.string().nullable(),
+                  }),
+                ),
+              },
+            },
+          },
+          404: {
+            description: "No release notes found",
+            content: {
+              "application/json": {
+                schema: resolver(z.object({ error: z.string() })),
+              },
+            },
+          },
+        },
+      }),
+      validator("param", z.object({ version: z.string() })),
+      async (c) => {
+        const { version } = c.req.valid("param")
+        const notes = await ReleaseNotesCache.get(version)
+        if (!notes) return c.json({ error: "Release notes not found" }, 404)
+        return c.json(notes)
       },
     )
     .get(
