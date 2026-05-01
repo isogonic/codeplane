@@ -1,6 +1,6 @@
 {
   "name": "@codeplane-ai/slack",
-  "version": "27.0.3",
+  "version": "27.0.4",
   "type": "module",
   "license": "MIT",
   "scripts": {

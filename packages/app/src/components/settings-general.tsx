@@ -600,7 +600,21 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
           title={language.t("settings.general.row.version.title")}
           description={versionDescription()}
         >
-          <div data-action="settings-check-update" class="flex gap-2">
+          <div data-action="settings-check-update" class="flex gap-2 items-center">
+            <Show when={versionInfo()?.current && /^\d+\.\d+\.\d+/.test(versionInfo()!.current)}>
+              <Button
+                type="button"
+                size="small"
+                variant="ghost"
+                onClick={(e: MouseEvent) => {
+                  e.preventDefault()
+                  updates.openWhatsNew(versionInfo()?.current)
+                }}
+                disabled={updates.isUpgrading()}
+              >
+                {language.t("settings.general.row.version.action.whatsNew")}
+              </Button>
+            </Show>
             <Show
               when={versionInfo()?.hasUpdate && versionInfo()?.method !== "unknown"}
               fallback={

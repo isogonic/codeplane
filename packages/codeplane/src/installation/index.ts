@@ -73,6 +73,21 @@ export class UpgradeFailedError extends Schema.TaggedErrorClass<UpgradeFailedErr
 
 // Response schemas for external version APIs
 const GitHubRelease = Schema.Struct({ tag_name: Schema.String })
+const GitHubReleaseFull = Schema.Struct({
+  tag_name: Schema.String,
+  name: Schema.optional(Schema.NullOr(Schema.String)),
+  body: Schema.optional(Schema.NullOr(Schema.String)),
+  html_url: Schema.optional(Schema.NullOr(Schema.String)),
+  published_at: Schema.optional(Schema.NullOr(Schema.String)),
+})
+
+export type ReleaseNotes = {
+  tag: string
+  name: string | null
+  body: string | null
+  url: string | null
+  publishedAt: string | null
+}
 const NpmPackage = Schema.Struct({ version: Schema.String })
 const BrewFormula = Schema.Struct({ versions: Schema.Struct({ stable: Schema.String }) })
 const BrewInfoV2 = Schema.Struct({
@@ -88,6 +103,7 @@ export interface Interface {
   readonly method: () => Effect.Effect<Method>
   readonly latest: (method?: Method) => Effect.Effect<string>
   readonly upgrade: (method: Method, target: string) => Effect.Effect<void, UpgradeFailedError>
+  readonly releaseNotes: (version: string) => Effect.Effect<ReleaseNotes | null>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@codeplane/Installation") {}
@@ -339,6 +355,29 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
         yield* text([process.execPath, "--version"])
       })
 
+      const releaseNotesImpl = Effect.fn("Installation.releaseNotes")(
+        function* (version: string) {
+          const tag = `v${cleanVersion(version)}`
+          const ghToken = process.env.GITHUB_TOKEN || process.env.GH_TOKEN
+          const headers: Record<string, string> = { Accept: "application/json" }
+          if (ghToken) headers.Authorization = `Bearer ${ghToken}`
+          const response = yield* httpOk.execute(
+            HttpClientRequest.get(
+              `https://api.github.com/repos/devinoldenburg/codeplane/releases/tags/${encodeURIComponent(tag)}`,
+            ).pipe(HttpClientRequest.setHeaders(headers)),
+          )
+          const data = yield* HttpClientResponse.schemaBodyJson(GitHubReleaseFull)(response)
+          return {
+            tag: data.tag_name,
+            name: data.name ?? null,
+            body: data.body ?? null,
+            url: data.html_url ?? null,
+            publishedAt: data.published_at ?? null,
+          } satisfies ReleaseNotes
+        },
+        Effect.catch(() => Effect.succeed(null as ReleaseNotes | null)),
+      )
+
       return Service.of({
         info: Effect.fn("Installation.info")(function* () {
           return {
@@ -349,6 +388,7 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
         method: methodImpl,
         latest: latestImpl,
         upgrade: upgradeImpl,
+        releaseNotes: releaseNotesImpl,
       })
     }),
   )
