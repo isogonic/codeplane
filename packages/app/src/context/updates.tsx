@@ -1,29 +1,77 @@
-import { onCleanup } from "solid-js"
+import { createSignal, onCleanup } from "solid-js"
 import { createSimpleContext } from "@codeplane-ai/ui/context"
 import { showToast } from "@codeplane-ai/ui/toast"
 import { useGlobalSDK } from "./global-sdk"
 import { useLanguage } from "./language"
 import { formatServerError } from "@/utils/server-errors"
 
+type Status = {
+  current: string
+  latest: string | null
+  hasUpdate: boolean
+  method: string
+}
+
 export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContext({
   name: "Updates",
   init: () => {
     const globalSDK = useGlobalSDK()
     const language = useLanguage()
-    const announced = new Set<string>()
-    const state = { upgrading: false }
+    const announcedAvailable = new Set<string>()
+    const announcedInstalled = new Set<string>()
+    const [upgrading, setUpgrading] = createSignal(false)
+    const [status, setStatus] = createSignal<Status | undefined>(undefined)
     let reloadTimer: ReturnType<typeof setTimeout> | undefined
 
-    const showInstalled = (version?: string, restart?: boolean) => {
-      const key = `updated:${version ?? "unknown"}`
-      if (announced.has(key) && !restart) return
-      announced.add(key)
+    const fetchStatus = async (refresh = false) => {
+      try {
+        const url = `${globalSDK.url}/global/version${refresh ? "?refresh=1" : ""}`
+        const response = await fetch(url)
+        if (!response.ok) throw new Error(`Status ${response.status}`)
+        const next = (await response.json()) as Status
+        setStatus(next)
+        return next
+      } catch {
+        return undefined
+      }
+    }
+
+    const showAvailable = (version: string) => {
+      if (announcedAvailable.has(version)) return
+      announcedAvailable.add(version)
+      showToast({
+        title: language.t("toast.update.available.title"),
+        description: language.t("toast.update.available.description", { version }),
+        icon: "download",
+        persistent: true,
+        actions: [
+          {
+            label: language.t("toast.update.action.updateNow"),
+            onClick: () => void startUpgrade(version),
+          },
+          {
+            label: language.t("toast.update.action.later"),
+            onClick: "dismiss",
+          },
+        ],
+      })
+    }
+
+    const showInstalled = (version?: string, restart?: boolean, restartRequired?: boolean) => {
+      const key = `${version ?? "unknown"}:${restart ? "restart" : restartRequired ? "manual" : "ok"}`
+      if (announcedInstalled.has(key) && !restart) return
+      announcedInstalled.add(key)
+      const description = restartRequired
+        ? language.t("toast.update.installed.descriptionRestartRequired", {
+            version: version ?? language.t("settings.general.row.version.developmentBuild"),
+          })
+        : version
+          ? language.t("toast.update.installed.description", { version })
+          : language.t("toast.update.installed.descriptionFallback")
       showToast({
         id: "codeplane.update",
         title: language.t("toast.update.installed.title"),
-        description: version
-          ? language.t("toast.update.installed.description", { version })
-          : language.t("toast.update.installed.descriptionFallback"),
+        description,
         variant: "success",
         icon: "check",
         persistent: !restart,
@@ -46,8 +94,8 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
     }
 
     const startUpgrade = async (target?: string) => {
-      if (state.upgrading) return
-      state.upgrading = true
+      if (upgrading()) return
+      setUpgrading(true)
       showToast({
         id: "codeplane.update",
         title: language.t("toast.update.installing.title"),
@@ -66,6 +114,16 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
             description: message,
             variant: "error",
             icon: "warning",
+            actions: [
+              {
+                label: language.t("toast.update.action.retry"),
+                onClick: () => void startUpgrade(target),
+              },
+              {
+                label: language.t("toast.update.action.dismiss"),
+                onClick: "dismiss",
+              },
+            ],
           })
           return
         }
@@ -73,14 +131,15 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
           if (data.skipped) {
             showToast({
               id: "codeplane.update",
-              title: language.t("toast.update.installed.title"),
+              title: language.t("toast.update.upToDate.title"),
               description: language.t("settings.general.row.version.descriptionUpToDate", { current: data.version }),
               variant: "success",
               icon: "check",
             })
             return
           }
-          showInstalled(data.version, data.restart === true)
+          showInstalled(data.version, data.restart === true, data.restartRequired === true)
+          await fetchStatus(true)
         }
       } catch (err) {
         showToast({
@@ -89,42 +148,49 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
           description: formatServerError(err, language.t),
           variant: "error",
           icon: "warning",
+          actions: [
+            {
+              label: language.t("toast.update.action.retry"),
+              onClick: () => void startUpgrade(target),
+            },
+            {
+              label: language.t("toast.update.action.dismiss"),
+              onClick: "dismiss",
+            },
+          ],
         })
       } finally {
-        state.upgrading = false
+        setUpgrading(false)
       }
+    }
+
+    const recheck = async (notify = true) => {
+      const next = await fetchStatus(true)
+      if (notify && next?.hasUpdate && next.latest) showAvailable(next.latest)
+      return next
     }
 
     const unsub = globalSDK.event.listen((e) => {
       const event = e.details
       if (event.type === "installation.update-available") {
         const version = event.properties?.version
-        if (!version || announced.has(`available:${version}`)) return
-        announced.add(`available:${version}`)
-        showToast({
-          title: language.t("toast.update.available.title"),
-          description: language.t("toast.update.available.description", { version }),
-          icon: "download",
-          persistent: true,
-          actions: [
-            {
-              label: language.t("toast.update.action.updateNow"),
-              onClick: () => void startUpgrade(version),
-            },
-            {
-              label: language.t("toast.update.action.later"),
-              onClick: "dismiss",
-            },
-          ],
-        })
+        if (!version) return
+        setStatus((prev) =>
+          prev ? { ...prev, latest: version, hasUpdate: true } : { current: "", latest: version, hasUpdate: true, method: "unknown" },
+        )
+        showAvailable(version)
         return
       }
 
       if (event.type === "installation.updated") {
         const version = event.properties?.version
+        if (version) announcedAvailable.delete(version)
         showInstalled(version)
+        void fetchStatus(true)
       }
     })
+
+    void fetchStatus(false)
 
     onCleanup(() => {
       unsub()
@@ -133,7 +199,9 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
 
     return {
       startUpgrade,
-      isUpgrading: () => state.upgrading,
+      recheck,
+      status,
+      isUpgrading: upgrading,
     }
   },
 })

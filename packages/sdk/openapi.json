@@ -3,7 +3,7 @@
   "info": {
     "title": "codeplane",
     "description": "codeplane api",
-    "version": "27.0.2"
+    "version": "27.0.3"
   },
   "paths": {
     "/global/cron": {
@@ -867,8 +867,14 @@
                         "restart": {
                           "type": "boolean"
                         },
+                        "restartRequired": {
+                          "type": "boolean"
+                        },
                         "skipped": {
                           "type": "boolean"
+                        },
+                        "method": {
+                          "type": "string"
                         }
                       },
                       "required": ["success", "version"]

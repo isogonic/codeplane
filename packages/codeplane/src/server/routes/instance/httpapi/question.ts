@@ -52,7 +52,7 @@ export const QuestionApi = HttpApi.make("question")
   .annotateMerge(
     OpenApi.annotations({
       title: "codeplane HttpApi",
-      version: "27.0.2",
+      version: "27.0.3",
       description: "Effect HttpApi surface for instance routes.",
     }),
   )
