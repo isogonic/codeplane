@@ -22,7 +22,7 @@
   "type": "module",
   "scripts": {
     "build": "rm -rf dist release && bun run build:main && bun run build:setup",
-    "build:main": "bun build src/main/main.ts src/main/preload.ts --outdir dist/main --target node --external electron --external electron-updater --external electron-store --format cjs --minify",
+    "build:main": "bun build src/main/main.ts src/main/preload.ts --outdir dist/main --target node --external electron --format cjs --minify",
     "build:setup": "vite build",
     "dev:setup": "vite",
     "package": "electron-builder",
@@ -33,18 +33,17 @@
     "dev": "bun run build && electron .",
     "typecheck": "tsgo --noEmit"
   },
-  "dependencies": {
-    "@codeplane-ai/ui": "workspace:*",
-    "electron-store": "10.1.0",
-    "electron-updater": "6.6.8",
-    "solid-js": "catalog:"
-  },
+  "dependencies": {},
   "devDependencies": {
+    "@codeplane-ai/ui": "workspace:*",
     "@tailwindcss/vite": "catalog:",
     "@types/node": "catalog:",
     "@typescript/native-preview": "catalog:",
     "electron": "41.4.0",
     "electron-builder": "26.0.20",
+    "electron-store": "10.1.0",
+    "electron-updater": "6.6.8",
+    "solid-js": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
@@ -54,6 +53,7 @@
     "appId": "ai.codeplane.desktop",
     "productName": "CodePlane",
     "asar": true,
+    "beforeBuild": "./build/before-build.js",
     "directories": {
       "output": "release",
       "buildResources": "build"

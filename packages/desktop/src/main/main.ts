@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, Menu, session, shell, dialog, type Session
 import { autoUpdater, type UpdateInfo, type ProgressInfo } from "electron-updater"
 import Store from "electron-store"
 import path from "path"
+import { pathToFileURL } from "url"
 
 /**
  * CodePlane desktop shell.
@@ -139,11 +140,16 @@ function loadInstance(window: BrowserWindow, instance: SavedInstance) {
   void window.loadURL(target.toString())
 }
 
+function getAppAssetPath(...parts: string[]) {
+  return path.join(app.getAppPath(), ...parts)
+}
+
 function showSetup(window: BrowserWindow, opts?: { editId?: string }) {
-  const url = `file://${path.join(__dirname, "..", "setup", "index.html")}${
-    opts?.editId ? `?edit=${encodeURIComponent(opts.editId)}` : ""
-  }`
-  void window.loadURL(url)
+  const url = pathToFileURL(getAppAssetPath("dist", "setup", "index.html"))
+  if (opts?.editId) {
+    url.searchParams.set("edit", opts.editId)
+  }
+  void window.loadURL(url.toString())
 }
 
 async function resolveDesktopReleaseTag() {
@@ -354,7 +360,7 @@ function createWindow() {
     show: false,
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: getAppAssetPath("dist", "main", "preload.js"),
       contextIsolation: true,
       sandbox: true,
       // The web app never sees Node, but persistent session storage (cookies,
@@ -400,7 +406,7 @@ async function openInstance(instance: SavedInstance) {
     show: false,
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: getAppAssetPath("dist", "main", "preload.js"),
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
