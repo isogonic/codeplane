@@ -1,25 +1,14 @@
 .scroll-view {
   position: relative;
   overflow: hidden;
-  /* Stable layout & paint boundary so children offscreen don't repaint
-   * the rest of the page when they update — large win on long chats. */
-  contain: layout paint style;
 }
 
 .scroll-view__viewport {
   height: 100%;
   width: 100%;
   overflow-y: auto;
-  /* Hard-clip horizontal overflow so wide content (long inline code,
-   * unwrappable URLs, tool transcripts) never produces a side-scroll on the
-   * chat. `clip` is non-scrollable and cheaper than `hidden`. */
-  overflow-x: clip;
-  overscroll-behavior: contain;
   scrollbar-width: none;
   outline: none;
-  /* Avoid main-thread scroll jank by hinting at compositor scrolling. */
-  will-change: scroll-position;
-  contain: content;
 }
 
 .scroll-view__viewport::-webkit-scrollbar {

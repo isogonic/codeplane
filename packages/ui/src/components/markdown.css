@@ -386,21 +386,6 @@
   will-change: filter, opacity, transform;
 }
 
-/* Once the per-word entry animation finishes the `will-change` hint is no
- * longer pulling its weight — but it keeps a compositor layer alive on every
- * span. Drop it after a short delay so long chats don't pin GPU memory for
- * thousands of finished words. The animation itself is unchanged. */
-@keyframes markdown-word-release {
-  to {
-    will-change: auto;
-  }
-}
-[data-component="markdown"] [data-md-word] {
-  animation:
-    markdown-word-blur-in 320ms ease-out both,
-    markdown-word-release 0s 360ms forwards;
-}
-
 @keyframes markdown-word-blur-in {
   0% {
     opacity: 0;
