@@ -2,6 +2,7 @@ import { splitProps, type ComponentProps } from "solid-js"
 
 const icons = {
   "align-right": `<path d="M12.292 6.04167L16.2503 9.99998L12.292 13.9583M2.91699 9.99998H15.6253M17.0837 3.75V16.25" stroke="currentColor" stroke-linecap="square"/>`,
+  sparkle: `<path fill-rule="evenodd" clip-rule="evenodd" d="M8.333 1.667l1.273 4.062a3.333 3.333 0 0 0 2.165 2.165l4.062 1.273-4.062 1.273a3.333 3.333 0 0 0-2.165 2.165L8.333 16.667l-1.273-4.062a3.333 3.333 0 0 0-2.165-2.165L0.833 9.167l4.062-1.273A3.333 3.333 0 0 0 7.06 5.729L8.333 1.667ZM15 11.667l.69 2.143a1.667 1.667 0 0 0 1.084 1.084L18.917 15.5l-2.143.69a1.667 1.667 0 0 0-1.084 1.084L15 19.417l-.69-2.143a1.667 1.667 0 0 0-1.084-1.084L11.083 15.5l2.143-.69a1.667 1.667 0 0 0 1.084-1.084L15 11.667Z" fill="currentColor"/>`,
   "arrow-up": `<path fill-rule="evenodd" clip-rule="evenodd" d="M9.99991 2.24121L16.0921 8.33343L15.2083 9.21731L10.6249 4.63397V17.5001H9.37492V4.63398L4.7916 9.21731L3.90771 8.33343L9.99991 2.24121Z" fill="currentColor"/>`,
   "arrow-left": `<path d="M8.33464 4.58398L2.91797 10.0007L8.33464 15.4173M3.33464 10.0007H17.0846" stroke="currentColor" stroke-linecap="square"/>`,
   "arrow-right": `<path d="M11.6654 4.58398L17.082 10.0007L11.6654 15.4173M16.6654 10.0007H2.91536" stroke="currentColor" stroke-linecap="square"/>`,
@@ -22,6 +23,7 @@ const icons = {
   "close-small": `<path d="M6 6L14 14M14 6L6 14" stroke="currentColor" stroke-linecap="square"/>`,
   checklist: `<path d="M9.58342 13.7498H17.0834M9.58342 6.24984H17.0834M2.91675 6.6665L4.58341 7.9165L7.08341 4.1665M2.91675 14.1665L4.58341 15.4165L7.08341 11.6665" stroke="currentColor" stroke-linecap="square"/>`,
   console: `<path d="M3.75 5.4165L8.33333 9.99984L3.75 14.5832M10.4167 14.5832H16.25" stroke="currentColor" stroke-linecap="square"/>`,
+  ssh: `<path d="M2.083 4.583h15.833v10.834H2.083V4.583Z" stroke="currentColor" stroke-linecap="square"/><path d="M5 8.333l2.5 1.667L5 11.667M9.167 11.667h3.333" stroke="currentColor" stroke-linecap="square"/>`,
   terminal: `<path d="M6.5 8L8.64286 10L6.5 12M10.9286 12H13.5M2 18H18V2H2V18Z" stroke="currentColor" stroke-linecap="square"/>`,
   "terminal-active": `<path d="M2 18H18V2H2V18Z" fill="currentColor" fill-opacity="0.1"/>
 <path d="M6.5 8L8.64286 10L6.5 12M10.9286 12H13.5M2 18H18V2H2V18Z" stroke="currentColor" stroke-linecap="square"/>`,
@@ -110,7 +112,7 @@ const icons = {
 
 export interface IconProps extends ComponentProps<"svg"> {
   name: keyof typeof icons
-  size?: "small" | "normal" | "medium" | "large"
+  size?: "x-small" | "small" | "normal" | "medium" | "large"
 }
 
 export function Icon(props: IconProps) {

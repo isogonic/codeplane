@@ -266,23 +266,21 @@ export const layer = Layer.effect(
           .setTitle({ sessionID: input.session.id, title: value })
           .pipe(Effect.catchCause((cause) => elog.error("failed to set title", { error: Cause.squash(cause) })))
 
+      // Set a derived title immediately so the user never sees "New session"
+      // while the LLM is generating a better one. The LLM result will
+      // overwrite this if and when it succeeds.
+      const fallback = deriveFallback()
+      if (fallback) yield* setFinalTitle(fallback)
+
       const ag = yield* agents.get("title").pipe(Effect.catch(() => Effect.succeed(undefined)))
-      if (!ag) {
-        const fallback = deriveFallback()
-        if (fallback) yield* setFinalTitle(fallback)
-        return
-      }
+      if (!ag) return
       const mdlOption = yield* (ag.model
         ? provider.getModel(ag.model.providerID, ag.model.modelID)
         : provider
             .getSmallModel(input.providerID)
             .pipe(Effect.flatMap((small) => (small ? Effect.succeed(small) : provider.getModel(input.providerID, input.modelID))))
       ).pipe(Effect.catch(() => Effect.succeed(undefined)))
-      if (!mdlOption) {
-        const fallback = deriveFallback()
-        if (fallback) yield* setFinalTitle(fallback)
-        return
-      }
+      if (!mdlOption) return
       const mdl = mdlOption
       const msgs = onlySubtasks
         ? [{ role: "user" as const, content: subtasks.map((p) => p.prompt).join("\n") }]
@@ -337,13 +335,9 @@ export const layer = Layer.effect(
       }
 
       if (!cleaned) {
-        const fallback = deriveFallback()
-        if (fallback) {
-          elog.info("falling back to derived title")
-          yield* setFinalTitle(fallback)
-        } else {
-          elog.warn("no title generated and no fallback derivable")
-        }
+        // Already set the derived fallback at the top of the function;
+        // nothing more to do here — log only when even that wasn't possible.
+        if (!fallback) elog.warn("no title generated and no fallback derivable")
         return
       }
       const t = cleaned.length > 100 ? cleaned.substring(0, 97) + "..." : cleaned

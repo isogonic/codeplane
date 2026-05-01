@@ -7,6 +7,11 @@
   aspect-ratio: 1/1;
   color: var(--icon-base);
 
+  &[data-size="x-small"] {
+    width: 12px;
+    height: 12px;
+  }
+
   &[data-size="small"] {
     width: 16px;
     height: 16px;
