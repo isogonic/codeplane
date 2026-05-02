@@ -1,6 +1,6 @@
 {
   "name": "@codeplane-ai/slack",
-  "version": "27.3.1",
+  "version": "27.4.0",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -8,12 +8,12 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
-    "@codeplane-ai/sdk": "workspace:*",
+    "@codeplane-ai/sdk": "file:../sdk/js",
     "@slack/bolt": "^3.17.1"
   },
   "devDependencies": {
-    "@types/node": "catalog:",
-    "typescript": "catalog:",
-    "@typescript/native-preview": "catalog:"
+    "@types/node": "22.13.9",
+    "typescript": "5.8.2",
+    "@typescript/native-preview": "7.0.0-dev.20251207.1"
   }
 }

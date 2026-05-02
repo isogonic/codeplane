@@ -129,7 +129,7 @@ function stopChild(child: ChildProcess, timeoutMs = 5_000) {
 
 async function writeFakeLocalRuntime(root: string, version: string) {
   const target = resolveCodeplaneLocalTarget()
-  const binary = path.join(paths(root).codeplaneHome, "local_server", "binaries", version, target.binaryName)
+  const binary = path.join(paths(root).codeplaneHome, "local_server", "binaries", version, "bin", target.binaryName)
   const script = `#!/usr/bin/env node
 const http = require("node:http")
 const server = http.createServer((request, response) => {

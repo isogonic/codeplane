@@ -27,6 +27,8 @@ import { registerAdaptor } from "@/control-plane/adaptors"
 import type { WorkspaceAdaptor } from "@/control-plane/types"
 
 const log = Log.create({ service: "plugin" })
+const GitlabAuthPluginCompat = GitlabAuthPlugin as unknown as PluginInstance
+const PoeAuthPluginCompat = PoeAuthPlugin as unknown as PluginInstance
 
 type State = {
   hooks: Hooks[]
@@ -58,8 +60,8 @@ export class Service extends Context.Service<Service, Interface>()("@codeplane/P
 const INTERNAL_PLUGINS: PluginInstance[] = [
   CodexAuthPlugin,
   CopilotAuthPlugin,
-  GitlabAuthPlugin,
-  PoeAuthPlugin,
+  GitlabAuthPluginCompat,
+  PoeAuthPluginCompat,
   CloudflareWorkersAuthPlugin,
   CloudflareAIGatewayAuthPlugin,
 ]

@@ -95,6 +95,9 @@ const SessionRow = (props: {
   warmFocus: () => void
 }): JSX.Element => {
   const title = () => sessionTitle(props.session.title)
+  const indicatorActive = createMemo(
+    () => props.isWorking() || props.hasPermissions() || props.hasError() || props.unseenCount() > 0,
+  )
 
   return (
     <A
@@ -107,27 +110,36 @@ const SessionRow = (props: {
         props.clearHoverProjectSoon()
       }}
     >
-      <Show when={props.isWorking() || props.hasPermissions() || props.hasError() || props.unseenCount() > 0}>
-        <div
-          class="shrink-0 size-6 flex items-center justify-center"
-          style={{ color: props.tint() ?? "var(--icon-interactive-base)" }}
-        >
-          <Switch>
-            <Match when={props.isWorking()}>
-              <Spinner class="size-[15px]" />
-            </Match>
-            <Match when={props.hasPermissions()}>
-              <div class="size-1.5 rounded-full bg-surface-warning-strong" />
-            </Match>
-            <Match when={props.hasError()}>
-              <div class="size-1.5 rounded-full bg-text-diff-delete-base" />
-            </Match>
-            <Match when={props.unseenCount() > 0}>
-              <div class="size-1.5 rounded-full bg-text-interactive-base" />
-            </Match>
-          </Switch>
-        </div>
-      </Show>
+      <div
+        class="shrink-0 size-6 flex items-center justify-center"
+        style={{ color: props.tint() ?? "var(--icon-interactive-base)" }}
+        aria-hidden={!indicatorActive()}
+      >
+        <Show when={indicatorActive()}>
+          <div class="relative size-[15px] flex items-center justify-center">
+            <Spinner
+              class="absolute inset-0 size-[15px]"
+              style={{
+                opacity: props.isWorking() ? 1 : 0,
+                transition: "opacity 120ms linear",
+              }}
+            />
+            <Show when={!props.isWorking()}>
+              <Switch>
+                <Match when={props.hasPermissions()}>
+                  <div class="size-1.5 rounded-full bg-surface-warning-strong" />
+                </Match>
+                <Match when={props.hasError()}>
+                  <div class="size-1.5 rounded-full bg-text-diff-delete-base" />
+                </Match>
+                <Match when={props.unseenCount() > 0}>
+                  <div class="size-1.5 rounded-full bg-text-interactive-base" />
+                </Match>
+              </Switch>
+            </Show>
+          </div>
+        </Show>
+      </div>
       <span class="text-14-regular text-text-strong min-w-0 flex-1 truncate">{title()}</span>
     </A>
   )

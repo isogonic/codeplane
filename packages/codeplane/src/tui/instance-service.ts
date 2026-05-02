@@ -28,9 +28,19 @@ type ProbeResult =
 const encodeBasicAuth = (value: string) => Buffer.from(value).toString("base64")
 
 function mapLocalProgress(instanceID: string, input: LocalInstallProgress): OpenProgress {
+  const phase: OpenProgress["phase"] =
+    input.phase === "detect" || input.phase === "download"
+      ? "download"
+      : input.phase === "extract"
+        ? "finalize"
+        : input.phase === "start"
+          ? "probe"
+          : input.phase === "ready"
+            ? "done"
+            : "download"
   return {
     instanceID,
-    phase: input.phase === "extract" ? "finalize" : "download",
+    phase,
     message: input.message,
     percent: input.percent,
     version: input.binaryVersion,
@@ -124,30 +134,10 @@ export function createInstanceService() {
   async function ensureLiveInstance(saved: SavedInstance, onProgress?: (progress: OpenProgress) => void): Promise<SavedInstance> {
     if (!saved.local) return saved
     const version = saved.local.binaryVersion || (await readPreferredLocalVersion())
-    const status = await local.status(version)
-    if (!status.installed) {
-      await local.download(version, (progress) =>
-        onProgress?.(
-          mapLocalProgress(saved.id, {
-            version,
-            phase: progress.phase,
-            message: progress.message,
-            percent: progress.percent,
-            binaryVersion: progress.binaryVersion,
-            transferred: progress.transferred,
-            total: progress.total,
-          }),
-        ),
-      )
-    }
-    onProgress?.({
-      instanceID: saved.id,
-      phase: "probe",
-      message: `Starting local Codeplane ${version}…`,
-      percent: 92,
-      version,
-    })
-    const running = await local.start({ id: saved.id, binaryVersion: version })
+    const forwardManagerProgress = (progress: LocalInstallProgress) =>
+      onProgress?.(mapLocalProgress(saved.id, { ...progress, version }))
+    // start() handles auto-download on first run; no need to pre-call download().
+    const running = await local.start({ id: saved.id, binaryVersion: version }, forwardManagerProgress)
     return {
       ...saved,
       url: running.url,
@@ -170,6 +160,39 @@ export function createInstanceService() {
       message: "Checking server version…",
       percent: 20,
     })
+    // Probe `/global/version` directly first so we can give a precise message
+    // when the instance is gated by an auth proxy (CF Access, IdP, etc).
+    // Falling straight into the SDK client throws an opaque parse error in
+    // that case — users couldn't tell whether the URL was wrong or they just
+    // needed to authenticate.
+    //
+    // The probe uses `redirect: "follow"`, so a typical 302→login HTML page
+    // comes back as `ok: true` with no `version` parsed (HTML, not JSON).
+    // Treat that the same as 401/403: the instance is reachable, just not
+    // letting us in yet.
+    if (!live.local) {
+      const probed = await probe(live)
+      const authMessage = `${live.url} requires sign-in. The TUI can't drive an interactive login — open the URL in a browser to capture an auth header (CF Access service token, bearer token, …) and add it under "Headers" when editing this instance, or use the desktop app for cookie-based sign-in.`
+      if (!probed.ok) {
+        const status = probed.status
+        if (status === 401 || status === 403) {
+          throw new Error(authMessage)
+        }
+        throw new Error(probed.error || `Could not reach ${live.url}`)
+      }
+      if (!probed.version) {
+        // 200 OK but no `current` field — almost always means we landed on a
+        // login HTML page after following the auth redirect chain.
+        throw new Error(authMessage)
+      }
+      onProgress?.({
+        instanceID: saved.id,
+        phase: "finalize",
+        message: `Opening Codeplane ${probed.version}…`,
+        percent: 60,
+        version: probed.version,
+      })
+    }
     const client = createInstanceClient({ instance: live, throwOnError: true })
     const version = (await client.global.version()).data?.current
     if (!version) throw new Error(`No version returned from ${live.url}`)

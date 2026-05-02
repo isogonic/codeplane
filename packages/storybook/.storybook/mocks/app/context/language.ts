@@ -68,6 +68,7 @@ function render(template: string, params?: Record<string, unknown>) {
 export function useLanguage() {
   return {
     locale: () => "en" as const,
+    intl: () => "en-US" as const,
     t(key: string, params?: Record<string, unknown>) {
       return render(dict[key] ?? key, params)
     },

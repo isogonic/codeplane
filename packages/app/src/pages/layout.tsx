@@ -2383,15 +2383,6 @@ export default function Layout(props: ParentProps) {
                             {language.t("sidebar.project.clearNotifications")}
                           </DropdownMenu.ItemLabel>
                         </DropdownMenu.Item>
-                        <DropdownMenu.Item
-                          data-action="project-archived-sessions"
-                          data-project={slug()}
-                          onSelect={() => {
-                            showArchivedSessionsDialog(project)
-                          }}
-                        >
-                          <DropdownMenu.ItemLabel>{language.t("command.session.archived")}</DropdownMenu.ItemLabel>
-                        </DropdownMenu.Item>
                         <DropdownMenu.Separator />
                         <DropdownMenu.Item
                           data-action="project-close-menu"

@@ -1,6 +1,6 @@
+import { Popover as Kobalte } from "@kobalte/core/popover"
 import { Button } from "@codeplane-ai/ui/button"
 import { Icon } from "@codeplane-ai/ui/icon"
-import { Popover } from "@codeplane-ai/ui/popover"
 import { Suspense, createMemo, createSignal, lazy, Show } from "solid-js"
 import { useLanguage } from "@/context/language"
 import { useServer } from "@/context/server"
@@ -23,18 +23,14 @@ export function StatusPopover() {
   })
 
   return (
-    <Popover
-      open={shown()}
-      onOpenChange={setShown}
-      triggerAs={Button}
-      triggerProps={{
-        variant: "ghost",
-        class: "titlebar-icon w-8 h-6 p-0 box-border",
-        "aria-label": language.t("status.popover.trigger"),
-        "data-no-window-drag": true,
-        style: { scale: 1 },
-      }}
-      trigger={
+    <Kobalte open={shown()} onOpenChange={setShown} gutter={4} placement="bottom-end" shift={-168} modal={false}>
+      <Kobalte.Trigger
+        as={Button}
+        variant="ghost"
+        class="titlebar-icon w-8 h-6 p-0 box-border"
+        aria-label={language.t("status.popover.trigger")}
+        data-no-window-drag={true}
+      >
         <div class="relative size-4">
           <div class="badge-mask-tight size-4 flex items-center justify-center">
             <Icon name={shown() ? "status-active" : "status"} size="small" />
@@ -48,21 +44,22 @@ export function StatusPopover() {
             }}
           />
         </div>
-      }
-      class="[&_[data-slot=popover-body]]:p-0 w-[360px] max-w-[calc(100vw-40px)] bg-transparent border-0 shadow-none rounded-xl"
-      gutter={4}
-      placement="bottom-end"
-      shift={-168}
-    >
-      <Show when={shown()}>
-        <Suspense
-          fallback={
-            <div class="w-[360px] h-14 rounded-xl bg-background-strong shadow-[var(--shadow-lg-border-base)]" />
-          }
-        >
-          <Body shown={shown} />
-        </Suspense>
-      </Show>
-    </Popover>
+      </Kobalte.Trigger>
+      <Kobalte.Portal>
+        <Kobalte.Content class="[&_[data-slot=popover-body]]:p-0 w-[360px] max-w-[calc(100vw-40px)] bg-transparent border-0 shadow-none rounded-xl z-50 outline-none">
+          <div data-slot="popover-body">
+            <Show when={shown()}>
+              <Suspense
+                fallback={
+                  <div class="w-[360px] h-14 rounded-xl bg-background-strong shadow-[var(--shadow-lg-border-base)]" />
+                }
+              >
+                <Body shown={shown} />
+              </Suspense>
+            </Show>
+          </div>
+        </Kobalte.Content>
+      </Kobalte.Portal>
+    </Kobalte>
   )
 }

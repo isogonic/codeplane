@@ -13,6 +13,7 @@ import type {
   PrepareProgress as PrepareState,
   SavedInstance,
 } from "@codeplane-ai/shared/instance"
+import { formatHeaders as serializeHeaders, parseHeaders as parseHeaderInput } from "@codeplane-ai/shared/headers"
 import type { CodeplaneDesktopAPI } from "../main/preload"
 
 type LocalInstallState = {
@@ -57,27 +58,8 @@ function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
-function parseHeaders(raw: string): Record<string, string> {
-  const out: Record<string, string> = {}
-  for (const line of raw.split(/\r?\n/)) {
-    const trimmed = line.trim()
-    if (!trimmed) continue
-    const idx = trimmed.indexOf(":")
-    if (idx === -1) continue
-    const name = trimmed.slice(0, idx).trim()
-    const value = trimmed.slice(idx + 1).trim()
-    if (!name || !value) continue
-    out[name] = value
-  }
-  return out
-}
-
-function formatHeaders(headers: Record<string, string> | undefined): string {
-  if (!headers) return ""
-  return Object.entries(headers)
-    .map(([name, value]) => `${name}: ${value}`)
-    .join("\n")
-}
+const parseHeaders = parseHeaderInput
+const formatHeaders = (headers: Record<string, string> | undefined) => serializeHeaders(headers, "newline")
 
 type NotificationSettingsState = {
   agent: boolean

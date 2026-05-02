@@ -1,11 +1,11 @@
-import fs from "node:fs/promises"
+import * as fs from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import which from "which"
 import { spawn } from "node:child_process"
-import { Global } from "@/global"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const codeplaneDir = path.join(__dirname, "..", "..")
 const sourceEntry = path.join(__dirname, "node-main.tsx")
 
 function exists(file: string) {
@@ -39,32 +39,44 @@ async function resolveBundledEntry() {
 }
 
 async function buildDevEntry() {
-  const outdir = path.join(Global.Path.cache, "tui")
+  const outdir = path.join(codeplaneDir, ".cache", "tui")
   const outfile = path.join(outdir, "node-main.js")
   await fs.mkdir(outdir, { recursive: true })
+  const cwd = process.cwd()
+  process.chdir(codeplaneDir)
   const result = await Bun.build({
-    entrypoints: [sourceEntry],
+    entrypoints: ["./src/tui/node-main.tsx"],
     target: "node",
     format: "esm",
     minify: false,
     splitting: false,
     outdir,
-  })
+  }).finally(() => process.chdir(cwd))
   if (!result.success) {
     throw new Error(result.logs.map((log) => log.message).join("\n"))
   }
   return result.outputs.find((item) => item.kind === "entry-point")?.path ?? outfile
 }
 
-async function resolveEntry() {
-  return (await resolveBundledEntry()) ?? buildDevEntry()
+async function resolveLaunchTarget() {
+  const bundled = await resolveBundledEntry()
+  const node = await resolveNodeCommand()
+  if (!node) throw new Error("Node.js 22+ is required to run the Codeplane TUI")
+  if (bundled) {
+    return {
+      command: node,
+      args: [bundled],
+    }
+  }
+  return {
+    command: node,
+    args: [await buildDevEntry()],
+  }
 }
 
 export async function launchTUI(args: string[] = []) {
-  const node = await resolveNodeCommand()
-  if (!node) throw new Error("Node.js 22+ is required to run the Codeplane TUI")
-  const entry = await resolveEntry()
-  const child = spawn(node, [entry, ...args], {
+  const target = await resolveLaunchTarget()
+  const child = spawn(target.command, [...target.args, ...args], {
     stdio: "inherit",
     env: {
       ...process.env,

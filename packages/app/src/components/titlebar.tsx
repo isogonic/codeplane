@@ -230,11 +230,15 @@ export function Titlebar() {
                   </div>
                 </Show>
                 <div id="codeplane-titlebar-left" class="flex items-center gap-3 min-w-0 px-2" />
-                {["beta", "dev"].includes(import.meta.env.VITE_CODEPLANE_CHANNEL) && (
+                {(() => {
+                  const channel = import.meta.env.VITE_CODEPLANE_CHANNEL
+                  if (channel !== "beta" && channel !== "dev") return null
+                  return (
                   <div class="bg-icon-interactive-base text-[#FFF] text-11-medium px-1.5 py-0.5 rounded-sm uppercase font-mono tracking-wider">
-                    {import.meta.env.VITE_CODEPLANE_CHANNEL.toUpperCase()}
+                    {channel.toUpperCase()}
                   </div>
-                )}
+                  )
+                })()}
               </div>
             </div>
           </div>

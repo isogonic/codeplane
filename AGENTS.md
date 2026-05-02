@@ -1,4 +1,5 @@
 - To regenerate the JavaScript SDK, run `./packages/sdk/js/script/build.ts`.
+- The catalog is no longer the single source of truth — bumping a version in workspaces.catalog won't propagate. To re-sync after a catalog change, re-run node /tmp/inline-all.mjs.
 - ALWAYS USE PARALLEL TOOLS WHEN APPLICABLE.
 - The default branch in this repo is `main`.
 - Local `main` ref may not exist; use `dev` or `origin/dev` for diffs.

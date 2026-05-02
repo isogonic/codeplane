@@ -29,9 +29,25 @@ type Context = {
   usage: number | null
 }
 
+export type TurnSpeed = {
+  id: string
+  index: number
+  tokens: number
+  ms: number
+  tps: number
+}
+
+export type SpeedMetrics = {
+  lifetime: number | null
+  recent: number | null
+  peak: number | null
+  current: number | null
+  turns: TurnSpeed[]
+}
+
 type Metrics = {
   totalCost: number
-  averageTokensPerSecond: number | null
+  speed: SpeedMetrics
   context: Context | undefined
 }
 
@@ -40,6 +56,10 @@ type CompletedAssistantMessage = AssistantMessage & {
     completed: number
   }
 }
+
+const RECENT_WINDOW = 5
+const MIN_TURN_MS = 250
+const MIN_TURN_TOKENS = 4
 
 const tokenTotal = (msg: AssistantMessage) => {
   return msg.tokens.input + msg.tokens.output + msg.tokens.reasoning + msg.tokens.cache.read + msg.tokens.cache.write
@@ -53,11 +73,50 @@ const completedAssistantWithDuration = (msg: Message): msg is CompletedAssistant
   return msg.role === "assistant" && typeof msg.time.completed === "number" && msg.time.completed > msg.time.created
 }
 
-const averageTokensPerSecond = (messages: Message[]) => {
-  const completed = messages.filter(completedAssistantWithDuration)
-  const duration = completed.reduce((sum, msg) => sum + msg.time.completed - msg.time.created, 0)
-  if (duration <= 0) return null
-  return (completed.reduce((sum, msg) => sum + generatedTokenTotal(msg), 0) / duration) * 1000
+const collectTurnSpeeds = (messages: Message[]): TurnSpeed[] => {
+  const result: TurnSpeed[] = []
+  let index = 0
+  for (const msg of messages) {
+    if (!completedAssistantWithDuration(msg)) continue
+    const tokens = generatedTokenTotal(msg)
+    const ms = msg.time.completed - msg.time.created
+    if (tokens < MIN_TURN_TOKENS || ms < MIN_TURN_MS) {
+      index++
+      continue
+    }
+    result.push({
+      id: msg.id,
+      index: index++,
+      tokens,
+      ms,
+      tps: (tokens / ms) * 1000,
+    })
+  }
+  return result
+}
+
+const weightedAverage = (turns: TurnSpeed[]): number | null => {
+  if (turns.length === 0) return null
+  let tokens = 0
+  let ms = 0
+  for (const turn of turns) {
+    tokens += turn.tokens
+    ms += turn.ms
+  }
+  if (ms <= 0) return null
+  return (tokens / ms) * 1000
+}
+
+const buildSpeed = (messages: Message[]): SpeedMetrics => {
+  const turns = collectTurnSpeeds(messages)
+  if (turns.length === 0) {
+    return { lifetime: null, recent: null, peak: null, current: null, turns }
+  }
+  const lifetime = weightedAverage(turns)
+  const recent = weightedAverage(turns.slice(-RECENT_WINDOW))
+  const peak = turns.reduce((max, turn) => (turn.tps > max ? turn.tps : max), 0)
+  const current = turns[turns.length - 1]?.tps ?? null
+  return { lifetime, recent, peak, current, turns }
 }
 
 const lastAssistantWithTokens = (messages: Message[]) => {
@@ -71,9 +130,9 @@ const lastAssistantWithTokens = (messages: Message[]) => {
 
 const build = (messages: Message[] = [], providers: Provider[] = []): Metrics => {
   const totalCost = messages.reduce((sum, msg) => sum + (msg.role === "assistant" ? msg.cost : 0), 0)
-  const speed = averageTokensPerSecond(messages)
+  const speed = buildSpeed(messages)
   const message = lastAssistantWithTokens(messages)
-  if (!message) return { totalCost, averageTokensPerSecond: speed, context: undefined }
+  if (!message) return { totalCost, speed, context: undefined }
 
   const provider = providers.find((item) => item.id === message.providerID)
   const model = provider?.models[message.modelID]
@@ -82,7 +141,7 @@ const build = (messages: Message[] = [], providers: Provider[] = []): Metrics =>
 
   return {
     totalCost,
-    averageTokensPerSecond: speed,
+    speed,
     context: {
       message,
       provider,

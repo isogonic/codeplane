@@ -1505,15 +1505,24 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
     return match?.models?.[message.modelID]?.name ?? message.modelID
   })
 
+  const isStreaming = createMemo(
+    () => props.message.role === "assistant" && typeof (props.message as AssistantMessage).time.completed !== "number",
+  )
+  const [now, setNow] = createSignal(Date.now())
+  createEffect(() => {
+    if (!isStreaming()) return
+    const id = setInterval(() => setNow(Date.now()), 500)
+    onCleanup(() => clearInterval(id))
+  })
+
   const durationMs = createMemo(() => {
     if (props.message.role !== "assistant") return
     const message = props.message as AssistantMessage
     const completed = message.time.completed
-    return typeof props.turnDurationMs === "number"
-      ? props.turnDurationMs
-      : typeof completed === "number"
-        ? completed - message.time.created
-        : -1
+    if (typeof props.turnDurationMs === "number") return props.turnDurationMs
+    if (typeof completed === "number") return completed - message.time.created
+    if (isStreaming()) return Math.max(0, now() - message.time.created)
+    return -1
   })
 
   const duration = createMemo(() => {
@@ -1531,9 +1540,11 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
 
   const tokensPerSecond = createMemo(() => {
     if (props.message.role !== "assistant") return ""
-    const tokens = props.turnOutputTokens ?? (props.message as AssistantMessage).tokens.output
+    const message = props.message as AssistantMessage
+    const generated = message.tokens.output + message.tokens.reasoning
+    const tokens = props.turnOutputTokens ?? generated
     const ms = durationMs()
-    if (!(tokens > 0) || ms === undefined || ms <= 0) return ""
+    if (!(tokens > 0) || ms === undefined || ms < 250) return ""
     return i18n.t("ui.message.tps", { count: tpsfmt().format(tokens / (ms / 1000)) })
   })
 
@@ -1550,9 +1561,7 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
     return items.filter((x) => !!x).join(" \u00B7 ")
   })
 
-  const streaming = createMemo(
-    () => props.message.role === "assistant" && typeof (props.message as AssistantMessage).time.completed !== "number",
-  )
+  const streaming = isStreaming
   const text = () => (part().text ?? "").trim()
   const isLastTextPart = createMemo(() => {
     const last = (data.store.part?.[props.message.id] ?? [])

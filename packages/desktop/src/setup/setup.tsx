@@ -1,6 +1,7 @@
 /* @refresh reload */
 import { ErrorBoundary } from "solid-js"
 import { render } from "solid-js/web"
+import { CodeplaneVersion } from "@codeplane-ai/shared/version"
 import "./index.css"
 
 // Browser dev (vite) has no Electron preload — stub the API so renders work.
@@ -14,7 +15,7 @@ if (!(window as any).codeplaneDesktop) {
       JSON.stringify([
         { id: "remote-team", url: "https://codeplane.example.com", label: "Team Production" },
         { id: "remote-staging", url: "https://staging.codeplane.example.com", label: "Internal Staging" },
-        { id: "local-dev", url: "local://local-dev", label: "Local Dev", local: { binaryVersion: "27.3.1" } },
+        { id: "local-dev", url: "local://local-dev", label: "Local Dev", local: { binaryVersion: CodeplaneVersion } },
       ]),
     )
   } else if (params.get("seed") === "0") {
