@@ -32,13 +32,29 @@ async function resolveNodeCommand() {
 async function resolveBundledEntry() {
   if (process.env.CODEPLANE_TUI_BUNDLE) return process.env.CODEPLANE_TUI_BUNDLE
   const execDir = path.dirname(process.execPath)
-  const candidates = [path.join(execDir, "tui", "index.mjs"), path.join(execDir, "runtime", "tui", "index.mjs")]
+  const candidates = [
+    path.join(execDir, "runtime", "tui", "node-main.js"),
+    path.join(execDir, "tui", "node-main.js"),
+    path.join(execDir, "runtime", "tui", "index.mjs"),
+    path.join(execDir, "tui", "index.mjs"),
+  ]
   for (const candidate of candidates) {
     if (await exists(candidate)) return candidate
   }
 }
 
+function isPackagedBinary() {
+  // Bun standalone binaries embed sources under /$bunfs/. import.meta.url reflects that.
+  return import.meta.url.startsWith("file:///$bunfs/") || import.meta.url.startsWith("file:///%24bunfs/")
+}
+
 async function buildDevEntry() {
+  if (isPackagedBinary()) {
+    throw new Error(
+      "Codeplane TUI bundle missing from this install. Expected runtime/tui/node-main.js next to the executable. " +
+        "Reinstall the codeplane package or set CODEPLANE_TUI_BUNDLE to a built node-main.js.",
+    )
+  }
   const outdir = path.join(codeplaneDir, ".cache", "tui")
   const outfile = path.join(outdir, "node-main.js")
   await fs.mkdir(outdir, { recursive: true })
