@@ -165,10 +165,10 @@ type DesktopUpdateState =
   | { kind: "downloaded"; current: string; latest: string }
   | { kind: "error"; current: string; message: string }
 
-// This card manages the shared local Codeplane runtime used by desktop
-// and TUI local instances. It checks npm for new versions, installs the
-// matching platform package into the shared Codeplane home, and records
-// that version as the preferred local runtime.
+// This card updates the desktop Electron shell itself. It checks GitHub
+// releases via electron-updater, downloads the matching installer, and
+// relaunches the app once the download is in place so the new shell takes
+// effect.
 const DesktopUpdateCard: Component = () => {
   const [state, setState] = createSignal<DesktopUpdateState>({ kind: "loading" })
   const [notes, setNotes] = createSignal<{ version: string; body: string | null; url: string | null } | null>(null)
@@ -367,23 +367,23 @@ const DesktopUpdateCard: Component = () => {
     const s = state()
     switch (s.kind) {
       case "loading":
-        return "Loading local runtime version…"
+        return "Loading desktop app version…"
       case "checking":
-        return `Checking npm for updates… (current ${currentVersion()})`
+        return `Checking for updates… (current ${api.version})`
       case "available":
-        return `Version ${s.latest} is available. Local runtime is on ${s.current}.`
+        return `Codeplane Desktop ${s.latest} is available. You're on ${s.current}.`
       case "downloading": {
         const bytes =
           s.transferred && s.total ? ` · ${formatBytes(s.transferred)} of ${formatBytes(s.total)}` : ""
-        return `Installing Codeplane ${s.latest} from npm${bytes}`
+        return `Downloading Codeplane Desktop ${s.latest}${bytes}`
       }
       case "downloaded":
-        return `Codeplane ${s.latest} is installed. New local instances use it immediately.`
+        return `Codeplane Desktop ${s.latest} downloaded. Restarting to apply the update…`
       case "error":
-        return `Couldn't update local runtime: ${s.message}`
+        return `Couldn't update the desktop app: ${s.message}`
       case "idle":
       default:
-        return `Local runtime ${currentVersion()} is installed. Desktop shell version: ${api.version}.`
+        return `Codeplane Desktop ${api.version} is installed.`
     }
   }
 
@@ -415,7 +415,7 @@ const DesktopUpdateCard: Component = () => {
         </div>
         <div class="flex min-w-0 flex-1 flex-col gap-0.5">
           <div class="flex items-center gap-2">
-            <span class="text-[13px] font-medium text-text-strong">Local runtime</span>
+            <span class="text-[13px] font-medium text-text-strong">Desktop app</span>
             <span
               class="rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide"
               classList={{
@@ -441,7 +441,7 @@ const DesktopUpdateCard: Component = () => {
           return (
             <div class="px-1">
               <Progress value={s.percent} maxValue={100} hideLabel>
-                Installing runtime update
+                Downloading desktop update
               </Progress>
             </div>
           )
@@ -499,12 +499,12 @@ const DesktopUpdateCard: Component = () => {
         </Show>
         <Show when={state().kind === "downloading"}>
           <Button variant="primary" size="small" disabled data-desktop-action="desktop-update-downloading">
-            Installing…
+            Downloading…
           </Button>
         </Show>
         <Show when={state().kind === "downloaded"}>
           <Button variant="primary" size="small" icon="check" disabled data-desktop-action="desktop-update-installed">
-            Installed
+            Restarting…
           </Button>
         </Show>
         <Show when={notes()?.url && (state().kind === "available" || state().kind === "downloaded")}>

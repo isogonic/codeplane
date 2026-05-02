@@ -14,9 +14,11 @@ import {
   type WebContents,
 } from "electron"
 import Store from "electron-store"
+import { autoUpdater, type UpdateDownloadedEvent, type UpdateInfo, type ProgressInfo } from "electron-updater"
 import { CodeplaneHome } from "@codeplane-ai/shared/home"
-import { fetchCodeplaneLatestVersion, readPreferredLocalVersion, writePreferredLocalVersion } from "@codeplane-ai/shared/local-runtime"
+import { readPreferredLocalVersion, writePreferredLocalVersion } from "@codeplane-ai/shared/local-runtime"
 import { createInstanceStore, type State as InstanceStoreState } from "@codeplane-ai/shared/instance-store"
+import { createServerVersionWatcher, type ServerVersionWatcher } from "@codeplane-ai/shared/server-version-watcher"
 import { existsSync } from "node:fs"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
@@ -32,6 +34,7 @@ import {
   type DesktopUIPrepareProgress,
 } from "./ui-host"
 import { createLocalInstanceManager, type LocalInstanceProgress } from "./local-instance"
+import { reconnectOverlayScript } from "./reconnect-overlay"
 import { codeplaneReleaseTag, CodeplaneVersion } from "@codeplane-ai/shared/version"
 import type { SavedInstance } from "@codeplane-ai/shared/instance"
 
@@ -175,6 +178,11 @@ let mainWindow: BrowserWindow | undefined
 let currentInstanceID: string | undefined
 let instanceState: InstanceStoreState = { instances: [] }
 const configuredPartitions = new Set<string>()
+// Per-window watcher: started after the window first reaches a server's
+// `current` version, stopped on window-close, version-bump, or reconnect.
+// Keyed by window id so multiple instance windows don't share state.
+const windowVersionWatchers = new Map<number, ServerVersionWatcher>()
+const windowReconnecting = new Set<number>()
 const localManager = createLocalInstanceManager({
   binariesDir: codeplaneHome.local_server_binaries,
   configDir: codeplaneHome.root,
@@ -243,19 +251,6 @@ async function loadInstanceState() {
   if (instanceState.instances.length > 0 || instanceState.lastInstanceID) return instanceState
   if (await migrateInstanceState(store)) return instanceState
   await migrateInstanceState(legacyStore)
-  return instanceState
-}
-
-async function updateLocalInstanceVersions(version: string) {
-  const state = await instanceStore.getState()
-  if (!state.instances.some((item) => item.local && item.local.binaryVersion !== version)) {
-    instanceState = state
-    return state
-  }
-  instanceState = await instanceStore.replace({
-    instances: state.instances.map((item) => (item.local ? { ...item, local: { binaryVersion: version } } : item)),
-    lastInstanceID: state.lastInstanceID,
-  })
   return instanceState
 }
 
@@ -692,21 +687,43 @@ function broadcastUpdater(channel: string, payload?: unknown) {
   }
 }
 
-async function runtimeUpdateStatus() {
-  const current = await readPreferredLocalVersion(CodeplaneVersion)
-  const latest = await fetchCodeplaneLatestVersion().catch(() => null)
-  return {
-    current,
-    latest,
-    hasUpdate: !!latest && compareVersions(latest, current) > 0,
-    method: "npm",
+// Latest desktop shell version reported by electron-updater. Cached so the
+// status IPC can answer instantly between checks, and so we know which
+// version is being downloaded when we eventually get update-downloaded.
+let desktopShellLatestVersion: string | undefined
+let desktopShellUpdateInFlight: Promise<{ current: string; latest: string | null; hasUpdate: boolean }> | undefined
+
+async function shellUpdateStatus() {
+  const current = app.getVersion()
+  // In dev (unpackaged) electron-updater throws — surface the current shell
+  // version and skip the network probe so the UI can render a clean idle state.
+  if (!app.isPackaged) {
+    return { current, latest: current, hasUpdate: false, method: "dev" as const }
   }
+  if (!desktopShellUpdateInFlight) {
+    desktopShellUpdateInFlight = (async () => {
+      try {
+        const result = await autoUpdater.checkForUpdates()
+        const version = result?.updateInfo?.version ?? null
+        if (version) desktopShellLatestVersion = version
+        return {
+          current,
+          latest: version,
+          hasUpdate: !!version && compareVersions(version, current) > 0,
+        }
+      } finally {
+        desktopShellUpdateInFlight = undefined
+      }
+    })()
+  }
+  const result = await desktopShellUpdateInFlight
+  return { ...result, method: "github" as const }
 }
 
 async function getDesktopUpdateStatus() {
   const mocked = mockUpdateStatus()
   if (mocked) return mocked
-  return runtimeUpdateStatus()
+  return shellUpdateStatus()
 }
 
 async function getDesktopReleaseNotes(version: string) {
@@ -737,8 +754,14 @@ async function runRuntimeUpdateCheck(input?: { announce?: boolean }) {
     return mocked
   }
 
+  if (!app.isPackaged) {
+    const message = "Desktop auto-update is only available in packaged builds."
+    logger.log("main", "updater.skipped.unpacked", { message })
+    return { ok: false as const, error: message }
+  }
+
   try {
-    const status = await runtimeUpdateStatus()
+    const status = await shellUpdateStatus()
     if (status.hasUpdate && status.latest) {
       logger.log("main", "updater.update-available", status)
       broadcastUpdater("updater:update-available", { version: status.latest })
@@ -748,10 +771,10 @@ async function runRuntimeUpdateCheck(input?: { announce?: boolean }) {
           buttons: ["Install update", "Later"],
           defaultId: 0,
           cancelId: 1,
-          message: `Codeplane ${status.latest} is available`,
-          detail: `Current local runtime: ${status.current}\nLatest npm version: ${status.latest}`,
+          message: `Codeplane Desktop ${status.latest} is available`,
+          detail: `Current desktop version: ${status.current}\nLatest release: ${status.latest}\n\nThe app will restart automatically once the update is downloaded.`,
         })
-        if (result.response === 0) return installRuntimeUpdate(status.latest)
+        if (result.response === 0) return installShellUpdate(status.latest)
       }
       return { ok: true as const, updateAvailable: true, version: status.latest }
     }
@@ -763,8 +786,8 @@ async function runRuntimeUpdateCheck(input?: { announce?: boolean }) {
         type: "info",
         buttons: ["OK"],
         defaultId: 0,
-        message: `Codeplane ${status.current} is up to date`,
-        detail: "The shared local runtime already matches the latest npm release.",
+        message: `Codeplane Desktop ${status.current} is up to date`,
+        detail: "The desktop app is already on the latest released version.",
       })
     }
     return { ok: true as const, updateAvailable: false, version: status.current }
@@ -785,7 +808,7 @@ async function runRuntimeUpdateCheck(input?: { announce?: boolean }) {
   }
 }
 
-async function installRuntimeUpdate(version: string, sender?: WebContents) {
+async function installShellUpdate(version: string) {
   const mocked = mockUpdaterMode()
   if (mocked) {
     logger.log("main", "updater.download.mock", { version })
@@ -794,39 +817,29 @@ async function installRuntimeUpdate(version: string, sender?: WebContents) {
     return { ok: true as const, mocked: true }
   }
 
-  logger.log("main", "updater.download.start", { version })
-  // Capture which locals are currently running so we can hot-restart them
-  // on the new binary after the download completes. Otherwise users would
-  // see the new version on disk but their live process would still be
-  // running the old binary.
-  const runningBefore = localManager.listRunning()
-  await localManager.download(version, (progress) => {
-    const payload = {
-      percent: progress.percent,
-      transferred: progress.transferred ?? 0,
-      total: progress.total ?? 0,
-      version: progress.binaryVersion ?? version,
-    }
-    sender?.send("local:install-progress", { ...progress, version })
-    broadcastUpdater("updater:download-progress", payload)
-  })
-  await writePreferredLocalVersion(version)
-  await updateLocalInstanceVersions(version)
-  // Restart in-place so the live URL stays stable enough that the renderer
-  // can re-probe; if a restart fails, surface it but keep the update.
-  for (const live of runningBefore) {
-    try {
-      await localManager.restart({ id: live.id, binaryVersion: version }, (progress) => {
-        sender?.send("local:install-progress", { ...progress, version })
-      })
-      logger.log("main", "updater.restart.success", { id: live.id, version })
-    } catch (error) {
-      logger.log("main", "updater.restart.error", { error, id: live.id, version })
-    }
+  if (!app.isPackaged) {
+    const message = "Desktop auto-update is only available in packaged builds."
+    logger.log("main", "updater.skipped.unpacked", { message, version })
+    broadcastUpdater("updater:error", message)
+    return { ok: false as const, error: message }
   }
-  logger.log("main", "updater.download.success", { version })
-  broadcastUpdater("updater:update-downloaded", { version })
-  return { ok: true as const }
+
+  logger.log("main", "updater.download.start", { version })
+  desktopShellLatestVersion = version
+  try {
+    // electron-updater starts the download asynchronously and emits
+    // download-progress / update-downloaded events. We let those events
+    // drive the renderer; the eventual quitAndInstall lives in the
+    // update-downloaded handler so the UI gets a chance to render the
+    // "Restarting" state before the app exits.
+    await autoUpdater.downloadUpdate()
+    return { ok: true as const }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    logger.log("main", "updater.download.error", { error: errorMessage })
+    broadcastUpdater("updater:error", errorMessage)
+    return { ok: false as const, error: errorMessage }
+  }
 }
 
 function attachWindowHandlers(window: BrowserWindow) {
@@ -1168,6 +1181,7 @@ function attachInteractiveBootstrap(
         cleanup()
         emit({ phase: "done", message: "Loading…", percent: 100, version: prepared.version })
         await loadWindowUrl(window, prepared.url)
+        attachServerVersionWatcher(window, target, prepared.version)
         logger.log("main", "instance.bootstrap.success", { prepared, ...instanceSummary(target) })
       })
       .catch((error) => {
@@ -1221,6 +1235,98 @@ function attachInteractiveBootstrap(
   // the session is allowed through.
   pollTimer = setInterval(() => attempt(), 3_000)
   pollTimer.unref?.()
+}
+
+// Watches a connected window's server for a `current` version bump. When
+// the server reports a different version than the one we connected with,
+// the client is now behind: `uiHost.prepare` is keyed by version so the
+// cached UI bundle is stale. We tear the connection down, re-run prepare
+// (which downloads the matching new UI bundle) and reload the window.
+//
+// The same `instances:open-progress` IPC channel used by the initial open
+// is reused for the reconnect, so the renderer's existing overlay shows
+// the download progress without any new wiring.
+function attachServerVersionWatcher(window: BrowserWindow, instance: SavedInstance, connectedVersion: string) {
+  // Replace any prior watcher for this window. Safe whether or not one
+  // existed — `stop()` is idempotent.
+  windowVersionWatchers.get(window.id)?.stop()
+  windowVersionWatchers.delete(window.id)
+  if (window.isDestroyed()) return
+  const live = getInstanceLive(instance.id) ?? instance
+  const baseUrl = (() => {
+    const url = asUrl(live.url)
+    return url ? url.toString().replace(/\/+$/, "") : undefined
+  })()
+  if (!baseUrl) return
+
+  const emit = (payload: Record<string, unknown>) => {
+    if (window.isDestroyed()) return
+    window.webContents.send("instances:open-progress", { instanceID: instance.id, ...payload })
+  }
+
+  const watcher = createServerVersionWatcher({
+    baseUrl,
+    headers: live.headers,
+    currentVersion: connectedVersion,
+    onChange: ({ version, previous }) => {
+      if (windowReconnecting.has(window.id)) return
+      windowReconnecting.add(window.id)
+      logger.log("main", "instance.server-upgrade.detected", {
+        id: instance.id,
+        previous,
+        version,
+      })
+      // Inject the in-page overlay BEFORE we emit any progress, so the
+      // first event the overlay sees is our initial download tick.
+      if (!window.isDestroyed()) {
+        window.webContents
+          .executeJavaScript(reconnectOverlayScript, true)
+          .catch((error) => logger.log("main", "instance.server-upgrade.overlay.error", { error }))
+      }
+      emit({
+        phase: "download",
+        message: `Server upgraded ${previous} → ${version}. Downloading matching UI…`,
+        percent: 4,
+        version,
+      })
+      void (async () => {
+        try {
+          // Re-resolve the live instance — for local instances the URL
+          // changes if the binary was restarted on a new port during the
+          // upgrade. Falls back to the saved record otherwise.
+          const refreshed = getInstanceLive(instance.id) ?? instance
+          const prepared = await uiHost.prepare(refreshed, (progress: DesktopUIPrepareProgress) => emit(progress))
+          if (window.isDestroyed()) return
+          emit({ phase: "done", message: "Loading…", percent: 100, version: prepared.version })
+          await loadWindowUrl(window, prepared.url)
+          // Re-arm the watcher with the new connected version so we react
+          // to the next bump too.
+          attachServerVersionWatcher(window, refreshed, prepared.version)
+          logger.log("main", "instance.server-upgrade.reconnect.success", {
+            id: instance.id,
+            previous,
+            version: prepared.version,
+          })
+        } catch (error) {
+          logger.log("main", "instance.server-upgrade.reconnect.error", { error, id: instance.id })
+          emit({
+            phase: "error",
+            message: error instanceof Error ? error.message : String(error),
+            percent: 0,
+          })
+        } finally {
+          windowReconnecting.delete(window.id)
+        }
+      })()
+    },
+    onError: () => undefined,
+  })
+  windowVersionWatchers.set(window.id, watcher)
+  window.once("closed", () => {
+    windowVersionWatchers.get(window.id)?.stop()
+    windowVersionWatchers.delete(window.id)
+    windowReconnecting.delete(window.id)
+  })
 }
 
 async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebContents }) {
@@ -1307,6 +1413,7 @@ async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebConte
     if (prepared) {
       emit({ phase: "done", message: "Loading…", percent: 100, version: prepared.version })
       await loadWindowUrl(window, prepared.url)
+      attachServerVersionWatcher(window, instance, prepared.version)
     }
 
     // Atomically swap setup → instance. Hidden window starts at opacity 0
@@ -1609,14 +1716,14 @@ function setupIpc() {
     logger.log("main", "updater.release-notes", { found: !!result, version })
     return result
   })
-  ipcMain.handle("updater:download", async (event) => {
+  ipcMain.handle("updater:download", async () => {
     try {
       const status = await getDesktopUpdateStatus()
       if (!status.latest || !status.hasUpdate) {
         logger.log("main", "updater.download.skipped", status)
         return { ok: true as const }
       }
-      return installRuntimeUpdate(status.latest, event.sender)
+      return installShellUpdate(status.latest)
     } catch (error) {
       const response = { ok: false as const, error: error instanceof Error ? error.message : String(error) }
       logger.log("main", "updater.download.error", response)
@@ -1629,8 +1736,30 @@ function setupIpc() {
       return { ok: true as const, mocked: true }
     }
     logger.log("main", "updater.install.requested")
+    if (app.isPackaged) {
+      // Run on next tick so the IPC reply ships before the app exits.
+      setImmediate(() => quitAndInstallShellUpdate("ipc-request"))
+    }
     return { ok: true as const }
   })
+}
+
+let shellQuitAndInstallScheduled = false
+
+function quitAndInstallShellUpdate(reason: string) {
+  if (shellQuitAndInstallScheduled) return
+  shellQuitAndInstallScheduled = true
+  logger.log("main", "updater.quit-and-install", { reason })
+  // isSilent=true skips the elevation dialog where applicable; the second
+  // arg forces a relaunch so the user lands back in the app on the new
+  // version. The before-quit handler still gets a chance to stop local
+  // instances cleanly.
+  try {
+    autoUpdater.quitAndInstall(false, true)
+  } catch (error) {
+    logger.log("main", "updater.quit-and-install.error", { error })
+    shellQuitAndInstallScheduled = false
+  }
 }
 
 function setupAutoUpdater() {
@@ -1641,6 +1770,50 @@ function setupAutoUpdater() {
     })
     return
   }
+  if (!app.isPackaged) {
+    logger.log("main", "updater.disabled.unpacked", {})
+    return
+  }
+
+  // Drive the install ourselves once the user clicks "Install update", and
+  // restart automatically when the download finishes so changes apply.
+  autoUpdater.autoDownload = false
+  autoUpdater.autoInstallOnAppQuit = true
+  autoUpdater.logger = {
+    info: (...args: unknown[]) => logger.log("main", "updater.info", { args }),
+    warn: (...args: unknown[]) => logger.log("main", "updater.warn", { args }),
+    error: (...args: unknown[]) => logger.log("main", "updater.error", { args }),
+    debug: (...args: unknown[]) => logger.log("main", "updater.debug", { args }),
+  }
+
+  autoUpdater.on("update-available", (info: UpdateInfo) => {
+    desktopShellLatestVersion = info.version
+    broadcastUpdater("updater:update-available", { version: info.version })
+  })
+  autoUpdater.on("update-not-available", (info: UpdateInfo) => {
+    broadcastUpdater("updater:update-not-available", { version: info.version })
+  })
+  autoUpdater.on("download-progress", (progress: ProgressInfo) => {
+    broadcastUpdater("updater:download-progress", {
+      percent: progress.percent,
+      transferred: progress.transferred,
+      total: progress.total,
+    })
+  })
+  autoUpdater.on("update-downloaded", (info: UpdateDownloadedEvent) => {
+    desktopShellLatestVersion = info.version
+    logger.log("main", "updater.download.success", { version: info.version })
+    broadcastUpdater("updater:update-downloaded", { version: info.version })
+    // Give the renderer a moment to render the "Restarting" state before
+    // the app exits, then relaunch on the new shell so changes apply.
+    setTimeout(() => quitAndInstallShellUpdate("download-complete"), 1_500)
+  })
+  autoUpdater.on("error", (error: Error) => {
+    const message = error?.message ?? String(error)
+    logger.log("main", "updater.error", { error: message })
+    broadcastUpdater("updater:error", message)
+  })
+
   setTimeout(() => void runRuntimeUpdateCheck().catch(() => undefined), 5_000)
   setInterval(() => void runRuntimeUpdateCheck().catch(() => undefined), 60 * 60 * 1000)
 }

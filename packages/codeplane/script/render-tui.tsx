@@ -1,0 +1,35 @@
+#!/usr/bin/env bun
+// Render TUI scenes to ANSI strings for visual review.
+//
+// Usage: bun packages/codeplane/script/render-tui.tsx [scene]
+//   scene: setup | conversation | palette | notifications | settings | terminal | all (default)
+import React from "react"
+import { renderToString } from "ink"
+import { Scene } from "../src/tui/scenes"
+
+const COLUMNS = Number(process.env.COLUMNS ?? 110)
+const ROWS = Number(process.env.LINES ?? 36)
+
+const scenes: Record<string, () => React.ReactElement> = {
+  setup: () => <Scene name="setup" rows={ROWS} />,
+  directory: () => <Scene name="directory" rows={ROWS} />,
+  conversation: () => <Scene name="conversation" rows={ROWS} />,
+  "conversation-sidebar": () => <Scene name="conversation-sidebar" rows={ROWS} />,
+  palette: () => <Scene name="palette" rows={ROWS} />,
+  notifications: () => <Scene name="notifications" rows={ROWS} />,
+  settings: () => <Scene name="settings" rows={ROWS} />,
+  terminal: () => <Scene name="terminal" rows={ROWS} />,
+}
+
+const target = process.argv[2] ?? "all"
+const list = target === "all" ? Object.keys(scenes) : [target]
+
+for (const name of list) {
+  const factory = scenes[name]
+  if (!factory) {
+    console.error(`unknown scene: ${name}`)
+    process.exit(1)
+  }
+  const out = renderToString(factory(), { columns: COLUMNS })
+  process.stdout.write(`\n\x1b[1;36m── ${name} ──\x1b[0m\n${out}\n`)
+}

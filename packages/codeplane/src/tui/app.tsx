@@ -18,16 +18,52 @@ import type {
 import type { LocalTarget, OpenProgress, SavedInstance } from "@codeplane-ai/shared/instance"
 import { localInstanceUrl } from "@codeplane-ai/shared/instance"
 import { formatHeaders as serializeHeaders, parseHeaders as parseHeaderInput } from "@codeplane-ai/shared/headers"
+import { createServerVersionWatcher, type ServerVersionWatcher } from "@codeplane-ai/shared/server-version-watcher"
 import { CodeplaneVersion } from "@codeplane-ai/shared/version"
-import { createInstanceService, type InstanceService } from "./instance-service"
-import { wsUrlForInstance } from "./client"
+import { createInstanceService, type InstanceService, TUIAuthRequiredError } from "./instance-service"
+import { headersForInstance, normalizeInstanceUrl, wsUrlForInstance } from "./client"
+import { normalizeAuthInput, openSystemBrowser } from "./auth-helper"
+import {
+  Breadcrumb,
+  CommandPalette,
+  Composer,
+  Conversation,
+  DiffView,
+  FileList,
+  Header,
+  MetricRow,
+  NotificationList,
+  Panel,
+  ProgressBar,
+  RouteTabs,
+  SessionList,
+  StatusBar,
+  TodoList,
+} from "./view"
+import { glyph, theme } from "./theme"
+import {
+  toConversationParts,
+  toCronRows,
+  toDiffLines,
+  toNotificationItems,
+  toSessionItems,
+  toTodoItems,
+} from "./presenter"
 
-type SetupRoute = "setup.list" | "setup.remote-form" | "setup.local-form" | "setup.settings"
-type WorkspaceRoute = "app.home" | "app.notifications" | "app.settings" | "app.cron" | "app.session"
+type SetupRoute = "setup.list" | "setup.remote-form" | "setup.local-form" | "setup.settings" | "setup.signin"
+type WorkspaceRoute =
+  | "app.directory"
+  | "app.home"
+  | "app.notifications"
+  | "app.settings"
+  | "app.cron"
+  | "app.session"
 type Route = SetupRoute | WorkspaceRoute
 type Focus =
   | "instances"
   | "setupForm"
+  | "signin"
+  | "directory"
   | "sessions"
   | "files"
   | "messages"
@@ -37,7 +73,23 @@ type Focus =
   | "settings"
   | "terminals"
   | "palette"
+
+type DirectoryBrowser = {
+  cwd: string
+  home?: string
+  entries: Array<{ path: string; type: "file" | "directory"; name: string }>
+  selected: number
+  loading: boolean
+  history: string[]
+}
 type Opened = Awaited<ReturnType<InstanceService["open"]>>
+
+type SigninState = {
+  instance: SavedInstance
+  authUrl: string
+  input: string
+  status?: "idle" | "submitting"
+}
 
 type FormState = {
   kind: "remote" | "local"
@@ -112,59 +164,6 @@ function notificationOptions(permissions: PermissionRequest[], questions: Questi
   ]
 }
 
-function renderPart(part: Part) {
-  switch (part.type) {
-    case "text":
-      return part.text
-    case "reasoning":
-      return `[reasoning]\n${part.text}`
-    case "tool":
-      return `[tool:${part.tool}] ${part.state.status}${"title" in part.state && part.state.title ? ` ${part.state.title}` : ""}${
-        part.state.status === "completed" ? `\n${part.state.output}` : part.state.status === "error" ? `\n${part.state.error}` : ""
-      }`
-    case "file":
-      return `[file] ${part.filename ?? part.url}`
-    case "subtask":
-      return `[subtask:${part.agent}] ${part.description}`
-    case "agent":
-      return `[agent] ${part.name}`
-    case "retry":
-      return `[retry ${part.attempt}] ${part.error.data.message}`
-    case "compaction":
-      return `[compaction] ${part.auto ? "auto" : "manual"}${part.overflow ? " overflow" : ""}`
-    case "patch":
-      return `[patch] ${part.files.join(", ")}`
-    case "snapshot":
-      return `[snapshot] ${part.snapshot}`
-    case "step-start":
-      return "[step-start]"
-    case "step-finish":
-      return `[step-finish] ${part.reason}`
-  }
-}
-
-function renderMessageBlock(message: Message, parts: Part[]) {
-  const heading =
-    message.role === "user"
-      ? `User  ${formatTime(message.time.created)}`
-      : `Assistant  ${formatTime(message.time.created)}${"completed" in message.time && message.time.completed ? ` -> ${formatTime(message.time.completed)}` : ""}`
-  return [heading, ...parts.map(renderPart).flatMap((part) => part.split("\n")), ""]
-}
-
-function renderMessages(messages: Array<{ info: Message; parts: Part[] }>) {
-  return messages.flatMap((item) => renderMessageBlock(item.info, item.parts))
-}
-
-function renderDiffs(diffs: SnapshotFileDiff[]) {
-  if (diffs.length === 0) return ["No diff snapshot"]
-  return diffs.flatMap((diff) => [`${diff.status ?? "modified"} ${diff.file} (+${diff.additions}/-${diff.deletions})`, ...diff.patch.split("\n"), ""])
-}
-
-function renderTodos(todos: Todo[]) {
-  if (todos.length === 0) return ["No todos"]
-  return todos.map((todo) => `[${todo.status}] (${todo.priority}) ${todo.content}`)
-}
-
 function terminalLines(tab: TerminalTab, rows: number) {
   const buffer = tab.terminal.buffer.active
   const end = Math.max(0, buffer.length - tab.scrollOffset)
@@ -174,117 +173,34 @@ function terminalLines(tab: TerminalTab, rows: number) {
   )
 }
 
-function Panel(props: {
-  title: string
-  active?: boolean
-  width?: number | string
-  grow?: number
-  children: React.ReactNode
-}) {
-  return (
-    <Box borderStyle="round" borderColor={props.active ? "cyan" : "gray"} flexDirection="column" width={props.width} flexGrow={props.grow}>
-      <Box paddingX={1}>
-        <Text bold color={props.active ? "cyan" : "white"}>
-          {props.title}
-        </Text>
-      </Box>
-      <Box paddingX={1} paddingBottom={1} flexDirection="column" flexGrow={1}>
-        {props.children}
-      </Box>
-    </Box>
-  )
-}
-
-function Lines(props: { lines: string[]; limit?: number }) {
-  const lines = props.limit ? props.lines.slice(-props.limit) : props.lines
-  if (lines.length === 0) return <Text dimColor>Empty</Text>
-  return (
-    <>
-      {lines.map((line, index) => (
-        <Text key={`${index}:${line}`}>{line || " "}</Text>
-      ))}
-    </>
-  )
-}
-
-function StatusBanner(props: { variant: "info" | "success" | "error" | "warning"; text: string }) {
-  const color =
-    props.variant === "success"
-      ? "green"
-      : props.variant === "error"
-        ? "red"
-        : props.variant === "warning"
-          ? "yellow"
-          : "cyan"
-  const label =
-    props.variant === "success"
-      ? "success"
-      : props.variant === "error"
-        ? "error"
-        : props.variant === "warning"
-          ? "warning"
-          : "info"
-  return (
-    <Text color={color}>
-      [{label}] {props.text}
-    </Text>
-  )
-}
-
-function Meter(props: { value: number }) {
-  const width = 32
-  const clamped = Math.max(0, Math.min(100, Math.round(props.value)))
-  const filled = Math.round((clamped / 100) * width)
-  return (
-    <Text>
-      [{"■".repeat(filled)}
-      {"·".repeat(Math.max(0, width - filled))}] {clamped}%
-    </Text>
-  )
+function useSpinnerFrame(active: boolean, intervalMs = 90): string {
+  const [frame, setFrame] = useState(0)
+  useEffect(() => {
+    if (!active) return
+    const id = setInterval(() => setFrame((current) => (current + 1) % glyph.spinnerFrames.length), intervalMs)
+    return () => clearInterval(id)
+  }, [active, intervalMs])
+  return glyph.spinnerFrames[frame] ?? glyph.spinnerFrames[0]!
 }
 
 function InputField(props: { value: string; placeholder: string; active?: boolean }) {
+  // Used only for the in-place setup form fields where Composer would be
+  // overkill — keeps form layout compact.
   if (!props.value) {
     return (
-      <Text dimColor>
+      <Text color={theme.fgDim}>
         {props.active ? "› " : "  "}
         {props.placeholder}
-        {props.active ? "█" : ""}
+        {props.active ? <Text color={theme.accent}>{glyph.cursor}</Text> : ""}
       </Text>
     )
   }
   return (
-    <Text color={props.active ? "cyan" : undefined}>
-      {props.active ? "› " : "  "}
+    <Text color={props.active ? theme.fg : theme.fgMuted}>
+      {props.active ? <Text color={theme.accent}>{`${glyph.prompt} `}</Text> : "  "}
       {props.value}
-      {props.active ? "█" : ""}
+      {props.active ? <Text color={theme.accent}>{glyph.cursor}</Text> : ""}
     </Text>
-  )
-}
-
-function OptionList(props: {
-  options: Array<{ label: string; value: string }>
-  selectedValue?: string
-  active?: boolean
-  empty?: string
-  limit?: number
-}) {
-  if (props.options.length === 0) return <Text dimColor>{props.empty ?? "Empty"}</Text>
-  const index = Math.max(0, props.options.findIndex((item) => item.value === props.selectedValue))
-  const limit = props.limit ?? 14
-  const start = Math.max(0, Math.min(index - Math.floor(limit / 2), Math.max(0, props.options.length - limit)))
-  const visible = props.options.slice(start, start + limit)
-  return (
-    <>
-      {visible.map((item) => {
-        const selected = item.value === props.selectedValue
-        return (
-          <Text key={item.value} color={selected && props.active ? "cyan" : selected ? "white" : "gray"}>
-            {selected ? (props.active ? "›" : "•") : " "} {item.label}
-          </Text>
-        )
-      })}
-    </>
   )
 }
 
@@ -310,6 +226,7 @@ export function App(props: AppProps) {
   const [localTargetInfo, setLocalTargetInfo] = useState<LocalTarget>()
   const [selectedInstanceID, setSelectedInstanceID] = useState<string>()
   const [form, setForm] = useState<FormState>()
+  const [signin, setSignin] = useState<SigninState>()
   const [opened, setOpened] = useState<Opened>()
   const [opening, setOpening] = useState<OpenProgress>()
   const [statusMessage, setStatusMessage] = useState<{ variant: "info" | "success" | "error" | "warning"; text: string }>()
@@ -329,7 +246,12 @@ export function App(props: AppProps) {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [paletteFilter, setPaletteFilter] = useState("")
   const [paletteSelection, setPaletteSelection] = useState<string>()
+  const [directory, setDirectory] = useState<DirectoryBrowser>()
   const [composerValue, setComposerValue] = useState("")
+  // Sidebar collapsed by default for a Claude Code / Codex-style focused
+  // conversation view. Press `s` to surface sessions/tasks/diff, or use the
+  // command palette.
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [messageScroll, setMessageScroll] = useState(0)
   const [terminalOpen, setTerminalOpen] = useState(false)
   const [terminals, setTerminals] = useState<TerminalTab[]>([])
@@ -338,6 +260,11 @@ export function App(props: AppProps) {
   const refreshTimer = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const eventAbort = useRef<AbortController | undefined>(undefined)
   const terminalClose = useRef<Map<string, VoidFunction>>(new Map())
+  const versionWatcher = useRef<ServerVersionWatcher | undefined>(undefined)
+  // Guards re-entry: a single server upgrade can fire both the SDK
+  // `installation.updated` event AND a poll hit before we've torn the
+  // session down. Without this, both paths race to call openInstance().
+  const reconnecting = useRef(false)
 
   const selectedInstance = instances.find((item) => item.id === selectedInstanceID)
   const selectedSession = sessions.find((item) => item.id === selectedSessionID)
@@ -413,6 +340,96 @@ export function App(props: AppProps) {
     })
   }
 
+  async function loadDirectory(target: string, options: { keep?: boolean } = {}) {
+    if (!opened) return
+    const cwd = target === "" ? opened.path.directory : target
+    setDirectory((current) => ({
+      cwd,
+      home: opened.path.home,
+      entries: current?.entries ?? [],
+      selected: 0,
+      loading: true,
+      history: options.keep && current ? current.history : current?.history ?? [],
+    }))
+    try {
+      // We re-issue path.get pointed at `cwd` so the server can resolve aliases
+      // (~, relative paths) and tell us the absolute resolved directory before
+      // we list. file.list with a directory header lists relative to that dir.
+      const pathResp = await opened.client.path.get({ directory: cwd })
+      const resolved = pathResp.data?.directory ?? cwd
+      const fileResp = await opened.client.file.list({ path: ".", directory: resolved })
+      const entries = (fileResp.data ?? [])
+        .map((node) => ({
+          path: node.absolute ?? node.path,
+          type: node.type as "file" | "directory",
+          name: node.path.replace(/^\.\//, "") || node.path,
+        }))
+        .sort((a, b) => {
+          if (a.type === b.type) return a.name.localeCompare(b.name)
+          return a.type === "directory" ? -1 : 1
+        })
+      startTransition(() => {
+        setDirectory((current) => ({
+          cwd: resolved,
+          home: pathResp.data?.home ?? current?.home ?? opened.path.home,
+          entries,
+          selected: 0,
+          loading: false,
+          history: current?.history ?? [],
+        }))
+      })
+    } catch (error) {
+      setDirectory((current) =>
+        current ? { ...current, loading: false } : current,
+      )
+      throw error
+    }
+  }
+
+  async function enterDirectory(targetPath: string) {
+    if (!directory) return
+    setDirectory({
+      ...directory,
+      history: [...directory.history, directory.cwd],
+    })
+    await loadDirectory(targetPath, { keep: true })
+  }
+
+  async function goUpDirectory() {
+    if (!directory) return
+    const parent = directory.cwd.replace(/\/+$/, "").split("/").slice(0, -1).join("/") || "/"
+    if (parent === directory.cwd) return
+    await loadDirectory(parent, { keep: true })
+  }
+
+  async function confirmDirectory() {
+    if (!directory || !opened) return
+    if (directory.cwd === opened.path.directory) {
+      setRoute("app.session")
+      setFocus(selectedSession ? "composer" : "sessions")
+      return
+    }
+    setMessage("info", `Switching to ${directory.cwd}…`)
+    try {
+      const next = await service.reopen(opened.instance, directory.cwd)
+      startTransition(() => {
+        setOpened(next)
+        setSessionMessages({})
+        setTodos({})
+        setDiffs({})
+        setRoute("app.session")
+        setFocus("sessions")
+      })
+      await refreshWorkspace()
+      setMessage("success", `Working in ${directory.cwd}`)
+    } catch (error) {
+      setMessage(
+        "error",
+        error instanceof Error ? error.message : `Could not open ${directory.cwd}`,
+      )
+    }
+  }
+
   async function refreshNotifications() {
     if (!opened) return
     const [permissionResponse, questionResponse] = await Promise.all([opened.client.permission.list(), opened.client.question.list()])
@@ -441,6 +458,43 @@ export function App(props: AppProps) {
     startTransition(() => {
       setVersionInfo(response.data ?? {})
     })
+  }
+
+  // Server reported a different `current` version than the one we connected
+  // with — almost always means the operator (or auto-update) restarted the
+  // backend on a new build. Tear the session down and re-run open(), which
+  // re-probes /global/version, downloads the matching local binary if the
+  // instance is local, and re-establishes SDK + event subscriptions.
+  function handleServerUpgrade(saved: SavedInstance, next: { version: string; previous: string }) {
+    if (reconnecting.current) return
+    reconnecting.current = true
+    eventAbort.current?.abort()
+    eventAbort.current = undefined
+    versionWatcher.current?.stop()
+    versionWatcher.current = undefined
+    for (const close of terminalClose.current.values()) close()
+    terminalClose.current.clear()
+    startTransition(() => {
+      setOpened(undefined)
+      setTerminals([])
+      setTerminalOpen(false)
+      setOpening({
+        instanceID: saved.id,
+        phase: "download",
+        message: `Server upgraded ${next.previous} → ${next.version}. Downloading matching client…`,
+        percent: 4,
+        version: next.version,
+      })
+    })
+    setMessage("warning", `Server upgraded to ${next.version}; reconnecting…`)
+    void openInstance(saved)
+      .catch((error) => {
+        setOpening(undefined)
+        setMessage("error", error instanceof Error ? error.message : String(error))
+      })
+      .finally(() => {
+        reconnecting.current = false
+      })
   }
 
   async function refreshFileContent(nextPath: string) {
@@ -485,11 +539,31 @@ export function App(props: AppProps) {
       percent: 0,
     })
     setMessage("info", `Opening ${instance.label ?? instance.url}`)
-    const next = await service.open(instance, (progress) => setOpening(progress))
+    let next: Opened
+    try {
+      next = await service.open(instance, (progress) => setOpening(progress))
+    } catch (error) {
+      if (error instanceof TUIAuthRequiredError) {
+        startTransition(() => {
+          setOpening(undefined)
+          setSignin({
+            instance,
+            authUrl: error.authUrl,
+            input: "",
+            status: "idle",
+          })
+          setRoute("setup.signin")
+          setFocus("signin")
+        })
+        setMessage("warning", `${instance.label ?? instance.url} requires sign-in`)
+        return
+      }
+      throw error
+    }
     startTransition(() => {
       setOpened(next)
-      setRoute("app.home")
-      setFocus("sessions")
+      setRoute("app.directory")
+      setFocus("directory")
       setOpening(undefined)
       setSessionMessages({})
       setTodos({})
@@ -497,12 +571,65 @@ export function App(props: AppProps) {
       setTerminals([])
       setTerminalOpen(false)
     })
-    await refreshWorkspace()
+    setMessage("success", `Connected to ${next.live.url}`)
+    // Seed the directory picker at the project root so the user has a clear
+    // starting point. The picker is the first thing they see — they can drill
+    // into a sub-tree before the workspace boots, or just press `o` to use the
+    // server-reported default cwd.
+    try {
+      await loadDirectory(next.path.directory)
+    } catch (error) {
+      setMessage("error", error instanceof Error ? error.message : String(error))
+    }
     if (props.initialRoute === "session") {
+      // Power users that pass --route=session via CLI still want to skip the
+      // picker and land directly in the conversation view.
+      await refreshWorkspace()
       setRoute("app.session")
       setFocus("messages")
     }
-    setMessage("success", `Connected to ${next.live.url}`)
+  }
+
+  async function submitSignin() {
+    if (!signin || signin.status === "submitting") return
+    const headerLine = normalizeAuthInput(signin.input)
+    if (!headerLine) {
+      setMessage("error", "Paste the auth header value before saving")
+      return
+    }
+    // Pull a single `Name: Value` pair out of the normalized line — we don't
+    // round-trip through `parseHeaders` here because that splits on `;`,
+    // which is a valid separator inside cookie values.
+    const colonIdx = headerLine.indexOf(":")
+    const name = colonIdx > 0 ? headerLine.slice(0, colonIdx).trim() : ""
+    const value = colonIdx > 0 ? headerLine.slice(colonIdx + 1).trim() : ""
+    if (!name || !value) {
+      setMessage("error", "Could not parse the auth header — expected `Name: Value`")
+      return
+    }
+    const updated: SavedInstance = {
+      ...signin.instance,
+      headers: { ...(signin.instance.headers ?? {}), [name]: value },
+    }
+    setSignin({ ...signin, status: "submitting" })
+    try {
+      await service.save(updated)
+      await loadInstances()
+      setSignin(undefined)
+      setRoute("setup.list")
+      setFocus("instances")
+      setMessage("info", `Retrying ${updated.label ?? updated.url}…`)
+      await openInstance(updated)
+    } catch (error) {
+      setSignin((current) => (current ? { ...current, status: "idle" } : current))
+      setMessage("error", error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  async function openSigninUrl() {
+    if (!signin) return
+    const ok = await openSystemBrowser(signin.authUrl)
+    setMessage(ok ? "success" : "warning", ok ? "Opened sign-in URL in your browser" : `Open ${signin.authUrl} in your browser to sign in`)
   }
 
   async function saveForm() {
@@ -833,6 +960,13 @@ export function App(props: AppProps) {
               }
               break
             case "installation.updated":
+              // Force a poll so we react inside the same tick as the
+              // server-pushed event, instead of waiting up to `intervalMs`
+              // for the next scheduled poll. The watcher's onChange handler
+              // takes care of dedupe.
+              versionWatcher.current?.ping()
+              queueRefresh("version", refreshVersion, 50)
+              break
             case "installation.update-available":
               queueRefresh("version", refreshVersion, 50)
               break
@@ -843,9 +977,33 @@ export function App(props: AppProps) {
     return () => abort.abort()
   }, [opened?.live.url, opened?.path.directory, selectedSessionID])
 
+  useEffect(() => {
+    if (!opened) {
+      versionWatcher.current?.stop()
+      versionWatcher.current = undefined
+      return
+    }
+    const baseUrl = normalizeInstanceUrl(opened.live.url)
+    if (!baseUrl) return
+    versionWatcher.current?.stop()
+    const watcher = createServerVersionWatcher({
+      baseUrl,
+      headers: headersForInstance(opened.live),
+      currentVersion: opened.version,
+      onChange: (next) => handleServerUpgrade(opened.instance, next),
+      onError: () => undefined,
+    })
+    versionWatcher.current = watcher
+    return () => {
+      watcher.stop()
+      if (versionWatcher.current === watcher) versionWatcher.current = undefined
+    }
+  }, [opened?.live.url, opened?.version, opened?.instance.id])
+
   useEffect(
     () => () => {
       eventAbort.current?.abort()
+      versionWatcher.current?.stop()
       for (const close of terminalClose.current.values()) close()
     },
     [],
@@ -887,6 +1045,32 @@ export function App(props: AppProps) {
         }
         if (editableInput(input, key)) {
           setPaletteFilter((current) => current + input)
+        }
+        return
+      }
+
+      if (signin) {
+        if (signin.status === "submitting") return
+        if (key.escape) {
+          setSignin(undefined)
+          setRoute("setup.list")
+          setFocus("instances")
+          return
+        }
+        if (key.ctrl && (input === "o" || input === "O")) {
+          void openSigninUrl().catch((error) => setMessage("error", error instanceof Error ? error.message : String(error)))
+          return
+        }
+        if (key.return) {
+          void submitSignin().catch((error) => setMessage("error", error instanceof Error ? error.message : String(error)))
+          return
+        }
+        if (key.backspace) {
+          setSignin({ ...signin, input: signin.input.slice(0, -1) })
+          return
+        }
+        if (editableInput(input, key)) {
+          setSignin({ ...signin, input: signin.input + input })
         }
         return
       }
@@ -1012,6 +1196,68 @@ export function App(props: AppProps) {
 
       if (!opened) return
 
+      // Directory picker takes over keyboard input — full file browser.
+      if (route === "app.directory" && directory) {
+        if (key.escape) {
+          // Bail back to the instance list, leaving the directory picker
+          // available next time the user opens the same instance.
+          setRoute("setup.list")
+          setFocus("instances")
+          return
+        }
+        if (key.upArrow) {
+          setDirectory({
+            ...directory,
+            selected: Math.max(0, directory.selected - 1),
+          })
+          return
+        }
+        if (key.downArrow) {
+          setDirectory({
+            ...directory,
+            selected: Math.min(directory.entries.length - 1, directory.selected + 1),
+          })
+          return
+        }
+        if (key.return || key.rightArrow) {
+          const target = directory.entries[directory.selected]
+          if (!target) return
+          if (target.type === "directory") {
+            void enterDirectory(target.path).catch((error) =>
+              setMessage("error", error instanceof Error ? error.message : String(error)),
+            )
+          }
+          return
+        }
+        if (key.leftArrow || (key.backspace && !directory.loading)) {
+          void goUpDirectory().catch((error) =>
+            setMessage("error", error instanceof Error ? error.message : String(error)),
+          )
+          return
+        }
+        if (input === "o" || (key.tab && key.return)) {
+          void confirmDirectory().catch((error) =>
+            setMessage("error", error instanceof Error ? error.message : String(error)),
+          )
+          return
+        }
+        if (input === "h") {
+          if (directory.home) {
+            void loadDirectory(directory.home, { keep: true }).catch((error) =>
+              setMessage("error", error instanceof Error ? error.message : String(error)),
+            )
+          }
+          return
+        }
+        if (input === "/") {
+          setPaletteOpen(true)
+          setPaletteFilter("")
+          setPaletteSelection(commandOptions[0]?.value)
+          setFocus("palette")
+        }
+        return
+      }
+
       if (input === "/") {
         setPaletteOpen(true)
         setPaletteFilter("")
@@ -1025,6 +1271,20 @@ export function App(props: AppProps) {
       if (input === "3") setRoute("app.settings")
       if (input === "4") setRoute("app.cron")
       if (input === "5") setRoute("app.session")
+      if (input === "d" && opened && route !== "app.directory") {
+        setRoute("app.directory")
+        setFocus("directory")
+        if (!directory) {
+          void loadDirectory(opened.path.directory).catch((error) =>
+            setMessage("error", error instanceof Error ? error.message : String(error)),
+          )
+        }
+        return
+      }
+      if (input === "s" && focus !== "composer") {
+        setSidebarOpen((value) => !value)
+        return
+      }
       if (input === "t" && focus !== "terminals") setTerminalOpen((value) => !value)
       if (input === "n" && focus !== "terminals") {
         void createTerminalTab().catch((error) => setMessage("error", error instanceof Error ? error.message : String(error)))
@@ -1187,262 +1447,753 @@ export function App(props: AppProps) {
     { isActive: true },
   )
 
-  const messageLines = renderMessages(selectedMessages)
-  const visibleMessageLines = messageScroll > 0 ? messageLines.slice(Math.max(0, messageLines.length - 40 - messageScroll), Math.max(0, messageLines.length - messageScroll)) : messageLines.slice(-40)
-  const diffLines = renderDiffs(selectedDiffs).slice(0, 18)
-  const todoLines = renderTodos(selectedTodos).slice(0, 10)
+  const sessionItems = toSessionItems(sessions, sessionStatus)
+  const todoItems = toTodoItems(selectedTodos)
+  const diffEntries = toDiffLines(selectedDiffs)
+  const conversationParts = toConversationParts(selectedMessages)
+  // The conversation may be very long; clamp visible parts based on terminal
+  // height so we don't push the composer offscreen.
+  const conversationVisible = (() => {
+    const rows = process.stdout.rows ?? 40
+    const budget = Math.max(8, Math.min(80, rows - 18))
+    const skip = Math.max(0, conversationParts.length - budget - messageScroll)
+    return conversationParts.slice(skip, skip + budget)
+  })()
+  const notificationViewItems = toNotificationItems(permissions, questions)
+  const cronRows = toCronRows(cronTasks)
+  const sessionBusy = !!selectedSessionID && sessionStatus[selectedSessionID]?.type === "busy"
+  const anyBusy = Object.values(sessionStatus).some((status) => status.type === "busy" || status.type === "retry")
+  const spinnerFrame = useSpinnerFrame(anyBusy || !!opening || signin?.status === "submitting")
+
+  const headerBranch = opened ? relative(opened.path.worktree, opened.path.directory) : undefined
+
+  const routeTabs = [
+    { id: "app.home", label: "Home", key: "1" },
+    {
+      id: "app.session",
+      label: "Session",
+      key: "2",
+      badge: sessions.length || undefined,
+    },
+    {
+      id: "app.notifications",
+      label: "Inbox",
+      key: "3",
+      badge: notificationViewItems.length || undefined,
+    },
+    { id: "app.cron", label: "Cron", key: "4", badge: cronTasks.length || undefined },
+    { id: "app.settings", label: "Settings", key: "5" },
+  ]
+
+  const setupHints = [
+    { keys: "a", label: "add remote" },
+    { keys: "l", label: "add local" },
+    { keys: "e", label: "edit" },
+    { keys: "d", label: "delete" },
+    { keys: "↵", label: "open" },
+    { keys: "q", label: "quit" },
+  ]
+
+  const workspaceHints = (() => {
+    if (route === "app.notifications") {
+      return [
+        { keys: "tab", label: "switch pane" },
+        { keys: "y", label: "approve once" },
+        { keys: "a", label: "always" },
+        { keys: "x", label: "reject" },
+        { keys: "/", label: "commands" },
+      ]
+    }
+    if (route === "app.settings") {
+      return [
+        { keys: "u", label: "upgrade / refresh" },
+        { keys: "/", label: "commands" },
+      ]
+    }
+    if (terminalOpen && focus === "terminals") {
+      return [
+        { keys: "←→", label: "switch tab" },
+        { keys: "n", label: "new" },
+        { keys: "x", label: "close" },
+        { keys: "t", label: "hide dock" },
+      ]
+    }
+    if (focus === "messages") {
+      return [
+        { keys: "tab", label: "switch pane" },
+        { keys: "↑↓ pgup/pgdn", label: "scroll" },
+        { keys: "/", label: "commands" },
+        { keys: "n", label: "new session" },
+        { keys: "q", label: "quit" },
+      ]
+    }
+    return [
+      { keys: "↵", label: "send" },
+      { keys: "/", label: "commands" },
+      { keys: "s", label: sidebarOpen ? "hide sidebar" : "sidebar" },
+      { keys: "d", label: "directory" },
+      { keys: "n", label: "new session" },
+      { keys: "t", label: "terminal" },
+      { keys: "q", label: "quit" },
+    ]
+  })()
+
+  const composerPlaceholder = selectedSession
+    ? `Message ${selectedSession.title}`
+    : "Create a session and send a prompt"
+  const composerHint = focus === "composer"
+    ? "↵ send · / commands · esc unfocus"
+    : "tab to focus composer · ↵ send when focused"
 
   return (
-    <Box flexDirection="column" height={process.stdout.rows || 40}>
-      <Box justifyContent="space-between">
-        <Text bold color="cyan">
-          codeplane tui
-        </Text>
-        <Text>
-          {opened ? `${opened.instance.label ?? opened.live.url} · ${relative(opened.path.worktree, opened.path.directory)}` : "instance setup"}
-        </Text>
-      </Box>
-
-      <Box marginTop={1} flexDirection="column">
-        {statusMessage ? <StatusBanner variant={statusMessage.variant} text={statusMessage.text} /> : null}
-      </Box>
+    <Box flexDirection="column">
+      <Header
+        instance={opened ? opened.instance.label ?? opened.live.url : "setup"}
+        branch={headerBranch}
+        cwd={opened ? undefined : "instance setup"}
+        busy={anyBusy || !!opening || signin?.status === "submitting"}
+        spinnerFrame={spinnerFrame}
+        status={statusMessage}
+      />
 
       {opening ? (
-        <Box marginTop={1} flexDirection="column">
-          <Text>{opening.message}</Text>
-          <Meter value={opening.percent} />
+        <Box marginTop={1} paddingX={1} flexDirection="column">
+          <Text color={theme.fgMuted}>{opening.message}</Text>
+          <ProgressBar value={opening.percent} label={opening.phase} />
         </Box>
       ) : null}
 
       {!opened ? (
-        <Box marginTop={1} flexDirection="column" flexGrow={1}>
-          <Box gap={1} flexGrow={1}>
-            <Panel title="Instances" active={focus === "instances"} grow={2}>
-              {instances.length === 0 ? (
-                <Text dimColor>No saved instances. Press `a` for remote or `l` for local.</Text>
-              ) : (
-                <OptionList options={instanceOptions} selectedValue={selectedInstanceID} active={focus === "instances"} empty="No instances" />
-              )}
-            </Panel>
-            <Panel title={route === "setup.settings" ? "Settings" : form?.kind === "local" ? "Local Instance" : "Remote Instance"} active={focus === "setupForm" || focus === "settings"} grow={3}>
-              {route === "setup.settings" ? (
-                <>
-                  <Text>Current CLI version: {CodeplaneVersion}</Text>
-                  <Text>Default local runtime: {localTargetInfo?.defaultVersion ?? CodeplaneVersion}</Text>
-                  <Text>Keyboard: `a` add remote, `l` add local, `e` edit, `d` delete, `enter` open.</Text>
-                  <Text>Interactive bare `codeplane` now routes here; non-interactive bare `codeplane` still routes to `web`.</Text>
-                  <Text>Node companion runtime: {process.version}</Text>
-                </>
-              ) : form ? (
-                <>
-                  <Text color={form.field === "label" ? "cyan" : undefined}>Label</Text>
-                  <InputField value={form.label} placeholder="My server" active={form.field === "label"} />
-                  {form.kind === "remote" ? (
-                    <>
-                      <Text color={form.field === "url" ? "cyan" : undefined}>URL</Text>
-                      <InputField value={form.url} placeholder="https://server.example.com" active={form.field === "url"} />
-                      <Text color={form.field === "headers" ? "cyan" : undefined}>Headers (`name: value; name2: value2`)</Text>
-                      <InputField value={form.headers} placeholder="Authorization: Bearer ..." active={form.field === "headers"} />
-                    </>
-                  ) : (
-                    <>
-                      <Text color={form.field === "binaryVersion" ? "cyan" : undefined}>Binary version</Text>
-                      <InputField
-                        value={form.binaryVersion}
-                        placeholder={localTargetInfo?.defaultVersion ?? CodeplaneVersion}
-                        active={form.field === "binaryVersion"}
-                      />
-                    </>
-                  )}
-                  <Box marginTop={1} flexDirection="column">
-                    <Text dimColor>`tab` next field, `enter` advance/save, `esc` cancel</Text>
+        <Box marginTop={1} flexDirection="column">
+          <Box gap={1} alignItems="flex-start">
+            <Box width={36} flexShrink={0}>
+              <Panel
+                title="Instances"
+                subtitle={`${instances.length} saved`}
+                active={focus === "instances"}
+              >
+                {instances.length === 0 ? (
+                  <Text color={theme.fgDim}>
+                    No saved instances. Press <Text color={theme.accent}>a</Text> for remote or{" "}
+                    <Text color={theme.accent}>l</Text> for local.
+                  </Text>
+                ) : (
+                  <Box flexDirection="column">
+                    {instances.map((item) => {
+                      const selected = item.id === selectedInstanceID
+                      const tag = item.local ? "local" : "remote"
+                      const tagColor = item.local ? theme.success : theme.info
+                      return (
+                        <Box key={item.id}>
+                          <Text wrap="truncate-end">
+                            <Text color={selected && focus === "instances" ? theme.accent : theme.fgDim}>
+                              {selected ? `${glyph.arrowRight} ` : "  "}
+                            </Text>
+                            <Text color={tagColor}>{tag} </Text>
+                            <Text
+                              color={
+                                selected ? (focus === "instances" ? theme.accent : theme.fg) : theme.fgMuted
+                              }
+                              bold={selected}
+                            >
+                              {item.label ?? item.url}
+                            </Text>
+                          </Text>
+                        </Box>
+                      )
+                    })}
                   </Box>
-                </>
-              ) : selectedInstance ? (
-                <>
-                  <Text>{selectedInstance.label ?? selectedInstance.url}</Text>
-                  <Text dimColor>{selectedInstance.local ? `Local binary ${selectedInstance.local.binaryVersion}` : selectedInstance.url}</Text>
-                  <Text>{selectedInstance.headers ? `${Object.keys(selectedInstance.headers).length} custom headers configured` : "No custom headers"}</Text>
-                  <Text>{selectedInstance.ignoreCertificateErrors ? "TLS certificate verification disabled" : "TLS verification enabled"}</Text>
-                </>
+                )}
+              </Panel>
+            </Box>
+            <Box flexDirection="column" flexGrow={1}>
+              <Panel
+                title={
+                  route === "setup.signin"
+                    ? "Sign in"
+                    : route === "setup.settings"
+                      ? "Settings"
+                      : form?.kind === "local"
+                        ? "Local Instance"
+                        : form?.kind === "remote"
+                          ? "Remote Instance"
+                          : selectedInstance
+                            ? "Instance"
+                            : "Setup"
+                }
+                subtitle={`codeplane v${CodeplaneVersion}`}
+                active={focus === "setupForm" || focus === "settings" || focus === "signin"}
+              >
+                {route === "setup.signin" && signin ? (
+                  <Box flexDirection="column">
+                    <MetricRow label="Instance" value={signin.instance.label ?? signin.instance.url} />
+                    <MetricRow label="Auth URL" value={signin.authUrl} tone="muted" />
+                    <Box marginTop={1} flexDirection="column">
+                      <Text color={theme.fgMuted}>Steps</Text>
+                      <Text>
+                        1. <Text color={theme.accent}>ctrl+o</Text> opens the URL in your browser.
+                      </Text>
+                      <Text>2. Sign in with your auth provider.</Text>
+                      <Text>3. Copy the auth credential (token, cookie, or Bearer).</Text>
+                      <Text>
+                        4. Paste below and press <Text color={theme.accent}>↵</Text>.
+                      </Text>
+                    </Box>
+                    <Box marginTop={1} flexDirection="column">
+                      <Text color={theme.accent} bold>
+                        Auth header / cookie / token
+                      </Text>
+                      <InputField
+                        value={signin.input}
+                        placeholder="CF_Authorization=eyJ…  · Bearer eyJ…  · Cookie: name=value"
+                        active
+                      />
+                    </Box>
+                    <Box marginTop={1}>
+                      <Text color={theme.fgDim}>
+                        {signin.status === "submitting"
+                          ? `${spinnerFrame} saving and retrying…`
+                          : "ctrl+o open URL · ↵ save & retry · esc cancel"}
+                      </Text>
+                    </Box>
+                  </Box>
+                ) : route === "setup.settings" ? (
+                  <Box flexDirection="column">
+                    <MetricRow label="CLI version" value={CodeplaneVersion} tone="accent" />
+                    <MetricRow
+                      label="Local runtime"
+                      value={localTargetInfo?.defaultVersion ?? CodeplaneVersion}
+                    />
+                    <MetricRow label="Node companion" value={process.version} tone="muted" />
+                    <Box marginTop={1} flexDirection="column">
+                      <Text color={theme.fgMuted}>Keys</Text>
+                      <Text color={theme.fgDim}>
+                        <Text color={theme.accent}>a</Text> add remote ·{" "}
+                        <Text color={theme.accent}>l</Text> add local ·{" "}
+                        <Text color={theme.accent}>e</Text> edit ·{" "}
+                        <Text color={theme.accent}>d</Text> delete ·{" "}
+                        <Text color={theme.accent}>↵</Text> open
+                      </Text>
+                    </Box>
+                  </Box>
+                ) : form ? (
+                  <Box flexDirection="column">
+                    <Text bold color={form.field === "label" ? theme.accent : theme.fgMuted}>
+                      Label
+                    </Text>
+                    <InputField
+                      value={form.label}
+                      placeholder="My server"
+                      active={form.field === "label"}
+                    />
+                    {form.kind === "remote" ? (
+                      <>
+                        <Text bold color={form.field === "url" ? theme.accent : theme.fgMuted}>
+                          URL
+                        </Text>
+                        <InputField
+                          value={form.url}
+                          placeholder="https://server.example.com"
+                          active={form.field === "url"}
+                        />
+                        <Text bold color={form.field === "headers" ? theme.accent : theme.fgMuted}>
+                          Headers
+                        </Text>
+                        <InputField
+                          value={form.headers}
+                          placeholder="Authorization: Bearer …; X-Token: …"
+                          active={form.field === "headers"}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <Text
+                          bold
+                          color={form.field === "binaryVersion" ? theme.accent : theme.fgMuted}
+                        >
+                          Binary version
+                        </Text>
+                        <InputField
+                          value={form.binaryVersion}
+                          placeholder={localTargetInfo?.defaultVersion ?? CodeplaneVersion}
+                          active={form.field === "binaryVersion"}
+                        />
+                      </>
+                    )}
+                    <Box marginTop={1}>
+                      <Text color={theme.fgDim}>
+                        <Text color={theme.accent}>tab</Text> next field ·{" "}
+                        <Text color={theme.accent}>↵</Text> advance/save ·{" "}
+                        <Text color={theme.accent}>esc</Text> cancel
+                      </Text>
+                    </Box>
+                  </Box>
+                ) : selectedInstance ? (
+                  <Box flexDirection="column">
+                    <MetricRow
+                      label="Label"
+                      value={selectedInstance.label ?? selectedInstance.url}
+                    />
+                    <MetricRow
+                      label="Type"
+                      value={selectedInstance.local ? "local" : "remote"}
+                      tone={selectedInstance.local ? "success" : "info"}
+                    />
+                    <MetricRow
+                      label={selectedInstance.local ? "Binary" : "URL"}
+                      value={
+                        selectedInstance.local
+                          ? selectedInstance.local.binaryVersion
+                          : selectedInstance.url
+                      }
+                    />
+                    <MetricRow
+                      label="Headers"
+                      value={
+                        selectedInstance.headers
+                          ? `${Object.keys(selectedInstance.headers).length} configured`
+                          : "none"
+                      }
+                      tone="muted"
+                    />
+                    <MetricRow
+                      label="TLS verify"
+                      value={
+                        selectedInstance.ignoreCertificateErrors
+                          ? "disabled"
+                          : "enabled"
+                      }
+                      tone={
+                        selectedInstance.ignoreCertificateErrors ? "warning" : "muted"
+                      }
+                    />
+                  </Box>
+                ) : (
+                  <Text color={theme.fgDim}>Select an instance to inspect or open.</Text>
+                )}
+              </Panel>
+            </Box>
+          </Box>
+          <Box marginTop={1}>
+            <StatusBar hints={setupHints} />
+          </Box>
+        </Box>
+      ) : route === "app.directory" ? (
+        <Box marginTop={1} flexDirection="column">
+          <Box paddingX={1}>
+            <Text color={theme.fgMuted}>Working directory</Text>
+          </Box>
+          <Box marginTop={0} paddingX={1}>
+            {directory ? (
+              <Breadcrumb path={directory.cwd} home={directory.home} />
+            ) : (
+              <Text color={theme.fgDim}>Loading…</Text>
+            )}
+          </Box>
+          <Box marginTop={1}>
+            <Panel
+              title="Browse"
+              subtitle={
+                directory
+                  ? `${directory.entries.filter((e) => e.type === "directory").length} dirs · ${directory.entries.filter((e) => e.type === "file").length} files`
+                  : undefined
+              }
+              active
+              grow={1}
+            >
+              {directory && directory.entries.length === 0 ? (
+                <Text color={theme.fgDim}>Empty directory.</Text>
+              ) : directory ? (
+                <Box flexDirection="column">
+                  {(() => {
+                    const rows = process.stdout.rows ?? 40
+                    const visibleCount = Math.max(8, Math.min(directory.entries.length, rows - 14))
+                    const half = Math.floor(visibleCount / 2)
+                    const start = Math.max(
+                      0,
+                      Math.min(
+                        directory.selected - half,
+                        Math.max(0, directory.entries.length - visibleCount),
+                      ),
+                    )
+                    const visible = directory.entries.slice(start, start + visibleCount)
+                    return (
+                      <>
+                        {start > 0 ? (
+                          <Text color={theme.fgDim}>↑ {start} more above</Text>
+                        ) : null}
+                        {visible.map((entry, index) => {
+                          const realIndex = start + index
+                          const selected = realIndex === directory.selected
+                          const isDir = entry.type === "directory"
+                          return (
+                            <Box key={entry.path}>
+                              <Text wrap="truncate-end">
+                                <Text color={selected ? theme.accent : theme.fgDim}>
+                                  {selected ? `${glyph.arrowRight} ` : "  "}
+                                </Text>
+                                <Text color={isDir ? theme.accent : theme.fgDim}>
+                                  {isDir ? "▸ " : "· "}
+                                </Text>
+                                <Text
+                                  color={
+                                    selected
+                                      ? theme.accent
+                                      : isDir
+                                        ? theme.fg
+                                        : theme.fgDim
+                                  }
+                                  bold={selected || isDir}
+                                >
+                                  {entry.name}
+                                </Text>
+                                {isDir ? <Text color={theme.fgDim}>/</Text> : null}
+                              </Text>
+                            </Box>
+                          )
+                        })}
+                        {start + visible.length < directory.entries.length ? (
+                          <Text color={theme.fgDim}>
+                            ↓ {directory.entries.length - start - visible.length} more below
+                          </Text>
+                        ) : null}
+                      </>
+                    )
+                  })()}
+                </Box>
               ) : (
-                <Text dimColor>Select an instance to inspect or open.</Text>
+                <Text color={theme.fgDim}>Loading directory…</Text>
               )}
             </Panel>
+          </Box>
+          <Box marginTop={1} paddingX={1}>
+            <Text color={theme.fgDim}>
+              <Text color={theme.accent}>↑↓</Text> navigate ·{" "}
+              <Text color={theme.accent}>↵</Text>/<Text color={theme.accent}>→</Text> enter dir ·{" "}
+              <Text color={theme.accent}>⌫</Text>/<Text color={theme.accent}>←</Text> up ·{" "}
+              <Text color={theme.accent}>h</Text> home ·{" "}
+              <Text color={theme.accent}>o</Text> open here ·{" "}
+              <Text color={theme.accent}>esc</Text> cancel
+            </Text>
           </Box>
         </Box>
       ) : (
-        <Box marginTop={1} flexDirection="column" flexGrow={1}>
-          <Box>
-            <Text color={route === "app.home" ? "cyan" : undefined}>[1] Home</Text>
-            <Text> </Text>
-            <Text color={route === "app.notifications" ? "cyan" : undefined}>[2] Notifications</Text>
-            <Text> </Text>
-            <Text color={route === "app.settings" ? "cyan" : undefined}>[3] Settings</Text>
-            <Text> </Text>
-            <Text color={route === "app.cron" ? "cyan" : undefined}>[4] Cron</Text>
-            <Text> </Text>
-            <Text color={route === "app.session" ? "cyan" : undefined}>[5] Session</Text>
-          </Box>
+        <Box marginTop={1} flexDirection="column">
+          <RouteTabs tabs={routeTabs} active={route} />
 
-	          <Box gap={1} flexGrow={1} marginTop={1}>
-            <Panel title="Sessions" active={focus === "sessions"} width="28%">
-              <OptionList options={sessionOptions} selectedValue={selectedSessionID} active={focus === "sessions"} empty="No sessions" />
-            </Panel>
+          <Box marginTop={1} alignItems="flex-start" gap={1}>
+            {sidebarOpen ? (
+              <Box flexDirection="column" width={30} flexShrink={0} gap={1}>
+                <Panel
+                  title="Sessions"
+                  subtitle={`${sessions.length}`}
+                  active={focus === "sessions"}
+                >
+                  <SessionList
+                    sessions={sessionItems}
+                    selectedID={selectedSessionID}
+                    active={focus === "sessions"}
+                    spinnerFrame={spinnerFrame}
+                  />
+                </Panel>
+                {(route === "app.session" || route === "app.home") && todoItems.length > 0 ? (
+                  <Panel
+                    title="Tasks"
+                    subtitle={`${todoItems.filter((t) => t.status === "completed").length}/${todoItems.length} done`}
+                  >
+                    <TodoList todos={todoItems} limit={8} />
+                  </Panel>
+                ) : null}
+                {(route === "app.session" || route === "app.home") && diffEntries.length > 0 ? (
+                  <Panel
+                    title="Diff"
+                    subtitle={selectedDiffs.length ? `${selectedDiffs.length} files` : "clean"}
+                  >
+                    <DiffView lines={diffEntries} limit={10} />
+                  </Panel>
+                ) : null}
+              </Box>
+            ) : null}
 
-            {route === "app.notifications" ? (
-              <>
-                <Panel title="Notifications" active={focus === "notifications"} grow={2}>
-                  {notificationItems.length === 0 ? (
-                    <Text dimColor>No pending permissions or questions.</Text>
-                  ) : (
-                    <OptionList
-                      options={notificationItems}
-                      selectedValue={selectedNotification ? `${selectedNotification.kind}:${selectedNotification.id}` : undefined}
+            <Box flexDirection="column" flexGrow={1}>
+              {route === "app.notifications" ? (
+                <Box gap={1} alignItems="flex-start">
+                  <Box flexGrow={2}>
+                    <Panel
+                      title="Inbox"
+                      subtitle={`${notificationViewItems.length}`}
                       active={focus === "notifications"}
-                      empty="No notifications"
-                    />
-                  )}
-                </Panel>
-                <Panel title="Details" active={focus === "settings"} grow={3}>
-                  {selectedPermission ? (
-                    <>
-                      <Text>{selectedPermission.permission}</Text>
-                      <Lines lines={selectedPermission.patterns} limit={12} />
-                      <Text dimColor>`y` approve once, `a` always, `x` reject</Text>
-                    </>
-                  ) : selectedQuestion ? (
-                    <>
-                      <Lines
-                        lines={selectedQuestion.questions.flatMap((question) => [
-                          question.header,
-                          question.question,
-                          ...question.options.map((option) => `  - ${option.label}: ${option.description}`),
-                          "",
-                        ])}
-                        limit={24}
+                    >
+                      <NotificationList
+                        items={notificationViewItems}
+                        selectedID={selectedNotification?.id}
+                        active={focus === "notifications"}
                       />
-                      <Text dimColor>`r` reply with first options, `x` reject</Text>
-                    </>
+                    </Panel>
+                  </Box>
+                  <Box flexGrow={3}>
+                    <Panel
+                      title="Details"
+                      subtitle={
+                        selectedPermission ? "permission" : selectedQuestion ? "question" : undefined
+                      }
+                      active={focus === "settings"}
+                    >
+                      {selectedPermission ? (
+                        <Box flexDirection="column">
+                          <MetricRow label="Permission" value={selectedPermission.permission} />
+                          {selectedPermission.patterns.length > 0 ? (
+                            <Box flexDirection="column" marginTop={1}>
+                              <Text color={theme.fgMuted}>Match patterns</Text>
+                              {selectedPermission.patterns.slice(0, 8).map((pattern, index) => (
+                                <Text key={index} color={theme.fgDim} wrap="truncate-end">
+                                  · {pattern}
+                                </Text>
+                              ))}
+                            </Box>
+                          ) : null}
+                          <Box marginTop={1}>
+                            <Text color={theme.fgDim}>
+                              <Text color={theme.success}>y</Text> approve once ·{" "}
+                              <Text color={theme.success}>a</Text> always ·{" "}
+                              <Text color={theme.error}>x</Text> reject
+                            </Text>
+                          </Box>
+                        </Box>
+                      ) : selectedQuestion ? (
+                        <Box flexDirection="column">
+                          {selectedQuestion.questions.flatMap((question, qi) => [
+                            <Text key={`q-h-${qi}`} bold color={theme.accent}>
+                              {question.header}
+                            </Text>,
+                            <Text key={`q-q-${qi}`} color={theme.fgMuted}>
+                              {question.question}
+                            </Text>,
+                            ...question.options.map((option, oi) => (
+                              <Text key={`q-o-${qi}-${oi}`} color={theme.fg}>
+                                · {option.label}
+                                <Text color={theme.fgDim}> — {option.description}</Text>
+                              </Text>
+                            )),
+                            <Text key={`q-s-${qi}`}> </Text>,
+                          ])}
+                          <Box marginTop={1}>
+                            <Text color={theme.fgDim}>
+                              <Text color={theme.success}>r</Text> reply with first options ·{" "}
+                              <Text color={theme.error}>x</Text> reject
+                            </Text>
+                          </Box>
+                        </Box>
+                      ) : (
+                        <Text color={theme.fgDim}>Select a notification.</Text>
+                      )}
+                    </Panel>
+                  </Box>
+                </Box>
+              ) : route === "app.cron" ? (
+                <Panel
+                  title="Cron Tasks"
+                  subtitle={`${cronRows.length}`}
+                  active={focus === "cron"}
+                >
+                  {cronRows.length === 0 ? (
+                    <Text color={theme.fgDim}>No cron tasks scheduled.</Text>
                   ) : (
-                    <Text dimColor>Select a notification.</Text>
+                    <Box flexDirection="column">
+                      {cronRows.map((row) => (
+                        <Box key={row.id}>
+                          <Text wrap="truncate-end">
+                            <Text
+                              color={
+                                row.status === "running"
+                                  ? theme.warning
+                                  : row.status === "error"
+                                    ? theme.error
+                                    : theme.success
+                              }
+                            >
+                              {row.status === "running"
+                                ? glyph.toolRunning
+                                : row.status === "error"
+                                  ? glyph.toolError
+                                  : glyph.toolDone}
+                            </Text>
+                            <Text>{` ${row.name}`}</Text>
+                            <Text color={theme.fgDim}>{`  ${row.schedule}`}</Text>
+                          </Text>
+                        </Box>
+                      ))}
+                    </Box>
                   )}
                 </Panel>
-              </>
-            ) : route === "app.cron" ? (
-              <>
-                <Panel title="Cron Tasks" active={focus === "cron"} grow={5}>
-                  {cronTasks.length === 0 ? <Text dimColor>No cron tasks.</Text> : <Lines lines={cronTasks.map((item) => `${item.status} · ${item.name} · ${item.schedule.kind === "cron" ? item.schedule.expression : `${item.schedule.intervalMs}ms`}`)} limit={30} />}
+              ) : route === "app.settings" ? (
+                <Panel
+                  title="Workspace"
+                  subtitle={versionInfo.hasUpdate ? "update available" : "up to date"}
+                  active={focus === "settings"}
+                >
+                  <Box flexDirection="column">
+                    <MetricRow label="Server" value={opened.live.url} tone="muted" />
+                    <MetricRow label="Path" value={opened.path.directory} tone="muted" />
+                    <MetricRow label="Current" value={versionInfo.current ?? opened.version} />
+                    <MetricRow
+                      label="Latest"
+                      value={versionInfo.latest ?? "unknown"}
+                      tone={versionInfo.hasUpdate ? "success" : "muted"}
+                    />
+                    <MetricRow
+                      label="Install method"
+                      value={versionInfo.method ?? "unknown"}
+                      tone="muted"
+                    />
+                    <Box marginTop={1}>
+                      <Text color={theme.fgDim}>
+                        Press <Text color={theme.accent}>u</Text>{" "}
+                        {versionInfo.hasUpdate ? "to upgrade" : "to refresh"}.
+                      </Text>
+                    </Box>
+                  </Box>
                 </Panel>
-              </>
-            ) : route === "app.settings" ? (
-              <>
-                <Panel title="Instance Settings" active={focus === "settings"} grow={5}>
-                  <Text>Current: {versionInfo.current ?? opened.version}</Text>
-                  <Text>Latest: {versionInfo.latest ?? "unknown"}</Text>
-                  <Text>Install method: {versionInfo.method ?? "unknown"}</Text>
-                  <Text>Path: {opened.path.directory}</Text>
-                  <Text>Server: {opened.live.url}</Text>
-                  <Text>{versionInfo.hasUpdate ? "Update available" : "No update available"}</Text>
-                  <Text dimColor>`u` upgrade or refresh version status</Text>
-                </Panel>
-              </>
-            ) : (
-              <>
-                <Panel title={route === "app.session" ? "Conversation" : "Project"} active={focus === "messages"} grow={3}>
+              ) : (
+                <Panel
+                  title={route === "app.session" ? "Conversation" : "Workspace"}
+                  subtitle={
+                    route === "app.session"
+                      ? selectedSession?.title ?? "no session"
+                      : `${sessions.length} sessions · ${permissions.length + questions.length} inbox`
+                  }
+                  active={focus === "messages"}
+                >
                   {route === "app.home" ? (
-                    <>
-                      <Text>{relative(opened.path.worktree, opened.path.directory)}</Text>
-                      <Text>{sessions.length} sessions · {permissions.length + questions.length} notifications · {cronTasks.length} cron tasks</Text>
-                      <Text>{selectedSession?.share?.url ? `Shared: ${selectedSession.share.url}` : "Session not shared"}</Text>
-                      <Text>{selectedSession?.revert ? `Reverted to ${selectedSession.revert.messageID}` : "No active revert"}</Text>
-                      <Box marginTop={1}>
-                        <Text bold>Todos</Text>
-                      </Box>
-                      <Lines lines={todoLines} limit={10} />
-                    </>
+                    <Box flexDirection="column">
+                      <MetricRow
+                        label="Workspace"
+                        value={relative(opened.path.worktree, opened.path.directory)}
+                      />
+                      <MetricRow label="Sessions" value={`${sessions.length}`} tone="muted" />
+                      <MetricRow
+                        label="Inbox"
+                        value={`${permissions.length + questions.length}`}
+                        tone={permissions.length + questions.length > 0 ? "warning" : "muted"}
+                      />
+                      <MetricRow label="Cron" value={`${cronTasks.length}`} tone="muted" />
+                      <MetricRow
+                        label="Active session"
+                        value={selectedSession?.title ?? "none"}
+                        tone="accent"
+                      />
+                      <MetricRow
+                        label="Share link"
+                        value={selectedSession?.share?.url ?? "—"}
+                        tone={selectedSession?.share?.url ? "info" : "muted"}
+                      />
+                    </Box>
+                  ) : conversationParts.length === 0 ? (
+                    <Text color={theme.fgDim}>
+                      Press <Text color={theme.accent}>n</Text> for a new session, then type below to
+                      start a conversation.
+                    </Text>
                   ) : (
-                    <>
-                      <Lines lines={visibleMessageLines} />
-                      <Text dimColor>`tab` cycles panes, `/` opens command palette, `page up/down` scrolls this panel</Text>
-                    </>
+                    <Conversation parts={conversationVisible} spinnerFrame={spinnerFrame} />
                   )}
                 </Panel>
-                <Panel title="Files / Details" active={focus === "files"} grow={2}>
-                  <OptionList options={fileOptions} selectedValue={selectedFilePath} active={focus === "files"} empty="No files" />
-                  {route === "app.session" ? (
-                    <Box marginTop={1} flexDirection="column">
-                      <Text bold>Todo</Text>
-                      <Lines lines={todoLines} limit={8} />
-                      <Text bold>Diff</Text>
-                      <Lines lines={diffLines} limit={12} />
-                    </Box>
-                  ) : fileContent?.type === "text" ? (
-                    <Box marginTop={1}>
-                      <Lines lines={fileContent.content.split("\n").slice(0, 20)} />
-                    </Box>
-                  ) : (
-                    <Box marginTop={1}>
-                      <Text dimColor>{selectedFilePath ? "Select a file to preview." : "Choose a file or directory."}</Text>
-                    </Box>
-                  )}
-                </Panel>
-              </>
-            )}
+              )}
+
+              {route === "app.session" && fileContent?.type === "text" ? (
+                <Box marginTop={1}>
+                  <Panel
+                    title="Files"
+                    subtitle={selectedFilePath || undefined}
+                    active={focus === "files"}
+                  >
+                    <FileList
+                      files={files.map((file) => ({
+                        path: file.path,
+                        type: file.type,
+                        rel: opened ? relative(opened.path.directory, file.absolute) : file.path,
+                      }))}
+                      selected={selectedFilePath}
+                      active={focus === "files"}
+                    />
+                  </Panel>
+                </Box>
+              ) : null}
+            </Box>
           </Box>
 
           <Box marginTop={1} flexDirection="column">
-            <Panel title="Composer" active={focus === "composer"}>
-              <InputField
-                value={composerValue}
-                placeholder={selectedSession ? `Message ${selectedSession.title}` : "Create a session and send a prompt"}
-                active={focus === "composer"}
-              />
-            </Panel>
+            <Composer
+              value={composerValue}
+              placeholder={composerPlaceholder}
+              active={focus === "composer"}
+              hint={composerHint}
+              status={sessionBusy ? "busy" : "idle"}
+              spinnerFrame={spinnerFrame}
+            />
           </Box>
 
           {terminalOpen ? (
             <Box marginTop={1}>
-              <Panel title={`Terminal Dock${selectedTerminal ? ` · ${selectedTerminal.title}` : ""}`} active={focus === "terminals"} grow={1}>
-                <Text>{terminals.map((item) => `${item.id === activeTerminalID ? "[" : ""}${item.title}${item.id === activeTerminalID ? "]" : ""}`).join("  ") || "No terminals"}</Text>
-                {selectedTerminal ? <Lines lines={terminalLines(selectedTerminal, 12)} limit={12} /> : <Text dimColor>Press `n` to create a terminal tab.</Text>}
-                <Text dimColor>`tab` focus terminal, `x` close active tab, text is sent directly to the PTY</Text>
+              <Panel
+                title="Terminals"
+                subtitle={selectedTerminal?.title}
+                active={focus === "terminals"}
+              >
+                <Box flexDirection="column">
+                  <Box>
+                    {terminals.length === 0 ? (
+                      <Text color={theme.fgDim}>
+                        Press <Text color={theme.accent}>n</Text> to create a terminal.
+                      </Text>
+                    ) : (
+                      terminals.map((tab, index) => (
+                        <React.Fragment key={tab.id}>
+                          {index > 0 ? <Text color={theme.fgDim}>{"  "}</Text> : null}
+                          <Text
+                            color={tab.id === activeTerminalID ? theme.accent : theme.fgMuted}
+                            bold={tab.id === activeTerminalID}
+                          >
+                            {tab.id === activeTerminalID ? `▍${tab.title}` : tab.title}
+                          </Text>
+                        </React.Fragment>
+                      ))
+                    )}
+                  </Box>
+                  {selectedTerminal ? (
+                    <Box marginTop={1} flexDirection="column">
+                      {terminalLines(selectedTerminal, 12).map((line, index) => (
+                        <Text key={index} wrap="truncate-end">
+                          {line || " "}
+                        </Text>
+                      ))}
+                    </Box>
+                  ) : null}
+                  <Box marginTop={1}>
+                    <Text color={theme.fgDim}>
+                      <Text color={theme.accent}>tab</Text> focus · <Text color={theme.accent}>x</Text>{" "}
+                      close · text is sent to the PTY
+                    </Text>
+                  </Box>
+                </Box>
               </Panel>
             </Box>
           ) : null}
+
+          <Box marginTop={1}>
+            <StatusBar hints={workspaceHints} />
+          </Box>
         </Box>
       )}
 
       {paletteOpen ? (
-        <Box
-          position="absolute"
-          top={3}
-          left={4}
-          right={4}
-          borderStyle="round"
-          borderColor="cyan"
-          flexDirection="column"
-          paddingX={1}
-          paddingBottom={1}
-        >
-          <Text bold color="cyan">
-            Command Palette
-          </Text>
-          <InputField value={paletteFilter} placeholder="Filter commands" active />
-          {commandOptions.length > 0 ? (
-            <OptionList options={commandOptions} selectedValue={paletteSelection} active empty="No matching commands." />
-          ) : (
-            <Text dimColor>No matching commands.</Text>
-          )}
-          <Text dimColor>`esc` closes the palette</Text>
+        <Box marginTop={1}>
+          <CommandPalette
+            filter={paletteFilter}
+            selection={paletteSelection}
+            options={commandOptions}
+          />
         </Box>
       ) : null}
-
-      <Box marginTop={1}>
-        <Text dimColor>
-          focus:{focus} · route:{route} · keys: `tab` cycle, `/` palette, `n` terminal, `q` quit
-        </Text>
-      </Box>
     </Box>
   )
 }

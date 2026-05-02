@@ -142,9 +142,9 @@ const api = {
       return () => ipcRenderer.removeListener("window:state", listener)
     },
   },
-  // Shared local-runtime updater. Checks npm for new Codeplane releases,
-  // installs the platform package into the shared Codeplane home, and
-  // updates the preferred version used by desktop and TUI local instances.
+  // Desktop shell updater. Drives electron-updater against the GitHub
+  // releases for this app, downloads the installer for the current
+  // platform, then quits-and-installs to relaunch on the new version.
   desktopUpdater: {
     status: () =>
       ipcRenderer.invoke("updater:status") as Promise<{
