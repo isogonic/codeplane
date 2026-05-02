@@ -42,7 +42,7 @@ describe("tui.instance-store", () => {
       url: "http://127.0.0.1",
       label: "Local",
       local: {
-        binaryVersion: "27.2.0",
+        binaryVersion: "27.2.1",
       },
     })
     await target.save({
