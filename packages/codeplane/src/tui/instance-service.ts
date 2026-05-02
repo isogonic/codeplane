@@ -25,6 +25,23 @@ type ProbeResult =
       error: string
     }
 
+// Thrown by `open()` when the remote instance sits behind an interactive
+// auth proxy (CF Access, identity-aware proxy, custom SSO). The TUI catches
+// this and switches into a sign-in screen that lets the user open the URL
+// in their default browser, capture an auth header (cookie, bearer, service
+// token), and persist it on the instance before retrying.
+export class TUIAuthRequiredError extends Error {
+  authUrl: string
+  instanceUrl: string
+
+  constructor(input: { authUrl: string; instanceUrl: string }) {
+    super(`Interactive sign-in is required for ${input.instanceUrl}`)
+    this.name = "TUIAuthRequiredError"
+    this.authUrl = input.authUrl
+    this.instanceUrl = input.instanceUrl
+  }
+}
+
 const encodeBasicAuth = (value: string) => Buffer.from(value).toString("base64")
 
 function mapLocalProgress(instanceID: string, input: LocalInstallProgress): OpenProgress {
@@ -172,18 +189,22 @@ export function createInstanceService() {
     // letting us in yet.
     if (!live.local) {
       const probed = await probe(live)
-      const authMessage = `${live.url} requires sign-in. The TUI can't drive an interactive login — open the URL in a browser to capture an auth header (CF Access service token, bearer token, …) and add it under "Headers" when editing this instance, or use the desktop app for cookie-based sign-in.`
+      const authError = () =>
+        new TUIAuthRequiredError({
+          authUrl: live.url,
+          instanceUrl: live.url,
+        })
       if (!probed.ok) {
         const status = probed.status
         if (status === 401 || status === 403) {
-          throw new Error(authMessage)
+          throw authError()
         }
         throw new Error(probed.error || `Could not reach ${live.url}`)
       }
       if (!probed.version) {
         // 200 OK but no `current` field — almost always means we landed on a
         // login HTML page after following the auth redirect chain.
-        throw new Error(authMessage)
+        throw authError()
       }
       onProgress?.({
         instanceID: saved.id,
@@ -217,6 +238,30 @@ export function createInstanceService() {
       message: `Connected to Codeplane ${version}.`,
       percent: 100,
       version,
+    })
+    return {
+      client: scoped,
+      instance: saved,
+      live,
+      path: pathInfo,
+      version,
+    }
+  }
+
+  // Re-scope an existing connection to a different working directory without
+  // re-running the probe / auth flow. Returns the same shape as `open`.
+  async function reopen(saved: SavedInstance, directory: string) {
+    const live = await ensureLiveInstance(saved)
+    const probeClient = createInstanceClient({ instance: live, throwOnError: true })
+    const pathResp = await probeClient.path.get({ directory })
+    const pathInfo = pathResp.data
+    if (!pathInfo) throw new Error(`Server did not resolve directory: ${directory}`)
+    const versionResp = await probeClient.global.version()
+    const version = versionResp.data?.current ?? ""
+    const scoped = createInstanceClient({
+      instance: live,
+      directory: pathInfo.directory,
+      throwOnError: true,
     })
     return {
       client: scoped,
@@ -261,6 +306,7 @@ export function createInstanceService() {
     localStatus,
     localTarget,
     open,
+    reopen,
     probe,
     remove,
     save,

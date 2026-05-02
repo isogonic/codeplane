@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
-import { createInstanceService } from "../../src/tui/instance-service"
+import { createInstanceService, TUIAuthRequiredError } from "../../src/tui/instance-service"
 
 const env = {
   CODEPLANE_HOME_DIR: process.env.CODEPLANE_HOME_DIR,
@@ -292,6 +292,77 @@ describe("createInstanceService.localStatus", () => {
     const service = createInstanceService()
     const status = await service.localStatus()
     expect(typeof status.binaryVersion).toBe("string")
+  })
+})
+
+describe("TUIAuthRequiredError", () => {
+  test("name and instanceof checks", () => {
+    const err = new TUIAuthRequiredError({
+      authUrl: "https://login.example.com",
+      instanceUrl: "https://app.example.com",
+    })
+    expect(err.name).toBe("TUIAuthRequiredError")
+    expect(err instanceof TUIAuthRequiredError).toBe(true)
+    expect(err instanceof Error).toBe(true)
+  })
+
+  test("preserves authUrl and instanceUrl", () => {
+    const err = new TUIAuthRequiredError({
+      authUrl: "https://login.example.com/path",
+      instanceUrl: "https://app.example.com:8443/path",
+    })
+    expect(err.authUrl).toBe("https://login.example.com/path")
+    expect(err.instanceUrl).toBe("https://app.example.com:8443/path")
+    expect(err.message).toContain("https://app.example.com:8443/path")
+  })
+})
+
+describe("createInstanceService.open - sign-in detection", () => {
+  test("throws TUIAuthRequiredError on 401", async () => {
+    globalThis.fetch = (async () => new Response("unauthorized", { status: 401 })) as never
+    const service = createInstanceService()
+    const promise = service.open({ id: "x", url: "http://example.com" })
+    await expect(promise).rejects.toBeInstanceOf(TUIAuthRequiredError)
+  })
+
+  test("throws TUIAuthRequiredError on 403", async () => {
+    globalThis.fetch = (async () => new Response("forbidden", { status: 403 })) as never
+    const service = createInstanceService()
+    const promise = service.open({ id: "x", url: "http://example.com" })
+    await expect(promise).rejects.toBeInstanceOf(TUIAuthRequiredError)
+  })
+
+  test("throws TUIAuthRequiredError on 200 HTML (login page redirect)", async () => {
+    globalThis.fetch = (async () =>
+      new Response("<html>login</html>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      })) as never
+    const service = createInstanceService()
+    const promise = service.open({ id: "x", url: "http://example.com" })
+    await expect(promise).rejects.toBeInstanceOf(TUIAuthRequiredError)
+  })
+
+  test("does NOT throw TUIAuthRequiredError on 404", async () => {
+    globalThis.fetch = (async () => new Response("nope", { status: 404 })) as never
+    const service = createInstanceService()
+    const promise = service.open({ id: "x", url: "http://example.com" })
+    await expect(promise).rejects.not.toBeInstanceOf(TUIAuthRequiredError)
+  })
+
+  test("auth error includes instance URL", async () => {
+    globalThis.fetch = (async () => new Response("unauthorized", { status: 401 })) as never
+    const service = createInstanceService()
+    try {
+      await service.open({ id: "x", url: "http://example.com" })
+      throw new Error("expected to reject")
+    } catch (error) {
+      expect(error).toBeInstanceOf(TUIAuthRequiredError)
+      if (error instanceof TUIAuthRequiredError) {
+        expect(error.instanceUrl).toContain("example.com")
+        expect(error.authUrl).toContain("example.com")
+      }
+    }
   })
 })
 
