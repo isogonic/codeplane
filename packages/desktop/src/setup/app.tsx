@@ -163,6 +163,7 @@ type DesktopUpdateState =
       total?: number
     }
   | { kind: "downloaded"; current: string; latest: string }
+  | { kind: "manual-required"; current: string; latest: string | null; url: string }
   | { kind: "error"; current: string; message: string }
 
 // This card updates the desktop Electron shell itself. It checks GitHub
@@ -314,6 +315,15 @@ const DesktopUpdateCard: Component = () => {
       message,
     }))
   })
+  const offManualRequired = api.desktopUpdater.onRequiresManualDownload((info) => {
+    logSetup("desktop-update.event.manual-required", info)
+    setState((prev) => {
+      const current = prev.kind === "loading" ? api.version : prev.current
+      const latest =
+        info.version ?? (prev.kind !== "loading" && "latest" in prev && prev.latest ? prev.latest : null)
+      return { kind: "manual-required", current, latest, url: info.url }
+    })
+  })
 
   onCleanup(() => {
     offAvailable()
@@ -321,6 +331,7 @@ const DesktopUpdateCard: Component = () => {
     offProgress()
     offDownloaded()
     offError()
+    offManualRequired()
   })
 
   onMount(() => void refreshStatus())
@@ -331,6 +342,7 @@ const DesktopUpdateCard: Component = () => {
       case "available":
       case "downloading":
       case "checking":
+      case "manual-required":
         return "info"
       case "downloaded":
         return "success"
@@ -355,6 +367,8 @@ const DesktopUpdateCard: Component = () => {
         return `Installing… ${s.percent}%`
       case "downloaded":
         return "Installed"
+      case "manual-required":
+        return "Update available"
       case "error":
         return "Update error"
       case "idle":
@@ -379,6 +393,10 @@ const DesktopUpdateCard: Component = () => {
       }
       case "downloaded":
         return `Codeplane Desktop ${s.latest} downloaded. Restarting to apply the update…`
+      case "manual-required":
+        return s.latest
+          ? `Codeplane Desktop ${s.latest} is available. This build can't auto-install — download it manually to update.`
+          : "A new Codeplane Desktop release is available. This build can't auto-install — download it manually to update."
       case "error":
         return `Couldn't update the desktop app: ${s.message}`
       case "idle":
@@ -506,6 +524,22 @@ const DesktopUpdateCard: Component = () => {
           <Button variant="primary" size="small" icon="check" disabled data-desktop-action="desktop-update-installed">
             Restarting…
           </Button>
+        </Show>
+        <Show when={state().kind === "manual-required"}>
+          {(_) => {
+            const s = state() as Extract<DesktopUpdateState, { kind: "manual-required" }>
+            return (
+              <Button
+                variant="primary"
+                size="small"
+                icon="download"
+                data-desktop-action="desktop-update-manual-download"
+                onClick={() => void api.auth.openExternal(s.url)}
+              >
+                {s.latest ? `Download ${s.latest}` : "Open download page"}
+              </Button>
+            )
+          }}
         </Show>
         <Show when={notes()?.url && (state().kind === "available" || state().kind === "downloaded")}>
           <Button

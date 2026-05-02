@@ -82,6 +82,7 @@ if (!(window as any).codeplaneDesktop) {
       onProgress: noop,
       onUpdateDownloaded: noop,
       onError: noop,
+      onRequiresManualDownload: noop,
     },
     updater: { check: async () => ({ ok: true, updateAvailable: false }) },
     auth: { openExternal: async () => true },

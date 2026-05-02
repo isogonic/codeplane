@@ -204,6 +204,16 @@ const api = {
       ipcRenderer.on("updater:error", listener)
       return () => ipcRenderer.removeListener("updater:error", listener)
     },
+    onRequiresManualDownload: (
+      cb: (info: { version: string | null; url: string; reason: string }) => void,
+    ) => {
+      const listener = (
+        _event: unknown,
+        info: { version: string | null; url: string; reason: string },
+      ) => cb(info)
+      ipcRenderer.on("updater:requires-manual-download", listener)
+      return () => ipcRenderer.removeListener("updater:requires-manual-download", listener)
+    },
   },
   platform: process.platform,
 }
