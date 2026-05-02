@@ -1,39 +1,36 @@
 import fs from "fs/promises"
-import { xdgData, xdgCache, xdgConfig, xdgState } from "xdg-basedir"
-import path from "path"
+import { CodeplaneHome } from "@codeplane-ai/shared/home"
 import os from "os"
+import path from "path"
 import { Filesystem } from "../util"
 import { Flock } from "@codeplane-ai/shared/util/flock"
 
-const app = "codeplane"
-
-const data = path.join(xdgData!, app)
-const cache = path.join(xdgCache!, app)
-const config = path.join(xdgConfig!, app)
-const state = path.join(xdgState!, app)
+const resolved = CodeplaneHome.paths()
 
 export const Path = {
-  // Allow override via CODEPLANE_TEST_HOME for test isolation
+  ...resolved,
   get home() {
     return process.env.CODEPLANE_TEST_HOME || os.homedir()
   },
-  data,
-  bin: path.join(cache, "bin"),
-  log: path.join(data, "log"),
-  cache,
-  config,
-  state,
 }
 
 // Initialize Flock with global state path
-Flock.setGlobal({ state })
+Flock.setGlobal({ state: Path.state })
 
 await Promise.all([
+  fs.mkdir(Path.root, { recursive: true }),
   fs.mkdir(Path.data, { recursive: true }),
+  fs.mkdir(Path.cache, { recursive: true }),
   fs.mkdir(Path.config, { recursive: true }),
   fs.mkdir(Path.state, { recursive: true }),
   fs.mkdir(Path.log, { recursive: true }),
   fs.mkdir(Path.bin, { recursive: true }),
+  fs.mkdir(Path.local_server, { recursive: true }),
+  fs.mkdir(Path.local_server_binaries, { recursive: true }),
+  fs.mkdir(Path.skills, { recursive: true }),
+  fs.mkdir(Path.plugins, { recursive: true }),
+  fs.mkdir(Path.agents, { recursive: true }),
+  fs.mkdir(Path.commands, { recursive: true }),
 ])
 
 const CACHE_VERSION = "21"

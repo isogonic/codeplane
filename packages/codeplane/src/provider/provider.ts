@@ -963,6 +963,7 @@ export interface Interface {
 }
 
 interface State {
+  directory: string
   models: Map<string, LanguageModelV3>
   providers: Record<ProviderID, Info>
   sdk: Map<string, BundledSDK>
@@ -1103,6 +1104,7 @@ const layer: Layer.Layer<
         using _ = log.time("state")
         const bridge = yield* EffectBridge.make()
         const cfg = yield* config.get()
+        const directory = yield* InstanceState.directory
         const modelsDev = yield* Effect.promise(() => ModelsDev.get())
         const database = mapValues(modelsDev, fromModelsDevProvider)
 
@@ -1405,6 +1407,7 @@ const layer: Layer.Layer<
         }
 
         return {
+          directory,
           models: languages,
           providers,
           sdk,
@@ -1531,8 +1534,15 @@ const layer: Layer.Layer<
 
         let installedPath: string
         if (!model.api.npm.startsWith("file://")) {
-          const item = await Npm.add(model.api.npm)
+          const item = await Npm.add(model.api.npm, s.directory)
           if (!item.entrypoint) throw new Error(`Package ${model.api.npm} has no import entrypoint`)
+          log.info("loaded provider package", {
+            client: item.client,
+            pkg: model.api.npm,
+            registry: item.registry,
+            resolvedVersion: item.version,
+            sources: item.sources,
+          })
           installedPath = item.entrypoint
         } else {
           log.info("loading local provider", { pkg: model.api.npm })

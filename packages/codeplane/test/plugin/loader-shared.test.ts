@@ -38,34 +38,38 @@ async function load(dir: string) {
 }
 
 describe("plugin.loader.shared", () => {
-  test("loads a file:// plugin function export", async () => {
-    await using tmp = await tmpdir({
-      init: async (dir) => {
-        const file = path.join(dir, "plugin.ts")
-        const mark = path.join(dir, "called.txt")
-        await Bun.write(
-          file,
-          [
-            "export default async () => {",
-            `  await Bun.write(${JSON.stringify(mark)}, "called")`,
-            "  return {}",
-            "}",
-            "",
-          ].join("\n"),
-        )
+  test(
+    "loads a file:// plugin function export",
+    async () => {
+      await using tmp = await tmpdir({
+        init: async (dir) => {
+          const file = path.join(dir, "plugin.ts")
+          const mark = path.join(dir, "called.txt")
+          await Bun.write(
+            file,
+            [
+              "export default async () => {",
+              `  await Bun.write(${JSON.stringify(mark)}, "called")`,
+              "  return {}",
+              "}",
+              "",
+            ].join("\n"),
+          )
 
-        await Bun.write(
-          path.join(dir, "codeplane.json"),
-          JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2),
-        )
+          await Bun.write(
+            path.join(dir, "codeplane.json"),
+            JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2),
+          )
 
-        return { mark }
-      },
-    })
+          return { mark }
+        },
+      })
 
-    await load(tmp.path)
-    expect(await fs.readFile(tmp.extra.mark, "utf8")).toBe("called")
-  })
+      await load(tmp.path)
+      expect(await fs.readFile(tmp.extra.mark, "utf8")).toBe("called")
+    },
+    { timeout: 10000 },
+  )
 
   test("deduplicates same function exported as default and named", async () => {
     await using tmp = await tmpdir({
@@ -551,7 +555,7 @@ describe("plugin.loader.shared", () => {
 
     try {
       await load(tmp.path)
-      expect(install).toHaveBeenCalledWith("broken-plugin@9.9.9")
+      expect(install).toHaveBeenCalledWith("broken-plugin@9.9.9", undefined)
       expect(await Bun.file(tmp.extra.mark).text()).toBe("ok")
     } finally {
       install.mockRestore()

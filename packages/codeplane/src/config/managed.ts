@@ -23,11 +23,11 @@ const PLIST_META = new Set([
 function systemManagedConfigDir(): string {
   switch (process.platform) {
     case "darwin":
-      return "/Library/Application Support/codeplane"
+      return "/Library/Application Support/Codeplane"
     case "win32":
-      return path.join(process.env.ProgramData || "C:\\ProgramData", "codeplane")
+      return path.join(process.env.ProgramData || "C:\\ProgramData", "Codeplane")
     default:
-      return "/etc/codeplane"
+      return "/etc/Codeplane"
   }
 }
 

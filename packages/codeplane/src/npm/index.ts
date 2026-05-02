@@ -12,6 +12,7 @@ import { AppFileSystem } from "@codeplane-ai/shared/filesystem"
 import { Global } from "@codeplane-ai/shared/global"
 import { EffectFlock } from "@codeplane-ai/shared/util/effect-flock"
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
+import { NpmConfig } from "./config"
 
 import * as CrossSpawnSpawner from "../effect/cross-spawn-spawner"
 import { makeRuntime } from "../effect/runtime"
@@ -23,12 +24,36 @@ export class InstallFailedError extends Schema.TaggedErrorClass<InstallFailedErr
 }) {}
 
 export interface EntryPoint {
+  readonly client: NpmConfig.PackageManager
   readonly directory: string
   readonly entrypoint: Option.Option<string>
+  readonly name: string
+  readonly registry: Option.Option<string>
+  readonly sources: ReadonlyArray<string>
+  readonly spec: string
+  readonly version: Option.Option<string>
+}
+
+export interface PackageView {
+  readonly client: NpmConfig.PackageManager
+  readonly latest: Option.Option<string>
+  readonly registry: Option.Option<string>
+  readonly sources: ReadonlyArray<string>
+}
+
+export interface ResolvedEntryPoint {
+  readonly client?: NpmConfig.PackageManager
+  readonly directory: string
+  readonly entrypoint?: string
+  readonly name?: string
+  readonly registry?: string
+  readonly sources?: string[]
+  readonly spec?: string
+  readonly version?: string
 }
 
 export interface Interface {
-  readonly add: (pkg: string) => Effect.Effect<EntryPoint, InstallFailedError | EffectFlock.LockError>
+  readonly add: (pkg: string, dir?: string) => Effect.Effect<EntryPoint, InstallFailedError | EffectFlock.LockError>
   readonly install: (
     dir: string,
     input?: {
@@ -38,8 +63,10 @@ export interface Interface {
       }[]
     },
   ) => Effect.Effect<void, EffectFlock.LockError | InstallFailedError>
-  readonly outdated: (pkg: string, cachedVersion: string) => Effect.Effect<boolean>
-  readonly which: (pkg: string, bin?: string) => Effect.Effect<Option.Option<string>>
+  readonly manager: (dir?: string) => Effect.Effect<NpmConfig.PackageManager>
+  readonly outdated: (pkg: string, cachedVersion: string, dir?: string) => Effect.Effect<boolean>
+  readonly view: (pkg: string, dir?: string) => Effect.Effect<PackageView>
+  readonly which: (pkg: string, bin?: string, dir?: string) => Effect.Effect<Option.Option<string>>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@codeplane/Npm") {}
@@ -52,13 +79,18 @@ export function sanitize(pkg: string) {
   return Array.from(pkg, (char) => (illegal.has(char) || char.charCodeAt(0) < 32 ? "_" : char)).join("")
 }
 
-const loadOptions = (dir: string) =>
+function option<T>(value: T | null | undefined) {
+  if (value === null || value === undefined) return Option.none<NonNullable<T>>()
+  return Option.some(value as NonNullable<T>)
+}
+
+const loadOptions = (dir: string, env?: Record<string, string>) =>
   Effect.tryPromise({
     try: async () => {
       const config = new Config({
         npmPath,
         cwd: dir,
-        env: { ...process.env },
+        env: { ...process.env, ...env },
         argv: [process.execPath, process.execPath],
         execPath: process.execPath,
         platform: process.platform,
@@ -87,8 +119,14 @@ const resolveEntryPoint = (name: string, dir: string): EntryPoint => {
     entrypoint = Option.none()
   }
   return {
+    client: "npm",
     directory: dir,
     entrypoint,
+    name,
+    registry: Option.none(),
+    sources: [],
+    spec: name,
+    version: Option.none(),
   }
 }
 
@@ -101,6 +139,15 @@ interface ArboristTree {
   edgesOut: Map<string, { to?: ArboristNode }>
 }
 
+type PackageMetadata = {
+  client: NpmConfig.PackageManager
+  name: string
+  registry?: string
+  sources: string[]
+  spec: string
+  version?: string
+}
+
 export const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
@@ -110,9 +157,49 @@ export const layer = Layer.effect(
     const flock = yield* EffectFlock.Service
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
     const directory = (pkg: string) => path.join(global.cache, "packages", sanitize(pkg))
-    const runView = Effect.fnUntraced(function* (cmd: string[]) {
+    const metadataFile = (dir: string) => path.join(dir, ".codeplane-npm.json")
+    const unique = <T>(items: readonly T[]) => Array.from(new Set(items))
+    const readMetadata = Effect.fnUntraced(function* (dir: string) {
+      return (yield* afs.readJson(metadataFile(dir)).pipe(Effect.option)) as Option.Option<PackageMetadata>
+    })
+    const writeMetadata = Effect.fnUntraced(function* (dir: string, value: PackageMetadata) {
+      yield* afs.writeJson(metadataFile(dir), value).pipe(Effect.orDie)
+    })
+    const packageVersion = Effect.fnUntraced(function* (dir: string) {
+      const pkg = yield* afs.readJson(path.join(dir, "package.json")).pipe(Effect.option)
+      if (Option.isNone(pkg)) return Option.none<string>()
+      const value = pkg.value as { version?: unknown }
+      return typeof value.version === "string" && value.version.trim() ? Option.some(value.version.trim()) : Option.none<string>()
+    })
+    const resolveConfig = Effect.fnUntraced(function* (pkg?: string, dir?: string) {
+      return yield* Effect.promise(() =>
+        NpmConfig.resolve({
+          dir,
+          globalConfigDir: global.config,
+          spec: pkg,
+        }),
+      )
+    })
+    const configEnv = Effect.fnUntraced(function* (resolved: NpmConfig.Resolved) {
+      if (!resolved.npmrc.trim()) return
+      const dir = yield* fs.makeTempDirectoryScoped({ directory: global.cache, prefix: "npm-config-" }).pipe(Effect.orDie)
+      const file = path.join(dir, ".npmrc")
+      yield* fs.writeFileString(file, resolved.npmrc).pipe(Effect.orDie)
+      return {
+        NPM_CONFIG_USERCONFIG: file,
+        npm_config_userconfig: file,
+      }
+    })
+    const viewCommands = (client: NpmConfig.PackageManager, pkg: string) =>
+      unique([client === "yarn" ? "npm" : client, "npm", "pnpm", "bun"]).map((name) => {
+        if (name === "bun") return ["bun", "pm", "view", pkg, "dist-tags.latest", "--json"]
+        return [name, "view", pkg, "dist-tags.latest", "--json"]
+      })
+    const runView = Effect.fnUntraced(function* (cmd: string[], opts?: { cwd?: string; env?: Record<string, string> }) {
       const handle = yield* spawner.spawn(
         ChildProcess.make(cmd[0], cmd.slice(1), {
+          cwd: opts?.cwd,
+          env: opts?.env,
           extendEnv: true,
         }),
       )
@@ -126,23 +213,39 @@ export const layer = Layer.effect(
       }
       return yield* Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.String))(stdout)
     }, Effect.scoped)
-    const viewLatestVersion = Effect.fnUntraced(function* (pkg: string) {
-      return yield* runView(["npm", "view", pkg, "dist-tags.latest", "--json"]).pipe(
-        Effect.catch(() =>
-          runView(["pnpm", "view", pkg, "dist-tags.latest", "--json"]).pipe(
-            Effect.catch(() => runView(["bun", "pm", "view", pkg, "dist-tags.latest", "--json"])),
-          ),
-        ),
+    const view: Interface["view"] = (pkg, dir) =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const resolved = yield* resolveConfig(pkg, dir)
+          const env = yield* configEnv(resolved)
+          let latest = Option.none<string>()
+
+          for (const cmd of viewCommands(resolved.client, pkg)) {
+            const value = yield* runView(cmd, { cwd: dir, env }).pipe(Effect.option)
+            if (Option.isNone(value)) continue
+            latest = value
+            break
+          }
+
+          return {
+            client: resolved.client,
+            latest,
+            registry: option(resolved.settings.registry),
+            sources: resolved.sources,
+          }
+        }).pipe(Effect.withSpan("Npm.view", { attributes: { pkg, dir } })),
       )
-    })
-    const reify = (input: { dir: string; add?: string[] }) =>
+    const reify = (input: { dir: string; add?: string[]; contextDir?: string }) =>
       Effect.gen(function* () {
         yield* flock.acquire(`npm-install:${input.dir}`)
         const { Arborist } = yield* Effect.promise(() => import("@npmcli/arborist"))
         const add = input.add ?? []
-        const npmOptions = yield* loadOptions(input.dir)
+        const resolved = yield* resolveConfig(add[0], input.contextDir ?? input.dir)
+        const env = yield* configEnv(resolved)
+        const npmOptions = yield* loadOptions(input.contextDir ?? input.dir, env)
         const arborist = new Arborist({
           ...npmOptions,
+          ...resolved.options,
           path: input.dir,
           binLinks: true,
           progress: false,
@@ -153,6 +256,7 @@ export const layer = Layer.effect(
           try: () =>
             arborist.reify({
               ...npmOptions,
+              ...resolved.options,
               add,
               save: true,
               saveType: "prod",
@@ -170,20 +274,25 @@ export const layer = Layer.effect(
         }),
       )
 
-    const outdated = Effect.fn("Npm.outdated")(function* (pkg: string, cachedVersion: string) {
-      const latestVersion = yield* viewLatestVersion(pkg).pipe(Effect.option)
-      if (Option.isNone(latestVersion)) {
+    const manager = Effect.fn("Npm.manager")(function* (dir?: string) {
+      return (yield* resolveConfig(undefined, dir)).client
+    })
+
+    const outdated = Effect.fn("Npm.outdated")(function* (pkg: string, cachedVersion: string, dir?: string) {
+      const latestVersion = yield* view(pkg, dir)
+      if (Option.isNone(latestVersion.latest)) {
         return false
       }
 
       const range = /[\s^~*xX<>|=]/.test(cachedVersion)
-      if (range) return !semver.satisfies(latestVersion.value, cachedVersion)
+      if (range) return !semver.satisfies(latestVersion.latest.value, cachedVersion)
 
-      return semver.lt(cachedVersion, latestVersion.value)
+      return semver.lt(cachedVersion, latestVersion.latest.value)
     })
 
-    const add = Effect.fn("Npm.add")(function* (pkg: string) {
-      const dir = directory(pkg)
+    const add = Effect.fn("Npm.add")(function* (pkg: string, contextDir?: string) {
+      const resolved = yield* resolveConfig(pkg, contextDir)
+      const cacheDir = directory(pkg)
       const name = (() => {
         try {
           return npa(pkg).name ?? pkg
@@ -191,15 +300,46 @@ export const layer = Layer.effect(
           return pkg
         }
       })()
+      const cachedPackageDir = path.join(cacheDir, "node_modules", name)
 
-      if (yield* afs.existsSafe(dir)) {
-        return resolveEntryPoint(name, path.join(dir, "node_modules", name))
+      if (yield* afs.existsSafe(cachedPackageDir)) {
+        const entry = resolveEntryPoint(name, cachedPackageDir)
+        const metadata = yield* readMetadata(cacheDir)
+        const version = yield* packageVersion(cachedPackageDir)
+        const stored = Option.getOrUndefined(metadata)
+        return {
+          ...entry,
+          client: stored?.client ?? resolved.client,
+          name,
+          registry: option(stored?.registry ?? resolved.settings.registry),
+          sources: stored?.sources ?? resolved.sources,
+          spec: stored?.spec ?? pkg,
+          version: stored?.version ? Option.some(stored.version) : version,
+        }
       }
 
-      const tree = yield* reify({ dir, add: [pkg] })
+      const tree = yield* reify({ dir: cacheDir, add: [pkg], contextDir })
       const first = tree.edgesOut.values().next().value?.to
-      if (!first) return yield* new InstallFailedError({ add: [pkg], dir })
-      return resolveEntryPoint(first.name, first.path)
+      if (!first) return yield* new InstallFailedError({ add: [pkg], dir: cacheDir })
+      const entry = resolveEntryPoint(first.name, first.path)
+      const version = yield* packageVersion(first.path)
+      yield* writeMetadata(cacheDir, {
+        client: resolved.client,
+        name: first.name,
+        registry: resolved.settings.registry,
+        sources: resolved.sources,
+        spec: pkg,
+        version: Option.getOrUndefined(version),
+      })
+      return {
+        ...entry,
+        client: resolved.client,
+        name: first.name,
+        registry: option(resolved.settings.registry),
+        sources: resolved.sources,
+        spec: pkg,
+        version,
+      }
     }, Effect.scoped)
 
     const install: Interface["install"] = Effect.fn("Npm.install")(function* (dir, input) {
@@ -214,7 +354,7 @@ export const layer = Layer.effect(
         yield* Effect.gen(function* () {
           const nodeModulesExists = yield* afs.existsSafe(path.join(dir, "node_modules"))
           if (!nodeModulesExists) {
-            yield* reify({ add, dir })
+            yield* reify({ add, dir, contextDir: dir })
             return true
           }
           return false
@@ -246,7 +386,7 @@ export const layer = Layer.effect(
 
         for (const name of declared) {
           if (!locked.has(name)) {
-            yield* reify({ dir, add })
+            yield* reify({ dir, add, contextDir: dir })
             return
           }
         }
@@ -255,9 +395,9 @@ export const layer = Layer.effect(
       return
     }, Effect.scoped)
 
-    const which = Effect.fn("Npm.which")(function* (pkg: string, bin?: string) {
-      const dir = directory(pkg)
-      const binDir = path.join(dir, "node_modules", ".bin")
+    const which = Effect.fn("Npm.which")(function* (pkg: string, bin?: string, contextDir?: string) {
+      const cacheDir = directory(pkg)
+      const binDir = path.join(cacheDir, "node_modules", ".bin")
 
       const pick = Effect.fnUntraced(function* () {
         const files = yield* fs.readDirectory(binDir).pipe(Effect.catch(() => Effect.succeed([] as string[])))
@@ -268,7 +408,7 @@ export const layer = Layer.effect(
         if (bin) return files.includes(bin) ? Option.some(bin) : Option.none<string>()
         if (files.length === 1) return Option.some(files[0])
 
-        const pkgJson = yield* afs.readJson(path.join(dir, "node_modules", pkg, "package.json")).pipe(Effect.option)
+        const pkgJson = yield* afs.readJson(path.join(cacheDir, "node_modules", pkg, "package.json")).pipe(Effect.option)
 
         if (Option.isSome(pkgJson)) {
           const parsed = pkgJson.value as { bin?: string | Record<string, string> }
@@ -291,9 +431,9 @@ export const layer = Layer.effect(
           return Option.some(path.join(binDir, bin.value))
         }
 
-        yield* fs.remove(path.join(dir, "package-lock.json")).pipe(Effect.orElseSucceed(() => {}))
+        yield* fs.remove(path.join(cacheDir, "package-lock.json")).pipe(Effect.orElseSucceed(() => {}))
 
-        yield* add(pkg)
+        yield* add(pkg, contextDir)
 
         const resolved = yield* pick()
         if (Option.isNone(resolved)) return Option.none<string>()
@@ -307,7 +447,9 @@ export const layer = Layer.effect(
     return Service.of({
       add,
       install,
+      manager,
       outdated,
+      view,
       which,
     })
   }),
@@ -327,16 +469,36 @@ export async function install(...args: Parameters<Interface["install"]>) {
   return runPromise((svc) => svc.install(...args))
 }
 
-export async function add(...args: Parameters<Interface["add"]>) {
+export async function add(...args: Parameters<Interface["add"]>): Promise<ResolvedEntryPoint> {
   const entry = await runPromise((svc) => svc.add(...args))
   return {
+    client: entry.client,
     directory: entry.directory,
     entrypoint: Option.getOrUndefined(entry.entrypoint),
+    name: entry.name,
+    registry: Option.getOrUndefined(entry.registry),
+    sources: Array.from(entry.sources),
+    spec: entry.spec,
+    version: Option.getOrUndefined(entry.version),
   }
+}
+
+export async function manager(...args: Parameters<Interface["manager"]>) {
+  return runPromise((svc) => svc.manager(...args))
 }
 
 export async function outdated(...args: Parameters<Interface["outdated"]>) {
   return runPromise((svc) => svc.outdated(...args))
+}
+
+export async function view(...args: Parameters<Interface["view"]>) {
+  const result = await runPromise((svc) => svc.view(...args))
+  return {
+    client: result.client,
+    latest: Option.getOrUndefined(result.latest),
+    registry: Option.getOrUndefined(result.registry),
+    sources: Array.from(result.sources),
+  }
 }
 
 export async function which(...args: Parameters<Interface["which"]>) {

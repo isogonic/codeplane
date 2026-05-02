@@ -94,6 +94,17 @@ export function pruneSessionKeys(input: {
     .slice(input.max)
 }
 
+export function isRemoteProjectMissingError(error: unknown) {
+  if (!error || typeof error !== "object") return false
+
+  const parsed = error as { name?: unknown; data?: unknown }
+  if (parsed.name === "NotFoundError") return true
+  if (parsed.name !== "APIError") return false
+  if (!parsed.data || typeof parsed.data !== "object" || Array.isArray(parsed.data)) return false
+
+  return (parsed.data as { statusCode?: unknown }).statusCode === 404
+}
+
 function nextSessionTabsForOpen(current: SessionTabs | undefined, tab: string): SessionTabs {
   const all = current?.all ?? []
   if (tab === "review") return { all: all.filter((x) => x !== "review"), active: tab }
@@ -420,7 +431,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
 
     const enriched = createMemo(() => server.projects.list().map(enrich))
     const list = createMemo(() => enriched())
-    const remoteProjectChecks = new Map<string, Promise<boolean>>()
+    const remoteProjectChecks = new Map<string, Promise<{ valid: boolean; removable: boolean }>>()
 
     createEffect(() => {
       if (server.isLocal()) return
@@ -432,12 +443,17 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         if (remoteProjectChecks.has(key)) continue
 
         const check = retry(() => globalSDK.client.path.get({ directory: project.worktree }))
-          .then((x) => !!x.data?.directory)
-          .catch(() => false)
+          .then((x) => ({ valid: !!x.data?.directory, removable: !x.data?.directory }))
+          .catch((error) => ({ valid: false, removable: isRemoteProjectMissingError(error) }))
         remoteProjectChecks.set(key, check)
 
-        void check.then((valid) => {
-          if (valid) return
+        void check.then((result) => {
+          if (remoteProjectChecks.get(key) !== check) return
+          if (result.valid) return
+          if (!result.removable) {
+            remoteProjectChecks.delete(key)
+            return
+          }
           if (server.isLocal()) return
           if (server.key !== serverKey) return
           server.projects.close(project.worktree)

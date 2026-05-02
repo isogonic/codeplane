@@ -25,6 +25,10 @@ type DesktopLogEntry = {
   data?: unknown
 }
 
+type DesktopStoreState = {
+  persist?: Record<string, Record<string, string>>
+}
+
 type RequestLogEntry = {
   cookie: string
   method: string
@@ -63,6 +67,16 @@ async function readJsonLines<T>(file: string) {
 
 async function readDesktopEntries(file: string) {
   return readJsonLines<DesktopLogEntry>(file)
+}
+
+async function readDesktopStore(userDataDir: string) {
+  const file = path.join(userDataDir, "codeplane-desktop.json")
+  if (!(await exists(file))) return {} as DesktopStoreState
+  return JSON.parse(await fs.readFile(file, "utf8")) as DesktopStoreState
+}
+
+async function readDesktopDirectSetting(userDataDir: string, key: string) {
+  return (await readDesktopStore(userDataDir)).persist?.__direct__?.[key] ?? null
 }
 
 async function attachIfExists(testInfo: TestInfo, name: string, file: string, contentType = "application/x-ndjson") {
@@ -666,8 +680,8 @@ async function startProtectedFixtureServer(testInfo: TestInfo, slug: string, ver
 async function seedStore(userDataDir: string, instances: SavedInstance[], lastInstanceId?: string) {
   await fs.mkdir(userDataDir, { recursive: true })
   await fs.writeFile(
-    path.join(userDataDir, "codeplane-desktop.json"),
-    `${JSON.stringify({ instances, lastInstanceId }, null, 2)}\n`,
+    path.join(userDataDir, "instances.json"),
+    `${JSON.stringify({ instances, lastInstanceID: lastInstanceId }, null, 2)}\n`,
   )
 }
 
@@ -711,7 +725,7 @@ async function seedFreshCache(userDataDir: string, version: string) {
 }
 
 async function seedLocalBinary(userDataDir: string, version: string, label: string, broken = false) {
-  const dir = path.join(userDataDir, "local-binaries", version)
+  const dir = path.join(userDataDir, "local_server", "binaries", version)
   const file = path.join(dir, process.platform === "win32" ? "codeplane.exe" : "codeplane")
   await fs.mkdir(dir, { recursive: true })
   await fs.writeFile(file, createLocalBinaryScript(version, label, broken), "utf8")
@@ -756,6 +770,7 @@ async function launchDesktop(
       ...process.env,
       CODEPLANE_DESKTOP_DISABLE_AUTO_UPDATE: "1",
       CODEPLANE_DESKTOP_LOG_DIR: logDir,
+      CODEPLANE_DESKTOP_TEST_NOTIFICATIONS: "1",
       CODEPLANE_DESKTOP_TEST_UPDATE: "latest",
       CODEPLANE_DESKTOP_USER_DATA_DIR: userDataDir,
     },
@@ -791,23 +806,27 @@ test("logs setup actions and opens cached desktop UI", async ({}, testInfo) => {
     const runtime = await launchDesktop(testInfo)
     app = runtime.app
     let page = runtime.page
+    const addInstanceButton = page.getByLabel("Add instance").first()
 
     await expect(page.getByText("Connect to your instance")).toBeVisible()
-    await expect(page.locator('[data-desktop-action="instance-add"]')).toBeVisible()
+    await expect(addInstanceButton).toBeVisible()
     expect(await page.evaluate(() => window.codeplaneDesktop.debug.logPath())).toBe(runtime.logFile)
 
-    await page.locator('[data-desktop-action="instance-add"]').click()
-    await expect(page.getByRole("heading", { name: "Add instance" })).toBeVisible()
-    await page.locator('[data-desktop-action="form-back"]').click()
+    await addInstanceButton.click()
+    await expect(page.getByRole("heading", { name: "Add an instance" })).toBeVisible()
+    await page.locator('[data-desktop-action="picker-back"]').click()
     await expect(page.getByText("Connect to your instance")).toBeVisible()
 
-    await page.locator('[data-desktop-action="instance-add"]').click()
+    await addInstanceButton.click()
+    await page.locator('[data-desktop-action="pick-remote"]').click()
+    await expect(page.getByRole("heading", { name: "Add a remote instance" })).toBeVisible()
     await page.locator('[data-desktop-action="advanced-toggle"]').click()
     await expect(page.locator('[data-desktop-field="instance-headers"]')).toBeVisible()
     await page.locator('[data-desktop-action="form-cancel"]').click()
     await expect(page.getByText("Connect to your instance")).toBeVisible()
 
-    await page.locator('[data-desktop-action="instance-add"]').click()
+    await addInstanceButton.click()
+    await page.locator('[data-desktop-action="pick-remote"]').click()
     await page.locator('[data-desktop-field="instance-name"]').fill("Primary workspace")
     await page.locator('[data-desktop-field="instance-url"]').fill(server.origin)
     await expect(page.getByText(`Reachable. Detected Codeplane ${appVersion}.`)).toBeVisible()
@@ -842,9 +861,11 @@ test("logs setup actions and opens cached desktop UI", async ({}, testInfo) => {
     await expect(page.getByTestId("fixture-view")).toHaveText("settings")
 
     page = await openSetupFromInstance(app, page)
+    await page.locator('[data-desktop-action="settings-open"]').click()
     await expect(page.locator('[data-desktop-section="desktop-update"]')).toBeVisible()
     await expect(page.locator('[data-desktop-action="desktop-update-check"]')).toBeVisible()
     await page.locator('[data-desktop-action="desktop-update-check"]').click()
+    await page.locator('[data-desktop-action="logo-home"]').click()
 
     const reopenPromise = app.waitForEvent("window")
     await page.locator('[data-desktop-action="instance-open"]').first().click()
@@ -881,7 +902,7 @@ test("logs setup actions and opens cached desktop UI", async ({}, testInfo) => {
       )
 
     expect(hasAction("instance-add")).toBe(true)
-    expect(hasAction("form-back")).toBe(true)
+    expect(hasAction("picker-back")).toBe(true)
     expect(hasAction("form-cancel")).toBe(true)
     expect(hasAction("advanced-toggle")).toBe(true)
     expect(hasAction("instance-save")).toBe(true)
@@ -945,11 +966,12 @@ test("downloads separate cached UI bundles per server version", async ({}, testI
     })
     app = runtime.app
     let page = runtime.page
+    const instanceRows = page.locator('main [data-desktop-action="instance-open"]')
 
-    await expect(page.locator('[data-desktop-action="instance-open"]')).toHaveCount(2)
+    await expect(instanceRows).toHaveCount(2)
 
     const primaryWindow = app.waitForEvent("window")
-    await page.locator('[data-desktop-action="instance-open"]').first().click()
+    await instanceRows.first().click()
     page = await primaryWindow
     await page.waitForLoadState("domcontentloaded")
     await expect(page.getByTestId("fixture-server-version")).toHaveText(appVersion)
@@ -962,9 +984,10 @@ test("downloads separate cached UI bundles per server version", async ({}, testI
     await expect(page.getByTestId("fixture-find-files")).toHaveText(/^ok:/)
 
     page = await openSetupFromInstance(app, page)
+    const reopenRows = page.locator('main [data-desktop-action="instance-open"]')
 
     const legacyWindow = app.waitForEvent("window")
-    await page.locator('[data-desktop-action="instance-open"]').nth(1).click()
+    await reopenRows.nth(1).click()
     page = await legacyWindow
     await page.waitForLoadState("domcontentloaded")
     await expect(page.getByTestId("fixture-server-version")).toHaveText("26.4.0")
@@ -1061,6 +1084,55 @@ test("removes UI caches that have been unused for more than 30 days", async ({},
   }
 })
 
+test("stores desktop notification preferences and uses the native notification bridge", async ({}, testInfo) => {
+  let app: Awaited<ReturnType<typeof electron.launch>> | undefined
+
+  try {
+    const runtime = await launchDesktop(testInfo)
+    app = runtime.app
+    const page = runtime.page
+
+    await page.locator('[data-desktop-action="settings-open"]').click()
+    await expect(page.locator('[data-desktop-section="notifications"]')).toBeVisible()
+
+    await page.locator('[data-desktop-action="notifications-agent"] [data-slot="switch-control"]').click()
+    await page.locator('[data-desktop-action="notifications-permissions"] [data-slot="switch-control"]').click()
+    await page.locator('[data-desktop-action="notifications-errors"] [data-slot="switch-control"]').click()
+    await page.locator('[data-desktop-action="notifications-test"]').click()
+
+    await expect
+      .poll(() => readDesktopDirectSetting(runtime.userDataDir, "settings.v3"), {
+        message: "settings.v3 should be persisted in the shared desktop store",
+      })
+      .not.toBeNull()
+
+    const raw = await readDesktopDirectSetting(runtime.userDataDir, "settings.v3")
+    const settings = JSON.parse(raw || "{}") as {
+      notifications?: { agent?: boolean; permissions?: boolean; errors?: boolean }
+    }
+    expect(settings.notifications).toEqual({
+      agent: false,
+      permissions: false,
+      errors: true,
+    })
+
+    await expect
+      .poll(
+        () =>
+          readDesktopEntries(runtime.logFile).then((entries) =>
+            entries.some((entry) => entry.scope === "main" && entry.event === "notifications.notify.mock"),
+          ),
+        {
+          message: "desktop settings should invoke the native notification bridge",
+        },
+      )
+      .toBe(true)
+  } finally {
+    if (app) await app.close()
+    await attachIfExists(testInfo, "desktop-log", testInfo.outputPath("desktop-runtime/logs/desktop.log"))
+  }
+})
+
 test("sets up and opens a local instance from the desktop selector", async ({}, testInfo) => {
   test.skip(process.platform === "win32", "local fixture binary is only seeded for POSIX platforms")
   let app: Awaited<ReturnType<typeof electron.launch>> | undefined
@@ -1095,6 +1167,9 @@ test("sets up and opens a local instance from the desktop selector", async ({}, 
     await expect(page.getByTestId("fixture-provider-api")).toHaveText(/^ok:/)
     await expect(page.getByTestId("fixture-file-list")).toHaveText(/^ok:/)
     await expect(page.getByTestId("fixture-find-files")).toHaveText(/^ok:/)
+    await expect
+      .poll(() => exists(path.join(runtime.userDataDir, "bin", process.platform === "win32" ? "codeplane.exe" : "codeplane")))
+      .toBe(true)
 
     const logEntries = await readDesktopEntries(runtime.logFile)
     expect(logEntries.some((entry) => entry.scope === "local-instance" && entry.event === "local.start.ready")).toBe(true)
@@ -1127,10 +1202,19 @@ test("does not save a broken local instance when setup fails", async ({}, testIn
     const count = await page.evaluate(() => window.codeplaneDesktop.instances.list().then((instances) => instances.length))
     expect(count).toBe(0)
 
-    const logEntries = await readDesktopEntries(runtime.logFile)
-    expect(logEntries.some((entry) => entry.scope === "main" && entry.event === "instances.prepare.start")).toBe(true)
-    expect(logEntries.some((entry) => entry.scope === "local-instance" && entry.event === "local.start")).toBe(true)
-    expect(logEntries.some((entry) => entry.scope === "main" && entry.event === "instances.save")).toBe(false)
+    await expect
+      .poll(
+        () =>
+          readDesktopEntries(runtime.logFile).then((entries) => ({
+            prepare: entries.some((entry) => entry.scope === "main" && entry.event === "instances.prepare.start"),
+            start: entries.some((entry) => entry.scope === "local-instance" && entry.event === "local.start"),
+            saved: entries.some((entry) => entry.scope === "main" && entry.event === "instances.save"),
+          })),
+        {
+          message: "broken local setup should prepare and start locally without ever saving the instance",
+        },
+      )
+      .toEqual({ prepare: true, start: true, saved: false })
   } finally {
     if (app) await app.close()
     await attachIfExists(testInfo, "desktop-log", testInfo.outputPath("desktop-runtime/logs/desktop.log"))

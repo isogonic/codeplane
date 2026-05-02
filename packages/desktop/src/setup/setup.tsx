@@ -14,7 +14,7 @@ if (!(window as any).codeplaneDesktop) {
       JSON.stringify([
         { id: "remote-team", url: "https://codeplane.example.com", label: "Team Production" },
         { id: "remote-staging", url: "https://staging.codeplane.example.com", label: "Internal Staging" },
-        { id: "local-dev", url: "local://local-dev", label: "Local Dev", local: { binaryVersion: "27.2.1" } },
+        { id: "local-dev", url: "local://local-dev", label: "Local Dev", local: { binaryVersion: "27.3.0" } },
       ]),
     )
   } else if (params.get("seed") === "0") {
@@ -51,7 +51,15 @@ if (!(window as any).codeplaneDesktop) {
       getLast: async () => undefined,
     },
     local: {
-      target: async () => ({ archiveName: "x", binaryName: "x", os: "darwin", arch: "arm64", defaultVersion: "dev" }),
+      target: async () => ({
+        archiveName: "codeplane-darwin-arm64.tgz",
+        archiveExt: ".tgz",
+        binaryName: "codeplane",
+        os: "darwin",
+        arch: "arm64",
+        packageName: "codeplane-darwin-arm64",
+        defaultVersion: "dev",
+      }),
       status: async () => ({ installed: false }),
       install: async () => ({ ok: true }),
       onInstallProgress: noop,
@@ -60,7 +68,7 @@ if (!(window as any).codeplaneDesktop) {
       status: async () => ({ current: "dev", latest: "dev", hasUpdate: false }),
       check: async () => ({ ok: true, updateAvailable: false }),
       download: async () => ({ ok: true }),
-      install: async () => undefined,
+      install: async () => ({ ok: true }),
       releaseNotes: async () => null,
       onUpdateAvailable: noop,
       onUpdateNotAvailable: noop,
@@ -70,6 +78,14 @@ if (!(window as any).codeplaneDesktop) {
     },
     updater: { check: async () => ({ ok: true, updateAvailable: false }) },
     auth: { openExternal: async () => true },
+    notifications: {
+      isSupported: async () => true,
+      notify: async (input: { title: string; description?: string; href?: string }) => {
+        console.debug("[desktop-notification]", input)
+        return true
+      },
+      onClick: noop,
+    },
   }
 }
 

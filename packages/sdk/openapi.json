@@ -3,7 +3,7 @@
   "info": {
     "title": "codeplane",
     "description": "codeplane api",
-    "version": "27.2.1"
+    "version": "27.3.0"
   },
   "paths": {
     "/global/cron": {
@@ -13909,6 +13909,45 @@
           "model": {
             "description": "Model to use in the format of provider/model, eg anthropic/claude-2",
             "type": "string"
+          },
+          "npm": {
+            "description": "Native npm registry, auth, and package-manager integration settings",
+            "type": "object",
+            "properties": {
+              "client": {
+                "type": "string",
+                "enum": ["auto", "npm", "pnpm", "bun", "yarn"]
+              },
+              "registry": {
+                "type": "string"
+              },
+              "token": {
+                "type": "string"
+              },
+              "always_auth": {
+                "type": "boolean"
+              },
+              "scopes": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "registry": {
+                      "type": "string"
+                    },
+                    "token": {
+                      "type": "string"
+                    },
+                    "always_auth": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
           },
           "small_model": {
             "description": "Small model to use for tasks like title generation in the format of provider/model",

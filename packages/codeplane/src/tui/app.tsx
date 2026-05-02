@@ -15,7 +15,8 @@ import type {
   SnapshotFileDiff,
   Todo,
 } from "@codeplane-ai/sdk/v2/client"
-import type { OpenProgress, SavedInstance } from "@codeplane-ai/shared/instance"
+import type { LocalTarget, OpenProgress, SavedInstance } from "@codeplane-ai/shared/instance"
+import { localInstanceUrl } from "@codeplane-ai/shared/instance"
 import { CodeplaneVersion } from "@codeplane-ai/shared/version"
 import { createInstanceService, type InstanceService } from "./instance-service"
 import { wsUrlForInstance } from "./client"
@@ -325,6 +326,7 @@ export function App(props: AppProps) {
   const [route, setRoute] = useState<Route>(props.initialRoute === "settings" ? "setup.settings" : "setup.list")
   const [focus, setFocus] = useState<Focus>("instances")
   const [instances, setInstances] = useState<SavedInstance[]>([])
+  const [localTargetInfo, setLocalTargetInfo] = useState<LocalTarget>()
   const [selectedInstanceID, setSelectedInstanceID] = useState<string>()
   const [form, setForm] = useState<FormState>()
   const [opened, setOpened] = useState<Opened>()
@@ -389,7 +391,7 @@ export function App(props: AppProps) {
     label: editing?.label ?? "",
     url: editing?.url ?? "http://127.0.0.1",
     headers: "",
-    binaryVersion: editing?.local?.binaryVersion ?? CodeplaneVersion,
+    binaryVersion: editing?.local?.binaryVersion ?? localTargetInfo?.defaultVersion ?? CodeplaneVersion,
     ignoreCertificateErrors: false,
     field: "label",
   })
@@ -524,10 +526,11 @@ export function App(props: AppProps) {
 
   async function saveForm() {
     if (!form) return
+    const id = form.id ?? uid()
     const instance: SavedInstance = {
-      id: form.id ?? uid(),
+      id,
       label: form.label || undefined,
-      url: form.kind === "local" ? "http://127.0.0.1" : form.url,
+      url: form.kind === "local" ? localInstanceUrl(id) : form.url,
       headers: form.kind === "remote" ? parseHeaders(form.headers) : undefined,
       ignoreCertificateErrors: form.kind === "remote" ? form.ignoreCertificateErrors || undefined : undefined,
       local:
@@ -779,7 +782,9 @@ export function App(props: AppProps) {
   }
 
   useEffect(() => {
-    void loadInstances().catch((error) => setMessage("error", error instanceof Error ? error.message : String(error)))
+    void Promise.all([loadInstances(), service.localTarget().then((value) => setLocalTargetInfo(value))]).catch((error) =>
+      setMessage("error", error instanceof Error ? error.message : String(error)),
+    )
   }, [])
 
   useEffect(() => {
@@ -1242,6 +1247,7 @@ export function App(props: AppProps) {
               {route === "setup.settings" ? (
                 <>
                   <Text>Current CLI version: {CodeplaneVersion}</Text>
+                  <Text>Default local runtime: {localTargetInfo?.defaultVersion ?? CodeplaneVersion}</Text>
                   <Text>Keyboard: `a` add remote, `l` add local, `e` edit, `d` delete, `enter` open.</Text>
                   <Text>Interactive bare `codeplane` now routes here; non-interactive bare `codeplane` still routes to `web`.</Text>
                   <Text>Node companion runtime: {process.version}</Text>
@@ -1260,7 +1266,11 @@ export function App(props: AppProps) {
                   ) : (
                     <>
                       <Text color={form.field === "binaryVersion" ? "cyan" : undefined}>Binary version</Text>
-                      <InputField value={form.binaryVersion} placeholder={CodeplaneVersion} active={form.field === "binaryVersion"} />
+                      <InputField
+                        value={form.binaryVersion}
+                        placeholder={localTargetInfo?.defaultVersion ?? CodeplaneVersion}
+                        active={form.field === "binaryVersion"}
+                      />
                     </>
                   )}
                   <Box marginTop={1} flexDirection="column">

@@ -2279,6 +2279,22 @@ export type Config = {
    */
   model?: string
   /**
+   * Native npm registry, auth, and package-manager integration settings
+   */
+  npm?: {
+    client?: "auto" | "npm" | "pnpm" | "bun" | "yarn"
+    registry?: string
+    token?: string
+    always_auth?: boolean
+    scopes?: {
+      [key: string]: {
+        registry?: string
+        token?: string
+        always_auth?: boolean
+      }
+    }
+  }
+  /**
    * Small model to use for tasks like title generation in the format of provider/model
    */
   small_model?: string

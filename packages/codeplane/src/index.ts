@@ -39,6 +39,8 @@ import { drizzle } from "drizzle-orm/bun-sqlite"
 import { ensureProcessMetadata } from "./util/codeplane-process"
 import { TuiCommand } from "./cli/cmd/tui"
 import { resolveCliArgs } from "./tui/dispatch"
+import { ConfigCommand } from "./cli/cmd/config"
+import { InstanceCommand } from "./cli/cmd/instance"
 
 const processMetadata = ensureProcessMetadata("main")
 
@@ -167,6 +169,8 @@ const cli = yargs(args)
   .command(ServeCommand)
   .command(TuiCommand)
   .command(WebCommand)
+  .command(ConfigCommand)
+  .command(InstanceCommand)
   .command(ModelsCommand)
   .command(StatsCommand)
   .command(ExportCommand)

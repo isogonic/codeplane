@@ -1,7 +1,7 @@
 import fs from "fs/promises"
 import path from "path"
 import { describe, expect, test } from "bun:test"
-import { Effect, Layer, Stream } from "effect"
+import { Effect, Layer, Option, Stream } from "effect"
 import { NodeFileSystem } from "@effect/platform-node"
 import { AppFileSystem } from "@codeplane-ai/shared/filesystem"
 import { Global } from "@codeplane-ai/shared/global"
@@ -139,5 +139,66 @@ describe("Npm.outdated", () => {
     expect(result).toBe(true)
     expect(calls).toContainEqual(["npm", "view", "example", "dist-tags.latest", "--json"])
     expect(calls).toContainEqual(["pnpm", "view", "example", "dist-tags.latest", "--json"])
+  })
+})
+
+describe("Npm.manager", () => {
+  test("detects packageManager from nearest package.json", async () => {
+    await using tmp = await tmpdir()
+    await writePackage(tmp.path, {
+      name: "fixture",
+      packageManager: "pnpm@9.0.0",
+    })
+
+    const result = await Effect.runPromise(
+      Npm.Service.use((svc) => svc.manager(tmp.path)).pipe(Effect.provide(testLayer())),
+    )
+
+    expect(result).toBe("pnpm")
+  })
+
+  test("falls back to lockfiles when packageManager is absent", async () => {
+    await using tmp = await tmpdir()
+    await writePackage(tmp.path, {
+      name: "fixture",
+    })
+    await Bun.write(path.join(tmp.path, "bun.lock"), "")
+
+    const result = await Effect.runPromise(
+      Npm.Service.use((svc) => svc.manager(tmp.path)).pipe(Effect.provide(testLayer())),
+    )
+
+    expect(result).toBe("bun")
+  })
+})
+
+describe("Npm.view", () => {
+  test("uses Codeplane npm config for client preference and registry metadata", async () => {
+    await using tmp = await tmpdir()
+    await Bun.write(
+      path.join(tmp.path, "codeplane.jsonc"),
+      JSON.stringify({
+        npm: {
+          client: "pnpm",
+          registry: "https://registry.example.com/custom",
+        },
+      }),
+    )
+
+    const calls: string[][] = []
+    const layer = testLayer((cmd, args) => {
+      calls.push([cmd, ...args])
+      if (cmd === "pnpm" && args[0] === "view") return '"3.1.4"\n'
+      return ""
+    })
+
+    const result = await Effect.runPromise(
+      Npm.Service.use((svc) => svc.view("example", tmp.path)).pipe(Effect.provide(layer)),
+    )
+
+    expect(result.client).toBe("pnpm")
+    expect(Option.getOrUndefined(result.latest)).toBe("3.1.4")
+    expect(Option.getOrUndefined(result.registry)).toBe("https://registry.example.com/custom/")
+    expect(calls[0]).toEqual(["pnpm", "view", "example", "dist-tags.latest", "--json"])
   })
 })

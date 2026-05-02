@@ -14,6 +14,12 @@ type DesktopStorageApi = {
   removeItem: (storageName: string | undefined, key: string) => void
 }
 
+type DesktopNotificationApi = {
+  isSupported: () => Promise<boolean>
+  notify: (input: { title: string; description?: string; href?: string }) => Promise<boolean>
+  onClick: (cb: (href?: string) => void) => () => void
+}
+
 const bootstrap = ipcRenderer.sendSync("desktop:bootstrap") as {
   currentKey: string | null
   defaultKey: string | null
@@ -90,6 +96,16 @@ const api = {
   auth: {
     openExternal: (url: string) => ipcRenderer.invoke("auth:open-external", url) as Promise<boolean>,
   },
+  notifications: {
+    isSupported: () => ipcRenderer.invoke("notifications:is-supported") as Promise<boolean>,
+    notify: (input: { title: string; description?: string; href?: string }) =>
+      ipcRenderer.invoke("notifications:notify", input) as Promise<boolean>,
+    onClick: (cb: (href?: string) => void) => {
+      const listener = (_event: unknown, href?: string) => cb(href)
+      ipcRenderer.on("notifications:click", listener)
+      return () => ipcRenderer.removeListener("notifications:click", listener)
+    },
+  } satisfies DesktopNotificationApi,
   local: {
     target: () => ipcRenderer.invoke("local:target") as Promise<LocalTarget>,
     status: (version?: string) => ipcRenderer.invoke("local:status", version) as Promise<LocalStatus>,
@@ -126,12 +142,9 @@ const api = {
       return () => ipcRenderer.removeListener("window:state", listener)
     },
   },
-  // Desktop-app updater. Owns the lifecycle of the *Electron shell*
-  // exclusively — never the connected remote instance. Releases use the
-  // dedicated `vX.Y.Z-desktop` GitHub tags so desktop bumps stay decoupled
-  // from server bumps. Surfaces the full state machine (check → download
-  // → progress → downloaded → install) so the selector page can render a
-  // self-contained inline UI without relying on native modals.
+  // Shared local-runtime updater. Checks npm for new Codeplane releases,
+  // installs the platform package into the shared Codeplane home, and
+  // updates the preferred version used by desktop and TUI local instances.
   desktopUpdater: {
     status: () =>
       ipcRenderer.invoke("updater:status") as Promise<{

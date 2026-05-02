@@ -4,6 +4,7 @@ import type { Argv } from "yargs"
 import { ConfigPaths } from "../../config"
 import { Global } from "../../global"
 import { installPlugin, patchPluginConfig, readPluginManifest } from "../../plugin/install"
+import { readPluginPackage } from "../../plugin/shared"
 import { resolvePluginTarget } from "../../plugin/shared"
 import { Instance } from "../../project/instance"
 import { errorMessage } from "../../util/error"
@@ -24,7 +25,7 @@ export type PlugDeps = {
     info: (msg: string) => void
     success: (msg: string) => void
   }
-  resolve: (spec: string) => Promise<string>
+  resolve: (spec: string, dir?: string) => Promise<string>
   readText: (file: string) => Promise<string>
   write: (file: string, text: string) => Promise<void>
   exists: (file: string) => Promise<boolean>
@@ -51,7 +52,7 @@ const defaultPlugDeps: PlugDeps = {
     info: (msg) => log.info(msg),
     success: (msg) => log.success(msg),
   },
-  resolve: (spec) => resolvePluginTarget(spec),
+  resolve: (spec, dir) => resolvePluginTarget(spec, dir),
   readText: (file) => Filesystem.readText(file),
   write: async (file, text) => {
     await Filesystem.write(file, text)
@@ -75,7 +76,7 @@ export function createPlugTask(input: PlugInput, dep: PlugDeps = defaultPlugDeps
   return async (ctx: PlugCtx) => {
     const install = dep.spinner()
     install.start("Installing plugin package...")
-    const target = await installPlugin(mod, dep)
+    const target = await installPlugin(mod, dep, ctx.directory)
     if (!target.ok) {
       install.stop("Install failed", 1)
       dep.log.error(`Could not install "${mod}"`)
@@ -100,6 +101,12 @@ export function createPlugTask(input: PlugInput, dep: PlugDeps = defaultPlugDeps
       return false
     }
     install.stop("Plugin package ready")
+    const pkg = await readPluginPackage(target.target).catch(() => undefined)
+    if (pkg) {
+      dep.log.info(
+        `Resolved ${typeof pkg.json.name === "string" ? pkg.json.name : mod}${typeof pkg.json.version === "string" ? `@${pkg.json.version}` : ""}`,
+      )
+    }
 
     const inspect = dep.spinner()
     inspect.start("Reading plugin manifest...")
