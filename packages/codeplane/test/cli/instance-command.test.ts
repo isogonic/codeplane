@@ -19,7 +19,7 @@ describe("cli instance helpers", () => {
               id: "local-1",
               url: "http://127.0.0.1",
               local: {
-                binaryVersion: "27.3.0",
+                binaryVersion: "27.3.1",
               },
             },
             {
@@ -28,7 +28,7 @@ describe("cli instance helpers", () => {
             },
           ],
         },
-        "27.3.0",
+        "27.3.1",
       ),
     ).toEqual({
       lastInstanceID: "remote-1",
@@ -37,7 +37,7 @@ describe("cli instance helpers", () => {
           id: "local-1",
           url: "http://127.0.0.1",
           local: {
-            binaryVersion: "27.3.0",
+            binaryVersion: "27.3.1",
           },
         },
         {
@@ -60,7 +60,7 @@ describe("cli instance helpers", () => {
           },
           ignoreCertificateErrors: true,
           local: {
-            binaryVersion: "27.3.0",
+            binaryVersion: "27.3.1",
           },
         },
         "local-1",
@@ -71,7 +71,7 @@ describe("cli instance helpers", () => {
       type: "local",
       label: "Local",
       url: "http://127.0.0.1",
-      version: "27.3.0",
+      version: "27.3.1",
       headers: 1,
       ignoreCertificateErrors: true,
     })

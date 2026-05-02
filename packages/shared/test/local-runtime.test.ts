@@ -60,7 +60,7 @@ describe("local runtime registry config", () => {
           : new Request(input instanceof URL ? input.toString() : input, init)
       return new Response(
         JSON.stringify({
-          version: "27.3.0",
+          version: "27.3.1",
           dist: { tarball: "https://registry.example.com/custom/codeplane.tgz" },
         }),
         {
@@ -72,7 +72,7 @@ describe("local runtime registry config", () => {
 
     const manifest = await fetchNpmPackageManifest({ name: "codeplane-ai", version: "latest" })
 
-    expect(manifest.version).toBe("27.3.0")
+    expect(manifest.version).toBe("27.3.1")
     expect(request?.url).toBe("https://registry.example.com/custom/codeplane-ai/latest")
     expect(request?.headers.get("authorization")).toBe("Bearer secret-token")
   })
@@ -81,14 +81,14 @@ describe("local runtime registry config", () => {
 describe("preferred local runtime version", () => {
   test("persists and reloads the shared preferred version", async () => {
     expect(await readPreferredLocalVersion("27.0.0")).toBe("27.0.0")
-    await writePreferredLocalVersion("v27.3.0")
-    expect(await readPreferredLocalVersion("27.0.0")).toBe("27.3.0")
+    await writePreferredLocalVersion("v27.3.1")
+    expect(await readPreferredLocalVersion("27.0.0")).toBe("27.3.1")
   })
 })
 
 describe("managed local cli", () => {
   test("copies the installed runtime binary into the shared cli path", async () => {
-    const source = path.join(home, "local_server", "binaries", "27.3.0", process.platform === "win32" ? "codeplane.exe" : "codeplane")
+    const source = path.join(home, "local_server", "binaries", "27.3.1", process.platform === "win32" ? "codeplane.exe" : "codeplane")
     await fs.mkdir(path.dirname(source), { recursive: true })
     await fs.writeFile(source, "#!/usr/bin/env sh\nexit 0\n")
     if (process.platform !== "win32") {
@@ -98,7 +98,7 @@ describe("managed local cli", () => {
     expect((await managedCodeplaneCliStatus()).cliInstalled).toBe(false)
 
     const installed = await installManagedCodeplaneCli({
-      version: "27.3.0",
+      version: "27.3.1",
       binaryPath: source,
     })
 
@@ -108,7 +108,7 @@ describe("managed local cli", () => {
     expect(await managedCodeplaneCliStatus()).toEqual({
       cliInstalled: true,
       cliPath: managedCodeplaneCliPath(),
-      cliVersion: "27.3.0",
+      cliVersion: "27.3.1",
     })
   })
 })

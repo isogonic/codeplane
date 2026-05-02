@@ -83,7 +83,7 @@ test.describe("persisted projects across reconnect validation", () => {
       }
 
       if (url.pathname === "/global/health") {
-        json(response, { healthy: true, version: "27.3.0" })
+        json(response, { healthy: true, version: "27.3.1" })
         return
       }
 
