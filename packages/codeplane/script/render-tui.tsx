@@ -13,6 +13,7 @@ const ROWS = Number(process.env.LINES ?? 36)
 const scenes: Record<string, () => React.ReactElement> = {
   setup: () => <Scene name="setup" rows={ROWS} />,
   directory: () => <Scene name="directory" rows={ROWS} />,
+  "directory-input": () => <Scene name="directory-input" rows={ROWS} />,
   conversation: () => <Scene name="conversation" rows={ROWS} />,
   "conversation-sidebar": () => <Scene name="conversation-sidebar" rows={ROWS} />,
   palette: () => <Scene name="palette" rows={ROWS} />,
