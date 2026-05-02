@@ -75,12 +75,14 @@ jobs:
       - uses: ./.github/actions/setup-bun
 
       - name: Configure npm token fallback
-        if: ${{ secrets.NPM_TOKEN != '' }}
         shell: bash
-        run: |
-          printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$HOME/.npmrc"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            exit 0
+          fi
+          printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$HOME/.npmrc"
 
       - name: Verify package versions
         shell: bash
