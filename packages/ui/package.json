@@ -1,6 +1,6 @@
 {
   "name": "@codeplane-ai/ui",
-  "version": "27.4.1",
+  "version": "27.4.2",
   "type": "module",
   "license": "MIT",
   "exports": {
