@@ -108,6 +108,11 @@ const api = {
   } satisfies DesktopNotificationApi,
   local: {
     target: () => ipcRenderer.invoke("local:target") as Promise<LocalTarget>,
+    listVersions: () =>
+      ipcRenderer.invoke("local:list-versions") as Promise<
+        | { ok: true; latest?: string; distTags: Record<string, string>; versions: string[] }
+        | { ok: false; error: string }
+      >,
     status: (version?: string) => ipcRenderer.invoke("local:status", version) as Promise<LocalStatus>,
     install: (input: { version?: string }) =>
       ipcRenderer.invoke("local:install", input) as Promise<

@@ -219,9 +219,15 @@ export function createLocalInstanceManager(input: LocalInstanceManagerInput) {
         HOME: process.env.HOME ?? os.homedir(),
       }
 
-      log("local.start", { binary, data, id: input.id })
+      // Spawn from the user's home, not the per-instance data dir. The picker
+      // seeds itself from the server's process.cwd(), so anchoring at $HOME
+      // gives the user a sensible starting point instead of dropping them
+      // inside Codeplane's own Application Support folder. Storage paths are
+      // already plumbed through CODEPLANE_* env vars above.
+      const home = process.env.HOME?.trim() || process.env.USERPROFILE?.trim() || os.homedir()
+      log("local.start", { binary, cwd: home, data, id: input.id })
       const child = spawn(binary, ["serve", "--hostname", "127.0.0.1", "--port", "0"], {
-        cwd: data,
+        cwd: home,
         env,
         stdio: ["ignore", "pipe", "pipe"],
         windowsHide: true,

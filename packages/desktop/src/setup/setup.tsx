@@ -61,6 +61,12 @@ if (!(window as any).codeplaneDesktop) {
         packageName: "codeplane-darwin-arm64",
         defaultVersion: "dev",
       }),
+      listVersions: async () => ({
+        ok: true,
+        latest: CodeplaneVersion,
+        distTags: { latest: CodeplaneVersion },
+        versions: [CodeplaneVersion, "27.4.10", "27.4.8", "27.4.0"],
+      }),
       status: async () => ({ installed: false }),
       install: async () => ({ ok: true }),
       onInstallProgress: noop,

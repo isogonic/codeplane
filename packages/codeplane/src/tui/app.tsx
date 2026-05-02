@@ -1372,8 +1372,12 @@ export function App(props: AppProps) {
         return
       }
       if (input === "t" && focus !== "terminals") setTerminalOpen((value) => !value)
-      if (input === "n" && focus !== "terminals") {
-        void createTerminalTab().catch((error) => setMessage("error", error instanceof Error ? error.message : String(error)))
+      if (input === "n") {
+        if (focus === "terminals") {
+          void createTerminalTab().catch((error) => setMessage("error", error instanceof Error ? error.message : String(error)))
+        } else {
+          void createSession().catch((error) => setMessage("error", error instanceof Error ? error.message : String(error)))
+        }
         return
       }
       if (input === "x" && focus === "terminals") {

@@ -16,7 +16,11 @@ import {
 import Store from "electron-store"
 import { autoUpdater, type UpdateDownloadedEvent, type UpdateInfo, type ProgressInfo } from "electron-updater"
 import { CodeplaneHome } from "@codeplane-ai/shared/home"
-import { readPreferredLocalVersion, writePreferredLocalVersion } from "@codeplane-ai/shared/local-runtime"
+import {
+  fetchCodeplaneVersions,
+  readPreferredLocalVersion,
+  writePreferredLocalVersion,
+} from "@codeplane-ai/shared/local-runtime"
 import { createInstanceStore, type State as InstanceStoreState } from "@codeplane-ai/shared/instance-store"
 import { createServerVersionWatcher, type ServerVersionWatcher } from "@codeplane-ai/shared/server-version-watcher"
 import { existsSync } from "node:fs"
@@ -441,16 +445,14 @@ async function showDesktopNotification(sender: WebContents, payload: DesktopNoti
     title,
   })
   if (!supported) return false
+  // macOS requires a non-empty body for the notification banner to render
+  // reliably. An empty body is sometimes coalesced away by Notification
+  // Center even when permission is granted, leaving no visible alert.
+  const body = payload.description?.trim() || title
   const notification = new Notification({
     title,
-    body: payload.description?.trim() || "",
+    body,
     icon: desktopNotificationIcon(),
-  })
-  notification.on("show", () => {
-    logger.log("main", "notifications.notify.show", {
-      href: payload.href,
-      title,
-    })
   })
   notification.on("click", () => {
     logger.log("main", "notifications.notify.click", {
@@ -465,8 +467,41 @@ async function showDesktopNotification(sender: WebContents, payload: DesktopNoti
       title,
     })
   })
-  notification.show()
-  return true
+  // `notification.show()` is fire-and-forget, but the "show" event only
+  // fires when the OS actually surfaces the banner. If permission is
+  // denied, Focus is on, or the app isn't registered with Notification
+  // Center, none of those events fire — silently dropping the alert.
+  // Wait for the show callback (or timeout) so the renderer can surface
+  // a meaningful "notifications unavailable" toast instead of falsely
+  // reporting success.
+  return await new Promise<boolean>((resolve) => {
+    let settled = false
+    const settle = (shown: boolean, reason: string) => {
+      if (settled) return
+      settled = true
+      logger.log("main", "notifications.notify.settle", {
+        href: payload.href,
+        reason,
+        shown,
+        title,
+      })
+      resolve(shown)
+    }
+    notification.once("show", () => settle(true, "show"))
+    notification.once("failed" as Parameters<typeof notification.on>[0], () => settle(false, "failed"))
+    try {
+      notification.show()
+    } catch (error) {
+      logger.log("main", "notifications.notify.throw", {
+        error: error instanceof Error ? error.message : String(error),
+        href: payload.href,
+        title,
+      })
+      settle(false, "throw")
+      return
+    }
+    setTimeout(() => settle(false, "timeout"), 1500)
+  })
 }
 
 function showMessageBox(options: MessageBoxOptions) {
@@ -1608,6 +1643,16 @@ function setupIpc() {
     packageName: localManager.target.packageName,
     defaultVersion: await readPreferredLocalVersion(CodeplaneVersion),
   }))
+  ipcMain.handle("local:list-versions", async () => {
+    try {
+      const list = await fetchCodeplaneVersions()
+      logger.log("main", "local.list-versions", { count: list.versions.length, latest: list.latest })
+      return { ok: true as const, ...list }
+    } catch (error) {
+      logger.log("main", "local.list-versions.error", { error })
+      return { ok: false as const, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
   ipcMain.handle("local:status", async (_event, version: string) => {
     const status = await localManager.status(version || (await readPreferredLocalVersion(CodeplaneVersion)))
     logger.log("main", "local.status", status)
