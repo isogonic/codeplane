@@ -29,18 +29,63 @@ async function resolveNodeCommand() {
   return which.sync("node", { nothrow: true }) || ""
 }
 
+function platformPackageNames() {
+  const platformMap: Record<string, string> = { darwin: "darwin", linux: "linux", win32: "windows" }
+  const archMap: Record<string, string> = { x64: "x64", arm64: "arm64", arm: "arm" }
+  const platform = platformMap[process.platform] || process.platform
+  const arch = archMap[process.arch] || process.arch
+  const base = `codeplane-${platform}-${arch}`
+  // Mirror the candidate order from the npm wrapper / postinstall so we walk
+  // the same set of platform packages.
+  const variants = [base, `${base}-baseline`, `${base}-musl`, `${base}-baseline-musl`]
+  return variants
+}
+
+async function searchUpForRuntime(start: string): Promise<string | undefined> {
+  const names = platformPackageNames()
+  let current = start
+  for (;;) {
+    const modules = path.join(current, "node_modules")
+    if (await exists(modules)) {
+      for (const name of names) {
+        const candidate = path.join(modules, name, "bin", "runtime", "tui", "node-main.js")
+        if (await exists(candidate)) return candidate
+      }
+    }
+    const parent = path.dirname(current)
+    if (parent === current) return undefined
+    current = parent
+  }
+}
+
 async function resolveBundledEntry() {
   if (process.env.CODEPLANE_TUI_BUNDLE) return process.env.CODEPLANE_TUI_BUNDLE
-  const execDir = path.dirname(process.execPath)
-  const candidates = [
-    path.join(execDir, "runtime", "tui", "node-main.js"),
-    path.join(execDir, "tui", "node-main.js"),
-    path.join(execDir, "runtime", "tui", "index.mjs"),
-    path.join(execDir, "tui", "index.mjs"),
-  ]
-  for (const candidate of candidates) {
-    if (await exists(candidate)) return candidate
+
+  const dirs = [process.env.CODEPLANE_BIN_DIR, path.dirname(process.execPath)].filter(
+    (value): value is string => typeof value === "string" && value.length > 0,
+  )
+
+  for (const dir of dirs) {
+    const candidates = [
+      path.join(dir, "runtime", "tui", "node-main.js"),
+      path.join(dir, "tui", "node-main.js"),
+      path.join(dir, "runtime", "tui", "index.mjs"),
+      path.join(dir, "tui", "index.mjs"),
+    ]
+    for (const candidate of candidates) {
+      if (await exists(candidate)) return candidate
+    }
   }
+
+  // Last resort: an upstream postinstall may have hardlinked the binary into
+  // a different package's bin dir (e.g. codeplane-ai/bin/.codeplane), so the
+  // bundle is not next to process.execPath. Walk node_modules ancestors to
+  // find the matching platform package's runtime/tui/node-main.js.
+  for (const dir of dirs) {
+    const found = await searchUpForRuntime(dir)
+    if (found) return found
+  }
+  return undefined
 }
 
 function isPackagedBinary() {

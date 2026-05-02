@@ -5,9 +5,12 @@ const fs = require("fs")
 const path = require("path")
 const os = require("os")
 
-function run(target) {
+function run(target, binDir) {
+  const env = { ...process.env }
+  if (binDir) env.CODEPLANE_BIN_DIR = binDir
   const result = childProcess.spawnSync(target, process.argv.slice(2), {
     stdio: "inherit",
+    env,
   })
   if (result.error) {
     console.error(result.error.message)
@@ -19,17 +22,11 @@ function run(target) {
 
 const envPath = process.env.CODEPLANE_BIN_PATH
 if (envPath) {
-  run(envPath)
+  run(envPath, path.dirname(envPath))
 }
 
 const scriptPath = fs.realpathSync(__filename)
 const scriptDir = path.dirname(scriptPath)
-
-//
-const cached = path.join(scriptDir, ".codeplane")
-if (fs.existsSync(cached)) {
-  run(cached)
-}
 
 const platformMap = {
   darwin: "darwin",
@@ -176,4 +173,16 @@ if (!resolved) {
   process.exit(1)
 }
 
-run(resolved)
+// Always pass the real platform-package bin dir so the spawned binary can
+// locate sibling assets like runtime/tui/node-main.js, even when an upstream
+// hardlink/copy in scriptDir means process.execPath is somewhere else.
+const realBinDir = path.dirname(resolved)
+
+// Use cached hardlink/copy in scriptDir for fast startup, but tell the child
+// where its real assets live via CODEPLANE_BIN_DIR.
+const cached = path.join(scriptDir, ".codeplane")
+if (fs.existsSync(cached)) {
+  run(cached, realBinDir)
+}
+
+run(resolved, realBinDir)
