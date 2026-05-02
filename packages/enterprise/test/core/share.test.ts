@@ -281,4 +281,76 @@ describe.concurrent("core.share", () => {
 
     await Share.remove({ id: share.id, secret: share.secret })
   })
+
+  test("should merge session_diff and model data types", async () => {
+    const sessionID = Identifier.descending()
+    const share = await Share.create({ sessionID })
+
+    const data: Share.Data[] = [
+      { type: "session_diff", data: [] as any },
+      { type: "model", data: [] as any },
+    ]
+
+    await Share.sync({
+      share: { id: share.id, secret: share.secret },
+      data,
+    })
+
+    const result = await Share.data(share.id)
+
+    expect(result.some((d) => d.type === "session_diff")).toBe(true)
+    expect(result.some((d) => d.type === "model")).toBe(true)
+
+    await Share.remove({ id: share.id, secret: share.secret })
+  })
+
+  test("should throw AlreadyExists when creating duplicate share", async () => {
+    const sessionID = Identifier.descending()
+    const share = await Share.create({ sessionID })
+
+    expect(async () => {
+      await Share.create({ sessionID })
+    }).toThrow()
+
+    await Share.remove({ id: share.id, secret: share.secret })
+  })
+
+  test("should throw NotFound when removing non-existent share", async () => {
+    expect(async () => {
+      await Share.remove({ id: "non-existent-share-id", secret: "any" })
+    }).toThrow()
+  })
+
+  test("should throw InvalidSecret when removing with wrong secret", async () => {
+    const sessionID = Identifier.descending()
+    const share = await Share.create({ sessionID })
+
+    expect(async () => {
+      await Share.remove({ id: share.id, secret: "wrong-secret" })
+    }).toThrow()
+
+    await Share.remove({ id: share.id, secret: share.secret })
+  })
+
+  test("should return compaction data when no events exist (legacy path)", async () => {
+    const sessionID = Identifier.descending()
+    const share = await Share.create({ sessionID })
+
+    const compactionData: Share.Data[] = [
+      {
+        type: "part",
+        data: { id: "compacted-part", sessionID, messageID: "msg1", type: "text", text: "From compaction" },
+      },
+    ]
+
+    await Storage.remove(["share_snapshot", share.id])
+    await Storage.write(["share_compaction", share.id], { data: compactionData, event: undefined })
+
+    const result = await Share.data(share.id)
+
+    expect(result).toHaveLength(1)
+    expect(result[0].type).toBe("part")
+
+    await Share.remove({ id: share.id, secret: share.secret })
+  })
 })

@@ -24,6 +24,7 @@ import {
   ReasoningPart,
   TextPart,
   ToolPart,
+  ToolStateCompleted,
   UserMessage,
   Todo,
   QuestionAnswer,
@@ -1315,6 +1316,7 @@ export interface ToolProps {
   output?: string
   status?: string
   startTime?: number
+  attachments?: FilePart[]
   hideDetails?: boolean
   defaultOpen?: boolean
   forceOpen?: boolean
@@ -1378,6 +1380,39 @@ function ToolFileAccordion(props: { path: string; actions?: JSX.Element; childre
         <Accordion.Content>{props.children}</Accordion.Content>
       </Accordion.Item>
     </Accordion>
+  )
+}
+
+function ToolAttachments(props: { attachments: FilePart[] }) {
+  const i18n = useI18n()
+  const dialog = useDialog()
+  const items = createMemo(() => props.attachments.filter((part) => kind(part) === "image"))
+  const openImagePreview = (url: string, alt?: string) => {
+    dialog.show(() => <ImagePreview src={url} alt={alt} />)
+  }
+  return (
+    <Show when={items().length > 0}>
+      <div data-component="tool-attachments">
+        <For each={items()}>
+          {(file) => {
+            const name = file.filename ?? i18n.t("ui.message.attachment.alt")
+            return (
+              <button
+                type="button"
+                data-slot="tool-attachment-image-button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  openImagePreview(file.url, name)
+                }}
+                aria-label={name}
+              >
+                <img data-slot="tool-attachment-image" src={file.url} alt={name} />
+              </button>
+            )
+          }}
+        </For>
+      </div>
+    </Show>
   )
 }
 
@@ -1458,9 +1493,19 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
               status={part().state.status}
               // @ts-expect-error
               startTime={part().state.time?.start}
+              // @ts-expect-error
+              attachments={part().state.attachments}
               hideDetails={props.hideDetails}
               defaultOpen={props.defaultOpen}
             />
+            <Show
+              when={
+                part().state.status === "completed" &&
+                ((part().state as ToolStateCompleted).attachments?.length ?? 0) > 0
+              }
+            >
+              <ToolAttachments attachments={(part().state as ToolStateCompleted).attachments ?? []} />
+            </Show>
           </Match>
         </Switch>
       </div>
@@ -1853,11 +1898,6 @@ ToolRegistry.register({
       const value = props.input.url
       return typeof value === "string" ? value : ""
     })
-    const screenshot = createMemo(() => {
-      const value = props.metadata?.screenshotDataUrl
-      return typeof value === "string" && value.length > 0 ? value : null
-    })
-    const dialog = useDialog()
     return (
       <BasicTool
         {...props}
@@ -1884,43 +1924,6 @@ ToolRegistry.register({
           </div>
         }
       >
-        <Show when={screenshot()} keyed>
-          {(src) => (
-            <div data-component="browse-screenshot">
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  dialog.show(() => <ImagePreview src={src} alt={`Screenshot of ${url()}`} />)
-                }}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  padding: "0",
-                  border: "1px solid var(--border-weak-base)",
-                  "border-radius": "8px",
-                  overflow: "hidden",
-                  background: "var(--surface-base)",
-                  cursor: "zoom-in",
-                  "margin-bottom": "8px",
-                }}
-                aria-label={`Screenshot of ${url()}`}
-              >
-                <img
-                  src={src}
-                  alt={`Screenshot of ${url()}`}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    height: "auto",
-                    "max-height": "480px",
-                    "object-fit": "contain",
-                  }}
-                />
-              </button>
-            </div>
-          )}
-        </Show>
         <Show when={typeof props.output === "string" && (props.output as string).length > 0}>
           <div data-component="tool-output" data-scrollable>
             <Markdown text={props.output as string} />

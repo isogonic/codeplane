@@ -101,7 +101,7 @@ export default function Home() {
 
   return (
     <div class="size-full overflow-y-auto">
-      <div class="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-6 px-6 py-8">
+      <div class="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-4 px-4 py-5 sm:gap-6 sm:px-6 sm:py-8">
         <Header
           subtitleText={subtitleText}
           lastActivity={() => stats().totals.lastActivity}
@@ -190,7 +190,7 @@ function HeroStats(props: {
 }) {
   const lines = () => props.totals().additions + props.totals().deletions
   return (
-    <div class="grid grid-cols-2 sm:grid-cols-4 overflow-hidden rounded-lg border border-border-weaker-base bg-background-base shadow-[var(--shadow-xs)]">
+    <div class="grid grid-cols-2 gap-px sm:gap-0 sm:grid-cols-4 overflow-hidden rounded-xl sm:rounded-lg border border-border-weaker-base bg-border-weaker-base sm:bg-background-base shadow-[var(--shadow-xs)]">
       <Stat
         label={props.labels.sessions}
         value={props.formatNumber().format(props.totals().sessions)}
@@ -217,7 +217,7 @@ function HeroStats(props: {
 
 function Stat(props: { label: string; value: string; hint?: () => string | undefined }) {
   return (
-    <div class="min-w-0 border-b border-r border-border-weaker-base px-4 py-3 last:border-r-0 sm:border-b-0 [&:nth-child(2)]:border-r-0 sm:[&:nth-child(2)]:border-r [&:nth-child(3)]:border-b-0 sm:[&:nth-child(3)]:border-b-0">
+    <div class="min-w-0 bg-background-base px-3 py-3 sm:px-4 sm:border-b sm:border-r sm:border-border-weaker-base sm:last:border-r-0 sm:border-b-0 sm:[&:nth-child(2)]:border-r sm:[&:nth-child(3)]:border-b-0">
       <div class="text-20-medium text-text-strong tabular-nums">{props.value}</div>
       <div class="pt-0.5 text-12-regular text-text-weak truncate">{props.label}</div>
       <Show when={props.hint?.()} keyed>
