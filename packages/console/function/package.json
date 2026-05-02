@@ -1,6 +1,6 @@
 {
   "name": "@codeplane-ai/console-function",
-  "version": "27.4.5",
+  "version": "27.4.6",
   "$schema": "https://json.schemastore.org/package.json",
   "private": true,
   "type": "module",
