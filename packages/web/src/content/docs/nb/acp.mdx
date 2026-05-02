@@ -3,7 +3,7 @@ title: ACP-støtte
 description: Bruk codeplane i en hvilken som helst ACP-kompatibel editor.
 ---
 
-CodePlane støtter [Agent Client Protocol](https://agentclientprotocol.com) eller (ACP), slik at du kan bruke den direkte i kompatible editorer og IDE-er.
+Codeplane støtter [Agent Client Protocol](https://agentclientprotocol.com) eller (ACP), slik at du kan bruke den direkte i kompatible editorer og IDE-er.
 
 :::tip
 For en liste over editorer og verktøy som støtter ACP, sjekk ut [ACP fremdriftsrapport](https://zed.dev/blog/acp-progress-report#available-now).
@@ -15,9 +15,9 @@ ACP er en åpen protokoll som standardiserer kommunikasjon mellom kodeditorer og
 
 ## Konfigurasjon
 
-For å bruke CodePlane via ACP, konfigurer redigeringsprogrammet til å kjøre kommandoen `codeplane acp`.
+For å bruke Codeplane via ACP, konfigurer redigeringsprogrammet til å kjøre kommandoen `codeplane acp`.
 
-Kommandoen starter CodePlane som en ACP-kompatibel underprosess som kommuniserer med editoren din over JSON-RPC via stdio.
+Kommandoen starter Codeplane som en ACP-kompatibel underprosess som kommuniserer med editoren din over JSON-RPC via stdio.
 
 Nedenfor er eksempler på populære editorer som støtter ACP.
 
@@ -30,7 +30,7 @@ Legg til i [Zed](https://zed.dev)-konfigurasjonen (`~/.config/zed/settings.json`
 ```json title="~/.config/zed/settings.json"
 {
   "agent_servers": {
-    "CodePlane": {
+    "Codeplane": {
       "command": "codeplane",
       "args": ["acp"]
     }
@@ -51,7 +51,7 @@ Du kan også binde en hurtigtast ved å redigere `keymap.json`:
         {
           "agent": {
             "custom": {
-              "name": "CodePlane",
+              "name": "Codeplane",
               "command": {
                 "command": "codeplane",
                 "args": ["acp"]
@@ -74,7 +74,7 @@ Legg til [JetBrains IDE](https://www.jetbrains.com/) acp.json i henhold til [dok
 ```json title="acp.json"
 {
   "agent_servers": {
-    "CodePlane": {
+    "Codeplane": {
       "command": "/absolute/path/bin/codeplane",
       "args": ["acp"]
     }
@@ -82,7 +82,7 @@ Legg til [JetBrains IDE](https://www.jetbrains.com/) acp.json i henhold til [dok
 }
 ```
 
-For å åpne den, bruk den nye 'CodePlane'-agenten i AI Chat-agentvelgeren.
+For å åpne den, bruk den nye 'Codeplane'-agenten i AI Chat-agentvelgeren.
 
 ---
 
@@ -121,7 +121,7 @@ Hvis du trenger å sende miljøvariabler:
 
 ### CodeCompanion.nvim
 
-For å bruke CodePlane som en ACP-agent i [CodeCompanion.nvim](https://github.com/olimorris/codecompanion.nvim), legg til følgende i Neovim-konfigurasjonen:
+For å bruke Codeplane som en ACP-agent i [CodeCompanion.nvim](https://github.com/olimorris/codecompanion.nvim), legg til følgende i Neovim-konfigurasjonen:
 
 ```lua
 require("codecompanion").setup({
@@ -136,13 +136,13 @@ require("codecompanion").setup({
 })
 ```
 
-Denne konfigurasjonen setter opp CodeCompanion.nvim til å bruke CodePlane som ACP-agent for chat.
+Denne konfigurasjonen setter opp CodeCompanion.nvim til å bruke Codeplane som ACP-agent for chat.
 
 Hvis du trenger å sende miljøvariabler (som `CODEPLANE_API_KEY`), se [Konfigurere adaptere: miljøvariabler](https://codecompanion.olimorris.dev/getting-started#setting-an-api-key) i CodeCompanion.nvim-dokumentasjonen for fullstendige detaljer.
 
 ## Støtte
 
-CodePlane fungerer på samme måte via ACP som i terminalen. Alle funksjoner støttes:
+Codeplane fungerer på samme måte via ACP som i terminalen. Alle funksjoner støttes:
 
 :::note
 Noen innebygde slash-kommandoer som `/undo` og `/redo` støttes for øyeblikket ikke.
@@ -150,7 +150,7 @@ Noen innebygde slash-kommandoer som `/undo` og `/redo` støttes for øyeblikket 
 
 - Innebygde verktøy (filoperasjoner, terminalkommandoer, etc.)
 - Egendefinerte verktøy og slash-kommandoer
-- MCP servere konfigurert i CodePlane-konfigurasjonen
+- MCP servere konfigurert i Codeplane-konfigurasjonen
 - Prosjektspesifikke regler fra `AGENTS.md`
 - Tilpassede formatere og linters
 - Agenter og tillatelsessystem

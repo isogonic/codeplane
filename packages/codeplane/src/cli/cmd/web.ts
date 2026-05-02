@@ -29,7 +29,7 @@ function getNetworkIPs() {
 }
 
 export const WebCommand = cmd({
-  command: ["$0", "web"],
+  command: "web",
   builder: (yargs) => withNetworkOptions(yargs),
   describe: "start codeplane server and open web interface",
   handler: async (args) => {

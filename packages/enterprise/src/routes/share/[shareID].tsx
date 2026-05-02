@@ -171,7 +171,7 @@ export default function () {
           return (
             <>
               <Show when={info().title}>
-                <Title>{info().title} | CodePlane</Title>
+                <Title>{info().title} | Codeplane</Title>
               </Show>
               <Meta name="description" content="codeplane - The AI coding agent built for the terminal." />
               <Meta property="og:image" content={ogImage()} />

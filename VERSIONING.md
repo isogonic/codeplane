@@ -1,6 +1,6 @@
 # Versioning
 
-CodePlane public releases use semantic versions:
+Codeplane public releases use semantic versions:
 
 ```text
 MAJOR.MINOR.PATCH

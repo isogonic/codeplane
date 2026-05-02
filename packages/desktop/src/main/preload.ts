@@ -1,65 +1,12 @@
 import { contextBridge, ipcRenderer } from "electron"
-
-type SavedInstance = {
-  id: string
-  url: string
-  label?: string
-  headers?: Record<string, string>
-  ignoreCertificateErrors?: boolean
-  clientCertSubject?: string
-  iconDataUrl?: string
-  local?: {
-    binaryVersion: string
-  }
-}
-
-type PrepareProgress = {
-  instanceID: string
-  phase: "probe" | "download" | "finalize" | "done"
-  message: string
-  percent: number
-  version?: string
-  completed?: number
-  total?: number
-  cacheHit?: boolean
-}
-
-type OpenProgress = {
-  instanceID: string
-  phase: "probe" | "download" | "finalize" | "done" | "error"
-  message: string
-  percent: number
-  version?: string
-  completed?: number
-  total?: number
-  cacheHit?: boolean
-}
-
-type LocalInstallProgress = {
-  version: string
-  phase: "detect" | "download" | "extract" | "start" | "ready"
-  message: string
-  percent: number
-  binaryVersion?: string
-  transferred?: number
-  total?: number
-}
-
-type LocalTarget = {
-  archiveName: string
-  archiveExt: ".zip" | ".tar.gz"
-  binaryName: string
-  os: "darwin" | "linux" | "windows"
-  arch: "x64" | "arm64"
-  defaultVersion: string
-}
-
-type LocalStatus = {
-  binaryVersion: string
-  installed: boolean
-  binaryPath: string
-  archive: string
-}
+import type {
+  LocalInstallProgress,
+  LocalStatus,
+  LocalTarget,
+  OpenProgress,
+  PrepareProgress,
+  SavedInstance,
+} from "@codeplane-ai/shared/instance"
 
 type DesktopStorageApi = {
   getItem: (storageName: string | undefined, key: string) => string | null
@@ -245,4 +192,4 @@ const api = {
 
 contextBridge.exposeInMainWorld("codeplaneDesktop", api)
 
-export type CodePlaneDesktopAPI = typeof api
+export type CodeplaneDesktopAPI = typeof api

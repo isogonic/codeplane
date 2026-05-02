@@ -64,6 +64,23 @@ describe("installation", () => {
   })
 
   describe("latest", () => {
+    test("detects npm installs published as codeplane-ai", async () => {
+      const layer = testLayer(
+        () => {
+          throw new Error("unexpected http request")
+        },
+        (cmd, args) => {
+          if (cmd === "npm" && args[0] === "list") return "└── codeplane-ai@1.5.0\n"
+          return ""
+        },
+      )
+
+      const result = await Effect.runPromise(
+        Installation.Service.use((svc) => svc.method()).pipe(Effect.provide(layer)),
+      )
+      expect(result).toBe("npm")
+    })
+
     test("reads release version from GitHub releases", async () => {
       const layer = testLayer(() => jsonResponse([{ tag_name: "v1.2.3" }]))
 

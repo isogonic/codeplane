@@ -1,17 +1,17 @@
 ---
 title: GitHub
-description: Brug CodePlane i GitHub-problemer og Pull Requests.
+description: Brug Codeplane i GitHub-problemer og Pull Requests.
 ---
 
-CodePlane integreres med din GitHub arbejdsgang. Nævn `/codeplane` i din kommentar, og CodePlane vil udføre opgaver i din GitHub Actions-løber.
+Codeplane integreres med din GitHub arbejdsgang. Nævn `/codeplane` i din kommentar, og Codeplane vil udføre opgaver i din GitHub Actions-løber.
 
 ---
 
 ## Funktioner
 
-- **Triageproblemer**: Bed CodePlane om at undersøge et problem og forklare dig det.
-- **Ret og implementer**: Bed CodePlane om at løse et problem eller implementere en funktion. Og det vil fungere i en ny branch og indsende en PR med alle ændringerne.
-- **Sikker**: CodePlane løber inde i din GitHubs løbere.
+- **Triageproblemer**: Bed Codeplane om at undersøge et problem og forklare dig det.
+- **Ret og implementer**: Bed Codeplane om at løse et problem eller implementere en funktion. Og det vil fungere i en ny branch og indsende en PR med alle ændringerne.
+- **Sikker**: Codeplane løber inde i din GitHubs løbere.
 
 ---
 
@@ -62,7 +62,7 @@ Eller du kan indstille det manuelt.
               fetch-depth: 1
               persist-credentials: false
 
-          - name: Run CodePlane
+          - name: Run Codeplane
            uses: devinoldenburg/codeplane/github@latest
            env:
              ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -80,13 +80,13 @@ Eller du kan indstille det manuelt.
 
 ## Konfiguration
 
-- `model`: Den model, der skal bruges med CodePlane. Antager formatet `provider/model`. Dette er **påkrævet**.
+- `model`: Den model, der skal bruges med Codeplane. Antager formatet `provider/model`. Dette er **påkrævet**.
 - `agent`: Agenten, der skal bruges. Skal være en primær agent. Falder tilbage til `default_agent` fra config eller `"build"`, hvis den ikke findes.
-- `share`: Om CodePlane-sessionen skal dele. Standard er **true** for offentlige arkiver.
-- `prompt`: Valgfri brugerdefineret prompt for at tilsidesætte standardadfærden. Brug dette til at tilpasse, hvordan CodePlane behandler anmodninger.
-- `token`: Valgfrit GitHub adgangstoken til at udføre operationer såsom oprettelse af kommentarer, begå ændringer og åbning af Pull Requests. Som standard bruger CodePlane installationsadgangstokenet fra CodePlane GitHub-appen, så commits, kommentarer og Pull Requests ser ud til at komme fra appen.
+- `share`: Om Codeplane-sessionen skal dele. Standard er **true** for offentlige arkiver.
+- `prompt`: Valgfri brugerdefineret prompt for at tilsidesætte standardadfærden. Brug dette til at tilpasse, hvordan Codeplane behandler anmodninger.
+- `token`: Valgfrit GitHub adgangstoken til at udføre operationer såsom oprettelse af kommentarer, begå ændringer og åbning af Pull Requests. Som standard bruger Codeplane installationsadgangstokenet fra Codeplane GitHub-appen, så commits, kommentarer og Pull Requests ser ud til at komme fra appen.
 
-  Alternativt kan du bruge GitHub Action runners [built-in `GITHUB_TOKEN`](CodePlane) uden at installere CodePlane GitHub appen. Bare sørg for at give de nødvendige tilladelser i dit workflow:
+  Alternativt kan du bruge GitHub Action runners [built-in `GITHUB_TOKEN`](Codeplane) uden at installere Codeplane GitHub appen. Bare sørg for at give de nødvendige tilladelser i dit workflow:
 
   ```yaml
   permissions:
@@ -102,23 +102,23 @@ Eller du kan indstille det manuelt.
 
 ## Understøttede begivenheder
 
-CodePlane kan udløses af følgende GitHub hændelser:
+Codeplane kan udløses af følgende GitHub hændelser:
 
 | Begivenhedstype               | Udløst af                               | Detaljer                                                                                                                 |
 | ----------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `issue_comment`               | Kommentarer og problemer eller PR       | Nævn `/codeplane` i din kommentar. CodePlane læser kontekst og kan oprette brancher, åbne PR'er eller svare.             |
-| `pull_request_review_comment` | Kommenter specifikke kodelinjer i en PR | Nævn `/codeplane`, mens du gennemgår koden. CodePlane modtager filsti, linjenumre og diff-kontekst.                      |
-| `issues`                      | Udgave åbnet eller redigeret            | Udløs automatisk CodePlane, når problemer oprettes eller ændres. Kræver `prompt` input.                                  |
-| `pull_request`                | PR åbnet eller opdateret                | Udløs automatisk CodePlane, når PR'er åbnes, synkroniseres eller genåbnes. Nyttigt til automatiserede kodegennemgange.   |
-| `schedule`                    | Cron-baseret tidsplan                   | Kør CodePlane efter en tidsplan. Kræver `prompt` input. Output går til logfiler og PR'er (intet problem ved kommentere). |
-| `workflow_dispatch`           | Manuel trigger fra GitHub UI            | Udløs CodePlane efter behov via fanen Handlinger. Kræver `prompt` input. Output går til logfiler og PR'er.               |
+| `issue_comment`               | Kommentarer og problemer eller PR       | Nævn `/codeplane` i din kommentar. Codeplane læser kontekst og kan oprette brancher, åbne PR'er eller svare.             |
+| `pull_request_review_comment` | Kommenter specifikke kodelinjer i en PR | Nævn `/codeplane`, mens du gennemgår koden. Codeplane modtager filsti, linjenumre og diff-kontekst.                      |
+| `issues`                      | Udgave åbnet eller redigeret            | Udløs automatisk Codeplane, når problemer oprettes eller ændres. Kræver `prompt` input.                                  |
+| `pull_request`                | PR åbnet eller opdateret                | Udløs automatisk Codeplane, når PR'er åbnes, synkroniseres eller genåbnes. Nyttigt til automatiserede kodegennemgange.   |
+| `schedule`                    | Cron-baseret tidsplan                   | Kør Codeplane efter en tidsplan. Kræver `prompt` input. Output går til logfiler og PR'er (intet problem ved kommentere). |
+| `workflow_dispatch`           | Manuel trigger fra GitHub UI            | Udløs Codeplane efter behov via fanen Handlinger. Kræver `prompt` input. Output går til logfiler og PR'er.               |
 
 ### Tidsplan eksempel
 
-Kør CodePlane efter en tidsplan for at udføre automatiske opgaver:
+Kør Codeplane efter en tidsplan for at udføre automatiske opgaver:
 
 ```yaml title=".github/workflows/codeplane-scheduled.yml"
-name: Scheduled CodePlane Task
+name: Scheduled Codeplane Task
 
 on:
   schedule:
@@ -138,7 +138,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Run CodePlane
+      - name: Run Codeplane
         uses: devinoldenburg/codeplane/github@latest
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -149,7 +149,7 @@ jobs:
             If you find issues worth addressing, open an issue to track them.
 ```
 
-For planlagte begivenheder er `prompt` input **påkrævet**, da der ikke er nogen kommentarer at udtrække instruktioner fra. Planlagte arbejdsgange kører uden en brugerkontekst til kontrol af tilladelser, så arbejdsgangen skal give `contents: write` og `pull-requests: write`, hvis du forventer, at CodePlane skal oprette brancher eller PR'er.
+For planlagte begivenheder er `prompt` input **påkrævet**, da der ikke er nogen kommentarer at udtrække instruktioner fra. Planlagte arbejdsgange kører uden en brugerkontekst til kontrol af tilladelser, så arbejdsgangen skal give `contents: write` og `pull-requests: write`, hvis du forventer, at Codeplane skal oprette brancher eller PR'er.
 
 ---
 
@@ -190,7 +190,7 @@ jobs:
             - Suggest improvements
 ```
 
-For `pull_request` hændelser, hvis der ikke er angivet nogen `prompt`, vil CodePlane som standard gennemgå Pull Requesten.
+For `pull_request` hændelser, hvis der ikke er angivet nogen `prompt`, vil Codeplane som standard gennemgå Pull Requesten.
 
 ---
 
@@ -251,7 +251,7 @@ For `issues` begivenheder er `prompt` input **påkrævet**, da der ikke er nogen
 
 ## Brugerdefinerede prompter
 
-Tilsidesæt standardprompten for at tilpasse CodePlanes adfærd til din arbejdsgang.
+Tilsidesæt standardprompten for at tilpasse Codeplanes adfærd til din arbejdsgang.
 
 ```yaml title=".github/workflows/codeplane.yml"
 - uses: devinoldenburg/codeplane/github@latest
@@ -270,7 +270,7 @@ Dette er nyttigt til at håndhæve specifikke gennemgangskriterier, kodningsstan
 
 ## Eksempler
 
-Her er nogle eksempler på, hvordan du kan bruge CodePlane i GitHub.
+Her er nogle eksempler på, hvordan du kan bruge Codeplane i GitHub.
 
 - **Forklar et problem**
 
@@ -280,7 +280,7 @@ Her er nogle eksempler på, hvordan du kan bruge CodePlane i GitHub.
   /codeplane explain this issue
   ```
 
-  CodePlane vil læse hele tråden, inklusive alle kommentarer, og svare med en klar forklaring.
+  Codeplane vil læse hele tråden, inklusive alle kommentarer, og svare med en klar forklaring.
 
 - **Løs et problem**
 
@@ -290,7 +290,7 @@ Her er nogle eksempler på, hvordan du kan bruge CodePlane i GitHub.
   /codeplane fix this
   ```
 
-  Og CodePlane vil oprette en ny branch, implementere ændringer og åbne en PR med ændringer.
+  Og Codeplane vil oprette en ny branch, implementere ændringer og åbne en PR med ændringer.
 
 - **Gennemgå PR'er og foretag ændringer**
 
@@ -300,18 +300,18 @@ Her er nogle eksempler på, hvordan du kan bruge CodePlane i GitHub.
   Delete the attachment from S3 when the note is removed /codeplane
   ```
 
-  CodePlane vil implementere den ønskede ændring og forpligtelse til den samme PR.
+  Codeplane vil implementere den ønskede ændring og forpligtelse til den samme PR.
 
 - **Gennemgå specifikke kodelinjer**
 
-  Efterlad en kommentar direkte på kodelinjer i PR's faneblad "Filer". CodePlane detekterer automatisk filer, linjenumrene og diff-konteksten for at give præcise svar.
+  Efterlad en kommentar direkte på kodelinjer i PR's faneblad "Filer". Codeplane detekterer automatisk filer, linjenumrene og diff-konteksten for at give præcise svar.
 
   ```
   [Comment on specific lines in Files tab]
   /codeplane add error handling here
   ```
 
-  Når du kommenterer på specifikke linjer, modtager CodePlane:
+  Når du kommenterer på specifikke linjer, modtager Codeplane:
   - Den nøjagtige fil bliver gennemgået
   - De specifikke kodelinjer
   - Den omgivende forskellig kontekst

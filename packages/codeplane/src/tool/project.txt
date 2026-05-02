@@ -12,4 +12,4 @@ Common operations:
 - config_remove: remove a configured project command
 - context: show only commands currently injected into agent context
 
-Prefer config_set for durable project commands. These commands are scoped to the current CodePlane project, can include labels/descriptions/tags/cwd/env requirements, and can be edited later by this tool or by app project settings.
+Prefer config_set for durable project commands. These commands are scoped to the current Codeplane project, can include labels/descriptions/tags/cwd/env requirements, and can be edited later by this tool or by app project settings.

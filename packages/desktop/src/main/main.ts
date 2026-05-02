@@ -31,9 +31,10 @@ import {
 } from "./ui-host"
 import { createLocalInstanceManager, type LocalInstanceProgress } from "./local-instance"
 import { CodeplaneVersion } from "@codeplane-ai/shared/version"
+import type { SavedInstance } from "@codeplane-ai/shared/instance"
 
 /**
- * CodePlane desktop shell.
+ * Codeplane desktop shell.
  *
  * The desktop app bundles no backend. It is a thin Electron wrapper that
  * always starts on the instance picker, downloads the matching web UI for
@@ -122,35 +123,6 @@ if (USER_DATA_OVERRIDE) {
 } else {
   const legacyUserData = path.join(app.getPath("appData"), LEGACY_USER_DATA_NAME)
   if (existsSync(legacyUserData)) app.setPath("userData", legacyUserData)
-}
-
-type SavedInstance = {
-  id: string
-  url: string
-  label?: string
-  // Arbitrary HTTP headers attached to every outbound request to this instance.
-  // Use cases: CF Access service token (`CF-Access-Client-Id`,
-  // `CF-Access-Client-Secret`), Authorization bearer tokens, internal
-  // proxies, custom headers required by the network in front of the
-  // instance, etc.
-  headers?: Record<string, string>
-  // Whether to ignore TLS certificate errors (self-hosted dev instances
-  // with self-signed certs). Off by default.
-  ignoreCertificateErrors?: boolean
-  // Optional client certificate selector for mTLS. Stored as the
-  // matching certificate's subject CN / issuer; the OS keychain provides
-  // the actual key material.
-  clientCertSubject?: string
-  // Optional user-supplied icon image, stored as a data URL. Lives only
-  // on this device — never round-tripped to any server.
-  iconDataUrl?: string
-  // When set, this instance is managed locally: the desktop app downloads
-  // the matching codeplane binary, spawns it as a child process, and
-  // connects to the resulting localhost URL. The `url` field is rewritten
-  // to the live `http://127.0.0.1:<port>` each time the binary starts.
-  local?: {
-    binaryVersion: string
-  }
 }
 
 type DesktopPersist = Record<string, Record<string, string>>

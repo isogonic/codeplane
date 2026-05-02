@@ -8,6 +8,7 @@ const dir = fileURLToPath(new URL("..", import.meta.url))
 process.chdir(dir)
 const repo = process.env.GH_REPO ?? "devinoldenburg/codeplane"
 const repoURL = `https://github.com/${repo}`
+const npmOnly = process.env.CODEPLANE_PUBLISH_NPM_ONLY === "1"
 
 async function published(name: string, version: string) {
   return (await $`npm view ${name}@${version} version`.nothrow()).exitCode === 0
@@ -50,6 +51,14 @@ await Bun.file(`./dist/${pkg.name}/package.json`).write(
       },
       version: version,
       license: pkg.license,
+      repository: {
+        type: "git",
+        url: repoURL,
+      },
+      bugs: {
+        url: `${repoURL}/issues`,
+      },
+      homepage: repoURL,
       optionalDependencies: binaries,
     },
     null,
@@ -69,7 +78,7 @@ const tags = [`${image}:${version}`, `${image}:${Script.channel}`]
 const tagFlags = tags.flatMap((t) => ["-t", t])
 
 // registries
-if (!Script.preview) {
+if (!Script.preview && !npmOnly) {
   await $`docker buildx build --platform ${platforms} ${tagFlags} --push .`
   // Calculate SHA values
   const arm64Sha = await $`sha256sum ./dist/codeplane-linux-arm64.tar.gz | cut -d' ' -f1`.text().then((x) => x.trim())

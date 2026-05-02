@@ -111,7 +111,7 @@ export const dict = {
   "dialog.model.manage": "Modelle verwalten",
   "dialog.model.manage.description": "Anpassen, welche Modelle in der Modellauswahl erscheinen.",
   "dialog.model.manage.provider.toggle": "Alle {{provider}}-Modelle umschalten",
-  "dialog.model.unpaid.freeModels.title": "Kostenlose Modelle von CodePlane",
+  "dialog.model.unpaid.freeModels.title": "Kostenlose Modelle von Codeplane",
   "dialog.model.unpaid.addMore.title": "Weitere Modelle von beliebten Anbietern hinzufügen",
   "dialog.provider.viewAll": "Mehr Anbieter anzeigen",
   "provider.connect.title": "{{provider}} verbinden",
@@ -122,12 +122,12 @@ export const dict = {
   "provider.connect.status.waiting": "Warten auf Autorisierung...",
   "provider.connect.status.failed": "Autorisierung fehlgeschlagen: {{error}}",
   "provider.connect.apiKey.description":
-    "Geben Sie Ihren {{provider}} API-Schlüssel ein, um Ihr Konto zu verbinden und {{provider}} Modelle in CodePlane zu nutzen.",
+    "Geben Sie Ihren {{provider}} API-Schlüssel ein, um Ihr Konto zu verbinden und {{provider}} Modelle in Codeplane zu nutzen.",
   "provider.connect.apiKey.label": "{{provider}} API-Schlüssel",
   "provider.connect.apiKey.placeholder": "API-Schlüssel",
   "provider.connect.apiKey.required": "API-Schlüssel ist erforderlich",
   "provider.connect.codeplaneZen.line1":
-    "CodePlane Zen bietet Ihnen Zugriff auf eine kuratierte Auswahl zuverlässiger, optimierter Modelle für Coding-Agenten.",
+    "Codeplane Zen bietet Ihnen Zugriff auf eine kuratierte Auswahl zuverlässiger, optimierter Modelle für Coding-Agenten.",
   "provider.connect.codeplaneZen.line2":
     "Mit einem einzigen API-Schlüssel erhalten Sie Zugriff auf Modelle wie Claude, GPT, Gemini, GLM und mehr.",
   "provider.connect.codeplaneZen.visit.prefix": "Besuchen Sie ",
@@ -136,7 +136,7 @@ export const dict = {
   "provider.connect.oauth.code.visit.prefix": "Besuchen Sie ",
   "provider.connect.oauth.code.visit.link": "diesen Link",
   "provider.connect.oauth.code.visit.suffix":
-    ", um Ihren Autorisierungscode zu erhalten, Ihr Konto zu verbinden und {{provider}} Modelle in CodePlane zu nutzen.",
+    ", um Ihren Autorisierungscode zu erhalten, Ihr Konto zu verbinden und {{provider}} Modelle in Codeplane zu nutzen.",
   "provider.connect.oauth.code.label": "{{method}} Autorisierungscode",
   "provider.connect.oauth.code.placeholder": "Autorisierungscode",
   "provider.connect.oauth.code.required": "Autorisierungscode ist erforderlich",
@@ -144,7 +144,7 @@ export const dict = {
   "provider.connect.oauth.auto.visit.prefix": "Besuchen Sie ",
   "provider.connect.oauth.auto.visit.link": "diesen Link",
   "provider.connect.oauth.auto.visit.suffix":
-    " und geben Sie den untenstehenden Code ein, um Ihr Konto zu verbinden und {{provider}} Modelle in CodePlane zu nutzen.",
+    " und geben Sie den untenstehenden Code ein, um Ihr Konto zu verbinden und {{provider}} Modelle in Codeplane zu nutzen.",
   "provider.connect.oauth.auto.confirmationCode": "Bestätigungscode",
   "provider.connect.toast.connected.title": "{{provider}} verbunden",
   "provider.connect.toast.connected.description": "{{provider}} Modelle sind jetzt verfügbar.",
@@ -296,7 +296,7 @@ export const dict = {
   "dialog.directory.search.placeholder": "Ordner durchsuchen",
   "dialog.directory.empty": "Keine Ordner gefunden",
   "dialog.server.title": "Server",
-  "dialog.server.description": "Wechseln Sie den CodePlane-Server, mit dem sich diese App verbindet.",
+  "dialog.server.description": "Wechseln Sie den Codeplane-Server, mit dem sich diese App verbindet.",
   "dialog.server.search.placeholder": "Server durchsuchen",
   "dialog.server.empty": "Noch keine Server",
   "dialog.server.add.title": "Server hinzufügen",
@@ -416,7 +416,7 @@ export const dict = {
   "error.page.description": "Beim Laden der Anwendung ist ein Fehler aufgetreten.",
   "error.page.details.label": "Fehlerdetails",
   "error.page.action.restart": "Neustart",
-  "error.page.report.prefix": "Bitte melden Sie diesen Fehler dem CodePlane-Team",
+  "error.page.report.prefix": "Bitte melden Sie diesen Fehler dem Codeplane-Team",
   "error.page.report.issues": "auf GitHub",
   "error.page.version": "Version: {{version}}",
   "error.dev.rootNotFound":
@@ -433,7 +433,7 @@ export const dict = {
   "error.chain.modelNotFound": "Modell nicht gefunden: {{provider}}/{{model}}",
   "error.chain.checkConfig": "Überprüfen Sie Ihre Konfiguration (codeplane.json) auf Anbieter-/Modellnamen",
   "error.chain.mcpFailed":
-    'MCP-Server "{{name}}" fehlgeschlagen. Hinweis: CodePlane unterstützt noch keine MCP-Authentifizierung.',
+    'MCP-Server "{{name}}" fehlgeschlagen. Hinweis: Codeplane unterstützt noch keine MCP-Authentifizierung.',
   "error.chain.providerAuthFailed": "Anbieter-Authentifizierung fehlgeschlagen ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":
     'Anbieter "{{provider}}" konnte nicht initialisiert werden. Überprüfen Sie Anmeldeinformationen und Konfiguration.',
@@ -602,7 +602,7 @@ export const dict = {
   "sidebar.workspaces.enable": "Arbeitsbereiche aktivieren",
   "sidebar.workspaces.disable": "Arbeitsbereiche deaktivieren",
   "sidebar.gettingStarted.title": "Erste Schritte",
-  "sidebar.gettingStarted.line1": "CodePlane enthält kostenlose Modelle, damit Sie sofort loslegen können.",
+  "sidebar.gettingStarted.line1": "Codeplane enthält kostenlose Modelle, damit Sie sofort loslegen können.",
   "sidebar.gettingStarted.line2":
     "Verbinden Sie einen beliebigen Anbieter, um Modelle wie Claude, GPT, Gemini usw. zu nutzen.",
   "sidebar.project.recentSessions": "Letzte Sitzungen",
@@ -611,7 +611,7 @@ export const dict = {
   "sidebar.sessionPreview.loading": "Lade Vorschau...",
   "sidebar.sessionPreview.empty": "Noch kein Prompt",
   "sidebar.sessionPreview.duration": "Dauer",
-  "app.name.web": "CodePlane",
+  "app.name.web": "Codeplane",
   "settings.section.app": "App",
   "settings.section.server": "Server",
   "settings.section.ai": "KI",
@@ -631,14 +631,14 @@ export const dict = {
   "settings.general.section.sounds": "Soundeffekte",
   "settings.general.section.feed": "Feed",
   "settings.general.row.language.title": "Sprache",
-  "settings.general.row.language.description": "Die Anzeigesprache für CodePlane ändern",
+  "settings.general.row.language.description": "Die Anzeigesprache für Codeplane ändern",
   "settings.general.row.appearance.title": "Erscheinungsbild",
-  "settings.general.row.appearance.description": "Anpassen, wie CodePlane auf Ihrem Gerät aussieht",
+  "settings.general.row.appearance.description": "Anpassen, wie Codeplane auf Ihrem Gerät aussieht",
   "settings.general.row.colorScheme.title": "Farbschema",
   "settings.general.row.colorScheme.description":
-    "Wählen Sie, ob CodePlane dem System-, hellen oder dunklen Thema folgt",
+    "Wählen Sie, ob Codeplane dem System-, hellen oder dunklen Thema folgt",
   "settings.general.row.theme.title": "Thema",
-  "settings.general.row.theme.description": "Das Thema von CodePlane anpassen.",
+  "settings.general.row.theme.description": "Das Thema von Codeplane anpassen.",
   "settings.general.row.font.title": "Code-Schriftart",
   "settings.general.row.font.description": "Die in Codeblöcken verwendete Schriftart anpassen",
   "settings.general.row.terminalFont.title": "Terminal-Schriftart",
@@ -983,7 +983,7 @@ export const dict = {
 
   "sidebar.restart": "Neustarten",
   "sidebar.restart.confirm":
-    "CodePlane neu starten? Aktive Sitzungen werden neu verbunden, Modus-, Plugin- und MCP-Änderungen werden neu geladen.",
+    "Codeplane neu starten? Aktive Sitzungen werden neu verbunden, Modus-, Plugin- und MCP-Änderungen werden neu geladen.",
   "cron.field.description": "Beschreibung",
   "cron.field.prompt": "Aufgaben-Prompt",
   "cron.field.prompt.placeholder": "Beschreibe genau, was der Agent tun soll.",
@@ -1170,7 +1170,7 @@ export const dict = {
   "skills.source.url": "URL",
   "skills.kind.claude": "Claude",
   "skills.kind.agents": "Agents",
-  "skills.kind.codeplane": "CodePlane",
+  "skills.kind.codeplane": "Codeplane",
   "skills.kind.local": "Lokal",
   "skills.tag.disabled": "Deaktiviert",
   "skills.row.openFile": "Skill-Datei bearbeiten",

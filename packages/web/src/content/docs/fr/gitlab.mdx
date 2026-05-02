@@ -1,33 +1,33 @@
 ---
 title: GitLab
-description: Utilisez CodePlane dans les issues GitLab et les merge requests.
+description: Utilisez Codeplane dans les issues GitLab et les merge requests.
 ---
 
-CodePlane s'intègre à votre flux de travail GitLab via votre pipeline CI/CD GitLab ou avec GitLab Duo.
+Codeplane s'intègre à votre flux de travail GitLab via votre pipeline CI/CD GitLab ou avec GitLab Duo.
 
-Dans les deux cas, CodePlane fonctionnera sur vos runners GitLab.
+Dans les deux cas, Codeplane fonctionnera sur vos runners GitLab.
 
 ---
 
 ## GitLab CI
 
-CodePlane fonctionne dans un pipeline GitLab régulier. Vous pouvez l'intégrer dans un pipeline en tant que [composant CI](https://docs.gitlab.com/ee/ci/components/)
+Codeplane fonctionne dans un pipeline GitLab régulier. Vous pouvez l'intégrer dans un pipeline en tant que [composant CI](https://docs.gitlab.com/ee/ci/components/)
 
-Ici, nous utilisons un composant CI/CD créé par la communauté pour CodePlane — [nagyv/gitlab-codeplane](https://gitlab.com/nagyv/gitlab-codeplane).
+Ici, nous utilisons un composant CI/CD créé par la communauté pour Codeplane — [nagyv/gitlab-codeplane](https://gitlab.com/nagyv/gitlab-codeplane).
 
 ---
 
 ### Fonctionnalités
 
-- **Utiliser une configuration personnalisée par tâche** : configurez CodePlane avec un répertoire de configuration personnalisé, par exemple `./config/#custom-directory` pour activer ou désactiver la fonctionnalité pour chaque appel d'CodePlane.
-- **Configuration minimale** : le composant CI configure CodePlane en arrière-plan, il vous suffit de créer la configuration CodePlane et le prompt initial.
+- **Utiliser une configuration personnalisée par tâche** : configurez Codeplane avec un répertoire de configuration personnalisé, par exemple `./config/#custom-directory` pour activer ou désactiver la fonctionnalité pour chaque appel d'Codeplane.
+- **Configuration minimale** : le composant CI configure Codeplane en arrière-plan, il vous suffit de créer la configuration Codeplane et le prompt initial.
 - **Flexible** : le composant CI prend en charge plusieurs entrées pour personnaliser son comportement
 
 ---
 
 ### Installation
 
-1. Stockez votre authentification CodePlane JSON en tant que variables d'environnement CI de type fichier sous **Paramètres** > **CI/CD** > **Variables**. Assurez-vous de les marquer comme « Masquées et protégées ».
+1. Stockez votre authentification Codeplane JSON en tant que variables d'environnement CI de type fichier sous **Paramètres** > **CI/CD** > **Variables**. Assurez-vous de les marquer comme « Masquées et protégées ».
 2. Ajoutez ce qui suit à votre fichier `.gitlab-ci.yml`.
 
    ```yaml title=".gitlab-ci.yml"
@@ -35,7 +35,7 @@ Ici, nous utilisons un composant CI/CD créé par la communauté pour CodePlane 
      - component: $CI_SERVER_FQDN/nagyv/gitlab-codeplane/codeplane@2
        inputs:
          config_dir: ${CI_PROJECT_DIR}/codeplane-config
-         auth_json: $CODEPLANE_AUTH_JSON # The variable name for your CodePlane authentication JSON
+         auth_json: $CODEPLANE_AUTH_JSON # The variable name for your Codeplane authentication JSON
          command: optional-custom-command
          message: "Your prompt here"
    ```
@@ -46,23 +46,23 @@ Pour plus d'entrées et de cas d'utilisation [consultez la doc](https://gitlab.c
 
 ## GitLab Duo
 
-CodePlane s'intègre à votre flux de travail GitLab.
-Mentionnez `@codeplane` dans un commentaire et CodePlane exécutera les tâches au sein de votre pipeline CI GitLab.
+Codeplane s'intègre à votre flux de travail GitLab.
+Mentionnez `@codeplane` dans un commentaire et Codeplane exécutera les tâches au sein de votre pipeline CI GitLab.
 
 ---
 
 ### Fonctionnalités
 
-- **Triage d'issues** : demandez à CodePlane d'examiner une issue et de vous l'expliquer.
-- **Correction et implémentation** : demandez à CodePlane de résoudre une issue ou d'implémenter une fonctionnalité.
+- **Triage d'issues** : demandez à Codeplane d'examiner une issue et de vous l'expliquer.
+- **Correction et implémentation** : demandez à Codeplane de résoudre une issue ou d'implémenter une fonctionnalité.
   Cela créera une nouvelle branche et déclenchera une merge request avec les modifications.
-- **Sécurisé** : CodePlane fonctionne sur vos runners GitLab.
+- **Sécurisé** : Codeplane fonctionne sur vos runners GitLab.
 
 ---
 
 ### Installation
 
-CodePlane s'exécute dans votre pipeline CI/CD GitLab. Voici ce dont vous aurez besoin pour le configurer :
+Codeplane s'exécute dans votre pipeline CI/CD GitLab. Voici ce dont vous aurez besoin pour le configurer :
 
 :::tip
 Consultez la [**documentation GitLab**](https://docs.gitlab.com/user/duo_agent_platform/agent_assistant/) pour obtenir des instructions à jour.
@@ -91,7 +91,7 @@ Consultez la [**documentation GitLab**](https://docs.gitlab.com/user/duo_agent_p
       - apt-get install --yes glab
       - echo "Configuring glab"
       - echo $GITLAB_HOST
-      - echo "Creating CodePlane auth configuration"
+      - echo "Creating Codeplane auth configuration"
       - mkdir --parents ~/.local/share/codeplane
       - |
         cat > ~/.local/share/codeplane/auth.json << EOF
@@ -104,10 +104,10 @@ Consultez la [**documentation GitLab**](https://docs.gitlab.com/user/duo_agent_p
         EOF
       - echo "Configuring git"
       - git config --global user.email "codeplane@gitlab.com"
-      - git config --global user.name "CodePlane"
+      - git config --global user.name "Codeplane"
       - echo "Testing glab"
       - glab issue list
-      - echo "Running CodePlane"
+      - echo "Running Codeplane"
       - |
         codeplane run "
         You are an AI assistant helping with GitLab operations.
@@ -158,7 +158,7 @@ Vous pouvez vous référer aux [GitLab CLI agents docs](https://docs.gitlab.com/
 
 ### Exemples
 
-Voici quelques exemples de la façon dont vous pouvez utiliser CodePlane dans GitLab.
+Voici quelques exemples de la façon dont vous pouvez utiliser Codeplane dans GitLab.
 
 :::tip
 Vous pouvez configurer pour utiliser une phrase de déclenchement différente de `@codeplane`.
@@ -172,7 +172,7 @@ Ajoutez ce commentaire dans une issue GitLab.
   @codeplane explain this issue
 ```
 
-CodePlane lira l'issue et répondra avec une explication claire.
+Codeplane lira l'issue et répondra avec une explication claire.
 
 - **Résoudre une issue**
 
@@ -182,7 +182,7 @@ Dans une issue GitLab, dites :
   @codeplane fix this
 ```
 
-CodePlane créera une nouvelle branche, mettra en œuvre les modifications et ouvrira une merge request avec les modifications.
+Codeplane créera une nouvelle branche, mettra en œuvre les modifications et ouvrira une merge request avec les modifications.
 
 - **Revue de merge request**
 
@@ -192,4 +192,4 @@ Laissez le commentaire suivant sur une merge request GitLab.
   @codeplane review this merge request
 ```
 
-CodePlane examinera la merge request et fournira des commentaires.
+Codeplane examinera la merge request et fournira des commentaires.

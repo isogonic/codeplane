@@ -10,7 +10,7 @@ const log = Log.create({ service: "config" })
 
 const MANAGED_PLIST_DOMAIN = "ai.codeplane.managed"
 
-// Keys injected by macOS/MDM into the managed plist that are not CodePlane config
+// Keys injected by macOS/MDM into the managed plist that are not Codeplane config
 const PLIST_META = new Set([
   "PayloadDisplayName",
   "PayloadIdentifier",

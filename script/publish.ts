@@ -16,6 +16,7 @@ async function prepareReleaseFiles() {
   const synced = await syncVersionFiles(Script.version)
   console.log("synced versions:", synced)
   await $`bun install`
+  await $`bun run --cwd packages/codeplane build`
   await $`./packages/sdk/js/script/build.ts`
 }
 

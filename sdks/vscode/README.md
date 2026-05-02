@@ -8,10 +8,10 @@ This extension requires the [codeplane CLI](https://github.com/devinoldenburg/co
 
 ## Features
 
-- **Quick Launch**: Use `Cmd+Esc` (Mac) or `Ctrl+Esc` (Windows/Linux) to open the CodePlane web app for your current workspace.
-- **New Server**: Use `Cmd+Shift+Esc` (Mac) or `Ctrl+Shift+Esc` (Windows/Linux) to start a fresh local CodePlane web server.
-- **Context Awareness**: Automatically open CodePlane with your current selection or tab as prompt context.
-- **File Reference Shortcuts**: Use `Cmd+Option+K` (Mac) or `Alt+Ctrl+K` (Linux/Windows) to open CodePlane with a file reference like `@File#L37-42`.
+- **Quick Launch**: Use `Cmd+Esc` (Mac) or `Ctrl+Esc` (Windows/Linux) to open the Codeplane web app for your current workspace.
+- **New Server**: Use `Cmd+Shift+Esc` (Mac) or `Ctrl+Shift+Esc` (Windows/Linux) to start a fresh local Codeplane web server.
+- **Context Awareness**: Automatically open Codeplane with your current selection or tab as prompt context.
+- **File Reference Shortcuts**: Use `Cmd+Option+K` (Mac) or `Alt+Ctrl+K` (Linux/Windows) to open Codeplane with a file reference like `@File#L37-42`.
 
 ## Support
 

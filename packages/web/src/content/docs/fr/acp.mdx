@@ -1,9 +1,9 @@
 ---
 title: Support ACP
-description: Utilisez CodePlane dans n’importe quel éditeur compatible ACP.
+description: Utilisez Codeplane dans n’importe quel éditeur compatible ACP.
 ---
 
-CodePlane prend en charge le [Agent Client Protocol](https://agentclientprotocol.com) (ACP), vous permettant de l'utiliser directement dans les éditeurs et IDE compatibles.
+Codeplane prend en charge le [Agent Client Protocol](https://agentclientprotocol.com) (ACP), vous permettant de l'utiliser directement dans les éditeurs et IDE compatibles.
 
 :::tip
 Pour obtenir une liste des éditeurs et des outils prenant en charge ACP, consultez le [ACP progress report](https://zed.dev/blog/acp-progress-report#available-now).
@@ -15,9 +15,9 @@ ACP est un protocole ouvert qui standardise la communication entre les éditeurs
 
 ## Configuration
 
-Pour utiliser CodePlane via ACP, configurez votre éditeur pour exécuter la commande `codeplane acp`.
+Pour utiliser Codeplane via ACP, configurez votre éditeur pour exécuter la commande `codeplane acp`.
 
-La commande démarre CodePlane en tant que sous-processus compatible ACP qui communique avec votre éditeur via JSON-RPC sur stdio.
+La commande démarre Codeplane en tant que sous-processus compatible ACP qui communique avec votre éditeur via JSON-RPC sur stdio.
 
 Vous trouverez ci-dessous des exemples d'éditeurs populaires prenant en charge ACP.
 
@@ -30,7 +30,7 @@ Ajoutez à votre configuration [Zed](https://zed.dev) (`~/.config/zed/settings.j
 ```json title="~/.config/zed/settings.json"
 {
   "agent_servers": {
-    "CodePlane": {
+    "Codeplane": {
       "command": "codeplane",
       "args": ["acp"]
     }
@@ -51,7 +51,7 @@ Vous pouvez également associer un raccourci clavier en modifiant votre `keymap.
         {
           "agent": {
             "custom": {
-              "name": "CodePlane",
+              "name": "Codeplane",
               "command": {
                 "command": "codeplane",
                 "args": ["acp"]
@@ -74,7 +74,7 @@ Ajoutez `acp.json` à votre [IDE JetBrains](https://www.jetbrains.com/) conform�
 ```json title="acp.json"
 {
   "agent_servers": {
-    "CodePlane": {
+    "Codeplane": {
       "command": "/absolute/path/bin/codeplane",
       "args": ["acp"]
     }
@@ -82,7 +82,7 @@ Ajoutez `acp.json` à votre [IDE JetBrains](https://www.jetbrains.com/) conform�
 }
 ```
 
-Pour l'ouvrir, utilisez le nouvel agent « CodePlane » dans le sélecteur d'agent AI Chat.
+Pour l'ouvrir, utilisez le nouvel agent « Codeplane » dans le sélecteur d'agent AI Chat.
 
 ---
 
@@ -121,7 +121,7 @@ Si vous devez transmettre des variables d'environnement :
 
 ### CodeCompanion.nvim
 
-Pour utiliser CodePlane comme agent ACP dans [CodeCompanion.nvim](https://github.com/olimorris/codecompanion.nvim), ajoutez ce qui suit à votre configuration Neovim :
+Pour utiliser Codeplane comme agent ACP dans [CodeCompanion.nvim](https://github.com/olimorris/codecompanion.nvim), ajoutez ce qui suit à votre configuration Neovim :
 
 ```lua
 require("codecompanion").setup({
@@ -136,13 +136,13 @@ require("codecompanion").setup({
 })
 ```
 
-Cette configuration configure CodeCompanion pour utiliser CodePlane comme agent ACP pour le chat.
+Cette configuration configure CodeCompanion pour utiliser Codeplane comme agent ACP pour le chat.
 
 Si vous devez transmettre des variables d'environnement (comme `CODEPLANE_API_KEY`), reportez-vous à [Configuring Adapters: Environment Variables](https://codecompanion.olimorris.dev/getting-started#setting-an-api-key) dans la documentation CodeCompanion.nvim pour plus de détails.
 
 ## Prise en charge
 
-CodePlane fonctionne de la même manière via ACP que dans le terminal. Toutes les fonctionnalités sont prises en charge :
+Codeplane fonctionne de la même manière via ACP que dans le terminal. Toutes les fonctionnalités sont prises en charge :
 
 :::note
 Certaines commandes slash intégrées telles que `/undo` et `/redo` ne sont actuellement pas prises en charge.
@@ -150,7 +150,7 @@ Certaines commandes slash intégrées telles que `/undo` et `/redo` ne sont actu
 
 - Outils intégrés (opérations sur les fichiers, commandes de terminal, etc.)
 - Outils personnalisés et commandes slash
-- Serveurs MCP configurés dans votre configuration CodePlane
+- Serveurs MCP configurés dans votre configuration Codeplane
 - Règles spécifiques au projet à partir de `AGENTS.md`
 - Formateurs et linters personnalisés
 - Système d'agents et d'autorisations

@@ -1,17 +1,17 @@
 ---
 title: Providers
-description: Using any LLM provider in CodePlane.
+description: Using any LLM provider in Codeplane.
 ---
 
 import config from "../../../../config.mjs"
 export const console = config.console
 
-CodePlane uses the [AI SDK](https://ai-sdk.dev/) and [Models.dev](https://models.dev) to support **75+ LLM providers** and it supports running local models.
+Codeplane uses the [AI SDK](https://ai-sdk.dev/) and [Models.dev](https://models.dev) to support **75+ LLM providers** and it supports running local models.
 
 To add a provider you need to:
 
 1. Add the API keys for the provider from Settings -> Providers in the web app.
-2. Configure the provider in your CodePlane config.
+2. Configure the provider in your Codeplane config.
 
 ---
 
@@ -24,7 +24,7 @@ in `~/.local/share/codeplane/auth.json`.
 
 ### Config
 
-You can customize the providers through the `provider` section in your CodePlane
+You can customize the providers through the `provider` section in your Codeplane
 config.
 
 ---
@@ -48,16 +48,16 @@ You can customize the base URL for any provider by setting the `baseURL` option.
 
 ---
 
-## CodePlane Zen
+## Codeplane Zen
 
-CodePlane Zen is a list of models provided by the CodePlane team that have been
-tested and verified to work well with CodePlane. [Learn more](/docs/zen).
+Codeplane Zen is a list of models provided by the Codeplane team that have been
+tested and verified to work well with Codeplane. [Learn more](/docs/zen).
 
 :::tip
-If you are new, we recommend starting with CodePlane Zen.
+If you are new, we recommend starting with Codeplane Zen.
 :::
 
-1. Open Settings -> Providers in the web app, select `CodePlane Zen`, and head to [example.invalid/auth](https://example.invalid/zen).
+1. Open Settings -> Providers in the web app, select `Codeplane Zen`, and head to [example.invalid/auth](https://example.invalid/zen).
 
    ```txt
    /connect
@@ -80,16 +80,16 @@ If you are new, we recommend starting with CodePlane Zen.
    /models
    ```
 
-It works like any other provider in CodePlane and is completely optional to use.
+It works like any other provider in Codeplane and is completely optional to use.
 
 ---
 
-## CodePlane Go
+## Codeplane Go
 
-CodePlane Go is a low cost subscription plan that provides reliable access to popular open coding models provided by the CodePlane team that have been
-tested and verified to work well with CodePlane.
+Codeplane Go is a low cost subscription plan that provides reliable access to popular open coding models provided by the Codeplane team that have been
+tested and verified to work well with Codeplane.
 
-1. Open Settings -> Providers in the web app, select `CodePlane Go`, and head to [example.invalid/auth](https://example.invalid/zen).
+1. Open Settings -> Providers in the web app, select `Codeplane Go`, and head to [example.invalid/auth](https://example.invalid/zen).
 
    ```txt
    /connect
@@ -112,7 +112,7 @@ tested and verified to work well with CodePlane.
    /models
    ```
 
-It works like any other provider in CodePlane and is completely optional to use.
+It works like any other provider in Codeplane and is completely optional to use.
 
 ---
 
@@ -156,7 +156,7 @@ Don't see a provider here? Submit a PR.
 
 ### Amazon Bedrock
 
-To use Amazon Bedrock with CodePlane:
+To use Amazon Bedrock with Codeplane:
 
 1. Head over to the **Model catalog** in the Amazon Bedrock console and request
    access to the models you want.
@@ -319,13 +319,13 @@ For custom inference profiles, use the model and provider name in the key and se
 
 :::info
 There are plugins that allow you to use your Claude Pro/Max models with
-CodePlane. Anthropic explicitly prohibits this.
+Codeplane. Anthropic explicitly prohibits this.
 
-Previous versions of CodePlane came bundled with these plugins but that is no
+Previous versions of Codeplane came bundled with these plugins but that is no
 longer the case as of 1.3.0
 
 Other companies support freedom of choice with developer tooling - you can use
-the following subscriptions in CodePlane with zero setup:
+the following subscriptions in Codeplane with zero setup:
 
 - ChatGPT Plus
 - Github Copilot
@@ -740,11 +740,11 @@ Cloudflare Workers AI lets you run AI models on Cloudflare's global network dire
 ### GitLab Duo
 
 :::caution[Experimental]
-GitLab Duo support in CodePlane is experimental. Features, configuration, and
+GitLab Duo support in Codeplane is experimental. Features, configuration, and
 behavior may change in future releases.
 :::
 
-CodePlane integrates with the [GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/),
+Codeplane integrates with the [GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/),
 providing AI-powered agentic chat with native tool calling capabilities.
 
 :::note[License requirements]
@@ -777,7 +777,7 @@ for full requirements.
    #### Using Personal Access Token
    1. Go to [GitLab User Settings > Access Tokens](https://gitlab.com/-/user_settings/personal_access_tokens)
    2. Click **Add new token**
-   3. Name: `CodePlane`, Scopes: `api`
+   3. Name: `Codeplane`, Scopes: `api`
    4. Copy the token (starts with `glpat-`)
    5. Enter it in the terminal
 
@@ -800,8 +800,8 @@ to store token in codeplane auth storage.
 ##### Self-Hosted GitLab
 
 :::note[compliance note]
-CodePlane uses a small model for some AI tasks like generating the session title.
-It is configured to use gpt-5-nano by default, hosted by Zen. To lock CodePlane
+Codeplane uses a small model for some AI tasks like generating the session title.
+It is configured to use gpt-5-nano by default, hosted by Zen. To lock Codeplane
 to only use your own GitLab-hosted instance, add the following to your
 `codeplane.json` file. It is also recommended to disable session sharing.
 
@@ -886,12 +886,12 @@ Customize through `codeplane.json`:
 
 DAP workflow models provide an alternative execution path that routes tool calls
 through GitLab's Duo Workflow Service (DWS) instead of the standard agentic chat.
-When a `duo-workflow-*` model is selected, CodePlane will:
+When a `duo-workflow-*` model is selected, Codeplane will:
 
 1. Discover available models from your GitLab namespace
 2. Present a selection picker if multiple models are available
 3. Cache the selected model to disk for fast subsequent startups
-4. Route tool execution requests through CodePlane's permission-gated tool system
+4. Route tool execution requests through Codeplane's permission-gated tool system
 
 Available DAP workflow models follow the `duo-workflow-*` naming convention and
 are dynamically discovered from your GitLab instance.
@@ -948,7 +948,7 @@ subscription](https://github.com/features/copilot/plans) to use.
 
 ### Google Vertex AI
 
-To use Google Vertex AI with CodePlane:
+To use Google Vertex AI with Codeplane:
 
 1. Head over to the **Model Garden** in the Google Cloud Console and check the
    models available in your region.
@@ -1130,7 +1130,7 @@ Helicone supports custom headers for features like caching, user tracking, and s
 
 ##### Session tracking
 
-Helicone's [Sessions](https://docs.helicone.ai/features/sessions) feature lets you group related LLM requests together. Use the [codeplane-helicone-session](https://github.com/H2Shami/codeplane-helicone-session) plugin to automatically log each CodePlane conversation as a session in Helicone.
+Helicone's [Sessions](https://docs.helicone.ai/features/sessions) feature lets you group related LLM requests together. Use the [codeplane-helicone-session](https://github.com/H2Shami/codeplane-helicone-session) plugin to automatically log each Codeplane conversation as a session in Helicone.
 
 ```bash
 npm install -g codeplane-helicone-session
@@ -1144,7 +1144,7 @@ Add it to your config.
 }
 ```
 
-The plugin injects `Helicone-Session-Id` and `Helicone-Session-Name` headers into your requests. In Helicone's Sessions page, you'll see each CodePlane conversation listed as a separate session.
+The plugin injects `Helicone-Session-Id` and `Helicone-Session-Name` headers into your requests. In Helicone's Sessions page, you'll see each Codeplane conversation listed as a separate session.
 
 ##### Common Helicone headers
 
@@ -1402,7 +1402,7 @@ export NVIDIA_API_KEY=nvapi-your-key-here
 You can configure codeplane to use local models through Ollama.
 
 :::tip
-Ollama can automatically configure itself for CodePlane. See the [Ollama integration docs](https://docs.ollama.com/integrations/codeplane) for details.
+Ollama can automatically configure itself for Codeplane. See the [Ollama integration docs](https://docs.ollama.com/integrations/codeplane) for details.
 :::
 
 ```json title="codeplane.json" "ollama" {5, 6, 8, 10-14}
@@ -1441,13 +1441,13 @@ If tool calls aren't working, try increasing `num_ctx` in Ollama. Start around 1
 
 ### Ollama Cloud
 
-To use Ollama Cloud with CodePlane:
+To use Ollama Cloud with Codeplane:
 
 1. Head over to [https://ollama.com/](https://ollama.com/) and sign in or create an account.
 
 2. Navigate to **Settings** > **Keys** and click **Add API Key** to generate a new API key.
 
-3. Copy the API key for use in CodePlane.
+3. Copy the API key for use in Codeplane.
 
 4. Run the `/connect` command and search for **Ollama Cloud**.
 
@@ -1464,7 +1464,7 @@ To use Ollama Cloud with CodePlane:
    └ enter
    ```
 
-6. **Important**: Before using cloud models in CodePlane, you must pull the model information locally:
+6. **Important**: Before using cloud models in Codeplane, you must pull the model information locally:
 
    ```bash
    ollama pull gpt-oss:20b-cloud
@@ -1511,19 +1511,19 @@ If you already have an API key, you can select **Manually enter API Key** and pa
 
 ---
 
-### CodePlane Zen
+### Codeplane Zen
 
-CodePlane Zen is a list of tested and verified models provided by the CodePlane team. [Learn more](/docs/zen).
+Codeplane Zen is a list of tested and verified models provided by the Codeplane team. [Learn more](/docs/zen).
 
-1. Sign in to **<a href={console}>CodePlane Zen</a>** and click **Create API Key**.
+1. Sign in to **<a href={console}>Codeplane Zen</a>** and click **Create API Key**.
 
-2. Run the `/connect` command and search for **CodePlane Zen**.
+2. Run the `/connect` command and search for **Codeplane Zen**.
 
    ```txt
    /connect
    ```
 
-3. Enter your CodePlane API key.
+3. Enter your Codeplane API key.
 
    ```txt
    ┌ API key
@@ -2150,7 +2150,7 @@ Configuration details:
 - **limit.context**: Maximum input tokens the model accepts.
 - **limit.output**: Maximum tokens the model can generate.
 
-The `limit` fields allow CodePlane to understand how much context you have left. Standard providers pull these from models.dev automatically.
+The `limit` fields allow Codeplane to understand how much context you have left. Standard providers pull these from models.dev automatically.
 
 ---
 

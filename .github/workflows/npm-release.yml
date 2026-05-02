@@ -1,0 +1,104 @@
+name: npm-release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing v* tag to publish"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  GH_REPO: ${{ github.repository }}
+  NPM_CONFIG_PROVENANCE: "true"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    runs-on: ubuntu-24.04
+    outputs:
+      enabled: ${{ steps.resolve.outputs.enabled }}
+      source_tag: ${{ steps.resolve.outputs.source_tag }}
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ inputs.tag || github.ref_name }}"
+          if [ -z "$tag" ]; then
+            echo "A release tag is required." >&2
+            exit 1
+          fi
+          if [[ "$tag" != v* ]]; then
+            echo "Release tags must start with v." >&2
+            exit 1
+          fi
+          if [[ "$tag" == *-desktop ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "source_tag=$tag" >> "$GITHUB_OUTPUT"
+            echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+          echo "source_tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: resolve
+    if: ${{ needs.resolve.outputs.enabled == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ needs.resolve.outputs.source_tag }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.14.0"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@^11.10.0
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Configure npm token fallback
+        if: ${{ secrets.NPM_TOKEN != '' }}
+        shell: bash
+        run: |
+          printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$HOME/.npmrc"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Verify package versions
+        shell: bash
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          for file in packages/codeplane/package.json packages/sdk/js/package.json packages/plugin/package.json; do
+            pkg_version="$(node -e "console.log(require('./${file}').version)")"
+            if [ "$pkg_version" != "$VERSION" ]; then
+              echo "$file version $pkg_version does not match $VERSION" >&2
+              exit 1
+            fi
+          done
+
+      - name: Publish npm packages
+        run: bun ./script/publish.ts
+        env:
+          CODEPLANE_VERSION: ${{ needs.resolve.outputs.version }}
+          CODEPLANE_PUBLISH_NPM_ONLY: "1"
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

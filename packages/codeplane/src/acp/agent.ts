@@ -546,7 +546,7 @@ export class Agent implements ACPAgent {
         "terminal-auth": {
           command: "codeplane",
           args: ["auth", "login"],
-          label: "CodePlane Login",
+          label: "Codeplane Login",
         },
       }
     }
@@ -571,7 +571,7 @@ export class Agent implements ACPAgent {
       },
       authMethods: [authMethod],
       agentInfo: {
-        name: "CodePlane",
+        name: "Codeplane",
         version: InstallationVersion,
       },
     }
@@ -1004,7 +1004,7 @@ export class Agent implements ACPAgent {
         }
       } else if (part.type === "file") {
         // Replay file attachments as appropriate ACP content blocks.
-        // CodePlane stores files internally as { type: "file", url, filename, mime }.
+        // Codeplane stores files internally as { type: "file", url, filename, mime }.
         // We convert these back to ACP blocks based on the URL scheme and MIME type:
         // - file:// URLs → resource_link
         // - data: URLs with image/* → image block

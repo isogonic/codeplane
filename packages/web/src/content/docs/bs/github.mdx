@@ -1,17 +1,17 @@
 ---
 title: GitHub
-description: Koristite CodePlane u GitHub problemima i zahtjevima za povlačenjem.
+description: Koristite Codeplane u GitHub problemima i zahtjevima za povlačenjem.
 ---
 
-CodePlane se integriše sa vašim GitHub tokovom rada. Spomenite `/codeplane` u svom komentaru i CodePlane će izvršiti zadatke unutar vašeg GitHub Actions runnera.
+Codeplane se integriše sa vašim GitHub tokovom rada. Spomenite `/codeplane` u svom komentaru i Codeplane će izvršiti zadatke unutar vašeg GitHub Actions runnera.
 
 ---
 
 ## Funkcije
 
-- **Problemi trijaže**: Zamolite CodePlane da ispita problem i objasni vam ga.
-- **Popravi i implementiraj**: Zamolite CodePlane da popravi problem ili implementira funkciju. I radit će u novoj poslovnici i dostavljati PR sa svim promjenama.
-- **Secure**: CodePlane se pokreće unutar pokretača vašeg GitHub-a.
+- **Problemi trijaže**: Zamolite Codeplane da ispita problem i objasni vam ga.
+- **Popravi i implementiraj**: Zamolite Codeplane da popravi problem ili implementira funkciju. I radit će u novoj poslovnici i dostavljati PR sa svim promjenama.
+- **Secure**: Codeplane se pokreće unutar pokretača vašeg GitHub-a.
 
 ---
 
@@ -59,7 +59,7 @@ Ili ga možete postaviti ručno.
               fetch-depth: 1
               persist-credentials: false
 
-          - name: Run CodePlane
+          - name: Run Codeplane
            uses: devinoldenburg/codeplane/github@latest
            env:
              ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -76,12 +76,12 @@ Ili ga možete postaviti ručno.
 
 ## Konfiguracija
 
-- `model`: Model za korištenje s CodePlane. Uzima format `provider/model`. Ovo je **obavezno**.
+- `model`: Model za korištenje s Codeplane. Uzima format `provider/model`. Ovo je **obavezno**.
 - `agent`: Agent za korištenje. Mora biti primarni agent. Vraća se na `default_agent` iz konfiguracije ili `"build"` ako nije pronađen.
-- `share`: Da li dijeliti CodePlane sesiju. Podrazumevano je **true** za javna spremišta.
-- `prompt`: Opcioni prilagođeni upit za nadjačavanje zadanog ponašanja. Koristite ovo da prilagodite kako CodePlane obrađuje zahtjeve.
-- `token`: Opcionalni GitHub pristupni token za izvođenje operacija kao što su kreiranje komentara, upisivanje promjena i otvaranje zahtjeva za povlačenjem. CodePlane prema zadanim postavkama koristi token za pristup instalaciji iz aplikacije CodePlane GitHub, tako da se urezivanje, komentari i zahtjevi za povlačenjem pojavljuju kao da dolaze iz aplikacije.
-  Alternativno, možete koristiti GitHub Action runner [ugrađeni `GITHUB_TOKEN`](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token) bez instaliranja CodePlane GitHub aplikacije. Samo se pobrinite da date potrebna odobrenja u svom toku rada:
+- `share`: Da li dijeliti Codeplane sesiju. Podrazumevano je **true** za javna spremišta.
+- `prompt`: Opcioni prilagođeni upit za nadjačavanje zadanog ponašanja. Koristite ovo da prilagodite kako Codeplane obrađuje zahtjeve.
+- `token`: Opcionalni GitHub pristupni token za izvođenje operacija kao što su kreiranje komentara, upisivanje promjena i otvaranje zahtjeva za povlačenjem. Codeplane prema zadanim postavkama koristi token za pristup instalaciji iz aplikacije Codeplane GitHub, tako da se urezivanje, komentari i zahtjevi za povlačenjem pojavljuju kao da dolaze iz aplikacije.
+  Alternativno, možete koristiti GitHub Action runner [ugrađeni `GITHUB_TOKEN`](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token) bez instaliranja Codeplane GitHub aplikacije. Samo se pobrinite da date potrebna odobrenja u svom toku rada:
 
 ```yaml
 permissions:
@@ -97,22 +97,22 @@ Također možete koristiti [Personal Access Tokens](https://docs.github.com/en/a
 
 ## Podržani događaji
 
-CodePlane se može pokrenuti sljedećim GitHub događajima:
+Codeplane se može pokrenuti sljedećim GitHub događajima:
 | Vrsta događaja | Pokrenuo | Detalji
 |----------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `issue_comment` | Komentirajte problem ili PR | Navedite `/codeplane` u svom komentaru. CodePlane čita kontekst i može kreirati grane, otvarati PR-ove ili odgovarati. |
-| `pull_request_review_comment` | Komentirajte određene linije koda u PR-u | Navedite `/codeplane` dok pregledavate kod. CodePlane prima putanju datoteke, brojeve redova i kontekst razlike. |
-| `issues` | Broj otvoren ili uređen | Automatski pokrenite CodePlane kada se problemi kreiraju ili modificiraju. Zahtijeva `prompt` unos. |
-| `pull_request` | PR otvoren ili ažuriran | Automatski pokrenite CodePlane kada se PR-ovi otvore, sinkroniziraju ili ponovo otvore. Korisno za automatske recenzije. |
-| `schedule` | Cron baziran raspored | Pokrenite CodePlane prema rasporedu. Zahtijeva `prompt` unos. Izlaz ide u dnevnike i PR-ove (nema problema za komentarisanje). |
-| `workflow_dispatch` | Ručni okidač iz GitHub korisničkog sučelja | Aktivirajte CodePlane na zahtjev preko kartice Akcije. Zahtijeva `prompt` unos. Izlaz ide u dnevnike i PR-ove. |
+| `issue_comment` | Komentirajte problem ili PR | Navedite `/codeplane` u svom komentaru. Codeplane čita kontekst i može kreirati grane, otvarati PR-ove ili odgovarati. |
+| `pull_request_review_comment` | Komentirajte određene linije koda u PR-u | Navedite `/codeplane` dok pregledavate kod. Codeplane prima putanju datoteke, brojeve redova i kontekst razlike. |
+| `issues` | Broj otvoren ili uređen | Automatski pokrenite Codeplane kada se problemi kreiraju ili modificiraju. Zahtijeva `prompt` unos. |
+| `pull_request` | PR otvoren ili ažuriran | Automatski pokrenite Codeplane kada se PR-ovi otvore, sinkroniziraju ili ponovo otvore. Korisno za automatske recenzije. |
+| `schedule` | Cron baziran raspored | Pokrenite Codeplane prema rasporedu. Zahtijeva `prompt` unos. Izlaz ide u dnevnike i PR-ove (nema problema za komentarisanje). |
+| `workflow_dispatch` | Ručni okidač iz GitHub korisničkog sučelja | Aktivirajte Codeplane na zahtjev preko kartice Akcije. Zahtijeva `prompt` unos. Izlaz ide u dnevnike i PR-ove. |
 
 ### Primjer rasporeda
 
-Pokrenite CodePlane po rasporedu za obavljanje automatiziranih zadataka:
+Pokrenite Codeplane po rasporedu za obavljanje automatiziranih zadataka:
 
 ```yaml title=".github/workflows/codeplane-scheduled.yml"
-name: Scheduled CodePlane Task
+name: Scheduled Codeplane Task
 
 on:
   schedule:
@@ -132,7 +132,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Run CodePlane
+      - name: Run Codeplane
         uses: devinoldenburg/codeplane/github@latest
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -143,7 +143,7 @@ jobs:
             If you find issues worth addressing, open an issue to track them.
 ```
 
-Za zakazane događaje, unos `prompt` je **potreban** jer nema komentara za izvlačenje instrukcija. Planirani tokovi posla se pokreću bez korisničkog konteksta za provjeru dozvola, tako da tok posla mora odobriti `contents: write` i `pull-requests: write` ako očekujete da će CodePlane kreirati grane ili PR-ove.
+Za zakazane događaje, unos `prompt` je **potreban** jer nema komentara za izvlačenje instrukcija. Planirani tokovi posla se pokreću bez korisničkog konteksta za provjeru dozvola, tako da tok posla mora odobriti `contents: write` i `pull-requests: write` ako očekujete da će Codeplane kreirati grane ili PR-ove.
 
 ---
 
@@ -184,7 +184,7 @@ jobs:
             - Suggest improvements
 ```
 
-Za `pull_request` događaje, ako nije naveden `prompt`, CodePlane podrazumevano pregledava zahtjev za povlačenjem.
+Za `pull_request` događaje, ako nije naveden `prompt`, Codeplane podrazumevano pregledava zahtjev za povlačenjem.
 
 ---
 
@@ -245,7 +245,7 @@ Za `issues` događaje, `prompt` unos je **potreban** jer nema komentara za izvla
 
 ## Prilagođeni upiti
 
-Zaobiđite zadani prompt da biste prilagodili ponašanje CodePlane za vaš tok posla.
+Zaobiđite zadani prompt da biste prilagodili ponašanje Codeplane za vaš tok posla.
 
 ```yaml title=".github/workflows/codeplane.yml"
 - uses: devinoldenburg/codeplane/github@latest
@@ -264,7 +264,7 @@ Ovo je korisno za provođenje specifičnih kriterija pregleda, standarda kodiran
 
 ## Primjeri
 
-Evo nekoliko primjera kako možete koristiti CodePlane u GitHub.
+Evo nekoliko primjera kako možete koristiti Codeplane u GitHub.
 
 - **Objasnite problem**
   Dodajte ovaj komentar u GitHub izdanje.
@@ -273,7 +273,7 @@ Evo nekoliko primjera kako možete koristiti CodePlane u GitHub.
   /codeplane explain this issue
 ```
 
-CodePlane će pročitati cijelu temu, uključujući sve komentare, i odgovoriti s jasnim objašnjenjem.
+Codeplane će pročitati cijelu temu, uključujući sve komentare, i odgovoriti s jasnim objašnjenjem.
 
 - **Popravi problem**
   U izdanju na GitHub-u recite:
@@ -282,7 +282,7 @@ CodePlane će pročitati cijelu temu, uključujući sve komentare, i odgovoriti 
   /codeplane fix this
 ```
 
-I CodePlane će kreirati novu granu, implementirati promjene i otvoriti PR sa promjenama.
+I Codeplane će kreirati novu granu, implementirati promjene i otvoriti PR sa promjenama.
 
 - **Pregledajte PR-ove i izvršite izmjene**
   Ostavite sljedeći komentar na GitHub PR-u.
@@ -291,17 +291,17 @@ I CodePlane će kreirati novu granu, implementirati promjene i otvoriti PR sa pr
   Delete the attachment from S3 when the note is removed /codeplane
 ```
 
-CodePlane će implementirati traženu promjenu i posvetiti je istom PR-u.
+Codeplane će implementirati traženu promjenu i posvetiti je istom PR-u.
 
 - **Pregledajte određene linije koda**
-  Ostavite komentar direktno na linije koda u PR kartici "Files". CodePlane automatski detektuje datoteku, brojeve redova i kontekst razlike kako bi pružio precizne odgovore.
+  Ostavite komentar direktno na linije koda u PR kartici "Files". Codeplane automatski detektuje datoteku, brojeve redova i kontekst razlike kako bi pružio precizne odgovore.
 
 ```
   [Comment on specific lines in Files tab]
   /codeplane add error handling here
 ```
 
-Kada komentarišete određene linije, CodePlane prima:
+Kada komentarišete određene linije, Codeplane prima:
 
 - Tačan fajl se pregleda
 - Specifične linije koda

@@ -175,7 +175,7 @@ export const dict = {
   "dialog.model.manage.description": "Choose which models are shown in the session model selector.",
   "dialog.model.manage.provider.toggle": "Toggle all {{provider}} models",
 
-  "dialog.model.unpaid.freeModels.title": "Free models provided by CodePlane",
+  "dialog.model.unpaid.freeModels.title": "Free models provided by Codeplane",
   "dialog.model.unpaid.addMore.title": "Add more models from popular providers",
 
   "dialog.provider.viewAll": "Show more providers",
@@ -188,12 +188,12 @@ export const dict = {
   "provider.connect.status.waiting": "Waiting for authorization...",
   "provider.connect.status.failed": "Authorization failed: {{error}}",
   "provider.connect.apiKey.description":
-    "Enter your {{provider}} API key to connect your account and use {{provider}} models in CodePlane.",
+    "Enter your {{provider}} API key to connect your account and use {{provider}} models in Codeplane.",
   "provider.connect.apiKey.label": "{{provider}} API key",
   "provider.connect.apiKey.placeholder": "API key",
   "provider.connect.apiKey.required": "API key is required",
   "provider.connect.codeplaneZen.line1":
-    "CodePlane Zen gives you access to a curated set of reliable optimized models for coding agents.",
+    "Codeplane Zen gives you access to a curated set of reliable optimized models for coding agents.",
   "provider.connect.codeplaneZen.line2":
     "With a single API key you'll get access to models such as Claude, GPT, Gemini, GLM and more.",
   "provider.connect.codeplaneZen.visit.prefix": "Visit ",
@@ -202,7 +202,7 @@ export const dict = {
   "provider.connect.oauth.code.visit.prefix": "Visit ",
   "provider.connect.oauth.code.visit.link": "this link",
   "provider.connect.oauth.code.visit.suffix":
-    " to collect your authorization code to connect your account and use {{provider}} models in CodePlane.",
+    " to collect your authorization code to connect your account and use {{provider}} models in Codeplane.",
   "provider.connect.oauth.code.label": "{{method}} authorization code",
   "provider.connect.oauth.code.placeholder": "Authorization code",
   "provider.connect.oauth.code.required": "Authorization code is required",
@@ -210,7 +210,7 @@ export const dict = {
   "provider.connect.oauth.auto.visit.prefix": "Visit ",
   "provider.connect.oauth.auto.visit.link": "this link",
   "provider.connect.oauth.auto.visit.suffix":
-    " and enter the code below to connect your account and use {{provider}} models in CodePlane.",
+    " and enter the code below to connect your account and use {{provider}} models in Codeplane.",
   "provider.connect.oauth.auto.confirmationCode": "Confirmation code",
   "provider.connect.toast.connected.title": "{{provider}} connected",
   "provider.connect.toast.connected.description": "{{provider}} models are now available to use.",
@@ -381,7 +381,7 @@ export const dict = {
   "app.server.otherServers": "Other servers",
 
   "dialog.server.title": "Servers",
-  "dialog.server.description": "Switch which CodePlane server this app connects to.",
+  "dialog.server.description": "Switch which Codeplane server this app connects to.",
   "dialog.server.search.placeholder": "Search servers",
   "dialog.server.empty": "No servers yet",
   "dialog.server.add.title": "Add server",
@@ -551,7 +551,7 @@ export const dict = {
   "error.page.details.label": "Error Details",
   "error.page.action.restart": "Restart",
   "error.page.circular": "[Circular]",
-  "error.page.report.prefix": "Please report this error to the CodePlane team",
+  "error.page.report.prefix": "Please report this error to the Codeplane team",
   "error.page.report.issues": "on GitHub",
   "error.page.version": "Version: {{version}}",
 
@@ -577,7 +577,7 @@ export const dict = {
   "error.chain.didYouMean": "Did you mean: {{suggestions}}",
   "error.chain.modelNotFound": "Model not found: {{provider}}/{{model}}",
   "error.chain.checkConfig": "Check your config (codeplane.json) provider/model names",
-  "error.chain.mcpFailed": 'MCP server "{{name}}" failed. Note, CodePlane does not support MCP authentication yet.',
+  "error.chain.mcpFailed": 'MCP server "{{name}}" failed. Note, Codeplane does not support MCP authentication yet.',
   "error.chain.providerAuthFailed": "Provider authentication failed ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":
     'Failed to initialize provider "{{provider}}". Check credentials and configuration.',
@@ -827,11 +827,11 @@ export const dict = {
   "sidebar.help": "Help",
   "sidebar.restart": "Restart",
   "sidebar.restart.confirm":
-    "Restart the CodePlane app? Active sessions will reconnect, mode, plugin, and MCP changes will be reloaded.",
+    "Restart the Codeplane app? Active sessions will reconnect, mode, plugin, and MCP changes will be reloaded.",
   "sidebar.workspaces.enable": "Enable workspaces",
   "sidebar.workspaces.disable": "Disable workspaces",
   "sidebar.gettingStarted.title": "Getting started",
-  "sidebar.gettingStarted.line1": "CodePlane includes free models so you can start immediately.",
+  "sidebar.gettingStarted.line1": "Codeplane includes free models so you can start immediately.",
   "sidebar.gettingStarted.line2": "Connect any provider to use models, inc. Claude, GPT, Gemini etc.",
   "sidebar.project.recentSessions": "Recent sessions",
   "sidebar.project.viewAllSessions": "View all sessions",
@@ -866,7 +866,7 @@ export const dict = {
   "debugBar.mem.tipUnavailable": "Used JS heap vs heap limit. Chromium only.",
   "debugBar.mem.tip": "Used JS heap vs heap limit. {{used}} of {{limit}}.",
 
-  "app.name.web": "CodePlane",
+  "app.name.web": "Codeplane",
 
   "settings.section.app": "App",
   "settings.section.server": "Server",
@@ -890,13 +890,13 @@ export const dict = {
   "settings.general.section.feed": "Feed",
 
   "settings.general.row.language.title": "Language",
-  "settings.general.row.language.description": "Change the display language for CodePlane",
+  "settings.general.row.language.description": "Change the display language for Codeplane",
   "settings.general.row.appearance.title": "Appearance",
-  "settings.general.row.appearance.description": "Customise how CodePlane looks on your device",
+  "settings.general.row.appearance.description": "Customise how Codeplane looks on your device",
   "settings.general.row.colorScheme.title": "Color scheme",
-  "settings.general.row.colorScheme.description": "Choose whether CodePlane follows the system, light, or dark theme",
+  "settings.general.row.colorScheme.description": "Choose whether Codeplane follows the system, light, or dark theme",
   "settings.general.row.theme.title": "Theme",
-  "settings.general.row.theme.description": "Customise how CodePlane is themed.",
+  "settings.general.row.theme.description": "Customise how Codeplane is themed.",
   "settings.general.row.font.title": "Code Font",
   "settings.general.row.font.description": "Customise the font used in code blocks",
   "settings.general.row.terminalFont.title": "Terminal Font",
@@ -1283,7 +1283,7 @@ export const dict = {
   "skills.source.url": "URL",
   "skills.kind.claude": "Claude",
   "skills.kind.agents": "Agents",
-  "skills.kind.codeplane": "CodePlane",
+  "skills.kind.codeplane": "Codeplane",
   "skills.kind.local": "Local",
   "skills.tag.disabled": "Disabled",
   "skills.row.openFile": "Edit skill file",

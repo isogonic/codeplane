@@ -15,7 +15,7 @@ export const dict = {
   "nav.home": "Home",
   "nav.openMenu": "Apri menu",
   "nav.getStartedFree": "Inizia gratis",
-  "nav.logoAlt": "CodePlane",
+  "nav.logoAlt": "Codeplane",
 
   "nav.context.copyLogo": "Copia il logo come SVG",
   "nav.context.brandAssets": "Asset del brand",
@@ -80,9 +80,9 @@ export const dict = {
   "error.reloadAmountMin": "L'importo della ricarica deve essere almeno ${{amount}}",
   "error.reloadTriggerMin": "La soglia del saldo deve essere almeno ${{amount}}",
 
-  "app.meta.description": "CodePlane - L'agente di programmazione open source.",
+  "app.meta.description": "Codeplane - L'agente di programmazione open source.",
 
-  "home.title": "CodePlane | L'agente di coding IA open source",
+  "home.title": "Codeplane | L'agente di coding IA open source",
 
   "temp.title": "codeplane | AI coding agent built for the web",
   "temp.hero.title": "The AI coding agent built for the web",
@@ -95,16 +95,16 @@ export const dict = {
   "temp.feature.zen.afterLink": "fornita da codeplane",
   "temp.feature.models.beforeLink": "Supporta 75+ provider LLM tramite",
   "temp.feature.models.afterLink": ", inclusi modelli locali",
-  "temp.screenshot.caption": "CodePlane web app",
-  "temp.screenshot.alt": "CodePlane web app",
+  "temp.screenshot.caption": "Codeplane web app",
+  "temp.screenshot.alt": "Codeplane web app",
   "temp.logoLightAlt": "logo chiaro di codeplane",
   "temp.logoDarkAlt": "logo scuro di codeplane",
 
   "home.banner.badge": "Nuovo",
-  "home.banner.text": "CodePlane is built for the web",
+  "home.banner.text": "Codeplane is built for the web",
   "home.banner.platforms": "in your browser",
   "home.banner.downloadNow": "Install now",
-  "home.banner.downloadBetaNow": "Install CodePlane",
+  "home.banner.downloadBetaNow": "Install Codeplane",
 
   "home.hero.title": "L'agente di coding IA open source",
   "home.hero.subtitle.a": "Modelli gratuiti inclusi o collega qualsiasi modello da qualsiasi provider,",
@@ -112,8 +112,8 @@ export const dict = {
 
   "home.install.ariaLabel": "Opzioni di installazione",
 
-  "home.what.title": "Che cos'è CodePlane?",
-  "home.what.body": "CodePlane is an open source web app that helps you write code with AI agents.",
+  "home.what.title": "Che cos'è Codeplane?",
+  "home.what.body": "Codeplane is an open source web app that helps you write code with AI agents.",
   "home.what.lsp.title": "LSP abilitato",
   "home.what.lsp.body": "Carica automaticamente gli LSP giusti per il LLM",
   "home.what.multiSession.title": "Multi-session",
@@ -132,43 +132,43 @@ export const dict = {
 
   "home.growth.title": "L'agente di coding IA open source",
   "home.growth.body":
-    "Con oltre <strong>{{stars}}</strong> stelle su GitHub, <strong>{{contributors}}</strong> contributori e oltre <strong>{{commits}}</strong> commit, CodePlane è usato e apprezzato da oltre <strong>{{monthlyUsers}}</strong> sviluppatori ogni mese.",
+    "Con oltre <strong>{{stars}}</strong> stelle su GitHub, <strong>{{contributors}}</strong> contributori e oltre <strong>{{commits}}</strong> commit, Codeplane è usato e apprezzato da oltre <strong>{{monthlyUsers}}</strong> sviluppatori ogni mese.",
   "home.growth.githubStars": "Stelle GitHub",
   "home.growth.contributors": "Contributori",
   "home.growth.monthlyDevs": "Devs mensili",
 
   "home.privacy.title": "Progettato per la privacy",
   "home.privacy.body":
-    "CodePlane non archivia il tuo codice né i dati di contesto, così può operare in ambienti sensibili alla privacy.",
+    "Codeplane non archivia il tuo codice né i dati di contesto, così può operare in ambienti sensibili alla privacy.",
   "home.privacy.learnMore": "Scopri di più su",
   "home.privacy.link": "privacy",
 
-  "home.faq.q1": "Che cos'è CodePlane?",
+  "home.faq.q1": "Che cos'è Codeplane?",
   "home.faq.a1":
-    "CodePlane is an open source web app that helps you write and run code with any AI model.",
-  "home.faq.q2": "Come uso CodePlane?",
+    "Codeplane is an open source web app that helps you write and run code with any AI model.",
+  "home.faq.q2": "Come uso Codeplane?",
   "home.faq.a2.before": "Il modo più semplice per iniziare è leggere l'",
   "home.faq.a2.link": "introduzione",
-  "home.faq.q3": "Mi servono abbonamenti IA extra per usare CodePlane?",
+  "home.faq.q3": "Mi servono abbonamenti IA extra per usare Codeplane?",
   "home.faq.a3.p1":
-    "Non necessariamente: CodePlane include un set di modelli gratuiti che puoi usare senza creare un account.",
+    "Non necessariamente: Codeplane include un set di modelli gratuiti che puoi usare senza creare un account.",
   "home.faq.a3.p2.beforeZen": "Inoltre, puoi usare modelli popolari per il coding creando un account",
   "home.faq.a3.p2.afterZen": ".",
   "home.faq.a3.p3":
-    "Anche se incoraggiamo gli utenti a usare Zen, CodePlane funziona anche con i provider più diffusi come OpenAI, Anthropic, xAI, ecc.",
+    "Anche se incoraggiamo gli utenti a usare Zen, Codeplane funziona anche con i provider più diffusi come OpenAI, Anthropic, xAI, ecc.",
   "home.faq.a3.p4.beforeLocal": "Puoi anche collegare i tuoi",
   "home.faq.a3.p4.localLink": "modelli locali",
-  "home.faq.q4": "Posso usare i miei abbonamenti IA esistenti con CodePlane?",
+  "home.faq.q4": "Posso usare i miei abbonamenti IA esistenti con Codeplane?",
   "home.faq.a4.p1":
-    "Sì, CodePlane supporta gli abbonamenti dei principali provider. Puoi usare Claude Pro/Max, ChatGPT Plus/Pro o GitHub Copilot.",
-  "home.faq.q5": "Can I use CodePlane in the browser?",
-  "home.faq.a5.beforeWeb": "Yes. CodePlane is built for the",
+    "Sì, Codeplane supporta gli abbonamenti dei principali provider. Puoi usare Claude Pro/Max, ChatGPT Plus/Pro o GitHub Copilot.",
+  "home.faq.q5": "Can I use Codeplane in the browser?",
+  "home.faq.a5.beforeWeb": "Yes. Codeplane is built for the",
   "home.faq.a5.webDocs": "web",
   "home.faq.a5.and": "with a",
   "home.faq.a5.installPath": "CLI install path",
-  "home.faq.q6": "Quanto costa CodePlane?",
+  "home.faq.q6": "Quanto costa Codeplane?",
   "home.faq.a6":
-    "CodePlane è gratuito al 100%. Include anche un set di modelli gratuiti. Potrebbero esserci costi aggiuntivi se colleghi altri provider.",
+    "Codeplane è gratuito al 100%. Include anche un set di modelli gratuiti. Potrebbero esserci costi aggiuntivi se colleghi altri provider.",
   "home.faq.q7": "E per quanto riguarda dati e privacy?",
   "home.faq.a7.p1":
     "I tuoi dati vengono archiviati solo quando usi i nostri modelli gratuiti o crei link condivisibili.",
@@ -176,8 +176,8 @@ export const dict = {
   "home.faq.a7.p2.modelsLink": "i nostri modelli",
   "home.faq.a7.p2.and": "e",
   "home.faq.a7.p2.shareLink": "le pagine di condivisione",
-  "home.faq.q8": "CodePlane è open source?",
-  "home.faq.a8.p1": "Sì, CodePlane è completamente open source. Il codice sorgente è pubblico su",
+  "home.faq.q8": "Codeplane è open source?",
+  "home.faq.a8.p1": "Sì, Codeplane è completamente open source. Il codice sorgente è pubblico su",
   "home.faq.a8.p2": "sotto la",
   "home.faq.a8.mitLicense": "Licenza MIT",
   "home.faq.a8.p3":
@@ -185,23 +185,23 @@ export const dict = {
 
   "home.zenCta.title": "Accedi a modelli affidabili e ottimizzati per agenti di coding",
   "home.zenCta.body":
-    "Zen ti dà accesso a una selezione di modelli di IA che CodePlane ha testato e benchmarkato specificamente per agenti di coding. Niente più preoccupazioni per prestazioni e qualità incoerenti tra provider: usa modelli validati che funzionano.",
+    "Zen ti dà accesso a una selezione di modelli di IA che Codeplane ha testato e benchmarkato specificamente per agenti di coding. Niente più preoccupazioni per prestazioni e qualità incoerenti tra provider: usa modelli validati che funzionano.",
   "home.zenCta.link": "Scopri Zen",
 
-  "zen.title": "CodePlane Zen | Una selezione curata di modelli affidabili e ottimizzati per agenti di coding",
+  "zen.title": "Codeplane Zen | Una selezione curata di modelli affidabili e ottimizzati per agenti di coding",
   "zen.hero.title": "Accedi a modelli affidabili e ottimizzati per agenti di coding",
   "zen.hero.body":
-    "Zen ti dà accesso a una selezione di modelli di IA che CodePlane ha testato e benchmarkato specificamente per agenti di coding. Niente più preoccupazioni per prestazioni e qualità incoerenti tra provider: usa modelli validati che funzionano.",
+    "Zen ti dà accesso a una selezione di modelli di IA che Codeplane ha testato e benchmarkato specificamente per agenti di coding. Niente più preoccupazioni per prestazioni e qualità incoerenti tra provider: usa modelli validati che funzionano.",
 
-  "zen.faq.q1": "Cos'è CodePlane Zen?",
+  "zen.faq.q1": "Cos'è Codeplane Zen?",
   "zen.faq.a1":
-    "Zen è un set curato di modelli di IA testati e benchmarkati per agenti di coding, creato dal team dietro CodePlane.",
+    "Zen è un set curato di modelli di IA testati e benchmarkati per agenti di coding, creato dal team dietro Codeplane.",
   "zen.faq.q2": "Cosa rende Zen più accurato?",
   "zen.faq.a2":
     "Zen offre solo modelli testati e benchmarkati specificamente per agenti di coding. Non useresti un coltello da burro per tagliare una bistecca; non usare modelli scarsi per programmare.",
   "zen.faq.q3": "Zen è più economico?",
   "zen.faq.a3":
-    "Zen non è a scopo di lucro. Zen ribalta i costi dei provider di modelli direttamente su di te. Più Zen viene usato, più CodePlane può negoziare tariffe migliori e passarle a te.",
+    "Zen non è a scopo di lucro. Zen ribalta i costi dei provider di modelli direttamente su di te. Più Zen viene usato, più Codeplane può negoziare tariffe migliori e passarle a te.",
   "zen.faq.q4": "Quanto costa Zen?",
   "zen.faq.a4.p1.beforePricing": "Zen",
   "zen.faq.a4.p1.pricingLink": "addebita per richiesta",
@@ -209,7 +209,7 @@ export const dict = {
   "zen.faq.a4.p2.beforeAccount": "Il costo totale dipende dall'uso e puoi impostare limiti di spesa mensili nel tuo",
   "zen.faq.a4.p2.accountLink": "account",
   "zen.faq.a4.p3":
-    "Per coprire i costi, CodePlane aggiunge solo una piccola commissione di elaborazione del pagamento di $1.23 per ogni ricarica di saldo da $20.",
+    "Per coprire i costi, Codeplane aggiunge solo una piccola commissione di elaborazione del pagamento di $1.23 per ogni ricarica di saldo da $20.",
   "zen.faq.q5": "E per quanto riguarda dati e privacy?",
   "zen.faq.a5.beforeExceptions":
     "Tutti i modelli Zen sono ospitati negli Stati Uniti. I provider seguono una policy di zero-retention e non usano i tuoi dati per l'addestramento dei modelli, con le",
@@ -220,7 +220,7 @@ export const dict = {
   "zen.faq.a7": "Sì, puoi disattivare la fatturazione in qualsiasi momento e usare il saldo rimanente.",
   "zen.faq.q8": "Posso usare Zen con altri agenti di coding?",
   "zen.faq.a8":
-    "Anche se Zen funziona alla grande con CodePlane, puoi usare Zen con qualsiasi agente. Segui le istruzioni di configurazione nel tuo agente di coding preferito.",
+    "Anche se Zen funziona alla grande con Codeplane, puoi usare Zen con qualsiasi agente. Segui le istruzioni di configurazione nel tuo agente di coding preferito.",
 
   "zen.cta.start": "Inizia con Zen",
   "zen.pricing.title": "Aggiungi $20 di saldo a consumo",
@@ -229,12 +229,12 @@ export const dict = {
   "zen.problem.title": "Quale problema risolve Zen?",
   "zen.problem.body":
     "Sono disponibili numerosi modelli, ma solo pochi funzionano bene con gli agenti di coding. La maggior parte dei provider li configura in modo diverso con risultati variabili.",
-  "zen.problem.subtitle": "Stiamo risolvendo questo problema per tutti, non solo per gli utenti CodePlane.",
+  "zen.problem.subtitle": "Stiamo risolvendo questo problema per tutti, non solo per gli utenti Codeplane.",
   "zen.problem.item1": "Testare modelli selezionati e consultare i loro team",
   "zen.problem.item2": "Collaborare con i provider per garantire che vengano consegnati correttamente",
   "zen.problem.item3": "Benchmark di tutte le combinazioni modello-provider che raccomandiamo",
   "zen.how.title": "Come funziona Zen",
-  "zen.how.body": "Anche se ti consigliamo di utilizzare Zen con CodePlane, puoi utilizzare Zen con qualsiasi agente.",
+  "zen.how.body": "Anche se ti consigliamo di utilizzare Zen con Codeplane, puoi utilizzare Zen con qualsiasi agente.",
   "zen.how.step1.title": "Iscriviti e aggiungi un saldo di $20",
   "zen.how.step1.beforeLink": "segui le",
   "zen.how.step1.link": "istruzioni di configurazione",
@@ -248,7 +248,7 @@ export const dict = {
     "Tutti i modelli Zen sono ospitati negli Stati Uniti. I provider seguono una policy di zero-retention e non usano i tuoi dati per l'addestramento dei modelli, con le",
   "zen.privacy.exceptionsLink": "seguenti eccezioni",
 
-  "go.title": "CodePlane Go | Modelli di coding a basso costo per tutti",
+  "go.title": "Codeplane Go | Modelli di coding a basso costo per tutti",
   "go.meta.description":
     "Go inizia a $5 per il primo mese, poi $10/mese, con generosi limiti di richiesta di 5 ore per GLM-5.1, GLM-5, Kimi K2.5, Kimi K2.6, MiMo-V2-Pro, MiMo-V2-Omni, MiMo-V2.5-Pro, MiMo-V2.5, Qwen3.5 Plus, Qwen3.6 Plus, MiniMax M2.5, MiniMax M2.7, DeepSeek V4 Pro e DeepSeek V4 Flash.",
   "go.hero.title": "Modelli di coding a basso costo per tutti",
@@ -274,7 +274,7 @@ export const dict = {
 
   "go.testimonials.brand.zen": "Zen",
   "go.testimonials.brand.go": "Go",
-  "go.testimonials.handle": "@CodePlane",
+  "go.testimonials.handle": "@Codeplane",
   "go.testimonials.dax.name": "Dax Raad",
   "go.testimonials.dax.title": "ex-CEO, Terminal Products",
   "go.testimonials.dax.quoteAfter": "ha cambiato la vita, è davvero una scelta ovvia.",
@@ -295,7 +295,7 @@ export const dict = {
   "go.testimonials.frank.quote": "Vorrei essere ancora a Nvidia.",
   "go.problem.title": "Quale problema risolve Go?",
   "go.problem.body":
-    "Ci concentriamo nel portare l'esperienza CodePlane a quante più persone possibile. CodePlane Go è un abbonamento a basso costo: $5 il primo mese, poi $10/mese. Offre limiti generosi e accesso affidabile ai modelli open source più capaci.",
+    "Ci concentriamo nel portare l'esperienza Codeplane a quante più persone possibile. Codeplane Go è un abbonamento a basso costo: $5 il primo mese, poi $10/mese. Offre limiti generosi e accesso affidabile ai modelli open source più capaci.",
   "go.problem.subtitle": " ",
   "go.problem.item1": "Prezzo di abbonamento a basso costo",
   "go.problem.item2": "Limiti generosi e accesso affidabile",
@@ -303,7 +303,7 @@ export const dict = {
   "go.problem.item4":
     "Include GLM-5.1, GLM-5, Kimi K2.5, Kimi K2.6, MiMo-V2-Pro, MiMo-V2-Omni, MiMo-V2.5-Pro, MiMo-V2.5, Qwen3.5 Plus, Qwen3.6 Plus, MiniMax M2.5, MiniMax M2.7, DeepSeek V4 Pro e DeepSeek V4 Flash",
   "go.how.title": "Come funziona Go",
-  "go.how.body": "Go inizia a $5 per il primo mese, poi $10/mese. Puoi usarlo con CodePlane o qualsiasi agente.",
+  "go.how.body": "Go inizia a $5 per il primo mese, poi $10/mese. Puoi usarlo con Codeplane o qualsiasi agente.",
   "go.how.step1.title": "Crea un account",
   "go.how.step1.beforeLink": "segui le",
   "go.how.step1.link": "istruzioni di configurazione",
@@ -319,7 +319,7 @@ export const dict = {
   "go.privacy.beforeExceptions":
     "I modelli Go sono ospitati negli Stati Uniti. I provider seguono una policy di zero-retention e non usano i tuoi dati per l'addestramento dei modelli, con le",
   "go.privacy.exceptionsLink": "seguenti eccezioni",
-  "go.faq.q1": "Che cos'è CodePlane Go?",
+  "go.faq.q1": "Che cos'è Codeplane Go?",
   "go.faq.a1":
     "Go è un abbonamento a basso costo che ti dà un accesso affidabile a modelli open source capaci per il coding agentico.",
   "go.faq.q2": "Quali modelli include Go?",
@@ -370,14 +370,14 @@ export const dict = {
     "Hai raggiunto il tuo limite di spesa mensile di ${{amount}}. Gestisci i tuoi limiti qui: {{membersUrl}}",
   "zen.api.error.modelDisabled": "Il modello è disabilitato",
   "zen.api.error.trialEnded":
-    "La promozione gratuita di {{model}} è terminata. Puoi continuare a usare il modello abbonandoti a CodePlane Go - {{link}}",
+    "La promozione gratuita di {{model}} è terminata. Puoi continuare a usare il modello abbonandoti a Codeplane Go - {{link}}",
 
-  "black.meta.title": "CodePlane Black | Accedi ai migliori modelli di coding al mondo",
+  "black.meta.title": "Codeplane Black | Accedi ai migliori modelli di coding al mondo",
   "black.meta.description":
-    "Ottieni l'accesso a Claude, GPT, Gemini e altri con i piani di abbonamento CodePlane Black.",
+    "Ottieni l'accesso a Claude, GPT, Gemini e altri con i piani di abbonamento Codeplane Black.",
   "black.hero.title": "Accedi ai migliori modelli di coding al mondo",
   "black.hero.subtitle": "Inclusi Claude, GPT, Gemini e altri",
-  "black.title": "CodePlane Black | Prezzi",
+  "black.title": "Codeplane Black | Prezzi",
   "black.paused": "L'iscrizione al piano Black è temporaneamente sospesa.",
   "black.plan.icon20": "Piano Black 20",
   "black.plan.icon100": "Piano Black 100",
@@ -397,10 +397,10 @@ export const dict = {
   "black.action.continue": "Continua",
   "black.finePrint.beforeTerms": "I prezzi mostrati non includono le tasse applicabili",
   "black.finePrint.terms": "Termini di servizio",
-  "black.workspace.title": "CodePlane Black | Seleziona Workspace",
+  "black.workspace.title": "Codeplane Black | Seleziona Workspace",
   "black.workspace.selectPlan": "Seleziona un workspace per questo piano",
   "black.workspace.name": "Workspace {{n}}",
-  "black.subscribe.title": "Abbonati a CodePlane Black",
+  "black.subscribe.title": "Abbonati a Codeplane Black",
   "black.subscribe.paymentMethod": "Metodo di pagamento",
   "black.subscribe.loadingPaymentForm": "Caricamento modulo di pagamento...",
   "black.subscribe.selectWorkspaceToContinue": "Seleziona un workspace per continuare",
@@ -412,9 +412,9 @@ export const dict = {
   "black.subscribe.processing": "Elaborazione...",
   "black.subscribe.submit": "Abbonati ${{plan}}",
   "black.subscribe.form.chargeNotice": "Ti verrà addebitato solo quando il tuo abbonamento sarà attivato",
-  "black.subscribe.success.title": "Sei nella lista d'attesa di CodePlane Black",
+  "black.subscribe.success.title": "Sei nella lista d'attesa di Codeplane Black",
   "black.subscribe.success.subscriptionPlan": "Piano di abbonamento",
-  "black.subscribe.success.planName": "CodePlane Black {{plan}}",
+  "black.subscribe.success.planName": "Codeplane Black {{plan}}",
   "black.subscribe.success.amount": "Importo",
   "black.subscribe.success.amountValue": "${{plan}} al mese",
   "black.subscribe.success.paymentMethod": "Metodo di pagamento",
@@ -615,15 +615,15 @@ export const dict = {
   "workspace.black.time.minutes": "minuti",
   "workspace.black.time.fewSeconds": "pochi secondi",
   "workspace.black.subscription.title": "Abbonamento",
-  "workspace.black.subscription.message": "Sei abbonato a CodePlane Black per ${{plan}} al mese.",
+  "workspace.black.subscription.message": "Sei abbonato a Codeplane Black per ${{plan}} al mese.",
   "workspace.black.subscription.manage": "Gestisci Abbonamento",
   "workspace.black.subscription.rollingUsage": "Utilizzo 5-ore",
   "workspace.black.subscription.weeklyUsage": "Utilizzo Settimanale",
   "workspace.black.subscription.resetsIn": "Si resetta tra",
   "workspace.black.subscription.useBalance": "Usa il tuo saldo disponibile dopo aver raggiunto i limiti di utilizzo",
   "workspace.black.waitlist.title": "Waitlist",
-  "workspace.black.waitlist.joined": "Sei nella waitlist per il piano CodePlane Black da ${{plan}} al mese.",
-  "workspace.black.waitlist.ready": "Siamo pronti per iscriverti al piano CodePlane Black da ${{plan}} al mese.",
+  "workspace.black.waitlist.joined": "Sei nella waitlist per il piano Codeplane Black da ${{plan}} al mese.",
+  "workspace.black.waitlist.ready": "Siamo pronti per iscriverti al piano Codeplane Black da ${{plan}} al mese.",
   "workspace.black.waitlist.leave": "Lascia Waitlist",
   "workspace.black.waitlist.leaving": "Uscita...",
   "workspace.black.waitlist.left": "Uscito",
@@ -641,7 +641,7 @@ export const dict = {
   "workspace.lite.time.minute": "minuto",
   "workspace.lite.time.minutes": "minuti",
   "workspace.lite.time.fewSeconds": "pochi secondi",
-  "workspace.lite.subscription.message": "Sei abbonato a CodePlane Go.",
+  "workspace.lite.subscription.message": "Sei abbonato a Codeplane Go.",
   "workspace.lite.subscription.manage": "Gestisci Abbonamento",
   "workspace.lite.subscription.rollingUsage": "Utilizzo Continuativo",
   "workspace.lite.subscription.weeklyUsage": "Utilizzo Settimanale",
@@ -649,13 +649,13 @@ export const dict = {
   "workspace.lite.subscription.resetsIn": "Si resetta tra",
   "workspace.lite.subscription.useBalance": "Usa il tuo saldo disponibile dopo aver raggiunto i limiti di utilizzo",
   "workspace.lite.subscription.selectProvider":
-    'Seleziona "CodePlane Go" come provider nella tua configurazione codeplane per utilizzare i modelli Go.',
+    'Seleziona "Codeplane Go" come provider nella tua configurazione codeplane per utilizzare i modelli Go.',
   "workspace.lite.black.message":
-    "Attualmente sei abbonato a CodePlane Black o sei in lista d'attesa. Annulla l'iscrizione prima se desideri passare a Go.",
+    "Attualmente sei abbonato a Codeplane Black o sei in lista d'attesa. Annulla l'iscrizione prima se desideri passare a Go.",
   "workspace.lite.other.message":
-    "Un altro membro in questo workspace è già abbonato a CodePlane Go. Solo un membro per workspace può abbonarsi.",
+    "Un altro membro in questo workspace è già abbonato a Codeplane Go. Solo un membro per workspace può abbonarsi.",
   "workspace.lite.promo.description":
-    "CodePlane Go parte da {{price}}, poi $10/mese, e offre un accesso affidabile a popolari modelli di coding aperti con generosi limiti di utilizzo.",
+    "Codeplane Go parte da {{price}}, poi $10/mese, e offre un accesso affidabile a popolari modelli di coding aperti con generosi limiti di utilizzo.",
   "workspace.lite.promo.price": "$5 il primo mese",
   "workspace.lite.promo.modelsTitle": "Cosa è incluso",
   "workspace.lite.promo.footer":
@@ -665,15 +665,15 @@ export const dict = {
   "workspace.lite.promo.otherMethods": "Altri metodi di pagamento",
   "workspace.lite.promo.selectMethod": "Seleziona metodo di pagamento",
 
-  "download.title": "CodePlane | Download",
-  "download.meta.description": "Install CodePlane and run the web app locally",
-  "download.hero.title": "Install CodePlane",
-  "download.hero.subtitle": "Run CodePlane as a local web app in your browser",
+  "download.title": "Codeplane | Download",
+  "download.meta.description": "Install Codeplane and run the web app locally",
+  "download.hero.title": "Install Codeplane",
+  "download.hero.subtitle": "Run Codeplane as a local web app in your browser",
   "download.hero.button": "Install for {{os}}",
-  "download.section.terminal": "CodePlane Web App",
-  "download.section.webApp": "CodePlane Web App",
-  "download.section.extensions": "CodePlane Extensions",
-  "download.section.integrations": "CodePlane Integrations",
+  "download.section.terminal": "Codeplane Web App",
+  "download.section.webApp": "Codeplane Web App",
+  "download.section.extensions": "Codeplane Extensions",
+  "download.section.integrations": "Codeplane Integrations",
   "download.action.download": "Scarica",
   "download.action.install": "Installa",
 
@@ -684,25 +684,25 @@ export const dict = {
   "download.platform.linuxRpm": "Linux (.rpm)",
 
   "download.faq.a3.beforeLocal":
-    "Non necessariamente, ma probabilmente. Avrai bisogno di un abbonamento IA se vuoi collegare CodePlane a un provider a pagamento, sebbene tu possa lavorare con",
+    "Non necessariamente, ma probabilmente. Avrai bisogno di un abbonamento IA se vuoi collegare Codeplane a un provider a pagamento, sebbene tu possa lavorare con",
   "download.faq.a3.localLink": "modelli locali",
   "download.faq.a3.afterLocal.beforeZen": "gratuitamente. Mentre incoraggiamo gli utenti a usare",
-  "download.faq.a3.afterZen": ", CodePlane funziona con tutti i provider popolari come OpenAI, Anthropic, xAI ecc.",
+  "download.faq.a3.afterZen": ", Codeplane funziona con tutti i provider popolari come OpenAI, Anthropic, xAI ecc.",
 
-  "download.faq.a5.p1": "CodePlane è gratuito al 100%.",
+  "download.faq.a5.p1": "Codeplane è gratuito al 100%.",
   "download.faq.a5.p2.beforeZen":
-    "Eventuali costi aggiuntivi proverranno dal tuo abbonamento a un provider di modelli. Mentre CodePlane funziona con qualsiasi provider di modelli, raccomandiamo di usare",
+    "Eventuali costi aggiuntivi proverranno dal tuo abbonamento a un provider di modelli. Mentre Codeplane funziona con qualsiasi provider di modelli, raccomandiamo di usare",
   "download.faq.a5.p2.afterZen": ".",
 
-  "download.faq.a6.p1": "I tuoi dati e informazioni sono archiviati solo quando crei link condivisibili in CodePlane.",
+  "download.faq.a6.p1": "I tuoi dati e informazioni sono archiviati solo quando crei link condivisibili in Codeplane.",
   "download.faq.a6.p2.beforeShare": "Scopri di più sulle",
   "download.faq.a6.shareLink": "pagine condivise",
 
-  "enterprise.title": "CodePlane | Soluzioni Enterprise per la tua organizzazione",
-  "enterprise.meta.description": "Contatta CodePlane per soluzioni enterprise",
+  "enterprise.title": "Codeplane | Soluzioni Enterprise per la tua organizzazione",
+  "enterprise.meta.description": "Contatta Codeplane per soluzioni enterprise",
   "enterprise.hero.title": "Il tuo codice è tuo",
   "enterprise.hero.body1":
-    "CodePlane opera in modo sicuro all'interno della tua organizzazione senza dati o contesto archiviati e senza restrizioni di licenza o rivendicazioni di proprietà. Inizia una prova con il tuo team, poi distribuisci attraverso la tua organizzazione integrandolo con il tuo SSO e gateway IA interno.",
+    "Codeplane opera in modo sicuro all'interno della tua organizzazione senza dati o contesto archiviati e senza restrizioni di licenza o rivendicazioni di proprietà. Inizia una prova con il tuo team, poi distribuisci attraverso la tua organizzazione integrandolo con il tuo SSO e gateway IA interno.",
   "enterprise.hero.body2": "Facci sapere come possiamo aiutare.",
   "enterprise.form.name.label": "Nome completo",
   "enterprise.form.name.placeholder": "Jeff Bezos",
@@ -724,29 +724,29 @@ export const dict = {
   "enterprise.form.error.invalidEmailFormat": "Formato email non valido.",
   "enterprise.form.error.internalServer": "Errore interno del server.",
   "enterprise.faq.title": "FAQ",
-  "enterprise.faq.q1": "Cos'è CodePlane Enterprise?",
+  "enterprise.faq.q1": "Cos'è Codeplane Enterprise?",
   "enterprise.faq.a1":
-    "CodePlane Enterprise è per le organizzazioni che vogliono garantire che il loro codice e dati non lascino mai la loro infrastruttura. Può farlo usando una configurazione centralizzata che si integra con il tuo SSO e gateway IA interno.",
-  "enterprise.faq.q2": "Come inizio con CodePlane Enterprise?",
+    "Codeplane Enterprise è per le organizzazioni che vogliono garantire che il loro codice e dati non lascino mai la loro infrastruttura. Può farlo usando una configurazione centralizzata che si integra con il tuo SSO e gateway IA interno.",
+  "enterprise.faq.q2": "Come inizio con Codeplane Enterprise?",
   "enterprise.faq.a2":
-    "Inizia semplicemente con una prova interna con il tuo team. CodePlane per impostazione predefinita non archivia il tuo codice o dati di contesto, rendendo facile iniziare. Poi contattaci per discutere prezzi e opzioni di implementazione.",
+    "Inizia semplicemente con una prova interna con il tuo team. Codeplane per impostazione predefinita non archivia il tuo codice o dati di contesto, rendendo facile iniziare. Poi contattaci per discutere prezzi e opzioni di implementazione.",
   "enterprise.faq.q3": "Come funziona il prezzo enterprise?",
   "enterprise.faq.a3":
     "Offriamo prezzi enterprise per postazione. Se hai il tuo gateway LLM, non addebitiamo per i token usati. Per ulteriori dettagli, contattaci per un preventivo personalizzato basato sulle esigenze della tua organizzazione.",
-  "enterprise.faq.q4": "I miei dati sono sicuri con CodePlane Enterprise?",
+  "enterprise.faq.q4": "I miei dati sono sicuri con Codeplane Enterprise?",
   "enterprise.faq.a4":
-    "Sì. CodePlane non archivia il tuo codice o dati di contesto. Tutto il trattamento avviene localmente o attraverso chiamate API dirette al tuo provider IA. Con configurazione centrale e integrazione SSO, i tuoi dati rimangono sicuri all'interno dell'infrastruttura della tua organizzazione.",
+    "Sì. Codeplane non archivia il tuo codice o dati di contesto. Tutto il trattamento avviene localmente o attraverso chiamate API dirette al tuo provider IA. Con configurazione centrale e integrazione SSO, i tuoi dati rimangono sicuri all'interno dell'infrastruttura della tua organizzazione.",
 
-  "brand.title": "CodePlane | Brand",
-  "brand.meta.description": "Linee guida del brand CodePlane",
+  "brand.title": "Codeplane | Brand",
+  "brand.meta.description": "Linee guida del brand Codeplane",
   "brand.heading": "Linee guida del brand",
-  "brand.subtitle": "Risorse e asset per aiutarti a lavorare con il brand CodePlane.",
+  "brand.subtitle": "Risorse e asset per aiutarti a lavorare con il brand Codeplane.",
   "brand.downloadAll": "Scarica tutti gli asset",
 
-  "changelog.title": "CodePlane | Changelog",
-  "changelog.meta.description": "Note di rilascio e changelog CodePlane",
+  "changelog.title": "Codeplane | Changelog",
+  "changelog.meta.description": "Note di rilascio e changelog Codeplane",
   "changelog.hero.title": "Changelog",
-  "changelog.hero.subtitle": "Nuovi aggiornamenti e miglioramenti a CodePlane",
+  "changelog.hero.subtitle": "Nuovi aggiornamenti e miglioramenti a Codeplane",
   "changelog.empty": "Nessuna voce del changelog trovata.",
   "changelog.viewJson": "Vedi JSON",
 

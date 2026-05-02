@@ -56,7 +56,7 @@ export const UninstallCommand = {
     UI.empty()
     UI.println(UI.logo("  "))
     UI.empty()
-    prompts.intro("Uninstall CodePlane")
+    prompts.intro("Uninstall Codeplane")
 
     const method = await AppRuntime.runPromise(Installation.Service.use((svc) => svc.method()))
     prompts.log.info(`Installation method: ${method}`)
@@ -180,29 +180,37 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
   }
 
   if (method !== "curl" && method !== "unknown") {
-    const cmds: Record<string, string[]> = {
-      npm: ["npm", "uninstall", "-g", "codeplane-ai"],
-      pnpm: ["pnpm", "uninstall", "-g", "codeplane-ai"],
-      bun: ["bun", "remove", "-g", "codeplane-ai"],
-      yarn: ["yarn", "global", "remove", "codeplane-ai"],
-      brew: ["brew", "uninstall", "codeplane"],
-      choco: ["choco", "uninstall", "codeplane"],
-      scoop: ["scoop", "uninstall", "codeplane"],
+    const cmds: Record<string, string[][]> = {
+      npm: [["npm", "uninstall", "-g", "codeplane-ai"]],
+      pnpm: [["pnpm", "uninstall", "-g", "codeplane-ai"]],
+      bun: [["bun", "remove", "-g", "codeplane-ai"]],
+      yarn: [["yarn", "global", "remove", "codeplane-ai"]],
+      brew: [["brew", "uninstall", "codeplane"]],
+      choco: [["choco", "uninstall", "codeplane"]],
+      scoop: [["scoop", "uninstall", "codeplane"]],
     }
 
-    const cmd = cmds[method]
-    if (cmd) {
-      spinner.start(`Running ${cmd.join(" ")}...`)
-      const result = await Process.run(method === "choco" ? ["choco", "uninstall", "codeplane", "-y", "-r"] : cmd, {
-        nothrow: true,
-      })
+    const commands = cmds[method]
+    if (commands) {
+      spinner.start(`Running ${commands[0].join(" ")}...`)
+      let result = await Process.run(
+        method === "choco" ? ["choco", "uninstall", "codeplane", "-y", "-r"] : commands[0],
+        {
+          nothrow: true,
+        },
+      )
+      if (result.code !== 0 && commands[1]) {
+        result = await Process.run(commands[1], {
+          nothrow: true,
+        })
+      }
       if (result.code !== 0) {
         spinner.stop(`Package manager uninstall failed: exit code ${result.code}`, 1)
         const text = `${result.stdout.toString("utf8")}\n${result.stderr.toString("utf8")}`
         if (method === "choco" && text.includes("not running from an elevated command shell")) {
-          prompts.log.warn(`You may need to run '${cmd.join(" ")}' from an elevated command shell`)
+          prompts.log.warn(`You may need to run '${commands[0].join(" ")}' from an elevated command shell`)
         } else {
-          prompts.log.warn(`You may need to run manually: ${cmd.join(" ")}`)
+          prompts.log.warn(`You may need to run manually: ${commands.map((cmd) => cmd.join(" ")).join(" or ")}`)
         }
       } else {
         spinner.stop("Package removed")
@@ -230,7 +238,7 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
   }
 
   UI.empty()
-  prompts.log.success("Thank you for using CodePlane!")
+  prompts.log.success("Thank you for using Codeplane!")
 }
 
 async function getShellConfigFile(): Promise<string | null> {

@@ -4,6 +4,7 @@ import { $ } from "bun"
 import fs from "fs"
 import path from "path"
 import { fileURLToPath } from "url"
+import which from "which"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -72,6 +73,36 @@ const createEmbeddedWebUIBundle = async () => {
     ...entries,
     `}`,
   ].join("\n")
+}
+
+const buildTUIBundle = async (outdir: string) => {
+  const result = await Bun.build({
+    entrypoints: ["./src/tui/node-main.tsx"],
+    target: "node",
+    format: "esm",
+    minify: true,
+    splitting: false,
+    outdir,
+  })
+  if (!result.success) {
+    throw new AggregateError(
+      result.logs.map((log) => new Error(log.message)),
+      "Failed to build Codeplane TUI bundle",
+    )
+  }
+}
+
+const copyNodeRuntime = async (outfile: string) => {
+  const source = process.env.CODEPLANE_TUI_NODE || which.sync("node", { nothrow: true })
+  if (!source) {
+    console.warn("Skipping bundled Node runtime: no node executable found on PATH")
+    return
+  }
+  await fs.promises.mkdir(path.dirname(outfile), { recursive: true })
+  await fs.promises.copyFile(source, outfile)
+  if (process.platform !== "win32") {
+    await fs.promises.chmod(outfile, 0o755).catch(() => undefined)
+  }
 }
 
 const embeddedFileMap = skipEmbedWebUi ? null : await createEmbeddedWebUIBundle()
@@ -207,9 +238,13 @@ for (const item of targets) {
     },
   })
 
+  await buildTUIBundle(`dist/${name}/bin/runtime/tui`)
+
   // Smoke test: only run if binary is for current platform
   if (item.os === process.platform && item.arch === process.arch && !item.abi) {
     const binaryPath = `dist/${name}/bin/codeplane`
+    const nodeRuntimePath = `dist/${name}/bin/runtime/node${process.platform === "win32" ? ".exe" : ""}`
+    await copyNodeRuntime(nodeRuntimePath)
     console.log(`Running smoke test: ${binaryPath} --version`)
     try {
       const versionOutput = await $`${binaryPath} --version`.text()

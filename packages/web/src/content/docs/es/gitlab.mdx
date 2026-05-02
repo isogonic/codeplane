@@ -1,33 +1,33 @@
 ---
 title: GitLab
-description: Utilice CodePlane en problemas GitLab y solicitudes de fusión.
+description: Utilice Codeplane en problemas GitLab y solicitudes de fusión.
 ---
 
-CodePlane se integra con su flujo de trabajo GitLab a través de su canal de CI/CD GitLab o con GitLab Duo.
+Codeplane se integra con su flujo de trabajo GitLab a través de su canal de CI/CD GitLab o con GitLab Duo.
 
-En ambos casos, CodePlane se ejecutará en tus corredores GitLab.
+En ambos casos, Codeplane se ejecutará en tus corredores GitLab.
 
 ---
 
 ## GitLab CI
 
-CodePlane funciona en una tubería GitLab normal. Puede integrarlo en una canalización como un [componente de CI](https://docs.gitlab.com/ee/ci/components/)
+Codeplane funciona en una tubería GitLab normal. Puede integrarlo en una canalización como un [componente de CI](https://docs.gitlab.com/ee/ci/components/)
 
-Aquí estamos utilizando un componente CI/CD creado por la comunidad para CodePlane — [nagyv/gitlab-codeplane](https://gitlab.com/nagyv/gitlab-codeplane).
+Aquí estamos utilizando un componente CI/CD creado por la comunidad para Codeplane — [nagyv/gitlab-codeplane](https://gitlab.com/nagyv/gitlab-codeplane).
 
 ---
 
 ### Características
 
-- **Usar configuración personalizada por trabajo**: configure CodePlane con un directorio de configuración personalizado, por ejemplo `./config/#custom-directory` para habilitar o deshabilitar la funcionalidad por invocación de CodePlane.
-- **Configuración mínima**: el componente CI configura CodePlane en segundo plano, solo necesita crear la configuración CodePlane y el mensaje inicial.
+- **Usar configuración personalizada por trabajo**: configure Codeplane con un directorio de configuración personalizado, por ejemplo `./config/#custom-directory` para habilitar o deshabilitar la funcionalidad por invocación de Codeplane.
+- **Configuración mínima**: el componente CI configura Codeplane en segundo plano, solo necesita crear la configuración Codeplane y el mensaje inicial.
 - **Flexible**: el componente CI admite varias entradas para personalizar su comportamiento
 
 ---
 
 ### Configuración
 
-1. Guarde su CodePlane autenticación JSON como variables de entorno de CI de tipo de archivo en **Configuración** > **CI/CD** > **Variables**. Asegúrate de marcarlos como "Enmascarados y ocultos".
+1. Guarde su Codeplane autenticación JSON como variables de entorno de CI de tipo de archivo en **Configuración** > **CI/CD** > **Variables**. Asegúrate de marcarlos como "Enmascarados y ocultos".
 2. Agregue lo siguiente a su archivo `.gitlab-ci.yml`.
 
    ```yaml title=".gitlab-ci.yml"
@@ -35,7 +35,7 @@ Aquí estamos utilizando un componente CI/CD creado por la comunidad para CodePl
      - component: $CI_SERVER_FQDN/nagyv/gitlab-codeplane/codeplane@2
        inputs:
          config_dir: ${CI_PROJECT_DIR}/codeplane-config
-         auth_json: $CODEPLANE_AUTH_JSON # The variable name for your CodePlane authentication JSON
+         auth_json: $CODEPLANE_AUTH_JSON # The variable name for your Codeplane authentication JSON
          command: optional-custom-command
          message: "Your prompt here"
    ```
@@ -46,23 +46,23 @@ Para obtener más entradas y casos de uso, [consulte los documentos](https://git
 
 ## GitLab Duo
 
-CodePlane se integra con su flujo de trabajo GitLab.
-Mencione `@codeplane` en un comentario y CodePlane ejecutará tareas dentro de su canal de CI GitLab.
+Codeplane se integra con su flujo de trabajo GitLab.
+Mencione `@codeplane` en un comentario y Codeplane ejecutará tareas dentro de su canal de CI GitLab.
 
 ---
 
 ### Características
 
-- **Clasificación de problemas**: Pídele a CodePlane que investigue un problema y te lo explique.
-- **Reparar e implementar**: pídale a CodePlane que solucione un problema o implemente una función.
+- **Clasificación de problemas**: Pídele a Codeplane que investigue un problema y te lo explique.
+- **Reparar e implementar**: pídale a Codeplane que solucione un problema o implemente una función.
   Creará una nueva rama y generará una solicitud de fusión con los cambios.
-- **Seguro**: CodePlane se ejecuta en tus corredores GitLab.
+- **Seguro**: Codeplane se ejecuta en tus corredores GitLab.
 
 ---
 
 ### Configuración
 
-CodePlane se ejecuta en su canalización de CI/CD GitLab. Esto es lo que necesitará para configurarlo:
+Codeplane se ejecuta en su canalización de CI/CD GitLab. Esto es lo que necesitará para configurarlo:
 
 :::tip
 Consulte los [**GitLab documentos**](https://docs.gitlab.com/user/duo_agent_platform/agent_assistant/) para obtener instrucciones actualizadas.
@@ -91,7 +91,7 @@ Consulte los [**GitLab documentos**](https://docs.gitlab.com/user/duo_agent_plat
       - apt-get install --yes glab
       - echo "Configuring glab"
       - echo $GITLAB_HOST
-      - echo "Creating CodePlane auth configuration"
+      - echo "Creating Codeplane auth configuration"
       - mkdir --parents ~/.local/share/codeplane
       - |
         cat > ~/.local/share/codeplane/auth.json << EOF
@@ -104,10 +104,10 @@ Consulte los [**GitLab documentos**](https://docs.gitlab.com/user/duo_agent_plat
         EOF
       - echo "Configuring git"
       - git config --global user.email "codeplane@gitlab.com"
-      - git config --global user.name "CodePlane"
+      - git config --global user.name "Codeplane"
       - echo "Testing glab"
       - glab issue list
-      - echo "Running CodePlane"
+      - echo "Running Codeplane"
       - |
         codeplane run "
         You are an AI assistant helping with GitLab operations.
@@ -158,7 +158,7 @@ Puede consultar los [GitLab CLI documentos de los agentes](https://docs.gitlab.c
 
 ### Ejemplos
 
-A continuación se muestran algunos ejemplos de cómo puede utilizar CodePlane en GitLab.
+A continuación se muestran algunos ejemplos de cómo puede utilizar Codeplane en GitLab.
 
 :::tip
 Puede configurarlo para utilizar una frase de activación diferente a `@codeplane`.
@@ -172,7 +172,7 @@ Puede configurarlo para utilizar una frase de activación diferente a `@codeplan
   @codeplane explain this issue
   ```
 
-  CodePlane leerá el problema y responderá con una explicación clara.
+  Codeplane leerá el problema y responderá con una explicación clara.
 
 - **Solucionar un problema**
 
@@ -182,7 +182,7 @@ Puede configurarlo para utilizar una frase de activación diferente a `@codeplan
   @codeplane fix this
   ```
 
-  CodePlane creará una nueva rama, implementará los cambios y abrirá una solicitud de fusión con los cambios.
+  Codeplane creará una nueva rama, implementará los cambios y abrirá una solicitud de fusión con los cambios.
 
 - **Revisar solicitudes de fusión**
 
@@ -192,4 +192,4 @@ Puede configurarlo para utilizar una frase de activación diferente a `@codeplan
   @codeplane review this merge request
   ```
 
-  CodePlane revisará la solicitud de fusión y brindará comentarios.
+  Codeplane revisará la solicitud de fusión y brindará comentarios.

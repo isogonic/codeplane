@@ -3,7 +3,7 @@ title: Agenten-Skills
 description: "Definiere wiederverwendbares Verhalten ueber SKILL.md"
 ---
 
-Agent Skills erlauben CodePlane, wiederverwendbare Anweisungen aus deinem Repo oder Home-Verzeichnis zu finden.
+Agent Skills erlauben Codeplane, wiederverwendbare Anweisungen aus deinem Repo oder Home-Verzeichnis zu finden.
 Sie werden bei Bedarf ueber das native `skill`-Tool geladen, wenn ein Agent sie wirklich braucht.
 
 ---
@@ -11,7 +11,7 @@ Sie werden bei Bedarf ueber das native `skill`-Tool geladen, wenn ein Agent sie 
 ## Dateien platzieren
 
 Erstelle pro Skill-Namen einen Ordner und lege dort eine `SKILL.md` ab.
-CodePlane sucht in folgenden Pfaden:
+Codeplane sucht in folgenden Pfaden:
 
 - Project config: `.codeplane/skills/<name>/SKILL.md`
 - Global config: `~/.config/codeplane/skills/<name>/SKILL.md`
@@ -24,7 +24,7 @@ CodePlane sucht in folgenden Pfaden:
 
 ## Discovery verstehen
 
-Bei projektlokalen Pfaden laeuft CodePlane vom aktuellen Verzeichnis nach oben bis zum Git-Worktree.
+Bei projektlokalen Pfaden laeuft Codeplane vom aktuellen Verzeichnis nach oben bis zum Git-Worktree.
 Dabei werden passende `skills/*/SKILL.md` in `.codeplane/` sowie passende Dateien unter `.claude/skills/*/SKILL.md` und `.agents/skills/*/SKILL.md` geladen.
 
 Globale Definitionen kommen zusaetzlich aus `~/.config/codeplane/skills/*/SKILL.md`, `~/.claude/skills/*/SKILL.md` und `~/.agents/skills/*/SKILL.md`.
@@ -102,7 +102,7 @@ Ask clarifying questions if the target versioning scheme is unclear.
 
 ## Tool-Beschreibung erkennen
 
-CodePlane listet verfuegbare Skills in der Beschreibung des `skill`-Tools.
+Codeplane listet verfuegbare Skills in der Beschreibung des `skill`-Tools.
 Jeder Eintrag enthaelt Namen und Beschreibung:
 
 ```xml

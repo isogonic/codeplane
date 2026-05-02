@@ -6,9 +6,9 @@ import { bundledLanguages, type BundledLanguage } from "shiki"
 import { createSimpleContext } from "./helper"
 import { getSharedHighlighter, registerCustomTheme, ThemeRegistrationResolved } from "@pierre/diffs"
 
-registerCustomTheme("CodePlane", () => {
+registerCustomTheme("Codeplane", () => {
   return Promise.resolve({
-    name: "CodePlane",
+    name: "Codeplane",
     colors: {
       "editor.background": "var(--color-background-stronger)",
       "editor.foreground": "var(--text-base)",
@@ -455,7 +455,7 @@ async function highlightCodeBlocks(html: string): Promise<string> {
   if (matches.length === 0) return html
 
   const highlighter = await getSharedHighlighter({
-    themes: ["CodePlane"],
+    themes: ["Codeplane"],
     langs: [],
     preferredHighlighter: "shiki-wasm",
   })
@@ -479,7 +479,7 @@ async function highlightCodeBlocks(html: string): Promise<string> {
 
     const highlighted = highlighter.codeToHtml(code, {
       lang: language,
-      theme: "CodePlane",
+      theme: "Codeplane",
       tabindex: false,
     })
     result = result.replace(fullMatch, () => highlighted)
@@ -514,7 +514,7 @@ function prewarmShiki() {
   const run = async () => {
     try {
       const highlighter = await getSharedHighlighter({
-        themes: ["CodePlane"],
+        themes: ["Codeplane"],
         langs: [],
         preferredHighlighter: "shiki-wasm",
       })
@@ -559,7 +559,7 @@ export const { use: useMarked, provider: MarkedProvider } = createSimpleContext(
           if (codeBlockLanguage(lang) === "mermaid") return mermaidCodeBlock(code)
 
           const highlighter = await getSharedHighlighter({
-            themes: ["CodePlane"],
+            themes: ["Codeplane"],
             langs: [],
             preferredHighlighter: "shiki-wasm",
           })
@@ -571,7 +571,7 @@ export const { use: useMarked, provider: MarkedProvider } = createSimpleContext(
           }
           return highlighter.codeToHtml(code, {
             lang: lang || "text",
-            theme: "CodePlane",
+            theme: "Codeplane",
             tabindex: false,
           })
         },

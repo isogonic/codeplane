@@ -11346,7 +11346,7 @@
     "env": ["CODEPLANE_API_KEY"],
     "npm": "@ai-sdk/openai-compatible",
     "api": "https://example.invalid/zen",
-    "name": "CodePlane Zen",
+    "name": "Codeplane Zen",
     "doc": "https://github.com/devinoldenburg/codeplane",
     "models": {
       "gpt-5.2-codex": {
@@ -64072,7 +64072,7 @@
     "env": ["CODEPLANE_API_KEY"],
     "npm": "@ai-sdk/openai-compatible",
     "api": "https://example.invalid/zen",
-    "name": "CodePlane Go",
+    "name": "Codeplane Go",
     "doc": "https://github.com/devinoldenburg/codeplane",
     "models": {
       "kimi-k2.5": {

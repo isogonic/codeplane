@@ -2239,7 +2239,7 @@ test("parseManagedPlist strips MDM metadata keys", async () => {
     ConfigParse.jsonc(
       await ConfigManaged.parseManagedPlist(
         JSON.stringify({
-          PayloadDisplayName: "CodePlane Managed",
+          PayloadDisplayName: "Codeplane Managed",
           PayloadIdentifier: "ai.codeplane.managed.test",
           PayloadType: "ai.codeplane.managed",
           PayloadUUID: "AAAA-BBBB-CCCC",

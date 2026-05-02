@@ -1,17 +1,17 @@
 ---
 title: GitHub
-description: Utilice CodePlane en problemas y solicitudes de extracción de GitHub.
+description: Utilice Codeplane en problemas y solicitudes de extracción de GitHub.
 ---
 
-CodePlane se integra con su flujo de trabajo GitHub. Mencione `/codeplane` en su comentario y CodePlane ejecutará tareas dentro de su corredor de acciones GitHub.
+Codeplane se integra con su flujo de trabajo GitHub. Mencione `/codeplane` en su comentario y Codeplane ejecutará tareas dentro de su corredor de acciones GitHub.
 
 ---
 
 ## Características
 
-- **Clasificación de problemas**: Pídele a CodePlane que investigue un problema y te lo explique.
-- **Reparar e implementar**: pídale a CodePlane que solucione un problema o implemente una función. Y funcionará en una nueva sucursal y enviará un PR con todos los cambios.
-- **Seguro**: CodePlane se ejecuta dentro de los corredores de tu GitHub.
+- **Clasificación de problemas**: Pídele a Codeplane que investigue un problema y te lo explique.
+- **Reparar e implementar**: pídale a Codeplane que solucione un problema o implemente una función. Y funcionará en una nueva sucursal y enviará un PR con todos los cambios.
+- **Seguro**: Codeplane se ejecuta dentro de los corredores de tu GitHub.
 
 ---
 
@@ -62,7 +62,7 @@ O puede configurarlo manualmente.
               fetch-depth: 1
               persist-credentials: false
 
-          - name: Run CodePlane
+          - name: Run Codeplane
            uses: devinoldenburg/codeplane/github@latest
            env:
              ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -80,13 +80,13 @@ O puede configurarlo manualmente.
 
 ## Configuración
 
-- `model`: El modelo a usar con CodePlane. Toma el formato de `provider/model`. Esto es **obligatorio**.
+- `model`: El modelo a usar con Codeplane. Toma el formato de `provider/model`. Esto es **obligatorio**.
 - `agent`: El agente a utilizar. Debe ser un agente primario. Vuelve a `default_agent` desde la configuración o `"build"` si no se encuentra.
-- `share`: si se comparte la sesión CodePlane. El valor predeterminado es **verdadero** para repositorios públicos.
-- `prompt`: mensaje personalizado opcional para anular el comportamiento predeterminado. Utilice esto para personalizar cómo CodePlane procesa las solicitudes.
-- `token`: token de acceso GitHub opcional para realizar operaciones como crear comentarios, confirmar cambios y abrir solicitudes de extracción. De forma predeterminada, CodePlane usa el token de acceso a la instalación de la aplicación CodePlane GitHub, por lo que las confirmaciones, los comentarios y las solicitudes de extracción aparecen como provenientes de la aplicación.
+- `share`: si se comparte la sesión Codeplane. El valor predeterminado es **verdadero** para repositorios públicos.
+- `prompt`: mensaje personalizado opcional para anular el comportamiento predeterminado. Utilice esto para personalizar cómo Codeplane procesa las solicitudes.
+- `token`: token de acceso GitHub opcional para realizar operaciones como crear comentarios, confirmar cambios y abrir solicitudes de extracción. De forma predeterminada, Codeplane usa el token de acceso a la instalación de la aplicación Codeplane GitHub, por lo que las confirmaciones, los comentarios y las solicitudes de extracción aparecen como provenientes de la aplicación.
 
-  Alternativamente, puede usar el GitHub Action Runner [`GITHUB_TOKEN`](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token) incorporado sin instalar la aplicación CodePlane GitHub. Solo asegúrese de otorgar los permisos necesarios en su flujo de trabajo:
+  Alternativamente, puede usar el GitHub Action Runner [`GITHUB_TOKEN`](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token) incorporado sin instalar la aplicación Codeplane GitHub. Solo asegúrese de otorgar los permisos necesarios en su flujo de trabajo:
 
   ```yaml
   permissions:
@@ -102,23 +102,23 @@ O puede configurarlo manualmente.
 
 ## Eventos admitidos
 
-CodePlane puede desencadenarse por los siguientes eventos GitHub:
+Codeplane puede desencadenarse por los siguientes eventos GitHub:
 
 | Tipo de evento                | Activado por                                  | Detalles                                                                                                                                         |
 | ----------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `issue_comment`               | Comentar sobre un tema o PR                   | Mencione `/codeplane` en su comentario. CodePlane lee el contexto y puede crear ramas, abrir relaciones públicas o responder.                    |
-| `pull_request_review_comment` | Comente líneas de código específicas en un PR | Mencione `/codeplane` mientras revisa el código. CodePlane recibe la ruta del archivo, los números de línea y el contexto de diferencias.        |
-| `issues`                      | Número abierto o editado                      | Activa automáticamente CodePlane cuando se crean o modifican problemas. Requiere entrada `prompt`.                                               |
-| `pull_request`                | PR abierto o actualizado                      | Activa automáticamente CodePlane cuando los PR se abren, sincronizan o vuelven a abrir. Útil para revisiones automatizadas.                      |
-| `schedule`                    | Programación basada en cron                   | Ejecute CodePlane según una programación. Requiere entrada `prompt`. La salida va a registros y relaciones públicas (no hay temas que comentar). |
-| `workflow_dispatch`           | Activador manual desde GitHub UI              | Active CodePlane a pedido a través de la pestaña Acciones. Requiere entrada `prompt`. La salida va a registros y relaciones públicas.            |
+| `issue_comment`               | Comentar sobre un tema o PR                   | Mencione `/codeplane` en su comentario. Codeplane lee el contexto y puede crear ramas, abrir relaciones públicas o responder.                    |
+| `pull_request_review_comment` | Comente líneas de código específicas en un PR | Mencione `/codeplane` mientras revisa el código. Codeplane recibe la ruta del archivo, los números de línea y el contexto de diferencias.        |
+| `issues`                      | Número abierto o editado                      | Activa automáticamente Codeplane cuando se crean o modifican problemas. Requiere entrada `prompt`.                                               |
+| `pull_request`                | PR abierto o actualizado                      | Activa automáticamente Codeplane cuando los PR se abren, sincronizan o vuelven a abrir. Útil para revisiones automatizadas.                      |
+| `schedule`                    | Programación basada en cron                   | Ejecute Codeplane según una programación. Requiere entrada `prompt`. La salida va a registros y relaciones públicas (no hay temas que comentar). |
+| `workflow_dispatch`           | Activador manual desde GitHub UI              | Active Codeplane a pedido a través de la pestaña Acciones. Requiere entrada `prompt`. La salida va a registros y relaciones públicas.            |
 
 ### Ejemplo de programación
 
-Ejecute CodePlane según una programación para realizar tareas automatizadas:
+Ejecute Codeplane según una programación para realizar tareas automatizadas:
 
 ```yaml title=".github/workflows/codeplane-scheduled.yml"
-name: Scheduled CodePlane Task
+name: Scheduled Codeplane Task
 
 on:
   schedule:
@@ -138,7 +138,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Run CodePlane
+      - name: Run Codeplane
         uses: devinoldenburg/codeplane/github@latest
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -149,7 +149,7 @@ jobs:
             If you find issues worth addressing, open an issue to track them.
 ```
 
-Para eventos programados, la entrada `prompt` es **obligatoria** ya que no hay comentarios del que extraer instrucciones. Los flujos de trabajo programados se ejecutan sin un contexto de usuario para verificar los permisos, por lo que el flujo de trabajo debe otorgar `contents: write` y `pull-requests: write` si espera que CodePlane cree ramas o PR.
+Para eventos programados, la entrada `prompt` es **obligatoria** ya que no hay comentarios del que extraer instrucciones. Los flujos de trabajo programados se ejecutan sin un contexto de usuario para verificar los permisos, por lo que el flujo de trabajo debe otorgar `contents: write` y `pull-requests: write` si espera que Codeplane cree ramas o PR.
 
 ---
 
@@ -190,7 +190,7 @@ jobs:
             - Suggest improvements
 ```
 
-Para los eventos `pull_request`, si no se proporciona `prompt`, CodePlane revisa de forma predeterminada la solicitud de extracción.
+Para los eventos `pull_request`, si no se proporciona `prompt`, Codeplane revisa de forma predeterminada la solicitud de extracción.
 
 ---
 
@@ -251,7 +251,7 @@ Para eventos `issues`, la entrada `prompt` es **obligatoria** ya que no hay ning
 
 ## Indicaciones personalizadas
 
-Anule el mensaje predeterminado para personalizar el comportamiento de CodePlane para su flujo de trabajo.
+Anule el mensaje predeterminado para personalizar el comportamiento de Codeplane para su flujo de trabajo.
 
 ```yaml title=".github/workflows/codeplane.yml"
 - uses: devinoldenburg/codeplane/github@latest
@@ -270,7 +270,7 @@ Esto es útil para hacer cumplir criterios de revisión específicos, estándare
 
 ## Ejemplos
 
-A continuación se muestran algunos ejemplos de cómo puede utilizar CodePlane en GitHub.
+A continuación se muestran algunos ejemplos de cómo puede utilizar Codeplane en GitHub.
 
 - **Explica un problema**
 
@@ -280,7 +280,7 @@ A continuación se muestran algunos ejemplos de cómo puede utilizar CodePlane e
   /codeplane explain this issue
   ```
 
-  CodePlane leerá el hilo completo, incluidos todos los comentarios, y responderá con una explicación clara.
+  Codeplane leerá el hilo completo, incluidos todos los comentarios, y responderá con una explicación clara.
 
 - **Solucionar un problema**
 
@@ -290,7 +290,7 @@ A continuación se muestran algunos ejemplos de cómo puede utilizar CodePlane e
   /codeplane fix this
   ```
 
-  Y CodePlane creará una nueva rama, implementará los cambios y abrirá un PR con los cambios.
+  Y Codeplane creará una nueva rama, implementará los cambios y abrirá un PR con los cambios.
 
 - **Revisar relaciones públicas y realizar cambios**
 
@@ -300,18 +300,18 @@ A continuación se muestran algunos ejemplos de cómo puede utilizar CodePlane e
   Delete the attachment from S3 when the note is removed /codeplane
   ```
 
-  CodePlane implementará el cambio solicitado y lo comprometerá con el mismo PR.
+  Codeplane implementará el cambio solicitado y lo comprometerá con el mismo PR.
 
 - **Revisar líneas de código específicas**
 
-  Deje un comentario directamente en las líneas de código en la pestaña "Archivos" del PR. CodePlane detecta automáticamente el archivo, los números de línea y el contexto de diferencias para proporcionar respuestas precisas.
+  Deje un comentario directamente en las líneas de código en la pestaña "Archivos" del PR. Codeplane detecta automáticamente el archivo, los números de línea y el contexto de diferencias para proporcionar respuestas precisas.
 
   ```
   [Comment on specific lines in Files tab]
   /codeplane add error handling here
   ```
 
-  Al comentar líneas específicas, CodePlane recibe:
+  Al comentar líneas específicas, Codeplane recibe:
   - El archivo exacto que se está revisando.
   - Las líneas de código específicas.
   - El contexto diferencial circundante.

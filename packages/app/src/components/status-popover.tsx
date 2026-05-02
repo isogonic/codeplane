@@ -31,6 +31,7 @@ export function StatusPopover() {
         variant: "ghost",
         class: "titlebar-icon w-8 h-6 p-0 box-border",
         "aria-label": language.t("status.popover.trigger"),
+        "data-no-window-drag": true,
         style: { scale: 1 },
       }}
       trigger={

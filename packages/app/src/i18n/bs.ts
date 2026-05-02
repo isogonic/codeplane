@@ -115,7 +115,7 @@ export const dict = {
   "dialog.model.manage.description": "Prilagodi koji se modeli prikazuju u izborniku modela.",
   "dialog.model.manage.provider.toggle": "Uključi/isključi sve {{provider}} modele",
 
-  "dialog.model.unpaid.freeModels.title": "Besplatni modeli koje obezbjeđuje CodePlane",
+  "dialog.model.unpaid.freeModels.title": "Besplatni modeli koje obezbjeđuje Codeplane",
   "dialog.model.unpaid.addMore.title": "Dodaj još modela od popularnih provajdera",
 
   "dialog.provider.viewAll": "Prikaži više provajdera",
@@ -128,12 +128,12 @@ export const dict = {
   "provider.connect.status.waiting": "Čekanje na autorizaciju...",
   "provider.connect.status.failed": "Autorizacija nije uspjela: {{error}}",
   "provider.connect.apiKey.description":
-    "Unesi svoj {{provider}} API ključ da povežeš račun i koristiš {{provider}} modele u CodePlane-u.",
+    "Unesi svoj {{provider}} API ključ da povežeš račun i koristiš {{provider}} modele u Codeplane-u.",
   "provider.connect.apiKey.label": "{{provider}} API ključ",
   "provider.connect.apiKey.placeholder": "API ključ",
   "provider.connect.apiKey.required": "API ključ je obavezan",
   "provider.connect.codeplaneZen.line1":
-    "CodePlane Zen ti daje pristup kuriranom skupu pouzdanih, optimizovanih modela za coding agente.",
+    "Codeplane Zen ti daje pristup kuriranom skupu pouzdanih, optimizovanih modela za coding agente.",
   "provider.connect.codeplaneZen.line2":
     "Sa jednim API ključem dobijaš pristup modelima kao što su Claude, GPT, Gemini, GLM i drugi.",
   "provider.connect.codeplaneZen.visit.prefix": "Posjeti ",
@@ -142,7 +142,7 @@ export const dict = {
   "provider.connect.oauth.code.visit.prefix": "Posjeti ",
   "provider.connect.oauth.code.visit.link": "ovaj link",
   "provider.connect.oauth.code.visit.suffix":
-    " da preuzmeš autorizacijski kod i povežeš račun te koristiš {{provider}} modele u CodePlane-u.",
+    " da preuzmeš autorizacijski kod i povežeš račun te koristiš {{provider}} modele u Codeplane-u.",
   "provider.connect.oauth.code.label": "{{method}} autorizacijski kod",
   "provider.connect.oauth.code.placeholder": "Autorizacijski kod",
   "provider.connect.oauth.code.required": "Autorizacijski kod je obavezan",
@@ -150,7 +150,7 @@ export const dict = {
   "provider.connect.oauth.auto.visit.prefix": "Posjeti ",
   "provider.connect.oauth.auto.visit.link": "ovaj link",
   "provider.connect.oauth.auto.visit.suffix":
-    " i unesi kod ispod da povežeš račun i koristiš {{provider}} modele u CodePlane-u.",
+    " i unesi kod ispod da povežeš račun i koristiš {{provider}} modele u Codeplane-u.",
   "provider.connect.oauth.auto.confirmationCode": "Kod za potvrdu",
   "provider.connect.toast.connected.title": "{{provider}} povezan",
   "provider.connect.toast.connected.description": "{{provider}} modeli su sada dostupni za korištenje.",
@@ -308,7 +308,7 @@ export const dict = {
   "dialog.directory.empty": "Nema pronađenih foldera",
 
   "dialog.server.title": "Serveri",
-  "dialog.server.description": "Promijeni na koji se CodePlane server ova aplikacija povezuje.",
+  "dialog.server.description": "Promijeni na koji se Codeplane server ova aplikacija povezuje.",
   "dialog.server.search.placeholder": "Pretraži servere",
   "dialog.server.empty": "Još nema servera",
   "dialog.server.add.title": "Dodaj server",
@@ -445,7 +445,7 @@ export const dict = {
   "error.page.description": "Došlo je do greške prilikom učitavanja aplikacije.",
   "error.page.details.label": "Detalji greške",
   "error.page.action.restart": "Restartuj",
-  "error.page.report.prefix": "Molimo prijavi ovu grešku CodePlane timu",
+  "error.page.report.prefix": "Molimo prijavi ovu grešku Codeplane timu",
   "error.page.report.issues": "na GitHub-u",
   "error.page.version": "Verzija: {{version}}",
 
@@ -464,7 +464,7 @@ export const dict = {
   "error.chain.didYouMean": "Da li si mislio: {{suggestions}}",
   "error.chain.modelNotFound": "Model nije pronađen: {{provider}}/{{model}}",
   "error.chain.checkConfig": "Provjeri konfiguraciju (codeplane.json) provider/model names",
-  "error.chain.mcpFailed": 'MCP server "{{name}}" nije uspio. Napomena: CodePlane još ne podržava MCP autentifikaciju.',
+  "error.chain.mcpFailed": 'MCP server "{{name}}" nije uspio. Napomena: Codeplane još ne podržava MCP autentifikaciju.',
   "error.chain.providerAuthFailed": "Autentifikacija provajdera nije uspjela ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":
     'Neuspjelo inicijalizovanje provajdera "{{provider}}". Provjeri kredencijale i konfiguraciju.',
@@ -598,13 +598,13 @@ export const dict = {
   "sidebar.workspaces.enable": "Omogući radne prostore",
   "sidebar.workspaces.disable": "Onemogući radne prostore",
   "sidebar.gettingStarted.title": "Početak",
-  "sidebar.gettingStarted.line1": "CodePlane uključuje besplatne modele, tako da možeš odmah početi.",
+  "sidebar.gettingStarted.line1": "Codeplane uključuje besplatne modele, tako da možeš odmah početi.",
   "sidebar.gettingStarted.line2": "Poveži bilo kojeg provajdera da koristiš modele, npr. Claude, GPT, Gemini itd.",
   "sidebar.project.recentSessions": "Nedavne sesije",
   "sidebar.project.viewAllSessions": "Prikaži sve sesije",
   "sidebar.project.clearNotifications": "Očisti obavijesti",
 
-  "app.name.web": "CodePlane",
+  "app.name.web": "Codeplane",
 
   "settings.section.app": "App",
   "settings.section.server": "Server",
@@ -617,13 +617,13 @@ export const dict = {
   "settings.general.section.feed": "Feed",
 
   "settings.general.row.language.title": "Jezik",
-  "settings.general.row.language.description": "Promijeni jezik prikaza u CodePlane-u",
+  "settings.general.row.language.description": "Promijeni jezik prikaza u Codeplane-u",
   "settings.general.row.appearance.title": "Izgled",
-  "settings.general.row.appearance.description": "Prilagodi kako CodePlane izgleda na tvom uređaju",
+  "settings.general.row.appearance.description": "Prilagodi kako Codeplane izgleda na tvom uređaju",
   "settings.general.row.colorScheme.title": "Šema boja",
-  "settings.general.row.colorScheme.description": "Odaberi da li CodePlane prati sistemsku, svijetlu ili tamnu temu",
+  "settings.general.row.colorScheme.description": "Odaberi da li Codeplane prati sistemsku, svijetlu ili tamnu temu",
   "settings.general.row.theme.title": "Tema",
-  "settings.general.row.theme.description": "Prilagodi temu CodePlane-a.",
+  "settings.general.row.theme.description": "Prilagodi temu Codeplane-a.",
   "settings.general.row.font.title": "Font za kod",
   "settings.general.row.font.description": "Prilagodi font koji se koristi u blokovima koda",
   "settings.general.row.terminalFont.title": "Terminal Font",

@@ -1,31 +1,31 @@
 ---
 title: GitLab
-description: Koristite CodePlane u GitLab problemima i zahtjevima za spajanje.
+description: Koristite Codeplane u GitLab problemima i zahtjevima za spajanje.
 ---
 
-CodePlane se integriše sa vašim GitLab radnim tokom kroz vaš GitLab CI/CD cevovod ili sa GitLab Duo.
-U oba slučaja, CodePlane će se pokrenuti na vašim GitLab pokretačima.
+Codeplane se integriše sa vašim GitLab radnim tokom kroz vaš GitLab CI/CD cevovod ili sa GitLab Duo.
+U oba slučaja, Codeplane će se pokrenuti na vašim GitLab pokretačima.
 
 ---
 
 ## GitLab CI
 
-CodePlane radi u redovnom GitLab cevovodu. Možete ga ugraditi u cjevovod kao [CI komponenta](https://docs.gitlab.com/ee/ci/components/)
-Ovdje koristimo CI/CD komponentu kreiranu u zajednici za CodePlane — [nagyv/gitlab-codeplane](https://gitlab.com/nagyv/gitlab-codeplane).
+Codeplane radi u redovnom GitLab cevovodu. Možete ga ugraditi u cjevovod kao [CI komponenta](https://docs.gitlab.com/ee/ci/components/)
+Ovdje koristimo CI/CD komponentu kreiranu u zajednici za Codeplane — [nagyv/gitlab-codeplane](https://gitlab.com/nagyv/gitlab-codeplane).
 
 ---
 
 ### Funkcije
 
-- **Koristite prilagođenu konfiguraciju po poslu**: Konfigurirajte CodePlane s prilagođenim konfiguracijskim direktorijem, na primjer `./config/#custom-directory` da omogućite ili onemogućite funkcionalnost po CodePlane pozivanju.
-- **Minimalno podešavanje**: CI komponenta postavlja CodePlane u pozadini, samo trebate kreirati CodePlane konfiguraciju i početnu prompt.
+- **Koristite prilagođenu konfiguraciju po poslu**: Konfigurirajte Codeplane s prilagođenim konfiguracijskim direktorijem, na primjer `./config/#custom-directory` da omogućite ili onemogućite funkcionalnost po Codeplane pozivanju.
+- **Minimalno podešavanje**: CI komponenta postavlja Codeplane u pozadini, samo trebate kreirati Codeplane konfiguraciju i početnu prompt.
 - **Fleksibilno**: CI komponenta podržava nekoliko ulaza za prilagođavanje njenog ponašanja
 
 ---
 
 ### Podešavanje
 
-1. Sačuvajte JSON za autentifikaciju CodePlane kao CI varijable okruženja tipa datoteke pod **Postavke** > **CI/CD** > **Varijable**. Obavezno ih označite kao "Maskirane i skrivene".
+1. Sačuvajte JSON za autentifikaciju Codeplane kao CI varijable okruženja tipa datoteke pod **Postavke** > **CI/CD** > **Varijable**. Obavezno ih označite kao "Maskirane i skrivene".
 2. Dodajte sljedeće u svoju `.gitlab-ci.yml` datoteku.
 
 ```yaml title=".gitlab-ci.yml"
@@ -33,7 +33,7 @@ include:
   - component: $CI_SERVER_FQDN/nagyv/gitlab-codeplane/codeplane@2
     inputs:
       config_dir: ${CI_PROJECT_DIR}/codeplane-config
-      auth_json: $CODEPLANE_AUTH_JSON # The variable name for your CodePlane authentication JSON
+      auth_json: $CODEPLANE_AUTH_JSON # The variable name for your Codeplane authentication JSON
       command: optional-custom-command
       message: "Your prompt here"
 ```
@@ -44,23 +44,23 @@ Za više unosa i slučajeva upotrebe [pogledajte dokumente docs](https://gitlab.
 
 ## GitLab Duo
 
-CodePlane se integriše sa vašim GitLab tokovom rada.
-Spomenite `@codeplane` u komentaru i CodePlane će izvršiti zadatke unutar vašeg GitLab CI cevovoda.
+Codeplane se integriše sa vašim GitLab tokovom rada.
+Spomenite `@codeplane` u komentaru i Codeplane će izvršiti zadatke unutar vašeg GitLab CI cevovoda.
 
 ---
 
 ### Funkcije
 
-- **Problemi trijaže**: Zamolite CodePlane da ispita problem i objasni vam ga.
-- **Popravi i implementiraj**: Zamolite CodePlane da popravi problem ili implementira funkciju.
+- **Problemi trijaže**: Zamolite Codeplane da ispita problem i objasni vam ga.
+- **Popravi i implementiraj**: Zamolite Codeplane da popravi problem ili implementira funkciju.
   To će kreirati novu granu i pokrenuti zahtjev za spajanje s promjenama.
-- **Secure**: CodePlane radi na vašim GitLab pokretačima.
+- **Secure**: Codeplane radi na vašim GitLab pokretačima.
 
 ---
 
 ### Podešavanje
 
-CodePlane radi u vašem GitLab CI/CD cevovodu, evo šta će vam trebati da ga postavite:
+Codeplane radi u vašem GitLab CI/CD cevovodu, evo šta će vam trebati da ga postavite:
 :::tip
 Pogledajte [**GitLab dokumente**](https://docs.gitlab.com/user/duo_agent_platform/agent_assistant/) za ažurirane upute.
 :::
@@ -88,7 +88,7 @@ Pogledajte [**GitLab dokumente**](https://docs.gitlab.com/user/duo_agent_platfor
       - apt-get install --yes glab
       - echo "Configuring glab"
       - echo $GITLAB_HOST
-      - echo "Creating CodePlane auth configuration"
+      - echo "Creating Codeplane auth configuration"
       - mkdir --parents ~/.local/share/codeplane
       - |
         cat > ~/.local/share/codeplane/auth.json << EOF
@@ -101,10 +101,10 @@ Pogledajte [**GitLab dokumente**](https://docs.gitlab.com/user/duo_agent_platfor
         EOF
       - echo "Configuring git"
       - git config --global user.email "codeplane@gitlab.com"
-      - git config --global user.name "CodePlane"
+      - git config --global user.name "Codeplane"
       - echo "Testing glab"
       - glab issue list
-      - echo "Running CodePlane"
+      - echo "Running Codeplane"
       - |
         codeplane run "
         You are an AI assistant helping with GitLab operations.
@@ -155,7 +155,7 @@ Možete vidjeti [GitLab CLI agenti docs](https://docs.gitlab.com/user/duo_agent_
 
 ### Primjeri
 
-Evo nekoliko primjera kako možete koristiti CodePlane u GitLab.
+Evo nekoliko primjera kako možete koristiti Codeplane u GitLab.
 :::tip
 Možete konfigurirati da koristite drugu frazu okidača od `@codeplane`.
 :::
@@ -167,7 +167,7 @@ Možete konfigurirati da koristite drugu frazu okidača od `@codeplane`.
   @codeplane explain this issue
 ```
 
-CodePlane će pročitati problem i odgovoriti jasnim objašnjenjem.
+Codeplane će pročitati problem i odgovoriti jasnim objašnjenjem.
 
 - **Reši problem**
   U izdanju GitLaba recite:
@@ -176,7 +176,7 @@ CodePlane će pročitati problem i odgovoriti jasnim objašnjenjem.
   @codeplane fix this
 ```
 
-CodePlane će kreirati novu granu, implementirati promjene i otvoriti zahtjev za spajanje s promjenama.
+Codeplane će kreirati novu granu, implementirati promjene i otvoriti zahtjev za spajanje s promjenama.
 
 - **Pregledajte zahtjeve za pridruživanje**
   Ostavite sljedeći komentar na zahtjev za spajanje GitLab-a.
@@ -185,4 +185,4 @@ CodePlane će kreirati novu granu, implementirati promjene i otvoriti zahtjev za
   @codeplane review this merge request
 ```
 
-CodePlane će pregledati zahtjev za spajanje i dati povratne informacije.
+Codeplane će pregledati zahtjev za spajanje i dati povratne informacije.

@@ -108,7 +108,7 @@ export function createCodeplaneClient(config?: Config & { directory?: string; ex
   client.interceptors.response.use((response) => {
     const contentType = response.headers.get("content-type")
     if (contentType === "text/html")
-      throw new Error("Request is not supported by this version of CodePlane Server (Server responded with text/html)")
+      throw new Error("Request is not supported by this version of Codeplane Server (Server responded with text/html)")
 
     return response
   })

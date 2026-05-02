@@ -16,7 +16,7 @@ export const ConfigRoutes = lazy(() =>
       "/",
       describeRoute({
         summary: "Get configuration",
-        description: "Retrieve the current CodePlane configuration settings and preferences.",
+        description: "Retrieve the current Codeplane configuration settings and preferences.",
         operationId: "config.get",
         responses: {
           200: {
@@ -35,7 +35,7 @@ export const ConfigRoutes = lazy(() =>
       "/",
       describeRoute({
         summary: "Update configuration",
-        description: "Update CodePlane configuration settings and preferences.",
+        description: "Update Codeplane configuration settings and preferences.",
         operationId: "config.update",
         responses: {
           200: {

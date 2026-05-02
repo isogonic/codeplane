@@ -3,7 +3,7 @@ title: MCP-servere
 description: Legg til lokale og eksterne MCP-verktøy.
 ---
 
-Du kan legge til eksterne verktøy i CodePlane ved å bruke _Model Context Protocol_ eller MCP. CodePlane støtter både lokale og eksterne servere.
+Du kan legge til eksterne verktøy i Codeplane ved å bruke _Model Context Protocol_ eller MCP. Codeplane støtter både lokale og eksterne servere.
 
 Når de er lagt til, er MCP-verktøy automatisk tilgjengelige for LLM sammen med innebygde verktøy.
 
@@ -23,7 +23,7 @@ Enkelte MCP-servere, som GitHub MCP-serveren, har en tendens til å legge til ma
 
 ## Aktivering
 
-Du kan definere MCP-servere i [CodePlane Config](https://github.com/devinoldenburg/codeplane) under `mcp`. Legg til hver MCP med et unikt navn. Du kan referere til den MCP ved navn når du spør LLM-en.
+Du kan definere MCP-servere i [Codeplane Config](https://github.com/devinoldenburg/codeplane) under `mcp`. Legg til hver MCP med et unikt navn. Du kan referere til den MCP ved navn når du spør LLM-en.
 
 ```jsonc title="codeplane.jsonc" {6}
 {
@@ -165,7 +165,7 @@ Legg til eksterne MCP-servere ved å sette `type` til `"remote"`.
 
 ## OAuth
 
-CodePlane håndterer automatisk OAuth-autentisering for eksterne MCP-servere. Når en server krever autentisering, vil CodePlane:
+Codeplane håndterer automatisk OAuth-autentisering for eksterne MCP-servere. Når en server krever autentisering, vil Codeplane:
 
 1. Oppdag 401-svaret og start OAuth-flyten
 2. Bruk **Dynamisk klientregistrering (RFC 7591)** hvis det støttes av serveren
@@ -189,7 +189,7 @@ For de fleste OAuth-aktiverte MCP-servere er ingen spesiell konfigurasjon nødve
 }
 ```
 
-Hvis serveren krever autentisering, vil CodePlane be deg om å autentisere når du prøver å bruke den for første gang. Hvis ikke, kan du [utløse flyten manuelt](#authenticating) med `codeplane mcp auth <server-name>`.
+Hvis serveren krever autentisering, vil Codeplane be deg om å autentisere når du prøver å bruke den for første gang. Hvis ikke, kan du [utløse flyten manuelt](#authenticating) med `codeplane mcp auth <server-name>`.
 
 ---
 
@@ -238,7 +238,7 @@ Fjern lagret legitimasjon:
 codeplane mcp logout my-oauth-server
 ```
 
-Kommandoen `mcp auth` åpner nettleseren din for autorisasjon. Etter at du har godkjent, vil CodePlane lagre tokens sikkert i `~/.local/share/codeplane/mcp-auth.json`.
+Kommandoen `mcp auth` åpner nettleseren din for autorisasjon. Etter at du har godkjent, vil Codeplane lagre tokens sikkert i `~/.local/share/codeplane/mcp-auth.json`.
 
 ---
 
@@ -291,7 +291,7 @@ Kommandoen `mcp debug` viser gjeldende autentiseringsstatus, tester HTTP-tilkobl
 
 ## Administrering
 
-MCP-ene dine er tilgjengelige som verktøy i CodePlane, sammen med innebygde verktøy. Så du kan administrere dem gjennom CodePlane-konfigurasjonen som alle andre verktøy.
+MCP-ene dine er tilgjengelige som verktøy i Codeplane, sammen med innebygde verktøy. Så du kan administrere dem gjennom Codeplane-konfigurasjonen som alle andre verktøy.
 
 ---
 
@@ -423,7 +423,7 @@ Etter å ha lagt til konfigurasjonen, autentiser med Sentry:
 codeplane mcp auth sentry
 ```
 
-Dette åpner et nettleservindu for å fullføre OAuth-flyten og koble CodePlane til Sentry-kontoen din.
+Dette åpner et nettleservindu for å fullføre OAuth-flyten og koble Codeplane til Sentry-kontoen din.
 
 Når du er autentisert, kan du bruke Sentry-verktøy i ledetekstene dine for å spørre etter problemer, prosjekter og feildata.
 
@@ -543,7 +543,7 @@ For flere leverandører og avanserte funksjoner som bufring og hastighetsbegrens
 
 #### Valgfrie konfigurasjoner
 
-I tilfelle du ser en funksjon eller modell fra Helicone som ikke konfigureres automatisk gjennom CodePlane, kan du alltid konfigurere den selv.
+I tilfelle du ser en funksjon eller modell fra Helicone som ikke konfigureres automatisk gjennom Codeplane, kan du alltid konfigurere den selv.
 
 Her er [Helicone's Model Directory](https://helicone.ai/models), du trenger denne for å hente ID-ene til modellene du vil legge til.
 
@@ -596,7 +596,7 @@ Helicone støtter tilpassede headere for funksjoner som bufring, brukersporing o
 
 ##### Sesjonssporing
 
-Helicones [Sessions](https://docs.helicone.ai/features/sessions) funksjon lar deg gruppere relaterte LLM forespørsler sammen. Bruk [codeplane-helicone-session](https://github.com/H2Shami/codeplane-helicone-session) plugin for automatisk å logge hver CodePlane-samtale som en økt i Helicone.
+Helicones [Sessions](https://docs.helicone.ai/features/sessions) funksjon lar deg gruppere relaterte LLM forespørsler sammen. Bruk [codeplane-helicone-session](https://github.com/H2Shami/codeplane-helicone-session) plugin for automatisk å logge hver Codeplane-samtale som en økt i Helicone.
 
 ```bash
 npm install -g codeplane-helicone-session
@@ -610,7 +610,7 @@ Legg den til i konfigurasjonen din.
 }
 ```
 
-Programtillegget injiserer `Helicone-Session-Id` og `Helicone-Session-Name` overskrifter i forespørslene dine. På Helicones Sessions-side vil du se hver CodePlane-samtale oppført som en separat økt.
+Programtillegget injiserer `Helicone-Session-Id` og `Helicone-Session-Name` overskrifter i forespørslene dine. På Helicones Sessions-side vil du se hver Codeplane-samtale oppført som en separat økt.
 
 ##### Vanlige Helicone-headere
 
