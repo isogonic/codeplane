@@ -39,7 +39,7 @@ import {
 } from "./ui-host"
 import { createLocalInstanceManager, type LocalInstanceProgress } from "./local-instance"
 import { reconnectOverlayScript } from "./reconnect-overlay"
-import { codeplaneReleaseTag, CodeplaneVersion } from "@codeplane-ai/shared/version"
+import { codeplaneDesktopReleaseTag, codeplaneReleaseTag, CodeplaneVersion } from "@codeplane-ai/shared/version"
 import type { SavedInstance } from "@codeplane-ai/shared/instance"
 
 /**
@@ -722,11 +722,39 @@ function broadcastUpdater(channel: string, payload?: unknown) {
   }
 }
 
+// macOS Squirrel.Mac validates the downloaded update's code signature against
+// the running app's designated requirement. Our CI builds with
+// CSC_IDENTITY_AUTO_DISCOVERY=false (no Developer ID), so each release is
+// ad-hoc signed and SecCodeCheckValidity rejects every in-place update with
+// "Code signature at URL ... did not pass validation". There's no Squirrel
+// flag to bypass this — it's a macOS security guarantee. Detect the error and
+// steer the user to download the new DMG manually instead.
+function isCodeSignatureValidationError(message: string) {
+  if (!message) return false
+  const lower = message.toLowerCase()
+  if (lower.includes("did not pass validation")) return true
+  if (lower.includes("code signature at url")) return true
+  // Localized trailer ("code requirements not met") seen on the German build.
+  if (lower.includes("code-anforderungen")) return true
+  if (lower.includes("code signing requirement")) return true
+  return false
+}
+
+function desktopReleaseDownloadUrl(version: string) {
+  return `https://github.com/devinoldenburg/codeplane/releases/tag/${codeplaneDesktopReleaseTag(version)}`
+}
+
 // Latest desktop shell version reported by electron-updater. Cached so the
 // status IPC can answer instantly between checks, and so we know which
 // version is being downloaded when we eventually get update-downloaded.
 let desktopShellLatestVersion: string | undefined
 let desktopShellUpdateInFlight: Promise<{ current: string; latest: string | null; hasUpdate: boolean }> | undefined
+// Once Squirrel.Mac rejects an update with a code-signature error in this
+// session, every subsequent install attempt will fail the same way (the
+// running app's signature doesn't change at runtime). Latch the state so we
+// route the user straight to manual download instead of re-triggering the
+// failing install path.
+let desktopShellManualDownloadOnly = false
 
 async function shellUpdateStatus() {
   const current = app.getVersion()
@@ -857,6 +885,17 @@ async function installShellUpdate(version: string) {
     logger.log("main", "updater.skipped.unpacked", { message, version })
     broadcastUpdater("updater:error", message)
     return { ok: false as const, error: message }
+  }
+
+  if (desktopShellManualDownloadOnly) {
+    const url = desktopReleaseDownloadUrl(version)
+    logger.log("main", "updater.download.manual-required", { version, url })
+    broadcastUpdater("updater:requires-manual-download", {
+      version,
+      url,
+      reason: "Previous in-place update was rejected by macOS code-signature validation.",
+    })
+    return { ok: false as const, error: "Manual download required" }
   }
 
   logger.log("main", "updater.download.start", { version })
@@ -1856,6 +1895,14 @@ function setupAutoUpdater() {
   autoUpdater.on("error", (error: Error) => {
     const message = error?.message ?? String(error)
     logger.log("main", "updater.error", { error: message })
+    if (process.platform === "darwin" && isCodeSignatureValidationError(message)) {
+      desktopShellManualDownloadOnly = true
+      const version = desktopShellLatestVersion ?? null
+      const url = version ? desktopReleaseDownloadUrl(version) : "https://github.com/devinoldenburg/codeplane/releases/latest"
+      logger.log("main", "updater.requires-manual-download", { version, url, message })
+      broadcastUpdater("updater:requires-manual-download", { version, url, reason: message })
+      return
+    }
     broadcastUpdater("updater:error", message)
   })
 
