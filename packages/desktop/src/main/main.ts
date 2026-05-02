@@ -109,6 +109,7 @@ async function githubApiHeaders(): Promise<Record<string, string>> {
 const GITHUB_RELEASES_API_URL = "https://api.github.com/repos/devinoldenburg/codeplane/releases"
 const GITHUB_RELEASE_DOWNLOAD_URL = "https://github.com/devinoldenburg/codeplane/releases/download"
 const DESKTOP_RELEASE_SUFFIX = CodeplaneDesktopReleaseSuffix
+const DESKTOP_STORAGE_DIRECT = "__direct__"
 const APP_ID = "ai.codeplane.desktop"
 const APP_NAME = "Codeplane"
 const APP_COPYRIGHT = "Copyright © 2026 Devin Oldenburg"
@@ -152,9 +153,12 @@ type SavedInstance = {
   }
 }
 
+type DesktopPersist = Record<string, Record<string, string>>
+
 type Schema = {
   instances: SavedInstance[]
   lastInstanceId?: string
+  persist?: DesktopPersist
   windowBounds?: { x?: number; y?: number; width: number; height: number; maximized?: boolean }
 }
 
@@ -208,6 +212,44 @@ logger.log("main", "bootstrap", {
 function getInstance(id: string | undefined): SavedInstance | undefined {
   if (!id) return undefined
   return store.get("instances", []).find((entry) => entry.id === id)
+}
+
+function desktopStorageName(name?: string) {
+  return name || DESKTOP_STORAGE_DIRECT
+}
+
+function desktopPersistState(): DesktopPersist {
+  return store.get("persist") ?? {}
+}
+
+function readDesktopStorage(name: string | undefined, key: string) {
+  const value = desktopPersistState()[desktopStorageName(name)]?.[key]
+  return typeof value === "string" ? value : null
+}
+
+function writeDesktopStorage(name: string | undefined, key: string, value: string) {
+  const persist = { ...desktopPersistState() }
+  const storageName = desktopStorageName(name)
+  persist[storageName] = { ...(persist[storageName] ?? {}), [key]: value }
+  store.set("persist", persist)
+}
+
+function removeDesktopStorage(name: string | undefined, key: string) {
+  const persist = { ...desktopPersistState() }
+  const storageName = desktopStorageName(name)
+  if (!persist[storageName] || !(key in persist[storageName])) return
+  const next = { ...persist[storageName] }
+  delete next[key]
+  if (Object.keys(next).length > 0) {
+    persist[storageName] = next
+  } else {
+    delete persist[storageName]
+  }
+  if (Object.keys(persist).length > 0) {
+    store.set("persist", persist)
+    return
+  }
+  store.delete("persist")
 }
 
 // For local instances, the persisted URL is a placeholder. Whenever the
@@ -389,6 +431,13 @@ function iconPath() {
 }
 
 function applyRuntimeIcon() {
+  // Let packaged macOS builds keep using the bundle's `.icns` icon.
+  // Overriding the Dock tile at runtime with the generated PNG makes the
+  // running app icon render slightly differently from the closed app icon.
+  if (process.platform === "darwin" && app.isPackaged) {
+    logger.log("main", "icon.runtime-override.skipped", { reason: "bundle-icns-on-macos" })
+    return
+  }
   const icon = iconPath()
   if (!icon) return
   const image = nativeImage.createFromPath(icon)
@@ -1036,6 +1085,17 @@ function showSetupWindow(editId?: string) {
 function setupIpc() {
   ipcMain.on("app:version", (event) => {
     event.returnValue = app.getVersion()
+  })
+  ipcMain.on("storage:get", (event, storageName: string | undefined, key: string) => {
+    event.returnValue = readDesktopStorage(storageName, key)
+  })
+  ipcMain.on("storage:set", (event, storageName: string | undefined, key: string, value: string) => {
+    writeDesktopStorage(storageName, key, value)
+    event.returnValue = true
+  })
+  ipcMain.on("storage:remove", (event, storageName: string | undefined, key: string) => {
+    removeDesktopStorage(storageName, key)
+    event.returnValue = true
   })
   ipcMain.on("window:state-snapshot", (event) => {
     const window = BrowserWindow.fromWebContents(event.sender)

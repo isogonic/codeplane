@@ -11,10 +11,22 @@ import { DialogWhatsNew } from "@/components/dialog-whats-new"
 export type ReleaseNotes = PlatformReleaseNotes
 
 const LAST_SEEN_KEY = "codeplane:last-seen-version"
+type DesktopStorageWindow = Window & {
+  codeplaneDesktop?: {
+    storage?: {
+      getItem: (storageName: string | undefined, key: string) => string | null
+      setItem: (storageName: string | undefined, key: string, value: string) => void
+    }
+  }
+}
 
 function readLastSeen(): string | null {
   try {
-    return typeof window !== "undefined" ? window.localStorage.getItem(LAST_SEEN_KEY) : null
+    if (typeof window === "undefined") return null
+    const storage = (window as DesktopStorageWindow).codeplaneDesktop?.storage
+    return storage
+      ? storage.getItem(undefined, LAST_SEEN_KEY)
+      : window.localStorage.getItem(LAST_SEEN_KEY)
   } catch {
     return null
   }
@@ -22,7 +34,13 @@ function readLastSeen(): string | null {
 
 function writeLastSeen(version: string) {
   try {
-    if (typeof window !== "undefined") window.localStorage.setItem(LAST_SEEN_KEY, version)
+    if (typeof window === "undefined") return
+    const storage = (window as DesktopStorageWindow).codeplaneDesktop?.storage
+    if (storage) {
+      storage.setItem(undefined, LAST_SEEN_KEY, version)
+      return
+    }
+    window.localStorage.setItem(LAST_SEEN_KEY, version)
   } catch {
     // localStorage can throw in private/quota contexts; just skip persistence
   }
