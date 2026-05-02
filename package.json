@@ -9,7 +9,6 @@
     "dev": "bun --cwd packages/app dev",
     "dev:server": "bun run --cwd packages/codeplane --conditions=browser src/index.ts web",
     "dev:web": "bun --cwd packages/app dev",
-    "dev:console": "ulimit -n 10240 2>/dev/null; bun run --cwd packages/console/app dev",
     "dev:storybook": "bun --cwd packages/storybook storybook",
     "version:sync": "bun script/sync-version.ts",
     "lint": "oxlint",
@@ -23,7 +22,6 @@
   "workspaces": {
     "packages": [
       "packages/*",
-      "packages/console/*",
       "packages/sdk/js",
       "packages/slack"
     ],
