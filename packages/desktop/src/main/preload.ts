@@ -61,6 +61,12 @@ type LocalStatus = {
   archive: string
 }
 
+type DesktopStorageApi = {
+  getItem: (storageName: string | undefined, key: string) => string | null
+  setItem: (storageName: string | undefined, key: string, value: string) => void
+  removeItem: (storageName: string | undefined, key: string) => void
+}
+
 const bootstrap = ipcRenderer.sendSync("desktop:bootstrap") as {
   currentKey: string | null
   defaultKey: string | null
@@ -84,6 +90,16 @@ const windowStateSnapshot = ipcRenderer.sendSync("window:state-snapshot") as Win
 
 const api = {
   version: ipcRenderer.sendSync("app:version") as string,
+  storage: {
+    getItem: (storageName: string | undefined, key: string) =>
+      ipcRenderer.sendSync("storage:get", storageName, key) as string | null,
+    setItem: (storageName: string | undefined, key: string, value: string) => {
+      ipcRenderer.sendSync("storage:set", storageName, key, value)
+    },
+    removeItem: (storageName: string | undefined, key: string) => {
+      ipcRenderer.sendSync("storage:remove", storageName, key)
+    },
+  } satisfies DesktopStorageApi,
   serverManager: {
     currentKey: bootstrap.currentKey,
     defaultKey: bootstrap.defaultKey,

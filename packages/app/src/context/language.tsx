@@ -28,6 +28,13 @@ export type Locale =
 type RawDictionary = typeof en & typeof uiEn
 type Dictionary = i18n.Flatten<RawDictionary>
 type Source = { dict: Record<string, string> }
+type DesktopStorageWindow = Window & {
+  codeplaneDesktop?: {
+    storage?: {
+      getItem: (storageName: string | undefined, key: string) => string | null
+    }
+  }
+}
 
 function cookie(locale: Locale) {
   return `oc_locale=${encodeURIComponent(locale)}; Path=/; Max-Age=31536000; SameSite=Lax`
@@ -175,9 +182,12 @@ export function normalizeLocale(value: string): Locale {
 }
 
 function readStoredLocale() {
-  if (typeof localStorage !== "object") return
   try {
-    const raw = localStorage.getItem("codeplane.global.dat:language")
+    if (typeof window !== "object") return
+    const storage = (window as DesktopStorageWindow).codeplaneDesktop?.storage
+    const raw = storage
+      ? storage.getItem("codeplane.global.dat", "language")
+      : window.localStorage.getItem("codeplane.global.dat:language")
     if (!raw) return
     const next = JSON.parse(raw) as { locale?: string }
     if (typeof next?.locale !== "string") return

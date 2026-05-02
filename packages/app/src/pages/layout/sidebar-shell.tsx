@@ -15,6 +15,7 @@ import { type LocalProject } from "@/context/layout"
 import { useLayout } from "@/context/layout"
 import { useLanguage } from "@/context/language"
 import { useNotification } from "@/context/notification"
+import { usePlatform } from "@/context/platform"
 import { useLocation, useNavigate } from "@solidjs/router"
 import { isSettingsPath } from "../settings/nav"
 
@@ -44,6 +45,7 @@ export const SidebarContent = (props: {
   const location = useLocation()
   const navigate = useNavigate()
   const notification = useNotification()
+  const platform = usePlatform()
   const expanded = createMemo(() => !!props.mobile || props.opened())
   const placement = () => (props.mobile ? "bottom" : "right")
   const homeSelected = createMemo(() => location.pathname === "/")
@@ -176,18 +178,20 @@ export const SidebarContent = (props: {
             keybind={props.settingsKeybind}
             onClick={props.onOpenSettings}
           />
-          <Tooltip placement={placement()} value={props.restartLabel()}>
-            <IconButton
-              icon="reset"
-              variant="ghost"
-              size="large"
-              onClick={() => {
-                if (!window.confirm(props.restartConfirm())) return
-                props.onRestart()
-              }}
-              aria-label={props.restartLabel()}
-            />
-          </Tooltip>
+          <Show when={!platform.desktop}>
+            <Tooltip placement={placement()} value={props.restartLabel()}>
+              <IconButton
+                icon="reset"
+                variant="ghost"
+                size="large"
+                onClick={() => {
+                  if (!window.confirm(props.restartConfirm())) return
+                  props.onRestart()
+                }}
+                aria-label={props.restartLabel()}
+              />
+            </Tooltip>
+          </Show>
         </div>
       </div>
 

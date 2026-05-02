@@ -23,17 +23,25 @@ type DesktopWindowApi = {
   state: DesktopWindowState
   onStateChange?: (cb: (state: DesktopWindowState) => void) => () => void
 }
+type DesktopStorageApi = {
+  getItem: (storageName: string | undefined, key: string) => string | null
+  setItem: (storageName: string | undefined, key: string, value: string) => void
+  removeItem: (storageName: string | undefined, key: string) => void
+}
 declare global {
   interface Window {
     codeplaneDesktop?: {
       platform?: string
       version?: string
       serverManager?: PlatformServerManager
+      storage?: DesktopStorageApi
       window?: DesktopWindowApi
       [key: string]: unknown
     }
   }
 }
+
+const desktopStorage = window.codeplaneDesktop?.storage
 
 const getLocale = () => {
   if (typeof navigator !== "object") return "en" as const
@@ -52,6 +60,13 @@ const getRootNotFoundError = () => {
 }
 
 const getStorage = (key: string) => {
+  if (desktopStorage) {
+    try {
+      return desktopStorage.getItem(undefined, key)
+    } catch {
+      return null
+    }
+  }
   if (typeof localStorage === "undefined") return null
   try {
     return localStorage.getItem(key)
@@ -61,6 +76,18 @@ const getStorage = (key: string) => {
 }
 
 const setStorage = (key: string, value: string | null) => {
+  if (desktopStorage) {
+    try {
+      if (value !== null) {
+        desktopStorage.setItem(undefined, key, value)
+        return
+      }
+      desktopStorage.removeItem(undefined, key)
+    } catch {
+      return
+    }
+    return
+  }
   if (typeof localStorage === "undefined") return
   try {
     if (value !== null) {
@@ -204,6 +231,13 @@ const platform: Platform = {
   forward,
   restart,
   notify,
+  storage: desktopStorage
+    ? (name?: string) => ({
+        getItem: (key: string) => desktopStorage.getItem(name, key),
+        setItem: (key: string, value: string) => desktopStorage.setItem(name, key, value),
+        removeItem: (key: string) => desktopStorage.removeItem(name, key),
+      })
+    : undefined,
   getDefaultServer: async () => {
     if (desktopServerManager) {
       const key = await desktopServerManager.getDefaultKey()
