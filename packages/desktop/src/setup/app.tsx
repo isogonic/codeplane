@@ -1,4 +1,6 @@
 import { Component, For, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js"
+import { marked } from "marked"
+import DOMPurify from "dompurify"
 import { Button } from "@codeplane-ai/ui/button"
 import { TextField } from "@codeplane-ai/ui/text-field"
 import { Icon } from "@codeplane-ai/ui/icon"
@@ -171,6 +173,13 @@ const DesktopUpdateCard: Component = () => {
   const [state, setState] = createSignal<DesktopUpdateState>({ kind: "loading" })
   const [notes, setNotes] = createSignal<{ version: string; body: string | null; url: string | null } | null>(null)
   const [notesOpen, setNotesOpen] = createSignal(false)
+
+  const notesHtml = createMemo(() => {
+    const body = notes()?.body
+    if (!body) return ""
+    const raw = marked.parse(body, { async: false, gfm: true, breaks: false }) as string
+    return DOMPurify.sanitize(raw, { ADD_ATTR: ["target", "rel"] })
+  })
 
   const currentVersion = () => {
     const next = state()
@@ -451,9 +460,11 @@ const DesktopUpdateCard: Component = () => {
             What's new in {notes()?.version}
           </button>
           <Show when={notesOpen()}>
-            <div class="max-h-[160px] overflow-y-auto whitespace-pre-wrap rounded-md border border-border-weak-base bg-surface-base px-3 py-2 text-[12px] leading-relaxed text-text-base">
-              {notes()?.body}
-            </div>
+            <div
+              data-component="markdown"
+              class="max-h-[160px] overflow-y-auto rounded-md border border-border-weak-base bg-surface-base px-3 py-2 text-[12px] leading-relaxed text-text-base"
+              innerHTML={notesHtml()}
+            />
           </Show>
         </div>
       </Show>
