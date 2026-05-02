@@ -155,18 +155,48 @@ function findBinary() {
   )
 }
 
-async function main() {
-  try {
-    if (os.platform() === "win32") {
-      // On Windows, the .exe is already included in the package and bin field points to it
-      // No postinstall setup needed
-      console.log("Windows detected: binary setup not needed (using packaged .exe)")
-      return
-    }
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
-    // On non-Windows platforms, just verify the binary package exists
-    // Don't replace the wrapper script - it handles binary execution
-    const { binaryPath } = findBinary()
+async function tryFindBinaryWithRetry(attempts = 5, delayMs = 200) {
+  let lastError
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return findBinary()
+    } catch (error) {
+      lastError = error
+      if (i < attempts - 1) await sleep(delayMs)
+    }
+  }
+  throw lastError
+}
+
+async function main() {
+  if (os.platform() === "win32") {
+    // On Windows, the .exe is already included in the package and bin field points to it.
+    // No postinstall setup needed.
+    console.log("Windows detected: binary setup not needed (using packaged .exe)")
+    return
+  }
+
+  let binaryPath
+  try {
+    binaryPath = (await tryFindBinaryWithRetry()).binaryPath
+  } catch (error) {
+    // The wrapper script (bin/codeplane) does its own findBinary at runtime,
+    // so a missing optional-dependency here only loses the .codeplane fast-
+    // start cache — it does NOT prevent codeplane from running. Warn but
+    // do not fail the install.
+    console.warn(
+      "[codeplane postinstall] Skipping fast-start cache: " +
+        (error && error.message ? error.message : String(error)) +
+        ". The CLI will still work; startup may be slightly slower on first run.",
+    )
+    return
+  }
+
+  try {
     const target = path.join(__dirname, "bin", ".codeplane")
     if (fs.existsSync(target)) fs.unlinkSync(target)
     try {
@@ -176,14 +206,17 @@ async function main() {
     }
     fs.chmodSync(target, 0o755)
   } catch (error) {
-    console.error("Failed to setup codeplane binary:", error.message)
-    process.exit(1)
+    console.warn(
+      "[codeplane postinstall] Could not write fast-start cache: " +
+        (error && error.message ? error.message : String(error)) +
+        ". The CLI will still work via the wrapper.",
+    )
   }
 }
 
-try {
-  void main()
-} catch (error) {
-  console.error("Postinstall script error:", error.message)
+main().catch((error) => {
+  console.warn(
+    "[codeplane postinstall] Unexpected error: " + (error && error.message ? error.message : String(error)),
+  )
   process.exit(0)
-}
+})
