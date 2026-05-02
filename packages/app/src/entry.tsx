@@ -28,6 +28,10 @@ type DesktopStorageApi = {
   setItem: (storageName: string | undefined, key: string, value: string) => void
   removeItem: (storageName: string | undefined, key: string) => void
 }
+type DesktopNotificationApi = {
+  notify: (input: { title: string; description?: string; href?: string }) => Promise<boolean>
+  onClick?: (cb: (href?: string) => void) => () => void
+}
 declare global {
   interface Window {
     codeplaneDesktop?: {
@@ -35,6 +39,7 @@ declare global {
       version?: string
       serverManager?: PlatformServerManager
       storage?: DesktopStorageApi
+      notifications?: DesktopNotificationApi
       window?: DesktopWindowApi
       [key: string]: unknown
     }
@@ -42,6 +47,7 @@ declare global {
 }
 
 const desktopStorage = window.codeplaneDesktop?.storage
+const desktopNotifications = window.codeplaneDesktop?.notifications
 
 const getLocale = () => {
   if (typeof navigator !== "object") return "en" as const
@@ -103,7 +109,19 @@ const setStorage = (key: string, value: string | null) => {
 const readDefaultServerUrl = () => getStorage(DEFAULT_SERVER_URL_KEY)
 const writeDefaultServerUrl = (url: string | null) => setStorage(DEFAULT_SERVER_URL_KEY, url)
 
+desktopNotifications?.onClick?.((href) => {
+  handleNotificationClick(href)
+})
+
 const notify: Platform["notify"] = async (title, description, href) => {
+  const inView = document.visibilityState === "visible" && document.hasFocus()
+  if (inView) return
+
+  if (desktopNotifications?.notify) {
+    const shown = await desktopNotifications.notify({ title, description, href }).catch(() => false)
+    if (shown) return
+  }
+
   if (!("Notification" in window)) return
 
   const permission =
@@ -112,9 +130,6 @@ const notify: Platform["notify"] = async (title, description, href) => {
       : Notification.permission
 
   if (permission !== "granted") return
-
-  const inView = document.visibilityState === "visible" && document.hasFocus()
-  if (inView) return
 
   const notification = new Notification(title, {
     body: description ?? "",

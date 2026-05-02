@@ -136,6 +136,34 @@ test("loads JSON config file", async () => {
   })
 })
 
+test("loads npm registry integration config", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await writeConfig(dir, {
+        $schema: "https://example.invalid/config.json",
+        npm: {
+          client: "pnpm",
+          registry: "https://registry.example.com/npm",
+          scopes: {
+            "@internal": {
+              registry: "https://registry.example.com/internal",
+            },
+          },
+        },
+      })
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await load()
+      expect(config.npm?.client).toBe("pnpm")
+      expect(config.npm?.registry).toBe("https://registry.example.com/npm")
+      expect(config.npm?.scopes?.["@internal"]?.registry).toBe("https://registry.example.com/internal")
+    },
+  })
+})
+
 test("loads formatter boolean config", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {

@@ -1,4 +1,5 @@
 import path from "node:path"
+import { CodeplaneHome } from "@codeplane-ai/shared/home"
 import type {
   LocalInstallProgress,
   LocalStatus,
@@ -6,10 +7,9 @@ import type {
   OpenProgress,
   SavedInstance,
 } from "@codeplane-ai/shared/instance"
-import { CodeplaneVersion } from "@codeplane-ai/shared/version"
-import { Global } from "@/global"
+import { createInstanceStore } from "@codeplane-ai/shared/instance-store"
+import { readPreferredLocalVersion, writePreferredLocalVersion } from "@codeplane-ai/shared/local-runtime"
 import { createInstanceClient, headersForInstance, normalizeInstanceUrl } from "./client"
-import { createInstanceStore } from "./instance-store"
 import { createLocalInstanceManager } from "./local-instance"
 
 type ProbeResult =
@@ -40,17 +40,28 @@ function mapLocalProgress(instanceID: string, input: LocalInstallProgress): Open
 }
 
 export function createInstanceService() {
-  const store = createInstanceStore(path.join(Global.Path.state, "tui-instances.json"))
+  const home = CodeplaneHome.paths()
+  const store = createInstanceStore(home.instances)
   const local = createLocalInstanceManager({
-    binariesDir: path.join(Global.Path.cache, "tui-binaries"),
-    dataDir: Global.Path.data,
+    binariesDir: home.local_server_binaries,
+    configDir: home.root,
+    dataDir: home.local_server,
   })
+  let migrated = false
+
+  async function ensureMigrated() {
+    if (migrated) return
+    migrated = true
+    await store.migrate(path.join(CodeplaneHome.legacyPaths().state, "tui-instances.json"))
+  }
 
   async function list() {
+    await ensureMigrated()
     return store.list()
   }
 
   async function save(instance: SavedInstance) {
+    await ensureMigrated()
     return store.save({
       ...instance,
       url: normalizeInstanceUrl(instance.url) ?? instance.url,
@@ -58,6 +69,7 @@ export function createInstanceService() {
   }
 
   async function remove(id: string) {
+    await ensureMigrated()
     await local.stop(id).catch(() => undefined)
     return store.remove(id)
   }
@@ -111,7 +123,7 @@ export function createInstanceService() {
 
   async function ensureLiveInstance(saved: SavedInstance, onProgress?: (progress: OpenProgress) => void): Promise<SavedInstance> {
     if (!saved.local) return saved
-    const version = saved.local.binaryVersion || CodeplaneVersion
+    const version = saved.local.binaryVersion || (await readPreferredLocalVersion())
     const status = await local.status(version)
     if (!status.installed) {
       await local.download(version, (progress) =>
@@ -144,6 +156,7 @@ export function createInstanceService() {
   }
 
   async function open(saved: SavedInstance, onProgress?: (progress: OpenProgress) => void) {
+    await ensureMigrated()
     onProgress?.({
       instanceID: saved.id,
       phase: "probe",
@@ -194,18 +207,19 @@ export function createInstanceService() {
   async function localTarget(): Promise<LocalTarget> {
     return {
       ...(await local.resolveTarget()),
-      defaultVersion: CodeplaneVersion,
+      defaultVersion: await readPreferredLocalVersion(),
     }
   }
 
-  async function localStatus(version = CodeplaneVersion): Promise<LocalStatus> {
-    return local.status(version)
+  async function localStatus(version?: string): Promise<LocalStatus> {
+    return local.status(version || (await readPreferredLocalVersion()))
   }
 
-  async function installLocal(version = CodeplaneVersion, progress?: (progress: LocalInstallProgress) => void) {
-    return local.download(version, (next) =>
+  async function installLocal(version?: string, progress?: (progress: LocalInstallProgress) => void) {
+    const targetVersion = version || (await readPreferredLocalVersion())
+    const result = await local.download(targetVersion, (next) =>
       progress?.({
-        version,
+        version: targetVersion,
         phase: next.phase,
         message: next.message,
         percent: next.percent,
@@ -214,6 +228,8 @@ export function createInstanceService() {
         total: next.total,
       }),
     )
+    await writePreferredLocalVersion(targetVersion)
+    return result
   }
 
   return {

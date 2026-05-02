@@ -23,6 +23,7 @@ const msg: Msg = JSON.parse(process.argv[2]!)
 const testGlobal = Layer.succeed(
   Global.Service,
   Global.Service.of({
+    root: os.tmpdir(),
     home: os.homedir(),
     data: os.tmpdir(),
     cache: os.tmpdir(),

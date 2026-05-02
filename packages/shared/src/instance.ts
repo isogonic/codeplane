@@ -45,10 +45,11 @@ export type LocalInstallProgress = {
 
 export type LocalTarget = {
   archiveName: string
-  archiveExt: ".zip" | ".tar.gz"
+  archiveExt: ".zip" | ".tar.gz" | ".tgz"
   binaryName: string
   os: "darwin" | "linux" | "windows"
   arch: "x64" | "arm64"
+  packageName?: string
   defaultVersion?: string
 }
 
@@ -57,4 +58,10 @@ export type LocalStatus = {
   installed: boolean
   binaryPath: string
   archive: string
+  cliInstalled?: boolean
+  cliPath?: string
+}
+
+export function localInstanceUrl(id: string) {
+  return `local://${id}`
 }

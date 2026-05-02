@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
-import { createSessionKeyReader, ensureSessionKey, pruneSessionKeys } from "./layout"
+import { createSessionKeyReader, ensureSessionKey, isRemoteProjectMissingError, pruneSessionKeys } from "./layout"
 
 describe("layout session-key helpers", () => {
   test("couples touch and scroll seed in order", () => {
@@ -65,5 +65,43 @@ describe("pruneSessionKeys", () => {
     })
 
     expect(drop).toEqual([])
+  })
+})
+
+describe("isRemoteProjectMissingError", () => {
+  test("matches typed not found errors", () => {
+    expect(
+      isRemoteProjectMissingError({
+        name: "NotFoundError",
+        data: { message: "missing" },
+      }),
+    ).toBe(true)
+  })
+
+  test("matches api 404 errors", () => {
+    expect(
+      isRemoteProjectMissingError({
+        name: "APIError",
+        data: {
+          message: "missing",
+          statusCode: 404,
+          isRetryable: false,
+        },
+      }),
+    ).toBe(true)
+  })
+
+  test("ignores transient reconnect failures", () => {
+    expect(isRemoteProjectMissingError(new TypeError("Failed to fetch"))).toBe(false)
+    expect(
+      isRemoteProjectMissingError({
+        name: "APIError",
+        data: {
+          message: "unavailable",
+          statusCode: 503,
+          isRetryable: true,
+        },
+      }),
+    ).toBe(false)
   })
 })

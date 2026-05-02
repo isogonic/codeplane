@@ -1,14 +1,14 @@
-import { spawn, spawnSync, type ChildProcess } from "node:child_process"
+import { spawn, type ChildProcess } from "node:child_process"
 import fs from "node:fs/promises"
-import { createWriteStream } from "node:fs"
 import path from "node:path"
-import { Readable } from "node:stream"
-import type { ReadableStream as NodeReadableStream } from "node:stream/web"
-import { pipeline } from "node:stream/promises"
 import os from "node:os"
-import { codeplaneReleaseTag } from "@codeplane-ai/shared/version"
+import {
+  installCodeplaneLocalPackage,
+  installManagedCodeplaneCli,
+  managedCodeplaneCliStatus,
+  resolveCodeplaneLocalTarget,
+} from "@codeplane-ai/shared/local-runtime"
 
-const GITHUB_RELEASE_DOWNLOAD_URL = "https://github.com/devinoldenburg/codeplane/releases/download"
 const LISTEN_LINE_PATTERN = /listening on https?:\/\/[^:\s]+:(\d+)/i
 const SERVER_START_TIMEOUT_MS = 30_000
 
@@ -26,6 +26,8 @@ export type LocalInstanceStatus = {
   installed: boolean
   binaryPath: string
   archive: string
+  cliInstalled?: boolean
+  cliPath?: string
 }
 
 export type RunningLocalInstance = {
@@ -42,179 +44,51 @@ type ManagedProcess = {
   stop: () => Promise<void>
 }
 
-function detectArch(): "x64" | "arm64" {
-  if (process.arch === "arm64") return "arm64"
-  return "x64"
-}
-
-function detectOs(): "darwin" | "linux" | "windows" {
-  if (process.platform === "darwin") return "darwin"
-  if (process.platform === "win32") return "windows"
-  return "linux"
-}
-
-function detectMusl() {
-  if (detectOs() !== "linux") return false
-  return import("node:fs")
-    .then((value) => value.existsSync("/etc/alpine-release"))
-    .catch(() => false)
-    .then((alpine) => {
-      if (alpine) return true
-      return spawnSync("ldd", ["--version"], { encoding: "utf8" })
-    })
-    .then((result) => {
-      if (result === true) return true
-      const text = ((result.stdout || "") + (result.stderr || "")).toLowerCase()
-      return text.includes("musl")
-    })
-    .catch(() => false)
-}
-
-function detectAvx2() {
-  if (detectArch() !== "x64") return Promise.resolve(true)
-  const platform = detectOs()
-
-  if (platform === "darwin") {
-    return Promise.resolve(
-      spawnSync("sysctl", ["-n", "hw.optional.avx2_0"], { encoding: "utf8", timeout: 1500 }).stdout.trim() === "1",
-    ).catch(() => false)
-  }
-
-  if (platform === "linux") {
-    return fs
-      .readFile("/proc/cpuinfo", "utf8")
-      .then((cpuinfo) => /(?:^|\s)avx2(?:\s|$)/i.test(cpuinfo))
-      .catch(() => false)
-  }
-
-  if (platform === "windows") {
-    const cmd =
-      '(Add-Type -MemberDefinition "[DllImport(""kernel32.dll"")] public static extern bool IsProcessorFeaturePresent(int ProcessorFeature);" -Name Kernel32 -Namespace Win32 -PassThru)::IsProcessorFeaturePresent(40)'
-    const exes = ["powershell.exe", "pwsh.exe", "pwsh", "powershell"]
-    const next = exes.reduce(
-      (promise, exe) =>
-        promise.then((value) => {
-          if (value !== undefined) return value
-          const result = spawnSync(exe, ["-NoProfile", "-NonInteractive", "-Command", cmd], {
-            encoding: "utf8",
-            timeout: 3000,
-            windowsHide: true,
-          })
-          if (result.status !== 0) return undefined
-          const out = (result.stdout || "").trim().toLowerCase()
-          if (out === "true" || out === "1") return true
-          if (out === "false" || out === "0") return false
-        }),
-      Promise.resolve<boolean | undefined>(undefined),
-    )
-    return next.then((value) => value ?? false).catch(() => false)
-  }
-
-  return Promise.resolve(false)
-}
-
-export type LocalTarget = {
-  archiveName: string
-  archiveExt: ".zip" | ".tar.gz"
-  binaryName: string
-  os: "darwin" | "linux" | "windows"
-  arch: "x64" | "arm64"
-}
-
-export async function resolveLocalTarget(): Promise<LocalTarget> {
-  const arch = detectArch()
-  const platform = detectOs()
-  const isMusl = await detectMusl()
-  const baseline = arch === "x64" && !(await detectAvx2())
-
-  let suffix = `${platform}-${arch}`
-  if (baseline) suffix += "-baseline"
-  if (isMusl) suffix += "-musl"
-
-  const archiveExt = platform === "linux" ? ".tar.gz" : ".zip"
-  return {
-    archiveName: `codeplane-${suffix}${archiveExt}`,
-    archiveExt,
-    binaryName: platform === "windows" ? "codeplane.exe" : "codeplane",
-    os: platform,
-    arch,
-  }
-}
+export type LocalTarget = ReturnType<typeof resolveCodeplaneLocalTarget>
+export const resolveLocalTarget = async (): Promise<LocalTarget> => resolveCodeplaneLocalTarget()
 
 export function createLocalInstanceManager(input: {
   binariesDir: string
+  configDir: string
   dataDir: string
   log?(event: string, data?: unknown): void
 }) {
   const log = (event: string, data?: unknown) => input.log?.(event, data)
-  const target = resolveLocalTarget()
+  const configDir = input.configDir
+  const target = resolveCodeplaneLocalTarget()
   const running = new Map<string, ManagedProcess>()
 
   const versionRoot = (version: string) => path.join(input.binariesDir, version)
-  const dataDirFor = (id: string) => path.join(input.dataDir, "local-data", id)
-
-  async function binaryPath(version: string) {
-    return path.join(versionRoot(version), (await target).binaryName)
-  }
-
-  async function archivePath(version: string) {
-    return path.join(versionRoot(version), (await target).archiveName)
-  }
+  const dataDirFor = (id: string) => path.join(input.dataDir, id)
+  const binaryPath = (version: string) => path.join(versionRoot(version), target.binaryName)
 
   const exists = (file: string) => fs.access(file).then(() => true).catch(() => false)
 
   async function isInstalled(version: string) {
-    return exists(await binaryPath(version))
+    return exists(binaryPath(version))
   }
 
   async function status(version: string): Promise<LocalInstanceStatus> {
+    const cli = await managedCodeplaneCliStatus()
     return {
-      archive: (await target).archiveName,
-      binaryPath: await binaryPath(version),
+      archive: target.archiveName,
+      binaryPath: binaryPath(version),
       binaryVersion: version,
       installed: await isInstalled(version),
+      cliInstalled: cli.cliInstalled,
+      cliPath: cli.cliPath,
     }
-  }
-
-  async function extractArchive(archive: string, dest: string) {
-    const resolved = await target
-    if (resolved.archiveExt === ".tar.gz") {
-      await runTool("tar", ["-xzf", archive, "-C", dest])
-      return
-    }
-    if (resolved.os === "windows") {
-      await runTool("tar", ["-xf", archive, "-C", dest])
-      return
-    }
-    await runTool("unzip", ["-q", "-o", archive, "-d", dest])
-  }
-
-  function runTool(command: string, args: string[]) {
-    return new Promise<void>((resolve, reject) => {
-      const child = spawn(command, args, { stdio: "ignore" })
-      child.on("error", reject)
-      child.on("exit", (code, signal) => {
-        if (code === 0) {
-          resolve()
-          return
-        }
-        reject(new Error(`${command} ${args.join(" ")} exited with code ${code ?? signal ?? "unknown"}`))
-      })
-    })
   }
 
   async function download(version: string, progress?: (info: LocalInstanceProgress) => void): Promise<LocalInstanceStatus> {
-    const resolved = await target
-    progress?.({
-      phase: "detect",
-      message: `Detected ${resolved.os}/${resolved.arch}. Preparing local Codeplane ${version}…`,
-      percent: 4,
-      binaryVersion: version,
-    })
-    log("local.download.start", { archive: resolved.archiveName, version })
+    log("local.download.start", { archive: target.archiveName, version })
 
     const root = versionRoot(version)
     if (await isInstalled(version)) {
+      await installManagedCodeplaneCli({
+        version,
+        binaryPath: binaryPath(version),
+      })
       progress?.({
         phase: "ready",
         message: `Codeplane ${version} is already installed locally.`,
@@ -224,61 +98,16 @@ export function createLocalInstanceManager(input: {
       return status(version)
     }
 
-    await fs.mkdir(root, { recursive: true })
-    const archive = await archivePath(version)
-    const tag = codeplaneReleaseTag(version)
-    const url = `${GITHUB_RELEASE_DOWNLOAD_URL}/${tag}/${resolved.archiveName}`
-
-    progress?.({
-      phase: "download",
-      message: `Downloading Codeplane ${version} for ${resolved.os}/${resolved.arch}…`,
-      percent: 6,
-      binaryVersion: version,
+    await installCodeplaneLocalPackage({
+      version,
+      directory: root,
+      progress: (next) => progress?.(next),
     })
-
-    const response = await fetch(url, { redirect: "follow" })
-    if (!response.ok) {
-      throw new Error(`Local Codeplane download failed with HTTP ${response.status} (${url})`)
-    }
-    if (!response.body) {
-      throw new Error(`Local Codeplane download for ${url} returned an empty body`)
-    }
-
-    const total = Number(response.headers.get("content-length") ?? "0")
-    const tempArchive = `${archive}.tmp-${Date.now()}`
-    let received = 0
-    const stream = Readable.fromWeb(response.body as unknown as NodeReadableStream)
-    stream.on("data", (chunk: Buffer) => {
-      received += chunk.length
-      progress?.({
-        phase: "download",
-        message: `Downloading Codeplane ${version}…`,
-        percent: total > 0 ? Math.min(80, 8 + Math.round((received / total) * 70)) : 40,
-        transferred: received,
-        total: total || undefined,
-        binaryVersion: version,
-      })
+    await installManagedCodeplaneCli({
+      version,
+      binaryPath: binaryPath(version),
     })
-    await pipeline(stream, createWriteStream(tempArchive))
-    await fs.rename(tempArchive, archive)
-
-    progress?.({
-      phase: "extract",
-      message: "Extracting binary…",
-      percent: 86,
-      binaryVersion: version,
-    })
-    await extractArchive(archive, root)
-    if (resolved.os !== "windows") {
-      await fs.chmod(await binaryPath(version), 0o755).catch(() => undefined)
-    }
-    await fs.rm(archive, { force: true })
-    progress?.({
-      phase: "ready",
-      message: `Codeplane ${version} ready locally.`,
-      percent: 100,
-      binaryVersion: version,
-    })
+    log("local.extract.success", { binary: binaryPath(version), packageName: target.packageName, version })
     return status(version)
   }
 
@@ -291,6 +120,10 @@ export function createLocalInstanceManager(input: {
     if (!(await isInstalled(input.binaryVersion))) {
       throw new Error(`Codeplane ${input.binaryVersion} is not installed locally`)
     }
+    await installManagedCodeplaneCli({
+      version: input.binaryVersion,
+      binaryPath: binaryPath(input.binaryVersion),
+    })
 
     const data = dataDirFor(input.id)
     await Promise.all([
@@ -298,10 +131,18 @@ export function createLocalInstanceManager(input: {
       fs.mkdir(path.join(data, "config"), { recursive: true }),
       fs.mkdir(path.join(data, "cache"), { recursive: true }),
       fs.mkdir(path.join(data, "state"), { recursive: true }),
+      fs.mkdir(path.join(data, "bin"), { recursive: true }),
+      fs.mkdir(path.join(data, "log"), { recursive: true }),
     ])
 
     const env = {
       ...process.env,
+      CODEPLANE_HOME_DIR: configDir,
+      CODEPLANE_DATA_DIR: path.join(data, "data"),
+      CODEPLANE_CACHE_DIR: path.join(data, "cache"),
+      CODEPLANE_STATE_DIR: path.join(data, "state"),
+      CODEPLANE_BIN_DIR: path.join(data, "bin"),
+      CODEPLANE_LOG_DIR: path.join(data, "log"),
       XDG_DATA_HOME: path.join(data, "data"),
       XDG_CONFIG_HOME: path.join(data, "config"),
       XDG_CACHE_HOME: path.join(data, "cache"),
@@ -309,7 +150,7 @@ export function createLocalInstanceManager(input: {
       HOME: process.env.HOME ?? os.homedir(),
     }
 
-    const child = spawn(await binaryPath(input.binaryVersion), ["serve", "--hostname", "127.0.0.1", "--port", "0"], {
+    const child = spawn(binaryPath(input.binaryVersion), ["serve", "--hostname", "127.0.0.1", "--port", "0"], {
       cwd: data,
       env,
       stdio: ["ignore", "pipe", "pipe"],
@@ -419,7 +260,7 @@ export function createLocalInstanceManager(input: {
     isInstalled,
     isRunning,
     removeData,
-    resolveTarget: () => target,
+    resolveTarget: async () => target,
     start,
     status,
     stop,

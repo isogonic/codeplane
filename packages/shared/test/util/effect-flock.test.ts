@@ -96,6 +96,7 @@ async function waitForFile(file: string, timeout = 3_000) {
 const testGlobal = Layer.succeed(
   Global.Service,
   Global.Service.of({
+    root: os.tmpdir(),
     home: os.homedir(),
     data: os.tmpdir(),
     cache: os.tmpdir(),

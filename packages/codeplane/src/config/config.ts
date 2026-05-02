@@ -35,6 +35,7 @@ import { ConfigLSP } from "./lsp"
 import { ConfigManaged } from "./managed"
 import { ConfigMCP } from "./mcp"
 import { ConfigModelID } from "./model-id"
+import { ConfigNpm } from "./npm"
 import { ConfigParse } from "./parse"
 import { ConfigPaths } from "./paths"
 import { ConfigPermission } from "./permission"
@@ -44,6 +45,7 @@ import { ConfigServer } from "./server"
 import { ConfigSkills } from "./skills"
 import { ConfigVariable } from "./variable"
 import { Npm } from "@/npm"
+import { CodeplaneHome } from "@codeplane-ai/shared/home"
 
 const log = Log.create({ service: "config" })
 
@@ -127,6 +129,9 @@ export const Info = Schema.Struct({
   }),
   model: Schema.optional(ConfigModelID).annotate({
     description: "Model to use in the format of provider/model, eg anthropic/claude-2",
+  }),
+  npm: Schema.optional(ConfigNpm.Info).annotate({
+    description: "Native npm registry, auth, and package-manager integration settings",
   }),
   small_model: Schema.optional(ConfigModelID).annotate({
     description: "Small model to use for tasks like title generation in the format of provider/model",
@@ -283,14 +288,14 @@ export interface Interface {
 
 export class Service extends Context.Service<Service, Interface>()("@codeplane/Config") {}
 
+const GLOBAL_CONFIG_FILES = ["codeplane.jsonc", "codeplane.json", "config.json"]
+
+function globalConfigCandidates(dir: string) {
+  return GLOBAL_CONFIG_FILES.map((file) => path.join(dir, file))
+}
+
 function globalConfigFile() {
-  const candidates = ["codeplane.jsonc", "codeplane.json", "config.json"].map((file) =>
-    path.join(Global.Path.config, file),
-  )
-  for (const file of candidates) {
-    if (existsSync(file)) return file
-  }
-  return candidates[0]
+  return path.join(Global.Path.config, "codeplane.jsonc")
 }
 
 function patchJsonc(input: string, patch: unknown, path: string[] = []): string {
@@ -374,15 +379,26 @@ export const layer = Layer.effect(
     })
 
     const loadGlobal = Effect.fnUntraced(function* () {
-      let result: Info = pipe(
-        {},
-        mergeDeep(yield* loadFile(path.join(Global.Path.config, "config.json"))),
-        mergeDeep(yield* loadFile(path.join(Global.Path.config, "codeplane.json"))),
-        mergeDeep(yield* loadFile(path.join(Global.Path.config, "codeplane.jsonc"))),
-      )
+      const legacyDir = CodeplaneHome.legacyPaths().config
+      const currentFile = globalConfigFile()
+      const currentExists = existsSync(currentFile)
+      if (!currentExists) {
+        for (const source of [
+          ...globalConfigCandidates(Global.Path.config).filter((file) => file !== currentFile),
+          ...(legacyDir === Global.Path.config ? [] : globalConfigCandidates(legacyDir)),
+        ]) {
+          if (!existsSync(source)) continue
+          const text = yield* readConfigFile(source)
+          if (!text) continue
+          yield* fs.writeFileString(currentFile, text).pipe(Effect.orDie)
+          break
+        }
+      }
 
-      const legacy = path.join(Global.Path.config, "config")
-      if (existsSync(legacy)) {
+      let result: Info = yield* loadFile(globalConfigFile())
+
+      const legacy = [path.join(Global.Path.config, "config"), path.join(legacyDir, "config")].find(existsSync)
+      if (legacy) {
         yield* Effect.promise(() =>
           import(pathToFileURL(legacy).href, { with: { type: "toml" } })
             .then(async (mod) => {
@@ -390,7 +406,7 @@ export const layer = Layer.effect(
               if (provider && model) result.model = `${provider}/${model}`
               result["$schema"] = "https://example.invalid/config.json"
               result = mergeDeep(result, rest)
-              await fsNode.writeFile(path.join(Global.Path.config, "config.json"), JSON.stringify(result, null, 2))
+              await fsNode.writeFile(globalConfigFile(), JSON.stringify(result, null, 2))
               await fsNode.unlink(legacy)
             })
             .catch(() => {}),

@@ -4,6 +4,7 @@ import {
   desktopCapturer,
   ipcMain,
   Menu,
+  Notification,
   nativeImage,
   session,
   shell,
@@ -12,9 +13,10 @@ import {
   type Session,
   type WebContents,
 } from "electron"
-import { autoUpdater, type UpdateInfo, type ProgressInfo } from "electron-updater"
 import Store from "electron-store"
-import { CodeplaneDesktopReleaseSuffix, codeplaneDesktopReleaseTag } from "@codeplane-ai/shared/version"
+import { CodeplaneHome } from "@codeplane-ai/shared/home"
+import { fetchCodeplaneLatestVersion, readPreferredLocalVersion, writePreferredLocalVersion } from "@codeplane-ai/shared/local-runtime"
+import { createInstanceStore, type State as InstanceStoreState } from "@codeplane-ai/shared/instance-store"
 import { existsSync } from "node:fs"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
@@ -30,7 +32,7 @@ import {
   type DesktopUIPrepareProgress,
 } from "./ui-host"
 import { createLocalInstanceManager, type LocalInstanceProgress } from "./local-instance"
-import { CodeplaneVersion } from "@codeplane-ai/shared/version"
+import { codeplaneReleaseTag, CodeplaneVersion } from "@codeplane-ai/shared/version"
 import type { SavedInstance } from "@codeplane-ai/shared/instance"
 
 /**
@@ -45,9 +47,9 @@ import type { SavedInstance } from "@codeplane-ai/shared/instance"
  * Access service tokens, internal API keys) that get attached to every
  * outbound request to that instance via the session's webRequest API.
  *
- * Auto-update tracks dedicated desktop releases (`vX.Y.Z-desktop`)
- * from the same repo. The shell never embeds the backend, so updating
- * the desktop app and updating the self-hosted instance are independent.
+ * The desktop shell never embeds the backend. Local runtime install/update
+ * flows are driven through the shared npm package pipeline so desktop and
+ * TUI launch the same platform package from the same Codeplane home.
  */
 
 const SESSION_PARTITION_PREFIX = "persist:codeplane:"
@@ -108,8 +110,6 @@ async function githubApiHeaders(): Promise<Record<string, string>> {
   return { ...GITHUB_API_HEADERS, authorization: `Bearer ${token}` }
 }
 const GITHUB_RELEASES_API_URL = "https://api.github.com/repos/devinoldenburg/codeplane/releases"
-const GITHUB_RELEASE_DOWNLOAD_URL = "https://github.com/devinoldenburg/codeplane/releases/download"
-const DESKTOP_RELEASE_SUFFIX = CodeplaneDesktopReleaseSuffix
 const DESKTOP_STORAGE_DIRECT = "__direct__"
 const APP_ID = "ai.codeplane.desktop"
 const APP_NAME = "Codeplane"
@@ -117,21 +117,29 @@ const APP_COPYRIGHT = "Copyright © 2026 Devin Oldenburg"
 const APP_WEBSITE = "https://codeplane.ai"
 const USER_DATA_OVERRIDE = process.env.CODEPLANE_DESKTOP_USER_DATA_DIR?.trim()
 const LEGACY_USER_DATA_NAME = "@codeplane-ai/desktop"
+if (USER_DATA_OVERRIDE && !process.env.CODEPLANE_HOME_DIR) process.env.CODEPLANE_HOME_DIR = USER_DATA_OVERRIDE
+const codeplaneHome = CodeplaneHome.paths()
+const defaultUserData = path.join(codeplaneHome.root, "desktop")
+const legacyUserData = path.join(app.getPath("appData"), LEGACY_USER_DATA_NAME)
 
 if (USER_DATA_OVERRIDE) {
   app.setPath("userData", USER_DATA_OVERRIDE)
-} else {
-  const legacyUserData = path.join(app.getPath("appData"), LEGACY_USER_DATA_NAME)
-  if (existsSync(legacyUserData)) app.setPath("userData", legacyUserData)
 }
+if (!USER_DATA_OVERRIDE) app.setPath("userData", defaultUserData)
 
 type DesktopPersist = Record<string, Record<string, string>>
 
 type Schema = {
-  instances: SavedInstance[]
+  instances?: SavedInstance[]
   lastInstanceId?: string
   persist?: DesktopPersist
   windowBounds?: { x?: number; y?: number; width: number; height: number; maximized?: boolean }
+}
+
+type DesktopNotificationPayload = {
+  title: string
+  description?: string
+  href?: string
 }
 
 type GitHubRelease = {
@@ -150,14 +158,27 @@ const store = new Store<Schema>({
     instances: [],
   },
 })
+const legacyStore =
+  legacyUserData !== app.getPath("userData") && existsSync(path.join(legacyUserData, "codeplane-desktop.json"))
+    ? new Store<Schema>({
+        cwd: legacyUserData,
+        name: "codeplane-desktop",
+        defaults: {
+          instances: [],
+        },
+      })
+    : undefined
+const instanceStore = createInstanceStore(codeplaneHome.instances)
 const logger = createDesktopLogger(process.env.CODEPLANE_DESKTOP_LOG_DIR?.trim() || path.join(app.getPath("userData"), "logs"))
 
 let mainWindow: BrowserWindow | undefined
 let currentInstanceID: string | undefined
+let instanceState: InstanceStoreState = { instances: [] }
 const configuredPartitions = new Set<string>()
 const localManager = createLocalInstanceManager({
-  binariesDir: path.join(app.getPath("userData"), "local-binaries"),
-  dataDir: app.getPath("userData"),
+  binariesDir: codeplaneHome.local_server_binaries,
+  configDir: codeplaneHome.root,
+  dataDir: codeplaneHome.local_server,
   log: (event, data) => logger.log("local-instance", event, data),
 })
 const uiHost = createDesktopUIHost({
@@ -176,14 +197,71 @@ app.setName(APP_NAME)
 app.setAppUserModelId(APP_ID)
 logger.log("main", "bootstrap", {
   appName: APP_NAME,
+  codeplaneRoot: codeplaneHome.root,
   cwd: process.cwd(),
   logPath: logger.path(),
   userData: app.getPath("userData"),
 })
 
+function savedInstances() {
+  return instanceState.instances
+}
+
+function lastInstanceID() {
+  return instanceState.lastInstanceID
+}
+
+async function setLastInstanceID(id: string | undefined) {
+  await instanceStore.setLast(id)
+  instanceState = {
+    instances: instanceState.instances,
+    lastInstanceID: id,
+  }
+  return id
+}
+
+async function syncInstanceState() {
+  instanceState = await instanceStore.getState()
+  return instanceState
+}
+
+async function migrateInstanceState(source: Store<Schema> | undefined) {
+  if (!source) return false
+  const next = {
+    instances: source.get("instances") ?? [],
+    lastInstanceID: source.get("lastInstanceId"),
+  }
+  if (next.instances.length === 0 && !next.lastInstanceID) return false
+  instanceState = await instanceStore.replace(next)
+  source.delete("instances")
+  source.delete("lastInstanceId")
+  return true
+}
+
+async function loadInstanceState() {
+  instanceState = await instanceStore.getState()
+  if (instanceState.instances.length > 0 || instanceState.lastInstanceID) return instanceState
+  if (await migrateInstanceState(store)) return instanceState
+  await migrateInstanceState(legacyStore)
+  return instanceState
+}
+
+async function updateLocalInstanceVersions(version: string) {
+  const state = await instanceStore.getState()
+  if (!state.instances.some((item) => item.local && item.local.binaryVersion !== version)) {
+    instanceState = state
+    return state
+  }
+  instanceState = await instanceStore.replace({
+    instances: state.instances.map((item) => (item.local ? { ...item, local: { binaryVersion: version } } : item)),
+    lastInstanceID: state.lastInstanceID,
+  })
+  return instanceState
+}
+
 function getInstance(id: string | undefined): SavedInstance | undefined {
   if (!id) return undefined
-  return store.get("instances", []).find((entry) => entry.id === id)
+  return savedInstances().find((entry) => entry.id === id)
 }
 
 function desktopStorageName(name?: string) {
@@ -240,11 +318,12 @@ async function ensureLocalRunning(instance: SavedInstance): Promise<SavedInstanc
   if (!instance.local) return instance
   const existing = localManager.getRunning(instance.id)
   if (existing) return { ...instance, url: existing.url }
+  const version = instance.local.binaryVersion || (await readPreferredLocalVersion())
   const running = await localManager.start({
     id: instance.id,
-    binaryVersion: instance.local.binaryVersion,
+    binaryVersion: version,
   })
-  return { ...instance, url: running.url }
+  return { ...instance, local: { binaryVersion: version }, url: running.url }
 }
 
 function instanceSummary(instance: SavedInstance | DesktopHostInstance) {
@@ -269,19 +348,19 @@ function mockUpdateStatus() {
   if (!mode) return
   if (mode === "latest") {
     return {
-      current: app.getVersion(),
-      latest: app.getVersion(),
+      current: CodeplaneVersion,
+      latest: CodeplaneVersion,
       hasUpdate: false,
-      method: "desktop-mock",
+      method: "npm-mock",
     }
   }
   if (mode.startsWith("available:")) {
-    const latest = mode.slice("available:".length) || app.getVersion()
+    const latest = mode.slice("available:".length) || CodeplaneVersion
     return {
-      current: app.getVersion(),
+      current: CodeplaneVersion,
       latest,
-      hasUpdate: compareVersions(latest, app.getVersion()) > 0,
-      method: "desktop-mock",
+      hasUpdate: compareVersions(latest, CodeplaneVersion) > 0,
+      method: "npm-mock",
     }
   }
 }
@@ -293,7 +372,7 @@ function mockUpdateCheckResult() {
     return { ok: true as const, updateAvailable: false }
   }
   if (mode.startsWith("available:")) {
-    const version = mode.slice("available:".length) || app.getVersion()
+    const version = mode.slice("available:".length) || CodeplaneVersion
     return { ok: true as const, updateAvailable: true, version }
   }
   if (mode.startsWith("error:")) {
@@ -304,6 +383,89 @@ function mockUpdateCheckResult() {
 function activeWindow() {
   if (!mainWindow || mainWindow.isDestroyed()) return
   return mainWindow
+}
+
+function focusWindow(window?: BrowserWindow) {
+  if (!window || window.isDestroyed()) return
+  if (window.isMinimized()) window.restore()
+  if (!window.isVisible()) window.show()
+  app.focus()
+  window.focus()
+}
+
+function notificationWindow(sender: WebContents) {
+  const window = BrowserWindow.fromWebContents(sender)
+  if (window && !window.isDestroyed()) return window
+  return activeWindow()
+}
+
+async function routeNotificationClick(sender: WebContents, href?: string) {
+  const window = notificationWindow(sender)
+  if (window) {
+    focusWindow(window)
+    if (href) window.webContents.send("notifications:click", href)
+    return
+  }
+  const instance = getInstanceLive(currentInstanceID)
+  if (instance) {
+    const opened = await openInstance(instance)
+    if (opened && href) activeWindow()?.webContents.send("notifications:click", href)
+    return
+  }
+  showSetupWindow()
+}
+
+function desktopNotificationIcon() {
+  const icon = iconPath()
+  if (!icon) return
+  const image = nativeImage.createFromPath(icon)
+  if (image.isEmpty()) return
+  return image
+}
+
+async function showDesktopNotification(sender: WebContents, payload: DesktopNotificationPayload) {
+  const title = payload.title.trim()
+  if (!title) return false
+  if (process.env.CODEPLANE_DESKTOP_TEST_NOTIFICATIONS === "1") {
+    logger.log("main", "notifications.notify.mock", {
+      href: payload.href,
+      title,
+    })
+    return true
+  }
+  const supported = Notification.isSupported()
+  logger.log("main", "notifications.notify.request", {
+    href: payload.href,
+    supported,
+    title,
+  })
+  if (!supported) return false
+  const notification = new Notification({
+    title,
+    body: payload.description?.trim() || "",
+    icon: desktopNotificationIcon(),
+  })
+  notification.on("show", () => {
+    logger.log("main", "notifications.notify.show", {
+      href: payload.href,
+      title,
+    })
+  })
+  notification.on("click", () => {
+    logger.log("main", "notifications.notify.click", {
+      href: payload.href,
+      title,
+    })
+    void routeNotificationClick(sender, payload.href)
+  })
+  notification.on("close", () => {
+    logger.log("main", "notifications.notify.close", {
+      href: payload.href,
+      title,
+    })
+  })
+  notification.show()
+  return true
 }
 
 function showMessageBox(options: MessageBoxOptions) {
@@ -485,16 +647,16 @@ function showSetup(window: BrowserWindow, opts?: { editId?: string }) {
   void window.loadURL(url.toString())
 }
 
-function desktopReleaseVersion(input: string) {
-  return input.trim().replace(/^v/, "").replace(new RegExp(`${DESKTOP_RELEASE_SUFFIX}$`), "")
-}
-
 function compareVersions(a: string, b: string) {
-  const left = desktopReleaseVersion(a)
+  const left = a
+    .trim()
+    .replace(/^v/, "")
     .split(".")
     .map((value) => Number.parseInt(value, 10))
     .map((value) => (Number.isFinite(value) ? value : 0))
-  const right = desktopReleaseVersion(b)
+  const right = b
+    .trim()
+    .replace(/^v/, "")
     .split(".")
     .map((value) => Number.parseInt(value, 10))
     .map((value) => (Number.isFinite(value) ? value : 0))
@@ -505,44 +667,37 @@ function compareVersions(a: string, b: string) {
   return 0
 }
 
-function desktopReleaseTag(version: string) {
-  return codeplaneDesktopReleaseTag(desktopReleaseVersion(version))
+function broadcastUpdater(channel: string, payload?: unknown) {
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (window.isDestroyed()) continue
+    window.webContents.send(channel, payload)
+  }
 }
 
-async function resolveDesktopReleaseTag() {
-  const releasesResponse = await fetch(`${GITHUB_RELEASES_API_URL}?per_page=100`, {
-    headers: await githubApiHeaders(),
-  })
-  if (!releasesResponse.ok) {
-    throw new Error(`GitHub desktop release lookup failed with HTTP ${releasesResponse.status}`)
+async function runtimeUpdateStatus() {
+  const current = await readPreferredLocalVersion(CodeplaneVersion)
+  const latest = await fetchCodeplaneLatestVersion().catch(() => null)
+  return {
+    current,
+    latest,
+    hasUpdate: !!latest && compareVersions(latest, current) > 0,
+    method: "npm",
   }
-  const releases = ((await releasesResponse.json()) as GitHubRelease[])
-    .filter((release) => release.tag_name?.endsWith(DESKTOP_RELEASE_SUFFIX) && !release.draft && !release.prerelease)
-    .sort((a, b) => compareVersions(b.tag_name ?? "", a.tag_name ?? ""))
-  return releases[0]?.tag_name
 }
 
 async function getDesktopUpdateStatus() {
   const mocked = mockUpdateStatus()
   if (mocked) return mocked
-  const current = app.getVersion()
-  const latestTag = await resolveDesktopReleaseTag()
-  const latest = latestTag ? desktopReleaseVersion(latestTag) : null
-  return {
-    current,
-    latest,
-    hasUpdate: !!latest && compareVersions(latest, current) > 0,
-    method: "desktop",
-  }
+  return runtimeUpdateStatus()
 }
 
 async function getDesktopReleaseNotes(version: string) {
-  const response = await fetch(`${GITHUB_RELEASES_API_URL}/tags/${desktopReleaseTag(version)}`, {
+  const response = await fetch(`${GITHUB_RELEASES_API_URL}/tags/${codeplaneReleaseTag(version)}`, {
     headers: await githubApiHeaders(),
   })
   if (response.status === 404) return null
   if (!response.ok) {
-    throw new Error(`GitHub desktop release notes lookup failed with HTTP ${response.status}`)
+    throw new Error(`GitHub release notes lookup failed with HTTP ${response.status}`)
   }
   const release = (await response.json()) as GitHubRelease
   if (!release.tag_name) return null
@@ -555,21 +710,88 @@ async function getDesktopReleaseNotes(version: string) {
   }
 }
 
-async function configureDesktopUpdater(desktopTag: string) {
-  const token = await resolveGithubToken()
-  autoUpdater.setFeedURL({
-    provider: "generic",
-    url: `${GITHUB_RELEASE_DOWNLOAD_URL}/${desktopTag}`,
-    ...(token ? { requestHeaders: { Authorization: `Bearer ${token}` } } : {}),
-  } as Parameters<typeof autoUpdater.setFeedURL>[0])
-  autoUpdater.previousBlockmapBaseUrlOverride = `${GITHUB_RELEASE_DOWNLOAD_URL}/v${app.getVersion()}${DESKTOP_RELEASE_SUFFIX}`
+async function runRuntimeUpdateCheck(input?: { announce?: boolean }) {
+  const mocked = mockUpdateCheckResult()
+  if (mocked) {
+    if (!mocked.ok) broadcastUpdater("updater:error", mocked.error)
+    if (mocked.ok && mocked.updateAvailable && mocked.version) broadcastUpdater("updater:update-available", { version: mocked.version })
+    if (mocked.ok && !mocked.updateAvailable) broadcastUpdater("updater:update-not-available", { version: CodeplaneVersion })
+    return mocked
+  }
+
+  try {
+    const status = await runtimeUpdateStatus()
+    if (status.hasUpdate && status.latest) {
+      logger.log("main", "updater.update-available", status)
+      broadcastUpdater("updater:update-available", { version: status.latest })
+      if (input?.announce) {
+        const result = await showMessageBox({
+          type: "info",
+          buttons: ["Install update", "Later"],
+          defaultId: 0,
+          cancelId: 1,
+          message: `Codeplane ${status.latest} is available`,
+          detail: `Current local runtime: ${status.current}\nLatest npm version: ${status.latest}`,
+        })
+        if (result.response === 0) return installRuntimeUpdate(status.latest)
+      }
+      return { ok: true as const, updateAvailable: true, version: status.latest }
+    }
+
+    logger.log("main", "updater.update-not-available", status)
+    broadcastUpdater("updater:update-not-available", { version: status.current })
+    if (input?.announce) {
+      await showMessageBox({
+        type: "info",
+        buttons: ["OK"],
+        defaultId: 0,
+        message: `Codeplane ${status.current} is up to date`,
+        detail: "The shared local runtime already matches the latest npm release.",
+      })
+    }
+    return { ok: true as const, updateAvailable: false, version: status.current }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    logger.log("main", "updater.error", { error: message })
+    broadcastUpdater("updater:error", message)
+    if (input?.announce) {
+      await showMessageBox({
+        type: "error",
+        buttons: ["OK"],
+        defaultId: 0,
+        message: "Codeplane update check failed",
+        detail: message,
+      })
+    }
+    return { ok: false as const, error: message }
+  }
 }
 
-async function runDesktopUpdateCheck<T>(action: () => Promise<T>) {
-  const desktopTag = await resolveDesktopReleaseTag()
-  if (!desktopTag) return null
-  await configureDesktopUpdater(desktopTag)
-  return action()
+async function installRuntimeUpdate(version: string, sender?: WebContents) {
+  const mocked = mockUpdaterMode()
+  if (mocked) {
+    logger.log("main", "updater.download.mock", { version })
+    broadcastUpdater("updater:download-progress", { percent: 100, transferred: 0, total: 0 })
+    broadcastUpdater("updater:update-downloaded", { version })
+    return { ok: true as const, mocked: true }
+  }
+
+  logger.log("main", "updater.download.start", { version })
+  await localManager.download(version, (progress) => {
+    const payload = {
+      percent: progress.percent,
+      transferred: progress.transferred ?? 0,
+      total: progress.total ?? 0,
+      version: progress.binaryVersion ?? version,
+    }
+    sender?.send("local:install-progress", { version, ...progress })
+    broadcastUpdater("updater:download-progress", payload)
+  })
+  await writePreferredLocalVersion(version)
+  await updateLocalInstanceVersions(version)
+  logger.log("main", "updater.download.success", { version })
+  broadcastUpdater("updater:update-downloaded", { version })
+  return { ok: true as const }
 }
 
 function attachWindowHandlers(window: BrowserWindow) {
@@ -594,7 +816,7 @@ function attachWindowHandlers(window: BrowserWindow) {
     if (target.protocol === "file:") return
     // Allow the configured instance origin even if we're currently on a
     // different page (e.g. mid-OAuth). Look it up by any saved instance.
-    const instances = store.get("instances", [])
+    const instances = savedInstances()
     const match = instances.find((item) => {
       const u = asUrl(item.url)
       return u && u.origin === target.origin
@@ -662,7 +884,7 @@ function buildMenu(reload: () => void, openSetup: () => void, openInstanceSwitch
               {
                 label: "Check for updates…",
                 click: () => {
-                  void runDesktopUpdateCheck(() => autoUpdater.checkForUpdatesAndNotify())
+                  void runRuntimeUpdateCheck({ announce: true })
                 },
               },
               { type: "separator" as const },
@@ -735,7 +957,7 @@ function buildMenu(reload: () => void, openSetup: () => void, openInstanceSwitch
         {
           label: "Check for updates…",
           click: () => {
-            void runDesktopUpdateCheck(() => autoUpdater.checkForUpdatesAndNotify())
+            void runRuntimeUpdateCheck({ announce: true })
           },
         },
       ],
@@ -993,7 +1215,7 @@ async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebConte
     else if (previousMaximized) window.maximize()
     mainWindow = window
     currentInstanceID = instance.id
-    store.set("lastInstanceId", instance.id)
+    await setLastInstanceID(instance.id)
     const prepared = await uiHost
       .prepare(instance, (progress: DesktopUIPrepareProgress) => emit(progress))
       .catch(async (error) => {
@@ -1086,9 +1308,9 @@ function setupIpc() {
   })
   ipcMain.on("desktop:bootstrap", (event) => {
     try {
-      const instances = store.get("instances", [])
+      const instances = savedInstances()
       const bootstrap = uiHost.bootstrap(instances, currentInstanceID)
-      const defaultID = store.get("lastInstanceId")
+      const defaultID = lastInstanceID()
       event.returnValue = {
         ...bootstrap,
         defaultKey: defaultID ? uiHost.proxyKey(defaultID) : null,
@@ -1101,26 +1323,22 @@ function setupIpc() {
     } catch {
       event.returnValue = {
         currentKey: null,
-        defaultKey: store.get("lastInstanceId") ? uiHost.proxyKey(store.get("lastInstanceId")!) : null,
+        defaultKey: lastInstanceID() ? uiHost.proxyKey(lastInstanceID()!) : null,
         instances: [],
       }
     }
   })
   ipcMain.handle("desktop:log-path", () => logger.path())
-  ipcMain.handle("instances:list", () => store.get("instances", []))
+  ipcMain.handle("instances:list", () => savedInstances())
   ipcMain.handle("instances:get-default-key", () => {
-    const defaultID = store.get("lastInstanceId")
+    const defaultID = lastInstanceID()
     return defaultID ? uiHost.proxyKey(defaultID) : null
   })
-  ipcMain.handle("instances:get-last", () => store.get("lastInstanceId"))
-  ipcMain.handle("instances:save", (_event, instance: SavedInstance) => {
+  ipcMain.handle("instances:get-last", () => lastInstanceID())
+  ipcMain.handle("instances:save", async (_event, instance: SavedInstance) => {
     logger.log("main", "instances.save", instanceSummary(instance))
-    const list = store.get("instances", [])
-    const idx = list.findIndex((entry) => entry.id === instance.id)
-    if (idx === -1) list.push(instance)
-    else list[idx] = instance
-    store.set("instances", list)
-    return list
+    await instanceStore.save(instance)
+    return (await syncInstanceState()).instances
   })
   ipcMain.handle("instances:prepare", async (event, saved: SavedInstance) => {
     logger.log("main", "instances.prepare.start", instanceSummary(saved))
@@ -1166,11 +1384,10 @@ function setupIpc() {
   })
   ipcMain.handle("instances:remove", async (_event, id: string) => {
     logger.log("main", "instances.remove", { id })
-    const list = store.get("instances", [])
+    const list = savedInstances()
     const target = list.find((entry) => entry.id === id)
-    const next = list.filter((entry) => entry.id !== id)
-    store.set("instances", next)
-    if (store.get("lastInstanceId") === id) store.delete("lastInstanceId")
+    const next = await instanceStore.remove(id)
+    await syncInstanceState()
     if (target?.local) {
       await localManager.stop(id).catch((error) => logger.log("main", "instances.remove.stop-error", { error, id }))
       await localManager
@@ -1181,13 +1398,9 @@ function setupIpc() {
   })
   ipcMain.handle("instances:set-default-key", async (_event, key: string | null) => {
     logger.log("main", "instances.set-default-key", { key })
-    const instances = store.get("instances", [])
+    const instances = savedInstances()
     const match = key ? instances.find((instance) => uiHost.proxyKey(instance.id) === key) : undefined
-    if (match) {
-      store.set("lastInstanceId", match.id)
-      return true
-    }
-    store.delete("lastInstanceId")
+    await setLastInstanceID(match?.id)
     return true
   })
   ipcMain.handle("instances:open", async (event, id: string) => {
@@ -1201,26 +1414,28 @@ function setupIpc() {
     setTimeout(() => showSetupWindow(editId), 0)
     return true
   })
-  ipcMain.handle("local:target", () => ({
+  ipcMain.handle("local:target", async () => ({
     archiveName: localManager.target.archiveName,
     archiveExt: localManager.target.archiveExt,
     binaryName: localManager.target.binaryName,
     os: localManager.target.os,
     arch: localManager.target.arch,
-    defaultVersion: CodeplaneVersion,
+    packageName: localManager.target.packageName,
+    defaultVersion: await readPreferredLocalVersion(CodeplaneVersion),
   }))
   ipcMain.handle("local:status", async (_event, version: string) => {
-    const status = await localManager.status(version || CodeplaneVersion)
+    const status = await localManager.status(version || (await readPreferredLocalVersion(CodeplaneVersion)))
     logger.log("main", "local.status", status)
     return status
   })
   ipcMain.handle("local:install", async (event, input: { version?: string }) => {
-    const version = input?.version || CodeplaneVersion
+    const version = input?.version || (await readPreferredLocalVersion(CodeplaneVersion))
     logger.log("main", "local.install.start", { version })
     try {
       const result = await localManager.download(version, (progress: LocalInstanceProgress) => {
         event.sender.send("local:install-progress", { version, ...progress })
       })
+      await writePreferredLocalVersion(version)
       logger.log("main", "local.install.success", result)
       return { ok: true as const, ...result }
     } catch (error) {
@@ -1245,7 +1460,7 @@ function setupIpc() {
   })
   ipcMain.handle("local:running", () => {
     const ids: string[] = []
-    for (const instance of store.get("instances", [])) {
+    for (const instance of savedInstances()) {
       if (instance.local && localManager.isRunning(instance.id)) ids.push(instance.id)
     }
     return ids
@@ -1289,62 +1504,51 @@ function setupIpc() {
     await shell.openExternal(target.toString())
     return true
   })
+  ipcMain.handle("notifications:is-supported", () => Notification.isSupported())
+  ipcMain.handle("notifications:notify", async (event, payload: DesktopNotificationPayload) => {
+    const notified = await showDesktopNotification(event.sender, payload)
+    logger.log("main", "notifications.notify.result", {
+      href: payload.href,
+      notified,
+      title: payload.title,
+    })
+    return notified
+  })
   ipcMain.handle("updater:status", async () => {
     const status = await getDesktopUpdateStatus()
     logger.log("main", "updater.status", status)
     return status
   })
   ipcMain.handle("updater:check", async () => {
-    const mocked = mockUpdateCheckResult()
-    if (mocked) {
-      logger.log("main", "updater.check.mock", mocked)
-      return mocked
-    }
-    try {
-      const result = await runDesktopUpdateCheck(() => autoUpdater.checkForUpdates())
-      const response = { ok: true as const, updateAvailable: !!result?.updateInfo, version: result?.updateInfo?.version }
-      logger.log("main", "updater.check", response)
-      return response
-    } catch (error) {
-      const response = { ok: false as const, error: error instanceof Error ? error.message : String(error) }
-      logger.log("main", "updater.check.error", response)
-      return response
-    }
+    const result = await runRuntimeUpdateCheck()
+    logger.log("main", "updater.check", result)
+    return result
   })
   ipcMain.handle("updater:release-notes", async (_event, version: string) => {
     const result = await getDesktopReleaseNotes(version)
     logger.log("main", "updater.release-notes", { found: !!result, version })
     return result
   })
-  // Manually start the download. Auto-update already flips `autoDownload`
-  // on, so this is mostly here so the renderer can drive the flow with
-  // explicit user intent and stay in lockstep with the inline UI.
-  ipcMain.handle("updater:download", async () => {
-    if (mockUpdaterMode()) {
-      logger.log("main", "updater.download.mock")
-      return { ok: true as const, mocked: true }
-    }
+  ipcMain.handle("updater:download", async (event) => {
     try {
-      await runDesktopUpdateCheck(async () => {
-        await autoUpdater.downloadUpdate()
-      })
-      logger.log("main", "updater.download.requested")
-      return { ok: true as const }
+      const status = await getDesktopUpdateStatus()
+      if (!status.latest || !status.hasUpdate) {
+        logger.log("main", "updater.download.skipped", status)
+        return { ok: true as const }
+      }
+      return installRuntimeUpdate(status.latest, event.sender)
     } catch (error) {
       const response = { ok: false as const, error: error instanceof Error ? error.message : String(error) }
       logger.log("main", "updater.download.error", response)
       return response
     }
   })
-  // Quit and apply the downloaded installer. The renderer decides when —
-  // we never auto-restart the user out from under their work.
   ipcMain.handle("updater:install", () => {
     if (mockUpdaterMode()) {
       logger.log("main", "updater.install.mock")
       return { ok: true as const, mocked: true }
     }
     logger.log("main", "updater.install.requested")
-    setImmediate(() => autoUpdater.quitAndInstall())
     return { ok: true as const }
   })
 }
@@ -1357,44 +1561,8 @@ function setupAutoUpdater() {
     })
     return
   }
-  autoUpdater.autoDownload = true
-  autoUpdater.autoInstallOnAppQuit = true
-  autoUpdater.allowPrerelease = false
-
-  // Broadcast updater events to every open window so each surface
-  // (selector card, instance window banners) can render its own state.
-  const broadcastUpdater = (channel: string, payload?: unknown) => {
-    for (const window of BrowserWindow.getAllWindows()) {
-      if (window.isDestroyed()) continue
-      window.webContents.send(channel, payload)
-    }
-  }
-  autoUpdater.on("update-available", (info: UpdateInfo) => {
-    logger.log("main", "updater.update-available", info)
-    broadcastUpdater("updater:update-available", info)
-  })
-  autoUpdater.on("update-not-available", (info: UpdateInfo) => {
-    logger.log("main", "updater.update-not-available", info)
-    broadcastUpdater("updater:update-not-available", info)
-  })
-  autoUpdater.on("download-progress", (progress: ProgressInfo) => {
-    logger.log("main", "updater.download-progress", progress)
-    broadcastUpdater("updater:download-progress", progress)
-  })
-  autoUpdater.on("update-downloaded", (info: UpdateInfo) => {
-    logger.log("main", "updater.update-downloaded", info)
-    broadcastUpdater("updater:update-downloaded", info)
-    // No native dialog — the renderer owns the install UX. We still apply
-    // on quit via `autoInstallOnAppQuit` so the update is never lost.
-  })
-  autoUpdater.on("error", (error) => {
-    logger.log("main", "updater.error", error)
-    broadcastUpdater("updater:error", error.message ?? String(error))
-  })
-
-  // Check on launch and then once per hour.
-  setTimeout(() => void runDesktopUpdateCheck(() => autoUpdater.checkForUpdatesAndNotify()).catch(() => undefined), 5_000)
-  setInterval(() => void runDesktopUpdateCheck(() => autoUpdater.checkForUpdatesAndNotify()).catch(() => undefined), 60 * 60 * 1000)
+  setTimeout(() => void runRuntimeUpdateCheck().catch(() => undefined), 5_000)
+  setInterval(() => void runRuntimeUpdateCheck().catch(() => undefined), 60 * 60 * 1000)
 }
 
 // Single-instance lock so opening another shortcut focuses the existing window.
@@ -1434,10 +1602,11 @@ if (!gotLock) {
     event.preventDefault()
   })
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     logger.log("main", "ready")
     applyRuntimeIcon()
     applyRuntimeMetadata()
+    await loadInstanceState()
     setupIpc()
     setupAutoUpdater()
     void uiHost.cleanup()
@@ -1463,7 +1632,7 @@ if (!gotLock) {
   // Tear down any local Codeplane processes the desktop spawned so they
   // don't outlive the app and squat on their state directories.
   app.on("before-quit", () => {
-    logger.log("main", "before-quit.local-stop", { count: store.get("instances", []).filter((i) => i.local).length })
+    logger.log("main", "before-quit.local-stop", { count: savedInstances().filter((i) => i.local).length })
     void localManager.stopAll()
   })
 }

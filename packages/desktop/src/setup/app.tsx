@@ -4,6 +4,7 @@ import { TextField } from "@codeplane-ai/ui/text-field"
 import { Icon } from "@codeplane-ai/ui/icon"
 import { IconButton } from "@codeplane-ai/ui/icon-button"
 import { Progress } from "@codeplane-ai/ui/progress"
+import { Switch } from "@codeplane-ai/ui/switch"
 import { Mark } from "@codeplane-ai/ui/logo"
 import { showToast } from "@codeplane-ai/ui/toast"
 import type {
@@ -78,6 +79,54 @@ function formatHeaders(headers: Record<string, string> | undefined): string {
     .join("\n")
 }
 
+type NotificationSettingsState = {
+  agent: boolean
+  permissions: boolean
+  errors: boolean
+}
+
+const defaultNotificationSettings: NotificationSettingsState = {
+  agent: true,
+  permissions: true,
+  errors: false,
+}
+
+function readStoredSettings() {
+  const raw = api.storage.getItem(undefined, "settings.v3")
+  if (!raw) return {}
+  try {
+    const parsed = JSON.parse(raw)
+    if (parsed && typeof parsed === "object") return parsed as Record<string, unknown>
+  } catch (error) {
+    logSetup("settings.read-error", { error })
+  }
+  return {}
+}
+
+function readNotificationSettings(): NotificationSettingsState {
+  const notifications = readStoredSettings().notifications as Record<string, unknown> | undefined
+  if (!notifications || typeof notifications !== "object") return defaultNotificationSettings
+  return {
+    agent: typeof notifications.agent === "boolean" ? notifications.agent : defaultNotificationSettings.agent,
+    permissions:
+      typeof notifications.permissions === "boolean"
+        ? notifications.permissions
+        : defaultNotificationSettings.permissions,
+    errors: typeof notifications.errors === "boolean" ? notifications.errors : defaultNotificationSettings.errors,
+  }
+}
+
+function writeNotificationSettings(settings: NotificationSettingsState) {
+  api.storage.setItem(
+    undefined,
+    "settings.v3",
+    JSON.stringify({
+      ...readStoredSettings(),
+      notifications: settings,
+    }),
+  )
+}
+
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 const InstanceIcon: Component<{ instance: SavedInstance; size?: "tile" | "row" }> = (props) => {
@@ -130,21 +179,21 @@ type DesktopUpdateState =
       total?: number
     }
   | { kind: "downloaded"; current: string; latest: string }
-  | { kind: "installing"; current: string; latest: string }
   | { kind: "error"; current: string; message: string }
 
-// The desktop app updates itself on a separate release line
-// (`vX.Y.Z-desktop`) from the connected server. This card is the *only*
-// surface that drives the desktop-shell update lifecycle — server
-// upgrades happen inside the loaded instance UI through the SDK.
+// This card manages the shared local Codeplane runtime used by desktop
+// and TUI local instances. It checks npm for new versions, installs the
+// matching platform package into the shared Codeplane home, and records
+// that version as the preferred local runtime.
 const DesktopUpdateCard: Component = () => {
   const [state, setState] = createSignal<DesktopUpdateState>({ kind: "loading" })
   const [notes, setNotes] = createSignal<{ version: string; body: string | null; url: string | null } | null>(null)
   const [notesOpen, setNotesOpen] = createSignal(false)
 
   const currentVersion = () => {
-    const s = state()
-    return s.kind === "loading" ? api.version : s.current
+    const next = state()
+    if (next.kind === "loading") return "unknown"
+    return next.current
   }
 
   const loadNotes = async (version: string) => {
@@ -219,38 +268,18 @@ const DesktopUpdateCard: Component = () => {
     }
   }
 
-  const onInstall = async () => {
-    const s = state()
-    if (s.kind !== "downloaded") return
-    setState({ kind: "installing", current: s.current, latest: s.latest })
-    logSetup("desktop-update.install")
-    try {
-      await api.desktopUpdater.install()
-    } catch (error) {
-      logSetup("desktop-update.install-error", { error })
-      setState({
-        kind: "error",
-        current: s.current,
-        message: error instanceof Error ? error.message : String(error),
-      })
-    }
-  }
-
   const onOpenNotesUrl = async () => {
     const url = notes()?.url
     if (url) await api.auth.openExternal(url)
   }
 
-  // Each open window receives every updater event. Subscribing here keeps
-  // the inline UI in lockstep with the auto-update timer running in the
-  // main process even when the user never clicked "Check".
   const offAvailable = api.desktopUpdater.onUpdateAvailable((info) => {
     logSetup("desktop-update.event.available", info)
     setState((prev) => {
-      const current = prev.kind === "loading" ? api.version : prev.current
+      const current = prev.kind === "loading" ? info.version : prev.current
       const latest =
         info.version || (prev.kind !== "loading" && "latest" in prev && prev.latest ? prev.latest : current)
-      return { kind: "downloading", current, latest, percent: 0 }
+      return { kind: "available", current, latest }
     })
     if (info.version) void loadNotes(info.version)
   })
@@ -279,11 +308,10 @@ const DesktopUpdateCard: Component = () => {
   })
   const offDownloaded = api.desktopUpdater.onUpdateDownloaded((info) => {
     logSetup("desktop-update.event.downloaded", info)
-    setState((prev) => {
-      const current = prev.kind === "loading" ? api.version : prev.current
-      const latest =
-        info.version || (prev.kind !== "loading" && "latest" in prev && prev.latest ? prev.latest : current)
-      return { kind: "downloaded", current, latest }
+    setState({
+      kind: "downloaded",
+      current: info.version,
+      latest: info.version,
     })
     if (info.version) void loadNotes(info.version)
   })
@@ -312,7 +340,6 @@ const DesktopUpdateCard: Component = () => {
       case "available":
       case "downloading":
       case "checking":
-      case "installing":
         return "info"
       case "downloaded":
         return "success"
@@ -334,11 +361,9 @@ const DesktopUpdateCard: Component = () => {
       case "available":
         return "Update available"
       case "downloading":
-        return `Downloading… ${s.percent}%`
+        return `Installing… ${s.percent}%`
       case "downloaded":
-        return "Ready to install"
-      case "installing":
-        return "Restarting…"
+        return "Installed"
       case "error":
         return "Update error"
       case "idle":
@@ -351,25 +376,23 @@ const DesktopUpdateCard: Component = () => {
     const s = state()
     switch (s.kind) {
       case "loading":
-        return "Loading desktop version…"
+        return "Loading local runtime version…"
       case "checking":
-        return `Checking for updates… (current ${currentVersion()})`
+        return `Checking npm for updates… (current ${currentVersion()})`
       case "available":
-        return `Version ${s.latest} is available. You're on ${s.current}.`
+        return `Version ${s.latest} is available. Local runtime is on ${s.current}.`
       case "downloading": {
         const bytes =
           s.transferred && s.total ? ` · ${formatBytes(s.transferred)} of ${formatBytes(s.total)}` : ""
-        return `Downloading desktop ${s.latest}${bytes}`
+        return `Installing Codeplane ${s.latest} from npm${bytes}`
       }
       case "downloaded":
-        return `Desktop ${s.latest} is downloaded. Restart the app to apply.`
-      case "installing":
-        return "Restarting Codeplane Desktop…"
+        return `Codeplane ${s.latest} is installed. New local instances use it immediately.`
       case "error":
-        return `Couldn't update: ${s.message}`
+        return `Couldn't update local runtime: ${s.message}`
       case "idle":
       default:
-        return `You're on Desktop ${currentVersion()} — separate from your remote instance.`
+        return `Local runtime ${currentVersion()} is installed. Desktop shell version: ${api.version}.`
     }
   }
 
@@ -401,7 +424,7 @@ const DesktopUpdateCard: Component = () => {
         </div>
         <div class="flex min-w-0 flex-1 flex-col gap-0.5">
           <div class="flex items-center gap-2">
-            <span class="text-[13px] font-medium text-text-strong">Desktop app</span>
+            <span class="text-[13px] font-medium text-text-strong">Local runtime</span>
             <span
               class="rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide"
               classList={{
@@ -427,7 +450,7 @@ const DesktopUpdateCard: Component = () => {
           return (
             <div class="px-1">
               <Progress value={s.percent} maxValue={100} hideLabel>
-                Downloading desktop update
+                Installing runtime update
               </Progress>
             </div>
           )
@@ -478,28 +501,17 @@ const DesktopUpdateCard: Component = () => {
             data-desktop-action="desktop-update-download"
             onClick={() => void onDownload()}
           >
-            Download
+            Install update
           </Button>
         </Show>
         <Show when={state().kind === "downloading"}>
           <Button variant="primary" size="small" disabled data-desktop-action="desktop-update-downloading">
-            Downloading…
+            Installing…
           </Button>
         </Show>
         <Show when={state().kind === "downloaded"}>
-          <Button
-            variant="primary"
-            size="small"
-            icon="check"
-            data-desktop-action="desktop-update-install"
-            onClick={() => void onInstall()}
-          >
-            Restart & install
-          </Button>
-        </Show>
-        <Show when={state().kind === "installing"}>
-          <Button variant="primary" size="small" disabled data-desktop-action="desktop-update-installing">
-            Restarting…
+          <Button variant="primary" size="small" icon="check" disabled data-desktop-action="desktop-update-installed">
+            Installed
           </Button>
         </Show>
         <Show when={notes()?.url && (state().kind === "available" || state().kind === "downloaded")}>
@@ -512,6 +524,120 @@ const DesktopUpdateCard: Component = () => {
             View on GitHub
           </Button>
         </Show>
+      </div>
+    </section>
+  )
+}
+
+const NotificationSettingsCard: Component = () => {
+  const [settings, setSettings] = createSignal<NotificationSettingsState>(readNotificationSettings())
+  const [supported, setSupported] = createSignal<boolean>()
+
+  onMount(() => {
+    void api.notifications.isSupported().then(setSupported).catch(() => setSupported(false))
+  })
+
+  const setNotification = (key: keyof NotificationSettingsState, value: boolean) => {
+    const next = { ...settings(), [key]: value }
+    logSetup("notifications.settings", { key, value })
+    setSettings(next)
+    writeNotificationSettings(next)
+  }
+
+  const sendTest = async () => {
+    const shown = await api.notifications
+      .notify({
+        title: "Codeplane",
+        description: "Desktop notifications are active. Agent, permission, and error alerts will appear here.",
+      })
+      .catch(() => false)
+    if (shown) {
+      showToast({
+        variant: "success",
+        icon: "check",
+        title: "Test notification sent",
+        description: "If Codeplane is allowed in your OS notification center, you should see it now.",
+      })
+      return
+    }
+    showToast({
+      variant: "error",
+      icon: "warning",
+      title: "Notifications unavailable",
+      description: "Allow Codeplane in your OS notification settings, then try again.",
+    })
+  }
+
+  const NotificationRow: Component<{
+    action: string
+    checked: boolean
+    description: string
+    label: string
+    onChange: (value: boolean) => void
+  }> = (props) => (
+    <div class="flex items-start justify-between gap-4 border-t border-border-weak-base py-3 first:border-t-0 first:pt-0 last:pb-0">
+      <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span class="text-[13px] font-medium text-text-strong">{props.label}</span>
+        <span class="text-[12px] leading-relaxed text-text-weak">{props.description}</span>
+      </div>
+      <div data-desktop-action={props.action}>
+        <Switch checked={props.checked} onChange={props.onChange} hideLabel>
+          {props.label}
+        </Switch>
+      </div>
+    </div>
+  )
+
+  return (
+    <section class="mt-8" data-desktop-section="notifications">
+      <span class="text-[11px] font-medium uppercase tracking-[0.06em] text-text-weak">Notifications</span>
+      <div class="mt-2 flex flex-col gap-1 border-t border-border-weak-base pt-4">
+        <div class="flex flex-col gap-1">
+          <span class="text-[14px] font-semibold text-text-strong">Native desktop notifications</span>
+          <span class="text-[12px] leading-relaxed text-text-weak">
+            Use your OS notification center for background agent completions, permission prompts, and runtime errors.
+          </span>
+          <span class="text-[12px] text-text-weak" data-desktop-notifications-supported={String(!!supported())}>
+            {supported() === false
+              ? "Native notifications are unavailable on this machine."
+              : "These toggles use the same notification preferences as the web app on this device."}
+          </span>
+        </div>
+
+        <div class="mt-3 flex flex-col">
+          <NotificationRow
+            action="notifications-agent"
+            checked={settings().agent}
+            label="Agent completions"
+            description="Notify when a background turn finishes or an agent asks a follow-up question."
+            onChange={(value) => setNotification("agent", value)}
+          />
+          <NotificationRow
+            action="notifications-permissions"
+            checked={settings().permissions}
+            label="Permissions"
+            description="Notify when Codeplane needs approval for a command, file action, or other gated operation."
+            onChange={(value) => setNotification("permissions", value)}
+          />
+          <NotificationRow
+            action="notifications-errors"
+            checked={settings().errors}
+            label="Errors"
+            description="Notify when a session fails in the background and needs attention."
+            onChange={(value) => setNotification("errors", value)}
+          />
+        </div>
+
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            size="small"
+            data-desktop-action="notifications-test"
+            onClick={() => void sendTest()}
+          >
+            Send test notification
+          </Button>
+        </div>
       </div>
     </section>
   )
@@ -642,6 +768,8 @@ const SettingsPanel: Component = () => {
           </div>
         </div>
       </section>
+
+      <NotificationSettingsCard />
 
       <section class="mt-8" data-desktop-section="updates">
         <span class="text-[11px] font-medium uppercase tracking-[0.06em] text-text-weak">Updates</span>
@@ -1287,7 +1415,7 @@ const LocalInstanceForm: Component<{
     const detected = await api.local.target()
     setTarget(detected)
     const status = await api.local.status(props.editing?.local?.binaryVersion || detected.defaultVersion)
-    setInstalled(status.installed)
+    setInstalled(status.installed && status.cliInstalled !== false)
     logSetup("local.target", { ...detected, installed: status.installed })
   })
 
@@ -1339,9 +1467,9 @@ const LocalInstanceForm: Component<{
         return
       }
 
-      // Step 1: ensure the binary is installed locally.
+      // Step 1: ensure the shared local runtime and managed CLI are installed.
       let status = await api.local.status(desiredVersion)
-      if (!status.installed) {
+      if (!status.installed || status.cliInstalled === false) {
         setInstalling({
           phase: "detect",
           message: `Preparing local Codeplane ${desiredVersion}…`,
@@ -1525,7 +1653,7 @@ const LocalInstanceForm: Component<{
                 {detected().os} / {detected().arch}
               </span>
               <span class="text-[12px] text-text-weak">
-                Version {props.editing?.local?.binaryVersion || detected().defaultVersion} · {installed() ? "binary installed" : "binary will be downloaded"}
+                Version {props.editing?.local?.binaryVersion || detected().defaultVersion} · {installed() ? "CLI ready" : "CLI will be installed"}
               </span>
             </div>
           )}

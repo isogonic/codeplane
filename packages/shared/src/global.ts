@@ -1,12 +1,11 @@
-import path from "path"
-import { xdgData, xdgCache, xdgConfig, xdgState } from "xdg-basedir"
-import os from "os"
 import { Context, Effect, Layer } from "effect"
+import { CodeplaneHome } from "./home"
 
 export namespace Global {
   export class Service extends Context.Service<Service, Interface>()("@codeplane/Global") {}
 
   export interface Interface {
+    readonly root: string
     readonly home: string
     readonly data: string
     readonly cache: string
@@ -19,23 +18,8 @@ export namespace Global {
   export const layer = Layer.effect(
     Service,
     Effect.gen(function* () {
-      const app = "codeplane"
-      const home = process.env.CODEPLANE_TEST_HOME ?? os.homedir()
-      const data = path.join(xdgData!, app)
-      const cache = path.join(xdgCache!, app)
-      const cfg = path.join(xdgConfig!, app)
-      const state = path.join(xdgState!, app)
-      const bin = path.join(cache, "bin")
-      const log = path.join(data, "log")
-
       return Service.of({
-        home,
-        data,
-        cache,
-        config: cfg,
-        state,
-        bin,
-        log,
+        ...CodeplaneHome.paths(),
       })
     }),
   )
