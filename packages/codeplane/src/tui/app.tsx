@@ -34,8 +34,10 @@ import {
   MetricRow,
   NotificationList,
   Panel,
+  PathInput,
   ProgressBar,
   RouteTabs,
+  SectionHeader,
   SessionList,
   StatusBar,
   TodoList,
@@ -77,10 +79,18 @@ type Focus =
 type DirectoryBrowser = {
   cwd: string
   home?: string
+  worktree?: string
+  // What the user has typed into the path input. May lag behind cwd while
+  // they're typing a path, so we keep them separate.
+  pathInput: string
+  // browse: arrow keys move through entries, ↵ enters dir.
+  // input: typing edits the path input directly, ↵ resolves it.
+  mode: "browse" | "input"
   entries: Array<{ path: string; type: "file" | "directory"; name: string }>
   selected: number
   loading: boolean
   history: string[]
+  recents?: string[]
 }
 type Opened = Awaited<ReturnType<InstanceService["open"]>>
 
@@ -340,21 +350,22 @@ export function App(props: AppProps) {
     })
   }
 
-  async function loadDirectory(target: string, options: { keep?: boolean } = {}) {
+  async function loadDirectory(target: string, options: { keep?: boolean; mode?: "browse" | "input" } = {}) {
     if (!opened) return
     const cwd = target === "" ? opened.path.directory : target
     setDirectory((current) => ({
       cwd,
       home: opened.path.home,
+      worktree: opened.path.worktree,
+      pathInput: current?.pathInput ?? cwd,
+      mode: options.mode ?? current?.mode ?? "browse",
       entries: current?.entries ?? [],
       selected: 0,
       loading: true,
       history: options.keep && current ? current.history : current?.history ?? [],
+      recents: current?.recents,
     }))
     try {
-      // We re-issue path.get pointed at `cwd` so the server can resolve aliases
-      // (~, relative paths) and tell us the absolute resolved directory before
-      // we list. file.list with a directory header lists relative to that dir.
       const pathResp = await opened.client.path.get({ directory: cwd })
       const resolved = pathResp.data?.directory ?? cwd
       const fileResp = await opened.client.file.list({ path: ".", directory: resolved })
@@ -372,10 +383,16 @@ export function App(props: AppProps) {
         setDirectory((current) => ({
           cwd: resolved,
           home: pathResp.data?.home ?? current?.home ?? opened.path.home,
+          worktree: pathResp.data?.worktree ?? current?.worktree ?? opened.path.worktree,
+          // When loading after a typed path, sync the input back to the
+          // resolved absolute path so the user can keep editing from there.
+          pathInput: resolved,
+          mode: options.mode ?? current?.mode ?? "browse",
           entries,
           selected: 0,
           loading: false,
           history: current?.history ?? [],
+          recents: current?.recents,
         }))
       })
     } catch (error) {
@@ -392,14 +409,25 @@ export function App(props: AppProps) {
       ...directory,
       history: [...directory.history, directory.cwd],
     })
-    await loadDirectory(targetPath, { keep: true })
+    await loadDirectory(targetPath, { keep: true, mode: "browse" })
   }
 
   async function goUpDirectory() {
     if (!directory) return
     const parent = directory.cwd.replace(/\/+$/, "").split("/").slice(0, -1).join("/") || "/"
     if (parent === directory.cwd) return
-    await loadDirectory(parent, { keep: true })
+    await loadDirectory(parent, { keep: true, mode: "browse" })
+  }
+
+  async function resolvePathInput() {
+    if (!directory || !opened) return
+    const raw = directory.pathInput.trim()
+    if (!raw) return
+    // Expand ~ before sending to the server.
+    const expanded = raw.startsWith("~")
+      ? `${directory.home ?? opened.path.home}${raw.slice(1)}`
+      : raw
+    await loadDirectory(expanded, { keep: true, mode: "browse" })
   }
 
   async function confirmDirectory() {
@@ -1196,15 +1224,54 @@ export function App(props: AppProps) {
 
       if (!opened) return
 
-      // Directory picker takes over keyboard input — full file browser.
+      // Directory picker takes over keyboard input — dual-mode browser.
       if (route === "app.directory" && directory) {
         if (key.escape) {
-          // Bail back to the instance list, leaving the directory picker
-          // available next time the user opens the same instance.
+          if (directory.mode === "input") {
+            // Back to browse rather than bail.
+            setDirectory({ ...directory, mode: "browse", pathInput: directory.cwd })
+            return
+          }
           setRoute("setup.list")
           setFocus("instances")
           return
         }
+
+        // Tab toggles between input and browse.
+        if (key.tab) {
+          setDirectory({
+            ...directory,
+            mode: directory.mode === "input" ? "browse" : "input",
+            pathInput: directory.cwd,
+          })
+          return
+        }
+
+        if (directory.mode === "input") {
+          if (key.return) {
+            void resolvePathInput().catch((error) =>
+              setMessage("error", error instanceof Error ? error.message : String(error)),
+            )
+            return
+          }
+          if (key.backspace) {
+            setDirectory({
+              ...directory,
+              pathInput: directory.pathInput.slice(0, -1),
+            })
+            return
+          }
+          if (editableInput(input, key)) {
+            setDirectory({
+              ...directory,
+              pathInput: directory.pathInput + input,
+            })
+            return
+          }
+          return
+        }
+
+        // browse mode
         if (key.upArrow) {
           setDirectory({
             ...directory,
@@ -1235,7 +1302,9 @@ export function App(props: AppProps) {
           )
           return
         }
-        if (input === "o" || (key.tab && key.return)) {
+        if (input === " " || input === "o") {
+          // space and o both confirm the current directory — space because
+          // most users instinctively reach for it on a list selection.
           void confirmDirectory().catch((error) =>
             setMessage("error", error instanceof Error ? error.message : String(error)),
           )
@@ -1243,10 +1312,23 @@ export function App(props: AppProps) {
         }
         if (input === "h") {
           if (directory.home) {
-            void loadDirectory(directory.home, { keep: true }).catch((error) =>
+            void loadDirectory(directory.home, { keep: true, mode: "browse" }).catch((error) =>
               setMessage("error", error instanceof Error ? error.message : String(error)),
             )
           }
+          return
+        }
+        if (input === "w") {
+          if (directory.worktree) {
+            void loadDirectory(directory.worktree, { keep: true, mode: "browse" }).catch((error) =>
+              setMessage("error", error instanceof Error ? error.message : String(error)),
+            )
+          }
+          return
+        }
+        if (input === "i") {
+          // Switch to input mode for typing a path directly.
+          setDirectory({ ...directory, mode: "input", pathInput: directory.cwd })
           return
         }
         if (input === "/") {
@@ -1779,102 +1861,146 @@ export function App(props: AppProps) {
           </Box>
         </Box>
       ) : route === "app.directory" ? (
-        <Box marginTop={1} flexDirection="column">
-          <Box paddingX={1}>
-            <Text color={theme.fgMuted}>Working directory</Text>
-          </Box>
-          <Box marginTop={0} paddingX={1}>
-            {directory ? (
-              <Breadcrumb path={directory.cwd} home={directory.home} />
-            ) : (
-              <Text color={theme.fgDim}>Loading…</Text>
-            )}
+        <Box marginTop={1} flexDirection="column" paddingX={1}>
+          <Box>
+            <Text color={theme.fgDim}>WHERE TO WORK</Text>
           </Box>
           <Box marginTop={1}>
-            <Panel
-              title="Browse"
-              subtitle={
-                directory
-                  ? `${directory.entries.filter((e) => e.type === "directory").length} dirs · ${directory.entries.filter((e) => e.type === "file").length} files`
-                  : undefined
-              }
-              active
-              grow={1}
-            >
-              {directory && directory.entries.length === 0 ? (
-                <Text color={theme.fgDim}>Empty directory.</Text>
-              ) : directory ? (
-                <Box flexDirection="column">
-                  {(() => {
-                    const rows = process.stdout.rows ?? 40
-                    const visibleCount = Math.max(8, Math.min(directory.entries.length, rows - 14))
-                    const half = Math.floor(visibleCount / 2)
-                    const start = Math.max(
-                      0,
-                      Math.min(
-                        directory.selected - half,
-                        Math.max(0, directory.entries.length - visibleCount),
-                      ),
-                    )
-                    const visible = directory.entries.slice(start, start + visibleCount)
-                    return (
-                      <>
-                        {start > 0 ? (
-                          <Text color={theme.fgDim}>↑ {start} more above</Text>
-                        ) : null}
-                        {visible.map((entry, index) => {
-                          const realIndex = start + index
-                          const selected = realIndex === directory.selected
-                          const isDir = entry.type === "directory"
-                          return (
-                            <Box key={entry.path}>
-                              <Text wrap="truncate-end">
-                                <Text color={selected ? theme.accent : theme.fgDim}>
-                                  {selected ? `${glyph.arrowRight} ` : "  "}
-                                </Text>
-                                <Text color={isDir ? theme.accent : theme.fgDim}>
-                                  {isDir ? "▸ " : "· "}
-                                </Text>
-                                <Text
-                                  color={
-                                    selected
-                                      ? theme.accent
-                                      : isDir
-                                        ? theme.fg
-                                        : theme.fgDim
-                                  }
-                                  bold={selected || isDir}
-                                >
-                                  {entry.name}
-                                </Text>
-                                {isDir ? <Text color={theme.fgDim}>/</Text> : null}
-                              </Text>
-                            </Box>
-                          )
-                        })}
-                        {start + visible.length < directory.entries.length ? (
-                          <Text color={theme.fgDim}>
-                            ↓ {directory.entries.length - start - visible.length} more below
-                          </Text>
-                        ) : null}
-                      </>
-                    )
-                  })()}
-                </Box>
-              ) : (
-                <Text color={theme.fgDim}>Loading directory…</Text>
-              )}
-            </Panel>
-          </Box>
-          <Box marginTop={1} paddingX={1}>
-            <Text color={theme.fgDim}>
-              <Text color={theme.accent}>↑↓</Text> navigate ·{" "}
-              <Text color={theme.accent}>↵</Text>/<Text color={theme.accent}>→</Text> enter dir ·{" "}
-              <Text color={theme.accent}>⌫</Text>/<Text color={theme.accent}>←</Text> up ·{" "}
-              <Text color={theme.accent}>h</Text> home ·{" "}
-              <Text color={theme.accent}>o</Text> open here ·{" "}
-              <Text color={theme.accent}>esc</Text> cancel
+            <Text color={theme.fg}>
+              Pick a working directory for{" "}
+              <Text bold color={theme.accent}>
+                {opened.instance.label ?? opened.live.url}
+              </Text>
+              .
             </Text>
+          </Box>
+
+          <Box marginTop={1}>
+            <PathInput
+              value={
+                directory?.mode === "input"
+                  ? directory.pathInput
+                  : directory
+                    ? (directory.home && directory.cwd.startsWith(directory.home)
+                        ? `~${directory.cwd.slice(directory.home.length)}`
+                        : directory.cwd)
+                    : opened.path.directory
+              }
+              active={directory?.mode === "input"}
+              loading={directory?.loading}
+              spinnerFrame={spinnerFrame}
+              hint={
+                directory?.mode === "input"
+                  ? "↵ resolve · tab back to browse · esc cancel"
+                  : "tab to type · i to type · / for commands"
+              }
+            />
+          </Box>
+
+          <Box marginTop={1} flexDirection="row">
+            <Text color={theme.fgDim}>here:</Text>
+            <Box marginLeft={1}>
+              {directory ? (
+                <Breadcrumb path={directory.cwd} home={directory.home} />
+              ) : (
+                <Text color={theme.fgDim}>loading…</Text>
+              )}
+            </Box>
+          </Box>
+
+          <Box marginTop={1}>
+            {directory && directory.entries.length === 0 ? (
+              <Text color={theme.fgDim}>empty directory</Text>
+            ) : directory ? (
+              <Box flexDirection="column">
+                {(() => {
+                  const rows = process.stdout.rows ?? 40
+                  const visibleCount = Math.max(8, Math.min(directory.entries.length, rows - 16))
+                  const half = Math.floor(visibleCount / 2)
+                  const start = Math.max(
+                    0,
+                    Math.min(
+                      directory.selected - half,
+                      Math.max(0, directory.entries.length - visibleCount),
+                    ),
+                  )
+                  const visible = directory.entries.slice(start, start + visibleCount)
+                  return (
+                    <>
+                      {start > 0 ? (
+                        <Text color={theme.fgDim}>
+                          {"  "}
+                          {glyph.arrowUp} {start} more above
+                        </Text>
+                      ) : null}
+                      {visible.map((entry, index) => {
+                        const realIndex = start + index
+                        const selected = realIndex === directory.selected
+                        const isDir = entry.type === "directory"
+                        const active = directory.mode === "browse"
+                        return (
+                          <Box key={entry.path}>
+                            <Text wrap="truncate-end">
+                              <Text color={selected && active ? theme.accent : theme.divider}>
+                                {selected && active ? "▍" : " "}
+                              </Text>
+                              <Text color={isDir ? theme.accent : theme.fgDim}>
+                                {isDir ? ` ${glyph.folder}  ` : ` ${glyph.file}  `}
+                              </Text>
+                              <Text
+                                color={
+                                  selected && active
+                                    ? theme.accent
+                                    : isDir
+                                      ? theme.fg
+                                      : theme.fgDim
+                                }
+                                bold={(selected && active) || isDir}
+                              >
+                                {entry.name}
+                              </Text>
+                              {isDir ? <Text color={theme.fgDim}>/</Text> : null}
+                            </Text>
+                          </Box>
+                        )
+                      })}
+                      {start + visible.length < directory.entries.length ? (
+                        <Text color={theme.fgDim}>
+                          {"  "}
+                          {glyph.arrowDown} {directory.entries.length - start - visible.length} more
+                          below
+                        </Text>
+                      ) : null}
+                    </>
+                  )
+                })()}
+              </Box>
+            ) : (
+              <Text color={theme.fgDim}>loading directory…</Text>
+            )}
+          </Box>
+
+          <Box marginTop={1}>
+            <StatusBar
+              hints={
+                directory?.mode === "input"
+                  ? [
+                      { keys: "↵", label: "resolve" },
+                      { keys: "tab", label: "browse" },
+                      { keys: "esc", label: "cancel" },
+                    ]
+                  : [
+                      { keys: "↑↓", label: "navigate" },
+                      { keys: "↵/→", label: "enter dir" },
+                      { keys: "←/⌫", label: "up" },
+                      { keys: "i", label: "type path" },
+                      { keys: "h", label: "home" },
+                      { keys: "w", label: "worktree" },
+                      { keys: "space/o", label: "open here" },
+                      { keys: "esc", label: "back" },
+                    ]
+              }
+            />
           </Box>
         </Box>
       ) : (

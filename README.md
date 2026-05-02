@@ -65,7 +65,7 @@ Pre-built desktop installers for the current release.
       <td>Apple Silicon</td>
       <td><code>.dmg</code></td>
       <td align="right">
-        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.8-desktop/codeplane-desktop-macos-apple-silicon.dmg">
+        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.9-desktop/codeplane-desktop-macos-apple-silicon.dmg">
           <img alt="Download for macOS Apple Silicon" src="https://img.shields.io/badge/Download-0a0a0a?style=for-the-badge&logo=apple&logoColor=white" />
         </a>
       </td>
@@ -75,7 +75,7 @@ Pre-built desktop installers for the current release.
       <td>Intel</td>
       <td><code>.dmg</code></td>
       <td align="right">
-        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.8-desktop/codeplane-desktop-macos-intel.dmg">
+        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.9-desktop/codeplane-desktop-macos-intel.dmg">
           <img alt="Download for macOS Intel" src="https://img.shields.io/badge/Download-0a0a0a?style=for-the-badge&logo=apple&logoColor=white" />
         </a>
       </td>
@@ -85,7 +85,7 @@ Pre-built desktop installers for the current release.
       <td>x64</td>
       <td><code>.exe</code></td>
       <td align="right">
-        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.8-desktop/codeplane-desktop-windows-x64.exe">
+        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.9-desktop/codeplane-desktop-windows-x64.exe">
           <img alt="Download for Windows" src="https://img.shields.io/badge/Download-0a0a0a?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDMuNDQ5TDkuNzUgMi4xVjExLjUxSDB6TTEwLjk0OSAxOS40NUwyMy45OTggMjEuOVYxMi43SDEwLjk0OXpNMCAxMi43VjIxLjJsOS43NSAxLjM1VjEyLjd6TTEwLjk0OSAyLjFWMTEuNDk1SDIzLjk5OFY0LjE5eiIvPjwvc3ZnPg==&logoColor=white" />
         </a>
       </td>
@@ -95,7 +95,7 @@ Pre-built desktop installers for the current release.
       <td>x64</td>
       <td><code>.AppImage</code></td>
       <td align="right">
-        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.8-desktop/codeplane-desktop-linux-x64.AppImage">
+        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.9-desktop/codeplane-desktop-linux-x64.AppImage">
           <img alt="Download for Linux" src="https://img.shields.io/badge/Download-0a0a0a?style=for-the-badge&logo=linux&logoColor=white" />
         </a>
       </td>
@@ -103,7 +103,7 @@ Pre-built desktop installers for the current release.
   </tbody>
 </table>
 
-<sub>Current desktop release: <a href="https://github.com/devinoldenburg/codeplane/releases/tag/v27.4.8-desktop"><strong>v27.4.8&#8209;desktop</strong></a> &nbsp;·&nbsp; <a href="https://github.com/devinoldenburg/codeplane/releases/tag/v27.4.8"><strong>v27.4.8 CLI</strong></a> &nbsp;·&nbsp; <a href="https://github.com/devinoldenburg/codeplane/releases">Browse all releases</a></sub>
+<sub>Current desktop release: <a href="https://github.com/devinoldenburg/codeplane/releases/tag/v27.4.9-desktop"><strong>v27.4.9&#8209;desktop</strong></a> &nbsp;·&nbsp; <a href="https://github.com/devinoldenburg/codeplane/releases/tag/v27.4.9"><strong>v27.4.9 CLI</strong></a> &nbsp;·&nbsp; <a href="https://github.com/devinoldenburg/codeplane/releases">Browse all releases</a></sub>
 
 > Desktop installers ship on the dedicated `vX.Y.Z-desktop` release line. If a brand-new build is still finishing, the release page above shows live status and any partial assets.
 

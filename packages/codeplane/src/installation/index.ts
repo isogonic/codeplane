@@ -20,7 +20,18 @@ import {
 
 const log = Log.create({ service: "installation" })
 
-export type Method = "curl" | "selfhosted" | "npm" | "yarn" | "pnpm" | "bun" | "brew" | "scoop" | "choco" | "unknown"
+export type Method =
+  | "curl"
+  | "selfhosted"
+  | "desktop"
+  | "npm"
+  | "yarn"
+  | "pnpm"
+  | "bun"
+  | "brew"
+  | "scoop"
+  | "choco"
+  | "unknown"
 
 export type ReleaseType = "patch" | "minor" | "major"
 
@@ -211,6 +222,10 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
 
       const methodImpl = Effect.fn("Installation.method")(function* () {
         if (process.env.CODEPLANE_UPGRADE_SCRIPT) return "selfhosted" as Method
+        // Desktop shell spawns the server with CODEPLANE_DESKTOP_MANAGED=1 to
+        // signal that updates flow through the desktop's electron-updater,
+        // not through any package manager visible to this process.
+        if (process.env.CODEPLANE_DESKTOP_MANAGED === "1") return "desktop" as Method
         if (process.execPath.includes(path.join(".codeplane", "bin"))) return "curl" as Method
         if (process.execPath.includes(path.join(".local", "bin"))) return "curl" as Method
         const exec = process.execPath.toLowerCase()
@@ -323,6 +338,16 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
             })
             break
           }
+          case "desktop":
+            // The desktop shell owns the update lifecycle (electron-updater).
+            // The in-instance UI hides the Update Now button for this method,
+            // so this branch only executes if a client invokes upgrade
+            // directly. Return a clear error rather than silently failing.
+            return yield* new UpgradeFailedError({
+              stderr:
+                "Updates for desktop-managed instances are handled by the Codeplane desktop app. " +
+                "Open the desktop app's Updates panel to install a new version.",
+            })
           case "npm":
             result = yield* run(["npm", "install", "-g", `${npmPackage}@${target}`])
             break

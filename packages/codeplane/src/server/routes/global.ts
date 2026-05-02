@@ -378,6 +378,16 @@ export const GlobalRoutes = lazy(() =>
                   method,
                 }
               }
+              if (method === "desktop") {
+                return {
+                  success: false as const,
+                  status: 400 as const,
+                  error:
+                    "Updates for desktop-managed instances are handled by the Codeplane desktop app. " +
+                    "Open the desktop app's Updates panel to install a new version.",
+                  method,
+                }
+              }
 
               const target = Installation.cleanVersion(body.target || (yield* svc.latest(method)))
               if (Installation.isDesktopReleaseVersion(target)) {

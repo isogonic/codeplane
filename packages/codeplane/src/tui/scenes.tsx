@@ -8,12 +8,14 @@ import {
   type ConversationPart,
   DiffView,
   type DiffLine,
-  FileList,
   Header,
   NotificationList,
   Panel,
+  PathInput,
   ProgressBar,
   RouteTabs,
+  Rule,
+  SectionHeader,
   SessionList,
   type SessionItem,
   StatusBar,
@@ -23,8 +25,6 @@ import {
 } from "./view"
 import { glyph, theme } from "./theme"
 
-// Sample data fixtures used by the render harness and could later seed
-// storybook-style scenes.
 const sampleSessions: SessionItem[] = [
   { id: "s1", title: "Add JWT auth to api", status: "busy", busyAttempt: 0 },
   { id: "s2", title: "Refactor session store", status: "idle", shared: true },
@@ -64,7 +64,7 @@ const sampleConversation: ConversationPart[] = [
     name: "read",
     status: "completed",
     title: "packages/api/server.ts",
-    output: ["import { auth } from \"@codeplane-ai/auth\"", "...", "app.use(auth.session())"],
+    output: ['import { auth } from "@codeplane-ai/auth"', "...", "app.use(auth.session())"],
   },
   {
     kind: "tool",
@@ -103,7 +103,7 @@ const sampleNotifications = [
   {
     id: "p1",
     title: "Run command: bun test",
-    subtitle: "Match patterns: bun test, bun run test:*",
+    subtitle: "patterns: bun test, bun run test:*",
     tone: "permission" as const,
   },
   {
@@ -114,34 +114,15 @@ const sampleNotifications = [
   },
 ]
 
-const sampleFiles = [
-  { path: "src", type: "directory" as const, rel: "src" },
-  { path: "src/server.ts", type: "file" as const, rel: "src/server.ts" },
-  { path: "src/auth.ts", type: "file" as const, rel: "src/auth.ts" },
-  { path: "src/middleware.ts", type: "file" as const, rel: "src/middleware.ts" },
-  { path: "test", type: "directory" as const, rel: "test" },
-]
-
-const sampleHints = [
-  { keys: "tab", label: "switch pane" },
-  { keys: "/", label: "command palette" },
-  { keys: "n", label: "new session" },
-  { keys: "?", label: "help" },
-  { keys: "q", label: "quit" },
-]
-
 const sampleRouteTabs = [
   { id: "home", label: "Home", key: "1" },
   { id: "session", label: "Session", key: "2", badge: 3 },
-  { id: "notifications", label: "Notifications", key: "3", badge: 2 },
-  { id: "settings", label: "Settings", key: "4" },
-  { id: "cron", label: "Cron", key: "5" },
+  { id: "notifications", label: "Inbox", key: "3", badge: 2 },
+  { id: "cron", label: "Cron", key: "4" },
+  { id: "settings", label: "Settings", key: "5" },
 ]
 
 function Frame(props: { rows: number; children: React.ReactNode }) {
-  // No fixed height. Height is set on the outer process when rendering live;
-  // for snapshots we let the content flow naturally to avoid Ink's box
-  // overflow collapsing rows.
   return (
     <Box flexDirection="column" width="100%">
       {props.children}
@@ -155,62 +136,272 @@ function SetupScene(props: { rows: number }) {
       <Header
         instance="setup"
         cwd="~/projects/opencode"
-        status={{ variant: "info", text: "Choose an instance to open" }}
+        status={{ variant: "info", text: "ready" }}
       />
-      <Box marginTop={1} flexGrow={1} gap={1}>
-        <Panel title="Instances" subtitle="5 saved" active grow={2}>
+      <Box marginTop={1} paddingX={1}>
+        <Text color={theme.fgDim}>SELECT A SERVER</Text>
+      </Box>
+      <Box marginTop={1} flexDirection="row" gap={2}>
+        <Box flexDirection="column" width={36} flexShrink={0}>
           <Box flexDirection="column">
             <Box>
-              <Text color={theme.accent}>{glyph.arrowRight} </Text>
-              <Text color={theme.accent} bold>local · workspace dev</Text>
+              <Text wrap="truncate-end">
+                <Text color={theme.accent}>▍ </Text>
+                <Text color={theme.success}>local </Text>
+                <Text color={theme.accent} bold>
+                  workspace dev
+                </Text>
+              </Text>
             </Box>
             <Box>
-              <Text color={theme.fgDim}>  </Text>
-              <Text color={theme.fgMuted}>remote · staging.codeplane.io</Text>
+              <Text wrap="truncate-end">
+                <Text color={theme.divider}>{"  "}</Text>
+                <Text color={theme.info}>remote </Text>
+                <Text color={theme.fgMuted}>staging.codeplane.io</Text>
+              </Text>
             </Box>
             <Box>
-              <Text color={theme.fgDim}>  </Text>
-              <Text color={theme.fgMuted}>remote · prod.codeplane.io</Text>
+              <Text wrap="truncate-end">
+                <Text color={theme.divider}>{"  "}</Text>
+                <Text color={theme.info}>remote </Text>
+                <Text color={theme.fgMuted}>prod.codeplane.io</Text>
+              </Text>
             </Box>
             <Box>
-              <Text color={theme.fgDim}>  </Text>
-              <Text color={theme.fgMuted}>local · ephemeral test</Text>
-            </Box>
-            <Box>
-              <Text color={theme.fgDim}>  </Text>
-              <Text color={theme.fgMuted}>remote · scratch box</Text>
-            </Box>
-          </Box>
-        </Panel>
-        <Panel title="Local Workspace" subtitle="codeplane v27.4.7" grow={3}>
-          <Box flexDirection="column">
-            <MetricRow label="Label" value="workspace dev" />
-            <MetricRow label="Binary" value="v27.4.7 (default)" />
-            <MetricRow label="URL" value="http://127.0.0.1:auto" tone="muted" />
-            <MetricRow label="Headers" value="0 configured" tone="muted" />
-            <MetricRow label="Status" value="ready" tone="success" />
-            <Box marginTop={1} flexDirection="column">
-              <Text color={theme.fgMuted}>Keys</Text>
-              <Text color={theme.fgDim}>
-                <Text color={theme.accent}>a</Text> add remote ·{" "}
-                <Text color={theme.accent}>l</Text> add local ·{" "}
-                <Text color={theme.accent}>e</Text> edit ·{" "}
-                <Text color={theme.accent}>d</Text> delete ·{" "}
-                <Text color={theme.accent}>↵</Text> open
+              <Text wrap="truncate-end">
+                <Text color={theme.divider}>{"  "}</Text>
+                <Text color={theme.success}>local </Text>
+                <Text color={theme.fgMuted}>ephemeral test</Text>
               </Text>
             </Box>
           </Box>
-        </Panel>
+        </Box>
+        <Box flexDirection="column" flexGrow={1}>
+          <Box>
+            <Text bold color={theme.accent}>
+              workspace dev
+            </Text>
+            <Text color={theme.fgDim}>{"   "}local · ready</Text>
+          </Box>
+          <Box marginTop={1} flexDirection="column">
+            <MetricRow label="binary" value="v27.4.7 (default)" />
+            <MetricRow label="url" value="http://127.0.0.1:auto" tone="muted" />
+            <MetricRow label="headers" value="0 configured" tone="muted" />
+            <MetricRow label="tls verify" value="enabled" tone="muted" />
+          </Box>
+          <Box marginTop={1}>
+            <Text color={theme.fgDim}>
+              <Text color={theme.accent}>↵</Text> open ·{" "}
+              <Text color={theme.accent}>e</Text> edit ·{" "}
+              <Text color={theme.accent}>d</Text> delete
+            </Text>
+          </Box>
+        </Box>
       </Box>
-      <Box marginTop={1}>
+      <Box marginTop={2}>
         <StatusBar
           hints={[
+            { keys: "↵", label: "open" },
             { keys: "a", label: "add remote" },
             { keys: "l", label: "add local" },
-            { keys: "↵", label: "open" },
+            { keys: "e", label: "edit" },
+            { keys: "d", label: "delete" },
             { keys: "q", label: "quit" },
           ]}
         />
+      </Box>
+    </Frame>
+  )
+}
+
+function DirectoryScene(props: { rows: number }) {
+  return (
+    <Frame rows={props.rows}>
+      <Header
+        instance="workspace dev"
+        cwd="~/projects/opencode"
+        status={{ variant: "success", text: "connected" }}
+      />
+      <Box marginTop={1} paddingX={1} flexDirection="column">
+        <Text color={theme.fgDim}>WHERE TO WORK</Text>
+        <Box marginTop={1}>
+          <Text>
+            Pick a working directory for{" "}
+            <Text bold color={theme.accent}>
+              workspace dev
+            </Text>
+            .
+          </Text>
+        </Box>
+        <Box marginTop={1}>
+          <PathInput
+            value="~/projects/opencode/packages"
+            active={false}
+            hint="tab to type · i to type · / for commands"
+          />
+        </Box>
+        <Box marginTop={1} flexDirection="row">
+          <Text color={theme.fgDim}>here:</Text>
+          <Box marginLeft={1}>
+            <Breadcrumb
+              path="/Users/dev/projects/opencode/packages"
+              home="/Users/dev"
+            />
+          </Box>
+        </Box>
+        <Box marginTop={1} flexDirection="column">
+          <Box>
+            <Text wrap="truncate-end">
+              <Text color={theme.accent}>▍</Text>
+              <Text color={theme.accent}>{`  ${glyph.folder}  `}</Text>
+              <Text color={theme.accent} bold>
+                codeplane
+              </Text>
+              <Text color={theme.fgDim}>/</Text>
+            </Text>
+          </Box>
+          <Box>
+            <Text wrap="truncate-end">
+              <Text color={theme.divider}>{" "}</Text>
+              <Text color={theme.accent}>{`  ${glyph.folder}  `}</Text>
+              <Text color={theme.fg} bold>
+                desktop
+              </Text>
+              <Text color={theme.fgDim}>/</Text>
+            </Text>
+          </Box>
+          <Box>
+            <Text wrap="truncate-end">
+              <Text color={theme.divider}>{" "}</Text>
+              <Text color={theme.accent}>{`  ${glyph.folder}  `}</Text>
+              <Text color={theme.fg} bold>
+                extensions
+              </Text>
+              <Text color={theme.fgDim}>/</Text>
+            </Text>
+          </Box>
+          <Box>
+            <Text wrap="truncate-end">
+              <Text color={theme.divider}>{" "}</Text>
+              <Text color={theme.accent}>{`  ${glyph.folder}  `}</Text>
+              <Text color={theme.fg} bold>
+                shared
+              </Text>
+              <Text color={theme.fgDim}>/</Text>
+            </Text>
+          </Box>
+          <Box>
+            <Text wrap="truncate-end">
+              <Text color={theme.divider}>{" "}</Text>
+              <Text color={theme.accent}>{`  ${glyph.folder}  `}</Text>
+              <Text color={theme.fg} bold>
+                web
+              </Text>
+              <Text color={theme.fgDim}>/</Text>
+            </Text>
+          </Box>
+          <Box>
+            <Text wrap="truncate-end">
+              <Text color={theme.divider}>{" "}</Text>
+              <Text color={theme.fgDim}>{`  ${glyph.file}  `}</Text>
+              <Text color={theme.fgDim}>package.json</Text>
+            </Text>
+          </Box>
+          <Box>
+            <Text wrap="truncate-end">
+              <Text color={theme.divider}>{" "}</Text>
+              <Text color={theme.fgDim}>{`  ${glyph.file}  `}</Text>
+              <Text color={theme.fgDim}>README.md</Text>
+            </Text>
+          </Box>
+          <Box>
+            <Text wrap="truncate-end">
+              <Text color={theme.divider}>{" "}</Text>
+              <Text color={theme.fgDim}>{`  ${glyph.file}  `}</Text>
+              <Text color={theme.fgDim}>tsconfig.json</Text>
+            </Text>
+          </Box>
+        </Box>
+        <Box marginTop={2}>
+          <StatusBar
+            hints={[
+              { keys: "↑↓", label: "navigate" },
+              { keys: "↵/→", label: "enter dir" },
+              { keys: "←/⌫", label: "up" },
+              { keys: "i", label: "type path" },
+              { keys: "h", label: "home" },
+              { keys: "w", label: "worktree" },
+              { keys: "space/o", label: "open here" },
+              { keys: "esc", label: "back" },
+            ]}
+          />
+        </Box>
+      </Box>
+    </Frame>
+  )
+}
+
+function DirectoryInputScene(props: { rows: number }) {
+  return (
+    <Frame rows={props.rows}>
+      <Header
+        instance="workspace dev"
+        cwd="~/projects/opencode"
+        status={{ variant: "success", text: "connected" }}
+      />
+      <Box marginTop={1} paddingX={1} flexDirection="column">
+        <Text color={theme.fgDim}>WHERE TO WORK</Text>
+        <Box marginTop={1}>
+          <Text>
+            Pick a working directory for{" "}
+            <Text bold color={theme.accent}>
+              workspace dev
+            </Text>
+            .
+          </Text>
+        </Box>
+        <Box marginTop={1}>
+          <PathInput
+            value="~/projects/opencode/packages/codeplane/src"
+            active
+            hint="↵ resolve · tab back to browse · esc cancel"
+          />
+        </Box>
+        <Box marginTop={1} flexDirection="row">
+          <Text color={theme.fgDim}>here:</Text>
+          <Box marginLeft={1}>
+            <Breadcrumb
+              path="/Users/dev/projects/opencode/packages"
+              home="/Users/dev"
+            />
+          </Box>
+        </Box>
+        <Box marginTop={1} flexDirection="column">
+          <Box>
+            <Text color={theme.divider}>{" "}</Text>
+            <Text color={theme.fgDim}>{`  ${glyph.folder}  `}</Text>
+            <Text color={theme.fgMuted}>codeplane/</Text>
+          </Box>
+          <Box>
+            <Text color={theme.divider}>{" "}</Text>
+            <Text color={theme.fgDim}>{`  ${glyph.folder}  `}</Text>
+            <Text color={theme.fgMuted}>desktop/</Text>
+          </Box>
+          <Box>
+            <Text color={theme.divider}>{" "}</Text>
+            <Text color={theme.fgDim}>{`  ${glyph.folder}  `}</Text>
+            <Text color={theme.fgMuted}>shared/</Text>
+          </Box>
+        </Box>
+        <Box marginTop={2}>
+          <StatusBar
+            hints={[
+              { keys: "↵", label: "resolve" },
+              { keys: "tab", label: "browse" },
+              { keys: "esc", label: "cancel" },
+            ]}
+          />
+        </Box>
       </Box>
     </Frame>
   )
@@ -222,22 +413,23 @@ function ConversationScene(props: { rows: number }) {
       <Header
         instance="workspace dev"
         branch="main"
-        cwd="~/projects/opencode"
+        cwd="~/projects/opencode/packages/codeplane"
         busy
         spinnerFrame={glyph.spinnerFrames[2]}
-        status={{ variant: "success", text: "connected" }}
+        status={{ variant: "success", text: "ready" }}
       />
       <Box marginTop={1}>
         <RouteTabs tabs={sampleRouteTabs} active="session" />
       </Box>
-      <Box marginTop={1} alignItems="flex-start" gap={1}>
-        <Box flexDirection="column" flexGrow={1}>
-          <Panel title="Conversation" subtitle="Add JWT auth to api" active>
-            <Conversation parts={sampleConversation} spinnerFrame={glyph.spinnerFrames[2]} />
-          </Panel>
-        </Box>
+      <Box marginTop={1} paddingX={1}>
+        <Text color={theme.fgDim}>{"Add JWT auth to api"}</Text>
+        <Text color={theme.fgDim}>{"   ·   "}</Text>
+        <Text color={theme.fgMuted}>{"5 messages · 3 tools"}</Text>
       </Box>
-      <Box marginTop={1} flexDirection="column">
+      <Box marginTop={1} paddingX={1}>
+        <Conversation parts={sampleConversation} spinnerFrame={glyph.spinnerFrames[2]} />
+      </Box>
+      <Box marginTop={1} paddingX={1} flexDirection="column">
         <Composer
           value="Now wire the middleware into the protected routes"
           placeholder="Message Add JWT auth to api"
@@ -251,7 +443,7 @@ function ConversationScene(props: { rows: number }) {
               { keys: "/", label: "commands" },
               { keys: "s", label: "sidebar" },
               { keys: "d", label: "directory" },
-              { keys: "n", label: "new session" },
+              { keys: "n", label: "new" },
               { keys: "q", label: "quit" },
             ]}
           />
@@ -267,38 +459,50 @@ function ConversationWithSidebarScene(props: { rows: number }) {
       <Header
         instance="workspace dev"
         branch="main"
-        cwd="~/projects/opencode"
+        cwd="~/projects/opencode/packages/codeplane"
         busy
         spinnerFrame={glyph.spinnerFrames[2]}
-        status={{ variant: "success", text: "connected" }}
+        status={{ variant: "success", text: "ready" }}
       />
       <Box marginTop={1}>
         <RouteTabs tabs={sampleRouteTabs} active="session" />
       </Box>
-      <Box marginTop={1} alignItems="flex-start" gap={1}>
-        <Box flexDirection="column" width={30} flexShrink={0} gap={1}>
-          <Panel title="Sessions" subtitle="5" active>
+      <Box marginTop={1} alignItems="flex-start" gap={2}>
+        <Box flexDirection="column" width={32} flexShrink={0}>
+          <SectionHeader label="sessions" meta="5" />
+          <Box paddingX={1}>
             <SessionList
               sessions={sampleSessions}
               selectedID="s1"
               active
               spinnerFrame={glyph.spinnerFrames[2]}
             />
-          </Panel>
-          <Panel title="Tasks" subtitle="2/5 done">
-            <TodoList todos={sampleTodos} limit={6} />
-          </Panel>
-          <Panel title="Diff" subtitle="2 files · +12/-3">
-            <DiffView lines={sampleDiff} limit={6} />
-          </Panel>
+          </Box>
+          <Box marginTop={1}>
+            <SectionHeader label="tasks" meta="2/5 done" />
+          </Box>
+          <Box paddingX={1}>
+            <TodoList todos={sampleTodos} limit={5} />
+          </Box>
+          <Box marginTop={1}>
+            <SectionHeader label="diff" meta="2 files · +12/-3" />
+          </Box>
+          <Box paddingX={1}>
+            <DiffView lines={sampleDiff} limit={5} />
+          </Box>
         </Box>
         <Box flexDirection="column" flexGrow={1}>
-          <Panel title="Conversation" subtitle="Add JWT auth to api">
+          <Box paddingX={1}>
+            <Text color={theme.fgDim}>{"Add JWT auth to api"}</Text>
+            <Text color={theme.fgDim}>{"   ·   "}</Text>
+            <Text color={theme.fgMuted}>{"5 messages · 3 tools"}</Text>
+          </Box>
+          <Box marginTop={1} paddingX={1}>
             <Conversation parts={sampleConversation} spinnerFrame={glyph.spinnerFrames[2]} />
-          </Panel>
+          </Box>
         </Box>
       </Box>
-      <Box marginTop={1} flexDirection="column">
+      <Box marginTop={1} paddingX={1} flexDirection="column">
         <Composer
           value="Now wire the middleware into the protected routes"
           placeholder="Message Add JWT auth to api"
@@ -321,109 +525,6 @@ function ConversationWithSidebarScene(props: { rows: number }) {
   )
 }
 
-function DirectoryScene(props: { rows: number }) {
-  return (
-    <Frame rows={props.rows}>
-      <Header
-        instance="workspace dev"
-        cwd="~/projects/opencode"
-        status={{ variant: "info", text: "Choose a directory" }}
-      />
-      <Box marginTop={1} paddingX={1}>
-        <Text color={theme.fgMuted}>Working directory</Text>
-      </Box>
-      <Box paddingX={1}>
-        <Breadcrumb path="/Users/dev/projects/opencode/packages" home="/Users/dev" />
-      </Box>
-      <Box marginTop={1}>
-        <Panel title="Browse" subtitle="9 dirs · 4 files" active grow={1}>
-          <Box flexDirection="column">
-            <Box>
-              <Text wrap="truncate-end">
-                <Text color={theme.accent}>{glyph.arrowRight} </Text>
-                <Text color={theme.accent}>▸ </Text>
-                <Text color={theme.accent} bold>codeplane</Text>
-                <Text color={theme.fgDim}>/</Text>
-              </Text>
-            </Box>
-            <Box>
-              <Text wrap="truncate-end">
-                <Text color={theme.fgDim}>  </Text>
-                <Text color={theme.accent}>▸ </Text>
-                <Text color={theme.fg} bold>desktop</Text>
-                <Text color={theme.fgDim}>/</Text>
-              </Text>
-            </Box>
-            <Box>
-              <Text wrap="truncate-end">
-                <Text color={theme.fgDim}>  </Text>
-                <Text color={theme.accent}>▸ </Text>
-                <Text color={theme.fg} bold>extensions</Text>
-                <Text color={theme.fgDim}>/</Text>
-              </Text>
-            </Box>
-            <Box>
-              <Text wrap="truncate-end">
-                <Text color={theme.fgDim}>  </Text>
-                <Text color={theme.accent}>▸ </Text>
-                <Text color={theme.fg} bold>plugin</Text>
-                <Text color={theme.fgDim}>/</Text>
-              </Text>
-            </Box>
-            <Box>
-              <Text wrap="truncate-end">
-                <Text color={theme.fgDim}>  </Text>
-                <Text color={theme.accent}>▸ </Text>
-                <Text color={theme.fg} bold>shared</Text>
-                <Text color={theme.fgDim}>/</Text>
-              </Text>
-            </Box>
-            <Box>
-              <Text wrap="truncate-end">
-                <Text color={theme.fgDim}>  </Text>
-                <Text color={theme.accent}>▸ </Text>
-                <Text color={theme.fg} bold>web</Text>
-                <Text color={theme.fgDim}>/</Text>
-              </Text>
-            </Box>
-            <Box>
-              <Text wrap="truncate-end">
-                <Text color={theme.fgDim}>  </Text>
-                <Text color={theme.fgDim}>· </Text>
-                <Text color={theme.fgDim}>package.json</Text>
-              </Text>
-            </Box>
-            <Box>
-              <Text wrap="truncate-end">
-                <Text color={theme.fgDim}>  </Text>
-                <Text color={theme.fgDim}>· </Text>
-                <Text color={theme.fgDim}>README.md</Text>
-              </Text>
-            </Box>
-            <Box>
-              <Text wrap="truncate-end">
-                <Text color={theme.fgDim}>  </Text>
-                <Text color={theme.fgDim}>· </Text>
-                <Text color={theme.fgDim}>tsconfig.json</Text>
-              </Text>
-            </Box>
-          </Box>
-        </Panel>
-      </Box>
-      <Box marginTop={1} paddingX={1}>
-        <Text color={theme.fgDim}>
-          <Text color={theme.accent}>↑↓</Text> navigate ·{" "}
-          <Text color={theme.accent}>↵</Text>/<Text color={theme.accent}>→</Text> enter dir ·{" "}
-          <Text color={theme.accent}>⌫</Text>/<Text color={theme.accent}>←</Text> up ·{" "}
-          <Text color={theme.accent}>h</Text> home ·{" "}
-          <Text color={theme.accent}>o</Text> open here ·{" "}
-          <Text color={theme.accent}>esc</Text> cancel
-        </Text>
-      </Box>
-    </Frame>
-  )
-}
-
 function PaletteScene(props: { rows: number }) {
   return (
     <Frame rows={props.rows}>
@@ -431,26 +532,24 @@ function PaletteScene(props: { rows: number }) {
         instance="workspace dev"
         branch="main"
         cwd="~/projects/opencode"
-        status={{ variant: "info", text: "Searching commands" }}
+        status={{ variant: "info", text: "searching" }}
       />
       <Box marginTop={1}>
         <RouteTabs tabs={sampleRouteTabs} active="session" />
       </Box>
-      <Box marginTop={1} flexGrow={1}>
-        <Panel title="Conversation" subtitle="Add JWT auth to api" grow={1}>
-          <Conversation parts={sampleConversation.slice(0, 3)} />
-        </Panel>
+      <Box marginTop={1} paddingX={1}>
+        <Conversation parts={sampleConversation.slice(0, 3)} />
       </Box>
-      <Box marginTop={1}>
+      <Box marginTop={1} paddingX={1}>
         <CommandPalette
           filter="sess"
           selection="new-session"
           options={[
-            { label: "Create Session", value: "new-session", hint: "create a fresh chat" },
-            { label: "Archive Session", value: "archive", hint: "soft delete current" },
-            { label: "Share Session", value: "share", hint: "publish a share link" },
-            { label: "Revert To Latest Assistant Output", value: "revert", hint: "rewind one turn" },
-            { label: "Open Notifications", value: "notifications", hint: "permissions & questions" },
+            { label: "Create Session", value: "new-session", hint: "fresh chat" },
+            { label: "Archive Session", value: "archive", hint: "soft delete" },
+            { label: "Share Session", value: "share", hint: "publish link" },
+            { label: "Revert To Latest Assistant Output", value: "revert", hint: "rewind one" },
+            { label: "Open Notifications", value: "notifications", hint: "permissions" },
           ]}
         />
       </Box>
@@ -472,40 +571,44 @@ function NotificationsScene(props: { rows: number }) {
     <Frame rows={props.rows}>
       <Header
         instance="workspace dev"
-        branch="main"
         cwd="~/projects/opencode"
-        status={{ variant: "warning", text: "2 pending requests" }}
+        status={{ variant: "warning", text: "2 pending" }}
       />
       <Box marginTop={1}>
         <RouteTabs tabs={sampleRouteTabs} active="notifications" />
       </Box>
-      <Box marginTop={1} flexGrow={1} gap={1}>
-        <Panel title="Inbox" subtitle="2" active grow={2}>
-          <NotificationList items={sampleNotifications} selectedID="p1" active />
-        </Panel>
-        <Panel title="Details" subtitle="permission" grow={3}>
-          <Box flexDirection="column">
-            <MetricRow label="Type" value="permission" tone="warning" />
-            <MetricRow label="Command" value="bun test" />
-            <MetricRow label="Patterns" value="bun test, bun run test:*" tone="muted" />
-            <Box marginTop={1} flexDirection="column">
-              <Text color={theme.fgMuted}>Keys</Text>
-              <Text color={theme.fgDim}>
-                <Text color={theme.success}>y</Text> approve once ·{" "}
-                <Text color={theme.success}>a</Text> always ·{" "}
-                <Text color={theme.error}>x</Text> reject
-              </Text>
-            </Box>
-          </Box>
-        </Panel>
+      <Box marginTop={1} paddingX={1}>
+        <Text color={theme.fgDim}>INBOX</Text>
       </Box>
-      <Box marginTop={1}>
+      <Box marginTop={1} alignItems="flex-start" gap={2}>
+        <Box flexDirection="column" width={48} flexShrink={0} paddingX={1}>
+          <NotificationList items={sampleNotifications} selectedID="p1" active />
+        </Box>
+        <Box flexDirection="column" flexGrow={1} paddingX={1}>
+          <Text color={theme.warning} bold>
+            permission · bun test
+          </Text>
+          <Box marginTop={1} flexDirection="column">
+            <MetricRow label="patterns" value="bun test, bun run test:*" tone="muted" />
+            <MetricRow label="requested" value="2 minutes ago" tone="muted" />
+          </Box>
+          <Box marginTop={2}>
+            <Text color={theme.fgDim}>
+              <Text color={theme.success}>y</Text> approve once ·{" "}
+              <Text color={theme.success}>a</Text> always ·{" "}
+              <Text color={theme.error}>x</Text> reject
+            </Text>
+          </Box>
+        </Box>
+      </Box>
+      <Box marginTop={2}>
         <StatusBar
           hints={[
-            { keys: "tab", label: "switch pane" },
+            { keys: "↑↓", label: "navigate" },
             { keys: "y", label: "approve once" },
             { keys: "a", label: "always" },
             { keys: "x", label: "reject" },
+            { keys: "tab", label: "switch pane" },
           ]}
         />
       </Box>
@@ -518,34 +621,34 @@ function SettingsScene(props: { rows: number }) {
     <Frame rows={props.rows}>
       <Header
         instance="workspace dev"
-        branch="main"
         cwd="~/projects/opencode"
-        status={{ variant: "info", text: "Update available" }}
+        status={{ variant: "info", text: "update available" }}
       />
       <Box marginTop={1}>
         <RouteTabs tabs={sampleRouteTabs} active="settings" />
       </Box>
-      <Box marginTop={1} flexGrow={1}>
-        <Panel title="Workspace" subtitle="settings" active grow={1}>
-          <Box flexDirection="column">
-            <MetricRow label="Server" value="http://127.0.0.1:51123" />
-            <MetricRow label="Path" value="~/projects/opencode" />
-            <MetricRow label="Current" value="v27.4.7" />
-            <MetricRow label="Latest" value="v27.4.8" tone="success" />
-            <MetricRow label="Install" value="bun-binary" tone="muted" />
-            <Box marginTop={1} flexDirection="column">
-              <Text color={theme.fgMuted}>Update</Text>
-              <ProgressBar value={62} label="downloading runtime" />
-            </Box>
-            <Box marginTop={1}>
-              <Text color={theme.fgMuted}>
-                Press <Text color={theme.accent}>u</Text> to upgrade or refresh.
-              </Text>
-            </Box>
-          </Box>
-        </Panel>
+      <Box marginTop={1} paddingX={1}>
+        <Text color={theme.fgDim}>WORKSPACE</Text>
       </Box>
-      <Box marginTop={1}>
+      <Box marginTop={1} paddingX={1} flexDirection="column">
+        <MetricRow label="server" value="http://127.0.0.1:51123" tone="muted" />
+        <MetricRow label="path" value="~/projects/opencode" />
+        <MetricRow label="current" value="v27.4.7" />
+        <MetricRow label="latest" value="v27.4.8" tone="success" />
+        <MetricRow label="install" value="bun-binary" tone="muted" />
+      </Box>
+      <Box marginTop={2} paddingX={1} flexDirection="column">
+        <Text color={theme.fgDim}>UPDATE</Text>
+        <Box marginTop={1}>
+          <ProgressBar value={62} label="downloading runtime" />
+        </Box>
+        <Box marginTop={1}>
+          <Text color={theme.fgDim}>
+            press <Text color={theme.accent}>u</Text> to upgrade
+          </Text>
+        </Box>
+      </Box>
+      <Box marginTop={2}>
         <StatusBar hints={[{ keys: "u", label: "upgrade" }, { keys: "tab", label: "switch pane" }]} />
       </Box>
     </Frame>
@@ -559,43 +662,31 @@ function TerminalScene(props: { rows: number }) {
         instance="workspace dev"
         branch="main"
         cwd="~/projects/opencode"
-        status={{ variant: "success", text: "Terminal active" }}
+        status={{ variant: "success", text: "terminal" }}
       />
       <Box marginTop={1}>
         <RouteTabs tabs={sampleRouteTabs} active="session" />
       </Box>
-      <Box marginTop={1} flexGrow={1} gap={1}>
-        <Box flexDirection="column" width={28} flexShrink={0}>
-          <Panel title="Sessions" subtitle="5">
-            <SessionList sessions={sampleSessions} selectedID="s1" />
-          </Panel>
-        </Box>
-        <Box flexDirection="column" flexGrow={1} gap={1}>
-          <Panel title="Conversation">
-            <Conversation parts={sampleConversation.slice(0, 2)} />
-          </Panel>
-          <Panel title="Terminal" subtitle="Terminal 1 · connected" active>
-            <Box flexDirection="column">
-              <Box>
-                <Text color={theme.accent} bold>
-                  [Terminal 1]
-                </Text>
-                <Text color={theme.fgDim}>{"   "}Terminal 2{"   "}+ new</Text>
-              </Box>
-              <Box marginTop={1} flexDirection="column">
-                <Text color={theme.fgMuted}>$ bun test</Text>
-                <Text color={theme.success}>✓ packages/auth/jwt.test.ts (12)</Text>
-                <Text color={theme.success}>✓ packages/auth/middleware.test.ts (4)</Text>
-                <Text color={theme.fgMuted}>$ bun run typecheck</Text>
-                <Text color={theme.fgDim}>typescript v5.8.2</Text>
-                <Text color={theme.success}>no errors found</Text>
-                <Text color={theme.fgMuted}>$</Text>
-              </Box>
-            </Box>
-          </Panel>
-        </Box>
+      <Box marginTop={1} paddingX={1}>
+        <Text color={theme.fgDim}>TERMINAL · </Text>
+        <Text color={theme.accent} bold>
+          1
+        </Text>
+        <Text color={theme.fgDim}>{"   "}</Text>
+        <Text color={theme.fgDim}>2</Text>
+        <Text color={theme.fgDim}>{"   "}</Text>
+        <Text color={theme.fgDim}>+ new</Text>
       </Box>
-      <Box marginTop={1}>
+      <Box marginTop={1} paddingX={1} flexDirection="column">
+        <Text color={theme.fgMuted}>$ bun test</Text>
+        <Text color={theme.success}>✓ packages/auth/jwt.test.ts (12)</Text>
+        <Text color={theme.success}>✓ packages/auth/middleware.test.ts (4)</Text>
+        <Text color={theme.fgMuted}>$ bun run typecheck</Text>
+        <Text color={theme.fgDim}>typescript v5.8.2</Text>
+        <Text color={theme.success}>no errors found</Text>
+        <Text color={theme.fgMuted}>$</Text>
+      </Box>
+      <Box marginTop={2}>
         <StatusBar
           hints={[
             { keys: "←→", label: "switch tab" },
@@ -612,6 +703,7 @@ function TerminalScene(props: { rows: number }) {
 export type SceneName =
   | "setup"
   | "directory"
+  | "directory-input"
   | "conversation"
   | "conversation-sidebar"
   | "palette"
@@ -625,6 +717,8 @@ export function Scene(props: { name: SceneName; rows: number }) {
       return <SetupScene rows={props.rows} />
     case "directory":
       return <DirectoryScene rows={props.rows} />
+    case "directory-input":
+      return <DirectoryInputScene rows={props.rows} />
     case "conversation":
       return <ConversationScene rows={props.rows} />
     case "conversation-sidebar":

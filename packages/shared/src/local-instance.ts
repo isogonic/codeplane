@@ -207,6 +207,11 @@ export function createLocalInstanceManager(input: LocalInstanceManagerInput) {
         CODEPLANE_STATE_DIR: path.join(data, "state"),
         CODEPLANE_BIN_DIR: path.join(data, "bin"),
         CODEPLANE_LOG_DIR: path.join(data, "log"),
+        // Tell the spawned server it is managed by the desktop shell so
+        // its install-method detection reports "desktop" — the in-instance
+        // settings UI then shows the desktop-managed update message instead
+        // of "automatic updates unavailable".
+        CODEPLANE_DESKTOP_MANAGED: "1",
         XDG_DATA_HOME: path.join(data, "data"),
         XDG_CONFIG_HOME: path.join(data, "config"),
         XDG_CACHE_HOME: path.join(data, "cache"),

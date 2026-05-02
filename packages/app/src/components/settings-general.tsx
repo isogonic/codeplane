@@ -586,6 +586,8 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
         current,
         latest: info.latest,
       })
+    if (info.method === "desktop")
+      return language.t("settings.general.row.version.descriptionDesktopManaged", { current })
     if (info.method === "unknown")
       return language.t("settings.general.row.version.descriptionUnknownMethod", { current })
     return language.t("settings.general.row.version.descriptionUpToDate", { current })
@@ -616,7 +618,11 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
               </Button>
             </Show>
             <Show
-              when={versionInfo()?.hasUpdate && versionInfo()?.method !== "unknown"}
+              when={
+                versionInfo()?.hasUpdate &&
+                versionInfo()?.method !== "unknown" &&
+                versionInfo()?.method !== "desktop"
+              }
               fallback={
                 <Button
                   type="button"

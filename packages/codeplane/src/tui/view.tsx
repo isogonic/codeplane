@@ -2,7 +2,11 @@ import React from "react"
 import { Box, Text } from "ink"
 import { glyph, theme, variantColor, variantLabel, type Variant } from "./theme"
 
-export type Pill = { label: string; tone?: Variant | "muted" | "accent" }
+// Visual language:
+// - chrome is borderless except for the composer (the only true "input" surface)
+// - sections are separated by a single dim rule, not a rounded box
+// - role/state is shown by a 1-col color bar in the gutter, not a heading box
+// - content gets the color; chrome stays out of the way
 
 export type RouteTab = { id: string; label: string; key?: string; badge?: number }
 
@@ -39,19 +43,37 @@ export type DiffLine = { kind: "added" | "removed" | "context" | "header"; text:
 
 export type KeyHint = { keys: string; label: string }
 
-export function Pill(props: { label: string; tone?: Variant | "muted" | "accent" }) {
-  const color =
-    props.tone === "muted"
-      ? theme.fgDim
-      : props.tone === "accent"
-        ? theme.accent
-        : props.tone
-          ? variantColor[props.tone]
-          : theme.fgDim
+// Full-width horizontal rule, dim. Stand-in for a border without drawing one.
+export function Rule(props: { width?: number; color?: string }) {
+  const text = props.width ? glyph.divider.repeat(props.width) : glyph.divider.repeat(120)
   return (
-    <Text color={color}>
-      [{props.label}]
-    </Text>
+    <Box>
+      <Text color={props.color ?? theme.divider} dimColor>
+        {text}
+      </Text>
+    </Box>
+  )
+}
+
+// One-line section header — uppercase tracked label + optional inline meta.
+export function SectionHeader(props: {
+  label: string
+  active?: boolean
+  meta?: string
+}) {
+  return (
+    <Box paddingX={1}>
+      <Text wrap="truncate-end">
+        {props.active ? (
+          <Text color={theme.accent} bold>
+            {`${glyph.caret} ${props.label.toUpperCase()}`}
+          </Text>
+        ) : (
+          <Text color={theme.fgMuted}>{`  ${props.label.toUpperCase()}`}</Text>
+        )}
+        {props.meta ? <Text color={theme.fgDim}>{`   ${props.meta}`}</Text> : null}
+      </Text>
+    </Box>
   )
 }
 
@@ -63,19 +85,19 @@ export function Header(props: {
   spinnerFrame?: string
   busy?: boolean
 }) {
-  const segments: Array<{ text: string; color?: string; bold?: boolean }> = [
-    { text: "▍ codeplane", color: theme.accent, bold: true },
+  const left: Array<{ text: string; color?: string; bold?: boolean }> = [
+    { text: "codeplane", color: theme.accent, bold: true },
   ]
-  if (props.instance) segments.push({ text: props.instance, color: theme.fg })
-  if (props.branch) segments.push({ text: props.branch, color: theme.fgMuted })
-  if (props.cwd) segments.push({ text: props.cwd, color: theme.fgDim })
+  if (props.instance) left.push({ text: props.instance, color: theme.fg })
+  if (props.cwd) left.push({ text: props.cwd, color: theme.fgMuted })
+  if (props.branch) left.push({ text: props.branch, color: theme.fgDim })
 
   return (
     <Box flexDirection="column">
       <Box flexDirection="row" justifyContent="space-between" paddingX={1}>
         <Box>
           <Text wrap="truncate-end">
-            {segments.map((segment, index) => (
+            {left.map((segment, index) => (
               <React.Fragment key={index}>
                 {index > 0 ? <Text color={theme.fgDim}>{`  ${glyph.bullet}  `}</Text> : null}
                 <Text bold={segment.bold} color={segment.color}>
@@ -88,13 +110,11 @@ export function Header(props: {
         <Box>
           <Text>
             {props.busy && props.spinnerFrame ? (
-              <Text color={theme.warning}>
-                {props.spinnerFrame} working
-              </Text>
+              <Text color={theme.accent}>{`${props.spinnerFrame} `}</Text>
             ) : null}
             {props.status ? (
               <Text color={variantColor[props.status.variant]}>
-                {props.busy ? "  " : ""}[{variantLabel[props.status.variant]}] {props.status.text}
+                {props.status.text}
               </Text>
             ) : null}
           </Text>
@@ -112,7 +132,7 @@ export function RouteTabs(props: { tabs: RouteTab[]; active: string }) {
           const active = tab.id === props.active
           return (
             <React.Fragment key={tab.id}>
-              {index > 0 ? <Text color={theme.fgDim}>{`   `}</Text> : null}
+              {index > 0 ? <Text color={theme.fgDim}>{"   "}</Text> : null}
               {active ? (
                 <Text color={theme.accent} bold>
                   {`${tab.key ?? ""}${tab.key ? " " : ""}${tab.label}`}
@@ -124,10 +144,7 @@ export function RouteTabs(props: { tabs: RouteTab[]; active: string }) {
                 </Text>
               )}
               {tab.badge ? (
-                <Text color={theme.fgDim}>
-                  {" "}
-                  <Text color={active ? theme.warning : theme.fgDim}>·{tab.badge}</Text>
-                </Text>
+                <Text color={active ? theme.warning : theme.fgDim}>{` ·${tab.badge}`}</Text>
               ) : null}
             </React.Fragment>
           )
@@ -137,6 +154,8 @@ export function RouteTabs(props: { tabs: RouteTab[]; active: string }) {
   )
 }
 
+// Borderless "Panel" — title row + content stack, separated by a thin rule.
+// Replaces the previous rounded-box treatment that made everything feel boxed.
 export function Panel(props: {
   title: string
   subtitle?: string
@@ -144,14 +163,38 @@ export function Panel(props: {
   width?: number | string
   grow?: number
   height?: number | string
+  bordered?: boolean
   children: React.ReactNode
-  footer?: React.ReactNode
 }) {
+  if (props.bordered) {
+    return (
+      <Box
+        borderStyle="round"
+        borderColor={props.active ? theme.accent : theme.divider}
+        borderDimColor={!props.active}
+        flexDirection="column"
+        width={props.width}
+        height={props.height}
+        flexGrow={props.grow}
+        flexShrink={1}
+        minWidth={10}
+      >
+        <Box paddingX={1}>
+          <Text wrap="truncate-end">
+            <Text bold color={props.active ? theme.accent : theme.fg}>
+              {props.title}
+            </Text>
+            {props.subtitle ? <Text color={theme.fgDim}>{`   ${props.subtitle}`}</Text> : null}
+          </Text>
+        </Box>
+        <Box paddingX={1} flexDirection="column" flexGrow={1}>
+          {props.children}
+        </Box>
+      </Box>
+    )
+  }
   return (
     <Box
-      borderStyle="round"
-      borderColor={props.active ? theme.accent : theme.divider}
-      borderDimColor={!props.active}
       flexDirection="column"
       width={props.width}
       height={props.height}
@@ -159,23 +202,10 @@ export function Panel(props: {
       flexShrink={1}
       minWidth={10}
     >
-      <Box paddingX={1} justifyContent="space-between">
-        <Text bold color={props.active ? theme.accent : theme.fg}>
-          {props.title}
-        </Text>
-        {props.subtitle ? (
-          <Text color={theme.fgDim}>{props.subtitle}</Text>
-        ) : null}
-      </Box>
+      <SectionHeader label={props.title} active={props.active} meta={props.subtitle} />
       <Box paddingX={1} flexDirection="column" flexGrow={1}>
         {props.children}
       </Box>
-      {props.footer ? (
-        <Box paddingX={1} flexDirection="column">
-          <Text color={theme.fgDim}>{"─".repeat(2)}</Text>
-          {props.footer}
-        </Box>
-      ) : null}
     </Box>
   )
 }
@@ -187,23 +217,24 @@ export function SessionList(props: {
   spinnerFrame?: string
 }) {
   if (props.sessions.length === 0) {
-    return <Text color={theme.fgDim}>No sessions yet. Press <Text color={theme.accent}>n</Text> to create one.</Text>
+    return (
+      <Text color={theme.fgDim}>
+        no sessions yet — press <Text color={theme.accent}>n</Text> to start one
+      </Text>
+    )
   }
   return (
     <Box flexDirection="column">
       {props.sessions.map((session) => {
         const selected = session.id === props.selectedID
-        // Indicator is always exactly 1 visible char so column alignment is preserved.
-        const rawIndicator =
+        const indicator =
           session.status === "busy"
             ? props.spinnerFrame ?? glyph.filledDot
             : session.status === "retry"
               ? "↺"
               : session.status === "archived"
                 ? glyph.hollowDot
-                : selected
-                  ? glyph.arrowRight
-                  : glyph.bullet
+                : " "
         const indicatorColor =
           session.status === "busy"
             ? theme.warning
@@ -211,17 +242,18 @@ export function SessionList(props: {
               ? theme.error
               : session.status === "archived"
                 ? theme.fgDim
-                : selected && props.active
-                  ? theme.accent
-                  : theme.fgDim
+                : theme.fgDim
         const titleColor = selected ? (props.active ? theme.accent : theme.fg) : theme.fgMuted
         const trailing = session.shared ? " ⇗" : session.reverted ? " ↺" : ""
         const trailingColor = session.shared ? theme.fgDim : theme.warning
+        // Selection bar in the gutter — Codex pattern. The status indicator is
+        // a separate column so columns line up regardless of selection.
+        const gutter = selected && props.active ? "▍" : " "
         return (
           <Box key={session.id}>
             <Text wrap="truncate-end">
-              <Text color={indicatorColor}>{rawIndicator}</Text>
-              <Text color={theme.fgDim}> </Text>
+              <Text color={selected && props.active ? theme.accent : theme.divider}>{gutter}</Text>
+              <Text color={indicatorColor}>{` ${indicator} `}</Text>
               <Text color={titleColor} bold={selected}>
                 {session.title}
               </Text>
@@ -236,14 +268,18 @@ export function SessionList(props: {
 
 export function TodoList(props: { todos: TodoItem[]; limit?: number }) {
   if (props.todos.length === 0) {
-    return <Text color={theme.fgDim}>No tasks tracked.</Text>
+    return <Text color={theme.fgDim}>no tasks tracked</Text>
   }
   const visible = props.limit ? props.todos.slice(0, props.limit) : props.todos
   return (
     <Box flexDirection="column">
       {visible.map((todo) => {
         const symbol =
-          todo.status === "completed" ? glyph.todoDone : todo.status === "in_progress" ? glyph.todoActive : glyph.todoPending
+          todo.status === "completed"
+            ? glyph.todoDone
+            : todo.status === "in_progress"
+              ? glyph.todoActive
+              : glyph.todoPending
         const color =
           todo.status === "completed"
             ? theme.success
@@ -271,7 +307,7 @@ export function TodoList(props: { todos: TodoItem[]; limit?: number }) {
 
 export function DiffView(props: { lines: DiffLine[]; limit?: number }) {
   if (props.lines.length === 0) {
-    return <Text color={theme.fgDim}>No diff in this snapshot.</Text>
+    return <Text color={theme.fgDim}>no diff in snapshot</Text>
   }
   const visible = props.limit ? props.lines.slice(0, props.limit) : props.lines
   return (
@@ -305,6 +341,11 @@ function ToolStatusGlyph(props: { status: "pending" | "running" | "completed" | 
   return <Text color={theme.fgDim}>{glyph.toolPending}</Text>
 }
 
+// Each role gets a colored vertical bar in the gutter, content in the body.
+// Same shape Claude Code uses: speaker label one line, body indented two cols.
+// Claude Code pattern: a colored label line plus 2-col indented content.
+// No vertical gutter bar — Ink can't repeat a single char down dynamically
+// without per-line plumbing, and the indent alone reads cleanly.
 function MessageBlock(props: {
   role: "user" | "assistant"
   time?: string
@@ -312,17 +353,15 @@ function MessageBlock(props: {
   children: React.ReactNode
 }) {
   const color = props.role === "user" ? theme.user : theme.assistant
-  const label = props.role === "user" ? "You" : "Assistant"
+  const label = props.role === "user" ? "you" : "codeplane"
   return (
     <Box flexDirection="column" marginTop={props.isFirst ? 0 : 1}>
       <Box>
         <Text>
           <Text color={color} bold>
-            {glyph.caret} {label}
+            {`${glyph.caret} ${label}`}
           </Text>
-          {props.time ? (
-            <Text color={theme.fgDim}>{`  ${props.time}`}</Text>
-          ) : null}
+          {props.time ? <Text color={theme.fgDim}>{`   ${props.time}`}</Text> : null}
         </Text>
       </Box>
       <Box flexDirection="column" paddingLeft={2}>
@@ -332,11 +371,11 @@ function MessageBlock(props: {
   )
 }
 
-function PartLines(props: { lines: string[]; color?: string }) {
+function PartLines(props: { lines: string[]; color?: string; italic?: boolean }) {
   return (
     <Box flexDirection="column">
       {props.lines.map((line, index) => (
-        <Text key={index} color={props.color} wrap="wrap">
+        <Text key={index} color={props.color} italic={props.italic} wrap="wrap">
           {line || " "}
         </Text>
       ))}
@@ -348,14 +387,10 @@ function ReasoningBlock(props: { lines: string[] }) {
   return (
     <Box flexDirection="column" marginTop={1}>
       <Text color={theme.reasoning} italic dimColor>
-        {glyph.caret} thinking
+        thinking
       </Text>
-      <Box paddingLeft={2} flexDirection="column">
-        {props.lines.map((line, index) => (
-          <Text key={index} color={theme.fgDim} italic wrap="truncate-end">
-            {line || " "}
-          </Text>
-        ))}
+      <Box flexDirection="column" paddingLeft={2}>
+        <PartLines lines={props.lines} color={theme.fgDim} italic />
       </Box>
     </Box>
   )
@@ -368,17 +403,13 @@ function ToolBlock(props: {
   output?: string[]
   spinnerFrame?: string
 }) {
-  // The status glyph already conveys success/run/error/pending — the verbose
-  // word "completed/running/pending" was redundant and noisy.
   return (
     <Box flexDirection="column" marginTop={1}>
       <Box>
         <Text wrap="truncate-end">
           <ToolStatusGlyph status={props.status} spinnerFrame={props.spinnerFrame} />
           <Text color={theme.tool} bold>{` ${props.name}`}</Text>
-          {props.title ? (
-            <Text color={theme.fgMuted}>{` ${props.title}`}</Text>
-          ) : null}
+          {props.title ? <Text color={theme.fgMuted}>{` ${props.title}`}</Text> : null}
         </Text>
       </Box>
       {props.output && props.output.length > 0 ? (
@@ -399,7 +430,7 @@ function ToolBlock(props: {
 
 function MetaPart(props: { children: React.ReactNode; color?: string }) {
   return (
-    <Box marginTop={1} paddingLeft={2}>
+    <Box marginTop={1}>
       <Text color={props.color ?? theme.fgDim}>{props.children}</Text>
     </Box>
   )
@@ -412,12 +443,11 @@ export function Conversation(props: {
 }) {
   if (props.parts.length === 0) {
     return (
-      <Box flexDirection="column" alignItems="flex-start">
-        <Text color={theme.fgDim}>{props.empty ?? "Start a conversation to see messages here."}</Text>
+      <Box flexDirection="column">
+        <Text color={theme.fgDim}>{props.empty ?? "Start typing below to begin a conversation."}</Text>
       </Box>
     )
   }
-  // Group consecutive parts into role-bound blocks.
   const blocks: Array<{ role: "user" | "assistant"; time?: string; parts: ConversationPart[] }> = []
   let pending: { role: "user" | "assistant"; time?: string; parts: ConversationPart[] } | undefined
   const open = (role: "user" | "assistant", time?: string) => {
@@ -437,7 +467,12 @@ export function Conversation(props: {
   return (
     <Box flexDirection="column">
       {blocks.map((block, blockIndex) => (
-        <MessageBlock key={blockIndex} role={block.role} time={block.time} isFirst={blockIndex === 0}>
+        <MessageBlock
+          key={blockIndex}
+          role={block.role}
+          time={block.time}
+          isFirst={blockIndex === 0}
+        >
           {block.parts.map((part, partIndex) => {
             const key = `${blockIndex}:${partIndex}`
             switch (part.kind) {
@@ -459,7 +494,7 @@ export function Conversation(props: {
               case "agent":
                 return (
                   <MetaPart key={key} color={theme.tool}>
-                    {glyph.bullet} agent: {part.name}
+                    {glyph.bullet} agent · {part.name}
                   </MetaPart>
                 )
               case "subtask":
@@ -483,7 +518,7 @@ export function Conversation(props: {
               case "step":
                 return (
                   <MetaPart key={key}>
-                    {part.phase === "start" ? "↳ step" : `⌐ step done${part.reason ? ` · ${part.reason}` : ""}`}
+                    {part.phase === "start" ? "↳ step" : `step done${part.reason ? ` · ${part.reason}` : ""}`}
                   </MetaPart>
                 )
               case "retry":
@@ -515,6 +550,8 @@ export function Conversation(props: {
   )
 }
 
+// Composer — the only true "input box" in the UI gets the only border.
+// Borderless when not focused so the conversation feels uninterrupted.
 export function Composer(props: {
   value: string
   placeholder: string
@@ -536,9 +573,7 @@ export function Composer(props: {
     >
       <Box>
         <Text wrap="truncate-end">
-          <Text color={promptColor} bold>
-            {`${glyph.prompt} `}
-          </Text>
+          <Text color={promptColor} bold>{`${glyph.prompt} `}</Text>
           <Text color={valueColor}>{props.value || props.placeholder}</Text>
           {showCursor ? <Text color={theme.accent}>{glyph.cursor}</Text> : null}
         </Text>
@@ -557,6 +592,42 @@ export function Composer(props: {
   )
 }
 
+// Path input — the directory picker's killer feature. Like Codex's path
+// completion, you can either browse with arrows OR type a path with `/`
+// triggering segment autocompletion.
+export function PathInput(props: {
+  value: string
+  active: boolean
+  hint?: string
+  spinnerFrame?: string
+  loading?: boolean
+}) {
+  return (
+    <Box
+      borderStyle="round"
+      borderColor={props.active ? theme.accent : theme.divider}
+      borderDimColor={!props.active}
+      flexDirection="column"
+      paddingX={1}
+    >
+      <Box>
+        <Text wrap="truncate-start">
+          <Text color={props.active ? theme.accent : theme.fgDim} bold>
+            {props.loading && props.spinnerFrame
+              ? `${props.spinnerFrame} `
+              : `${glyph.folder}  `}
+          </Text>
+          <Text color={theme.fg}>{props.value}</Text>
+          {props.active ? <Text color={theme.accent}>{glyph.cursor}</Text> : null}
+        </Text>
+      </Box>
+      {props.hint ? (
+        <Text color={theme.fgDim}>{props.hint}</Text>
+      ) : null}
+    </Box>
+  )
+}
+
 export function CommandPalette(props: {
   filter: string
   selection?: string
@@ -568,46 +639,40 @@ export function CommandPalette(props: {
       borderColor={theme.accent}
       flexDirection="column"
       paddingX={1}
-      paddingY={0}
     >
       <Box>
-        <Text bold color={theme.accent}>
-          / Command Palette
-        </Text>
-      </Box>
-      <Box>
-        <Text color={theme.accent}>{glyph.prompt} </Text>
-        <Text>
-          {props.filter}
+        <Text wrap="truncate-end">
+          <Text color={theme.accent} bold>{`${glyph.prompt} `}</Text>
+          <Text>{props.filter}</Text>
           <Text color={theme.accent}>{glyph.cursor}</Text>
+          <Text color={theme.fgDim}>{`   ${props.options.length} commands`}</Text>
         </Text>
       </Box>
       {props.options.length === 0 ? (
-        <Text color={theme.fgDim}>No matching commands.</Text>
+        <Text color={theme.fgDim}>no matching commands</Text>
       ) : (
         <Box flexDirection="column">
           {props.options.slice(0, 10).map((option) => {
             const selected = option.value === props.selection
             return (
               <Box key={option.value}>
-                <Text color={selected ? theme.accent : theme.fgDim}>
-                  {selected ? glyph.arrowRight : " "}{" "}
-                </Text>
-                <Text color={selected ? theme.accent : theme.fgMuted} bold={selected}>
-                  {option.label}
-                </Text>
-                {option.hint ? (
-                  <Text color={theme.fgDim}>
-                    {"  "}
-                    {option.hint}
+                <Text wrap="truncate-end">
+                  <Text color={selected ? theme.accent : theme.divider}>
+                    {selected ? "▍" : " "}
                   </Text>
-                ) : null}
+                  <Text color={selected ? theme.accent : theme.fgMuted} bold={selected}>
+                    {` ${option.label}`}
+                  </Text>
+                  {option.hint ? (
+                    <Text color={theme.fgDim}>{`   ${option.hint}`}</Text>
+                  ) : null}
+                </Text>
               </Box>
             )
           })}
         </Box>
       )}
-      <Text color={theme.fgDim}>↑↓ navigate · ⏎ run · esc close</Text>
+      <Text color={theme.fgDim}>{`↑↓ navigate   ↵ run   esc close`}</Text>
     </Box>
   )
 }
@@ -615,15 +680,17 @@ export function CommandPalette(props: {
 export function StatusBar(props: { hints: KeyHint[] }) {
   return (
     <Box paddingX={1}>
-      {props.hints.map((hint, index) => (
-        <React.Fragment key={index}>
-          {index > 0 ? <Text color={theme.fgDim}>  </Text> : null}
-          <Text color={theme.accent} bold>
-            {hint.keys}
-          </Text>
-          <Text color={theme.fgDim}> {hint.label}</Text>
-        </React.Fragment>
-      ))}
+      <Text wrap="truncate-end">
+        {props.hints.map((hint, index) => (
+          <React.Fragment key={index}>
+            {index > 0 ? <Text color={theme.fgDim}>{`   `}</Text> : null}
+            <Text color={theme.accent} bold>
+              {hint.keys}
+            </Text>
+            <Text color={theme.fgDim}>{` ${hint.label}`}</Text>
+          </React.Fragment>
+        ))}
+      </Text>
     </Box>
   )
 }
@@ -635,13 +702,10 @@ export function ProgressBar(props: { value: number; width?: number; label?: stri
   return (
     <Box>
       <Text color={theme.accent}>
-        {"█".repeat(filled)}
-        <Text color={theme.fgDim}>{"░".repeat(Math.max(0, width - filled))}</Text>
+        {"━".repeat(filled)}
+        <Text color={theme.fgDim}>{"╌".repeat(Math.max(0, width - filled))}</Text>
       </Text>
-      <Text color={theme.fg}>
-        {"  "}
-        {clamped}%
-      </Text>
+      <Text color={theme.fg}>{`  ${clamped}%`}</Text>
       {props.label ? <Text color={theme.fgDim}>{`  ${props.label}`}</Text> : null}
     </Box>
   )
@@ -653,7 +717,7 @@ export function NotificationList(props: {
   active?: boolean
 }) {
   if (props.items.length === 0) {
-    return <Text color={theme.fgDim}>No pending notifications.</Text>
+    return <Text color={theme.fgDim}>no pending notifications</Text>
   }
   return (
     <Box flexDirection="column">
@@ -663,20 +727,22 @@ export function NotificationList(props: {
         return (
           <Box key={item.id} flexDirection="column" marginBottom={1}>
             <Box>
-              <Text color={selected && props.active ? theme.accent : theme.fgDim}>
-                {selected ? glyph.arrowRight : " "}{" "}
-              </Text>
-              <Text color={color} bold>
-                [{item.tone}]
-              </Text>
-              <Text bold={selected} color={selected ? theme.fg : theme.fgMuted}>
-                {" "}
-                {item.title}
+              <Text wrap="truncate-end">
+                <Text color={selected && props.active ? theme.accent : theme.divider}>
+                  {selected && props.active ? "▍" : " "}
+                </Text>
+                <Text color={color} bold>{` ${item.tone}`}</Text>
+                <Text color={theme.fgDim}>{`   `}</Text>
+                <Text bold={selected} color={selected ? theme.fg : theme.fgMuted}>
+                  {item.title}
+                </Text>
               </Text>
             </Box>
             {item.subtitle ? (
               <Box paddingLeft={4}>
-                <Text color={theme.fgDim}>{item.subtitle}</Text>
+                <Text color={theme.fgDim} wrap="truncate-end">
+                  {item.subtitle}
+                </Text>
               </Box>
             ) : null}
           </Box>
@@ -690,7 +756,6 @@ export function FileList(props: {
   files: Array<{ path: string; type: "file" | "directory"; rel?: string }>
   selected?: string
   active?: boolean
-  filesDimmed?: boolean
 }) {
   if (props.files.length === 0) {
     return <Text color={theme.fgDim}>(empty)</Text>
@@ -706,16 +771,16 @@ export function FileList(props: {
             : theme.fg
           : isDir
             ? theme.fg
-            : props.filesDimmed
-              ? theme.fgDim
-              : theme.fgMuted
+            : theme.fgMuted
         return (
           <Box key={file.path}>
             <Text wrap="truncate-end">
-              <Text color={selected && props.active ? theme.accent : theme.fgDim}>
-                {selected ? `${glyph.arrowRight} ` : "  "}
+              <Text color={selected && props.active ? theme.accent : theme.divider}>
+                {selected && props.active ? "▍" : " "}
               </Text>
-              <Text color={isDir ? theme.accent : theme.fgDim}>{isDir ? "▸ " : "· "}</Text>
+              <Text color={isDir ? theme.accent : theme.fgDim}>
+                {isDir ? ` ${glyph.folder} ` : ` ${glyph.file} `}
+              </Text>
               <Text color={labelColor} bold={selected || isDir}>
                 {file.rel ?? file.path}
               </Text>
@@ -728,30 +793,26 @@ export function FileList(props: {
   )
 }
 
-// Slim presentation of a path with separators highlighted.
+// Breadcrumb segments separated by /, last segment in accent.
 export function Breadcrumb(props: { path: string; home?: string }) {
-  const display = props.home && props.path.startsWith(props.home)
-    ? `~${props.path.slice(props.home.length)}`
-    : props.path
+  const display =
+    props.home && props.path.startsWith(props.home)
+      ? `~${props.path.slice(props.home.length)}`
+      : props.path
   const parts = display.split("/").filter(Boolean)
   if (parts.length === 0) {
     return <Text color={theme.fgDim}>/</Text>
   }
   const isAbsolute = display.startsWith("/")
-  // We always render a sep BETWEEN consecutive segments, never before the
-  // first or after the last. The leading `~` is its own segment so the chevron
-  // appears between it and the next segment as expected.
   return (
     <Text wrap="truncate-start">
-      {isAbsolute ? <Text color={theme.fgDim}>/ </Text> : null}
+      {isAbsolute ? <Text color={theme.fgDim}>/</Text> : null}
       {parts.map((part, index) => {
         const isLast = index === parts.length - 1
         const color = isLast ? theme.accent : part === "~" ? theme.accent : theme.fgMuted
         return (
           <React.Fragment key={index}>
-            {index > 0 ? (
-              <Text color={theme.fgDim}>{` ${glyph.arrowRight} `}</Text>
-            ) : null}
+            {index > 0 ? <Text color={theme.fgDim}>{glyph.separator}</Text> : null}
             <Text color={color} bold={isLast}>
               {part}
             </Text>
@@ -773,10 +834,12 @@ export function MetricRow(props: { label: string; value: string; tone?: Variant 
           : theme.fg
   return (
     <Box>
-      <Box width={20}>
+      <Box width={18}>
         <Text color={theme.fgMuted}>{props.label}</Text>
       </Box>
-      <Text color={color}>{props.value}</Text>
+      <Text color={color} wrap="truncate-end">
+        {props.value}
+      </Text>
     </Box>
   )
 }
