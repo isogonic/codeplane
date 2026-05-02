@@ -366,63 +366,79 @@ export const GlobalRoutes = lazy(() =>
       ),
       async (c) => {
         const body = c.req.valid("json") ?? {}
-        const result = await AppRuntime.runPromise(
-          Installation.Service.use((svc) =>
-            Effect.gen(function* () {
-              const method = yield* svc.method()
-              if (method === "unknown") {
-                return {
-                  success: false as const,
-                  status: 400 as const,
-                  error: "Unknown installation method",
-                  method,
-                }
-              }
-              if (method === "desktop") {
-                return {
-                  success: false as const,
-                  status: 400 as const,
-                  error:
-                    "Updates for desktop-managed instances are handled by the Codeplane desktop app. " +
-                    "Open the desktop app's Updates panel to install a new version.",
-                  method,
-                }
-              }
-
-              const target = Installation.cleanVersion(body.target || (yield* svc.latest(method)))
-              if (Installation.isDesktopReleaseVersion(target)) {
-                return {
-                  success: false as const,
-                  status: 400 as const,
-                  error: `Desktop release targets (${target}) are only valid for the desktop shell`,
-                  method,
-                }
-              }
-              if (Installation.isSameVersion(InstallationVersion, target)) {
-                return {
-                  success: true as const,
-                  status: 200 as const,
-                  version: target,
-                  method,
-                  skipped: true as const,
-                }
-              }
-
-              const result = yield* Effect.catch(
-                svc.upgrade(method, target).pipe(Effect.as({ success: true as const, version: target, method })),
-                (err) =>
-                  Effect.succeed({
+        // Outer try/catch ensures any unhandled failure inside the Effect
+        // pipeline (svc.method() / svc.latest() rejecting for network, PATH,
+        // or permission reasons) is surfaced as a structured JSON 500 instead
+        // of an empty `Failed to load resource: 500` from Hono.
+        let result
+        try {
+          result = await AppRuntime.runPromise(
+            Installation.Service.use((svc) =>
+              Effect.gen(function* () {
+                const method = yield* svc.method()
+                if (method === "unknown") {
+                  return {
                     success: false as const,
-                    status: 500 as const,
-                    error: err instanceof Error ? err.message : String(err),
+                    status: 400 as const,
+                    error: "Unknown installation method",
                     method,
-                  }),
-              )
-              if (!result.success) return result
-              return { ...result, status: 200 as const }
-            }),
-          ),
-        )
+                  }
+                }
+                if (method === "desktop") {
+                  return {
+                    success: false as const,
+                    status: 400 as const,
+                    error:
+                      "Updates for desktop-managed instances are handled by the Codeplane desktop app. " +
+                      "Open the desktop app's Updates panel to install a new version.",
+                    method,
+                  }
+                }
+
+                const target = Installation.cleanVersion(body.target || (yield* svc.latest(method)))
+                if (Installation.isDesktopReleaseVersion(target)) {
+                  return {
+                    success: false as const,
+                    status: 400 as const,
+                    error: `Desktop release targets (${target}) are only valid for the desktop shell`,
+                    method,
+                  }
+                }
+                if (Installation.isSameVersion(InstallationVersion, target)) {
+                  return {
+                    success: true as const,
+                    status: 200 as const,
+                    version: target,
+                    method,
+                    skipped: true as const,
+                  }
+                }
+
+                const inner = yield* Effect.catch(
+                  svc.upgrade(method, target).pipe(Effect.as({ success: true as const, version: target, method })),
+                  (err) =>
+                    Effect.succeed({
+                      success: false as const,
+                      status: 500 as const,
+                      error: err instanceof Error ? err.message : String(err),
+                      method,
+                    }),
+                )
+                if (!inner.success) return inner
+                return { ...inner, status: 200 as const }
+              }),
+            ),
+          )
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err)
+          return c.json(
+            {
+              success: false,
+              error: `Upgrade failed: ${message}`,
+            },
+            500,
+          )
+        }
         if (!result.success) {
           return c.json({ success: false, error: result.error }, result.status)
         }
