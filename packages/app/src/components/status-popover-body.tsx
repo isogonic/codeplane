@@ -11,7 +11,7 @@ import { createStore, reconcile } from "solid-js/store"
 import { ServerHealthIndicator, ServerRow } from "@/components/server/server-row"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
-import { useSDK } from "@/context/sdk"
+import { useSDKOptional } from "@/context/sdk"
 import { normalizeServerUrl, ServerConnection, useServer } from "@/context/server"
 import { useSyncOptional } from "@/context/sync"
 import { useCheckServerHealth, type ServerHealth } from "@/utils/server-health"
@@ -136,12 +136,12 @@ const useDefaultServerKey = (
 
 const useMcpToggleMutation = () => {
   const sync = useSyncOptional()
-  const sdk = useSDK()
+  const sdk = useSDKOptional()
   const language = useLanguage()
 
   return useMutation(() => ({
     mutationFn: async (name: string) => {
-      if (!sync) return
+      if (!sync || !sdk) return
       const status = sync.data.mcp[name]
       await (status?.status === "connected" ? sdk.client.mcp.disconnect({ name }) : sdk.client.mcp.connect({ name }))
       const result = await sdk.client.mcp.status()
@@ -164,7 +164,7 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
   const dialog = useDialog()
   const language = useLanguage()
   const navigate = useNavigate()
-  const sdk = useSDK()
+  const sdk = useSDKOptional()
 
   const [load, setLoad] = createStore({
     lspDone: false,
@@ -182,7 +182,7 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
   }
 
   createEffect(() => {
-    if (!sync) return
+    if (!sync || !sdk) return
     if (!props.shown()) return
 
     if (!sync.data.mcp_ready && !load.mcpDone && !load.mcpLoading) {
@@ -274,7 +274,7 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
               {language.t("status.popover.tab.servers")}
             </Tabs.Trigger>
           </Show>
-          <Show when={sync}>
+          <Show when={sync && !canSwitchServers()}>
             <Tabs.Trigger value="mcp" data-slot="tab" class="text-12-regular">
               {mcpConnected() > 0 ? `${mcpConnected()} ` : ""}
               {language.t("status.popover.tab.mcp")}
@@ -366,7 +366,7 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
           </Tabs.Content>
         </Show>
 
-        <Show when={sync}>
+        <Show when={sync && !canSwitchServers()}>
           <Tabs.Content value="mcp">
             <div class="flex flex-col px-2 pb-2">
               <div class="flex flex-col p-3 bg-background-base rounded-sm min-h-14">

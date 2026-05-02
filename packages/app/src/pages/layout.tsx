@@ -114,7 +114,6 @@ export default function Layout(props: ParentProps) {
       workspaceName: {} as Record<string, string>,
       workspaceBranchName: {} as Record<string, Record<string, string>>,
       workspaceExpanded: {} as Record<string, boolean>,
-      gettingStartedDismissed: false,
     }),
   )
 
@@ -2286,7 +2285,39 @@ export default function Layout(props: ParentProps) {
           when={project()}
           keyed
           fallback={
-            <Show when={empty()}>
+            <Show
+              when={empty()}
+              fallback={
+                <Show when={panelProps.mobile}>
+                  <div class="flex-1 min-h-0 flex flex-col gap-2 px-1 pt-4">
+                    <div class="px-3 text-12-medium text-text-base uppercase tracking-wider">
+                      {language.t("home.projects.title")}
+                    </div>
+                    <div class="flex flex-col gap-1 overflow-y-auto no-scrollbar">
+                      <For each={projects()}>
+                        {(p) => (
+                          <button
+                            type="button"
+                            class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-surface-base-hover text-left"
+                            onClick={() => {
+                              navigate(`/${base64Encode(p.worktree)}/session`)
+                              layout.mobileSidebar.hide()
+                            }}
+                          >
+                            <span class="text-14-medium text-text-strong truncate">{p.name || getFilename(p.worktree)}</span>
+                          </button>
+                        )}
+                      </For>
+                    </div>
+                    <div class="px-1 pt-2">
+                      <Button size="normal" icon="folder-add-left" onClick={chooseProject}>
+                        {language.t("command.project.open")}
+                      </Button>
+                    </div>
+                  </div>
+                </Show>
+              }
+            >
               <div class="flex-1 min-h-0 -mt-4 flex items-center justify-center px-6 pb-64 text-center">
                 <div class="mt-8 flex max-w-60 flex-col items-center gap-6 text-center">
                   <div class="flex flex-col gap-3">
@@ -2489,34 +2520,6 @@ export default function Layout(props: ParentProps) {
           )}
         </Show>
 
-        <div
-          class="shrink-0 px-3 py-3"
-          classList={{
-            hidden: store.gettingStartedDismissed || !(providers.all().length > 0 && providers.paid().length === 0),
-          }}
-        >
-          <div class="rounded-xl bg-background-base shadow-xs-border-base" data-component="getting-started">
-            <div class="p-3 flex flex-col gap-6">
-              <div class="flex flex-col gap-2">
-                <div class="text-14-medium text-text-strong">{language.t("sidebar.gettingStarted.title")}</div>
-                <div class="text-14-regular text-text-base" style={{ "line-height": "var(--line-height-normal)" }}>
-                  {language.t("sidebar.gettingStarted.line1")}
-                </div>
-                <div class="text-14-regular text-text-base" style={{ "line-height": "var(--line-height-normal)" }}>
-                  {language.t("sidebar.gettingStarted.line2")}
-                </div>
-              </div>
-              <div data-component="getting-started-actions">
-                <Button size="large" icon="plus-small" onClick={connectProvider}>
-                  {language.t("command.provider.connect")}
-                </Button>
-                <Button size="large" variant="ghost" onClick={() => setStore("gettingStartedDismissed", true)}>
-                  {language.t("common.dismiss")}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     )
   }
@@ -2598,8 +2601,8 @@ export default function Layout(props: ParentProps) {
               aria-label={language.t("sidebar.nav.projectsAndSessions")}
               data-component="sidebar-nav-wide"
               classList={{
-                "hidden xl:block": true,
-                "absolute inset-y-0 left-0": true,
+                "hidden sm:block absolute inset-y-0 left-0": true,
+                "max-w-16 xl:max-w-none": true,
                 "z-10": true,
               }}
               style={{ width: `${side()}px` }}
@@ -2648,7 +2651,7 @@ export default function Layout(props: ParentProps) {
             <div class="xl:hidden">
               <div
                 classList={{
-                  "fixed inset-x-0 top-10 bottom-0 z-40 transition-opacity duration-200": true,
+                  "fixed inset-x-0 top-10 bottom-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ease-out": true,
                   "opacity-100 pointer-events-auto": layout.mobileSidebar.opened(),
                   "opacity-0 pointer-events-none": !layout.mobileSidebar.opened(),
                 }}
@@ -2660,7 +2663,9 @@ export default function Layout(props: ParentProps) {
                 aria-label={language.t("sidebar.nav.projectsAndSessions")}
                 data-component="sidebar-nav-mobile"
                 classList={{
-                  "@container fixed top-10 bottom-0 left-0 z-50 w-full max-w-[400px] overflow-hidden border-r border-border-weaker-base bg-background-base transition-transform duration-200 ease-out": true,
+                  "@container fixed top-10 bottom-0 left-0 z-50 overflow-hidden border-r border-border-weaker-base bg-background-base shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]": true,
+                  "w-[88vw] max-w-[360px] sm:max-w-[400px]": !!currentProject(),
+                  "w-[78vw] max-w-[300px]": !currentProject(),
                   "translate-x-0": layout.mobileSidebar.opened(),
                   "-translate-x-full": !layout.mobileSidebar.opened(),
                 }}
@@ -2673,7 +2678,8 @@ export default function Layout(props: ParentProps) {
             <div
               classList={{
                 "absolute inset-0": true,
-                "xl:inset-y-0 xl:right-0 xl:left-[var(--main-left)]": true,
+                "sm:inset-y-0 sm:right-0 sm:left-16": true,
+                "xl:left-[var(--main-left)]": true,
                 "z-20": true,
                 "transition-[left] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[left] motion-reduce:transition-none":
                   !state.sizing,
@@ -2684,7 +2690,7 @@ export default function Layout(props: ParentProps) {
             >
               <main
                 classList={{
-                  "size-full overflow-x-hidden flex flex-col items-start contain-strict border-t border-border-weak-base bg-background-base xl:border-l xl:rounded-tl-[12px]": true,
+                  "size-full overflow-x-hidden flex flex-col items-start contain-strict border-t border-border-weak-base bg-background-base sm:border-l sm:rounded-tl-[12px]": true,
                 }}
               >
                 <Show when={!autoselecting.loading} fallback={<div class="size-full" />}>

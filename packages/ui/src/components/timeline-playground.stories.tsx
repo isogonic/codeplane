@@ -300,6 +300,24 @@ const TOOL_SAMPLES = {
     title: "Read src/components/session-turn.tsx",
     metadata: {},
   },
+  "read-image": {
+    tool: "read",
+    input: { filePath: "design/mockup.png" },
+    output: "Image read successfully",
+    title: "Read design/mockup.png",
+    metadata: { loaded: ["design/mockup.png"] },
+    attachments: [
+      {
+        id: "att-1",
+        type: "file" as const,
+        sessionID: "ses-pg",
+        messageID: "msg-pg",
+        mime: "image/png",
+        filename: "mockup.png",
+        url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+      } as FilePart,
+    ],
+  },
   glob: {
     tool: "glob",
     input: { pattern: "**/*.tsx", path: "src/components" },
@@ -533,6 +551,9 @@ function toolPart(sample: (typeof TOOL_SAMPLES)[keyof typeof TOOL_SAMPLES], stat
         title: sample.title,
         metadata: sample.metadata ?? {},
         time: { start: Date.now(), end: Date.now() + 1000 },
+        ...((sample as { attachments?: FilePart[] }).attachments
+          ? { attachments: (sample as { attachments?: FilePart[] }).attachments }
+          : {}),
       },
     } as ToolPart
   }

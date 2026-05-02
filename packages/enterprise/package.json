@@ -1,11 +1,12 @@
 {
   "name": "@codeplane-ai/enterprise",
-  "version": "27.4.4",
+  "version": "27.4.5",
   "private": true,
   "type": "module",
   "license": "MIT",
   "scripts": {
     "typecheck": "tsgo --noEmit",
+    "test": "bun test --preload ./test-setup.ts",
     "dev": "vite dev",
     "build": "vite build",
     "build:cloudflare": "CODEPLANE_DEPLOYMENT_TARGET=cloudflare vite build",
