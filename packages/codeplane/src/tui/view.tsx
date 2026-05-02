@@ -413,14 +413,24 @@ function ToolBlock(props: {
         </Text>
       </Box>
       {props.output && props.output.length > 0 ? (
-        <Box paddingLeft={2} flexDirection="column">
+        // Code-like output gets a left vertical rule so it visually
+        // separates from the surrounding prose, like Codex's tool blocks.
+        <Box flexDirection="column">
           {props.output.slice(0, 6).map((line, index) => (
-            <Text key={index} color={theme.fgMuted} wrap="truncate-end">
-              {line || " "}
-            </Text>
+            <Box key={index}>
+              <Text wrap="truncate-end">
+                <Text color={theme.divider} dimColor>{`  ${glyph.vbar}  `}</Text>
+                <Text color={theme.fgMuted}>{line || " "}</Text>
+              </Text>
+            </Box>
           ))}
           {props.output.length > 6 ? (
-            <Text color={theme.fgDim}>+{props.output.length - 6} more lines…</Text>
+            <Box>
+              <Text>
+                <Text color={theme.divider} dimColor>{`  ${glyph.vbar}  `}</Text>
+                <Text color={theme.fgDim}>+{props.output.length - 6} more lines…</Text>
+              </Text>
+            </Box>
           ) : null}
         </Box>
       ) : null}
@@ -592,9 +602,8 @@ export function Composer(props: {
   )
 }
 
-// Path input — the directory picker's killer feature. Like Codex's path
-// completion, you can either browse with arrows OR type a path with `/`
-// triggering segment autocompletion.
+// Path input — the directory picker's killer feature.
+// One unified surface: a "directory" glyph + path + cursor. Always full width.
 export function PathInput(props: {
   value: string
   active: boolean
@@ -614,8 +623,8 @@ export function PathInput(props: {
         <Text wrap="truncate-start">
           <Text color={props.active ? theme.accent : theme.fgDim} bold>
             {props.loading && props.spinnerFrame
-              ? `${props.spinnerFrame} `
-              : `${glyph.folder}  `}
+              ? `${props.spinnerFrame}  `
+              : `cd  `}
           </Text>
           <Text color={theme.fg}>{props.value}</Text>
           {props.active ? <Text color={theme.accent}>{glyph.cursor}</Text> : null}
@@ -624,6 +633,50 @@ export function PathInput(props: {
       {props.hint ? (
         <Text color={theme.fgDim}>{props.hint}</Text>
       ) : null}
+    </Box>
+  )
+}
+
+// A row of recent directories shown above the file tree.
+export function RecentDirectories(props: {
+  recents: Array<{ path: string; label: string }>
+  selectedPath?: string
+  active?: boolean
+  home?: string
+}) {
+  if (props.recents.length === 0) return null
+  return (
+    <Box flexDirection="column">
+      {props.recents.map((item) => {
+        const selected = item.path === props.selectedPath
+        const display =
+          props.home && item.path.startsWith(props.home)
+            ? `~${item.path.slice(props.home.length)}`
+            : item.path
+        return (
+          <Box key={item.path}>
+            <Text wrap="truncate-start">
+              <Text color={selected && props.active ? theme.accent : theme.divider}>
+                {selected && props.active ? "▍" : " "}
+              </Text>
+              <Text color={selected && props.active ? theme.accent : theme.fgDim}>
+                {`  ↻  `}
+              </Text>
+              <Text
+                color={
+                  selected && props.active
+                    ? theme.accent
+                    : theme.fgMuted
+                }
+                bold={selected && props.active}
+              >
+                {item.label}
+              </Text>
+              <Text color={theme.fgDim}>{`   ${display}`}</Text>
+            </Text>
+          </Box>
+        )
+      })}
     </Box>
   )
 }

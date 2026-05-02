@@ -131,6 +131,13 @@ function Frame(props: { rows: number; children: React.ReactNode }) {
 }
 
 function SetupScene(props: { rows: number }) {
+  const instances = [
+    { id: "i1", label: "workspace dev", url: "http://127.0.0.1:auto", local: true, version: "v27.4.7" },
+    { id: "i2", label: "staging", url: "https://staging.codeplane.io", local: false },
+    { id: "i3", label: "production", url: "https://prod.codeplane.io", local: false },
+    { id: "i4", label: "ephemeral test", url: "http://127.0.0.1:51444", local: true, version: "v27.4.7" },
+  ]
+  const selectedID = "i1"
   return (
     <Frame rows={props.rows}>
       <Header
@@ -138,64 +145,43 @@ function SetupScene(props: { rows: number }) {
         cwd="~/projects/opencode"
         status={{ variant: "info", text: "ready" }}
       />
-      <Box marginTop={1} paddingX={1}>
+      <Box marginTop={1} paddingX={2} flexDirection="column">
         <Text color={theme.fgDim}>SELECT A SERVER</Text>
-      </Box>
-      <Box marginTop={1} flexDirection="row" gap={2}>
-        <Box flexDirection="column" width={36} flexShrink={0}>
-          <Box flexDirection="column">
-            <Box>
-              <Text wrap="truncate-end">
-                <Text color={theme.accent}>▍ </Text>
-                <Text color={theme.success}>local </Text>
-                <Text color={theme.accent} bold>
-                  workspace dev
-                </Text>
-              </Text>
-            </Box>
-            <Box>
-              <Text wrap="truncate-end">
-                <Text color={theme.divider}>{"  "}</Text>
-                <Text color={theme.info}>remote </Text>
-                <Text color={theme.fgMuted}>staging.codeplane.io</Text>
-              </Text>
-            </Box>
-            <Box>
-              <Text wrap="truncate-end">
-                <Text color={theme.divider}>{"  "}</Text>
-                <Text color={theme.info}>remote </Text>
-                <Text color={theme.fgMuted}>prod.codeplane.io</Text>
-              </Text>
-            </Box>
-            <Box>
-              <Text wrap="truncate-end">
-                <Text color={theme.divider}>{"  "}</Text>
-                <Text color={theme.success}>local </Text>
-                <Text color={theme.fgMuted}>ephemeral test</Text>
-              </Text>
-            </Box>
-          </Box>
-        </Box>
-        <Box flexDirection="column" flexGrow={1}>
-          <Box>
-            <Text bold color={theme.accent}>
-              workspace dev
-            </Text>
-            <Text color={theme.fgDim}>{"   "}local · ready</Text>
-          </Box>
-          <Box marginTop={1} flexDirection="column">
-            <MetricRow label="binary" value="v27.4.7 (default)" />
-            <MetricRow label="url" value="http://127.0.0.1:auto" tone="muted" />
-            <MetricRow label="headers" value="0 configured" tone="muted" />
-            <MetricRow label="tls verify" value="enabled" tone="muted" />
-          </Box>
-          <Box marginTop={1}>
-            <Text color={theme.fgDim}>
-              <Text color={theme.accent}>↵</Text> open ·{" "}
-              <Text color={theme.accent}>e</Text> edit ·{" "}
-              <Text color={theme.accent}>d</Text> delete
-            </Text>
-          </Box>
+        <Box marginTop={1} flexDirection="column">
+          {instances.map((inst) => {
+            const selected = inst.id === selectedID
+            return (
+              <Box key={inst.id} flexDirection="column">
+                <Box>
+                  <Text wrap="truncate-end">
+                    <Text color={selected ? theme.accent : theme.divider}>
+                      {selected ? "▍" : " "}
+                    </Text>
+                    <Text color={inst.local ? theme.success : theme.info}>
+                      {`  ${inst.local ? "local " : "remote"}  `}
+                    </Text>
+                    <Text
+                      color={selected ? theme.accent : theme.fgMuted}
+                      bold={selected}
+                    >
+                      {inst.label}
+                    </Text>
+                    <Text color={theme.fgDim}>{`   ${inst.url}`}</Text>
+                  </Text>
+                </Box>
+                {selected ? (
+                  <Box flexDirection="column" paddingLeft={4} marginTop={0}>
+                    <Box marginTop={0}>
+                      <Text color={theme.fgDim}>
+                        {inst.local ? `binary ${inst.version}  ·  ` : ""}
+                        {`tls verify enabled  ·  no custom headers`}
+                      </Text>
+                    </Box>
+                  </Box>
+                ) : null}
+              </Box>
+            )
+          })}
         </Box>
       </Box>
       <Box marginTop={2}>
@@ -421,20 +407,24 @@ function ConversationScene(props: { rows: number }) {
       <Box marginTop={1}>
         <RouteTabs tabs={sampleRouteTabs} active="session" />
       </Box>
-      <Box marginTop={1} paddingX={1}>
-        <Text color={theme.fgDim}>{"Add JWT auth to api"}</Text>
-        <Text color={theme.fgDim}>{"   ·   "}</Text>
-        <Text color={theme.fgMuted}>{"5 messages · 3 tools"}</Text>
+      <Box marginTop={1} paddingX={2}>
+        <Text wrap="truncate-end">
+          <Text color={theme.accent} bold>
+            {"Add JWT auth to api"}
+          </Text>
+          <Text color={theme.fgDim}>{"   ·   "}</Text>
+          <Text color={theme.fgMuted}>{"5 messages · 3 tools · 12 min"}</Text>
+        </Text>
       </Box>
-      <Box marginTop={1} paddingX={1}>
+      <Box marginTop={1} paddingX={2}>
         <Conversation parts={sampleConversation} spinnerFrame={glyph.spinnerFrames[2]} />
       </Box>
-      <Box marginTop={1} paddingX={1} flexDirection="column">
+      <Box marginTop={1} paddingX={2} flexDirection="column">
         <Composer
           value="Now wire the middleware into the protected routes"
           placeholder="Message Add JWT auth to api"
           active
-          hint="↵ send · / commands · s sidebar · esc unfocus"
+          hint="↵ send · shift+↵ newline · / commands · s sidebar · esc unfocus"
         />
         <Box marginTop={1}>
           <StatusBar
@@ -577,27 +567,47 @@ function NotificationsScene(props: { rows: number }) {
       <Box marginTop={1}>
         <RouteTabs tabs={sampleRouteTabs} active="notifications" />
       </Box>
-      <Box marginTop={1} paddingX={1}>
-        <Text color={theme.fgDim}>INBOX</Text>
-      </Box>
-      <Box marginTop={1} alignItems="flex-start" gap={2}>
-        <Box flexDirection="column" width={48} flexShrink={0} paddingX={1}>
-          <NotificationList items={sampleNotifications} selectedID="p1" active />
-        </Box>
-        <Box flexDirection="column" flexGrow={1} paddingX={1}>
-          <Text color={theme.warning} bold>
-            permission · bun test
-          </Text>
-          <Box marginTop={1} flexDirection="column">
-            <MetricRow label="patterns" value="bun test, bun run test:*" tone="muted" />
-            <MetricRow label="requested" value="2 minutes ago" tone="muted" />
-          </Box>
-          <Box marginTop={2}>
-            <Text color={theme.fgDim}>
-              <Text color={theme.success}>y</Text> approve once ·{" "}
-              <Text color={theme.success}>a</Text> always ·{" "}
-              <Text color={theme.error}>x</Text> reject
+      <Box marginTop={1} paddingX={2} flexDirection="column">
+        <Text color={theme.fgDim}>INBOX · 2 PENDING</Text>
+        <Box marginTop={1} flexDirection="column">
+          <Box>
+            <Text wrap="truncate-end">
+              <Text color={theme.accent}>▍</Text>
+              <Text color={theme.warning} bold>{`  permission  `}</Text>
+              <Text color={theme.accent} bold>
+                Run command: bun test
+              </Text>
             </Text>
+          </Box>
+          <Box paddingLeft={4} flexDirection="column">
+            <Text color={theme.fgDim}>patterns: bun test, bun run test:*</Text>
+            <Text color={theme.fgDim}>requested 2 minutes ago</Text>
+            <Box marginTop={1}>
+              <Text color={theme.fgDim}>
+                <Text color={theme.success} bold>
+                  y
+                </Text>{" "}
+                approve once   <Text color={theme.success} bold>
+                  a
+                </Text>{" "}
+                always   <Text color={theme.error} bold>
+                  x
+                </Text>{" "}
+                reject
+              </Text>
+            </Box>
+          </Box>
+          <Box marginTop={1}>
+            <Text wrap="truncate-end">
+              <Text color={theme.divider}> </Text>
+              <Text color={theme.info} bold>{`  question    `}</Text>
+              <Text color={theme.fgMuted}>
+                Which package manager should I use?
+              </Text>
+            </Text>
+          </Box>
+          <Box paddingLeft={4}>
+            <Text color={theme.fgDim}>options: bun, pnpm, npm</Text>
           </Box>
         </Box>
       </Box>
@@ -608,7 +618,7 @@ function NotificationsScene(props: { rows: number }) {
             { keys: "y", label: "approve once" },
             { keys: "a", label: "always" },
             { keys: "x", label: "reject" },
-            { keys: "tab", label: "switch pane" },
+            { keys: "esc", label: "back" },
           ]}
         />
       </Box>

@@ -50,5 +50,5 @@ if (Script.release && !Script.preview) {
 }
 
 if (Script.release) {
-  await $`gh release edit ${tag} --draft=false --repo ${process.env.GH_REPO}`
+  await $`gh release edit ${tag} --draft=false --latest=false --repo ${process.env.GH_REPO}`
 }
