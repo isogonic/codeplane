@@ -8,7 +8,7 @@ const assistant = (
   cost: number,
   providerID = "openai",
   modelID = "gpt-4.1",
-  completed?: number,
+  time?: { created: number; completed: number },
 ) => {
   return {
     id,
@@ -25,7 +25,7 @@ const assistant = (
         write: tokens.write,
       },
     },
-    time: completed === undefined ? { created: 1 } : { created: 1, completed },
+    time: time ?? { created: 1 },
   } as unknown as Message
 }
 
@@ -66,19 +66,84 @@ describe("getSessionContextMetrics", () => {
     expect(metrics.context?.usage).toBe(50)
     expect(metrics.context?.providerLabel).toBe("OpenAI")
     expect(metrics.context?.modelLabel).toBe("GPT-4.1")
-    expect(metrics.averageTokensPerSecond).toBeNull()
+    expect(metrics.speed.lifetime).toBeNull()
+    expect(metrics.speed.recent).toBeNull()
+    expect(metrics.speed.peak).toBeNull()
+    expect(metrics.speed.turns).toEqual([])
   })
 
-  test("computes average tokens per second from completed assistant messages", () => {
+  test("computes per-turn speed series and lifetime/recent/peak", () => {
     const messages = [
-      assistant("a1", { input: 0, output: 40, reasoning: 10, read: 0, write: 0 }, 0, "openai", "gpt-4.1", 5001),
-      assistant("a2", { input: 0, output: 999, reasoning: 0, read: 0, write: 0 }, 0, "openai", "gpt-4.1", 1),
+      assistant("a1", { input: 0, output: 40, reasoning: 10, read: 0, write: 0 }, 0, "openai", "gpt-4.1", {
+        created: 0,
+        completed: 5000,
+      }),
+      assistant("a2", { input: 0, output: 200, reasoning: 0, read: 0, write: 0 }, 0, "openai", "gpt-4.1", {
+        created: 6000,
+        completed: 8000,
+      }),
       assistant("a3", { input: 0, output: 100, reasoning: 0, read: 0, write: 0 }, 0),
     ]
 
     const metrics = getSessionContextMetrics(messages, [{ id: "openai", models: {} }])
 
-    expect(metrics.averageTokensPerSecond).toBe(10)
+    expect(metrics.speed.turns).toHaveLength(2)
+    expect(metrics.speed.turns[0]?.tps).toBe(10)
+    expect(metrics.speed.turns[1]?.tps).toBe(100)
+    expect(metrics.speed.lifetime).toBeCloseTo(35.71, 1)
+    expect(metrics.speed.recent).toBeCloseTo(35.71, 1)
+    expect(metrics.speed.peak).toBe(100)
+    expect(metrics.speed.current).toBe(100)
+  })
+
+  test("recent window only covers the last few turns", () => {
+    const slow = (id: string, created: number) =>
+      assistant(id, { input: 0, output: 50, reasoning: 0, read: 0, write: 0 }, 0, "openai", "gpt-4.1", {
+        created,
+        completed: created + 5000,
+      })
+    const fast = (id: string, created: number) =>
+      assistant(id, { input: 0, output: 500, reasoning: 0, read: 0, write: 0 }, 0, "openai", "gpt-4.1", {
+        created,
+        completed: created + 5000,
+      })
+    const messages = [
+      slow("a1", 0),
+      slow("a2", 6000),
+      slow("a3", 12000),
+      fast("a4", 18000),
+      fast("a5", 24000),
+      fast("a6", 30000),
+      fast("a7", 36000),
+      fast("a8", 42000),
+    ]
+
+    const metrics = getSessionContextMetrics(messages, [{ id: "openai", models: {} }])
+
+    expect(metrics.speed.turns).toHaveLength(8)
+    expect(metrics.speed.recent).toBe(100)
+    expect(metrics.speed.peak).toBe(100)
+    expect(metrics.speed.lifetime).toBeLessThan(100)
+    expect(metrics.speed.lifetime).toBeGreaterThan(10)
+  })
+
+  test("filters out tiny turns that would create misleading peaks", () => {
+    const messages = [
+      assistant("a1", { input: 0, output: 1, reasoning: 0, read: 0, write: 0 }, 0, "openai", "gpt-4.1", {
+        created: 0,
+        completed: 50,
+      }),
+      assistant("a2", { input: 0, output: 100, reasoning: 0, read: 0, write: 0 }, 0, "openai", "gpt-4.1", {
+        created: 1000,
+        completed: 6000,
+      }),
+    ]
+
+    const metrics = getSessionContextMetrics(messages, [{ id: "openai", models: {} }])
+
+    expect(metrics.speed.turns).toHaveLength(1)
+    expect(metrics.speed.turns[0]?.id).toBe("a2")
+    expect(metrics.speed.peak).toBe(20)
   })
 
   test("preserves fallback labels and null usage when model metadata is missing", () => {
@@ -110,7 +175,10 @@ describe("getSessionContextMetrics", () => {
     const metrics = getSessionContextMetrics(undefined, undefined)
 
     expect(metrics.totalCost).toBe(0)
-    expect(metrics.averageTokensPerSecond).toBeNull()
+    expect(metrics.speed.lifetime).toBeNull()
+    expect(metrics.speed.recent).toBeNull()
+    expect(metrics.speed.peak).toBeNull()
+    expect(metrics.speed.turns).toEqual([])
     expect(metrics.context).toBeUndefined()
   })
 })

@@ -314,15 +314,21 @@ function getInstanceLive(id: string | undefined): SavedInstance | undefined {
   return { ...instance, url: running.url }
 }
 
-async function ensureLocalRunning(instance: SavedInstance): Promise<SavedInstance> {
+async function ensureLocalRunning(
+  instance: SavedInstance,
+  onProgress?: (progress: LocalInstanceProgress) => void,
+): Promise<SavedInstance> {
   if (!instance.local) return instance
   const existing = localManager.getRunning(instance.id)
   if (existing) return { ...instance, url: existing.url }
   const version = instance.local.binaryVersion || (await readPreferredLocalVersion())
-  const running = await localManager.start({
-    id: instance.id,
-    binaryVersion: version,
-  })
+  const running = await localManager.start(
+    {
+      id: instance.id,
+      binaryVersion: version,
+    },
+    onProgress,
+  )
   return { ...instance, local: { binaryVersion: version }, url: running.url }
 }
 
@@ -479,14 +485,21 @@ function ensureSession(instance: SavedInstance): Session {
   const ses = session.fromPartition(partition, { cache: true })
   if (configuredPartitions.has(partition)) return ses
   configuredPartitions.add(partition)
-  const target = asUrl(instance.url)
 
   // Inject per-instance auth headers (CF Access, bearer tokens, …) on all
   // outbound HTTP requests for this session. We never overwrite headers the
   // page itself already set, and we skip browser-managed headers so we don't
   // break CORS/credentials behaviour.
+  //
+  // The closure deliberately re-reads the instance from the store on every
+  // request — Electron only lets us register one `onBeforeSendHeaders` per
+  // session, but the instance config (headers, ignoreCertificateErrors,
+  // url) can be edited from the setup window any time. Pinning the original
+  // `instance` argument would freeze stale headers into the session.
   ses.webRequest.onBeforeSendHeaders((details, callback) => {
     const headers = { ...details.requestHeaders }
+    const live = getInstance(instance.id) ?? instance
+    const target = asUrl(live.url)
     const current = target ? asUrl(details.url) : undefined
     const targetPath = target?.pathname.replace(/\/+$/, "") || "/"
     const matchesTarget =
@@ -494,8 +507,8 @@ function ensureSession(instance: SavedInstance): Session {
       !!current &&
       current.origin === target.origin &&
       (current.pathname === targetPath || current.pathname.startsWith(`${targetPath === "/" ? "" : targetPath}/`))
-    if (instance.headers) {
-      for (const [name, value] of Object.entries(instance.headers)) {
+    if (live.headers) {
+      for (const [name, value] of Object.entries(live.headers)) {
         if (!name) continue
         if (HEADER_PREFIX_BLOCKED.some((blocked) => name.toLowerCase() === blocked)) continue
         if (headers[name] !== undefined) continue
@@ -510,8 +523,13 @@ function ensureSession(instance: SavedInstance): Session {
   // identity provider. Looks up the cert by the subject CN the user
   // recorded in setup; macOS Keychain / Windows Cert Store / NSS DB on
   // Linux supplies the private key.
-  ses.setCertificateVerifyProc((request, callback) => {
-    if (instance.ignoreCertificateErrors) {
+  //
+  // Like `onBeforeSendHeaders` above, re-read the saved instance for every
+  // call so toggling "Trust self-signed TLS certificates" in setup takes
+  // effect on the next request without having to restart the app.
+  ses.setCertificateVerifyProc((_request, callback) => {
+    const live = getInstance(instance.id) ?? instance
+    if (live.ignoreCertificateErrors) {
       callback(0)
       return
     }
@@ -777,6 +795,11 @@ async function installRuntimeUpdate(version: string, sender?: WebContents) {
   }
 
   logger.log("main", "updater.download.start", { version })
+  // Capture which locals are currently running so we can hot-restart them
+  // on the new binary after the download completes. Otherwise users would
+  // see the new version on disk but their live process would still be
+  // running the old binary.
+  const runningBefore = localManager.listRunning()
   await localManager.download(version, (progress) => {
     const payload = {
       percent: progress.percent,
@@ -784,11 +807,23 @@ async function installRuntimeUpdate(version: string, sender?: WebContents) {
       total: progress.total ?? 0,
       version: progress.binaryVersion ?? version,
     }
-    sender?.send("local:install-progress", { version, ...progress })
+    sender?.send("local:install-progress", { ...progress, version })
     broadcastUpdater("updater:download-progress", payload)
   })
   await writePreferredLocalVersion(version)
   await updateLocalInstanceVersions(version)
+  // Restart in-place so the live URL stays stable enough that the renderer
+  // can re-probe; if a restart fails, surface it but keep the update.
+  for (const live of runningBefore) {
+    try {
+      await localManager.restart({ id: live.id, binaryVersion: version }, (progress) => {
+        sender?.send("local:install-progress", { ...progress, version })
+      })
+      logger.log("main", "updater.restart.success", { id: live.id, version })
+    } catch (error) {
+      logger.log("main", "updater.restart.error", { error, id: live.id, version })
+    }
+  }
   logger.log("main", "updater.download.success", { version })
   broadcastUpdater("updater:update-downloaded", { version })
   return { ok: true as const }
@@ -1078,16 +1113,42 @@ function loadWindowUrl(window: BrowserWindow, url: string) {
   })
 }
 
-function attachInteractiveBootstrap(window: BrowserWindow, instance: SavedInstance) {
+// Watches the per-instance window after we've sent the user to a sign-in URL
+// and re-runs `uiHost.prepare(...)` once they're authenticated. We listen for
+// every navigation/load event AND poll on a fixed interval — many auth flows
+// (CF Access cdn-cgi/access/callback, OAuth code exchanges, fetch-driven
+// SPAs) finish without firing `did-navigate` to the instance origin, so the
+// poll is the load-bearing path. The first call that succeeds wins; the
+// others are short-circuited by the `inflight`/`closed` flags.
+//
+// Works for any remote instance, not just CF Access — anything where the
+// session ends up holding a cookie/token that lets `/global/version` return
+// JSON will resolve through the same path.
+function attachInteractiveBootstrap(
+  window: BrowserWindow,
+  instance: SavedInstance,
+  opts?: { progressTo?: WebContents },
+) {
   let closed = false
   let inflight: Promise<void> | undefined
   let timer: ReturnType<typeof setTimeout> | undefined
+  let pollTimer: ReturnType<typeof setInterval> | undefined
   const currentOrigin = asUrl(instance.url)?.origin
+
+  const liveInstance = () => getInstance(instance.id) ?? instance
+
+  const emit = (payload: Record<string, unknown>) => {
+    const wc = opts?.progressTo
+    if (!wc || wc.isDestroyed()) return
+    wc.send("instances:open-progress", { instanceID: instance.id, ...payload })
+  }
 
   const cleanup = () => {
     closed = true
     if (timer) clearTimeout(timer)
     timer = undefined
+    if (pollTimer) clearInterval(pollTimer)
+    pollTimer = undefined
     window.webContents.removeListener("did-finish-load", onLoad)
     window.webContents.removeListener("did-navigate", onNavigate)
     window.webContents.removeListener("did-navigate-in-page", onNavigateInPage)
@@ -1096,23 +1157,28 @@ function attachInteractiveBootstrap(window: BrowserWindow, instance: SavedInstan
 
   const attempt = () => {
     if (closed || inflight || window.isDestroyed()) return
+    const target = liveInstance()
     inflight = uiHost
-      .prepare(instance)
+      .prepare(target, (progress: DesktopUIPrepareProgress) => {
+        logger.log("main", "instance.bootstrap.progress", { ...progress, id: target.id })
+        emit(progress)
+      })
       .then(async (prepared) => {
-        logger.log("main", "instance.bootstrap.ready", { prepared, ...instanceSummary(instance) })
+        logger.log("main", "instance.bootstrap.ready", { prepared, ...instanceSummary(target) })
         cleanup()
+        emit({ phase: "done", message: "Loading…", percent: 100, version: prepared.version })
         await loadWindowUrl(window, prepared.url)
-        logger.log("main", "instance.bootstrap.success", { prepared, ...instanceSummary(instance) })
+        logger.log("main", "instance.bootstrap.success", { prepared, ...instanceSummary(target) })
       })
       .catch((error) => {
         if (error instanceof DesktopVersionAuthRequiredError) {
           logger.log("main", "instance.bootstrap.wait-auth", {
             authUrl: error.authUrl,
-            ...instanceSummary(instance),
+            ...instanceSummary(target),
           })
           return
         }
-        logger.log("main", "instance.bootstrap.error", { error, ...instanceSummary(instance) })
+        logger.log("main", "instance.bootstrap.error", { error, ...instanceSummary(target) })
       })
       .finally(() => {
         inflight = undefined
@@ -1149,6 +1215,12 @@ function attachInteractiveBootstrap(window: BrowserWindow, instance: SavedInstan
   window.webContents.on("did-finish-load", onLoad)
   window.webContents.on("did-navigate", onNavigate)
   window.webContents.on("did-navigate-in-page", onNavigateInPage)
+  // Periodic backstop: even if no nav events fire (auth flow keeps the user
+  // on a single page that fetch-redirects, or the redirect lands on a path
+  // that doesn't trigger our origin check), poll the version endpoint until
+  // the session is allowed through.
+  pollTimer = setInterval(() => attempt(), 3_000)
+  pollTimer.unref?.()
 }
 
 async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebContents }) {
@@ -1224,7 +1296,11 @@ async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebConte
         authUrl: error.authUrl,
         ...instanceSummary(instance),
       })
-      attachInteractiveBootstrap(window, instance)
+      // Hand the window over to the interactive bootstrap watcher BEFORE we
+      // navigate to the auth URL, so the listeners catch the very first
+      // `did-finish-load` from the auth page and the later redirect back.
+      attachInteractiveBootstrap(window, instance, { progressTo: opts?.progressTo })
+      emit({ phase: "probe", message: "Waiting for sign-in…", percent: 12 })
       await loadWindowUrl(window, error.authUrl)
       return
     })
@@ -1345,7 +1421,9 @@ function setupIpc() {
     let instance = saved
     if (saved.local) {
       try {
-        instance = await ensureLocalRunning(saved)
+        instance = await ensureLocalRunning(saved, (progress: LocalInstanceProgress) => {
+          event.sender.send("local:install-progress", { ...progress, version: saved.local!.binaryVersion })
+        })
       } catch (error) {
         logger.log("main", "instances.prepare.local-start-error", { error, ...instanceSummary(saved) })
         return {
@@ -1433,7 +1511,7 @@ function setupIpc() {
     logger.log("main", "local.install.start", { version })
     try {
       const result = await localManager.download(version, (progress: LocalInstanceProgress) => {
-        event.sender.send("local:install-progress", { version, ...progress })
+        event.sender.send("local:install-progress", { ...progress, version })
       })
       await writePreferredLocalVersion(version)
       logger.log("main", "local.install.success", result)
@@ -1443,10 +1521,12 @@ function setupIpc() {
       return { ok: false as const, error: error instanceof Error ? error.message : String(error) }
     }
   })
-  ipcMain.handle("local:start", async (_event, input: { id: string; binaryVersion: string }) => {
+  ipcMain.handle("local:start", async (event, input: { id: string; binaryVersion: string }) => {
     logger.log("main", "local.start.request", input)
     try {
-      const running = await localManager.start(input)
+      const running = await localManager.start(input, (progress: LocalInstanceProgress) => {
+        event.sender.send("local:install-progress", { ...progress, version: input.binaryVersion })
+      })
       return { ok: true as const, ...running }
     } catch (error) {
       logger.log("main", "local.start.error", { error, ...input })
@@ -1631,8 +1711,19 @@ if (!gotLock) {
 
   // Tear down any local Codeplane processes the desktop spawned so they
   // don't outlive the app and squat on their state directories.
-  app.on("before-quit", () => {
-    logger.log("main", "before-quit.local-stop", { count: savedInstances().filter((i) => i.local).length })
-    void localManager.stopAll()
+  let teardownPromise: Promise<void> | undefined
+  app.on("before-quit", (event) => {
+    if (teardownPromise) return
+    const runningCount = localManager.listRunning().length
+    if (runningCount === 0) return
+    logger.log("main", "before-quit.local-stop", { count: runningCount })
+    event.preventDefault()
+    teardownPromise = localManager
+      .stopAll()
+      .catch((error) => logger.log("main", "before-quit.stop-error", { error }))
+      .finally(() => {
+        logger.log("main", "before-quit.local-stop.done", {})
+        app.quit()
+      })
   })
 }

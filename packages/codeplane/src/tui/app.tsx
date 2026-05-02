@@ -17,6 +17,7 @@ import type {
 } from "@codeplane-ai/sdk/v2/client"
 import type { LocalTarget, OpenProgress, SavedInstance } from "@codeplane-ai/shared/instance"
 import { localInstanceUrl } from "@codeplane-ai/shared/instance"
+import { formatHeaders as serializeHeaders, parseHeaders as parseHeaderInput } from "@codeplane-ai/shared/headers"
 import { CodeplaneVersion } from "@codeplane-ai/shared/version"
 import { createInstanceService, type InstanceService } from "./instance-service"
 import { wsUrlForInstance } from "./client"
@@ -84,28 +85,8 @@ function relative(root: string, target: string) {
   return sliced || "."
 }
 
-function formatHeaders(headers: Record<string, string> | undefined) {
-  if (!headers) return ""
-  return Object.entries(headers)
-    .map(([key, value]) => `${key}: ${value}`)
-    .join("; ")
-}
-
-function parseHeaders(input: string) {
-  return input
-    .split(";")
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .reduce<Record<string, string>>((acc, item) => {
-      const index = item.indexOf(":")
-      if (index === -1) return acc
-      const key = item.slice(0, index).trim()
-      const value = item.slice(index + 1).trim()
-      if (!key || !value) return acc
-      acc[key] = value
-      return acc
-    }, {})
-}
+const formatHeaders = (headers: Record<string, string> | undefined) => serializeHeaders(headers, "semicolon")
+const parseHeaders = parseHeaderInput
 
 function formatTime(value?: number) {
   if (!value) return ""

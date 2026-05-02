@@ -17,6 +17,7 @@ import { useSessionLayout } from "@/pages/session/session-layout"
 import { getSessionContextMetrics } from "./session-context-metrics"
 import { estimateSessionContextBreakdown, type SessionContextBreakdownKey } from "./session-context-breakdown"
 import { createSessionContextFormatter } from "./session-context-format"
+import { SessionTpsMeter } from "./session-tps-meter"
 
 const BREAKDOWN_COLOR: Record<SessionContextBreakdownKey, string> = {
   system: "var(--syntax-info)",
@@ -197,10 +198,6 @@ export function SessionContextTab() {
   }
 
   const stats = [
-    {
-      label: "context.stats.averageTokensPerSecond",
-      value: () => formatter().tokensPerSecond(metrics().averageTokensPerSecond),
-    },
     { label: "context.stats.messages", value: () => counts().all.toLocaleString(language.intl()) },
     { label: "context.stats.provider", value: providerLabel },
     { label: "context.stats.model", value: modelLabel },
@@ -280,6 +277,8 @@ export function SessionContextTab() {
       onScroll={handleScroll}
     >
       <div class="px-6 pt-4 pb-10 flex flex-col gap-10">
+        <SessionTpsMeter speed={metrics().speed} label={language.t("context.stats.averageTokensPerSecond")} />
+
         <div class="grid grid-cols-1 @[32rem]:grid-cols-2 gap-4">
           <For each={stats}>
             {(stat) => <Stat label={language.t(stat.label as Parameters<typeof language.t>[0])} value={stat.value()} />}

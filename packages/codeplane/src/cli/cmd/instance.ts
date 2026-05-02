@@ -1,6 +1,10 @@
 import { localInstanceUrl, type SavedInstance } from "@codeplane-ai/shared/instance"
 import type { State as InstanceState } from "@codeplane-ai/shared/instance-store"
-import { fetchCodeplaneLatestVersion, readPreferredLocalVersion } from "@codeplane-ai/shared/local-runtime"
+import {
+  fetchCodeplaneLatestVersion,
+  readPreferredLocalVersion,
+  resolveLocalBinaryPath,
+} from "@codeplane-ai/shared/local-runtime"
 import { Global } from "@/global"
 import path from "path"
 import { createInstanceService } from "../../tui/instance-service"
@@ -95,7 +99,10 @@ async function localVersion(version?: string) {
 
 async function localBinaryPath(version: string) {
   const target = await createInstanceService().localTarget()
-  return path.join(Global.Path.local_server_binaries, version, target.binaryName)
+  const versionRoot = path.join(Global.Path.local_server_binaries, version)
+  return (
+    (await resolveLocalBinaryPath(versionRoot, target.binaryName)) ?? path.join(versionRoot, "bin", target.binaryName)
+  )
 }
 
 async function localStatus(version?: string) {

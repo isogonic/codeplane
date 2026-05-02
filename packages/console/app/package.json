@@ -1,6 +1,6 @@
 {
   "name": "@codeplane-ai/console-app",
-  "version": "27.3.1",
+  "version": "27.4.0",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -11,34 +11,34 @@
     "start": "vite start"
   },
   "dependencies": {
-    "@cloudflare/vite-plugin": "1.15.2",
+    "@cloudflare/vite-plugin": "1.35.0",
     "@ibm/plex": "6.4.1",
     "@jsx-email/render": "1.1.1",
-    "@kobalte/core": "catalog:",
-    "@openauthjs/openauth": "catalog:",
-    "@codeplane-ai/console-core": "workspace:*",
-    "@codeplane-ai/console-mail": "workspace:*",
-    "@codeplane-ai/console-resource": "workspace:*",
-    "@codeplane-ai/ui": "workspace:*",
+    "@kobalte/core": "0.13.11",
+    "@openauthjs/openauth": "0.0.0-20250322224806",
+    "@codeplane-ai/console-core": "file:../core",
+    "@codeplane-ai/console-mail": "file:../mail",
+    "@codeplane-ai/console-resource": "file:../resource",
+    "@codeplane-ai/ui": "file:../../ui",
     "@smithy/eventstream-codec": "4.2.7",
     "@smithy/util-utf8": "4.2.0",
-    "@solidjs/meta": "catalog:",
-    "@solidjs/router": "catalog:",
-    "@solidjs/start": "catalog:",
+    "@solidjs/meta": "0.29.4",
+    "@solidjs/router": "0.15.4",
+    "@solidjs/start": "https://pkg.pr.new/@solidjs/start@dfb2020",
     "@stripe/stripe-js": "8.6.1",
     "chart.js": "4.5.1",
-    "nitro": "3.0.1-alpha.1",
-    "solid-js": "catalog:",
+    "nitro": "3.0.1-alpha.2",
+    "solid-js": "1.9.10",
     "solid-list": "0.3.0",
     "solid-stripe": "0.8.1",
-    "vite": "catalog:",
-    "zod": "catalog:"
+    "vite": "7.3.2",
+    "zod": "4.1.8"
   },
   "devDependencies": {
-    "@typescript/native-preview": "catalog:",
+    "@typescript/native-preview": "7.0.0-dev.20251207.1",
     "@webgpu/types": "0.1.54",
-    "typescript": "catalog:",
-    "wrangler": "4.50.0"
+    "typescript": "5.8.2",
+    "wrangler": "4.87.0"
   },
   "engines": {
     "node": ">=22"

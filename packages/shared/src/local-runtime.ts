@@ -1,9 +1,10 @@
 import { spawn, spawnSync } from "node:child_process"
+import { createHash } from "node:crypto"
 import { createWriteStream } from "node:fs"
 import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
-import { Readable } from "node:stream"
+import { Readable, Transform } from "node:stream"
 import { pipeline } from "node:stream/promises"
 import type { ReadableStream as NodeReadableStream } from "node:stream/web"
 import { CodeplaneHome } from "./home"
@@ -11,9 +12,35 @@ import { CodeplaneVersion } from "./version"
 import type { LocalInstallProgress, LocalTarget } from "./instance"
 
 const CONFIG_FILES = ["codeplane.jsonc", "codeplane.json", "config.json"] as const
-const cleanVersion = (value: string) => value.trim().replace(/^v/, "")
+const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[\w.+-]+)?$/
+const NPM_FETCH_TIMEOUT_MS = Number(process.env.CODEPLANE_NPM_FETCH_TIMEOUT_MS) || 120_000
+const cleanVersion = (value: string) => (value ?? "").toString().trim().replace(/^[vV]+/, "")
 const localVersionFile = () => path.join(CodeplaneHome.paths().local_server, "default-version")
 const localCliVersionFile = () => path.join(CodeplaneHome.paths().bin, ".codeplane-version")
+
+function assertValidVersion(version: string, context: string) {
+  if (!VERSION_PATTERN.test(version)) {
+    throw new Error(`Invalid Codeplane version "${version}" (${context}). Expected semver like ${CodeplaneVersion} or ${CodeplaneVersion}-rc.0.`)
+  }
+}
+
+async function fetchWithTimeout(url: URL | string, init: RequestInit & { timeoutMs?: number; description?: string } = {}) {
+  const { timeoutMs = NPM_FETCH_TIMEOUT_MS, description, signal: externalSignal, ...rest } = init
+  const controller = new AbortController()
+  const onAbort = () => controller.abort(externalSignal?.reason)
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort(externalSignal.reason)
+    else externalSignal.addEventListener("abort", onAbort, { once: true })
+  }
+  const timer = setTimeout(() => controller.abort(new Error(`Timed out after ${timeoutMs}ms${description ? `: ${description}` : ""}`)), timeoutMs)
+  timer.unref?.()
+  try {
+    return await fetch(url, { ...rest, signal: controller.signal })
+  } finally {
+    clearTimeout(timer)
+    if (externalSignal) externalSignal.removeEventListener("abort", onAbort)
+  }
+}
 
 type RegistryConfig = {
   registry: string
@@ -243,6 +270,19 @@ export function managedCodeplaneCliPath() {
 
 const pathExists = (file: string) => fs.access(file).then(() => true).catch(() => false)
 
+// The npm platform package ships the binary at `<root>/bin/<name>`, but older
+// extractions and a handful of fixtures ship it flat at `<root>/<name>`. Probe
+// both so callers do not have to care which layout is on disk.
+export function localBinaryCandidates(versionRoot: string, binaryName: string) {
+  return [path.join(versionRoot, "bin", binaryName), path.join(versionRoot, binaryName)]
+}
+
+export async function resolveLocalBinaryPath(versionRoot: string, binaryName: string) {
+  for (const candidate of localBinaryCandidates(versionRoot, binaryName)) {
+    if (await pathExists(candidate)) return candidate
+  }
+}
+
 export async function managedCodeplaneCliStatus() {
   const cliPath = managedCodeplaneCliPath()
   const cliInstalled = await pathExists(cliPath)
@@ -256,12 +296,28 @@ export async function managedCodeplaneCliStatus() {
 
 export async function installManagedCodeplaneCli(input: { version: string; binaryPath?: string }) {
   const version = cleanVersion(input.version)
+  assertValidVersion(version, "installManagedCodeplaneCli")
   const target = resolveCodeplaneLocalTarget()
   const cliPath = managedCodeplaneCliPath()
-  const source = input.binaryPath || path.join(CodeplaneHome.paths().local_server_binaries, version, target.binaryName)
-  const temp = `${cliPath}.tmp-${Date.now()}`
+  const versionRoot = path.join(CodeplaneHome.paths().local_server_binaries, version)
+  const source =
+    (input.binaryPath && (await pathExists(input.binaryPath)) ? input.binaryPath : undefined) ??
+    (await resolveLocalBinaryPath(versionRoot, target.binaryName))
+  if (!source) {
+    throw new Error(
+      `Codeplane ${version} binary not found in ${versionRoot}. Tried ${localBinaryCandidates(versionRoot, target.binaryName).join(" and ")}.`,
+    )
+  }
 
-  await fs.access(source)
+  // Skip the copy if the shared CLI is already on this exact version and
+  // points at a working binary — avoids racing concurrent local instances.
+  const existing = await managedCodeplaneCliStatus()
+  if (existing.cliInstalled && existing.cliVersion === version) {
+    return { cliInstalled: true, cliPath, version }
+  }
+
+  const temp = `${cliPath}.tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
   await fs.mkdir(path.dirname(cliPath), { recursive: true })
   await fs.copyFile(source, temp)
   if (target.os !== "windows") {
@@ -281,11 +337,12 @@ export async function installManagedCodeplaneCli(input: { version: string; binar
 export async function readPreferredLocalVersion(fallback = CodeplaneVersion) {
   const value = await fs.readFile(localVersionFile(), "utf8").catch(() => "")
   const next = cleanVersion(value)
-  return next || fallback
+  return next && VERSION_PATTERN.test(next) ? next : fallback
 }
 
 export async function writePreferredLocalVersion(version: string) {
   const next = cleanVersion(version)
+  assertValidVersion(next, "writePreferredLocalVersion")
   await fs.mkdir(path.dirname(localVersionFile()), { recursive: true })
   await fs.writeFile(localVersionFile(), `${next}\n`)
   return next
@@ -297,29 +354,61 @@ export async function fetchNpmPackageManifest(input: { name: string; version?: s
         registry: normalizeRegistry(input.registry),
       }
     : await npmRegistry()
-  const version = cleanVersion(input.version || "latest")
-  const url = new URL(`${registryPath(input.name)}/${version}`, config.registry)
-  const response = await fetch(url, {
+  const requested = cleanVersion(input.version || "latest")
+  // Allow "latest" / dist-tag passthrough, but validate concrete versions.
+  if (requested !== "latest" && !VERSION_PATTERN.test(requested)) {
+    throw new Error(`Invalid version "${requested}" requested for ${input.name}`)
+  }
+  const url = new URL(`${registryPath(input.name)}/${requested}`, config.registry)
+  const response = await fetchWithTimeout(url, {
     headers: {
       accept: "application/json",
       ...(config.token && (config.alwaysAuth || url.origin === new URL(config.registry).origin)
         ? { authorization: `Bearer ${config.token}` }
         : {}),
     },
+    description: `npm manifest ${input.name}@${requested}`,
   })
   if (!response.ok) {
-    throw new Error(`npm registry lookup failed for ${input.name}@${version} with HTTP ${response.status}`)
+    throw new Error(`npm registry lookup failed for ${input.name}@${requested} with HTTP ${response.status}`)
   }
   const payload = (await response.json()) as {
     version?: unknown
-    dist?: { tarball?: unknown }
+    dist?: { tarball?: unknown; integrity?: unknown; shasum?: unknown }
   }
   if (typeof payload.version !== "string" || typeof payload.dist?.tarball !== "string") {
-    throw new Error(`npm registry payload for ${input.name}@${version} is missing version or tarball`)
+    throw new Error(`npm registry payload for ${input.name}@${requested} is missing version or tarball`)
   }
   return {
     version: cleanVersion(payload.version),
     tarball: payload.dist.tarball,
+    integrity: typeof payload.dist.integrity === "string" ? payload.dist.integrity : undefined,
+    shasum: typeof payload.dist.shasum === "string" ? payload.dist.shasum : undefined,
+  }
+}
+
+// Validate an npm `dist.integrity` (SRI: "sha512-<base64>"). Throws on mismatch.
+function verifyIntegrity(buffer: Buffer, integrity: string, label: string) {
+  const entries = integrity.split(/\s+/).filter(Boolean)
+  let lastError: Error | undefined
+  for (const entry of entries) {
+    const [algorithm, value] = entry.split("-", 2)
+    if (!algorithm || !value) continue
+    try {
+      const hash = createHash(algorithm).update(buffer).digest("base64")
+      if (hash === value) return
+      lastError = new Error(`${algorithm} integrity mismatch for ${label}: expected ${value}, got ${hash}`)
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error))
+    }
+  }
+  throw lastError ?? new Error(`No supported algorithm in integrity field for ${label}: ${integrity}`)
+}
+
+function verifyShasum(buffer: Buffer, shasum: string, label: string) {
+  const hash = createHash("sha1").update(buffer).digest("hex")
+  if (hash !== shasum) {
+    throw new Error(`sha1 shasum mismatch for ${label}: expected ${shasum}, got ${hash}`)
   }
 }
 
@@ -352,10 +441,11 @@ export async function installCodeplaneLocalPackage(input: {
   version: string
   directory: string
   progress?(progress: LocalInstallProgress): void
+  signal?: AbortSignal
 }) {
   const target = resolveCodeplaneLocalTarget()
   const version = cleanVersion(input.version)
-  const binaryPath = path.join(input.directory, target.binaryName)
+  assertValidVersion(version, "installCodeplaneLocalPackage")
   const registry = await npmRegistry()
 
   input.progress?.({
@@ -390,12 +480,15 @@ export async function installCodeplaneLocalPackage(input: {
   })
 
   const tarball = new URL(manifest.tarball)
-  const response = await fetch(tarball, {
+  const response = await fetchWithTimeout(tarball, {
     redirect: "follow",
     headers:
       registry.token && (registry.alwaysAuth || tarball.origin === new URL(registry.registry).origin)
         ? { authorization: `Bearer ${registry.token}` }
         : undefined,
+    description: `npm tarball ${target.packageName}@${version}`,
+    signal: input.signal,
+    timeoutMs: NPM_FETCH_TIMEOUT_MS,
   })
   if (!response.ok) {
     throw new Error(`npm tarball download failed for ${target.packageName}@${version} with HTTP ${response.status}`)
@@ -406,20 +499,31 @@ export async function installCodeplaneLocalPackage(input: {
 
   const total = Number(response.headers.get("content-length") ?? "0")
   let transferred = 0
+  const buffers: Buffer[] = []
   const stream = Readable.fromWeb(response.body as unknown as NodeReadableStream)
-  stream.on("data", (chunk: Buffer) => {
-    transferred += chunk.length
-    input.progress?.({
-      version,
-      phase: "download",
-      message: `Downloading ${target.packageName}@${version}…`,
-      percent: total > 0 ? Math.min(82, 8 + Math.round((transferred / total) * 72)) : 40,
-      binaryVersion: version,
-      transferred,
-      total: total || undefined,
-    })
+  const meter = new Transform({
+    transform(chunk: Buffer, _enc, callback) {
+      transferred += chunk.length
+      buffers.push(chunk)
+      input.progress?.({
+        version,
+        phase: "download",
+        message: `Downloading ${target.packageName}@${version}…`,
+        percent: total > 0 ? Math.min(82, 8 + Math.round((transferred / total) * 72)) : 40,
+        binaryVersion: version,
+        transferred,
+        total: total || undefined,
+      })
+      callback(null, chunk)
+    },
   })
-  await pipeline(stream, createWriteStream(archive))
+  await pipeline(stream, meter, createWriteStream(archive))
+  const tarballBytes = Buffer.concat(buffers)
+  if (manifest.integrity) {
+    verifyIntegrity(tarballBytes, manifest.integrity, `${target.packageName}@${version}`)
+  } else if (manifest.shasum) {
+    verifyShasum(tarballBytes, manifest.shasum, `${target.packageName}@${version}`)
+  }
 
   input.progress?.({
     version,
@@ -430,12 +534,19 @@ export async function installCodeplaneLocalPackage(input: {
   })
 
   await extract(archive, packageRoot)
+  const extractedBinary = await resolveLocalBinaryPath(packageRoot, target.binaryName)
+  if (!extractedBinary) {
+    throw new Error(
+      `Extracted ${target.packageName}@${version} but binary ${target.binaryName} was not found in the package payload`,
+    )
+  }
   if (target.os !== "windows") {
-    await fs.chmod(path.join(packageRoot, target.binaryName), 0o755).catch(() => undefined)
+    await fs.chmod(extractedBinary, 0o755).catch(() => undefined)
   }
   await fs.rm(input.directory, { recursive: true, force: true })
   await fs.rename(packageRoot, input.directory)
   await fs.rm(tempRoot, { recursive: true, force: true })
+  const binaryPath = path.join(input.directory, path.relative(packageRoot, extractedBinary))
 
   input.progress?.({
     version,

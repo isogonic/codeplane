@@ -1,13 +1,19 @@
+import { spawnSync } from "node:child_process"
+import { createHash } from "node:crypto"
 import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import {
   fetchNpmPackageManifest,
+  installCodeplaneLocalPackage,
   installManagedCodeplaneCli,
+  localBinaryCandidates,
   managedCodeplaneCliPath,
   managedCodeplaneCliStatus,
   readPreferredLocalVersion,
+  resolveCodeplaneLocalTarget,
+  resolveLocalBinaryPath,
   writePreferredLocalVersion,
 } from "../src/local-runtime"
 
@@ -86,9 +92,150 @@ describe("preferred local runtime version", () => {
   })
 })
 
+describe("local binary resolver", () => {
+  test("prefers bin/<name> layout produced by the npm tarball", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "codeplane-binroot-"))
+    try {
+      const binary = process.platform === "win32" ? "codeplane.exe" : "codeplane"
+      const inBin = path.join(root, "bin", binary)
+      await fs.mkdir(path.dirname(inBin), { recursive: true })
+      await fs.writeFile(inBin, "x")
+      expect(await resolveLocalBinaryPath(root, binary)).toBe(inBin)
+      expect(localBinaryCandidates(root, binary)).toEqual([inBin, path.join(root, binary)])
+    } finally {
+      await fs.rm(root, { force: true, recursive: true })
+    }
+  })
+
+  test("falls back to flat layout when bin/ is absent", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "codeplane-binroot-"))
+    try {
+      const binary = process.platform === "win32" ? "codeplane.exe" : "codeplane"
+      const flat = path.join(root, binary)
+      await fs.writeFile(flat, "x")
+      expect(await resolveLocalBinaryPath(root, binary)).toBe(flat)
+    } finally {
+      await fs.rm(root, { force: true, recursive: true })
+    }
+  })
+
+  test("returns undefined when no binary exists", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "codeplane-binroot-"))
+    try {
+      expect(await resolveLocalBinaryPath(root, "codeplane")).toBeUndefined()
+    } finally {
+      await fs.rm(root, { force: true, recursive: true })
+    }
+  })
+})
+
+describe("install codeplane local package", () => {
+  test("downloads, verifies SRI, and extracts a fixture tarball into bin/<name>", async () => {
+    const target = resolveCodeplaneLocalTarget()
+    const fixture = await fs.mkdtemp(path.join(os.tmpdir(), "codeplane-fixture-"))
+    try {
+      // Build a tarball that mirrors the real layout: package/bin/<name>.
+      const packageDir = path.join(fixture, "package")
+      await fs.mkdir(path.join(packageDir, "bin"), { recursive: true })
+      const binaryContents = "#!/bin/sh\necho ok\n"
+      await fs.writeFile(path.join(packageDir, "bin", target.binaryName), binaryContents)
+      await fs.writeFile(
+        path.join(packageDir, "package.json"),
+        JSON.stringify({ name: target.packageName, version: "27.3.1" }),
+      )
+      const tgz = path.join(fixture, "fixture.tgz")
+      const tar = spawnSync("tar", ["-czf", tgz, "-C", fixture, "package"])
+      if (tar.status !== 0) throw new Error(`tar failed: ${tar.stderr?.toString()}`)
+      const tarballBytes = await fs.readFile(tgz)
+      const integrity = `sha512-${createHash("sha512").update(tarballBytes).digest("base64")}`
+
+      // Stub fetch: first call → manifest, second call → tarball bytes.
+      let callIndex = 0
+      globalThis.fetch = (async () => {
+        callIndex += 1
+        if (callIndex === 1) {
+          return new Response(
+            JSON.stringify({
+              version: "27.3.1",
+              dist: {
+                tarball: `https://registry.example.com/${target.packageName}/-/${target.packageName}-27.3.1.tgz`,
+                integrity,
+              },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          )
+        }
+        return new Response(tarballBytes, {
+          status: 200,
+          headers: {
+            "content-type": "application/octet-stream",
+            "content-length": String(tarballBytes.length),
+          },
+        })
+      }) as unknown as typeof globalThis.fetch
+
+      const dest = path.join(home, "local_server", "binaries", "27.3.1")
+      const result = await installCodeplaneLocalPackage({ version: "27.3.1", directory: dest })
+
+      expect(result.version).toBe("27.3.1")
+      expect(result.binaryPath).toBe(path.join(dest, "bin", target.binaryName))
+      expect(await fs.readFile(result.binaryPath, "utf8")).toBe(binaryContents)
+      // Resolver finds the binary at the bin/ layout.
+      expect(await resolveLocalBinaryPath(dest, target.binaryName)).toBe(result.binaryPath)
+    } finally {
+      await fs.rm(fixture, { force: true, recursive: true })
+    }
+  })
+
+  test("rejects a tarball whose SRI does not match the manifest", async () => {
+    const target = resolveCodeplaneLocalTarget()
+    const fixture = await fs.mkdtemp(path.join(os.tmpdir(), "codeplane-fixture-"))
+    try {
+      const packageDir = path.join(fixture, "package")
+      await fs.mkdir(path.join(packageDir, "bin"), { recursive: true })
+      await fs.writeFile(path.join(packageDir, "bin", target.binaryName), "x")
+      await fs.writeFile(path.join(packageDir, "package.json"), JSON.stringify({ name: target.packageName, version: "27.3.1" }))
+      const tgz = path.join(fixture, "fixture.tgz")
+      const tar = spawnSync("tar", ["-czf", tgz, "-C", fixture, "package"])
+      if (tar.status !== 0) throw new Error(`tar failed: ${tar.stderr?.toString()}`)
+      const tarballBytes = await fs.readFile(tgz)
+
+      let callIndex = 0
+      globalThis.fetch = (async () => {
+        callIndex += 1
+        if (callIndex === 1) {
+          return new Response(
+            JSON.stringify({
+              version: "27.3.1",
+              dist: {
+                tarball: `https://registry.example.com/${target.packageName}/-/${target.packageName}-27.3.1.tgz`,
+                integrity: "sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          )
+        }
+        return new Response(tarballBytes, {
+          status: 200,
+          headers: { "content-length": String(tarballBytes.length) },
+        })
+      }) as unknown as typeof globalThis.fetch
+
+      await expect(
+        installCodeplaneLocalPackage({
+          version: "27.3.1",
+          directory: path.join(home, "local_server", "binaries", "27.3.1"),
+        }),
+      ).rejects.toThrow(/integrity mismatch/i)
+    } finally {
+      await fs.rm(fixture, { force: true, recursive: true })
+    }
+  })
+})
+
 describe("managed local cli", () => {
   test("copies the installed runtime binary into the shared cli path", async () => {
-    const source = path.join(home, "local_server", "binaries", "27.3.1", process.platform === "win32" ? "codeplane.exe" : "codeplane")
+    const source = path.join(home, "local_server", "binaries", "27.3.1", "bin", process.platform === "win32" ? "codeplane.exe" : "codeplane")
     await fs.mkdir(path.dirname(source), { recursive: true })
     await fs.writeFile(source, "#!/usr/bin/env sh\nexit 0\n")
     if (process.platform !== "win32") {
@@ -110,5 +257,26 @@ describe("managed local cli", () => {
       cliPath: managedCodeplaneCliPath(),
       cliVersion: "27.3.1",
     })
+  })
+
+  test("skips re-copy when the cli is already at the requested version", async () => {
+    const source = path.join(home, "local_server", "binaries", "27.3.1", "bin", process.platform === "win32" ? "codeplane.exe" : "codeplane")
+    await fs.mkdir(path.dirname(source), { recursive: true })
+    await fs.writeFile(source, "first\n")
+    if (process.platform !== "win32") await fs.chmod(source, 0o755)
+
+    await installManagedCodeplaneCli({ version: "27.3.1", binaryPath: source })
+    const cliPath = managedCodeplaneCliPath()
+    const firstStat = await fs.stat(cliPath)
+
+    // Mutate source — second install must NOT propagate this change because
+    // the version file already matches.
+    await fs.writeFile(source, "second-ignored\n")
+    await installManagedCodeplaneCli({ version: "27.3.1", binaryPath: source })
+    const secondContents = await fs.readFile(cliPath, "utf8")
+    const secondStat = await fs.stat(cliPath)
+
+    expect(secondContents).toBe("first\n")
+    expect(secondStat.mtimeMs).toBe(firstStat.mtimeMs)
   })
 })

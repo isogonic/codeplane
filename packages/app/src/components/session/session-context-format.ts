@@ -15,7 +15,8 @@ export function createSessionContextFormatter(locale: string) {
     tokensPerSecond(value: number | null | undefined) {
       if (value === undefined) return "—"
       if (value === null) return "—"
-      return `${value.toLocaleString(locale, { maximumFractionDigits: 1 })}/s`
+      const digits = value >= 100 ? 0 : value >= 10 ? 1 : 2
+      return `${value.toLocaleString(locale, { maximumFractionDigits: digits })}/s`
     },
     time(value: number | undefined) {
       if (!value) return "—"

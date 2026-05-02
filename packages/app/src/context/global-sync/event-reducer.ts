@@ -1,4 +1,5 @@
 import { Binary } from "@codeplane-ai/shared/util/binary"
+import { batch } from "solid-js"
 import { produce, reconcile, type SetStoreFunction, type Store } from "solid-js/store"
 import type {
   Message,
@@ -134,27 +135,31 @@ export function applyDirectoryEvent(input: {
       const limit = fullyLoadedRootLimit(input.store, info)
       const trimmed = trimSessions(next, { limit, permission: input.store.permission, preserve })
       const grewLimit = limit !== input.store.limit
-      if (grewLimit) input.setStore("limit", limit)
-      input.setStore("session", reconcile(trimmed, { key: "id" }))
-      cleanupDroppedSessionCaches(input.store, input.setStore, trimmed, input.setSessionTodo, preserve)
-      if (!info.parentID) input.setStore("sessionTotal", (value) => value + 1)
+      batch(() => {
+        if (grewLimit) input.setStore("limit", limit)
+        input.setStore("session", reconcile(trimmed, { key: "id" }))
+        cleanupDroppedSessionCaches(input.store, input.setStore, trimmed, input.setSessionTodo, preserve)
+        if (!info.parentID) input.setStore("sessionTotal", (value) => value + 1)
+      })
       break
     }
     case "session.updated": {
       const info = (event.properties as { info: Session }).info
       const result = Binary.search(input.store.session, info.id, (s) => s.id)
       if (info.time.archived) {
-        if (result.found) {
-          input.setStore(
-            "session",
-            produce((draft) => {
-              draft.splice(result.index, 1)
-            }),
-          )
-        }
-        cleanupSessionCaches(input.setStore, info.id, input.setSessionTodo)
-        if (info.parentID) break
-        input.setStore("sessionTotal", (value) => Math.max(0, value - 1))
+        batch(() => {
+          if (result.found) {
+            input.setStore(
+              "session",
+              produce((draft) => {
+                draft.splice(result.index, 1)
+              }),
+            )
+          }
+          cleanupSessionCaches(input.setStore, info.id, input.setSessionTodo)
+          if (info.parentID) return
+          input.setStore("sessionTotal", (value) => Math.max(0, value - 1))
+        })
         break
       }
       if (result.found) {
@@ -167,26 +172,30 @@ export function applyDirectoryEvent(input: {
       const limit = fullyLoadedRootLimit(input.store, info)
       const trimmed = trimSessions(next, { limit, permission: input.store.permission, preserve })
       const grewLimit = limit !== input.store.limit
-      if (grewLimit) input.setStore("limit", limit)
-      input.setStore("session", reconcile(trimmed, { key: "id" }))
-      cleanupDroppedSessionCaches(input.store, input.setStore, trimmed, input.setSessionTodo, preserve)
-      if (!info.parentID && grewLimit) input.setStore("sessionTotal", (value) => value + 1)
+      batch(() => {
+        if (grewLimit) input.setStore("limit", limit)
+        input.setStore("session", reconcile(trimmed, { key: "id" }))
+        cleanupDroppedSessionCaches(input.store, input.setStore, trimmed, input.setSessionTodo, preserve)
+        if (!info.parentID && grewLimit) input.setStore("sessionTotal", (value) => value + 1)
+      })
       break
     }
     case "session.deleted": {
       const info = (event.properties as { info: Session }).info
       const result = Binary.search(input.store.session, info.id, (s) => s.id)
-      if (result.found) {
-        input.setStore(
-          "session",
-          produce((draft) => {
-            draft.splice(result.index, 1)
-          }),
-        )
-      }
-      cleanupSessionCaches(input.setStore, info.id, input.setSessionTodo)
-      if (info.parentID) break
-      input.setStore("sessionTotal", (value) => Math.max(0, value - 1))
+      batch(() => {
+        if (result.found) {
+          input.setStore(
+            "session",
+            produce((draft) => {
+              draft.splice(result.index, 1)
+            }),
+          )
+        }
+        cleanupSessionCaches(input.setStore, info.id, input.setSessionTodo)
+        if (info.parentID) return
+        input.setStore("sessionTotal", (value) => Math.max(0, value - 1))
+      })
       break
     }
     case "session.diff": {

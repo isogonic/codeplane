@@ -468,16 +468,17 @@ export const SortableWorkspace = (props: {
     globalSync.child(props.directory, { bootstrap: true })
   })
 
-  createEffect(() => {
+  createEffect((previousDir: string | undefined) => {
     const dir = props.directory
-    if (!dir) return
-    void loadAllSessions()
-  })
-
-  createEffect(() => {
-    if (!hasMore() || loading()) return
-    void loadAllSessions()
-  })
+    const more = hasMore()
+    const isLoading = loading()
+    if (!dir) return previousDir
+    const dirChanged = dir !== previousDir
+    if (dirChanged || (more && !isLoading && !loadingAll)) {
+      void loadAllSessions()
+    }
+    return dir
+  }, undefined as string | undefined)
 
   return (
     <div
@@ -593,16 +594,17 @@ export const LocalWorkspace = (props: {
     }
   }
 
-  createEffect(() => {
+  createEffect((previousDir: string | undefined) => {
     const dir = props.project.worktree
-    if (!dir) return
-    void loadAllSessions()
-  })
-
-  createEffect(() => {
-    if (!hasMore() || loading()) return
-    void loadAllSessions()
-  })
+    const more = hasMore()
+    const isLoading = loading()
+    if (!dir) return previousDir
+    const dirChanged = dir !== previousDir
+    if (dirChanged || (more && !isLoading && !loadingAll)) {
+      void loadAllSessions()
+    }
+    return dir
+  }, undefined as string | undefined)
 
   return (
     <div class="size-full min-h-0 flex flex-col py-2">

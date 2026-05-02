@@ -296,13 +296,56 @@ async function fetchThroughSession(session: Session, input: string | URL, init?:
   return nativeFetch(typeof input === "string" ? input : input.toString(), { redirect: "follow", ...init })
 }
 
+// Some auth proxies (Cloudflare Access, identity-aware proxies, custom SSO) gate
+// `/global/version` behind a sign-in flow. They surface in three shapes that all
+// need to be treated as "interactive sign-in required":
+//   1. 200 with HTML body (login page rendered inline at the same URL),
+//   2. 30x redirect chain ending at the IdP (we land at a non-instance origin),
+//   3. 401/403 directly (some setups skip the redirect for non-browser callers).
+// In every case we want to send the desktop window to a URL the user can
+// actually sign in on. `response.url` is the post-redirect URL, falling back
+// to the instance home so the user always lands somewhere usable.
 async function fetchVersion(session: Session, instance: DesktopHostInstance) {
   const url = new URL("global/version", baseUrl(instance.url))
   const response = await fetchThroughSession(session, url)
-  if (!response.ok) throw new Error(`Version probe failed with HTTP ${response.status}`)
-  if (!response.headers.get("content-type")?.includes("json")) {
+  const finalUrl = response.url || url.toString()
+  const finalOrigin = (() => {
+    try {
+      return new URL(finalUrl).origin
+    } catch {
+      return undefined
+    }
+  })()
+  const instanceOriginValue = (() => {
+    try {
+      return baseUrl(instance.url).origin
+    } catch {
+      return undefined
+    }
+  })()
+  const contentType = response.headers.get("content-type") ?? ""
+  const looksLikeJson = contentType.includes("json")
+  const redirectedAway = !!finalOrigin && !!instanceOriginValue && finalOrigin !== instanceOriginValue
+  const authStatus = response.status === 401 || response.status === 403
+  const authShape = authStatus || redirectedAway || (response.ok && !looksLikeJson)
+  if (authShape) {
+    // Drain the body so the underlying socket doesn't sit half-open while the
+    // user signs in elsewhere.
+    await response.body?.cancel().catch(() => undefined)
+    // For 401/403 with no redirect we don't have a sign-in page from the
+    // proxy; fall back to the instance home, which is the most universal
+    // entry point that any auth front-end will redirect to its own login.
+    const fallbackHome = new URL("/", baseUrl(instance.url)).toString()
+    const authUrl = authStatus && !redirectedAway ? fallbackHome : finalUrl
     throw new DesktopVersionAuthRequiredError({
-      authUrl: response.url || url.toString(),
+      authUrl,
+      instanceUrl: instance.url,
+    })
+  }
+  if (!response.ok) throw new Error(`Version probe failed with HTTP ${response.status}`)
+  if (!looksLikeJson) {
+    throw new DesktopVersionAuthRequiredError({
+      authUrl: finalUrl,
       instanceUrl: instance.url,
     })
   }
