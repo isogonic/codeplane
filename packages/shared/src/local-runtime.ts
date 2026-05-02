@@ -420,6 +420,67 @@ export async function fetchCodeplaneLatestVersion(channel = "latest") {
   return manifest.version
 }
 
+export type CodeplaneVersionList = {
+  latest?: string
+  distTags: Record<string, string>
+  versions: string[]
+}
+
+function compareSemverDesc(a: string, b: string) {
+  const split = (v: string) => {
+    const [core, pre = ""] = v.split("-", 2)
+    const nums = core.split(".").map((n) => Number.parseInt(n, 10) || 0)
+    while (nums.length < 3) nums.push(0)
+    return { nums, pre }
+  }
+  const left = split(a)
+  const right = split(b)
+  for (let i = 0; i < 3; i++) {
+    if (left.nums[i] !== right.nums[i]) return right.nums[i] - left.nums[i]
+  }
+  // Stable releases sort before prereleases of the same core version.
+  if (!left.pre && right.pre) return -1
+  if (left.pre && !right.pre) return 1
+  if (left.pre === right.pre) return 0
+  return right.pre.localeCompare(left.pre)
+}
+
+export async function fetchCodeplaneVersions(input: { name?: string; registry?: string } = {}): Promise<CodeplaneVersionList> {
+  const name = input.name ?? "codeplane-ai"
+  const config: RegistryConfig = input.registry
+    ? { registry: normalizeRegistry(input.registry) }
+    : await npmRegistry()
+  const url = new URL(registryPath(name), config.registry)
+  const response = await fetchWithTimeout(url, {
+    headers: {
+      accept: "application/json",
+      ...(config.token && (config.alwaysAuth || url.origin === new URL(config.registry).origin)
+        ? { authorization: `Bearer ${config.token}` }
+        : {}),
+    },
+    description: `npm packument ${name}`,
+  })
+  if (!response.ok) {
+    throw new Error(`npm registry packument lookup failed for ${name} with HTTP ${response.status}`)
+  }
+  const payload = (await response.json()) as {
+    "dist-tags"?: Record<string, unknown>
+    versions?: Record<string, unknown>
+  }
+  const distTagsRaw = payload["dist-tags"] ?? {}
+  const distTags: Record<string, string> = {}
+  for (const [tag, value] of Object.entries(distTagsRaw)) {
+    if (typeof value === "string" && VERSION_PATTERN.test(cleanVersion(value))) {
+      distTags[tag] = cleanVersion(value)
+    }
+  }
+  const versions = Object.keys(payload.versions ?? {})
+    .map(cleanVersion)
+    .filter((v) => VERSION_PATTERN.test(v))
+    .sort(compareSemverDesc)
+  return { latest: distTags.latest, distTags, versions }
+}
+
 function extract(archive: string, directory: string) {
   return new Promise<void>((resolve, reject) => {
     const child = spawn("tar", ["-xzf", archive, "-C", directory, "--strip-components", "1"], {

@@ -745,10 +745,6 @@ const SettingsPanel: Component = () => {
         <div class="mt-2 flex flex-col gap-1 border-t border-border-weak-base pt-4">
           <span class="text-[14px] font-semibold text-text-strong">Codeplane Desktop</span>
           <span class="text-[12px] text-text-weak">Version {api.version}</span>
-          <p class="mt-2 text-[12px] leading-relaxed text-text-weak">
-            A native shell that connects to remote Codeplane servers and caches the matching UI locally for fast,
-            offline-friendly launches.
-          </p>
           <div class="mt-2">
             <button
               type="button"
@@ -1383,7 +1379,14 @@ const LocalInstanceForm: Component<{
   const [preparing, setPreparing] = createSignal<PrepareState>()
   const [prepareID, setPrepareID] = createSignal("")
   const [saving, setSaving] = createSignal(false)
+  const [selectedVersion, setSelectedVersion] = createSignal(props.editing?.local?.binaryVersion ?? "")
+  const [availableVersions, setAvailableVersions] = createSignal<string[]>([])
+  const [latestVersion, setLatestVersion] = createSignal<string | undefined>(undefined)
+  const [versionsError, setVersionsError] = createSignal<string | undefined>(undefined)
+  const [versionsLoading, setVersionsLoading] = createSignal(false)
   const busy = createMemo(() => saving() || !!installing() || !!preparing())
+
+  const effectiveVersion = () => selectedVersion() || target()?.defaultVersion || ""
 
   let iconInput: HTMLInputElement | undefined
   const onIconPick = async (file: File | undefined) => {
@@ -1404,12 +1407,50 @@ const LocalInstanceForm: Component<{
     }
   }
 
+  const refreshInstalled = async (version: string) => {
+    if (!version) {
+      setInstalled(false)
+      return
+    }
+    try {
+      const status = await api.local.status(version)
+      setInstalled(status.installed && status.cliInstalled !== false)
+    } catch (error) {
+      logSetup("local.status-error", { error, version })
+      setInstalled(false)
+    }
+  }
+
   onMount(async () => {
     const detected = await api.local.target()
     setTarget(detected)
-    const status = await api.local.status(props.editing?.local?.binaryVersion || detected.defaultVersion)
-    setInstalled(status.installed && status.cliInstalled !== false)
-    logSetup("local.target", { ...detected, installed: status.installed })
+    const initial = props.editing?.local?.binaryVersion || detected.defaultVersion || ""
+    setSelectedVersion(initial)
+    await refreshInstalled(initial)
+    logSetup("local.target", { ...detected, installed: installed() })
+
+    setVersionsLoading(true)
+    try {
+      const result = await api.local.listVersions()
+      if (result.ok) {
+        setAvailableVersions(result.versions)
+        setLatestVersion(result.latest)
+        setVersionsError(undefined)
+        if (initial && !result.versions.includes(initial)) {
+          setAvailableVersions([initial, ...result.versions])
+        }
+        logSetup("local.list-versions", { count: result.versions.length, latest: result.latest })
+      } else {
+        setVersionsError(result.error)
+        logSetup("local.list-versions.error", { error: result.error })
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      setVersionsError(message)
+      logSetup("local.list-versions.error", { error: message })
+    } finally {
+      setVersionsLoading(false)
+    }
   })
 
   const offInstall = api.local.onInstallProgress((progress) => {
@@ -1449,7 +1490,7 @@ const LocalInstanceForm: Component<{
     if (!detected) return
     setSaving(true)
     try {
-      const desiredVersion = props.editing?.local?.binaryVersion || detected.defaultVersion
+      const desiredVersion = effectiveVersion()
       if (!desiredVersion) {
         showToast({
           variant: "error",
@@ -1645,12 +1686,56 @@ const LocalInstanceForm: Component<{
               <span class="text-[13px] text-text-strong">
                 {detected().os} / {detected().arch}
               </span>
-              <span class="text-[12px] text-text-weak">
-                Version {props.editing?.local?.binaryVersion || detected().defaultVersion} · {installed() ? "CLI ready" : "CLI will be installed"}
-              </span>
             </div>
           )}
         </Show>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[11px] font-medium uppercase tracking-[0.06em] text-text-weak" for="local-version">
+            Version
+          </label>
+          <select
+            id="local-version"
+            data-desktop-field="local-version"
+            disabled={busy() || versionsLoading() || availableVersions().length === 0}
+            value={effectiveVersion()}
+            onChange={(event) => {
+              const next = event.currentTarget.value
+              setSelectedVersion(next)
+              void refreshInstalled(next)
+              logSetup("local.version-pick", { version: next })
+            }}
+            class="rounded-md border border-border-weak-base bg-surface-raised-base px-3 py-2 text-[13px] text-text-strong outline-none transition-colors focus:border-border-interactive-base disabled:opacity-60"
+          >
+            <Show when={availableVersions().length === 0 && effectiveVersion()}>
+              <option value={effectiveVersion()}>{effectiveVersion()}</option>
+            </Show>
+            <For each={availableVersions()}>
+              {(version) => (
+                <option value={version}>
+                  {version}
+                  {version === latestVersion() ? " (latest)" : ""}
+                  {version === target()?.defaultVersion && version !== latestVersion() ? " (default)" : ""}
+                </option>
+              )}
+            </For>
+          </select>
+          <span class="text-[12px] text-text-weak">
+            <Show
+              when={!versionsLoading()}
+              fallback="Loading available versions…"
+            >
+              <Show
+                when={!versionsError()}
+                fallback={`Couldn't load versions from npm — using ${effectiveVersion() || "default"}.`}
+              >
+                {effectiveVersion()
+                  ? `${installed() ? "CLI ready" : "CLI will be installed"} · ${availableVersions().length} versions available`
+                  : "Pick a version to install"}
+              </Show>
+            </Show>
+          </span>
+        </div>
       </div>
 
       <Show when={installing()}>
