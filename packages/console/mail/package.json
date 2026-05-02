@@ -1,6 +1,6 @@
 {
   "name": "@codeplane-ai/console-mail",
-  "version": "27.4.1",
+  "version": "27.4.2",
   "dependencies": {
     "@jsx-email/all": "3.0.1",
     "@jsx-email/cli": "3.0.1",
