@@ -37,7 +37,6 @@ import {
   PathInput,
   ProgressBar,
   RouteTabs,
-  SectionHeader,
   SessionList,
   StatusBar,
   TodoList,
@@ -350,13 +349,20 @@ export function App(props: AppProps) {
     })
   }
 
-  async function loadDirectory(target: string, options: { keep?: boolean; mode?: "browse" | "input" } = {}) {
-    if (!opened) return
-    const cwd = target === "" ? opened.path.directory : target
+  async function loadDirectory(
+    target: string,
+    options: { keep?: boolean; mode?: "browse" | "input"; instance?: Opened } = {},
+  ) {
+    // `instance` lets callers pass a freshly-opened instance directly: when
+    // openInstance() runs setOpened(next) and immediately calls this, the
+    // closure's `opened` is still the previous (often undefined) value.
+    const active = options.instance ?? opened
+    if (!active) return
+    const cwd = target === "" ? active.path.directory : target
     setDirectory((current) => ({
       cwd,
-      home: opened.path.home,
-      worktree: opened.path.worktree,
+      home: active.path.home,
+      worktree: active.path.worktree,
       pathInput: current?.pathInput ?? cwd,
       mode: options.mode ?? current?.mode ?? "browse",
       entries: current?.entries ?? [],
@@ -366,9 +372,9 @@ export function App(props: AppProps) {
       recents: current?.recents,
     }))
     try {
-      const pathResp = await opened.client.path.get({ directory: cwd })
+      const pathResp = await active.client.path.get({ directory: cwd })
       const resolved = pathResp.data?.directory ?? cwd
-      const fileResp = await opened.client.file.list({ path: ".", directory: resolved })
+      const fileResp = await active.client.file.list({ path: ".", directory: resolved })
       const entries = (fileResp.data ?? [])
         .map((node) => ({
           path: node.absolute ?? node.path,
@@ -382,10 +388,8 @@ export function App(props: AppProps) {
       startTransition(() => {
         setDirectory((current) => ({
           cwd: resolved,
-          home: pathResp.data?.home ?? current?.home ?? opened.path.home,
-          worktree: pathResp.data?.worktree ?? current?.worktree ?? opened.path.worktree,
-          // When loading after a typed path, sync the input back to the
-          // resolved absolute path so the user can keep editing from there.
+          home: pathResp.data?.home ?? current?.home ?? active.path.home,
+          worktree: pathResp.data?.worktree ?? current?.worktree ?? active.path.worktree,
           pathInput: resolved,
           mode: options.mode ?? current?.mode ?? "browse",
           entries,
@@ -605,7 +609,7 @@ export function App(props: AppProps) {
     // into a sub-tree before the workspace boots, or just press `o` to use the
     // server-reported default cwd.
     try {
-      await loadDirectory(next.path.directory)
+      await loadDirectory(next.path.directory, { instance: next })
     } catch (error) {
       setMessage("error", error instanceof Error ? error.message : String(error))
     }
@@ -1646,219 +1650,224 @@ export function App(props: AppProps) {
       ) : null}
 
       {!opened ? (
-        <Box marginTop={1} flexDirection="column">
-          <Box gap={1} alignItems="flex-start">
-            <Box width={36} flexShrink={0}>
-              <Panel
-                title="Instances"
-                subtitle={`${instances.length} saved`}
-                active={focus === "instances"}
-              >
-                {instances.length === 0 ? (
-                  <Text color={theme.fgDim}>
-                    No saved instances. Press <Text color={theme.accent}>a</Text> for remote or{" "}
-                    <Text color={theme.accent}>l</Text> for local.
+        <Box marginTop={1} flexDirection="column" paddingX={2}>
+          {route === "setup.signin" && signin ? (
+            <Box flexDirection="column">
+              <Text color={theme.fgDim}>SIGN IN</Text>
+              <Box marginTop={1}>
+                <Text>
+                  Sign in to{" "}
+                  <Text color={theme.accent} bold>
+                    {signin.instance.label ?? signin.instance.url}
                   </Text>
-                ) : (
-                  <Box flexDirection="column">
-                    {instances.map((item) => {
-                      const selected = item.id === selectedInstanceID
-                      const tag = item.local ? "local" : "remote"
-                      const tagColor = item.local ? theme.success : theme.info
-                      return (
-                        <Box key={item.id}>
-                          <Text wrap="truncate-end">
-                            <Text color={selected && focus === "instances" ? theme.accent : theme.fgDim}>
-                              {selected ? `${glyph.arrowRight} ` : "  "}
-                            </Text>
-                            <Text color={tagColor}>{tag} </Text>
-                            <Text
-                              color={
-                                selected ? (focus === "instances" ? theme.accent : theme.fg) : theme.fgMuted
-                              }
-                              bold={selected}
-                            >
-                              {item.label ?? item.url}
-                            </Text>
-                          </Text>
-                        </Box>
-                      )
-                    })}
-                  </Box>
-                )}
-              </Panel>
+                  .
+                </Text>
+              </Box>
+              <Box marginTop={1} flexDirection="column">
+                <Text color={theme.fgMuted}>
+                  1. <Text color={theme.accent}>ctrl+o</Text> opens the URL in your browser.
+                </Text>
+                <Text color={theme.fgMuted}>2. Sign in with your auth provider.</Text>
+                <Text color={theme.fgMuted}>3. Copy the auth header (token, cookie, or Bearer).</Text>
+                <Text color={theme.fgMuted}>
+                  4. Paste below and press <Text color={theme.accent}>↵</Text>.
+                </Text>
+              </Box>
+              <Box marginTop={1} flexDirection="column">
+                <Text color={theme.fgDim}>auth header</Text>
+                <Box>
+                  <InputField
+                    value={signin.input}
+                    placeholder="CF_Authorization=eyJ…  ·  Bearer eyJ…  ·  Cookie: name=value"
+                    active
+                  />
+                </Box>
+              </Box>
+              <Box marginTop={2}>
+                <StatusBar
+                  hints={
+                    signin.status === "submitting"
+                      ? [{ keys: spinnerFrame, label: "saving…" }]
+                      : [
+                          { keys: "ctrl+o", label: "open URL" },
+                          { keys: "↵", label: "save & retry" },
+                          { keys: "esc", label: "cancel" },
+                        ]
+                  }
+                />
+              </Box>
             </Box>
-            <Box flexDirection="column" flexGrow={1}>
-              <Panel
-                title={
-                  route === "setup.signin"
-                    ? "Sign in"
-                    : route === "setup.settings"
-                      ? "Settings"
-                      : form?.kind === "local"
-                        ? "Local Instance"
-                        : form?.kind === "remote"
-                          ? "Remote Instance"
-                          : selectedInstance
-                            ? "Instance"
-                            : "Setup"
-                }
-                subtitle={`codeplane v${CodeplaneVersion}`}
-                active={focus === "setupForm" || focus === "settings" || focus === "signin"}
-              >
-                {route === "setup.signin" && signin ? (
-                  <Box flexDirection="column">
-                    <MetricRow label="Instance" value={signin.instance.label ?? signin.instance.url} />
-                    <MetricRow label="Auth URL" value={signin.authUrl} tone="muted" />
-                    <Box marginTop={1} flexDirection="column">
-                      <Text color={theme.fgMuted}>Steps</Text>
-                      <Text>
-                        1. <Text color={theme.accent}>ctrl+o</Text> opens the URL in your browser.
-                      </Text>
-                      <Text>2. Sign in with your auth provider.</Text>
-                      <Text>3. Copy the auth credential (token, cookie, or Bearer).</Text>
-                      <Text>
-                        4. Paste below and press <Text color={theme.accent}>↵</Text>.
-                      </Text>
-                    </Box>
-                    <Box marginTop={1} flexDirection="column">
-                      <Text color={theme.accent} bold>
-                        Auth header / cookie / token
-                      </Text>
-                      <InputField
-                        value={signin.input}
-                        placeholder="CF_Authorization=eyJ…  · Bearer eyJ…  · Cookie: name=value"
-                        active
-                      />
-                    </Box>
-                    <Box marginTop={1}>
-                      <Text color={theme.fgDim}>
-                        {signin.status === "submitting"
-                          ? `${spinnerFrame} saving and retrying…`
-                          : "ctrl+o open URL · ↵ save & retry · esc cancel"}
-                      </Text>
-                    </Box>
-                  </Box>
-                ) : route === "setup.settings" ? (
-                  <Box flexDirection="column">
-                    <MetricRow label="CLI version" value={CodeplaneVersion} tone="accent" />
-                    <MetricRow
-                      label="Local runtime"
-                      value={localTargetInfo?.defaultVersion ?? CodeplaneVersion}
-                    />
-                    <MetricRow label="Node companion" value={process.version} tone="muted" />
-                    <Box marginTop={1} flexDirection="column">
-                      <Text color={theme.fgMuted}>Keys</Text>
-                      <Text color={theme.fgDim}>
-                        <Text color={theme.accent}>a</Text> add remote ·{" "}
-                        <Text color={theme.accent}>l</Text> add local ·{" "}
-                        <Text color={theme.accent}>e</Text> edit ·{" "}
-                        <Text color={theme.accent}>d</Text> delete ·{" "}
-                        <Text color={theme.accent}>↵</Text> open
-                      </Text>
-                    </Box>
-                  </Box>
-                ) : form ? (
-                  <Box flexDirection="column">
-                    <Text bold color={form.field === "label" ? theme.accent : theme.fgMuted}>
-                      Label
+          ) : route === "setup.settings" ? (
+            <Box flexDirection="column">
+              <Text color={theme.fgDim}>SETTINGS</Text>
+              <Box marginTop={1} flexDirection="column">
+                <MetricRow label="cli" value={CodeplaneVersion} tone="accent" />
+                <MetricRow
+                  label="local runtime"
+                  value={localTargetInfo?.defaultVersion ?? CodeplaneVersion}
+                />
+                <MetricRow label="node" value={process.version} tone="muted" />
+              </Box>
+              <Box marginTop={2}>
+                <StatusBar hints={setupHints} />
+              </Box>
+            </Box>
+          ) : form ? (
+            <Box flexDirection="column">
+              <Text color={theme.fgDim}>
+                {form.kind === "local" ? "ADD LOCAL INSTANCE" : "ADD REMOTE INSTANCE"}
+              </Text>
+              <Box marginTop={1} flexDirection="column">
+                <Box>
+                  <Box width={16}>
+                    <Text
+                      color={form.field === "label" ? theme.accent : theme.fgMuted}
+                      bold={form.field === "label"}
+                    >
+                      label
                     </Text>
+                  </Box>
+                  <Box flexGrow={1}>
                     <InputField
                       value={form.label}
-                      placeholder="My server"
+                      placeholder="my server"
                       active={form.field === "label"}
                     />
-                    {form.kind === "remote" ? (
-                      <>
-                        <Text bold color={form.field === "url" ? theme.accent : theme.fgMuted}>
-                          URL
+                  </Box>
+                </Box>
+                {form.kind === "remote" ? (
+                  <>
+                    <Box>
+                      <Box width={16}>
+                        <Text
+                          color={form.field === "url" ? theme.accent : theme.fgMuted}
+                          bold={form.field === "url"}
+                        >
+                          url
                         </Text>
+                      </Box>
+                      <Box flexGrow={1}>
                         <InputField
                           value={form.url}
                           placeholder="https://server.example.com"
                           active={form.field === "url"}
                         />
-                        <Text bold color={form.field === "headers" ? theme.accent : theme.fgMuted}>
-                          Headers
+                      </Box>
+                    </Box>
+                    <Box>
+                      <Box width={16}>
+                        <Text
+                          color={form.field === "headers" ? theme.accent : theme.fgMuted}
+                          bold={form.field === "headers"}
+                        >
+                          headers
                         </Text>
+                      </Box>
+                      <Box flexGrow={1}>
                         <InputField
                           value={form.headers}
                           placeholder="Authorization: Bearer …; X-Token: …"
                           active={form.field === "headers"}
                         />
-                      </>
-                    ) : (
-                      <>
-                        <Text
-                          bold
-                          color={form.field === "binaryVersion" ? theme.accent : theme.fgMuted}
-                        >
-                          Binary version
-                        </Text>
-                        <InputField
-                          value={form.binaryVersion}
-                          placeholder={localTargetInfo?.defaultVersion ?? CodeplaneVersion}
-                          active={form.field === "binaryVersion"}
-                        />
-                      </>
-                    )}
-                    <Box marginTop={1}>
-                      <Text color={theme.fgDim}>
-                        <Text color={theme.accent}>tab</Text> next field ·{" "}
-                        <Text color={theme.accent}>↵</Text> advance/save ·{" "}
-                        <Text color={theme.accent}>esc</Text> cancel
+                      </Box>
+                    </Box>
+                  </>
+                ) : (
+                  <Box>
+                    <Box width={16}>
+                      <Text
+                        color={form.field === "binaryVersion" ? theme.accent : theme.fgMuted}
+                        bold={form.field === "binaryVersion"}
+                      >
+                        binary version
                       </Text>
                     </Box>
+                    <Box flexGrow={1}>
+                      <InputField
+                        value={form.binaryVersion}
+                        placeholder={localTargetInfo?.defaultVersion ?? CodeplaneVersion}
+                        active={form.field === "binaryVersion"}
+                      />
+                    </Box>
                   </Box>
-                ) : selectedInstance ? (
-                  <Box flexDirection="column">
-                    <MetricRow
-                      label="Label"
-                      value={selectedInstance.label ?? selectedInstance.url}
-                    />
-                    <MetricRow
-                      label="Type"
-                      value={selectedInstance.local ? "local" : "remote"}
-                      tone={selectedInstance.local ? "success" : "info"}
-                    />
-                    <MetricRow
-                      label={selectedInstance.local ? "Binary" : "URL"}
-                      value={
-                        selectedInstance.local
-                          ? selectedInstance.local.binaryVersion
-                          : selectedInstance.url
-                      }
-                    />
-                    <MetricRow
-                      label="Headers"
-                      value={
-                        selectedInstance.headers
-                          ? `${Object.keys(selectedInstance.headers).length} configured`
-                          : "none"
-                      }
-                      tone="muted"
-                    />
-                    <MetricRow
-                      label="TLS verify"
-                      value={
-                        selectedInstance.ignoreCertificateErrors
-                          ? "disabled"
-                          : "enabled"
-                      }
-                      tone={
-                        selectedInstance.ignoreCertificateErrors ? "warning" : "muted"
-                      }
-                    />
-                  </Box>
-                ) : (
-                  <Text color={theme.fgDim}>Select an instance to inspect or open.</Text>
                 )}
-              </Panel>
+              </Box>
+              <Box marginTop={2}>
+                <StatusBar
+                  hints={[
+                    { keys: "tab", label: "next field" },
+                    { keys: "↵", label: "advance/save" },
+                    { keys: "esc", label: "cancel" },
+                  ]}
+                />
+              </Box>
             </Box>
-          </Box>
-          <Box marginTop={1}>
-            <StatusBar hints={setupHints} />
-          </Box>
+          ) : (
+            // Default: a single-column server picker. Selected row expands
+            // inline with one summary line — Codex-style.
+            <Box flexDirection="column">
+              <Text color={theme.fgDim}>SELECT A SERVER</Text>
+              <Box marginTop={1} flexDirection="column">
+                {instances.length === 0 ? (
+                  <Text color={theme.fgDim}>
+                    No saved instances. Press{" "}
+                    <Text color={theme.accent} bold>
+                      a
+                    </Text>{" "}
+                    for remote or{" "}
+                    <Text color={theme.accent} bold>
+                      l
+                    </Text>{" "}
+                    for local.
+                  </Text>
+                ) : (
+                  instances.map((item) => {
+                    const selected = item.id === selectedInstanceID
+                    const isFocused = focus === "instances"
+                    const tag = item.local ? "local " : "remote"
+                    const tagColor = item.local ? theme.success : theme.info
+                    return (
+                      <Box key={item.id} flexDirection="column">
+                        <Box>
+                          <Text wrap="truncate-end">
+                            <Text color={selected && isFocused ? theme.accent : theme.divider}>
+                              {selected && isFocused ? "▍" : " "}
+                            </Text>
+                            <Text color={tagColor}>{`  ${tag}  `}</Text>
+                            <Text
+                              color={
+                                selected ? (isFocused ? theme.accent : theme.fg) : theme.fgMuted
+                              }
+                              bold={selected}
+                            >
+                              {item.label ?? item.url}
+                            </Text>
+                            <Text color={theme.fgDim}>{`   ${item.url}`}</Text>
+                          </Text>
+                        </Box>
+                        {selected ? (
+                          <Box paddingLeft={4}>
+                            <Text color={theme.fgDim} wrap="truncate-end">
+                              {item.local && item.local.binaryVersion
+                                ? `binary ${item.local.binaryVersion}  ·  `
+                                : ""}
+                              {item.headers
+                                ? `${Object.keys(item.headers).length} headers  ·  `
+                                : "no custom headers  ·  "}
+                              {item.ignoreCertificateErrors ? "tls verify off" : "tls verify on"}
+                            </Text>
+                          </Box>
+                        ) : null}
+                      </Box>
+                    )
+                  })
+                )}
+              </Box>
+              <Box marginTop={2}>
+                <StatusBar hints={setupHints} />
+              </Box>
+            </Box>
+          )}
         </Box>
       ) : route === "app.directory" ? (
         <Box marginTop={1} flexDirection="column" paddingX={1}>
@@ -2043,77 +2052,97 @@ export function App(props: AppProps) {
 
             <Box flexDirection="column" flexGrow={1}>
               {route === "app.notifications" ? (
-                <Box gap={1} alignItems="flex-start">
-                  <Box flexGrow={2}>
-                    <Panel
-                      title="Inbox"
-                      subtitle={`${notificationViewItems.length}`}
-                      active={focus === "notifications"}
-                    >
-                      <NotificationList
-                        items={notificationViewItems}
-                        selectedID={selectedNotification?.id}
-                        active={focus === "notifications"}
-                      />
-                    </Panel>
-                  </Box>
-                  <Box flexGrow={3}>
-                    <Panel
-                      title="Details"
-                      subtitle={
-                        selectedPermission ? "permission" : selectedQuestion ? "question" : undefined
-                      }
-                      active={focus === "settings"}
-                    >
-                      {selectedPermission ? (
-                        <Box flexDirection="column">
-                          <MetricRow label="Permission" value={selectedPermission.permission} />
-                          {selectedPermission.patterns.length > 0 ? (
-                            <Box flexDirection="column" marginTop={1}>
-                              <Text color={theme.fgMuted}>Match patterns</Text>
-                              {selectedPermission.patterns.slice(0, 8).map((pattern, index) => (
-                                <Text key={index} color={theme.fgDim} wrap="truncate-end">
-                                  · {pattern}
+                // Single-column inbox: each entry inline-expands its details
+                // when selected. Codex-style approval flow.
+                <Box paddingX={2} flexDirection="column">
+                  <Text color={theme.fgDim}>
+                    INBOX
+                    {notificationViewItems.length > 0
+                      ? ` · ${notificationViewItems.length} pending`
+                      : ""}
+                  </Text>
+                  <Box marginTop={1} flexDirection="column">
+                    {notificationViewItems.length === 0 ? (
+                      <Text color={theme.fgDim}>No pending permissions or questions.</Text>
+                    ) : (
+                      notificationViewItems.map((item) => {
+                        const selected = item.id === selectedNotification?.id
+                        const isFocused = focus === "notifications"
+                        const tone = item.tone === "permission" ? theme.warning : theme.info
+                        return (
+                          <Box key={item.id} flexDirection="column" marginBottom={1}>
+                            <Box>
+                              <Text wrap="truncate-end">
+                                <Text color={selected && isFocused ? theme.accent : theme.divider}>
+                                  {selected && isFocused ? "▍" : " "}
                                 </Text>
-                              ))}
-                            </Box>
-                          ) : null}
-                          <Box marginTop={1}>
-                            <Text color={theme.fgDim}>
-                              <Text color={theme.success}>y</Text> approve once ·{" "}
-                              <Text color={theme.success}>a</Text> always ·{" "}
-                              <Text color={theme.error}>x</Text> reject
-                            </Text>
-                          </Box>
-                        </Box>
-                      ) : selectedQuestion ? (
-                        <Box flexDirection="column">
-                          {selectedQuestion.questions.flatMap((question, qi) => [
-                            <Text key={`q-h-${qi}`} bold color={theme.accent}>
-                              {question.header}
-                            </Text>,
-                            <Text key={`q-q-${qi}`} color={theme.fgMuted}>
-                              {question.question}
-                            </Text>,
-                            ...question.options.map((option, oi) => (
-                              <Text key={`q-o-${qi}-${oi}`} color={theme.fg}>
-                                · {option.label}
-                                <Text color={theme.fgDim}> — {option.description}</Text>
+                                <Text color={tone} bold>{`  ${item.tone}  `}</Text>
+                                <Text
+                                  color={
+                                    selected
+                                      ? isFocused
+                                        ? theme.accent
+                                        : theme.fg
+                                      : theme.fgMuted
+                                  }
+                                  bold={selected}
+                                >
+                                  {item.title}
+                                </Text>
                               </Text>
-                            )),
-                            <Text key={`q-s-${qi}`}> </Text>,
-                          ])}
-                          <Box marginTop={1}>
-                            <Text color={theme.fgDim}>
-                              <Text color={theme.success}>r</Text> reply with first options ·{" "}
-                              <Text color={theme.error}>x</Text> reject
-                            </Text>
+                            </Box>
+                            {selected && selectedPermission ? (
+                              <Box paddingLeft={4} flexDirection="column">
+                                {selectedPermission.patterns.length > 0 ? (
+                                  <Text color={theme.fgDim} wrap="truncate-end">
+                                    patterns: {selectedPermission.patterns.slice(0, 4).join(", ")}
+                                    {selectedPermission.patterns.length > 4
+                                      ? ` (+${selectedPermission.patterns.length - 4})`
+                                      : ""}
+                                  </Text>
+                                ) : null}
+                                <Box marginTop={1}>
+                                  <Text color={theme.fgDim}>
+                                    <Text color={theme.success} bold>
+                                      y
+                                    </Text>{" "}
+                                    approve once   <Text color={theme.success} bold>
+                                      a
+                                    </Text>{" "}
+                                    always   <Text color={theme.error} bold>
+                                      x
+                                    </Text>{" "}
+                                    reject
+                                  </Text>
+                                </Box>
+                              </Box>
+                            ) : selected && selectedQuestion ? (
+                              <Box paddingLeft={4} flexDirection="column">
+                                {selectedQuestion.questions.flatMap((question, qi) =>
+                                  question.options.slice(0, 4).map((option, oi) => (
+                                    <Text key={`q-o-${qi}-${oi}`} color={theme.fgDim} wrap="truncate-end">
+                                      · <Text color={theme.fg}>{option.label}</Text>
+                                      {option.description ? `  ${option.description}` : ""}
+                                    </Text>
+                                  )),
+                                )}
+                                <Box marginTop={1}>
+                                  <Text color={theme.fgDim}>
+                                    <Text color={theme.success} bold>
+                                      r
+                                    </Text>{" "}
+                                    reply with first options   <Text color={theme.error} bold>
+                                      x
+                                    </Text>{" "}
+                                    reject
+                                  </Text>
+                                </Box>
+                              </Box>
+                            ) : null}
                           </Box>
-                        </Box>
-                      ) : (
-                        <Text color={theme.fgDim}>Select a notification.</Text>
-                      )}
-                    </Panel>
+                        )
+                      })
+                    )}
                   </Box>
                 </Box>
               ) : route === "app.cron" ? (
@@ -2180,48 +2209,58 @@ export function App(props: AppProps) {
                     </Box>
                   </Box>
                 </Panel>
-              ) : (
-                <Panel
-                  title={route === "app.session" ? "Conversation" : "Workspace"}
-                  subtitle={
-                    route === "app.session"
-                      ? selectedSession?.title ?? "no session"
-                      : `${sessions.length} sessions · ${permissions.length + questions.length} inbox`
-                  }
-                  active={focus === "messages"}
-                >
-                  {route === "app.home" ? (
-                    <Box flexDirection="column">
-                      <MetricRow
-                        label="Workspace"
-                        value={relative(opened.path.worktree, opened.path.directory)}
-                      />
-                      <MetricRow label="Sessions" value={`${sessions.length}`} tone="muted" />
-                      <MetricRow
-                        label="Inbox"
-                        value={`${permissions.length + questions.length}`}
-                        tone={permissions.length + questions.length > 0 ? "warning" : "muted"}
-                      />
-                      <MetricRow label="Cron" value={`${cronTasks.length}`} tone="muted" />
-                      <MetricRow
-                        label="Active session"
-                        value={selectedSession?.title ?? "none"}
-                        tone="accent"
-                      />
-                      <MetricRow
-                        label="Share link"
-                        value={selectedSession?.share?.url ?? "—"}
-                        tone={selectedSession?.share?.url ? "info" : "muted"}
-                      />
-                    </Box>
-                  ) : conversationParts.length === 0 ? (
-                    <Text color={theme.fgDim}>
-                      Press <Text color={theme.accent}>n</Text> for a new session, then type below to
-                      start a conversation.
+              ) : route === "app.session" ? (
+                // Borderless conversation surface — title row + body, no panel.
+                <Box flexDirection="column" paddingX={2}>
+                  <Box>
+                    <Text wrap="truncate-end">
+                      <Text color={theme.accent} bold>
+                        {selectedSession?.title ?? "no session"}
+                      </Text>
+                      {selectedSession ? (
+                        <Text color={theme.fgDim}>
+                          {`   ·   ${conversationParts.length} parts`}
+                          {sessionBusy ? `   ·   ${spinnerFrame} working` : ""}
+                        </Text>
+                      ) : null}
                     </Text>
-                  ) : (
-                    <Conversation parts={conversationVisible} spinnerFrame={spinnerFrame} />
-                  )}
+                  </Box>
+                  <Box marginTop={1}>
+                    {conversationParts.length === 0 ? (
+                      <Text color={theme.fgDim}>
+                        Press <Text color={theme.accent}>n</Text> for a new session, then type below
+                        to start a conversation.
+                      </Text>
+                    ) : (
+                      <Conversation parts={conversationVisible} spinnerFrame={spinnerFrame} />
+                    )}
+                  </Box>
+                </Box>
+              ) : (
+                <Panel title="Workspace" active={focus === "messages"}>
+                  <Box flexDirection="column">
+                    <MetricRow
+                      label="workspace"
+                      value={relative(opened.path.worktree, opened.path.directory)}
+                    />
+                    <MetricRow label="sessions" value={`${sessions.length}`} tone="muted" />
+                    <MetricRow
+                      label="inbox"
+                      value={`${permissions.length + questions.length}`}
+                      tone={permissions.length + questions.length > 0 ? "warning" : "muted"}
+                    />
+                    <MetricRow label="cron" value={`${cronTasks.length}`} tone="muted" />
+                    <MetricRow
+                      label="active session"
+                      value={selectedSession?.title ?? "none"}
+                      tone="accent"
+                    />
+                    <MetricRow
+                      label="share link"
+                      value={selectedSession?.share?.url ?? "—"}
+                      tone={selectedSession?.share?.url ? "info" : "muted"}
+                    />
+                  </Box>
                 </Panel>
               )}
 
@@ -2247,7 +2286,7 @@ export function App(props: AppProps) {
             </Box>
           </Box>
 
-          <Box marginTop={1} flexDirection="column">
+          <Box marginTop={1} paddingX={2} flexDirection="column">
             <Composer
               value={composerValue}
               placeholder={composerPlaceholder}
