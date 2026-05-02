@@ -1,15 +1,15 @@
 ---
 title: LSP 서버
-description: CodePlane는 LSP 서버와 통합됩니다.
+description: Codeplane는 LSP 서버와 통합됩니다.
 ---
 
-CodePlane는 Language Server Protocol(LSP)과 통합되어 LLM이 코드베이스와 상호작용하도록 돕습니다. 진단 정보를 활용해 LLM에 피드백을 제공합니다.
+Codeplane는 Language Server Protocol(LSP)과 통합되어 LLM이 코드베이스와 상호작용하도록 돕습니다. 진단 정보를 활용해 LLM에 피드백을 제공합니다.
 
 ---
 
 ## 기본 제공 (Built-in)
 
-CodePlane는 널리 사용되는 언어를 위해 여러 built-in LSP 서버를 제공합니다.
+Codeplane는 널리 사용되는 언어를 위해 여러 built-in LSP 서버를 제공합니다.
 
 | LSP 서버           | 확장자                                                              | 요구 사항                                                  |
 | ------------------ | ------------------------------------------------------------------- | ---------------------------------------------------------- |
@@ -57,7 +57,7 @@ CodePlane는 널리 사용되는 언어를 위해 여러 built-in LSP 서버를 
 
 ## 작동 방식
 
-CodePlane가 파일을 열면 다음과 같이 동작합니다.
+Codeplane가 파일을 열면 다음과 같이 동작합니다.
 
 1. 활성화된 모든 LSP 서버에 대해 파일 확장자를 확인합니다.
 2. 적절한 LSP 서버가 아직 실행 중이지 않다면 시작합니다.
@@ -66,7 +66,7 @@ CodePlane가 파일을 열면 다음과 같이 동작합니다.
 
 ## 구성
 
-CodePlane config의 `lsp` 섹션에서 LSP 서버를 사용자 정의할 수 있습니다.
+Codeplane config의 `lsp` 섹션에서 LSP 서버를 사용자 정의할 수 있습니다.
 
 ```json title="codeplane.json"
 {

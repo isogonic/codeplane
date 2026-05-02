@@ -69,7 +69,7 @@ Add to your Zed configuration (`~/.config/zed/settings.json`):
 ```json
 {
   "agent_servers": {
-    "CodePlane": {
+    "Codeplane": {
       "command": "codeplane",
       "args": ["acp"]
     }
@@ -158,7 +158,7 @@ Each component has a single responsibility:
 
 This makes the codebase maintainable and testable.
 
-### Mapping to CodePlane
+### Mapping to Codeplane
 
 ACP sessions map cleanly to codeplane's internal session model:
 

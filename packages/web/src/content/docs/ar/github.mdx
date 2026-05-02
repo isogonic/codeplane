@@ -1,17 +1,17 @@
 ---
 title: GitHub
-description: استخدم CodePlane في GitHub Issues وPull Requests.
+description: استخدم Codeplane في GitHub Issues وPull Requests.
 ---
 
-يتكامل CodePlane مع سير عمل GitHub لديك. اذكر `/codeplane` في تعليقك، وسيقوم CodePlane بتنفيذ المهام داخل GitHub Actions runner لديك.
+يتكامل Codeplane مع سير عمل GitHub لديك. اذكر `/codeplane` في تعليقك، وسيقوم Codeplane بتنفيذ المهام داخل GitHub Actions runner لديك.
 
 ---
 
 ## الميزات
 
-- **فرز Issues**: اطلب من CodePlane الاطلاع على Issue وشرحها لك.
-- **إصلاح وتنفيذ**: اطلب من CodePlane إصلاح Issue أو تنفيذ ميزة. وسيعمل على فرع جديد ويقدّم PR يضم كل التغييرات.
-- **آمن**: يعمل CodePlane داخل GitHub runners لديك.
+- **فرز Issues**: اطلب من Codeplane الاطلاع على Issue وشرحها لك.
+- **إصلاح وتنفيذ**: اطلب من Codeplane إصلاح Issue أو تنفيذ ميزة. وسيعمل على فرع جديد ويقدّم PR يضم كل التغييرات.
+- **آمن**: يعمل Codeplane داخل GitHub runners لديك.
 
 ---
 
@@ -62,7 +62,7 @@ codeplane github install
               fetch-depth: 1
               persist-credentials: false
 
-          - name: Run CodePlane
+          - name: Run Codeplane
            uses: devinoldenburg/codeplane/github@latest
            env:
              ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -80,13 +80,13 @@ codeplane github install
 
 ## الإعدادات
 
-- `model`: النموذج الذي سيستخدمه CodePlane. يأخذ الصيغة `provider/model`. هذا **مطلوب**.
+- `model`: النموذج الذي سيستخدمه Codeplane. يأخذ الصيغة `provider/model`. هذا **مطلوب**.
 - `agent`: الـagent الذي سيتم استخدامه. يجب أن يكون agent أساسيًا. يعود افتراضيًا إلى `default_agent` من الإعدادات أو `"build"` إذا لم يُعثر عليه.
-- `share`: هل تتم مشاركة جلسة CodePlane. القيمة الافتراضية **true** للمستودعات العامة.
-- `prompt`: موجه مخصص اختياري لتجاوز السلوك الافتراضي. استخدمه لتخصيص كيفية معالجة CodePlane للطلبات.
-- `token`: GitHub access token اختياري لتنفيذ عمليات مثل إنشاء التعليقات، وcommit للتغييرات، وفتح Pull Requests. افتراضيًا يستخدم CodePlane installation access token الخاص بـCodePlane GitHub App، لذا تظهر commits والتعليقات وPull Requests وكأنها صادرة من التطبيق.
+- `share`: هل تتم مشاركة جلسة Codeplane. القيمة الافتراضية **true** للمستودعات العامة.
+- `prompt`: موجه مخصص اختياري لتجاوز السلوك الافتراضي. استخدمه لتخصيص كيفية معالجة Codeplane للطلبات.
+- `token`: GitHub access token اختياري لتنفيذ عمليات مثل إنشاء التعليقات، وcommit للتغييرات، وفتح Pull Requests. افتراضيًا يستخدم Codeplane installation access token الخاص بـCodeplane GitHub App، لذا تظهر commits والتعليقات وPull Requests وكأنها صادرة من التطبيق.
 
-  بدلًا من ذلك، يمكنك استخدام [`GITHUB_TOKEN` المدمج](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token) في GitHub Action runner دون تثبيت CodePlane GitHub App. فقط تأكد من منح الأذونات المطلوبة في الـworkflow:
+  بدلًا من ذلك، يمكنك استخدام [`GITHUB_TOKEN` المدمج](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token) في GitHub Action runner دون تثبيت Codeplane GitHub App. فقط تأكد من منح الأذونات المطلوبة في الـworkflow:
 
   ```yaml
   permissions:
@@ -102,23 +102,23 @@ codeplane github install
 
 ## الأحداث المدعومة
 
-يمكن تشغيل CodePlane عبر أحداث GitHub التالية:
+يمكن تشغيل Codeplane عبر أحداث GitHub التالية:
 
 | نوع الحدث                     | يتم تشغيله عبر                 | التفاصيل                                                                                                 |
 | ----------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| `issue_comment`               | تعليق على Issue أو PR          | اذكر `/codeplane` في تعليقك. يقرأ CodePlane السياق ويمكنه إنشاء فروع، وفتح PRs، أو الرد.                 |
-| `pull_request_review_comment` | تعليق على أسطر كود محددة في PR | اذكر `/codeplane` أثناء مراجعة الكود. يستلم CodePlane مسار الملف وأرقام الأسطر وسياق الـdiff.            |
-| `issues`                      | فتح Issue أو تعديلها           | تشغيل CodePlane تلقائيًا عند إنشاء Issues أو تعديلها. يتطلب إدخال `prompt`.                              |
-| `pull_request`                | فتح PR أو تحديثه               | تشغيل CodePlane تلقائيًا عند فتح PRs أو مزامنتها أو إعادة فتحها. مفيد للمراجعات الآلية.                  |
-| `schedule`                    | جدول يعتمد على Cron            | تشغيل CodePlane وفق جدول. يتطلب إدخال `prompt`. يذهب الناتج إلى logs وPRs (لا يوجد Issue للتعليق عليها). |
-| `workflow_dispatch`           | تشغيل يدوي من واجهة GitHub     | تشغيل CodePlane عند الطلب عبر Actions tab. يتطلب إدخال `prompt`. يذهب الناتج إلى logs وPRs.              |
+| `issue_comment`               | تعليق على Issue أو PR          | اذكر `/codeplane` في تعليقك. يقرأ Codeplane السياق ويمكنه إنشاء فروع، وفتح PRs، أو الرد.                 |
+| `pull_request_review_comment` | تعليق على أسطر كود محددة في PR | اذكر `/codeplane` أثناء مراجعة الكود. يستلم Codeplane مسار الملف وأرقام الأسطر وسياق الـdiff.            |
+| `issues`                      | فتح Issue أو تعديلها           | تشغيل Codeplane تلقائيًا عند إنشاء Issues أو تعديلها. يتطلب إدخال `prompt`.                              |
+| `pull_request`                | فتح PR أو تحديثه               | تشغيل Codeplane تلقائيًا عند فتح PRs أو مزامنتها أو إعادة فتحها. مفيد للمراجعات الآلية.                  |
+| `schedule`                    | جدول يعتمد على Cron            | تشغيل Codeplane وفق جدول. يتطلب إدخال `prompt`. يذهب الناتج إلى logs وPRs (لا يوجد Issue للتعليق عليها). |
+| `workflow_dispatch`           | تشغيل يدوي من واجهة GitHub     | تشغيل Codeplane عند الطلب عبر Actions tab. يتطلب إدخال `prompt`. يذهب الناتج إلى logs وPRs.              |
 
 ### مثال للجدولة
 
-شغّل CodePlane وفق جدول لتنفيذ مهام آلية:
+شغّل Codeplane وفق جدول لتنفيذ مهام آلية:
 
 ```yaml title=".github/workflows/codeplane-scheduled.yml"
-name: Scheduled CodePlane Task
+name: Scheduled Codeplane Task
 
 on:
   schedule:
@@ -138,7 +138,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Run CodePlane
+      - name: Run Codeplane
         uses: devinoldenburg/codeplane/github@latest
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -149,7 +149,7 @@ jobs:
             If you find issues worth addressing, open an issue to track them.
 ```
 
-بالنسبة لأحداث `schedule`، يكون إدخال `prompt` **مطلوبًا** لعدم وجود تعليق لاستخراج التعليمات منه. تعمل عمليات الـworkflow المجدولة دون سياق مستخدم للتحقق من الأذونات، لذا يجب أن يمنح الـworkflow صلاحيات `contents: write` و`pull-requests: write` إذا كنت تتوقع أن ينشئ CodePlane فروعًا أو PRs.
+بالنسبة لأحداث `schedule`، يكون إدخال `prompt` **مطلوبًا** لعدم وجود تعليق لاستخراج التعليمات منه. تعمل عمليات الـworkflow المجدولة دون سياق مستخدم للتحقق من الأذونات، لذا يجب أن يمنح الـworkflow صلاحيات `contents: write` و`pull-requests: write` إذا كنت تتوقع أن ينشئ Codeplane فروعًا أو PRs.
 
 ---
 
@@ -190,7 +190,7 @@ jobs:
             - Suggest improvements
 ```
 
-بالنسبة لأحداث `pull_request`، إذا لم يتم توفير `prompt`، فإن CodePlane يراجع Pull Request افتراضيًا.
+بالنسبة لأحداث `pull_request`، إذا لم يتم توفير `prompt`، فإن Codeplane يراجع Pull Request افتراضيًا.
 
 ---
 
@@ -251,7 +251,7 @@ jobs:
 
 ## الموجهات المخصصة
 
-قم بتجاوز الموجه الافتراضي لتخصيص سلوك CodePlane ضمن الـworkflow لديك.
+قم بتجاوز الموجه الافتراضي لتخصيص سلوك Codeplane ضمن الـworkflow لديك.
 
 ```yaml title=".github/workflows/codeplane.yml"
 - uses: devinoldenburg/codeplane/github@latest
@@ -270,7 +270,7 @@ jobs:
 
 ## أمثلة
 
-إليك بعض الأمثلة على كيفية استخدام CodePlane في GitHub.
+إليك بعض الأمثلة على كيفية استخدام Codeplane في GitHub.
 
 - **شرح Issue**
 
@@ -280,7 +280,7 @@ jobs:
   /codeplane explain this issue
   ```
 
-  سيقرأ CodePlane كامل النقاش، بما في ذلك جميع التعليقات، ويرد بشرح واضح.
+  سيقرأ Codeplane كامل النقاش، بما في ذلك جميع التعليقات، ويرد بشرح واضح.
 
 - **إصلاح Issue**
 
@@ -290,7 +290,7 @@ jobs:
   /codeplane fix this
   ```
 
-  وسيُنشئ CodePlane فرعًا جديدًا، وينفّذ التغييرات، ويفتح PR يتضمنها.
+  وسيُنشئ Codeplane فرعًا جديدًا، وينفّذ التغييرات، ويفتح PR يتضمنها.
 
 - **مراجعة PRs وإجراء تغييرات**
 
@@ -300,18 +300,18 @@ jobs:
   Delete the attachment from S3 when the note is removed /codeplane
   ```
 
-  سينفّذ CodePlane التغيير المطلوب ويعمل له commit إلى نفس PR.
+  سينفّذ Codeplane التغيير المطلوب ويعمل له commit إلى نفس PR.
 
 - **مراجعة أسطر كود محددة**
 
-  اترك تعليقًا مباشرة على أسطر الكود في تبويب "Files" داخل PR. يكتشف CodePlane تلقائيًا الملف وأرقام الأسطر وسياق الـdiff لتقديم ردود دقيقة.
+  اترك تعليقًا مباشرة على أسطر الكود في تبويب "Files" داخل PR. يكتشف Codeplane تلقائيًا الملف وأرقام الأسطر وسياق الـdiff لتقديم ردود دقيقة.
 
   ```
   [Comment on specific lines in Files tab]
   /codeplane add error handling here
   ```
 
-  عند التعليق على أسطر محددة، يستلم CodePlane:
+  عند التعليق على أسطر محددة، يستلم Codeplane:
   - الملف الدقيق الذي تتم مراجعته
   - أسطر الكود المحددة
   - سياق الـdiff المحيط

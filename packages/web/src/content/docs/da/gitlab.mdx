@@ -1,33 +1,33 @@
 ---
 title: GitLab
-description: Brug CodePlane i GitLab-problemer og Merge Requests.
+description: Brug Codeplane i GitLab-problemer og Merge Requests.
 ---
 
-CodePlane integreres med din GitLab-arbejdsgang gennem din GitLab CI/CD-pipeline eller med GitLab Duo.
+Codeplane integreres med din GitLab-arbejdsgang gennem din GitLab CI/CD-pipeline eller med GitLab Duo.
 
-I begge tilfælde vil CodePlane køre på dine GitLab-løbere.
+I begge tilfælde vil Codeplane køre på dine GitLab-løbere.
 
 ---
 
 ## GitLab CI
 
-CodePlane fungerer i en almindelig GitLab-pipeline. Du kan bygge det ind i en pipeline som en [CI component](https://docs.gitlab.com/ee/ci/components/)
+Codeplane fungerer i en almindelig GitLab-pipeline. Du kan bygge det ind i en pipeline som en [CI component](https://docs.gitlab.com/ee/ci/components/)
 
-Her bruger vi en community-skabt CI/CD-komponent til CodePlane — [nagyv/gitlab-codeplane](https://gitlab.com/nagyv/gitlab-codeplane).
+Her bruger vi en community-skabt CI/CD-komponent til Codeplane — [nagyv/gitlab-codeplane](https://gitlab.com/nagyv/gitlab-codeplane).
 
 ---
 
 ### Funktioner
 
-- **Brug brugerdefineret konfiguration pr. job**: Konfigurer CodePlane med en brugerdefineret konfigurationsmappe, for eksempel `./config/#custom-directory` for at aktivere eller deaktivere funktionalitet pr. CodePlane påkald.
-- **Minimal opsætning**: CI-komponenten sætter CodePlane op i baggrunden, du behøver kun at oprette CodePlane-konfigurationen og den indledende prompt.
+- **Brug brugerdefineret konfiguration pr. job**: Konfigurer Codeplane med en brugerdefineret konfigurationsmappe, for eksempel `./config/#custom-directory` for at aktivere eller deaktivere funktionalitet pr. Codeplane påkald.
+- **Minimal opsætning**: CI-komponenten sætter Codeplane op i baggrunden, du behøver kun at oprette Codeplane-konfigurationen og den indledende prompt.
 - **Fleksibel**: CI-komponenten understøtter flere input til at tilpasse dens adfærd
 
 ---
 
 ### Opsætning
 
-1. Gem din CodePlane-autentificering JSON som en filtype CI-miljøvariabel under **Indstillinger** > **CI/CD** > **Variabler**. Sørg for at markere dem som "Maskede og skjulte".
+1. Gem din Codeplane-autentificering JSON som en filtype CI-miljøvariabel under **Indstillinger** > **CI/CD** > **Variabler**. Sørg for at markere dem som "Maskede og skjulte".
 2. Tilføj følgende til din `.gitlab-ci.yml` fil.
 
    ```yaml title=".gitlab-ci.yml"
@@ -35,7 +35,7 @@ Her bruger vi en community-skabt CI/CD-komponent til CodePlane — [nagyv/gitlab
      - component: $CI_SERVER_FQDN/nagyv/gitlab-codeplane/codeplane@2
        inputs:
          config_dir: ${CI_PROJECT_DIR}/codeplane-config
-         auth_json: $CODEPLANE_AUTH_JSON # The variable name for your CodePlane authentication JSON
+         auth_json: $CODEPLANE_AUTH_JSON # The variable name for your Codeplane authentication JSON
          command: optional-custom-command
          message: "Your prompt here"
    ```
@@ -46,23 +46,23 @@ For flere input og use cases [check out the docs](https://gitlab.com/explore/cat
 
 ## GitLab Duo
 
-CodePlane integreres med din GitLab-arbejdsgang.
-Nævn `@codeplane` i en kommentar, og CodePlane vil udføre opgaver i din GitLab CI-pipeline.
+Codeplane integreres med din GitLab-arbejdsgang.
+Nævn `@codeplane` i en kommentar, og Codeplane vil udføre opgaver i din GitLab CI-pipeline.
 
 ---
 
 ### Funktioner
 
-- **Triageproblemer**: Bed CodePlane om at undersøge et problem og forklare dig det.
-- **Ret og implementer**: Bed CodePlane om at løse et problem eller implementere en funktion.
+- **Triageproblemer**: Bed Codeplane om at undersøge et problem og forklare dig det.
+- **Ret og implementer**: Bed Codeplane om at løse et problem eller implementere en funktion.
   Det vil oprette en ny branch og rejse en Merge Request med ændringer.
-- **Sikker**: CodePlane kører på dine GitLab-løbere.
+- **Sikker**: Codeplane kører på dine GitLab-løbere.
 
 ---
 
 ### Opsætning
 
-CodePlane kører i din GitLab CI/CD pipeline, her er hvad du skal bruge for at konfigurere det:
+Codeplane kører i din GitLab CI/CD pipeline, her er hvad du skal bruge for at konfigurere det:
 
 :::tip
 Tjek [**GitLab docs**](https://docs.gitlab.com/user/duo_agent_platform/agent_assistant/) for opdaterede instruktioner.
@@ -91,7 +91,7 @@ Tjek [**GitLab docs**](https://docs.gitlab.com/user/duo_agent_platform/agent_ass
       - apt-get install --yes glab
       - echo "Configuring glab"
       - echo $GITLAB_HOST
-      - echo "Creating CodePlane auth configuration"
+      - echo "Creating Codeplane auth configuration"
       - mkdir --parents ~/.local/share/codeplane
       - |
         cat > ~/.local/share/codeplane/auth.json << EOF
@@ -104,10 +104,10 @@ Tjek [**GitLab docs**](https://docs.gitlab.com/user/duo_agent_platform/agent_ass
         EOF
       - echo "Configuring git"
       - git config --global user.email "codeplane@gitlab.com"
-      - git config --global user.name "CodePlane"
+      - git config --global user.name "Codeplane"
       - echo "Testing glab"
       - glab issue list
-      - echo "Running CodePlane"
+      - echo "Running Codeplane"
       - |
         codeplane run "
         You are an AI assistant helping with GitLab operations.
@@ -158,7 +158,7 @@ Du kan henvise til [GitLab CLI agents docs](https://docs.gitlab.com/user/duo_age
 
 ### Eksempler
 
-Her er nogle eksempler på, hvordan du kan bruge CodePlane i GitLab.
+Her er nogle eksempler på, hvordan du kan bruge Codeplane i GitLab.
 
 :::tip
 Du kan konfigurere til at bruge en anden udløsersætning end `@codeplane`.
@@ -172,7 +172,7 @@ Du kan konfigurere til at bruge en anden udløsersætning end `@codeplane`.
   @codeplane explain this issue
   ```
 
-  CodePlane vil læse spørgsmålet og svare med en klar forklaring.
+  Codeplane vil læse spørgsmålet og svare med en klar forklaring.
 
 - **Løs et problem**
 
@@ -182,7 +182,7 @@ Du kan konfigurere til at bruge en anden udløsersætning end `@codeplane`.
   @codeplane fix this
   ```
 
-  CodePlane vil oprette en ny branch, implementere ændringer og åbne en Merge Request med ændringer.
+  Codeplane vil oprette en ny branch, implementere ændringer og åbne en Merge Request med ændringer.
 
 - **Gennemgå Merge Requests**
 
@@ -192,4 +192,4 @@ Du kan konfigurere til at bruge en anden udløsersætning end `@codeplane`.
   @codeplane review this merge request
   ```
 
-  CodePlane vil gennemgå din Merge Request og give feedback.
+  Codeplane vil gennemgå din Merge Request og give feedback.

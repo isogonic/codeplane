@@ -62,7 +62,7 @@ codeplane github install
               fetch-depth: 1
               persist-credentials: false
 
-          - name: Run CodePlane
+          - name: Run Codeplane
            uses: devinoldenburg/codeplane/github@latest
            env:
              ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -118,7 +118,7 @@ codeplane может быть запущен следующими события
 Запускайте codeplane по расписанию для выполнения автоматизированных задач:
 
 ```yaml title=".github/workflows/codeplane-scheduled.yml"
-name: Scheduled CodePlane Task
+name: Scheduled Codeplane Task
 
 on:
   schedule:
@@ -138,7 +138,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Run CodePlane
+      - name: Run Codeplane
         uses: devinoldenburg/codeplane/github@latest
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

@@ -1,33 +1,33 @@
 ---
 title: GitLab
-description: استخدم CodePlane في مشكلات GitLab وطلبات الدمج.
+description: استخدم Codeplane في مشكلات GitLab وطلبات الدمج.
 ---
 
-يتكامل CodePlane مع سير عمل GitLab لديك عبر خط أنابيب GitLab CI/CD أو عبر GitLab Duo.
+يتكامل Codeplane مع سير عمل GitLab لديك عبر خط أنابيب GitLab CI/CD أو عبر GitLab Duo.
 
-في كلتا الحالتين، سيعمل CodePlane على مشغّلات GitLab لديك.
+في كلتا الحالتين، سيعمل Codeplane على مشغّلات GitLab لديك.
 
 ---
 
 ## GitLab CI
 
-يعمل CodePlane ضمن خط أنابيب GitLab عادي. يمكنك دمجه في الخط كمكوّن [CI](https://docs.gitlab.com/ee/ci/components/).
+يعمل Codeplane ضمن خط أنابيب GitLab عادي. يمكنك دمجه في الخط كمكوّن [CI](https://docs.gitlab.com/ee/ci/components/).
 
-هنا نستخدم مكوّن CI/CD أنشأه المجتمع لـ CodePlane — [nagyv/gitlab-codeplane](https://gitlab.com/nagyv/gitlab-codeplane).
+هنا نستخدم مكوّن CI/CD أنشأه المجتمع لـ Codeplane — [nagyv/gitlab-codeplane](https://gitlab.com/nagyv/gitlab-codeplane).
 
 ---
 
 ### الميزات
 
-- **استخدام إعدادات مخصّصة لكل مهمة**: يمكنك إعداد CodePlane باستخدام دليل إعدادات مخصّص، مثل `./config/#custom-directory`، لتفعيل الوظائف أو تعطيلها في كل تشغيل لـ CodePlane.
-- **إعداد بسيط**: يقوم مكوّن CI بإعداد CodePlane في الخلفية؛ كل ما عليك هو إنشاء إعدادات CodePlane والمطالبة (prompt) الأولية.
+- **استخدام إعدادات مخصّصة لكل مهمة**: يمكنك إعداد Codeplane باستخدام دليل إعدادات مخصّص، مثل `./config/#custom-directory`، لتفعيل الوظائف أو تعطيلها في كل تشغيل لـ Codeplane.
+- **إعداد بسيط**: يقوم مكوّن CI بإعداد Codeplane في الخلفية؛ كل ما عليك هو إنشاء إعدادات Codeplane والمطالبة (prompt) الأولية.
 - **مرن**: يدعم مكوّن CI عدة مُدخلات لتخصيص سلوكه.
 
 ---
 
 ### الإعداد
 
-1. احفظ JSON مصادقة CodePlane كمتغيرات بيئة CI من نوع File ضمن **Settings** > **CI/CD** > **Variables**. تأكد من تعيينها على "Masked and hidden".
+1. احفظ JSON مصادقة Codeplane كمتغيرات بيئة CI من نوع File ضمن **Settings** > **CI/CD** > **Variables**. تأكد من تعيينها على "Masked and hidden".
 2. أضف ما يلي إلى ملف `.gitlab-ci.yml`.
 
    ```yaml title=".gitlab-ci.yml"
@@ -35,7 +35,7 @@ description: استخدم CodePlane في مشكلات GitLab وطلبات الد
      - component: $CI_SERVER_FQDN/nagyv/gitlab-codeplane/codeplane@2
        inputs:
          config_dir: ${CI_PROJECT_DIR}/codeplane-config
-         auth_json: $CODEPLANE_AUTH_JSON # The variable name for your CodePlane authentication JSON
+         auth_json: $CODEPLANE_AUTH_JSON # The variable name for your Codeplane authentication JSON
          command: optional-custom-command
          message: "Your prompt here"
    ```
@@ -46,23 +46,23 @@ description: استخدم CodePlane في مشكلات GitLab وطلبات الد
 
 ## GitLab Duo
 
-يتكامل CodePlane مع سير عمل GitLab لديك.
-اذكر `@codeplane` في تعليق، وسينفّذ CodePlane المهام ضمن خط أنابيب GitLab CI لديك.
+يتكامل Codeplane مع سير عمل GitLab لديك.
+اذكر `@codeplane` في تعليق، وسينفّذ Codeplane المهام ضمن خط أنابيب GitLab CI لديك.
 
 ---
 
 ### الميزات
 
-- **فرز المشكلات**: اطلب من CodePlane النظر في مشكلة وشرحها لك.
-- **الإصلاح والتنفيذ**: اطلب من CodePlane إصلاح مشكلة أو تنفيذ ميزة.
+- **فرز المشكلات**: اطلب من Codeplane النظر في مشكلة وشرحها لك.
+- **الإصلاح والتنفيذ**: اطلب من Codeplane إصلاح مشكلة أو تنفيذ ميزة.
   سيُنشئ فرعًا جديدًا ويرفع طلب دمج بالتغييرات.
-- **آمن**: يعمل CodePlane على مشغّلات GitLab لديك.
+- **آمن**: يعمل Codeplane على مشغّلات GitLab لديك.
 
 ---
 
 ### الإعداد
 
-يعمل CodePlane ضمن خط أنابيب GitLab CI/CD لديك، وإليك ما ستحتاجه لإعداده:
+يعمل Codeplane ضمن خط أنابيب GitLab CI/CD لديك، وإليك ما ستحتاجه لإعداده:
 
 :::tip
 اطّلع على [**وثائق GitLab**](https://docs.gitlab.com/user/duo_agent_platform/agent_assistant/) للحصول على تعليمات محدّثة.
@@ -91,7 +91,7 @@ description: استخدم CodePlane في مشكلات GitLab وطلبات الد
       - apt-get install --yes glab
       - echo "Configuring glab"
       - echo $GITLAB_HOST
-      - echo "Creating CodePlane auth configuration"
+      - echo "Creating Codeplane auth configuration"
       - mkdir --parents ~/.local/share/codeplane
       - |
         cat > ~/.local/share/codeplane/auth.json << EOF
@@ -104,10 +104,10 @@ description: استخدم CodePlane في مشكلات GitLab وطلبات الد
         EOF
       - echo "Configuring git"
       - git config --global user.email "codeplane@gitlab.com"
-      - git config --global user.name "CodePlane"
+      - git config --global user.name "Codeplane"
       - echo "Testing glab"
       - glab issue list
-      - echo "Running CodePlane"
+      - echo "Running Codeplane"
       - |
         codeplane run "
         You are an AI assistant helping with GitLab operations.
@@ -158,7 +158,7 @@ description: استخدم CodePlane في مشكلات GitLab وطلبات الد
 
 ### أمثلة
 
-فيما يلي بعض الأمثلة على كيفية استخدام CodePlane في GitLab.
+فيما يلي بعض الأمثلة على كيفية استخدام Codeplane في GitLab.
 
 :::tip
 يمكنك ضبطه لاستخدام عبارة تشغيل مختلفة عن `@codeplane`.
@@ -172,7 +172,7 @@ description: استخدم CodePlane في مشكلات GitLab وطلبات الد
   @codeplane explain this issue
   ```
 
-  سيقرأ CodePlane المشكلة ويرد بشرح واضح.
+  سيقرأ Codeplane المشكلة ويرد بشرح واضح.
 
 - **إصلاح مشكلة**
 
@@ -182,7 +182,7 @@ description: استخدم CodePlane في مشكلات GitLab وطلبات الد
   @codeplane fix this
   ```
 
-  سيُنشئ CodePlane فرعًا جديدًا، وينفّذ التغييرات، ويفتح طلب دمج بالتغييرات.
+  سيُنشئ Codeplane فرعًا جديدًا، وينفّذ التغييرات، ويفتح طلب دمج بالتغييرات.
 
 - **مراجعة طلبات الدمج**
 
@@ -192,4 +192,4 @@ description: استخدم CodePlane في مشكلات GitLab وطلبات الد
   @codeplane review this merge request
   ```
 
-  سيُراجع CodePlane طلب الدمج ويقدّم ملاحظات.
+  سيُراجع Codeplane طلب الدمج ويقدّم ملاحظات.

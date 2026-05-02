@@ -423,7 +423,7 @@ it.live("loop includes configured project commands in context", () =>
         commands: {
           typecheck: {
             command: "bun typecheck",
-            label: "Typecheck CodePlane",
+            label: "Typecheck Codeplane",
             description: "Run package type checking",
             cwd: "packages/codeplane",
             labels: ["quality"],
@@ -453,7 +453,7 @@ it.live("loop includes configured project commands in context", () =>
       yield* prompt.loop({ sessionID: chat.id })
       const input = JSON.stringify((yield* llm.inputs).at(-1))
       expect(input).toContain("<project-commands>")
-      expect(input).toContain("Typecheck CodePlane")
+      expect(input).toContain("Typecheck Codeplane")
       expect(input).toContain("packages/codeplane")
       expect(input).toContain("quality")
       expect(input).not.toContain("echo hidden")

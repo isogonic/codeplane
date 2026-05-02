@@ -118,7 +118,7 @@ export const dict = {
   "dialog.model.manage.description": "Tilpass hvilke modeller som vises i modellvelgeren.",
   "dialog.model.manage.provider.toggle": "Veksle alle {{provider}}-modeller",
 
-  "dialog.model.unpaid.freeModels.title": "Gratis modeller levert av CodePlane",
+  "dialog.model.unpaid.freeModels.title": "Gratis modeller levert av Codeplane",
   "dialog.model.unpaid.addMore.title": "Legg til flere modeller fra populære leverandører",
 
   "dialog.provider.viewAll": "Vis flere leverandører",
@@ -131,12 +131,12 @@ export const dict = {
   "provider.connect.status.waiting": "Venter på autorisering...",
   "provider.connect.status.failed": "Autorisering mislyktes: {{error}}",
   "provider.connect.apiKey.description":
-    "Skriv inn din {{provider}} API-nøkkel for å koble til kontoen din og bruke {{provider}}-modeller i CodePlane.",
+    "Skriv inn din {{provider}} API-nøkkel for å koble til kontoen din og bruke {{provider}}-modeller i Codeplane.",
   "provider.connect.apiKey.label": "{{provider}} API-nøkkel",
   "provider.connect.apiKey.placeholder": "API-nøkkel",
   "provider.connect.apiKey.required": "API-nøkkel er påkrevd",
   "provider.connect.codeplaneZen.line1":
-    "CodePlane Zen gir deg tilgang til et utvalg av pålitelige optimaliserte modeller for kodeagenter.",
+    "Codeplane Zen gir deg tilgang til et utvalg av pålitelige optimaliserte modeller for kodeagenter.",
   "provider.connect.codeplaneZen.line2":
     "Med én enkelt API-nøkkel får du tilgang til modeller som Claude, GPT, Gemini, GLM og flere.",
   "provider.connect.codeplaneZen.visit.prefix": "Besøk ",
@@ -145,7 +145,7 @@ export const dict = {
   "provider.connect.oauth.code.visit.prefix": "Besøk ",
   "provider.connect.oauth.code.visit.link": "denne lenken",
   "provider.connect.oauth.code.visit.suffix":
-    " for å hente autorisasjonskoden din for å koble til kontoen din og bruke {{provider}}-modeller i CodePlane.",
+    " for å hente autorisasjonskoden din for å koble til kontoen din og bruke {{provider}}-modeller i Codeplane.",
   "provider.connect.oauth.code.label": "{{method}} autorisasjonskode",
   "provider.connect.oauth.code.placeholder": "Autorisasjonskode",
   "provider.connect.oauth.code.required": "Autorisasjonskode er påkrevd",
@@ -153,7 +153,7 @@ export const dict = {
   "provider.connect.oauth.auto.visit.prefix": "Besøk ",
   "provider.connect.oauth.auto.visit.link": "denne lenken",
   "provider.connect.oauth.auto.visit.suffix":
-    " og skriv inn koden nedenfor for å koble til kontoen din og bruke {{provider}}-modeller i CodePlane.",
+    " og skriv inn koden nedenfor for å koble til kontoen din og bruke {{provider}}-modeller i Codeplane.",
   "provider.connect.oauth.auto.confirmationCode": "Bekreftelseskode",
   "provider.connect.toast.connected.title": "{{provider}} tilkoblet",
   "provider.connect.toast.connected.description": "{{provider}}-modeller er nå tilgjengelige.",
@@ -310,7 +310,7 @@ export const dict = {
   "dialog.directory.empty": "Ingen mapper funnet",
 
   "dialog.server.title": "Servere",
-  "dialog.server.description": "Bytt hvilken CodePlane-server denne appen kobler til.",
+  "dialog.server.description": "Bytt hvilken Codeplane-server denne appen kobler til.",
   "dialog.server.search.placeholder": "Søk etter servere",
   "dialog.server.empty": "Ingen servere ennå",
   "dialog.server.add.title": "Legg til en server",
@@ -446,7 +446,7 @@ export const dict = {
   "error.page.description": "Det oppstod en feil under lasting av applikasjonen.",
   "error.page.details.label": "Feildetaljer",
   "error.page.action.restart": "Start på nytt",
-  "error.page.report.prefix": "Vennligst rapporter denne feilen til CodePlane-teamet",
+  "error.page.report.prefix": "Vennligst rapporter denne feilen til Codeplane-teamet",
   "error.page.report.issues": "på GitHub",
   "error.page.version": "Versjon: {{version}}",
 
@@ -465,7 +465,7 @@ export const dict = {
   "error.chain.didYouMean": "Mente du: {{suggestions}}",
   "error.chain.modelNotFound": "Modell ikke funnet: {{provider}}/{{model}}",
   "error.chain.checkConfig": "Sjekk leverandør-/modellnavnene i konfigurasjonen din (codeplane.json)",
-  "error.chain.mcpFailed": 'MCP-server "{{name}}" mislyktes. Merk at CodePlane ikke støtter MCP-autentisering ennå.',
+  "error.chain.mcpFailed": 'MCP-server "{{name}}" mislyktes. Merk at Codeplane ikke støtter MCP-autentisering ennå.',
   "error.chain.providerAuthFailed": "Leverandørautentisering mislyktes ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":
     'Kunne ikke initialisere leverandør "{{provider}}". Sjekk legitimasjon og konfigurasjon.',
@@ -601,13 +601,13 @@ export const dict = {
   "sidebar.workspaces.enable": "Aktiver arbeidsområder",
   "sidebar.workspaces.disable": "Deaktiver arbeidsområder",
   "sidebar.gettingStarted.title": "Kom i gang",
-  "sidebar.gettingStarted.line1": "CodePlane inkluderer gratis modeller så du kan starte umiddelbart.",
+  "sidebar.gettingStarted.line1": "Codeplane inkluderer gratis modeller så du kan starte umiddelbart.",
   "sidebar.gettingStarted.line2": "Koble til en leverandør for å bruke modeller, inkl. Claude, GPT, Gemini osv.",
   "sidebar.project.recentSessions": "Nylige sesjoner",
   "sidebar.project.viewAllSessions": "Vis alle sesjoner",
   "sidebar.project.clearNotifications": "Fjern varsler",
 
-  "app.name.web": "CodePlane",
+  "app.name.web": "Codeplane",
 
   "settings.section.app": "App",
   "settings.section.server": "Server",
@@ -620,13 +620,13 @@ export const dict = {
   "settings.general.section.feed": "Feed",
 
   "settings.general.row.language.title": "Språk",
-  "settings.general.row.language.description": "Endre visningsspråket for CodePlane",
+  "settings.general.row.language.description": "Endre visningsspråket for Codeplane",
   "settings.general.row.appearance.title": "Utseende",
-  "settings.general.row.appearance.description": "Tilpass hvordan CodePlane ser ut på enheten din",
+  "settings.general.row.appearance.description": "Tilpass hvordan Codeplane ser ut på enheten din",
   "settings.general.row.colorScheme.title": "Fargevalg",
-  "settings.general.row.colorScheme.description": "Velg om CodePlane skal følge systemets, lyst eller mørkt tema",
+  "settings.general.row.colorScheme.description": "Velg om Codeplane skal følge systemets, lyst eller mørkt tema",
   "settings.general.row.theme.title": "Tema",
-  "settings.general.row.theme.description": "Tilpass hvordan CodePlane er tematisert.",
+  "settings.general.row.theme.description": "Tilpass hvordan Codeplane er tematisert.",
   "settings.general.row.font.title": "Kodefont",
   "settings.general.row.font.description": "Tilpass skrifttypen som brukes i kodeblokker",
   "settings.general.row.terminalFont.title": "Terminal Font",

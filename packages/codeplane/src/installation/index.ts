@@ -109,6 +109,8 @@ const ChocoPackage = Schema.Struct({
   d: Schema.Struct({ results: Schema.Array(Schema.Struct({ Version: Schema.String })) }),
 })
 const ScoopManifest = NpmPackage
+const npmPackage = "codeplane-ai"
+const npmPackagePatterns = [`${npmPackage}@`]
 
 export interface Interface {
   readonly info: () => Effect.Effect<Info>
@@ -233,11 +235,11 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
 
         for (const check of checks) {
           const output = yield* check.command()
-          const installedName =
-            check.name === "brew" || check.name === "choco" || check.name === "scoop" ? "codeplane" : "codeplane-ai"
-          if (output.includes(installedName)) {
-            return check.name
+          if (check.name === "brew" || check.name === "choco" || check.name === "scoop") {
+            if (output.includes("codeplane")) return check.name
+            continue
           }
+          if (npmPackagePatterns.some((name) => output.includes(name))) return check.name
         }
 
         return "unknown" as Method
@@ -263,7 +265,7 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
         }
 
         if (detectedMethod === "npm" || detectedMethod === "bun" || detectedMethod === "pnpm") {
-          return yield* viewVersion(detectedMethod, `codeplane-ai@${InstallationChannel}`)
+          return yield* viewVersion(detectedMethod, `${npmPackage}@${InstallationChannel}`)
         }
 
         if (detectedMethod === "choco") {
@@ -303,7 +305,7 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
       const upgradeImpl = Effect.fn("Installation.upgrade")(function* (m: Method, target: string) {
         if (isDesktopReleaseVersion(target)) {
           return yield* new UpgradeFailedError({
-            stderr: `Desktop release targets (${target}) cannot be installed through CodePlane updates`,
+            stderr: `Desktop release targets (${target}) cannot be installed through Codeplane updates`,
           })
         }
         let result: { code: ChildProcessSpawner.ExitCode; stdout: string; stderr: string } | undefined
@@ -322,13 +324,13 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
             break
           }
           case "npm":
-            result = yield* run(["npm", "install", "-g", `codeplane-ai@${target}`])
+            result = yield* run(["npm", "install", "-g", `${npmPackage}@${target}`])
             break
           case "pnpm":
-            result = yield* run(["pnpm", "install", "-g", `codeplane-ai@${target}`])
+            result = yield* run(["pnpm", "install", "-g", `${npmPackage}@${target}`])
             break
           case "bun":
-            result = yield* run(["bun", "install", "-g", `codeplane-ai@${target}`])
+            result = yield* run(["bun", "install", "-g", `${npmPackage}@${target}`])
             break
           case "brew": {
             const formula = yield* getBrewFormula()

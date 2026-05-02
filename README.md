@@ -3,11 +3,11 @@
     <picture>
       <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: dark)">
       <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/console/app/src/asset/logo-ornate-dark.svg" alt="CodePlane" width="120">
+      <img src="packages/console/app/src/asset/logo-ornate-dark.svg" alt="Codeplane" width="120">
     </picture>
   </a>
 
-  <h1>CodePlane</h1>
+  <h1>Codeplane</h1>
 
   <p>
     <strong>The AI coding agent built for the web.</strong>
@@ -37,7 +37,7 @@
 
 ## Overview
 
-CodePlane is a fully open-source AI coding agent built around a polished web app. The CLI starts a local server and opens the web interface; the same server can also run headlessly for automation and remote workflows.
+Codeplane is a fully open-source AI coding agent built around a polished web app. The CLI starts a local server and opens the web interface; the same server can also run headlessly for automation and remote workflows.
 
 Forked from [opencode](https://github.com/sst/opencode) by [SST](https://sst.dev), with a focus on multi-session workflows, first-class scheduling, and a desktop shell that connects to local or remote servers.
 
@@ -62,7 +62,7 @@ Pre-built desktop installers for the current release.
       <td>Apple Silicon</td>
       <td><code>.dmg</code></td>
       <td align="right">
-        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.1.1-desktop/codeplane-desktop-macos-apple-silicon.dmg">
+        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.2.0-desktop/codeplane-desktop-macos-apple-silicon.dmg">
           <img alt="Download for macOS Apple Silicon" src="https://img.shields.io/badge/Download-0a0a0a?style=for-the-badge&logo=apple&logoColor=white" />
         </a>
       </td>
@@ -72,7 +72,7 @@ Pre-built desktop installers for the current release.
       <td>Intel</td>
       <td><code>.dmg</code></td>
       <td align="right">
-        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.1.1-desktop/codeplane-desktop-macos-intel.dmg">
+        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.2.0-desktop/codeplane-desktop-macos-intel.dmg">
           <img alt="Download for macOS Intel" src="https://img.shields.io/badge/Download-0a0a0a?style=for-the-badge&logo=apple&logoColor=white" />
         </a>
       </td>
@@ -82,7 +82,7 @@ Pre-built desktop installers for the current release.
       <td>x64</td>
       <td><code>.exe</code></td>
       <td align="right">
-        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.1.1-desktop/codeplane-desktop-windows-x64.exe">
+        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.2.0-desktop/codeplane-desktop-windows-x64.exe">
           <img alt="Download for Windows" src="https://img.shields.io/badge/Download-0a0a0a?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDMuNDQ5TDkuNzUgMi4xVjExLjUxSDB6TTEwLjk0OSAxOS40NUwyMy45OTggMjEuOVYxMi43SDEwLjk0OXpNMCAxMi43VjIxLjJsOS43NSAxLjM1VjEyLjd6TTEwLjk0OSAyLjFWMTEuNDk1SDIzLjk5OFY0LjE5eiIvPjwvc3ZnPg==&logoColor=white" />
         </a>
       </td>
@@ -92,7 +92,7 @@ Pre-built desktop installers for the current release.
       <td>x64</td>
       <td><code>.AppImage</code></td>
       <td align="right">
-        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.1.1-desktop/codeplane-desktop-linux-x64.AppImage">
+        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.2.0-desktop/codeplane-desktop-linux-x64.AppImage">
           <img alt="Download for Linux" src="https://img.shields.io/badge/Download-0a0a0a?style=for-the-badge&logo=linux&logoColor=white" />
         </a>
       </td>
@@ -100,7 +100,7 @@ Pre-built desktop installers for the current release.
   </tbody>
 </table>
 
-<sub>Current desktop release: <a href="https://github.com/devinoldenburg/codeplane/releases/tag/v27.1.1-desktop"><strong>v27.1.1&#8209;desktop</strong></a> &nbsp;·&nbsp; <a href="https://github.com/devinoldenburg/codeplane/releases">Browse all releases</a> &nbsp;·&nbsp; <a href="https://github.com/devinoldenburg/codeplane/releases/latest">Latest CLI</a></sub>
+<sub>Current desktop release: <a href="https://github.com/devinoldenburg/codeplane/releases/tag/v27.2.0-desktop"><strong>v27.2.0&#8209;desktop</strong></a> &nbsp;·&nbsp; <a href="https://github.com/devinoldenburg/codeplane/releases">Browse all releases</a> &nbsp;·&nbsp; <a href="https://github.com/devinoldenburg/codeplane/releases/latest">Latest CLI</a></sub>
 
 > Desktop installers ship on the dedicated `vX.Y.Z-desktop` release line. If a brand-new build is still finishing, the release page above shows live status and any partial assets.
 
@@ -218,7 +218,7 @@ Capabilities are comparable. The differences:
 
 <br />
 
-CodePlane stays close to upstream for the core agent loop, but ships:
+Codeplane stays close to upstream for the core agent loop, but ships:
 
 - A polished web app with multi-session orchestration
 - A first-class scheduling / cron surface for recurring agent runs
@@ -232,7 +232,7 @@ CodePlane stays close to upstream for the core agent loop, but ships:
 
 <br />
 
-Please add a note to your README clarifying that your project is not built by or affiliated with the CodePlane team.
+Please add a note to your README clarifying that your project is not built by or affiliated with the Codeplane team.
 
 </details>
 

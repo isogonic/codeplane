@@ -14,7 +14,7 @@ if (!(window as any).codeplaneDesktop) {
       JSON.stringify([
         { id: "remote-team", url: "https://codeplane.example.com", label: "Team Production" },
         { id: "remote-staging", url: "https://staging.codeplane.example.com", label: "Internal Staging" },
-        { id: "local-dev", url: "local://local-dev", label: "Local Dev", local: { binaryVersion: "27.1.1" } },
+        { id: "local-dev", url: "local://local-dev", label: "Local Dev", local: { binaryVersion: "27.2.0" } },
       ]),
     )
   } else if (params.get("seed") === "0") {

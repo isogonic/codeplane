@@ -1,15 +1,15 @@
 ---
 title: Formateri
-description: CodePlane koristi formatere specifične za jezik.
+description: Codeplane koristi formatere specifične za jezik.
 ---
 
-CodePlane automatski formatira datoteke nakon što su napisane ili uređene pomoću formatera specifičnih za jezik. Ovo osigurava da kod koji se generira prati stilove koda vašeg projekta.
+Codeplane automatski formatira datoteke nakon što su napisane ili uređene pomoću formatera specifičnih za jezik. Ovo osigurava da kod koji se generira prati stilove koda vašeg projekta.
 
 ---
 
 ## Ugrađeni
 
-CodePlane dolazi sa nekoliko ugrađenih formatera za popularne jezike i okvire. Ispod je lista formatera, podržanih ekstenzija datoteka i naredbi ili opcija konfiguracije koje su mu potrebne.
+Codeplane dolazi sa nekoliko ugrađenih formatera za popularne jezike i okvire. Ispod je lista formatera, podržanih ekstenzija datoteka i naredbi ili opcija konfiguracije koje su mu potrebne.
 | Formatter | Ekstenzije | Zahtjevi
 |-------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | gofmt | .go | `gofmt` komanda dostupna |
@@ -35,13 +35,13 @@ CodePlane dolazi sa nekoliko ugrađenih formatera za popularne jezike i okvire. 
 | shfmt | .sh, .bash | `shfmt` komanda dostupna |
 | pint | .php | `laravel/pint` zavisnost u `composer.json` || oxfmt (Eksperimentalno) | .js, .jsx, .ts, .tsx | `oxfmt` zavisnost u `package.json` i [eksperimentalna env varijabla flag](/docs/cli/#experimental) |
 | ormolu | .hs | `ormolu` komanda dostupna |
-Dakle, ako vaš projekat ima `prettier` u vašem `package.json`, CodePlane će ga automatski koristiti.
+Dakle, ako vaš projekat ima `prettier` u vašem `package.json`, Codeplane će ga automatski koristiti.
 
 ---
 
 ## Kako radi
 
-Kada CodePlane piše ili uređuje datoteku, on:
+Kada Codeplane piše ili uređuje datoteku, on:
 
 1. Provjerava ekstenziju datoteke prema svim omogućenim formaterima.
 2. Pokreće odgovarajuću naredbu za formatiranje na datoteci.
@@ -52,7 +52,7 @@ Kada CodePlane piše ili uređuje datoteku, on:
 
 ## Konfiguracija
 
-Možete prilagoditi formatere kroz `formatter` odjeljak u vašoj CodePlane konfiguraciji.
+Možete prilagoditi formatere kroz `formatter` odjeljak u vašoj Codeplane konfiguraciji.
 
 ```json title="codeplane.json"
 {

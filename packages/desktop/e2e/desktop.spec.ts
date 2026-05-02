@@ -240,6 +240,137 @@ window.addEventListener("DOMContentLoaded", async () => {
   return { css, html, js }
 }
 
+function createLocalBinaryScript(version: string, label: string, broken = false) {
+  if (broken) {
+    return `#!/usr/bin/env node
+process.stderr.write("local fixture failed to start\\n")
+process.exit(1)
+`
+  }
+  const assets = createFixtureAssets(version, label)
+  return `#!/usr/bin/env node
+import http from "node:http"
+import zlib from "node:zlib"
+
+const version = ${JSON.stringify(version)}
+const assets = ${JSON.stringify(assets)}
+
+function parseArgs(argv) {
+  const args = { host: "127.0.0.1", port: 0 }
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === "--hostname") args.host = argv[i + 1] || args.host
+    if (argv[i] === "--port") args.port = Number.parseInt(argv[i + 1] || "0", 10) || 0
+  }
+  return args
+}
+
+function sendJson(response, body, gzip = false) {
+  const payload = Buffer.from(JSON.stringify(body) + "\\n")
+  if (!gzip) {
+    response.writeHead(200, { "Content-Type": "application/json; charset=utf-8" })
+    response.end(payload)
+    return
+  }
+  response.writeHead(200, {
+    "Content-Encoding": "gzip",
+    "Content-Type": "application/json; charset=utf-8",
+  })
+  response.end(zlib.gzipSync(payload))
+}
+
+const args = parseArgs(process.argv.slice(2))
+const server = http.createServer((request, response) => {
+  const url = new URL(request.url || "/", "http://" + args.host)
+
+  if (url.pathname === "/global/version") {
+    sendJson(response, { current: version })
+    return
+  }
+
+  if (url.pathname === "/" || url.pathname === "/index.html") {
+    response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" })
+    response.end(assets.html)
+    return
+  }
+
+  if (url.pathname === "/config/providers") {
+    sendJson(response, { providers: ["logicplanes"] })
+    return
+  }
+
+  if (url.pathname === "/path") {
+    sendJson(response, { home: "/workspace", directory: "/workspace" }, true)
+    return
+  }
+
+  if (url.pathname === "/project") {
+    sendJson(
+      response,
+      [{ id: "workspace", worktree: "/workspace", time: { created: 0, updated: 0 }, sandboxes: ["/workspace/codeplane"] }],
+      true,
+    )
+    return
+  }
+
+  if (url.pathname === "/provider") {
+    sendJson(response, { all: [{ id: "logicplanes" }], enabled: [{ id: "logicplanes" }] }, true)
+    return
+  }
+
+  if (url.pathname === "/file/list") {
+    sendJson(
+      response,
+      [
+        { name: "codeplane", absolute: "/workspace/codeplane", type: "directory" },
+        { name: "tunnel-mcp", absolute: "/workspace/tunnel-mcp", type: "directory" },
+      ],
+      true,
+    )
+    return
+  }
+
+  if (url.pathname === "/find/files") {
+    sendJson(response, ["codeplane", "tunnel-mcp"], true)
+    return
+  }
+
+  if (url.pathname === "/assets/app.css") {
+    response.writeHead(200, { "Content-Type": "text/css; charset=utf-8" })
+    response.end(assets.css)
+    return
+  }
+
+  if (url.pathname === "/assets/app.js") {
+    response.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8" })
+    response.end(assets.js)
+    return
+  }
+
+  if (url.pathname === "/assets/themes/amoled.json") {
+    response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" })
+    response.end("missing")
+    return
+  }
+
+  response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" })
+  response.end("missing")
+})
+
+server.listen(args.port, args.host, () => {
+  const address = server.address()
+  if (!address || typeof address === "string") {
+    console.error("failed to resolve local fixture address")
+    process.exit(1)
+    return
+  }
+  console.log("codeplane server listening on http://" + args.host + ":" + address.port)
+})
+
+process.on("SIGTERM", () => server.close(() => process.exit(0)))
+process.on("SIGINT", () => server.close(() => process.exit(0)))
+`
+}
+
 async function startFixtureServer(
   testInfo: TestInfo,
   slug: string,
@@ -579,9 +710,23 @@ async function seedFreshCache(userDataDir: string, version: string) {
   )
 }
 
+async function seedLocalBinary(userDataDir: string, version: string, label: string, broken = false) {
+  const dir = path.join(userDataDir, "local-binaries", version)
+  const file = path.join(dir, process.platform === "win32" ? "codeplane.exe" : "codeplane")
+  await fs.mkdir(dir, { recursive: true })
+  await fs.writeFile(file, createLocalBinaryScript(version, label, broken), "utf8")
+  if (process.platform !== "win32") await fs.chmod(file, 0o755)
+}
+
 async function launchDesktop(
   testInfo: TestInfo,
-  options?: { freshVersions?: string[]; instances?: SavedInstance[]; staleVersions?: string[] },
+  options?: {
+    freshVersions?: string[]
+    instances?: SavedInstance[]
+    localVersions?: string[]
+    brokenLocalVersions?: string[]
+    staleVersions?: string[]
+  },
 ) {
   const root = testInfo.outputPath("desktop-runtime")
   const userDataDir = path.join(root, "user-data")
@@ -596,6 +741,12 @@ async function launchDesktop(
   }
   for (const version of options?.freshVersions ?? []) {
     await seedFreshCache(userDataDir, version)
+  }
+  for (const version of options?.localVersions ?? []) {
+    await seedLocalBinary(userDataDir, version, "Local workspace")
+  }
+  for (const version of options?.brokenLocalVersions ?? []) {
+    await seedLocalBinary(userDataDir, version, "Broken local workspace", true)
   }
 
   const app = await electron.launch({
@@ -904,6 +1055,82 @@ test("removes UI caches that have been unused for more than 30 days", async ({},
 
     await expect.poll(() => exists(path.join(runtime.userDataDir, "ui-cache", "stale-version"))).toBe(false)
     await expect.poll(() => exists(path.join(runtime.userDataDir, "ui-cache", "fresh-version"))).toBe(true)
+  } finally {
+    if (app) await app.close()
+    await attachIfExists(testInfo, "desktop-log", testInfo.outputPath("desktop-runtime/logs/desktop.log"))
+  }
+})
+
+test("sets up and opens a local instance from the desktop selector", async ({}, testInfo) => {
+  test.skip(process.platform === "win32", "local fixture binary is only seeded for POSIX platforms")
+  let app: Awaited<ReturnType<typeof electron.launch>> | undefined
+
+  try {
+    const runtime = await launchDesktop(testInfo, { localVersions: [appVersion] })
+    app = runtime.app
+    let page = runtime.page
+
+    await page.getByText("Add instance").click()
+    await expect(page.getByRole("heading", { name: "Add an instance" })).toBeVisible()
+    await page.locator('[data-desktop-action="pick-local"]').click()
+    await expect(page.getByRole("heading", { name: "Run a local instance" })).toBeVisible()
+    await page.locator('[data-desktop-field="local-name"]').fill("Local workspace")
+
+    await page.locator('[data-desktop-action="local-save"]').click()
+    await expect(page.locator('[data-desktop-state="prepare"]')).toBeVisible()
+    await expect(page.getByText("Connect to your instance")).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText("Local workspace")).toBeVisible()
+    await expect(page.getByText(new RegExp(`Runs locally \u00b7 v${appVersion.replace(/\./g, "\\.")}`))).toBeVisible()
+
+    const instanceWindowPromise = app.waitForEvent("window")
+    await page.locator('[data-desktop-action="instance-open"]').last().click()
+    page = await instanceWindowPromise
+    await page.waitForLoadState("domcontentloaded")
+
+    await expect(page.getByTestId("fixture-server-version")).toHaveText(appVersion)
+    await expect(page.getByTestId("fixture-providers")).toHaveText(/^ok:/)
+    await expect(page.getByTestId("fixture-theme")).toHaveText(/^ok:/)
+    await expect(page.getByTestId("fixture-path")).toHaveText(/^ok:/)
+    await expect(page.getByTestId("fixture-project-api")).toHaveText(/^ok:/)
+    await expect(page.getByTestId("fixture-provider-api")).toHaveText(/^ok:/)
+    await expect(page.getByTestId("fixture-file-list")).toHaveText(/^ok:/)
+    await expect(page.getByTestId("fixture-find-files")).toHaveText(/^ok:/)
+
+    const logEntries = await readDesktopEntries(runtime.logFile)
+    expect(logEntries.some((entry) => entry.scope === "local-instance" && entry.event === "local.start.ready")).toBe(true)
+    expect(logEntries.some((entry) => entry.scope === "setup" && entry.event === "local.prepare.progress")).toBe(true)
+  } finally {
+    if (app) await app.close()
+    await attachIfExists(testInfo, "desktop-log", testInfo.outputPath("desktop-runtime/logs/desktop.log"))
+  }
+})
+
+test("does not save a broken local instance when setup fails", async ({}, testInfo) => {
+  test.skip(process.platform === "win32", "local fixture binary is only seeded for POSIX platforms")
+  let app: Awaited<ReturnType<typeof electron.launch>> | undefined
+
+  try {
+    const runtime = await launchDesktop(testInfo, { brokenLocalVersions: [appVersion] })
+    app = runtime.app
+    const page = runtime.page
+
+    await page.getByText("Add instance").click()
+    await expect(page.getByRole("heading", { name: "Add an instance" })).toBeVisible()
+    await page.locator('[data-desktop-action="pick-local"]').click()
+    await expect(page.getByRole("heading", { name: "Run a local instance" })).toBeVisible()
+    await page.locator('[data-desktop-field="local-name"]').fill("Broken local workspace")
+
+    await page.locator('[data-desktop-action="local-save"]').click()
+    await expect(page.getByRole("heading", { name: "Run a local instance" })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText("Connect to your instance")).not.toBeVisible()
+
+    const count = await page.evaluate(() => window.codeplaneDesktop.instances.list().then((instances) => instances.length))
+    expect(count).toBe(0)
+
+    const logEntries = await readDesktopEntries(runtime.logFile)
+    expect(logEntries.some((entry) => entry.scope === "main" && entry.event === "instances.prepare.start")).toBe(true)
+    expect(logEntries.some((entry) => entry.scope === "local-instance" && entry.event === "local.start")).toBe(true)
+    expect(logEntries.some((entry) => entry.scope === "main" && entry.event === "instances.save")).toBe(false)
   } finally {
     if (app) await app.close()
     await attachIfExists(testInfo, "desktop-log", testInfo.outputPath("desktop-runtime/logs/desktop.log"))

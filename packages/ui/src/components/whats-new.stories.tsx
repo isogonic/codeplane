@@ -44,7 +44,7 @@ function WhatsNewPreview(props: { previousVersion?: string; published?: string |
             <Icon name="sparkle" size="small" />
           </span>
           <span class="flex flex-col leading-tight gap-0.5">
-            <span class="text-16-medium text-text-strong">What's new in CodePlane {version}</span>
+            <span class="text-16-medium text-text-strong">What's new in Codeplane {version}</span>
             <span class="text-12-regular text-text-weak inline-flex items-center gap-2">
               {props.previousVersion ? (
                 <span class="inline-flex items-center gap-1.5">

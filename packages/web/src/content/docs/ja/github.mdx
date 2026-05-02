@@ -1,17 +1,17 @@
 ---
 title: GitHub
-description: GitHub の問題とプルリクエストで CodePlane を使用します。
+description: GitHub の問題とプルリクエストで Codeplane を使用します。
 ---
 
-CodePlane は GitHub ワークフローと統合します。コメントで `/codeplane` に言及すると、CodePlane が GitHub Actions ランナー内でタスクを実行します。
+Codeplane は GitHub ワークフローと統合します。コメントで `/codeplane` に言及すると、Codeplane が GitHub Actions ランナー内でタスクを実行します。
 
 ---
 
 ## 機能
 
-- **問題のトリアージ**: CodePlane に問題を調べて説明してもらいます。
-- **修正と実装**: CodePlane に問題の修正または機能の実装を依頼します。そして、新しいブランチで動作し、すべての変更を含む PR を送信します。
-- **安全**: CodePlane は GitHub のランナー内で実行されます。
+- **問題のトリアージ**: Codeplane に問題を調べて説明してもらいます。
+- **修正と実装**: Codeplane に問題の修正または機能の実装を依頼します。そして、新しいブランチで動作し、すべての変更を含む PR を送信します。
+- **安全**: Codeplane は GitHub のランナー内で実行されます。
 
 ---
 
@@ -62,7 +62,7 @@ codeplane github install
               fetch-depth: 1
               persist-credentials: false
 
-          - name: Run CodePlane
+          - name: Run Codeplane
            uses: devinoldenburg/codeplane/github@latest
            env:
              ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -80,13 +80,13 @@ codeplane github install
 
 ## 設定
 
-- `model`: CodePlane で使用するモデル。 `provider/model` の形式をとります。これは**必須**です。
+- `model`: Codeplane で使用するモデル。 `provider/model` の形式をとります。これは**必須**です。
 - `agent`: 使用するエージェント。プライマリエージェントである必要があります。見つからない場合は、設定から `default_agent` にフォールバックするか、`"build"` にフォールバックします。
-- `share`: CodePlane セッションを共有するかどうか。パブリックリポジトリのデフォルトは **true** です。
-- `prompt`: デフォルトの動作をオーバーライドするためのオプションのカスタムプロンプト。これを使用して、CodePlane がリクエストを処理する方法をカスタマイズします。
-- `token`: コメントの作成、変更のコミット、プルリクエストのオープンなどの操作を実行するためのオプションの GitHub アクセストークン。デフォルトでは、CodePlane は CodePlane GitHub アプリからのインストールアクセストークンを使用するため、コミット、コメント、プルリクエストはアプリからのものとして表示されます。
+- `share`: Codeplane セッションを共有するかどうか。パブリックリポジトリのデフォルトは **true** です。
+- `prompt`: デフォルトの動作をオーバーライドするためのオプションのカスタムプロンプト。これを使用して、Codeplane がリクエストを処理する方法をカスタマイズします。
+- `token`: コメントの作成、変更のコミット、プルリクエストのオープンなどの操作を実行するためのオプションの GitHub アクセストークン。デフォルトでは、Codeplane は Codeplane GitHub アプリからのインストールアクセストークンを使用するため、コミット、コメント、プルリクエストはアプリからのものとして表示されます。
 
-あるいは、CodePlane GitHub アプリをインストールせずに、GitHub Action ランナーの [組み込み `GITHUB_TOKEN`](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token) を使用することもできます。ワークフローで必要な権限を必ず付与してください。
+あるいは、Codeplane GitHub アプリをインストールせずに、GitHub Action ランナーの [組み込み `GITHUB_TOKEN`](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token) を使用することもできます。ワークフローで必要な権限を必ず付与してください。
 
 ```yaml
 permissions:
@@ -102,23 +102,23 @@ permissions:
 
 ## サポートされているイベント
 
-CodePlane は、次の GitHub イベントによってトリガーできます。
+Codeplane は、次の GitHub イベントによってトリガーできます。
 
 | イベントの種類                | トリガー                            | 詳細                                                                                                                                             |
 | ----------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `issue_comment`               | 問題または PR についてコメントする  | コメントで `/codeplane` について言及してください。 CodePlane はコンテキストを読み取り、ブランチを作成したり、PR を開いたり、返信したりできます。 |
-| `pull_request_review_comment` | PR 内の特定のコード行にコメントする | コードをレビューするときに、`/codeplane` について言及します。 CodePlane は、ファイルパス、行番号、および diff コンテキストを受け取ります。       |
-| `issues`                      | 問題がオープンまたは編集されました  | 問題が作成または変更されると、CodePlane が自動的にトリガーされます。 `prompt` 入力が必要です。                                                   |
-| `pull_request`                | PR がオープンまたは更新されました   | PR が開かれる、同期される、または再度開かれるときに、CodePlane を自動的にトリガーします。自動レビューに役立ちます。                              |
-| `schedule`                    | Cron ベースのスケジュール           | スケジュールに従って CodePlane を実行します。 `prompt` 入力が必要です。出力はログと PR に送られます (コメントする問題はありません)。             |
-| `workflow_dispatch`           | GitHub UI からの手動トリガー        | [アクション] タブから CodePlane をオンデマンドでトリガーします。 `prompt` 入力が必要です。出力はログと PR に送られます。                         |
+| `issue_comment`               | 問題または PR についてコメントする  | コメントで `/codeplane` について言及してください。 Codeplane はコンテキストを読み取り、ブランチを作成したり、PR を開いたり、返信したりできます。 |
+| `pull_request_review_comment` | PR 内の特定のコード行にコメントする | コードをレビューするときに、`/codeplane` について言及します。 Codeplane は、ファイルパス、行番号、および diff コンテキストを受け取ります。       |
+| `issues`                      | 問題がオープンまたは編集されました  | 問題が作成または変更されると、Codeplane が自動的にトリガーされます。 `prompt` 入力が必要です。                                                   |
+| `pull_request`                | PR がオープンまたは更新されました   | PR が開かれる、同期される、または再度開かれるときに、Codeplane を自動的にトリガーします。自動レビューに役立ちます。                              |
+| `schedule`                    | Cron ベースのスケジュール           | スケジュールに従って Codeplane を実行します。 `prompt` 入力が必要です。出力はログと PR に送られます (コメントする問題はありません)。             |
+| `workflow_dispatch`           | GitHub UI からの手動トリガー        | [アクション] タブから Codeplane をオンデマンドでトリガーします。 `prompt` 入力が必要です。出力はログと PR に送られます。                         |
 
 ### スケジュールの例
 
-スケジュールに従って CodePlane を実行し、自動化されたタスクを実行します。
+スケジュールに従って Codeplane を実行し、自動化されたタスクを実行します。
 
 ```yaml title=".github/workflows/codeplane-scheduled.yml"
-name: Scheduled CodePlane Task
+name: Scheduled Codeplane Task
 
 on:
   schedule:
@@ -138,7 +138,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Run CodePlane
+      - name: Run Codeplane
         uses: devinoldenburg/codeplane/github@latest
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -149,7 +149,7 @@ jobs:
             If you find issues worth addressing, open an issue to track them.
 ```
 
-スケジュールされたイベントの場合、指示を抽出するためのコメントがないため、`prompt` 入力は **必須** です。スケジュールされたワークフローは、権限チェックのためのユーザーコンテキストなしで実行されるため、CodePlane がブランチまたは PR を作成することが予想される場合、ワークフローは `contents: write` および `pull-requests: write` を付与する必要があります。
+スケジュールされたイベントの場合、指示を抽出するためのコメントがないため、`prompt` 入力は **必須** です。スケジュールされたワークフローは、権限チェックのためのユーザーコンテキストなしで実行されるため、Codeplane がブランチまたは PR を作成することが予想される場合、ワークフローは `contents: write` および `pull-requests: write` を付与する必要があります。
 
 ---
 
@@ -190,7 +190,7 @@ jobs:
             - Suggest improvements
 ```
 
-`pull_request` イベントの場合、`prompt` が指定されていない場合、CodePlane はデフォルトでプルリクエストをレビューします。
+`pull_request` イベントの場合、`prompt` が指定されていない場合、Codeplane はデフォルトでプルリクエストをレビューします。
 
 ---
 
@@ -251,7 +251,7 @@ jobs:
 
 ## カスタムプロンプト
 
-デフォルトのプロンプトをオーバーライドして、ワークフローに合わせて CodePlane の動作をカスタマイズします。
+デフォルトのプロンプトをオーバーライドして、ワークフローに合わせて Codeplane の動作をカスタマイズします。
 
 ```yaml title=".github/workflows/codeplane.yml"
 - uses: devinoldenburg/codeplane/github@latest
@@ -270,7 +270,7 @@ jobs:
 
 ## 例
 
-GitHub で CodePlane を使用する方法の例をいくつか示します。
+GitHub で Codeplane を使用する方法の例をいくつか示します。
 
 - **Issueの説明**
 
@@ -280,7 +280,7 @@ GitHub で CodePlane を使用する方法の例をいくつか示します。
   /codeplane explain this issue
 ```
 
-CodePlane は、すべてのコメントを含むスレッド全体を読み取り、明確な説明を返信します。
+Codeplane は、すべてのコメントを含むスレッド全体を読み取り、明確な説明を返信します。
 
 - **Issueの修正**
 
@@ -290,7 +290,7 @@ GitHub の問題で次のように言います。
   /codeplane fix this
 ```
 
-そして、CodePlane は新しいブランチを作成し、変更を実装し、変更を含む PR を開きます。
+そして、Codeplane は新しいブランチを作成し、変更を実装し、変更を含む PR を開きます。
 
 - **PR をレビューして変更を加える**
 
@@ -300,18 +300,18 @@ GitHub PR に次のコメントを残してください。
   Delete the attachment from S3 when the note is removed /codeplane
 ```
 
-CodePlane は要求された変更を実装し、同じ PR にコミットします。
+Codeplane は要求された変更を実装し、同じ PR にコミットします。
 
 - **特定のコード行のレビュー**
 
-PR の「ファイル」タブのコード行に直接コメントを残します。 CodePlane は、ファイル、行番号、および diff コンテキストを自動的に検出して、正確な応答を提供します。
+PR の「ファイル」タブのコード行に直接コメントを残します。 Codeplane は、ファイル、行番号、および diff コンテキストを自動的に検出して、正確な応答を提供します。
 
 ```
   [Comment on specific lines in Files tab]
   /codeplane add error handling here
 ```
 
-特定の行にコメントすると、CodePlane は以下を受け取ります。
+特定の行にコメントすると、Codeplane は以下を受け取ります。
 
 - レビューされている正確なファイル
 - コードの特定の行

@@ -115,7 +115,7 @@ export const dict = {
   "dialog.model.manage.description": "Настройте какие модели появляются в выборе модели",
   "dialog.model.manage.provider.toggle": "Переключить все модели {{provider}}",
 
-  "dialog.model.unpaid.freeModels.title": "Бесплатные модели от CodePlane",
+  "dialog.model.unpaid.freeModels.title": "Бесплатные модели от Codeplane",
   "dialog.model.unpaid.addMore.title": "Добавьте больше моделей от популярных провайдеров",
 
   "dialog.provider.viewAll": "Показать больше провайдеров",
@@ -128,12 +128,12 @@ export const dict = {
   "provider.connect.status.waiting": "Ожидание авторизации...",
   "provider.connect.status.failed": "Ошибка авторизации: {{error}}",
   "provider.connect.apiKey.description":
-    "Введите ваш API ключ {{provider}} для подключения аккаунта и использования моделей {{provider}} в CodePlane.",
+    "Введите ваш API ключ {{provider}} для подключения аккаунта и использования моделей {{provider}} в Codeplane.",
   "provider.connect.apiKey.label": "{{provider}} API ключ",
   "provider.connect.apiKey.placeholder": "API ключ",
   "provider.connect.apiKey.required": "API ключ обязателен",
   "provider.connect.codeplaneZen.line1":
-    "CodePlane Zen даёт вам доступ к отобранным надёжным оптимизированным моделям для агентов программирования.",
+    "Codeplane Zen даёт вам доступ к отобранным надёжным оптимизированным моделям для агентов программирования.",
   "provider.connect.codeplaneZen.line2":
     "С одним API ключом вы получите доступ к таким моделям как Claude, GPT, Gemini, GLM и другим.",
   "provider.connect.codeplaneZen.visit.prefix": "Посетите ",
@@ -142,7 +142,7 @@ export const dict = {
   "provider.connect.oauth.code.visit.prefix": "Посетите ",
   "provider.connect.oauth.code.visit.link": "эту ссылку",
   "provider.connect.oauth.code.visit.suffix":
-    " чтобы получить код авторизации для подключения аккаунта и использования моделей {{provider}} в CodePlane.",
+    " чтобы получить код авторизации для подключения аккаунта и использования моделей {{provider}} в Codeplane.",
   "provider.connect.oauth.code.label": "{{method}} код авторизации",
   "provider.connect.oauth.code.placeholder": "Код авторизации",
   "provider.connect.oauth.code.required": "Код авторизации обязателен",
@@ -150,7 +150,7 @@ export const dict = {
   "provider.connect.oauth.auto.visit.prefix": "Посетите ",
   "provider.connect.oauth.auto.visit.link": "эту ссылку",
   "provider.connect.oauth.auto.visit.suffix":
-    " и введите код ниже для подключения аккаунта и использования моделей {{provider}} в CodePlane.",
+    " и введите код ниже для подключения аккаунта и использования моделей {{provider}} в Codeplane.",
   "provider.connect.oauth.auto.confirmationCode": "Код подтверждения",
   "provider.connect.toast.connected.title": "{{provider}} подключён",
   "provider.connect.toast.connected.description": "Модели {{provider}} теперь доступны.",
@@ -307,7 +307,7 @@ export const dict = {
   "dialog.directory.empty": "Папки не найдены",
 
   "dialog.server.title": "Серверы",
-  "dialog.server.description": "Переключите сервер CodePlane к которому подключается приложение.",
+  "dialog.server.description": "Переключите сервер Codeplane к которому подключается приложение.",
   "dialog.server.search.placeholder": "Поиск серверов",
   "dialog.server.empty": "Серверов пока нет",
   "dialog.server.add.title": "Добавить сервер",
@@ -444,7 +444,7 @@ export const dict = {
   "error.page.description": "Произошла ошибка при загрузке приложения.",
   "error.page.details.label": "Детали ошибки",
   "error.page.action.restart": "Перезапустить",
-  "error.page.report.prefix": "Пожалуйста, сообщите об этой ошибке команде CodePlane",
+  "error.page.report.prefix": "Пожалуйста, сообщите об этой ошибке команде Codeplane",
   "error.page.report.issues": "на GitHub",
   "error.page.version": "Версия: {{version}}",
 
@@ -464,7 +464,7 @@ export const dict = {
   "error.chain.modelNotFound": "Модель не найдена: {{provider}}/{{model}}",
   "error.chain.checkConfig": "Проверьте названия провайдера/модели в конфиге (codeplane.json)",
   "error.chain.mcpFailed":
-    'MCP сервер "{{name}}" завершился с ошибкой. Обратите внимание, что CodePlane пока не поддерживает MCP авторизацию.',
+    'MCP сервер "{{name}}" завершился с ошибкой. Обратите внимание, что Codeplane пока не поддерживает MCP авторизацию.',
   "error.chain.providerAuthFailed": "Ошибка аутентификации провайдера ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":
     'Не удалось инициализировать провайдера "{{provider}}". Проверьте учётные данные и конфигурацию.',
@@ -598,14 +598,14 @@ export const dict = {
   "sidebar.workspaces.enable": "Включить рабочие пространства",
   "sidebar.workspaces.disable": "Отключить рабочие пространства",
   "sidebar.gettingStarted.title": "Начало работы",
-  "sidebar.gettingStarted.line1": "CodePlane включает бесплатные модели, чтобы вы могли начать сразу.",
+  "sidebar.gettingStarted.line1": "Codeplane включает бесплатные модели, чтобы вы могли начать сразу.",
   "sidebar.gettingStarted.line2":
     "Подключите любого провайдера для использования моделей, включая Claude, GPT, Gemini и др.",
   "sidebar.project.recentSessions": "Недавние сессии",
   "sidebar.project.viewAllSessions": "Посмотреть все сессии",
   "sidebar.project.clearNotifications": "Очистить уведомления",
 
-  "app.name.web": "CodePlane",
+  "app.name.web": "Codeplane",
   "settings.section.app": "App",
   "settings.section.server": "Сервер",
   "settings.tab.general": "Основные",
@@ -617,13 +617,13 @@ export const dict = {
   "settings.general.section.feed": "Лента",
 
   "settings.general.row.language.title": "Язык",
-  "settings.general.row.language.description": "Изменить язык отображения CodePlane",
+  "settings.general.row.language.description": "Изменить язык отображения Codeplane",
   "settings.general.row.appearance.title": "Внешний вид",
-  "settings.general.row.appearance.description": "Настройте как CodePlane выглядит на вашем устройстве",
+  "settings.general.row.appearance.description": "Настройте как Codeplane выглядит на вашем устройстве",
   "settings.general.row.colorScheme.title": "Цветовая схема",
-  "settings.general.row.colorScheme.description": "Выберите, следует ли CodePlane системной, светлой или тёмной теме",
+  "settings.general.row.colorScheme.description": "Выберите, следует ли Codeplane системной, светлой или тёмной теме",
   "settings.general.row.theme.title": "Тема",
-  "settings.general.row.theme.description": "Настройте оформление CodePlane.",
+  "settings.general.row.theme.description": "Настройте оформление Codeplane.",
   "settings.general.row.font.title": "Шрифт кода",
   "settings.general.row.font.description": "Настройте шрифт, используемый в блоках кода",
   "settings.general.row.terminalFont.title": "Terminal Font",

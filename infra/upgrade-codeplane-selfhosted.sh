@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CodePlane self-hosted upgrade hook.
+# Codeplane self-hosted upgrade hook.
 #
 # Invoked by Installation.upgrade(method="selfhosted") with:
 #   VERSION              - target semver, e.g. 26.5.3

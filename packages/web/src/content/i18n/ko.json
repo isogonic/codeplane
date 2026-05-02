@@ -70,6 +70,6 @@
   "share.debug_key": "키",
   "app.lander.features.web_app.title": "Web app",
   "app.lander.features.web_app.description": "A browser-first workspace for sessions, terminals, files, providers, and models.",
-  "app.lander.images.web.caption": "CodePlane web app session workspace",
-  "app.lander.images.web.alt": "CodePlane web app session workspace"
+  "app.lander.images.web.caption": "Codeplane web app session workspace",
+  "app.lander.images.web.alt": "Codeplane web app session workspace"
 }

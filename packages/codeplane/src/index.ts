@@ -37,6 +37,8 @@ import { PluginCommand } from "./cli/cmd/plug"
 import { Heap } from "./cli/heap"
 import { drizzle } from "drizzle-orm/bun-sqlite"
 import { ensureProcessMetadata } from "./util/codeplane-process"
+import { TuiCommand } from "./cli/cmd/tui"
+import { resolveCliArgs } from "./tui/dispatch"
 
 const processMetadata = ensureProcessMetadata("main")
 
@@ -52,7 +54,7 @@ process.on("uncaughtException", (e) => {
   })
 })
 
-const args = hideBin(process.argv)
+const args = resolveCliArgs(hideBin(process.argv))
 
 function show(out: string) {
   const text = out.trimStart()
@@ -163,6 +165,7 @@ const cli = yargs(args)
   .command(UpgradeCommand)
   .command(UninstallCommand)
   .command(ServeCommand)
+  .command(TuiCommand)
   .command(WebCommand)
   .command(ModelsCommand)
   .command(StatsCommand)

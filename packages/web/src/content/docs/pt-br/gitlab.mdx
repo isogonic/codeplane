@@ -35,7 +35,7 @@ Aqui estamos usando um componente CI/CD criado pela comunidade para codeplane �
      - component: $CI_SERVER_FQDN/nagyv/gitlab-codeplane/codeplane@2
        inputs:
          config_dir: ${CI_PROJECT_DIR}/codeplane-config
-         auth_json: $CODEPLANE_AUTH_JSON # O nome da variável para seu JSON de autenticação do CodePlane
+         auth_json: $CODEPLANE_AUTH_JSON # O nome da variável para seu JSON de autenticação do Codeplane
          command: optional-custom-command
          message: "Seu prompt aqui"
    ```
@@ -91,7 +91,7 @@ Consulte a [**documentação do GitLab**](https://docs.gitlab.com/user/duo_agent
       - apt-get install --yes glab
       - echo "Configurando glab"
       - echo $GITLAB_HOST
-      - echo "Criando configuração de auth do CodePlane"
+      - echo "Criando configuração de auth do Codeplane"
       - mkdir --parents ~/.local/share/codeplane
       - |
         cat > ~/.local/share/codeplane/auth.json << EOF
@@ -104,10 +104,10 @@ Consulte a [**documentação do GitLab**](https://docs.gitlab.com/user/duo_agent
         EOF
       - echo "Configurando git"
       - git config --global user.email "codeplane@gitlab.com"
-      - git config --global user.name "CodePlane"
+      - git config --global user.name "Codeplane"
       - echo "Testando glab"
       - glab issue list
-      - echo "Executando CodePlane"
+      - echo "Executando Codeplane"
       - |
         codeplane run "
         Você é um assistente de IA ajudando com operações do GitLab.

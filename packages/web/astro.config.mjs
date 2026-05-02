@@ -31,7 +31,7 @@ export default defineConfig({
     configSchema(),
     solidJs(),
     starlight({
-      title: "CodePlane",
+      title: "Codeplane",
       defaultLocale: "root",
       locales: {
         root: {

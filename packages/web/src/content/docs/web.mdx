@@ -1,11 +1,11 @@
 ---
 title: Web
-description: Using CodePlane in your browser.
+description: Using Codeplane in your browser.
 ---
 
-CodePlane can run as a web application in your browser, providing the same powerful AI coding experience without needing a terminal.
+Codeplane can run as a web application in your browser, providing the same powerful AI coding experience without needing a terminal.
 
-![CodePlane Web - New Session](../../assets/web/web-homepage-new-session.png)
+![Codeplane Web - New Session](../../assets/web/web-homepage-new-session.png)
 
 ## Getting Started
 
@@ -15,7 +15,7 @@ Start the web interface by running:
 codeplane web
 ```
 
-This starts a local server on `127.0.0.1` with a random available port and automatically opens CodePlane in your default browser.
+This starts a local server on `127.0.0.1` with a random available port and automatically opens Codeplane in your default browser.
 
 :::caution
 If `CODEPLANE_SERVER_PASSWORD` is not set, the server will be unsecured. This is fine for local use but should be set for network access.
@@ -27,7 +27,7 @@ You can configure the web server using command line flags or in your [config fil
 
 ### Port
 
-By default, CodePlane picks an available port. You can specify a port:
+By default, Codeplane picks an available port. You can specify a port:
 
 ```bash
 codeplane web --port 4096
@@ -35,13 +35,13 @@ codeplane web --port 4096
 
 ### Hostname
 
-By default, the server binds to `127.0.0.1` (localhost only). To make CodePlane accessible on your network:
+By default, the server binds to `127.0.0.1` (localhost only). To make Codeplane accessible on your network:
 
 ```bash
 codeplane web --hostname 0.0.0.0
 ```
 
-When using `0.0.0.0`, CodePlane will display both local and network addresses:
+When using `0.0.0.0`, Codeplane will display both local and network addresses:
 
 ```
   Local access:       http://localhost:4096
@@ -86,19 +86,19 @@ The username defaults to `codeplane` but can be changed with `CODEPLANE_SERVER_U
 
 ## Using the Web Interface
 
-Once started, the web interface provides access to your CodePlane sessions.
+Once started, the web interface provides access to your Codeplane sessions.
 
 ### Sessions
 
 View and manage your sessions from the homepage. You can see active sessions and start new ones.
 
-![CodePlane Web - Active Session](../../assets/web/web-homepage-active-session.png)
+![Codeplane Web - Active Session](../../assets/web/web-homepage-active-session.png)
 
 ### Server Status
 
 Click "See Servers" to view connected servers and their status.
 
-![CodePlane Web - See Servers](../../assets/web/web-homepage-see-servers.png)
+![Codeplane Web - See Servers](../../assets/web/web-homepage-see-servers.png)
 
 ## Config File
 

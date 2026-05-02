@@ -322,19 +322,6 @@ export function SessionHeader() {
       <div class={inlineDesktopHeader() ? "flex items-center" : "hidden xl:flex items-center"}>
         <Show
           when={canOpen()}
-          fallback={
-            <div class="flex h-[24px] box-border items-center rounded-md border border-border-weak-base bg-surface-panel overflow-hidden">
-              <Button
-                variant="ghost"
-                class="rounded-none h-full py-0 pr-3 pl-0.5 gap-1.5 border-none shadow-none"
-                onClick={copyPath}
-                aria-label={language.t("session.header.open.copyPath")}
-              >
-                <Icon name="copy" size="small" class="text-icon-base" />
-                <span class="text-12-regular text-text-strong">{language.t("session.header.open.copyPath")}</span>
-              </Button>
-            </div>
-          }
         >
           <div class="flex items-center">
             <div class="flex h-[24px] box-border items-center rounded-md border border-border-weak-base bg-surface-panel overflow-hidden">

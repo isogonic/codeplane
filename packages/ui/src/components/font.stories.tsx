@@ -41,8 +41,8 @@ export const Basic = {
   render: () => (
     <div style={{ display: "grid", gap: "8px" }}>
       <mod.Font />
-      <div style={{ "font-family": "var(--font-family-sans)" }}>CodePlane Sans Sample</div>
-      <div style={{ "font-family": "var(--font-family-mono)" }}>CodePlane Mono Sample</div>
+      <div style={{ "font-family": "var(--font-family-sans)" }}>Codeplane Sans Sample</div>
+      <div style={{ "font-family": "var(--font-family-mono)" }}>Codeplane Mono Sample</div>
     </div>
   ),
 }

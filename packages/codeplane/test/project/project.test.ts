@@ -418,7 +418,7 @@ describe("Project.update", () => {
         commands: {
           typecheck: {
             command: "bun typecheck",
-            label: "Typecheck CodePlane",
+            label: "Typecheck Codeplane",
             description: "Run package type checking",
             cwd: "packages/codeplane",
             labels: ["quality"],
@@ -431,7 +431,7 @@ describe("Project.update", () => {
 
     expect(Project.commandText(updated.commands?.typecheck)).toBe("bun typecheck")
     const info = Project.commandInfo("typecheck", updated.commands!.typecheck)
-    expect(info.label).toBe("Typecheck CodePlane")
+    expect(info.label).toBe("Typecheck Codeplane")
     expect(info.cwd).toBe("packages/codeplane")
     expect(info.labels).toEqual(["quality"])
   })

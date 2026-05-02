@@ -15,7 +15,7 @@ export const dict = {
   "nav.home": "الرئيسية",
   "nav.openMenu": "فتح القائمة",
   "nav.getStartedFree": "ابدأ مجانا",
-  "nav.logoAlt": "CodePlane",
+  "nav.logoAlt": "Codeplane",
 
   "nav.context.copyLogo": "نسخ الشعار كـ SVG",
   "nav.context.brandAssets": "أصول العلامة التجارية",
@@ -80,9 +80,9 @@ export const dict = {
   "error.reloadAmountMin": "يجب أن يكون مبلغ الشحن ${{amount}} على الأقل",
   "error.reloadTriggerMin": "يجب أن يكون حد الرصيد ${{amount}} على الأقل",
 
-  "app.meta.description": "CodePlane - وكيل البرمجة مفتوح المصدر.",
+  "app.meta.description": "Codeplane - وكيل البرمجة مفتوح المصدر.",
 
-  "home.title": "CodePlane | وكيل برمجة بالذكاء الاصطناعي مفتوح المصدر",
+  "home.title": "Codeplane | وكيل برمجة بالذكاء الاصطناعي مفتوح المصدر",
 
   "temp.title": "codeplane | AI coding agent built for the web",
   "temp.hero.title": "The AI coding agent built for the web",
@@ -95,16 +95,16 @@ export const dict = {
   "temp.feature.zen.afterLink": "مقدمة من codeplane",
   "temp.feature.models.beforeLink": "يدعم أكثر من 75 مزود LLM من خلال",
   "temp.feature.models.afterLink": "، بما في ذلك النماذج المحلية",
-  "temp.screenshot.caption": "CodePlane web app",
-  "temp.screenshot.alt": "CodePlane web app",
+  "temp.screenshot.caption": "Codeplane web app",
+  "temp.screenshot.alt": "Codeplane web app",
   "temp.logoLightAlt": "شعار codeplane الفاتح",
   "temp.logoDarkAlt": "شعار codeplane الداكن",
 
   "home.banner.badge": "جديد",
-  "home.banner.text": "CodePlane is built for the web",
+  "home.banner.text": "Codeplane is built for the web",
   "home.banner.platforms": "in your browser",
   "home.banner.downloadNow": "Install now",
-  "home.banner.downloadBetaNow": "Install CodePlane",
+  "home.banner.downloadBetaNow": "Install Codeplane",
 
   "home.hero.title": "وكيل برمجة بالذكاء الاصطناعي مفتوح المصدر",
   "home.hero.subtitle.a": "نماذج مجانية مضمّنة أو اربط أي نموذج من أي مزوّد،",
@@ -112,8 +112,8 @@ export const dict = {
 
   "home.install.ariaLabel": "خيارات التثبيت",
 
-  "home.what.title": "ما هو CodePlane؟",
-  "home.what.body": "CodePlane is an open source web app that helps you write code with AI agents.",
+  "home.what.title": "ما هو Codeplane؟",
+  "home.what.body": "Codeplane is an open source web app that helps you write code with AI agents.",
   "home.what.lsp.title": "دعم LSP",
   "home.what.lsp.body": "يحمّل تلقائيًا موافقات LSP المناسبة للـ LLM",
   "home.what.multiSession.title": "جلسات متعددة",
@@ -132,50 +132,50 @@ export const dict = {
 
   "home.growth.title": "وكيل برمجة بالذكاء الاصطناعي مفتوح المصدر",
   "home.growth.body":
-    "مع أكثر من <strong>{{stars}}</strong> نجمة على GitHub، و<strong>{{contributors}}</strong> مساهمًا، وأكثر من <strong>{{commits}}</strong> Commit، يستخدم CodePlane ويثق به أكثر من <strong>{{monthlyUsers}}</strong> مطوّر كل شهر.",
+    "مع أكثر من <strong>{{stars}}</strong> نجمة على GitHub، و<strong>{{contributors}}</strong> مساهمًا، وأكثر من <strong>{{commits}}</strong> Commit، يستخدم Codeplane ويثق به أكثر من <strong>{{monthlyUsers}}</strong> مطوّر كل شهر.",
   "home.growth.githubStars": "نجوم GitHub",
   "home.growth.contributors": "المساهمون",
   "home.growth.monthlyDevs": "مطورون شهريًا",
 
   "home.privacy.title": "مصمم للخصوصية أولاً",
-  "home.privacy.body": "لا يخزّن CodePlane أي كود أو بيانات سياق، ليتمكن من العمل في بيئات حساسة للخصوصية.",
+  "home.privacy.body": "لا يخزّن Codeplane أي كود أو بيانات سياق، ليتمكن من العمل في بيئات حساسة للخصوصية.",
   "home.privacy.learnMore": "اعرف المزيد عن",
   "home.privacy.link": "الخصوصية",
 
-  "home.faq.q1": "ما هو CodePlane؟",
+  "home.faq.q1": "ما هو Codeplane؟",
   "home.faq.a1":
-    "CodePlane is an open source web app that helps you write and run code with any AI model.",
-  "home.faq.q2": "كيف أستخدم CodePlane؟",
+    "Codeplane is an open source web app that helps you write and run code with any AI model.",
+  "home.faq.q2": "كيف أستخدم Codeplane؟",
   "home.faq.a2.before": "أسهل طريقة للبدء هي قراءة",
   "home.faq.a2.link": "المقدمة",
-  "home.faq.q3": "هل أحتاج لاشتراكات ذكاء اصطناعي إضافية لاستخدام CodePlane؟",
+  "home.faq.q3": "هل أحتاج لاشتراكات ذكاء اصطناعي إضافية لاستخدام Codeplane؟",
   "home.faq.a3.p1":
-    "ليس بالضرورة، فـ CodePlane يأتي مع مجموعة من النماذج المجانية التي تستطيع استخدامها دون إنشاء حساب.",
+    "ليس بالضرورة، فـ Codeplane يأتي مع مجموعة من النماذج المجانية التي تستطيع استخدامها دون إنشاء حساب.",
   "home.faq.a3.p2.beforeZen": "وبخلاف ذلك، يمكنك استخدام أي من نماذج البرمجة الشائعة بإنشاء حساب",
   "home.faq.a3.p2.afterZen": ".",
   "home.faq.a3.p3":
-    "مع أننا نشجّع المستخدمين على استخدام Zen، فإن CodePlane يعمل أيضًا مع كل المزودين الشائعين مثل OpenAI، Anthropic، xAI إلخ.",
+    "مع أننا نشجّع المستخدمين على استخدام Zen، فإن Codeplane يعمل أيضًا مع كل المزودين الشائعين مثل OpenAI، Anthropic، xAI إلخ.",
   "home.faq.a3.p4.beforeLocal": "ويمكنك أيضًا ربط",
   "home.faq.a3.p4.localLink": "النماذج المحلية",
-  "home.faq.q4": "هل يمكنني استخدام اشتراكاتي الحالية مع CodePlane؟",
+  "home.faq.q4": "هل يمكنني استخدام اشتراكاتي الحالية مع Codeplane؟",
   "home.faq.a4.p1":
-    "نعم، يدعم CodePlane خطط الاشتراك من كل المزودين الرئيسيين. يمكنك استخدام اشتراكات Claude Pro/Max، ChatGPT Plus/Pro، أو GitHub Copilot.",
-  "home.faq.q5": "Can I use CodePlane in the browser?",
-  "home.faq.a5.beforeWeb": "Yes. CodePlane is built for the",
+    "نعم، يدعم Codeplane خطط الاشتراك من كل المزودين الرئيسيين. يمكنك استخدام اشتراكات Claude Pro/Max، ChatGPT Plus/Pro، أو GitHub Copilot.",
+  "home.faq.q5": "Can I use Codeplane in the browser?",
+  "home.faq.a5.beforeWeb": "Yes. Codeplane is built for the",
   "home.faq.a5.webDocs": "web",
   "home.faq.a5.and": "with a",
   "home.faq.a5.installPath": "CLI install path",
-  "home.faq.q6": "كم تكلفة CodePlane؟",
+  "home.faq.q6": "كم تكلفة Codeplane؟",
   "home.faq.a6":
-    "CodePlane مجاني 100% للاستخدام. كما يأتي مع مجموعة من النماذج المجانية. قد توجد تكاليف إضافية إذا ربطت مزوّدًا آخر.",
+    "Codeplane مجاني 100% للاستخدام. كما يأتي مع مجموعة من النماذج المجانية. قد توجد تكاليف إضافية إذا ربطت مزوّدًا آخر.",
   "home.faq.q7": "ماذا عن البيانات والخصوصية؟",
   "home.faq.a7.p1": "لا يتم تخزين بياناتك ومعلوماتك إلا عندما تستخدم نماذجنا المجانية أو تنشئ روابط قابلة للمشاركة.",
   "home.faq.a7.p2.beforeModels": "اعرف المزيد عن",
   "home.faq.a7.p2.modelsLink": "نماذجنا",
   "home.faq.a7.p2.and": "و",
   "home.faq.a7.p2.shareLink": "صفحات المشاركة",
-  "home.faq.q8": "هل CodePlane مفتوح المصدر؟",
-  "home.faq.a8.p1": "نعم، CodePlane مفتوح المصدر بالكامل. الكود المصدري متاح علنًا على",
+  "home.faq.q8": "هل Codeplane مفتوح المصدر؟",
+  "home.faq.a8.p1": "نعم، Codeplane مفتوح المصدر بالكامل. الكود المصدري متاح علنًا على",
   "home.faq.a8.p2": "بموجب",
   "home.faq.a8.mitLicense": "رخصة MIT",
   "home.faq.a8.p3":
@@ -183,23 +183,23 @@ export const dict = {
 
   "home.zenCta.title": "وصول لنماذج محسنة وموثوقة لوكلاء البرمجة",
   "home.zenCta.body":
-    "يمنحك Zen الوصول إلى مجموعة مختارة بعناية من نماذج الذكاء الاصطناعي التي اختبرها CodePlane وقاس أداءها خصيصًا لوكلاء البرمجة. لا حاجة للقلق بشأن اختلاف الأداء والجودة بين المزودين، استخدم نماذج محققة تعمل بكفاءة.",
+    "يمنحك Zen الوصول إلى مجموعة مختارة بعناية من نماذج الذكاء الاصطناعي التي اختبرها Codeplane وقاس أداءها خصيصًا لوكلاء البرمجة. لا حاجة للقلق بشأن اختلاف الأداء والجودة بين المزودين، استخدم نماذج محققة تعمل بكفاءة.",
   "home.zenCta.link": "تعرف على Zen",
 
-  "zen.title": "CodePlane Zen | مجموعة منسقة من النماذج المحسنة والموثوقة لوكلاء البرمجة",
+  "zen.title": "Codeplane Zen | مجموعة منسقة من النماذج المحسنة والموثوقة لوكلاء البرمجة",
   "zen.hero.title": "نماذج محسنة وموثوقة لوكلاء البرمجة",
   "zen.hero.body":
-    "يمنحك Zen الوصول إلى مجموعة منسقة من نماذج الذكاء الاصطناعي التي اختبرها CodePlane وقاس أداءها خصيصًا لوكلاء البرمجة. لا حاجة للقلق بشأن اختلاف الأداء والجودة، استخدم نماذج محققة تعمل بكفاءة.",
+    "يمنحك Zen الوصول إلى مجموعة منسقة من نماذج الذكاء الاصطناعي التي اختبرها Codeplane وقاس أداءها خصيصًا لوكلاء البرمجة. لا حاجة للقلق بشأن اختلاف الأداء والجودة، استخدم نماذج محققة تعمل بكفاءة.",
 
-  "zen.faq.q1": "ما هو CodePlane Zen؟",
+  "zen.faq.q1": "ما هو Codeplane Zen؟",
   "zen.faq.a1":
-    "Zen هو مجموعة منسقة من نماذج الذكاء الاصطناعي التي تم اختبارها وقياس أدائها لوكلاء البرمجة، أنشأها الفريق المطور لـ CodePlane.",
+    "Zen هو مجموعة منسقة من نماذج الذكاء الاصطناعي التي تم اختبارها وقياس أدائها لوكلاء البرمجة، أنشأها الفريق المطور لـ Codeplane.",
   "zen.faq.q2": "ما الذي يجعل Zen أكثر دقة؟",
   "zen.faq.a2":
     "يوفر Zen فقط النماذج التي تم اختبارها وقياس أدائها خصيصًا لوكلاء البرمجة. لن تستخدم سكين زبدة لقطع شريحة لحم، فلا تستخدم نماذج ضعيفة للبرمجة.",
   "zen.faq.q3": "هل Zen أرخص؟",
   "zen.faq.a3":
-    "Zen ليس للربح. يمرر Zen التكاليف من مزودي النماذج إليك مباشرة. كلما زاد استخدام Zen، تمكن CodePlane من التفاوض على أسعار أفضل وتمريرها إليك.",
+    "Zen ليس للربح. يمرر Zen التكاليف من مزودي النماذج إليك مباشرة. كلما زاد استخدام Zen، تمكن Codeplane من التفاوض على أسعار أفضل وتمريرها إليك.",
   "zen.faq.q4": "كم تكلفة Zen؟",
   "zen.faq.a4.p1.beforePricing": "Zen",
   "zen.faq.a4.p1.pricingLink": "يحاسب لكل طلب",
@@ -207,7 +207,7 @@ export const dict = {
   "zen.faq.a4.p2.beforeAccount": "تعتمد تكلفتك الإجمالية على الاستخدام، ويمكنك تعيين حدود إنفاق شهرية في",
   "zen.faq.a4.p2.accountLink": "حسابك",
   "zen.faq.a4.p3":
-    "لتغطية التكاليف، يضيف CodePlane فقط رسومًا صغيرة لمعالجة الدفع قدرها 1.23 دولار لكل إعادة شحن رصيد بقيمة 20 دولارًا.",
+    "لتغطية التكاليف، يضيف Codeplane فقط رسومًا صغيرة لمعالجة الدفع قدرها 1.23 دولار لكل إعادة شحن رصيد بقيمة 20 دولارًا.",
   "zen.faq.q5": "ماذا عن البيانات والخصوصية؟",
   "zen.faq.a5.beforeExceptions":
     "تتم استضافة جميع نماذج Zen في الولايات المتحدة. يتبع المزودون سياسة عدم الاحتفاظ بالبيانات ولا يستخدمون بياناتك لتدريب النماذج، مع",
@@ -218,7 +218,7 @@ export const dict = {
   "zen.faq.a7": "نعم، يمكنك تعطيل الفوترة في أي وقت واستخدام رصيدك المتبقي.",
   "zen.faq.q8": "هل يمكنني استخدام Zen مع وكلاء برمجة آخرين؟",
   "zen.faq.a8":
-    "بينما يعمل Zen بشكل رائع مع CodePlane، يمكنك استخدام Zen مع أي وكيل. اتبع تعليمات الإعداد في وكيل البرمجة المفضل لديك.",
+    "بينما يعمل Zen بشكل رائع مع Codeplane، يمكنك استخدام Zen مع أي وكيل. اتبع تعليمات الإعداد في وكيل البرمجة المفضل لديك.",
 
   "zen.cta.start": "ابدأ مع Zen",
   "zen.pricing.title": "أضف رصيد 20 دولار (دفع حسب الاستخدام)",
@@ -227,12 +227,12 @@ export const dict = {
   "zen.problem.title": "ما المشكلة التي يحلها Zen؟",
   "zen.problem.body":
     "هناك العديد من النماذج المتاحة، ولكن القليل منها فقط يعمل بشكل جيد مع وكلاء البرمجة. يقوم معظم مقدمي الخدمة بتكوينها بشكل مختلف مما يعطي نتائج متفاوتة.",
-  "zen.problem.subtitle": "نحن نعمل على إصلاح هذا للجميع، وليس فقط لمستخدمي CodePlane.",
+  "zen.problem.subtitle": "نحن نعمل على إصلاح هذا للجميع، وليس فقط لمستخدمي Codeplane.",
   "zen.problem.item1": "اختبار نماذج مختارة واستشارة فرقها",
   "zen.problem.item2": "العمل مع مقدمي الخدمة لضمان تسليمها بشكل صحيح",
   "zen.problem.item3": "قياس أداء جميع مجموعات النماذج والمزودين التي نوصي بها",
   "zen.how.title": "كيف يعمل Zen",
-  "zen.how.body": "بينما نقترح عليك استخدام Zen مع CodePlane، يمكنك استخدام Zen مع أي وكيل.",
+  "zen.how.body": "بينما نقترح عليك استخدام Zen مع Codeplane، يمكنك استخدام Zen مع أي وكيل.",
   "zen.how.step1.title": "سجّل وأضف رصيدًا بقيمة 20 دولارًا",
   "zen.how.step1.beforeLink": "اتبع",
   "zen.how.step1.link": "تعليمات الإعداد",
@@ -246,7 +246,7 @@ export const dict = {
     "تتم استضافة جميع نماذج Zen في الولايات المتحدة. يتبع المزودون سياسة عدم الاحتفاظ بالبيانات ولا يستخدمون بياناتك لتدريب النماذج، مع",
   "zen.privacy.exceptionsLink": "الاستثناءات التالية",
 
-  "go.title": "CodePlane Go | نماذج برمجة منخفضة التكلفة للجميع",
+  "go.title": "Codeplane Go | نماذج برمجة منخفضة التكلفة للجميع",
   "go.meta.description":
     "يبدأ Go من $5 للشهر الأول، ثم $10/شهر، مع حدود طلب سخية لمدة 5 ساعات لـ GLM-5.1 وGLM-5 وKimi K2.5 وKimi K2.6 وMiMo-V2-Pro وMiMo-V2-Omni وMiMo-V2.5-Pro وMiMo-V2.5 وQwen3.5 Plus وQwen3.6 Plus وMiniMax M2.5 وMiniMax M2.7 وDeepSeek V4 Pro وDeepSeek V4 Flash.",
   "go.hero.title": "نماذج برمجة منخفضة التكلفة للجميع",
@@ -272,7 +272,7 @@ export const dict = {
 
   "go.testimonials.brand.zen": "Zen",
   "go.testimonials.brand.go": "Go",
-  "go.testimonials.handle": "@CodePlane",
+  "go.testimonials.handle": "@Codeplane",
   "go.testimonials.dax.name": "Dax Raad",
   "go.testimonials.dax.title": "الرئيس التنفيذي السابق، منتجات Terminal",
   "go.testimonials.dax.quoteAfter": "كان تغييرًا جذريًا في الحياة، إنه قرار لا يحتاج لتفكير.",
@@ -293,7 +293,7 @@ export const dict = {
   "go.testimonials.frank.quote": "أتمنى لو كنت لا أزال في Nvidia.",
   "go.problem.title": "ما المشكلة التي يحلها Go؟",
   "go.problem.body":
-    "نحن نركز على تقديم تجربة CodePlane لأكبر عدد ممكن من الناس. CodePlane Go هو اشتراك منخفض التكلفة: $5 للشهر الأول، ثم $10/شهر. يوفر حدودا سخية ووصولا موثوقا إلى نماذج المصدر المفتوح الأكثر قدرة.",
+    "نحن نركز على تقديم تجربة Codeplane لأكبر عدد ممكن من الناس. Codeplane Go هو اشتراك منخفض التكلفة: $5 للشهر الأول، ثم $10/شهر. يوفر حدودا سخية ووصولا موثوقا إلى نماذج المصدر المفتوح الأكثر قدرة.",
   "go.problem.subtitle": " ",
   "go.problem.item1": "أسعار اشتراك منخفضة التكلفة",
   "go.problem.item2": "حدود سخية ووصول موثوق",
@@ -301,7 +301,7 @@ export const dict = {
   "go.problem.item4":
     "يتضمن GLM-5.1 وGLM-5 وKimi K2.5 وKimi K2.6 وMiMo-V2-Pro وMiMo-V2-Omni وMiMo-V2.5-Pro وMiMo-V2.5 وQwen3.5 Plus وQwen3.6 Plus وMiniMax M2.5 وMiniMax M2.7 وDeepSeek V4 Pro وDeepSeek V4 Flash",
   "go.how.title": "كيف يعمل Go",
-  "go.how.body": "يبدأ Go من $5 للشهر الأول، ثم $10/شهر. يمكنك استخدامه مع CodePlane أو أي وكيل.",
+  "go.how.body": "يبدأ Go من $5 للشهر الأول، ثم $10/شهر. يمكنك استخدامه مع Codeplane أو أي وكيل.",
   "go.how.step1.title": "أنشئ حسابًا",
   "go.how.step1.beforeLink": "اتبع",
   "go.how.step1.link": "تعليمات الإعداد",
@@ -317,7 +317,7 @@ export const dict = {
   "go.privacy.beforeExceptions":
     "تتم استضافة نماذج Go في الولايات المتحدة. يتبع المزودون سياسة عدم الاحتفاظ بالبيانات ولا يستخدمون بياناتك لتدريب النماذج، مع",
   "go.privacy.exceptionsLink": "الاستثناءات التالية",
-  "go.faq.q1": "ما هو CodePlane Go؟",
+  "go.faq.q1": "ما هو Codeplane Go؟",
   "go.faq.a1": "Go هو اشتراك منخفض التكلفة يمنحك وصولًا موثوقًا إلى نماذج مفتوحة المصدر قادرة على البرمجة الوكيلة.",
   "go.faq.q2": "ما النماذج التي يتضمنها Go؟",
   "go.faq.a2": "يتضمن Go النماذج المدرجة أدناه، مع حدود سخية وإتاحة موثوقة.",
@@ -366,13 +366,13 @@ export const dict = {
     "لقد وصلت إلى حد الإنفاق الشهري البالغ ${{amount}}. إدارة حدودك هنا: {{membersUrl}}",
   "zen.api.error.modelDisabled": "النموذج معطل",
   "zen.api.error.trialEnded":
-    "انتهى العرض المجاني لـ {{model}}. يمكنك مواصلة استخدام النموذج بالاشتراك في CodePlane Go - {{link}}",
+    "انتهى العرض المجاني لـ {{model}}. يمكنك مواصلة استخدام النموذج بالاشتراك في Codeplane Go - {{link}}",
 
-  "black.meta.title": "CodePlane Black | الوصول إلى أفضل نماذج البرمجة في العالم",
-  "black.meta.description": "احصل على وصول إلى Claude، GPT، Gemini والمزيد مع خطط اشتراك CodePlane Black.",
+  "black.meta.title": "Codeplane Black | الوصول إلى أفضل نماذج البرمجة في العالم",
+  "black.meta.description": "احصل على وصول إلى Claude، GPT، Gemini والمزيد مع خطط اشتراك Codeplane Black.",
   "black.hero.title": "الوصول إلى أفضل نماذج البرمجة في العالم",
   "black.hero.subtitle": "بما في ذلك Claude، GPT، Gemini والمزيد",
-  "black.title": "CodePlane Black | الأسعار",
+  "black.title": "Codeplane Black | الأسعار",
   "black.paused": "التسجيل في خطة Black متوقف مؤقتًا.",
   "black.plan.icon20": "خطة Black 20",
   "black.plan.icon100": "خطة Black 100",
@@ -391,10 +391,10 @@ export const dict = {
   "black.action.continue": "متابعة",
   "black.finePrint.beforeTerms": "الأسعار المعروضة لا تشمل الضرائب المطبقة",
   "black.finePrint.terms": "شروط الخدمة",
-  "black.workspace.title": "CodePlane Black | اختر مساحة العمل",
+  "black.workspace.title": "Codeplane Black | اختر مساحة العمل",
   "black.workspace.selectPlan": "اختر مساحة عمل لهذه الخطة",
   "black.workspace.name": "مساحة العمل {{n}}",
-  "black.subscribe.title": "اشترك في CodePlane Black",
+  "black.subscribe.title": "اشترك في Codeplane Black",
   "black.subscribe.paymentMethod": "طريقة الدفع",
   "black.subscribe.loadingPaymentForm": "جارٍ تحميل نموذج الدفع...",
   "black.subscribe.selectWorkspaceToContinue": "اختر مساحة عمل للمتابعة",
@@ -406,9 +406,9 @@ export const dict = {
   "black.subscribe.processing": "جارٍ المعالجة...",
   "black.subscribe.submit": "اشترك بمبلغ ${{plan}}",
   "black.subscribe.form.chargeNotice": "لن يتم خصم المبلغ إلا عند تفعيل اشتراكك",
-  "black.subscribe.success.title": "أنت في قائمة انتظار CodePlane Black",
+  "black.subscribe.success.title": "أنت في قائمة انتظار Codeplane Black",
   "black.subscribe.success.subscriptionPlan": "خطة الاشتراك",
-  "black.subscribe.success.planName": "CodePlane Black {{plan}}",
+  "black.subscribe.success.planName": "Codeplane Black {{plan}}",
   "black.subscribe.success.amount": "المبلغ",
   "black.subscribe.success.amountValue": "${{plan}} شهريًا",
   "black.subscribe.success.paymentMethod": "طريقة الدفع",
@@ -608,15 +608,15 @@ export const dict = {
   "workspace.black.time.minutes": "دقائق",
   "workspace.black.time.fewSeconds": "بضع ثوان",
   "workspace.black.subscription.title": "الاشتراك",
-  "workspace.black.subscription.message": "أنت مشترك في CodePlane Black مقابل ${{plan}} شهريًا.",
+  "workspace.black.subscription.message": "أنت مشترك في Codeplane Black مقابل ${{plan}} شهريًا.",
   "workspace.black.subscription.manage": "إدارة الاشتراك",
   "workspace.black.subscription.rollingUsage": "استخدام لمدة 5 ساعات",
   "workspace.black.subscription.weeklyUsage": "الاستخدام الأسبوعي",
   "workspace.black.subscription.resetsIn": "إعادة تعيين في",
   "workspace.black.subscription.useBalance": "استخدم رصيدك المتوفر بعد الوصول إلى حدود الاستخدام",
   "workspace.black.waitlist.title": "قائمة الانتظار",
-  "workspace.black.waitlist.joined": "أنت في قائمة الانتظار لخطة CodePlane Black بقيمة ${{plan}} شهريًا.",
-  "workspace.black.waitlist.ready": "نحن مستعدون لتسجيلك في خطة CodePlane Black بقيمة ${{plan}} شهريًا.",
+  "workspace.black.waitlist.joined": "أنت في قائمة الانتظار لخطة Codeplane Black بقيمة ${{plan}} شهريًا.",
+  "workspace.black.waitlist.ready": "نحن مستعدون لتسجيلك في خطة Codeplane Black بقيمة ${{plan}} شهريًا.",
   "workspace.black.waitlist.leave": "ترك قائمة الانتظار",
   "workspace.black.waitlist.leaving": "جارٍ المغادرة...",
   "workspace.black.waitlist.left": "غادر",
@@ -633,7 +633,7 @@ export const dict = {
   "workspace.lite.time.minute": "دقيقة",
   "workspace.lite.time.minutes": "دقائق",
   "workspace.lite.time.fewSeconds": "بضع ثوان",
-  "workspace.lite.subscription.message": "أنت مشترك في CodePlane Go.",
+  "workspace.lite.subscription.message": "أنت مشترك في Codeplane Go.",
   "workspace.lite.subscription.manage": "إدارة الاشتراك",
   "workspace.lite.subscription.rollingUsage": "الاستخدام المتجدد",
   "workspace.lite.subscription.weeklyUsage": "الاستخدام الأسبوعي",
@@ -641,13 +641,13 @@ export const dict = {
   "workspace.lite.subscription.resetsIn": "إعادة تعيين في",
   "workspace.lite.subscription.useBalance": "استخدم رصيدك المتوفر بعد الوصول إلى حدود الاستخدام",
   "workspace.lite.subscription.selectProvider":
-    'اختر "CodePlane Go" كمزود في إعدادات codeplane الخاصة بك لاستخدام نماذج Go.',
+    'اختر "Codeplane Go" كمزود في إعدادات codeplane الخاصة بك لاستخدام نماذج Go.',
   "workspace.lite.black.message":
-    "أنت مشترك حاليًا في CodePlane Black أو في قائمة الانتظار. يرجى إلغاء الاشتراك أولاً إذا كنت ترغب في التبديل إلى Go.",
+    "أنت مشترك حاليًا في Codeplane Black أو في قائمة الانتظار. يرجى إلغاء الاشتراك أولاً إذا كنت ترغب في التبديل إلى Go.",
   "workspace.lite.other.message":
-    "عضو آخر في مساحة العمل هذه مشترك بالفعل في CodePlane Go. يمكن لعضو واحد فقط لكل مساحة عمل الاشتراك.",
+    "عضو آخر في مساحة العمل هذه مشترك بالفعل في Codeplane Go. يمكن لعضو واحد فقط لكل مساحة عمل الاشتراك.",
   "workspace.lite.promo.description":
-    "يبدأ CodePlane Go بسعر {{price}}، ثم $10/شهر، ويوفر وصولا موثوقا لنماذج البرمجة المفتوحة الشهيرة مع حدود استخدام سخية.",
+    "يبدأ Codeplane Go بسعر {{price}}، ثم $10/شهر، ويوفر وصولا موثوقا لنماذج البرمجة المفتوحة الشهيرة مع حدود استخدام سخية.",
   "workspace.lite.promo.price": "$5 للشهر الأول",
   "workspace.lite.promo.modelsTitle": "ما يتضمنه",
   "workspace.lite.promo.footer":
@@ -657,15 +657,15 @@ export const dict = {
   "workspace.lite.promo.otherMethods": "طرق دفع أخرى",
   "workspace.lite.promo.selectMethod": "اختر طريقة الدفع",
 
-  "download.title": "CodePlane | تنزيل",
-  "download.meta.description": "Install CodePlane and run the web app locally",
-  "download.hero.title": "Install CodePlane",
-  "download.hero.subtitle": "Run CodePlane as a local web app in your browser",
+  "download.title": "Codeplane | تنزيل",
+  "download.meta.description": "Install Codeplane and run the web app locally",
+  "download.hero.title": "Install Codeplane",
+  "download.hero.subtitle": "Run Codeplane as a local web app in your browser",
   "download.hero.button": "Install for {{os}}",
-  "download.section.terminal": "CodePlane Web App",
-  "download.section.webApp": "CodePlane Web App",
-  "download.section.extensions": "امتدادات CodePlane",
-  "download.section.integrations": "تكاملات CodePlane",
+  "download.section.terminal": "Codeplane Web App",
+  "download.section.webApp": "Codeplane Web App",
+  "download.section.extensions": "امتدادات Codeplane",
+  "download.section.integrations": "تكاملات Codeplane",
   "download.action.download": "تنزيل",
   "download.action.install": "تثبيت",
 
@@ -676,25 +676,25 @@ export const dict = {
   "download.platform.linuxRpm": "Linux (.rpm)",
 
   "download.faq.a3.beforeLocal":
-    "ليس بالضرورة، ولكن على الأرجح. ستحتاج إلى اشتراك ذكاء اصطناعي إذا كنت تريد ربط CodePlane بمزوّد مدفوع، رغم أنه يمكنك العمل مع",
+    "ليس بالضرورة، ولكن على الأرجح. ستحتاج إلى اشتراك ذكاء اصطناعي إذا كنت تريد ربط Codeplane بمزوّد مدفوع، رغم أنه يمكنك العمل مع",
   "download.faq.a3.localLink": "النماذج المحلية",
   "download.faq.a3.afterLocal.beforeZen": "مجانًا. بينما نشجع المستخدمين على استخدام",
-  "download.faq.a3.afterZen": "، فإن CodePlane يعمل مع جميع المزودين الشائعين مثل OpenAI، Anthropic، xAI إلخ.",
+  "download.faq.a3.afterZen": "، فإن Codeplane يعمل مع جميع المزودين الشائعين مثل OpenAI، Anthropic، xAI إلخ.",
 
-  "download.faq.a5.p1": "CodePlane مجاني 100% للاستخدام.",
+  "download.faq.a5.p1": "Codeplane مجاني 100% للاستخدام.",
   "download.faq.a5.p2.beforeZen":
-    "أي تكاليف إضافية ستأتي من اشتراكك لدى مزود النماذج. بينما يعمل CodePlane مع أي مزود نماذج، نوصي باستخدام",
+    "أي تكاليف إضافية ستأتي من اشتراكك لدى مزود النماذج. بينما يعمل Codeplane مع أي مزود نماذج، نوصي باستخدام",
   "download.faq.a5.p2.afterZen": ".",
 
-  "download.faq.a6.p1": "يتم حفظ بياناتك ومعلوماتك فقط عند إنشاء روابط قابلة للمشاركة في CodePlane.",
+  "download.faq.a6.p1": "يتم حفظ بياناتك ومعلوماتك فقط عند إنشاء روابط قابلة للمشاركة في Codeplane.",
   "download.faq.a6.p2.beforeShare": "اعرف المزيد عن",
   "download.faq.a6.shareLink": "صفحات المشاركة",
 
-  "enterprise.title": "CodePlane | حلول المؤسسات لمنظمتك",
-  "enterprise.meta.description": "تواصل مع CodePlane لحلول المؤسسات",
+  "enterprise.title": "Codeplane | حلول المؤسسات لمنظمتك",
+  "enterprise.meta.description": "تواصل مع Codeplane لحلول المؤسسات",
   "enterprise.hero.title": "كودك ملكك",
   "enterprise.hero.body1":
-    "يعمل CodePlane بأمان داخل مؤسستك دون تخزين أي بيانات أو سياق، ودون قيود ترخيص أو مطالبات ملكية. ابدأ تجربة مع فريقك، ثم انشره عبر مؤسستك من خلال دمجه مع SSO وبوابة الذكاء الاصطناعي الداخلية لديك.",
+    "يعمل Codeplane بأمان داخل مؤسستك دون تخزين أي بيانات أو سياق، ودون قيود ترخيص أو مطالبات ملكية. ابدأ تجربة مع فريقك، ثم انشره عبر مؤسستك من خلال دمجه مع SSO وبوابة الذكاء الاصطناعي الداخلية لديك.",
   "enterprise.hero.body2": "أخبرنا كيف يمكننا المساعدة.",
   "enterprise.form.name.label": "الاسم الكامل",
   "enterprise.form.name.placeholder": "جيف بيزوس",
@@ -716,29 +716,29 @@ export const dict = {
   "enterprise.form.error.invalidEmailFormat": "تنسيق البريد الإلكتروني غير صالح.",
   "enterprise.form.error.internalServer": "خطأ داخلي في الخادم.",
   "enterprise.faq.title": "الأسئلة الشائعة",
-  "enterprise.faq.q1": "ما هو CodePlane Enterprise؟",
+  "enterprise.faq.q1": "ما هو Codeplane Enterprise؟",
   "enterprise.faq.a1":
-    "CodePlane Enterprise مخصص للمؤسسات التي تريد التأكد من أن الكود والبيانات لا تغادر بنيتها التحتية أبدًا. يتحقق ذلك عبر استخدام تكوين مركزي يندمج مع SSO وبوابة الذكاء الاصطناعي الداخلية لديك.",
-  "enterprise.faq.q2": "كيف أبدأ مع CodePlane Enterprise؟",
+    "Codeplane Enterprise مخصص للمؤسسات التي تريد التأكد من أن الكود والبيانات لا تغادر بنيتها التحتية أبدًا. يتحقق ذلك عبر استخدام تكوين مركزي يندمج مع SSO وبوابة الذكاء الاصطناعي الداخلية لديك.",
+  "enterprise.faq.q2": "كيف أبدأ مع Codeplane Enterprise؟",
   "enterprise.faq.a2":
-    "ابدأ ببساطة بتجربة داخلية مع فريقك. افتراضيًا، لا يقوم CodePlane بتخزين الكود أو بيانات السياق، مما يجعل البدء سهلاً. ثم اتصل بنا لمناقشة الأسعار وخيارات التنفيذ.",
+    "ابدأ ببساطة بتجربة داخلية مع فريقك. افتراضيًا، لا يقوم Codeplane بتخزين الكود أو بيانات السياق، مما يجعل البدء سهلاً. ثم اتصل بنا لمناقشة الأسعار وخيارات التنفيذ.",
   "enterprise.faq.q3": "كيف تعمل تسعيرة المؤسسات؟",
   "enterprise.faq.a3":
     "نقدم تسعيرًا للمؤسسات حسب المقعد. إذا كان لديك بوابة LLM خاصة بك، فلن نفرض رسومًا على التوكنات المستخدمة. لمزيد من التفاصيل، اتصل بنا للحصول على عرض سعر مخصص بناءً على احتياجات مؤسستك.",
-  "enterprise.faq.q4": "هل بياناتي آمنة مع CodePlane Enterprise؟",
+  "enterprise.faq.q4": "هل بياناتي آمنة مع Codeplane Enterprise؟",
   "enterprise.faq.a4":
-    "نعم. لا يقوم CodePlane بتخزين الكود أو بيانات السياق. تتم جميع المعالجة محليًا أو عبر استدعاءات API مباشرة إلى مزود الذكاء الاصطناعي لديك. مع التكوين المركزي وتكامل SSO، تظل بياناتك آمنة داخل البنية التحتية لمؤسستك.",
+    "نعم. لا يقوم Codeplane بتخزين الكود أو بيانات السياق. تتم جميع المعالجة محليًا أو عبر استدعاءات API مباشرة إلى مزود الذكاء الاصطناعي لديك. مع التكوين المركزي وتكامل SSO، تظل بياناتك آمنة داخل البنية التحتية لمؤسستك.",
 
-  "brand.title": "CodePlane | العلامة التجارية",
-  "brand.meta.description": "إرشادات العلامة التجارية لـ CodePlane",
+  "brand.title": "Codeplane | العلامة التجارية",
+  "brand.meta.description": "إرشادات العلامة التجارية لـ Codeplane",
   "brand.heading": "إرشادات العلامة التجارية",
-  "brand.subtitle": "موارد وأصول لمساعدتك في العمل مع العلامة التجارية لـ CodePlane.",
+  "brand.subtitle": "موارد وأصول لمساعدتك في العمل مع العلامة التجارية لـ Codeplane.",
   "brand.downloadAll": "تنزيل جميع الأصول",
 
-  "changelog.title": "CodePlane | سجل التغييرات",
-  "changelog.meta.description": "ملاحظات الإصدار وسجل التغييرات لـ CodePlane",
+  "changelog.title": "Codeplane | سجل التغييرات",
+  "changelog.meta.description": "ملاحظات الإصدار وسجل التغييرات لـ Codeplane",
   "changelog.hero.title": "سجل التغييرات",
-  "changelog.hero.subtitle": "تحديثات وتحسينات جديدة لـ CodePlane",
+  "changelog.hero.subtitle": "تحديثات وتحسينات جديدة لـ Codeplane",
   "changelog.empty": "لم يتم العثور على مدخلات في سجل التغييرات.",
   "changelog.viewJson": "عرض JSON",
 

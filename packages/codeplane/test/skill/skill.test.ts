@@ -366,7 +366,7 @@ name: codeplane-skill
 description: A skill in the .codeplane/skill directory.
 ---
 
-# CodePlane Skill
+# Codeplane Skill
 `,
               ),
               Bun.write(
@@ -376,7 +376,7 @@ name: codeplane-skill
 description: A skill in the .codeplane/skills directory.
 ---
 
-# CodePlane Skill
+# Codeplane Skill
 `,
               ),
             ]),

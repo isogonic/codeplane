@@ -2,7 +2,7 @@
   "name": "codeplane",
   "displayName": "codeplane",
   "description": "codeplane for VS Code",
-  "version": "27.1.1",
+  "version": "27.2.0",
   "publisher": "sst-dev",
   "repository": {
     "type": "git",
@@ -26,7 +26,7 @@
     "commands": [
       {
         "command": "codeplane.openWebApp",
-        "title": "Open CodePlane Web App",
+        "title": "Open Codeplane Web App",
         "icon": {
           "light": "images/button-dark.svg",
           "dark": "images/button-light.svg"
@@ -34,7 +34,7 @@
       },
       {
         "command": "codeplane.openNewWebApp",
-        "title": "Open CodePlane Web App in New Server",
+        "title": "Open Codeplane Web App in New Server",
         "icon": {
           "light": "images/button-dark.svg",
           "dark": "images/button-light.svg"
@@ -42,7 +42,7 @@
       },
       {
         "command": "codeplane.openWebAppWithFileReference",
-        "title": "Open CodePlane with File Reference"
+        "title": "Open Codeplane with File Reference"
       }
     ],
     "menus": {
@@ -56,7 +56,7 @@
     "keybindings": [
       {
         "command": "codeplane.openWebApp",
-        "title": "Open CodePlane Web App",
+        "title": "Open Codeplane Web App",
         "key": "cmd+escape",
         "mac": "cmd+escape",
         "win": "ctrl+escape",
@@ -64,7 +64,7 @@
       },
       {
         "command": "codeplane.openNewWebApp",
-        "title": "Open CodePlane Web App in New Server",
+        "title": "Open Codeplane Web App in New Server",
         "key": "cmd+shift+escape",
         "mac": "cmd+shift+escape",
         "win": "ctrl+shift+escape",
@@ -72,7 +72,7 @@
       },
       {
         "command": "codeplane.openWebAppWithFileReference",
-        "title": "CodePlane: Open With File Reference",
+        "title": "Codeplane: Open With File Reference",
         "key": "cmd+alt+k",
         "mac": "cmd+alt+k",
         "win": "ctrl+alt+K",

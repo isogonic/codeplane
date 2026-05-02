@@ -1,9 +1,9 @@
 ---
 title: Plugins
-description: Write your own plugins to extend CodePlane.
+description: Write your own plugins to extend Codeplane.
 ---
 
-Plugins allow you to extend CodePlane by hooking into various events and customizing behavior. You can create plugins to add new features, integrate with external services, or modify CodePlane's default behavior.
+Plugins allow you to extend Codeplane by hooking into various events and customizing behavior. You can create plugins to add new features, integrate with external services, or modify Codeplane's default behavior.
 
 For examples, check out the [plugins](/docs/ecosystem#plugins) created by the community.
 
@@ -83,7 +83,7 @@ Local plugins and custom tools can use external npm packages. Add a `package.jso
 }
 ```
 
-CodePlane runs `bun install` at startup to install these. Your plugins and tools can then import them.
+Codeplane runs `bun install` at startup to install these. Your plugins and tools can then import them.
 
 ```ts title=".codeplane/plugins/my-plugin.ts"
 import { escape } from "shescape"

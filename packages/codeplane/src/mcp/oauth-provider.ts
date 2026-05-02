@@ -44,7 +44,7 @@ export class McpOAuthProvider implements OAuthClientProvider {
   get clientMetadata(): OAuthClientMetadata {
     return {
       redirect_uris: [this.redirectUrl],
-      client_name: "CodePlane",
+      client_name: "Codeplane",
       client_uri: "https://github.com/devinoldenburg/codeplane",
       grant_types: ["authorization_code", "refresh_token"],
       response_types: ["code"],

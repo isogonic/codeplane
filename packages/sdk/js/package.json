@@ -1,9 +1,17 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "name": "@codeplane-ai/sdk",
-  "version": "27.1.1",
+  "version": "27.2.0",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/devinoldenburg/codeplane"
+  },
+  "bugs": {
+    "url": "https://github.com/devinoldenburg/codeplane/issues"
+  },
+  "homepage": "https://github.com/devinoldenburg/codeplane",
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "build": "bun ./script/build.ts"

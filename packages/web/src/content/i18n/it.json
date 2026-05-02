@@ -49,7 +49,7 @@
   "share.error_id_not_found": "ID non trovato",
   "share.error_api_url_not_found": "URL API non trovato",
   "share.error_connection_failed": "Connessione non riuscita",
-  "share.codeplane_version": "Versione CodePlane",
+  "share.codeplane_version": "Versione Codeplane",
   "share.codeplane_name": "codeplane",
   "share.models": "Modelli",
   "share.cost": "Costo",
@@ -70,6 +70,6 @@
   "share.debug_key": "Chiave",
   "app.lander.features.web_app.title": "Web app",
   "app.lander.features.web_app.description": "A browser-first workspace for sessions, terminals, files, providers, and models.",
-  "app.lander.images.web.caption": "CodePlane web app session workspace",
-  "app.lander.images.web.alt": "CodePlane web app session workspace"
+  "app.lander.images.web.caption": "Codeplane web app session workspace",
+  "app.lander.images.web.alt": "Codeplane web app session workspace"
 }

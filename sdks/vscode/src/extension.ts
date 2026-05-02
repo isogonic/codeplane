@@ -33,7 +33,7 @@ export function deactivate() {
 function run(task: () => Promise<void>) {
   void task().catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
-    void vscode.window.showErrorMessage(`CodePlane failed to open: ${message}`);
+    void vscode.window.showErrorMessage(`Codeplane failed to open: ${message}`);
   });
 }
 
@@ -56,7 +56,7 @@ async function ensureServer(reuse: boolean, cwd?: string) {
 
 function startServer(cwd?: string): ServerHandle {
   const port = Math.floor(Math.random() * (65535 - 16384 + 1)) + 16384;
-  const output = vscode.window.createOutputChannel(`CodePlane ${port}`);
+  const output = vscode.window.createOutputChannel(`Codeplane ${port}`);
   const proc = spawn("codeplane", ["serve", "--hostname=127.0.0.1", `--port=${port}`], {
     cwd,
     env: {
@@ -77,7 +77,7 @@ function startServer(cwd?: string): ServerHandle {
   proc.stdout.on("data", (chunk) => output.append(chunk.toString()));
   proc.stderr.on("data", (chunk) => output.append(chunk.toString()));
   proc.once("error", (error) => {
-    output.appendLine(`Failed to start CodePlane: ${error.message}`);
+    output.appendLine(`Failed to start Codeplane: ${error.message}`);
     output.show(true);
   });
   proc.once("exit", (code, signal) => {
@@ -85,7 +85,7 @@ function startServer(cwd?: string): ServerHandle {
     if (activeServer === server) {
       activeServer = undefined;
     }
-    output.appendLine(`CodePlane server exited with ${signal ?? code ?? "unknown"}`);
+    output.appendLine(`Codeplane server exited with ${signal ?? code ?? "unknown"}`);
   });
 
   return server;

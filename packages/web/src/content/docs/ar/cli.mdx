@@ -1,17 +1,17 @@
 ---
 title: CLI
-description: CodePlane CLI options and commands.
+description: Codeplane CLI options and commands.
 ---
 
 import { Tabs, TabItem } from "@astrojs/starlight/components"
 
-The CodePlane CLI starts the web app when run without any arguments.
+The Codeplane CLI starts the web app when run without any arguments.
 
 ```bash
 codeplane
 ```
 
-But it also accepts commands as documented on this page. This allows you to interact with CodePlane programmatically.
+But it also accepts commands as documented on this page. This allows you to interact with Codeplane programmatically.
 
 ```bash
 codeplane run "Explain how closures work in JavaScript"
@@ -21,13 +21,13 @@ codeplane run "Explain how closures work in JavaScript"
 
 ## Commands
 
-The CodePlane CLI also has the following commands.
+The Codeplane CLI also has the following commands.
 
 ---
 
 ### agent
 
-Manage agents for CodePlane.
+Manage agents for Codeplane.
 
 ```bash
 codeplane agent [command]
@@ -67,13 +67,13 @@ codeplane auth [command]
 
 #### login
 
-CodePlane is powered by the provider list at [Models.dev](https://models.dev), so you can use `codeplane auth login` to configure API keys for any provider you'd like to use. This is stored in `~/.local/share/codeplane/auth.json`.
+Codeplane is powered by the provider list at [Models.dev](https://models.dev), so you can use `codeplane auth login` to configure API keys for any provider you'd like to use. This is stored in `~/.local/share/codeplane/auth.json`.
 
 ```bash
 codeplane auth login
 ```
 
-When CodePlane starts up it loads the providers from the credentials file. And if there are any keys defined in your environments or a `.env` file in your project.
+When Codeplane starts up it loads the providers from the credentials file. And if there are any keys defined in your environments or a `.env` file in your project.
 
 ---
 
@@ -249,7 +249,7 @@ codeplane models anthropic
 | `--refresh` | Refresh the models cache from models.dev                     |
 | `--verbose` | Use more verbose model output (includes metadata like costs) |
 
-Use the `--refresh` flag to update the cached model list. This is useful when new models have been added to a provider and you want to see them in CodePlane.
+Use the `--refresh` flag to update the cached model list. This is useful when new models have been added to a provider and you want to see them in Codeplane.
 
 ```bash
 codeplane models --refresh
@@ -303,7 +303,7 @@ codeplane run --attach http://localhost:4096 "Explain async/await in JavaScript"
 
 ### serve
 
-Start a headless CodePlane server for API access. Check out the [server docs](/docs/server) for the full HTTP interface.
+Start a headless Codeplane server for API access. Check out the [server docs](/docs/server) for the full HTTP interface.
 
 ```bash
 codeplane serve
@@ -324,7 +324,7 @@ This starts an HTTP server that provides API access to codeplane functionality w
 
 ### session
 
-Manage CodePlane sessions.
+Manage Codeplane sessions.
 
 ```bash
 codeplane session [command]
@@ -334,7 +334,7 @@ codeplane session [command]
 
 #### list
 
-List all CodePlane sessions.
+List all Codeplane sessions.
 
 ```bash
 codeplane session list
@@ -351,7 +351,7 @@ codeplane session list
 
 ### stats
 
-Show token usage and cost statistics for your CodePlane sessions.
+Show token usage and cost statistics for your Codeplane sessions.
 
 ```bash
 codeplane stats
@@ -382,13 +382,13 @@ If you don't provide a session ID, you'll be prompted to select from available s
 
 ### import
 
-Import session data from a JSON file or CodePlane share URL.
+Import session data from a JSON file or Codeplane share URL.
 
 ```bash
 codeplane import <file>
 ```
 
-You can import from a local file or an CodePlane share URL.
+You can import from a local file or an Codeplane share URL.
 
 ```bash
 codeplane import session.json
@@ -399,13 +399,13 @@ codeplane import https://opncd.ai/s/abc123
 
 ### web
 
-Start a headless CodePlane server with a web interface.
+Start a headless Codeplane server with a web interface.
 
 ```bash
 codeplane web
 ```
 
-This starts an HTTP server and opens a web browser to access CodePlane through a web interface. Set `CODEPLANE_SERVER_PASSWORD` to enable HTTP basic auth (username defaults to `codeplane`).
+This starts an HTTP server and opens a web browser to access Codeplane through a web interface. Set `CODEPLANE_SERVER_PASSWORD` to enable HTTP basic auth (username defaults to `codeplane`).
 
 #### Flags
 
@@ -440,7 +440,7 @@ This command starts an ACP server that communicates via stdin/stdout using nd-JS
 
 ### uninstall
 
-Uninstall CodePlane and remove all related files.
+Uninstall Codeplane and remove all related files.
 
 ```bash
 codeplane uninstall
@@ -500,7 +500,7 @@ The codeplane CLI takes the following global flags.
 
 ## Environment variables
 
-CodePlane can be configured using environment variables.
+Codeplane can be configured using environment variables.
 
 | Variable                              | Type    | Description                                       |
 | ------------------------------------- | ------- | ------------------------------------------------- |

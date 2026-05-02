@@ -6,41 +6,13 @@ import { IconButton } from "@codeplane-ai/ui/icon-button"
 import { Progress } from "@codeplane-ai/ui/progress"
 import { Mark } from "@codeplane-ai/ui/logo"
 import { showToast } from "@codeplane-ai/ui/toast"
-import type { CodePlaneDesktopAPI } from "../main/preload"
-
-type SavedInstance = {
-  id: string
-  url: string
-  label?: string
-  headers?: Record<string, string>
-  ignoreCertificateErrors?: boolean
-  clientCertSubject?: string
-  iconDataUrl?: string
-  local?: {
-    binaryVersion: string
-  }
-}
-
-type PrepareState = {
-  phase: "probe" | "download" | "finalize" | "done"
-  message: string
-  percent: number
-  version?: string
-  completed?: number
-  total?: number
-  cacheHit?: boolean
-}
-
-type OpenProgress = {
-  instanceID: string
-  phase: "probe" | "download" | "finalize" | "done" | "error"
-  message: string
-  percent: number
-  version?: string
-  completed?: number
-  total?: number
-  cacheHit?: boolean
-}
+import type {
+  LocalTarget,
+  OpenProgress,
+  PrepareProgress as PrepareState,
+  SavedInstance,
+} from "@codeplane-ai/shared/instance"
+import type { CodeplaneDesktopAPI } from "../main/preload"
 
 type LocalInstallState = {
   phase: "detect" | "download" | "extract" | "start" | "ready"
@@ -53,7 +25,7 @@ type LocalInstallState = {
 
 declare global {
   interface Window {
-    codeplaneDesktop: CodePlaneDesktopAPI
+    codeplaneDesktop: CodeplaneDesktopAPI
   }
 }
 
@@ -820,6 +792,7 @@ const InstanceForm: Component<{
     if (progress.instanceID !== prepareID()) return
     logSetup("prepare.progress", progress)
     setPreparing((current) => ({
+      instanceID: progress.instanceID,
       cacheHit: progress.cacheHit ?? current?.cacheHit,
       completed: progress.completed ?? current?.completed,
       message: progress.message,
@@ -912,6 +885,7 @@ const InstanceForm: Component<{
       logSetup("instance.save", instanceSummary(instance))
       setPrepareID(instance.id)
       setPreparing({
+        instanceID: instance.id,
         phase: "probe",
         message: "Checking server version…",
         percent: 5,
@@ -931,6 +905,7 @@ const InstanceForm: Component<{
         return
       }
       setPreparing({
+        instanceID: instance.id,
         phase: "done",
         message: `UI ready for Codeplane ${prepared.version}.`,
         percent: 100,
@@ -1281,13 +1256,7 @@ const LocalInstanceForm: Component<{
 }> = (props) => {
   const [label, setLabel] = createSignal(props.editing?.label ?? "Local Codeplane")
   const [iconDataUrl, setIconDataUrl] = createSignal<string | undefined>(props.editing?.iconDataUrl)
-  const [target, setTarget] = createSignal<{
-    archiveName: string
-    binaryName: string
-    os: "darwin" | "linux" | "windows"
-    arch: "x64" | "arm64"
-    defaultVersion: string
-  }>()
+  const [target, setTarget] = createSignal<LocalTarget>()
   const [installed, setInstalled] = createSignal(false)
   const [installing, setInstalling] = createSignal<LocalInstallState>()
   const [preparing, setPreparing] = createSignal<PrepareState>()
@@ -1338,6 +1307,7 @@ const LocalInstanceForm: Component<{
     if (progress.instanceID !== prepareID()) return
     logSetup("local.prepare.progress", progress)
     setPreparing((current) => ({
+      instanceID: progress.instanceID,
       cacheHit: progress.cacheHit ?? current?.cacheHit,
       completed: progress.completed ?? current?.completed,
       message: progress.message,
@@ -1359,6 +1329,15 @@ const LocalInstanceForm: Component<{
     setSaving(true)
     try {
       const desiredVersion = props.editing?.local?.binaryVersion || detected.defaultVersion
+      if (!desiredVersion) {
+        showToast({
+          variant: "error",
+          icon: "warning",
+          title: "Couldn't determine local version",
+          description: "Try again after Codeplane detects a downloadable local build.",
+        })
+        return
+      }
 
       // Step 1: ensure the binary is installed locally.
       let status = await api.local.status(desiredVersion)
@@ -1389,7 +1368,7 @@ const LocalInstanceForm: Component<{
         setInstalled(true)
       }
 
-      // Step 2: persist the instance, start the server, prepare the UI cache.
+      // Step 2: start the server, prepare the UI cache, then persist the instance.
       const id = props.editing?.id ?? uid()
       const instance: SavedInstance = {
         id,
@@ -1401,23 +1380,25 @@ const LocalInstanceForm: Component<{
       logSetup("local.save", instanceSummary(instance))
       setPrepareID(id)
       setPreparing({
+        instanceID: id,
         phase: "probe",
         message: "Starting local Codeplane server…",
         percent: 5,
       })
-      await api.instances.save(instance)
       const prepared = await api.instances.prepare(instance)
       if (!prepared.ok) {
+        if (!props.editing) await api.local.stop(id).catch(() => undefined)
         showToast({
           variant: "error",
           icon: "warning",
-          title: "Local instance saved, but UI caching needs attention",
+          title: props.editing ? "Couldn't save local instance" : "Couldn't set up local instance",
           description: prepared.error,
         })
-        props.onSaved()
         return
       }
+      await api.instances.save(instance)
       setPreparing({
+        instanceID: id,
         phase: "done",
         message: `UI ready for local Codeplane ${prepared.version}.`,
         percent: 100,

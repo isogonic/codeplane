@@ -3,7 +3,7 @@ title: خوادم MCP
 description: أضف أدوات MCP محلية وبعيدة.
 ---
 
-يمكنك إضافة أدوات خارجية إلى CodePlane باستخدام _Model Context Protocol_، أو MCP. يدعم CodePlane خوادم محلية وبعيدة.
+يمكنك إضافة أدوات خارجية إلى Codeplane باستخدام _Model Context Protocol_، أو MCP. يدعم Codeplane خوادم محلية وبعيدة.
 
 بعد إضافتها، تصبح أدوات MCP متاحة تلقائيا للـ LLM إلى جانب الأدوات المضمنة.
 
@@ -23,7 +23,7 @@ description: أضف أدوات MCP محلية وبعيدة.
 
 ## التمكين
 
-يمكنك تعريف خوادم MCP في [إعدادات CodePlane](https://github.com/devinoldenburg/codeplane) ضمن `mcp`. أضف كل خادم MCP باسم فريد. ويمكنك الإشارة إلى ذلك الخادم بالاسم عند توجيه الطلب إلى الـ LLM.
+يمكنك تعريف خوادم MCP في [إعدادات Codeplane](https://github.com/devinoldenburg/codeplane) ضمن `mcp`. أضف كل خادم MCP باسم فريد. ويمكنك الإشارة إلى ذلك الخادم بالاسم عند توجيه الطلب إلى الـ LLM.
 
 ```jsonc title="codeplane.jsonc" {6}
 {
@@ -165,7 +165,7 @@ use the mcp_everything tool to add the number 3 and 4
 
 ## OAuth
 
-يتولى CodePlane تلقائيا معالجة مصادقة OAuth لخوادم MCP البعيدة. عندما يتطلب خادم ما المصادقة، سيقوم CodePlane بما يلي:
+يتولى Codeplane تلقائيا معالجة مصادقة OAuth لخوادم MCP البعيدة. عندما يتطلب خادم ما المصادقة، سيقوم Codeplane بما يلي:
 
 1. اكتشاف استجابة 401 وبدء تدفق OAuth
 2. استخدام **Dynamic Client Registration (RFC 7591)** إذا كان الخادم يدعمه
@@ -189,7 +189,7 @@ use the mcp_everything tool to add the number 3 and 4
 }
 ```
 
-إذا كان الخادم يتطلب المصادقة، فسيطلب منك CodePlane المصادقة عند أول محاولة لاستخدامه. وإذا لم يحدث ذلك، يمكنك [تشغيل التدفق يدويا](#authenticating) باستخدام `codeplane mcp auth <server-name>`.
+إذا كان الخادم يتطلب المصادقة، فسيطلب منك Codeplane المصادقة عند أول محاولة لاستخدامه. وإذا لم يحدث ذلك، يمكنك [تشغيل التدفق يدويا](#authenticating) باستخدام `codeplane mcp auth <server-name>`.
 
 ---
 
@@ -238,7 +238,7 @@ codeplane mcp list
 codeplane mcp logout my-oauth-server
 ```
 
-سيفتح أمر `mcp auth` متصفحك للتفويض. بعد إكمال التفويض، سيخزّن CodePlane الرموز بشكل آمن في `~/.local/share/codeplane/mcp-auth.json`.
+سيفتح أمر `mcp auth` متصفحك للتفويض. بعد إكمال التفويض، سيخزّن Codeplane الرموز بشكل آمن في `~/.local/share/codeplane/mcp-auth.json`.
 
 ---
 
@@ -291,7 +291,7 @@ codeplane mcp debug my-oauth-server
 
 ## الإدارة
 
-تتوفر خوادم MCP لديك كأدوات داخل CodePlane إلى جانب الأدوات المضمنة. لذا يمكنك إدارتها عبر إعدادات CodePlane مثل أي أداة أخرى.
+تتوفر خوادم MCP لديك كأدوات داخل Codeplane إلى جانب الأدوات المضمنة. لذا يمكنك إدارتها عبر إعدادات Codeplane مثل أي أداة أخرى.
 
 ---
 
@@ -423,7 +423,7 @@ codeplane mcp debug my-oauth-server
 codeplane mcp auth sentry
 ```
 
-سيؤدي ذلك إلى فتح نافذة متصفح لإكمال تدفق OAuth وربط CodePlane بحساب Sentry الخاص بك.
+سيؤدي ذلك إلى فتح نافذة متصفح لإكمال تدفق OAuth وربط Codeplane بحساب Sentry الخاص بك.
 
 بعد المصادقة، يمكنك استخدام أدوات Sentry في طلباتك للاستعلام عن القضايا والمشاريع وبيانات الأخطاء.
 

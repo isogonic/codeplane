@@ -84,8 +84,8 @@ describe("tool.project", () => {
             name: "typecheck",
             command: "bun typecheck",
             cwd: "packages/codeplane",
-            label: "Typecheck CodePlane",
-            description: "Run CodePlane package type checking",
+            label: "Typecheck Codeplane",
+            description: "Run Codeplane package type checking",
             labels: ["quality", "codeplane"],
             context: true,
           })
@@ -95,7 +95,7 @@ describe("tool.project", () => {
           expect(Project.commandText(saved?.commands?.typecheck)).toBe("bun typecheck")
 
           const result = yield* run({ operation: "context" })
-          expect(result.output).toContain("Typecheck CodePlane")
+          expect(result.output).toContain("Typecheck Codeplane")
           expect(result.output).toContain("packages/codeplane")
           expect(result.output).toContain("quality, codeplane")
         }),

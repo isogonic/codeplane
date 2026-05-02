@@ -141,7 +141,7 @@ export namespace User {
         const { InviteEmail } = await import("@codeplane-ai/console-mail/InviteEmail.jsx")
         await AWS.sendEmail({
           to: email,
-          subject: `You've been invited to join the ${emailInfo.workspaceName} workspace on CodePlane`,
+          subject: `You've been invited to join the ${emailInfo.workspaceName} workspace on Codeplane`,
           body: render(
             // @ts-ignore
             InviteEmail({

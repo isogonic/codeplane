@@ -111,7 +111,7 @@ export const ExperimentalRoutes = lazy(() =>
       "/console/switch",
       describeRoute({
         summary: "Switch active Console org",
-        description: "Persist a new active Console account/org selection for the current local CodePlane state.",
+        description: "Persist a new active Console account/org selection for the current local Codeplane state.",
         operationId: "experimental.console.switchOrg",
         responses: {
           200: {
@@ -330,7 +330,7 @@ export const ExperimentalRoutes = lazy(() =>
       describeRoute({
         summary: "List sessions",
         description:
-          "Get a list of all CodePlane sessions across projects, sorted by most recently updated. Archived sessions are excluded by default.",
+          "Get a list of all Codeplane sessions across projects, sorted by most recently updated. Archived sessions are excluded by default.",
         operationId: "experimental.session.list",
         responses: {
           200: {

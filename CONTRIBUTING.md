@@ -1,6 +1,6 @@
-# Contributing to CodePlane
+# Contributing to Codeplane
 
-We want to make it easy for you to contribute to CodePlane. Here are the most common type of changes that get merged:
+We want to make it easy for you to contribute to Codeplane. Here are the most common type of changes that get merged:
 
 - Bug fixes
 - Additional LSPs / Formatters
@@ -29,7 +29,7 @@ Want to take on an issue? Leave a comment and a maintainer may assign it to you 
 New providers shouldn't require many if ANY code changes, but if you want to add support for a new provider first make a PR to:
 https://github.com/anomalyco/models.dev
 
-## Developing CodePlane
+## Developing Codeplane
 
 - Requirements: Bun 1.3+
 - Install dependencies and start the server-backed web app from the repo root:
@@ -41,13 +41,13 @@ https://github.com/anomalyco/models.dev
 
 ### Running against a different directory
 
-By default, `bun dev:server` runs CodePlane in the current repository. To run it against a different directory or repository:
+By default, `bun dev:server` runs Codeplane in the current repository. To run it against a different directory or repository:
 
 ```bash
 bun dev:server -- <directory>
 ```
 
-To run CodePlane in the root of the codeplane repo itself:
+To run Codeplane in the root of the codeplane repo itself:
 
 ```bash
 bun dev:server -- .
@@ -70,7 +70,7 @@ Then run it with:
 Replace `<platform>` with your platform (e.g., `darwin-arm64`, `linux-x64`).
 
 - Core pieces:
-  - `packages/codeplane`: CodePlane core business logic & server.
+  - `packages/codeplane`: Codeplane core business logic & server.
   - `packages/app`: The web app, written in SolidJS.
   - `packages/console/app`: The public website and account console.
   - `packages/web`: The documentation site.
@@ -78,7 +78,7 @@ Replace `<platform>` with your platform (e.g., `darwin-arm64`, `linux-x64`).
 
 ### Understanding development commands
 
-The root scripts separate the web app frontend from the local CodePlane server:
+The root scripts separate the web app frontend from the local Codeplane server:
 
 ```bash
 # Development (from project root)
@@ -95,7 +95,7 @@ codeplane <directory>     # Start server + open web interface for a directory
 
 ### Running the API Server
 
-To start the CodePlane headless API server:
+To start the Codeplane headless API server:
 
 ```bash
 bun --cwd packages/codeplane dev serve
@@ -111,7 +111,7 @@ bun --cwd packages/codeplane dev serve --port 8080
 
 To test UI changes during development:
 
-1. **First, start the CodePlane server** (see [Running the API Server](#running-the-api-server) section above)
+1. **First, start the Codeplane server** (see [Running the API Server](#running-the-api-server) section above)
 2. **Then run the web app:**
 
 ```bash
@@ -129,7 +129,7 @@ Please try to follow the [style guide](./AGENTS.md)
 
 Bun debugging is currently rough around the edges. We hope this guide helps you get set up and avoid some pain points.
 
-The most reliable way to debug CodePlane is to run it manually in a terminal via `bun run --inspect=<url> dev ...` and attach
+The most reliable way to debug Codeplane is to run it manually in a terminal via `bun run --inspect=<url> dev ...` and attach
 your debugger via that URL. Other methods can result in breakpoints being mapped incorrectly, at least in VSCode (YMMV).
 
 Caveats:
@@ -150,7 +150,7 @@ If you use VSCode, you can use our example configurations [.vscode/settings.exam
 Some debug methods that can be problematic:
 
 - Debug configurations with `"request": "launch"` can have breakpoints incorrectly mapped and thus unusable
-- The same problem arises when running CodePlane in the VSCode `JavaScript Debug Terminal`
+- The same problem arises when running Codeplane in the VSCode `JavaScript Debug Terminal`
 
 With that said, you may want to try these methods, as they might work for you.
 
@@ -227,7 +227,7 @@ These are not strictly enforced, they are just general guidelines:
 
 ## Feature Requests
 
-For net-new functionality, start with a design conversation. Open an issue describing the problem, your proposed approach (optional), and why it belongs in CodePlane. The core team will help decide whether it should move forward; please wait for that approval instead of opening a feature PR directly.
+For net-new functionality, start with a design conversation. Open an issue describing the problem, your proposed approach (optional), and why it belongs in Codeplane. The core team will help decide whether it should move forward; please wait for that approval instead of opening a feature PR directly.
 
 ## Trust & Vouch System
 

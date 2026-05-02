@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "27.1.1",
+  "version": "27.2.0",
   "name": "codeplane",
   "type": "module",
   "license": "MIT",
@@ -39,6 +39,7 @@
     }
   },
   "devDependencies": {
+    "@types/react": "19.2.2",
     "@babel/core": "7.28.4",
     "@effect/language-service": "0.84.2",
     "@octokit/webhooks-types": "7.6.1",
@@ -74,6 +75,8 @@
     "zod-to-json-schema": "3.24.5"
   },
   "dependencies": {
+    "@inkjs/ui": "2.0.0",
+    "@xterm/headless": "6.0.0",
     "@actions/core": "1.11.1",
     "@actions/github": "6.0.1",
     "@agentclientprotocol/sdk": "0.16.1",
@@ -148,6 +151,7 @@
     "hono": "catalog:",
     "hono-openapi": "catalog:",
     "ignore": "7.0.5",
+    "ink": "7.0.1",
     "immer": "11.1.4",
     "jsonc-parser": "3.3.1",
     "mime-types": "3.0.2",
@@ -157,6 +161,8 @@
     "opencode-gitlab-auth": "2.0.1",
     "opencode-poe-auth": "0.0.1",
     "partial-json": "0.1.7",
+    "react": "19.2.0",
+    "react-devtools-core": "7.0.1",
     "remeda": "catalog:",
     "semver": "^7.6.3",
     "solid-js": "catalog:",

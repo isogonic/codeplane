@@ -66,7 +66,7 @@ const names: Record<string, string> = {
   nord: "Nord",
   "one-dark": "One Dark",
   onedarkpro: "One Dark Pro",
-  codeplane: "CodePlane",
+  codeplane: "Codeplane",
   orng: "Orng",
   "osaka-jade": "Osaka Jade",
   palenight: "Palenight",

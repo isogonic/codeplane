@@ -3,7 +3,7 @@ title: MCP-servere
 description: Tilføj lokale og eksterne MCP værktøjer.
 ---
 
-Du kan tilføje eksterne værktøjer til CodePlane ved hjælp af _Model Context Protocol_ eller MCP. CodePlane understøtter både lokale og eksterne servere.
+Du kan tilføje eksterne værktøjer til Codeplane ved hjælp af _Model Context Protocol_ eller MCP. Codeplane understøtter både lokale og eksterne servere.
 
 Når de er tilføjet, er MCP automatisk tilgængelig for LLM sammen med indbyggede værktøjer.
 
@@ -23,7 +23,7 @@ Visse MCP-servere, som GitHub MCP-servere, har en tendens til at tilføje mange 
 
 ## Aktivering
 
-Du kan definere MCP-servere i din [CodePlane Config](https://github.com/devinoldenburg/codeplane) under `mcp`. Tilføj hver MCP med et unikt navn. Du kan henvise til denne MCP ved navn, når du spørger LLM.
+Du kan definere MCP-servere i din [Codeplane Config](https://github.com/devinoldenburg/codeplane) under `mcp`. Tilføj hver MCP med et unikt navn. Du kan henvise til denne MCP ved navn, når du spørger LLM.
 
 ```jsonc title="codeplane.jsonc" {6}
 {
@@ -165,7 +165,7 @@ Tilføj ekstern MCP-server ved at indstille `type` til `"remote"`.
 
 ## OAuth
 
-CodePlane håndterer automatisk OAuth-godkendelse for eksterne MCP-servere. Når en server kræver godkendelse, vil CodePlane:
+Codeplane håndterer automatisk OAuth-godkendelse for eksterne MCP-servere. Når en server kræver godkendelse, vil Codeplane:
 
 1. Registrer 401-svaret, og start OAuth-flowet
 2. Brug **Dynamic Client Registration (RFC 7591)**, hvis det understøtter af serveren
@@ -189,7 +189,7 @@ For de fleste OAuth-aktiverede MCP-servere kræver ingen speciel konfiguration. 
 }
 ```
 
-Hvis serveren kræver godkendelse, vil CodePlane bede dig om at godkende, når du prøver at bruge den første gang. Hvis ikke, kan du [manually trigger the flow](#authenticating) med `codeplane mcp auth <server-name>`.
+Hvis serveren kræver godkendelse, vil Codeplane bede dig om at godkende, når du prøver at bruge den første gang. Hvis ikke, kan du [manually trigger the flow](#authenticating) med `codeplane mcp auth <server-name>`.
 
 ---
 
@@ -238,7 +238,7 @@ Fjern gemte legitimationsoplysninger:
 codeplane mcp logout my-oauth-server
 ```
 
-Kommandoen `mcp auth` åbner din browser for godkendelse. Når du har godkendt, vil CodePlane opbevare tokens sikkert i `~/.local/share/codeplane/mcp-auth.json`.
+Kommandoen `mcp auth` åbner din browser for godkendelse. Når du har godkendt, vil Codeplane opbevare tokens sikkert i `~/.local/share/codeplane/mcp-auth.json`.
 
 ---
 
@@ -291,7 +291,7 @@ Kommandoen `mcp debug` viser den aktuelle godkendelsesstatus, tester HTTP-forbin
 
 ## Administration
 
-Dine MCPs er tilgængelige som værktøjer i **TK\_** sammen med indbyggede værktøjer. Så du kan administrere dem gennem CodePlane-konfigurationen som ethvert andet værktøj.
+Dine MCPs er tilgængelige som værktøjer i **TK\_** sammen med indbyggede værktøjer. Så du kan administrere dem gennem Codeplane-konfigurationen som ethvert andet værktøj.
 
 ---
 
@@ -423,7 +423,7 @@ Efter tilføjelse af konfigurationen skal du godkende med Sentry:
 codeplane mcp auth sentry
 ```
 
-Dette åbner et browservindue for at fuldføre OAuth-flowet og forbinde CodePlane til din Sentry-konto.
+Dette åbner et browservindue for at fuldføre OAuth-flowet og forbinde Codeplane til din Sentry-konto.
 
 Når du er godkendt, kan du bruge Sentry-værktøjer i dine prompter til at forespørge om problemer, projekter og fejldata.
 

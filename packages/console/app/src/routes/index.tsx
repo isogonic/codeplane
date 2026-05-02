@@ -152,7 +152,7 @@ export default function Home() {
                     <button data-copy data-slot="command" onClick={handleCopyClick}>
                       <span>
                         <span data-slot="protocol">paru -S </span>
-                        <span data-slot="highlight">codeplane</span>
+                        <span data-slot="highlight">codeplane-bin</span>
                       </span>
                       <CopyStatus />
                     </button>

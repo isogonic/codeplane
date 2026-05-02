@@ -17,10 +17,10 @@
   "app.lander.features.use_any_model.title": "使用任何模型",
   "app.lander.features.use_any_model.prefix": "透過以下方式支援 75+ LLM 供應商",
   "app.lander.features.use_any_model.suffix": "包括本地模型。",
-  "app.lander.images.vscode.caption": "CodePlane 在 VS Code 中",
-  "app.lander.images.vscode.alt": "CodePlane 在 VS Code 中",
-  "app.lander.images.github.caption": "CodePlane 在 GitHub 中",
-  "app.lander.images.github.alt": "CodePlane 在 GitHub 中",
+  "app.lander.images.vscode.caption": "Codeplane 在 VS Code 中",
+  "app.lander.images.vscode.alt": "Codeplane 在 VS Code 中",
+  "app.lander.images.github.caption": "Codeplane 在 GitHub 中",
+  "app.lander.images.github.alt": "Codeplane 在 GitHub 中",
   "share.meta_description": "codeplane - The AI coding agent built for the web.",
   "share.not_found": "找不到",
   "share.link_to_message": "連結到此訊息",
@@ -49,7 +49,7 @@
   "share.error_id_not_found": "找不到 ID",
   "share.error_api_url_not_found": "找不到 API URL",
   "share.error_connection_failed": "連線失敗",
-  "share.codeplane_version": "CodePlane 版本",
+  "share.codeplane_version": "Codeplane 版本",
   "share.codeplane_name": "codeplane",
   "share.models": "模型",
   "share.cost": "成本",
@@ -70,6 +70,6 @@
   "share.debug_key": "金鑰",
   "app.lander.features.web_app.title": "Web app",
   "app.lander.features.web_app.description": "A browser-first workspace for sessions, terminals, files, providers, and models.",
-  "app.lander.images.web.caption": "CodePlane web app session workspace",
-  "app.lander.images.web.alt": "CodePlane web app session workspace"
+  "app.lander.images.web.caption": "Codeplane web app session workspace",
+  "app.lander.images.web.alt": "Codeplane web app session workspace"
 }

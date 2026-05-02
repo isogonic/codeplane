@@ -15,7 +15,7 @@ export const dict = {
   "nav.home": "Hjem",
   "nav.openMenu": "Åpne meny",
   "nav.getStartedFree": "Kom i gang gratis",
-  "nav.logoAlt": "CodePlane",
+  "nav.logoAlt": "Codeplane",
 
   "nav.context.copyLogo": "Kopier logo som SVG",
   "nav.context.brandAssets": "Merkevareressurser",
@@ -80,9 +80,9 @@ export const dict = {
   "error.reloadAmountMin": "Påfyllingsbeløp må være minst ${{amount}}",
   "error.reloadTriggerMin": "Saldo-trigger må være minst ${{amount}}",
 
-  "app.meta.description": "CodePlane - Den åpne kildekode kodingsagenten.",
+  "app.meta.description": "Codeplane - Den åpne kildekode kodingsagenten.",
 
-  "home.title": "CodePlane | Den åpne kildekode AI-kodingsagenten",
+  "home.title": "Codeplane | Den åpne kildekode AI-kodingsagenten",
 
   "temp.title": "codeplane | AI coding agent built for the web",
   "temp.hero.title": "The AI coding agent built for the web",
@@ -95,16 +95,16 @@ export const dict = {
   "temp.feature.zen.afterLink": "levert av codeplane",
   "temp.feature.models.beforeLink": "Støtter 75+ LLM-leverandører gjennom",
   "temp.feature.models.afterLink": ", inkludert lokale modeller",
-  "temp.screenshot.caption": "CodePlane web app",
-  "temp.screenshot.alt": "CodePlane web app",
+  "temp.screenshot.caption": "Codeplane web app",
+  "temp.screenshot.alt": "Codeplane web app",
   "temp.logoLightAlt": "codeplane logo lys",
   "temp.logoDarkAlt": "codeplane logo mørk",
 
   "home.banner.badge": "Ny",
-  "home.banner.text": "CodePlane is built for the web",
+  "home.banner.text": "Codeplane is built for the web",
   "home.banner.platforms": "in your browser",
   "home.banner.downloadNow": "Install now",
-  "home.banner.downloadBetaNow": "Install CodePlane",
+  "home.banner.downloadBetaNow": "Install Codeplane",
 
   "home.hero.title": "Den åpne kildekode AI-kodingsagenten",
   "home.hero.subtitle.a":
@@ -113,8 +113,8 @@ export const dict = {
 
   "home.install.ariaLabel": "Installeringsalternativer",
 
-  "home.what.title": "Hva er CodePlane?",
-  "home.what.body": "CodePlane is an open source web app that helps you write code with AI agents.",
+  "home.what.title": "Hva er Codeplane?",
+  "home.what.body": "Codeplane is an open source web app that helps you write code with AI agents.",
   "home.what.lsp.title": "LSP aktivert",
   "home.what.lsp.body": "Laster automatisk de riktige LSP-ene for LLM-en",
   "home.what.multiSession.title": "Multi-sesjon",
@@ -133,51 +133,51 @@ export const dict = {
 
   "home.growth.title": "Den åpne kildekode AI-kodingsagenten",
   "home.growth.body":
-    "Med over <strong>{{stars}}</strong> GitHub-stjerner, <strong>{{contributors}}</strong> bidragsytere og over <strong>{{commits}}</strong> commits, brukes CodePlane av over <strong>{{monthlyUsers}}</strong> utviklere hver måned.",
+    "Med over <strong>{{stars}}</strong> GitHub-stjerner, <strong>{{contributors}}</strong> bidragsytere og over <strong>{{commits}}</strong> commits, brukes Codeplane av over <strong>{{monthlyUsers}}</strong> utviklere hver måned.",
   "home.growth.githubStars": "GitHub-stjerner",
   "home.growth.contributors": "Bidragsytere",
   "home.growth.monthlyDevs": "Månedlige utviklere",
 
   "home.privacy.title": "Bygget med personvern først",
   "home.privacy.body":
-    "CodePlane lagrer ikke koden din eller kontekstdata, slik at den kan fungere i personvernsensitive miljøer.",
+    "Codeplane lagrer ikke koden din eller kontekstdata, slik at den kan fungere i personvernsensitive miljøer.",
   "home.privacy.learnMore": "Les mer om",
   "home.privacy.link": "personvern",
 
-  "home.faq.q1": "Hva er CodePlane?",
+  "home.faq.q1": "Hva er Codeplane?",
   "home.faq.a1":
-    "CodePlane is an open source web app that helps you write and run code with any AI model.",
-  "home.faq.q2": "Hvordan bruker jeg CodePlane?",
+    "Codeplane is an open source web app that helps you write and run code with any AI model.",
+  "home.faq.q2": "Hvordan bruker jeg Codeplane?",
   "home.faq.a2.before": "Den enkleste måten å komme i gang på er å lese",
   "home.faq.a2.link": "introen",
-  "home.faq.q3": "Trenger jeg ekstra AI-abonnementer for å bruke CodePlane?",
+  "home.faq.q3": "Trenger jeg ekstra AI-abonnementer for å bruke Codeplane?",
   "home.faq.a3.p1":
-    "Ikke nødvendigvis. CodePlane kommer med et sett gratis modeller du kan bruke uten å opprette en konto.",
+    "Ikke nødvendigvis. Codeplane kommer med et sett gratis modeller du kan bruke uten å opprette en konto.",
   "home.faq.a3.p2.beforeZen": "I tillegg kan du bruke populære kodemodeller ved å opprette en",
   "home.faq.a3.p2.afterZen": " konto.",
   "home.faq.a3.p3":
-    "Vi oppfordrer til å bruke Zen, men CodePlane fungerer også med populære leverandører som OpenAI, Anthropic, xAI osv.",
+    "Vi oppfordrer til å bruke Zen, men Codeplane fungerer også med populære leverandører som OpenAI, Anthropic, xAI osv.",
   "home.faq.a3.p4.beforeLocal": "Du kan til og med koble til dine",
   "home.faq.a3.p4.localLink": "lokale modeller",
-  "home.faq.q4": "Kan jeg bruke mine eksisterende AI-abonnementer med CodePlane?",
+  "home.faq.q4": "Kan jeg bruke mine eksisterende AI-abonnementer med Codeplane?",
   "home.faq.a4.p1":
-    "Ja, CodePlane støtter abonnementer fra alle store leverandører. Du kan bruke Claude Pro/Max, ChatGPT Plus/Pro eller GitHub Copilot-abonnementer.",
-  "home.faq.q5": "Can I use CodePlane in the browser?",
-  "home.faq.a5.beforeWeb": "Yes. CodePlane is built for the",
+    "Ja, Codeplane støtter abonnementer fra alle store leverandører. Du kan bruke Claude Pro/Max, ChatGPT Plus/Pro eller GitHub Copilot-abonnementer.",
+  "home.faq.q5": "Can I use Codeplane in the browser?",
+  "home.faq.a5.beforeWeb": "Yes. Codeplane is built for the",
   "home.faq.a5.webDocs": "web",
   "home.faq.a5.and": "with a",
   "home.faq.a5.installPath": "CLI install path",
-  "home.faq.q6": "Hva koster CodePlane?",
+  "home.faq.q6": "Hva koster Codeplane?",
   "home.faq.a6":
-    "CodePlane er 100% gratis å bruke. Det kommer også med et sett gratis modeller. Det kan være ekstra kostnader hvis du kobler til en annen leverandør.",
+    "Codeplane er 100% gratis å bruke. Det kommer også med et sett gratis modeller. Det kan være ekstra kostnader hvis du kobler til en annen leverandør.",
   "home.faq.q7": "Hva med data og personvern?",
   "home.faq.a7.p1": "Dataene dine lagres kun når du bruker våre gratis modeller eller lager delbare lenker.",
   "home.faq.a7.p2.beforeModels": "Les mer om",
   "home.faq.a7.p2.modelsLink": "våre modeller",
   "home.faq.a7.p2.and": "og",
   "home.faq.a7.p2.shareLink": "delingssider",
-  "home.faq.q8": "Er CodePlane åpen kildekode?",
-  "home.faq.a8.p1": "Ja, CodePlane er fullt open source. Kildekoden er offentlig på",
+  "home.faq.q8": "Er Codeplane åpen kildekode?",
+  "home.faq.a8.p1": "Ja, Codeplane er fullt open source. Kildekoden er offentlig på",
   "home.faq.a8.p2": "under",
   "home.faq.a8.mitLicense": "MIT-lisensen",
   "home.faq.a8.p3":
@@ -185,23 +185,23 @@ export const dict = {
 
   "home.zenCta.title": "Få tilgang til pålitelige, optimaliserte modeller for kodeagenter",
   "home.zenCta.body":
-    "Zen gir deg tilgang til et håndplukket sett med AI-modeller som CodePlane har testet og benchmarked spesielt for kodeagenter. Du slipper å bekymre deg for ujevn ytelse og kvalitet på tvers av leverandører; bruk validerte modeller som fungerer.",
+    "Zen gir deg tilgang til et håndplukket sett med AI-modeller som Codeplane har testet og benchmarked spesielt for kodeagenter. Du slipper å bekymre deg for ujevn ytelse og kvalitet på tvers av leverandører; bruk validerte modeller som fungerer.",
   "home.zenCta.link": "Les om Zen",
 
-  "zen.title": "CodePlane Zen | Et kuratert sett med pålitelige, optimaliserte modeller for kodeagenter",
+  "zen.title": "Codeplane Zen | Et kuratert sett med pålitelige, optimaliserte modeller for kodeagenter",
   "zen.hero.title": "Pålitelige optimaliserte modeller for kodeagenter",
   "zen.hero.body":
-    "Zen gir deg tilgang til et kuratert sett med AI-modeller som CodePlane har testet og benchmarked spesielt for kodeagenter. Du slipper å bekymre deg for ujevn ytelse og kvalitet; bruk validerte modeller som fungerer.",
+    "Zen gir deg tilgang til et kuratert sett med AI-modeller som Codeplane har testet og benchmarked spesielt for kodeagenter. Du slipper å bekymre deg for ujevn ytelse og kvalitet; bruk validerte modeller som fungerer.",
 
-  "zen.faq.q1": "Hva er CodePlane Zen?",
+  "zen.faq.q1": "Hva er Codeplane Zen?",
   "zen.faq.a1":
-    "Zen er et kuratert sett med AI-modeller testet og benchmarked for kodeagenter, laget av teamet bak CodePlane.",
+    "Zen er et kuratert sett med AI-modeller testet og benchmarked for kodeagenter, laget av teamet bak Codeplane.",
   "zen.faq.q2": "Hva gjør Zen mer presis?",
   "zen.faq.a2":
     "Zen tilbyr bare modeller som er testet og benchmarked spesifikt for kodeagenter. Du ville ikke brukt en smørkniv til å skjære biff; ikke bruk dårlige modeller til koding.",
   "zen.faq.q3": "Er Zen billigere?",
   "zen.faq.a3":
-    "Zen er ikke for profitt. Zen videreformidler kostnadene fra modellleverandørene direkte til deg. Jo mer Zen brukes, desto bedre priser kan CodePlane forhandle og gi videre til deg.",
+    "Zen er ikke for profitt. Zen videreformidler kostnadene fra modellleverandørene direkte til deg. Jo mer Zen brukes, desto bedre priser kan Codeplane forhandle og gi videre til deg.",
   "zen.faq.q4": "Hva koster Zen?",
   "zen.faq.a4.p1.beforePricing": "Zen",
   "zen.faq.a4.p1.pricingLink": "tar betalt per forespørsel",
@@ -209,7 +209,7 @@ export const dict = {
   "zen.faq.a4.p2.beforeAccount": "Totalprisen avhenger av bruk, og du kan sette månedlige utgiftsgrenser i din",
   "zen.faq.a4.p2.accountLink": "konto",
   "zen.faq.a4.p3":
-    "For å dekke kostnader legger CodePlane til bare et lite betalingsbehandlingsgebyr på $1.23 per $20 saldo-påfyll.",
+    "For å dekke kostnader legger Codeplane til bare et lite betalingsbehandlingsgebyr på $1.23 per $20 saldo-påfyll.",
   "zen.faq.q5": "Hva med data og personvern?",
   "zen.faq.a5.beforeExceptions":
     "Alle Zen-modeller hostes i USA. Leverandører følger en policy om null oppbevaring og bruker ikke dataene dine til modelltrening, med de",
@@ -220,7 +220,7 @@ export const dict = {
   "zen.faq.a7": "Ja, du kan deaktivere fakturering når som helst og bruke gjenværende saldo.",
   "zen.faq.q8": "Kan jeg bruke Zen med andre kodeagenter?",
   "zen.faq.a8":
-    "Selv om Zen fungerer veldig bra med CodePlane, kan du bruke Zen med hvilken som helst agent. Følg oppsettinstruksjonene i din foretrukne kodeagent.",
+    "Selv om Zen fungerer veldig bra med Codeplane, kan du bruke Zen med hvilken som helst agent. Følg oppsettinstruksjonene i din foretrukne kodeagent.",
 
   "zen.cta.start": "Kom i gang med Zen",
   "zen.pricing.title": "Legg til $20 Pay as you go-saldo",
@@ -229,12 +229,12 @@ export const dict = {
   "zen.problem.title": "Hvilket problem løser Zen?",
   "zen.problem.body":
     "Det er så mange modeller tilgjengelig, men bare noen få fungerer bra med kodeagenter. De fleste leverandører konfigurerer dem annerledes med varierende resultater.",
-  "zen.problem.subtitle": "Vi fikser dette for alle, ikke bare CodePlane-brukere.",
+  "zen.problem.subtitle": "Vi fikser dette for alle, ikke bare Codeplane-brukere.",
   "zen.problem.item1": "Tester utvalgte modeller og konsulterer teamene deres",
   "zen.problem.item2": "Samarbeider med leverandører for å sikre at de blir levert riktig",
   "zen.problem.item3": "Benchmarker alle modell-leverandør-kombinasjoner vi anbefaler",
   "zen.how.title": "Hvordan Zen fungerer",
-  "zen.how.body": "Selv om vi foreslår at du bruker Zen med CodePlane, kan du bruke Zen med hvilken som helst agent.",
+  "zen.how.body": "Selv om vi foreslår at du bruker Zen med Codeplane, kan du bruke Zen med hvilken som helst agent.",
   "zen.how.step1.title": "Registrer deg og legg til $20 saldo",
   "zen.how.step1.beforeLink": "følg",
   "zen.how.step1.link": "oppsettsinstruksjonene",
@@ -248,7 +248,7 @@ export const dict = {
     "Alle Zen-modeller hostes i USA. Leverandører følger en policy om null oppbevaring og bruker ikke dataene dine til modelltrening, med",
   "zen.privacy.exceptionsLink": "følgende unntak",
 
-  "go.title": "CodePlane Go | Rimelige kodemodeller for alle",
+  "go.title": "Codeplane Go | Rimelige kodemodeller for alle",
   "go.meta.description":
     "Go starter på $5 for den første måneden, deretter $10/måned, med sjenerøse 5-timers forespørselsgrenser for GLM-5.1, GLM-5, Kimi K2.5, Kimi K2.6, MiMo-V2-Pro, MiMo-V2-Omni, MiMo-V2.5-Pro, MiMo-V2.5, Qwen3.5 Plus, Qwen3.6 Plus, MiniMax M2.5, MiniMax M2.7, DeepSeek V4 Pro og DeepSeek V4 Flash.",
   "go.hero.title": "Rimelige kodemodeller for alle",
@@ -274,7 +274,7 @@ export const dict = {
 
   "go.testimonials.brand.zen": "Zen",
   "go.testimonials.brand.go": "Go",
-  "go.testimonials.handle": "@CodePlane",
+  "go.testimonials.handle": "@Codeplane",
   "go.testimonials.dax.name": "Dax Raad",
   "go.testimonials.dax.title": "tidligere CEO, Terminal Products",
   "go.testimonials.dax.quoteAfter": "har endret livet mitt, det er virkelig en no-brainer.",
@@ -295,7 +295,7 @@ export const dict = {
   "go.testimonials.frank.quote": "Jeg skulle ønske jeg fortsatt var hos Nvidia.",
   "go.problem.title": "Hvilket problem løser Go?",
   "go.problem.body":
-    "Vi fokuserer på å bringe CodePlane-opplevelsen til så mange som mulig. CodePlane Go er et rimelig abonnement: $5 for den første måneden, deretter $10/måned. Det gir sjenerøse grenser og pålitelig tilgang til de mest kapable åpen kildekode-modellene.",
+    "Vi fokuserer på å bringe Codeplane-opplevelsen til så mange som mulig. Codeplane Go er et rimelig abonnement: $5 for den første måneden, deretter $10/måned. Det gir sjenerøse grenser og pålitelig tilgang til de mest kapable åpen kildekode-modellene.",
   "go.problem.subtitle": " ",
   "go.problem.item1": "Rimelig abonnementspris",
   "go.problem.item2": "Rause grenser og pålitelig tilgang",
@@ -304,7 +304,7 @@ export const dict = {
     "Inkluderer GLM-5.1, GLM-5, Kimi K2.5, Kimi K2.6, MiMo-V2-Pro, MiMo-V2-Omni, MiMo-V2.5-Pro, MiMo-V2.5, Qwen3.5 Plus, Qwen3.6 Plus, MiniMax M2.5, MiniMax M2.7, DeepSeek V4 Pro og DeepSeek V4 Flash",
   "go.how.title": "Hvordan Go fungerer",
   "go.how.body":
-    "Go starter på $5 for den første måneden, deretter $10/måned. Du kan bruke det med CodePlane eller hvilken som helst agent.",
+    "Go starter på $5 for den første måneden, deretter $10/måned. Du kan bruke det med Codeplane eller hvilken som helst agent.",
   "go.how.step1.title": "Opprett en konto",
   "go.how.step1.beforeLink": "følg",
   "go.how.step1.link": "oppsettsinstruksjonene",
@@ -320,7 +320,7 @@ export const dict = {
   "go.privacy.beforeExceptions":
     "Go-modeller hostes i USA. Leverandører følger en policy om null oppbevaring og bruker ikke dataene dine til modelltrening, med",
   "go.privacy.exceptionsLink": "følgende unntak",
-  "go.faq.q1": "Hva er CodePlane Go?",
+  "go.faq.q1": "Hva er Codeplane Go?",
   "go.faq.a1":
     "Go er et rimelig abonnement som gir deg pålitelig tilgang til kapable åpen kildekode-modeller for agent-koding.",
   "go.faq.q2": "Hvilke modeller inkluderer Go?",
@@ -371,13 +371,13 @@ export const dict = {
     "Du har nådd din månedlige utgiftsgrense på ${{amount}}. Administrer grensene dine her: {{membersUrl}}",
   "zen.api.error.modelDisabled": "Modellen er deaktivert",
   "zen.api.error.trialEnded":
-    "Den gratis kampanjen for {{model}} er avsluttet. Du kan fortsette å bruke modellen ved å abonnere på CodePlane Go - {{link}}",
+    "Den gratis kampanjen for {{model}} er avsluttet. Du kan fortsette å bruke modellen ved å abonnere på Codeplane Go - {{link}}",
 
-  "black.meta.title": "CodePlane Black | Få tilgang til verdens beste kodemodeller",
-  "black.meta.description": "Få tilgang til Claude, GPT, Gemini og mer med CodePlane Black-abonnementer.",
+  "black.meta.title": "Codeplane Black | Få tilgang til verdens beste kodemodeller",
+  "black.meta.description": "Få tilgang til Claude, GPT, Gemini og mer med Codeplane Black-abonnementer.",
   "black.hero.title": "Få tilgang til verdens beste kodemodeller",
   "black.hero.subtitle": "Inkludert Claude, GPT, Gemini og mer",
-  "black.title": "CodePlane Black | Priser",
+  "black.title": "Codeplane Black | Priser",
   "black.paused": "Black-planregistrering er midlertidig satt på pause.",
   "black.plan.icon20": "Black 20-plan",
   "black.plan.icon100": "Black 100-plan",
@@ -396,10 +396,10 @@ export const dict = {
   "black.action.continue": "Fortsett",
   "black.finePrint.beforeTerms": "Priser vist inkluderer ikke gjeldende skatt",
   "black.finePrint.terms": "Vilkår for bruk",
-  "black.workspace.title": "CodePlane Black | Velg arbeidsområde",
+  "black.workspace.title": "Codeplane Black | Velg arbeidsområde",
   "black.workspace.selectPlan": "Velg et arbeidsområde for denne planen",
   "black.workspace.name": "Arbeidsområde {{n}}",
-  "black.subscribe.title": "Abonner på CodePlane Black",
+  "black.subscribe.title": "Abonner på Codeplane Black",
   "black.subscribe.paymentMethod": "Betalingsmetode",
   "black.subscribe.loadingPaymentForm": "Laster betalingsskjema...",
   "black.subscribe.selectWorkspaceToContinue": "Velg et arbeidsområde for å fortsette",
@@ -411,9 +411,9 @@ export const dict = {
   "black.subscribe.processing": "Behandler...",
   "black.subscribe.submit": "Abonner ${{plan}}",
   "black.subscribe.form.chargeNotice": "Du blir kun belastet når abonnementet ditt aktiveres",
-  "black.subscribe.success.title": "Du er på ventelisten for CodePlane Black",
+  "black.subscribe.success.title": "Du er på ventelisten for Codeplane Black",
   "black.subscribe.success.subscriptionPlan": "Abonnementsplan",
-  "black.subscribe.success.planName": "CodePlane Black {{plan}}",
+  "black.subscribe.success.planName": "Codeplane Black {{plan}}",
   "black.subscribe.success.amount": "Beløp",
   "black.subscribe.success.amountValue": "${{plan}} per måned",
   "black.subscribe.success.paymentMethod": "Betalingsmetode",
@@ -614,15 +614,15 @@ export const dict = {
   "workspace.black.time.minutes": "minutter",
   "workspace.black.time.fewSeconds": "noen få sekunder",
   "workspace.black.subscription.title": "Abonnement",
-  "workspace.black.subscription.message": "Du abonnerer på CodePlane Black for ${{plan}} per måned.",
+  "workspace.black.subscription.message": "Du abonnerer på Codeplane Black for ${{plan}} per måned.",
   "workspace.black.subscription.manage": "Administrer abonnement",
   "workspace.black.subscription.rollingUsage": "5-timers bruk",
   "workspace.black.subscription.weeklyUsage": "Ukentlig bruk",
   "workspace.black.subscription.resetsIn": "Nullstilles om",
   "workspace.black.subscription.useBalance": "Bruk din tilgjengelige saldo etter å ha nådd bruksgrensene",
   "workspace.black.waitlist.title": "Venteliste",
-  "workspace.black.waitlist.joined": "Du står på venteliste for CodePlane Black-planen til ${{plan}} per måned.",
-  "workspace.black.waitlist.ready": "Vi er klare til å melde deg på CodePlane Black-planen til ${{plan}} per måned.",
+  "workspace.black.waitlist.joined": "Du står på venteliste for Codeplane Black-planen til ${{plan}} per måned.",
+  "workspace.black.waitlist.ready": "Vi er klare til å melde deg på Codeplane Black-planen til ${{plan}} per måned.",
   "workspace.black.waitlist.leave": "Forlat venteliste",
   "workspace.black.waitlist.leaving": "Forlater...",
   "workspace.black.waitlist.left": "Forlot",
@@ -640,7 +640,7 @@ export const dict = {
   "workspace.lite.time.minute": "minutt",
   "workspace.lite.time.minutes": "minutter",
   "workspace.lite.time.fewSeconds": "noen få sekunder",
-  "workspace.lite.subscription.message": "Du abonnerer på CodePlane Go.",
+  "workspace.lite.subscription.message": "Du abonnerer på Codeplane Go.",
   "workspace.lite.subscription.manage": "Administrer abonnement",
   "workspace.lite.subscription.rollingUsage": "Løpende bruk",
   "workspace.lite.subscription.weeklyUsage": "Ukentlig bruk",
@@ -648,13 +648,13 @@ export const dict = {
   "workspace.lite.subscription.resetsIn": "Nullstilles om",
   "workspace.lite.subscription.useBalance": "Bruk din tilgjengelige saldo etter å ha nådd bruksgrensene",
   "workspace.lite.subscription.selectProvider":
-    'Velg "CodePlane Go" som leverandør i codeplane-konfigurasjonen din for å bruke Go-modeller.',
+    'Velg "Codeplane Go" som leverandør i codeplane-konfigurasjonen din for å bruke Go-modeller.',
   "workspace.lite.black.message":
-    "Du abonnerer for øyeblikket på CodePlane Black eller står på venteliste. Vennligst avslutt abonnementet først hvis du vil bytte til Go.",
+    "Du abonnerer for øyeblikket på Codeplane Black eller står på venteliste. Vennligst avslutt abonnementet først hvis du vil bytte til Go.",
   "workspace.lite.other.message":
-    "Et annet medlem i dette arbeidsområdet abonnerer allerede på CodePlane Go. Kun ett medlem per arbeidsområde kan abonnere.",
+    "Et annet medlem i dette arbeidsområdet abonnerer allerede på Codeplane Go. Kun ett medlem per arbeidsområde kan abonnere.",
   "workspace.lite.promo.description":
-    "CodePlane Go starter på {{price}}, deretter $10/måned, og gir pålitelig tilgang til populære åpne kodingsmodeller med sjenerøse bruksgrenser.",
+    "Codeplane Go starter på {{price}}, deretter $10/måned, og gir pålitelig tilgang til populære åpne kodingsmodeller med sjenerøse bruksgrenser.",
   "workspace.lite.promo.price": "$5 for den første måneden",
   "workspace.lite.promo.modelsTitle": "Hva som er inkludert",
   "workspace.lite.promo.footer":
@@ -664,15 +664,15 @@ export const dict = {
   "workspace.lite.promo.otherMethods": "Andre betalingsmetoder",
   "workspace.lite.promo.selectMethod": "Velg betalingsmetode",
 
-  "download.title": "CodePlane | Last ned",
-  "download.meta.description": "Install CodePlane and run the web app locally",
-  "download.hero.title": "Install CodePlane",
-  "download.hero.subtitle": "Run CodePlane as a local web app in your browser",
+  "download.title": "Codeplane | Last ned",
+  "download.meta.description": "Install Codeplane and run the web app locally",
+  "download.hero.title": "Install Codeplane",
+  "download.hero.subtitle": "Run Codeplane as a local web app in your browser",
   "download.hero.button": "Install for {{os}}",
-  "download.section.terminal": "CodePlane Web App",
-  "download.section.webApp": "CodePlane Web App",
-  "download.section.extensions": "CodePlane Extensions",
-  "download.section.integrations": "CodePlane Integrations",
+  "download.section.terminal": "Codeplane Web App",
+  "download.section.webApp": "Codeplane Web App",
+  "download.section.extensions": "Codeplane Extensions",
+  "download.section.integrations": "Codeplane Integrations",
   "download.action.download": "Last ned",
   "download.action.install": "Installer",
 
@@ -683,25 +683,25 @@ export const dict = {
   "download.platform.linuxRpm": "Linux (.rpm)",
 
   "download.faq.a3.beforeLocal":
-    "Ikke nødvendigvis, men sannsynligvis. Du trenger et AI-abonnement hvis du vil koble CodePlane til en betalt leverandør, selv om du kan jobbe med",
+    "Ikke nødvendigvis, men sannsynligvis. Du trenger et AI-abonnement hvis du vil koble Codeplane til en betalt leverandør, selv om du kan jobbe med",
   "download.faq.a3.localLink": "lokale modeller",
   "download.faq.a3.afterLocal.beforeZen": "gratis. Selv om vi oppfordrer brukere til å bruke",
-  "download.faq.a3.afterZen": ", fungerer CodePlane med alle populære leverandører som OpenAI, Anthropic, xAI osv.",
+  "download.faq.a3.afterZen": ", fungerer Codeplane med alle populære leverandører som OpenAI, Anthropic, xAI osv.",
 
-  "download.faq.a5.p1": "CodePlane er 100% gratis å bruke.",
+  "download.faq.a5.p1": "Codeplane er 100% gratis å bruke.",
   "download.faq.a5.p2.beforeZen":
-    "Eventuelle ekstra kostnader kommer fra abonnementet ditt hos en modellleverandør. Selv om CodePlane fungerer med enhver modellleverandør, anbefaler vi å bruke",
+    "Eventuelle ekstra kostnader kommer fra abonnementet ditt hos en modellleverandør. Selv om Codeplane fungerer med enhver modellleverandør, anbefaler vi å bruke",
   "download.faq.a5.p2.afterZen": ".",
 
-  "download.faq.a6.p1": "Dataene og informasjonen din lagres bare når du oppretter delbare lenker i CodePlane.",
+  "download.faq.a6.p1": "Dataene og informasjonen din lagres bare når du oppretter delbare lenker i Codeplane.",
   "download.faq.a6.p2.beforeShare": "Les mer om",
   "download.faq.a6.shareLink": "delingssider",
 
-  "enterprise.title": "CodePlane | Enterprise-løsninger for din organisasjon",
-  "enterprise.meta.description": "Kontakt CodePlane for enterprise-løsninger",
+  "enterprise.title": "Codeplane | Enterprise-løsninger for din organisasjon",
+  "enterprise.meta.description": "Kontakt Codeplane for enterprise-løsninger",
   "enterprise.hero.title": "Koden din er din",
   "enterprise.hero.body1":
-    "CodePlane opererer sikkert inne i organisasjonen din uten at data eller kontekst lagres, og uten lisensbegrensninger eller eierskapskrav. Start en prøveperiode med teamet ditt, og rull den deretter ut i hele organisasjonen ved å integrere den med SSO og din interne AI-gateway.",
+    "Codeplane opererer sikkert inne i organisasjonen din uten at data eller kontekst lagres, og uten lisensbegrensninger eller eierskapskrav. Start en prøveperiode med teamet ditt, og rull den deretter ut i hele organisasjonen ved å integrere den med SSO og din interne AI-gateway.",
   "enterprise.hero.body2": "Fortell oss hvordan vi kan hjelpe.",
   "enterprise.form.name.label": "Fullt navn",
   "enterprise.form.name.placeholder": "Jeff Bezos",
@@ -723,29 +723,29 @@ export const dict = {
   "enterprise.form.error.invalidEmailFormat": "Ugyldig e-postformat.",
   "enterprise.form.error.internalServer": "Intern serverfeil.",
   "enterprise.faq.title": "FAQ",
-  "enterprise.faq.q1": "Hva er CodePlane Enterprise?",
+  "enterprise.faq.q1": "Hva er Codeplane Enterprise?",
   "enterprise.faq.a1":
-    "CodePlane Enterprise er for organisasjoner som vil sikre at koden og dataene deres aldri forlater infrastrukturen. Dette kan gjøres med en sentral konfigurasjon som integreres med SSO og intern AI-gateway.",
-  "enterprise.faq.q2": "Hvordan kommer jeg i gang med CodePlane Enterprise?",
+    "Codeplane Enterprise er for organisasjoner som vil sikre at koden og dataene deres aldri forlater infrastrukturen. Dette kan gjøres med en sentral konfigurasjon som integreres med SSO og intern AI-gateway.",
+  "enterprise.faq.q2": "Hvordan kommer jeg i gang med Codeplane Enterprise?",
   "enterprise.faq.a2":
-    "Start enkelt med en intern prøveperiode med teamet ditt. CodePlane lagrer som standard ikke koden din eller kontekstdata, noe som gjør det enkelt å komme i gang. Kontakt oss deretter for å diskutere priser og implementeringsalternativer.",
+    "Start enkelt med en intern prøveperiode med teamet ditt. Codeplane lagrer som standard ikke koden din eller kontekstdata, noe som gjør det enkelt å komme i gang. Kontakt oss deretter for å diskutere priser og implementeringsalternativer.",
   "enterprise.faq.q3": "Hvordan fungerer enterprise-prising?",
   "enterprise.faq.a3":
     "Vi tilbyr enterprise-prising per sete. Har du din egen LLM-gateway, tar vi ikke betalt for brukte tokens. Kontakt oss for flere detaljer og et tilpasset tilbud basert på organisasjonens behov.",
-  "enterprise.faq.q4": "Er dataene mine sikre med CodePlane Enterprise?",
+  "enterprise.faq.q4": "Er dataene mine sikre med Codeplane Enterprise?",
   "enterprise.faq.a4":
-    "Ja. CodePlane lagrer ikke koden din eller kontekstdata. All behandling skjer lokalt eller gjennom direkte API-kall til AI-leverandøren din. Med sentral konfigurasjon og SSO-integrasjon forblir dataene dine sikre innenfor organisasjonens infrastruktur.",
+    "Ja. Codeplane lagrer ikke koden din eller kontekstdata. All behandling skjer lokalt eller gjennom direkte API-kall til AI-leverandøren din. Med sentral konfigurasjon og SSO-integrasjon forblir dataene dine sikre innenfor organisasjonens infrastruktur.",
 
-  "brand.title": "CodePlane | Merkevare",
-  "brand.meta.description": "CodePlane retningslinjer for merkevare",
+  "brand.title": "Codeplane | Merkevare",
+  "brand.meta.description": "Codeplane retningslinjer for merkevare",
   "brand.heading": "Retningslinjer for merkevare",
-  "brand.subtitle": "Ressurser og assets som hjelper deg å jobbe med CodePlane-brandet.",
+  "brand.subtitle": "Ressurser og assets som hjelper deg å jobbe med Codeplane-brandet.",
   "brand.downloadAll": "Last ned alle assets",
 
-  "changelog.title": "CodePlane | Endringslogg",
-  "changelog.meta.description": "Utgivelsesnotater og endringslogg for CodePlane",
+  "changelog.title": "Codeplane | Endringslogg",
+  "changelog.meta.description": "Utgivelsesnotater og endringslogg for Codeplane",
   "changelog.hero.title": "Endringslogg",
-  "changelog.hero.subtitle": "Nye oppdateringer og forbedringer for CodePlane",
+  "changelog.hero.subtitle": "Nye oppdateringer og forbedringer for Codeplane",
   "changelog.empty": "Ingen endringsloggoppføringer funnet.",
   "changelog.viewJson": "Vis JSON",
 

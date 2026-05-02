@@ -1,33 +1,33 @@
 ---
 title: GitLab
-description: Use CodePlane in GitLab issues and merge requests.
+description: Use Codeplane in GitLab issues and merge requests.
 ---
 
-CodePlane integrates with your GitLab workflow through your GitLab CI/CD pipeline or with GitLab Duo.
+Codeplane integrates with your GitLab workflow through your GitLab CI/CD pipeline or with GitLab Duo.
 
-In both cases, CodePlane will run on your GitLab runners.
+In both cases, Codeplane will run on your GitLab runners.
 
 ---
 
 ## GitLab CI
 
-CodePlane works in a regular GitLab pipeline. You can build it into a pipeline as a [CI component](https://docs.gitlab.com/ee/ci/components/)
+Codeplane works in a regular GitLab pipeline. You can build it into a pipeline as a [CI component](https://docs.gitlab.com/ee/ci/components/)
 
-Here we are using a community-created CI/CD component for CodePlane — [nagyv/gitlab-codeplane](https://gitlab.com/nagyv/gitlab-codeplane).
+Here we are using a community-created CI/CD component for Codeplane — [nagyv/gitlab-codeplane](https://gitlab.com/nagyv/gitlab-codeplane).
 
 ---
 
 ### Features
 
-- **Use custom configuration per job**: Configure CodePlane with a custom configuration directory, for example `./config/#custom-directory` to enable or disable functionality per CodePlane invocation.
-- **Minimal setup**: The CI component sets up CodePlane in the background, you only need to create the CodePlane configuration and the initial prompt.
+- **Use custom configuration per job**: Configure Codeplane with a custom configuration directory, for example `./config/#custom-directory` to enable or disable functionality per Codeplane invocation.
+- **Minimal setup**: The CI component sets up Codeplane in the background, you only need to create the Codeplane configuration and the initial prompt.
 - **Flexible**: The CI component supports several inputs for customizing its behavior
 
 ---
 
 ### Setup
 
-1. Store your CodePlane authentication JSON as a File type CI environment variables under **Settings** > **CI/CD** > **Variables**. Make sure to mark them as "Masked and hidden".
+1. Store your Codeplane authentication JSON as a File type CI environment variables under **Settings** > **CI/CD** > **Variables**. Make sure to mark them as "Masked and hidden".
 2. Add the following to your `.gitlab-ci.yml` file.
 
    ```yaml title=".gitlab-ci.yml"
@@ -35,7 +35,7 @@ Here we are using a community-created CI/CD component for CodePlane — [nagyv/g
      - component: $CI_SERVER_FQDN/nagyv/gitlab-codeplane/codeplane@2
        inputs:
          config_dir: ${CI_PROJECT_DIR}/codeplane-config
-         auth_json: $CODEPLANE_AUTH_JSON # The variable name for your CodePlane authentication JSON
+         auth_json: $CODEPLANE_AUTH_JSON # The variable name for your Codeplane authentication JSON
          command: optional-custom-command
          message: "Your prompt here"
    ```
@@ -46,23 +46,23 @@ For more inputs and use cases [check out the docs](https://gitlab.com/explore/ca
 
 ## GitLab Duo
 
-CodePlane integrates with your GitLab workflow.
-Mention `@codeplane` in a comment, and CodePlane will execute tasks within your GitLab CI pipeline.
+Codeplane integrates with your GitLab workflow.
+Mention `@codeplane` in a comment, and Codeplane will execute tasks within your GitLab CI pipeline.
 
 ---
 
 ### Features
 
-- **Triage issues**: Ask CodePlane to look into an issue and explain it to you.
-- **Fix and implement**: Ask CodePlane to fix an issue or implement a feature.
+- **Triage issues**: Ask Codeplane to look into an issue and explain it to you.
+- **Fix and implement**: Ask Codeplane to fix an issue or implement a feature.
   It will create a new branch and raise a merge request with the changes.
-- **Secure**: CodePlane runs on your GitLab runners.
+- **Secure**: Codeplane runs on your GitLab runners.
 
 ---
 
 ### Setup
 
-CodePlane runs in your GitLab CI/CD pipeline, here's what you'll need to set it up:
+Codeplane runs in your GitLab CI/CD pipeline, here's what you'll need to set it up:
 
 :::tip
 Check out the [**GitLab docs**](https://docs.gitlab.com/user/duo_agent_platform/agent_assistant/) for up to date instructions.
@@ -91,7 +91,7 @@ Check out the [**GitLab docs**](https://docs.gitlab.com/user/duo_agent_platform/
       - apt-get install --yes glab
       - echo "Configuring glab"
       - echo $GITLAB_HOST
-      - echo "Creating CodePlane auth configuration"
+      - echo "Creating Codeplane auth configuration"
       - mkdir --parents ~/.local/share/codeplane
       - |
         cat > ~/.local/share/codeplane/auth.json << EOF
@@ -104,10 +104,10 @@ Check out the [**GitLab docs**](https://docs.gitlab.com/user/duo_agent_platform/
         EOF
       - echo "Configuring git"
       - git config --global user.email "codeplane@gitlab.com"
-      - git config --global user.name "CodePlane"
+      - git config --global user.name "Codeplane"
       - echo "Testing glab"
       - glab issue list
-      - echo "Running CodePlane"
+      - echo "Running Codeplane"
       - |
         codeplane run "
         You are an AI assistant helping with GitLab operations.
@@ -158,7 +158,7 @@ You can refer to the [GitLab CLI agents docs](https://docs.gitlab.com/user/duo_a
 
 ### Examples
 
-Here are some examples of how you can use CodePlane in GitLab.
+Here are some examples of how you can use Codeplane in GitLab.
 
 :::tip
 You can configure to use a different trigger phrase than `@codeplane`.
@@ -172,7 +172,7 @@ You can configure to use a different trigger phrase than `@codeplane`.
   @codeplane explain this issue
   ```
 
-  CodePlane will read the issue and reply with a clear explanation.
+  Codeplane will read the issue and reply with a clear explanation.
 
 - **Fix an issue**
 
@@ -182,7 +182,7 @@ You can configure to use a different trigger phrase than `@codeplane`.
   @codeplane fix this
   ```
 
-  CodePlane will create a new branch, implement the changes, and open a merge request with the changes.
+  Codeplane will create a new branch, implement the changes, and open a merge request with the changes.
 
 - **Review merge requests**
 
@@ -192,4 +192,4 @@ You can configure to use a different trigger phrase than `@codeplane`.
   @codeplane review this merge request
   ```
 
-  CodePlane will review the merge request and provide feedback.
+  Codeplane will review the merge request and provide feedback.
