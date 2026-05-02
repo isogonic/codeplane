@@ -44,6 +44,9 @@ async function syncReadme(version: string) {
   const next = current
     .replaceAll(/releases\/download\/v[^/]+-desktop\//g, `releases/download/${desktopTag}/`)
     .replaceAll(/releases\/tag\/v[^\s"]+-desktop/g, `releases/tag/${desktopTag}`)
+    .replaceAll(/releases\/tag\/v[^\s"]+(?="><strong>v[^<]+ CLI)/g, `releases/tag/v${version}`)
+    .replaceAll(/>v[^<]+&#8209;desktop</g, `>v${version}&#8209;desktop<`)
+    .replaceAll(/>v[^<]+ CLI</g, `>v${version} CLI<`)
     .replaceAll(/Current%20Desktop%20Release-v[^-]+(?:\.[^-]+)*(?:-[^-]+)?--desktop/g, `Current%20Desktop%20Release-${version}--desktop`)
   if (next === current) return false
   await Bun.write(file, next)

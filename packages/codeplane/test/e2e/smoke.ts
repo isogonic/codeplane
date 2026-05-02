@@ -136,7 +136,7 @@ const server = http.createServer((request, response) => {
   const url = new URL(request.url || "/", "http://127.0.0.1")
   response.setHeader("content-type", "application/json; charset=utf-8")
   if (url.pathname === "/global/version") {
-    response.end(JSON.stringify({ current: "27.3.0-test" }) + "\\n")
+    response.end(JSON.stringify({ current: "27.3.1-test" }) + "\\n")
     return
   }
   if (url.pathname === "/path") {
@@ -196,7 +196,7 @@ describe("codeplane smoke", () => {
       "--id",
       "local-1",
       "--runtime-version",
-      "27.3.0",
+      "27.3.1",
     ])
     expect(addLocal.code).toBe(0)
     expect(addLocal.stderr).not.toContain("reserved word")
@@ -226,7 +226,7 @@ describe("codeplane smoke", () => {
           type: "local",
           default: true,
           url: "local://local-1",
-          version: "27.3.0",
+          version: "27.3.1",
         }),
       ]),
     )
@@ -242,7 +242,7 @@ describe("codeplane smoke", () => {
   test("local instance open starts a managed local server and resolves the live URL", async () => {
     await using tmp = await tmpdir()
     await prepare(tmp.path)
-    await writeFakeLocalRuntime(tmp.path, "27.3.0")
+    await writeFakeLocalRuntime(tmp.path, "27.3.1")
 
     const addLocal = await runCli(tmp.path, [
       "instance",
@@ -253,7 +253,7 @@ describe("codeplane smoke", () => {
       "--id",
       "local-1",
       "--runtime-version",
-      "27.3.0",
+      "27.3.1",
     ])
     expect(addLocal.code).toBe(0)
 
@@ -271,7 +271,7 @@ describe("codeplane smoke", () => {
     expect(result.id).toBe("local-1")
     expect(result.savedUrl).toBe("local://local-1")
     expect(result.liveUrl).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/)
-    expect(result.version).toBe("27.3.0-test")
+    expect(result.version).toBe("27.3.1-test")
     expect(result.path.directory).toBe(path.join(paths(tmp.path).codeplaneHome, "local_server", "local-1"))
     expect(await fs.access(path.join(paths(tmp.path).codeplaneHome, "local_server", "local-1", "data")).then(() => true).catch(() => false)).toBe(true)
     expect(await fs.access(path.join(paths(tmp.path).codeplaneHome, "bin", ".codeplane-version")).then(() => true).catch(() => false)).toBe(true)

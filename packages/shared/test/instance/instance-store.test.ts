@@ -27,7 +27,7 @@ describe("instance-store", () => {
       files.legacy,
       `${JSON.stringify(
         {
-          instances: [{ id: "local-1", url: "local://local-1", local: { binaryVersion: "27.3.0" } }],
+          instances: [{ id: "local-1", url: "local://local-1", local: { binaryVersion: "27.3.1" } }],
           lastInstanceID: "local-1",
         },
         null,
@@ -39,7 +39,7 @@ describe("instance-store", () => {
     const state = await store.migrate(files.legacy)
 
     expect(state).toEqual({
-      instances: [{ id: "local-1", url: "local://local-1", local: { binaryVersion: "27.3.0" } }],
+      instances: [{ id: "local-1", url: "local://local-1", local: { binaryVersion: "27.3.1" } }],
       lastInstanceID: "local-1",
     })
     expect(await store.getState()).toEqual(state)
