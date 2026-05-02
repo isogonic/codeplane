@@ -17,6 +17,9 @@ await import("./generate.ts")
 import { Script } from "@codeplane-ai/script"
 import pkg from "../package.json"
 
+const repo = process.env.GH_REPO ?? "devinoldenburg/codeplane"
+const repoURL = `https://github.com/${repo}`
+
 // Load migrations from migration directories
 const migrationDirs = (
   await fs.promises.readdir(path.join(dir, "migration"), {
@@ -260,6 +263,15 @@ for (const item of targets) {
       {
         name,
         version: Script.version,
+        license: pkg.license,
+        repository: {
+          type: "git",
+          url: repoURL,
+        },
+        bugs: {
+          url: `${repoURL}/issues`,
+        },
+        homepage: repoURL,
         os: [item.os],
         cpu: [item.arch],
       },

@@ -3,6 +3,7 @@
 - The default branch in this repo is `main`.
 - Local `main` ref may not exist; use `dev` or `origin/dev` for diffs.
 - Prefer automation: execute requested actions without confirmation unless blocked by missing info or safety/irreversibility.
+- When creating GitHub releases, use the plain source tag as the release title (for example `v27.2.0`, including paired desktop releases), and follow the existing repo release-note structure from prior releases: start at `## Highlights`, use factual section headings, and do not title or open the notes with `Codeplane <version>`.
 
 ## Style Guide
 
