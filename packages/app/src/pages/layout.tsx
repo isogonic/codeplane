@@ -2587,8 +2587,8 @@ export default function Layout(props: ParentProps) {
               aria-label={language.t("sidebar.nav.projectsAndSessions")}
               data-component="sidebar-nav-wide"
               classList={{
-                "hidden sm:block absolute inset-y-0 left-0": true,
-                "max-w-16 xl:max-w-none": true,
+                "hidden xl:block": true,
+                "absolute inset-y-0 left-0": true,
                 "z-10": true,
               }}
               style={{ width: `${side()}px` }}
@@ -2664,8 +2664,7 @@ export default function Layout(props: ParentProps) {
             <div
               classList={{
                 "absolute inset-0": true,
-                "sm:inset-y-0 sm:right-0 sm:left-16": true,
-                "xl:left-[var(--main-left)]": true,
+                "xl:inset-y-0 xl:right-0 xl:left-[var(--main-left)]": true,
                 "z-20": true,
                 "transition-[left] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[left] motion-reduce:transition-none":
                   !state.sizing,
@@ -2676,7 +2675,7 @@ export default function Layout(props: ParentProps) {
             >
               <main
                 classList={{
-                  "size-full overflow-x-hidden flex flex-col items-start contain-strict border-t border-border-weak-base bg-background-base sm:border-l sm:rounded-tl-[12px]": true,
+                  "size-full overflow-x-hidden flex flex-col items-start contain-strict border-t border-border-weak-base bg-background-base xl:border-l xl:rounded-tl-[12px]": true,
                 }}
               >
                 <Show when={!autoselecting.loading} fallback={<div class="size-full" />}>

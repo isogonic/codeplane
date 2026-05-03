@@ -1,5 +1,5 @@
 import type { BoxRenderable, TextareaRenderable, KeyEvent, ScrollBoxRenderable } from "@opentui/core"
-import { pathToFileURL } from "bun"
+import { pathToFileURL } from "node:url"
 import fuzzysort from "fuzzysort"
 import path from "path"
 import { firstBy } from "remeda"

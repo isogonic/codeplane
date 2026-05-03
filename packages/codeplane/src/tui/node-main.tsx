@@ -4,6 +4,13 @@
 //   3. service.open() the instance to translate `local://` -> live http URL
 //   4. Hand off to the SolidJS TUI's `tui()` function
 //
+// The runtime-plugin-support side-effect lives here (the TUI runtime
+// entry) instead of inside @/tui/plugin/runtime.ts because that file is
+// transitively reachable from the main CLI bundle, and runtime-plugin-
+// support-configure.ts imports the "bun" builtin which the main browser-
+// conditioned build cannot bundle. The TUI bundle has target="bun" and
+// can.
+import "@opentui/solid/runtime-plugin-support"
 // Log routing is set up FIRST (before any other module is imported) so that
 // Log.Default.* calls during downstream module init don't write to stderr —
 // opentui's renderer captures stderr and would otherwise surface every

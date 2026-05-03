@@ -79,13 +79,23 @@ const createEmbeddedWebUIBundle = async () => {
 }
 
 const buildTUIBundle = async (outdir: string) => {
+  // The TUI is SolidJS + opentui. Without the Solid Babel transform the
+  // bundler can't resolve @opentui/solid/jsx-runtime (it only ships .d.ts).
+  // Mirrors tui/launcher.ts → buildDevEntry.
+  const { createSolidTransformPlugin } = await import("@opentui/solid/bun-plugin")
   const result = await Bun.build({
     entrypoints: ["./src/tui/node-main.tsx"],
-    target: "node",
+    // The TUI uses Bun-only APIs via @opentui/core (bun:ffi) and
+    // @opentui/solid/{bun-plugin,runtime-plugin-support} (registerBunPlugin),
+    // so the bundle must be Bun-targeted. The launcher prefers a bundled bun
+    // runtime over node anyway (see tui/launcher.ts → bundledRuntimeCandidates).
+    target: "bun",
     format: "esm",
     minify: true,
     splitting: false,
     outdir,
+    plugins: [createSolidTransformPlugin()],
+    conditions: ["browser"],
   })
   if (!result.success) {
     throw new AggregateError(
@@ -215,9 +225,28 @@ for (const item of targets) {
   await $`mkdir -p dist/${name}/bin`
 
   await Bun.build({
+    // The bundler classifies the build by `target`. Without this, it defaults
+    // to a browser-style classifier that rejects "bun" builtin imports — even
+    // though `compile.target` below produces a Bun standalone executable.
+    // The dev-only TUI rebuild (tui/launcher.ts → buildDevEntry) imports
+    // @opentui/solid/bun-plugin, which uses `import { plugin } from "bun"`,
+    // so the bundler must accept that.
+    target: "bun",
     conditions: ["browser"],
     tsconfig: "./tsconfig.json",
-    external: ["node-gyp"],
+    // @opentui/solid/{bun-plugin,runtime-plugin-support} are TUI-only entries
+    // that import the "bun" builtin at module top-level. The main CLI bundle
+    // never executes them (TUI runs as a subprocess via the separate
+    // buildTUIBundle output), so externalizing them prevents the bundler
+    // from rejecting their bun-builtin imports.
+    external: [
+      "node-gyp",
+      "@opentui/solid/runtime-plugin-support",
+      "@opentui/solid/runtime-plugin-support/configure",
+      "@opentui/solid/bun-plugin",
+      "@opentui/core/runtime-plugin-support",
+      "@opentui/core/runtime-plugin-support/configure",
+    ],
     format: "esm",
     minify: true,
     splitting: true,
