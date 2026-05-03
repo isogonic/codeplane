@@ -1199,6 +1199,13 @@ export default function Layout(props: ParentProps) {
         onSelect: () => openSettings(),
       },
       {
+        id: "quickSwitcher.open",
+        title: language.t("command.quickSwitcher.open"),
+        category: language.t("command.category.view"),
+        keybind: "mod+j",
+        onSelect: () => openQuickSwitcher(),
+      },
+      {
         id: "session.previous",
         title: language.t("command.session.previous"),
         category: language.t("command.category.session"),
@@ -1357,6 +1364,20 @@ export default function Layout(props: ParentProps) {
 
   function openSettings() {
     navigateWithSidebarReset("/settings")
+  }
+
+  function openQuickSwitcher() {
+    const run = ++dialogRun
+    void import("@/components/dialog-quick-switcher").then((x) => {
+      if (dialogDead || dialogRun !== run) return
+      dialog.show(() => (
+        <x.DialogQuickSwitcher
+          currentDirectory={currentDir()}
+          onChooseProject={() => void chooseProject()}
+          onSwitchServer={() => openServer()}
+        />
+      ))
+    })
   }
 
   function projectRoot(directory: string) {

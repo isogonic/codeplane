@@ -911,6 +911,15 @@ async function installShellUpdate(version: string) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
     logger.log("main", "updater.download.error", { error: errorMessage })
+    // Squirrel.Mac's code-signature failure surfaces both as an autoUpdater
+    // 'error' event (handled in setupAutoUpdater, which routes the user to
+    // manual download) AND a downloadUpdate() rejection. The event fires
+    // synchronously before this catch runs and latches manualDownloadOnly,
+    // so don't broadcast 'updater:error' here — it would clobber the
+    // 'manual-required' state the renderer just transitioned into.
+    if (desktopShellManualDownloadOnly || isCodeSignatureValidationError(errorMessage)) {
+      return { ok: false as const, error: errorMessage }
+    }
     broadcastUpdater("updater:error", errorMessage)
     return { ok: false as const, error: errorMessage }
   }
