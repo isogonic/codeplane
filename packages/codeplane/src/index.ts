@@ -1,3 +1,8 @@
+// CRITICAL: preflight MUST be the first import. It scans argv for
+// `--instance <id>` and sets CODEPLANE_HOME_DIR before Global computes
+// the resolved Codeplane home paths. See src/cli/preflight.ts for the
+// full rationale. Don't reorder this above any other import.
+import "./cli/preflight"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 import { Log } from "./util"
