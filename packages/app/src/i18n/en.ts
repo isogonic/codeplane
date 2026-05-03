@@ -92,6 +92,19 @@ export const dict = {
   "session.cron.readonly": "This is a scheduled task session. The agent runs autonomously — no input is accepted.",
 
   "command.palette": "Command palette",
+  "command.quickSwitcher.open": "Quick switcher",
+
+  "quickSwitcher.title": "Quick switcher",
+  "quickSwitcher.search.label": "Search",
+  "quickSwitcher.search.placeholder": "Search sessions, projects, servers…",
+  "quickSwitcher.empty": "No matches.",
+  "quickSwitcher.section.sessions": "Sessions in this project",
+  "quickSwitcher.section.projects": "Projects",
+  "quickSwitcher.section.actions": "Actions",
+  "quickSwitcher.action.browseProject": "Browse and open another directory",
+  "quickSwitcher.action.switchServer": "Switch server",
+  "quickSwitcher.label.current": "Current",
+  "quickSwitcher.hint.enter": "↵",
 
   "command.theme.cycle": "Cycle theme",
   "command.theme.set": "Use theme: {{theme}}",

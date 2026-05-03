@@ -75,6 +75,13 @@ type CacheMetadata = {
   version: string
 }
 
+type OriginIndexEntry = {
+  checkedAt: number
+  version: string
+}
+
+type OriginIndex = Record<string, OriginIndexEntry>
+
 type ProxyInstance = {
   id: string
   key: string
@@ -242,6 +249,42 @@ function cacheRoot(base: string) {
 
 function versionRoot(base: string, version: string) {
   return path.join(cacheRoot(base), version)
+}
+
+function originIndexFile(base: string) {
+  return path.join(cacheRoot(base), "origins.json")
+}
+
+async function readOriginIndex(base: string): Promise<OriginIndex> {
+  const file = originIndexFile(base)
+  if (!(await exists(file))) return {}
+  try {
+    const parsed = JSON.parse(await fs.readFile(file, "utf8"))
+    return parsed && typeof parsed === "object" ? (parsed as OriginIndex) : {}
+  } catch {
+    return {}
+  }
+}
+
+async function writeOriginIndex(base: string, value: OriginIndex) {
+  await fs.mkdir(cacheRoot(base), { recursive: true })
+  await fs.writeFile(originIndexFile(base), `${JSON.stringify(value, null, 2)}\n`)
+}
+
+async function markOriginChecked(base: string, origin: string, version: string) {
+  const index = await readOriginIndex(base)
+  index[origin] = { checkedAt: Date.now(), version }
+  await writeOriginIndex(base, index)
+}
+
+async function freshOriginCache(base: string, origin: string) {
+  const index = await readOriginIndex(base)
+  const entry = index[origin]
+  if (!entry) return undefined
+  if (Date.now() - entry.checkedAt >= CACHE_TTL_MS) return undefined
+  const root = versionRoot(base, entry.version)
+  if (!(await exists(path.join(root, "index.html")))) return undefined
+  return entry
 }
 
 function staticFile(root: string, pathname: string) {
@@ -653,6 +696,39 @@ export function createDesktopUIHost(input: {
   ) => {
     log("prepare.start", { id: instance.id, url: instance.url })
     const session = input.getSession(instance)
+    const originValue = instanceOrigin(instance.url)
+
+    // Fast path: if we re-validated this origin within CACHE_TTL_MS and the
+    // cached UI is intact on disk, reuse it without probing the server. New
+    // versions that ship while we're connected are still picked up by the
+    // server-version watcher (~15s poll), which triggers a re-prepare.
+    const fresh = await freshOriginCache(input.cacheDir, originValue)
+    if (fresh) {
+      log("cache.fresh", {
+        checkedAt: fresh.checkedAt,
+        id: instance.id,
+        origin: originValue,
+        version: fresh.version,
+      })
+      activeID = instance.id
+      const cachedRoot = versionRoot(input.cacheDir, fresh.version)
+      await ensureLegacyThemeAssets(cachedRoot)
+      await touchVersion(input.cacheDir, fresh.version, originValue)
+      root = cachedRoot
+      const url = `${await ensureServer()}/?server=${encodeURIComponent(instance.id)}&ui=${encodeURIComponent(fresh.version)}`
+      progress?.({
+        cacheHit: true,
+        completed: 1,
+        message: `Using cached UI for Codeplane ${fresh.version}.`,
+        percent: 100,
+        phase: "done",
+        total: 1,
+        version: fresh.version,
+      })
+      log("prepare.success", { fast: true, id: instance.id, root, version: fresh.version })
+      return { url, version: fresh.version }
+    }
+
     progress?.({
       phase: "probe",
       message: "Checking server version…",
@@ -686,7 +762,8 @@ export function createDesktopUIHost(input: {
       version,
     })
     await cleanupUnused(input.cacheDir)
-    await touchVersion(input.cacheDir, version, instanceOrigin(instance.url))
+    await touchVersion(input.cacheDir, version, originValue)
+    await markOriginChecked(input.cacheDir, originValue, version)
     log("prepare.success", { id: instance.id, root, version })
     const url = `${await ensureServer()}/?server=${encodeURIComponent(instance.id)}&ui=${encodeURIComponent(version)}`
     progress?.({
