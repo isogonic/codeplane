@@ -21,6 +21,7 @@ import { ensureProcessMetadata } from "./util/codeplane-process"
 import { TuiCommand } from "./cli/cmd/tui"
 import { resolveCliArgs } from "./tui/dispatch"
 import { InstanceCommand } from "./cli/cmd/instance"
+import { GenerateCommand } from "./cli/cmd/generate"
 
 const processMetadata = ensureProcessMetadata("main")
 
@@ -140,6 +141,12 @@ const cli = yargs(args)
   .command(WebCommand)
   .command(TuiCommand)
   .command(InstanceCommand)
+  // Internal-only: hidden from help (describe: false). Used by the SDK
+  // build pipeline (packages/sdk/js/script/build.ts) to emit the OpenAPI
+  // spec for hey-api regeneration. Restored after v27.4.24's strict-4-
+  // surface refactor — the user-visible CLI is still just serve/web/tui/
+  // instance.
+  .command(GenerateCommand)
   .fail((msg, err) => {
     if (
       msg?.startsWith("Unknown argument") ||

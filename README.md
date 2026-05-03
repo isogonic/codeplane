@@ -76,7 +76,7 @@ Pre-built desktop installers for the current release.
       <td>Apple Silicon</td>
       <td><code>.dmg</code></td>
       <td align="right">
-        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.25-desktop/codeplane-desktop-macos-apple-silicon.dmg">
+        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.26-desktop/codeplane-desktop-macos-apple-silicon.dmg">
           <img alt="Download for macOS Apple Silicon" src="https://img.shields.io/badge/Download-0a0a0a?style=for-the-badge&logo=apple&logoColor=white" />
         </a>
       </td>
@@ -86,7 +86,7 @@ Pre-built desktop installers for the current release.
       <td>Intel</td>
       <td><code>.dmg</code></td>
       <td align="right">
-        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.25-desktop/codeplane-desktop-macos-intel.dmg">
+        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.26-desktop/codeplane-desktop-macos-intel.dmg">
           <img alt="Download for macOS Intel" src="https://img.shields.io/badge/Download-0a0a0a?style=for-the-badge&logo=apple&logoColor=white" />
         </a>
       </td>
@@ -96,7 +96,7 @@ Pre-built desktop installers for the current release.
       <td>x64</td>
       <td><code>.exe</code></td>
       <td align="right">
-        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.25-desktop/codeplane-desktop-windows-x64.exe">
+        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.26-desktop/codeplane-desktop-windows-x64.exe">
           <img alt="Download for Windows" src="https://img.shields.io/badge/Download-0a0a0a?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDMuNDQ5TDkuNzUgMi4xVjExLjUxSDB6TTEwLjk0OSAxOS40NUwyMy45OTggMjEuOVYxMi43SDEwLjk0OXpNMCAxMi43VjIxLjJsOS43NSAxLjM1VjEyLjd6TTEwLjk0OSAyLjFWMTEuNDk1SDIzLjk5OFY0LjE5eiIvPjwvc3ZnPg==&logoColor=white" />
         </a>
       </td>
@@ -106,7 +106,7 @@ Pre-built desktop installers for the current release.
       <td>x64</td>
       <td><code>.AppImage</code></td>
       <td align="right">
-        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.25-desktop/codeplane-desktop-linux-x64.AppImage">
+        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.26-desktop/codeplane-desktop-linux-x64.AppImage">
           <img alt="Download for Linux" src="https://img.shields.io/badge/Download-0a0a0a?style=for-the-badge&logo=linux&logoColor=white" />
         </a>
       </td>
@@ -114,7 +114,7 @@ Pre-built desktop installers for the current release.
   </tbody>
 </table>
 
-<sub>Current desktop release: <a href="https://github.com/devinoldenburg/codeplane/releases/tag/v27.4.25-desktop"><strong>v27.4.25&#8209;desktop</strong></a> &nbsp;·&nbsp; <a href="https://github.com/devinoldenburg/codeplane/releases/tag/v27.4.25"><strong>v27.4.25 CLI</strong></a> &nbsp;·&nbsp; <a href="https://github.com/devinoldenburg/codeplane/releases">Browse all releases</a></sub>
+<sub>Current desktop release: <a href="https://github.com/devinoldenburg/codeplane/releases/tag/v27.4.26-desktop"><strong>v27.4.26&#8209;desktop</strong></a> &nbsp;·&nbsp; <a href="https://github.com/devinoldenburg/codeplane/releases/tag/v27.4.26"><strong>v27.4.26 CLI</strong></a> &nbsp;·&nbsp; <a href="https://github.com/devinoldenburg/codeplane/releases">Browse all releases</a></sub>
 
 > Desktop installers ship on the dedicated `vX.Y.Z-desktop` release line. Builds are **ad-hoc signed** (no Apple Developer ID), so the desktop's in-app updater preempts macOS Squirrel and routes users to the GitHub release page for the next dmg with a single click. See [Updates](#updates) for the full behavior matrix.
 
