@@ -25,6 +25,8 @@ type InstanceAddArgs = {
   local?: boolean
   target?: string
   "runtime-version"?: string
+  username?: string
+  password?: string
 }
 
 type InstanceIDArgs = {
@@ -38,6 +40,22 @@ type InstanceProbeArgs = {
 
 type InstanceLocalVersionArgs = {
   version?: string
+}
+
+// Combine --header lines with the dedicated --username / --password fields.
+// Username/password compose into an Authorization: Basic … header that
+// overrides any Authorization line in --header (the explicit field wins),
+// matching the desktop's saved-instance form behavior.
+function composeRemoteHeaders(input: InstanceAddArgs): Record<string, string> | undefined {
+  const headers = parseInstanceHeaders(input.header)
+  const user = (input.username ?? "").trim()
+  const pass = input.password ?? ""
+  if (user || pass) {
+    const authKey = Object.keys(headers).find((k) => k.toLowerCase() === "authorization")
+    if (authKey) delete headers[authKey]
+    headers["Authorization"] = `Basic ${Buffer.from(`${user}:${pass}`, "utf8").toString("base64")}`
+  }
+  return Object.keys(headers).length ? headers : undefined
 }
 
 export function parseInstanceHeaders(input: string[] = []) {
@@ -212,6 +230,14 @@ export const InstanceAddCommand = cmd({
         default: false,
         describe: "skip TLS certificate validation for this saved instance",
       })
+      .option("username", {
+        type: "string",
+        describe: "HTTP Basic Auth username for this remote (composes Authorization: Basic …)",
+      })
+      .option("password", {
+        type: "string",
+        describe: "HTTP Basic Auth password for this remote (composes Authorization: Basic …)",
+      })
       .option("local", {
         type: "boolean",
         default: false,
@@ -239,7 +265,7 @@ export const InstanceAddCommand = cmd({
           id,
           label: input.label,
           url: normalizeInstanceUrl(input.target || "") || "",
-          headers: parseInstanceHeaders(input.header),
+          headers: composeRemoteHeaders(input),
           ignoreCertificateErrors: Boolean(input.ignoreCertificateErrors),
         }
     if (!instance.url) throw new Error("A remote target is required unless --local is used.")

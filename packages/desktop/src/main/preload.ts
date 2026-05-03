@@ -92,6 +92,10 @@ const api = {
         status?: number
         error?: string
       }>,
+    signInWithBrowser: (input: { id: string; url: string }) =>
+      ipcRenderer.invoke("instances:sign-in-with-browser", input) as Promise<
+        { ok: true; cookieHeader: string; cookieCount: number } | { ok: false; error: string }
+      >,
   },
   auth: {
     openExternal: (url: string) => ipcRenderer.invoke("auth:open-external", url) as Promise<boolean>,

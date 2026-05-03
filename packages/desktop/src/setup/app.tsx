@@ -903,12 +903,59 @@ const InstanceForm: Component<{
   onCancel: () => void
   onSaved: () => void
 }> = (props) => {
+  // If the saved instance already has an "Authorization: Basic …" header,
+  // peel it off so the dedicated username/password fields can pre-fill from
+  // it. Anything that isn't the Basic auth header stays in the headers blob
+  // so existing CF Access / SSO pastes don't get clobbered.
+  const splitBasicAuth = (h: Record<string, string> | undefined) => {
+    if (!h) return { user: "", pass: "", rest: undefined as Record<string, string> | undefined }
+    const authKey = Object.keys(h).find((k) => k.toLowerCase() === "authorization")
+    const authVal = authKey ? h[authKey] : undefined
+    const m = authVal && /^Basic\s+([A-Za-z0-9+/=]+)$/i.exec(authVal.trim())
+    if (!authKey || !m) return { user: "", pass: "", rest: h }
+    try {
+      const decoded = atob(m[1])
+      const idx = decoded.indexOf(":")
+      if (idx === -1) return { user: "", pass: "", rest: h }
+      const rest = { ...h }
+      delete rest[authKey]
+      return {
+        user: decoded.slice(0, idx),
+        pass: decoded.slice(idx + 1),
+        rest: Object.keys(rest).length ? rest : undefined,
+      }
+    } catch {
+      return { user: "", pass: "", rest: h }
+    }
+  }
+  const initialAuth = splitBasicAuth(props.editing?.headers)
+
   const [label, setLabel] = createSignal(props.editing?.label ?? "")
   const [url, setUrl] = createSignal(props.editing?.url ?? "")
-  const [headers, setHeaders] = createSignal(formatHeaders(props.editing?.headers))
+  const [basicUsername, setBasicUsername] = createSignal(initialAuth.user)
+  const [basicPassword, setBasicPassword] = createSignal(initialAuth.pass)
+  const [headers, setHeaders] = createSignal(formatHeaders(initialAuth.rest))
   const [ignoreCert, setIgnoreCert] = createSignal(!!props.editing?.ignoreCertificateErrors)
   const [iconDataUrl, setIconDataUrl] = createSignal<string | undefined>(props.editing?.iconDataUrl)
-  const [advanced, setAdvanced] = createSignal(!!props.editing?.headers || !!props.editing?.ignoreCertificateErrors)
+  const [signingIn, setSigningIn] = createSignal(false)
+  const [advanced, setAdvanced] = createSignal(
+    !!initialAuth.rest || !!props.editing?.ignoreCertificateErrors,
+  )
+
+  // Compose the full headers map: dedicated Basic Auth fields override any
+  // Authorization line in the headers blob (keeps the form predictable when
+  // both are filled — the explicit field wins).
+  const composedHeaders = (): Record<string, string> | undefined => {
+    const parsed = parseHeaders(headers())
+    const user = basicUsername().trim()
+    const pass = basicPassword()
+    if (user || pass) {
+      const authKey = Object.keys(parsed).find((k) => k.toLowerCase() === "authorization")
+      if (authKey) delete parsed[authKey]
+      parsed["Authorization"] = `Basic ${btoa(`${user}:${pass}`)}`
+    }
+    return Object.keys(parsed).length ? parsed : undefined
+  }
   const [probe, setProbe] = createSignal<{ status: "idle" | "ok" | "error" | "checking"; message?: string }>({
     status: "idle",
   })
@@ -970,12 +1017,11 @@ const InstanceForm: Component<{
     logSetup("probe.start", { url: value })
     probeTimer = setTimeout(async () => {
       try {
-        const parsed = parseHeaders(headers())
         const result = await api.instances.probe({
           id: props.editing?.id ?? uid(),
           url: value,
           label: label().trim() || undefined,
-          headers: Object.keys(parsed).length ? parsed : undefined,
+          headers: composedHeaders(),
           ignoreCertificateErrors: ignoreCert() || undefined,
           clientCertSubject: props.editing?.clientCertSubject,
         })
@@ -1023,12 +1069,11 @@ const InstanceForm: Component<{
     }
     setSaving(true)
     try {
-      const parsed = parseHeaders(headers())
       const instance: SavedInstance = {
         id: props.editing?.id ?? uid(),
         url: url().trim(),
         label: label().trim() || undefined,
-        headers: Object.keys(parsed).length ? parsed : undefined,
+        headers: composedHeaders(),
         ignoreCertificateErrors: ignoreCert() || undefined,
         clientCertSubject: props.editing?.clientCertSubject,
         iconDataUrl: iconDataUrl() || undefined,
@@ -1219,6 +1264,104 @@ const InstanceForm: Component<{
       <Show when={advanced()}>
         <div class="mt-3 flex flex-col gap-4 border-t border-border-weak-base pt-4">
           <div class="flex flex-col gap-2">
+            <span class="text-[13px] font-medium text-text-strong">HTTP Basic Auth</span>
+            <span class="text-[12px] leading-relaxed text-text-weak">
+              For instances behind <code class="rounded bg-surface-base px-1 py-0.5 text-text-base">codeplane serve --password</code>.
+              Username defaults to <code class="rounded bg-surface-base px-1 py-0.5 text-text-base">codeplane</code>.
+            </span>
+            <div class="flex gap-2">
+              <input
+                data-desktop-field="instance-basic-username"
+                type="text"
+                placeholder="codeplane"
+                autocomplete="username"
+                class="min-w-0 flex-1 rounded-md border border-border-weak-base bg-surface-raised-base px-3 py-2 text-[13px] text-text-strong outline-none placeholder:text-text-weaker focus:border-border-interactive-base"
+                value={basicUsername()}
+                disabled={busy()}
+                onInput={(event) => setBasicUsername(event.currentTarget.value)}
+              />
+              <input
+                data-desktop-field="instance-basic-password"
+                type="password"
+                placeholder="••••••••"
+                autocomplete="current-password"
+                class="min-w-0 flex-1 rounded-md border border-border-weak-base bg-surface-raised-base px-3 py-2 text-[13px] text-text-strong outline-none placeholder:text-text-weaker focus:border-border-interactive-base"
+                value={basicPassword()}
+                disabled={busy()}
+                onInput={(event) => setBasicPassword(event.currentTarget.value)}
+              />
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2 border-t border-border-weak-base pt-4">
+            <span class="text-[13px] font-medium text-text-strong">Sign in with browser (Cloudflare Access / SSO)</span>
+            <span class="text-[12px] leading-relaxed text-text-weak">
+              For instances behind Cloudflare Access, an identity-aware proxy, or any SSO redirect.
+              Opens a browser window at the instance URL, you sign in, and the resulting cookies (e.g.
+              <code class="rounded bg-surface-base px-1 py-0.5 text-text-base">CF_Authorization</code>) are
+              saved into the headers below. Re-run when the cookie expires — the desktop will also
+              bounce back here automatically with an "Sign-in required" toast when the server
+              starts returning 401/403.
+            </span>
+            <Button
+              type="button"
+              variant="secondary"
+              size="small"
+              icon="globe"
+              data-desktop-action="instance-sso-signin"
+              disabled={busy() || signingIn() || !url().trim()}
+              onClick={async () => {
+                const target = url().trim()
+                if (!target) {
+                  showToast({ variant: "error", icon: "warning", title: "Enter a URL first" })
+                  return
+                }
+                setSigningIn(true)
+                try {
+                  const result = await api.instances.signInWithBrowser({
+                    id: props.editing?.id ?? uid(),
+                    url: target,
+                  })
+                  if (!result.ok) {
+                    showToast({
+                      variant: "error",
+                      icon: "warning",
+                      title: "Sign-in did not complete",
+                      description: result.error ?? "No cookies were captured.",
+                    })
+                    return
+                  }
+                  // Merge captured cookie line into the existing headers blob
+                  // (deduped by header name — last write wins).
+                  const parsed = parseHeaders(headers())
+                  const cookieKey = Object.keys(parsed).find((k) => k.toLowerCase() === "cookie")
+                  if (cookieKey) delete parsed[cookieKey]
+                  parsed["Cookie"] = result.cookieHeader
+                  setHeaders(formatHeaders(parsed))
+                  showToast({
+                    variant: "success",
+                    icon: "check",
+                    title: "Sign-in captured",
+                    description: `Saved ${result.cookieCount} cookie${result.cookieCount === 1 ? "" : "s"} to the instance headers.`,
+                  })
+                } catch (error) {
+                  logSetup("instance.sso-signin.error", { error })
+                  showToast({
+                    variant: "error",
+                    icon: "warning",
+                    title: "Couldn't open the sign-in window",
+                    description: error instanceof Error ? error.message : String(error),
+                  })
+                } finally {
+                  setSigningIn(false)
+                }
+              }}
+            >
+              {signingIn() ? "Waiting for sign-in…" : "Open sign-in window"}
+            </Button>
+          </div>
+
+          <div class="flex flex-col gap-2 border-t border-border-weak-base pt-4">
             <span class="text-[13px] font-medium text-text-strong">Custom request headers</span>
             <textarea
               data-desktop-field="instance-headers"
@@ -1232,7 +1375,9 @@ const InstanceForm: Component<{
             />
             <span class="text-[12px] leading-relaxed text-text-weak">
               One <code class="rounded bg-surface-base px-1 py-0.5 text-text-base">Header: value</code> per line. Attached
-              to every request to this instance. Headers the page itself sets always win.
+              to every request to this instance. Headers the page itself sets always win. The
+              <code class="rounded bg-surface-base px-1 py-0.5 text-text-base">Authorization</code> header is overridden
+              when a Basic Auth username/password is set above.
             </span>
           </div>
 
