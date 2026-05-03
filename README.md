@@ -49,7 +49,7 @@ Codeplane is an open-source AI coding agent. It runs entirely on your machine (o
 - a **terminal UI** (`codeplane tui`) for working in a shell,
 - and a **web app** (`codeplane web`) that opens the full product in your browser.
 
-All four surfaces share a single SQLite-backed runtime, a shared on-disk configuration tree, and the same saved-instance registry. Add a server in one place and it shows up in the others. Your code, your sessions, and your provider credentials never have to leave the machines you control.
+All four surfaces share a single SQLite-backed runtime and the same saved-instance registry. Add a server in one place and it shows up in the others. Each Codeplane **instance** is a single-user world with its own providers, models, MCP servers, plugins, agents, commands, skills, and `codeplane.jsonc` — completely isolated from every other instance on the same machine. Your code, your sessions, and your provider credentials never have to leave the machines you control.
 
 > Codeplane is a fork of [opencode](https://github.com/sst/opencode) and stays close to upstream for the core agent loop. It adds a polished SolidJS web app, a native Electron shell, a strict client/server architecture, scheduled cron tasks, and a single shared home folder across every surface. See [License & attribution](#license--attribution).
 
@@ -63,7 +63,9 @@ All four surfaces share a single SQLite-backed runtime, a shared on-disk configu
 | **Bring your own provider** | First-class support for Anthropic, OpenAI, Azure OpenAI, Google (Generative AI + Vertex), Amazon Bedrock, Groq, Mistral, Cohere, Perplexity, xAI, Cerebras, DeepInfra, Together AI, Alibaba, Vercel AI Gateway, OpenRouter, GitLab Duo, Venice, plus any OpenAI-compatible endpoint. The full model catalog comes from [models.dev](https://models.dev). |
 | **Run it anywhere** | A single Bun-compiled binary on macOS / Linux / Windows, an Electron desktop bundle, or a headless server inside a container. The same agent runs in all of them. |
 | **Strict client/server split** | The server runs on its own (`codeplane serve`); Desktop, TUI, and the web app are clients that talk to it over HTTP, SSE, and WebSocket. Run the agent on a beefy machine, drive it from a laptop. |
-| **Shared home folder** | Configuration, plugins, skills, agents, and saved instances live in one OS-native folder used by every surface. Move between Desktop, TUI, and CLI without re-configuring anything. |
+| **Per-instance isolation** | Every CLI invocation runs against `<root>/instances/<id>/` — providers, models, MCP, plugins, agents, commands, skills, and `codeplane.jsonc` all live there. `codeplane web -i work` and `codeplane web -i personal` share **nothing**. The default id is `default`; existing global config is auto-migrated on first run. |
+| **One-user-per-instance** | A Codeplane instance has exactly one owner. Want a separate setup for a colleague? Give them their own `--instance <id>`. The auth model is HTTP Basic Auth against a single password — no multi-user account state inside an instance. |
+| **Refuses to expose unprotected** | `codeplane serve --hostname 0.0.0.0` (or any non-loopback hostname) without `--password` exits with a clear refusal — accidental exposure of your provider keys / MCP servers / plugins is not a footgun the CLI lets you trip. |
 | **Real developer tooling** | LSP-aware editing across 50+ languages, MCP server integration, sandboxed shell tools, project-aware git, scheduled (cron) agent runs, and a TypeScript plugin SDK. |
 
 <br />
@@ -155,10 +157,28 @@ bun lint         # oxlint
 Run a headless server on any machine, point clients at it:
 
 ```bash
-CODEPLANE_SERVER_PASSWORD=<secret> codeplane serve --hostname 0.0.0.0 --port 4096
+codeplane serve --hostname 0.0.0.0 --port 4096 --password <secret>
 ```
 
-Then save it as a remote instance from any other Codeplane install (`codeplane instance add https://your-host:4096`).
+`--password` enables HTTP Basic Auth (default username `codeplane`, override with `--username`). Equivalent to setting `CODEPLANE_SERVER_PASSWORD` in the environment — env-var precedence wins, so a launchd / systemd / docker secret stays in control if both are set.
+
+> The CLI **refuses** to bind a non-loopback hostname without a password. Each instance is single-user; exposing one without auth would let anyone reach your model providers, MCP servers, and plugins. Pick a strong password (`openssl rand -hex 24`) and add it to your launch line.
+
+Then save it as a remote instance from any other Codeplane install:
+
+```bash
+codeplane instance add https://your-host:4096 \
+  --header "authorization: Basic $(printf 'codeplane:<secret>' | base64)"
+```
+
+For a multi-tenant box, run one server per tenant under a different `--instance <id>` and a different `--password`:
+
+```bash
+codeplane serve --instance team-a --port 4096 --password "$TEAM_A_SECRET" --hostname 0.0.0.0
+codeplane serve --instance team-b --port 4097 --password "$TEAM_B_SECRET" --hostname 0.0.0.0
+```
+
+Each instance has its own `<root>/instances/<id>/codeplane.jsonc`, plugins, agents, etc. — no leakage.
 
 <br />
 
@@ -190,32 +210,36 @@ The first run prepares a one-time SQLite migration in the shared home folder, th
 
 ## The four surfaces
 
-Codeplane is one runtime with four front doors. Each one connects to the same Hono-based HTTP / SSE / WebSocket server and reads and writes the same shared `Codeplane` home folder.
+Codeplane is one runtime with four front doors. Each one connects to the same Hono-based HTTP / SSE / WebSocket server. Each running server is **scoped to one instance** — its config, plugins, agents, commands, skills, and `codeplane.jsonc` all live under `<root>/instances/<id>/`. The only thing shared across all instances is the saved-instance registry (`<root>/instances.json`) and the cached runtime-binary tarballs (`<root>/local_server/binaries/`).
 
 ```
-                     ┌──────────────────┐
-                     │  Codeplane home  │
-                     │   (instances,    │
-                     │  config, plugins,│
-                     │  skills, agents) │
-                     └────────▲─────────┘
-                              │
-        ┌─────────────────────┼─────────────────────┐
-        │                     │                     │
-   ┌────┴─────┐         ┌─────┴────┐          ┌─────┴────┐
-   │ Desktop  │         │   CLI    │          │   Web    │
-   │ Electron │         │ (yargs)  │          │ (SolidJS)│
-   └────┬─────┘         └────┬─────┘          └─────▲────┘
-        │ spawns              │                     │
-        │  local              │                     │
-        │ runtime             │                     │
-        ▼                     ▼                     │
-   ┌──────────────────────────────────────────────┐ │
-   │             Codeplane server                 │─┘
+                  ┌──────────────────────────────┐
+                  │       Codeplane home         │
+                  │  ┌────────────────────────┐  │
+                  │  │   instances/default/   │  │
+                  │  │   instances/work/      │  │ ← per-instance
+                  │  │   instances/personal/  │  │   isolation:
+                  │  │   …                    │  │   config + plugins
+                  │  └────────────────────────┘  │   + agents +
+                  │  instances.json (registry)   │   commands + skills
+                  │  local_server/binaries/      │
+                  └────────────▲─────────────────┘
+                               │
+        ┌──────────────────────┼──────────────────────┐
+        │                      │                      │
+   ┌────┴─────┐          ┌─────┴────┐           ┌─────┴────┐
+   │ Desktop  │          │   CLI    │           │   Web    │
+   │ Electron │          │ (yargs)  │           │ (SolidJS)│
+   └────┬─────┘          └────┬─────┘           └─────▲────┘
+        │ spawns               │                      │
+        │  per-instance        │ -i <id> picks the    │
+        │  local runtime       │   per-instance dir   │
+        ▼                      ▼                      │
+   ┌──────────────────────────────────────────────┐   │
+   │             Codeplane server                 │───┘
    │     Hono · Effect · Drizzle · SQLite         │
-   │       serve / web / spawned-by-Desktop       │
+   │  scoped to one instance · Basic Auth optional│
    └────────────────────▲─────────────────────────┘
-                        │
                         │
                   ┌─────┴────┐
                   │   TUI    │
@@ -291,9 +315,11 @@ Codeplane is more than a chat box on top of an LLM. The current product surface 
 
 ### Operations
 
-- **mDNS service discovery** (`--mdns`) to make a local server browsable as `codeplane.local` from peers on the network.
+- **HTTP Basic Auth** as a first-class CLI option (`--password <secret>` / `--username <name>` on `serve` and `web`). Mandatory when binding a non-loopback hostname — the CLI refuses to expose an unprotected instance.
+- **One user per instance.** No multi-user accounts inside an instance. Different users → different `--instance <id>` (with their own password).
+- **Per-instance config tree.** Providers, models, MCP, plugins, agents, commands, skills, `codeplane.jsonc` all isolated under `<root>/instances/<id>/`.
+- **mDNS service discovery** (`--mdns`) to make a local server browsable as `codeplane.local` from peers on the network. Still requires `--password` (mDNS forces hostname to `0.0.0.0`).
 - **Optional CORS** allowlist for browser-based clients you trust.
-- **Server password** (`CODEPLANE_SERVER_PASSWORD`) to gate the HTTP API.
 - **Managed configuration** for IT-deployed installs (per-OS system path; macOS managed preferences via MDM `.mobileconfig`).
 - **OpenTelemetry tracing** for the agent runtime when configured.
 
@@ -313,17 +339,28 @@ Start the headless server. Prints the listening URL on stdout.
 
 | Flag | Default | Description |
 | :--- | :--- | :--- |
-| `--hostname` | `127.0.0.1` | Bind hostname. Use `0.0.0.0` to expose on the LAN. |
+| `--instance, -i <id>` | `default` | Per-instance home folder. Sets every config/plugin/MCP/agent/command/skill path to `<root>/instances/<id>/`. The `default` id auto-migrates legacy global config on first run. |
+| `--password <secret>` | *(unset)* | HTTP Basic Auth password. Equivalent to setting `CODEPLANE_SERVER_PASSWORD`. **Required** when `--hostname` is not loopback. |
+| `--username <name>` | `codeplane` | Optional Basic Auth username (only used when `--password` is set). |
+| `--hostname` | `127.0.0.1` | Bind hostname. Use `0.0.0.0` to expose on the LAN — but you **must** also pass `--password` or the CLI exits with a refusal. |
 | `--port` | `0` | Port (`0` picks an ephemeral port and prints it). |
-| `--mdns` | `false` | Enable mDNS service discovery (forces hostname to `0.0.0.0`). |
+| `--mdns` | `false` | Enable mDNS service discovery (forces hostname to `0.0.0.0`, so still requires `--password`). |
 | `--mdns-domain` | `codeplane.local` | Custom mDNS domain. |
 | `--cors <domain>` | `[]` | Repeatable. Additional domain(s) allowed for CORS. |
 
-Set `CODEPLANE_SERVER_PASSWORD` to gate the HTTP API; the server warns when it is unset.
+Behavior matrix:
+
+| Hostname | Password set? | Behavior |
+| :--- | :--- | :--- |
+| `127.0.0.1` / `localhost` / `::1` | yes or no | Starts. Warning if unset (loopback-only is safe enough for dev). |
+| Anything else | **no** | **Exits 1** with a clear refusal. The instance is single-user — exposing it without HTTP Basic Auth would let anyone reach your providers, MCP servers, and plugins. |
+| Anything else | yes | Starts with HTTP Basic Auth on every endpoint. |
+
+`CODEPLANE_SERVER_PASSWORD` and `CODEPLANE_SERVER_USERNAME` env vars are equivalent to the flags and **win over them** so a launchd / systemd / docker secret stays in control.
 
 ### `codeplane web [options]`
 
-Start the server **and** open the web app in your default browser. Same flags as `serve`.
+Start the server **and** open the web app in your default browser. Same flags as `serve` (including `--instance`, `--password`, `--username`, and the same refuse-on-exposed-without-password guard).
 
 ### `codeplane tui [options]`
 
@@ -359,9 +396,11 @@ Manage saved Codeplane instances and the shared local runtime. The registry is p
 
 ## Configuration
 
-### The `Codeplane` home folder
+### Per-instance home folder
 
-Every surface reads and writes one OS-native home folder named `Codeplane`. Picking a different surface never means re-configuring anything.
+Every CLI invocation runs against a **per-instance** home folder. The default id is `default`; pass `--instance <id>` (or `-i <id>`) to switch to a different one. Two surfaces with different ids share **nothing** — config, providers, models, MCP servers, plugins, agents, commands, and skills are all per-instance.
+
+The OS-native root holds the registry of all instances; each instance gets its own subtree:
 
 | OS | Default root |
 | :--- | :--- |
@@ -373,29 +412,31 @@ Layout:
 
 ```text
 Codeplane/
-├── codeplane.jsonc          ← global config (also accepted: codeplane.json, config.json)
-├── instances.json           ← shared saved-instance registry
-├── auth.json                ← provider credentials (OAuth / API / well-known)
-├── agents/                  ← user-defined agents
-├── bin/                     ← cached runtime binaries
-├── cache/                   ← models.dev snapshots, transient fetches
-├── commands/                ← user-defined slash commands
-├── data/                    ← SQLite database, session content
-├── local_server/
-│   ├── binaries/            ← cached local runtime binaries by version
-│   └── <instance-id>/       ← one managed local server + its state
-│       ├── bin/
-│       ├── cache/
-│       ├── data/
-│       ├── log/
-│       └── state/
-├── log/                     ← server / desktop logs
-├── plugins/                 ← user-installed plugins
-├── skills/                  ← user-defined skills
-└── state/                   ← runtime state (lockfiles, last-used markers)
+├── instances.json                  ← shared saved-instance registry (Desktop / TUI / CLI all see this)
+├── instances/
+│   ├── default/                    ← used by bare `codeplane serve` / `web` / `tui`
+│   │   ├── codeplane.jsonc         ← config (providers, models, MCP, plugin, npm, permissions, …)
+│   │   ├── auth.json               ← provider credentials (OAuth / API / well-known)
+│   │   ├── agents/                 ← user-defined agents
+│   │   ├── bin/                    ← cached runtime binaries
+│   │   ├── cache/                  ← models.dev snapshots, transient fetches
+│   │   ├── commands/               ← user-defined slash commands
+│   │   ├── data/                   ← SQLite database, session content
+│   │   ├── log/                    ← server / desktop logs
+│   │   ├── plugins/                ← user-installed plugins
+│   │   ├── skills/                 ← user-defined skills
+│   │   └── state/                  ← runtime state (lockfiles, last-used markers)
+│   ├── work/                       ← `codeplane web -i work` lives here
+│   └── personal/                   ← `codeplane web -i personal` lives here
+└── local_server/
+    └── binaries/                   ← cached runtime tarballs by version (content-addressable, safe to share)
 ```
 
-The implementation lives in [`packages/shared/src/home.ts`](packages/shared/src/home.ts).
+**Auto-migration on first run.** When the v27.4.29+ preflight first creates `instances/default/`, it copies any legacy global files at the root (`codeplane.jsonc`, `plugins/`, `agents/`, `commands/`, `skills/`) into the default instance. Originals are preserved at the root in case you want to keep them around. Nothing is moved — the migration is one-way and idempotent.
+
+**Strict isolation.** The config loader only reads from the per-instance dir. There is no XDG fallback, no global codeplane.jsonc merge, no other path that could leak config from one instance into another. (See [v27.4.30 release notes](https://github.com/devinoldenburg/codeplane/releases/tag/v27.4.30) for the audit.)
+
+The implementation lives in [`packages/shared/src/home.ts`](packages/shared/src/home.ts) and [`packages/codeplane/src/cli/preflight.ts`](packages/codeplane/src/cli/preflight.ts).
 
 ### Environment variable overrides
 
@@ -407,7 +448,8 @@ The implementation lives in [`packages/shared/src/home.ts`](packages/shared/src/
 | `CODEPLANE_STATE_DIR` | Override `<root>/state`. |
 | `CODEPLANE_BIN_DIR` | Override `<root>/bin`. The TUI launcher also reads this to locate `runtime/tui/node-main.js`. |
 | `CODEPLANE_LOG_DIR` | Override `<root>/log`. |
-| `CODEPLANE_SERVER_PASSWORD` | Required password for `serve` / `web` HTTP requests. |
+| `CODEPLANE_SERVER_PASSWORD` | HTTP Basic Auth password. Equivalent to `--password <secret>` (env wins over flag when both are set). Required when binding a non-loopback hostname. |
+| `CODEPLANE_SERVER_USERNAME` | HTTP Basic Auth username. Defaults to `codeplane`. Only used when a password is set. |
 | `CODEPLANE_DESKTOP_MANAGED` | Set to `1` by the Desktop shell when it spawns a local server. Tells the server its updates are managed by Electron's updater. |
 | `CODEPLANE_PURE` | Run without external plugins (also `--pure`). |
 
