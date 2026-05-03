@@ -45,7 +45,6 @@ import { ConfigServer } from "./server"
 import { ConfigSkills } from "./skills"
 import { ConfigVariable } from "./variable"
 import { Npm } from "@/npm"
-import { CodeplaneHome } from "@codeplane-ai/shared/home"
 
 const log = Log.create({ service: "config" })
 
@@ -379,14 +378,16 @@ export const layer = Layer.effect(
     })
 
     const loadGlobal = Effect.fnUntraced(function* () {
-      const legacyDir = CodeplaneHome.legacyPaths().config
+      // Per-instance: Global.Path.config is `<root>/instances/<id>/` after
+      // src/cli/preflight.ts runs (v27.4.29+). Only read config files from
+      // *this* instance's dir — never XDG legacy or any other instance.
+      // The legacy XDG fallback the previous loader used would silently
+      // merge `~/.config/codeplane/codeplane.jsonc` into every instance,
+      // defeating the per-instance isolation guarantee.
       const currentFile = globalConfigFile()
       const currentExists = existsSync(currentFile)
       if (!currentExists) {
-        for (const source of [
-          ...globalConfigCandidates(Global.Path.config).filter((file) => file !== currentFile),
-          ...(legacyDir === Global.Path.config ? [] : globalConfigCandidates(legacyDir)),
-        ]) {
+        for (const source of globalConfigCandidates(Global.Path.config).filter((file) => file !== currentFile)) {
           if (!existsSync(source)) continue
           const text = yield* readConfigFile(source)
           if (!text) continue
@@ -397,8 +398,11 @@ export const layer = Layer.effect(
 
       let result: Info = yield* loadFile(globalConfigFile())
 
-      const legacy = [path.join(Global.Path.config, "config"), path.join(legacyDir, "config")].find(existsSync)
-      if (legacy) {
+      // TOML "config" file (legacy pre-v26 format). Only honor it when it
+      // sits inside *this* instance's dir — never XDG. Migrated into the
+      // codeplane.jsonc on first read, then deleted.
+      const legacy = path.join(Global.Path.config, "config")
+      if (existsSync(legacy)) {
         yield* Effect.promise(() =>
           import(pathToFileURL(legacy).href, { with: { type: "toml" } })
             .then(async (mod) => {
