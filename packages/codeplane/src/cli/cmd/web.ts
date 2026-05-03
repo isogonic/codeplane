@@ -30,7 +30,13 @@ function getNetworkIPs() {
 
 export const WebCommand = cmd({
   command: "web",
-  builder: (yargs) => withNetworkOptions(yargs),
+  builder: (yargs) =>
+    withNetworkOptions(yargs).option("instance", {
+      alias: "i",
+      type: "string",
+      describe:
+        "use a per-instance Codeplane home folder (providers, models, MCP, plugins, agents, commands, skills, codeplane.jsonc all isolated). The flag is consumed by the preflight before yargs sees it.",
+    }),
   describe: "start codeplane server and open web interface",
   handler: async (args) => {
     if (!Flag.CODEPLANE_SERVER_PASSWORD) {
