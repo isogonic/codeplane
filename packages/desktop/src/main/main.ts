@@ -549,6 +549,40 @@ function ensureSession(instance: SavedInstance): Session {
     callback({ requestHeaders: headers })
   })
 
+  // When the instance origin returns 401 / 403 on the document load — the
+  // server's HTTP Basic Auth rejected our headers — bounce the user back to
+  // the Loader with an "auth-required" toast so they can re-edit the saved
+  // headers (or supply the right --password). Subresource 401s are
+  // intentionally ignored; only the main HTML response triggers the bounce.
+  ses.webRequest.onCompleted((details) => {
+    if (details.statusCode !== 401 && details.statusCode !== 403) return
+    if (details.resourceType !== "mainFrame") return
+    const live = getInstance(instance.id) ?? instance
+    const target = asUrl(live.url)
+    const completed = asUrl(details.url)
+    if (!target || !completed) return
+    if (completed.origin !== target.origin) return
+    // The session is bound to the main window via the per-instance partition,
+    // so the main window is the right surface to bounce. Fall back to any
+    // open window if for some reason the main one is gone.
+    const targetWindow = mainWindow && !mainWindow.isDestroyed() ? mainWindow : BrowserWindow.getAllWindows()[0]
+    if (!targetWindow || targetWindow.isDestroyed()) return
+    logger.log("main", "instance.auth-required.bounce-to-setup", {
+      instanceID: live.id,
+      instanceLabel: live.label,
+      status: details.statusCode,
+      url: details.url,
+    })
+    showSetup(targetWindow, {
+      error: {
+        kind: "auth-required",
+        message: `Server returned HTTP ${details.statusCode} — credentials missing or invalid.`,
+        instanceID: live.id,
+        instanceLabel: live.label,
+      },
+    })
+  })
+
   // mTLS / client certificate selection — flexible, not tied to any one
   // identity provider. Looks up the cert by the subject CN the user
   // recorded in setup; macOS Keychain / Windows Cert Store / NSS DB on
@@ -676,6 +710,39 @@ function attachWindowDebugLogging(window: BrowserWindow, name: string) {
         name,
         validatedURL,
       })
+      // -3 (ABORTED) means the load was intentionally cancelled (e.g. we
+      // navigated to a new URL before the previous load finished). Don't
+      // treat that as an instance failure.
+      if (code === -3) return
+      if (!isMainFrame) return
+      const failed = asUrl(validatedURL)
+      // The setup HTML is a file:// URL — if that fails, we can't bounce to
+      // anywhere useful, so just log.
+      if (!failed || (failed.protocol !== "http:" && failed.protocol !== "https:")) return
+      // Only bounce when the failed URL is the *current instance's* origin
+      // (matching the same heuristic the version watcher uses). Cross-origin
+      // failures during OAuth or external links should not yank the user
+      // back to the loader.
+      const inst = currentInstanceID ? getInstance(currentInstanceID) : undefined
+      const instOrigin = inst ? asUrl(inst.url)?.origin : undefined
+      if (instOrigin && failed.origin !== instOrigin) return
+      const message = description || `Connection failed (${code})`
+      logger.log("main", "instance.unreachable.bounce-to-setup", {
+        code,
+        description,
+        instanceID: inst?.id,
+        instanceLabel: inst?.label,
+        validatedURL,
+        windowId: window.id,
+      })
+      showSetup(window, {
+        error: {
+          kind: classifyLoadFailure(code),
+          message,
+          instanceID: inst?.id,
+          instanceLabel: inst?.label,
+        },
+      })
     },
   )
   window.webContents.on("did-navigate-in-page", (_event, url, isMainFrame) => {
@@ -686,12 +753,47 @@ function attachWindowDebugLogging(window: BrowserWindow, name: string) {
   })
 }
 
-function showSetup(window: BrowserWindow, opts?: { editId?: string }) {
+// Reasons the Loader can be opened with. Each translates to a renderer-side
+// toast in packages/desktop/src/setup/app.tsx (which reads ?error= /
+// ?errorMessage= / ?errorInstanceId= query params on mount).
+type SetupErrorKind = "unreachable" | "auth-required" | "server-error" | "version-error" | "unknown-error"
+
+// Map Chromium's net error codes to a user-facing kind. Full list:
+// https://chromium.googlesource.com/chromium/src/+/master/net/base/net_error_list.h
+function classifyLoadFailure(code: number): SetupErrorKind {
+  // -7 (TIMED_OUT), -21 (NETWORK_CHANGED), -100..-108 (CONNECTION_*),
+  // -109 (ADDRESS_UNREACHABLE), -118 (CONNECTION_TIMED_OUT),
+  // -300 (INVALID_URL), -301 (DISALLOWED_URL_SCHEME) all manifest as
+  // "the instance is unreachable" from the user's perspective.
+  if (code === -2 || code === -7 || code === -21) return "unreachable"
+  if (code <= -100 && code >= -125) return "unreachable"
+  if (code >= -310 && code <= -300) return "unreachable"
+  if (code === -201 || code === -202) return "auth-required" // ERR_CERT_*; treat as needs-attention
+  return "server-error"
+}
+function showSetup(
+  window: BrowserWindow,
+  opts?: {
+    editId?: string
+    error?: { kind: SetupErrorKind; message?: string; instanceID?: string; instanceLabel?: string }
+  },
+) {
   const url = pathToFileURL(getAppAssetPath("dist", "setup", "index.html"))
   if (opts?.editId) {
     url.searchParams.set("edit", opts.editId)
   }
-  logger.log("main", "setup.show", { editId: opts?.editId, url: url.toString(), windowId: window.id })
+  if (opts?.error) {
+    url.searchParams.set("error", opts.error.kind)
+    if (opts.error.message) url.searchParams.set("errorMessage", opts.error.message)
+    if (opts.error.instanceID) url.searchParams.set("errorInstanceId", opts.error.instanceID)
+    if (opts.error.instanceLabel) url.searchParams.set("errorInstanceLabel", opts.error.instanceLabel)
+  }
+  logger.log("main", "setup.show", {
+    editId: opts?.editId,
+    error: opts?.error,
+    url: url.toString(),
+    windowId: window.id,
+  })
   void window.loadURL(url.toString())
 }
 

@@ -1936,6 +1936,78 @@ export const App: Component = () => {
 
   onMount(async () => {
     logSetup("setup.mount", { editId })
+    // Surface bounce-back-to-Loader reasons set by the main process when an
+    // instance becomes unreachable, returns 401, etc. The query params are
+    // written by main.ts → showSetup({ error }). Each kind maps to a clear
+    // user-facing toast so it is never a mystery why the user landed back
+    // on the Loader.
+    const errorKind = params.get("error")
+    if (errorKind) {
+      const errorMessage = params.get("errorMessage") ?? ""
+      const instanceLabel = params.get("errorInstanceLabel")
+      const instanceID = params.get("errorInstanceId")
+      const target = instanceLabel ? `“${instanceLabel}”` : instanceID ? `“${instanceID}”` : "instance"
+      type ToastIcon = "warning"
+      const variants: Record<string, { title: string; description: string; icon: ToastIcon }> = {
+        unreachable: {
+          title: `Couldn't reach ${target}`,
+          description:
+            errorMessage ||
+            "The server didn't respond. Make sure it's running and reachable from this machine, then try again.",
+          icon: "warning",
+        },
+        "auth-required": {
+          title: `Sign-in required for ${target}`,
+          description:
+            errorMessage ||
+            "The server returned 401/403. Edit the saved instance and supply the right Authorization header (or fix the password on the server side).",
+          icon: "warning",
+        },
+        "server-error": {
+          title: `${target} returned an error`,
+          description: errorMessage || "The server responded but the connection failed. Check the server logs.",
+          icon: "warning",
+        },
+        "version-error": {
+          title: `${target} is on an incompatible version`,
+          description:
+            errorMessage ||
+            "The desktop app and the server disagree on the protocol version. Update one of them and try again.",
+          icon: "warning",
+        },
+        "unknown-error": {
+          title: `Couldn't open ${target}`,
+          description: errorMessage || "Something went wrong. Check the desktop log for details.",
+          icon: "warning",
+        },
+      }
+      const variant = variants[errorKind] ?? variants["unknown-error"]
+      logSetup("setup.bounce", { errorKind, errorMessage, instanceID, instanceLabel })
+      showToast({
+        variant: "error",
+        icon: variant.icon,
+        title: variant.title,
+        description: variant.description,
+        persistent: true,
+        actions:
+          errorKind === "auth-required" && instanceID
+            ? [
+                {
+                  label: "Edit instance",
+                  onClick: () => setView({ kind: "remote-form", editing: instances().find((i) => i.id === instanceID) }),
+                },
+                { label: "Dismiss", onClick: "dismiss" },
+              ]
+            : [{ label: "Dismiss", onClick: "dismiss" }],
+      })
+      // Strip the error query so a refresh of the Loader doesn't re-toast.
+      const nextUrl = new URL(window.location.href)
+      nextUrl.searchParams.delete("error")
+      nextUrl.searchParams.delete("errorMessage")
+      nextUrl.searchParams.delete("errorInstanceId")
+      nextUrl.searchParams.delete("errorInstanceLabel")
+      window.history.replaceState({}, "", nextUrl.toString())
+    }
     await refresh()
     if (editId) {
       const list = await api.instances.list()
