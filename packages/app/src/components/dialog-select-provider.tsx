@@ -23,7 +23,6 @@ export const DialogSelectProvider: Component = () => {
     if (id === "anthropic") return language.t("dialog.provider.anthropic.note")
     if (id === "openai") return language.t("dialog.provider.openai.note")
     if (id.startsWith("github-copilot")) return language.t("dialog.provider.copilot.note")
-    if (id === "codeplane-go") return language.t("dialog.provider.codeplaneGo.tagline")
   }
 
   return (
@@ -75,9 +74,6 @@ export const DialogSelectProvider: Component = () => {
               <Tag>{language.t("dialog.provider.tag.recommended")}</Tag>
             </Show>
             <Show when={note(i.id)} keyed>{(value) => <div class="text-14-regular text-text-weak">{value}</div>}</Show>
-            <Show when={i.id === "codeplane-go"}>
-              <Tag>{language.t("dialog.provider.tag.recommended")}</Tag>
-            </Show>
           </div>
         )}
       </List>

@@ -92,7 +92,6 @@ export const dict = {
   "dialog.provider.tag.recommended": "Recommandé",
   "dialog.provider.codeplane.note": "Modèles sélectionnés incluant Claude, GPT, Gemini et plus",
   "dialog.provider.codeplane.tagline": "Modèles optimisés et fiables",
-  "dialog.provider.codeplaneGo.tagline": "Abonnement abordable pour tous",
   "dialog.provider.anthropic.note": "Connectez-vous avec Claude Pro/Max ou une clé API",
   "dialog.provider.copilot.note": "Connectez-vous avec Copilot ou une clé API",
   "dialog.provider.openai.note": "Connectez-vous avec ChatGPT Pro/Plus ou une clé API",
@@ -120,13 +119,6 @@ export const dict = {
   "provider.connect.apiKey.label": "Clé API {{provider}}",
   "provider.connect.apiKey.placeholder": "Clé API",
   "provider.connect.apiKey.required": "La clé API est requise",
-  "provider.connect.codeplaneZen.line1":
-    "Codeplane Zen vous donne accès à un ensemble sélectionné de modèles fiables et optimisés pour les agents de codage.",
-  "provider.connect.codeplaneZen.line2":
-    "Avec une seule clé API, vous aurez accès à des modèles tels que Claude, GPT, Gemini, GLM et plus encore.",
-  "provider.connect.codeplaneZen.visit.prefix": "Visitez ",
-  "provider.connect.codeplaneZen.visit.link": "example.invalid/zen",
-  "provider.connect.codeplaneZen.visit.suffix": " pour récupérer votre clé API.",
   "provider.connect.oauth.code.visit.prefix": "Visitez ",
   "provider.connect.oauth.code.visit.link": "ce lien",
   "provider.connect.oauth.code.visit.suffix":

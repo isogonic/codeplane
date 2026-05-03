@@ -92,7 +92,6 @@ export const dict = {
   "dialog.provider.tag.recommended": "推奨",
   "dialog.provider.codeplane.note": "Claude, GPT, Geminiなどを含む厳選されたモデル",
   "dialog.provider.codeplane.tagline": "信頼性の高い最適化モデル",
-  "dialog.provider.codeplaneGo.tagline": "すべての人に低価格のサブスクリプション",
   "dialog.provider.anthropic.note": "Claude Pro/MaxまたはAPIキーで接続",
   "dialog.provider.copilot.note": "CopilotまたはAPIキーで接続",
   "dialog.provider.openai.note": "ChatGPT Pro/PlusまたはAPIキーで接続",
@@ -120,12 +119,6 @@ export const dict = {
   "provider.connect.apiKey.label": "{{provider}} APIキー",
   "provider.connect.apiKey.placeholder": "APIキー",
   "provider.connect.apiKey.required": "APIキーが必要です",
-  "provider.connect.codeplaneZen.line1":
-    "Codeplane Zenは、コーディングエージェント向けに最適化された信頼性の高いモデルへのアクセスを提供します。",
-  "provider.connect.codeplaneZen.line2": "1つのAPIキーで、Claude、GPT、Gemini、GLMなどのモデルにアクセスできます。",
-  "provider.connect.codeplaneZen.visit.prefix": " ",
-  "provider.connect.codeplaneZen.visit.link": "example.invalid/zen",
-  "provider.connect.codeplaneZen.visit.suffix": " にアクセスしてAPIキーを取得してください。",
   "provider.connect.oauth.code.visit.prefix": " ",
   "provider.connect.oauth.code.visit.link": "このリンク",
   "provider.connect.oauth.code.visit.suffix":

@@ -289,7 +289,8 @@ export const layer = Layer.effect(
           )
 
       const tryStream = Effect.fnUntraced(function* () {
-        return yield* llm
+        const collected = { text: "", reasoning: "" }
+        yield* llm
           .stream({
             agent: ag,
             user: firstInfo,
@@ -302,16 +303,18 @@ export const layer = Layer.effect(
             messages: [{ role: "user", content: "Generate a title for this conversation:\n" }, ...msgs],
           })
           .pipe(
-            // Capture both text and reasoning so reasoning-only models still
-            // contribute something extractable. The cleanup step strips
-            // <think> blocks before we look for the title line.
-            Stream.filter(
-              (e): e is Extract<LLM.Event, { type: "text-delta" | "reasoning-delta" }> =>
-                e.type === "text-delta" || e.type === "reasoning-delta",
+            Stream.runForEach((e) =>
+              Effect.sync(() => {
+                if (e.type === "text-delta") collected.text += e.text
+                else if (e.type === "reasoning-delta") collected.reasoning += e.text
+              }),
             ),
-            Stream.map((e) => e.text),
-            Stream.mkString,
           )
+        // Prefer the model's actual answer. Reasoning is only a fallback for
+        // reasoning-only models that surface everything via the reasoning
+        // channel — otherwise the model's chain-of-thought ("We need to
+        // generate a title for this conversation...") leaks into the title.
+        return collected.text.trim() ? collected.text : collected.reasoning
       })
 
       const cleanText = (raw: string) => {
