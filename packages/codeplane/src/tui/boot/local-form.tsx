@@ -6,6 +6,7 @@ import { useKeyboard } from "@opentui/solid"
 import path from "node:path"
 import type { LocalInstallProgress, LocalStatus, LocalTarget, SavedInstance } from "@codeplane-ai/shared/instance"
 import { localInstanceUrl } from "@codeplane-ai/shared/instance"
+import { fetchCodeplaneLatestVersion } from "@codeplane-ai/shared/local-runtime"
 import type { InstanceService } from "../instance-service"
 import { Banner, Header, palette, ProgressBar, SectionHeading, StatusBar, TextField } from "./primitives"
 
@@ -28,15 +29,18 @@ export function LocalInstanceForm(props: {
   const [saving, setSaving] = createSignal(false)
   const busy = createMemo(() => !!installing() || saving())
 
-  // Use the saved preferred version (from instance-service.localTarget()) as
-  // the default; users typically just hit Save and the install runs on first
-  // use of the saved instance. Pre-installing here is optional but matches
-  // the desktop flow when the user wants confirmation that the binary lands.
+  // Pre-fill with the newest version from the npm registry so users get the
+  // latest by default. Fall back to the saved preferred version (or empty)
+  // when the registry is unreachable. Users typically just hit Save and the
+  // install runs on first use of the saved instance.
   onMount(async () => {
     try {
-      const t = await props.service.localTarget()
+      const [t, latest] = await Promise.all([
+        props.service.localTarget(),
+        fetchCodeplaneLatestVersion().catch(() => undefined),
+      ])
       setTarget(t)
-      const initial = t.defaultVersion ?? ""
+      const initial = latest ?? t.defaultVersion ?? ""
       setVersion(initial)
       if (initial) {
         const s = await props.service.localStatus(initial)

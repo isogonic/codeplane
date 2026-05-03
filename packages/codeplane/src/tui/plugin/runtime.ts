@@ -1,4 +1,8 @@
-import "@opentui/solid/runtime-plugin-support"
+// NOTE: the side-effect import of "@opentui/solid/runtime-plugin-support"
+// has been moved to the TUI entry (src/tui/node-main.tsx) so that this
+// module's static graph never reaches @opentui/solid/scripts/runtime-plugin-
+// support-configure.ts (which imports the "bun" builtin and breaks the main
+// CLI bundle).
 import {
   type TuiDispose,
   type TuiPlugin,

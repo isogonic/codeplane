@@ -3,7 +3,11 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import which from "which"
 import { spawn } from "node:child_process"
-import { createSolidTransformPlugin } from "@opentui/solid/bun-plugin"
+// NOTE: @opentui/solid/bun-plugin and @opentui/solid/runtime-plugin-support
+// both import the "bun" builtin at module top-level, which the main CLI
+// bundle (browser-conditioned) cannot resolve. They are only needed by the
+// dev-time TUI rebuild (buildDevEntry below), so import dynamically there
+// instead of statically here.
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const codeplaneDir = path.join(__dirname, "..", "..")
@@ -116,6 +120,8 @@ async function buildDevEntry() {
   await fs.mkdir(outdir, { recursive: true })
   const cwd = process.cwd()
   process.chdir(codeplaneDir)
+  // Dynamic import keeps the "bun" builtin out of the main CLI bundle.
+  const { createSolidTransformPlugin } = await import("@opentui/solid/bun-plugin")
   const result = await Bun.build({
     entrypoints: ["./src/tui/node-main.tsx"],
     target: "bun",
