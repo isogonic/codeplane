@@ -2,7 +2,7 @@
   "name": "codeplane",
   "displayName": "codeplane",
   "description": "codeplane for VS Code",
-  "version": "27.4.18",
+  "version": "27.4.19",
   "publisher": "sst-dev",
   "repository": {
     "type": "git",
