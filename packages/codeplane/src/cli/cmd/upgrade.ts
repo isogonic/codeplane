@@ -18,7 +18,7 @@ export const UpgradeCommand = {
         alias: "m",
         describe: "installation method to use",
         type: "string",
-        choices: ["curl", "npm", "pnpm", "bun", "brew", "choco", "scoop"],
+        choices: ["curl", "npm", "yarn", "pnpm", "bun", "brew", "choco", "scoop"],
       })
   },
   handler: async (args: { target?: string; method?: string }) => {
@@ -27,26 +27,39 @@ export const UpgradeCommand = {
     UI.empty()
     prompts.intro("Upgrade")
     const detectedMethod = await AppRuntime.runPromise(Installation.Service.use((svc) => svc.method()))
-    const method = (args.method as Installation.Method) ?? detectedMethod
+    let method = (args.method as Installation.Method) ?? detectedMethod
     if (method === "unknown") {
       prompts.log.error(`codeplane is installed to ${process.execPath} and may be managed by a package manager`)
-      const install = await prompts.select({
-        message: "Install anyways?",
+      const picked = await prompts.select<Installation.Method | "cancel">({
+        message: "Pick an install method to upgrade with:",
         options: [
-          { label: "Yes", value: true },
-          { label: "No", value: false },
+          { label: "npm install -g", value: "npm" },
+          { label: "pnpm add -g", value: "pnpm" },
+          { label: "yarn global add", value: "yarn" },
+          { label: "bun add -g", value: "bun" },
+          { label: "Homebrew (brew upgrade)", value: "brew" },
+          { label: "curl install script", value: "curl" },
+          { label: "Cancel", value: "cancel" },
         ],
-        initialValue: false,
+        initialValue: "cancel",
       })
-      if (!install) {
+      if (picked === "cancel" || prompts.isCancel(picked)) {
         prompts.outro("Done")
         return
       }
+      method = picked as Installation.Method
+    }
+    if (method === "desktop") {
+      prompts.log.error(
+        "This Codeplane is managed by the desktop app. Use the desktop app's Updates panel to install a new version.",
+      )
+      prompts.outro("Done")
+      return
     }
     prompts.log.info("Using method: " + method)
     const target = args.target
       ? Installation.cleanVersion(args.target)
-      : await AppRuntime.runPromise(Installation.Service.use((svc) => svc.latest()))
+      : await AppRuntime.runPromise(Installation.Service.use((svc) => svc.latest(method)))
 
     if (Installation.isSameVersion(InstallationVersion, target)) {
       prompts.log.warn(`codeplane upgrade skipped: ${target} is already installed`)

@@ -283,6 +283,13 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
           return yield* viewVersion(detectedMethod, `${npmPackage}@${InstallationChannel}`)
         }
 
+        // yarn doesn't ship its own `view` command in classic mode, so use npm
+        // view to query the same registry. The package coordinates are
+        // identical regardless of which client installed it.
+        if (detectedMethod === "yarn") {
+          return yield* viewVersion("npm", `${npmPackage}@${InstallationChannel}`)
+        }
+
         if (detectedMethod === "choco") {
           const response = yield* httpOk.execute(
             HttpClientRequest.get(
@@ -356,6 +363,14 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
             break
           case "bun":
             result = yield* run(["bun", "install", "-g", `${npmPackage}@${target}`])
+            break
+          case "yarn":
+            // yarn classic uses `global add`; yarn berry doesn't have a
+            // global namespace at all but classic is the only flavor that
+            // can have produced a global codeplane install detectable via
+            // `yarn global list`, so this is the right command for the
+            // population that hits this branch.
+            result = yield* run(["yarn", "global", "add", `${npmPackage}@${target}`])
             break
           case "brew": {
             const formula = yield* getBrewFormula()
