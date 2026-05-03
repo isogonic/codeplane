@@ -43,19 +43,27 @@ const DEFAULT_INSTANCE_ID = "default"
 const LEGACY_FILES = ["codeplane.jsonc", "codeplane.json", "config.json"]
 const LEGACY_DIRS = ["plugins", "agents", "commands", "skills"]
 
-function readInstanceFromArgv(argv: readonly string[]): string | undefined {
+function readFlagFromArgv(argv: readonly string[], flag: string, alias?: string): string | undefined {
   // Skip the runtime + script entry (process.argv[0..1]); yargs does the same.
   const args = argv.slice(2)
+  const long = `--${flag}`
+  const longEq = `--${flag}=`
+  const aliasShort = alias ? `-${alias}` : undefined
+  const aliasShortEq = alias ? `-${alias}=` : undefined
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]
-    if (arg === "--instance" || arg === "-i") {
+    if (arg === long || (aliasShort && arg === aliasShort)) {
       const next = args[i + 1]
-      if (next && !next.startsWith("-")) return next
+      if (next !== undefined && !next.startsWith("-")) return next
     }
-    if (arg?.startsWith("--instance=")) return arg.slice("--instance=".length) || undefined
-    if (arg?.startsWith("-i=")) return arg.slice("-i=".length) || undefined
+    if (arg?.startsWith(longEq)) return arg.slice(longEq.length) || undefined
+    if (aliasShortEq && arg?.startsWith(aliasShortEq)) return arg.slice(aliasShortEq.length) || undefined
   }
   return undefined
+}
+
+function readInstanceFromArgv(argv: readonly string[]): string | undefined {
+  return readFlagFromArgv(argv, "instance", "i")
 }
 
 function copyEntry(src: string, dest: string): void {
@@ -104,4 +112,33 @@ function applyInstance(): void {
   process.env.CODEPLANE_HOME_DIR = target
 }
 
+// Apply --password / --username CLI flags by setting the matching env vars
+// before the Flag module captures them at import time. Each Codeplane
+// instance is single-user; Basic Auth is the way to put a password in
+// front of an exposed instance (codeplane serve --hostname 0.0.0.0).
+//
+//   codeplane serve --hostname 0.0.0.0 --password hunter2
+//
+// is equivalent to
+//
+//   CODEPLANE_SERVER_PASSWORD=hunter2 codeplane serve --hostname 0.0.0.0
+//
+// but doesn't require the user to learn the env var name. The flags can
+// be combined with --username (default: "codeplane") for a custom user.
+//
+// Explicit env-var overrides win — if CODEPLANE_SERVER_PASSWORD is
+// already set, the CLI flag is ignored so a launchd / systemd unit's
+// secret stays in control.
+function applyAuth(): void {
+  const password = readFlagFromArgv(process.argv, "password")
+  const username = readFlagFromArgv(process.argv, "username")
+  if (password !== undefined && !process.env.CODEPLANE_SERVER_PASSWORD) {
+    process.env.CODEPLANE_SERVER_PASSWORD = password
+  }
+  if (username !== undefined && !process.env.CODEPLANE_SERVER_USERNAME) {
+    process.env.CODEPLANE_SERVER_USERNAME = username
+  }
+}
+
 applyInstance()
+applyAuth()
