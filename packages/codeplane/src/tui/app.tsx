@@ -2,6 +2,7 @@ import React, { startTransition, useEffect, useRef, useState } from "react"
 import { Box, Text, useApp, useInput } from "ink"
 import { Terminal as HeadlessTerminal } from "@xterm/headless"
 import type {
+  Agent,
   CronTask,
   FileContent,
   FileNode,
@@ -9,6 +10,7 @@ import type {
   Part,
   Path,
   PermissionRequest,
+  Provider,
   QuestionRequest,
   Session,
   SessionStatus,
@@ -114,8 +116,18 @@ type FormState = {
 type CommandAction = {
   id: string
   label: string
+  hint?: string
   run: () => Promise<void> | void
 }
+
+type ModelSelection = {
+  providerID: string
+  providerName: string
+  modelID: string
+  modelName: string
+}
+
+const VARIANT_LABELS = ["low", "medium", "high", "max"] as const
 
 type NotificationSelection =
   | { kind: "permission"; id: string }
@@ -255,6 +267,12 @@ export function App(props: AppProps) {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [paletteFilter, setPaletteFilter] = useState("")
   const [paletteSelection, setPaletteSelection] = useState<string>()
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [providers, setProviders] = useState<Provider[]>([])
+  const [defaultModels, setDefaultModels] = useState<Record<string, string>>({})
+  const [activeAgent, setActiveAgent] = useState<string>()
+  const [activeModel, setActiveModel] = useState<ModelSelection>()
+  const [activeVariant, setActiveVariant] = useState<string>()
   const [directory, setDirectory] = useState<DirectoryBrowser>()
   const [composerValue, setComposerValue] = useState("")
   // Sidebar collapsed by default for a Claude Code / Codex-style focused
@@ -492,6 +510,62 @@ export function App(props: AppProps) {
     })
   }
 
+  async function refreshAgents() {
+    if (!opened) return
+    const response = await opened.client.app.agents()
+    const list = (response.data ?? []).filter(
+      (item) => !item.hidden && item.mode !== "subagent",
+    )
+    startTransition(() => {
+      setAgents(list)
+      setActiveAgent((current) => {
+        if (current && list.some((item) => item.name === current)) return current
+        return list.find((item) => item.mode === "primary")?.name ?? list[0]?.name
+      })
+    })
+  }
+
+  async function refreshProviders() {
+    if (!opened) return
+    const response = await opened.client.config.providers()
+    const data = response.data
+    if (!data) return
+    startTransition(() => {
+      setProviders(data.providers ?? [])
+      setDefaultModels(data.default ?? {})
+      setActiveModel((current) => {
+        if (current) {
+          const provider = data.providers.find((item) => item.id === current.providerID)
+          if (provider && provider.models[current.modelID]) return current
+        }
+        const firstID = Object.keys(data.default ?? {})[0]
+        if (!firstID) {
+          const provider = data.providers[0]
+          const modelID = provider ? Object.keys(provider.models)[0] : undefined
+          if (!provider || !modelID) return current
+          const model = provider.models[modelID]
+          if (!model) return current
+          return {
+            providerID: provider.id,
+            providerName: provider.name,
+            modelID,
+            modelName: model.name,
+          }
+        }
+        const provider = data.providers.find((item) => item.id === firstID)
+        const modelID = provider ? data.default[firstID] : undefined
+        const model = provider && modelID ? provider.models[modelID] : undefined
+        if (!provider || !modelID || !model) return current
+        return {
+          providerID: provider.id,
+          providerName: provider.name,
+          modelID,
+          modelName: model.name,
+        }
+      })
+    })
+  }
+
   // Server reported a different `current` version than the one we connected
   // with — almost always means the operator (or auto-update) restarted the
   // backend on a new build. Tear the session down and re-run open(), which
@@ -560,7 +634,15 @@ export function App(props: AppProps) {
   }
 
   async function refreshWorkspace() {
-    await Promise.all([refreshSessions(), refreshFiles("."), refreshNotifications(), refreshCron(), refreshVersion()])
+    await Promise.all([
+      refreshSessions(),
+      refreshFiles("."),
+      refreshNotifications(),
+      refreshCron(),
+      refreshVersion(),
+      refreshAgents(),
+      refreshProviders(),
+    ])
   }
 
   async function openInstance(instance: SavedInstance) {
@@ -719,6 +801,11 @@ export function App(props: AppProps) {
     await opened.client.session.promptAsync({
       sessionID: session.id,
       parts: [{ type: "text", text: value }],
+      ...(activeAgent ? { agent: activeAgent } : {}),
+      ...(activeModel
+        ? { model: { providerID: activeModel.providerID, modelID: activeModel.modelID } }
+        : {}),
+      ...(activeVariant ? { variant: activeVariant } : {}),
     })
     setComposerValue("")
     setMessage("info", "Prompt sent")
@@ -731,28 +818,102 @@ export function App(props: AppProps) {
     const selected = commands.find((item) => item.id === commandID)
     if (!selected) return
     setPaletteOpen(false)
-    setFocus("sessions")
+    setPaletteFilter("")
+    setPaletteSelection(undefined)
+    // Send the user back to the composer so they can keep typing — palette is
+    // a quick interjection, not a destination.
+    setFocus(opened ? "composer" : "sessions")
     await selected.run()
   }
 
   function buildCommands(): CommandAction[] {
+    const agentCommands: CommandAction[] = agents.map((agent) => ({
+      id: `agent:${agent.name}`,
+      label: `/agent ${agent.name}`,
+      hint:
+        (activeAgent === agent.name ? "active" : agent.description) ??
+        (agent.mode === "primary" ? "primary" : agent.mode),
+      run: () => {
+        setActiveAgent(agent.name)
+        setMessage("success", `Agent → ${agent.name}`)
+      },
+    }))
+    const modelCommands: CommandAction[] = providers.flatMap((provider) =>
+      Object.entries(provider.models)
+        .filter(([, model]) => model.status !== "deprecated")
+        .map(([modelID, model]) => {
+          const active =
+            activeModel?.providerID === provider.id && activeModel?.modelID === modelID
+          return {
+            id: `model:${provider.id}:${modelID}`,
+            label: `/model ${provider.name} · ${model.name}`,
+            hint: active ? "active" : model.family ?? model.status,
+            run: () => {
+              setActiveModel({
+                providerID: provider.id,
+                providerName: provider.name,
+                modelID,
+                modelName: model.name,
+              })
+              setMessage("success", `Model → ${provider.name} · ${model.name}`)
+            },
+          }
+        }),
+    )
+    const variantCommands: CommandAction[] = VARIANT_LABELS.map((variant) => ({
+      id: `variant:${variant}`,
+      label: `/effort ${variant}`,
+      hint: activeVariant === variant ? "active" : "reasoning effort",
+      run: () => {
+        setActiveVariant(variant)
+        setMessage("success", `Effort → ${variant}`)
+      },
+    }))
+    const variantClear: CommandAction[] = activeVariant
+      ? [
+          {
+            id: "variant:clear",
+            label: "/effort default",
+            hint: "use model default",
+            run: () => {
+              setActiveVariant(undefined)
+              setMessage("info", "Effort cleared")
+            },
+          },
+        ]
+      : []
+
     return [
-      { id: "home", label: "Open Home", run: () => setRoute("app.home") },
-      { id: "notifications", label: "Open Notifications", run: () => setRoute("app.notifications") },
-      { id: "settings", label: "Open Settings", run: () => setRoute("app.settings") },
-      { id: "cron", label: "Open Cron", run: () => setRoute("app.cron") },
-      { id: "session", label: "Open Session", run: () => setRoute("app.session") },
-      { id: "new-session", label: "Create Session", run: createSession },
+      { id: "new-session", label: "/new", hint: "create session", run: () => { void createSession() } },
+      { id: "session", label: "/session", hint: "open session view", run: () => setRoute("app.session") },
+      { id: "home", label: "/home", hint: "open home", run: () => setRoute("app.home") },
+      { id: "notifications", label: "/inbox", hint: "permissions & questions", run: () => setRoute("app.notifications") },
+      { id: "cron", label: "/cron", hint: "scheduled tasks", run: () => setRoute("app.cron") },
+      { id: "settings", label: "/settings", hint: "workspace & version", run: () => setRoute("app.settings") },
+      { id: "directory", label: "/cd", hint: "change working directory", run: () => {
+        setRoute("app.directory")
+        setFocus("directory")
+        if (opened && !directory) {
+          void loadDirectory(opened.path.directory).catch((error) =>
+            setMessage("error", error instanceof Error ? error.message : String(error)),
+          )
+        }
+      } },
+      ...agentCommands,
+      ...modelCommands,
+      ...variantCommands,
+      ...variantClear,
       ...(selectedSession && selectedSession.share?.url
-        ? [{ id: "unshare", label: "Unshare Session", run: () => opened?.client.session.unshare({ sessionID: selectedSession.id }).then(() => refreshSessions()) }]
+        ? [{ id: "unshare", label: "/unshare", hint: "remove public link", run: () => opened?.client.session.unshare({ sessionID: selectedSession.id }).then(() => refreshSessions()) }]
         : selectedSession
-          ? [{ id: "share", label: "Share Session", run: () => opened?.client.session.share({ sessionID: selectedSession.id }).then(() => refreshSessions()) }]
+          ? [{ id: "share", label: "/share", hint: "publish link", run: () => opened?.client.session.share({ sessionID: selectedSession.id }).then(() => refreshSessions()) }]
           : []),
       ...(selectedSession && !selectedSession.time.archived
         ? [
             {
               id: "archive",
-              label: "Archive Session",
+              label: "/archive",
+              hint: "soft delete session",
               run: () =>
                 opened?.client.session.update({ sessionID: selectedSession.id, time: { archived: Date.now() } }).then(() => refreshSessions()),
             },
@@ -761,7 +922,8 @@ export function App(props: AppProps) {
           ? [
               {
                 id: "unarchive",
-                label: "Unarchive Session",
+                label: "/unarchive",
+                hint: "restore session",
                 run: () =>
                   opened?.client.session.update({ sessionID: selectedSession.id, time: { archived: null } }).then(() => refreshSessions()),
               },
@@ -771,7 +933,8 @@ export function App(props: AppProps) {
         ? [
             {
               id: "revert-last",
-              label: "Revert To Latest Assistant Output",
+              label: "/revert",
+              hint: "rewind to last assistant output",
               run: () => {
                 const message = [...selectedMessages].reverse().find((item) => item.info.role === "assistant")
                 if (!message) return
@@ -780,13 +943,37 @@ export function App(props: AppProps) {
             },
           ]
         : selectedSession && selectedSession.revert
-          ? [{ id: "unrevert", label: "Remove Revert", run: () => opened?.client.session.unrevert({ sessionID: selectedSession.id }).then(() => refreshSessions()) }]
+          ? [{ id: "unrevert", label: "/unrevert", hint: "discard revert", run: () => opened?.client.session.unrevert({ sessionID: selectedSession.id }).then(() => refreshSessions()) }]
           : []),
-      { id: "terminal-toggle", label: terminalOpen ? "Hide Terminal Dock" : "Show Terminal Dock", run: () => setTerminalOpen((value) => !value) },
-      { id: "terminal-new", label: "New Terminal", run: createTerminalTab },
+      ...(selectedSession
+        ? [
+            {
+              id: "compact",
+              label: "/compact",
+              hint: "summarize session to free context",
+              run: () =>
+                opened?.client.session
+                  .summarize({
+                    sessionID: selectedSession.id,
+                    ...(activeModel
+                      ? {
+                          providerID: activeModel.providerID,
+                          modelID: activeModel.modelID,
+                        }
+                      : {}),
+                  })
+                  .then(() => refreshSession(selectedSession.id))
+                  .then(() => setMessage("success", "Session summarized")),
+            },
+          ]
+        : []),
+      { id: "sidebar", label: sidebarOpen ? "/sidebar off" : "/sidebar on", hint: "sessions · tasks · diff", run: () => setSidebarOpen((value) => !value) },
+      { id: "terminal-toggle", label: terminalOpen ? "/terminal off" : "/terminal", hint: "PTY dock", run: () => setTerminalOpen((value) => !value) },
+      { id: "terminal-new", label: "/terminal-new", hint: "new PTY tab", run: createTerminalTab },
       {
         id: "upgrade",
-        label: versionInfo.hasUpdate ? `Upgrade Server To ${versionInfo.latest}` : "Refresh Version Info",
+        label: versionInfo.hasUpdate ? `/upgrade ${versionInfo.latest}` : "/upgrade",
+        hint: versionInfo.hasUpdate ? "server update available" : "refresh version info",
         run: () =>
           versionInfo.hasUpdate
             ? opened?.client.global.upgrade({ target: versionInfo.latest ?? undefined }).then(async (response) => {
@@ -797,6 +984,7 @@ export function App(props: AppProps) {
               })
             : refreshVersion(),
       },
+      { id: "quit", label: "/quit", hint: "exit codeplane", run: () => exit() },
     ]
   }
 
@@ -823,9 +1011,16 @@ export function App(props: AppProps) {
     label: `${item.type === "directory" ? "dir" : "file"} · ${opened ? relative(opened.path.directory, item.absolute) : item.path}`,
     value: item.path,
   }))
-  const commandOptions = buildCommands()
-    .filter((item) => item.label.toLowerCase().includes(paletteFilter.toLowerCase()))
-    .map((item) => ({ label: item.label, value: item.id }))
+  const commandOptions = (() => {
+    const filter = paletteFilter.replace(/^\//, "").toLowerCase()
+    return buildCommands()
+      .filter((item) =>
+        filter === ""
+          ? true
+          : item.label.toLowerCase().includes(filter) || (item.hint?.toLowerCase().includes(filter) ?? false),
+      )
+      .map((item) => ({ label: item.label, value: item.id, hint: item.hint }))
+  })()
 
   async function createTerminalTab() {
     if (!opened) return
@@ -1053,7 +1248,7 @@ export function App(props: AppProps) {
         if (key.escape) {
           setPaletteOpen(false)
           setPaletteFilter("")
-          setFocus("sessions")
+          setFocus(opened ? "composer" : "sessions")
           setPaletteSelection(undefined)
           return
         }
@@ -1490,6 +1685,15 @@ export function App(props: AppProps) {
           setComposerValue((current) => current.slice(0, -1))
           return
         }
+        // Codex/Claude Code pattern: typing `/` on an empty composer opens the
+        // command palette. Once there's text, `/` is just a literal character.
+        if (input === "/" && composerValue === "") {
+          setPaletteOpen(true)
+          setPaletteFilter("")
+          setPaletteSelection(commandOptions[0]?.value)
+          setFocus("palette")
+          return
+        }
         if (editableInput(input, key)) {
           setComposerValue((current) => current + input)
           return
@@ -1632,7 +1836,9 @@ export function App(props: AppProps) {
     ? `Message ${selectedSession.title}`
     : "Create a session and send a prompt"
   const composerHint = focus === "composer"
-    ? "↵ send · / commands · esc unfocus"
+    ? composerValue === ""
+      ? "↵ send · / commands · esc unfocus"
+      : "↵ send · esc unfocus"
     : "tab to focus composer · ↵ send when focused"
 
   return (
@@ -2229,6 +2435,38 @@ export function App(props: AppProps) {
                       ) : null}
                     </Text>
                   </Box>
+                  {activeAgent || activeModel || activeVariant ? (
+                    <Box>
+                      <Text wrap="truncate-end">
+                        {activeAgent ? (
+                          <>
+                            <Text color={theme.fgDim}>agent </Text>
+                            <Text color={theme.tool}>{activeAgent}</Text>
+                          </>
+                        ) : null}
+                        {activeAgent && (activeModel || activeVariant) ? (
+                          <Text color={theme.fgDim}>{"   ·   "}</Text>
+                        ) : null}
+                        {activeModel ? (
+                          <>
+                            <Text color={theme.fgDim}>model </Text>
+                            <Text color={theme.info}>
+                              {activeModel.providerName} · {activeModel.modelName}
+                            </Text>
+                          </>
+                        ) : null}
+                        {activeModel && activeVariant ? (
+                          <Text color={theme.fgDim}>{"   ·   "}</Text>
+                        ) : null}
+                        {activeVariant ? (
+                          <>
+                            <Text color={theme.fgDim}>effort </Text>
+                            <Text color={theme.warning}>{activeVariant}</Text>
+                          </>
+                        ) : null}
+                      </Text>
+                    </Box>
+                  ) : null}
                   <Box marginTop={1}>
                     {conversationParts.length === 0 ? (
                       <Text color={theme.fgDim}>
