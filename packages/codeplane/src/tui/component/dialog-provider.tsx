@@ -18,11 +18,10 @@ import { useConnected } from "./use-connected"
 
 const PROVIDER_PRIORITY: Record<string, number> = {
   opencode: 0,
-  "opencode-go": 1,
-  openai: 2,
-  "github-copilot": 3,
-  anthropic: 4,
-  google: 5,
+  openai: 1,
+  "github-copilot": 2,
+  anthropic: 3,
+  google: 4,
 }
 
 export function createDialogProviderOptions() {
@@ -40,14 +39,7 @@ export function createDialogProviderOptions() {
         const consoleManaged = isConsoleManagedProvider(sync.data.console_state.consoleManagedProviders, provider.id)
         const connected = sync.data.provider_next.connected.includes(provider.id)
 
-        // The upstream "opencode" provider id is what the SDK reports, but
-        // the human label that comes back ("OpenCode Zen" / "OpenCode Go")
-        // is OpenCode-branded. Codeplane rebrands these display names.
-        const displayName =
-          {
-            opencode: "Codeplane Zen",
-            "opencode-go": "Codeplane Go",
-          }[provider.id] ?? provider.name
+        const displayName = provider.id === "opencode" ? "Codeplane" : provider.name
         return {
           title: displayName,
           value: provider.id,
@@ -55,7 +47,6 @@ export function createDialogProviderOptions() {
             opencode: "(Recommended)",
             anthropic: "(API key)",
             openai: "(ChatGPT Plus/Pro or API key)",
-            "opencode-go": "Low cost subscription for everyone",
           }[provider.id],
           footer: consoleManaged ? sync.data.console_state.activeOrgName : undefined,
           category: provider.id in PROVIDER_PRIORITY ? "Popular" : "Other",
@@ -285,17 +276,6 @@ function ApiMethod(props: ApiMethodProps) {
               </text>
               <text fg={theme.text}>
                 Go to <span style={{ fg: theme.primary }}>https://codeplane.ai/zen</span> to get a key
-              </text>
-            </box>
-          ),
-          "opencode-go": (
-            <box gap={1}>
-              <text fg={theme.textMuted}>
-                Codeplane Go is a $10 per month subscription that provides reliable access to popular open coding models
-                with generous usage limits.
-              </text>
-              <text fg={theme.text}>
-                Go to <span style={{ fg: theme.primary }}>https://codeplane.ai/zen</span> and enable Codeplane Go
               </text>
             </box>
           ),

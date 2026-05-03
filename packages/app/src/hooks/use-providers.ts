@@ -5,7 +5,6 @@ import { createMemo } from "solid-js"
 
 export const popularProviders = [
   "codeplane",
-  "codeplane-go",
   "anthropic",
   "github-copilot",
   "openai",

@@ -173,7 +173,6 @@ export const dict = {
   "dialog.provider.tag.recommended": "Recommended",
   "dialog.provider.codeplane.note": "Curated models including Claude, GPT, Gemini and more",
   "dialog.provider.codeplane.tagline": "Reliable optimized models",
-  "dialog.provider.codeplaneGo.tagline": "Low cost subscription for everyone",
   "dialog.provider.anthropic.note": "Direct access to Claude models, including Pro and Max",
   "dialog.provider.copilot.note": "AI models for coding assistance via GitHub Copilot",
   "dialog.provider.openai.note": "GPT models for fast, capable general AI tasks",
@@ -205,13 +204,6 @@ export const dict = {
   "provider.connect.apiKey.label": "{{provider}} API key",
   "provider.connect.apiKey.placeholder": "API key",
   "provider.connect.apiKey.required": "API key is required",
-  "provider.connect.codeplaneZen.line1":
-    "Codeplane Zen gives you access to a curated set of reliable optimized models for coding agents.",
-  "provider.connect.codeplaneZen.line2":
-    "With a single API key you'll get access to models such as Claude, GPT, Gemini, GLM and more.",
-  "provider.connect.codeplaneZen.visit.prefix": "Visit ",
-  "provider.connect.codeplaneZen.visit.link": "example.invalid/zen",
-  "provider.connect.codeplaneZen.visit.suffix": " to collect your API key.",
   "provider.connect.oauth.code.visit.prefix": "Visit ",
   "provider.connect.oauth.code.visit.link": "this link",
   "provider.connect.oauth.code.visit.suffix":

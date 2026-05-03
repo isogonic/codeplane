@@ -4,7 +4,7 @@ import {
   RETRY_BACKOFF_FACTOR,
   RETRY_MAX_DELAY_NO_HEADERS,
   RETRY_MAX_DELAY,
-  GO_UPSELL_MESSAGE,
+  FREE_USAGE_EXCEEDED_MESSAGE,
 } from "../../src/session/retry"
 
 describe("retry constants", () => {
@@ -24,9 +24,9 @@ describe("retry constants", () => {
     expect(RETRY_MAX_DELAY).toBe(2_147_483_647)
   })
 
-  test("GO_UPSELL_MESSAGE is non-empty", () => {
-    expect(typeof GO_UPSELL_MESSAGE).toBe("string")
-    expect(GO_UPSELL_MESSAGE.length).toBeGreaterThan(0)
+  test("FREE_USAGE_EXCEEDED_MESSAGE is non-empty", () => {
+    expect(typeof FREE_USAGE_EXCEEDED_MESSAGE).toBe("string")
+    expect(FREE_USAGE_EXCEEDED_MESSAGE.length).toBeGreaterThan(0)
   })
 
   test("RETRY_INITIAL_DELAY is positive", () => {

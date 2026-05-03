@@ -5,9 +5,7 @@ import { iife } from "@/util/iife"
 
 export type Err = ReturnType<NamedError["toObject"]>
 
-// This exported message is shared with UI upsell detectors. Matching on a
-// literal error string is not ideal, but it is the simplest for now.
-export const GO_UPSELL_MESSAGE = "Free usage exceeded, subscribe to Go https://example.invalid/go"
+export const FREE_USAGE_EXCEEDED_MESSAGE = "Free usage exceeded"
 
 export const RETRY_INITIAL_DELAY = 2000
 export const RETRY_BACKOFF_FACTOR = 2
@@ -59,7 +57,7 @@ export function retryable(error: Err) {
     // 5xx errors are transient server failures and should always be retried,
     // even when the provider SDK doesn't explicitly mark them as retryable.
     if (!error.data.isRetryable && !(status !== undefined && status >= 500)) return undefined
-    if (error.data.responseBody?.includes("FreeUsageLimitError")) return GO_UPSELL_MESSAGE
+    if (error.data.responseBody?.includes("FreeUsageLimitError")) return FREE_USAGE_EXCEEDED_MESSAGE
     return error.data.message.includes("Overloaded") ? "Provider is overloaded" : error.data.message
   }
 
