@@ -152,7 +152,55 @@ async function main() {
   })
 }
 
+// Recognize the connection-failure signatures Bun / Node fetch surface when
+// the instance is gone or the credentials are wrong, and print a clear
+// "instance unreachable" / "auth required" message instead of a raw stack.
+// The user can then re-run `codeplane tui` to land back on the boot wizard
+// and pick a different instance (matches the desktop's bounce-to-Loader
+// behavior shipped in v27.4.32).
+function classifyTuiExitError(err: unknown): { kind: "unreachable" | "auth-required" | "unknown"; detail: string } {
+  const message = err instanceof Error ? err.message : String(err)
+  const detail = message || "Unknown error"
+  const lower = message.toLowerCase()
+  if (lower.includes("401") || lower.includes("unauthorized")) return { kind: "auth-required", detail }
+  if (lower.includes("403") || lower.includes("forbidden")) return { kind: "auth-required", detail }
+  if (
+    lower.includes("fetch failed") ||
+    lower.includes("econnrefused") ||
+    lower.includes("ehostunreach") ||
+    lower.includes("enotfound") ||
+    lower.includes("etimedout") ||
+    lower.includes("connection refused") ||
+    lower.includes("network is unreachable") ||
+    lower.includes("getaddrinfo") ||
+    lower.includes("connect timeout")
+  ) {
+    return { kind: "unreachable", detail }
+  }
+  return { kind: "unknown", detail }
+}
+
 main().catch((err) => {
+  const classified = classifyTuiExitError(err)
+  if (classified.kind === "unreachable") {
+    // eslint-disable-next-line no-console
+    console.error(
+      `\nInstance unreachable: ${classified.detail}\n` +
+        `\nRe-run \`codeplane tui\` to pick a different instance from the boot wizard,\n` +
+        `or check that the server is running and that the saved URL / headers match.\n`,
+    )
+    process.exit(2)
+  }
+  if (classified.kind === "auth-required") {
+    // eslint-disable-next-line no-console
+    console.error(
+      `\nInstance rejected the credentials: ${classified.detail}\n` +
+        `\nThe server returned 401/403. Update the saved instance's authorization\n` +
+        `header to match the server's --password (or fix the password on the server).\n` +
+        `Re-run \`codeplane tui\` to pick the instance again.\n`,
+    )
+    process.exit(2)
+  }
   // eslint-disable-next-line no-console
   console.error(err instanceof Error ? err.stack ?? err.message : String(err))
   process.exit(1)
