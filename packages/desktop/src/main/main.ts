@@ -753,8 +753,43 @@ let desktopShellUpdateInFlight: Promise<{ current: string; latest: string | null
 // session, every subsequent install attempt will fail the same way (the
 // running app's signature doesn't change at runtime). Latch the state so we
 // route the user straight to manual download instead of re-triggering the
-// failing install path.
+// failing install path. Also set preemptively in setupAutoUpdater() when the
+// running mac bundle has no Developer ID signature (CI builds with
+// CSC_IDENTITY_AUTO_DISCOVERY=false) — we know in-place auto-update will
+// always be rejected, so don't bother trying.
 let desktopShellManualDownloadOnly = false
+
+// Detect whether the running macOS bundle has a real Developer ID signature.
+// Without one, Squirrel.Mac's in-place update is always rejected by
+// SecCodeCheckValidity, so we preempt the failure and route to manual download.
+// Returns true on non-mac (the check is irrelevant) so callers don't have to
+// branch.
+async function macOsHasDeveloperIdSignature(): Promise<boolean> {
+  if (process.platform !== "darwin") return true
+  if (!app.isPackaged) return true
+  try {
+    const exe = app.getPath("exe")
+    return await new Promise<boolean>((resolve) => {
+      execFile(
+        "codesign",
+        ["-dvv", exe],
+        { timeout: 5_000, maxBuffer: 1024 * 64 },
+        (err, _stdout, stderr) => {
+          if (err) return resolve(false)
+          const text = String(stderr ?? "")
+          // Properly signed builds emit "Authority=Developer ID Application: …"
+          // (or "Authority=Apple Distribution: …" for App Store builds).
+          // Ad-hoc signed CI builds have "Signature=adhoc" and no Authority line.
+          if (/Authority=Developer ID Application/i.test(text)) return resolve(true)
+          if (/Authority=Apple Distribution/i.test(text)) return resolve(true)
+          resolve(false)
+        },
+      )
+    })
+  } catch {
+    return false
+  }
+}
 
 async function shellUpdateStatus() {
   const current = app.getVersion()
@@ -827,6 +862,21 @@ async function runRuntimeUpdateCheck(input?: { announce?: boolean }) {
     const status = await shellUpdateStatus()
     if (status.hasUpdate && status.latest) {
       logger.log("main", "updater.update-available", status)
+      // When we already know in-place install is impossible (unsigned mac
+      // build), skip the "Install update" UI step and surface the manual
+      // download URL immediately so the user can act on the very first
+      // check without going through a guaranteed-to-fail download attempt.
+      if (desktopShellManualDownloadOnly) {
+        const url = desktopReleaseDownloadUrl(status.latest)
+        logger.log("main", "updater.preempted-manual-download", { version: status.latest, url })
+        broadcastUpdater("updater:requires-manual-download", {
+          version: status.latest,
+          url,
+          reason:
+            "This build of Codeplane Desktop is not code-signed with an Apple Developer ID, so macOS rejects in-place updates. Download the new version manually instead.",
+        })
+        return { ok: true as const, updateAvailable: true, version: status.latest, manualDownloadOnly: true as const }
+      }
       broadcastUpdater("updater:update-available", { version: status.latest })
       if (input?.announce) {
         const result = await showMessageBox({
@@ -1914,6 +1964,22 @@ function setupAutoUpdater() {
     }
     broadcastUpdater("updater:error", message)
   })
+
+  // Preemptively flip the manual-download latch on unsigned mac builds so the
+  // very first check goes straight to the manual-download UI instead of a
+  // guaranteed-to-fail autoUpdater.downloadUpdate() attempt. The detection
+  // runs in the background — runRuntimeUpdateCheck below will pick up the
+  // updated flag on its own 5s-delayed first run.
+  if (process.platform === "darwin") {
+    void macOsHasDeveloperIdSignature().then((signed) => {
+      if (signed) {
+        logger.log("main", "updater.signature.developer-id", {})
+        return
+      }
+      desktopShellManualDownloadOnly = true
+      logger.log("main", "updater.signature.preempted-unsigned", {})
+    })
+  }
 
   setTimeout(() => void runRuntimeUpdateCheck().catch(() => undefined), 5_000)
   setInterval(() => void runRuntimeUpdateCheck().catch(() => undefined), 60 * 60 * 1000)
