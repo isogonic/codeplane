@@ -36,3 +36,6 @@ package-lock.json
 **/.wrangler/
 **/test/generated/
 packages/app/src/utils/generated/
+# Stray screenshots from browser MCP / Claude in Chrome sessions
+/openai-*-dropdown.png
+/screenshot-*.png
