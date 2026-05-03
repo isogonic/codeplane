@@ -1,20 +1,20 @@
 <div align="center">
   <a href="https://github.com/devinoldenburg/codeplane">
     <picture>
-      <source srcset="packages/web/src/assets/logo-ornate-light.svg" media="(prefers-color-scheme: dark)">
-      <source srcset="packages/web/src/assets/logo-ornate-dark.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/web/src/assets/logo-ornate-dark.svg" alt="Codeplane" width="120">
+      <source srcset="assets/logo-dark.svg" media="(prefers-color-scheme: dark)">
+      <source srcset="assets/logo.svg" media="(prefers-color-scheme: light)">
+      <img src="assets/logo.svg" alt="Codeplane" width="120">
     </picture>
   </a>
 
   <h1>Codeplane</h1>
 
   <p>
-    <strong>The AI coding agent built for the web.</strong>
+    <strong>One agent runtime, four surfaces.</strong>
   </p>
 
   <p>
-    Open source &nbsp;·&nbsp; Provider-agnostic &nbsp;·&nbsp; LSP-native &nbsp;·&nbsp; Client/server architecture
+    Open source &nbsp;·&nbsp; Provider-agnostic &nbsp;·&nbsp; Local or remote &nbsp;·&nbsp; Single shared home folder
   </p>
 
   <p>
@@ -27,10 +27,9 @@
     <a href="#download">Download</a> &nbsp;·&nbsp;
     <a href="#install">Install</a> &nbsp;·&nbsp;
     <a href="#quick-start">Quick start</a> &nbsp;·&nbsp;
-    <a href="#how-it-runs">How it runs</a> &nbsp;·&nbsp;
-    <a href="#config-home-folder">Config</a> &nbsp;·&nbsp;
-    <a href="#features">Features</a> &nbsp;·&nbsp;
-    <a href="#agents">Agents</a> &nbsp;·&nbsp;
+    <a href="#the-four-surfaces">The four surfaces</a> &nbsp;·&nbsp;
+    <a href="#cli-reference">CLI reference</a> &nbsp;·&nbsp;
+    <a href="#shared-home-folder">Home folder</a> &nbsp;·&nbsp;
     <a href="#faq">FAQ</a>
   </p>
 </div>
@@ -39,9 +38,22 @@
 
 ## Overview
 
-Codeplane is a fully open-source AI coding agent with a shared CLI, TUI, web app, and desktop app. The same runtime can run locally or remotely, and the same shared `Codeplane` home folder powers config, local servers, plugins, skills, and saved instances across every surface.
+Codeplane is a fully open-source AI coding agent. Since v27.4.24 the product is
+locked to **exactly four surfaces** that all share the same agent runtime and
+the same on-disk `Codeplane` home folder:
 
-Forked from [opencode](https://github.com/sst/opencode) by [SST](https://sst.dev), with a focus on multi-session workflows, first-class scheduling, and a desktop shell that connects to local or remote servers.
+| Surface | What it does |
+| :--- | :--- |
+| **Desktop** | Native shell that opens an instance via the Loader / Selector. |
+| **CLI** | `serve` / `web` host an instance, `tui` launches the terminal UI, `instance` configures saved instances. |
+| **TUI** | Terminal UI that opens an instance via the Loader / Selector. |
+| **Web** | Hosted Instance UI (the SolidJS app under `packages/app/`) — the actual chat / sessions / files surface. |
+
+That's the whole product. There is no `codeplane run`, `codeplane agent`,
+`codeplane mcp`, `codeplane upgrade`, etc. anymore — those commands were
+removed in v27.4.24. See the [v27.4.24 release notes](https://github.com/devinoldenburg/codeplane/releases/tag/v27.4.24) for the exact list of what went away. Pin to `codeplane-ai@27.4.23` if you depended on any of them.
+
+Forked from [opencode](https://github.com/sst/opencode) by [SST](https://sst.dev) — Codeplane stays close to upstream for the core agent loop but ships a polished web app, a desktop shell, and a strict client/server split.
 
 <br />
 
@@ -64,7 +76,7 @@ Pre-built desktop installers for the current release.
       <td>Apple Silicon</td>
       <td><code>.dmg</code></td>
       <td align="right">
-        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.24-desktop/codeplane-desktop-macos-apple-silicon.dmg">
+        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.25-desktop/codeplane-desktop-macos-apple-silicon.dmg">
           <img alt="Download for macOS Apple Silicon" src="https://img.shields.io/badge/Download-0a0a0a?style=for-the-badge&logo=apple&logoColor=white" />
         </a>
       </td>
@@ -74,7 +86,7 @@ Pre-built desktop installers for the current release.
       <td>Intel</td>
       <td><code>.dmg</code></td>
       <td align="right">
-        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.24-desktop/codeplane-desktop-macos-intel.dmg">
+        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.25-desktop/codeplane-desktop-macos-intel.dmg">
           <img alt="Download for macOS Intel" src="https://img.shields.io/badge/Download-0a0a0a?style=for-the-badge&logo=apple&logoColor=white" />
         </a>
       </td>
@@ -84,7 +96,7 @@ Pre-built desktop installers for the current release.
       <td>x64</td>
       <td><code>.exe</code></td>
       <td align="right">
-        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.24-desktop/codeplane-desktop-windows-x64.exe">
+        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.25-desktop/codeplane-desktop-windows-x64.exe">
           <img alt="Download for Windows" src="https://img.shields.io/badge/Download-0a0a0a?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDMuNDQ5TDkuNzUgMi4xVjExLjUxSDB6TTEwLjk0OSAxOS40NUwyMy45OTggMjEuOVYxMi43SDEwLjk0OXpNMCAxMi43VjIxLjJsOS43NSAxLjM1VjEyLjd6TTEwLjk0OSAyLjFWMTEuNDk1SDIzLjk5OFY0LjE5eiIvPjwvc3ZnPg==&logoColor=white" />
         </a>
       </td>
@@ -94,7 +106,7 @@ Pre-built desktop installers for the current release.
       <td>x64</td>
       <td><code>.AppImage</code></td>
       <td align="right">
-        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.24-desktop/codeplane-desktop-linux-x64.AppImage">
+        <a href="https://github.com/devinoldenburg/codeplane/releases/download/v27.4.25-desktop/codeplane-desktop-linux-x64.AppImage">
           <img alt="Download for Linux" src="https://img.shields.io/badge/Download-0a0a0a?style=for-the-badge&logo=linux&logoColor=white" />
         </a>
       </td>
@@ -102,9 +114,9 @@ Pre-built desktop installers for the current release.
   </tbody>
 </table>
 
-<sub>Current desktop release: <a href="https://github.com/devinoldenburg/codeplane/releases/tag/v27.4.24-desktop"><strong>v27.4.24&#8209;desktop</strong></a> &nbsp;·&nbsp; <a href="https://github.com/devinoldenburg/codeplane/releases/tag/v27.4.24"><strong>v27.4.24 CLI</strong></a> &nbsp;·&nbsp; <a href="https://github.com/devinoldenburg/codeplane/releases">Browse all releases</a></sub>
+<sub>Current desktop release: <a href="https://github.com/devinoldenburg/codeplane/releases/tag/v27.4.25-desktop"><strong>v27.4.25&#8209;desktop</strong></a> &nbsp;·&nbsp; <a href="https://github.com/devinoldenburg/codeplane/releases/tag/v27.4.25"><strong>v27.4.25 CLI</strong></a> &nbsp;·&nbsp; <a href="https://github.com/devinoldenburg/codeplane/releases">Browse all releases</a></sub>
 
-> Desktop installers ship on the dedicated `vX.Y.Z-desktop` release line. If a brand-new build is still finishing, the release page above shows live status and any partial assets.
+> Desktop installers ship on the dedicated `vX.Y.Z-desktop` release line. Builds are **ad-hoc signed** (no Apple Developer ID), so the desktop's in-app updater preempts macOS Squirrel and routes users to the GitHub release page for the next dmg with a single click. See [Updates](#updates) for the full behavior matrix.
 
 <br />
 
@@ -112,25 +124,23 @@ Pre-built desktop installers for the current release.
 
 You can run Codeplane three ways:
 
-- **Desktop app**: download an installer above and open it like any native app.
-- **npm package**: install the CLI globally or run it with `npx`.
-- **Source checkout**: clone the repo and run it with Bun for development.
+- **Desktop app** — download an installer above.
+- **npm package** — install the CLI globally or run it via `npx`.
+- **Source checkout** — clone the repo and run it with [Bun](https://bun.sh) for development.
 
 ### npm package
-
-Install globally:
 
 ```bash
 npm install -g codeplane-ai
 ```
 
-Or run it without a global install:
+Or one-shot without installing:
 
 ```bash
 npx -y codeplane-ai
 ```
 
-You can use `pnpm`, `bun`, or `yarn` instead if that is your normal package manager.
+`pnpm`, `yarn`, and `bun` work too.
 
 ### From source
 
@@ -150,132 +160,218 @@ After installing the npm package:
 codeplane
 ```
 
-What happens next depends on how you launch it:
+Bare `codeplane` with no subcommand picks based on TTY:
 
-- In an interactive terminal, bare `codeplane` opens the full terminal UI.
-- In a non-interactive environment, bare `codeplane` falls back to the web/server flow.
-- `codeplane web` always starts the server and opens the web app.
-- `codeplane tui` always starts the terminal UI.
-- The desktop app can connect to local or remote instances without a globally installed CLI. If you choose a local instance, it installs and manages the local runtime for you inside the shared `Codeplane` folder.
+- Interactive terminal → opens the **TUI** (`tui`).
+- Non-interactive → starts the server and opens the **Web** UI (`web`).
 
-Example flows:
+To force one or the other:
 
 ```bash
-# Start the TUI
-codeplane
-
-# Force the web app
-codeplane web
-
-# Force the terminal UI
-codeplane tui
-
-# Inspect config and shared paths
-codeplane config paths
-
-# Add a remote instance
-codeplane instance add https://my-server.example.com --label "Team server"
-
-# Add a local instance
-codeplane instance add --local --label "Local stable"
+codeplane tui    # always start the terminal UI
+codeplane web    # always start the server + open the web app
+codeplane serve  # headless server, no browser open
 ```
 
-From source with [Bun](https://bun.sh), run:
+### Connecting to instances
 
-```bash
-bun run dev:server -- .
-```
-
-Then use the web app, TUI, or desktop app to switch agents, manage parallel sessions, schedule recurring work, and review changes.
-
-For UI development, run the API server and Vite app in separate terminals:
-
-```bash
-bun run dev:server
-bun run dev:web
-```
-
-<details>
-<summary><strong>Custom install directory</strong></summary>
-
-<br />
-
-If you use the standalone install script rather than your package manager, it resolves the target path in this order:
-
-1. `$CODEPLANE_INSTALL_DIR`
-2. `$XDG_BIN_DIR`
-3. `$HOME/bin`
-4. `$HOME/.codeplane/bin` &nbsp;<sub>default fallback</sub>
-
-</details>
-
-<br />
-
-## How it runs
-
-Codeplane is one product with multiple frontends sharing the same runtime model and shared state:
-
-- **CLI**: command surface for config, instances, automation, sessions, plugins, MCP, and server management.
-- **TUI**: full terminal UI launched by `codeplane` in an interactive terminal or explicitly by `codeplane tui`.
-- **Web app**: launched by `codeplane web` or connected to a remote/headless server.
-- **Desktop app**: native shell that uses the same shared instance list and shared `Codeplane` home directory as the CLI and TUI.
-
-### Local and remote instances
-
-Every surface can work with both:
-
-- **Remote instances**: saved URLs with optional headers and TLS overrides.
-- **Local instances**: managed local Codeplane servers installed from npm and stored under the shared `Codeplane/local_server/` tree.
-
-You can keep multiple local servers and multiple remote servers at the same time. The saved instance registry is shared across desktop, TUI, and CLI.
-
-Useful instance commands:
+Save and use Codeplane instances (local or remote):
 
 ```bash
 codeplane instance list
-codeplane instance show <id>
+
+# Save a remote server
+codeplane instance add https://my-server.example.com --label "Team server"
+
+# Save a local instance (managed local Codeplane runtime)
+codeplane instance add --local --label "Local stable"
+
+# Pick one as the default selection
 codeplane instance use <id>
+
+# Open it (starts the local runtime if needed, then prints the URL)
 codeplane instance open <id>
-codeplane instance probe https://my-server.example.com
-codeplane instance local status
-codeplane instance local install
-codeplane instance local update
+```
+
+The Desktop and TUI both use the same saved-instance registry — pick from the
+list in their Loader / Selector and they connect over HTTP.
+
+### From source with Bun
+
+```bash
+# Backend (codeplane server) on :4096
+bun run dev:server
+
+# Web UI (Vite dev server) on :4444 — talks to the backend on :4096
+bun run dev:web
+
+# Storybook for the @codeplane-ai/ui component library
+bun run dev:storybook
 ```
 
 <br />
 
-## Config & Home Folder
+## The four surfaces
 
-Codeplane uses one shared OS-native home folder named `Codeplane`. Desktop, TUI, CLI, local instances, plugins, skills, and shared instance state all live under that root.
+Codeplane is one runtime with four front doors. Each one talks to the same
+HTTP / SSE server and reads / writes the same shared `Codeplane` home folder.
+
+```
+                     ┌──────────────────┐
+                     │  Codeplane home  │
+                     │   (instances,    │
+                     │     plugins,     │
+                     │       …)         │
+                     └────────▲─────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        │                     │                     │
+   ┌────┴─────┐         ┌─────┴────┐          ┌─────┴────┐
+   │ Desktop  │         │   CLI    │          │   Web    │
+   │ shell    │         │ (yargs)  │          │ (SolidJS)│
+   └────┬─────┘         └────┬─────┘          └─────▲────┘
+        │ spawns              │                     │
+        │  local              │                     │
+        │  runtime            │                     │
+        ▼                     ▼                     │
+   ┌──────────────────────────────────────────────┐ │
+   │            Codeplane server                  │─┘
+   │   (Hono + Effect, SQLite store)              │
+   │     `serve` / `web` / spawned-by-desktop      │
+   └────────────────────▲─────────────────────────┘
+                        │
+                        │
+                  ┌─────┴────┐
+                  │   TUI    │
+                  │ (opentui │
+                  │ + Solid) │
+                  └──────────┘
+```
+
+### Desktop
+
+Native Electron shell. Two screens:
+
+1. **Loader / Selector** — pick a saved instance (or seed a default-local one), then opens it as the chrome-less Web UI.
+2. **Updates panel** — checks GitHub for the paired `vX.Y.Z-desktop` release. On macOS unsigned builds (the current CI default) it preempts the Squirrel code-signature error and routes the user to the GitHub release page in one click.
+
+The desktop spawns local Codeplane servers via the shared `local-instance` manager — each saved local instance gets its own isolated subdir under `Codeplane/local_server/<id>/`.
+
+### CLI
+
+Just four top-level commands:
+
+| Command | What it does |
+| :--- | :--- |
+| `codeplane serve` | Start the server headlessly. |
+| `codeplane web` | Start the server **and** open the web app in your browser. |
+| `codeplane tui` | Launch the SolidJS terminal UI. |
+| `codeplane instance` | Configure saved instances + the shared local runtime. |
+
+Bare `codeplane` dispatches to `tui` (interactive) or `web` (non-interactive). See [CLI reference](#cli-reference) for full sub-command listings.
+
+### TUI
+
+The terminal UI is a SolidJS + [opentui](https://github.com/anomalyco/opentui) app bundled separately and spawned by `codeplane tui`. Boot flow:
+
+1. Pick an instance via the Loader (or use `--instance <id>` to skip).
+2. Pick a working directory via the wizard (or `--dir <path>` to skip).
+3. Hand off to the SolidJS TUI, which talks to the resolved instance over HTTP.
+
+### Web
+
+The actual product UI — sessions, files, providers, models, sidebar workspaces, scheduled tasks. Built with SolidJS. Lives in `packages/app/`. The Desktop renders it inside Electron; `codeplane web` opens the same app in your browser at `http://127.0.0.1:<ephemeral>`.
+
+<br />
+
+## Updates
+
+The behavior matrix after the v27.4.23 desktop fix:
+
+| Surface | Build state | Update flow |
+| :--- | :--- | :--- |
+| **macOS Desktop** (Developer ID signed) | packaged | Auto-update in-place via electron-updater. |
+| **macOS Desktop** (ad-hoc signed — current CI) | packaged | "Update available" → 1 click → opens the GitHub release page in the browser. |
+| **macOS Desktop** | unpacked dev | "Auto-update only available in packaged builds." |
+| **Linux AppImage** | packaged | Auto-update in-place. |
+| **Windows** | packaged | Auto-update in-place. |
+| **CLI / npm install** | n/a | `npm install -g codeplane-ai@<latest>`. The pre-v27.4.24 `codeplane upgrade` self-update command was removed. |
+
+The Codeplane Desktop's in-app Updates panel detects whether the running mac bundle is properly code-signed at startup. If not, it preempts the Squirrel code-signature failure and surfaces a one-click manual-download path **before** the first failed download attempt instead of after. See the [v27.4.23 release notes](https://github.com/devinoldenburg/codeplane/releases/tag/v27.4.23) for the full root-cause breakdown.
+
+<br />
+
+## CLI reference
+
+### `codeplane serve [options]`
+
+Start the headless server.
+
+| Flag | Default | Description |
+| :--- | :--- | :--- |
+| `--hostname` | `127.0.0.1` | Bind hostname. |
+| `--port` | `0` | Port (`0` picks an ephemeral port and prints the chosen one). |
+
+### `codeplane web [options]`
+
+Start the server and open the web app in your default browser. Same flags as `serve`.
+
+### `codeplane tui [options]`
+
+Launch the terminal UI. Args:
+
+| Flag | Description |
+| :--- | :--- |
+| `--instance <id>` | Skip the wizard, open a saved instance directly. |
+| `--route <route>` | Initial TUI route (`session/<id>`, etc.). |
+| `--` | Any args after `--` are forwarded to the TUI bundle. |
+
+### `codeplane instance` subcommands
+
+| Subcommand | What it does |
+| :--- | :--- |
+| `instance list` | List saved instances (table by default; `--json` for machine output). |
+| `instance add [target]` | Save a remote URL or `--local` instance. Options: `--id`, `--label`, `--header name:value` (repeatable), `--ignore-certificate-errors`, `--local`, `--runtime-version`. |
+| `instance show <id>` | Show one saved instance record. |
+| `instance use <id>` | Mark as the default selection. |
+| `instance remove <id>` | Remove a saved instance. |
+| `instance probe <target>` | Probe a saved id or raw URL via `/global/version`. |
+| `instance open <id>` | Resolve and open (starts a local runtime if needed). |
+| `instance local target` | Show the resolved npm package target for this machine. |
+| `instance local status [version]` | Show whether a runtime version is installed. |
+| `instance local install [version]` | Install the shared local runtime from npm. |
+| `instance local update` | Install the latest npm runtime and repoint saved local instances to it. |
+
+That's the full CLI surface in v27.4.24+. If a command isn't listed here, it doesn't exist anymore.
+
+<br />
+
+## Shared `Codeplane` home folder
+
+Codeplane uses one OS-native home folder named `Codeplane` shared across Desktop, TUI, CLI, local instances, and plugins.
 
 Default root:
 
-- **macOS**: `~/Library/Application Support/Codeplane`
-- **Windows**: `%APPDATA%\\Codeplane`
-- **Linux**: `$XDG_CONFIG_HOME/Codeplane` or `~/.config/Codeplane`
+| OS | Path |
+| :--- | :--- |
+| **macOS** | `~/Library/Application Support/Codeplane` |
+| **Windows** | `%APPDATA%\Codeplane` |
+| **Linux** | `$XDG_CONFIG_HOME/Codeplane` (or `~/.config/Codeplane`) |
 
-You can inspect the live paths on your machine with:
-
-```bash
-codeplane config paths
-```
-
-### Shared folder layout
-
-Typical layout:
+Layout:
 
 ```text
 Codeplane/
-├── codeplane.jsonc
-├── instances.json
+├── codeplane.jsonc           ← global config (or codeplane.json / config.json)
+├── instances.json            ← shared saved-instance registry
 ├── agents/
 ├── bin/
 ├── cache/
 ├── commands/
 ├── data/
 ├── local_server/
-│   ├── binaries/
-│   └── <instance-id>/
+│   ├── binaries/             ← cached local runtime binaries by version
+│   └── <instance-id>/        ← one managed local server + its data
 │       ├── bin/
 │       ├── cache/
 │       ├── data/
@@ -287,158 +383,78 @@ Codeplane/
 └── state/
 ```
 
-Important points:
+The CLI's `codeplane config paths` helper for inspecting these on your machine
+was removed in v27.4.24 along with the rest of `codeplane config`. To inspect
+them today, derive from the table above or read the source at
+`packages/shared/src/home.ts`.
 
-- `instances.json` is the shared saved-instance registry used by desktop, TUI, and CLI.
-- `codeplane.jsonc` is the canonical shared global config file.
-- `local_server/<instance-id>/` holds one managed local server and its data.
-- `local_server/binaries/` caches downloaded local runtime binaries by version.
-- `skills/` is the shared drop-in directory for custom skills.
-- `plugins/` is the shared root for plugin data and installed plugin assets.
-- `agents/` and `commands/` are shared customizations available across surfaces.
+### Environment overrides
 
-### Config files
+| Var | Effect |
+| :--- | :--- |
+| `CODEPLANE_HOME_DIR` | Override the shared home root. |
+| `CODEPLANE_DATA_DIR` | Override `<root>/data`. |
+| `CODEPLANE_CACHE_DIR` | Override `<root>/cache`. |
+| `CODEPLANE_STATE_DIR` | Override `<root>/state`. |
+| `CODEPLANE_BIN_DIR` | Override `<root>/bin`. The TUI launcher also reads this to locate `runtime/tui/node-main.js`. |
+| `CODEPLANE_LOG_DIR` | Override `<root>/log`. |
+| `CODEPLANE_DESKTOP_MANAGED` | Set to `"1"` by the Desktop shell when it spawns a local server. Tells the server its updates are managed by the Desktop's electron-updater path. |
 
-The shared global config root accepts these filenames:
+### Managed config (system-wide deployment)
 
-- `codeplane.jsonc`
-- `codeplane.json`
-- `config.json`
-
-The canonical file is:
-
-```text
-Codeplane/codeplane.jsonc
-```
-
-Codeplane also supports project-level config in your repo when you want local overrides, but the shared `Codeplane` folder is the default global control plane for desktop, TUI, CLI, local runtimes, plugins, MCP, and skills.
-
-### Config from the CLI
-
-```bash
-codeplane config show
-codeplane config show --global
-codeplane config get npm.registry
-codeplane config set npm.client pnpm
-codeplane config set mcp.my_server '{"type":"remote","url":"https://mcp.example.com"}' --json
-codeplane config unset mcp.my_server
-```
-
-### Example global config
-
-```jsonc
-{
-  "npm": {
-    "client": "pnpm",
-    "registry": "https://registry.npmjs.org/",
-    "scopes": {
-      "@internal": {
-        "registry": "https://registry.example.com/internal",
-        "token": "YOUR_TOKEN",
-        "always_auth": true
-      }
-    }
-  },
-  "mcp": {
-    "filesystem": {
-      "type": "local",
-      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "."],
-      "enabled": true
-    },
-    "team_api": {
-      "type": "remote",
-      "url": "https://mcp.example.com",
-      "headers": {
-        "Authorization": "Bearer YOUR_TOKEN"
-      },
-      "enabled": true
-    }
-  },
-  "skills": {
-    "paths": ["./skills"],
-    "urls": ["https://example.com/.well-known/skills/"]
-  },
-  "plugin": [
-    "acme-codeplane-plugin@1.2.3",
-    "file:///absolute/path/to/local-plugin.ts"
-  ]
-}
-```
-
-### Skills, plugins, and MCP
-
-- **Skills**: drop them into the shared `Codeplane/skills/` folder or point `skills.paths` at additional directories.
-- **Plugins**: load npm package plugins or local file/URL plugin specs through `plugin`.
-- **MCP servers**: configure local process-based servers or remote HTTP servers in the shared config under `mcp`.
-- **npm integration**: registry, auth tokens, scoped registries, and preferred package manager all live under `npm`.
-
-That means the same config can drive:
-
-- Desktop local-server installs and updates
-- TUI local-server installs and updates
-- CLI plugin/package resolution
-- MCP server startup
-- Shared skills and agent behavior
-
-### Managed config
-
-For device management or system-wide deployment, Codeplane also reads managed config from:
+Codeplane also reads managed config from:
 
 - **macOS**: `/Library/Application Support/Codeplane`
-- **Windows**: `%ProgramData%\\Codeplane`
+- **Windows**: `%ProgramData%\Codeplane`
 - **Linux**: `/etc/Codeplane`
 
-<br />
-
-## Features
-
-### Provider-agnostic
-
-Anthropic, OpenAI, Google, Bedrock, Groq, Mistral, Azure, local models, and [75+ more via models.dev](https://models.dev). Sign in with GitHub for Copilot, OpenAI for ChatGPT Plus/Pro, or bring your own API key.
-
-### Built for real codebases
-
-| Capability | What it gives you |
-| :--- | :--- |
-| **LSP-native** | Language servers boot automatically so the agent has accurate symbols, types, and diagnostics. |
-| **MCP support** | Connect any [Model Context Protocol](https://modelcontextprotocol.io) server. |
-| **Git worktrees** | Isolate parallel agent work without branch juggling. |
-| **Snapshot & undo** | Every filesystem change is reversible. |
-
-### Multi-session workflows
-
-| Capability | What it gives you |
-| :--- | :--- |
-| **Parallel agents** | Run multiple agents on the same project at once. |
-| **Session sharing** | Generate a link for any conversation. |
-| **Cron / schedules** | Run agents on a cadence with full scope control. |
-| **Client/server** | Run the web app locally, remotely, or against a headless server. |
-
-### Extend without forking
-
-| Capability | What it gives you |
-| :--- | :--- |
-| **Skills** | Drop Markdown into the shared `Codeplane/skills/` folder or add extra skill paths in config. |
-| **Plugins** | Build custom tools with the `@codeplane-ai/plugin` SDK. |
+User config takes precedence per key.
 
 <br />
 
-## Agents
+## Local vs remote instances
 
-Switch with `Tab`. The two built-in agents trade off speed for safety:
+Every surface can work with both:
 
-| Agent | Access | Best for |
-| :--- | :--- | :--- |
-| **build** | Read, write, run commands | Active development |
-| **plan** | Read-only, asks before any command | Exploring unfamiliar code, planning changes |
+- **Remote instance** — a saved URL with optional auth headers and TLS overrides.
+- **Local instance** — a managed Codeplane server installed from npm and stored under the shared `Codeplane/local_server/` tree. The Desktop and CLI both manage these via the shared local-runtime helper (`@codeplane-ai/shared`).
 
-A **general** subagent handles complex search and multi-step research. Invoke it explicitly with `@general` in any message.
+The saved-instance registry (`Codeplane/instances.json`) is shared across Desktop, TUI, and CLI — saving an instance in one of them makes it visible in the others.
+
+<br />
+
+## Repository layout
+
+After the v27.4.24 strict 4-surface refactor, the workspace is **7 packages** plus `script/`:
+
+```
+opencode/
+├── packages/
+│   ├── app/         ← @codeplane-ai/app (SolidJS web UI — the actual product surface)
+│   ├── codeplane/   ← codeplane (server + CLI + TUI host)
+│   ├── desktop/     ← @codeplane-ai/desktop (Electron shell)
+│   ├── plugin/      ← @codeplane-ai/plugin (plugin SDK)
+│   ├── script/      ← @codeplane-ai/script (release-script helpers)
+│   ├── sdk/js/      ← @codeplane-ai/sdk (OpenAPI-generated client)
+│   ├── shared/      ← @codeplane-ai/shared (home folder, version, local-instance)
+│   └── ui/          ← @codeplane-ai/ui (shared SolidJS components)
+├── script/
+│   ├── publish.ts        ← top-level release driver
+│   └── sync-version.ts   ← propagates version across workspaces + README
+├── .github/workflows/
+│   ├── npm-release.yml   ← triggered on v* tag push
+│   └── desktop-release.yml
+├── AGENTS.md             ← operations manual
+└── README.md             ← you are here
+```
+
+Removed in v27.4.24: `web` (Astro marketing), `docs`, `storybook`, `extensions/zed`, `slack`, `function`, `identity`, `containers`, `sdks/vscode`, top-level GitHub Action.
 
 <br />
 
 ## Contributing
 
-Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull request. The default branch is `main`.
+Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull request. The default branch is `main`. For agents (human or LLM) shipping changes, [AGENTS.md](./AGENTS.md) is the canonical operations manual — it covers the release checklist, the build pipeline footguns, and the update flow audit.
 
 For security disclosures, see [SECURITY.md](./SECURITY.md).
 
@@ -447,17 +463,37 @@ For security disclosures, see [SECURITY.md](./SECURITY.md).
 ## FAQ
 
 <details>
+<summary><strong>What happened to <code>codeplane upgrade</code> / <code>codeplane config</code> / etc.?</strong></summary>
+
+<br />
+
+The v27.4.24 strict 4-surface refactor removed every CLI command outside of `serve` / `web` / `tui` / `instance`. The full list of removed commands: `run`, `generate`, `agent`, `models`, `mcp`, `providers`, `account`, `stats`, `export`, `import`, `github`, `pr`, `session`, `db`, `plug`, `acp`, `config`, `debug`, `upgrade`, `uninstall`.
+
+If you depended on any of them, pin to `codeplane-ai@27.4.23` until you've migrated. The Web UI (settings, sessions, providers, models) is the migration target for most of these workflows.
+
+To upgrade Codeplane itself, use your package manager directly: `npm install -g codeplane-ai@latest`. The Desktop shell auto-updates (or routes to manual download on unsigned mac builds — see [Updates](#updates)).
+
+</details>
+
+<details>
+<summary><strong>What happened to the Slack integration / Zed extension / VSCode extension / docs site?</strong></summary>
+
+<br />
+
+All removed in v27.4.24 to enforce the strict 4-surface scheme. None of them were part of the core product. If you maintained one of them, the source is preserved in the git history (`git log --all -- packages/slack/`).
+
+</details>
+
+<details>
 <summary><strong>How is this different from Claude Code?</strong></summary>
 
 <br />
 
-Capabilities are comparable. The differences:
-
 - **100% open source** (MIT)
-- **Not locked to a provider** &mdash; Claude, OpenAI, Gemini, or local models
-- **Native LSP** out of the box
-- **Web-app first** &mdash; built for multi-session orchestration in the browser
-- **Client/server** &mdash; run the server headlessly and connect from the web app
+- **Not locked to a provider** — Anthropic, OpenAI, Google, Bedrock, Groq, Mistral, Azure, local models, and 75+ more via [models.dev](https://models.dev). Sign in with GitHub for Copilot, OpenAI for ChatGPT Plus/Pro, or bring your own API key.
+- **LSP-native** out of the box.
+- **Web-app first** — the actual chat / sessions / files surface is the Web UI. The Desktop is a thin native shell around it.
+- **Strict client/server** — the server runs headlessly via `codeplane serve` and any of Desktop / TUI / Web can connect to it.
 
 </details>
 
@@ -468,10 +504,11 @@ Capabilities are comparable. The differences:
 
 Codeplane stays close to upstream for the core agent loop, but ships:
 
-- A polished web app with multi-session orchestration
-- A first-class scheduling / cron surface for recurring agent runs
-- A desktop shell that connects to local or remote servers
-- A different release cadence focused on the web-app + server experience
+- A polished SolidJS web app with multi-session orchestration.
+- A native Desktop shell that spawns local Codeplane servers from the shared instances registry.
+- A first-class scheduling / cron surface for recurring agent runs (in the Web UI).
+- A strict 4-surface scheme (Desktop / CLI / TUI / Web) — nothing outside that scheme.
+- A different release cadence focused on the web-app + server experience.
 
 </details>
 
@@ -495,6 +532,7 @@ Please add a note to your README clarifying that your project is not built by or
     <a href="https://github.com/devinoldenburg/codeplane/releases">Releases</a> &nbsp;·&nbsp;
     <a href="https://github.com/devinoldenburg/codeplane/issues">Issues</a> &nbsp;·&nbsp;
     <a href="./CONTRIBUTING.md">Contributing</a> &nbsp;·&nbsp;
-    <a href="./SECURITY.md">Security</a>
+    <a href="./SECURITY.md">Security</a> &nbsp;·&nbsp;
+    <a href="./AGENTS.md">Agents</a>
   </sub>
 </div>
