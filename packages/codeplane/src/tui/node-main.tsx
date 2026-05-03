@@ -1,27 +1,152 @@
-import React from "react"
-import { render } from "ink"
-import { App } from "./app"
+// Bridge entry that `launcher.ts` (sibling) builds and spawns. Boot flow:
+//   1. Pick instance via the wizard (or use --instance to skip)
+//   2. Pick working directory via the wizard (or use --dir to skip)
+//   3. service.open() the instance to translate `local://` -> live http URL
+//   4. Hand off to the SolidJS TUI's `tui()` function
+//
+// Log routing is set up FIRST (before any other module is imported) so that
+// Log.Default.* calls during downstream module init don't write to stderr —
+// opentui's renderer captures stderr and would otherwise surface every
+// "loading internal tui plugin" line as an always-on console overlay.
+import * as Log from "@/util/log"
+
+await Log.init({
+  print: process.argv.includes("--print-logs"),
+  level: (process.env["CODEPLANE_LOG_LEVEL"] as Log.Level | undefined) ?? "INFO",
+})
+
+// All other imports happen via dynamic import AFTER Log.init() so any logs
+// emitted while these modules evaluate go to the log file, not stderr.
+const { tui } = await import("./app")
+const { TuiConfig } = await import("./config/tui")
+const { runBootWizard } = await import("./boot/wizard")
+const { createInstanceService } = await import("./instance-service")
+const { headersForInstance, normalizeInstanceUrl } = await import("./client")
+const { localInstanceUrl } = await import("@codeplane-ai/shared/instance")
+import type { Args } from "./context/args"
+import type { BootSelection } from "./boot/wizard"
+import type { InstanceService } from "./instance-service"
+import type { SavedInstance } from "@codeplane-ai/shared/instance"
 
 function parseArgs(argv: string[]) {
   const result: {
     instance?: string
     route?: string
+    directory?: string
+    sessionID?: string
+    continueSession?: boolean
+    fork?: boolean
   } = {}
 
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index]
-    if (arg === "--instance") result.instance = argv[index + 1]
-    if (arg === "--route") result.route = argv[index + 1]
+    const next = argv[index + 1]
+    if (arg === "--instance") result.instance = next
+    if (arg === "--route") result.route = next
+    if (arg === "--dir" || arg === "--directory") result.directory = next
+    if (arg === "--session" || arg === "-s") result.sessionID = next
+    if (arg === "--continue" || arg === "-c") result.continueSession = true
+    if (arg === "--fork") result.fork = true
   }
 
   return result
 }
 
-const args = parseArgs(process.argv.slice(2))
+function defaultLocalSeed(): SavedInstance {
+  return {
+    id: "default",
+    url: localInstanceUrl("default"),
+    label: "Default local",
+    local: { binaryVersion: "" },
+  }
+}
 
-render(<App initialInstanceID={args.instance} initialRoute={args.route} />, {
-  alternateScreen: true,
-  patchConsole: false,
-  exitOnCtrlC: true,
-  isScreenReaderEnabled: process.env.INK_SCREEN_READER === "true" || process.env.CODEPLANE_TUI_SCREEN_READER === "1",
+async function ensureSavedDefault(service: InstanceService): Promise<SavedInstance> {
+  const seed = defaultLocalSeed()
+  await service.save(seed)
+  return seed
+}
+
+type Resolved = {
+  instance: SavedInstance
+  directory?: string
+}
+
+async function resolveSelection(
+  service: InstanceService,
+  args: ReturnType<typeof parseArgs>,
+): Promise<Resolved | null> {
+  // Headless flow: --instance bypasses the wizard.
+  if (args.instance) {
+    const all = await service.list()
+    const found = all.find((i) => i.id === args.instance)
+    if (!found) throw new Error(`Saved instance not found: ${args.instance}`)
+    return { instance: found, directory: args.directory }
+  }
+
+  // Interactive: render the boot wizard. If there are no saved instances,
+  // seed a default-local entry so the list is never empty.
+  let instances = await service.list()
+  if (instances.length === 0) {
+    await ensureSavedDefault(service)
+    instances = await service.list()
+  }
+
+  const selection: BootSelection | null = await runBootWizard({
+    service,
+    instances,
+    defaultDirectory: args.directory ?? process.cwd(),
+  })
+  if (!selection) return null
+  return { instance: selection.instance, directory: selection.directory }
+}
+
+async function resolveTarget(args: ReturnType<typeof parseArgs>): Promise<{
+  url: string
+  headers: Record<string, string>
+  directory?: string
+} | null> {
+  const service = createInstanceService()
+  const sel = await resolveSelection(service, args)
+  if (!sel) return null
+
+  // Translate `local://...` -> live http URL by booting the local server (or
+  // attaching to one already running). For non-local URLs this is a no-op.
+  const opened = await service.open(sel.instance)
+  const url = normalizeInstanceUrl(opened.live.url)
+  if (!url) throw new Error(`Resolved instance has invalid URL: ${opened.live.url}`)
+  return {
+    url,
+    headers: headersForInstance(opened.live) ?? {},
+    directory: sel.directory,
+  }
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2))
+  const target = await resolveTarget(args)
+  if (!target) {
+    // User quit out of the wizard — exit cleanly.
+    process.exit(0)
+  }
+
+  const config = await TuiConfig.get()
+  const tuiArgs: Args = {
+    continue: args.continueSession,
+    sessionID: args.sessionID,
+    fork: args.fork,
+  }
+  await tui({
+    url: target.url,
+    config,
+    args: tuiArgs,
+    directory: target.directory,
+    headers: target.headers,
+  })
+}
+
+main().catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error(err instanceof Error ? err.stack ?? err.message : String(err))
+  process.exit(1)
 })

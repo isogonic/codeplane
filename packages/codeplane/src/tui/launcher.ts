@@ -3,30 +3,41 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import which from "which"
 import { spawn } from "node:child_process"
+import { createSolidTransformPlugin } from "@opentui/solid/bun-plugin"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const codeplaneDir = path.join(__dirname, "..", "..")
-const sourceEntry = path.join(__dirname, "node-main.tsx")
+// New TUI entry lives at src/tui/node-main.tsx (the Solid + opentui app).
+// We build & spawn it with Bun because the new TUI uses Bun-only APIs
+// (bun:ffi via @opentui/core, JSX transform via @opentui/solid/bun-plugin).
+const sourceEntry = path.join(codeplaneDir, "src", "tui", "node-main.tsx")
 
 function exists(file: string) {
   return fs.access(file).then(() => true).catch(() => false)
 }
 
-function bundledNodeCandidates() {
+function bundledRuntimeCandidates() {
   const execDir = path.dirname(process.execPath)
   return [
+    // Prefer Bun (the new TUI uses Bun-only APIs).
+    path.join(execDir, "bun"),
+    path.join(execDir, "bun.exe"),
+    path.join(execDir, "runtime", "bun"),
+    path.join(execDir, "runtime", "bun.exe"),
+    // Node fallback for installs that ship only Node alongside.
     path.join(execDir, "node"),
     path.join(execDir, "runtime", "node"),
     path.join(execDir, "runtime", "node.exe"),
   ]
 }
 
-async function resolveNodeCommand() {
+async function resolveRuntimeCommand() {
+  if (process.env.CODEPLANE_TUI_RUNTIME) return process.env.CODEPLANE_TUI_RUNTIME
   if (process.env.CODEPLANE_TUI_NODE) return process.env.CODEPLANE_TUI_NODE
-  for (const candidate of bundledNodeCandidates()) {
+  for (const candidate of bundledRuntimeCandidates()) {
     if (await exists(candidate)) return candidate
   }
-  return which.sync("node", { nothrow: true }) || ""
+  return which.sync("bun", { nothrow: true }) || which.sync("node", { nothrow: true }) || ""
 }
 
 function platformPackageNames() {
@@ -107,11 +118,15 @@ async function buildDevEntry() {
   process.chdir(codeplaneDir)
   const result = await Bun.build({
     entrypoints: ["./src/tui/node-main.tsx"],
-    target: "node",
+    target: "bun",
     format: "esm",
     minify: false,
     splitting: false,
     outdir,
+    // The new TUI is SolidJS + opentui. Babel-transform JSX into
+    // Solid's `template`/`createComponent` calls during bundling.
+    plugins: [createSolidTransformPlugin()],
+    conditions: ["browser"],
   }).finally(() => process.chdir(cwd))
   if (!result.success) {
     throw new Error(result.logs.map((log) => log.message).join("\n"))
@@ -121,17 +136,28 @@ async function buildDevEntry() {
 
 async function resolveLaunchTarget() {
   const bundled = await resolveBundledEntry()
-  const node = await resolveNodeCommand()
-  if (!node) throw new Error("Node.js 22+ is required to run the Codeplane TUI")
+  const runtime = await resolveRuntimeCommand()
+  if (!runtime)
+    throw new Error(
+      "Bun (preferred) or Node.js 22+ is required to run the Codeplane TUI. " +
+        "Set CODEPLANE_TUI_RUNTIME to override.",
+    )
+  const isBun = runtime.endsWith("bun") || runtime.endsWith("bun.exe")
   if (bundled) {
     return {
-      command: node,
+      command: runtime,
+      // The bundle was built with target=bun + plugins; Bun can run it
+      // directly. Node can also run the bundle since it's plain ESM JS.
       args: [bundled],
     }
   }
   return {
-    command: node,
-    args: [await buildDevEntry()],
+    command: runtime,
+    // Bun runs the .tsx entry directly with the @opentui/solid preload
+    // (configured in packages/codeplane/bunfig.toml) so JSX transforms
+    // are in place. We pass `--conditions=browser` so package `exports`
+    // resolve to their browser variants (matches our tsconfig).
+    args: isBun ? ["--conditions=browser", sourceEntry] : [await buildDevEntry()],
   }
 }
 
