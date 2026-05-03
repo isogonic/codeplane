@@ -287,6 +287,15 @@ for (const item of targets) {
     }
   }
 
+  // The TUI bundle (runtime/tui/node-main.js) does
+  //   require(`@opentui/core-${process.platform}-${process.arch}/index.ts`)
+  // at runtime to load the native opentui binding. That platform package is
+  // not bundled (it ships per-platform native code), so it must be installed
+  // alongside this codeplane platform package as a real npm dependency —
+  // otherwise the TUI fails on startup with:
+  //   Cannot find module '@opentui/core-${platform}-${arch}/index.ts'
+  const opentuiCorePackage = `@opentui/core-${item.os === "win32" ? "win32" : item.os}-${item.arch}`
+  const opentuiCoreVersion = pkg.dependencies["@opentui/core"]
   await Bun.file(`dist/${name}/package.json`).write(
     JSON.stringify(
       {
@@ -303,6 +312,9 @@ for (const item of targets) {
         homepage: repoURL,
         os: [item.os],
         cpu: [item.arch],
+        dependencies: {
+          [opentuiCorePackage]: opentuiCoreVersion,
+        },
       },
       null,
       2,
