@@ -26,17 +26,6 @@ async function syncPackageJson(file: string, version: string) {
   return true
 }
 
-async function syncZedExtension(version: string) {
-  const file = fileURLToPath(new URL("../packages/extensions/zed/extension.toml", import.meta.url))
-  const current = await Bun.file(file).text()
-  const next = current
-    .replace(/^version = "[^"]+"/m, `version = "${version}"`)
-    .replaceAll(/releases\/download\/v[^/]+\//g, `releases/download/v${version}/`)
-  if (next === current) return false
-  await Bun.write(file, next)
-  return true
-}
-
 async function syncReadme(version: string) {
   const file = fileURLToPath(new URL("../README.md", import.meta.url))
   const current = await Bun.file(file).text()
@@ -56,12 +45,10 @@ async function syncReadme(version: string) {
 export async function syncVersionFiles(version = CodeplaneVersion) {
   const files = await packageJsonFiles()
   const updated = await Promise.all(files.map((file) => syncPackageJson(file, version)))
-  const zed = await syncZedExtension(version)
   const readme = await syncReadme(version)
   return {
     version,
     packageJsons: updated.filter(Boolean).length,
-    zed,
     readme,
   }
 }
