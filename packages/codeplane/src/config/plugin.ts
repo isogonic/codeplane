@@ -1,7 +1,7 @@
 import { Glob } from "@codeplane-ai/shared/util/glob"
 import { Schema } from "effect"
 import { pathToFileURL } from "url"
-import { isPathPluginSpec, parsePluginSpecifier, resolvePathPluginTarget } from "@/plugin/shared"
+import { isPathPluginSpec, parsePluginSpecifier, resolvePathPluginTarget } from "@/tui/_compat/plugin-shared"
 import { zod } from "@/util/effect-zod"
 import { withStatics } from "@/util/schema"
 import path from "path"

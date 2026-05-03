@@ -5,7 +5,7 @@
 //   scene: setup | conversation | palette | notifications | settings | terminal | all (default)
 import React from "react"
 import { renderToString } from "ink"
-import { Scene } from "../src/tui/scenes"
+import { Scene } from "../src/tui-legacy/scenes"
 
 const COLUMNS = Number(process.env.COLUMNS ?? 110)
 const ROWS = Number(process.env.LINES ?? 36)
