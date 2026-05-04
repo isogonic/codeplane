@@ -23,7 +23,43 @@ async function publish(dir: string, name: string, version: string) {
     return
   }
   await $`bun pm pack`.cwd(dir)
-  await $`npm publish *.tgz --access public --tag ${Script.channel}`.cwd(dir)
+  // Detect "already published" coming back from npm itself (race between
+  // our `published()` check and the actual PUT, e.g. another retry of the
+  // workflow ran in parallel) and treat it as success — the package IS
+  // on the registry at the version we wanted, which is the only thing
+  // the rest of this script cares about.
+  const result = await $`npm publish *.tgz --access public --tag ${Script.channel}`.cwd(dir).nothrow()
+  if (result.exitCode !== 0) {
+    const stderr = result.stderr.toString()
+    if (/cannot publish over the previously published versions/i.test(stderr)) {
+      console.log(`already published (race) ${name}@${version}`)
+      return
+    }
+    throw new Error(`npm publish ${name}@${version} failed: ${stderr || "(no stderr)"}`)
+  }
+}
+
+// Run an array of publish tasks via Promise.allSettled (NOT all) so a
+// single failed package doesn't abort the rest. Was a real bug:
+// v27.4.51 hit a 403 race on `codeplane-darwin-x64-baseline`,
+// Promise.all rejected, the remaining platform binaries never got
+// published AND the main `codeplane-ai` publish never ran. Result:
+// 10/12 platform binaries published, the main wrapper missing, no
+// install path for users.
+async function publishAll(
+  tasks: Array<{ name: string; run: () => Promise<void> }>,
+): Promise<{ failures: Array<{ name: string; reason: string }> }> {
+  const results = await Promise.allSettled(tasks.map((task) => task.run()))
+  const failures: Array<{ name: string; reason: string }> = []
+  results.forEach((result, idx) => {
+    if (result.status === "rejected") {
+      failures.push({
+        name: tasks[idx].name,
+        reason: result.reason instanceof Error ? result.reason.message : String(result.reason),
+      })
+    }
+  })
+  return { failures }
 }
 
 const binaries: Record<string, string> = {}
@@ -66,10 +102,36 @@ await Bun.file(`./dist/${pkg.name}/package.json`).write(
   ),
 )
 
-const tasks = Object.entries(binaries).map(async ([name]) => {
-  await publish(`./dist/${name}`, name, binaries[name])
-})
-await Promise.all(tasks)
+// Platform-binary publishes run in parallel via allSettled so one
+// failure can't strand the rest. After the first pass, retry just the
+// failures (mostly harmless 403 races between concurrent jobs and
+// npm's rate-limit retries) by re-running publish() — its built-in
+// `published()` check + 403 race detection will short-circuit
+// anything that actually landed.
+const platformTasks = Object.entries(binaries).map(([name]) => ({
+  name,
+  run: () => publish(`./dist/${name}`, name, binaries[name]),
+}))
+const firstPass = await publishAll(platformTasks)
+if (firstPass.failures.length > 0) {
+  console.log(`first pass had ${firstPass.failures.length} failure(s); retrying once`)
+  for (const failure of firstPass.failures) console.log(`  ${failure.name}: ${failure.reason}`)
+  const retryTasks = firstPass.failures.map((failure) => ({
+    name: failure.name,
+    run: () => publish(`./dist/${failure.name}`, failure.name, binaries[failure.name]),
+  }))
+  const secondPass = await publishAll(retryTasks)
+  if (secondPass.failures.length > 0) {
+    console.error(`platform-binary publish failed for ${secondPass.failures.length} package(s) after retry:`)
+    for (const failure of secondPass.failures) console.error(`  ${failure.name}: ${failure.reason}`)
+    process.exit(1)
+  }
+}
+
+// Only publish the main `codeplane-ai` wrapper after every platform
+// binary it depends on is confirmed live. Otherwise users would
+// `npm i -g codeplane-ai` and immediately fail on the postinstall
+// because their platform's optional dep doesn't resolve.
 await publish(`./dist/${pkg.name}`, `${pkg.name}-ai`, version)
 
 const image = `ghcr.io/${repo}`
