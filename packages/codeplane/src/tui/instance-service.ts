@@ -387,6 +387,21 @@ export function createInstanceService() {
           label,
         }
       }
+      // Verify the binary actually landed on disk before declaring
+      // success and rewriting the saved binaryVersion. Without this
+      // check, a corrupt-tarball / disk-full / permissions edge case
+      // could leave us with `installLocal` resolving cleanly but no
+      // binary on disk — the next `open` would then fail with a
+      // confusing missing-binary error and the user would never
+      // connect it back to the Update press.
+      const verified = await localStatus(latest)
+      if (!verified.installed) {
+        return {
+          kind: "error",
+          message: `Install of v${latest} reported success but binary is missing on disk (expected at ${verified.binaryPath || "unknown path"}). Saved binaryVersion was NOT updated. Re-try, or run \`codeplane upgrade ${latest}\` from a shell.`,
+          label,
+        }
+      }
       onProgress?.({ phase: "saving", message: "Saving updated instance…" })
       await save({ ...saved, local: { binaryVersion: latest } })
       onProgress?.({ phase: "done", message: `Updated ${label} to v${latest}` })
