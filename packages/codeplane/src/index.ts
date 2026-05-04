@@ -27,6 +27,7 @@ import { TuiCommand } from "./cli/cmd/tui"
 import { resolveCliArgs } from "./tui/dispatch"
 import { InstanceCommand } from "./cli/cmd/instance"
 import { GenerateCommand } from "./cli/cmd/generate"
+import { UpgradeCommand } from "./cli/cmd/upgrade"
 
 const processMetadata = ensureProcessMetadata("main")
 
@@ -152,6 +153,7 @@ const cli = yargs(args)
   // surface refactor — the user-visible CLI is still just serve/web/tui/
   // instance.
   .command(GenerateCommand)
+  .command(UpgradeCommand)
   .fail((msg, err) => {
     if (
       msg?.startsWith("Unknown argument") ||

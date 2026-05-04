@@ -13,21 +13,26 @@ import {
   type DialogSelectRef,
 } from "@/tui/ui/dialog-select"
 
-// TUI cron management. Scopes:
-//   - List         : `client.cron.list()` — directory-scoped because the
-//                    SDK client this dialog imports was already constructed
-//                    with the current directory in `tui/context/sdk.tsx`.
-//                    No need to pass `directory` ourselves.
-//   - Toggle       : `space` — calls setStatus to flip between "active"
-//                    and "paused". Reflects optimistically by re-fetching.
-//   - Trigger now  : `r` — fires `cron.trigger`, runs the task immediately.
-//   - Delete       : `d` — DialogConfirm gate, then `cron.delete`.
-//   - Create new   : `n` — chained DialogPrompts (name → schedule → prompt
-//                    text), then `cron.create` with the current directory
-//                    so the task is scoped to this project.
-// Schedule input format for creation:
-//   - "every 30m" / "every 2h" → interval kind
-//   - anything else            → cron kind, expression as-is
+// TUI cron management. Three views, all DialogSelect-based:
+//
+//   1. Task list (this file's default export `DialogCron`)
+//      ── space  toggle active/paused
+//      ── r      trigger now
+//      ── d      delete (with confirm)
+//      ── n      new task (3-step flow with schedule preset wizard)
+//      ── enter  open run history for the selected task → view 2
+//
+//   2. Run history (`DialogCronRuns`)
+//      ── enter  open run details → view 3
+//      ── c      cancel the selected run (only valid for status=running)
+//      ── back   esc returns to view 1
+//
+//   3. Run details (`DialogAlert` with formatted body)
+//      ── ok     dismiss back to view 2
+//
+// SDK calls all hit endpoints declared on the generated SDK; the TUI's
+// SDK client is already directory-scoped, so list calls automatically
+// return only the current project's tasks.
 
 type Schedule =
   | { kind: "cron"; expression: string }
@@ -44,6 +49,19 @@ type CronTaskShape = {
   nextRunAt?: number | null
   lastError?: string | null
   prompt?: string
+}
+
+type CronRunShape = {
+  id: string
+  taskID: string
+  sessionID?: string | null
+  status: string
+  attempt: number
+  timeStarted?: number | null
+  timeCompleted?: number | null
+  errorMessage?: string | null
+  logs?: string | null
+  time?: { created?: number; updated?: number }
 }
 
 function describeSchedule(task: CronTaskShape): string {
@@ -71,6 +89,21 @@ function formatRelative(ms: number | null | undefined, now = Date.now()): string
   return `${sign}${Math.round(abs / day)}d${suffix}`
 }
 
+function formatAbsolute(ms: number | null | undefined): string {
+  if (!ms) return "—"
+  return new Date(ms).toISOString().replace("T", " ").replace(/\.\d+Z$/, " UTC")
+}
+
+function formatDuration(start: number | null | undefined, end: number | null | undefined): string | undefined {
+  if (!start) return undefined
+  const finish = end ?? Date.now()
+  const ms = finish - start
+  if (ms < 1000) return `${ms}ms`
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`
+  if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m`
+  return `${(ms / 3_600_000).toFixed(1)}h`
+}
+
 // "every 30m" / "every 2h" → milliseconds; else null (caller treats as cron expr)
 function parseInterval(input: string): number | null {
   const m = input.trim().toLowerCase().match(/^every\s+(\d+)\s*([smhd])$/)
@@ -91,13 +124,242 @@ function parseInterval(input: string): number | null {
   }
 }
 
+// Schedule presets surfaced by the wizard. Order matches what's most
+// useful for typical agent automation (daily summaries, CI-aligned
+// schedules, frequent polling). "Custom..." falls through to the raw
+// text prompt so power users can drop a 5-field cron expression.
+type SchedulePreset = { label: string; hint: string; schedule: Schedule | "custom" }
+const SCHEDULE_PRESETS: SchedulePreset[] = [
+  { label: "Daily at 9 am", hint: "0 9 * * *", schedule: { kind: "cron", expression: "0 9 * * *" } },
+  { label: "Weekdays at 9 am", hint: "0 9 * * 1-5", schedule: { kind: "cron", expression: "0 9 * * 1-5" } },
+  { label: "Every hour, on the hour", hint: "0 * * * *", schedule: { kind: "cron", expression: "0 * * * *" } },
+  { label: "Every 30 minutes", hint: "every 30m", schedule: { kind: "interval", intervalMs: 30 * 60_000 } },
+  { label: "Every 5 minutes", hint: "every 5m", schedule: { kind: "interval", intervalMs: 5 * 60_000 } },
+  { label: "Every minute", hint: "every 1m", schedule: { kind: "interval", intervalMs: 60_000 } },
+  { label: "Custom expression…", hint: "cron syntax or `every Nm`", schedule: "custom" },
+]
+
+function errorMessage(error: unknown): string {
+  if (error && typeof error === "object" && "error" in error) {
+    return String((error as { error: unknown }).error)
+  }
+  if (error instanceof Error) return error.message
+  return JSON.stringify(error)
+}
+
+// ---------- Run-history view (sub-dialog) ----------
+
+function DialogCronRuns(props: { task: CronTaskShape; onBack: () => void }) {
+  const dialog = useDialog()
+  const sdk = useSDK()
+  const { theme } = useTheme()
+  const [, setRef] = createSignal<DialogSelectRef<unknown>>()
+  const [revision, setRevision] = createSignal(0)
+
+  const [runs] = createResource(
+    () => revision(),
+    async () => {
+      const result = await sdk.client.cron.runs.list({ taskID: props.task.id, limit: 50 })
+      return ((result.data ?? []) as CronRunShape[]).slice().sort((a, b) => {
+        const ta = a.timeStarted ?? a.time?.created ?? 0
+        const tb = b.timeStarted ?? b.time?.created ?? 0
+        return tb - ta
+      })
+    },
+  )
+
+  function refresh() {
+    setRevision((n) => n + 1)
+  }
+
+  const options = createMemo<DialogSelectOption<string>[]>(() => {
+    const list = runs() ?? []
+    if (list.length === 0) {
+      return [
+        {
+          value: "__empty__",
+          title: "No runs yet",
+          description: "Trigger the task with `r` from the task list, then come back here.",
+          category: undefined,
+          onSelect: () => props.onBack(),
+        },
+      ]
+    }
+    return list.map<DialogSelectOption<string>>((run) => {
+      const started = run.timeStarted ?? run.time?.created
+      const duration = formatDuration(started, run.timeCompleted)
+      const when = formatRelative(started) ?? formatAbsolute(started)
+      const desc = [
+        `attempt ${run.attempt}`,
+        duration ? `took ${duration}` : undefined,
+        run.sessionID ? `session ${run.sessionID.slice(0, 12)}` : undefined,
+      ]
+        .filter(Boolean)
+        .join("  ·  ")
+      const status = run.status
+      const statusColor =
+        status === "succeeded"
+          ? theme.success
+          : status === "failed" || status === "cancelled"
+            ? theme.warning
+            : status === "running"
+              ? theme.primary
+              : theme.textMuted
+      return {
+        value: run.id,
+        title: when,
+        description: desc,
+        footer: <span style={{ fg: statusColor, attributes: TextAttributes.BOLD }}>{status}</span>,
+        category: undefined,
+        onSelect: () => showRunDetails(run),
+      }
+    })
+  })
+
+  async function showRunDetails(run: CronRunShape) {
+    const lines = [
+      `Status      : ${run.status}`,
+      `Attempt     : ${run.attempt}`,
+      `Started     : ${formatAbsolute(run.timeStarted ?? run.time?.created)}`,
+      `Completed   : ${formatAbsolute(run.timeCompleted)}`,
+      `Duration    : ${formatDuration(run.timeStarted ?? run.time?.created, run.timeCompleted) ?? "—"}`,
+      run.sessionID ? `Session     : ${run.sessionID}` : undefined,
+      run.errorMessage ? `\nError:\n${run.errorMessage}` : undefined,
+      run.logs ? `\nLogs (tail):\n${run.logs.split("\n").slice(-30).join("\n")}` : undefined,
+    ].filter(Boolean) as string[]
+    await DialogAlert.show(dialog, `Run ${run.id.slice(0, 12)}`, lines.join("\n"))
+    refresh()
+  }
+
+  async function cancelRun(option: DialogSelectOption<string>) {
+    if (option.value === "__empty__") return
+    const list = runs() ?? []
+    const run = list.find((r) => r.id === option.value)
+    if (!run) return
+    if (run.status !== "running") {
+      await DialogAlert.show(
+        dialog,
+        "Can't cancel",
+        `Run is in state "${run.status}". Only currently-running runs can be cancelled.`,
+      )
+      return
+    }
+    const confirmed = await DialogConfirm.show(
+      dialog,
+      "Cancel run",
+      `Cancel run ${run.id.slice(0, 12)}? The agent will be stopped mid-execution.`,
+      "cancel",
+    )
+    if (confirmed !== true) return
+    const result = await sdk.client.cron.runs.cancel({ runID: run.id })
+    if (result.error) {
+      await DialogAlert.show(dialog, "Couldn't cancel run", errorMessage(result.error))
+      return
+    }
+    refresh()
+  }
+
+  const keybinds = createMemo(() => [
+    { keybind: Keybind.parse("c")[0], title: "cancel run", onTrigger: cancelRun },
+    {
+      keybind: Keybind.parse("escape")[0],
+      title: "back to tasks",
+      onTrigger: () => props.onBack(),
+    },
+  ])
+
+  return (
+    <DialogSelect
+      ref={setRef}
+      title={`Runs · ${props.task.name}`}
+      placeholder="Search runs..."
+      options={options()}
+      keybind={keybinds()}
+      onSelect={(option) => {
+        const list = runs() ?? []
+        const run = list.find((r) => r.id === option.value)
+        if (run) void showRunDetails(run)
+      }}
+    />
+  )
+}
+
+// ---------- Schedule preset wizard ----------
+
+async function pickSchedule(dialog: ReturnType<typeof useDialog>, theme: ReturnType<typeof useTheme>["theme"]): Promise<Schedule | null> {
+  return new Promise<Schedule | null>((resolve) => {
+    const options: DialogSelectOption<number>[] = SCHEDULE_PRESETS.map((preset, idx) => ({
+      value: idx,
+      title: preset.label,
+      description: preset.hint,
+      category: undefined,
+      onSelect: async () => {
+        if (preset.schedule === "custom") {
+          dialog.replace(() => (
+            <CustomScheduleStep
+              theme={theme}
+              onPicked={(schedule) => resolve(schedule)}
+            />
+          ))
+          return
+        }
+        dialog.clear()
+        resolve(preset.schedule)
+      },
+    }))
+    dialog.replace(() => (
+      <DialogSelect
+        title="Schedule"
+        placeholder="Pick a preset or Custom..."
+        options={options}
+        onSelect={() => {
+          // handled in onSelect of each option via dialog.replace/clear
+        }}
+      />
+    ))
+  })
+}
+
+function CustomScheduleStep(props: { theme: ReturnType<typeof useTheme>["theme"]; onPicked: (s: Schedule) => void }) {
+  const dialog = useDialog()
+  return (
+    <DialogPrompt
+      title="Custom schedule"
+      placeholder="e.g. every 30m  ·  every 2h  ·  0 9 * * 1-5"
+      description={() => (
+        <text fg={props.theme.textMuted}>
+          {`Use \`every Nm\` / \`every Nh\` / \`every Nd\` for an interval, or a 5-field cron expression.`}
+        </text>
+      )}
+      onConfirm={(value) => {
+        const trimmed = value.trim()
+        if (!trimmed) {
+          dialog.clear()
+          props.onPicked({ kind: "interval", intervalMs: 0 }) // resolved as no-op upstream
+          return
+        }
+        const intervalMs = parseInterval(trimmed)
+        const schedule: Schedule = intervalMs
+          ? { kind: "interval", intervalMs }
+          : { kind: "cron", expression: trimmed }
+        dialog.clear()
+        props.onPicked(schedule)
+      }}
+      onCancel={() => {
+        dialog.clear()
+      }}
+    />
+  )
+}
+
+// ---------- Main task list view ----------
+
 export function DialogCron() {
   const dialog = useDialog()
   const sdk = useSDK()
   const { theme } = useTheme()
   const [, setRef] = createSignal<DialogSelectRef<unknown>>()
   const [busyTaskID, setBusyTaskID] = createSignal<string | null>(null)
-  // bumping this signal triggers createResource to refetch
   const [revision, setRevision] = createSignal(0)
 
   const [tasks] = createResource(
@@ -159,10 +421,21 @@ export function DialogCron() {
           </span>
         ),
         category: undefined,
-        onSelect: () => {},
+        onSelect: () => openRuns(task),
       }
     })
   })
+
+  function openRuns(task: CronTaskShape) {
+    dialog.replace(() => (
+      <DialogCronRuns
+        task={task}
+        onBack={() => {
+          dialog.replace(() => <DialogCron />)
+        }}
+      />
+    ))
+  }
 
   async function withBusy<T>(taskID: string, fn: () => Promise<T>): Promise<T | undefined> {
     if (busyTaskID()) return undefined
@@ -183,11 +456,7 @@ export function DialogCron() {
     await withBusy(task.id, async () => {
       const result = await sdk.client.cron.setStatus({ taskID: task.id, status: next })
       if (result.error) {
-        await DialogAlert.show(
-          dialog,
-          "Couldn't change status",
-          `Server rejected the status change for "${task.name}": ${typeof result.error === "object" && result.error && "error" in result.error ? String((result.error as { error: unknown }).error) : JSON.stringify(result.error)}`,
-        )
+        await DialogAlert.show(dialog, "Couldn't change status", errorMessage(result.error))
         return
       }
       refresh()
@@ -202,11 +471,7 @@ export function DialogCron() {
     await withBusy(task.id, async () => {
       const result = await sdk.client.cron.trigger({ taskID: task.id })
       if (result.error) {
-        await DialogAlert.show(
-          dialog,
-          "Couldn't trigger task",
-          `Server rejected the trigger for "${task.name}": ${typeof result.error === "object" && result.error && "error" in result.error ? String((result.error as { error: unknown }).error) : JSON.stringify(result.error)}`,
-        )
+        await DialogAlert.show(dialog, "Couldn't trigger task", errorMessage(result.error))
         return
       }
       refresh()
@@ -228,11 +493,7 @@ export function DialogCron() {
     await withBusy(task.id, async () => {
       const result = await sdk.client.cron.delete({ taskID: task.id })
       if (result.error) {
-        await DialogAlert.show(
-          dialog,
-          "Couldn't delete task",
-          `Server rejected the delete for "${task.name}": ${typeof result.error === "object" && result.error && "error" in result.error ? String((result.error as { error: unknown }).error) : JSON.stringify(result.error)}`,
-        )
+        await DialogAlert.show(dialog, "Couldn't delete task", errorMessage(result.error))
         return
       }
       refresh()
@@ -241,44 +502,43 @@ export function DialogCron() {
 
   async function createTask() {
     const name = await DialogPrompt.show(dialog, "Name", { placeholder: "e.g. Nightly summary" })
-    if (!name) return
+    if (!name) {
+      dialog.replace(() => <DialogCron />)
+      return
+    }
     const trimmedName = name.trim()
-    if (!trimmedName) return
-    const scheduleRaw = await DialogPrompt.show(dialog, "Schedule", {
-      placeholder: "e.g. every 30m  ·  every 2h  ·  0 9 * * 1-5",
-      description: () => (
-        <text fg={theme.textMuted}>
-          {`Use \`every Nm\` / \`every Nh\` for an interval, or a 5-field cron expression.`}
-        </text>
-      ),
-    })
-    if (!scheduleRaw) return
-    const trimmedSchedule = scheduleRaw.trim()
-    if (!trimmedSchedule) return
-    const intervalMs = parseInterval(trimmedSchedule)
-    const schedule: Schedule = intervalMs ? { kind: "interval", intervalMs } : { kind: "cron", expression: trimmedSchedule }
+    if (!trimmedName) {
+      dialog.replace(() => <DialogCron />)
+      return
+    }
+    const schedule = await pickSchedule(dialog, theme)
+    if (!schedule || schedule.kind === "interval" && schedule.intervalMs === 0) {
+      dialog.replace(() => <DialogCron />)
+      return
+    }
     const prompt = await DialogPrompt.show(dialog, "Prompt", {
       placeholder: "What should the agent do when this runs?",
     })
-    if (!prompt) return
+    if (!prompt) {
+      dialog.replace(() => <DialogCron />)
+      return
+    }
     const trimmedPrompt = prompt.trim()
-    if (!trimmedPrompt) return
+    if (!trimmedPrompt) {
+      dialog.replace(() => <DialogCron />)
+      return
+    }
     const result = await sdk.client.cron.create({
       name: trimmedName,
       prompt: trimmedPrompt,
       schedule,
     })
     if (result.error) {
-      await DialogAlert.show(
-        dialog,
-        "Couldn't create task",
-        `Server rejected the new task: ${typeof result.error === "object" && result.error && "error" in result.error ? String((result.error as { error: unknown }).error) : JSON.stringify(result.error)}`,
-      )
+      await DialogAlert.show(dialog, "Couldn't create task", errorMessage(result.error))
+      dialog.replace(() => <DialogCron />)
       return
     }
     refresh()
-    // Reopen the cron dialog so the user lands back on the list with
-    // their new task visible (DialogPrompt swap left us elsewhere).
     dialog.replace(() => <DialogCron />)
   }
 
@@ -299,12 +559,13 @@ export function DialogCron() {
     <DialogSelect
       ref={setRef}
       title="Scheduled tasks"
-      placeholder="Search tasks..."
+      placeholder="Search tasks (press enter for runs)..."
       options={options()}
       keybind={keybinds()}
-      onSelect={() => {
-        // Don't close on Enter — the actions are keybinds, the dialog
-        // stays open until the user hits Esc.
+      onSelect={(option) => {
+        const list = tasks() ?? []
+        const task = list.find((t) => t.id === option.value)
+        if (task) openRuns(task)
       }}
     />
   )

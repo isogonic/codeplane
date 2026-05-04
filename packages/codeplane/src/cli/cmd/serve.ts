@@ -2,6 +2,7 @@ import { Server } from "../../server/server"
 import { cmd } from "./cmd"
 import { withNetworkOptions, resolveNetworkOptions } from "../network"
 import { Flag } from "../../flag/flag"
+import { upgrade } from "../upgrade"
 
 export const ServeCommand = cmd({
   command: "serve",
@@ -37,6 +38,15 @@ export const ServeCommand = cmd({
     }
     const server = await Server.listen(opts)
     console.log(`codeplane server listening on http://${server.hostname}:${server.port}`)
+
+    // Fire the auto-upgrade check in the background. Until v27.4.43 this
+    // only ran from the TUI worker, so users running `serve` (headless)
+    // never auto-bumped — that's how the user got pinned to 27.4.22 for
+    // 13 patch releases. Now `serve` runs the same scheduler. Patches
+    // auto-install (per the autoupdate config); minor/major releases
+    // publish a bus event that the in-app UI surfaces. Errors are
+    // swallowed to keep server startup robust.
+    void upgrade().catch(() => undefined)
 
     await new Promise(() => {})
     await server.stop()
