@@ -121,13 +121,35 @@ async function resolveTarget(
 
   // Translate `local://...` -> live http URL by booting the local server (or
   // attaching to one already running). For non-local URLs this is a no-op.
+  // Side effect: `opened.path.directory` is the SERVER's resolved working
+  // directory — for a local server that's wherever the binary defaulted to,
+  // for a remote server that's the path on the remote machine.
   const opened = await service.open(sel.instance)
   const url = normalizeInstanceUrl(opened.live.url)
   if (!url) throw new Error(`Resolved instance has invalid URL: ${opened.live.url}`)
+
+  // Pick the right directory to scope the session to. The bug we're
+  // fixing here: until v27.4.53, `sel.directory` (a LOCAL filesystem
+  // path the user picked in the boot wizard's DirectoryPicker) was
+  // unconditionally returned. For local instances that's correct
+  // (the local server lives on the same filesystem). For remote
+  // instances it was completely wrong — the picked path doesn't
+  // exist on the remote server, so all tool calls (read/write/grep/
+  // ls/etc.) would either fail or silently fall back to the server's
+  // process.cwd(), which had nothing to do with what the user
+  // selected.
+  //
+  // Now: if a directory was picked or supplied via --directory, use
+  // it (it's interpreted on the SERVER side regardless of remote/
+  // local — this is what `client.path.get({ directory })` does).
+  // Otherwise fall back to the server-resolved default from
+  // `service.open()`, which is the correct default for both modes.
+  const directory = sel.directory ?? opened.path.directory ?? undefined
+
   return {
     url,
     headers: headersForInstance(opened.live) ?? {},
-    directory: sel.directory,
+    directory,
   }
 }
 

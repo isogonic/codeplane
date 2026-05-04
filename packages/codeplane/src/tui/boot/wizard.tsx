@@ -107,8 +107,8 @@ function InstancePicker(props: {
                   <box flexDirection="row" paddingLeft={4}>
                     <text fg={palette.fgDim}>
                       {local
-                        ? `binary ${inst.local?.binaryVersion || "auto"}  ·  starts on demand`
-                        : "tls verify enabled  ·  no custom headers"}
+                        ? `binary ${inst.local?.binaryVersion || "auto"}  ·  pick a directory next`
+                        : `runs on ${new URL(inst.url).host}  ·  uses server cwd`}
                     </text>
                   </box>
                 </Show>
@@ -503,7 +503,29 @@ export async function runBootWizard(input: BootWizardInput): Promise<BootSelecti
             setUpdateNotice(undefined)
           }}
           onPick={() => {
-            if (instances()[selectedIdx()]) setStep("directory")
+            const picked = instances()[selectedIdx()]
+            if (!picked) return
+            // Local instances: the user picks a directory on THEIR
+            // filesystem because the local server runs on their
+            // machine and operates on their files. Show the directory
+            // picker as before.
+            //
+            // Remote instances: the server runs elsewhere and has its
+            // own filesystem. The local directory picker would walk
+            // the WRONG filesystem (the user's laptop instead of the
+            // server's), and any path picked would then be passed to
+            // the server which can't access it. Skip the picker
+            // entirely — the server resolves its own default working
+            // directory via /path on first connect, which becomes
+            // the session's cwd. Power users who want to scope to a
+            // specific server-side path can pass `--directory <path>`
+            // to the `codeplane tui` invocation.
+            const isLocal = picked.url.startsWith("local://") || !!picked.local
+            if (isLocal) {
+              setStep("directory")
+            } else {
+              void finish({ instance: picked })
+            }
           }}
           onCreateLocal={() => setStep("create-local")}
           onCreateRemote={() => setStep("create-remote")}
