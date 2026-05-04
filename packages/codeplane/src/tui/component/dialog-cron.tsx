@@ -286,8 +286,17 @@ function DialogCronRuns(props: { task: CronTaskShape; onBack: () => void }) {
 
 // ---------- Schedule preset wizard ----------
 
-async function pickSchedule(dialog: ReturnType<typeof useDialog>, theme: ReturnType<typeof useTheme>["theme"]): Promise<Schedule | null> {
+async function pickSchedule(
+  dialog: ReturnType<typeof useDialog>,
+  theme: ReturnType<typeof useTheme>["theme"],
+): Promise<Schedule | null> {
   return new Promise<Schedule | null>((resolve) => {
+    let resolved = false
+    const settle = (value: Schedule | null) => {
+      if (resolved) return
+      resolved = true
+      resolve(value)
+    }
     const options: DialogSelectOption<number>[] = SCHEDULE_PRESETS.map((preset, idx) => ({
       value: idx,
       title: preset.label,
@@ -295,32 +304,40 @@ async function pickSchedule(dialog: ReturnType<typeof useDialog>, theme: ReturnT
       category: undefined,
       onSelect: async () => {
         if (preset.schedule === "custom") {
-          dialog.replace(() => (
-            <CustomScheduleStep
-              theme={theme}
-              onPicked={(schedule) => resolve(schedule)}
-            />
-          ))
+          // Hand control to the custom-text step. Pass `settle` directly
+          // so cancel + confirm both terminate the outer Promise.
+          dialog.replace(
+            () => <CustomScheduleStep theme={theme} onPicked={(schedule) => settle(schedule)} />,
+            () => settle(null),
+          )
           return
         }
         dialog.clear()
-        resolve(preset.schedule)
+        settle(preset.schedule)
       },
     }))
-    dialog.replace(() => (
-      <DialogSelect
-        title="Schedule"
-        placeholder="Pick a preset or Custom..."
-        options={options}
-        onSelect={() => {
-          // handled in onSelect of each option via dialog.replace/clear
-        }}
-      />
-    ))
+    // CRITICAL: pass the second arg (onClose) so escape / dialog.clear
+    // resolves the Promise as null. Before this fix, pressing escape
+    // on the schedule picker left the outer createTask() awaiting
+    // forever — the dialog visually disappeared but the cron flow
+    // was permanently stuck.
+    dialog.replace(
+      () => (
+        <DialogSelect
+          title="Schedule"
+          placeholder="Pick a preset or Custom..."
+          options={options}
+          onSelect={() => {
+            // handled per-option above
+          }}
+        />
+      ),
+      () => settle(null),
+    )
   })
 }
 
-function CustomScheduleStep(props: { theme: ReturnType<typeof useTheme>["theme"]; onPicked: (s: Schedule) => void }) {
+function CustomScheduleStep(props: { theme: ReturnType<typeof useTheme>["theme"]; onPicked: (s: Schedule | null) => void }) {
   const dialog = useDialog()
   return (
     <DialogPrompt
@@ -334,8 +351,12 @@ function CustomScheduleStep(props: { theme: ReturnType<typeof useTheme>["theme"]
       onConfirm={(value) => {
         const trimmed = value.trim()
         if (!trimmed) {
+          // Empty input == cancel. Was previously sending a sentinel
+          // intervalMs:0 schedule that the outer createTask had to
+          // detect with a stringly-typed check; now we just pass null
+          // and the outer caller treats it as cancel uniformly.
           dialog.clear()
-          props.onPicked({ kind: "interval", intervalMs: 0 }) // resolved as no-op upstream
+          props.onPicked(null)
           return
         }
         const intervalMs = parseInterval(trimmed)
@@ -347,6 +368,7 @@ function CustomScheduleStep(props: { theme: ReturnType<typeof useTheme>["theme"]
       }}
       onCancel={() => {
         dialog.clear()
+        props.onPicked(null)
       }}
     />
   )
@@ -447,6 +469,28 @@ export function DialogCron() {
     }
   }
 
+  // Helper: surface server errors AND network/transport throws as
+  // `DialogAlert.show` so the user always knows what failed. The SDK
+  // only returns `{ error }` for HTTP-level errors — actual network
+  // failures (server down, DNS, transport) throw, and without this
+  // wrapper the dialog would just sit silent.
+  async function callOrAlert<T>(
+    title: string,
+    fn: () => Promise<{ data?: T; error?: unknown }>,
+  ): Promise<T | undefined> {
+    try {
+      const result = await fn()
+      if (result.error) {
+        await DialogAlert.show(dialog, title, errorMessage(result.error))
+        return undefined
+      }
+      return result.data
+    } catch (err) {
+      await DialogAlert.show(dialog, title, err instanceof Error ? err.message : String(err))
+      return undefined
+    }
+  }
+
   async function toggle(option: DialogSelectOption<string>) {
     if (option.value === "__empty__") return
     const list = tasks() ?? []
@@ -454,12 +498,10 @@ export function DialogCron() {
     if (!task) return
     const next = task.status === "active" ? "paused" : "active"
     await withBusy(task.id, async () => {
-      const result = await sdk.client.cron.setStatus({ taskID: task.id, status: next })
-      if (result.error) {
-        await DialogAlert.show(dialog, "Couldn't change status", errorMessage(result.error))
-        return
-      }
-      refresh()
+      const data = await callOrAlert("Couldn't change status", () =>
+        sdk.client.cron.setStatus({ taskID: task.id, status: next }),
+      )
+      if (data !== undefined) refresh()
     })
   }
 
@@ -469,12 +511,10 @@ export function DialogCron() {
     const task = list.find((t) => t.id === option.value)
     if (!task) return
     await withBusy(task.id, async () => {
-      const result = await sdk.client.cron.trigger({ taskID: task.id })
-      if (result.error) {
-        await DialogAlert.show(dialog, "Couldn't trigger task", errorMessage(result.error))
-        return
-      }
-      refresh()
+      const data = await callOrAlert("Couldn't trigger task", () =>
+        sdk.client.cron.trigger({ taskID: task.id }),
+      )
+      if (data !== undefined) refresh()
     })
   }
 
@@ -491,12 +531,10 @@ export function DialogCron() {
     )
     if (confirmed !== true) return
     await withBusy(task.id, async () => {
-      const result = await sdk.client.cron.delete({ taskID: task.id })
-      if (result.error) {
-        await DialogAlert.show(dialog, "Couldn't delete task", errorMessage(result.error))
-        return
-      }
-      refresh()
+      const data = await callOrAlert("Couldn't delete task", () =>
+        sdk.client.cron.delete({ taskID: task.id }),
+      )
+      if (data !== undefined) refresh()
     })
   }
 
@@ -512,7 +550,7 @@ export function DialogCron() {
       return
     }
     const schedule = await pickSchedule(dialog, theme)
-    if (!schedule || schedule.kind === "interval" && schedule.intervalMs === 0) {
+    if (!schedule) {
       dialog.replace(() => <DialogCron />)
       return
     }
@@ -528,17 +566,29 @@ export function DialogCron() {
       dialog.replace(() => <DialogCron />)
       return
     }
-    const result = await sdk.client.cron.create({
-      name: trimmedName,
-      prompt: trimmedPrompt,
-      schedule,
-    })
-    if (result.error) {
-      await DialogAlert.show(dialog, "Couldn't create task", errorMessage(result.error))
-      dialog.replace(() => <DialogCron />)
-      return
+    try {
+      const result = await sdk.client.cron.create({
+        name: trimmedName,
+        prompt: trimmedPrompt,
+        schedule,
+      })
+      if (result.error) {
+        await DialogAlert.show(dialog, "Couldn't create task", errorMessage(result.error))
+        dialog.replace(() => <DialogCron />)
+        return
+      }
+      refresh()
+    } catch (err) {
+      // Network failures (server down, transport error, auth) reach here
+      // — the SDK only returns `{ error }` for HTTP-level errors. Without
+      // this catch, an offline server would leave the create flow with
+      // no feedback and the dialog stack inconsistent.
+      await DialogAlert.show(
+        dialog,
+        "Couldn't create task",
+        err instanceof Error ? err.message : String(err),
+      )
     }
-    refresh()
     dialog.replace(() => <DialogCron />)
   }
 

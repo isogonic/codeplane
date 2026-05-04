@@ -80,6 +80,20 @@ export type CronRun = {
   }
 }
 
+export type EventInstallationUpdated = {
+  type: "installation.updated"
+  properties: {
+    version: string
+  }
+}
+
+export type EventInstallationUpdateAvailable = {
+  type: "installation.update-available"
+  properties: {
+    version: string
+  }
+}
+
 export type Project = {
   id: string
   worktree: string
@@ -149,13 +163,6 @@ export type EventProjectUpdated = {
   properties: Project
 }
 
-export type EventServerInstanceDisposed = {
-  type: "server.instance.disposed"
-  properties: {
-    directory: string
-  }
-}
-
 export type EventServerConnected = {
   type: "server.connected"
   properties: {
@@ -170,18 +177,10 @@ export type EventGlobalDisposed = {
   }
 }
 
-export type EventFileEdited = {
-  type: "file.edited"
+export type EventServerInstanceDisposed = {
+  type: "server.instance.disposed"
   properties: {
-    file: string
-  }
-}
-
-export type EventFileWatcherUpdated = {
-  type: "file.watcher.updated"
-  properties: {
-    file: string
-    event: "add" | "change" | "unlink"
+    directory: string
   }
 }
 
@@ -197,20 +196,6 @@ export type EventLspUpdated = {
   type: "lsp.updated"
   properties: {
     [key: string]: unknown
-  }
-}
-
-export type EventInstallationUpdated = {
-  type: "installation.updated"
-  properties: {
-    version: string
-  }
-}
-
-export type EventInstallationUpdateAvailable = {
-  type: "installation.update-available"
-  properties: {
-    version: string
   }
 }
 
@@ -343,6 +328,21 @@ export type EventSessionError = {
       | StructuredOutputError
       | ContextOverflowError
       | ApiError
+  }
+}
+
+export type EventFileEdited = {
+  type: "file.edited"
+  properties: {
+    file: string
+  }
+}
+
+export type EventFileWatcherUpdated = {
+  type: "file.watcher.updated"
+  properties: {
+    file: string
+    event: "add" | "change" | "unlink"
   }
 }
 
@@ -1759,21 +1759,21 @@ export type GlobalEvent = {
   project?: string
   workspace?: string
   payload:
-    | EventProjectUpdated
-    | EventServerInstanceDisposed
-    | EventServerConnected
-    | EventGlobalDisposed
-    | EventFileEdited
-    | EventFileWatcherUpdated
-    | EventLspClientDiagnostics
-    | EventLspUpdated
     | EventInstallationUpdated
     | EventInstallationUpdateAvailable
+    | EventProjectUpdated
+    | EventServerConnected
+    | EventGlobalDisposed
+    | EventServerInstanceDisposed
+    | EventLspClientDiagnostics
+    | EventLspUpdated
     | EventMessagePartDelta
     | EventPermissionAsked
     | EventPermissionReplied
     | EventSessionDiff
     | EventSessionError
+    | EventFileEdited
+    | EventFileWatcherUpdated
     | EventQuestionAsked
     | EventQuestionReplied
     | EventQuestionRejected
@@ -2792,21 +2792,21 @@ export type File = {
 }
 
 export type Event =
-  | EventProjectUpdated
-  | EventServerInstanceDisposed
-  | EventServerConnected
-  | EventGlobalDisposed
-  | EventFileEdited
-  | EventFileWatcherUpdated
-  | EventLspClientDiagnostics
-  | EventLspUpdated
   | EventInstallationUpdated
   | EventInstallationUpdateAvailable
+  | EventProjectUpdated
+  | EventServerConnected
+  | EventGlobalDisposed
+  | EventServerInstanceDisposed
+  | EventLspClientDiagnostics
+  | EventLspUpdated
   | EventMessagePartDelta
   | EventPermissionAsked
   | EventPermissionReplied
   | EventSessionDiff
   | EventSessionError
+  | EventFileEdited
+  | EventFileWatcherUpdated
   | EventQuestionAsked
   | EventQuestionReplied
   | EventQuestionRejected
