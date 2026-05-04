@@ -675,6 +675,7 @@ const Sidebar: Component<{
   view: View
   onOpen: (id: string) => void
   onEdit: (id: string) => void
+  onUpdate: (id: string) => void
   onAdd: () => void
   onOpenSettings: () => void
   onOpenStart: () => void
@@ -713,7 +714,16 @@ const Sidebar: Component<{
               onClick={() => props.onOpen(instance.id)}
               onContextMenu={(event) => {
                 event.preventDefault()
-                props.onEdit(instance.id)
+                // Shift-right-click → Update (less destructive than Edit
+                // because it doesn't enter a multi-step form). Plain
+                // right-click stays as Edit so existing muscle memory
+                // is preserved. The WelcomePanel still has both as
+                // separate icon buttons for users who prefer clicking.
+                if (event.shiftKey) {
+                  props.onUpdate(instance.id)
+                } else {
+                  props.onEdit(instance.id)
+                }
               }}
             >
               <Show
@@ -2088,81 +2098,167 @@ export const App: Component = () => {
     setView({ kind: editing?.local ? "local-form" : "remote-form", editing })
   }
 
-  // Per-instance "Update" action surfaced from the WelcomePanel row icon.
-  // Local instances → fetch the latest npm version, install the new binary,
-  // rewrite the saved instance's binaryVersion. Remote instances → probe
-  // /global/version and report the delta (we don't trigger /global/upgrade
-  // from out here; that requires an authenticated session inside the
-  // instance shell, which the in-instance Update flow already handles).
+  // Per-instance "Update" action surfaced from the WelcomePanel row icon
+  // and the Sidebar tile right-click context menu.
+  //
+  // Local instances → fetch latest npm version, subscribe to
+  // local:install-progress, install the new binary, verify with a status
+  // probe, then rewrite the saved instance's binaryVersion. Every step
+  // logs and surfaces failures with the actual underlying error string
+  // so the previous "click and nothing visible happens" is no longer
+  // possible.
+  //
+  // Remote instances → probe /global/version and report the delta. We
+  // don't trigger /global/upgrade from here (that requires an
+  // authenticated session inside the instance shell, which the
+  // in-instance Update flow handles) but we do offer "Open instance"
+  // as a toast action so the user can jump straight there.
   const onUpdate = async (id: string) => {
     if (updatingId()) return
     const target = instances().find((entry) => entry.id === id)
     if (!target) return
+    const targetLabel = target.label || target.id
     setUpdatingId(id)
     logSetup("instance.update.start", { id, kind: target.local ? "local" : "remote" })
+
+    // Persistent in-progress toast we can update as install-progress
+    // events stream from the main process. Stable string id per
+    // instance lets `showToast` replace the previous toast in place
+    // (see `activeToastsById` map in toast.tsx) instead of stacking
+    // a new toast for each progress event. Without this, the install
+    // would look like a frozen UI for the duration of the download.
+    const progressToastId = `instance-update:${id}`
+    const showProgress = (title: string, description?: string) => {
+      showToast({
+        id: progressToastId,
+        variant: "loading",
+        title,
+        description,
+        persistent: true,
+      })
+    }
+
     try {
       if (target.local) {
+        showProgress(`Updating ${targetLabel}…`, "Checking npm registry…")
+
         const versionList = await api.local.listVersions()
         if (!versionList.ok) {
           showToast({
+            id: progressToastId,
             variant: "error",
             icon: "warning",
-            title: `Couldn't reach npm for ${target.label || target.id}`,
+            title: `Couldn't reach npm for ${targetLabel}`,
             description: versionList.error,
           })
+          logSetup("instance.update.npm-error", { id, error: versionList.error })
           return
         }
         const latest = versionList.latest ?? versionList.distTags?.["latest"]
         if (!latest) {
           showToast({
+            id: progressToastId,
             variant: "error",
             icon: "warning",
-            title: `npm returned no latest version`,
+            title: "npm returned no latest version",
             description: `Got ${versionList.versions.length} versions but no \`latest\` dist-tag.`,
           })
+          logSetup("instance.update.no-latest-tag", { id })
           return
         }
+
         const current = target.local.binaryVersion || ""
         if (current === latest) {
           showToast({
+            id: progressToastId,
             variant: "success",
             icon: "check",
-            title: `${target.label || target.id} is already on v${latest}`,
+            title: `${targetLabel} is already on v${latest}`,
           })
+          logSetup("instance.update.already-latest", { id, version: latest })
           return
         }
-        const installResult = await api.local.install({ version: latest })
+
+        // Subscribe to install-progress so the toast description reflects
+        // real download/extract progress instead of a frozen "Installing…"
+        // message. Cleanup before save so the listener doesn't leak.
+        const offProgress = api.local.onInstallProgress((info) => {
+          if (info.version !== latest) return
+          const pct = Number.isFinite(info.percent) ? `${Math.round(info.percent)}%` : undefined
+          showProgress(
+            `Updating ${targetLabel}…`,
+            [info.message || info.phase, pct].filter(Boolean).join(" · "),
+          )
+        })
+
+        showProgress(`Updating ${targetLabel}…`, `Downloading v${latest}…`)
+        let installResult
+        try {
+          installResult = await api.local.install({ version: latest })
+        } finally {
+          offProgress?.()
+        }
+
         if (!installResult.ok) {
           showToast({
+            id: progressToastId,
             variant: "error",
             icon: "warning",
             title: `Install of v${latest} failed`,
             description: installResult.error,
           })
+          logSetup("instance.update.install-error", { id, version: latest, error: installResult.error })
           return
         }
+
+        // Verify the install actually landed before declaring success and
+        // saving. `install` resolved without throwing, but a permissions
+        // / disk-full / corrupt-tarball edge case could leave us with no
+        // binary on disk. If that happens, refuse to save the new
+        // binaryVersion — otherwise the next `open` would fail with a
+        // confusing missing-binary error and the user would never connect
+        // it back to this Update click.
+        showProgress(`Updating ${targetLabel}…`, `Verifying v${latest} on disk…`)
+        const verified = await api.local.status(latest)
+        if (!verified.installed) {
+          showToast({
+            id: progressToastId,
+            variant: "error",
+            icon: "warning",
+            title: `Install of v${latest} reported success but binary is missing`,
+            description: `Expected at ${verified.binaryPath || "unknown path"}. The npm package may have downloaded but not extracted correctly. Saved binaryVersion was NOT updated. Re-try, or run \`codeplane upgrade ${latest}\` from a shell.`,
+          })
+          logSetup("instance.update.verify-failed", { id, version: latest, status: verified })
+          return
+        }
+
         const updated: SavedInstance = {
           ...target,
           local: { ...target.local, binaryVersion: latest },
         }
         await api.instances.save(updated)
         await refresh()
+
         showToast({
+          id: progressToastId,
           variant: "success",
           icon: "check",
-          title: `${target.label || target.id} updated`,
+          title: `${targetLabel} updated`,
           description: current ? `v${current} → v${latest}.` : `Now on v${latest}.`,
         })
         logSetup("instance.update.success", { id, from: current, to: latest })
         return
       }
-      // Remote
+
+      // Remote instance branch
+      showProgress(`Probing ${targetLabel}…`, target.url)
       const probed = await api.instances.probe(target)
       if (!probed.ok) {
         showToast({
+          id: progressToastId,
           variant: "error",
           icon: "warning",
-          title: `Couldn't probe ${target.label || target.id}`,
+          title: `Couldn't probe ${targetLabel}`,
           description: probed.error || (probed.status ? `HTTP ${probed.status}` : "Server unreachable."),
         })
         return
@@ -2171,9 +2267,10 @@ export const App: Component = () => {
       const lat = probed.latest ?? undefined
       if (cur && lat && cur !== lat) {
         showToast({
+          id: progressToastId,
           variant: "default",
           icon: "warning",
-          title: `${target.label || target.id}: v${cur} → v${lat} available`,
+          title: `${targetLabel}: v${cur} → v${lat} available`,
           description: `The remote server reports a newer release. Open the instance and use the in-app Update flow to apply it.`,
           actions: [
             { label: "Open instance", onClick: () => void onOpen(id) },
@@ -2183,9 +2280,10 @@ export const App: Component = () => {
         })
       } else {
         showToast({
+          id: progressToastId,
           variant: "success",
           icon: "check",
-          title: `${target.label || target.id} is on v${cur ?? "?"}`,
+          title: `${targetLabel} is on v${cur ?? "?"}`,
           description: lat ? `Latest known: v${lat}.` : undefined,
         })
       }
@@ -2193,9 +2291,10 @@ export const App: Component = () => {
     } catch (error) {
       logSetup("instance.update.error", { id, error })
       showToast({
+        id: progressToastId,
         variant: "error",
         icon: "warning",
-        title: `Update for ${target.label || target.id} failed`,
+        title: `Update for ${targetLabel} failed`,
         description: error instanceof Error ? error.message : String(error),
       })
     } finally {
@@ -2327,6 +2426,7 @@ export const App: Component = () => {
           view={view()}
           onOpen={onOpen}
           onEdit={onEdit}
+          onUpdate={(id) => void onUpdate(id)}
           onAdd={onAdd}
           onOpenSettings={() => {
             logSetup("view.change", { next: "settings", reason: "settings" })
