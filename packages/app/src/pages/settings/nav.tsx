@@ -70,7 +70,7 @@ export const settingsSections = [
   groupKey: string
 }[]
 
-const settingsGroups = [
+export const settingsGroups = [
   {
     titleKey: "settings.section.app",
     sections: settingsSections.filter((section) => section.groupKey === "settings.section.app"),
