@@ -1272,6 +1272,7 @@ function UserMessage(props: {
             paddingTop={1}
             paddingBottom={1}
             paddingLeft={2}
+            paddingRight={2}
             backgroundColor={hover() ? theme.backgroundElement : theme.backgroundPanel}
             flexShrink={0}
           >
@@ -1412,14 +1413,16 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
                       : local.agent.color(props.message.agent),
                 }}
               >
-                ●{" "}
+                {/* Distinct glyph per turn-end state:
+                      ● filled circle (agent color) → completed normally
+                      ⊘ slashed circle (warning color) → interrupted
+                    Was the same `●` for both, distinguished only by
+                    color — easy to miss at a glance when scrolling
+                    back through a session looking for cancelled runs. */}
+                {props.message.error?.name === "MessageAbortedError" ? "⊘ " : "● "}
               </span>
               <span style={{ fg: theme.text, bold: true }}>{Locale.titlecase(props.message.mode)}</span>
-              <span style={{ fg: theme.textMuted }}>{"  ·  "}</span>
-              {/* Model in subdued accent (the same color as syntax
-                  highlights elsewhere) so the eye picks it out without
-                  overpowering the agent name. */}
-              <span style={{ fg: theme.textMuted }}>{model()}</span>
+              <span style={{ fg: theme.textMuted }}>{"  ·  " + model()}</span>
               <Show when={duration()}>
                 <span style={{ fg: theme.textMuted }}>{"  ·  " + Locale.duration(duration())}</span>
               </Show>
@@ -1464,6 +1467,7 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
         customBorderChars={ThinBorder.customBorderChars}
         borderColor={theme.backgroundElement}
         paddingLeft={2}
+        paddingRight={2}
       >
         <code
           filetype="markdown"
@@ -1503,6 +1507,7 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
         marginTop={1}
         flexShrink={0}
         paddingLeft={2}
+        paddingRight={2}
       >
         <Switch>
           <Match when={Flag.CODEPLANE_EXPERIMENTAL_MARKDOWN}>
