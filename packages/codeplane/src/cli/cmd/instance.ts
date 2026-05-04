@@ -7,6 +7,8 @@ import {
 } from "@codeplane-ai/shared/local-runtime"
 import { Global } from "@/global"
 import path from "path"
+import open from "open"
+import { createInterface } from "node:readline"
 import { createInstanceService } from "../../tui/instance-service"
 import { normalizeInstanceUrl } from "../../tui/client"
 import { UI } from "../ui"
@@ -176,6 +178,7 @@ export const InstanceCommand = cmd({
       .command(InstanceRemoveCommand)
       .command(InstanceProbeCommand)
       .command(InstanceOpenCommand)
+      .command(InstanceSignInCommand)
       .command(InstanceLocalCommand)
       .demandCommand(),
   async handler() {},
@@ -355,6 +358,139 @@ export const InstanceProbeCommand = cmd({
         : `error ${saved?.id || input.target} ${result.status ? `HTTP ${result.status}` : result.error}`,
     )
     if (!result.ok) process.exitCode = 1
+  },
+})
+
+// Browser-assisted sign-in for instances behind an interactive auth proxy
+// (Cloudflare Access, identity-aware proxy, custom SSO). The Desktop app
+// already has a fully-automated equivalent that uses Electron's
+// BrowserWindow + session.cookies to capture the auth token without the
+// user copy-pasting anything. The TUI has no Electron, so we settle for
+// browser-assisted: we open the auth URL in the user's default browser
+// and wait on stdin for them to paste the cookie / Authorization header
+// they captured from DevTools. The pasted value is saved as a header on
+// the instance, replacing any previous auth header. Subsequent
+// `codeplane instance open <id>` calls then use that header to satisfy
+// the auth proxy.
+//
+// Why this isn't just `instance add --header "Cookie: ..."`:
+//   - Discoverability: most users won't know they need a Cookie header
+//     until they hit a 401 / get redirected to a login page in the
+//     existing flow. This subcommand surfaces the flow explicitly.
+//   - URL launch: `open <url>` is the right verb for "go authenticate"
+//     and saves the user from copy-pasting the URL.
+//   - Validation: after the user pastes, we re-probe the instance with
+//     the new header. If it still fails we tell them what went wrong
+//     (still 401? redirect? wrong header name?) instead of letting them
+//     discover at next `tui` time.
+export const InstanceSignInCommand = cmd({
+  command: "sign-in <id>",
+  describe: "open the saved instance URL in your browser and capture the auth header",
+  builder: (yargs: Argv) =>
+    yargs.positional("id", {
+      type: "string",
+      describe: "saved instance id (must already exist; use `instance add <url>` first)",
+    }),
+  async handler(args) {
+    const id = (args as InstanceIDArgs).id
+    const service = createInstanceService()
+    const list = await service.list()
+    const saved = list.find((item) => item.id === id)
+    if (!saved) {
+      throw new Error(
+        `No saved instance with id "${id}". Use \`codeplane instance list\` to see what exists, or \`codeplane instance add <url>\` to create one.`,
+      )
+    }
+    if (saved.local) {
+      throw new Error(
+        `Instance "${id}" is a local managed runtime — there's no auth proxy to sign into. ` +
+          `Browser sign-in only applies to remote instances behind Cloudflare Access / SSO / similar.`,
+      )
+    }
+    if (!saved.url) {
+      throw new Error(`Saved instance "${id}" has no URL. Re-add it via \`codeplane instance add <url>\`.`)
+    }
+
+    UI.println(UI.Style.TEXT_INFO_BOLD + `\nOpening ${saved.url} in your default browser…`)
+    UI.println(UI.Style.TEXT_NORMAL + "After signing in, capture the auth value from your browser DevTools:")
+    UI.println(UI.Style.TEXT_NORMAL + "  • Cloudflare Access:  Application → Cookies → CF_Authorization → copy value")
+    UI.println(UI.Style.TEXT_NORMAL + "                        Paste as:  Cookie: CF_Authorization=<value>")
+    UI.println(UI.Style.TEXT_NORMAL + "  • Bearer token (SSO): Network tab → Authorization request header → copy")
+    UI.println(UI.Style.TEXT_NORMAL + "                        Paste as:  Authorization: Bearer <token>")
+    UI.println(UI.Style.TEXT_NORMAL + "  • Service token:      Paste as:  Authorization: <provider-specific>")
+    UI.println(UI.Style.TEXT_NORMAL + "")
+    UI.println(UI.Style.TEXT_INFO_BOLD + "Paste the full header line (NAME: VALUE) below, then press Enter.")
+    UI.println(UI.Style.TEXT_DIM + "(Empty line cancels.)")
+    UI.println(UI.Style.TEXT_NORMAL + "")
+
+    await open(saved.url).catch(() => undefined)
+
+    const headerLine = await new Promise<string>((resolve) => {
+      const rl = createInterface({ input: process.stdin, output: process.stdout })
+      rl.question("> ", (answer) => {
+        rl.close()
+        resolve(answer.trim())
+      })
+    })
+    if (!headerLine) {
+      UI.println(UI.Style.TEXT_WARNING_BOLD + "Cancelled. Instance unchanged.")
+      return
+    }
+
+    const colon = headerLine.indexOf(":")
+    if (colon <= 0) {
+      throw new Error(`Invalid header "${headerLine}". Use the form  NAME: VALUE.`)
+    }
+    const headerName = headerLine.slice(0, colon).trim()
+    const headerValue = headerLine.slice(colon + 1).trim()
+    if (!headerName || !headerValue) {
+      throw new Error(`Invalid header "${headerLine}". Both NAME and VALUE must be non-empty.`)
+    }
+
+    // Replace any existing header with the same name (case-insensitive)
+    // so re-running sign-in cleanly overwrites a stale cookie. Other
+    // headers stay (e.g. an X-API-Key the user might have configured
+    // alongside CF Access).
+    const existing = saved.headers ?? {}
+    const filtered = Object.fromEntries(
+      Object.entries(existing).filter(([k]) => k.toLowerCase() !== headerName.toLowerCase()),
+    )
+    const updated: SavedInstance = {
+      ...saved,
+      headers: { ...filtered, [headerName]: headerValue },
+    }
+    await service.save(updated)
+
+    UI.println(UI.Style.TEXT_INFO_BOLD + `\nProbing ${saved.url} with the new header…`)
+    const probed = await service.probe(updated)
+    if (probed.ok && probed.version) {
+      UI.println(
+        UI.Style.TEXT_SUCCESS_BOLD +
+          `✓ Authenticated. Server v${probed.version} is reachable. Saved on instance "${id}".`,
+      )
+      return
+    }
+    if (probed.ok && !probed.version) {
+      UI.println(
+        UI.Style.TEXT_WARNING_BOLD +
+          `Header saved, but the response wasn't a version JSON — the auth proxy may still be redirecting to a login page.\n` +
+          `Try a fresh sign-in: clear cookies, re-run \`codeplane instance sign-in ${id}\`, and capture the cookie immediately after the auth flow completes.`,
+      )
+      process.exitCode = 1
+      return
+    }
+    const detail = !probed.ok
+      ? probed.status
+        ? `HTTP ${probed.status}`
+        : probed.error
+      : "(unknown)"
+    UI.println(
+      UI.Style.TEXT_DANGER_BOLD +
+        `\n✗ Probe still failed: ${detail}\n` +
+        `Header was saved on instance "${id}" anyway. To inspect: \`codeplane instance show ${id}\`.\n` +
+        `If the value is correct, the auth proxy may require additional headers (Cookie + Authorization, or multiple cookies).`,
+    )
+    process.exitCode = 1
   },
 })
 
