@@ -12,6 +12,7 @@ import type { SavedInstance } from "@codeplane-ai/shared/instance"
 import type { InstanceService } from "../instance-service"
 import { Header, palette, SectionHeading, StatusBar } from "./primitives"
 import { LocalInstanceForm } from "./local-form"
+import { RemoteInstanceForm } from "./remote-form"
 
 export type BootSelection = {
   instance: SavedInstance
@@ -29,7 +30,7 @@ function homeify(p: string): string {
   return p.startsWith(home) ? "~" + p.slice(home.length) : p
 }
 
-type Step = "instance" | "create-local" | "directory"
+type Step = "instance" | "create-local" | "create-remote" | "directory"
 
 // ---------- Step 1: instance picker ----------
 
@@ -39,6 +40,7 @@ function InstancePicker(props: {
   onMove: (delta: number) => void
   onPick: (i: number) => void
   onCreateLocal: () => void
+  onCreateRemote: () => void
   onDelete: (i: number) => void
   onUpdate: (i: number) => void
   onQuit: () => void
@@ -55,7 +57,12 @@ function InstancePicker(props: {
     if (evt.name === "up" || evt.name === "k") props.onMove(-1)
     else if (evt.name === "down" || evt.name === "j") props.onMove(1)
     else if (evt.name === "return") props.onPick(props.selected)
+    // `n` was historically "new (local)". Keeping it bound to local
+    // creation preserves muscle memory for existing users; the new `r`
+    // key adds the remote-creation path that didn't exist before.
+    // `l` stays as a pure local alias.
     else if (evt.name === "n" || evt.name === "l") props.onCreateLocal()
+    else if (evt.name === "r") props.onCreateRemote()
     else if (evt.name === "d" || evt.name === "delete") props.onDelete(props.selected)
     else if (evt.name === "u") props.onUpdate(props.selected)
     else if (evt.name === "q" || (evt.ctrl && evt.name === "c")) props.onQuit()
@@ -66,10 +73,12 @@ function InstancePicker(props: {
       <Header instance="setup" cwd={homeify(process.cwd())} status="ready" />
       <SectionHeading>SELECT A SERVER</SectionHeading>
       <Show when={props.instances.length === 0}>
-        <box marginTop={1} paddingX={2}>
+        <box marginTop={1} paddingX={2} flexDirection="row">
           <text fg={palette.fgMuted}>No saved instances. Press </text>
           <text fg={palette.accent}>n</text>
-          <text fg={palette.fgMuted}> to create a local one.</text>
+          <text fg={palette.fgMuted}> for a local one or </text>
+          <text fg={palette.accent}>r</text>
+          <text fg={palette.fgMuted}> for a remote one.</text>
         </box>
       </Show>
       <box flexDirection="column" marginTop={1} paddingX={2}>
@@ -147,6 +156,7 @@ function InstancePicker(props: {
           { keys: "↵", label: "open" },
           { keys: "u", label: "update" },
           { keys: "n", label: "new local" },
+          { keys: "r", label: "new remote" },
           { keys: "d", label: "delete" },
           { keys: "↑↓", label: "navigate" },
           { keys: "q", label: "quit" },
@@ -419,6 +429,17 @@ export async function runBootWizard(input: BootWizardInput): Promise<BootSelecti
     { variant: "success" | "warn" | "error" | "info"; message: string } | undefined
   >(undefined)
 
+  // Reused by both create-local and create-remote `onDone` callbacks so
+  // the post-creation behavior (append to picker, select the new entry,
+  // navigate back) is identical regardless of which form the user came
+  // from.
+  const acceptNewInstance = (instance: SavedInstance) => {
+    const next = [...instances(), instance]
+    setInstances(next)
+    setSelectedIdx(next.length - 1)
+    setStep("instance")
+  }
+
   await render(
     () => (
       <Show
@@ -427,15 +448,32 @@ export async function runBootWizard(input: BootWizardInput): Promise<BootSelecti
           <Show
             when={step() === "create-local"}
             fallback={
-              <DirectoryPicker
-                instance={instances()[selectedIdx()] as SavedInstance}
-                initialDirectory={defaultDir()}
-                onConfirm={(dir) =>
-                  void finish({ instance: instances()[selectedIdx()] as SavedInstance, directory: dir })
+              <Show
+                when={step() === "create-remote"}
+                fallback={
+                  <DirectoryPicker
+                    instance={instances()[selectedIdx()] as SavedInstance}
+                    initialDirectory={defaultDir()}
+                    onConfirm={(dir) =>
+                      void finish({ instance: instances()[selectedIdx()] as SavedInstance, directory: dir })
+                    }
+                    onBack={() => setStep("instance")}
+                    onQuit={() => void finish(null)}
+                  />
                 }
-                onBack={() => setStep("instance")}
-                onQuit={() => void finish(null)}
-              />
+              >
+                <RemoteInstanceForm
+                  service={input.service}
+                  takenIds={new Set(instances().map((i) => i.id))}
+                  onDone={(result) => {
+                    if ("cancel" in result) {
+                      setStep("instance")
+                      return
+                    }
+                    acceptNewInstance(result.instance)
+                  }}
+                />
+              </Show>
             }
           >
             <LocalInstanceForm
@@ -446,10 +484,7 @@ export async function runBootWizard(input: BootWizardInput): Promise<BootSelecti
                   setStep("instance")
                   return
                 }
-                const next = [...instances(), result.instance]
-                setInstances(next)
-                setSelectedIdx(next.length - 1)
-                setStep("instance")
+                acceptNewInstance(result.instance)
               }}
             />
           </Show>
@@ -471,6 +506,7 @@ export async function runBootWizard(input: BootWizardInput): Promise<BootSelecti
             if (instances()[selectedIdx()]) setStep("directory")
           }}
           onCreateLocal={() => setStep("create-local")}
+          onCreateRemote={() => setStep("create-remote")}
           onDelete={async (idx) => {
             const target = instances()[idx]
             if (!target) return
