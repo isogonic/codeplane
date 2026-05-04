@@ -1,4 +1,4 @@
-export const CodeplaneVersion = "27.4.55"
+export const CodeplaneVersion = "27.4.56"
 export const CodeplaneReleasePrefix = "v"
 export const CodeplaneDesktopReleaseSuffix = "-desktop"
 
