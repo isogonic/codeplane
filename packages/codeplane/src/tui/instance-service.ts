@@ -1,3 +1,4 @@
+import fs from "node:fs/promises"
 import path from "node:path"
 import semver from "semver"
 import { CodeplaneHome } from "@codeplane-ai/shared/home"
@@ -119,6 +120,64 @@ export function createInstanceService() {
     if (migrated) return
     migrated = true
     await store.migrate(path.join(CodeplaneHome.legacyPaths().state, "tui-instances.json"))
+    await mergeOrphanedPerInstanceRegistry()
+  }
+
+  // One-shot rescue for users who added instances via TUI between v27.4.29
+  // (per-instance default landed) and v27.4.51 (this fix). During that
+  // window, the CLI was writing instances.json into
+  // <root>/instances/<id>/instances.json instead of <root>/instances.json,
+  // so any TUI-added remotes were invisible from the desktop's saved-
+  // instance picker (and vice versa). On first run after this fix, scan
+  // the per-instance subdirs for stranded instances.json files, merge any
+  // entries the global registry doesn't already have (matched by id), and
+  // delete the orphans. The global file remains the source of truth.
+  async function mergeOrphanedPerInstanceRegistry(): Promise<void> {
+    try {
+      const perInstancesDir = path.join(home.globalRoot, "instances")
+      const entries = await fs.readdir(perInstancesDir, { withFileTypes: true }).catch(() => [])
+      const orphanFiles: string[] = []
+      const merged: SavedInstance[] = []
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue
+        const orphan = path.join(perInstancesDir, entry.name, "instances.json")
+        const text = await fs.readFile(orphan, "utf8").catch(() => undefined)
+        if (text === undefined) continue
+        try {
+          const parsed = JSON.parse(text) as { instances?: SavedInstance[] }
+          if (Array.isArray(parsed.instances)) {
+            for (const inst of parsed.instances) merged.push(inst)
+            orphanFiles.push(orphan)
+          }
+        } catch {
+          // ignore malformed orphan; leave it on disk for human inspection
+        }
+      }
+      if (merged.length === 0) return
+      const existing = await store.list()
+      const existingIds = new Set(existing.map((i) => i.id))
+      let saved = 0
+      for (const inst of merged) {
+        if (existingIds.has(inst.id)) continue
+        await store.save({ ...inst, url: normalizeInstanceUrl(inst.url) ?? inst.url })
+        existingIds.add(inst.id)
+        saved += 1
+      }
+      // Always delete the orphans even if everything was already in the
+      // global registry — leaving them around would re-create the
+      // confusion the next time someone reads the disk by hand.
+      for (const orphan of orphanFiles) await fs.unlink(orphan).catch(() => undefined)
+      if (saved > 0) {
+        // Stderr-only — TUI renderer captures stdout, but the boot wizard
+        // hasn't started yet at this point; this still surfaces in the
+        // log file via Log.Default if the caller wired it. Quiet on the
+        // happy zero-orphan path.
+        process.stderr.write(`[codeplane] Migrated ${saved} stranded instance(s) into the shared registry.\n`)
+      }
+    } catch {
+      // Best-effort; never fail the TUI boot because of a registry merge
+      // edge case. The global registry remains valid in any case.
+    }
   }
 
   async function list() {
