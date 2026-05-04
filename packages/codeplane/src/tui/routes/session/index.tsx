@@ -1390,31 +1390,41 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
       </Show>
       <Switch>
         <Match when={props.last || final() || props.message.error?.name === "MessageAbortedError"}>
-          {/* Turn footer: agent + model + duration + (optional) status.
-              Filled-circle glyph in agent color for instant visual
-              recognition; muted middot separators keep the line scannable
-              without competing with the response text above. Was using
-              the heavier ▣ block which read as a UI element rather than
-              metadata. */}
-          <box paddingLeft={2} marginTop={1}>
+          {/* Turn footer placed at paddingLeft=0 so the leading `●`
+              sits in the SAME column as the `┃`/`│` border bars above
+              it. The bullet visually "closes" the assistant frame —
+              you can scan straight down the left edge:
+                ┃ user prompt
+                │ assistant text
+                │ more text
+                ● Build · sonnet · 3.4s
+              Was paddingLeft=2 which floated the bullet at col 2, off
+              the column grid the rest of the message uses, and made
+              the footer read as detached metadata rather than as a
+              terminator of the bordered block above. */}
+          <box paddingLeft={0} marginTop={1}>
             <text>
               <span
                 style={{
                   fg:
                     props.message.error?.name === "MessageAbortedError"
-                      ? theme.textMuted
+                      ? theme.warning
                       : local.agent.color(props.message.agent),
                 }}
               >
                 ●{" "}
               </span>
               <span style={{ fg: theme.text, bold: true }}>{Locale.titlecase(props.message.mode)}</span>
-              <span style={{ fg: theme.textMuted }}>{"  ·  " + model()}</span>
+              <span style={{ fg: theme.textMuted }}>{"  ·  "}</span>
+              {/* Model in subdued accent (the same color as syntax
+                  highlights elsewhere) so the eye picks it out without
+                  overpowering the agent name. */}
+              <span style={{ fg: theme.textMuted }}>{model()}</span>
               <Show when={duration()}>
                 <span style={{ fg: theme.textMuted }}>{"  ·  " + Locale.duration(duration())}</span>
               </Show>
               <Show when={props.message.error?.name === "MessageAbortedError"}>
-                <span style={{ fg: theme.warning ?? theme.textMuted }}>{"  ·  interrupted"}</span>
+                <span style={{ fg: theme.warning ?? theme.textMuted, bold: true }}>{"  ·  interrupted"}</span>
               </Show>
             </text>
           </box>
@@ -1440,10 +1450,12 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
   })
   return (
     <Show when={content() && ctx.showThinking()}>
-      {/* Reasoning shares the same thin `│` rule as TextPart so the
-          whole assistant turn frames consistently. Color stays muted
-          (backgroundElement) so reasoning reads as visually
-          subordinate to the actual response text. */}
+      {/* Reasoning shares the same thin `│` rule and column grid as
+          TextPart so the whole assistant turn frames consistently.
+          Color stays at backgroundElement (gray 3, barely visible) so
+          reasoning reads as visually subordinate to the response text
+          that follows it — meta-content rather than the answer
+          itself. */}
       <box
         id={"text-" + props.part.id}
         marginTop={1}
@@ -1451,18 +1463,17 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
         border={["left"]}
         customBorderChars={ThinBorder.customBorderChars}
         borderColor={theme.backgroundElement}
+        paddingLeft={2}
       >
-        <box paddingLeft={2}>
-          <code
-            filetype="markdown"
-            drawUnstyledText={false}
-            streaming={true}
-            syntaxStyle={subtleSyntax()}
-            content={"_Thinking:_ " + content()}
-            conceal={ctx.conceal()}
-            fg={theme.textMuted}
-          />
-        </box>
+        <code
+          filetype="markdown"
+          drawUnstyledText={false}
+          streaming={true}
+          syntaxStyle={subtleSyntax()}
+          content={"_Thinking:_ " + content()}
+          conceal={ctx.conceal()}
+          fg={theme.textMuted}
+        />
       </box>
     </Show>
   )
@@ -1471,48 +1482,51 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
 function TextPart(props: { last: boolean; part: TextPart; message: AssistantMessage }) {
   const ctx = use()
   const { theme, syntax } = useTheme()
-  // Match the user-message visual treatment: left border + padding, but
-  // with the thin `│` rule and a muted color so the assistant turn
-  // reads as visually subordinate to the user's prompt while still
-  // being framed as a single coherent block. Was previously a bare
-  // `paddingLeft={3}` with no frame, which made long assistant
-  // responses bleed into surrounding tool-call output and made it
-  // hard to scan where one turn ended and the next began.
+  // Frame the assistant's reply with a thin `│` rule that mirrors the
+  // user's `┃` rule, but in a muted neutral color (theme.border = gray 7).
+  // The user's bar stays visually dominant because of its AGENT COLOR
+  // (cyan/green/etc, theme-distinctive), not because of bar weight —
+  // assistant reads as a quieter response framed inside the same column
+  // grid the prompt sits in.
+  //
+  // paddingLeft={2} on the inner content box puts text at col 3 — same
+  // as UserMessage's `<box paddingLeft={2}>` inside its border, so the
+  // user prompt and the assistant reply share a left edge for a tidy
+  // grid alignment when scanning long sessions.
   return (
     <Show when={props.part.text.trim()}>
       <box
         id={"text-" + props.part.id}
         border={["left"]}
-        borderColor={theme.borderActive ?? theme.border ?? theme.backgroundElement}
+        borderColor={theme.border ?? theme.backgroundElement}
         customBorderChars={ThinBorder.customBorderChars}
         marginTop={1}
         flexShrink={0}
+        paddingLeft={2}
       >
-        <box paddingLeft={2} paddingTop={0} paddingBottom={0} flexShrink={0}>
-          <Switch>
-            <Match when={Flag.CODEPLANE_EXPERIMENTAL_MARKDOWN}>
-              <markdown
-                syntaxStyle={syntax()}
-                streaming={true}
-                content={props.part.text.trim()}
-                conceal={ctx.conceal()}
-                fg={theme.markdownText}
-                bg={theme.background}
-              />
-            </Match>
-            <Match when={!Flag.CODEPLANE_EXPERIMENTAL_MARKDOWN}>
-              <code
-                filetype="markdown"
-                drawUnstyledText={false}
-                streaming={true}
-                syntaxStyle={syntax()}
-                content={props.part.text.trim()}
-                conceal={ctx.conceal()}
-                fg={theme.text}
-              />
-            </Match>
-          </Switch>
-        </box>
+        <Switch>
+          <Match when={Flag.CODEPLANE_EXPERIMENTAL_MARKDOWN}>
+            <markdown
+              syntaxStyle={syntax()}
+              streaming={true}
+              content={props.part.text.trim()}
+              conceal={ctx.conceal()}
+              fg={theme.markdownText}
+              bg={theme.background}
+            />
+          </Match>
+          <Match when={!Flag.CODEPLANE_EXPERIMENTAL_MARKDOWN}>
+            <code
+              filetype="markdown"
+              drawUnstyledText={false}
+              streaming={true}
+              syntaxStyle={syntax()}
+              content={props.part.text.trim()}
+              conceal={ctx.conceal()}
+              fg={theme.text}
+            />
+          </Match>
+        </Switch>
       </box>
     </Show>
   )
