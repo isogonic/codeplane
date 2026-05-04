@@ -24,6 +24,7 @@ export type Method =
   | "curl"
   | "selfhosted"
   | "desktop"
+  | "managed-local"
   | "npm"
   | "yarn"
   | "pnpm"
@@ -226,6 +227,14 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
         // signal that updates flow through the desktop's electron-updater,
         // not through any package manager visible to this process.
         if (process.env.CODEPLANE_DESKTOP_MANAGED === "1") return "desktop" as Method
+        // TUI (or any non-desktop manager) spawns local runtimes with
+        // CODEPLANE_MANAGED_BY=tui. The runtime binary lives under the
+        // shared local_server/binaries/<version>/ tree and there is no
+        // global package-manager install to upgrade. The /global/upgrade
+        // route handles "managed-local" by telling the user to restart
+        // their TUI on the new version (which the manager will fetch
+        // on next start via the same local-runtime helper).
+        if (process.env.CODEPLANE_MANAGED_BY === "tui") return "managed-local" as Method
         if (process.execPath.includes(path.join(".codeplane", "bin"))) return "curl" as Method
         if (process.execPath.includes(path.join(".local", "bin"))) return "curl" as Method
         const exec = process.execPath.toLowerCase()
@@ -354,6 +363,21 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
               stderr:
                 "Updates for desktop-managed instances are handled by the Codeplane desktop app. " +
                 "Open the desktop app's Updates panel to install a new version.",
+            })
+          case "managed-local":
+            // The TUI (or any non-desktop manager) spawned this server from
+            // a versioned tarball under local_server/binaries/<version>/.
+            // Upgrading in-place would require swapping the running binary
+            // out from under itself; instead the user closes the TUI and
+            // restarts — the manager will fetch the new version into
+            // local_server/binaries/<new>/ on next start (or via
+            // `codeplane instance local update`).
+            return yield* new UpgradeFailedError({
+              stderr:
+                `This server runs as a managed local instance under the TUI. To upgrade to ${target}, ` +
+                `quit the TUI (Ctrl-C) and restart it — the manager will fetch the new runtime version ` +
+                `into local_server/binaries/${target}/ on next launch. To pre-fetch without restarting ` +
+                `the current session, run \`codeplane instance local install ${target}\` from another shell.`,
             })
           case "npm":
             result = yield* run(["npm", "install", "-g", `${npmPackage}@${target}`])

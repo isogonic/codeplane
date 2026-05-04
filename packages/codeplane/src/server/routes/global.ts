@@ -394,6 +394,25 @@ export const GlobalRoutes = lazy(() =>
                     method,
                   }
                 }
+                if (method === "managed-local") {
+                  // The TUI spawned this server from
+                  // local_server/binaries/<version>/. Tell the client
+                  // exactly how to upgrade — the manager fetches new
+                  // versions on next start, no in-place swap is possible
+                  // for a binary that's currently executing.
+                  const requested = body.target ? `v${Installation.cleanVersion(body.target)}` : "the latest version"
+                  return {
+                    success: false as const,
+                    status: 400 as const,
+                    error:
+                      `This server runs as a managed local instance under the TUI. ` +
+                      `To upgrade to ${requested}, quit the TUI and restart it — the manager will ` +
+                      `fetch the new runtime version into local_server/binaries/ on next launch. ` +
+                      `To pre-fetch without restarting the current session, run ` +
+                      `\`codeplane instance local install ${body.target ?? "latest"}\` from another shell.`,
+                    method,
+                  }
+                }
 
                 const target = Installation.cleanVersion(body.target || (yield* svc.latest(method)))
                 if (Installation.isDesktopReleaseVersion(target)) {

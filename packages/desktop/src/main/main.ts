@@ -192,6 +192,12 @@ const localManager = createLocalInstanceManager({
   configDir: codeplaneHome.root,
   dataDir: codeplaneHome.local_server,
   log: (event, data) => logger.log("local-instance", event, data),
+  // electron-updater owns the lifecycle of the local runtime spawned by
+  // the desktop. Tells the spawned server's Installation.method() to
+  // return "desktop" so /global/upgrade short-circuits with the
+  // "use the desktop's Updates panel" message instead of attempting
+  // an npm install.
+  desktopManaged: true,
 })
 const uiHost = createDesktopUIHost({
   cacheDir: app.getPath("userData"),

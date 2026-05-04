@@ -73,6 +73,12 @@ export function createInstanceService() {
     binariesDir: home.local_server_binaries,
     configDir: home.root,
     dataDir: home.local_server,
+    // The TUI is not the desktop. Don't tell the spawned server it's
+    // desktop-managed — that would short-circuit /global/upgrade to
+    // "use the desktop's Updates panel" even though there's no desktop
+    // here. The TUI's in-app "Update Available" flow then sees a real
+    // method (or "managed-local") and can handle it appropriately.
+    desktopManaged: false,
   })
   let migrated = false
 
