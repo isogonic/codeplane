@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "name": "@codeplane-ai/plugin",
-  "version": "27.4.47",
+  "version": "27.4.48",
   "type": "module",
   "license": "MIT",
   "repository": {
