@@ -89,7 +89,12 @@ function migrateLegacyToDefault(root: string, target: string): void {
 function applyInstance(): void {
   if (process.env.CODEPLANE_HOME_DIR && process.env.CODEPLANE_HOME_DIR.length > 0) {
     // The spawning process already pinned a home dir (e.g. desktop shell
-    // running a managed local instance). Respect it.
+    // running a managed local instance). Respect it. The desktop also
+    // doesn't set CODEPLANE_GLOBAL_HOME_DIR — that's fine, home.ts falls
+    // back to CODEPLANE_HOME_DIR for the global root in that case, and
+    // since the desktop doesn't use per-instance routing the two paths
+    // coincide and instances.json lands at the same spot the desktop
+    // already expects.
     return
   }
   const requested = readInstanceFromArgv(process.argv)
@@ -110,6 +115,15 @@ function applyInstance(): void {
   }
 
   process.env.CODEPLANE_HOME_DIR = target
+  // CODEPLANE_GLOBAL_HOME_DIR is what home.ts uses to resolve the
+  // shared registry (instances.json) + the shared local-runtime cache
+  // (local_server/) to the OUTER root, regardless of which per-instance
+  // subtree CODEPLANE_HOME_DIR points at. Without this, every CLI
+  // invocation since v27.4.29 has been writing instances.json into
+  // <root>/instances/<id>/instances.json, where the desktop's
+  // <root>/instances.json reader doesn't see it — so a remote added in
+  // the desktop UI was invisible from `codeplane tui` and vice versa.
+  process.env.CODEPLANE_GLOBAL_HOME_DIR = defaultPaths.root
 }
 
 // Apply --password / --username CLI flags by setting the matching env vars
