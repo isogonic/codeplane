@@ -1,4 +1,4 @@
-import type { AssistantMessage, Message } from "@codeplane-ai/sdk/v2/client"
+import type { AssistantMessage, Message, Part } from "@codeplane-ai/sdk/v2/client"
 
 type Provider = {
   id: string
@@ -73,13 +73,50 @@ const completedAssistantWithDuration = (msg: Message): msg is CompletedAssistant
   return msg.role === "assistant" && typeof msg.time.completed === "number" && msg.time.completed > msg.time.created
 }
 
-const collectTurnSpeeds = (messages: Message[]): TurnSpeed[] => {
+// Sum of (text + reasoning) part durations for one assistant turn — i.e.
+// the wall time the model was actually emitting tokens, excluding tool
+// execution, queue/scheduler overhead, RTT, and TTFT-bucket time. This
+// is the denominator that matches what providers report on their
+// dashboards and what Bedrock / Anthropic / OpenAI usage telemetry
+// shows. Returns undefined when no part has both `start` and `end`
+// timestamps (older sessions, or a turn that was cut short before any
+// text/reasoning streaming finished); the caller falls back to the
+// whole-turn duration in that case so old data still produces *some*
+// number.
+const generationMs = (parts: Part[] | undefined): number | undefined => {
+  if (!parts || parts.length === 0) return undefined
+  let sum = 0
+  let counted = 0
+  for (const part of parts) {
+    if (part.type !== "text" && part.type !== "reasoning") continue
+    const time = part.time
+    if (!time) continue
+    const start = typeof time.start === "number" ? time.start : undefined
+    const end = typeof time.end === "number" ? time.end : undefined
+    if (start === undefined || end === undefined) continue
+    if (end <= start) continue
+    sum += end - start
+    counted++
+  }
+  if (counted === 0) return undefined
+  return sum
+}
+
+const collectTurnSpeeds = (
+  messages: Message[],
+  partsByMessage: Record<string, Part[] | undefined> | undefined,
+): TurnSpeed[] => {
   const result: TurnSpeed[] = []
   let index = 0
   for (const msg of messages) {
     if (!completedAssistantWithDuration(msg)) continue
     const tokens = generatedTokenTotal(msg)
-    const ms = msg.time.completed - msg.time.created
+    // Prefer the precise per-part generation time; fall back to the whole
+    // turn duration only if no parts had both start + end stamped (legacy
+    // sessions, or turns that finished without ever emitting text /
+    // reasoning).
+    const preciseMs = generationMs(partsByMessage?.[msg.id])
+    const ms = preciseMs ?? msg.time.completed - msg.time.created
     if (tokens < MIN_TURN_TOKENS || ms < MIN_TURN_MS) {
       index++
       continue
@@ -107,8 +144,11 @@ const weightedAverage = (turns: TurnSpeed[]): number | null => {
   return (tokens / ms) * 1000
 }
 
-const buildSpeed = (messages: Message[]): SpeedMetrics => {
-  const turns = collectTurnSpeeds(messages)
+const buildSpeed = (
+  messages: Message[],
+  partsByMessage: Record<string, Part[] | undefined> | undefined,
+): SpeedMetrics => {
+  const turns = collectTurnSpeeds(messages, partsByMessage)
   if (turns.length === 0) {
     return { lifetime: null, recent: null, peak: null, current: null, turns }
   }
@@ -128,9 +168,13 @@ const lastAssistantWithTokens = (messages: Message[]) => {
   }
 }
 
-const build = (messages: Message[] = [], providers: Provider[] = []): Metrics => {
+const build = (
+  messages: Message[] = [],
+  providers: Provider[] = [],
+  partsByMessage?: Record<string, Part[] | undefined>,
+): Metrics => {
   const totalCost = messages.reduce((sum, msg) => sum + (msg.role === "assistant" ? msg.cost : 0), 0)
-  const speed = buildSpeed(messages)
+  const speed = buildSpeed(messages, partsByMessage)
   const message = lastAssistantWithTokens(messages)
   if (!message) return { totalCost, speed, context: undefined }
 
@@ -160,6 +204,10 @@ const build = (messages: Message[] = [], providers: Provider[] = []): Metrics =>
   }
 }
 
-export function getSessionContextMetrics(messages: Message[] = [], providers: Provider[] = []) {
-  return build(messages, providers)
+export function getSessionContextMetrics(
+  messages: Message[] = [],
+  providers: Provider[] = [],
+  partsByMessage?: Record<string, Part[] | undefined>,
+) {
+  return build(messages, providers, partsByMessage)
 }

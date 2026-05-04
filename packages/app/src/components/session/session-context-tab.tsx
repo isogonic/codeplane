@@ -133,7 +133,12 @@ export function SessionContextTab() {
       }),
   )
 
-  const metrics = createMemo(() => getSessionContextMetrics(messages(), providers.all()))
+  const metrics = createMemo(() =>
+    // Pass per-message parts so the TPS calculation uses actual generation
+    // wall time (sum of text + reasoning part start→end) instead of the
+    // whole-turn duration that includes tool calls + RTT + TTFT.
+    getSessionContextMetrics(messages(), providers.all(), sync.data.part as Record<string, Part[] | undefined>),
+  )
   const ctx = createMemo(() => metrics().context)
   const formatter = createMemo(() => createSessionContextFormatter(language.intl()))
 

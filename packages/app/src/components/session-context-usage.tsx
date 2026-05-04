@@ -43,6 +43,7 @@ export function SessionContextUsage(props: SessionContextUsageProps) {
     normalizeTab: (tab) => (tab.startsWith("file://") ? file.tab(tab) : tab),
   })
   const messages = createMemo(() => (params.id ? (sync.data.message[params.id] ?? []) : []))
+  const partsByMessage = createMemo(() => sync.data.part as Record<string, import("@codeplane-ai/sdk/v2/client").Part[] | undefined>)
 
   const usd = createMemo(
     () =>
@@ -52,7 +53,7 @@ export function SessionContextUsage(props: SessionContextUsageProps) {
       }),
   )
 
-  const metrics = createMemo(() => getSessionContextMetrics(messages(), providers.all()))
+  const metrics = createMemo(() => getSessionContextMetrics(messages(), providers.all(), partsByMessage()))
   const context = createMemo(() => metrics().context)
   const cost = createMemo(() => {
     return usd().format(metrics().totalCost)

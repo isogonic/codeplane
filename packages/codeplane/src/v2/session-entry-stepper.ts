@@ -98,13 +98,20 @@ export function stepWith<Result>(adapter: Adapter<Result>, event: SessionEvent.E
         )
       }
     },
-    "session.next.text.started": () => {
+    "session.next.text.started": (event) => {
+      // Capture the start timestamp on the part itself. session-context-
+      // metrics.ts uses (text.time.end - text.time.start) — summed across
+      // every text + reasoning part of an assistant turn — as the
+      // *generation time* denominator for TPS, so it matches what
+      // providers report (excludes tool-call wall time, RTT, TTFT-bucket
+      // overhead, etc).
       if (currentAssistant) {
         adapter.updateAssistant(
           produce(currentAssistant, (draft) => {
             draft.content.push({
               type: "text",
               text: "",
+              time: { start: event.data.timestamp },
             })
           }),
         )
@@ -120,7 +127,24 @@ export function stepWith<Result>(adapter: Adapter<Result>, event: SessionEvent.E
         )
       }
     },
-    "session.next.text.ended": () => {},
+    "session.next.text.ended": (event) => {
+      // Stamp the end of generation for this text part. Together with
+      // text.started above this gives a precise per-part generation
+      // duration; aggregating these across a turn's text + reasoning
+      // parts produces the TPS denominator that matches provider
+      // dashboards.
+      if (currentAssistant) {
+        adapter.updateAssistant(
+          produce(currentAssistant, (draft) => {
+            const match = latestText(draft)
+            if (match) {
+              if (!match.time) match.time = { start: event.data.timestamp }
+              match.time.end = event.data.timestamp
+            }
+          }),
+        )
+      }
+    },
     "session.next.tool.input.started": (event) => {
       if (currentAssistant) {
         adapter.updateAssistant(
@@ -214,6 +238,9 @@ export function stepWith<Result>(adapter: Adapter<Result>, event: SessionEvent.E
       }
     },
     "session.next.reasoning.started": (event) => {
+      // Same per-part timestamps as text — see the text.started comment.
+      // The reasoning part already required a non-optional `time` in the
+      // schema, so this just supplies the start.
       if (currentAssistant) {
         adapter.updateAssistant(
           produce(currentAssistant, (draft) => {
@@ -221,6 +248,7 @@ export function stepWith<Result>(adapter: Adapter<Result>, event: SessionEvent.E
               type: "reasoning",
               reasoningID: event.data.reasoningID,
               text: "",
+              time: { start: event.data.timestamp },
             })
           }),
         )
@@ -241,7 +269,11 @@ export function stepWith<Result>(adapter: Adapter<Result>, event: SessionEvent.E
         adapter.updateAssistant(
           produce(currentAssistant, (draft) => {
             const match = latestReasoning(draft, event.data.reasoningID)
-            if (match) match.text = event.data.text
+            if (match) {
+              match.text = event.data.text
+              if (!match.time) match.time = { start: event.data.timestamp }
+              match.time.end = event.data.timestamp
+            }
           }),
         )
       }
