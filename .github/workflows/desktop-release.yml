@@ -159,7 +159,21 @@ jobs:
         run: ${{ matrix.package_command }}
         env:
           CODEPLANE_VERSION: ${{ needs.resolve.outputs.version }}
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          # CSC_IDENTITY_AUTO_DISCOVERY: "false" disables electron-builder's
+          # keychain probe — necessary on Linux/Windows runners (no keychain
+          # to look at) and on Mac runners that don't have signing secrets
+          # populated (otherwise the build fails). On the Mac runner with
+          # MAC_CERTS configured, we want auto-discovery ON so the cert
+          # imported via CSC_LINK is picked up. The ternary keeps every
+          # combo working: forks/PRs without secrets keep producing
+          # ad-hoc-signed builds (same as today); the upstream repo with
+          # all 5 secrets configured produces signed + notarized builds.
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.target == 'mac' && secrets.MAC_CERTS != '' && 'true' || 'false' }}
+          CSC_LINK: ${{ matrix.target == 'mac' && secrets.MAC_CERTS || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.target == 'mac' && secrets.MAC_CERTS_PASSWORD || '' }}
+          APPLE_ID: ${{ matrix.target == 'mac' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.target == 'mac' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ matrix.target == 'mac' && secrets.APPLE_TEAM_ID || '' }}
 
       - name: Create stable download aliases
         working-directory: packages/desktop/release

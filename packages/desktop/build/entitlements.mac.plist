@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Hardened-runtime entitlements for Codeplane Desktop. Required for the
+  Mac app to be Developer-ID-signed AND notarized AND able to:
+
+    - allow-jit:
+        Electron / V8 needs to JIT-compile JavaScript. Without this,
+        Chromium refuses to start the renderer.
+
+    - allow-unsigned-executable-memory:
+        Bun's standalone binary (spawned as the local Codeplane server
+        child) maps writable+executable pages for V8 codegen and
+        garbage collection. The hardened runtime blocks this by
+        default; this entitlement re-enables it.
+
+    - disable-library-validation:
+        Required so we can dlopen native node modules
+        (better-sqlite3, node-pty, etc.) that aren't signed by Apple.
+        Strictest hardened-runtime setting blocks any unsigned
+        dynamic library; with this we accept libraries signed by
+        the same Team ID OR ad-hoc signed.
+
+    - allow-dyld-environment-variables:
+        Lets the Bun child read DYLD_LIBRARY_PATH / DYLD_INSERT_LIBRARIES
+        if needed for tracing / instrumentation tools. Without it,
+        macOS strips those env vars before exec.
+
+    - network.client / network.server:
+        Codeplane is fundamentally a network app: the Electron shell
+        opens HTTPS connections to model providers, and the spawned
+        local server listens on a TCP port for the renderer to connect.
+        Sandbox would block both without these.
+
+  These are also inherited by all child processes (Electron renderer,
+  Bun-spawned server) via the `entitlementsInherit` field in
+  packages/desktop/package.json → build.mac.
+-->
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+    <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+    <true/>
+    <key>com.apple.security.network.client</key>
+    <true/>
+    <key>com.apple.security.network.server</key>
+    <true/>
+</dict>
+</plist>

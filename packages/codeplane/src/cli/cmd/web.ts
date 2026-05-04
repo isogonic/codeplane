@@ -3,6 +3,7 @@ import { UI } from "../ui"
 import { cmd } from "./cmd"
 import { withNetworkOptions, resolveNetworkOptions } from "../network"
 import { Flag } from "../../flag/flag"
+import { upgrade } from "../upgrade"
 import open from "open"
 import { networkInterfaces } from "os"
 
@@ -100,6 +101,13 @@ export const WebCommand = cmd({
       UI.println(UI.Style.TEXT_INFO_BOLD + "  Web interface:    ", UI.Style.TEXT_NORMAL, displayUrl)
       open(displayUrl).catch(() => {})
     }
+
+    // Same auto-upgrade scheduler the TUI worker runs (see cli/upgrade.ts).
+    // The in-app web UI subscribes to the `installation.update-available`
+    // bus event, so a minor/major release will surface in the browser
+    // window the user just opened. Patches auto-install per the
+    // autoupdate config. Errors swallowed to keep server startup robust.
+    void upgrade().catch(() => undefined)
 
     await new Promise(() => {})
     await server.stop()
