@@ -13,6 +13,7 @@ import { createInstanceService } from "../../tui/instance-service"
 import { normalizeInstanceUrl } from "../../tui/client"
 import { UI } from "../ui"
 import { cmd } from "./cmd"
+import { InstanceDaemonCommand } from "./instance-daemon"
 import type { Argv } from "yargs"
 
 type InstanceListArgs = {
@@ -179,6 +180,7 @@ export const InstanceCommand = cmd({
       .command(InstanceProbeCommand)
       .command(InstanceOpenCommand)
       .command(InstanceSignInCommand)
+      .command(InstanceDaemonCommand)
       .command(InstanceLocalCommand)
       .demandCommand(),
   async handler() {},
