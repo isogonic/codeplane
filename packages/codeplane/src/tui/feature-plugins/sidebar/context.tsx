@@ -80,6 +80,21 @@ const formatTps = (value: number | null): string | undefined => {
   return `${value.toFixed(2)} t/s`
 }
 
+// Optional per-session spending budget. Read once at module load — env
+// vars don't change for the lifetime of the TUI process. CODEPLANE_BUDGET_SESSION
+// takes a USD float ("5", "5.00", "0.25") and triggers the budget badge
+// + a colour escalation in the sidebar Context indicator. Setting the
+// env var to "0", anything non-numeric, or leaving it unset disables the
+// feature entirely (no badge rendered, behaviour identical to <v27.4.44).
+function readBudgetSession(): number | undefined {
+  const raw = process.env["CODEPLANE_BUDGET_SESSION"]
+  if (!raw) return undefined
+  const parsed = Number.parseFloat(raw)
+  if (!Number.isFinite(parsed) || parsed <= 0) return undefined
+  return parsed
+}
+const BUDGET_SESSION = readBudgetSession()
+
 function View(props: { api: TuiPluginApi; session_id: string }) {
   const theme = () => props.api.theme.current
   const msg = createMemo(() => props.api.state.session.messages(props.session_id))
@@ -115,6 +130,30 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
     return { current, recent }
   })
 
+  // Budget badge — only rendered when CODEPLANE_BUDGET_SESSION is set
+  // and parses as a positive USD float. Colour escalates with usage so
+  // the user sees the warning peripherally without a modal interrupt:
+  //   <50%   muted   "spent / budget"
+  //   50-79% text    "spent / budget (X%)"
+  //   80-99% warning "spent / budget (X%) — over budget soon"
+  //   ≥100%  warning "OVER budget — spent / budget (X%)"
+  const budget = createMemo(() => {
+    if (!BUDGET_SESSION) return null
+    const spent = cost()
+    const pct = Math.round((spent / BUDGET_SESSION) * 100)
+    const colour =
+      pct >= 100 ? theme().warning : pct >= 80 ? theme().warning : pct >= 50 ? theme().text : theme().textMuted
+    const label =
+      pct >= 100
+        ? `OVER ${money.format(spent)} / ${money.format(BUDGET_SESSION)} (${pct}%)`
+        : pct >= 80
+          ? `${money.format(spent)} / ${money.format(BUDGET_SESSION)} (${pct}%) — over soon`
+          : pct >= 50
+            ? `${money.format(spent)} / ${money.format(BUDGET_SESSION)} (${pct}%)`
+            : `${money.format(spent)} / ${money.format(BUDGET_SESSION)}`
+    return { colour, label }
+  })
+
   return (
     <box>
       <text fg={theme().text}>
@@ -123,6 +162,11 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
       <text fg={theme().textMuted}>{state().tokens.toLocaleString()} tokens</text>
       <text fg={theme().textMuted}>{state().percent ?? 0}% used</text>
       <text fg={theme().textMuted}>{money.format(cost())} spent</text>
+      {(() => {
+        const b = budget()
+        if (!b) return null
+        return <text fg={b.colour}>{b.label}</text>
+      })()}
       {(() => {
         const { current, recent } = speed()
         const cur = formatTps(current)
