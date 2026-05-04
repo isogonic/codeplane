@@ -3,7 +3,7 @@
   "info": {
     "title": "codeplane",
     "description": "codeplane api",
-    "version": "27.4.3"
+    "version": "27.4.46"
   },
   "paths": {
     "/global/cron": {
@@ -45,7 +45,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.list({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.cron.list({\n  ...\n})"
           }
         ]
       },
@@ -153,7 +153,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.create({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.cron.create({\n  ...\n})"
           }
         ]
       }
@@ -198,7 +198,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.get({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.cron.get({\n  ...\n})"
           }
         ]
       },
@@ -334,7 +334,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.update({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.cron.update({\n  ...\n})"
           }
         ]
       },
@@ -377,7 +377,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.delete({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.cron.delete({\n  ...\n})"
           }
         ]
       }
@@ -447,7 +447,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.setStatus({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.cron.setStatus({\n  ...\n})"
           }
         ]
       }
@@ -493,7 +493,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.trigger({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.cron.trigger({\n  ...\n})"
           }
         ]
       }
@@ -548,7 +548,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.runs.list({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.cron.runs.list({\n  ...\n})"
           }
         ]
       }
@@ -593,7 +593,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.runs.get({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.cron.runs.get({\n  ...\n})"
           }
         ]
       }
@@ -638,7 +638,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.cron.runs.cancel({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.cron.runs.cancel({\n  ...\n})"
           }
         ]
       }
@@ -673,7 +673,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.global.health({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.health({\n  ...\n})"
           }
         ]
       }
@@ -720,7 +720,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.global.version({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.version({\n  ...\n})"
           }
         ]
       }
@@ -817,7 +817,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.global.releaseNotes({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.releaseNotes({\n  ...\n})"
           }
         ]
       }
@@ -842,7 +842,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.global.event({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.event({\n  ...\n})"
           }
         ]
       }
@@ -867,7 +867,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.global.config.get({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.config.get({\n  ...\n})"
           }
         ]
       },
@@ -909,7 +909,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.global.config.update({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.config.update({\n  ...\n})"
           }
         ]
       }
@@ -934,7 +934,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.global.dispose({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.dispose({\n  ...\n})"
           }
         ]
       }
@@ -1022,7 +1022,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.global.upgrade({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.upgrade({\n  ...\n})"
           }
         ]
       }
@@ -1074,7 +1074,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.global.bashInteractive.kill({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.bashInteractive.kill({\n  ...\n})"
           }
         ]
       }
@@ -1128,7 +1128,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.auth.set({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.auth.set({\n  ...\n})"
           }
         ]
       },
@@ -1171,7 +1171,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.auth.remove({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.auth.remove({\n  ...\n})"
           }
         ]
       }
@@ -1255,7 +1255,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.app.log({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.app.log({\n  ...\n})"
           }
         ]
       }
@@ -1311,7 +1311,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.experimental.workspace.adaptor.list({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.experimental.workspace.adaptor.list({\n  ...\n})"
           }
         ]
       }
@@ -1399,7 +1399,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.experimental.workspace.create({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.experimental.workspace.create({\n  ...\n})"
           }
         ]
       },
@@ -1441,7 +1441,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.experimental.workspace.list({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.experimental.workspace.list({\n  ...\n})"
           }
         ]
       }
@@ -1496,7 +1496,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.experimental.workspace.status({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.experimental.workspace.status({\n  ...\n})"
           }
         ]
       }
@@ -1556,7 +1556,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.experimental.workspace.remove({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.experimental.workspace.remove({\n  ...\n})"
           }
         ]
       }
@@ -1640,7 +1640,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.experimental.workspace.sessionRestore({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.experimental.workspace.sessionRestore({\n  ...\n})"
           }
         ]
       }
@@ -1684,7 +1684,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.project.list({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.project.list({\n  ...\n})"
           }
         ]
       }
@@ -1725,7 +1725,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.project.current({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.project.current({\n  ...\n})"
           }
         ]
       }
@@ -1766,7 +1766,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.project.initGit({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.project.initGit({\n  ...\n})"
           }
         ]
       }
@@ -1928,7 +1928,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.project.update({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.project.update({\n  ...\n})"
           }
         ]
       }
@@ -1972,7 +1972,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.pty.list({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.pty.list({\n  ...\n})"
           }
         ]
       },
@@ -2056,7 +2056,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.pty.create({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.pty.create({\n  ...\n})"
           }
         ]
       }
@@ -2116,7 +2116,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.pty.get({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.pty.get({\n  ...\n})"
           }
         ]
       },
@@ -2200,7 +2200,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.pty.update({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.pty.update({\n  ...\n})"
           }
         ]
       },
@@ -2258,7 +2258,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.pty.remove({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.pty.remove({\n  ...\n})"
           }
         ]
       }
@@ -2318,7 +2318,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.pty.connect({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.pty.connect({\n  ...\n})"
           }
         ]
       }
@@ -2359,7 +2359,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.config.get({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.config.get({\n  ...\n})"
           }
         ]
       },
@@ -2417,7 +2417,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.config.update({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.config.update({\n  ...\n})"
           }
         ]
       }
@@ -2476,7 +2476,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.config.providers({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.config.providers({\n  ...\n})"
           }
         ]
       }
@@ -2517,7 +2517,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.experimental.console.get({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.experimental.console.get({\n  ...\n})"
           }
         ]
       }
@@ -2588,7 +2588,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.experimental.console.listOrgs({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.experimental.console.listOrgs({\n  ...\n})"
           }
         ]
       }
@@ -2647,7 +2647,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.experimental.console.switchOrg({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.experimental.console.switchOrg({\n  ...\n})"
           }
         ]
       }
@@ -2698,7 +2698,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.tool.ids({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.tool.ids({\n  ...\n})"
           }
         ]
       }
@@ -2765,7 +2765,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.tool.list({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.tool.list({\n  ...\n})"
           }
         ]
       }
@@ -2825,7 +2825,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.worktree.create({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.worktree.create({\n  ...\n})"
           }
         ]
       },
@@ -2867,7 +2867,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.worktree.list({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.worktree.list({\n  ...\n})"
           }
         ]
       },
@@ -2925,7 +2925,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.worktree.remove({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.worktree.remove({\n  ...\n})"
           }
         ]
       }
@@ -2985,7 +2985,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.worktree.reset({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.worktree.reset({\n  ...\n})"
           }
         ]
       }
@@ -3078,7 +3078,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.experimental.session.list({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.experimental.session.list({\n  ...\n})"
           }
         ]
       }
@@ -3125,7 +3125,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.experimental.resource.list({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.experimental.resource.list({\n  ...\n})"
           }
         ]
       }
@@ -3210,7 +3210,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.list({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.list({\n  ...\n})"
           }
         ]
       },
@@ -3288,7 +3288,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.create({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.create({\n  ...\n})"
           }
         ]
       }
@@ -3345,7 +3345,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.status({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.status({\n  ...\n})"
           }
         ]
       }
@@ -3416,7 +3416,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.get({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.get({\n  ...\n})"
           }
         ]
       },
@@ -3484,7 +3484,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.delete({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.delete({\n  ...\n})"
           }
         ]
       },
@@ -3584,7 +3584,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.update({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.update({\n  ...\n})"
           }
         ]
       }
@@ -3658,7 +3658,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.children({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.children({\n  ...\n})"
           }
         ]
       }
@@ -3731,7 +3731,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.todo({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.todo({\n  ...\n})"
           }
         ]
       }
@@ -3823,7 +3823,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.init({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.init({\n  ...\n})"
           }
         ]
       }
@@ -3888,7 +3888,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.fork({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.fork({\n  ...\n})"
           }
         ]
       }
@@ -3958,7 +3958,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.abort({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.abort({\n  ...\n})"
           }
         ]
       }
@@ -4028,7 +4028,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.share({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.share({\n  ...\n})"
           }
         ]
       },
@@ -4096,7 +4096,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.unshare({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.unshare({\n  ...\n})"
           }
         ]
       }
@@ -4157,7 +4157,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.diff({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.diff({\n  ...\n})"
           }
         ]
       }
@@ -4249,7 +4249,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.summarize({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.summarize({\n  ...\n})"
           }
         ]
       }
@@ -4351,7 +4351,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.messages({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.messages({\n  ...\n})"
           }
         ]
       },
@@ -4503,7 +4503,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.prompt({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.prompt({\n  ...\n})"
           }
         ]
       }
@@ -4594,7 +4594,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.message({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.message({\n  ...\n})"
           }
         ]
       },
@@ -4671,7 +4671,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.deleteMessage({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.deleteMessage({\n  ...\n})"
           }
         ]
       }
@@ -4758,7 +4758,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.part.delete({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.part.delete({\n  ...\n})"
           }
         ]
       },
@@ -4852,7 +4852,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.part.update({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.part.update({\n  ...\n})"
           }
         ]
       }
@@ -4987,7 +4987,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.prompt_async({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.prompt_async({\n  ...\n})"
           }
         ]
       }
@@ -5129,7 +5129,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.command({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.command({\n  ...\n})"
           }
         ]
       }
@@ -5245,7 +5245,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.shell({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.shell({\n  ...\n})"
           }
         ]
       }
@@ -5335,7 +5335,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.revert({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.revert({\n  ...\n})"
           }
         ]
       }
@@ -5405,7 +5405,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.session.unrevert({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.unrevert({\n  ...\n})"
           }
         ]
       }
@@ -5501,7 +5501,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.permission.respond({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.permission.respond({\n  ...\n})"
           }
         ]
       }
@@ -5590,7 +5590,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.permission.reply({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.permission.reply({\n  ...\n})"
           }
         ]
       }
@@ -5634,7 +5634,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.permission.list({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.permission.list({\n  ...\n})"
           }
         ]
       }
@@ -5678,7 +5678,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.question.list({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.question.list({\n  ...\n})"
           }
         ]
       }
@@ -5767,7 +5767,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.question.reply({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.question.reply({\n  ...\n})"
           }
         ]
       }
@@ -5837,7 +5837,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.question.reject({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.question.reject({\n  ...\n})"
           }
         ]
       }
@@ -5908,7 +5908,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.provider.list({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.provider.list({\n  ...\n})"
           }
         ]
       }
@@ -5958,7 +5958,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.provider.auth({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.provider.auth({\n  ...\n})"
           }
         ]
       }
@@ -6044,7 +6044,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.provider.oauth.authorize({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.provider.oauth.authorize({\n  ...\n})"
           }
         ]
       }
@@ -6124,7 +6124,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.provider.oauth.callback({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.provider.oauth.callback({\n  ...\n})"
           }
         ]
       }
@@ -6165,7 +6165,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.sync.start({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.sync.start({\n  ...\n})"
           }
         ]
       }
@@ -6268,7 +6268,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.sync.replay({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.sync.replay({\n  ...\n})"
           }
         ]
       }
@@ -6361,7 +6361,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.sync.history.list({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.sync.history.list({\n  ...\n})"
           }
         ]
       }
@@ -6464,7 +6464,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.find.text({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.find.text({\n  ...\n})"
           }
         ]
       }
@@ -6541,7 +6541,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.find.files({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.find.files({\n  ...\n})"
           }
         ]
       }
@@ -6593,7 +6593,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.find.symbols({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.find.symbols({\n  ...\n})"
           }
         ]
       }
@@ -6645,7 +6645,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.file.list({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.file.list({\n  ...\n})"
           }
         ]
       }
@@ -6694,7 +6694,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.file.read({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.file.read({\n  ...\n})"
           }
         ]
       }
@@ -6738,7 +6738,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.file.status({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.file.status({\n  ...\n})"
           }
         ]
       }
@@ -6779,7 +6779,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.event.subscribe({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.event.subscribe({\n  ...\n})"
           }
         ]
       }
@@ -6826,7 +6826,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.mcp.status({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.mcp.status({\n  ...\n})"
           }
         ]
       },
@@ -6906,7 +6906,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.mcp.add({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.mcp.add({\n  ...\n})"
           }
         ]
       }
@@ -6982,7 +6982,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.mcp.auth.start({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.mcp.auth.start({\n  ...\n})"
           }
         ]
       },
@@ -7046,7 +7046,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.mcp.auth.remove({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.mcp.auth.remove({\n  ...\n})"
           }
         ]
       }
@@ -7131,7 +7131,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.mcp.auth.callback({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.mcp.auth.callback({\n  ...\n})"
           }
         ]
       }
@@ -7200,7 +7200,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.mcp.auth.authenticate({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.mcp.auth.authenticate({\n  ...\n})"
           }
         ]
       }
@@ -7248,7 +7248,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.mcp.connect({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.mcp.connect({\n  ...\n})"
           }
         ]
       }
@@ -7296,7 +7296,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.mcp.disconnect({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.mcp.disconnect({\n  ...\n})"
           }
         ]
       }
@@ -7337,7 +7337,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.instance.dispose({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.instance.dispose({\n  ...\n})"
           }
         ]
       }
@@ -7378,7 +7378,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.path.get({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.path.get({\n  ...\n})"
           }
         ]
       }
@@ -7419,7 +7419,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.vcs.get({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.vcs.get({\n  ...\n})"
           }
         ]
       }
@@ -7472,7 +7472,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.vcs.diff({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.vcs.diff({\n  ...\n})"
           }
         ]
       }
@@ -7516,7 +7516,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.command.list({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.command.list({\n  ...\n})"
           }
         ]
       }
@@ -7560,7 +7560,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.app.agents({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.app.agents({\n  ...\n})"
           }
         ]
       }
@@ -7619,7 +7619,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.app.skills({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.app.skills({\n  ...\n})"
           }
         ]
       }
@@ -7663,7 +7663,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.lsp.status({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.lsp.status({\n  ...\n})"
           }
         ]
       }
@@ -7707,7 +7707,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\n\nconst client = createCodeplaneClient()\nawait client.formatter.status({\n  ...\n})"
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.formatter.status({\n  ...\n})"
           }
         ]
       }
@@ -7917,6 +7917,44 @@
         },
         "required": ["id", "taskID", "status", "attempt", "time"]
       },
+      "Event.installation.updated": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "installation.updated"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "string"
+              }
+            },
+            "required": ["version"]
+          }
+        },
+        "required": ["type", "properties"]
+      },
+      "Event.installation.update-available": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "installation.update-available"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "string"
+              }
+            },
+            "required": ["version"]
+          }
+        },
+        "required": ["type", "properties"]
+      },
       "Project": {
         "type": "object",
         "properties": {
@@ -8049,25 +8087,6 @@
         },
         "required": ["type", "properties"]
       },
-      "Event.server.instance.disposed": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "server.instance.disposed"
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "directory": {
-                "type": "string"
-              }
-            },
-            "required": ["directory"]
-          }
-        },
-        "required": ["type", "properties"]
-      },
       "Event.server.connected": {
         "type": "object",
         "properties": {
@@ -8096,44 +8115,21 @@
         },
         "required": ["type", "properties"]
       },
-      "Event.file.edited": {
+      "Event.server.instance.disposed": {
         "type": "object",
         "properties": {
           "type": {
             "type": "string",
-            "const": "file.edited"
+            "const": "server.instance.disposed"
           },
           "properties": {
             "type": "object",
             "properties": {
-              "file": {
+              "directory": {
                 "type": "string"
               }
             },
-            "required": ["file"]
-          }
-        },
-        "required": ["type", "properties"]
-      },
-      "Event.file.watcher.updated": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "file.watcher.updated"
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "file": {
-                "type": "string"
-              },
-              "event": {
-                "type": "string",
-                "enum": ["add", "change", "unlink"]
-              }
-            },
-            "required": ["file", "event"]
+            "required": ["directory"]
           }
         },
         "required": ["type", "properties"]
@@ -8170,44 +8166,6 @@
           "properties": {
             "type": "object",
             "properties": {}
-          }
-        },
-        "required": ["type", "properties"]
-      },
-      "Event.installation.updated": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "installation.updated"
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "version": {
-                "type": "string"
-              }
-            },
-            "required": ["version"]
-          }
-        },
-        "required": ["type", "properties"]
-      },
-      "Event.installation.update-available": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "installation.update-available"
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "version": {
-                "type": "string"
-              }
-            },
-            "required": ["version"]
           }
         },
         "required": ["type", "properties"]
@@ -8588,6 +8546,48 @@
                 ]
               }
             }
+          }
+        },
+        "required": ["type", "properties"]
+      },
+      "Event.file.edited": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "file.edited"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string"
+              }
+            },
+            "required": ["file"]
+          }
+        },
+        "required": ["type", "properties"]
+      },
+      "Event.file.watcher.updated": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "file.watcher.updated"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string"
+              },
+              "event": {
+                "type": "string",
+                "enum": ["add", "change", "unlink"]
+              }
+            },
+            "required": ["file", "event"]
           }
         },
         "required": ["type", "properties"]
@@ -12835,10 +12835,13 @@
           "payload": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/Event.project.updated"
+                "$ref": "#/components/schemas/Event.installation.updated"
               },
               {
-                "$ref": "#/components/schemas/Event.server.instance.disposed"
+                "$ref": "#/components/schemas/Event.installation.update-available"
+              },
+              {
+                "$ref": "#/components/schemas/Event.project.updated"
               },
               {
                 "$ref": "#/components/schemas/Event.server.connected"
@@ -12847,22 +12850,13 @@
                 "$ref": "#/components/schemas/Event.global.disposed"
               },
               {
-                "$ref": "#/components/schemas/Event.file.edited"
-              },
-              {
-                "$ref": "#/components/schemas/Event.file.watcher.updated"
+                "$ref": "#/components/schemas/Event.server.instance.disposed"
               },
               {
                 "$ref": "#/components/schemas/Event.lsp.client.diagnostics"
               },
               {
                 "$ref": "#/components/schemas/Event.lsp.updated"
-              },
-              {
-                "$ref": "#/components/schemas/Event.installation.updated"
-              },
-              {
-                "$ref": "#/components/schemas/Event.installation.update-available"
               },
               {
                 "$ref": "#/components/schemas/Event.message.part.delta"
@@ -12878,6 +12872,12 @@
               },
               {
                 "$ref": "#/components/schemas/Event.session.error"
+              },
+              {
+                "$ref": "#/components/schemas/Event.file.edited"
+              },
+              {
+                "$ref": "#/components/schemas/Event.file.watcher.updated"
               },
               {
                 "$ref": "#/components/schemas/Event.question.asked"
@@ -15305,10 +15305,13 @@
       "Event": {
         "anyOf": [
           {
-            "$ref": "#/components/schemas/Event.project.updated"
+            "$ref": "#/components/schemas/Event.installation.updated"
           },
           {
-            "$ref": "#/components/schemas/Event.server.instance.disposed"
+            "$ref": "#/components/schemas/Event.installation.update-available"
+          },
+          {
+            "$ref": "#/components/schemas/Event.project.updated"
           },
           {
             "$ref": "#/components/schemas/Event.server.connected"
@@ -15317,22 +15320,13 @@
             "$ref": "#/components/schemas/Event.global.disposed"
           },
           {
-            "$ref": "#/components/schemas/Event.file.edited"
-          },
-          {
-            "$ref": "#/components/schemas/Event.file.watcher.updated"
+            "$ref": "#/components/schemas/Event.server.instance.disposed"
           },
           {
             "$ref": "#/components/schemas/Event.lsp.client.diagnostics"
           },
           {
             "$ref": "#/components/schemas/Event.lsp.updated"
-          },
-          {
-            "$ref": "#/components/schemas/Event.installation.updated"
-          },
-          {
-            "$ref": "#/components/schemas/Event.installation.update-available"
           },
           {
             "$ref": "#/components/schemas/Event.message.part.delta"
@@ -15348,6 +15342,12 @@
           },
           {
             "$ref": "#/components/schemas/Event.session.error"
+          },
+          {
+            "$ref": "#/components/schemas/Event.file.edited"
+          },
+          {
+            "$ref": "#/components/schemas/Event.file.watcher.updated"
           },
           {
             "$ref": "#/components/schemas/Event.question.asked"
