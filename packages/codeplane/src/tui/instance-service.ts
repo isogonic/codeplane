@@ -317,6 +317,11 @@ export function createInstanceService() {
     remove,
     save,
     setLast: store.setLast,
+    // Tear down every local Codeplane child this manager spawned. Used by the
+    // TUI on `/exit` (and SIGTERM/SIGINT) so the stdio pipes on those children
+    // don't keep the parent's event loop alive — without this the TUI hangs
+    // after the renderer has already restored the terminal.
+    stopAll: () => local.stopAll(),
     store,
   }
 }

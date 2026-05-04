@@ -108,12 +108,14 @@ async function resolveSelection(
   return { instance: selection.instance, directory: selection.directory }
 }
 
-async function resolveTarget(args: ReturnType<typeof parseArgs>): Promise<{
+async function resolveTarget(
+  service: InstanceService,
+  args: ReturnType<typeof parseArgs>,
+): Promise<{
   url: string
   headers: Record<string, string>
   directory?: string
 } | null> {
-  const service = createInstanceService()
   const sel = await resolveSelection(service, args)
   if (!sel) return null
 
@@ -130,26 +132,52 @@ async function resolveTarget(args: ReturnType<typeof parseArgs>): Promise<{
 }
 
 async function main() {
-  const args = parseArgs(process.argv.slice(2))
-  const target = await resolveTarget(args)
-  if (!target) {
-    // User quit out of the wizard — exit cleanly.
-    process.exit(0)
+  // Lift service creation here so we can `stopAll()` after tui() resolves.
+  // service.open() spawns the local Codeplane server with stdio pipes and no
+  // unref(), so its file descriptors keep Bun's event loop alive until we
+  // explicitly tear them down — otherwise `/exit` clears the TUI but the
+  // process hangs on a blank terminal.
+  const service = createInstanceService()
+  let stopped = false
+  const stopLocalServers = async () => {
+    if (stopped) return
+    stopped = true
+    await service.stopAll().catch(() => undefined)
+  }
+  // Cover SIGTERM / SIGHUP too so external kills don't leave orphan servers.
+  // SIGINT is absorbed by the TUI renderer (exitOnCtrlC: false) but we register
+  // it for parity in case the user kills before/after the renderer is mounted.
+  for (const signal of ["SIGTERM", "SIGHUP", "SIGINT"] as const) {
+    process.once(signal, () => {
+      void stopLocalServers().finally(() => process.exit(0))
+    })
   }
 
-  const config = await TuiConfig.get()
-  const tuiArgs: Args = {
-    continue: args.continueSession,
-    sessionID: args.sessionID,
-    fork: args.fork,
+  try {
+    const args = parseArgs(process.argv.slice(2))
+    const target = await resolveTarget(service, args)
+    if (!target) {
+      // User quit out of the wizard — exit cleanly.
+      await stopLocalServers()
+      process.exit(0)
+    }
+
+    const config = await TuiConfig.get()
+    const tuiArgs: Args = {
+      continue: args.continueSession,
+      sessionID: args.sessionID,
+      fork: args.fork,
+    }
+    await tui({
+      url: target.url,
+      config,
+      args: tuiArgs,
+      directory: target.directory,
+      headers: target.headers,
+    })
+  } finally {
+    await stopLocalServers()
   }
-  await tui({
-    url: target.url,
-    config,
-    args: tuiArgs,
-    directory: target.directory,
-    headers: target.headers,
-  })
 }
 
 // Recognize the connection-failure signatures Bun / Node fetch surface when
