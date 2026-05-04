@@ -18,7 +18,7 @@ import { useRoute, useRouteData } from "@/tui/context/route"
 import { useProject } from "@/tui/context/project"
 import { useSync } from "@/tui/context/sync"
 import { useEvent } from "@/tui/context/event"
-import { SplitBorder } from "@/tui/component/border"
+import { SplitBorder, ThinBorder } from "@/tui/component/border"
 import { Spinner } from "@/tui/component/spinner"
 import { selectedForeground, useTheme } from "@/tui/context/theme"
 import { BoxRenderable, ScrollBoxRenderable, addDefaultParsers, TextAttributes, RGBA } from "@opentui/core"
@@ -1390,8 +1390,14 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
       </Show>
       <Switch>
         <Match when={props.last || final() || props.message.error?.name === "MessageAbortedError"}>
-          <box paddingLeft={3}>
-            <text marginTop={1}>
+          {/* Turn footer: agent + model + duration + (optional) status.
+              Filled-circle glyph in agent color for instant visual
+              recognition; muted middot separators keep the line scannable
+              without competing with the response text above. Was using
+              the heavier ▣ block which read as a UI element rather than
+              metadata. */}
+          <box paddingLeft={2} marginTop={1}>
+            <text>
               <span
                 style={{
                   fg:
@@ -1400,15 +1406,15 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
                       : local.agent.color(props.message.agent),
                 }}
               >
-                ▣{" "}
-              </span>{" "}
-              <span style={{ fg: theme.text }}>{Locale.titlecase(props.message.mode)}</span>
-              <span style={{ fg: theme.textMuted }}> · {model()}</span>
+                ●{" "}
+              </span>
+              <span style={{ fg: theme.text, bold: true }}>{Locale.titlecase(props.message.mode)}</span>
+              <span style={{ fg: theme.textMuted }}>{"  ·  " + model()}</span>
               <Show when={duration()}>
-                <span style={{ fg: theme.textMuted }}> · {Locale.duration(duration())}</span>
+                <span style={{ fg: theme.textMuted }}>{"  ·  " + Locale.duration(duration())}</span>
               </Show>
               <Show when={props.message.error?.name === "MessageAbortedError"}>
-                <span style={{ fg: theme.textMuted }}> · interrupted</span>
+                <span style={{ fg: theme.warning ?? theme.textMuted }}>{"  ·  interrupted"}</span>
               </Show>
             </text>
           </box>
@@ -1434,24 +1440,29 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
   })
   return (
     <Show when={content() && ctx.showThinking()}>
+      {/* Reasoning shares the same thin `│` rule as TextPart so the
+          whole assistant turn frames consistently. Color stays muted
+          (backgroundElement) so reasoning reads as visually
+          subordinate to the actual response text. */}
       <box
         id={"text-" + props.part.id}
-        paddingLeft={2}
         marginTop={1}
         flexDirection="column"
         border={["left"]}
-        customBorderChars={SplitBorder.customBorderChars}
+        customBorderChars={ThinBorder.customBorderChars}
         borderColor={theme.backgroundElement}
       >
-        <code
-          filetype="markdown"
-          drawUnstyledText={false}
-          streaming={true}
-          syntaxStyle={subtleSyntax()}
-          content={"_Thinking:_ " + content()}
-          conceal={ctx.conceal()}
-          fg={theme.textMuted}
-        />
+        <box paddingLeft={2}>
+          <code
+            filetype="markdown"
+            drawUnstyledText={false}
+            streaming={true}
+            syntaxStyle={subtleSyntax()}
+            content={"_Thinking:_ " + content()}
+            conceal={ctx.conceal()}
+            fg={theme.textMuted}
+          />
+        </box>
       </box>
     </Show>
   )
@@ -1460,32 +1471,48 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
 function TextPart(props: { last: boolean; part: TextPart; message: AssistantMessage }) {
   const ctx = use()
   const { theme, syntax } = useTheme()
+  // Match the user-message visual treatment: left border + padding, but
+  // with the thin `│` rule and a muted color so the assistant turn
+  // reads as visually subordinate to the user's prompt while still
+  // being framed as a single coherent block. Was previously a bare
+  // `paddingLeft={3}` with no frame, which made long assistant
+  // responses bleed into surrounding tool-call output and made it
+  // hard to scan where one turn ended and the next began.
   return (
     <Show when={props.part.text.trim()}>
-      <box id={"text-" + props.part.id} paddingLeft={3} marginTop={1} flexShrink={0}>
-        <Switch>
-          <Match when={Flag.CODEPLANE_EXPERIMENTAL_MARKDOWN}>
-            <markdown
-              syntaxStyle={syntax()}
-              streaming={true}
-              content={props.part.text.trim()}
-              conceal={ctx.conceal()}
-              fg={theme.markdownText}
-              bg={theme.background}
-            />
-          </Match>
-          <Match when={!Flag.CODEPLANE_EXPERIMENTAL_MARKDOWN}>
-            <code
-              filetype="markdown"
-              drawUnstyledText={false}
-              streaming={true}
-              syntaxStyle={syntax()}
-              content={props.part.text.trim()}
-              conceal={ctx.conceal()}
-              fg={theme.text}
-            />
-          </Match>
-        </Switch>
+      <box
+        id={"text-" + props.part.id}
+        border={["left"]}
+        borderColor={theme.borderActive ?? theme.border ?? theme.backgroundElement}
+        customBorderChars={ThinBorder.customBorderChars}
+        marginTop={1}
+        flexShrink={0}
+      >
+        <box paddingLeft={2} paddingTop={0} paddingBottom={0} flexShrink={0}>
+          <Switch>
+            <Match when={Flag.CODEPLANE_EXPERIMENTAL_MARKDOWN}>
+              <markdown
+                syntaxStyle={syntax()}
+                streaming={true}
+                content={props.part.text.trim()}
+                conceal={ctx.conceal()}
+                fg={theme.markdownText}
+                bg={theme.background}
+              />
+            </Match>
+            <Match when={!Flag.CODEPLANE_EXPERIMENTAL_MARKDOWN}>
+              <code
+                filetype="markdown"
+                drawUnstyledText={false}
+                streaming={true}
+                syntaxStyle={syntax()}
+                content={props.part.text.trim()}
+                conceal={ctx.conceal()}
+                fg={theme.text}
+              />
+            </Match>
+          </Switch>
+        </box>
       </box>
     </Show>
   )
