@@ -154,26 +154,72 @@ jobs:
         env:
           CODEPLANE_VERSION: ${{ needs.resolve.outputs.version }}
 
+      # Configure macOS Developer ID signing only when the cert secret
+      # exists. Has to be a separate step that conditionally appends to
+      # $GITHUB_ENV — GHA cannot omit a per-step `env:` value via
+      # expression, only set it (possibly to empty string), and
+      # electron-builder treats CSC_LINK="" as a file path, which then
+      # tries to resolve `''` against cwd → `packages/desktop` →
+      # `not a file` → exit 1. So we must keep CSC_LINK fully UNSET
+      # in the no-secret case.
+      #
+      # Single inlined step (instead of two) because GHA `if:` conditions
+      # can't reference secrets directly for security reasons, but they
+      # CAN reference env vars set from secrets within the same step
+      # via $MAC_CERTS check + early exit. Skipping inline keeps the
+      # flow obvious and avoids a sentinel-env-var dance between steps.
+      # Default CSC_IDENTITY_AUTO_DISCOVERY to false everywhere via
+      # $GITHUB_ENV (NOT a per-step env: block, because step env
+      # OVERRIDES $GITHUB_ENV — and we need the next step to be able
+      # to flip this to true via $GITHUB_ENV when secrets are present).
+      # Keychain probing on Linux/Windows runners or unsigned-mac
+      # runners would fail or hang; this keeps them safe.
+      - name: Default code signing config
+        shell: bash
+        run: echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+
+      # Configure macOS Developer ID signing only when the cert secret
+      # exists. Has to write to $GITHUB_ENV (not per-step env:) because
+      # GHA can't omit a step env value via expression — it always
+      # produces SOME string (possibly empty), and electron-builder
+      # treats CSC_LINK="" as a file path, which then resolves `''`
+      # against cwd → `packages/desktop` → `not a file` → exit 1.
+      # So we must keep CSC_LINK fully UNSET in the no-secret case.
+      #
+      # `if:` conditions can't reference secrets directly for security
+      # reasons, but they CAN reference env vars set from secrets within
+      # the same step via $MAC_CERTS check + early exit. Single inlined
+      # step keeps the flow obvious.
+      - name: Configure macOS code signing
+        if: matrix.target == 'mac'
+        shell: bash
+        env:
+          MAC_CERTS: ${{ secrets.MAC_CERTS }}
+          MAC_CERTS_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "$MAC_CERTS" ]; then
+            echo "Mac signing secrets not configured — building unsigned (ad-hoc) for this runner."
+            exit 0
+          fi
+          {
+            echo "CSC_LINK=$MAC_CERTS"
+            echo "CSC_KEY_PASSWORD=$MAC_CERTS_PASSWORD"
+            echo "APPLE_ID=$APPLE_ID"
+            echo "APPLE_APP_SPECIFIC_PASSWORD=$APPLE_APP_SPECIFIC_PASSWORD"
+            echo "APPLE_TEAM_ID=$APPLE_TEAM_ID"
+            echo "CSC_IDENTITY_AUTO_DISCOVERY=true"
+          } >> "$GITHUB_ENV"
+          echo "Mac signing secrets present — Developer ID signing + notarization will run."
+
       - name: Package desktop binaries
         working-directory: packages/desktop
         run: ${{ matrix.package_command }}
         env:
           CODEPLANE_VERSION: ${{ needs.resolve.outputs.version }}
-          # CSC_IDENTITY_AUTO_DISCOVERY: "false" disables electron-builder's
-          # keychain probe — necessary on Linux/Windows runners (no keychain
-          # to look at) and on Mac runners that don't have signing secrets
-          # populated (otherwise the build fails). On the Mac runner with
-          # MAC_CERTS configured, we want auto-discovery ON so the cert
-          # imported via CSC_LINK is picked up. The ternary keeps every
-          # combo working: forks/PRs without secrets keep producing
-          # ad-hoc-signed builds (same as today); the upstream repo with
-          # all 5 secrets configured produces signed + notarized builds.
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.target == 'mac' && secrets.MAC_CERTS != '' && 'true' || 'false' }}
-          CSC_LINK: ${{ matrix.target == 'mac' && secrets.MAC_CERTS || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.target == 'mac' && secrets.MAC_CERTS_PASSWORD || '' }}
-          APPLE_ID: ${{ matrix.target == 'mac' && secrets.APPLE_ID || '' }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.target == 'mac' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ matrix.target == 'mac' && secrets.APPLE_TEAM_ID || '' }}
 
       - name: Create stable download aliases
         working-directory: packages/desktop/release
