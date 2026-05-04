@@ -393,25 +393,37 @@ export const InstanceSignInCommand = cmd({
     }),
   async handler(args) {
     const id = (args as InstanceIDArgs).id
+    // Helper: clean stderr message + exit 1, used for every user-facing
+    // validation error. Throwing from the yargs handler routes through
+    // the global error-handler chain in src/index.ts which prepends
+    // "Unexpected error, check log file …" — misleading for what are
+    // actually self-explanatory user errors (no such instance, local
+    // runtime, bad header form, etc.). Direct exit keeps the message
+    // single-line and obvious.
+    const fail = (message: string): never => {
+      UI.println(UI.Style.TEXT_DANGER_BOLD + message)
+      process.exit(1)
+    }
+
     const service = createInstanceService()
     const list = await service.list()
     const saved = list.find((item) => item.id === id)
     if (!saved) {
-      throw new Error(
+      fail(
         `No saved instance with id "${id}". Use \`codeplane instance list\` to see what exists, or \`codeplane instance add <url>\` to create one.`,
       )
     }
-    if (saved.local) {
-      throw new Error(
+    if (saved!.local) {
+      fail(
         `Instance "${id}" is a local managed runtime — there's no auth proxy to sign into. ` +
           `Browser sign-in only applies to remote instances behind Cloudflare Access / SSO / similar.`,
       )
     }
-    if (!saved.url) {
-      throw new Error(`Saved instance "${id}" has no URL. Re-add it via \`codeplane instance add <url>\`.`)
+    if (!saved!.url) {
+      fail(`Saved instance "${id}" has no URL. Re-add it via \`codeplane instance add <url>\`.`)
     }
 
-    UI.println(UI.Style.TEXT_INFO_BOLD + `\nOpening ${saved.url} in your default browser…`)
+    UI.println(UI.Style.TEXT_INFO_BOLD + `\nOpening ${saved!.url} in your default browser…`)
     UI.println(UI.Style.TEXT_NORMAL + "After signing in, capture the auth value from your browser DevTools:")
     UI.println(UI.Style.TEXT_NORMAL + "  • Cloudflare Access:  Application → Cookies → CF_Authorization → copy value")
     UI.println(UI.Style.TEXT_NORMAL + "                        Paste as:  Cookie: CF_Authorization=<value>")
@@ -423,7 +435,7 @@ export const InstanceSignInCommand = cmd({
     UI.println(UI.Style.TEXT_DIM + "(Empty line cancels.)")
     UI.println(UI.Style.TEXT_NORMAL + "")
 
-    await open(saved.url).catch(() => undefined)
+    await open(saved!.url).catch(() => undefined)
 
     const headerLine = await new Promise<string>((resolve) => {
       const rl = createInterface({ input: process.stdin, output: process.stdout })
@@ -439,29 +451,29 @@ export const InstanceSignInCommand = cmd({
 
     const colon = headerLine.indexOf(":")
     if (colon <= 0) {
-      throw new Error(`Invalid header "${headerLine}". Use the form  NAME: VALUE.`)
+      fail(`Invalid header "${headerLine}". Use the form  NAME: VALUE.`)
     }
     const headerName = headerLine.slice(0, colon).trim()
     const headerValue = headerLine.slice(colon + 1).trim()
     if (!headerName || !headerValue) {
-      throw new Error(`Invalid header "${headerLine}". Both NAME and VALUE must be non-empty.`)
+      fail(`Invalid header "${headerLine}". Both NAME and VALUE must be non-empty.`)
     }
 
     // Replace any existing header with the same name (case-insensitive)
     // so re-running sign-in cleanly overwrites a stale cookie. Other
     // headers stay (e.g. an X-API-Key the user might have configured
     // alongside CF Access).
-    const existing = saved.headers ?? {}
+    const existing = saved!.headers ?? {}
     const filtered = Object.fromEntries(
       Object.entries(existing).filter(([k]) => k.toLowerCase() !== headerName.toLowerCase()),
     )
     const updated: SavedInstance = {
-      ...saved,
+      ...saved!,
       headers: { ...filtered, [headerName]: headerValue },
     }
     await service.save(updated)
 
-    UI.println(UI.Style.TEXT_INFO_BOLD + `\nProbing ${saved.url} with the new header…`)
+    UI.println(UI.Style.TEXT_INFO_BOLD + `\nProbing ${saved!.url} with the new header…`)
     const probed = await service.probe(updated)
     if (probed.ok && probed.version) {
       UI.println(
