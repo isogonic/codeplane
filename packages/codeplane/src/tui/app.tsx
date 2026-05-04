@@ -33,6 +33,7 @@ import { LocalProvider, useLocal } from "@/tui/context/local"
 import { DialogModel } from "@/tui/component/dialog-model"
 import { useConnected } from "@/tui/component/use-connected"
 import { DialogMcp } from "@/tui/component/dialog-mcp"
+import { DialogCron } from "@/tui/component/dialog-cron"
 import { DialogStatus } from "@/tui/component/dialog-status"
 import { DialogThemeList } from "@/tui/component/dialog-theme-list"
 import { DialogHelp } from "./ui/dialog-help"
@@ -516,6 +517,17 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       },
       onSelect: () => {
         dialog.replace(() => <DialogMcp />)
+      },
+    },
+    {
+      title: "Scheduled tasks",
+      value: "cron.list",
+      category: "Agent",
+      slash: {
+        name: "cron",
+      },
+      onSelect: () => {
+        dialog.replace(() => <DialogCron />)
       },
     },
     {
