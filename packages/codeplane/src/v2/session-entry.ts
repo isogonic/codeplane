@@ -101,12 +101,29 @@ export class AssistantTool extends Schema.Class<AssistantTool>("Session.Entry.As
 export class AssistantText extends Schema.Class<AssistantText>("Session.Entry.Assistant.Text")({
   type: Schema.Literal("text"),
   text: Schema.String,
+  // Per-part generation time. Used by session-context-metrics.ts to
+  // compute provider-faithful TPS — sum (end - start) across all text +
+  // reasoning parts of an assistant turn, divide generated tokens by it.
+  // Excludes tool wall time, RTT, and TTFT-bucket overhead.
+  time: Schema.optional(
+    Schema.Struct({
+      start: Schema.DateTimeUtc,
+      end: Schema.optional(Schema.DateTimeUtc),
+    }),
+  ),
 }) {}
 
 export class AssistantReasoning extends Schema.Class<AssistantReasoning>("Session.Entry.Assistant.Reasoning")({
   type: Schema.Literal("reasoning"),
   reasoningID: Schema.String,
   text: Schema.String,
+  // See AssistantText.time — same purpose.
+  time: Schema.optional(
+    Schema.Struct({
+      start: Schema.DateTimeUtc,
+      end: Schema.optional(Schema.DateTimeUtc),
+    }),
+  ),
 }) {}
 
 export class AssistantRetry extends Schema.Class<AssistantRetry>("Session.Entry.Assistant.Retry")({
