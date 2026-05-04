@@ -484,8 +484,17 @@
     }
 
     [data-slot="tabs-content"] {
-      overflow-x: auto;
-      overflow-y: auto;
+      /* The vertical Tabs.Content used to set overflow-x/y: auto, which
+       * stacked a second scroll container on top of the dialog-content
+       * scroller AND the inner pane's own overflow-y-auto. With
+       * `no-scrollbar` hiding the bars in WebKit, the dual scroll context
+       * was invisible most of the time — but macOS users with
+       * System Settings → Appearance → "Show scroll bars: Always" saw two
+       * stacked native scrollbars. Make the pane a non-scrolling flex
+       * container; the inner panel (settings-general.tsx etc.) is the
+       * sole scroll source via its own overflow-y-auto. */
+      min-height: 0;
+      overflow: hidden;
     }
 
     &[data-variant="alt"] {
