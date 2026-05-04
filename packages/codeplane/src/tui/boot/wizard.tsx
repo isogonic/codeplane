@@ -40,14 +40,24 @@ function InstancePicker(props: {
   onPick: (i: number) => void
   onCreateLocal: () => void
   onDelete: (i: number) => void
+  onUpdate: (i: number) => void
   onQuit: () => void
+  busy?: { message: string; percent?: number }
+  notice?: { variant: "success" | "warn" | "error" | "info"; message: string }
 }) {
   useKeyboard((evt) => {
+    // Swallow input while an update / probe is in flight so a stray Enter
+    // doesn't pick the instance mid-download.
+    if (props.busy) {
+      if (evt.ctrl && evt.name === "c") props.onQuit()
+      return
+    }
     if (evt.name === "up" || evt.name === "k") props.onMove(-1)
     else if (evt.name === "down" || evt.name === "j") props.onMove(1)
     else if (evt.name === "return") props.onPick(props.selected)
     else if (evt.name === "n" || evt.name === "l") props.onCreateLocal()
     else if (evt.name === "d" || evt.name === "delete") props.onDelete(props.selected)
+    else if (evt.name === "u") props.onUpdate(props.selected)
     else if (evt.name === "q" || (evt.ctrl && evt.name === "c")) props.onQuit()
   })
 
@@ -98,10 +108,44 @@ function InstancePicker(props: {
           }}
         </For>
       </box>
+      <Show when={props.notice}>
+        <box marginTop={1} paddingX={2} flexDirection="row">
+          <text
+            fg={
+              props.notice!.variant === "success"
+                ? palette.success
+                : props.notice!.variant === "error"
+                  ? palette.warn
+                  : props.notice!.variant === "warn"
+                    ? palette.warn
+                    : palette.info
+            }
+          >
+            {props.notice!.variant === "success"
+              ? "✓ "
+              : props.notice!.variant === "error"
+                ? "✗ "
+                : props.notice!.variant === "warn"
+                  ? "! "
+                  : "i "}
+          </text>
+          <text fg={palette.fg}>{props.notice!.message}</text>
+        </box>
+      </Show>
+      <Show when={props.busy}>
+        <box marginTop={1} paddingX={2} flexDirection="row">
+          <text fg={palette.accent}>⟳ </text>
+          <text fg={palette.fg}>{props.busy!.message}</text>
+          <Show when={typeof props.busy!.percent === "number"}>
+            <text fg={palette.fgDim}>{`  ${Math.round(props.busy!.percent ?? 0)}%`}</text>
+          </Show>
+        </box>
+      </Show>
       <box flexGrow={1} />
       <StatusBar
         hints={[
           { keys: "↵", label: "open" },
+          { keys: "u", label: "update" },
           { keys: "n", label: "new local" },
           { keys: "d", label: "delete" },
           { keys: "↑↓", label: "navigate" },
@@ -370,6 +414,10 @@ export async function runBootWizard(input: BootWizardInput): Promise<BootSelecti
   const [step, setStep] = createSignal<Step>("instance")
   const [selectedIdx, setSelectedIdx] = createSignal(0)
   const [defaultDir] = createSignal(input.defaultDirectory ?? process.cwd())
+  const [updateBusy, setUpdateBusy] = createSignal<{ message: string; percent?: number } | undefined>(undefined)
+  const [updateNotice, setUpdateNotice] = createSignal<
+    { variant: "success" | "warn" | "error" | "info"; message: string } | undefined
+  >(undefined)
 
   await render(
     () => (
@@ -410,11 +458,14 @@ export async function runBootWizard(input: BootWizardInput): Promise<BootSelecti
         <InstancePicker
           instances={instances()}
           selected={selectedIdx()}
+          busy={updateBusy()}
+          notice={updateNotice()}
           onMove={(delta) => {
             const len = instances().length
             if (len === 0) return
             const next = ((selectedIdx() + delta) % len + len) % len
             setSelectedIdx(next)
+            setUpdateNotice(undefined)
           }}
           onPick={() => {
             if (instances()[selectedIdx()]) setStep("directory")
@@ -430,6 +481,63 @@ export async function runBootWizard(input: BootWizardInput): Promise<BootSelecti
               setSelectedIdx(Math.min(idx, next.length - 1))
             } catch {
               // swallow — keep the entry visible if delete fails
+            }
+          }}
+          onUpdate={async (idx) => {
+            const target = instances()[idx]
+            if (!target) return
+            setUpdateNotice(undefined)
+            setUpdateBusy({ message: "Starting update…" })
+            try {
+              const result = await input.service.updateInstance(target, (progress) => {
+                setUpdateBusy({
+                  message: progress.message,
+                  percent: progress.phase === "downloading" ? progress.percent : undefined,
+                })
+              })
+              // Refresh the local list so the new binaryVersion shows in
+              // the picker without restarting.
+              const refreshed = await input.service.list()
+              setInstances(refreshed)
+              switch (result.kind) {
+                case "updated-local":
+                  setUpdateNotice({
+                    variant: "success",
+                    message: `${result.label ?? target.id}: v${result.from || "?"} → v${result.to}.`,
+                  })
+                  break
+                case "already-latest":
+                  setUpdateNotice({
+                    variant: "info",
+                    message: `${result.label ?? target.id} is already on v${result.version}.`,
+                  })
+                  break
+                case "remote-current":
+                  setUpdateNotice({
+                    variant: "info",
+                    message: `${result.label ?? target.id} server is on v${result.version ?? "?"}.`,
+                  })
+                  break
+                case "remote-update-available":
+                  setUpdateNotice({
+                    variant: "warn",
+                    message: `${result.label ?? target.id} server v${result.current ?? "?"} → v${result.latest} available. Open the instance to apply.`,
+                  })
+                  break
+                case "remote-unreachable":
+                  setUpdateNotice({ variant: "error", message: `${result.label ?? target.id}: ${result.message}` })
+                  break
+                case "error":
+                  setUpdateNotice({ variant: "error", message: `${result.label ?? target.id}: ${result.message}` })
+                  break
+              }
+            } catch (err) {
+              setUpdateNotice({
+                variant: "error",
+                message: err instanceof Error ? err.message : String(err),
+              })
+            } finally {
+              setUpdateBusy(undefined)
             }
           }}
           onQuit={() => void finish(null)}

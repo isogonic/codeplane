@@ -807,6 +807,8 @@ const WelcomePanel: Component<{
   onAdd: () => void
   onEdit: (id: string) => void
   onOpen: (id: string) => void
+  onUpdate: (id: string) => void
+  updatingId?: string
 }> = (props) => {
   return (
     <div class="mx-auto flex w-full max-w-[520px] flex-col px-10 pt-12 pb-10">
@@ -866,7 +868,23 @@ const WelcomePanel: Component<{
                     class="text-text-weaker opacity-0 transition-opacity group-hover:opacity-100"
                   />
                 </button>
-                <div class="mr-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                <div class="mr-1 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                  <IconButton
+                    icon="download"
+                    size="small"
+                    variant="ghost"
+                    aria-label={
+                      props.updatingId === instance.id
+                        ? `Updating ${instance.label || instance.id}…`
+                        : instance.local
+                          ? `Update local binary for ${instance.label || instance.id}`
+                          : `Check for server updates on ${instance.label || instance.id}`
+                    }
+                    data-desktop-action="instance-update"
+                    data-instance-id={instance.id}
+                    disabled={!!props.updatingId}
+                    onClick={() => props.onUpdate(instance.id)}
+                  />
                   <IconButton
                     icon="sliders"
                     size="small"
@@ -874,6 +892,7 @@ const WelcomePanel: Component<{
                     aria-label="Edit instance"
                     data-desktop-action="instance-edit"
                     data-instance-id={instance.id}
+                    disabled={props.updatingId === instance.id}
                     onClick={() => props.onEdit(instance.id)}
                   />
                 </div>
@@ -2011,6 +2030,7 @@ export const App: Component = () => {
   const [view, setView] = createSignal<View>({ kind: "list" })
   const [instances, setInstances] = createSignal<SavedInstance[]>([])
   const [opening, setOpening] = createSignal<{ id: string; instance?: SavedInstance; progress: OpenProgress } | undefined>()
+  const [updatingId, setUpdatingId] = createSignal<string | undefined>(undefined)
   const params = new URLSearchParams(window.location.search)
   const editId = params.get("edit")
 
@@ -2066,6 +2086,121 @@ export const App: Component = () => {
       reason: "edit",
     })
     setView({ kind: editing?.local ? "local-form" : "remote-form", editing })
+  }
+
+  // Per-instance "Update" action surfaced from the WelcomePanel row icon.
+  // Local instances → fetch the latest npm version, install the new binary,
+  // rewrite the saved instance's binaryVersion. Remote instances → probe
+  // /global/version and report the delta (we don't trigger /global/upgrade
+  // from out here; that requires an authenticated session inside the
+  // instance shell, which the in-instance Update flow already handles).
+  const onUpdate = async (id: string) => {
+    if (updatingId()) return
+    const target = instances().find((entry) => entry.id === id)
+    if (!target) return
+    setUpdatingId(id)
+    logSetup("instance.update.start", { id, kind: target.local ? "local" : "remote" })
+    try {
+      if (target.local) {
+        const versionList = await api.local.listVersions()
+        if (!versionList.ok) {
+          showToast({
+            variant: "error",
+            icon: "warning",
+            title: `Couldn't reach npm for ${target.label || target.id}`,
+            description: versionList.error,
+          })
+          return
+        }
+        const latest = versionList.latest ?? versionList.distTags?.["latest"]
+        if (!latest) {
+          showToast({
+            variant: "error",
+            icon: "warning",
+            title: `npm returned no latest version`,
+            description: `Got ${versionList.versions.length} versions but no \`latest\` dist-tag.`,
+          })
+          return
+        }
+        const current = target.local.binaryVersion || ""
+        if (current === latest) {
+          showToast({
+            variant: "success",
+            icon: "check",
+            title: `${target.label || target.id} is already on v${latest}`,
+          })
+          return
+        }
+        const installResult = await api.local.install({ version: latest })
+        if (!installResult.ok) {
+          showToast({
+            variant: "error",
+            icon: "warning",
+            title: `Install of v${latest} failed`,
+            description: installResult.error,
+          })
+          return
+        }
+        const updated: SavedInstance = {
+          ...target,
+          local: { ...target.local, binaryVersion: latest },
+        }
+        await api.instances.save(updated)
+        await refresh()
+        showToast({
+          variant: "success",
+          icon: "check",
+          title: `${target.label || target.id} updated`,
+          description: current ? `v${current} → v${latest}.` : `Now on v${latest}.`,
+        })
+        logSetup("instance.update.success", { id, from: current, to: latest })
+        return
+      }
+      // Remote
+      const probed = await api.instances.probe(target)
+      if (!probed.ok) {
+        showToast({
+          variant: "error",
+          icon: "warning",
+          title: `Couldn't probe ${target.label || target.id}`,
+          description: probed.error || (probed.status ? `HTTP ${probed.status}` : "Server unreachable."),
+        })
+        return
+      }
+      const cur = probed.version ?? undefined
+      const lat = probed.latest ?? undefined
+      if (cur && lat && cur !== lat) {
+        showToast({
+          variant: "default",
+          icon: "warning",
+          title: `${target.label || target.id}: v${cur} → v${lat} available`,
+          description: `The remote server reports a newer release. Open the instance and use the in-app Update flow to apply it.`,
+          actions: [
+            { label: "Open instance", onClick: () => void onOpen(id) },
+            { label: "Dismiss", onClick: "dismiss" },
+          ],
+          persistent: true,
+        })
+      } else {
+        showToast({
+          variant: "success",
+          icon: "check",
+          title: `${target.label || target.id} is on v${cur ?? "?"}`,
+          description: lat ? `Latest known: v${lat}.` : undefined,
+        })
+      }
+      logSetup("instance.update.remote-probed", { id, current: cur, latest: lat })
+    } catch (error) {
+      logSetup("instance.update.error", { id, error })
+      showToast({
+        variant: "error",
+        icon: "warning",
+        title: `Update for ${target.label || target.id} failed`,
+        description: error instanceof Error ? error.message : String(error),
+      })
+    } finally {
+      setUpdatingId(undefined)
+    }
   }
 
   const onAdd = () => {
@@ -2230,7 +2365,14 @@ export const App: Component = () => {
             )}
           </Show>
           <Show when={view().kind === "list"}>
-            <WelcomePanel instances={instances()} onAdd={onAdd} onEdit={onEdit} onOpen={onOpen} />
+            <WelcomePanel
+              instances={instances()}
+              onAdd={onAdd}
+              onEdit={onEdit}
+              onOpen={onOpen}
+              onUpdate={(id) => void onUpdate(id)}
+              updatingId={updatingId()}
+            />
           </Show>
           <Show when={view().kind === "settings"}>
             <SettingsPanel />

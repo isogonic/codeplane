@@ -1,4 +1,5 @@
 import path from "node:path"
+import semver from "semver"
 import { CodeplaneHome } from "@codeplane-ai/shared/home"
 import type {
   LocalInstallProgress,
@@ -8,9 +9,41 @@ import type {
   SavedInstance,
 } from "@codeplane-ai/shared/instance"
 import { createInstanceStore } from "@codeplane-ai/shared/instance-store"
-import { readPreferredLocalVersion, writePreferredLocalVersion } from "@codeplane-ai/shared/local-runtime"
+import {
+  fetchCodeplaneLatestVersion,
+  readPreferredLocalVersion,
+  writePreferredLocalVersion,
+} from "@codeplane-ai/shared/local-runtime"
 import { createInstanceClient, headersForInstance, normalizeInstanceUrl } from "./client"
 import { createLocalInstanceManager } from "./local-instance"
+
+// Per-instance update flow used by the TUI boot wizard and the Desktop
+// instance selector. Two cases:
+//
+// - Local managed instance: the binary lives under
+//   `local_server/binaries/<version>/`. We probe npm for the newest
+//   `codeplane-ai` release, install it via the local manager (with progress)
+//   if newer, then rewrite the saved instance's `binaryVersion`. The next
+//   open uses the new binary.
+//
+// - Remote instance: we don't own the upgrade lifecycle (the server admin
+//   does), so the action only probes `/global/version` and reports the
+//   delta. Triggering `/global/upgrade` requires an authenticated client
+//   inside the instance shell, not the boot wizard — the renderer should
+//   point the user at the in-instance Update flow.
+export type UpdateProgress =
+  | { phase: "checking"; message: string }
+  | { phase: "downloading"; message: string; percent?: number }
+  | { phase: "saving"; message: string }
+  | { phase: "done"; message: string }
+
+export type UpdateResult =
+  | { kind: "already-latest"; version: string; label?: string }
+  | { kind: "updated-local"; from: string; to: string; label?: string }
+  | { kind: "remote-current"; version?: string; label?: string }
+  | { kind: "remote-update-available"; current?: string; latest: string; label?: string }
+  | { kind: "remote-unreachable"; message: string; label?: string }
+  | { kind: "error"; message: string; label?: string }
 
 type ProbeResult =
   | {
@@ -306,6 +339,84 @@ export function createInstanceService() {
     return result
   }
 
+  // Per-instance "update" action. Single helper used by TUI wizard +
+  // Desktop selector so the behavior matches across surfaces.
+  //
+  // - Local: fetches the newest npm `codeplane-ai` version, downloads the
+  //   binary if newer, rewrites the saved instance's binaryVersion. Honors
+  //   `targetVersion` so the caller can pin to a specific release.
+  // - Remote: probes `/global/version`, reports current/latest. Does NOT
+  //   trigger `/global/upgrade` — that requires an authenticated session
+  //   inside the instance shell, not the boot wizard.
+  async function updateInstance(
+    saved: SavedInstance,
+    onProgress?: (progress: UpdateProgress) => void,
+    targetVersion?: string,
+  ): Promise<UpdateResult> {
+    const label = saved.label ?? saved.id
+    if (saved.local) {
+      onProgress?.({ phase: "checking", message: "Checking npm for newer Codeplane…" })
+      const desired = targetVersion?.replace(/^v/, "")
+      const latest =
+        desired ??
+        (await fetchCodeplaneLatestVersion().catch(() => undefined))
+      if (!latest) {
+        return { kind: "error", message: "Could not reach the npm registry. Check your network and try again.", label }
+      }
+      const current = saved.local.binaryVersion || ""
+      if (current && !desired) {
+        const cur = semver.coerce(current)?.version
+        const lat = semver.coerce(latest)?.version
+        if (cur && lat && !semver.gt(lat, cur)) {
+          return { kind: "already-latest", version: current, label }
+        }
+      }
+      onProgress?.({ phase: "downloading", message: `Downloading Codeplane v${latest}…` })
+      try {
+        await installLocal(latest, (p) =>
+          onProgress?.({
+            phase: "downloading",
+            message: p.message ?? `Downloading v${latest}…`,
+            percent: p.percent,
+          }),
+        )
+      } catch (err) {
+        return {
+          kind: "error",
+          message: `Download failed: ${err instanceof Error ? err.message : String(err)}`,
+          label,
+        }
+      }
+      onProgress?.({ phase: "saving", message: "Saving updated instance…" })
+      await save({ ...saved, local: { binaryVersion: latest } })
+      onProgress?.({ phase: "done", message: `Updated ${label} to v${latest}` })
+      return { kind: "updated-local", from: current, to: latest, label }
+    }
+
+    // Remote: just probe and report. The wizard runs before we have an
+    // authenticated SDK client, and the in-instance Update flow already
+    // covers `/global/upgrade` once the user opens the instance.
+    onProgress?.({ phase: "checking", message: "Probing remote server…" })
+    const probed = await probe(saved)
+    if (!probed.ok) {
+      return {
+        kind: "remote-unreachable",
+        message: probed.error || "Server is unreachable. Check the URL and credentials.",
+        label,
+      }
+    }
+    const current = probed.version ?? undefined
+    const latest = probed.latest ?? undefined
+    if (current && latest) {
+      const cur = semver.coerce(current)?.version
+      const lat = semver.coerce(latest)?.version
+      if (cur && lat && semver.gt(lat, cur)) {
+        return { kind: "remote-update-available", current, latest, label }
+      }
+    }
+    return { kind: "remote-current", version: current, label }
+  }
+
   return {
     installLocal,
     list,
@@ -317,6 +428,7 @@ export function createInstanceService() {
     remove,
     save,
     setLast: store.setLast,
+    updateInstance,
     // Tear down every local Codeplane child this manager spawned. Used by the
     // TUI on `/exit` (and SIGTERM/SIGINT) so the stdio pipes on those children
     // don't keep the parent's event loop alive — without this the TUI hangs
