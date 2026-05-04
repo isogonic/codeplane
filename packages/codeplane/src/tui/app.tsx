@@ -849,14 +849,62 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       duration: 30000,
     })
 
-    const result = await sdk.client.global.upgrade({ target: version })
+    const result = await sdk.client.global.upgrade({ target: version }).catch((err: unknown) => {
+      // Network failure or transport error — surface as a structured fail
+      // so the catch block below can render it instead of a useless
+      // "Update failed".
+      return {
+        data: undefined,
+        error: { error: err instanceof Error ? err.message : String(err) },
+      } as const
+    })
 
-    if (result.error || !result.data?.success) {
+    if (result.error || !result.data || ("success" in result.data && result.data.success === false)) {
+      // Surface the actual reason from the server. The /global/upgrade
+      // route returns
+      //   { success: false, error: "Unknown installation method" }       (method=unknown)
+      //   { success: false, error: "Updates for desktop-managed
+      //                              instances are handled by the
+      //                              Codeplane desktop app …" }          (method=desktop)
+      //   { success: false, error: "Upgrade failed: <message>" }         (npm/yarn/etc threw)
+      // and v27.4.11 wraps the whole route in a JS try/catch so even
+      // unexpected defects come back with a parseable error string.
+      // Showing that string is the difference between "update doesn't
+      // work" and "ah, my server is desktop-managed, I need to upgrade
+      // from the Desktop's Updates panel."
+      const detail = (() => {
+        if (result.data && "error" in result.data && typeof result.data.error === "string") {
+          return result.data.error
+        }
+        if (result.error && typeof result.error === "object") {
+          if ("error" in result.error && typeof (result.error as { error?: unknown }).error === "string") {
+            return (result.error as { error: string }).error
+          }
+          if ("message" in result.error && typeof (result.error as { message?: unknown }).message === "string") {
+            return (result.error as { message: string }).message
+          }
+        }
+        return "The server returned no detail. Check the server log."
+      })()
+      const isManagedByDesktop = /desktop-managed|desktop app/i.test(detail)
+      const isUnknownMethod = /unknown installation method/i.test(detail)
+      await DialogAlert.show(
+        dialog,
+        "Update Failed",
+        isManagedByDesktop
+          ? `${detail}\n\nThis local instance was started by the Codeplane Desktop app. Open the Desktop's Updates panel to install v${version} — the desktop owns the update lifecycle for instances it spawned.`
+          : isUnknownMethod
+            ? `${detail}\n\nThe server can't tell how it was installed (process.execPath didn't match any package manager). Run \`codeplane upgrade\` directly from the same shell that owns the server, or upgrade your install via the package manager you used (npm install -g codeplane-ai@${version}).`
+            : `${detail}\n\nTried to update to v${version}. The server's /global/upgrade returned this. Re-run after fixing, or upgrade manually with your package manager.`,
+      )
+      return
+    }
+
+    if ("skipped" in result.data && result.data.skipped) {
       toast.show({
-        variant: "error",
-        title: "Update Failed",
-        message: "Update failed",
-        duration: 10000,
+        variant: "info",
+        message: `Already on v${result.data.version}.`,
+        duration: 5000,
       })
       return
     }

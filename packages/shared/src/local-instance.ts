@@ -44,6 +44,16 @@ export type LocalInstanceManagerInput = {
   configDir: string
   dataDir: string
   log?(event: string, data?: unknown): void
+  // When true, every spawned local server is told CODEPLANE_DESKTOP_MANAGED=1
+  // so its Installation.method() returns "desktop" and the in-instance
+  // /global/upgrade route returns a "use the desktop's Updates panel"
+  // error instead of trying to npm-install. The Desktop shell sets this
+  // because its electron-updater owns the lifecycle of the local runtime
+  // for instances it spawned. The TUI does NOT set this — its locally-
+  // spawned servers should report a real install method (or the new
+  // "managed-local" kind below) so the in-TUI Update Available flow can
+  // do the right thing.
+  desktopManaged?: boolean
 }
 
 export function findListeningPort(text: string) {
@@ -75,16 +85,16 @@ function createKeyedLock() {
   }
 }
 
-export function createLocalInstanceManager(input: LocalInstanceManagerInput) {
-  const log = (event: string, data?: unknown) => input.log?.(event, data)
+export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
+  const log = (event: string, data?: unknown) => config.log?.(event, data)
   const target = resolveCodeplaneLocalTarget()
   const running = new Map<string, ManagedProcess>()
   const lock = createKeyedLock()
 
-  const versionRoot = (version: string) => path.join(input.binariesDir, version)
+  const versionRoot = (version: string) => path.join(config.binariesDir, version)
   const expectedBinaryPath = (version: string) => path.join(versionRoot(version), "bin", target.binaryName)
   const resolveBinary = (version: string) => resolveLocalBinaryPath(versionRoot(version), target.binaryName)
-  const dataDirFor = (id: string) => path.join(input.dataDir, id)
+  const dataDirFor = (id: string) => path.join(config.dataDir, id)
   // Each local instance gets its own config dir so concurrent locals don't
   // clobber each other's codeplane.json. Falls back to the shared root when
   // the per-instance dir doesn't exist yet — it's created on start().
@@ -199,7 +209,7 @@ export function createLocalInstanceManager(input: LocalInstanceManagerInput) {
         fs.mkdir(path.join(data, "log"), { recursive: true }),
       ])
 
-      const env = {
+      const env: Record<string, string | undefined> = {
         ...process.env,
         CODEPLANE_HOME_DIR: instanceConfig,
         CODEPLANE_DATA_DIR: path.join(data, "data"),
@@ -207,17 +217,29 @@ export function createLocalInstanceManager(input: LocalInstanceManagerInput) {
         CODEPLANE_STATE_DIR: path.join(data, "state"),
         CODEPLANE_BIN_DIR: path.join(data, "bin"),
         CODEPLANE_LOG_DIR: path.join(data, "log"),
-        // Tell the spawned server it is managed by the desktop shell so
-        // its install-method detection reports "desktop" — the in-instance
-        // settings UI then shows the desktop-managed update message instead
-        // of "automatic updates unavailable".
-        CODEPLANE_DESKTOP_MANAGED: "1",
         XDG_DATA_HOME: path.join(data, "data"),
         XDG_CONFIG_HOME: path.join(data, "config"),
         XDG_CACHE_HOME: path.join(data, "cache"),
         XDG_STATE_HOME: path.join(data, "state"),
         HOME: process.env.HOME ?? os.homedir(),
       }
+      if (config.desktopManaged === false) {
+        // Explicit non-desktop manager (e.g. TUI). Make sure any inherited
+        // CODEPLANE_DESKTOP_MANAGED from the parent process doesn't leak in.
+        delete env.CODEPLANE_DESKTOP_MANAGED
+      } else if (config.desktopManaged) {
+        // Tell the spawned server it is managed by the desktop shell so
+        // its install-method detection reports "desktop" — the in-instance
+        // settings UI then shows the desktop-managed update message instead
+        // of "automatic updates unavailable".
+        env.CODEPLANE_DESKTOP_MANAGED = "1"
+      }
+      // Tell the spawned server which manager (if any) owns its update
+      // lifecycle. The /global/upgrade route reads this to short-circuit
+      // with a precise instruction for the TUI / Desktop instead of
+      // trying to npm-install when there's no global npm install to
+      // upgrade in the first place.
+      env.CODEPLANE_MANAGED_BY = config.desktopManaged ? "desktop" : "tui"
 
       // Spawn from the user's home, not the per-instance data dir. The picker
       // seeds itself from the server's process.cwd(), so anchoring at $HOME
