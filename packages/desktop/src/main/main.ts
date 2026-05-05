@@ -178,6 +178,23 @@ const legacyStore =
 const instanceStore = createInstanceStore(codeplaneHome.instances)
 const logger = createDesktopLogger(process.env.CODEPLANE_DESKTOP_LOG_DIR?.trim() || path.join(app.getPath("userData"), "logs"))
 
+// Electron's SimpleURLLoaderWrapper (backing session.fetch / net.fetch) can
+// surface transient transport failures — most commonly net::ERR_HTTP2_PROTOCOL_ERROR
+// when an upstream HTTP/2 stream resets mid-body — as 'error' events that the
+// caller's Promise has already settled past. Without process-level handlers
+// these escape as Electron's "Uncaught Exception" dialog, even though the next
+// poll/fetch recovers cleanly. Log and swallow instead of crashing the shell.
+const isTransientNetError = (value: unknown): boolean => {
+  const message = value instanceof Error ? value.message : typeof value === "string" ? value : ""
+  return /^net::ERR_/.test(message)
+}
+process.on("uncaughtException", (error) => {
+  logger.log("main", isTransientNetError(error) ? "process.uncaught.net" : "process.uncaught", { error })
+})
+process.on("unhandledRejection", (reason) => {
+  logger.log("main", isTransientNetError(reason) ? "process.unhandled.net" : "process.unhandled", { reason })
+})
+
 let mainWindow: BrowserWindow | undefined
 let currentInstanceID: string | undefined
 let instanceState: InstanceStoreState = { instances: [] }
