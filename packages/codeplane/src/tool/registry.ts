@@ -12,6 +12,7 @@ import { ProjectTool } from "./project"
 import { ReadTool } from "./read"
 import { TaskTool } from "./task"
 import { TodoWriteTool } from "./todo"
+import { ChartTool } from "./chart"
 import { ToolsTool } from "./tools"
 import { WebFetchTool } from "./webfetch"
 import { BrowseTool } from "./browse"
@@ -141,6 +142,7 @@ export const layer: Layer.Layer<
     const toolstatus = yield* ToolsTool
     const question = yield* QuestionTool
     const todo = yield* TodoWriteTool
+    const chart = yield* ChartTool
     const lsptool = yield* LspTool
     const plan = yield* PlanExitTool
     const webfetch = yield* WebFetchTool
@@ -264,6 +266,7 @@ export const layer: Layer.Layer<
           bashInteractive: Tool.init(bashInteractive),
           ssh: Tool.init(ssh),
           todo: Tool.init(todo),
+          chart: Tool.init(chart),
           search: Tool.init(websearch),
           code: Tool.init(codesearch),
           skill: Tool.init(skilltool),
@@ -295,6 +298,7 @@ export const layer: Layer.Layer<
             tool.bashInteractive,
             tool.ssh,
             tool.todo,
+            tool.chart,
             tool.search,
             tool.code,
             tool.skill,

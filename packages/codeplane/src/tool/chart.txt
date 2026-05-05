@@ -1,0 +1,33 @@
+Render a chart inline in the chat conversation as a native widget.
+
+USE THIS when the user asks for a graph, chart, plot, visualization, "show me a trend", "visualize this", "graph this", or any equivalent. This tool is the ONLY way to put a chart in front of the user in this UI surface — anything else (matplotlib, plotly, seaborn, d3, chart.js, ggplot, recharts, gnuplot, R) produces an image file the user CANNOT SEE.
+
+DO NOT install Python plotting libraries. DO NOT run scripts that produce PNG / JPG / SVG images. DO NOT base64-encode an image into your response. The user sees the chart only when you call THIS tool.
+
+Supported chart types (the `type` parameter):
+- `line`        — trend over time, multi-series allowed
+- `bar`         — category comparison, multi-series allowed
+- `area`        — stacked-area / cumulative trend
+- `pie`         — single series, parts of a whole, ≤ 6 slices
+- `donut`       — same as pie but with a hole
+- `sparkline`   — tiny inline trend, no axes/labels
+
+`series` is `[{ name, data: number[] }, ...]` — one entry per data line. `labels` is the x-axis labels (same length as each series' data array). `format` formats numeric labels as "number" / "currency" / "percent"; pair with `currency: "USD"` for currency.
+
+Examples of when to call this tool:
+- "Show me Germany's GDP from 2000 to 2024 in a graph" → call chart with type=line, labels=years, series=[{name:"GDP", data:[...]}], format=currency, currency=USD
+- "Plot the test pass rate by week" → call chart with type=line, labels=weeks, series=[{name:"Pass rate", data:[...]}], format=percent
+- "How does our latency compare across regions?" → call chart with type=bar, labels=regions, series=[{name:"p95", data:[...]}], format=number
+- "Visualize the breakdown of API errors by type" → call chart with type=pie, labels=errorTypes, series=[{name:"count", data:[...]}]
+
+Examples of when NOT to call this tool:
+- The data is 1-3 numbers — write them inline ("Q1 was 142, Q2 was 158, Q3 was 173") or use a kpi block
+- The user wants a markdown table — use a markdown table or the `table` block, not a chart
+- The user is asking how to plot something themselves in their own code — answer with code in their language
+
+Anti-pattern (do not do):
+- Calling bash to `pip install matplotlib`. The chat does not render matplotlib output.
+- Writing a Python / R / JS script that generates an image. The chat does not display the image.
+- Describing the chart in prose because you can't render it. You CAN render it — that's what this tool is for.
+
+Title and subtitle are optional but help the user place the chart in context. Keep them short.
