@@ -1536,7 +1536,11 @@ function attachServerVersionWatcher(window: BrowserWindow, instance: SavedInstan
           // changes if the binary was restarted on a new port during the
           // upgrade. Falls back to the saved record otherwise.
           const refreshed = getInstanceLive(instance.id) ?? instance
-          const prepared = await uiHost.prepare(refreshed, (progress: DesktopUIPrepareProgress) => emit(progress))
+          const prepared = await uiHost.prepare(
+            refreshed,
+            (progress: DesktopUIPrepareProgress) => emit(progress),
+            { targetVersion: version },
+          )
           if (window.isDestroyed()) return
           emit({ phase: "done", message: "Loading…", percent: 100, version: prepared.version })
           await loadWindowUrl(window, prepared.url)
@@ -1568,6 +1572,11 @@ function attachServerVersionWatcher(window: BrowserWindow, instance: SavedInstan
     windowVersionWatchers.delete(window.id)
     windowReconnecting.delete(window.id)
   })
+  // Force an immediate poll. If `prepare` just took the fast path with a
+  // stale cached version (origin marked fresh within CACHE_TTL_MS but the
+  // server has since upgraded), this revalidates within seconds instead of
+  // waiting for the 15s default tick.
+  watcher.ping()
 }
 
 async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebContents }) {

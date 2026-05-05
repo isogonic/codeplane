@@ -693,49 +693,62 @@ export function createDesktopUIHost(input: {
   const prepare = async (
     instance: DesktopHostInstance,
     progress?: (progress: DesktopUIPrepareProgress) => void,
+    opts?: { targetVersion?: string },
   ) => {
-    log("prepare.start", { id: instance.id, url: instance.url })
+    log("prepare.start", { id: instance.id, targetVersion: opts?.targetVersion, url: instance.url })
     const session = input.getSession(instance)
     const originValue = instanceOrigin(instance.url)
 
     // Fast path: if we re-validated this origin within CACHE_TTL_MS and the
-    // cached UI is intact on disk, reuse it without probing the server. New
-    // versions that ship while we're connected are still picked up by the
-    // server-version watcher (~15s poll), which triggers a re-prepare.
-    const fresh = await freshOriginCache(input.cacheDir, originValue)
-    if (fresh) {
-      log("cache.fresh", {
-        checkedAt: fresh.checkedAt,
-        id: instance.id,
-        origin: originValue,
-        version: fresh.version,
-      })
-      activeID = instance.id
-      const cachedRoot = versionRoot(input.cacheDir, fresh.version)
-      await ensureLegacyThemeAssets(cachedRoot)
-      await touchVersion(input.cacheDir, fresh.version, originValue)
-      root = cachedRoot
-      const url = `${await ensureServer()}/?server=${encodeURIComponent(instance.id)}&ui=${encodeURIComponent(fresh.version)}`
-      progress?.({
-        cacheHit: true,
-        completed: 1,
-        message: `Using cached UI for Codeplane ${fresh.version}.`,
-        percent: 100,
-        phase: "done",
-        total: 1,
-        version: fresh.version,
-      })
-      log("prepare.success", { fast: true, id: instance.id, root, version: fresh.version })
-      return { url, version: fresh.version }
+    // cached UI is intact on disk, reuse it without probing the server. The
+    // version watcher will catch any drift on its next poll and re-call us
+    // with `targetVersion` set — that path skips the fast path and forces a
+    // download of the matching bundle. Skipping the fast path is REQUIRED
+    // when `targetVersion` is set, otherwise a stale origin entry would
+    // cause the re-prepare to loop on the old version.
+    if (!opts?.targetVersion) {
+      const fresh = await freshOriginCache(input.cacheDir, originValue)
+      if (fresh) {
+        log("cache.fresh", {
+          checkedAt: fresh.checkedAt,
+          id: instance.id,
+          origin: originValue,
+          version: fresh.version,
+        })
+        activeID = instance.id
+        const cachedRoot = versionRoot(input.cacheDir, fresh.version)
+        await ensureLegacyThemeAssets(cachedRoot)
+        await touchVersion(input.cacheDir, fresh.version, originValue)
+        root = cachedRoot
+        const url = `${await ensureServer()}/?server=${encodeURIComponent(instance.id)}&ui=${encodeURIComponent(fresh.version)}`
+        progress?.({
+          cacheHit: true,
+          completed: 1,
+          message: `Using cached UI for Codeplane ${fresh.version}.`,
+          percent: 100,
+          phase: "done",
+          total: 1,
+          version: fresh.version,
+        })
+        log("prepare.success", { fast: true, id: instance.id, root, version: fresh.version })
+        return { url, version: fresh.version }
+      }
     }
 
     progress?.({
       phase: "probe",
-      message: "Checking server version…",
+      message: opts?.targetVersion
+        ? `Preparing UI for Codeplane ${opts.targetVersion}…`
+        : "Checking server version…",
       percent: 5,
+      version: opts?.targetVersion,
     })
-    const version = await fetchVersion(session, instance)
-    log("version.fetch.success", { id: instance.id, url: instance.url, version })
+    const version = opts?.targetVersion ?? (await fetchVersion(session, instance))
+    log(opts?.targetVersion ? "version.target.given" : "version.fetch.success", {
+      id: instance.id,
+      url: instance.url,
+      version,
+    })
     activeID = instance.id
     progress?.({
       phase: "download",

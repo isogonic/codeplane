@@ -5,6 +5,7 @@ import katex from "katex"
 import { bundledLanguages, type BundledLanguage } from "shiki"
 import { createSimpleContext } from "./helper"
 import { getSharedHighlighter, registerCustomTheme, ThemeRegistrationResolved } from "@pierre/diffs"
+import { isMarkdownBlockLang, renderMarkdownBlock } from "../components/markdown-blocks"
 
 registerCustomTheme("Codeplane", () => {
   return Promise.resolve({
@@ -464,12 +465,20 @@ async function highlightCodeBlocks(html: string): Promise<string> {
   for (const match of matches) {
     const [fullMatch, lang, escapedCode] = match
     const code = unescapeCodeBlock(escapedCode)
-    if (codeBlockLanguage(lang) === "mermaid") {
+    const langKey = codeBlockLanguage(lang)
+    if (langKey === "mermaid") {
       result = result.replace(fullMatch, () => mermaidCodeBlock(code))
       continue
     }
+    if (isMarkdownBlockLang(langKey)) {
+      const rendered = renderMarkdownBlock(code, langKey)
+      if (rendered) {
+        result = result.replace(fullMatch, () => rendered)
+        continue
+      }
+    }
 
-    let language = codeBlockLanguage(lang)
+    let language = langKey
     if (!(language in bundledLanguages)) {
       language = "text"
     }
@@ -556,7 +565,12 @@ export const { use: useMarked, provider: MarkedProvider } = createSimpleContext(
       }),
       markedShiki({
         async highlight(code, lang) {
-          if (codeBlockLanguage(lang) === "mermaid") return mermaidCodeBlock(code)
+          const langKey = codeBlockLanguage(lang)
+          if (langKey === "mermaid") return mermaidCodeBlock(code)
+          if (isMarkdownBlockLang(langKey)) {
+            const rendered = renderMarkdownBlock(code, langKey)
+            if (rendered) return rendered
+          }
 
           const highlighter = await getSharedHighlighter({
             themes: ["Codeplane"],

@@ -32,10 +32,11 @@ if (typeof window !== "undefined" && DOMPurify.isSupported) {
 }
 
 const config = {
-  USE_PROFILES: { html: true, mathMl: true },
+  USE_PROFILES: { html: true, mathMl: true, svg: true, svgFilters: true },
   SANITIZE_NAMED_PROPS: true,
   FORBID_TAGS: ["style"],
   FORBID_CONTENTS: ["style", "script"],
+  ADD_ATTR: ["target", "playsinline"],
 }
 
 const iconPaths = {
@@ -476,6 +477,66 @@ function decorate(root: HTMLDivElement, labels: CopyLabels) {
   markTextFileReferences(root, labels)
 }
 
+function setupRichBlocks(root: HTMLDivElement) {
+  const handleClick = (event: MouseEvent) => {
+    const target = event.target
+    if (!(target instanceof Element)) return
+    const tab = target.closest('[data-component="markdown-block"][data-block-type="tabs"] [data-slot="tabs-tab"]')
+    if (!(tab instanceof HTMLButtonElement)) return
+    const container = tab.closest('[data-component="markdown-block"][data-block-type="tabs"]')
+    if (!(container instanceof HTMLElement)) return
+    const index = tab.dataset.tabsIndex
+    if (index === undefined) return
+    activateTab(container, index)
+  }
+
+  const handleKey = (event: KeyboardEvent) => {
+    const target = event.target
+    if (!(target instanceof HTMLButtonElement)) return
+    if (target.dataset.slot !== "tabs-tab") return
+    const container = target.closest('[data-component="markdown-block"][data-block-type="tabs"]')
+    if (!(container instanceof HTMLElement)) return
+    const tabs = Array.from(container.querySelectorAll<HTMLButtonElement>('[data-slot="tabs-tab"]'))
+    const current = tabs.indexOf(target)
+    if (current < 0) return
+    let next = current
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (current + 1) % tabs.length
+    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (current - 1 + tabs.length) % tabs.length
+    else if (event.key === "Home") next = 0
+    else if (event.key === "End") next = tabs.length - 1
+    else return
+    event.preventDefault()
+    const target2 = tabs[next]
+    if (!target2) return
+    const index = target2.dataset.tabsIndex
+    if (index === undefined) return
+    activateTab(container, index)
+    target2.focus()
+  }
+
+  root.addEventListener("click", handleClick)
+  root.addEventListener("keydown", handleKey)
+  return () => {
+    root.removeEventListener("click", handleClick)
+    root.removeEventListener("keydown", handleKey)
+  }
+}
+
+function activateTab(container: HTMLElement, index: string) {
+  const tabs = container.querySelectorAll<HTMLElement>('[data-slot="tabs-tab"]')
+  const panels = container.querySelectorAll<HTMLElement>('[data-slot="tabs-panel"]')
+  tabs.forEach((tab) => {
+    const active = tab.dataset.tabsIndex === index
+    tab.setAttribute("aria-selected", active ? "true" : "false")
+    tab.setAttribute("tabindex", active ? "0" : "-1")
+  })
+  panels.forEach((panel) => {
+    const active = panel.dataset.tabsIndex === index
+    if (active) panel.removeAttribute("hidden")
+    else panel.setAttribute("hidden", "")
+  })
+}
+
 function setupCodeCopy(root: HTMLDivElement, getLabels: () => CopyLabels) {
   const timeouts = new Map<HTMLButtonElement, ReturnType<typeof setTimeout>>()
 
@@ -759,6 +820,7 @@ export function Markdown(
 
   let copyCleanup: (() => void) | undefined
   let fileReferenceCleanup: (() => void) | undefined
+  let richBlockCleanup: (() => void) | undefined
   let lastContent: string | undefined
   let lastLocale: string | undefined
 
@@ -800,6 +862,16 @@ export function Markdown(
       childrenOnly: true,
       onBeforeElUpdated: (fromEl, toEl) => {
         if (fromEl instanceof HTMLElement && toEl instanceof HTMLElement) {
+          if (
+            fromEl.getAttribute("data-component") === "markdown-block" &&
+            toEl.getAttribute("data-component") === "markdown-block" &&
+            fromEl.dataset.blockHash &&
+            fromEl.dataset.blockHash === toEl.dataset.blockHash
+          ) {
+            // Block source unchanged — keep current DOM (and any interactive
+            // state inside it) instead of re-rendering.
+            return false
+          }
           if (
             fromEl.getAttribute("data-component") === "mermaid-preview" &&
             toEl.getAttribute("data-component") === "mermaid-preview" &&
@@ -855,11 +927,13 @@ export function Markdown(
         }),
         () => fileReference.open,
       )
+    if (!richBlockCleanup) richBlockCleanup = setupRichBlocks(container)
   })
 
   onCleanup(() => {
     if (copyCleanup) copyCleanup()
     if (fileReferenceCleanup) fileReferenceCleanup()
+    if (richBlockCleanup) richBlockCleanup()
   })
 
   return (

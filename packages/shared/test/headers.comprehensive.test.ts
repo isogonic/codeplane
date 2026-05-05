@@ -73,13 +73,22 @@ describe("parseHeaders - real-world headers", () => {
     expect(parseHeaders("Authorization: Basic dXNlcjpwYXNz")).toEqual({
       Authorization: "Basic dXNlcjpwYXNz",
     }))
-  test("Content-Type with charset (semicolon splits, charset has no colon so it is dropped)", () =>
+  test("Content-Type with charset (semicolon stays in value)", () =>
     expect(parseHeaders("Content-Type: application/json; charset=utf-8")).toEqual({
-      "Content-Type": "application/json",
+      "Content-Type": "application/json; charset=utf-8",
     }))
-  test("User-Agent string (semicolon splits, trailing token has no colon so it is dropped)", () =>
+  test("User-Agent string (semicolon stays in value)", () =>
     expect(parseHeaders("User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64)")).toEqual({
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64)",
+    }))
+  test("Cookie with multiple pairs (semicolons stay in value)", () =>
+    expect(parseHeaders("Cookie: CF_Authorization=jwt; CF_AppSession=sess")).toEqual({
+      Cookie: "CF_Authorization=jwt; CF_AppSession=sess",
+    }))
+  test("multiple headers on one line still split on '; name:'", () =>
+    expect(parseHeaders("Cookie: a=1; b=2; X-API-Key: secret")).toEqual({
+      Cookie: "a=1; b=2",
+      "X-API-Key": "secret",
     }))
   test("X-Forwarded-For", () =>
     expect(parseHeaders("X-Forwarded-For: 192.168.1.1")).toEqual({
