@@ -3,12 +3,15 @@ import { EOL } from "os"
 import { NamedError } from "@codeplane-ai/shared/util/error"
 import { logo as glyphs } from "./logo"
 
+// Plain non-TTY fallback (used when output is being piped / captured).
+// Single chevron is enough — duplicate-mark + colour treatment is reserved
+// for the TTY branch below where colour can carry the brand identity.
 const planeMark = [
-  `██        `,
-  `██████    `,
-  `██████████`,
-  `██  ██    `,
-  `██        `,
+  `█▄        `,
+  `████▄     `,
+  `███████▄  `,
+  `████▀     `,
+  `█▀        `,
 ]
 
 export const CancelledError = NamedError.create("UICancelledError", z.void())
