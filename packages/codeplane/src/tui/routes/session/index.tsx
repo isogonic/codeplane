@@ -1502,6 +1502,7 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
     <Show when={props.part.text.trim()}>
       <box
         id={"text-" + props.part.id}
+        flexDirection="column"
         border={["left"]}
         borderColor={theme.border ?? theme.backgroundElement}
         customBorderChars={ThinBorder.customBorderChars}
@@ -1600,10 +1601,75 @@ function ToolPart(props: { last: boolean; part: ToolPart; message: AssistantMess
         <Match when={props.part.tool === "skill"}>
           <Skill {...toolprops} />
         </Match>
+        <Match when={RICH_BLOCK_TOOL_IDS.has(props.part.tool)}>
+          <RichBlockTool {...toolprops} />
+        </Match>
         <Match when={true}>
           <GenericTool {...toolprops} />
         </Match>
       </Switch>
+    </Show>
+  )
+}
+
+// First-class tools that produce a fenced rich-block as their output.
+// Anything in this set gets rendered with RichBlockText so the agent's
+// kpi/chart/callout/... payload becomes a real visual block in the TUI
+// instead of dumping the raw JSON in a generic text frame.
+const RICH_BLOCK_TOOL_IDS = new Set([
+  "chart",
+  "kpi",
+  "callout",
+  "timeline",
+  "progress",
+  "badge",
+  "quote",
+  "preview",
+  "stock",
+  "tabs",
+  "choice",
+  "select",
+  "table",
+  "file-tree",
+  "image-grid",
+  "comparison",
+  "video",
+  "diff",
+])
+
+function RichBlockTool(props: ToolProps<any>) {
+  const { theme, syntax } = useTheme()
+  const ctx = use()
+  const output = createMemo(() => props.output?.trim() ?? "")
+  return (
+    <Show
+      when={output()}
+      fallback={
+        <InlineTool icon="◈" pending={`Rendering ${props.tool}…`} complete={true} part={props.part}>
+          {props.tool}
+        </InlineTool>
+      }
+    >
+      <box
+        flexDirection="column"
+        flexShrink={0}
+        marginTop={1}
+        paddingLeft={3}
+        paddingRight={2}
+      >
+        <RichBlockText
+          text={output()}
+          syntax={syntax()}
+          conceal={ctx.conceal()}
+          streaming={false}
+          experimental={Flag.CODEPLANE_EXPERIMENTAL_MARKDOWN}
+        />
+        <Show when={props.part.state.status === "error" && (props.part.state as { error?: string }).error}>
+          <text fg={theme.error} marginTop={1}>
+            {(props.part.state as { error?: string }).error}
+          </text>
+        </Show>
+      </box>
     </Show>
   )
 }

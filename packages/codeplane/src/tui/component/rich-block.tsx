@@ -169,8 +169,13 @@ interface RichBlockProps {
 export function RichBlockText(props: RichBlockProps): JSX.Element {
   const { theme } = useTheme()
   const segments = () => splitMarkdownBlocks(props.text)
+  // flexGrow={1} ensures we expand to fill the parent's main axis even when
+  // the parent is a row container — otherwise our column wrapper sizes to
+  // its content width and markdown / rich blocks render in a narrow column
+  // hugging the left edge.  width="100%" handles the (correct) case where
+  // the parent is itself a column container.
   return (
-    <box flexDirection="column" flexShrink={0}>
+    <box flexDirection="column" flexShrink={0} flexGrow={1} width="100%">
       <For each={segments()}>
         {(seg) =>
           seg.kind === "markdown" ? (

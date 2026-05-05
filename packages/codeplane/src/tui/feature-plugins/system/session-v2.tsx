@@ -361,7 +361,7 @@ function AssistantMessage(props: {
 function AssistantText(props: { part: SessionMessageAssistantText; syntax: SyntaxStyle }) {
   return (
     <Show when={props.part.text.trim()}>
-      <box paddingLeft={3} marginTop={1} flexShrink={0}>
+      <box paddingLeft={3} marginTop={1} flexDirection="column" flexShrink={0}>
         <RichBlockText text={props.part.text.trim()} syntax={props.syntax} streaming={true} conceal={true} />
       </box>
     </Show>
