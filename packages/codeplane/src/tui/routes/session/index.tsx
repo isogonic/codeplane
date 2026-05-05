@@ -20,6 +20,7 @@ import { useSync } from "@/tui/context/sync"
 import { useEvent } from "@/tui/context/event"
 import { SplitBorder, ThinBorder } from "@/tui/component/border"
 import { Spinner } from "@/tui/component/spinner"
+import { RichBlockText } from "@/tui/component/rich-block"
 import { selectedForeground, useTheme } from "@/tui/context/theme"
 import { BoxRenderable, ScrollBoxRenderable, addDefaultParsers, TextAttributes, RGBA } from "@opentui/core"
 import { Prompt, type PromptRef } from "@/tui/component/prompt"
@@ -1509,29 +1510,13 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
         paddingLeft={2}
         paddingRight={2}
       >
-        <Switch>
-          <Match when={Flag.CODEPLANE_EXPERIMENTAL_MARKDOWN}>
-            <markdown
-              syntaxStyle={syntax()}
-              streaming={true}
-              content={props.part.text.trim()}
-              conceal={ctx.conceal()}
-              fg={theme.markdownText}
-              bg={theme.background}
-            />
-          </Match>
-          <Match when={!Flag.CODEPLANE_EXPERIMENTAL_MARKDOWN}>
-            <code
-              filetype="markdown"
-              drawUnstyledText={false}
-              streaming={true}
-              syntaxStyle={syntax()}
-              content={props.part.text.trim()}
-              conceal={ctx.conceal()}
-              fg={theme.text}
-            />
-          </Match>
-        </Switch>
+        <RichBlockText
+          text={props.part.text.trim()}
+          syntax={syntax()}
+          conceal={ctx.conceal()}
+          streaming={true}
+          experimental={Flag.CODEPLANE_EXPERIMENTAL_MARKDOWN}
+        />
       </box>
     </Show>
   )

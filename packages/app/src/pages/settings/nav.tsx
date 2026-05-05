@@ -1,7 +1,7 @@
-import { For, createMemo, type Accessor } from "solid-js"
+import { For, Show, createMemo, type Accessor } from "solid-js"
 import { Icon, type IconProps } from "@codeplane-ai/ui/icon"
 import { useLanguage } from "@/context/language"
-import { usePlatform } from "@/context/platform"
+import { useUpdates } from "@/context/updates"
 
 export type SettingsSection = "general" | "shortcuts" | "providers" | "modes" | "models" | "mcp" | "plugins" | "skills"
 
@@ -120,7 +120,7 @@ export function SettingsSidebarPanel(props: {
   width?: number
 }) {
   const language = useLanguage()
-  const platform = usePlatform()
+  const updates = useUpdates()
   const merged = createMemo(() => props.mobile || (props.merged ?? true))
 
   return (
@@ -141,7 +141,10 @@ export function SettingsSidebarPanel(props: {
         <div class="flex flex-col min-w-0 gap-0.5 py-2 pl-2 pr-0">
           <div class="text-14-medium text-text-strong truncate">{language.t("sidebar.settings")}</div>
           <div class="text-12-regular text-text-base truncate">
-            {language.t("app.name.web")} v{platform.version}
+            {language.t("app.name.web")}
+            <Show when={updates.status()?.current}>
+              {(version) => <> v{version()}</>}
+            </Show>
           </div>
         </div>
       </div>

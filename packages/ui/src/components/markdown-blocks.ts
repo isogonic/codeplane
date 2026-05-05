@@ -926,21 +926,50 @@ const calloutAliases: Record<string, string> = {
 function renderCallout(code: string, lang: string): string {
   const trimmed = code.replace(/^\s+|\s+$/g, "")
   if (!trimmed) throw new Error("callout body is empty")
-  const variant = calloutAliases[lang] ?? "info"
-  // Support optional title on first line: `# Title` or just first non-empty line
-  // when followed by a blank line.
-  const lines = trimmed.split("\n")
+  let variant = calloutAliases[lang] ?? "info"
   let title: string | undefined
   let body = trimmed
-  if (lines.length > 1) {
-    const first = lines[0]!
-    const titleMatch = first.match(/^#{1,6}\s+(.+)$/)
-    if (titleMatch) {
-      title = titleMatch[1]!.trim()
-      body = lines.slice(1).join("\n").replace(/^\n+/, "")
-    } else if (lines[1]!.trim() === "") {
-      title = first.trim()
-      body = lines.slice(2).join("\n")
+  // Agents often emit JSON like {"type":"info","title":"...","body":"..."} for
+  // callouts even though markdown text is the documented form. Detect that and
+  // unpack it transparently so the user does not see raw JSON in the bubble.
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+    try {
+      const obj = JSON.parse(trimmed) as {
+        type?: string
+        variant?: string
+        title?: string
+        heading?: string
+        body?: string
+        content?: string
+        text?: string
+        message?: string
+      }
+      if (obj && typeof obj === "object") {
+        const explicit = (obj.type ?? obj.variant ?? "").toLowerCase()
+        if (explicit && calloutAliases[explicit]) variant = calloutAliases[explicit]!
+        title = obj.title ?? obj.heading
+        const bodyText = obj.body ?? obj.content ?? obj.text ?? obj.message
+        if (typeof bodyText === "string") body = bodyText.replace(/\\n/g, "\n")
+        else if (title) body = ""
+      }
+    } catch {
+      // not JSON, fall through to markdown handling below
+    }
+  }
+  // Support optional title on first line: `# Title` or just first non-empty line
+  // when followed by a blank line.
+  if (title === undefined) {
+    const lines = body.split("\n")
+    if (lines.length > 1) {
+      const first = lines[0]!
+      const titleMatch = first.match(/^#{1,6}\s+(.+)$/)
+      if (titleMatch) {
+        title = titleMatch[1]!.trim()
+        body = lines.slice(1).join("\n").replace(/^\n+/, "")
+      } else if (lines[1]!.trim() === "") {
+        title = first.trim()
+        body = lines.slice(2).join("\n")
+      }
     }
   }
   if (!title && lang !== "callout") {
@@ -951,7 +980,7 @@ function renderCallout(code: string, lang: string): string {
     `<div data-slot="callout-icon" aria-hidden="true">${calloutIconSvg(variant)}</div>`,
     `<div data-slot="callout-body">`,
     title ? `<div data-slot="callout-title">${escape(title)}</div>` : "",
-    `<div data-slot="callout-content">${formatInline(body)}</div>`,
+    body ? `<div data-slot="callout-content">${formatInline(body)}</div>` : "",
     `</div>`,
     `</div>`,
   ].join("")

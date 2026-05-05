@@ -2,6 +2,7 @@ import type { TuiPlugin, TuiPluginApi, TuiPluginModule } from "@codeplane-ai/plu
 import { useSyncV2 } from "@/tui/context/sync-v2"
 import { SplitBorder } from "@/tui/component/border"
 import { Spinner } from "@/tui/component/spinner"
+import { RichBlockText } from "@/tui/component/rich-block"
 import { useTheme } from "@/tui/context/theme"
 import { useLocal } from "@/tui/context/local"
 import { useKeyboard, useRenderer, useTerminalDimensions, type JSX } from "@opentui/solid"
@@ -358,19 +359,10 @@ function AssistantMessage(props: {
 }
 
 function AssistantText(props: { part: SessionMessageAssistantText; syntax: SyntaxStyle }) {
-  const { theme } = useTheme()
   return (
     <Show when={props.part.text.trim()}>
       <box paddingLeft={3} marginTop={1} flexShrink={0}>
-        <code
-          filetype="markdown"
-          drawUnstyledText={false}
-          streaming={true}
-          syntaxStyle={props.syntax}
-          content={props.part.text.trim()}
-          conceal={true}
-          fg={theme.text}
-        />
+        <RichBlockText text={props.part.text.trim()} syntax={props.syntax} streaming={true} conceal={true} />
       </box>
     </Show>
   )

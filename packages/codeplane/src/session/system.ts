@@ -11,25 +11,28 @@ import PROMPT_KIMI from "./prompt/kimi.txt"
 
 import PROMPT_CODEX from "./prompt/codex.txt"
 import PROMPT_TRINITY from "./prompt/trinity.txt"
+import PROMPT_RICH_BLOCKS from "./prompt/rich-blocks.txt"
 import type { Provider } from "@/provider"
 import type { Agent } from "@/agent/agent"
 import { Permission } from "@/permission"
 import { Skill } from "@/skill"
 
-export function provider(model: Provider.Model) {
+function pickBase(model: Provider.Model): string {
   if (model.api.id.includes("gpt-4") || model.api.id.includes("o1") || model.api.id.includes("o3"))
-    return [PROMPT_BEAST]
+    return PROMPT_BEAST
   if (model.api.id.includes("gpt")) {
-    if (model.api.id.includes("codex")) {
-      return [PROMPT_CODEX]
-    }
-    return [PROMPT_GPT]
+    if (model.api.id.includes("codex")) return PROMPT_CODEX
+    return PROMPT_GPT
   }
-  if (model.api.id.includes("gemini-")) return [PROMPT_GEMINI]
-  if (model.api.id.includes("claude")) return [PROMPT_ANTHROPIC]
-  if (model.api.id.toLowerCase().includes("trinity")) return [PROMPT_TRINITY]
-  if (model.api.id.toLowerCase().includes("kimi")) return [PROMPT_KIMI]
-  return [PROMPT_DEFAULT]
+  if (model.api.id.includes("gemini-")) return PROMPT_GEMINI
+  if (model.api.id.includes("claude")) return PROMPT_ANTHROPIC
+  if (model.api.id.toLowerCase().includes("trinity")) return PROMPT_TRINITY
+  if (model.api.id.toLowerCase().includes("kimi")) return PROMPT_KIMI
+  return PROMPT_DEFAULT
+}
+
+export function provider(model: Provider.Model) {
+  return [pickBase(model), PROMPT_RICH_BLOCKS]
 }
 
 export interface Interface {
