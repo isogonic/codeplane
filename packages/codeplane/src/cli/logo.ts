@@ -1,21 +1,16 @@
-// Codeplane wordmark / brand chevron, rendered as block art for the CLI
-// banner and the TUI splash. Mirrors the desktop SVG icon (a single right-
-// pointing wing chevron with an inner notch — the "code" + "plane" mark).
-//
-// Each glyph occupies 5 rows so it lines up with the existing layout in
-// cli/ui.ts and tui/component/logo.tsx. The animation in logo.tsx walks
-// the connected component formed by lit cells (anything that isn't a
-// space / "_" / "~" / ",") so we use full + half blocks (█ ▀ ▄) to keep
-// the silhouette as one continuous shape with diagonal edges instead of
-// the boxy stair-step the previous all-█ design produced.
+// Codeplane brand mark, rendered as block art for the CLI banner and the
+// TUI splash. Right-pointing chevron / wing silhouette — top-bottom
+// symmetric across the middle row (was: notched on the lower half, which
+// broke the symmetry and read as a glitch rather than a logo).
 export const logo = {
-  left: ["█▄        ", "████▄     ", "███████▄  ", "████▀     ", "█▀        "],
-  right: ["█▄        ", "████▄     ", "███████▄  ", "████▀     ", "█▀        "],
+  left: ["██        ", "██████    ", "██████████", "██████    ", "██        "],
+  right: ["", "", "", "", ""],
 }
 
-// Smaller variant used for the TUI go-mark (status / breadcrumb style).
+// Smaller variant used for the TUI go-mark / bg-pulse origin. Same
+// symmetric chevron, sized down by one column.
 export const go = {
-  left: ["█▄      ", "███▄    ", "█████▄  ", "███▀    ", "█▀      "],
+  left: ["██      ", "█████   ", "████████", "█████   ", "██      "],
   right: ["", "", "", "", ""],
 }
 
