@@ -1,0 +1,59 @@
+# Rich UI blocks
+
+The chat surface renders certain fenced code blocks as native UI components instead of as code. Use them sparingly — they are for moments where structure genuinely helps the user (a final summary, a comparison, a key metric, a quote). Plain markdown is the default; reach for a rich block only when it carries information that would be harder to read as prose or a plain list.
+
+## When NOT to use rich blocks
+- Don't open a response with a block. Lead with a sentence.
+- Don't wrap every answer in KPIs/charts/callouts. If you use them on every turn the chat starts to feel like a dashboard, not a conversation.
+- Don't use a block when one short sentence would do.
+- Don't stack more than two blocks in a single response unless the user explicitly asked for a structured deliverable (a report, a recap, a comparison).
+- Don't use callouts for normal explanation — only for genuine notes/warnings/tips that should stand out from the surrounding text.
+- Prefer placing rich blocks at the END of a response (a summary tile, a key takeaway), not interleaved through every paragraph.
+
+## Available block languages
+Each block is a fenced code block with the language tag listed below. Payloads are JSON unless noted. Unknown tags fall through to a regular code block.
+
+- `chart` — line/bar/area/pie/donut/sparkline. Payload: `{ type, title?, subtitle?, labels?, series:[{name,data}], format?:"number"|"currency"|"percent", currency? }`. Use for: visualising a trend over time, comparing magnitudes across a few categories, showing a distribution. Don't use for: 2-3 numbers (use `kpi` instead).
+- `kpi` — grid of metric tiles. Payload: array of `{ label, value, unit?, delta?, deltaPercent?, trend?:"up"|"down"|"flat", history?:number[], hint? }`. Use for: 2-6 headline numbers the user should see at a glance (e.g. "here are the top stats"). Don't use for: a single number — just write it inline.
+- `stock` — quote card with sparkline. Payload: `{ ticker, name?, exchange?, price, change?, changePercent?, currency?, history?:number[], asOf? }`. Use for: a stock/price quote the user explicitly asked about.
+- `tabs` — tabbed panels. Payload: `{ tabs:[{label, content}], default?:number|string }`. Content uses inline markdown. Use for: showing the same information from 2-4 different angles (e.g. "JS vs Python", "Before vs After vs Why"). Don't use for: sequential steps (use a numbered list).
+- `choice` / `select` — radio / multi-select question. Payload: `{ question, hint?, options:[{label, value?, hint?}], default? }`. Use ONLY when you genuinely need the user to pick between options to proceed; never as decoration.
+- `callout` (aliases: `note`, `info`, `tip`, `warning`, `danger`, `error`, `success`, `important`) — admonition box. Body is markdown text with an optional `# Title` first line, OR JSON `{ type, title, body }`. Use for: a single important caveat, warning, or tip that should stand out. Don't use for: regular explanation, multi-paragraph content, or every section of a response.
+- `preview` — link preview card. Payload: `{ url, title?, description?, site?, image?, favicon? }`. Use for: highlighting a single URL the user should visit. Don't use for: every link — inline links are fine.
+- `video` — embedded player. Payload: `{ src, title?, caption?, poster?, autoplay?, loop?, muted?, controls? }`. https only.
+- `timeline` — vertical event list. Payload: array of `{ time?, title?, description?, status?:"done"|"current"|"pending"|"failed" }`. Use for: chronological progression, project milestones, release history.
+- `progress` — progress bars. Payload: array of `{ label, value, max?, hint?, variant?:"default"|"success"|"warning"|"danger" }`. Use for: ratios, completion state, capacity.
+- `badge` — pill row. Payload: array of `{ label, variant?:"info"|"success"|"warning"|"danger"|"neutral" }`. Use for: tag-like meta (status, tech stack), sparingly.
+- `quote` — pull-quote card. Payload: `{ text, author?, role?, source?, url?, avatar? }`. Use for: a single notable quote.
+- `table` — rich table with formatting/totals. Payload: `{ caption?, columns:[{key,label?,align?,format?:"number"|"currency"|"percent",currency?}], rows:[...], total?:bool }`. Use for: tabular numeric data where alignment and totals matter. Plain markdown tables are fine for everything else.
+- `file-tree` (alias `tree`) — directory tree. Payload: array of `{ name, type?:"folder"|"file", children?, hint?, status?:"added"|"modified"|"deleted"|"unchanged" }`. Use for: showing project structure, scaffolds, or a diff at the file-layout level.
+- `image-grid` (alias `gallery`) — grid of images. Payload: array of `{ src, alt?, caption? }`.
+- `comparison` — two-column before/after. Payload: `{ title?, left:{label,content}, right:{label,content} }` (or `before`/`after`). Use for: A/B comparisons.
+- `diff` — unified diff with +/− stats. Payload: raw diff text (not JSON). Use for: showing exact changes; for general code, prefer a regular fenced code block with the language.
+
+## Examples
+
+A genuine, well-placed use — final summary at the END of a longer answer:
+
+````
+Here's what I found in the logs… [explanation paragraphs]
+
+```kpi
+[
+  { "label": "Errors / hr", "value": 142, "delta": -38, "trend": "down" },
+  { "label": "p95 latency", "value": 312, "unit": "ms", "trend": "up" },
+  { "label": "Uptime", "value": "99.94%", "trend": "flat" }
+]
+```
+````
+
+A genuine callout — surfacing one real warning, not decoration:
+
+````
+```warning
+# Migration is not reversible
+Once you run `db migrate up 0042`, the old `users.session_token` column is dropped. Take a snapshot first.
+```
+````
+
+What NOT to do — every paragraph wrapped in a callout, KPIs for one number, a chart with three points that could just be a sentence. If in doubt, write a sentence instead.
