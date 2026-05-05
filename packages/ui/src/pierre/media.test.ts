@@ -7,6 +7,7 @@ import {
   dataUrlFromMediaValue,
   svgTextFromValue,
   hasMediaValue,
+  textFromValue,
 } from "./media"
 
 describe("normalizeMimeType", () => {
@@ -87,8 +88,64 @@ describe("mediaKindFromPath", () => {
     expect(mediaKindFromPath("audio.flac")).toBe("audio")
   })
 
-  test("unknown returns undefined", () => {
-    expect(mediaKindFromPath("doc.pdf")).toBeUndefined()
+  test("pdf is pdf", () => {
+    expect(mediaKindFromPath("doc.pdf")).toBe("pdf")
+  })
+
+  test("mp4 is video", () => {
+    expect(mediaKindFromPath("clip.mp4")).toBe("video")
+  })
+
+  test("webm is video", () => {
+    expect(mediaKindFromPath("clip.webm")).toBe("video")
+  })
+
+  test("mov is video", () => {
+    expect(mediaKindFromPath("clip.mov")).toBe("video")
+  })
+
+  test("csv is table", () => {
+    expect(mediaKindFromPath("data.csv")).toBe("table")
+  })
+
+  test("tsv is table", () => {
+    expect(mediaKindFromPath("data.tsv")).toBe("table")
+  })
+
+  test("md is markdown", () => {
+    expect(mediaKindFromPath("README.md")).toBe("markdown")
+  })
+
+  test("mdx is markdown", () => {
+    expect(mediaKindFromPath("docs.mdx")).toBe("markdown")
+  })
+
+  test("html is html", () => {
+    expect(mediaKindFromPath("page.html")).toBe("html")
+  })
+
+  test("htm is html", () => {
+    expect(mediaKindFromPath("page.htm")).toBe("html")
+  })
+
+  test("json is json", () => {
+    expect(mediaKindFromPath("config.json")).toBe("json")
+  })
+
+  test("jsonc is json", () => {
+    expect(mediaKindFromPath("tsconfig.jsonc")).toBe("json")
+  })
+
+  test("apng is image", () => {
+    expect(mediaKindFromPath("a.apng")).toBe("image")
+  })
+
+  test("jxl is image", () => {
+    expect(mediaKindFromPath("a.jxl")).toBe("image")
+  })
+
+  test("unknown extension returns undefined", () => {
+    expect(mediaKindFromPath("doc.xyz")).toBeUndefined()
   })
 
   test("undefined input returns undefined", () => {
@@ -284,5 +341,73 @@ describe("hasMediaValue", () => {
 
   test("returns false for non-string content type", () => {
     expect(hasMediaValue({ content: 42 })).toBe(false)
+  })
+})
+
+describe("dataUrlFromMediaValue (video & pdf)", () => {
+  test("converts base64 video record", () => {
+    const result = dataUrlFromMediaValue(
+      { content: "abc", mimeType: "video/mp4", encoding: "base64" },
+      "video",
+    )
+    expect(result).toBe("data:video/mp4;base64,abc")
+  })
+
+  test("rejects non-video mime for video kind", () => {
+    expect(
+      dataUrlFromMediaValue({ content: "x", mimeType: "audio/mpeg", encoding: "base64" }, "video"),
+    ).toBeUndefined()
+  })
+
+  test("normalizes video/quicktime in data url", () => {
+    const result = dataUrlFromMediaValue("data:video/quicktime;base64,abc", "video")
+    expect(result).toContain("video/mp4")
+  })
+
+  test("converts base64 pdf record", () => {
+    const result = dataUrlFromMediaValue(
+      { content: "abc", mimeType: "application/pdf", encoding: "base64" },
+      "pdf",
+    )
+    expect(result).toBe("data:application/pdf;base64,abc")
+  })
+
+  test("rejects non-pdf mime for pdf kind", () => {
+    expect(
+      dataUrlFromMediaValue({ content: "x", mimeType: "image/png", encoding: "base64" }, "pdf"),
+    ).toBeUndefined()
+  })
+
+  test("rejects pdf without base64", () => {
+    expect(
+      dataUrlFromMediaValue({ content: "x", mimeType: "application/pdf" }, "pdf"),
+    ).toBeUndefined()
+  })
+})
+
+describe("textFromValue", () => {
+  test("returns string input as-is", () => {
+    expect(textFromValue("hello")).toBe("hello")
+  })
+
+  test("returns text record content", () => {
+    expect(textFromValue({ type: "text", content: "abc" })).toBe("abc")
+  })
+
+  test("decodes base64 text content", () => {
+    const encoded = btoa("hello")
+    expect(textFromValue({ type: "text", content: encoded, encoding: "base64" })).toBe("hello")
+  })
+
+  test("returns undefined for binary content", () => {
+    expect(textFromValue({ type: "binary", content: "abc" })).toBeUndefined()
+  })
+
+  test("returns undefined for null", () => {
+    expect(textFromValue(null)).toBeUndefined()
+  })
+
+  test("returns undefined for non-string content", () => {
+    expect(textFromValue({ content: 42 })).toBeUndefined()
   })
 })
