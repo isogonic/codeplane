@@ -30,7 +30,12 @@ function homeify(p: string): string {
   return p.startsWith(home) ? "~" + p.slice(home.length) : p
 }
 
-type Step = "instance" | "create-local" | "create-remote" | "directory"
+type Step =
+  | "instance"
+  | "create-local"
+  | "create-remote"
+  | "edit-remote"
+  | "directory"
 
 // ---------- Step 1: instance picker ----------
 
@@ -41,6 +46,7 @@ function InstancePicker(props: {
   onPick: (i: number) => void
   onCreateLocal: () => void
   onCreateRemote: () => void
+  onEdit: (i: number) => void
   onDelete: (i: number) => void
   onUpdate: (i: number) => void
   onQuit: () => void
@@ -63,6 +69,7 @@ function InstancePicker(props: {
     // `l` stays as a pure local alias.
     else if (evt.name === "n" || evt.name === "l") props.onCreateLocal()
     else if (evt.name === "r") props.onCreateRemote()
+    else if (evt.name === "e") props.onEdit(props.selected)
     else if (evt.name === "d" || evt.name === "delete") props.onDelete(props.selected)
     else if (evt.name === "u") props.onUpdate(props.selected)
     else if (evt.name === "q" || (evt.ctrl && evt.name === "c")) props.onQuit()
@@ -154,6 +161,7 @@ function InstancePicker(props: {
       <StatusBar
         hints={[
           { keys: "↵", label: "open" },
+          { keys: "e", label: "edit" },
           { keys: "u", label: "update" },
           { keys: "n", label: "new local" },
           { keys: "r", label: "new remote" },
@@ -432,11 +440,21 @@ export async function runBootWizard(input: BootWizardInput): Promise<BootSelecti
   // Reused by both create-local and create-remote `onDone` callbacks so
   // the post-creation behavior (append to picker, select the new entry,
   // navigate back) is identical regardless of which form the user came
-  // from.
+  // from. Also handles the edit case: if the saved id matches an entry
+  // already in the list, replace it in place instead of appending so
+  // the picker doesn't grow a duplicate row.
   const acceptNewInstance = (instance: SavedInstance) => {
-    const next = [...instances(), instance]
-    setInstances(next)
-    setSelectedIdx(next.length - 1)
+    const list = instances()
+    const existingIdx = list.findIndex((i) => i.id === instance.id)
+    if (existingIdx >= 0) {
+      const next = list.map((entry, idx) => (idx === existingIdx ? instance : entry))
+      setInstances(next)
+      setSelectedIdx(existingIdx)
+    } else {
+      const next = [...list, instance]
+      setInstances(next)
+      setSelectedIdx(next.length - 1)
+    }
     setStep("instance")
   }
 
@@ -449,7 +467,7 @@ export async function runBootWizard(input: BootWizardInput): Promise<BootSelecti
             when={step() === "create-local"}
             fallback={
               <Show
-                when={step() === "create-remote"}
+                when={step() === "create-remote" || step() === "edit-remote"}
                 fallback={
                   <DirectoryPicker
                     instance={instances()[selectedIdx()] as SavedInstance}
@@ -464,7 +482,14 @@ export async function runBootWizard(input: BootWizardInput): Promise<BootSelecti
               >
                 <RemoteInstanceForm
                   service={input.service}
-                  takenIds={new Set(instances().map((i) => i.id))}
+                  takenIds={
+                    new Set(
+                      instances()
+                        .filter((i) => i.id !== instances()[selectedIdx()]?.id || step() !== "edit-remote")
+                        .map((i) => i.id),
+                    )
+                  }
+                  existing={step() === "edit-remote" ? instances()[selectedIdx()] : undefined}
                   onDone={(result) => {
                     if ("cancel" in result) {
                       setStep("instance")
@@ -529,6 +554,25 @@ export async function runBootWizard(input: BootWizardInput): Promise<BootSelecti
           }}
           onCreateLocal={() => setStep("create-local")}
           onCreateRemote={() => setStep("create-remote")}
+          onEdit={(idx) => {
+            const target = instances()[idx]
+            if (!target) return
+            const isLocal = target.url.startsWith("local://") || !!target.local
+            if (isLocal) {
+              // Editing a local instance's binary version is what the
+              // existing `u` (update) action handles; label edits would
+              // need a parallel local-edit form. Surface a notice so
+              // the keystroke isn't silently swallowed.
+              setUpdateNotice({
+                variant: "info",
+                message: `Local instance "${target.label ?? target.id}" — press u to update its binary, or d to remove and re-create.`,
+              })
+              return
+            }
+            setSelectedIdx(idx)
+            setUpdateNotice(undefined)
+            setStep("edit-remote")
+          }}
           onDelete={async (idx) => {
             const target = instances()[idx]
             if (!target) return
