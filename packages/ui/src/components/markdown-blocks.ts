@@ -315,7 +315,14 @@ function renderChart(payload: unknown): string {
   const w = 640
   const height = clamp(safeNum(cfg.height, 220), 100, 480)
   const showGrid = cfg.showGrid !== false
-  const showLegend = cfg.showLegend !== false && (series.length > 1 || !!series[0]?.name)
+  // Pie / donut want a per-SLICE legend (one entry per category) even when
+  // there is only a single series.  Other chart types use a per-SERIES
+  // legend and only render it when there is something to disambiguate
+  // (multiple series, or a single named series).
+  const isPie = type === "pie" || type === "donut"
+  const showLegend =
+    cfg.showLegend !== false &&
+    (isPie ? series[0]!.data.some((v) => safeNum(v) > 0) : series.length > 1 || !!series[0]?.name)
   const formatter = makeFormatter(cfg.format, cfg.currency)
 
   let svgInner = ""
@@ -339,7 +346,7 @@ function renderChart(payload: unknown): string {
 
   const titleHtml = cfg.title ? `<div data-slot="chart-title">${escape(cfg.title)}</div>` : ""
   const subtitleHtml = cfg.subtitle ? `<div data-slot="chart-subtitle">${escape(cfg.subtitle)}</div>` : ""
-  const legendHtml = showLegend ? renderLegend(series) : ""
+  const legendHtml = showLegend ? renderLegend(type, series, labels, formatter) : ""
 
   return [
     `<div data-component="markdown-block" data-block-type="chart" data-chart-type="${escape(type)}">`,
@@ -638,13 +645,45 @@ function renderSparklineBody(data: number[], w: number, h: number): string {
   return `<polyline points="${pts}" fill="none" stroke="${trend}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`
 }
 
-function renderLegend(series: ChartSeries[]): string {
+function renderLegend(
+  type: ChartType,
+  series: ChartSeries[],
+  labels: string[],
+  fmt: (v: number) => string,
+): string {
   if (series.length === 0) return ""
+  // Pie / donut: one legend entry per SLICE (categorical), with the slice's
+  // share so the legend doubles as a quick read-out.  Empty / zero slices
+  // are skipped so the legend doesn't list categories that aren't drawn.
+  if (type === "pie" || type === "donut") {
+    const data = series[0]!.data
+    const total = data.reduce((sum, v) => sum + Math.max(0, safeNum(v)), 0)
+    const items = data
+      .map((raw, i) => {
+        const v = Math.max(0, safeNum(raw))
+        if (v <= 0) return ""
+        const color = palette[i % palette.length]
+        const label = labels[i] ?? `Slice ${i + 1}`
+        const pct = total > 0 ? (v / total) * 100 : 0
+        const isPercent = total >= 99.5 && total <= 100.5
+        const valueText = isPercent ? `${pct.toFixed(1)}%` : `${fmt(v)} (${pct.toFixed(1)}%)`
+        return [
+          `<li>`,
+          `<span data-slot="legend-swatch" style="background:${escape(color)}"></span>`,
+          `<span data-slot="legend-label">${escape(label)}</span>`,
+          `<span data-slot="legend-value">${escape(valueText)}</span>`,
+          `</li>`,
+        ].join("")
+      })
+      .join("")
+    return `<ul data-slot="chart-legend" data-legend-variant="categorical">${items}</ul>`
+  }
+  // Line / bar / area: one entry per SERIES.
   const items = series
     .map((s, i) => {
       const color = s.color || palette[i % palette.length]
       const name = s.name ?? `Series ${i + 1}`
-      return `<li><span data-slot="legend-swatch" style="background:${escape(color)}"></span>${escape(name)}</li>`
+      return `<li><span data-slot="legend-swatch" style="background:${escape(color)}"></span><span data-slot="legend-label">${escape(name)}</span></li>`
     })
     .join("")
   return `<ul data-slot="chart-legend">${items}</ul>`

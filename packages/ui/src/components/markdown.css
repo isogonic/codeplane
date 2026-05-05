@@ -456,10 +456,10 @@
     [data-slot="chart-legend"] {
       list-style: none;
       padding: 0;
-      margin: 8px 0 0;
+      margin: 12px 0 0;
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: 6px 16px;
       font-size: 11px;
       color: var(--text-weak);
     }
@@ -476,6 +476,30 @@
       height: 10px;
       border-radius: 2px;
       display: inline-block;
+      flex-shrink: 0;
+    }
+
+    [data-slot="legend-label"] {
+      color: var(--text-base);
+    }
+
+    [data-slot="legend-value"] {
+      color: var(--text-weak);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Pie / donut category legend — denser grid that fits 6-12 slices. */
+    [data-slot="chart-legend"][data-legend-variant="categorical"] {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 6px 14px;
+    }
+
+    [data-slot="chart-legend"][data-legend-variant="categorical"] li {
+      display: grid;
+      grid-template-columns: 10px 1fr auto;
+      gap: 6px;
+      align-items: center;
     }
   }
 
