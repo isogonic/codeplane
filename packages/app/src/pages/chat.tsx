@@ -372,6 +372,78 @@ function coerceMermaidLanguage(text: string): string {
 }
 
 /**
+ * Tool ids whose `output` is a fenced rich-block string the markdown
+ * renderer already knows how to draw. When one of these tools comes back
+ * we render the chart / kpi / table / … inline in the assistant turn
+ * instead of stopping at a "Used chart" status row — that was the bug
+ * the user reported: the model called `chart` for a sine curve, the row
+ * appeared, and the actual visualisation never showed.
+ *
+ * Source of truth — keep this list in lock-step with:
+ *   - `packages/codeplane/src/tool/registry.ts`     (tool ids registered)
+ *   - `packages/codeplane/src/tool/rich-blocks.ts`  (defineBlock callers)
+ *   - `packages/codeplane/src/tool/chart.ts`        (`chart` tool)
+ *   - `packages/ui/src/components/markdown-blocks.ts` (`isMarkdownBlockLang`)
+ *
+ * `mermaid` / `plot` / `graph` are NOT in this set because they aren't
+ * tool ids — they're fenced-block langs the model emits inline in prose.
+ */
+const RICH_BLOCK_TOOLS = new Set<string>([
+  "chart",
+  "kpi",
+  "callout",
+  "timeline",
+  "progress",
+  "badge",
+  "quote",
+  "preview",
+  "stock",
+  "tabs",
+  "choice",
+  "select",
+  "table",
+  "file-tree",
+  "image-grid",
+  "comparison",
+  "video",
+  "diff",
+])
+
+/**
+ * Some rich-block tools emit a fenced block with a slightly different
+ * lang than the tool id (because the markdown renderer's switch table
+ * groups several langs onto one renderer). The tool's own `output`
+ * already carries the right fence, but we use this map to produce a
+ * compact pill label for the inline chip when a `metadata` hint isn't
+ * available.
+ */
+const RICH_BLOCK_LABEL: Record<string, string> = {
+  "file-tree": "tree",
+  "image-grid": "gallery",
+}
+
+/**
+ * Coerce a tool's `output` (whatever shape the runtime sent) into a
+ * markdown string the shared `<Markdown>` can parse. Most rich-block
+ * tools return their fenced block as a plain string — we just hand it
+ * back. Some send the full part as `{ output, metadata }`, so we tolerate
+ * an object payload by reaching for `output`. Anything else returns ""
+ * which falls back to the compact `<ToolCallCard>` so the user still
+ * sees that the tool ran.
+ */
+function richBlockOutputAsMarkdown(output: unknown): string {
+  if (typeof output === "string") return output
+  if (output && typeof output === "object") {
+    const inner = (output as { output?: unknown }).output
+    if (typeof inner === "string") return inner
+    // Tool runner sometimes wraps text in `{ text: "..." }`.
+    const text = (output as { text?: unknown }).text
+    if (typeof text === "string") return text
+  }
+  return ""
+}
+
+/**
  * Parse `<memory title="…">…</memory>` blocks out of an assistant response.
  * Returns the entries we should add and the cleaned text (with the blocks
  * removed) so the response itself doesn't show the raw directive.
@@ -2340,6 +2412,14 @@ function AssistantMessage(props: {
                     if (c.tool === "write" || c.tool === "edit" || c.tool === "read") {
                       return <FileArtifactCard tool={c.tool} state={c.state} />
                     }
+                    // Rich-block tools (chart, kpi, table, callout, …) emit a
+                    // fenced block as `state.output`; pump it through the
+                    // shared <Markdown> so the user sees the actual
+                    // visualisation inline. Falls back to the compact tool
+                    // card while the call is still running.
+                    if (RICH_BLOCK_TOOLS.has(c.tool)) {
+                      return <RichBlockToolOutput tool={c.tool} state={c.state} />
+                    }
                     return <ToolCallCard tool={c.tool} state={c.state} />
                   })()}
                 </Match>
@@ -2360,6 +2440,49 @@ function AssistantMessage(props: {
         </Show>
       </Show>
     </div>
+  )
+}
+
+/**
+ * Render a rich-block tool's output (chart, kpi, callout, table, …)
+ * inline in the assistant turn. The tool's `state.output` is already a
+ * fenced ` ```<lang>\n<json>\n``` ` string, so we hand it straight to the
+ * shared `<Markdown>` component and the existing `markdown-blocks.ts`
+ * renderer draws the widget — the same path a fenced block in prose
+ * would have hit. A small "ran chart" / "ran kpi" pill above the
+ * visualisation tells the user it came from a tool call (without
+ * stealing focus from the content like the old collapsed status row
+ * did). Errors and the running state still fall back to the compact
+ * `<ToolCallCard>`.
+ */
+function RichBlockToolOutput(props: {
+  tool: string
+  state?: { status?: string; input?: unknown; output?: unknown; error?: string; title?: string }
+}) {
+  const language = useLanguage()
+  const status = () => props.state?.status ?? "running"
+  const markdown = () => richBlockOutputAsMarkdown(props.state?.output)
+  const label = () => RICH_BLOCK_LABEL[props.tool] ?? props.tool
+  return (
+    <Switch fallback={<ToolCallCard tool={props.tool} state={props.state} />}>
+      <Match when={status() === "running" || status() === "pending"}>
+        <div class="flex items-center gap-2 text-12-regular text-text-weak px-3 py-2 bg-surface-base border border-border-weak-base rounded-md w-full">
+          <Spinner class="size-3.5 shrink-0" />
+          <span class="truncate">{language.t("chat.tool.using", { tool: label() })}</span>
+        </div>
+      </Match>
+      <Match when={!props.state?.error && markdown()}>
+        <div class="w-full max-w-full flex flex-col gap-1.5">
+          <div class="flex items-center gap-1.5 text-11-regular text-text-weak">
+            <Icon name="check-small" size="small" class="text-icon-base" />
+            <span>{language.t("chat.tool.using", { tool: label() })}</span>
+          </div>
+          <div class="text-14-regular text-text-strong max-w-full">
+            <Markdown text={markdown()} />
+          </div>
+        </div>
+      </Match>
+    </Switch>
   )
 }
 
