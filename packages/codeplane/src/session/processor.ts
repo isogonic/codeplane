@@ -440,8 +440,15 @@ export const layer: Layer.Layer<
           case "error":
             throw value.error
 
-          case "start-step":
+          case "start-step": {
             if (!ctx.snapshot) ctx.snapshot = yield* snapshot.track()
+            // The AI SDK fires `start-step` on receipt of the FIRST CHUNK
+            // from the model — i.e. just past TTFT. Stamping it here pairs
+            // with `finish-step.time.created` to give a per-step streaming
+            // wall time that matches the provider's TPS denominator
+            // (excludes TTFT, queue, and the surrounding tool-execution
+            // wall time between steps).
+            const stepStartedAt = Date.now()
             SyncEvent.run(SessionEvent.Step.Started.Sync, {
               sessionID: ctx.sessionID,
               model: {
@@ -449,7 +456,7 @@ export const layer: Layer.Layer<
                 providerID: ctx.model.providerID,
                 variant: input.assistantMessage.variant,
               },
-              timestamp: DateTime.makeUnsafe(Date.now()),
+              timestamp: DateTime.makeUnsafe(stepStartedAt),
             })
             yield* session.updatePart({
               id: PartID.ascending(),
@@ -457,8 +464,10 @@ export const layer: Layer.Layer<
               sessionID: ctx.sessionID,
               snapshot: ctx.snapshot,
               type: "step-start",
+              time: { created: stepStartedAt },
             })
             return
+          }
 
           case "finish-step": {
             const usage = Session.getUsage({
@@ -466,12 +475,16 @@ export const layer: Layer.Layer<
               usage: value.usage,
               metadata: value.providerMetadata,
             })
+            // Capture the moment the AI SDK declared the step done (last
+            // chunk in). Used as the closing bracket for per-step decode
+            // duration in session-context-metrics.
+            const stepFinishedAt = Date.now()
             SyncEvent.run(SessionEvent.Step.Ended.Sync, {
               sessionID: ctx.sessionID,
               reason: value.finishReason,
               cost: usage.cost,
               tokens: usage.tokens,
-              timestamp: DateTime.makeUnsafe(Date.now()),
+              timestamp: DateTime.makeUnsafe(stepFinishedAt),
             })
             ctx.assistantMessage.finish = value.finishReason
             ctx.assistantMessage.cost += usage.cost
@@ -485,6 +498,7 @@ export const layer: Layer.Layer<
               type: "step-finish",
               tokens: usage.tokens,
               cost: usage.cost,
+              time: { created: stepFinishedAt },
             })
             yield* session.updateMessage(ctx.assistantMessage)
             if (ctx.snapshot) {

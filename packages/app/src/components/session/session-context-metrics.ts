@@ -38,7 +38,12 @@ export type TurnSpeed = {
 }
 
 export type SpeedMetrics = {
+  // Median per-turn TPS — robust to outlier turns (a single 0.2-second
+  // 800-token turn used to drag the mean way up). The display label is still
+  // "Lifetime" for compatibility with the existing meter UI.
   lifetime: number | null
+  // Token-weighted average over the last RECENT_WINDOW turns. Weighting by
+  // tokens means a long fast turn counts more than a short slow one.
   recent: number | null
   peak: number | null
   current: number | null
@@ -65,28 +70,41 @@ const tokenTotal = (msg: AssistantMessage) => {
   return msg.tokens.input + msg.tokens.output + msg.tokens.reasoning + msg.tokens.cache.read + msg.tokens.cache.write
 }
 
-const generatedTokenTotal = (msg: AssistantMessage) => {
-  return msg.tokens.output + msg.tokens.reasoning
+// Synthetic assistant turns (compaction summary, title generation, the
+// auto-compaction "summary" pass) inflate the speed stats with model output
+// the user didn't actually request. Skip them.
+const isSyntheticAssistant = (msg: AssistantMessage): boolean => {
+  if (msg.summary === true) return true
+  // The auto-compaction agent runs as a regular assistant turn but with a
+  // dedicated agent name. Filter it out so it doesn't show up in the meter.
+  return msg.agent === "compactor" || msg.agent === "summarizer" || msg.agent === "summary"
 }
 
 const completedAssistantWithDuration = (msg: Message): msg is CompletedAssistantMessage => {
-  return msg.role === "assistant" && typeof msg.time.completed === "number" && msg.time.completed > msg.time.created
+  if (msg.role !== "assistant") return false
+  if (typeof msg.time.completed !== "number") return false
+  if (msg.time.completed <= msg.time.created) return false
+  return !isSyntheticAssistant(msg as AssistantMessage)
 }
 
-// Sum of (text + reasoning) part durations for one assistant turn — i.e.
-// the wall time the model was actually emitting tokens, excluding tool
-// execution, queue/scheduler overhead, RTT, and TTFT-bucket time. This
-// is the denominator that matches what providers report on their
-// dashboards and what Bedrock / Anthropic / OpenAI usage telemetry
-// shows. Returns undefined when no part has both `start` and `end`
-// timestamps (older sessions, or a turn that was cut short before any
-// text/reasoning streaming finished); the caller falls back to the
-// whole-turn duration in that case so old data still produces *some*
-// number.
-const generationMs = (parts: Part[] | undefined): number | undefined => {
-  if (!parts || parts.length === 0) return undefined
+// One generation step inside an assistant turn. The AI SDK splits a turn into
+// one or more "steps" — each step is a single round-trip to the model that
+// streams text/reasoning and may end with tool calls. Tokens come from
+// `step-finish.tokens`; duration comes from `step-finish.time.created -
+// step-start.time.created` whenever available (this matches AI SDK's
+// `msToFinish - msToFirstChunk` and so the provider's reported throughput).
+type StepSlice = {
+  tokens: number
+  ms: number
+}
+
+// Sum the wall-clock time the model was actively emitting during a step,
+// using ONLY text/reasoning per-part timestamps. Fallback path for sessions
+// recorded before step-start/step-finish gained their `time.created` stamps.
+// Excludes tool execution / queue / TTFT — same as the streaming-only
+// duration providers report.
+const sumPartGenerationMs = (parts: Part[]): number => {
   let sum = 0
-  let counted = 0
   for (const part of parts) {
     if (part.type !== "text" && part.type !== "reasoning") continue
     const time = part.time
@@ -96,10 +114,97 @@ const generationMs = (parts: Part[] | undefined): number | undefined => {
     if (start === undefined || end === undefined) continue
     if (end <= start) continue
     sum += end - start
-    counted++
   }
-  if (counted === 0) return undefined
   return sum
+}
+
+// Walk a turn's parts in arrival order and bucket them into steps. Each
+// `step-start` opens a bucket and stamps the step start time; each
+// `step-finish` closes the bucket, stamps the step end time, and carries the
+// per-step usage tokens. Anything before the first `step-start` (older event
+// shapes) goes into an implicit leading step so we don't drop those turns.
+const sliceBySteps = (parts: Part[] | undefined): StepSlice[] => {
+  if (!parts || parts.length === 0) return []
+  const slices: StepSlice[] = []
+  let current: {
+    parts: Part[]
+    tokens: number | null
+    startedAt: number | undefined
+    endedAt: number | undefined
+  } = { parts: [], tokens: null, startedAt: undefined, endedAt: undefined }
+
+  const flush = () => {
+    // Prefer step-boundary timestamps (start-step → finish-step). They cover
+    // text + reasoning + tool-input decode time inside the step — i.e. the
+    // exact window the AI SDK clocks for `msToFinish - msToFirstChunk`. Fall
+    // back to summing per-part text/reasoning durations only when one of the
+    // boundary timestamps is missing (older sessions).
+    const boundaryMs =
+      current.startedAt !== undefined && current.endedAt !== undefined && current.endedAt > current.startedAt
+        ? current.endedAt - current.startedAt
+        : 0
+    const ms = boundaryMs > 0 ? boundaryMs : sumPartGenerationMs(current.parts)
+    const tokens = current.tokens ?? 0
+    if (ms > 0 || tokens > 0) slices.push({ ms, tokens })
+    current = { parts: [], tokens: null, startedAt: undefined, endedAt: undefined }
+  }
+
+  for (const part of parts) {
+    if (part.type === "step-start") {
+      // A new step-start closes whatever was in flight (rare — most providers
+      // only emit step-start when a step actually begins, so the previous
+      // step-finish has usually already flushed). Guard anyway.
+      if (current.parts.length > 0 || current.tokens !== null || current.startedAt !== undefined) flush()
+      current.startedAt = typeof part.time?.created === "number" ? part.time.created : undefined
+      continue
+    }
+    if (part.type === "step-finish") {
+      const t = part.tokens
+      // step.usage in the AI SDK reports the OUTPUT tokens for THAT step
+      // (text + reasoning combined) — not cumulative across the turn. The
+      // upstream `assistantMessage.tokens = usage.tokens` overwrite means the
+      // message-level totals only reflect the last step, so we MUST go to
+      // step-finish parts to recover the real per-turn output count and to
+      // keep TPS aligned with what the provider dashboards report.
+      const stepTokens = (t?.output ?? 0) + (t?.reasoning ?? 0)
+      current.tokens = (current.tokens ?? 0) + stepTokens
+      current.endedAt = typeof part.time?.created === "number" ? part.time.created : current.endedAt
+      flush()
+      continue
+    }
+    if (part.type === "text" || part.type === "reasoning") {
+      current.parts.push(part)
+    }
+  }
+  // A streaming or interrupted turn may have text/reasoning without a closing
+  // step-finish — preserve the duration so live readings still update.
+  if (current.parts.length > 0 || current.tokens !== null || current.startedAt !== undefined) flush()
+  return slices
+}
+
+// Sum tokens across step-finish parts. Falls back to msg.tokens when no
+// step-finish part is present (older data, or single-step legacy turns).
+const turnGeneratedTokens = (msg: AssistantMessage, slices: StepSlice[]): number => {
+  let sum = 0
+  let any = false
+  for (const slice of slices) {
+    if (slice.tokens > 0) {
+      sum += slice.tokens
+      any = true
+    }
+  }
+  if (any) return sum
+  return msg.tokens.output + msg.tokens.reasoning
+}
+
+const turnGenerationMs = (msg: CompletedAssistantMessage, slices: StepSlice[]): number => {
+  let sum = 0
+  for (const slice of slices) sum += slice.ms
+  if (sum > 0) return sum
+  // Fallback for legacy turns without per-part timestamps. This includes tool
+  // exec time and over-reports duration (so under-reports TPS), but it's
+  // strictly better than skipping the turn entirely.
+  return msg.time.completed - msg.time.created
 }
 
 const collectTurnSpeeds = (
@@ -109,14 +214,13 @@ const collectTurnSpeeds = (
   const result: TurnSpeed[] = []
   let index = 0
   for (const msg of messages) {
-    if (!completedAssistantWithDuration(msg)) continue
-    const tokens = generatedTokenTotal(msg)
-    // Prefer the precise per-part generation time; fall back to the whole
-    // turn duration only if no parts had both start + end stamped (legacy
-    // sessions, or turns that finished without ever emitting text /
-    // reasoning).
-    const preciseMs = generationMs(partsByMessage?.[msg.id])
-    const ms = preciseMs ?? msg.time.completed - msg.time.created
+    if (!completedAssistantWithDuration(msg)) {
+      continue
+    }
+    const parts = partsByMessage?.[msg.id]
+    const slices = sliceBySteps(parts)
+    const tokens = turnGeneratedTokens(msg, slices)
+    const ms = turnGenerationMs(msg, slices)
     if (tokens < MIN_TURN_TOKENS || ms < MIN_TURN_MS) {
       index++
       continue
@@ -132,6 +236,16 @@ const collectTurnSpeeds = (
   return result
 }
 
+const median = (values: number[]): number | null => {
+  if (values.length === 0) return null
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = sorted.length >> 1
+  return sorted.length % 2 === 1 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2
+}
+
+// Token-weighted average — a fast 1000-token turn counts ~10x as much as a
+// slow 100-token turn. Better than per-turn mean which over-weights tiny
+// turns.
 const weightedAverage = (turns: TurnSpeed[]): number | null => {
   if (turns.length === 0) return null
   let tokens = 0
@@ -152,7 +266,11 @@ const buildSpeed = (
   if (turns.length === 0) {
     return { lifetime: null, recent: null, peak: null, current: null, turns }
   }
-  const lifetime = weightedAverage(turns)
+  // Median per-turn TPS — robust to a single anomalously fast or slow turn.
+  // Using the mean here let one 0.3-second cache-warm turn anchor the whole
+  // session at an unrealistic value, which is the kind of "deviates from the
+  // server" complaint that sparked this rewrite.
+  const lifetime = median(turns.map((t) => t.tps))
   const recent = weightedAverage(turns.slice(-RECENT_WINDOW))
   const peak = turns.reduce((max, turn) => (turn.tps > max ? turn.tps : max), 0)
   const current = turns[turns.length - 1]?.tps ?? null

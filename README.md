@@ -10,11 +10,11 @@
   <h1>Codeplane</h1>
 
   <p>
-    <strong>An open-source AI coding agent. One runtime, four surfaces.</strong>
+    <strong>An open-source AI coding agent. One runtime, five surfaces.</strong>
   </p>
 
   <p>
-    Bring-your-own-provider &nbsp;·&nbsp; Local or remote &nbsp;·&nbsp; Headless server &nbsp;·&nbsp; Native shell &nbsp;·&nbsp; Terminal UI &nbsp;·&nbsp; Web app
+    Bring-your-own-provider &nbsp;·&nbsp; Local or remote &nbsp;·&nbsp; Headless server &nbsp;·&nbsp; Native shell &nbsp;·&nbsp; Terminal UI &nbsp;·&nbsp; Web app &nbsp;·&nbsp; iOS / Android
   </p>
 
   <p>
@@ -29,7 +29,7 @@
     <a href="#download">Download</a> &nbsp;·&nbsp;
     <a href="#install">Install</a> &nbsp;·&nbsp;
     <a href="#quick-start">Quick start</a> &nbsp;·&nbsp;
-    <a href="#the-four-surfaces">Surfaces</a> &nbsp;·&nbsp;
+    <a href="#the-five-surfaces">Surfaces</a> &nbsp;·&nbsp;
     <a href="#capabilities">Capabilities</a> &nbsp;·&nbsp;
     <a href="#cli-reference">CLI</a> &nbsp;·&nbsp;
     <a href="#configuration">Config</a> &nbsp;·&nbsp;
@@ -42,14 +42,15 @@
 
 ## What is Codeplane?
 
-Codeplane is an open-source AI coding agent. It runs entirely on your machine (or on a server you own), connects to whatever models you choose, and exposes the same agent through four cleanly separated front-ends:
+Codeplane is an open-source AI coding agent. It runs entirely on your machine (or on a server you own), connects to whatever models you choose, and exposes the same agent through five cleanly separated front-ends:
 
 - a **Desktop app** that runs natively on macOS, Windows, and Linux,
 - a **headless server** (`codeplane serve`) that any client can connect to over HTTP,
 - a **terminal UI** (`codeplane tui`) for working in a shell,
-- and a **web app** (`codeplane web`) that opens the full product in your browser.
+- a **web app** (`codeplane web`) that opens the full product in your browser,
+- and a **mobile app** (iOS + Android, new in v28) that drives any Codeplane server from your phone — touch-optimised, with iOS Live Activities so a running session shows up on the Lock Screen.
 
-All four surfaces share a single SQLite-backed runtime and the same saved-instance registry. Add a server in one place and it shows up in the others. Each Codeplane **instance** is a single-user world with its own providers, models, MCP servers, plugins, agents, commands, skills, and `codeplane.jsonc` — completely isolated from every other instance on the same machine. Your code, your sessions, and your provider credentials never have to leave the machines you control.
+All five surfaces share a single SQLite-backed runtime and the same saved-instance registry. Add a server in one place and it shows up in the others. Each Codeplane **instance** is a single-user world with its own providers, models, MCP servers, plugins, agents, commands, skills, and `codeplane.jsonc` — completely isolated from every other instance on the same machine. Your code, your sessions, and your provider credentials never have to leave the machines you control.
 
 > Codeplane is a fork of [opencode](https://github.com/sst/opencode) and stays close to upstream for the core agent loop. It adds a polished SolidJS web app, a native Electron shell, a strict client/server architecture, scheduled cron tasks, and a single shared home folder across every surface. See [License & attribution](#license--attribution).
 
@@ -208,9 +209,9 @@ The first run prepares a one-time SQLite migration in the shared home folder, th
 
 <br />
 
-## The four surfaces
+## The five surfaces
 
-Codeplane is one runtime with four front doors. Each one connects to the same Hono-based HTTP / SSE / WebSocket server. Each running server is **scoped to one instance** — its config, plugins, agents, commands, skills, and `codeplane.jsonc` all live under `<root>/instances/<id>/`. The only thing shared across all instances is the saved-instance registry (`<root>/instances.json`) and the cached runtime-binary tarballs (`<root>/local_server/binaries/`).
+Codeplane is one runtime with five front doors. Each one connects to the same Hono-based HTTP / SSE / WebSocket server. Each running server is **scoped to one instance** — its config, plugins, agents, commands, skills, and `codeplane.jsonc` all live under `<root>/instances/<id>/`. The only thing shared across all instances is the saved-instance registry (`<root>/instances.json`) and the cached runtime-binary tarballs (`<root>/local_server/binaries/`).
 
 ```
                   ┌──────────────────────────────┐
@@ -281,6 +282,17 @@ The actual product UI: sessions, files, providers, models, agents, skills, MCP, 
 
 The Desktop renders this same web app inside Electron; `codeplane web` opens it in your real browser.
 
+### Mobile (new in v28)
+
+A [Capacitor](https://capacitorjs.com)-based iOS + Android shell that connects to any Codeplane server you've saved and renders the same SolidJS web UI inside a `WKWebView` / `WebView`, with native polish for touch:
+
+- **Per-instance keychain auth** — Basic Auth headers and CF-Access tokens persist in iOS Secure Enclave / Android Keystore.
+- **iOS Live Activities** — opt a session into a Lock Screen / Dynamic Island widget that follows the agent's progress in real time. Up to two sessions per instance, controlled by a per-session toggle in the chat surface; toggled state is mirrored from the mobile shell back into the web UI via a `postMessage` protocol so multiple devices stay in sync. Shared protocol type lives in [`packages/shared/src/live-activity-protocol.ts`](packages/shared/src/live-activity-protocol.ts).
+- **Update-aware instance picker** — every saved instance polls `/global/version` in the background and badges itself when the server has shipped a new release.
+- **Offline-aware UI cache** (phase 1 today; phase 2 ships the asset cache) — the picker tracks freshness even when the server's UI bundle hasn't been pre-fetched yet.
+
+Lives in [`packages/mobile/`](packages/mobile/). The mobile app is a **shell**, not a second runtime — your sessions, providers, MCP servers, and SQLite database stay on the Codeplane server. Phones never see provider keys.
+
 <br />
 
 ## Capabilities
@@ -291,8 +303,16 @@ Codeplane is more than a chat box on top of an LLM. The current product surface 
 
 - **Multi-session orchestration.** Each working directory has its own session list, with revert, summary, compaction, and overflow handling baked into the runtime.
 - **Built-in file tools** for `read`, `write`, `edit`, `apply_patch`, `glob`, `grep`, `list`, `codesearch`, `ssh`, `git`, `webfetch`, `websearch`, `browse`, `task`, `plan`, `todo`, plus a sandboxed `bash` and an interactive `bash_interactive` runtime.
+- **`bash_interactive` credential pass-through.** Bare-prompt detection recognises `sudo Password:`, `ssh Enter passphrase:`, `git Username for …:`, and any `password|passphrase|otp|pin|token|api[_ ]key|access[_ ]key|auth[_ ]token|secret|email|username:` line at the buffer tail — the UI surfaces a typed input with the right header (Passphrase / Username / Email / Auth code / Credential) instead of the model fishing for credentials in plaintext.
 - **First-class LSP integration** across 50+ languages — agents see real diagnostics from the same language servers your editor uses.
 - **Project awareness.** Workspaces, worktrees, and per-project configuration are part of the data model, not a UX afterthought.
+
+### Chat surface (new in v28)
+
+- **`/chat` and `/chat/:id` routes** ship a ChatGPT-style multi-session chat experience next to the coding surface, with its own sessions sidebar inside the layout's sidebar slot, model picker, and per-session composer docked in the same `DockShellForm` as the project prompt.
+- **Per-session virtual files.** Each chat session has its own filesystem; files are scoped to that conversation only and attached to every send.
+- **Cross-session memory.** Long-term notes the assistant sees on every send — split into individually-editable entries (rename, prune, rewrite) instead of a single free-form blob. `chat.message.savedToMemory` and `chat.message.memoryForget` give the assistant tool-driven memory writes/deletes the user can audit and revert.
+- **Lock Screen pinning on iOS.** Toggle Live Activity per chat session from the chat header — see [Mobile](#mobile-new-in-v28).
 
 ### Provider ecosystem
 
@@ -323,9 +343,15 @@ Codeplane is more than a chat box on top of an LLM. The current product surface 
 - **Managed configuration** for IT-deployed installs (per-OS system path; macOS managed preferences via MDM `.mobileconfig`).
 - **OpenTelemetry tracing** for the agent runtime when configured.
 
+### Rendering
+
+- **19+ rich-block kinds** — `chart`, `kpi`, `callout`, `timeline`, `table`, `tabs`, `choice`, `select`, `preview`, `video`, `gallery`, `comparison`, `diff`, `stock`, `mindmap`, `mermaid`, plus the new `plot` / `graph` (an interactive 2D coordinate-system / function plotter, new in v28) — all callable as first-class tools or as fenced code blocks. The TUI renders them at parity with the desktop.
+- **Mermaid robustness pass.** Mindmap nodes (and every other foreignObject-backed diagram type) now keep their labels — the SVG sanitiser preserves XHTML inside `<foreignObject>` while still stripping scripts, event handlers, and unsafe `href`s. The diagram theme auto-tracks the page's dark / light mode without crashing on `var(--…)` references, and the loading spinner uses an SVG dot grid (was Unicode braille) so it renders identically inside iOS Safari and the Capacitor `WKWebView`.
+- **Real provider TPS.** The session speed meter slices each turn by AI-SDK steps (`step-start` → `step-finish` timestamps) and the lifetime stat is now the **median** per-turn TPS — robust to outlier turns. Synthetic compactor / summarizer runs are excluded so the number on screen matches what the provider's own dashboard reports.
+
 ### SDKs and integrations
 
-- **Typed JavaScript/TypeScript SDK** ([`@codeplane-ai/sdk`](packages/sdk/js/)) — autogenerated from the server's OpenAPI 3.1 spec via [`@hey-api/openapi-ts`](https://heyapi.dev). Drives the web app, the desktop, and your own integrations from the same source of truth.
+- **Typed JavaScript/TypeScript SDK** ([`@codeplane-ai/sdk`](packages/sdk/js/)) — autogenerated from the server's OpenAPI 3.1 spec via [`@hey-api/openapi-ts`](https://heyapi.dev). Drives the web app, the desktop, the mobile shell, and your own integrations from the same source of truth.
 
 <br />
 
@@ -494,6 +520,7 @@ codeplane instance open <id>                                       # resolve, st
 | **Windows Desktop** | packaged | Auto-update in place. |
 | **Linux Desktop** (AppImage) | packaged | Auto-update in place. |
 | **CLI / npm install** | n/a | `npm install -g codeplane-ai@latest`. |
+| **iOS / Android shell** | new in v28 | Side-loaded via Xcode / Android Studio for now; the picker badges every saved instance whose server has shipped a new release so you know when to refresh. |
 
 The Desktop's in-app Updates panel detects whether the running mac bundle is properly code-signed at startup. If it isn't, it pre-empts the Squirrel.Mac signature failure and surfaces a one-click manual-download path **before** the first failed download attempt instead of after.
 
@@ -528,14 +555,15 @@ Codeplane is a Bun monorepo orchestrated with [Turbo](https://turborepo.com), sh
 ```text
 codeplane/
 ├── packages/
-│   ├── app/         ← @codeplane-ai/app    (SolidJS web UI)
-│   ├── codeplane/   ← codeplane            (server + CLI + TUI host)
+│   ├── app/         ← @codeplane-ai/app     (SolidJS web UI)
+│   ├── codeplane/   ← codeplane             (server + CLI + TUI host)
 │   ├── desktop/     ← @codeplane-ai/desktop (Electron shell)
-│   ├── plugin/      ← @codeplane-ai/plugin (plugin SDK)
-│   ├── script/      ← @codeplane-ai/script (release-script helpers)
-│   ├── sdk/js/      ← @codeplane-ai/sdk    (OpenAPI-generated client)
-│   ├── shared/      ← @codeplane-ai/shared (home folder, version, instance store, runtime)
-│   └── ui/          ← @codeplane-ai/ui     (shared SolidJS components & theme)
+│   ├── mobile/      ← @codeplane-ai/mobile  (Capacitor iOS + Android shell, new in v28)
+│   ├── plugin/      ← @codeplane-ai/plugin  (plugin SDK)
+│   ├── script/      ← @codeplane-ai/script  (release-script helpers)
+│   ├── sdk/js/      ← @codeplane-ai/sdk     (OpenAPI-generated client)
+│   ├── shared/      ← @codeplane-ai/shared  (home folder, version, instance store, runtime, live-activity protocol)
+│   └── ui/          ← @codeplane-ai/ui      (shared SolidJS components & theme)
 ├── script/                   ← top-level release tooling
 │   ├── publish.ts            ← release driver
 │   └── sync-version.ts       ← propagates version across workspaces

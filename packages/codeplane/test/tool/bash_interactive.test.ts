@@ -1033,6 +1033,194 @@ describe("bash_interactive", () => {
     expect(result.output).not.toContain("timed out")
   }, 20_000)
 
+  test("bare 'Password:' prompt (sudo-style, no verb) is auto-detected and asked", async () => {
+    // Regression: STDIN_PROMPT_LINE_RE required a verb (paste/enter/input/...)
+    // adjacent to the noun, so a bare `Password:` from `sudo` was never
+    // recognized — the question dock never appeared and the PTY hung until
+    // the timeout. STDIN_BARE_PROMPT_LINE_RE covers verbless credential
+    // prompts that end the buffer with `:`/`>`.
+    const tool = await initTool()
+    await using sandbox = await tmpdir()
+    const dir = sandbox.path
+
+    const sessionID = SessionID.make("ses_bare_password_test")
+    const messageID = MessageID.make("msg_bare_password_test")
+    const askedQuestions: string[] = []
+    const askedHeaders: string[] = []
+
+    const result = await Instance.provide({
+      directory: dir,
+      fn: () =>
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const q = yield* Question.Service
+            const bus = yield* Bus.Service
+
+            const reply = Instance.bind((requestID: any, answer: string) =>
+              runtime.runPromise(q.reply({ requestID, answers: [[answer]] })),
+            )
+            const unsubscribe = yield* bus.subscribeCallback(Question.Event.Asked, (payload) => {
+              const req = payload.properties
+              if (req.sessionID !== sessionID) return
+              askedQuestions.push(req.questions[0]?.question ?? "")
+              askedHeaders.push(req.questions[0]?.header ?? "")
+              setTimeout(() => void reply(req.id, "hunter2"), 5)
+            })
+
+            try {
+              return yield* tool.execute(
+                {
+                  // Mimics `sudo`: prints just `Password:` with no preceding
+                  // verb. The agent did NOT declare a prompts entry — the
+                  // tool must auto-detect the bare prompt.
+                  command: "printf 'Password: '; read -r p; printf 'GOT=%s\\n' \"$p\"",
+                  timeout: 10_000,
+                  prompts: [],
+                  description: "sudo-style password prompt",
+                } as any,
+                {
+                  sessionID,
+                  messageID,
+                  callID: "call_bare_password_test",
+                  agent: "build",
+                  abort: new AbortController().signal,
+                  messages: [],
+                  metadata: () => Effect.void,
+                  ask: () => Effect.void,
+                } as any,
+              )
+            } finally {
+              unsubscribe()
+            }
+          }),
+        ),
+    })
+
+    expect(askedQuestions.length).toBe(1)
+    expect(askedQuestions[0]).toContain("Password:")
+    expect(askedQuestions[0]).toContain("The agent will send your answer into the running terminal")
+    expect(askedHeaders[0]).toBe("Password")
+    expect(result.output).toContain("GOT=hunter2")
+    expect(result.output).not.toContain("timed out")
+  }, 20_000)
+
+  test("bare '[sudo] password for kim:' prompt is auto-detected", async () => {
+    const tool = await initTool()
+    await using sandbox = await tmpdir()
+    const dir = sandbox.path
+
+    const sessionID = SessionID.make("ses_sudo_for_user_test")
+    const messageID = MessageID.make("msg_sudo_for_user_test")
+    const askedQuestions: string[] = []
+
+    const result = await Instance.provide({
+      directory: dir,
+      fn: () =>
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const q = yield* Question.Service
+            const bus = yield* Bus.Service
+
+            const reply = Instance.bind((requestID: any, answer: string) =>
+              runtime.runPromise(q.reply({ requestID, answers: [[answer]] })),
+            )
+            const unsubscribe = yield* bus.subscribeCallback(Question.Event.Asked, (payload) => {
+              const req = payload.properties
+              if (req.sessionID !== sessionID) return
+              askedQuestions.push(req.questions[0]?.question ?? "")
+              setTimeout(() => void reply(req.id, "s3cret"), 5)
+            })
+
+            try {
+              return yield* tool.execute(
+                {
+                  command: "printf '[sudo] password for kim: '; read -r p; printf 'GOT=%s\\n' \"$p\"",
+                  timeout: 10_000,
+                  prompts: [],
+                  description: "sudo password-for-user prompt",
+                } as any,
+                {
+                  sessionID,
+                  messageID,
+                  callID: "call_sudo_for_user_test",
+                  agent: "build",
+                  abort: new AbortController().signal,
+                  messages: [],
+                  metadata: () => Effect.void,
+                  ask: () => Effect.void,
+                } as any,
+              )
+            } finally {
+              unsubscribe()
+            }
+          }),
+        ),
+    })
+
+    expect(askedQuestions.length).toBe(1)
+    expect(askedQuestions[0]).toContain("[sudo] password for kim:")
+    expect(result.output).toContain("GOT=s3cret")
+    expect(result.output).not.toContain("timed out")
+  }, 20_000)
+
+  test("bare 'Username:' prompt is auto-detected (git-style)", async () => {
+    const tool = await initTool()
+    await using sandbox = await tmpdir()
+    const dir = sandbox.path
+
+    const sessionID = SessionID.make("ses_bare_username_test")
+    const messageID = MessageID.make("msg_bare_username_test")
+    const askedHeaders: string[] = []
+
+    const result = await Instance.provide({
+      directory: dir,
+      fn: () =>
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const q = yield* Question.Service
+            const bus = yield* Bus.Service
+
+            const reply = Instance.bind((requestID: any, answer: string) =>
+              runtime.runPromise(q.reply({ requestID, answers: [[answer]] })),
+            )
+            const unsubscribe = yield* bus.subscribeCallback(Question.Event.Asked, (payload) => {
+              const req = payload.properties
+              if (req.sessionID !== sessionID) return
+              askedHeaders.push(req.questions[0]?.header ?? "")
+              setTimeout(() => void reply(req.id, "octocat"), 5)
+            })
+
+            try {
+              return yield* tool.execute(
+                {
+                  command: "printf \"Username for 'https://github.com': \"; read -r u; printf 'GOT=%s\\n' \"$u\"",
+                  timeout: 10_000,
+                  prompts: [],
+                  description: "git-style username prompt",
+                } as any,
+                {
+                  sessionID,
+                  messageID,
+                  callID: "call_bare_username_test",
+                  agent: "build",
+                  abort: new AbortController().signal,
+                  messages: [],
+                  metadata: () => Effect.void,
+                  ask: () => Effect.void,
+                } as any,
+              )
+            } finally {
+              unsubscribe()
+            }
+          }),
+        ),
+    })
+
+    expect(askedHeaders).toEqual(["Username"])
+    expect(result.output).toContain("GOT=octocat")
+    expect(result.output).not.toContain("timed out")
+  }, 20_000)
+
   test("claude-auth-style flow asks once, writes the code, and exits cleanly", async () => {
     const tool = await initTool()
     await using sandbox = await tmpdir()

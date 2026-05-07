@@ -27,6 +27,14 @@ const OAUTH_AUTHORIZE_RE =
   /https?:\/\/\S*(?:\/oauth\/authorize|\/cai\/oauth\/authorize)\S*(?:code=true|response_type=code)|https?:\/\/\S*(?:code=true|response_type=code)\S*(?:\/oauth\/authorize|\/cai\/oauth\/authorize)/i
 const STDIN_PROMPT_LINE_RE =
   /(?:^|\n)\s*([^\n]{0,220}(?:(?:(?:paste|enter|input|type|provide)[^\n]{0,120}(?:code|token|password|otp|passcode))|(?:(?:code|token|password|otp|passcode)[^\n]{0,120}(?:paste|enter|input|type|provide)))[^\n]{0,80}[:>]\s*)$/i
+// Bare credential prompt: line ENDS the buffer with a stdin keyword and ":".
+// `sudo` prints just "Password:" / "[sudo] password for kim:" with no verb,
+// `ssh` prints "Enter passphrase for key '…':", `git` prints "Username for
+// 'https://…':" — none of which match STDIN_PROMPT_LINE_RE. The end-of-buffer
+// anchor combined with PROMPT_DEBOUNCE_MS gives us a strong "the CLI is
+// actually waiting on stdin right now" signal even without a verb.
+const STDIN_BARE_PROMPT_LINE_RE =
+  /(?:^|\n)\s*([^\n]{0,220}\b(?:password|passphrase|passcode|username|email|otp|pin|secret|api[\s_-]?key|access[\s_-]?key|auth[\s_-]?token|token)\b[^\n]{0,40}[:>]\s*)$/i
 const ENTER_PROMPT_RE =
   /(?:^|\n)\s*(press|hit)\s+(enter|return)(?:\s+(?:to|for)\s+(?:retry|try again|continue|proceed|finish|close|dismiss))?[.!?>: ]*$/i
 const URL_CONTINUATION_RE = /^[A-Za-z0-9._~:/?#[\]@!$&'()*+,;=%-]+$/
@@ -103,7 +111,8 @@ function extractBrowserOAuthUrl(value: string): string | undefined {
 }
 
 function autoStdinPrompt(value: string): string | undefined {
-  const match = value.replace(STRIP_ANSI_RE, "").replace(/\r/g, "\n").match(STDIN_PROMPT_LINE_RE)
+  const stripped = value.replace(STRIP_ANSI_RE, "").replace(/\r/g, "\n")
+  const match = stripped.match(STDIN_PROMPT_LINE_RE) ?? stripped.match(STDIN_BARE_PROMPT_LINE_RE)
   return match?.[1]?.trim()
 }
 
@@ -112,9 +121,13 @@ function autoEnterPrompt(value: string): boolean {
 }
 
 function autoStdinHeader(prompt: string): string {
+  if (/passphrase/i.test(prompt)) return "Passphrase"
   if (/password/i.test(prompt)) return "Password"
   if (/token/i.test(prompt)) return "Token"
-  if (/(otp|passcode|code)/i.test(prompt)) return "Auth code"
+  if (/(otp|passcode|\bpin\b|code)/i.test(prompt)) return "Auth code"
+  if (/username/i.test(prompt)) return "Username"
+  if (/email/i.test(prompt)) return "Email"
+  if (/secret|api[\s_-]?key|access[\s_-]?key/i.test(prompt)) return "Credential"
   return "Input"
 }
 

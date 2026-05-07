@@ -318,7 +318,13 @@
   pre {
     margin-top: 12px;
     margin-bottom: 32px;
-    overflow: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
+    /* Without an explicit max-width, a long single-line code block on a
+       narrow viewport stretches its parent flexbox and pushes the
+       composer / sidebar past the screen edge. Pinning to 100% keeps
+       the overflow inside the <pre> where the horizontal-scroll fits. */
+    max-width: 100%;
 
     scrollbar-width: none;
     &::-webkit-scrollbar {
@@ -343,6 +349,10 @@
   /* Tables */
   table {
     width: 100%;
+    /* Same reasoning as the <pre> max-width — without this a wide
+       table with `display: block` happily extends past the parent
+       and shoves the sidebar / composer off-screen on mobile. */
+    max-width: 100%;
     border-collapse: collapse;
     margin: 24px 0;
     font-size: var(--font-size-base);
@@ -357,6 +367,25 @@
     padding: 12px;
     text-align: left;
     vertical-align: top;
+  }
+
+  /* Mobile (< sm = 640px): tighten table cell padding so a 3-column
+     table fits without forcing horizontal scroll on the common case.
+     Desktop / tablet keep the breathy 12px padding from above. */
+  @media (max-width: 39.99rem) {
+    th,
+    td {
+      padding: 8px 10px;
+      font-size: var(--font-size-small);
+    }
+    table {
+      margin: 16px 0;
+    }
+    pre {
+      /* Slimmer left/right padding eats less of the viewport when the
+         user IS scrolling a long line of code. */
+      margin-bottom: 20px;
+    }
   }
 
   th {
@@ -1817,3 +1846,164 @@
     font-size: 12px;
   }
 }
+
+/* ----- plot / coordinate system ----------------------------------------
+   Interactive 2D plot — server-rendered SVG of the requested ranges,
+   hydrated client-side with hover crosshair, drag pan, wheel zoom, and a
+   Reset view pill. Top-level rules so they always win over the markdown
+   typography defaults and apply wherever the block ends up. */
+
+/* Wider left gutter for the SVG so y-axis tick labels (which can include
+   negative signs and scientific notation like `-5e+23`) have room to
+   render flush-right against the plot edge instead of overlapping the
+   axis line. We bake this into the viewBox at render time, but a guard
+   here ensures HMR'd blocks don't clip on the first frame. */
+[data-component="markdown-block"][data-block-type="plot"] {
+    position: relative;
+    border: 0.5px solid var(--border-weaker-base);
+    background: transparent;
+    border-radius: 6px;
+    padding: 10px 12px 8px;
+    overflow: hidden;
+
+    [data-slot="plot-canvas"] {
+      position: relative;
+      width: 100%;
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+      max-height: 480px;
+      display: block;
+      cursor: crosshair;
+      touch-action: none;
+      user-select: none;
+    }
+
+    [data-slot="plot-title"] {
+      fill: var(--text-strong);
+      font-size: 13px;
+      font-weight: var(--font-weight-medium);
+    }
+    [data-slot="plot-axis-label"] {
+      fill: var(--text-base);
+      font-size: 11px;
+    }
+    [data-slot="plot-grid"] {
+      stroke: var(--border-weaker-base);
+      stroke-width: 0.5;
+    }
+    [data-slot="plot-axis"] {
+      stroke: var(--text-weak);
+      stroke-width: 1;
+    }
+    [data-slot="plot-tick"] {
+      fill: var(--text-weak);
+      font-size: 10px;
+      font-feature-settings: "tnum";
+    }
+    [data-slot="plot-tick"][data-axis="x"] {
+      text-anchor: middle;
+    }
+    [data-slot="plot-tick"][data-axis="y"] {
+      text-anchor: end;
+    }
+    [data-slot="plot-tick"][data-axis="origin"] {
+      text-anchor: end;
+    }
+    [data-slot="plot-series"] {
+      pointer-events: none;
+    }
+    [data-slot="plot-series-error"] {
+      font-family: var(--font-family-monospace);
+      font-size: 11px;
+    }
+
+    [data-slot="plot-crosshair"] {
+      stroke: var(--text-weak);
+      stroke-width: 0.5;
+      stroke-dasharray: 3 3;
+      pointer-events: none;
+      visibility: hidden;
+    }
+    [data-slot="plot-cursor-dot"] {
+      fill: var(--icon-interactive-base);
+      pointer-events: none;
+      visibility: hidden;
+    }
+
+    [data-slot="plot-tooltip"] {
+      position: absolute;
+      pointer-events: none;
+      background: var(--surface-raised-stronger-non-alpha, var(--surface-raised-base));
+      color: var(--text-strong);
+      border: 0.5px solid var(--border-weak-base);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-feature-settings: "tnum";
+      line-height: 1.4;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      z-index: 1;
+      white-space: nowrap;
+    }
+    [data-slot="plot-tooltip"] [data-slot="plot-tooltip-row"] {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    [data-slot="plot-tooltip"] [data-slot="plot-tooltip-dot"] {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+    }
+    [data-slot="plot-tooltip"] [data-slot="plot-tooltip-x"] {
+      color: var(--text-weak);
+      font-weight: var(--font-weight-medium);
+      margin-bottom: 2px;
+    }
+
+    [data-slot="plot-reset"] {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--surface-raised-base);
+      color: var(--text-base);
+      border: 0.5px solid var(--border-weak-base);
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.12s ease;
+    }
+    &:hover [data-slot="plot-reset"],
+    [data-slot="plot-reset"]:focus-visible {
+      opacity: 1;
+    }
+    [data-slot="plot-reset"]:hover {
+      background: var(--surface-raised-base-hover, var(--surface-raised-base));
+    }
+
+    [data-slot="plot-legend"] {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--text-base);
+    }
+    [data-slot="plot-legend-item"] {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    [data-slot="plot-legend-dot"] {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+  }

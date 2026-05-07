@@ -31,7 +31,9 @@ export function Titlebar() {
   })
 
   const path = () => `${location.pathname}${location.search}${location.hash}`
-  const isHome = createMemo(() => location.pathname === "/" || location.pathname === "/notifications")
+  const isHome = createMemo(
+    () => location.pathname === "/" || location.pathname === "/notifications",
+  )
   const creating = createMemo(() => {
     if (!params.dir) return false
     if (params.id) return false

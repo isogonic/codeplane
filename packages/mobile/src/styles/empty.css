@@ -1,0 +1,16 @@
+/* Empty stub used by the mobile picker's Vite alias to short-circuit
+ * the heavy `katex/dist/katex.min.css` import that
+ * `@codeplane-ai/ui/styles/index.css` pulls in for math rendering.
+ *
+ * The picker has no math content (it's a server picker — there's no
+ * markdown surface that would render LaTeX). Bundling KaTeX adds:
+ *   - ~30 KB of CSS rules
+ *   - 59 woff2/woff/ttf font files (~1.1 MB on disk)
+ *   - dozens of `@font-face` declarations that WKWebView eagerly
+ *     resolves at first style-pass time, blocking the first paint
+ *     for several seconds on the simulator.
+ *
+ * Aliased here instead of removed from `@codeplane-ai/ui` so the
+ * desktop / web app surfaces (which DO render math) keep KaTeX —
+ * we just opt-out for this specific bundle.
+ */

@@ -1,0 +1,37 @@
+<!--
+  Drop this fragment inside the <application> tag of
+  android/app/src/main/AndroidManifest.xml after running
+  `bun run cap:add:android`.
+
+  Registers the codeplane:// scheme as a deep-link target and asks for
+  the runtime permissions the picker / instance webview actually use.
+  Anything not listed below is *not* requested — keep it that way.
+-->
+
+<intent-filter android:label="@string/app_name" android:autoVerify="false">
+  <action android:name="android.intent.action.VIEW" />
+  <category android:name="android.intent.category.DEFAULT" />
+  <category android:name="android.intent.category.BROWSABLE" />
+  <data android:scheme="codeplane" />
+</intent-filter>
+
+<!--
+  Required so the WebView can talk to a self-hosted Codeplane server
+  over plaintext if the user explicitly enables the per-instance
+  "ignoreCertificateErrors" toggle. Default network security config
+  still pins HTTPS for everything else; see network_security_config.xml.
+-->
+<meta-data
+  android:name="android.webkit.WebView.MetricsOptOut"
+  android:value="true" />
+
+<!--
+  Manifest-level permissions go on the root <manifest> element, NOT
+  inside <application>. Add these at the top of the file:
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+-->

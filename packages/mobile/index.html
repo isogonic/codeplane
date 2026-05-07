@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      `viewport-fit=cover` lets us paint behind the iPhone notch and
+      Android system bars, then we use env(safe-area-inset-*) in CSS
+      to keep content out of those regions.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0b0d10" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!--
+      Capacitor exposes its bridge from `capacitor://localhost` (iOS) or
+      `https://localhost` (Android). The CSP below allows the bundled
+      bridge plus webview-loaded instance UIs that we explicitly trust
+      via the per-instance manifest.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self' capacitor: data: blob: 'unsafe-inline' 'unsafe-eval'; img-src 'self' data: https: capacitor:; connect-src 'self' https: wss: capacitor:; frame-src https: capacitor:;"
+    />
+    <title>Codeplane</title>
+  </head>
+  <body class="bg-background-base text-text-base">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

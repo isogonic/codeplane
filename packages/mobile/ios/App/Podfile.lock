@@ -1,0 +1,111 @@
+PODS:
+  - Capacitor (7.4.4):
+    - CapacitorCordova
+  - CapacitorApp (7.1.0):
+    - Capacitor
+  - CapacitorBrowser (7.0.4):
+    - Capacitor
+  - CapacitorCordova (7.4.4)
+  - CapacitorDevice (7.0.4):
+    - Capacitor
+  - CapacitorFilesystem (8.1.2):
+    - Capacitor
+    - IONFilesystemLib (~> 1.1.1)
+  - CapacitorHaptics (7.0.4):
+    - Capacitor
+  - CapacitorKeyboard (7.0.4):
+    - Capacitor
+  - CapacitorLocalNotifications (7.0.4):
+    - Capacitor
+  - CapacitorNetwork (7.0.4):
+    - Capacitor
+  - CapacitorPreferences (7.0.4):
+    - Capacitor
+  - CapacitorSecureStoragePlugin (0.10.0):
+    - Capacitor
+    - SwiftKeychainWrapper
+  - CapacitorSplashScreen (7.0.4):
+    - Capacitor
+  - CapacitorStatusBar (7.0.4):
+    - Capacitor
+  - CapgoInappbrowser (8.6.3):
+    - Capacitor
+  - IONFilesystemLib (1.1.2)
+  - SwiftKeychainWrapper (4.0.1)
+
+DEPENDENCIES:
+  - "Capacitor (from `../../../../node_modules/.bun/@capacitor+ios@7.4.4+1d43a6a1837411c8/node_modules/@capacitor/ios`)"
+  - "CapacitorApp (from `../../../../node_modules/.bun/@capacitor+app@7.1.0+1d43a6a1837411c8/node_modules/@capacitor/app`)"
+  - "CapacitorBrowser (from `../../../../node_modules/.bun/@capacitor+browser@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/browser`)"
+  - "CapacitorCordova (from `../../../../node_modules/.bun/@capacitor+ios@7.4.4+1d43a6a1837411c8/node_modules/@capacitor/ios`)"
+  - "CapacitorDevice (from `../../../../node_modules/.bun/@capacitor+device@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/device`)"
+  - "CapacitorFilesystem (from `../../../../node_modules/.bun/@capacitor+filesystem@8.1.2+1d43a6a1837411c8/node_modules/@capacitor/filesystem`)"
+  - "CapacitorHaptics (from `../../../../node_modules/.bun/@capacitor+haptics@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/haptics`)"
+  - "CapacitorKeyboard (from `../../../../node_modules/.bun/@capacitor+keyboard@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/keyboard`)"
+  - "CapacitorLocalNotifications (from `../../../../node_modules/.bun/@capacitor+local-notifications@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/local-notifications`)"
+  - "CapacitorNetwork (from `../../../../node_modules/.bun/@capacitor+network@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/network`)"
+  - "CapacitorPreferences (from `../../../../node_modules/.bun/@capacitor+preferences@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/preferences`)"
+  - "CapacitorSecureStoragePlugin (from `../../../../node_modules/.bun/capacitor-secure-storage-plugin@0.10.0+1d43a6a1837411c8/node_modules/capacitor-secure-storage-plugin`)"
+  - "CapacitorSplashScreen (from `../../../../node_modules/.bun/@capacitor+splash-screen@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/splash-screen`)"
+  - "CapacitorStatusBar (from `../../../../node_modules/.bun/@capacitor+status-bar@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/status-bar`)"
+  - "CapgoInappbrowser (from `../../../../node_modules/.bun/@capgo+inappbrowser@8.6.3+1d43a6a1837411c8/node_modules/@capgo/inappbrowser`)"
+
+SPEC REPOS:
+  trunk:
+    - IONFilesystemLib
+    - SwiftKeychainWrapper
+
+EXTERNAL SOURCES:
+  Capacitor:
+    :path: "../../../../node_modules/.bun/@capacitor+ios@7.4.4+1d43a6a1837411c8/node_modules/@capacitor/ios"
+  CapacitorApp:
+    :path: "../../../../node_modules/.bun/@capacitor+app@7.1.0+1d43a6a1837411c8/node_modules/@capacitor/app"
+  CapacitorBrowser:
+    :path: "../../../../node_modules/.bun/@capacitor+browser@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/browser"
+  CapacitorCordova:
+    :path: "../../../../node_modules/.bun/@capacitor+ios@7.4.4+1d43a6a1837411c8/node_modules/@capacitor/ios"
+  CapacitorDevice:
+    :path: "../../../../node_modules/.bun/@capacitor+device@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/device"
+  CapacitorFilesystem:
+    :path: "../../../../node_modules/.bun/@capacitor+filesystem@8.1.2+1d43a6a1837411c8/node_modules/@capacitor/filesystem"
+  CapacitorHaptics:
+    :path: "../../../../node_modules/.bun/@capacitor+haptics@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/haptics"
+  CapacitorKeyboard:
+    :path: "../../../../node_modules/.bun/@capacitor+keyboard@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/keyboard"
+  CapacitorLocalNotifications:
+    :path: "../../../../node_modules/.bun/@capacitor+local-notifications@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/local-notifications"
+  CapacitorNetwork:
+    :path: "../../../../node_modules/.bun/@capacitor+network@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/network"
+  CapacitorPreferences:
+    :path: "../../../../node_modules/.bun/@capacitor+preferences@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/preferences"
+  CapacitorSecureStoragePlugin:
+    :path: "../../../../node_modules/.bun/capacitor-secure-storage-plugin@0.10.0+1d43a6a1837411c8/node_modules/capacitor-secure-storage-plugin"
+  CapacitorSplashScreen:
+    :path: "../../../../node_modules/.bun/@capacitor+splash-screen@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/splash-screen"
+  CapacitorStatusBar:
+    :path: "../../../../node_modules/.bun/@capacitor+status-bar@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/status-bar"
+  CapgoInappbrowser:
+    :path: "../../../../node_modules/.bun/@capgo+inappbrowser@8.6.3+1d43a6a1837411c8/node_modules/@capgo/inappbrowser"
+
+SPEC CHECKSUMS:
+  Capacitor: 358dd1c3fdd71d969547b17e159fd8a7736cb45f
+  CapacitorApp: 26587c2ce485d88ddb39adb21cac64f8e481afe3
+  CapacitorBrowser: affdd32ab6a1822942eb55095b3c5ecf3f656a9d
+  CapacitorCordova: bf648a636f3c153f652d312ae145fb508b6ffced
+  CapacitorDevice: 640708bccf73e5c248fe57b1a463ce7710d83c1f
+  CapacitorFilesystem: 2db285a1ac6e475cc27cae2e1bea999000f9e2be
+  CapacitorHaptics: bf3f58fc5dc7975a7ad5b7c725e5bb5bd435ae81
+  CapacitorKeyboard: 5660c760113bfa48962817a785879373cf5339c3
+  CapacitorLocalNotifications: ba2a08bd92887b08f352e6b2db430575cef0cea3
+  CapacitorNetwork: b719d692a8d1310da8d26d6648d3aa1ef1e100e1
+  CapacitorPreferences: 69d9991307507aeab8ef8019c10b9babfda0e9ca
+  CapacitorSecureStoragePlugin: 545b51d782d35e61a39231ecf99a966b060a2cbb
+  CapacitorSplashScreen: 000f7591d546907dda5cbb514bd6b6d9e6048cf8
+  CapacitorStatusBar: d0e0151c89c001a9c7125bac59ddedf76b664768
+  CapgoInappbrowser: 1544a1031142ee81beabf63f0ead0904352633e2
+  IONFilesystemLib: 21a63377696b2d8fab5632ecfb7d2ac67bddb68a
+  SwiftKeychainWrapper: 807ba1d63c33a7d0613288512399cd1eda1e470c
+
+PODFILE CHECKSUM: ded16e7e609fa9edb029c943532d50e1d4c8a2d0
+
+COCOAPODS: 1.16.2

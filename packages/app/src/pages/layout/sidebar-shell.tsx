@@ -49,6 +49,7 @@ export const SidebarContent = (props: {
   const expanded = createMemo(() => !!props.mobile || props.opened())
   const placement = () => (props.mobile ? "bottom" : "right")
   const homeSelected = createMemo(() => location.pathname === "/")
+  const chatSelected = createMemo(() => location.pathname === "/chat" || location.pathname.startsWith("/chat/"))
   const notificationsSelected = createMemo(() => location.pathname === "/notifications")
   const settingsSelected = createMemo(() => isSettingsPath(location.pathname))
   const notificationActive = createMemo(() => notification.unseenCount() > 0)
@@ -135,6 +136,12 @@ export const SidebarContent = (props: {
                 label={() => language.t("sidebar.home")}
                 selected={homeSelected}
                 onClick={() => openGlobalRoute("/")}
+              />
+              <RailAction
+                icon="speech-bubble"
+                label={() => language.t("sidebar.chat")}
+                selected={chatSelected}
+                onClick={() => openGlobalRoute("/chat")}
               />
               <RailAction
                 icon="bell"

@@ -78,6 +78,61 @@
     box-shadow: none;
   }
 
+  /* ============================================================
+   * Chat surface — mobile-aware utility classes.
+   *
+   * Defining them here once means the mobile / desktop split for
+   * the chat header / composer / popover triggers lives in ONE
+   * file with one media query, not as `w-9 h-9 md:w-8 md:h-6`
+   * sprinkled across chat.tsx where each spot can drift. Desktop
+   * (≥ 768 px) keeps exactly the existing density chat.tsx had
+   * before mobile work started; only smaller screens get the
+   * larger touch targets.
+   * ============================================================ */
+
+  .chat-icon-btn {
+    width: 2rem;       /* 32px desktop default */
+    height: 1.5rem;    /* 24px desktop default */
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  .chat-send-btn {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .chat-header {
+    height: 3rem;     /* 48px desktop */
+    padding-inline: 0.75rem;
+    gap: 0.75rem;
+  }
+
+  .chat-prompt-dock {
+    padding-bottom: 0.75rem;
+  }
+
+  @media (max-width: 47.99rem) {
+    .chat-icon-btn {
+      width: 2.25rem;  /* 36px — comfortable thumb hit on a phone */
+      height: 2.25rem;
+    }
+    .chat-send-btn {
+      width: 2.5rem;   /* 40px — iOS HIG floor for a docked CTA */
+      height: 2.5rem;
+    }
+    .chat-header {
+      height: 2.75rem;       /* 44px */
+      padding-inline: 0.5rem;
+      gap: 0.5rem;
+    }
+    .chat-prompt-dock {
+      /* Compose padding picks up the iOS home-indicator inset so
+         the input never sits under the bottom safe area. */
+      padding-bottom: max(env(safe-area-inset-bottom), 0.75rem);
+    }
+  }
+
   /* Native macOS system font, antialiasing, and overlay scrollbars. The
    * SF text family is what every native AppKit app renders with — using
    * it here is the single biggest perceptual change between "Electron app"

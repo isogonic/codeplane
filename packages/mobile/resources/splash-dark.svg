@@ -1,0 +1,14 @@
+<svg width="2732" height="2732" viewBox="0 0 2732 2732" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    Dark-mode splash. Same chevron + sizing as splash.svg, painted
+    white so it reads against the dark systemBackgroundColor that the
+    LaunchScreen.storyboard paints behind us in dark mode. See
+    splash.svg for the rationale on the transparent canvas.
+  -->
+  <g transform="translate(966 966) scale(1.5625)">
+    <path
+      d="M64 64L448 256L64 448V320L256 256L64 192V64Z"
+      fill="#FFFFFF"
+    />
+  </g>
+</svg>
