@@ -1,0 +1,978 @@
+/*
+ * Mobile-specific overrides.
+ *
+ * The shared @codeplane-ai/ui Tailwind layer already gives us the
+ * neutral CSS variables (--background-base, --text-base,
+ * --button-primary-base, --border-weak-base, …) for both light and
+ * dark mode — the dark variant lives behind the
+ * `@media (prefers-color-scheme: dark)` block in
+ * packages/ui/src/styles/theme.css.
+ *
+ * The mobile picker follows that same model — the renderer flips
+ * between light and dark based on the user's OS preference, like the
+ * desktop and web shells — but it intentionally sticks to a
+ * **monochrome** palette. No interactive blue, no brand peach, no
+ * critical orange anywhere in the picker. Affordances are signalled
+ * by weight, surface tone, and contrast against `--background-base`
+ * rather than hue.
+ *
+ * The single-token aliases below let every component reference one
+ * "accent" slot — `--mono-accent` (high-contrast text/icon tone) and
+ * `--mono-accent-on` (the inverted text colour that sits on top) —
+ * which both already adapt to light/dark via the shared theme:
+ *
+ *   light  : --icon-strong-base    #171717   (near-black)
+ *   dark   : --icon-strong-base    #ededed   (near-white)
+ *
+ *   light  : --icon-invert-base    #ffffff
+ *   dark   : --icon-invert-base    #161616
+ *
+ * Everything below is *only* mobile UX: safe-area padding, larger
+ * touch targets, native momentum scrolling, no desktop-only chrome
+ * (drag region, hover-only states), and the full-bleed bottom-sheet
+ * pattern that replaces desktop modals.
+ */
+
+:root {
+  /* Tell the UA "honour the user's mode for native form widgets,
+   * scrollbars, autofill colours, etc." This is the same default the
+   * shared theme already implies, but stating it on `:root` keeps it
+   * explicit for the mobile bundle. */
+  color-scheme: light dark;
+
+  /* Mono accent — the only chromatic token this app uses, and even
+   * that one is just the neutral high-contrast text colour. Keeping
+   * it as a CSS custom property rather than inlining
+   * `--icon-strong-base` everywhere makes future re-tints (e.g. a
+   * brand monochrome that's a deep grey instead of pure black) a
+   * one-line change. */
+  --mono-accent: var(--icon-strong-base);
+  --mono-accent-hover: var(--icon-strong-hover);
+  --mono-accent-active: var(--icon-strong-active);
+  --mono-accent-on: var(--icon-invert-base);
+
+  /* Mobile-only layout tokens. */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  --mobile-touch-target: 44px;
+  --mobile-bottom-sheet-radius: 18px;
+  --mobile-card-radius: 14px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  color: var(--text-base);
+  background: var(--background-base);
+  font-family:
+    -apple-system,
+    "SF Pro Text",
+    "SF Pro",
+    BlinkMacSystemFont,
+    "Roboto",
+    "Helvetica Neue",
+    Helvetica,
+    Arial,
+    sans-serif;
+  font-size: 15px;
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Lock the document — only the dedicated scroll containers below
+ * scroll. Otherwise iOS will rubber-band the entire WebView and the
+ * status bar area looks broken. */
+html,
+body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Safe-area helpers. */
+.pt-safe {
+  padding-top: var(--safe-area-top);
+}
+.pb-safe {
+  padding-bottom: var(--safe-area-bottom);
+}
+.pl-safe {
+  padding-left: var(--safe-area-left);
+}
+.pr-safe {
+  padding-right: var(--safe-area-right);
+}
+.px-safe {
+  padding-left: var(--safe-area-left);
+  padding-right: var(--safe-area-right);
+}
+.h-safe-top {
+  height: var(--safe-area-top);
+}
+.h-safe-bottom {
+  height: var(--safe-area-bottom);
+}
+
+/* Native momentum on the actual scrollers. */
+.mobile-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  /* Avoid the classic flexbox-scroll trap where the scroll container
+   * grows to its content's intrinsic height. */
+  min-height: 0;
+}
+
+/* Touch-target floor: anything tappable should be ≥ 44×44 (Apple HIG). */
+.touch-target {
+  min-height: var(--mobile-touch-target);
+  min-width: var(--mobile-touch-target);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ---------------------------------------------------------------- *
+ * Bottom sheet — mobile substitute for desktop modals.
+ * ---------------------------------------------------------------- */
+.bottom-sheet {
+  position: absolute;
+  inset: auto 0 0 0;
+  background: var(--background-strong);
+  border-top-left-radius: var(--mobile-bottom-sheet-radius);
+  border-top-right-radius: var(--mobile-bottom-sheet-radius);
+  padding-bottom: var(--safe-area-bottom);
+  transform: translateY(101%);
+  transition:
+    transform 320ms cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow 200ms ease;
+  will-change: transform;
+  display: flex;
+  flex-direction: column;
+  max-height: 92vh;
+  z-index: 50;
+  /* Hide the upward-cast shadow when closed so it doesn't bleed into
+   * the picker viewport behind the off-screen sheet. */
+  box-shadow: none;
+}
+
+.bottom-sheet[data-open="true"] {
+  transform: translateY(0);
+  box-shadow:
+    0 -1px 0 var(--border-weak-base),
+    0 -24px 48px -8px rgba(0, 0, 0, 0.55);
+}
+
+.bottom-sheet__handle {
+  width: 44px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--border-strong-base);
+  margin: 8px auto 6px;
+  flex-shrink: 0;
+}
+
+.bottom-sheet__title {
+  font-weight: 600;
+  font-size: 17px;
+  text-align: center;
+  padding: 4px 16px 14px;
+  color: var(--text-strong);
+  flex-shrink: 0;
+}
+
+.bottom-sheet__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 280ms cubic-bezier(0.32, 0.72, 0, 1);
+  z-index: 49;
+}
+
+.bottom-sheet__scrim[data-open="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ---------------------------------------------------------------- *
+ * Mobile header bar — replaces the desktop's macOS titlebar.
+ * ---------------------------------------------------------------- */
+.mobile-header {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 8px;
+  flex: 0 0 auto;
+  background: var(--background-base);
+  position: relative;
+  z-index: 10;
+}
+
+.mobile-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--border-weak-base);
+  opacity: 0;
+  transition: opacity 160ms ease;
+  pointer-events: none;
+}
+
+.mobile-header[data-elevated="true"]::after {
+  opacity: 1;
+}
+
+.mobile-header__title {
+  font-weight: 600;
+  font-size: 17px;
+  flex: 1;
+  text-align: center;
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.mobile-header__action {
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mono-accent);
+  font-size: 15px;
+}
+
+.mobile-icon-button {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mono-accent);
+  cursor: pointer;
+  border-radius: 12px;
+  transition: background 120ms ease;
+  font-family: inherit;
+}
+
+.mobile-icon-button:active {
+  background: var(--surface-base-active);
+}
+
+.mobile-icon-button:focus-visible {
+  outline: 2px solid var(--mono-accent);
+  outline-offset: 2px;
+}
+
+.mobile-icon-button[disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ---------------------------------------------------------------- *
+ * Bottom tab/nav bar.
+ * ---------------------------------------------------------------- */
+.mobile-tabbar {
+  display: flex;
+  border-top: 1px solid var(--border-weak-base);
+  background: var(--background-base);
+  padding-bottom: var(--safe-area-bottom);
+}
+
+.mobile-tabbar__tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 50px;
+  font-size: 11px;
+  gap: 2px;
+  color: var(--text-weak);
+}
+
+.mobile-tabbar__tab[aria-current="page"] {
+  color: var(--mono-accent);
+}
+
+/* ---------------------------------------------------------------- *
+ * Instance picker cards.
+ * ---------------------------------------------------------------- */
+.mobile-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--mobile-card-radius);
+  background: var(--surface-base);
+  border: 1px solid var(--border-weak-base);
+  width: 100%;
+  text-align: left;
+  min-height: 64px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background 140ms ease-out,
+    transform 140ms ease-out,
+    border-color 140ms ease-out;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.mobile-card:hover {
+  border-color: var(--border-base);
+}
+
+.mobile-card:active {
+  background: var(--surface-base-active);
+  transform: scale(0.985);
+}
+
+.mobile-card:focus-visible {
+  outline: 2px solid var(--mono-accent);
+  outline-offset: 2px;
+}
+
+.mobile-card__icon {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: block;
+  background: var(--surface-float-base);
+}
+
+.mobile-card__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mobile-card__title {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-card__url {
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text-weak);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-card__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+/* Card chips — same typography family as the in-app webview's "Done"
+ * pill so the picker and the embedded surface read as one design.
+ * Sentence case, no letter-spacing tricks, monochrome only. The
+ * default style is a hairline-bordered translucent plate; the
+ * `[data-tone="muted"]` variant strips the border for purely
+ * informational labels (Auth headers / Last opened) so the
+ * status-y "Update available" chip stands out without shouting. */
+.mobile-card__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1;
+  color: var(--text-strong);
+  background: var(--surface-base);
+  border: 1px solid var(--border-weak-base);
+  border-radius: 8px;
+  white-space: nowrap;
+  /* Subtle blur matches the close button's frosted-glass treatment so
+   * the chips read as the same visual family. */
+  -webkit-backdrop-filter: saturate(160%) blur(10px);
+  backdrop-filter: saturate(160%) blur(10px);
+}
+
+/* Status indicator — small filled dot in the chip's text colour. Only
+ * paints on chips that opt in via `[data-indicator="dot"]`. We use a
+ * pseudo-element instead of a JSX <span> so the markup stays a single
+ * inline-flex pill and copy-paste of the chip text excludes the dot. */
+.mobile-card__chip[data-indicator="dot"]::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.mobile-card__chip[data-tone="muted"] {
+  color: var(--text-weak);
+  background: transparent;
+  border-color: transparent;
+  font-weight: 500;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.mobile-card__chevron {
+  flex: 0 0 auto;
+  color: var(--text-weaker);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Hide WebKit scrollbars in lists; native momentum is enough. */
+.mobile-scroll::-webkit-scrollbar {
+  display: none;
+}
+.mobile-scroll {
+  scrollbar-width: none;
+}
+
+/* ---------------------------------------------------------------- *
+ * Buttons — match the desktop OC-2 button system.
+ * ---------------------------------------------------------------- */
+.mobile-button {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--mobile-touch-target);
+  transition:
+    background 120ms ease,
+    transform 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+  font-family: inherit;
+}
+
+.mobile-button:active:not([disabled]) {
+  transform: scale(0.97);
+}
+
+.mobile-button:focus-visible {
+  outline: 2px solid var(--mono-accent);
+  outline-offset: 2px;
+}
+
+.mobile-button[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Primary — the same near-white pill the desktop uses for primary
+ * actions, with dark text on top. */
+.mobile-button--primary {
+  background: var(--button-primary-base);
+  color: var(--icon-invert-base);
+}
+.mobile-button--primary:hover:not([disabled]) {
+  background: var(--icon-strong-hover);
+}
+.mobile-button--primary:active:not([disabled]) {
+  background: var(--icon-strong-active);
+}
+.mobile-button--primary[disabled] {
+  background: var(--icon-strong-disabled);
+}
+
+.mobile-button--secondary {
+  background: var(--button-secondary-base);
+  color: var(--text-strong);
+  border: 1px solid var(--border-weak-base);
+}
+.mobile-button--secondary:hover:not([disabled]) {
+  background: var(--button-secondary-hover);
+  border-color: var(--border-base);
+}
+
+.mobile-button--ghost {
+  background: transparent;
+  color: var(--mono-accent);
+}
+.mobile-button--ghost:hover:not([disabled]) {
+  background: var(--button-ghost-hover);
+}
+
+.mobile-button--danger-ghost {
+  background: transparent;
+  color: var(--mono-accent);
+}
+.mobile-button--danger-ghost:active:not([disabled]) {
+  background: color-mix(in srgb, var(--mono-accent) 12%, transparent);
+}
+
+.mobile-button--block {
+  width: 100%;
+}
+
+/* ---------------------------------------------------------------- *
+ * Form fields.
+ * ---------------------------------------------------------------- */
+.mobile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 16px;
+}
+
+.mobile-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-weak);
+}
+
+.mobile-input,
+.mobile-textarea {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-weak-base);
+  background: var(--surface-base);
+  color: var(--text-strong);
+  font-size: 16px; /* avoids iOS auto-zoom on focus */
+  font-family: inherit;
+  line-height: 1.4;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.mobile-input::placeholder,
+.mobile-textarea::placeholder {
+  color: var(--text-weaker);
+}
+
+.mobile-input:focus,
+.mobile-textarea:focus {
+  outline: none;
+  border-color: var(--mono-accent);
+  background: var(--background-strong);
+}
+
+.mobile-textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 96px;
+}
+
+.mobile-help {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-weaker);
+}
+
+/* Setting row: title + helper on the left, switch on the right. */
+.mobile-setting-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--surface-base);
+  border: 1px solid var(--border-weak-base);
+  margin: 0 16px;
+}
+
+.mobile-setting-row__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mobile-setting-row__title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-strong);
+}
+
+.mobile-setting-row__help {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-weak);
+}
+
+/* ---------------------------------------------------------------- *
+ * iOS-style switch.
+ * ---------------------------------------------------------------- */
+.mobile-switch {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 51px;
+  height: 31px;
+  cursor: pointer;
+}
+
+.mobile-switch input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  z-index: 2;
+}
+
+/* Off-track tone derived from `currentColor` (i.e. --text-base) so it's
+ * a visible neutral grey in BOTH modes — `--surface-strong` is white
+ * in light mode, which would erase the white thumb. */
+.mobile-switch__track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 8%, transparent);
+  transition:
+    background 180ms ease,
+    border-color 180ms ease;
+}
+
+.mobile-switch__track::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 25px;
+  height: 25px;
+  background: #ffffff;
+  border-radius: 999px;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    0 1px 2px rgba(0, 0, 0, 0.18);
+  transition:
+    transform 180ms cubic-bezier(0.32, 0.72, 0, 1),
+    background 180ms ease;
+}
+
+.mobile-switch input:checked ~ .mobile-switch__track {
+  background: var(--mono-accent);
+  border-color: var(--mono-accent);
+}
+
+.mobile-switch input:checked ~ .mobile-switch__track::before {
+  transform: translateX(20px);
+}
+
+.mobile-switch input:focus-visible ~ .mobile-switch__track {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mono-accent) 35%, transparent);
+}
+
+.mobile-switch input:disabled ~ .mobile-switch__track {
+  opacity: 0.5;
+}
+
+/* ---------------------------------------------------------------- *
+ * Inline alert / error pill.
+ * ---------------------------------------------------------------- */
+.mobile-alert {
+  margin: 0 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.mobile-alert--danger {
+  background: var(--surface-base-active);
+  color: var(--text-strong);
+  border: 1px solid color-mix(in srgb, var(--mono-accent) 35%, transparent);
+}
+
+.mobile-alert--warning {
+  background: color-mix(in srgb, var(--mono-accent) 14%, transparent);
+  color: var(--text-strong);
+  border: 1px solid color-mix(in srgb, var(--mono-accent) 28%, transparent);
+}
+
+/* ---------------------------------------------------------------- *
+ * Empty state — uses the brand peach tint so it ties to the rest
+ * of the app's branding.
+ * ---------------------------------------------------------------- */
+.mobile-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 14px;
+  padding: 56px 28px 32px;
+  text-align: center;
+}
+
+.mobile-empty__icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--mono-accent) 22%, transparent);
+  color: var(--mono-accent);
+}
+
+.mobile-empty__title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin: 4px 0 0;
+}
+
+.mobile-empty__body {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-weak);
+  max-width: 280px;
+}
+
+/* WebView host. */
+.instance-webview {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--background-base);
+}
+
+/* ============================================================
+ * Instance connecting surface — the parked screen behind the
+ * native InAppBrowser modal (iOS / Android) or the iframe gate
+ * (web fallback).
+ *
+ * Designed against Apple HIG patterns for a "Connecting…"
+ * state: vertically centred content, a large title with the
+ * instance label, host underneath in monospace, and an
+ * indeterminate progress strip that animates without lying
+ * about percentage. A subtle scale-in on mount makes the
+ * transition from picker → connecting feel intentional rather
+ * than abrupt.
+ * ============================================================ */
+
+.instance-connect {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 32px 24px calc(32px + var(--safe-area-bottom));
+  text-align: center;
+  /* Parent screens already paint --background-base — but on iOS
+     the WKWebView modal slides up over us before the picker
+     has the chance to repaint the area underneath, so we keep
+     the same base tone here for a visually contiguous backdrop. */
+  background: var(--background-base);
+}
+
+.instance-connect__avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Same monogram-tile colour scheme the picker cards use, kept in
+     sync via the shared OC-2 token. */
+  background: var(--surface-strong);
+  color: var(--text-strong);
+  font-feature-settings: "ss01";
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+.instance-connect__avatar-text {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.instance-connect__name-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  max-width: 320px;
+}
+
+.instance-connect__title {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+  margin: 0;
+  /* Long instance labels truncate gracefully on narrow phones. */
+  overflow-wrap: anywhere;
+}
+
+.instance-connect__host {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--text-weak);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.instance-connect__body {
+  margin: 4px 0 0;
+  max-width: 320px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-weak);
+}
+
+.instance-connect__phase {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-weak);
+}
+
+.instance-connect__cta {
+  margin-top: 4px;
+  min-width: 220px;
+}
+
+/* Indeterminate progress strip — static base track only. The
+   `mobile-spinner` glyph that sits in the same column as the phase
+   text already carries the "still working" affordance; the strip
+   here is a visual anchor under the host name, not an animated
+   focal point. */
+.instance-connect__progress {
+  position: relative;
+  width: 200px;
+  max-width: 60vw;
+  height: 3px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--text-weak) 18%, transparent);
+}
+
+.instance-connect__progress-bar {
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: inherit;
+  background: var(--text-strong);
+}
+
+/* Pull-to-refresh visual. */
+.ptr-indicator {
+  position: absolute;
+  top: var(--safe-area-top);
+  left: 50%;
+  transform: translate(-50%, -100%);
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--surface-strong);
+  font-size: 12px;
+  pointer-events: none;
+  transition: transform 200ms ease;
+}
+
+/* Spinner. */
+.mobile-spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid var(--border-weak-base);
+  border-top-color: var(--mono-accent);
+  animation: mobile-spin 720ms linear infinite;
+}
+
+@keyframes mobile-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Avoid iOS auto-zoom on input focus. */
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
+/* Disable iOS pinch-zoom on the picker chrome. */
+* {
+  touch-action: manipulation;
+}
+
+.mobile-link {
+  color: var(--mono-accent);
+  text-decoration: none;
+}
+.mobile-link:active {
+  opacity: 0.7;
+}

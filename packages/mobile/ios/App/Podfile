@@ -1,0 +1,44 @@
+require_relative '../../../../node_modules/.bun/@capacitor+ios@7.4.4+1d43a6a1837411c8/node_modules/@capacitor/ios/scripts/pods_helpers'
+
+# `@capgo/inappbrowser` 8.x targets iOS 15+ (relies on the
+# WKWebpagePreferences APIs introduced in iOS 14, plus the newer
+# `WKWebView.find(_:configuration:completionHandler:)` shipped in
+# iOS 14.5). The Capacitor 7 shell itself is happy on 14.0, but
+# bumping to 15.0 isn't a real cost: every device Xcode 26 builds
+# for already runs 15+, and we get the better `WKWebsiteDataStore`
+# cookie semantics that the in-app webview relies on for the SSO
+# flow (see webview-host.tsx for why that matters).
+platform :ios, '15.0'
+use_frameworks!
+
+# workaround to avoid Xcode caching of Pods that requires
+# Product -> Clean Build Folder after new Cordova plugins installed
+# Requires CocoaPods 1.6 or newer
+install! 'cocoapods', :disable_input_output_paths => true
+
+def capacitor_pods
+  pod 'Capacitor', :path => '../../../../node_modules/.bun/@capacitor+ios@7.4.4+1d43a6a1837411c8/node_modules/@capacitor/ios'
+  pod 'CapacitorCordova', :path => '../../../../node_modules/.bun/@capacitor+ios@7.4.4+1d43a6a1837411c8/node_modules/@capacitor/ios'
+  pod 'CapacitorApp', :path => '../../../../node_modules/.bun/@capacitor+app@7.1.0+1d43a6a1837411c8/node_modules/@capacitor/app'
+  pod 'CapacitorBrowser', :path => '../../../../node_modules/.bun/@capacitor+browser@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/browser'
+  pod 'CapacitorDevice', :path => '../../../../node_modules/.bun/@capacitor+device@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/device'
+  pod 'CapacitorFilesystem', :path => '../../../../node_modules/.bun/@capacitor+filesystem@8.1.2+1d43a6a1837411c8/node_modules/@capacitor/filesystem'
+  pod 'CapacitorHaptics', :path => '../../../../node_modules/.bun/@capacitor+haptics@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/haptics'
+  pod 'CapacitorKeyboard', :path => '../../../../node_modules/.bun/@capacitor+keyboard@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/keyboard'
+  pod 'CapacitorLocalNotifications', :path => '../../../../node_modules/.bun/@capacitor+local-notifications@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/local-notifications'
+  pod 'CapacitorNetwork', :path => '../../../../node_modules/.bun/@capacitor+network@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/network'
+  pod 'CapacitorPreferences', :path => '../../../../node_modules/.bun/@capacitor+preferences@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/preferences'
+  pod 'CapacitorSplashScreen', :path => '../../../../node_modules/.bun/@capacitor+splash-screen@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/splash-screen'
+  pod 'CapacitorStatusBar', :path => '../../../../node_modules/.bun/@capacitor+status-bar@7.0.4+1d43a6a1837411c8/node_modules/@capacitor/status-bar'
+  pod 'CapgoInappbrowser', :path => '../../../../node_modules/.bun/@capgo+inappbrowser@8.6.3+1d43a6a1837411c8/node_modules/@capgo/inappbrowser'
+  pod 'CapacitorSecureStoragePlugin', :path => '../../../../node_modules/.bun/capacitor-secure-storage-plugin@0.10.0+1d43a6a1837411c8/node_modules/capacitor-secure-storage-plugin'
+end
+
+target 'App' do
+  capacitor_pods
+  # Add your Pods here
+end
+
+post_install do |installer|
+  assertDeploymentTarget(installer)
+end

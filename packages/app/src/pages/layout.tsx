@@ -90,6 +90,7 @@ import {
 } from "./layout/sidebar-workspace"
 import { ProjectDragOverlay, SortableProject, type ProjectSidebarContext } from "./layout/sidebar-project"
 import { SidebarContent } from "./layout/sidebar-shell"
+import { ChatSidebarPanel } from "./layout/sidebar-chat"
 import { CronSidebarPanel } from "./layout/sidebar-cron"
 import { isCronSessionInfo } from "./layout/sidebar-cron-helpers"
 import { DialogArchivedSessions } from "@/components/dialog-archived-sessions"
@@ -194,8 +195,11 @@ export default function Layout(props: ParentProps) {
     pathname === "/mcp" ||
     pathname === "/plugins" ||
     pathname === "/skills"
+  const isChatRoutePath = (pathname: string) =>
+    pathname === "/chat" || pathname.startsWith("/chat/")
   const settingsRouteSelected = createMemo(() => isSettingsPath(location.pathname))
   const globalRouteSelected = createMemo(() => isGlobalRoutePath(location.pathname))
+  const chatRouteSelected = createMemo(() => isChatRoutePath(location.pathname))
   const cronRouteSelected = createMemo(() => isCronRoutePath(location.pathname))
   const cronRouteProjectID = createMemo(() => new URLSearchParams(location.search).get("projectID") ?? undefined)
   const cronSessionRouteSelected = createMemo(
@@ -290,6 +294,7 @@ export default function Layout(props: ParentProps) {
   const sidebarRouteKey = createMemo(() => {
     if (!layoutReady()) return
     if (settingsRouteSelected()) return "settings"
+    if (chatRouteSelected()) return "chat"
     if (globalRouteSelected()) return "global"
     if (cronContextActive()) {
       const project = cronProject()
@@ -304,7 +309,8 @@ export default function Layout(props: ParentProps) {
       !initialDirectory &&
       !isGlobalRoutePath(location.pathname) &&
       !isSettingsPath(location.pathname) &&
-      !isCronRoutePath(location.pathname),
+      !isCronRoutePath(location.pathname) &&
+      !isChatRoutePath(location.pathname),
     busyWorkspaces: {} as Record<string, boolean>,
     hoverProject: undefined as string | undefined,
     scrollSessionKey: undefined as string | undefined,
@@ -2548,6 +2554,8 @@ export default function Layout(props: ParentProps) {
             current={currentSettingsSection}
             onSelect={selectSettingsSection}
           />
+        ) : chatRouteSelected() ? (
+          <ChatSidebarPanel mobile={mobile} width={panel} />
         ) : cronContextActive() ? (
           <div
             classList={{

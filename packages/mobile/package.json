@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@codeplane-ai/mobile",
+  "private": true,
+  "version": "28.0.0",
+  "productName": "Codeplane",
+  "description": "Codeplane Mobile — iOS + Android shell that connects to remote Codeplane servers and renders the matching web UI, optimised for touch.",
+  "license": "MIT",
+  "homepage": "https://codeplane.ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/devinoldenburg/codeplane.git"
+  },
+  "bugs": {
+    "url": "https://github.com/devinoldenburg/codeplane/issues"
+  },
+  "author": {
+    "name": "Devin Oldenburg",
+    "email": "devin@logicplanes.com",
+    "url": "https://github.com/devinoldenburg"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "rm -rf dist && vite build",
+    "dev": "vite",
+    "typecheck": "tsgo --noEmit",
+    "cap:add:ios": "cap add ios",
+    "cap:add:android": "cap add android",
+    "cap:sync": "bun run build && cap sync",
+    "cap:open:ios": "cap open ios",
+    "cap:open:android": "cap open android",
+    "cap:run:ios": "bun run cap:sync && cap run ios",
+    "cap:run:android": "bun run cap:sync && cap run android",
+    "package:ios": "bun run cap:sync && cd ios/App && xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination 'generic/platform=iOS' archive -archivePath build/App.xcarchive",
+    "package:android": "bun run cap:sync && cd android && ./gradlew assembleRelease"
+  },
+  "dependencies": {
+    "@capacitor/android": "7.4.4",
+    "@capacitor/app": "7.1.0",
+    "@capacitor/browser": "7.0.4",
+    "@capacitor/core": "7.4.4",
+    "@capacitor/device": "7.0.4",
+    "@capacitor/filesystem": "8.1.2",
+    "@capacitor/haptics": "7.0.4",
+    "@capacitor/ios": "7.4.4",
+    "@capacitor/keyboard": "7.0.4",
+    "@capacitor/local-notifications": "7.0.4",
+    "@capacitor/network": "7.0.4",
+    "@capacitor/preferences": "7.0.4",
+    "@capacitor/splash-screen": "7.0.4",
+    "@capacitor/status-bar": "7.0.4",
+    "@capgo/inappbrowser": "8.6.3",
+    "capacitor-secure-storage-plugin": "0.10.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "7.4.4",
+    "@codeplane-ai/shared": "file:../shared",
+    "@codeplane-ai/ui": "file:../ui",
+    "@tailwindcss/vite": "4.1.11",
+    "@types/node": "22.13.9",
+    "@typescript/native-preview": "7.0.0-dev.20251207.1",
+    "dompurify": "catalog:",
+    "marked": "catalog:",
+    "solid-js": "1.9.10",
+    "tailwindcss": "4.1.11",
+    "typescript": "5.8.2",
+    "vite": "7.3.2",
+    "vite-plugin-solid": "2.11.10"
+  }
+}

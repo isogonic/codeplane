@@ -904,6 +904,9 @@ export type StepStartPart = {
   messageID: string
   type: "step-start"
   snapshot?: string
+  time?: {
+    created: number
+  }
 }
 
 export type StepFinishPart = {
@@ -923,6 +926,9 @@ export type StepFinishPart = {
       read: number
       write: number
     }
+  }
+  time?: {
+    created: number
   }
 }
 

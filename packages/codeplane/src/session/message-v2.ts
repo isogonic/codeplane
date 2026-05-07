@@ -252,6 +252,17 @@ export const StepStartPart = Schema.Struct({
   ...partBase,
   type: Schema.Literal("step-start"),
   snapshot: Schema.optional(Schema.String),
+  // Stamped from `Date.now()` when the AI SDK emits its `start-step` event,
+  // which the SDK fires on receipt of the FIRST chunk from the model. Pairing
+  // this with `StepFinishPart.time.created` gives a per-step wall duration
+  // that includes text + reasoning + tool-input decode time — the exact
+  // streaming window the provider's TPS dashboard reports against. Optional
+  // so older sessions (before this field existed) still parse.
+  time: Schema.optional(
+    Schema.Struct({
+      created: Schema.Number,
+    }),
+  ),
 })
   .annotate({ identifier: "StepStartPart" })
   .pipe(withStatics((s) => ({ zod: zod(s) })))
@@ -273,6 +284,15 @@ export const StepFinishPart = Schema.Struct({
       write: Schema.Number,
     }),
   }),
+  // Stamped from `Date.now()` when the AI SDK emits `finish-step`, i.e. the
+  // step's last chunk arrived. `time.created - StepStartPart.time.created`
+  // is the per-step decode wall time used as the TPS denominator. Optional
+  // for backwards compatibility with sessions written before this field.
+  time: Schema.optional(
+    Schema.Struct({
+      created: Schema.Number,
+    }),
+  ),
 })
   .annotate({ identifier: "StepFinishPart" })
   .pipe(withStatics((s) => ({ zod: zod(s) })))

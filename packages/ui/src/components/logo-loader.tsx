@@ -3,73 +3,89 @@
  *
  * Frame generator adapted from gunnargray-dev/unicode-animations
  * (MIT License, https://github.com/gunnargray-dev/unicode-animations).
+ *
+ * Why SVG instead of unicode braille (U+2800–U+28FF)?
+ * The original implementation rendered each animation frame as a single
+ * braille code point and relied on the system mono font to draw the dot
+ * pattern. That works on macOS and most desktop browsers, but iOS Safari
+ * and the Capacitor WKWebView used by the mobile app DO NOT ship a font
+ * with braille glyph coverage — the engine falls through to .notdef and
+ * paints a "tofu" / question-mark-in-a-box where the loader should be.
+ * The user reported it as the `[?]` next to "Denken" / next to the
+ * reasoning header on mobile. Drawing the same 2×4 dot grid directly as
+ * SVG circles removes the font dependency entirely so the animation
+ * renders identically on every platform.
  */
-import { createEffect, createSignal, onCleanup, type Component } from "solid-js"
+import { createEffect, createMemo, createSignal, onCleanup, type Component } from "solid-js"
 
-const BRAILLE_DOT_MAP: ReadonlyArray<readonly [number, number]> = [
-  [0x01, 0x08],
-  [0x02, 0x10],
-  [0x04, 0x20],
-  [0x40, 0x80],
-]
+const COLS = 2
+const ROWS = 4
 
-function makeGrid(rows: number, cols: number): boolean[][] {
-  if (rows <= 0 || cols <= 0) return []
-  return Array.from({ length: rows }, () => Array(cols).fill(false))
+type Frame = boolean[][]
+
+function makeGrid(filled: boolean): Frame {
+  return Array.from({ length: ROWS }, () => Array.from({ length: COLS }, () => filled))
 }
 
-function gridToBraille(grid: boolean[][]): string {
-  const rows = grid.length
-  const cols = grid[0]?.length ?? 0
-  const charCount = Math.ceil(cols / 2)
-  let result = ""
-  for (let c = 0; c < charCount; c++) {
-    let code = 0x2800
-    for (let r = 0; r < 4 && r < rows; r++) {
-      for (let d = 0; d < 2; d++) {
-        const col = c * 2 + d
-        if (col < cols && grid[r]?.[col]) {
-          code |= BRAILLE_DOT_MAP[r][d]
-        }
-      }
-    }
-    result += String.fromCodePoint(code)
-  }
-  return result
-}
-
-function genDiagonalSwipe(): string[] {
-  const W = 2
-  const H = 4
-  const frames: string[] = []
-  const maxDiag = W + H - 2
+function genDiagonalSwipe(): Frame[] {
+  const frames: Frame[] = []
+  const maxDiag = COLS + ROWS - 2
+  // Phase 1: fill in along the diagonal (top-left → bottom-right).
   for (let d = 0; d <= maxDiag; d++) {
-    const g = makeGrid(H, W)
-    for (let r = 0; r < H; r++) {
-      for (let c = 0; c < W; c++) {
+    const g = makeGrid(false)
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
         if (r + c <= d) g[r][c] = true
       }
     }
-    frames.push(gridToBraille(g))
+    frames.push(g)
   }
-  const full = makeGrid(H, W)
-  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) full[r][c] = true
-  frames.push(gridToBraille(full))
+  // Phase 2: full grid (peak frame).
+  frames.push(makeGrid(true))
+  // Phase 3: drain along the same diagonal — keep dots whose r+c is past d.
   for (let d = 0; d <= maxDiag; d++) {
-    const g = makeGrid(H, W)
-    for (let r = 0; r < H; r++) {
-      for (let c = 0; c < W; c++) {
+    const g = makeGrid(false)
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
         if (r + c > d) g[r][c] = true
       }
     }
-    frames.push(gridToBraille(g))
+    frames.push(g)
   }
-  frames.push(gridToBraille(makeGrid(H, W)))
+  // Phase 4: empty grid (rest before looping).
+  frames.push(makeGrid(false))
   return frames
 }
 
 const FRAMES = genDiagonalSwipe()
 const FRAME_MS = 90
+
+// Geometry: the SVG viewBox matches the original 12×20 px box the css set,
+// so existing layouts that reserve space for the loader keep the same
+// visual size. Dots are placed on a 2×4 grid with margin so they don't
+// touch the viewBox edges.
+const VIEW_W = 12
+const VIEW_H = 20
+const PAD_X = 2
+const PAD_Y = 2
+const DOT_R = 1.4
+const STEP_X = (VIEW_W - PAD_X * 2) / (COLS - 1) // 2 columns → spacing across full inner width
+const STEP_Y = (VIEW_H - PAD_Y * 2) / (ROWS - 1) // 4 rows → spacing across full inner height
+
+const DOT_POSITIONS: Array<{ row: number; col: number; cx: number; cy: number }> = (() => {
+  const list: Array<{ row: number; col: number; cx: number; cy: number }> = []
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      list.push({
+        row: r,
+        col: c,
+        cx: PAD_X + c * STEP_X,
+        cy: PAD_Y + r * STEP_Y,
+      })
+    }
+  }
+  return list
+})()
 
 export const LogoLoader: Component<{ class?: string; active?: boolean }> = (props) => {
   const [index, setIndex] = createSignal(0)
@@ -82,6 +98,8 @@ export const LogoLoader: Component<{ class?: string; active?: boolean }> = (prop
     onCleanup(() => clearInterval(id))
   })
 
+  const frame = createMemo(() => FRAMES[index()] ?? FRAMES[0]!)
+
   return (
     <span
       data-component="logo-loader"
@@ -89,7 +107,24 @@ export const LogoLoader: Component<{ class?: string; active?: boolean }> = (prop
       classList={{ [props.class ?? ""]: !!props.class }}
       aria-hidden="true"
     >
-      <span data-slot="logo-loader-frame">{FRAMES[index()]}</span>
+      <svg
+        data-slot="logo-loader-frame"
+        viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+        width={VIEW_W}
+        height={VIEW_H}
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+      >
+        {DOT_POSITIONS.map((dot) => (
+          <circle
+            cx={dot.cx}
+            cy={dot.cy}
+            r={DOT_R}
+            fill="currentColor"
+            opacity={frame()[dot.row]?.[dot.col] ? 1 : 0}
+          />
+        ))}
+      </svg>
     </span>
   )
 }

@@ -3,7 +3,7 @@
   "info": {
     "title": "codeplane",
     "description": "codeplane api",
-    "version": "27.4.46"
+    "version": "28.0.0"
   },
   "paths": {
     "/global/cron": {
@@ -10154,6 +10154,15 @@
           },
           "snapshot": {
             "type": "string"
+          },
+          "time": {
+            "type": "object",
+            "properties": {
+              "created": {
+                "type": "number"
+              }
+            },
+            "required": ["created"]
           }
         },
         "required": ["id", "sessionID", "messageID", "type"]
@@ -10215,6 +10224,15 @@
               }
             },
             "required": ["input", "output", "reasoning", "cache"]
+          },
+          "time": {
+            "type": "object",
+            "properties": {
+              "created": {
+                "type": "number"
+              }
+            },
+            "required": ["created"]
           }
         },
         "required": ["id", "sessionID", "messageID", "type", "reason", "cost", "tokens"]

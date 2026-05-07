@@ -1,0 +1,48 @@
+<!--
+  Drop this fragment into ios/App/App/Info.plist after running
+  `bun run cap:add:ios`. It registers the codeplane:// URL scheme so
+  deep links land in the app, and adds App Transport Security
+  exceptions for self-signed Codeplane servers (the user toggles per-
+  instance whether to honour them; the picker still won't open one
+  unless the toggle is on).
+-->
+
+<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleURLName</key>
+    <string>ai.codeplane.mobile</string>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>codeplane</string>
+    </array>
+  </dict>
+</array>
+
+<key>NSAppTransportSecurity</key>
+<dict>
+  <!--
+    Default: only HTTPS allowed. Per-instance "Allow self-signed
+    certificates" enables a runtime pinning bypass (handled in code,
+    not at the ATS level).
+  -->
+  <key>NSAllowsArbitraryLoads</key>
+  <false/>
+</dict>
+
+<key>NSCameraUsageDescription</key>
+<string>Codeplane uses the camera when an instance UI requests it (e.g. for QR scanning).</string>
+<key>NSMicrophoneUsageDescription</key>
+<string>Codeplane uses the microphone when an instance UI requests it (e.g. for voice input).</string>
+<key>NSFaceIDUsageDescription</key>
+<string>Use Face ID to unlock saved instance secrets.</string>
+<key>UIBackgroundModes</key>
+<array>
+  <string>remote-notification</string>
+</array>
+<key>UIRequiresFullScreen</key>
+<false/>
+<key>UIViewControllerBasedStatusBarAppearance</key>
+<true/>
+<key>UIStatusBarStyle</key>
+<string>UIStatusBarStyleLightContent</string>

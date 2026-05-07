@@ -2,11 +2,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-family-mono);
-  font-feature-settings: var(--font-family-mono--font-feature-settings);
-  font-size: 14px;
-  line-height: 20px;
-  letter-spacing: 0;
+  /* Sized to match the original braille-character box so callers don't have
+   * to retune layout. Color follows the surrounding text via currentColor on
+   * the SVG circles (see logo-loader.tsx). */
   color: var(--text-base);
   height: 20px;
   width: 12px;
@@ -14,9 +12,9 @@
 }
 
 [data-component="logo-loader"] [data-slot="logo-loader-frame"] {
-  display: inline-block;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 @media (prefers-reduced-motion: reduce) {

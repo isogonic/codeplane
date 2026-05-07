@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android network security config for the picker + in-app webview.
+  Default: HTTPS only. The per-instance "ignoreCertificateErrors"
+  toggle is wired at the in-app WebView client level, NOT through this
+  manifest config — that way the user's per-instance opt-in stays
+  scoped to that one origin instead of relaxing the whole app.
+-->
+<network-security-config>
+  <base-config cleartextTrafficPermitted="false">
+    <trust-anchors>
+      <certificates src="system" />
+      <certificates src="user" />
+    </trust-anchors>
+  </base-config>
+</network-security-config>

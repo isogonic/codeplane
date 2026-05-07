@@ -149,25 +149,62 @@ function codeUrl(text: string) {
   }
 }
 
+/**
+ * Best-effort dark-mode detection from the document root. We try a few
+ * signals because every codeplane theme system has historically toggled it
+ * differently (data attribute, class name, color-scheme media query). This
+ * just decides which mermaid built-in theme — `dark` or `default` — gives
+ * us readable contrast.
+ */
+function detectDarkMode(): boolean {
+  if (typeof window === "undefined" || typeof document === "undefined") return false
+  const root = document.documentElement
+  if (root.dataset.theme && /dark/i.test(root.dataset.theme)) return true
+  if (root.classList.contains("dark") || root.classList.contains("theme-dark")) return true
+  // Fall back to comparing the computed background luminance — if the page
+  // background is darker than 50% gray, treat it as a dark theme.
+  const bg = getComputedStyle(root).getPropertyValue("--background-base").trim()
+  if (bg) {
+    const m = bg.match(/^#([0-9a-fA-F]{3,8})$/)
+    if (m) {
+      const hex = m[1].length === 3 ? m[1].split("").map((c) => c + c).join("") : m[1]
+      const r = parseInt(hex.slice(0, 2), 16)
+      const g = parseInt(hex.slice(2, 4), 16)
+      const b = parseInt(hex.slice(4, 6), 16)
+      const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+      if (lum < 0.5) return true
+    }
+  }
+  if (typeof window.matchMedia === "function") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+  }
+  return false
+}
+
 function loadMermaid() {
   if (mermaidPromise) return mermaidPromise
   mermaidPromise = import("mermaid").then((mod) => {
+    // Use mermaid's built-in `default` (light) or `dark` themes. They ship
+    // with palettes that are guaranteed to contrast across ALL diagram
+    // types — flowchart, mindmap, gantt, sequence, etc. — including the
+    // mindmap-specific `cScale*` / `cScaleLabel*` variables. We previously
+    // overrode only a handful of theme variables (primaryColor, etc.),
+    // which left mindmap nodes with no label color and they rendered
+    // black-on-black.
+    //
+    // We deliberately do NOT pass `themeVariables` here — the moment we
+    // pass even ONE `var(--…)` reference, mermaid's color parser crashes
+    // because it can't resolve it (it expects literal hex/rgb).
     mod.default.initialize({
       startOnLoad: false,
       securityLevel: "strict",
-      theme: "base",
+      theme: detectDarkMode() ? "dark" : "default",
       themeVariables: {
         background: "transparent",
-        primaryColor: "var(--surface-weak-base)",
-        primaryTextColor: "var(--text-strong)",
-        primaryBorderColor: "var(--border-weak-base)",
-        lineColor: "var(--text-weak)",
-        secondaryColor: "var(--surface-base)",
-        tertiaryColor: "var(--surface-strong-base)",
+        // `fontFamily` is allowed to be a CSS string — it isn't passed to
+        // the color parser, so keeping the var here means the diagram
+        // tracks the running theme's font.
         fontFamily: "var(--font-family-sans)",
-        noteBkgColor: "var(--surface-weak-base)",
-        noteTextColor: "var(--text-strong)",
-        noteBorderColor: "var(--border-weak-base)",
       },
     })
     return mod.default
@@ -175,12 +212,79 @@ function loadMermaid() {
   return mermaidPromise
 }
 
-function sanitizeMermaid(svg: string) {
-  if (!DOMPurify.isSupported) return ""
-  return DOMPurify.sanitize(svg, {
-    USE_PROFILES: { svg: true, svgFilters: true },
-    SANITIZE_NAMED_PROPS: true,
-  })
+/**
+ * Sanitise mermaid's SVG output before injecting it into the DOM.
+ *
+ * Why we don't use DOMPurify here: mermaid mindmap (and several other
+ * diagram types) embed node labels inside an SVG `<foreignObject>` whose
+ * body is XHTML (`<div xmlns="http://www.w3.org/1999/xhtml"><span
+ * class="nodeLabel">…`). DOMPurify's SVG profile strips XHTML-namespaced
+ * elements unconditionally, so labels disappeared. Even with the `html`
+ * profile bolted on we ended up with empty `<foreignObject>` shells —
+ * shapes rendered fine, labels invisible. The user reported this as
+ * "black boxes with no text".
+ *
+ * The mermaid library is trusted (we ship and call it ourselves), so the
+ * sanitiser here only needs to defend against tampering of the rendered
+ * SVG via untrusted CONTENT (a malicious model emitting an `onerror=…`
+ * inside a label, etc.). We:
+ *   1. Parse the SVG with the DOMParser (image/svg+xml mode).
+ *   2. Walk every node, dropping `<script>` outright.
+ *   3. Strip every attribute whose name starts with `on` (event handlers).
+ *   4. Strip `href`/`xlink:href` whose value isn't a same-document fragment
+ *      or an https URL.
+ *
+ * That's enough — `<style>` is preserved (otherwise the diagram is
+ * unstyled), `<foreignObject>` and its xhtml children are preserved
+ * (otherwise mindmap labels are gone), and we still block the actual
+ * attack vectors (script injection, event handlers, javascript: URLs).
+ */
+function sanitizeMermaid(svg: string): string {
+  if (typeof window === "undefined") return ""
+  let doc: Document
+  try {
+    doc = new DOMParser().parseFromString(svg, "image/svg+xml")
+  } catch {
+    return ""
+  }
+  // Reject when the parser reported an error.
+  if (doc.querySelector("parsererror")) return ""
+  const root = doc.documentElement
+  if (!root || root.localName !== "svg") return ""
+
+  const isSafeHref = (value: string): boolean => {
+    const trimmed = value.trim()
+    if (!trimmed) return true
+    if (trimmed.startsWith("#")) return true
+    if (/^https?:\/\//i.test(trimmed)) return true
+    if (trimmed.startsWith("/")) return true
+    return false
+  }
+
+  const visit = (node: Element) => {
+    // Drop <script> entirely.
+    if (node.localName === "script") {
+      node.remove()
+      return
+    }
+    // Strip event-handler attributes and unsafe URLs.
+    for (const attr of Array.from(node.attributes)) {
+      const name = attr.name.toLowerCase()
+      if (name.startsWith("on")) {
+        node.removeAttribute(attr.name)
+        continue
+      }
+      if (name === "href" || name === "xlink:href") {
+        if (!isSafeHref(attr.value)) {
+          node.removeAttribute(attr.name)
+        }
+      }
+    }
+    for (const child of Array.from(node.children)) visit(child)
+  }
+  visit(root)
+
+  return new XMLSerializer().serializeToString(root)
 }
 
 function isMermaidBlock(block: HTMLPreElement) {
@@ -516,9 +620,16 @@ function setupRichBlocks(root: HTMLDivElement) {
 
   root.addEventListener("click", handleClick)
   root.addEventListener("keydown", handleKey)
+  // Hydrate any plot/coordinate-system blocks already in the tree, and
+  // observe mutations so blocks streaming in later get hydrated too.
+  setupPlotBlocks(root)
+  const plotObserver = new MutationObserver(() => setupPlotBlocks(root))
+  plotObserver.observe(root, { childList: true, subtree: true })
   return () => {
     root.removeEventListener("click", handleClick)
     root.removeEventListener("keydown", handleKey)
+    plotObserver.disconnect()
+    teardownPlotBlocks(root)
   }
 }
 
@@ -535,6 +646,506 @@ function activateTab(container: HTMLElement, index: string) {
     if (active) panel.removeAttribute("hidden")
     else panel.setAttribute("hidden", "")
   })
+}
+
+/* ------------------------------------------------------------------ *
+ * Plot block hydration — turns the server-rendered SVG of a coordinate
+ * system into an INTERACTIVE one with pan / zoom / hover.
+ *
+ * The block exposes its config via `data-plot-config` (a JSON blob we
+ * trust because we wrote it). On hydration we:
+ *   - parse the config,
+ *   - keep a working `xRange` / `yRange` (mutated by pan/zoom),
+ *   - re-render the SVG contents on every interaction (the same code
+ *     that runs server-side, ported to the browser).
+ *
+ * Each block we touch gets `data-plot-hydrated="true"` so we don't
+ * double-bind handlers — important because the markdown effect re-runs
+ * on every streamed delta.
+ * ------------------------------------------------------------------ */
+
+type PlotKindH = "fn" | "points" | "line"
+type PlotSeriesH = {
+  kind: PlotKindH
+  expr?: string | null
+  data?: Array<[number, number]> | null
+  color: string
+  label?: string | null
+  width: number
+  dashed: boolean
+}
+type PlotConfigH = {
+  xRange: [number, number]
+  yRange: [number, number]
+  grid: boolean
+  title: string | null
+  axisLabels: [string, string] | null
+  series: PlotSeriesH[]
+}
+
+const plotTeardowns = new WeakMap<HTMLElement, () => void>()
+
+function setupPlotBlocks(root: HTMLElement) {
+  const blocks = root.querySelectorAll<HTMLElement>(
+    '[data-component="markdown-block"][data-block-type="plot"]:not([data-plot-hydrated="true"])',
+  )
+  for (const block of Array.from(blocks)) {
+    const teardown = hydratePlotBlock(block)
+    if (teardown) {
+      block.dataset.plotHydrated = "true"
+      plotTeardowns.set(block, teardown)
+    }
+  }
+}
+
+function teardownPlotBlocks(root: HTMLElement) {
+  const blocks = root.querySelectorAll<HTMLElement>(
+    '[data-component="markdown-block"][data-block-type="plot"][data-plot-hydrated="true"]',
+  )
+  for (const block of Array.from(blocks)) {
+    const fn = plotTeardowns.get(block)
+    if (fn) {
+      fn()
+      plotTeardowns.delete(block)
+    }
+    block.removeAttribute("data-plot-hydrated")
+  }
+}
+
+function plotIsSafeMathExpr(expr: string): boolean {
+  if (typeof expr !== "string") return false
+  if (expr.length > 200) return false
+  if (!/^[a-zA-Z0-9_+\-*/%^().,\s]+$/.test(expr)) return false
+  if (
+    /\b(?:return|function|class|new|var|let|const|=>|\bthis\b|prototype|constructor|window|document|globalThis|process|require|import|eval|with|yield|async|await)\b/.test(
+      expr,
+    )
+  ) {
+    return false
+  }
+  return true
+}
+
+function plotCompileExpr(rawExpr: string): ((x: number) => number) | null {
+  if (!plotIsSafeMathExpr(rawExpr)) return null
+  const jsExpr = rawExpr.replace(/\^/g, "**")
+  try {
+    const body =
+      "const { sin, cos, tan, asin, acos, atan, atan2, sinh, cosh, tanh, exp, log, log2, log10, sqrt, cbrt, abs, sign, floor, ceil, round, pow, min, max, hypot, PI, E } = Math; " +
+      "const pi = Math.PI, e = Math.E; " +
+      `try { const __r = (${jsExpr}); return Number.isFinite(__r) ? __r : NaN; } catch { return NaN; }`
+    return new Function("x", body) as (x: number) => number
+  } catch {
+    return null
+  }
+}
+
+function plotNiceTickStep(range: number, target = 8): number {
+  if (!Number.isFinite(range) || range <= 0) return 1
+  const rough = range / target
+  const pow = Math.pow(10, Math.floor(Math.log10(rough)))
+  const norm = rough / pow
+  let nice = 1
+  if (norm >= 5) nice = 5
+  else if (norm >= 2) nice = 2
+  else if (norm >= 1) nice = 1
+  return nice * pow
+}
+
+function plotFormatTick(value: number): string {
+  if (!Number.isFinite(value)) return ""
+  if (Math.abs(value) < 1e-9) return "0"
+  const abs = Math.abs(value)
+  if (abs >= 1000 || abs < 0.01) {
+    return value
+      .toExponential(1)
+      .replace(/(\.\d*?)0+e/, "$1e")
+      .replace(/\.e/, "e")
+  }
+  return parseFloat(value.toPrecision(4)).toString()
+}
+
+function plotEscape(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+}
+
+function hydratePlotBlock(block: HTMLElement): (() => void) | undefined {
+  const cfgRaw = block.dataset.plotConfig
+  if (!cfgRaw) return
+  let initial: PlotConfigH
+  try {
+    initial = JSON.parse(cfgRaw) as PlotConfigH
+  } catch {
+    return
+  }
+  const svg = block.querySelector<SVGSVGElement>("svg")
+  const tooltip = block.querySelector<HTMLDivElement>('[data-slot="plot-tooltip"]')
+  if (!svg || !tooltip) return
+
+  let xRange: [number, number] = [...initial.xRange]
+  let yRange: [number, number] = [...initial.yRange]
+
+  const compiled = initial.series.map((s) =>
+    s.kind === "fn" && s.expr ? plotCompileExpr(s.expr) : null,
+  )
+
+  const W = 640
+  const H = 400
+  // Match the renderer's gutters — keep these in sync with renderPlot()
+  // so tick labels stay aligned through pan/zoom.
+  const PAD_L = 56
+  const PAD_R = 16
+  const PAD_T = initial.title ? 36 : 16
+  const PAD_B = 36
+  const innerW = W - PAD_L - PAD_R
+  const innerH = H - PAD_T - PAD_B
+
+  const xToPx = (x: number) => PAD_L + ((x - xRange[0]) / (xRange[1] - xRange[0])) * innerW
+  const yToPx = (y: number) => PAD_T + (1 - (y - yRange[0]) / (yRange[1] - yRange[0])) * innerH
+  const pxToX = (px: number) => xRange[0] + ((px - PAD_L) / innerW) * (xRange[1] - xRange[0])
+
+  const gridLayer = svg.querySelector<SVGGElement>('[data-slot="plot-grid-layer"]')
+  const axesLayer = svg.querySelector<SVGGElement>('[data-slot="plot-axes"]')
+  const seriesLayer = svg.querySelector<SVGGElement>('[data-slot="plot-series-layer"]')
+  const crosshairX = svg.querySelector<SVGLineElement>(
+    '[data-slot="plot-crosshair"][data-axis="x"]',
+  )
+  const crosshairY = svg.querySelector<SVGLineElement>(
+    '[data-slot="plot-crosshair"][data-axis="y"]',
+  )
+  const cursorDot = svg.querySelector<SVGCircleElement>('[data-slot="plot-cursor-dot"]')
+  const resetBtn = block.querySelector<HTMLButtonElement>('[data-slot="plot-reset"]')
+  if (!gridLayer || !axesLayer || !seriesLayer) return
+
+  const rerender = () => {
+    const xStep = plotNiceTickStep(xRange[1] - xRange[0])
+    const yStep = plotNiceTickStep(yRange[1] - yRange[0])
+    const xTicks: number[] = []
+    for (let v = Math.ceil(xRange[0] / xStep) * xStep; v <= xRange[1] + xStep / 2; v += xStep) {
+      xTicks.push(Number(v.toFixed(10)))
+    }
+    const yTicks: number[] = []
+    for (let v = Math.ceil(yRange[0] / yStep) * yStep; v <= yRange[1] + yStep / 2; v += yStep) {
+      yTicks.push(Number(v.toFixed(10)))
+    }
+    const lines: string[] = []
+    if (initial.grid) {
+      for (const tx of xTicks) {
+        const x = xToPx(tx).toFixed(2)
+        lines.push(
+          `<line data-slot="plot-grid" x1="${x}" y1="${PAD_T}" x2="${x}" y2="${PAD_T + innerH}" />`,
+        )
+      }
+      for (const ty of yTicks) {
+        const y = yToPx(ty).toFixed(2)
+        lines.push(
+          `<line data-slot="plot-grid" x1="${PAD_L}" y1="${y}" x2="${PAD_L + innerW}" y2="${y}" />`,
+        )
+      }
+    }
+    gridLayer.innerHTML = lines.join("")
+
+    const zeroX = xRange[0] <= 0 && xRange[1] >= 0 ? xToPx(0) : null
+    const zeroY = yRange[0] <= 0 && yRange[1] >= 0 ? yToPx(0) : null
+    const axisX = zeroY ?? PAD_T + innerH
+    const axisY = zeroX ?? PAD_L
+    const axisHTML: string[] = []
+    axisHTML.push(
+      `<line data-slot="plot-axis" data-axis="x" x1="${PAD_L}" y1="${axisX.toFixed(2)}" x2="${PAD_L + innerW}" y2="${axisX.toFixed(2)}" />`,
+      `<line data-slot="plot-axis" data-axis="y" x1="${axisY.toFixed(2)}" y1="${PAD_T}" x2="${axisY.toFixed(2)}" y2="${PAD_T + innerH}" />`,
+    )
+    // Tick labels live on the PERIMETER (left edge / bottom edge), never on
+    // the axis lines themselves — see renderPlot() for the rationale.
+    const labelLeft = PAD_L - 6
+    const labelBottom = PAD_T + innerH + 14
+    for (const tx of xTicks) {
+      if (Math.abs(tx) < 1e-12) continue
+      const x = xToPx(tx).toFixed(2)
+      axisHTML.push(
+        `<text data-slot="plot-tick" data-axis="x" x="${x}" y="${labelBottom.toFixed(2)}">${plotEscape(plotFormatTick(tx))}</text>`,
+      )
+    }
+    for (const ty of yTicks) {
+      if (Math.abs(ty) < 1e-12) continue
+      const y = yToPx(ty).toFixed(2)
+      axisHTML.push(
+        `<text data-slot="plot-tick" data-axis="y" x="${labelLeft.toFixed(2)}" y="${(Number(y) + 3).toFixed(2)}">${plotEscape(plotFormatTick(ty))}</text>`,
+      )
+    }
+    if (zeroX !== null && zeroY !== null) {
+      axisHTML.push(
+        `<text data-slot="plot-tick" data-axis="origin" x="${labelLeft.toFixed(2)}" y="${labelBottom.toFixed(2)}">0</text>`,
+      )
+    }
+    axesLayer.innerHTML = axisHTML.join("")
+
+    const SAMPLES = 600
+    const clampY = (y: number) =>
+      Math.max(yRange[0] - (yRange[1] - yRange[0]), Math.min(yRange[1] + (yRange[1] - yRange[0]), y))
+    const seriesHTML: string[] = []
+    initial.series.forEach((s, idx) => {
+      const fn = compiled[idx]
+      if (s.kind === "fn" && fn) {
+        let pen: "M" | "L" = "M"
+        let pathD = ""
+        for (let i = 0; i <= SAMPLES; i++) {
+          const x = xRange[0] + (i / SAMPLES) * (xRange[1] - xRange[0])
+          let y: number
+          try {
+            y = fn(x)
+          } catch {
+            y = NaN
+          }
+          if (!Number.isFinite(y)) {
+            pen = "M"
+            continue
+          }
+          pathD += `${pen}${xToPx(x).toFixed(2)} ${yToPx(clampY(y)).toFixed(2)} `
+          pen = "L"
+        }
+        const dashAttr = s.dashed ? ` stroke-dasharray="6 4"` : ""
+        seriesHTML.push(
+          `<path data-slot="plot-series" data-series-kind="fn" data-series-index="${idx}" d="${pathD.trim()}" stroke="${plotEscape(s.color)}" stroke-width="${s.width}"${dashAttr} fill="none" />`,
+        )
+      } else if (s.kind === "line" && s.data && s.data.length > 0) {
+        const pathD = s.data
+          .map(([x, y], i) => `${i === 0 ? "M" : "L"}${xToPx(x).toFixed(2)} ${yToPx(y).toFixed(2)}`)
+          .join(" ")
+        const dashAttr = s.dashed ? ` stroke-dasharray="6 4"` : ""
+        seriesHTML.push(
+          `<path data-slot="plot-series" data-series-kind="line" data-series-index="${idx}" d="${pathD}" stroke="${plotEscape(s.color)}" stroke-width="${s.width}"${dashAttr} fill="none" />`,
+        )
+      } else if (s.kind === "points" && s.data && s.data.length > 0) {
+        const circles = s.data
+          .map(
+            ([x, y]) =>
+              `<circle cx="${xToPx(x).toFixed(2)}" cy="${yToPx(y).toFixed(2)}" r="3.5" fill="${plotEscape(s.color)}" stroke="var(--surface-base, #fff)" stroke-width="1" />`,
+          )
+          .join("")
+        seriesHTML.push(
+          `<g data-slot="plot-series" data-series-kind="points" data-series-index="${idx}">${circles}</g>`,
+        )
+      }
+    })
+    seriesLayer.innerHTML = seriesHTML.join("")
+  }
+
+  rerender()
+
+  const svgPoint = (clientX: number, clientY: number) => {
+    const pt = svg.createSVGPoint()
+    pt.x = clientX
+    pt.y = clientY
+    const ctm = svg.getScreenCTM()
+    if (!ctm) return { x: 0, y: 0 }
+    const local = pt.matrixTransform(ctm.inverse())
+    return { x: local.x, y: local.y }
+  }
+  const inBounds = (px: number, py: number) =>
+    px >= PAD_L && px <= PAD_L + innerW && py >= PAD_T && py <= PAD_T + innerH
+
+  const showCursorAt = (svgX: number, _svgY: number, dataX: number) => {
+    if (!crosshairX || !crosshairY || !cursorDot) return
+    crosshairX.setAttribute("x1", String(svgX))
+    crosshairX.setAttribute("x2", String(svgX))
+    crosshairX.setAttribute("y1", String(PAD_T))
+    crosshairX.setAttribute("y2", String(PAD_T + innerH))
+    crosshairX.style.visibility = "visible"
+    let dotY: number | null = null
+    let dotColor: string | null = null
+    for (let i = 0; i < initial.series.length; i++) {
+      const s = initial.series[i]
+      if (s.kind !== "fn") continue
+      const fn = compiled[i]
+      if (!fn) continue
+      const y = fn(dataX)
+      if (Number.isFinite(y) && y >= yRange[0] && y <= yRange[1]) {
+        dotY = yToPx(y)
+        dotColor = s.color
+        break
+      }
+    }
+    if (dotY != null && dotColor) {
+      cursorDot.setAttribute("cx", String(svgX))
+      cursorDot.setAttribute("cy", String(dotY))
+      cursorDot.setAttribute("fill", dotColor)
+      cursorDot.style.visibility = "visible"
+      crosshairY.setAttribute("x1", String(PAD_L))
+      crosshairY.setAttribute("x2", String(PAD_L + innerW))
+      crosshairY.setAttribute("y1", String(dotY))
+      crosshairY.setAttribute("y2", String(dotY))
+      crosshairY.style.visibility = "visible"
+    } else {
+      cursorDot.style.visibility = "hidden"
+      crosshairY.style.visibility = "hidden"
+    }
+    const rows: string[] = [
+      `<div data-slot="plot-tooltip-x">x = ${plotFormatTick(dataX)}</div>`,
+    ]
+    for (let i = 0; i < initial.series.length; i++) {
+      const s = initial.series[i]
+      if (s.kind !== "fn") continue
+      const fn = compiled[i]
+      if (!fn) continue
+      const y = fn(dataX)
+      if (!Number.isFinite(y)) continue
+      const label = s.label ?? s.expr ?? "y"
+      rows.push(
+        `<div data-slot="plot-tooltip-row"><span data-slot="plot-tooltip-dot" style="background:${plotEscape(s.color)}"></span><span>${plotEscape(label)} = ${plotFormatTick(y)}</span></div>`,
+      )
+    }
+    tooltip.innerHTML = rows.join("")
+    tooltip.hidden = false
+    const blockRect = block.getBoundingClientRect()
+    const svgRect = svg.getBoundingClientRect()
+    const ratio = svgRect.width / W
+    const offsetX = svgRect.left - blockRect.left + svgX * ratio + 12
+    const offsetY = svgRect.top - blockRect.top + (dotY ?? PAD_T + innerH / 2) * ratio - 8
+    tooltip.style.left = `${Math.min(offsetX, blockRect.width - 180)}px`
+    tooltip.style.top = `${Math.max(8, offsetY)}px`
+  }
+
+  const hideCursor = () => {
+    if (crosshairX) crosshairX.style.visibility = "hidden"
+    if (crosshairY) crosshairY.style.visibility = "hidden"
+    if (cursorDot) cursorDot.style.visibility = "hidden"
+    tooltip.hidden = true
+  }
+
+  let dragging:
+    | {
+        startClientX: number
+        startClientY: number
+        startXRange: [number, number]
+        startYRange: [number, number]
+      }
+    | null = null
+
+  const onPointerDown = (event: PointerEvent) => {
+    if (event.button !== 0) return
+    const { x, y } = svgPoint(event.clientX, event.clientY)
+    if (!inBounds(x, y)) return
+    dragging = {
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startXRange: [...xRange],
+      startYRange: [...yRange],
+    }
+    try {
+      svg.setPointerCapture(event.pointerId)
+    } catch {
+      // ignore
+    }
+    svg.style.cursor = "grabbing"
+  }
+
+  const onPointerMove = (event: PointerEvent) => {
+    if (!dragging) {
+      const { x, y } = svgPoint(event.clientX, event.clientY)
+      if (!inBounds(x, y)) {
+        hideCursor()
+        return
+      }
+      showCursorAt(x, y, pxToX(x))
+      return
+    }
+    const ctm = svg.getScreenCTM()
+    if (!ctm) return
+    const ratioX = (xRange[1] - xRange[0]) / innerW
+    const ratioY = (yRange[1] - yRange[0]) / innerH
+    const dxSvg = (event.clientX - dragging.startClientX) / ctm.a
+    const dySvg = (event.clientY - dragging.startClientY) / ctm.d
+    const dxData = -dxSvg * ratioX
+    const dyData = dySvg * ratioY
+    xRange = [dragging.startXRange[0] + dxData, dragging.startXRange[1] + dxData]
+    yRange = [dragging.startYRange[0] + dyData, dragging.startYRange[1] + dyData]
+    rerender()
+  }
+
+  const onPointerUp = (event: PointerEvent) => {
+    if (dragging) {
+      try {
+        svg.releasePointerCapture(event.pointerId)
+      } catch {
+        // ignore
+      }
+      dragging = null
+      svg.style.cursor = "crosshair"
+    }
+  }
+
+  // Wheel zoom — modifier-gated and dampened.
+  //
+  // Two ergonomic problems we used to have:
+  //   1. plain wheel-over-plot trapped page scroll: hovering the chart
+  //      and trying to scroll the message thread did nothing because we
+  //      were eating the wheel event for zoom.
+  //   2. when zoom did fire, `factor = 0.85` per tick was way too
+  //      aggressive — three notches of a Magic Mouse zoomed by 2×.
+  //
+  // Now the user has to opt in (Cmd/Ctrl + wheel, or pinch-zoom which
+  // browsers report as ctrlKey) to zoom. A bare wheel scroll lets the
+  // page scroll normally. The zoom factor is also tuned per device:
+  // pixel-based events from trackpads are scaled by their actual delta
+  // (so a small scroll = small zoom), with a hard cap to keep one
+  // gesture from snapping the chart to a tiny window.
+  const onWheel = (event: WheelEvent) => {
+    // Only zoom when the user explicitly asks for it: pinch (browsers
+    // dispatch it as wheel + ctrlKey) or Cmd/Ctrl + wheel. Otherwise
+    // pass through so the message thread keeps scrolling.
+    if (!event.ctrlKey && !event.metaKey) return
+    const { x, y } = svgPoint(event.clientX, event.clientY)
+    if (!inBounds(x, y)) return
+    event.preventDefault()
+    // Dampened, delta-aware factor:
+    //   * line-mode (deltaMode 1) = mouse wheel detents, ~3 lines/tick
+    //     → ~1.05 per tick
+    //   * pixel-mode (deltaMode 0) = trackpad pixels, fine increments
+    //     → ~0.5% per pixel, clamped so any single dispatch stays gentle
+    let factor: number
+    if (event.deltaMode === 1) {
+      factor = Math.pow(1.05, Math.sign(event.deltaY) * Math.min(Math.abs(event.deltaY), 4))
+    } else {
+      const pxFactor = Math.exp(event.deltaY * 0.0035)
+      factor = Math.max(0.85, Math.min(1.18, pxFactor))
+    }
+    const cx = pxToX(x)
+    const cy = yRange[0] + (1 - (y - PAD_T) / innerH) * (yRange[1] - yRange[0])
+    xRange = [cx - (cx - xRange[0]) * factor, cx + (xRange[1] - cx) * factor]
+    yRange = [cy - (cy - yRange[0]) * factor, cy + (yRange[1] - cy) * factor]
+    rerender()
+    showCursorAt(x, y, pxToX(x))
+  }
+
+  const onLeave = () => {
+    hideCursor()
+  }
+
+  const onReset = () => {
+    xRange = [...initial.xRange]
+    yRange = [...initial.yRange]
+    rerender()
+  }
+
+  svg.addEventListener("pointerdown", onPointerDown)
+  svg.addEventListener("pointermove", onPointerMove)
+  svg.addEventListener("pointerup", onPointerUp)
+  svg.addEventListener("pointerleave", onLeave)
+  svg.addEventListener("wheel", onWheel, { passive: false })
+  if (resetBtn) resetBtn.addEventListener("click", onReset)
+
+  return () => {
+    svg.removeEventListener("pointerdown", onPointerDown)
+    svg.removeEventListener("pointermove", onPointerMove)
+    svg.removeEventListener("pointerup", onPointerUp)
+    svg.removeEventListener("pointerleave", onLeave)
+    svg.removeEventListener("wheel", onWheel)
+    if (resetBtn) resetBtn.removeEventListener("click", onReset)
+  }
 }
 
 function setupCodeCopy(root: HTMLDivElement, getLabels: () => CopyLabels) {

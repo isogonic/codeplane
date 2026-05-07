@@ -65,6 +65,8 @@ export type BlockLang =
   | "gallery"
   | "comparison"
   | "diff"
+  | "plot"
+  | "graph"
 
 const blockLangs = new Set<string>([
   "chart",
@@ -95,6 +97,8 @@ const blockLangs = new Set<string>([
   "gallery",
   "comparison",
   "diff",
+  "plot",
+  "graph",
 ])
 
 export function isMarkdownBlockLang(lang?: string | null): boolean {
@@ -170,6 +174,10 @@ export function renderMarkdownBlock(code: string, lang: string): string | null {
       break
     case "diff":
       html = safeRender("diff", () => renderDiff(code))
+      break
+    case "plot":
+    case "graph":
+      html = safeRender("plot", () => renderPlot(parseJson(code)))
       break
     default:
       return null
@@ -1619,6 +1627,483 @@ function renderDiff(code: string): string {
     `<span data-slot="diff-stat" data-kind="del">−${stats.del}</span>`,
     `</div>`,
     `<div data-slot="diff-body">${rows}</div>`,
+    `</div>`,
+  ].join("")
+}
+
+/* ------------------------------------------------------------------ *
+ * Interactive coordinate system / function plotter (`plot`, `graph`)
+ *
+ * Produces a labelled 2D coordinate system the user can pan and zoom.
+ * The agent passes a JSON config describing axes, grid, and series:
+ *
+ *   {
+ *     "title": "Sin & cos on [-2π, 2π]",
+ *     "xRange": [-6.28, 6.28],
+ *     "yRange": [-1.2, 1.2],
+ *     "grid": true,            // optional, default true
+ *     "axisLabels": ["x", "y"], // optional
+ *     "series": [
+ *       { "kind": "fn", "expr": "sin(x)", "color": "#5b8def", "label": "sin(x)" },
+ *       { "kind": "fn", "expr": "cos(x)", "color": "#ef6b56", "label": "cos(x)" },
+ *       { "kind": "points", "data": [[0, 0], [3.14, 0]], "color": "#5cc4a3", "label": "Roots" },
+ *       { "kind": "line",   "data": [[-1,-1],[2,3]],     "color": "#f5a35a" }
+ *     ]
+ *   }
+ *
+ * Output is fully self-contained sanitised SVG/HTML. We render the
+ * static structure server-side here (axes, grid, ticks, paths sampled
+ * across the visible range), and the chat-side hydration in
+ * markdown.tsx adds:
+ *   - hover crosshair + tooltip with (x, y) at the cursor
+ *   - drag pan (translate the visible range)
+ *   - wheel zoom (scale around the cursor)
+ *   - "Reset view" pill
+ *
+ * Why we evaluate the expression on the SERVER (here, at render time)
+ * rather than only client-side: even before hydration runs, the user
+ * sees a usable, screenshotable curve. Hydration upgrades it to
+ * interactive without the visual ever being empty.
+ * ------------------------------------------------------------------ */
+
+type PlotKind = "fn" | "points" | "line"
+interface PlotSeriesIn {
+  kind?: PlotKind
+  expr?: string
+  data?: Array<[unknown, unknown]>
+  color?: string
+  label?: string
+  width?: number
+  dashed?: boolean
+}
+interface PlotSeries {
+  kind: PlotKind
+  expr?: string
+  data?: Array<[number, number]>
+  color: string
+  label?: string
+  width: number
+  dashed: boolean
+}
+interface PlotConfig {
+  title?: string
+  xRange: [number, number]
+  yRange: [number, number]
+  grid: boolean
+  axisLabels?: [string, string]
+  series: PlotSeries[]
+}
+
+/**
+ * Validate that a math expression only contains characters from a small
+ * safe alphabet — letters/digits/operators/parens/dot/comma/space — and
+ * doesn't include any "exotic" tokens that suggest code injection.
+ */
+function isSafeMathExpr(expr: string): boolean {
+  if (typeof expr !== "string") return false
+  if (expr.length > 200) return false
+  if (!/^[a-zA-Z0-9_+\-*/%^().,\s]+$/.test(expr)) return false
+  // Reject keywords that could break out via `Function` body misuse.
+  if (/\b(?:return|function|class|new|var|let|const|=>|\bthis\b|prototype|constructor|window|document|globalThis|process|require|import|eval|with|yield|async|await)\b/.test(expr)) {
+    return false
+  }
+  return true
+}
+
+/**
+ * Compile a math expression into a callable `(x: number) => number`. We
+ * destructure `Math` so bare names (`sin`, `cos`, `PI`, …) resolve
+ * naturally inside the expression — this is the path mathematical
+ * notation usually takes.
+ *
+ * `^` is rewritten to `**` so `x^2` does the obvious thing.
+ *
+ * Returns `null` if the expression is unsafe or doesn't compile.
+ */
+function compileMathExpr(rawExpr: string): ((x: number) => number) | null {
+  if (!isSafeMathExpr(rawExpr)) return null
+  // Convert ^ to JS exponent. Has to happen AFTER safety check because
+  // we don't want to permit `**` directly; the user-facing operator is `^`.
+  const jsExpr = rawExpr.replace(/\^/g, "**")
+  try {
+    const body =
+      "const { sin, cos, tan, asin, acos, atan, atan2, sinh, cosh, tanh, exp, log, log2, log10, sqrt, cbrt, abs, sign, floor, ceil, round, pow, min, max, hypot, PI, E } = Math; " +
+      "const pi = Math.PI, e = Math.E; " +
+      `try { const __r = (${jsExpr}); return Number.isFinite(__r) ? __r : NaN; } catch { return NaN; }`
+    return new Function("x", body) as (x: number) => number
+  } catch {
+    return null
+  }
+}
+
+function parsePlotConfig(payload: unknown): PlotConfig {
+  if (!payload || typeof payload !== "object") {
+    throw new Error("plot payload must be an object")
+  }
+  const p = payload as Record<string, unknown>
+  const xRangeRaw = p.xRange ?? p.x ?? [-10, 10]
+  const xRange: [number, number] = Array.isArray(xRangeRaw)
+    ? [safeNum(xRangeRaw[0], -10), safeNum(xRangeRaw[1], 10)]
+    : [-10, 10]
+  if (!(xRange[1] > xRange[0])) throw new Error("xRange must be [min, max] with min < max")
+
+  const seriesRaw = (p.series ?? []) as PlotSeriesIn[]
+  if (!Array.isArray(seriesRaw)) throw new Error("series must be an array")
+  const series: PlotSeries[] = seriesRaw.map((s, i) => {
+    const kind: PlotKind = s.kind === "points" || s.kind === "line" ? s.kind : "fn"
+    const fallbackColor = palette[i % palette.length]
+    const color = typeof s.color === "string" && s.color ? s.color : fallbackColor
+    const data: Array<[number, number]> | undefined = Array.isArray(s.data)
+      ? s.data
+          .map((row): [number, number] | null => {
+            if (!Array.isArray(row) || row.length < 2) return null
+            const x = safeNum(row[0], NaN)
+            const y = safeNum(row[1], NaN)
+            if (!Number.isFinite(x) || !Number.isFinite(y)) return null
+            return [x, y]
+          })
+          .filter((r): r is [number, number] => !!r)
+      : undefined
+    return {
+      kind,
+      expr: typeof s.expr === "string" ? s.expr : undefined,
+      data,
+      color,
+      label: typeof s.label === "string" ? s.label : undefined,
+      width: safeNum(s.width, 1.75),
+      dashed: !!s.dashed,
+    }
+  })
+
+  // yRange handling — agents are bad at picking sane bounds for unfamiliar
+  // functions. We accept what they give us, but validate it: if it's
+  // missing, malformed, OR pathologically large compared to what the
+  // plotted series actually produce on the visible x-window, fall back to
+  // sampling the series and choosing tight bounds with 10% padding.
+  // This is the bug the user reported: an agent supplied yRange of
+  // ~[-5e23, 1e24] for a Weierstraß sum that didn't even evaluate, so
+  // the chart filled with 1e+24 / 9e+23 / … axis labels.
+  const yRangeRaw = p.yRange ?? p.y
+  let yRange: [number, number] | undefined
+  if (Array.isArray(yRangeRaw)) {
+    const lo = safeNum(yRangeRaw[0], NaN)
+    const hi = safeNum(yRangeRaw[1], NaN)
+    if (Number.isFinite(lo) && Number.isFinite(hi) && hi > lo) {
+      yRange = [lo, hi]
+    }
+  }
+  // Auto-derive (or sanity-check) from the series data + sampled fns.
+  const sampled = sampleYRangeForPlot(xRange, series)
+  if (!yRange) {
+    yRange = sampled ?? [-10, 10]
+  } else if (sampled) {
+    // If the supplied yRange is more than ~50× larger than what the
+    // series actually fill, the agent almost certainly miscomputed it —
+    // override it. We allow a generous slack so legitimate "zoom out
+    // beyond the data" is still respected.
+    const span = yRange[1] - yRange[0]
+    const sampledSpan = sampled[1] - sampled[0]
+    if (sampledSpan > 0 && span > sampledSpan * 50) {
+      yRange = sampled
+    }
+  }
+
+  return {
+    title: typeof p.title === "string" ? p.title : undefined,
+    xRange,
+    yRange,
+    grid: p.grid === undefined ? true : !!p.grid,
+    axisLabels: Array.isArray(p.axisLabels) && p.axisLabels.length === 2
+      ? [String(p.axisLabels[0]), String(p.axisLabels[1])]
+      : undefined,
+    series,
+  }
+}
+
+/**
+ * Sample every series across the x-window and return the [yMin, yMax]
+ * that contains all of their finite values, padded by 10% on each side.
+ * Returns `undefined` if no series produces any finite y (e.g. all
+ * expressions are invalid) — caller falls back to a default range.
+ */
+function sampleYRangeForPlot(
+  xRange: [number, number],
+  series: PlotSeries[],
+): [number, number] | undefined {
+  let lo = Infinity
+  let hi = -Infinity
+  const STEPS = 200
+  for (const s of series) {
+    if (s.kind === "fn" && s.expr) {
+      const fn = compileMathExpr(s.expr)
+      if (!fn) continue
+      for (let i = 0; i <= STEPS; i++) {
+        const x = xRange[0] + (i / STEPS) * (xRange[1] - xRange[0])
+        const y = fn(x)
+        if (!Number.isFinite(y)) continue
+        if (y < lo) lo = y
+        if (y > hi) hi = y
+      }
+    } else if (s.data) {
+      for (const [, y] of s.data) {
+        if (!Number.isFinite(y)) continue
+        if (y < lo) lo = y
+        if (y > hi) hi = y
+      }
+    }
+  }
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) return undefined
+  if (lo === hi) {
+    // Single y-value — give it some height.
+    const half = Math.max(1, Math.abs(lo))
+    return [lo - half, hi + half]
+  }
+  const pad = (hi - lo) * 0.1
+  return [lo - pad, hi + pad]
+}
+
+/**
+ * Compute a sensible tick spacing for a given range. Picks 1, 2, or 5
+ * times a power of 10 — the same heuristic Excel/D3 use — so ticks
+ * align to round numbers across zoom levels.
+ */
+function niceTickStep(range: number, target = 8): number {
+  if (!Number.isFinite(range) || range <= 0) return 1
+  const rough = range / target
+  const pow = Math.pow(10, Math.floor(Math.log10(rough)))
+  const norm = rough / pow
+  let nice = 1
+  if (norm >= 5) nice = 5
+  else if (norm >= 2) nice = 2
+  else if (norm >= 1) nice = 1
+  return nice * pow
+}
+
+function formatTick(value: number): string {
+  if (!Number.isFinite(value)) return ""
+  if (Math.abs(value) < 1e-9) return "0"
+  // Compact 2 sig figs in scientific or fixed.
+  const abs = Math.abs(value)
+  if (abs >= 1000 || abs < 0.01) {
+    return value.toExponential(1).replace(/(\.\d*?)0+e/, "$1e").replace(/\.e/, "e")
+  }
+  const s = value.toPrecision(4)
+  return parseFloat(s).toString()
+}
+
+function renderPlot(payload: unknown): string {
+  const cfg = parsePlotConfig(payload)
+  const W = 640
+  const H = 400
+  // Wider left/bottom gutters so tick labels (incl. negatives, decimals,
+  // and scientific notation like "-1e+23") don't crash into the axis or
+  // get clipped by the SVG viewBox.
+  const PAD_L = 56
+  const PAD_R = 16
+  const PAD_T = cfg.title ? 36 : 16
+  const PAD_B = 36
+  const innerW = W - PAD_L - PAD_R
+  const innerH = H - PAD_T - PAD_B
+
+  const xMin = cfg.xRange[0]
+  const xMax = cfg.xRange[1]
+  const yMin = cfg.yRange[0]
+  const yMax = cfg.yRange[1]
+  const xScale = (x: number) => PAD_L + ((x - xMin) / (xMax - xMin)) * innerW
+  const yScale = (y: number) => PAD_T + (1 - (y - yMin) / (yMax - yMin)) * innerH
+
+  // Grid + ticks
+  const xStep = niceTickStep(xMax - xMin)
+  const yStep = niceTickStep(yMax - yMin)
+  const xTicks: number[] = []
+  for (let v = Math.ceil(xMin / xStep) * xStep; v <= xMax + xStep / 2; v += xStep) {
+    xTicks.push(Number(v.toFixed(10)))
+  }
+  const yTicks: number[] = []
+  for (let v = Math.ceil(yMin / yStep) * yStep; v <= yMax + yStep / 2; v += yStep) {
+    yTicks.push(Number(v.toFixed(10)))
+  }
+
+  const gridLines: string[] = []
+  if (cfg.grid) {
+    for (const tx of xTicks) {
+      const x = xScale(tx).toFixed(2)
+      gridLines.push(
+        `<line data-slot="plot-grid" x1="${x}" y1="${PAD_T}" x2="${x}" y2="${PAD_T + innerH}" />`,
+      )
+    }
+    for (const ty of yTicks) {
+      const y = yScale(ty).toFixed(2)
+      gridLines.push(
+        `<line data-slot="plot-grid" x1="${PAD_L}" y1="${y}" x2="${PAD_L + innerW}" y2="${y}" />`,
+      )
+    }
+  }
+  // Axis lines (y-axis at x=0 if visible, otherwise left edge)
+  const zeroX = xMin <= 0 && xMax >= 0 ? xScale(0) : null
+  const zeroY = yMin <= 0 && yMax >= 0 ? yScale(0) : null
+  const axisX = zeroY ?? PAD_T + innerH
+  const axisY = zeroX ?? PAD_L
+  const axes: string[] = []
+  axes.push(
+    `<line data-slot="plot-axis" data-axis="x" x1="${PAD_L}" y1="${axisX.toFixed(2)}" x2="${PAD_L + innerW}" y2="${axisX.toFixed(2)}" />`,
+    `<line data-slot="plot-axis" data-axis="y" x1="${axisY.toFixed(2)}" y1="${PAD_T}" x2="${axisY.toFixed(2)}" y2="${PAD_T + innerH}" />`,
+  )
+
+  // Tick labels — ALWAYS anchored to the plot perimeter so they read like
+  // a normal chart even when the axes cross at zero in the middle of the
+  // viewport. (Anchoring labels to the axis line itself produces the
+  // "stacked vertical numbers floating in the chart body" look that
+  // happens whenever 0 is inside the visible range.)
+  const labelLeft = PAD_L - 6
+  const labelBottom = PAD_T + innerH + 14
+  const tickLabels: string[] = []
+  for (const tx of xTicks) {
+    if (Math.abs(tx) < 1e-12) continue
+    const x = xScale(tx).toFixed(2)
+    tickLabels.push(
+      `<text data-slot="plot-tick" data-axis="x" x="${x}" y="${labelBottom.toFixed(2)}">${escape(formatTick(tx))}</text>`,
+    )
+  }
+  for (const ty of yTicks) {
+    if (Math.abs(ty) < 1e-12) continue
+    const y = yScale(ty).toFixed(2)
+    tickLabels.push(
+      `<text data-slot="plot-tick" data-axis="y" x="${labelLeft.toFixed(2)}" y="${(Number(y) + 3).toFixed(2)}">${escape(formatTick(ty))}</text>`,
+    )
+  }
+  // Origin label — left of the y-axis perimeter, below the x-axis line.
+  if (zeroX !== null && zeroY !== null) {
+    tickLabels.push(
+      `<text data-slot="plot-tick" data-axis="origin" x="${labelLeft.toFixed(2)}" y="${labelBottom.toFixed(2)}">0</text>`,
+    )
+  }
+
+  // Series
+  const seriesHTML: string[] = []
+  const SAMPLES = 400
+  cfg.series.forEach((s, idx) => {
+    const seriesAttrs = `data-series-index="${idx}" data-series-color="${escape(s.color)}"`
+    if (s.kind === "fn" && s.expr) {
+      const fn = compileMathExpr(s.expr)
+      if (!fn) {
+        seriesHTML.push(
+          `<text data-slot="plot-series-error" x="${PAD_L + 8}" y="${PAD_T + 16 + idx * 16}" fill="${escape(s.color)}">${escape("invalid expr: " + s.expr)}</text>`,
+        )
+        return
+      }
+      const segments: string[] = []
+      let pen: "M" | "L" = "M"
+      let pathD = ""
+      for (let i = 0; i <= SAMPLES; i++) {
+        const x = xMin + (i / SAMPLES) * (xMax - xMin)
+        let y: number
+        try {
+          y = fn(x)
+        } catch {
+          y = NaN
+        }
+        if (!Number.isFinite(y)) {
+          pen = "M"
+          continue
+        }
+        const sx = xScale(x).toFixed(2)
+        const sy = yScale(Math.max(yMin - (yMax - yMin), Math.min(yMax + (yMax - yMin), y))).toFixed(2)
+        pathD += `${pen}${sx} ${sy} `
+        pen = "L"
+      }
+      if (pathD.trim()) segments.push(pathD.trim())
+      const dashAttr = s.dashed ? ` stroke-dasharray="6 4"` : ""
+      seriesHTML.push(
+        `<path data-slot="plot-series" data-series-kind="fn" ${seriesAttrs} d="${segments.join(" ")}" stroke="${escape(s.color)}" stroke-width="${s.width}"${dashAttr} fill="none" />`,
+      )
+    } else if (s.kind === "line" && s.data && s.data.length >= 1) {
+      const pathD = s.data
+        .map(([x, y], i) => `${i === 0 ? "M" : "L"}${xScale(x).toFixed(2)} ${yScale(y).toFixed(2)}`)
+        .join(" ")
+      const dashAttr = s.dashed ? ` stroke-dasharray="6 4"` : ""
+      seriesHTML.push(
+        `<path data-slot="plot-series" data-series-kind="line" ${seriesAttrs} d="${pathD}" stroke="${escape(s.color)}" stroke-width="${s.width}"${dashAttr} fill="none" />`,
+      )
+    } else if (s.kind === "points" && s.data && s.data.length >= 1) {
+      const circles = s.data
+        .map(([x, y]) => {
+          return `<circle cx="${xScale(x).toFixed(2)}" cy="${yScale(y).toFixed(2)}" r="3.5" fill="${escape(s.color)}" stroke="var(--surface-base, #fff)" stroke-width="1" />`
+        })
+        .join("")
+      seriesHTML.push(
+        `<g data-slot="plot-series" data-series-kind="points" ${seriesAttrs}>${circles}</g>`,
+      )
+    }
+  })
+
+  // Legend
+  let legendHTML = ""
+  const labeled = cfg.series.filter((s) => s.label)
+  if (labeled.length > 0) {
+    const items = labeled
+      .map((s, i) => {
+        const dot = `<span data-slot="plot-legend-dot" style="background:${escape(s.color)}"></span>`
+        return `<span data-slot="plot-legend-item" data-series-index="${i}">${dot}<span>${escape(s.label!)}</span></span>`
+      })
+      .join("")
+    legendHTML = `<div data-slot="plot-legend">${items}</div>`
+  }
+
+  // Title
+  const titleHTML = cfg.title
+    ? `<text data-slot="plot-title" x="${(W / 2).toFixed(2)}" y="20" text-anchor="middle">${escape(cfg.title)}</text>`
+    : ""
+  const xLabelHTML = cfg.axisLabels?.[0]
+    ? `<text data-slot="plot-axis-label" data-axis="x" x="${(PAD_L + innerW / 2).toFixed(2)}" y="${H - 4}" text-anchor="middle">${escape(cfg.axisLabels[0])}</text>`
+    : ""
+  // Y-axis label sits in the LEFT GUTTER, rotated 90° counter-clockwise.
+  // Anchor at x = 14 (well inside the gutter) so the rotated text never
+  // clips the SVG edge regardless of how wide the longest tick label is.
+  const yLabelHTML = cfg.axisLabels?.[1]
+    ? `<text data-slot="plot-axis-label" data-axis="y" x="14" y="${(PAD_T + innerH / 2).toFixed(2)}" text-anchor="middle" transform="rotate(-90 14 ${(PAD_T + innerH / 2).toFixed(2)})">${escape(cfg.axisLabels[1])}</text>`
+    : ""
+
+  // Serialise the original config for hydration. We pass the validated
+  // `cfg` (not the raw input) so the hydrator can trust types.
+  const hydrationData = JSON.stringify({
+    xRange: cfg.xRange,
+    yRange: cfg.yRange,
+    grid: cfg.grid,
+    title: cfg.title ?? null,
+    axisLabels: cfg.axisLabels ?? null,
+    series: cfg.series.map((s) => ({
+      kind: s.kind,
+      expr: s.expr ?? null,
+      data: s.data ?? null,
+      color: s.color,
+      label: s.label ?? null,
+      width: s.width,
+      dashed: s.dashed,
+    })),
+  })
+
+  return [
+    `<div data-component="markdown-block" data-block-type="plot" data-plot-config="${escape(hydrationData)}">`,
+    `<div data-slot="plot-canvas">`,
+    `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${escape(cfg.title ?? "Coordinate system")}">`,
+    `<g data-slot="plot-grid-layer">${gridLines.join("")}</g>`,
+    `<g data-slot="plot-axes">${axes.join("")}${tickLabels.join("")}</g>`,
+    `<g data-slot="plot-series-layer">${seriesHTML.join("")}</g>`,
+    titleHTML,
+    xLabelHTML,
+    yLabelHTML,
+    // Cursor crosshair (hidden until hovered).
+    `<line data-slot="plot-crosshair" data-axis="x" x1="0" y1="0" x2="0" y2="0" />`,
+    `<line data-slot="plot-crosshair" data-axis="y" x1="0" y1="0" x2="0" y2="0" />`,
+    `<circle data-slot="plot-cursor-dot" cx="0" cy="0" r="3" />`,
+    // Hit area for pan/zoom.
+    `<rect data-slot="plot-hitarea" x="${PAD_L}" y="${PAD_T}" width="${innerW}" height="${innerH}" fill="transparent" />`,
+    `</svg>`,
+    `<div data-slot="plot-tooltip" hidden></div>`,
+    `<button type="button" data-slot="plot-reset" data-block-action="reset">Reset view</button>`,
+    `</div>`,
+    legendHTML,
     `</div>`,
   ].join("")
 }

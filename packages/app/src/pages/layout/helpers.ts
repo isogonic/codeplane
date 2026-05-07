@@ -26,11 +26,31 @@ function sortSessions(now: number) {
 
 const sessionInDirectory = (session: Session, directory: string) => directoryContains(directory, session.directory)
 
+/**
+ * Sessions created by the global "Chat" surface (the ChatGPT-style page at
+ * `/chat`) live in `~/.codeplane-chats` so that they ARE persisted by the
+ * codeplane backend but DO NOT pollute the user's project sidebar — the
+ * surface owns its own sidebar (`ChatSidebarPanel`). The home directory is
+ * very commonly registered as a project, which would otherwise treat every
+ * chat session as "this project's session".
+ *
+ * This is a path-shape check rather than a flag because the codeplane
+ * backend is unaware of the chat surface — sessions are plain `Session`
+ * records there. Treat any session whose directory name (any segment) is
+ * `.codeplane-chats` as a chat session.
+ */
+export const isChatSurfaceSession = (session: Session) => {
+  const dir = session.directory ?? ""
+  if (!dir) return false
+  return dir.split(/[/\\]/).includes(".codeplane-chats")
+}
+
 const isRootVisibleSession = (session: Session, directories: string[]) =>
   directories.some((directory) => sessionInDirectory(session, directory)) &&
   !session.parentID &&
   !session.time?.archived &&
-  !isCronSessionInfo(session as Session & { cronRunID?: string })
+  !isCronSessionInfo(session as Session & { cronRunID?: string }) &&
+  !isChatSurfaceSession(session)
 
 export const roots = (store: SessionStore, directory?: string) => {
   const directories = [directory, store.path.directory]
