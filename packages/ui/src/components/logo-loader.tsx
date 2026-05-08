@@ -128,43 +128,62 @@ function detectBrailleSupport(): boolean {
   if (typeof brailleSupported === "boolean") return brailleSupported
   if (typeof window === "undefined" || typeof document === "undefined") {
     // SSR or non-DOM environment — pick SVG so the first paint is correct.
-    brailleSupported = false
+    // We re-evaluate on first mount so the desktop client still ends up
+    // on the braille path after hydration.
     return false
   }
   try {
-    // The test is whether the runtime can DRAW distinct glyphs for two
-    // different braille code points. If it can't, both render as the same
-    // `notdef` rectangle (or nothing) and the measured widths collide.
-    // ⠁ (U+2801) = single top-left dot, ⠿ (U+283F) = all 6 lower dots.
+    // PIXEL-DENSITY detection. We can't compare GLYPH WIDTHS for braille
+    // because the chat surface uses a monospace font stack and `⠁` and
+    // `⠿` render at the same advance width when both are real glyphs —
+    // the entire POINT of monospace. (That false-negative was the v28.0.11
+    // bug: the width check returned "no braille" on every monospace
+    // platform, including macOS / Linux desktop where braille works fine,
+    // and the SVG fallback won by default.)
+    //
+    // Instead we render two braille code points with very different ink
+    // density to a hidden canvas and count the number of opaque pixels.
+    // Real glyphs: `⠁` (one dot, ~3-6 lit pixels) is MUCH less than `⠿`
+    // (six dots, ~18-40 lit pixels). Tofu rectangles for both code points
+    // have the SAME perimeter ink and would collide. The 1.5× threshold
+    // is well clear of the noise floor — anti-aliasing variance is on the
+    // order of ±10%, not 50%+.
     const canvas = document.createElement("canvas")
-    const ctx = canvas.getContext("2d")
-    if (!ctx) {
-      brailleSupported = false
-      return false
-    }
-    // Use the same font stack the chat / session-turn surface ends up
-    // resolving to. We don't rely on `var(--…)` because canvas can't read
-    // CSS custom properties — match the chat's mono fallback verbatim
-    // (kept in lock-step with `packages/app/src/context/settings.tsx`).
+    canvas.width = 24
+    canvas.height = 32
+    const ctx = canvas.getContext("2d", { willReadFrequently: true })
+    if (!ctx) return false
     ctx.font =
-      '14px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
-    const single = ctx.measureText("⠁").width
-    const all = ctx.measureText("⠿").width
-    // Empty / NaN widths mean the engine couldn't render anything → fall
-    // back. A clear width difference (typical: ~0.5–2 px on real braille
-    // fonts) means glyphs are distinct → braille is real.
-    if (!Number.isFinite(single) || !Number.isFinite(all) || single <= 0 || all <= 0) {
+      '20px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", "Segoe UI Symbol", monospace'
+    ctx.fillStyle = "#000000"
+    ctx.textBaseline = "middle"
+    const countLit = (text: string): number => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      ctx.fillText(text, 2, canvas.height / 2)
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+      let lit = 0
+      // Alpha channel is at every 4th byte. A pixel counts as "lit" when
+      // the fillText put any ink there at all (alpha > 0).
+      for (let i = 3; i < data.length; i += 4) {
+        if (data[i] > 0) lit++
+      }
+      return lit
+    }
+    const singleLit = countLit("⠁") // one dot
+    const allLit = countLit("⠿") // six dots
+    // Both must register at least SOME ink. If `⠁` is empty the runtime
+    // skipped it entirely (no fallback font drew anything) → no braille.
+    if (singleLit < 2 || allLit < 2) {
       brailleSupported = false
       return false
     }
-    // Some platforms (notably iOS WKWebView) collapse to identical-width
-    // tofu rectangles for both. Treat exact equality as "no real glyph".
-    if (Math.abs(single - all) < 0.01) {
-      brailleSupported = false
-      return false
-    }
-    brailleSupported = true
-    return true
+    // Real braille glyph ratio: ~5×–8× depending on antialiasing.
+    // Tofu rectangle ratio: ~1.0× (same perimeter for both).
+    // 1.5× is a safe floor — well above noise, well below real signal.
+    const ratio = allLit / singleLit
+    const ok = ratio >= 1.5
+    brailleSupported = ok
+    return ok
   } catch {
     brailleSupported = false
     return false
