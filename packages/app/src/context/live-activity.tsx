@@ -60,53 +60,33 @@ const INITIAL: LiveActivityState = {
 }
 
 /**
- * Unforgeable "we're inside the iOS picker's InAppBrowser" check.
- *
- * The `@capgo/inappbrowser` plugin auto-injects a WKScriptMessageHandler
- * named `close` into every WKWebView it opens — that's how the plugin's
- * own JS bridge calls back into native code. The handler is set up at
- * the WKWebView's `WKUserContentController` BEFORE the page's first
- * navigation, so:
- *
- *   • inside the InAppBrowser → `window.webkit.messageHandlers.close`
- *     is always defined (it's how the close button works).
- *   • a desktop browser, an iframe, a regular Safari tab, the
- *     Capacitor picker WebView itself → no such handler.
- *
- * A page's own `<script>` cannot install or forge a
- * `window.webkit.messageHandlers` entry — the WebKit message-handler
- * registry lives on the native side and is read-only from JS. So this
- * is the strongest "running inside the shell" signal we have, stronger
- * than the appendUserAgent tag (which @capgo's WKWebView might not
- * inherit from the host Capacitor config).
- *
- * Together with the `__codeplaneLA` snapshot the shell injects, this
- * gates the Live Activity toggle to genuine in-app sessions only.
- */
-function isInsideMobileShell(): boolean {
-  if (typeof window === "undefined") return false
-  const w = window as unknown as {
-    webkit?: { messageHandlers?: Record<string, unknown> }
-  }
-  return !!w.webkit?.messageHandlers?.close
-}
-
-/**
  * Read the synchronous shell-injected snapshot, if any. This is the
  * only thing on the page that knows whether the host is mobile *before*
  * any postMessage arrives — used to avoid a flash-of-no-toggle on
  * mount. Falls through to the inert default off-mobile.
  *
- * `supported` is gated on BOTH the snapshot AND the UA tag. Either
- * one missing → `supported: false` (toggle hidden).
+ * Earlier revisions also required `window.webkit.messageHandlers.close`
+ * to exist as a defence-in-depth check against a remote page setting
+ * `__codeplaneLA = { supported: true }` from its own `<script>`. In
+ * practice that combo never matched on the @capgo/inappbrowser
+ * WKWebView (its `executeScript` runs in a content world that lacks
+ * the page-side `webkit.messageHandlers` registry), so the gate
+ * silently rejected every legitimate injection. The defence was also
+ * pointless: a remote-page-set snapshot just renders a toggle whose
+ * `postToggle` calls `window.parent.postMessage` (no-op when there's
+ * no parent) and a `webkit.messageHandlers.codeplaneLA` that doesn't
+ * exist — i.e. no behaviour, no risk.
+ *
+ * The picker shell remains the only thing that injects `__codeplaneLA`
+ * via `executeScript` on a WKWebView, so the snapshot's presence is a
+ * sufficient "we're inside the shell" signal in production.
  */
 function readInjectedSnapshot(): LiveActivityState {
   if (typeof window === "undefined") return INITIAL
   const snap = window.__codeplaneLA
   if (!snap) return INITIAL
-  const inShell = isInsideMobileShell()
   return {
-    supported: !!snap.supported && inShell,
+    supported: !!snap.supported,
     enabledSessionIds: new Set(snap.enabledSessionIds ?? []),
     maxAllowed: snap.maxAllowed ?? MAX_LIVE_ACTIVITY_SESSIONS,
     lastError: undefined,
@@ -155,28 +135,58 @@ export const LiveActivity = createSimpleContext({
     const onMessage = (event: MessageEvent) => {
       const data = event.data
       if (!isStateMessage(data)) return
-      // Same UA gate as the synchronous snapshot — a desktop browser
-      // page that listens to `message` events and posts a fake
-      // `codeplane:la-state { supported: true }` to itself can't trick
-      // the toggle into rendering. The UA tag is set by the picker's
-      // Capacitor config and is the only signal a remote page can't
-      // forge from the page's own JS.
-      const inShell = isInsideMobileShell()
+      // Trust the message — same reasoning as `readInjectedSnapshot`.
+      // The picker shell is the only thing that reaches into the
+      // page's window via `executeScript` to dispatch this; a remote
+      // page that posts a fake `codeplane:la-state` to itself just
+      // gets a toggle whose `postToggle` doesn't reach anything
+      // useful, so there's no real attack surface to gate against.
       setStore(
         reconcile({
-          supported: data.supported && inShell,
+          supported: data.supported,
           enabledSessionIds: new Set(data.enabledSessionIds),
           maxAllowed: data.maxAllowed,
           lastError: data.lastError,
         }),
       )
-      setSupported(data.supported && inShell)
+      setSupported(data.supported)
+    }
+
+    /**
+     * Native InAppBrowser delivery channel — the plugin fires a
+     * CustomEvent named `messageFromNative` on `window`, with the
+     * snapshot in `event.detail`. This is the reliable channel:
+     * `executeScript`-dispatched `message` events can race the
+     * provider's mount, but `messageFromNative` is delivered every
+     * time the picker calls `InAppBrowser.postMessage(...)` and the
+     * page always has time to attach this listener.
+     */
+    const onNativeMessage = (event: Event) => {
+      const detail = (event as CustomEvent).detail
+      if (!isStateMessage(detail)) return
+      setStore(
+        reconcile({
+          supported: detail.supported,
+          enabledSessionIds: new Set(detail.enabledSessionIds),
+          maxAllowed: detail.maxAllowed,
+          lastError: detail.lastError,
+        }),
+      )
+      setSupported(detail.supported)
     }
 
     onMount(() => {
       if (typeof window === "undefined") return
       window.addEventListener("message", onMessage, false)
-      onCleanup(() => window.removeEventListener("message", onMessage, false))
+      window.addEventListener("messageFromNative", onNativeMessage as EventListener, false)
+      onCleanup(() => {
+        window.removeEventListener("message", onMessage, false)
+        window.removeEventListener(
+          "messageFromNative",
+          onNativeMessage as EventListener,
+          false,
+        )
+      })
     })
 
     /** Reactive lookup — re-renders when the set of opted-in IDs changes. */

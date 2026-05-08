@@ -1,6 +1,8 @@
 import { Checkbox as Kobalte } from "@kobalte/core/checkbox"
 import { Show, splitProps } from "solid-js"
 import type { ComponentProps, JSX, ParentProps } from "solid-js"
+import { Tick02Icon } from "@hugeicons/core-free-icons"
+import { HugeIcon } from "./huge-icon"
 
 export interface CheckboxProps extends ParentProps<ComponentProps<typeof Kobalte>> {
   hideLabel?: boolean
@@ -15,16 +17,7 @@ export function Checkbox(props: CheckboxProps) {
       <Kobalte.Input data-slot="checkbox-checkbox-input" />
       <Kobalte.Control data-slot="checkbox-checkbox-control">
         <Kobalte.Indicator data-slot="checkbox-checkbox-indicator">
-          {local.icon || (
-            <svg viewBox="0 0 12 12" fill="none" width="10" height="10" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M3 7.17905L5.02703 8.85135L9 3.5"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="square"
-              />
-            </svg>
-          )}
+          {local.icon || <HugeIcon icon={Tick02Icon} size={10} />}
         </Kobalte.Indicator>
       </Kobalte.Control>
       <div data-slot="checkbox-checkbox-content">

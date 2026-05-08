@@ -118,11 +118,11 @@ export function MobileBackButton(props: MobileBackButtonProps) {
   // (e.g. SPA route change) re-establishes it from scratch.
   onMount(() => {
     if (!visible() || typeof window === "undefined") return
-    ;(window as Record<string, unknown>)[MOBILE_BACK_FLAG] = true
+    ;(window as unknown as Record<string, unknown>)[MOBILE_BACK_FLAG] = true
   })
   onCleanup(() => {
     if (typeof window === "undefined") return
-    delete (window as Record<string, unknown>)[MOBILE_BACK_FLAG]
+    delete (window as unknown as Record<string, unknown>)[MOBILE_BACK_FLAG]
   })
 
   return (

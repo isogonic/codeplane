@@ -23,6 +23,8 @@
  */
 
 import { type Component, For, Show } from "solid-js"
+import { Alert01Icon, ArrowRight01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
+import { HugeIcon } from "@codeplane-ai/ui/huge-icon"
 
 type Phase = "running" | "queued" | "completed" | "failed"
 
@@ -184,29 +186,15 @@ const PhaseGlyph: Component<{ phase: Phase; size?: number }> = (props) => {
     )
   }
   if (props.phase === "completed") {
-    return (
-      <svg width={size + 2} height={size + 2} viewBox="0 0 12 12" fill="none" aria-label="Done">
-        <path
-          d="M3 6.5l2 2 4-4"
-          stroke="currentColor"
-          stroke-width="1.6"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </svg>
-    )
+    return <HugeIcon icon={Tick02Icon} size={size + 2} aria-label="Done" />
   }
   return (
-    <svg width={size + 2} height={size + 2} viewBox="0 0 12 12" fill="none" aria-label="Failed">
-      <path
-        d="M6 1.5L11 10.5H1L6 1.5Z M6 5v2.5"
-        stroke="var(--la-failure)"
-        stroke-width="1.4"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      />
-      <circle cx="6" cy="9" r="0.6" fill="var(--la-failure)" />
-    </svg>
+    <HugeIcon
+      icon={Alert01Icon}
+      size={size + 2}
+      color="var(--la-failure)"
+      aria-label="Failed"
+    />
   )
 }
 
@@ -265,16 +253,7 @@ const LockScreen: Component<{ layout: Layout }> = (props) => {
     <div class="la-lockscreen">
       <div class="la-header">
         <div class="la-mark" aria-hidden>
-          <svg width="14" height="14" viewBox="0 0 14 14">
-            <path
-              d="M5 2.5L9 7l-4 4.5"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              fill="none"
-            />
-          </svg>
+          <HugeIcon icon={ArrowRight01Icon} size={14} />
         </div>
         <div class="la-header__text">
           <div class="la-header__label">{props.layout.attributes.instanceLabel}</div>
