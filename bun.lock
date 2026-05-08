@@ -30,7 +30,7 @@
     },
     "packages/app": {
       "name": "@codeplane-ai/app",
-      "version": "28.0.16",
+      "version": "28.1.2",
       "dependencies": {
         "@codeplane-ai/sdk": "file:../sdk/js",
         "@codeplane-ai/shared": "file:../shared",
@@ -84,7 +84,7 @@
     },
     "packages/codeplane": {
       "name": "codeplane",
-      "version": "28.0.16",
+      "version": "28.1.2",
       "bin": {
         "codeplane": "./bin/codeplane",
       },
@@ -230,7 +230,7 @@
     },
     "packages/desktop": {
       "name": "@codeplane-ai/desktop",
-      "version": "28.0.16",
+      "version": "28.1.2",
       "devDependencies": {
         "@codeplane-ai/shared": "file:../shared",
         "@codeplane-ai/ui": "file:../ui",
@@ -253,7 +253,7 @@
     },
     "packages/mobile": {
       "name": "@codeplane-ai/mobile",
-      "version": "28.0.16",
+      "version": "28.1.2",
       "dependencies": {
         "@capacitor/android": "7.4.4",
         "@capacitor/app": "7.1.0",
@@ -291,7 +291,7 @@
     },
     "packages/plugin": {
       "name": "@codeplane-ai/plugin",
-      "version": "28.0.16",
+      "version": "28.1.2",
       "dependencies": {
         "@codeplane-ai/sdk": "file:../sdk/js",
         "effect": "4.0.0-beta.48",
@@ -325,7 +325,7 @@
     },
     "packages/sdk/js": {
       "name": "@codeplane-ai/sdk",
-      "version": "28.0.16",
+      "version": "28.1.2",
       "dependencies": {
         "cross-spawn": "7.0.6",
       },
@@ -340,7 +340,7 @@
     },
     "packages/shared": {
       "name": "@codeplane-ai/shared",
-      "version": "28.0.16",
+      "version": "28.1.2",
       "bin": {
         "codeplane": "./bin/codeplane",
       },
@@ -364,7 +364,7 @@
     },
     "packages/ui": {
       "name": "@codeplane-ai/ui",
-      "version": "28.0.16",
+      "version": "28.1.2",
       "dependencies": {
         "@codeplane-ai/sdk": "file:../sdk/js",
         "@codeplane-ai/shared": "file:../shared",
