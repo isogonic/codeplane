@@ -129,22 +129,21 @@ jobs:
           else
             : > "$notes_file"
           fi
-          # Prepend a clear "this is for sideloading / TestFlight" banner
-          # to the notes so users don't confuse this release with the
-          # production App Store / Play Store update. The desktop release
-          # gets its (signed-vs-ad-hoc) note inside the README; the mobile
-          # release needs the warning right on the page because the App
-          # Store path is the ONLY production path on iOS.
+          # Prepend a "Mobile Shell" banner so users don't confuse this
+          # release with the production App Store / Play Store update. The
+          # whole banner body lives inside a single blockquote — header is
+          # plain, the rest renders as one quoted callout above whatever
+          # the source release body said.
           banner="$(mktemp)"
           {
-            echo "## 📱 Mobile shell — sideload / TestFlight artefacts"
+            echo "## Mobile Shell"
             echo ""
             echo "> **The user-facing update path for the Codeplane mobile shell is the App Store (iOS) and the Play Store (Android).** This release exists for sideloading, TestFlight uploads, internal QA, and CI artefact storage — it is NOT how end users update."
-            echo ""
-            echo "Artefacts:"
-            echo "- \`Codeplane-iOS.ipa\` (or \`Codeplane-iOS.xcarchive.zip\` when no Apple Developer signing cert is configured)"
-            echo "- \`Codeplane-Android.apk\` (and \`Codeplane-Android.aab\` when an Android keystore is configured)"
-            echo "- \`codeplane-mobile-web-bundle.tar.gz\` — the Vite-built picker bundle the native shell wraps; useful when you want to preview the shell UI in a browser without rebuilding."
+            echo ">"
+            echo "> Artefacts:"
+            echo "> - \`Codeplane-iOS.ipa\` (or \`Codeplane-iOS.xcarchive.zip\` when no Apple Developer signing cert is configured)"
+            echo "> - \`Codeplane-Android.apk\` (and \`Codeplane-Android.aab\` when an Android keystore is configured)"
+            echo "> - \`codeplane-mobile-web-bundle.tar.gz\` — the Vite-built picker bundle the native shell wraps; useful when you want to preview the shell UI in a browser without rebuilding."
             echo ""
             echo "---"
             echo ""
@@ -510,14 +509,14 @@ jobs:
           fi
           banner="$(mktemp)"
           {
-            echo "## 📱 Mobile shell — sideload / TestFlight artefacts"
+            echo "## Mobile Shell"
             echo ""
             echo "> **The user-facing update path for the Codeplane mobile shell is the App Store (iOS) and the Play Store (Android).** This release exists for sideloading, TestFlight uploads, internal QA, and CI artefact storage — it is NOT how end users update."
-            echo ""
-            echo "Artefacts:"
-            echo "- \`Codeplane-iOS.ipa\` (or \`Codeplane-iOS.xcarchive.zip\` when no Apple Developer signing cert is configured)"
-            echo "- \`Codeplane-Android.apk\` (and \`Codeplane-Android.aab\` when an Android keystore is configured)"
-            echo "- \`codeplane-mobile-web-bundle.tar.gz\` — the Vite-built picker bundle the native shell wraps; useful when you want to preview the shell UI in a browser without rebuilding."
+            echo ">"
+            echo "> Artefacts:"
+            echo "> - \`Codeplane-iOS.ipa\` (or \`Codeplane-iOS.xcarchive.zip\` when no Apple Developer signing cert is configured)"
+            echo "> - \`Codeplane-Android.apk\` (and \`Codeplane-Android.aab\` when an Android keystore is configured)"
+            echo "> - \`codeplane-mobile-web-bundle.tar.gz\` — the Vite-built picker bundle the native shell wraps; useful when you want to preview the shell UI in a browser without rebuilding."
             echo ""
             echo "---"
             echo ""

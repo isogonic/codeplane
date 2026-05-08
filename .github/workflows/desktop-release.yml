@@ -99,10 +99,32 @@ jobs:
           else
             : > "$notes_file"
           fi
+          # Prepend a "Desktop Shell" banner so users know this page is the
+          # source of binaries for first install and the auto-updater feed —
+          # once installed, end users update silently in-app via
+          # electron-updater, not by re-downloading from here. Same shape
+          # as the mobile banner: plain header, single blockquote callout.
+          banner="$(mktemp)"
+          {
+            echo "## Desktop Shell"
+            echo ""
+            echo "> **The user-facing update path for the Codeplane desktop app is the in-app updater (electron-updater).** This release page is the source of binaries for first install and the auto-updater feed; once installed, end users update silently in-app — they do not re-download from this page."
+            echo ">"
+            echo "> Artefacts:"
+            echo "> - \`codeplane-desktop-<ver>-mac-arm64.dmg\` / \`codeplane-desktop-<ver>-mac-x64.dmg\` — macOS installers (Apple Silicon / Intel)"
+            echo "> - \`codeplane-desktop-<ver>-win-x64.exe\` — Windows installer"
+            echo "> - \`codeplane-desktop-<ver>-linux-amd64.deb\`, \`-linux-x86_64.AppImage\`, \`-linux-x64.tar.gz\` — Linux distributions"
+            echo "> - \`latest.yml\` / \`latest-mac.yml\` / \`latest-linux.yml\` — electron-updater feeds (do not download manually)"
+            echo "> - Stable version-less aliases (e.g. \`codeplane-desktop-macos-apple-silicon.dmg\`, \`codeplane-desktop-windows-x64.exe\`) for install scripts that always want the latest"
+            echo ""
+            echo "---"
+            echo ""
+            cat "$notes_file"
+          } > "$banner"
           if gh release view "${{ needs.resolve.outputs.desktop_tag }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
             gh release edit "${{ needs.resolve.outputs.desktop_tag }}" \
               --title "$title" \
-              --notes-file "$notes_file" \
+              --notes-file "$banner" \
               --repo "${{ github.repository }}"
             exit 0
           fi
@@ -115,7 +137,7 @@ jobs:
           gh release create "${{ needs.resolve.outputs.desktop_tag }}" \
             --target "$(git rev-parse HEAD)" \
             --title "$title" \
-            --notes-file "$notes_file" \
+            --notes-file "$banner" \
             --repo "${{ github.repository }}"
 
   build-desktop:
@@ -309,9 +331,26 @@ jobs:
           else
             : > "$notes_file"
           fi
+          banner="$(mktemp)"
+          {
+            echo "## Desktop Shell"
+            echo ""
+            echo "> **The user-facing update path for the Codeplane desktop app is the in-app updater (electron-updater).** This release page is the source of binaries for first install and the auto-updater feed; once installed, end users update silently in-app — they do not re-download from this page."
+            echo ">"
+            echo "> Artefacts:"
+            echo "> - \`codeplane-desktop-<ver>-mac-arm64.dmg\` / \`codeplane-desktop-<ver>-mac-x64.dmg\` — macOS installers (Apple Silicon / Intel)"
+            echo "> - \`codeplane-desktop-<ver>-win-x64.exe\` — Windows installer"
+            echo "> - \`codeplane-desktop-<ver>-linux-amd64.deb\`, \`-linux-x86_64.AppImage\`, \`-linux-x64.tar.gz\` — Linux distributions"
+            echo "> - \`latest.yml\` / \`latest-mac.yml\` / \`latest-linux.yml\` — electron-updater feeds (do not download manually)"
+            echo "> - Stable version-less aliases (e.g. \`codeplane-desktop-macos-apple-silicon.dmg\`, \`codeplane-desktop-windows-x64.exe\`) for install scripts that always want the latest"
+            echo ""
+            echo "---"
+            echo ""
+            cat "$notes_file"
+          } > "$banner"
           gh release edit "${{ needs.resolve.outputs.desktop_tag }}" \
             --draft=false \
             --latest \
             --title "$title" \
-            --notes-file "$notes_file" \
+            --notes-file "$banner" \
             --repo "${{ github.repository }}"
