@@ -217,10 +217,10 @@ export const WebviewHost: Component<{
    * instance UI from edge to edge, the same way the desktop's
    * `BrowserWindow` shows the workspace with no browser chrome on top.
    *
-   * With the toolbar gone there is no Done button. We paint our own
-   * floating close pill via `executeScript`, called once right after
-   * the webview opens and again on every `urlChangeEvent` (registered
-   * up in `onMount`). That keeps the button visible:
+   * With the toolbar gone there is no native dismiss button. We paint
+   * our own floating Back pill via `executeScript`, called once right
+   * after the webview opens and again on every `urlChangeEvent`
+   * (registered up in `onMount`). That keeps the button visible:
    *   - on the initial instance URL,
    *   - through every redirect in the SSO chain (Cloudflare Access →
    *     IdP → callback → instance UI), and
@@ -532,7 +532,7 @@ export const WebviewHost: Component<{
       }
 
       // Single-fire guard. The plugin sometimes emits `closeEvent`
-      // twice for one Done tap (we've seen it during the modal's
+      // twice for one Back tap (we've seen it during the modal's
       // dismiss-animation tear-down on iOS 26). Calling `props.onClose`
       // twice in a row navigates → setup → setup, which (a) wastes a
       // re-render and (b) races with the next mount's listener
@@ -855,8 +855,8 @@ const ProgressStrip: Component = () => (
  * Why a JS-injected button instead of native chrome: the modal uses
  * `toolbarType: BLANK` so the WKWebView sits edge-to-edge with no
  * navigation bar above it (matches the desktop's chromeless
- * `BrowserWindow`). Without a Done button, the user has no way to get
- * back to the picker — so we paint our own.
+ * `BrowserWindow`). Without a native dismiss control, the user has no
+ * way to get back to the picker — so we paint our own "Back" pill.
  *
  * The script is re-run on every navigation by the `urlChangeEvent`
  * listener up in `onMount`, plus once right after `openWebView`
@@ -866,10 +866,10 @@ const ProgressStrip: Component = () => (
  *     callback → instance), and
  *   - any client-side SPA navigation inside the instance UI.
  *
- * Visuals are deliberately iOS-native: a "Done" pill in iOS-blue text
- * over a translucent frosted-glass background, top-right, sized like
- * a UIBarButtonItem. The script sniffs `prefers-color-scheme` so the
- * pill reads against both light and dark workspace themes — the
+ * Visuals are deliberately iOS-native: a "Back" pill in monochrome
+ * text over a translucent frosted-glass background, top-right, sized
+ * like a UIBarButtonItem. The script sniffs `prefers-color-scheme` so
+ * the pill reads against both light and dark workspace themes — the
  * earlier flat-black version stamped a heavy oil-slick on light
  * pages and competed with the workspace's own header chrome.
  *
@@ -912,12 +912,27 @@ function closeButtonScript(): string {
         }
       }
       function ensure() {
+        // Embedded-button handshake. The shared @codeplane-ai/ui
+        // \`MobileBackButton\` raises \`window.__cpMobileBackEmbedded\` on
+        // mount; when we see it, we defer to the in-chrome button —
+        // and if we'd already painted the floating pill on first
+        // load (before the embedded UI mounted), we tear it down so
+        // the user never sees both at once. Older instance versions
+        // that don't ship the shared component leave the flag unset,
+        // so the fallback pill below still paints for them.
+        if (window.__cpMobileBackEmbedded) {
+          var existing = document.getElementById(ID);
+          if (existing && !existing.hasAttribute("data-component")) {
+            existing.remove();
+          }
+          return;
+        }
         if (document.getElementById(ID)) return;
         var btn = document.createElement("button");
         btn.id = ID;
         btn.type = "button";
-        btn.setAttribute("aria-label", "Done");
-        btn.textContent = "Done";
+        btn.setAttribute("aria-label", "Back");
+        btn.textContent = "Back";
         var style = btn.style;
         style.position = "fixed";
         // Sit just below the status bar (iOS notch / Dynamic Island).

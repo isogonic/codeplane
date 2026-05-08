@@ -4,19 +4,24 @@ import { createCodeplaneMobile } from "./platform/api"
 import { MobileShell } from "./components/mobile-shell"
 import { SetupScreen } from "./screens/setup"
 import { InstanceHostScreen } from "./screens/instance-host"
+import { SettingsScreen } from "./screens/settings"
 import { LiveActivityPreview } from "./screens/live-activity-preview"
 
 /**
  * Top-level mobile app.
  *
- * State machine is intentionally tiny: we either show the picker or
- * we show one open instance. Everything else (edit sheet, dialogs)
- * lives inside one of those two screens. Mobile users don't want
- * deep router stacks for this kind of shell — the desktop runs each
- * instance in a separate BrowserWindow, mobile gets one window with
- * a hard-back to the picker.
+ * State machine is intentionally tiny: the picker, an open instance,
+ * or the app-level settings screen reached from the picker's leading
+ * header slot. Everything else (edit sheet, dialogs) lives inside one
+ * of those screens. Mobile users don't want deep router stacks for
+ * this kind of shell — the desktop runs each instance in a separate
+ * BrowserWindow, mobile gets one window with a hard-back path that
+ * always lands on the picker.
  */
-type Route = { kind: "setup" } | { kind: "instance"; instance: SavedInstance }
+type Route =
+  | { kind: "setup" }
+  | { kind: "instance"; instance: SavedInstance }
+  | { kind: "settings" }
 
 export const App: Component = () => {
   const api = createCodeplaneMobile()
@@ -63,7 +68,12 @@ export const App: Component = () => {
   })
 
   const handleBack = () => {
-    if (route().kind === "instance") {
+    const r = route()
+    // Both `instance` and `settings` are leaves under the picker — the
+    // hardware-back / iOS-swipe always returns there. Returning `false`
+    // when we're already on the picker lets the platform default fire
+    // (Android exits the app; iOS has no system back from the root).
+    if (r.kind === "instance" || r.kind === "settings") {
       setRoute({ kind: "setup" })
       return true
     }
@@ -76,6 +86,8 @@ export const App: Component = () => {
     const r = route()
     return r.kind === "instance" ? r.instance : null
   })
+
+  const isSettings = () => route().kind === "settings"
 
   // Dev-only: hash-routed preview of the iOS Live Activity layouts.
   // Reachable on http://localhost:5182/#la-preview — short-circuits
@@ -103,10 +115,18 @@ export const App: Component = () => {
           when={activeInstance()}
           keyed
           fallback={
-            <SetupScreen
-              api={api}
-              onOpenInstance={(instance) => setRoute({ kind: "instance", instance })}
-            />
+            <Show
+              when={isSettings()}
+              fallback={
+                <SetupScreen
+                  api={api}
+                  onOpenInstance={(instance) => setRoute({ kind: "instance", instance })}
+                  onOpenSettings={() => setRoute({ kind: "settings" })}
+                />
+              }
+            >
+              <SettingsScreen api={api} onBack={() => setRoute({ kind: "setup" })} />
+            </Show>
           }
         >
           {(instance) => (

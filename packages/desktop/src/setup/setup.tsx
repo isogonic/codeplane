@@ -4,6 +4,48 @@ import { render } from "solid-js/web"
 import { CodeplaneVersion } from "@codeplane-ai/shared/version"
 import "./index.css"
 
+// Forward window-level renderer errors to the desktop log so they show up
+// in `<codeplaneHome>/log/desktop/desktop.log` next to main-process events.
+// `console-message` already pipes console.error to the log via the main
+// process's webContents listener, but uncaught errors and unhandled
+// promise rejections only surface as the browser's default "Uncaught …"
+// noise — without these listeners they'd be lost the moment the window
+// is closed. Installed as early as possible (before app.tsx loads) so
+// initial-render crashes are captured.
+function serializeRendererError(err: unknown) {
+  if (err instanceof Error) {
+    return { name: err.name, message: err.message, stack: err.stack }
+  }
+  if (err === undefined) return { message: "" }
+  if (err === null) return { message: "null" }
+  try {
+    return { message: typeof err === "string" ? err : JSON.stringify(err) }
+  } catch {
+    return { message: String(err) }
+  }
+}
+function rendererDebugLog(event: string, data: unknown) {
+  // `codeplaneDesktop` is exposed by the preload in packaged Electron and
+  // by the dev stub below in the browser; either way `debug.log` is a
+  // best-effort fire-and-forget IPC.
+  const desktop = (window as unknown as { codeplaneDesktop?: { debug?: { log?: (e: string, d: unknown, scope?: string) => void } } }).codeplaneDesktop
+  desktop?.debug?.log?.(event, data, "setup")
+}
+window.addEventListener("error", (event) => {
+  rendererDebugLog("renderer.error", {
+    message: event.message,
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno,
+    error: serializeRendererError(event.error),
+  })
+})
+window.addEventListener("unhandledrejection", (event) => {
+  rendererDebugLog("renderer.unhandledrejection", {
+    reason: serializeRendererError(event.reason),
+  })
+})
+
 // Browser dev (vite) has no Electron preload — stub the API so renders work.
 // In packaged Electron, `window.codeplaneDesktop` is already set; this is a no-op.
 if (!(window as any).codeplaneDesktop) {
@@ -120,13 +162,20 @@ if (root) {
   render(
     () => (
       <ErrorBoundary
-        fallback={(err) => (
-          <pre style="white-space:pre-wrap;color:#b00;padding:20px;font:12px monospace;background:#fff5f5">
-            {String(err)}
-            {"\n\n"}
-            {err instanceof Error ? err.stack : ""}
-          </pre>
-        )}
+        fallback={(err) => {
+          // Side-effect inside the JSX factory: Solid runs this once per
+          // captured error (the boundary memoizes on the err value), so
+          // it logs each crash exactly once. Rendering is unchanged —
+          // same red `<pre>` as before.
+          rendererDebugLog("renderer.error-boundary", serializeRendererError(err))
+          return (
+            <pre style="white-space:pre-wrap;color:#b00;padding:20px;font:12px monospace;background:#fff5f5">
+              {String(err)}
+              {"\n\n"}
+              {err instanceof Error ? err.stack : ""}
+            </pre>
+          )
+        }}
       >
         <App />
       </ErrorBoundary>

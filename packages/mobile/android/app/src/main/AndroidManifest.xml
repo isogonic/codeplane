@@ -39,6 +39,19 @@
 
         </activity>
 
+        <!--
+          OfflineCacheActivity — fullscreen Activity hosting the WebView
+          that loads the cached UI for an instance. Started by
+          OfflineCachePlugin.openInstance() with the instance metadata
+          packed into intent extras. Not exported — only the picker
+          should ever launch it.
+        -->
+        <activity
+            android:name=".OfflineCacheActivity"
+            android:exported="false"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation"
+            android:theme="@style/AppTheme" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

@@ -4,6 +4,7 @@ import { useLocation, useNavigate, useParams } from "@solidjs/router"
 import { IconButton } from "@codeplane-ai/ui/icon-button"
 import { Icon } from "@codeplane-ai/ui/icon"
 import { Button } from "@codeplane-ai/ui/button"
+import { MobileBackButton } from "@codeplane-ai/ui/mobile-back-button"
 import { Tooltip, TooltipKeybind } from "@codeplane-ai/ui/tooltip"
 
 import { useLayout } from "@/context/layout"
@@ -261,6 +262,17 @@ export function Titlebar() {
           "pr-2": true,
         }}
       >
+        {/*
+          Mobile shell: render an inline Back button that slots into the
+          existing right-cluster instead of overlapping it. Replaces the
+          shell's `executeScript`-painted floating pill (which sat on top
+          of the terminal / review / file-tree toggles); see
+          `MobileBackButton` for the UA detection and the
+          `__cpMobileBackEmbedded` flag we use to suppress the legacy
+          inject. Renders nothing on desktop / web, so the layout flex
+          doesn't reserve space when the heuristic is false.
+        */}
+        <MobileBackButton class="titlebar-icon w-8 h-7 p-0 box-border rounded-md mr-1" />
         <div id="codeplane-titlebar-right" class="flex items-center gap-1 shrink-0 justify-end" data-no-window-drag />
         <Show when={platform.desktop}>
           <div class="flex items-center gap-1 shrink-0" data-no-window-drag>

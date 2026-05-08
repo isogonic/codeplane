@@ -176,7 +176,17 @@ const legacyStore =
       })
     : undefined
 const instanceStore = createInstanceStore(codeplaneHome.instances)
-const logger = createDesktopLogger(process.env.CODEPLANE_DESKTOP_LOG_DIR?.trim() || path.join(app.getPath("userData"), "logs"))
+// Logs land at `<codeplaneHome>/log/desktop/desktop.log` (e.g.
+// ~/Library/Application Support/Codeplane/log/desktop/ on macOS) so they
+// sit next to the rest of Codeplane's per-surface log streams instead of
+// being buried inside Electron's userData (which gets wiped when the app
+// uninstalls and is co-mingled with browser caches). The legacy
+// `<userData>/logs/desktop.log` location is kept as a fallback when the
+// new path isn't writable, so existing tail/grep flows still work after
+// upgrade. CODEPLANE_DESKTOP_LOG_DIR overrides both for tests.
+const logger = createDesktopLogger(
+  process.env.CODEPLANE_DESKTOP_LOG_DIR?.trim() || path.join(codeplaneHome.log, "desktop"),
+)
 
 // Electron's SimpleURLLoaderWrapper (backing session.fetch / net.fetch) can
 // surface transient transport failures — most commonly net::ERR_HTTP2_PROTOCOL_ERROR
@@ -235,8 +245,15 @@ logger.log("main", "bootstrap", {
   codeplaneRoot: codeplaneHome.root,
   cwd: process.cwd(),
   logPath: logger.path(),
+  logDir: logger.dir(),
   userData: app.getPath("userData"),
 })
+// Mirror the log location to stderr too so users running the bundled
+// app from a terminal (or attached to the packaged binary's console)
+// can find the file without first having to find a log entry that
+// reveals it.
+// eslint-disable-next-line no-console -- intentional one-time bootstrap announcement
+console.error(`[codeplane-desktop] logging to ${logger.path()}`)
 
 function savedInstances() {
   return instanceState.instances
