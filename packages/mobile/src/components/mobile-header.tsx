@@ -1,4 +1,11 @@
 import { Component, JSX, Show } from "solid-js"
+import {
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  FilterHorizontalIcon,
+  PlusSignIcon,
+} from "@hugeicons/core-free-icons"
+import { HugeIcon } from "@codeplane-ai/ui/huge-icon"
 
 /**
  * Standard iOS/Android nav bar.
@@ -10,10 +17,12 @@ import { Component, JSX, Show } from "solid-js"
  * shape (Material 3 calls it a "Top app bar (small)" with optional
  * leading + trailing icons).
  *
- * The vector chevron and `+` are SVGs rather than plain Unicode — at
- * 17px line-heights iOS Safari would render the lone `+` glyph
- * without proper optical alignment, so a vector keeps the action
- * crisp and centred at every density.
+ * All affordance icons (chevron, plus, sliders) come from the shared
+ * HugeIcons set via `<HugeIcon>` so the entire app pulls from one
+ * library. Sticking to a single icon family keeps optical weight
+ * consistent across screens — the picker, the settings page, and any
+ * future detail screens all share the 1.5-stroke HugeIcons rounded
+ * profile rather than mixing weights.
  */
 export const MobileHeader: Component<{
   title: string
@@ -83,88 +92,20 @@ export const MobileHeader: Component<{
   )
 }
 
-const BackChevron: Component = () => (
-  <svg
-    width="22"
-    height="22"
-    viewBox="0 0 22 22"
-    fill="none"
-    aria-hidden
-    role="presentation"
-  >
-    <path
-      d="M13.5 4.5L7 11l6.5 6.5"
-      stroke="currentColor"
-      stroke-width="2.25"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-  </svg>
-)
+/** Back chevron used in the header's leading slot. */
+const BackChevron: Component = () => <HugeIcon icon={ArrowLeft01Icon} size={22} />
 
 /** Reusable `+` icon. Exported so the picker's trailing slot can use it. */
-export const PlusIcon: Component = () => (
-  <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden role="presentation">
-    <path
-      d="M11 4.5v13M4.5 11h13"
-      stroke="currentColor"
-      stroke-width="2.25"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-  </svg>
-)
+export const PlusIcon: Component = () => <HugeIcon icon={PlusSignIcon} size={22} />
 
 /** Right-pointing chevron for list rows — matches the iOS list style. */
-export const RightChevron: Component = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden role="presentation">
-    <path
-      d="M5 3l4 4-4 4"
-      stroke="currentColor"
-      stroke-width="1.75"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-  </svg>
-)
+export const RightChevron: Component = () => <HugeIcon icon={ArrowRight01Icon} size={14} />
 
 /**
- * Settings icon — three horizontal sliders, the iOS Control-Center
- * convention. Replaces the previous cog because at 22px on the
- * dark picker background, the cog's eight rounded teeth read as
- * a sunburst (i.e. a theme-toggle glyph) and got mistaken for one.
- * Sliders are unambiguous, share the same horizontal/vertical
- * symmetry as `PlusIcon`, and stay legible at the small size.
- *
- * The track segments break around each knob rather than passing
- * through it, which is what makes the row read as "an adjustable
- * control" rather than three lines with three discs floating on
- * top.
+ * Settings icon — HugeIcons' `FilterHorizontalIcon`, the iOS
+ * Control-Center "horizontal sliders with knobs" convention. Three
+ * adjustable rows make the affordance unmistakably about
+ * configuration without the sunburst ambiguity that small cog
+ * silhouettes have at 22px on dark backgrounds.
  */
-export const SettingsIcon: Component = () => (
-  <svg
-    width="22"
-    height="22"
-    viewBox="0 0 22 22"
-    fill="none"
-    aria-hidden
-    role="presentation"
-    stroke="currentColor"
-    stroke-width="2"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  >
-    {/* Row 1 — knob at x=15 */}
-    <line x1="3" y1="6" x2="13" y2="6" />
-    <line x1="17" y1="6" x2="19" y2="6" />
-    <circle cx="15" cy="6" r="2" />
-    {/* Row 2 — knob at x=8 */}
-    <line x1="3" y1="11" x2="6" y2="11" />
-    <line x1="10" y1="11" x2="19" y2="11" />
-    <circle cx="8" cy="11" r="2" />
-    {/* Row 3 — knob at x=14 */}
-    <line x1="3" y1="16" x2="12" y2="16" />
-    <line x1="16" y1="16" x2="19" y2="16" />
-    <circle cx="14" cy="16" r="2" />
-  </svg>
-)
+export const SettingsIcon: Component = () => <HugeIcon icon={FilterHorizontalIcon} size={22} />

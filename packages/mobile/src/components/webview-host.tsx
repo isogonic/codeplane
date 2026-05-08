@@ -175,16 +175,19 @@ export const WebviewHost: Component<{
     void applyLAToggle(event.data.sessionId, event.data.enabled)
   }
 
-  const wireTaskMonitor = async () => {
-    // The iframe-driven monitor only exists in the web dev preview —
-    // on native there is no iframe to listen to. (Native Live
-    // Activities arrive via the server-side push path that
-    // `live-activities.registerForUpdates()` already wires.)
-    if (isNative || !frameRef) return
-    // Parallelise the three async reads — sequential awaits here
-    // showed up as a measurable gap before InAppBrowser.openWebView
-    // could fire; firing them concurrently shaves a couple of frames
-    // off the perceived "tap → modal" delay.
+  /**
+   * Fetch the LA prefs + native support flag and populate the
+   * webview-host's reactive signals. **Runs on every host instance,
+   * including native.** Previously this lived inside
+   * `wireTaskMonitor`, which early-returns on native because the
+   * iframe-based task monitor doesn't apply there — but the prefs
+   * and the `isSupported()` probe DO apply on native (they drive
+   * the `__codeplaneLA` snapshot the picker injects into the
+   * InAppBrowser's WKWebView). Pre-fix: native always saw
+   * `laSupported()` stuck at its default `false`, so the embedded
+   * UI's "Show on Lock Screen" menu item never rendered.
+   */
+  const loadLAState = async () => {
     const [liveActivitiesEnabled, opted, supportedStatus] = await Promise.all([
       props.api.instances.prefs.getLiveActivitiesEnabled(props.instance.id),
       props.api.instances.prefs.getLiveActivitySessionIds(props.instance.id),
@@ -192,6 +195,19 @@ export const WebviewHost: Component<{
     ])
     setOptedInSessionIds(opted)
     setLASupported(supportedStatus.supported)
+    return { liveActivitiesEnabled, opted, supportedStatus }
+  }
+
+  const wireTaskMonitor = async () => {
+    // Always populate the LA state — it drives the snapshot the
+    // shell injects on every navigation, so it has to be ready
+    // regardless of whether we're on native or web.
+    const state = await loadLAState()
+    // The iframe-driven monitor only exists in the web dev preview —
+    // on native there is no iframe to listen to. (Native Live
+    // Activities arrive via the server-side push path that
+    // `live-activities.registerForUpdates()` already wires.)
+    if (isNative || !frameRef) return
     taskMonitor = createTaskMonitor({
       frame: frameRef,
       liveActivities: props.api.liveActivities,
@@ -201,8 +217,8 @@ export const WebviewHost: Component<{
       instanceId: props.instance.id,
       instanceLabel: props.instance.label || host(),
       instanceHost: host(),
-      enabled: liveActivitiesEnabled,
-      optedInSessionIds: opted,
+      enabled: state.liveActivitiesEnabled,
+      optedInSessionIds: state.opted,
     })
     // Push initial state to the embedded UI as soon as the iframe is
     // wired so the toggle renders in the right state on first paint.
@@ -470,6 +486,22 @@ export const WebviewHost: Component<{
       enabledSessionIds: optedInSessionIds(),
       maxAllowed: MAX_LIVE_ACTIVITY_SESSIONS,
     }
+    // Two-channel update — `executeScript` writes the synchronous
+    // `window.__codeplaneLA` snapshot the embedded UI reads on first
+    // mount, AND `postMessage` fires the plugin's `messageFromNative`
+    // event for every later refresh. We need both:
+    //
+    //   • executeScript alone can lose its dispatched MessageEvent
+    //     to a "no listener installed yet" race when the page is
+    //     still parsing — but its synchronous side-effect on `window`
+    //     still gets picked up by `readInjectedSnapshot()` at
+    //     provider mount.
+    //   • postMessage alone has no first-paint snapshot — the page
+    //     mounts before native can fire `messageFromNative`, so the
+    //     toggle would flash hidden→visible on every navigation.
+    //
+    // Together: snapshot for instant first paint, postMessage for
+    // every subsequent shell-driven update.
     const json = JSON.stringify(payload)
     const code = `(function(){try{
       var data = ${json};
@@ -479,13 +511,19 @@ export const WebviewHost: Component<{
         maxAllowed: data.maxAllowed,
       };
       window.dispatchEvent(new MessageEvent('message', { data: data, source: window }));
-    }catch(_){/* injection failed — embedded UI falls through to its inert default */}})();`
+    }catch(_){/* injection failed — postMessage path still delivers below */}})();`
     try {
       await InAppBrowser.executeScript({ code })
     } catch (err) {
-      // Non-fatal — without the snapshot the embedded UI just keeps
-      // the toggle hidden, which is the safe default.
-      console.warn("[webview-host] failed to inject LA state", err)
+      console.warn("[webview-host] executeScript LA state failed", err)
+    }
+    try {
+      // `postMessage` fires `messageFromNative` on the embedded
+      // window — guaranteed to land in the page world regardless of
+      // executeScript's content-world resolution.
+      await InAppBrowser.postMessage({ detail: payload })
+    } catch (err) {
+      console.warn("[webview-host] postMessage LA state failed", err)
     }
   }
 
@@ -920,10 +958,18 @@ function closeButtonScript(): string {
         // the user never sees both at once. Older instance versions
         // that don't ship the shared component leave the flag unset,
         // so the fallback pill below still paints for them.
+        //
+        // Sweep with querySelectorAll rather than getElementById so a
+        // brief overlap window (where both an old inject pill AND the
+        // freshly-mounted embedded button live with the same id)
+        // still gets cleaned up. The embedded button carries
+        // \`data-component\` (the shared Button primitive sets it); the
+        // inject pill does not — that's the only attribute we use to
+        // tell them apart.
         if (window.__cpMobileBackEmbedded) {
-          var existing = document.getElementById(ID);
-          if (existing && !existing.hasAttribute("data-component")) {
-            existing.remove();
+          var pills = document.querySelectorAll("#" + ID);
+          for (var i = 0; i < pills.length; i++) {
+            if (!pills[i].hasAttribute("data-component")) pills[i].remove();
           }
           return;
         }

@@ -1,6 +1,6 @@
 {
   "name": "@codeplane-ai/ui",
-  "version": "28.0.15",
+  "version": "28.0.16",
   "type": "module",
   "license": "MIT",
   "exports": {
@@ -42,6 +42,7 @@
     "vite-plugin-solid": "2.11.10"
   },
   "dependencies": {
+    "@hugeicons/core-free-icons": "4.1.2",
     "@kobalte/core": "0.13.11",
     "@codeplane-ai/sdk": "file:../sdk/js",
     "@codeplane-ai/shared": "file:../shared",

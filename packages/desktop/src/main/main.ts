@@ -246,14 +246,16 @@ logger.log("main", "bootstrap", {
   cwd: process.cwd(),
   logPath: logger.path(),
   logDir: logger.dir(),
+  errorsPath: logger.errorsPath(),
   userData: app.getPath("userData"),
 })
-// Mirror the log location to stderr too so users running the bundled
-// app from a terminal (or attached to the packaged binary's console)
-// can find the file without first having to find a log entry that
-// reveals it.
+// Mirror both log paths to stderr so users running the bundled app from
+// a terminal (or attached to the packaged binary's console) can find
+// them without first having to find a log entry that reveals it.
+// errors.log is append-only/forever-deduped, desktop.log is the rotating
+// full-fidelity tail.
 // eslint-disable-next-line no-console -- intentional one-time bootstrap announcement
-console.error(`[codeplane-desktop] logging to ${logger.path()}`)
+console.error(`[codeplane-desktop] logging to ${logger.path()} (errors: ${logger.errorsPath()})`)
 
 function savedInstances() {
   return instanceState.instances

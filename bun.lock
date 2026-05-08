@@ -30,7 +30,7 @@
     },
     "packages/app": {
       "name": "@codeplane-ai/app",
-      "version": "27.4.68",
+      "version": "28.0.16",
       "dependencies": {
         "@codeplane-ai/sdk": "file:../sdk/js",
         "@codeplane-ai/shared": "file:../shared",
@@ -84,7 +84,7 @@
     },
     "packages/codeplane": {
       "name": "codeplane",
-      "version": "27.4.68",
+      "version": "28.0.16",
       "bin": {
         "codeplane": "./bin/codeplane",
       },
@@ -230,7 +230,7 @@
     },
     "packages/desktop": {
       "name": "@codeplane-ai/desktop",
-      "version": "27.4.68",
+      "version": "28.0.16",
       "devDependencies": {
         "@codeplane-ai/shared": "file:../shared",
         "@codeplane-ai/ui": "file:../ui",
@@ -253,7 +253,7 @@
     },
     "packages/mobile": {
       "name": "@codeplane-ai/mobile",
-      "version": "27.4.68",
+      "version": "28.0.16",
       "dependencies": {
         "@capacitor/android": "7.4.4",
         "@capacitor/app": "7.1.0",
@@ -270,6 +270,7 @@
         "@capacitor/splash-screen": "7.0.4",
         "@capacitor/status-bar": "7.0.4",
         "@capgo/inappbrowser": "8.6.3",
+        "@hugeicons/core-free-icons": "4.1.2",
         "capacitor-secure-storage-plugin": "0.10.0",
       },
       "devDependencies": {
@@ -290,7 +291,7 @@
     },
     "packages/plugin": {
       "name": "@codeplane-ai/plugin",
-      "version": "27.4.68",
+      "version": "28.0.16",
       "dependencies": {
         "@codeplane-ai/sdk": "file:../sdk/js",
         "effect": "4.0.0-beta.48",
@@ -324,7 +325,7 @@
     },
     "packages/sdk/js": {
       "name": "@codeplane-ai/sdk",
-      "version": "27.4.68",
+      "version": "28.0.16",
       "dependencies": {
         "cross-spawn": "7.0.6",
       },
@@ -339,7 +340,7 @@
     },
     "packages/shared": {
       "name": "@codeplane-ai/shared",
-      "version": "27.4.68",
+      "version": "28.0.16",
       "bin": {
         "codeplane": "./bin/codeplane",
       },
@@ -363,10 +364,11 @@
     },
     "packages/ui": {
       "name": "@codeplane-ai/ui",
-      "version": "27.4.68",
+      "version": "28.0.16",
       "dependencies": {
         "@codeplane-ai/sdk": "file:../sdk/js",
         "@codeplane-ai/shared": "file:../shared",
+        "@hugeicons/core-free-icons": "4.1.2",
         "@kobalte/core": "0.13.11",
         "@pierre/diffs": "1.1.0-beta.18",
         "@shikijs/transformers": "3.9.2",
@@ -966,6 +968,8 @@
     "@hono/standard-validator": ["@hono/standard-validator@0.1.5", "", { "peerDependencies": { "@standard-schema/spec": "1.0.0", "hono": ">=3.9.0" } }, "sha512-EIyZPPwkyLn6XKwFj5NBEWHXhXbgmnVh2ceIFo5GO7gKI9WmzTjPDKnppQB0KrqKeAkq3kpoW4SIbu5X1dgx3w=="],
 
     "@hono/zod-validator": ["@hono/zod-validator@0.4.2", "", { "peerDependencies": { "hono": ">=3.9.0", "zod": "^3.19.1" } }, "sha512-1rrlBg+EpDPhzOV4hT9pxr5+xDVmKuz6YJl+la7VCwK6ass5ldyKm5fD+umJdV2zhHD6jROoCCv8NbTwyfhT0g=="],
+
+    "@hugeicons/core-free-icons": ["@hugeicons/core-free-icons@4.1.2", "", {}, "sha512-7PfGYaUyExpAMA8ZC7gfXykttrBDIUutU/yQHIBgz0L61ENSM73mqg/9hCTZemiEUVtj2raRRjhoJMGdAFwetQ=="],
 
     "@iconify/types": ["@iconify/types@2.0.0", "", {}, "sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg=="],
 
