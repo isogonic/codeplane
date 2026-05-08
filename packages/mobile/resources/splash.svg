@@ -11,20 +11,22 @@
     JS hides it inside MobileShell.onMount almost immediately, so any
     bg mismatch there is sub-100ms.
 
-    The chevron path is the same brand mark used in the app icon:
-      d="M64 64 L448 256 L64 448 V320 L256 256 L64 192 V64 Z"
-    Bounding box: 384x384 in its own viewBox. We center it on the 2732
-    canvas, sized to ~600px so the mark reads at a glance without
-    dominating the launch screen the way the icon does on the home
-    screen. scale=600/384 ≈ 1.5625; the path's bbox center is (256,
-    256), which after scale lands at (400, 400), so we translate by
-    (1366‑400, 1366‑400) = (966, 966) to put the bbox center on the
-    canvas center. (Earlier I used (1066,1066) and the mark drifted
-    down‑right by 100 px — easy mistake to make if you compute the
-    translate from the un‑scaled top‑left rather than the scaled
-    centre.)
+    Sizing: scale=0.75 puts the 384px-wide chevron at 288px in user
+    coords on a 2732 canvas. After iOS scaleAspectFill on a typical
+    portrait phone (~1170×2532), the mark renders ≈267px wide on a
+    1170-wide screen — about 23% of the screen width. The previous
+    scale=1.5625 rendered closer to 47%, which dominated the launch
+    screen and looked more like a splash banner than a brand mark.
+    23% is roughly the proportion Material's splash spec recommends
+    for a brand glyph: small enough to feel calm, large enough to read.
+
+    The chevron path's bounding box is (64,64)–(448,448) = 384×384 in
+    its own viewBox; after scale 0.75 the bbox center lands at
+    (256·0.75, 256·0.75) = (192, 192), so we translate by
+    (1366‑192, 1366‑192) = (1174, 1174) to put the bbox center on the
+    canvas center.
   -->
-  <g transform="translate(966 966) scale(1.5625)">
+  <g transform="translate(1174 1174) scale(0.75)">
     <path
       d="M64 64L448 256L64 448V320L256 256L64 192V64Z"
       fill="#0B0D10"
