@@ -1,6 +1,6 @@
 {
   "name": "@codeplane-ai/app",
-  "version": "28.1.5",
+  "version": "28.1.6",
   "description": "",
   "type": "module",
   "exports": {
