@@ -665,16 +665,76 @@ export const WebviewHost: Component<{
       // postMessage to. (The dev / web preview path still uses
       // `window.parent.postMessage` and is handled by the
       // `onWindowMessage` listener registered above.)
+      //
+      // Event shape, the real one (v28.1.4 had this WRONG and I assumed
+      // `event.data` was the payload — see `addListener("messageFromWebview", …)`
+      // typing in the @capgo/inappbrowser definitions and the iOS impl
+      // at WKWebViewController.swift:1051 which calls
+      // `emit("messageFromWebview", data: messageBody)`):
+      //
+      //   1. Bare payload: webview calls
+      //      `mobileApp.postMessage({type:"codeplane:la-toggle", …})` →
+      //      the host receives the dict AS the event object directly.
+      //      i.e. `event = {type:"codeplane:la-toggle", …}`. There's no
+      //      `.data` wrapper; the `data:` in the Swift call is just the
+      //      parameter label.
+      //
+      //   2. Wrapped form: webview calls
+      //      `mobileApp.postMessage({detail:{type:"codeplane:la-toggle", …}})` →
+      //      the host receives `event = {detail:{type:"codeplane:la-toggle", …}}`.
+      //      The plugin's typed signature documents this `{id?, detail?,
+      //      rawMessage?}` shape; some pages prefer it because it lets
+      //      them bundle a correlation `id` next to a separate detail
+      //      payload.
+      //
+      //   3. Stringified body fallback: if the webview sends a value
+      //      that isn't a dict (a raw string, number, etc.) the iOS
+      //      impl emits `{rawMessage: String(describing: body)}`. We
+      //      attempt JSON.parse on that as a last resort so a
+      //      `mobileApp.postMessage(JSON.stringify(payload))` from a
+      //      paranoid embedded UI still works.
+      //
+      // We try all three. The same listener handles toggle messages
+      // AND task messages — the type guard does the discrimination.
+      const extractPayload = (event: unknown): unknown => {
+        if (!event || typeof event !== "object") return undefined
+        const e = event as Record<string, unknown>
+        // Form 2: { detail: payload }
+        if (e["detail"] && typeof e["detail"] === "object") return e["detail"]
+        // Form 3: { rawMessage: "<JSON>" }
+        if (typeof e["rawMessage"] === "string") {
+          try {
+            return JSON.parse(e["rawMessage"])
+          } catch {
+            return undefined
+          }
+        }
+        // Form 1: bare payload — the event object IS the message.
+        // Filter out plugin-injected metadata fields like `id` so the
+        // type guards see a clean shape if the embedded UI sent a
+        // `{ id, …payload }` blob; we keep `type`-presence as the
+        // signal that this looks like one of OUR messages and let the
+        // guards reject anything else.
+        return e
+      }
+
       try {
         const handle = await InAppBrowser.addListener(
           "messageFromWebview",
-          (event: { data?: unknown } & object) => {
-            const data = event?.data
+          (event: unknown) => {
+            const data = extractPayload(event)
             if (isToggleMessage(data)) {
+              // eslint-disable-next-line no-console
+              console.log("[webview-host] la: toggle received", {
+                sessionId: data.sessionId,
+                enabled: data.enabled,
+              })
               void applyLAToggle(data.sessionId, data.enabled)
               return
             }
             if (isTaskMessage(data)) {
+              // eslint-disable-next-line no-console
+              console.log("[webview-host] la: task received", { taskId: data.taskId, phase: data.phase })
               void taskMonitor?.ingest({
                 type: "codeplane:task",
                 taskId: data.taskId,
@@ -689,7 +749,20 @@ export const WebviewHost: Component<{
               return
             }
             // Anything else is from a third-party page or future
-            // protocol extension — ignore quietly.
+            // protocol extension — log enough to debug without spamming
+            // (one entry per unrecognised shape, with the type field if
+            // present). Earlier I made this silent; that's how the v28.1.4
+            // event-shape bug went undetected — there was no breadcrumb
+            // when the message was reaching the host but failing the
+            // guard. Console output is fine here: it lands in
+            // `safari://web-inspector` for debug builds and is dropped
+            // by the production logger.
+            const peek =
+              data && typeof data === "object"
+                ? { type: (data as Record<string, unknown>)["type"], keys: Object.keys(data as object).slice(0, 8) }
+                : { value: typeof data }
+            // eslint-disable-next-line no-console
+            console.log("[webview-host] la: ignored messageFromWebview", peek)
           },
         )
         offHandles.push(handle)
