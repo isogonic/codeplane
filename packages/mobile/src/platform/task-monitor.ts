@@ -73,8 +73,15 @@ export type TaskEvent = {
 }
 
 export type TaskMonitorOptions = {
-  /** The iframe whose contentWindow we're listening to. */
-  frame: HTMLIFrameElement
+  /**
+   * The iframe whose `contentWindow` we listen to via `window.message`
+   * events. Only used in the dev / web preview where the embedded UI
+   * runs as an iframe of the picker shell. **Omit on native iOS** —
+   * the InAppBrowser WKWebView is a separate process whose messages
+   * arrive via `InAppBrowser.addListener("messageFromWebview", …)`,
+   * which the host wires directly into {@link Monitor.ingest}.
+   */
+  frame?: HTMLIFrameElement
   liveActivities: CodeplaneLiveActivitiesAPI
   /** Static instance metadata. Becomes the activity's `attributes`. */
   instanceId: string
@@ -91,6 +98,21 @@ export type TaskMonitorOptions = {
    * when the user toggles a session in the embedded UI.
    */
   optedInSessionIds?: string[]
+}
+
+export interface Monitor {
+  setEnabled: (enabled: boolean) => void
+  setOptedInSessionIds: (next: string[]) => void
+  /**
+   * Push a `codeplane:task` event into the monitor. The host calls
+   * this from its `messageFromWebview` listener on native, where
+   * `window.message` is not the right channel (the embedded UI is in
+   * a separate WKWebView process). On the dev preview iframe path the
+   * monitor's own listener calls this internally — exposing it
+   * publicly just lets both surfaces share the same ingestion logic.
+   */
+  ingest: (event: TaskEvent) => Promise<void>
+  dispose: () => Promise<void>
 }
 
 const START_DELAY_MS = 12_000
@@ -174,7 +196,7 @@ const toLiveTask = (task: TrackedTask): LiveActivityTask => ({
   turns: task.turns,
 })
 
-export function createTaskMonitor(opts: TaskMonitorOptions) {
+export function createTaskMonitor(opts: TaskMonitorOptions): Monitor {
   const tasks = new Map<string, TrackedTask>()
   let enabled = opts.enabled
   let optedInSessionIds: string[] = opts.optedInSessionIds ?? []
@@ -328,13 +350,22 @@ export function createTaskMonitor(opts: TaskMonitorOptions) {
     await checkForEnd()
   }
 
+  // Dev / web preview path — the embedded UI is an iframe inside the
+  // picker, and it posts task events on its own `window`. We filter
+  // by `event.source === frame.contentWindow` so messages from
+  // unrelated iframes (auth popups, etc.) don't bleed into the
+  // monitor. On native iOS this listener never fires because the
+  // InAppBrowser WKWebView runs in a separate process; the host
+  // calls `ingest()` directly from its `messageFromWebview` listener.
   const onMessage = (event: MessageEvent) => {
-    if (event.source !== opts.frame.contentWindow) return
+    if (!opts.frame || event.source !== opts.frame.contentWindow) return
     if (!isTaskEvent(event.data)) return
     void ingestEvent(event.data)
   }
 
-  window.addEventListener("message", onMessage, false)
+  if (opts.frame && typeof window !== "undefined") {
+    window.addEventListener("message", onMessage, false)
+  }
 
   return {
     setEnabled(nextEnabled: boolean) {
@@ -386,8 +417,19 @@ export function createTaskMonitor(opts: TaskMonitorOptions) {
         if (hasOptedIn) void tripStart()
       }
     },
+    /**
+     * Public ingest — the host calls this from its
+     * `messageFromWebview` listener on native. The shape matches the
+     * dev / web preview's `window.message` payload, so the same
+     * downstream logic handles both transports.
+     */
+    async ingest(event: TaskEvent) {
+      await ingestEvent(event)
+    },
     async dispose() {
-      window.removeEventListener("message", onMessage, false)
+      if (opts.frame && typeof window !== "undefined") {
+        window.removeEventListener("message", onMessage, false)
+      }
       if (startTimer) clearTimeout(startTimer)
       startTimer = undefined
       if (activityId) {

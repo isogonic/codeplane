@@ -80,9 +80,46 @@ export type LiveActivityStateMessage = {
   lastError?: { reason: "limit" | "not-supported"; sessionId: string }
 }
 
+/**
+ * Direction: web UI → mobile shell. Per-task progress event that the
+ * shell's task-monitor folds into a single Live Activity per instance.
+ *
+ * The web UI emits one of these every time an opted-in session changes
+ * state: a user message lands → `running`, the assistant replies →
+ * `completed`, an error fires → `failed`, etc. The shell aggregates
+ * the latest state per `taskId`, picks the duo (top 2 of the user's
+ * opt-in selection), and pushes a content-state update to ActivityKit.
+ *
+ * `taskId` is the opaque session id the toggle was issued for — the
+ * shell looks it up against its persisted `optedInSessionIds` to
+ * decide whether to render. Tasks for non-opted-in sessions are
+ * dropped on the floor without acknowledgement.
+ */
+export type LiveActivityTaskMessage = {
+  type: "codeplane:task"
+  /** Same id the user opted in via the toggle; usually the session id. */
+  taskId: string
+  phase: "queued" | "running" | "completed" | "failed"
+  /** Number of messages still queued behind this one. */
+  queueDepth: number
+  /** Single-line preview the widget renders as the task title. */
+  currentMessage: string
+  /** 0..1 if we know it; null hides the bar in the widget. */
+  progress: number | null
+  /** ISO timestamp when this task started (drives the elapsed timer). */
+  startedAt: string
+  /** Optional server-authoritative elapsed-seconds override. */
+  elapsedSeconds?: number
+  /** Number of turns / messages exchanged so far. */
+  turns?: number
+}
+
 /** Discriminated-union helper used by both sides to type-narrow the
  *  payload of an inbound `MessageEvent.data`. */
-export type LiveActivityMessage = LiveActivityToggleMessage | LiveActivityStateMessage
+export type LiveActivityMessage =
+  | LiveActivityToggleMessage
+  | LiveActivityStateMessage
+  | LiveActivityTaskMessage
 
 /**
  * Window-level type augmentation: when a UI runs inside the mobile
@@ -118,7 +155,7 @@ declare global {
 export function isLiveActivityMessage(value: unknown): value is LiveActivityMessage {
   if (!value || typeof value !== "object") return false
   const t = (value as { type?: unknown }).type
-  return t === "codeplane:la-toggle" || t === "codeplane:la-state"
+  return t === "codeplane:la-toggle" || t === "codeplane:la-state" || t === "codeplane:task"
 }
 
 export function isToggleMessage(value: unknown): value is LiveActivityToggleMessage {
@@ -136,5 +173,19 @@ export function isStateMessage(value: unknown): value is LiveActivityStateMessag
     value.type === "codeplane:la-state" &&
     typeof (value as LiveActivityStateMessage).supported === "boolean" &&
     Array.isArray((value as LiveActivityStateMessage).enabledSessionIds)
+  )
+}
+
+export function isTaskMessage(value: unknown): value is LiveActivityTaskMessage {
+  if (!isLiveActivityMessage(value) || value.type !== "codeplane:task") return false
+  const v = value as LiveActivityTaskMessage
+  return (
+    typeof v.taskId === "string" &&
+    typeof v.phase === "string" &&
+    (v.phase === "queued" || v.phase === "running" || v.phase === "completed" || v.phase === "failed") &&
+    typeof v.queueDepth === "number" &&
+    typeof v.currentMessage === "string" &&
+    (v.progress === null || typeof v.progress === "number") &&
+    typeof v.startedAt === "string"
   )
 }
