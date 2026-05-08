@@ -60,27 +60,35 @@ const INITIAL: LiveActivityState = {
 }
 
 /**
- * UA tag the mobile picker's Capacitor config appends to every
- * outbound request from the WKWebView (`appendUserAgent: "Codeplane/Mobile"`
- * in `capacitor.config.ts`). The embedded UI sees this in
- * `navigator.userAgent`, so it can distinguish "loaded inside the
- * iOS picker shell" from "loaded by a desktop browser pointing at
- * the same Codeplane URL".
+ * Unforgeable "we're inside the iOS picker's InAppBrowser" check.
  *
- * We require this tag IN ADDITION to the `__codeplaneLA` snapshot
- * being present — defence-in-depth, so a remote Codeplane server
- * can't unilaterally set `supported: true` via a stray `<script>`
- * on the page and surface a Live Activity toggle on a desktop
- * browser. The shell side is the only thing that:
- *   (a) uses a WKWebView whose UA carries `Codeplane/Mobile`, AND
- *   (b) injects `window.__codeplaneLA` via `executeScript`.
- * Both signals together indicate a genuine native shell.
+ * The `@capgo/inappbrowser` plugin auto-injects a WKScriptMessageHandler
+ * named `close` into every WKWebView it opens — that's how the plugin's
+ * own JS bridge calls back into native code. The handler is set up at
+ * the WKWebView's `WKUserContentController` BEFORE the page's first
+ * navigation, so:
+ *
+ *   • inside the InAppBrowser → `window.webkit.messageHandlers.close`
+ *     is always defined (it's how the close button works).
+ *   • a desktop browser, an iframe, a regular Safari tab, the
+ *     Capacitor picker WebView itself → no such handler.
+ *
+ * A page's own `<script>` cannot install or forge a
+ * `window.webkit.messageHandlers` entry — the WebKit message-handler
+ * registry lives on the native side and is read-only from JS. So this
+ * is the strongest "running inside the shell" signal we have, stronger
+ * than the appendUserAgent tag (which @capgo's WKWebView might not
+ * inherit from the host Capacitor config).
+ *
+ * Together with the `__codeplaneLA` snapshot the shell injects, this
+ * gates the Live Activity toggle to genuine in-app sessions only.
  */
-const MOBILE_SHELL_UA_TAG = "Codeplane/Mobile"
-
 function isInsideMobileShell(): boolean {
-  if (typeof navigator === "undefined") return false
-  return navigator.userAgent.includes(MOBILE_SHELL_UA_TAG)
+  if (typeof window === "undefined") return false
+  const w = window as unknown as {
+    webkit?: { messageHandlers?: Record<string, unknown> }
+  }
+  return !!w.webkit?.messageHandlers?.close
 }
 
 /**

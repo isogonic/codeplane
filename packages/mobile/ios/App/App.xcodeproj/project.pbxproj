@@ -24,6 +24,9 @@
 		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
 		D302C08415342FF45D800026 /* LiveActivitiesPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C63FE418E9282947F04F8C /* LiveActivitiesPlugin.swift */; };
 		DA4A58388CB031DE4B4A0DCE /* DynamicIslandViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A44CBA4EA838DDF92E4F114E /* DynamicIslandViews.swift */; };
+		50FB222C1A6C414486759C88 /* OfflineCachePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFA75841F0F14357A1EA4EA0 /* OfflineCachePlugin.swift */; };
+		B95054375DBC4BE9AF33C9C5 /* OfflineCachePlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = 99A979D01F5741F08A83BF2B /* OfflineCachePlugin.m */; };
+		4971ACF4150E403CA9EDAEF2 /* CodeplaneCacheSchemeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E0038495132429CA083E068 /* CodeplaneCacheSchemeHandler.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -72,6 +75,9 @@
 		E457131CD997266D445C8258 /* CodeplaneLiveActivityWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodeplaneLiveActivityWidget.swift; sourceTree = "<group>"; };
 		EA6E6782F7D5AAE09C110FE7 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
+		DFA75841F0F14357A1EA4EA0 /* OfflineCachePlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OfflineCachePlugin.swift; sourceTree = "<group>"; };
+		99A979D01F5741F08A83BF2B /* OfflineCachePlugin.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = OfflineCachePlugin.m; sourceTree = "<group>"; };
+		2E0038495132429CA083E068 /* CodeplaneCacheSchemeHandler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodeplaneCacheSchemeHandler.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -111,7 +117,6 @@
 				A44CBA4EA838DDF92E4F114E /* DynamicIslandViews.swift */,
 				8FA9CC25587E3828CCB3BD70 /* Info.plist */,
 			);
-			name = CodeplaneLiveActivityWidget;
 			path = CodeplaneLiveActivityWidget;
 			sourceTree = "<group>";
 		};
@@ -158,7 +163,6 @@
 				A7C63FE418E9282947F04F8C /* LiveActivitiesPlugin.swift */,
 				77295D40EACB0F81B6C6AC6B /* LiveActivitiesPlugin.m */,
 			);
-			name = LiveActivitiesPlugin;
 			path = LiveActivitiesPlugin;
 			sourceTree = "<group>";
 		};
@@ -183,8 +187,8 @@
 			isa = PBXGroup;
 			children = (
 				629F6E33C2D2166A9EFE62BE /* LiveActivitiesPlugin */,
+				0971980CB6F7473A9DE3FCD9 /* OfflineCachePlugin */,
 			);
-			name = plugins;
 			path = plugins;
 			sourceTree = "<group>";
 		};
@@ -193,8 +197,17 @@
 			children = (
 				6766843AAD75C515E39AD2D5 /* CodeplaneActivityAttributes.swift */,
 			);
-			name = Shared;
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		0971980CB6F7473A9DE3FCD9 /* OfflineCachePlugin */ = {
+			isa = PBXGroup;
+			children = (
+				DFA75841F0F14357A1EA4EA0 /* OfflineCachePlugin.swift */,
+				99A979D01F5741F08A83BF2B /* OfflineCachePlugin.m */,
+				2E0038495132429CA083E068 /* CodeplaneCacheSchemeHandler.swift */,
+			);
+			path = OfflineCachePlugin;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -250,6 +263,9 @@
 					504EC3031FED79650016851F = {
 						CreatedOnToolsVersion = 9.2;
 						LastSwiftMigration = 1100;
+						ProvisioningStyle = Automatic;
+					};
+					8A64D9A470956AD10CAD90F8 = {
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -341,6 +357,9 @@
 				D302C08415342FF45D800026 /* LiveActivitiesPlugin.swift in Sources */,
 				A026B4C8E1D6F46B3CE74DAE /* LiveActivitiesPlugin.m in Sources */,
 				78C2DD6091947CB39F4F10E5 /* CodeplaneActivityAttributes.swift in Sources */,
+				50FB222C1A6C414486759C88 /* OfflineCachePlugin.swift in Sources */,
+				B95054375DBC4BE9AF33C9C5 /* OfflineCachePlugin.m in Sources */,
+				4971ACF4150E403CA9EDAEF2 /* CodeplaneCacheSchemeHandler.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -536,6 +555,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = S9834AYCZH;
 				INFOPLIST_FILE = App/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Codeplane;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 1.0;
@@ -561,6 +582,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = S9834AYCZH;
 				INFOPLIST_FILE = App/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Codeplane;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 1.0;
