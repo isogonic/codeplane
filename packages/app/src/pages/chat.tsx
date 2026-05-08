@@ -116,14 +116,96 @@ const CHAT_DISABLED_TOOLS: Record<string, boolean> = {
   // Interactive — chat mode handles these inline as text.
   question: false,
   task: false,
-  // Codeplane file-tree popup; we have our own files dialog.
-  "file-tree": false,
   // File I/O — explicitly ENABLED so the agent can produce artefacts the
   // user can download / preview from the chat thread.
   read: true,
   write: true,
   edit: true,
   list: true,
+  // Rich-block visualisation tools — explicitly ENABLED so the model
+  // calls them as actual tools. Without these the model falls back to
+  // emitting `<callout>` / `<timeline>` / `<diff>` etc. as XML in prose
+  // (it generalises the `<memory>` tag-style directive to every other
+  // tool name), and the renderer either strips them or shows raw text.
+  // Reported by a user: "16. Diff", "5. Timeline", "8. Callout" etc.
+  // all rendered empty when the agent demoed them.
+  chart: true,
+  kpi: true,
+  callout: true,
+  timeline: true,
+  progress: true,
+  badge: true,
+  quote: true,
+  preview: true,
+  stock: true,
+  tabs: true,
+  choice: true,
+  select: true,
+  table: true,
+  "image-grid": true,
+  comparison: true,
+  video: true,
+  diff: true,
+  // Codeplane's built-in file-tree tool would pop a separate UI; we
+  // reuse the rich-block fenced `file-tree` renderer (in markdown-blocks)
+  // for the chat surface instead, so the standalone tool stays off.
+  "file-tree": false,
+}
+
+/**
+ * Tool ids whose `<tag>` form must NEVER appear in the prose stream —
+ * if it does, the model is mistakenly generalising the `<memory …>`
+ * directive to other tools, and the chat renderer would either strip
+ * them silently (callout, timeline, …) or leak raw text (diff, write).
+ *
+ * `stripStrayToolTags` removes any of these tags wholesale (and their
+ * content) BEFORE the text hits `<Markdown>`. Defensive belt-and-braces
+ * — the canonical fix is the prompt update that forbids prose XML tool
+ * calls; this just keeps the user from seeing garbage when the model
+ * regresses, and matches the same shape as the existing `<memory>`
+ * extraction.
+ *
+ * `<memory>` is NOT in this set — it's the one tag-style directive the
+ * chat surface DOES intentionally support, and `parseAssistantSegments`
+ * promotes it to a MemoryCard.
+ */
+const STRAY_PROSE_TOOL_TAGS = [
+  "chart",
+  "kpi",
+  "callout",
+  "timeline",
+  "progress",
+  "badge",
+  "quote",
+  "preview",
+  "stock",
+  "tabs",
+  "choice",
+  "select",
+  "table",
+  "file-tree",
+  "image-grid",
+  "comparison",
+  "video",
+  "diff",
+  "write",
+  "read",
+  "edit",
+  "list",
+] as const
+
+function stripStrayToolTags(text: string): string {
+  if (!text) return text
+  let out = text
+  for (const tag of STRAY_PROSE_TOOL_TAGS) {
+    // Self-closing form: `<diff … />` — drop entirely.
+    out = out.replace(new RegExp(`<${tag}\\b[^>]*/>`, "gi"), "")
+    // Paired form: `<diff …>body</diff>` — drop tag + body. We accept
+    // an unterminated stray tag too (greedy to next matching close, or
+    // end of text) because models often truncate mid-stream.
+    out = out.replace(new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?(?:</${tag}>|$)`, "gi"), "")
+  }
+  return out
 }
 
 /**
@@ -158,6 +240,28 @@ function buildChatSystemPrompt(input: {
       "- When useful, structure with headings, bullet lists, and tables.",
       "",
       "Rich rendering — use these freely when they help:",
+      "",
+      "**HOW to invoke each one** — there are exactly THREE invocation styles, and using the WRONG style produces garbage on screen:",
+      "  1. **Tool call** — `chart`, `kpi`, `callout`, `timeline`, `progress`, `badge`, `quote`, `preview`, `stock`, `tabs`, `choice`, `select`, `table`, `image-grid`, `comparison`, `video`, `diff`, `write`, `read`, `edit`, `list`. Call these like any other tool — invoke them by NAME with the schema-validated arguments. NEVER write them as XML prose like `<chart …>`, `<callout …>`, `<diff …>`, `<write …>` — the renderer cannot decode that and the user sees blanks or raw markup. There is exactly ONE prose-tag exception: `<memory …>` (covered below).",
+      "  2. **Fenced markdown block** — `mermaid`, `plot`, `graph`. Embed in prose as a triple-backtick fence with the language tag.",
+      "  3. **Plain markdown** — headings, bullet lists, GFM tables, code blocks, KaTeX math, inline links / images.",
+      "",
+      "Quick reference for the most common tool calls (call by NAME — these are NOT prose tags):",
+      '  • `callout({ variant: "info"|"tip"|"warning"|"danger"|"success", title, body })`',
+      '  • `kpi({ tiles: [{ label, value, unit?, deltaPercent?, trend? }, …] })`',
+      '  • `timeline({ events: [{ when, title, body? }, …] })`',
+      '  • `tabs({ groupId, tabs: [{ id, label, body }, …] })`',
+      '  • `comparison({ left: { title, body }, right: { title, body } })`',
+      '  • `quote({ text, attribution? })`',
+      '  • `badge({ items: [{ label, color? }, …] })`',
+      '  • `preview({ url, title?, description?, image? })`',
+      '  • `stock({ symbol, points: [{ t, p }, …] })`',
+      '  • `image-grid({ images: [{ src, alt, href? }, …] })`',
+      '  • `progress({ items: [{ label, value, max?, color? }, …] })`',
+      '  • `table({ columns, rows, zebra? })`',
+      '  • `chart({ type, title?, labels?, series: [{ name, data, color? }, …] })`',
+      '  • `diff({ filename, before, after })`',
+      '',
       "- **Mermaid diagrams** for flowcharts, sequence, state, ER, gantt, mindmap, pie, timeline, journey, sankey, etc. ALWAYS tag the fence as `mermaid` and put the diagram type on the FIRST line of the body. Example for a mindmap:",
       "  ```mermaid",
       "  mindmap",
@@ -480,17 +584,30 @@ function parseAssistantSegments(raw: string): AssistantSegment[] {
   const segments: AssistantSegment[] = []
   let cursor = 0
   let match: RegExpExecArray | null
+  // Pushes a text segment with stray tool-style XML tags (`<callout…>…</callout>`,
+  // `<diff…>…</diff>`, `<write…>…</write>`, …) stripped. Without this the
+  // user sees either blank space (DOMPurify drops unknown tags) or raw
+  // markup (when the closing tag is malformed). The model SHOULDN'T be
+  // emitting these in the first place — the prompt forbids it — but we
+  // strip defensively so a regression in any one model doesn't push
+  // garbage onto the screen.
+  const pushText = (text: string) => {
+    const cleaned = stripStrayToolTags(text).trim()
+    if (cleaned) segments.push({ kind: "text", text: cleaned })
+  }
   while ((match = re.exec(raw)) !== null) {
-    const before = raw.slice(cursor, match.index).trim()
-    if (before) segments.push({ kind: "text", text: before })
+    pushText(raw.slice(cursor, match.index))
     const title = (match[1] ?? "").trim()
     const content = (match[2] ?? "").trim()
     if (content) segments.push({ kind: "memory", title, content })
     cursor = match.index + match[0].length
   }
-  const tail = raw.slice(cursor).trim()
-  if (tail) segments.push({ kind: "text", text: tail })
+  pushText(raw.slice(cursor))
   if (segments.length === 0 && raw.trim()) {
+    // Fallback: NEVER swallow the entire reply silently. If the strip
+    // happened to remove everything (e.g. the model wrote nothing but
+    // stray tool tags), keep the original raw so the user has SOMETHING
+    // to read and can ask the model to try again.
     segments.push({ kind: "text", text: raw })
   }
   return segments
