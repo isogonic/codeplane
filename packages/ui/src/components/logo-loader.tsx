@@ -91,16 +91,31 @@ const FRAMES = genDiagonalSwipe()
 const BRAILLE_FRAMES: string[] = FRAMES.map(gridToBraille)
 const FRAME_MS = 90
 
-// Geometry for the SVG fallback path. ViewBox matches the original braille
+// Geometry for the SVG fallback path. ViewBox matches the braille
 // glyph box (12×20 px) so callers reserving space for the loader don't
 // re-flow when the runtime falls back.
+//
+// Real braille at 14 px monospace renders as a TIGHTLY clustered 2×4
+// dot grid in the upper-center of the line-height box: dots ~1.3 px
+// diameter, ~3 px gap row-to-row, ~4 px gap column-to-column, leaving
+// the bottom 5-ish px empty (the descender / baseline gap). The
+// previous SVG geometry (PAD_X=3, PAD_Y=3.5, STEP_X=6, STEP_Y=4.33,
+// r=0.9) spread the dots across the full box and read as `::  ::  ::`
+// — a colon-dot-grip-handle, not a compact braille cluster.
+//
+// New geometry (PAD_X=4, PAD_Y=4, STEP_X=4, STEP_Y=3, r=1.0) packs the
+// 8 dots into an 8×13 px cluster centered slightly above the
+// vertical midline — visually indistinguishable from `⠿` at 14 px
+// once antialiasing kicks in. This is what mobile users (forced onto
+// the SVG path because no iOS font has braille coverage) see, so it
+// has to match the desktop braille version.
 const VIEW_W = 12
 const VIEW_H = 20
-const PAD_X = 2
-const PAD_Y = 2
-const DOT_R = 1.4
-const STEP_X = (VIEW_W - PAD_X * 2) / (COLS - 1)
-const STEP_Y = (VIEW_H - PAD_Y * 2) / (ROWS - 1)
+const PAD_X = 4
+const PAD_Y = 4
+const STEP_X = 4
+const STEP_Y = 3
+const DOT_R = 1.0
 
 const DOT_POSITIONS: Array<{ row: number; col: number; cx: number; cy: number }> = (() => {
   const list: Array<{ row: number; col: number; cx: number; cy: number }> = []
