@@ -38,6 +38,12 @@ export function SessionComposerRegion(props: {
     onSend: (id: string) => void
     onEdit: (id: string) => void
     onDelete: (id: string) => void
+    /**
+     * Called with the new id ordering after every drag-over (live
+     * reorder, matching the file-tab pattern). Optional — when omitted
+     * the dock renders without drag affordances at all.
+     */
+    onReorder?: (ids: string[]) => void
     onEditLoaded: () => void
   }
   revert?: {
@@ -273,6 +279,7 @@ export function SessionComposerRegion(props: {
                       onSend={props.followup!.onSend}
                       onEdit={props.followup!.onEdit}
                       onDelete={props.followup!.onDelete}
+                      onReorder={props.followup!.onReorder}
                     />
                   </Show>
                   <Show
