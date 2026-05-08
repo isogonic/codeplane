@@ -4,6 +4,7 @@ import type { Permission } from "../permission"
 import type { SessionID, MessageID } from "../session/schema"
 import * as Truncate from "./truncate"
 import { Agent } from "@/agent/agent"
+import { Flag } from "@/flag/flag"
 
 /**
  * Hard upper bound on a single tool execution. Anything that would legitimately
@@ -15,8 +16,13 @@ import { Agent } from "@/agent/agent"
  * Tools that already implement their own timeout (bash_interactive, mcp-exa)
  * should still be wrapped: the outer timeout is a safety net for the case where
  * the inner timeout fires but cleanup itself hangs.
+ *
+ * Operators can override this default via `CODEPLANE_TOOL_TIMEOUT_MS` without a
+ * code change — useful when running with an MCP server that legitimately needs
+ * a longer ceiling, or in CI where we want to fail faster.
  */
-export const DEFAULT_TOOL_TIMEOUT_MS = 5 * 60_000
+export const DEFAULT_TOOL_TIMEOUT_MS =
+  Flag.CODEPLANE_TOOL_TIMEOUT_MS && Flag.CODEPLANE_TOOL_TIMEOUT_MS > 0 ? Flag.CODEPLANE_TOOL_TIMEOUT_MS : 5 * 60_000
 
 interface Metadata {
   [key: string]: any

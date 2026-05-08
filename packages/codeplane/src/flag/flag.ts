@@ -81,18 +81,6 @@ export const Flag = {
   CODEPLANE_MAX_CONCURRENT_LLM_CALLS: number("CODEPLANE_MAX_CONCURRENT_LLM_CALLS"),
   CODEPLANE_BUS_BUFFER_SIZE: number("CODEPLANE_BUS_BUFFER_SIZE"),
   CODEPLANE_SSE_BUFFER_SIZE: number("CODEPLANE_SSE_BUFFER_SIZE"),
-  // Opt-in: auto-resume sessions whose latest user message had no assistant
-  // reply when the server died. Off by default because replaying a half-run
-  // turn doubles the spend of an already-failed turn and may compound side
-  // effects (file writes, shell commands) that the previous attempt
-  // partially applied. Operators that have idempotent agents and want
-  // continuity can flip this on.
-  CODEPLANE_EXPERIMENTAL_AUTO_RESUME: truthy("CODEPLANE_EXPERIMENTAL_AUTO_RESUME"),
-  // Sessions older than this in milliseconds are not auto-resumed even when
-  // CODEPLANE_EXPERIMENTAL_AUTO_RESUME is on. Default 1 hour: if a server
-  // was down longer than that, the user has likely moved on and replaying
-  // would surprise them.
-  CODEPLANE_AUTO_RESUME_MAX_AGE_MS: number("CODEPLANE_AUTO_RESUME_MAX_AGE_MS"),
   CODEPLANE_EXPERIMENTAL_OXFMT: CODEPLANE_EXPERIMENTAL || truthy("CODEPLANE_EXPERIMENTAL_OXFMT"),
   CODEPLANE_EXPERIMENTAL_LSP_TY: truthy("CODEPLANE_EXPERIMENTAL_LSP_TY"),
   CODEPLANE_EXPERIMENTAL_LSP_TOOL: CODEPLANE_EXPERIMENTAL || truthy("CODEPLANE_EXPERIMENTAL_LSP_TOOL"),
