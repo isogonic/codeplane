@@ -117,13 +117,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          title="${{ needs.resolve.outputs.source_tag }} (mobile shell)"
+          # Match the desktop-release convention: title is just the
+          # source tag (`v<x.y.z>`). Any descriptive suffix from the
+          # source release name is dropped — the existing release-list
+          # history shows the established pattern is short, version-only
+          # titles for the platform-specific releases.
+          title="${{ needs.resolve.outputs.source_tag }}"
           notes_file="$(mktemp)"
-          if gh release view "${{ needs.resolve.outputs.source_tag }}" --repo "${{ github.repository }}" --json name,body > base-release.json 2>/dev/null; then
-            source_title="$(jq -r '.name // empty' base-release.json)"
-            if [ -n "$source_title" ]; then
-              title="$source_title — mobile shell"
-            fi
+          if gh release view "${{ needs.resolve.outputs.source_tag }}" --repo "${{ github.repository }}" --json body > base-release.json 2>/dev/null; then
             jq -r '.body // ""' base-release.json > "$notes_file"
           else
             : > "$notes_file"
@@ -489,13 +490,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          title="${{ needs.resolve.outputs.source_tag }} (mobile shell)"
+          # Match the desktop-release convention: title is just the
+          # source tag (`v<x.y.z>`). Any descriptive suffix from the
+          # source release name is dropped — the existing release-list
+          # history shows the established pattern is short, version-only
+          # titles for the platform-specific releases.
+          title="${{ needs.resolve.outputs.source_tag }}"
           notes_file="$(mktemp)"
-          if gh release view "${{ needs.resolve.outputs.source_tag }}" --repo "${{ github.repository }}" --json name,body > base-release.json 2>/dev/null; then
-            source_title="$(jq -r '.name // empty' base-release.json)"
-            if [ -n "$source_title" ]; then
-              title="$source_title — mobile shell"
-            fi
+          if gh release view "${{ needs.resolve.outputs.source_tag }}" --repo "${{ github.repository }}" --json body > base-release.json 2>/dev/null; then
             jq -r '.body // ""' base-release.json > "$notes_file"
           else
             : > "$notes_file"
