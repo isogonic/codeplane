@@ -234,10 +234,84 @@ export const WebviewHost: Component<{
    * Driving the inject from `executeScript` lets us present the modal
    * immediately *and* keep the close button alive on every page.
    */
+  /**
+   * Try the offline-cache presenter first when:
+   *   1. The native plugin is compiled in (`offlineCache.isSupported()`),
+   *   2. The asset crawler has finished a full pass for this instance
+   *      (`assetCache.get(...)` is `ready` with a `cachedVersion`),
+   *   3. The crawled version matches what the picker last probed for
+   *      `openedVersion` (so we don't serve a stale bundle that talks
+   *      to a server that has since moved on — the proxy fall-through
+   *      still works, but the SPA shell would diverge from the API
+   *      schema).
+   *
+   * Returns `true` when the cached path was used (and the modal is on
+   * screen). Returns `false` when the caller should fall back to the
+   * live-origin `@capgo/inappbrowser` path.
+   *
+   * Failure modes (cache directory deleted underneath us, the Swift
+   * plugin rejecting because index.html is missing, network-related
+   * failures during proxy startup) are caught and downgraded to a
+   * `false` return so the InAppBrowser fallback gets a try.
+   */
+  const tryOpenInOfflineCache = async (): Promise<boolean> => {
+    if (!isNative) return false
+    try {
+      const supported = await props.api.offlineCache.isSupported()
+      if (!supported) return false
+      const record = await props.api.assetCache.get(props.instance.id)
+      if (!record || record.status !== "ready" || !record.cachedVersion) return false
+      // The asset cache only stores ONE version per instance. If the
+      // server has bumped past the cached version since the last
+      // crawl, we still have a usable bundle (the proxy paths handle
+      // anything new the SPA fetches) — but if the version has gone
+      // BACK we definitely don't want to serve newer code against an
+      // older server, so refuse.
+      const remote = await props.api.uiCache.get(props.instance.id)
+      if (remote?.remoteVersion && record.cachedVersion !== remote.remoteVersion) {
+        // Server has moved past — let the asset-cache's auto-crawl
+        // pick the new version up; meanwhile the safe bet is the
+        // live origin.
+        return false
+      }
+      const headers = await props.api.instances.secrets.get(props.instance.id)
+      const bg = getComputedStyle(document.documentElement)
+        .getPropertyValue("--background-base")
+        .trim()
+      // eslint-disable-next-line no-console
+      console.log("[webview-host] offline-cache open", {
+        instance: props.instance.id,
+        version: record.cachedVersion,
+      })
+      await props.api.offlineCache.openInstance({
+        instanceId: props.instance.id,
+        version: record.cachedVersion,
+        originUrl: props.instance.url,
+        authHeaders: headers,
+        toolbarColor: bg || "#101010",
+        title: props.instance.label || host(),
+      })
+      // The native side fires its own close listener; webview-host's
+      // existing `closeEvent` listener (registered at mount) is for
+      // the InAppBrowser plugin specifically, so we register a
+      // separate close listener for the offline plugin in `onMount`.
+      void props.api.uiCache.markOpened(props.instance.id, record.cachedVersion)
+      return true
+    } catch (err) {
+      console.warn("[webview-host] offline-cache open failed, falling back", err)
+      return false
+    }
+  }
+
   const openInWebView = async () => {
     setStarted(true)
     setOpenError(null)
     setBrowserOpen(true)
+    // Prefer the on-device cache when ready; falls through to the
+    // live-origin InAppBrowser flow otherwise.
+    if (await tryOpenInOfflineCache()) {
+      return
+    }
     const bg = getComputedStyle(document.documentElement)
       .getPropertyValue("--background-base")
       .trim()
@@ -486,6 +560,21 @@ export const WebviewHost: Component<{
            dismiss will just no-op until force-quit */
       }
 
+      // Same listener registration for the offline-cache plugin's
+      // closeEvent. Native-side ARC dismisses the modal whether the
+      // user taps the floating close pill or swipes down (the host
+      // controller fires `viewDidDisappear` either way), and we want
+      // the picker to re-mount in BOTH cases. The shared `onCloseOnce`
+      // dedupe means a dual-listener world (offline + InAppBrowser
+      // both wired) doesn't double-fire if both happen to be active.
+      try {
+        const handle = await props.api.offlineCache.addCloseListener(onCloseOnce)
+        offHandles.push(handle)
+      } catch {
+        /* offline plugin not present (web build, Android until the
+           Kotlin port lands) — InAppBrowser handles dismiss alone. */
+      }
+
       // urlChangeEvent powers (a) the redirect-chain logging shown in
       // Safari Web Inspector when SSO breaks, and (b) the floating
       // close-button re-inject after every navigation. Same
@@ -709,22 +798,12 @@ const SignInLanding: Component<{
   onClick: () => void
   disabled?: boolean
 }> = (props) => {
-  // Synthesise an instance monogram avatar SVG matching the picker
-  // card style (same OC-2 dark fill, two-letter initials). The picker
-  // generates this server-side as a data: URI but recreating it here
-  // saves a prop drill and keeps the loading screen self-contained.
-  const initials = () => {
-    const text = props.label || props.host
-    const parts = text.split(/[\s-_./]+/).filter(Boolean)
-    const a = parts[0]?.[0] ?? text[0] ?? "?"
-    const b = parts[1]?.[0] ?? parts[0]?.[1] ?? ""
-    return (a + b).toUpperCase().slice(0, 2)
-  }
+  // The monogram avatar tile that used to sit above the title was
+  // removed at the user's request — the picker card the user just
+  // tapped already establishes which instance is loading, and the
+  // empty state without the tile reads cleaner on a phone screen.
   return (
     <div class="instance-connect">
-      <div class="instance-connect__avatar" aria-hidden>
-        <span class="instance-connect__avatar-text">{initials()}</span>
-      </div>
       <div class="instance-connect__name-row">
         <h2 class="instance-connect__title">{props.label || props.host}</h2>
         <Show when={props.label && props.label !== props.host}>

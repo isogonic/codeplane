@@ -58,11 +58,27 @@ export const UIRoutes = (): Hono =>
         return c.json({ error: "Not Found" }, 404)
       }
     } else {
-      const response = await proxy(`https://example.invalid/app${path}`, {
+      // No embedded UI bundle in this build (typical in `bun run
+      // dev:server`). Honour CODEPLANE_DEV_UI_URL if the dev set it
+      // — points at a running `bun --cwd packages/app dev` server so
+      // the Codeplane backend serves live-reloaded UI without
+      // requiring a full binary rebuild. The hardcoded
+      // `example.invalid` upstream is the production placeholder
+      // that release builds replace at compile time; in dev it's
+      // unreachable and would 502 every UI request.
+      const upstream = Flag.CODEPLANE_DEV_UI_URL ?? "https://example.invalid/app"
+      const upstreamHost = (() => {
+        try {
+          return new URL(upstream).host
+        } catch {
+          return "app.example.invalid"
+        }
+      })()
+      const response = await proxy(`${upstream.replace(/\/$/, "")}${path}`, {
         raw: c.req.raw,
         headers: {
           ...Object.fromEntries(c.req.raw.headers.entries()),
-          host: "app.example.invalid",
+          host: upstreamHost,
         },
       })
       response.headers.set(

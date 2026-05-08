@@ -677,6 +677,194 @@ body {
 }
 
 /* ---------------------------------------------------------------- *
+ * iOS-style "inset grouped" list — the Settings → Codeplane look.
+ * Sections stack vertically; each section has a small uppercase title
+ * (or none), a rounded card containing hairline-divided rows, and an
+ * optional footer note below. The whole pattern is read-only by
+ * default — interactive variants stick a button or pill in the
+ * trailing slot rather than the entire row being a tap target.
+ * ---------------------------------------------------------------- */
+.mobile-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mobile-section + .mobile-section {
+  margin-top: 22px;
+}
+
+.mobile-section__title {
+  margin: 0;
+  padding: 0 22px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-weak);
+}
+
+.mobile-section__footer {
+  margin: 0;
+  padding: 4px 22px 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-weaker);
+}
+
+.mobile-list {
+  margin: 0 16px;
+  border-radius: 14px;
+  background: var(--surface-base);
+  border: 1px solid var(--border-weak-base);
+  overflow: hidden;
+}
+
+.mobile-list__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  min-height: 44px;
+  background: transparent;
+  border-top: 1px solid var(--border-weak-base);
+}
+.mobile-list__row:first-child {
+  border-top: 0;
+}
+
+.mobile-list__row-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mobile-list__row-title {
+  font-weight: 500;
+  font-size: 15px;
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-list__row-help {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-weak);
+}
+
+.mobile-list__row-value {
+  font-size: 14px;
+  color: var(--text-weak);
+  font-variant-numeric: tabular-nums;
+  /* Lets long bundle IDs / model strings wrap rather than overflow
+   * the row. Paired with `min-width: 0` on the body, this keeps
+   * multi-line values right-aligned and the row from blowing out
+   * the list-group's 14px corner radius on narrow screens. */
+  max-width: 60%;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+/* Compact status pill — tri-state for permissions (granted / denied /
+ * prompt). Stays monochrome to match the rest of the picker; the
+ * three tones are the same neutral surface in different intensities,
+ * with the "denied" tone using an inverted accent so it reads with
+ * weight without introducing a chromatic alarm. */
+.mobile-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.mobile-pill[data-tone="ok"] {
+  color: var(--mono-accent-on);
+  background: var(--mono-accent);
+}
+
+.mobile-pill[data-tone="warn"] {
+  color: var(--text-strong);
+  background: var(--surface-base-active);
+  border: 1px solid color-mix(in srgb, var(--mono-accent) 35%, transparent);
+}
+
+.mobile-pill[data-tone="muted"] {
+  color: var(--text-weak);
+  background: var(--surface-base);
+  border: 1px solid var(--border-weak-base);
+}
+
+/* Inline button used inside list rows — sits flush in the trailing
+ * slot like an iOS "Allow" / "Open Settings" link. Smaller than a
+ * `mobile-button` so the row keeps its 44pt height without breaking
+ * the typographic rhythm. */
+.mobile-list__action {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0 4px;
+  margin: 0;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mono-accent);
+  cursor: pointer;
+  border-radius: 6px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.mobile-list__action:active {
+  opacity: 0.6;
+}
+
+.mobile-list__action[disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Generic full-screen sub-page container — used by Settings (and
+ * future detail screens) to fill the shell beneath the header,
+ * provide momentum scrolling, and respect the bottom safe-area. */
+.mobile-page {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.mobile-page__scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  min-height: 0;
+  padding: 18px 0 calc(24px + var(--safe-area-bottom));
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-page__scroll::-webkit-scrollbar {
+  display: none;
+}
+.mobile-page__scroll {
+  scrollbar-width: none;
+}
+
+/* ---------------------------------------------------------------- *
  * iOS-style switch.
  * ---------------------------------------------------------------- */
 .mobile-switch {
@@ -850,27 +1038,6 @@ body {
      has the chance to repaint the area underneath, so we keep
      the same base tone here for a visually contiguous backdrop. */
   background: var(--background-base);
-}
-
-.instance-connect__avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  /* Same monogram-tile colour scheme the picker cards use, kept in
-     sync via the shared OC-2 token. */
-  background: var(--surface-strong);
-  color: var(--text-strong);
-  font-feature-settings: "ss01";
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
-}
-
-.instance-connect__avatar-text {
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
 }
 
 .instance-connect__name-row {

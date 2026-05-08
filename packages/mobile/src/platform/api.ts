@@ -26,6 +26,7 @@ import { createSSO, type SSOAPI } from "./sso"
 import { ssoTokenStore } from "./sso-store"
 import { uiCache, type UICacheAPI } from "./ui-cache"
 import { assetCache, type AssetCacheAPI } from "./asset-cache"
+import { offlineCache, type OfflineCacheAPI } from "./offline-cache"
 import type { SavedInstance } from "@codeplane-ai/shared/instance"
 import type { SSOConfig } from "./sso-types"
 
@@ -40,6 +41,35 @@ export type MobileDeviceInfo = {
   webViewVersion?: string
 }
 
+export type MobileAppInfo = {
+  /** Display name from `CFBundleDisplayName` / Android `<application android:label>`. */
+  name: string
+  /** Bundle ID / Application ID. */
+  id: string
+  /** Marketing version (e.g. `28.0.13`). On iOS this is `CFBundleShortVersionString`. */
+  version: string
+  /** Build number (e.g. `28`). On iOS this is `CFBundleVersion`. */
+  build: string
+}
+
+/**
+ * Permission state for OS-mediated capabilities. Mirrors Capacitor's
+ * `PermissionState` so the picker can render a tri-state status pill
+ * without importing Capacitor's runtime types into the screens.
+ *
+ *   `granted`     — user has allowed the permission
+ *   `denied`      — user has explicitly denied; only iOS Settings can flip it
+ *   `prompt`      — never asked yet; calling `request()` will show the system sheet
+ *   `prompt-with-rationale` — Android-only; user has dismissed once but we may ask again
+ *   `unknown`     — query failed or platform doesn't support the capability
+ */
+export type MobilePermissionState =
+  | "granted"
+  | "denied"
+  | "prompt"
+  | "prompt-with-rationale"
+  | "unknown"
+
 export type MobileNetworkInfo = {
   connected: boolean
   connectionType: "wifi" | "cellular" | "none" | "unknown"
@@ -51,6 +81,25 @@ export type CodeplaneMobileAPI = {
   platform: MobilePlatform
   isNative: boolean
   device: () => Promise<MobileDeviceInfo>
+  /**
+   * App-bundle metadata — name, version, build, identifier. Read from
+   * `App.getInfo()` on native, hard-coded fallbacks on web. Used by the
+   * settings screen's "About" section.
+   */
+  app: {
+    info: () => Promise<MobileAppInfo>
+    /**
+     * Open the OS-level settings page for this app. On iOS this
+     * navigates to Settings → Codeplane via the `app-settings:` URL
+     * scheme; required when the user has previously denied a
+     * permission, since `requestPermissions()` becomes a no-op until
+     * they flip it manually. Returns `true` if the system accepted
+     * the navigation, `false` on platforms that don't support it
+     * (web fallback, or Android < 5 if we ever ship there without
+     * adapting this).
+     */
+    openSettings: () => Promise<boolean>
+  }
   network: {
     current: () => Promise<MobileNetworkInfo>
     onChange: (cb: (info: MobileNetworkInfo) => void) => () => void
@@ -78,6 +127,12 @@ export type CodeplaneMobileAPI = {
     removeItem: (key: string) => Promise<void>
   }
   notifications: {
+    /**
+     * Read the current permission state without prompting. Use this
+     * to drive UI ("Allowed / Denied / Not asked"); call `request()`
+     * to actually trigger the system sheet.
+     */
+    check: () => Promise<MobilePermissionState>
     request: () => Promise<boolean>
     notify: (input: { title: string; description?: string; href?: string }) => Promise<boolean>
     onClick: (cb: (href?: string) => void) => () => void
@@ -152,6 +207,17 @@ export type CodeplaneMobileAPI = {
    * from the same root.
    */
   assetCache: AssetCacheAPI
+  /**
+   * Phase-2b offline-cache presenter — opens a `WKWebView` whose
+   * `codeplane-cache:` scheme reads from the on-disk crawl tree
+   * (`assetCache`) and proxies dynamic requests to the live origin.
+   * `isSupported()` is the picker's gate: true on iOS 11+ with the
+   * Capacitor plugin compiled in, false on web / Android until the
+   * Kotlin port lands. The picker falls back to InAppBrowser when
+   * unsupported, so no caller branching is required to keep the
+   * existing flow working.
+   */
+  offlineCache: OfflineCacheAPI
 }
 
 const detectPlatform = (): MobilePlatform => {
@@ -162,6 +228,21 @@ const detectPlatform = (): MobilePlatform => {
 const wrapNetworkType = (t: string): MobileNetworkInfo["connectionType"] => {
   if (t === "wifi" || t === "cellular" || t === "none" || t === "unknown") return t
   return "unknown"
+}
+
+const mapPermissionState = (raw: string | undefined): MobilePermissionState => {
+  switch (raw) {
+    case "granted":
+      return "granted"
+    case "denied":
+      return "denied"
+    case "prompt":
+      return "prompt"
+    case "prompt-with-rationale":
+      return "prompt-with-rationale"
+    default:
+      return "unknown"
+  }
 }
 
 export function createCodeplaneMobile(): CodeplaneMobileAPI {
@@ -192,6 +273,54 @@ export function createCodeplaneMobile(): CodeplaneMobileAPI {
           isVirtual: false,
         }
       }
+    },
+
+    app: {
+      async info() {
+        try {
+          const info = await CapApp.getInfo()
+          return {
+            name: info.name ?? "Codeplane",
+            id: info.id ?? "",
+            version: info.version ?? "",
+            build: info.build ?? "",
+          }
+        } catch {
+          // Web fallback — `App.getInfo()` rejects on `web` because the
+          // platform doesn't expose a bundle. We still want the picker's
+          // settings screen to render something useful in the dev
+          // server, so we hard-code the name and leave version/build
+          // empty (the screen renders "—" for blank values).
+          return {
+            name: "Codeplane",
+            id: "",
+            version: "",
+            build: "",
+          }
+        }
+      },
+      async openSettings() {
+        // iOS exposes the per-app Settings page via the `app-settings:`
+        // URL scheme — only valid when triggered from the foreground
+        // app. WKWebView's `window.open(url, "_blank")` for an unknown
+        // scheme is what Capacitor's external-URL handler uses to
+        // hand-off to the OS; we go through that rather than reaching
+        // for `@capacitor/browser`, which would open the URL in an
+        // in-app browser instead of bouncing to Settings.
+        if (platform === "ios") {
+          try {
+            window.open("app-settings:", "_blank")
+            return true
+          } catch {
+            return false
+          }
+        }
+        // Android: there is no single deep-link to Settings → App that
+        // works across OEMs without a native intent. We don't ship an
+        // Android settings shortcut today; the screen just hides the
+        // button on Android.
+        return false
+      },
     },
 
     network: {
@@ -311,6 +440,19 @@ export function createCodeplaneMobile(): CodeplaneMobileAPI {
     storage: mobilePreferences,
 
     notifications: {
+      async check() {
+        if (!isNative) return "unknown"
+        try {
+          const result = await LocalNotifications.checkPermissions()
+          // Map Capacitor's permission status to our renderer-facing
+          // tri-state. `display` is the only field the local-notifications
+          // plugin populates today (no separate `alert`/`badge`/`sound`
+          // breakdown like push does).
+          return mapPermissionState(result.display)
+        } catch {
+          return "unknown"
+        }
+      },
       async request() {
         try {
           const result = await LocalNotifications.requestPermissions()
@@ -453,6 +595,7 @@ export function createCodeplaneMobile(): CodeplaneMobileAPI {
     sso: createSSO(),
     uiCache,
     assetCache,
+    offlineCache,
   }
 
   // Auto-crawl wiring — when `ui-cache` flips any record to `stale`,

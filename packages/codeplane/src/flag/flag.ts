@@ -75,6 +75,16 @@ export const Flag = {
   CODEPLANE_MODELS_URL: process.env["CODEPLANE_MODELS_URL"],
   CODEPLANE_MODELS_PATH: process.env["CODEPLANE_MODELS_PATH"],
   CODEPLANE_DISABLE_EMBEDDED_WEB_UI: truthy("CODEPLANE_DISABLE_EMBEDDED_WEB_UI"),
+  /**
+   * Dev-only escape hatch — when the embedded UI bundle hasn't been
+   * built into the binary (i.e. `bun run dev:server` rather than a
+   * release build), point the `/ui/*` proxy at a live UI dev server
+   * (typically `http://localhost:5180`) instead of the placeholder
+   * `https://example.invalid` that production hot-swaps at build
+   * time. Lets a developer iterate on the @codeplane-ai/app dev
+   * server while running a real Codeplane backend on its own port.
+   */
+  CODEPLANE_DEV_UI_URL: process.env["CODEPLANE_DEV_UI_URL"],
   CODEPLANE_DB: process.env["CODEPLANE_DB"],
   CODEPLANE_DISABLE_CHANNEL_DB: truthy("CODEPLANE_DISABLE_CHANNEL_DB"),
   CODEPLANE_SKIP_MIGRATIONS: truthy("CODEPLANE_SKIP_MIGRATIONS"),

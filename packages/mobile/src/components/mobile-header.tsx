@@ -127,3 +127,29 @@ export const RightChevron: Component = () => (
     />
   </svg>
 )
+
+/**
+ * Gear / settings icon — used in the picker's leading header slot to
+ * open the app-level settings screen. Mirrors the optical weight of
+ * `PlusIcon` (22×22, stroke 2) so the two corners feel paired.
+ */
+export const SettingsIcon: Component = () => (
+  <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden role="presentation">
+    <circle
+      cx="11"
+      cy="11"
+      r="2.6"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <path
+      d="M11 2.5v2.2M11 17.3v2.2M19.5 11h-2.2M4.7 11H2.5M17.01 4.99l-1.56 1.56M6.55 15.45l-1.56 1.56M17.01 17.01l-1.56-1.56M6.55 6.55L4.99 4.99"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </svg>
+)
