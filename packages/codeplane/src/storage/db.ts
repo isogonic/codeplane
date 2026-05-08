@@ -81,6 +81,22 @@ function migrations(dir: string): Journal {
   return sql.sort((a, b) => a.timestamp - b.timestamp)
 }
 
+// Periodic WAL truncation. With `journal_mode = WAL` + `synchronous = NORMAL`
+// the WAL file grows on every commit and is only checkpointed (folded back
+// into the main DB and truncated) automatically on a passive schedule that
+// can fall arbitrarily far behind under long-running write activity. A long
+// session that streams reasoning deltas + part updates can grow the WAL into
+// the hundreds of MB before the next reader triggers a checkpoint.
+//
+// We run a TRUNCATE checkpoint every CHECKPOINT_INTERVAL_MS to keep the WAL
+// bounded. TRUNCATE is the strongest mode — it folds all committed pages
+// into the main DB AND shrinks the WAL file back to zero — but it can be
+// blocked by readers holding a snapshot. That's fine: we ignore the result
+// and try again next tick. Worst case we miss a few cycles during heavy load
+// and the WAL grows; we'll catch up when the readers go away.
+const CHECKPOINT_INTERVAL_MS = 60_000
+let checkpointTimer: ReturnType<typeof setInterval> | undefined
+
 export const Client = lazy(() => {
   log.info("opening database", { path: Path })
 
@@ -91,6 +107,10 @@ export const Client = lazy(() => {
   db.run("PRAGMA busy_timeout = 5000")
   db.run("PRAGMA cache_size = -64000")
   db.run("PRAGMA foreign_keys = ON")
+  // `wal_autocheckpoint` is the per-commit threshold (default 1000 pages =
+  // ~4 MB). Lower it modestly so steady-state stays small without thrashing
+  // the disk. Independent of the periodic TRUNCATE below.
+  db.run("PRAGMA wal_autocheckpoint = 1000")
   db.run("PRAGMA wal_checkpoint(PASSIVE)")
 
   // Apply schema migrations
@@ -106,10 +126,39 @@ export const Client = lazy(() => {
     migrate(db, entries)
   }
 
+  // Best-effort periodic TRUNCATE. We do NOT log on the success path — at
+  // 60s cadence over a long-running server that's a lot of noise — but a
+  // failure that isn't SQLITE_BUSY-style contention is worth surfacing.
+  if (!checkpointTimer && Path !== ":memory:") {
+    checkpointTimer = setInterval(() => {
+      try {
+        db.run("PRAGMA wal_checkpoint(TRUNCATE)")
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        // SQLITE_BUSY/SQLITE_LOCKED are expected under read load; everything
+        // else (corruption, IO error) we want to know about.
+        if (!/busy|locked/i.test(msg)) log.warn("wal_checkpoint failed", { error: msg })
+      }
+    }, CHECKPOINT_INTERVAL_MS)
+    // Don't keep the event loop alive just for the checkpoint timer.
+    checkpointTimer.unref?.()
+  }
+
   return db
 })
 
 export function close() {
+  if (checkpointTimer) {
+    clearInterval(checkpointTimer)
+    checkpointTimer = undefined
+  }
+  // Final synchronous TRUNCATE before close so the next process opens a
+  // tidy WAL. Errors here are non-fatal — close() must succeed.
+  try {
+    Client().$client.exec("PRAGMA wal_checkpoint(TRUNCATE)")
+  } catch {
+    // ignore
+  }
   Client().$client.close()
   Client.reset()
 }

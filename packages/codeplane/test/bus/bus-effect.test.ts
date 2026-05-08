@@ -126,6 +126,49 @@ describe("Bus (Effect-native)", () => {
     ),
   )
 
+  it.live("concurrent subscribers to a fresh event type all receive a publish", () =>
+    // Regression: getOrCreate's check-then-create is not atomic across
+    // Effect suspensions (PubSub.sliding allocates async). Two concurrent
+    // subscribes to a brand-new event type both observe `undefined` and
+    // both allocate; whichever loses the Map slot ends up on an orphaned
+    // PubSub and silently misses every publish. Forcing many concurrent
+    // first-touches to the SAME type makes the race observable.
+    provideTmpdirInstance(() =>
+      Effect.gen(function* () {
+        // Use a fresh event type that no prior test has subscribed to so
+        // every fiber races on the create path.
+        const Race = BusEvent.define("test.effect.race", Schema.Struct({ value: Schema.Number }))
+        const bus = yield* Bus.Service
+
+        const N = 16
+        const counters = Array.from({ length: N }, () => ({ count: 0 }))
+        const dones = yield* Effect.all(
+          Array.from({ length: N }, () => Deferred.make<void>()),
+          { concurrency: "unbounded" },
+        )
+
+        yield* Effect.all(
+          counters.map((c, i) =>
+            Stream.runForEach(bus.subscribe(Race), () =>
+              Effect.sync(() => {
+                c.count += 1
+                Deferred.doneUnsafe(dones[i], Effect.void)
+              }),
+            ).pipe(Effect.forkScoped),
+          ),
+          { concurrency: "unbounded" },
+        )
+
+        // Give every subscribe a chance to settle into the typed PubSub.
+        yield* Effect.sleep("10 millis")
+        yield* bus.publish(Race, { value: 1 })
+        yield* Effect.all(dones.map((d) => Deferred.await(d).pipe(Effect.timeout("2 seconds"))))
+
+        for (const c of counters) expect(c.count).toBe(1)
+      }),
+    ),
+  )
+
   it.live("subscribeAll stream sees InstanceDisposed on disposal", () =>
     Effect.gen(function* () {
       const dir = yield* tmpdirScoped()

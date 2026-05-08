@@ -1120,6 +1120,13 @@ export function fromError(
       ).toObject()
     case OutputLengthError.isInstance(e):
       return e
+    case APIError.isInstance(e):
+      // An already-typed APIError (e.g. synthesized by the LLM stream idle
+      // timeout) round-trips intact so the outer retry policy can read
+      // `isRetryable` and `statusCode` directly. Without this case, the
+      // `e instanceof Error` branch below would wrap it as `Unknown` and
+      // strip those fields.
+      return e.toObject()
     case LoadAPIKeyError.isInstance(e):
       return new AuthError(
         {

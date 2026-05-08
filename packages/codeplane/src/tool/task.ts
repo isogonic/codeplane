@@ -13,7 +13,12 @@ import { Cause, Effect, Schema } from "effect"
 export interface TaskPromptOps {
   cancel(sessionID: SessionID): void
   resolvePromptParts(template: string): Effect.Effect<SessionPrompt.PromptInput["parts"]>
-  prompt(input: SessionPrompt.PromptInput): Effect.Effect<MessageV2.WithParts>
+  /**
+   * Subtask prompts surface `Session.BusyError` if their child session is
+   * already at queue capacity. Callers (the task tool's executor) must
+   * either retry, surface the error to the model, or fail the parent.
+   */
+  prompt(input: SessionPrompt.PromptInput): Effect.Effect<MessageV2.WithParts, Session.BusyError>
 }
 
 const id = "task"
@@ -242,6 +247,10 @@ export const TaskTool = Tool.define(
     return {
       description: DESCRIPTION,
       parameters: Parameters,
+      // Subagent runs are full LLM loops with their own tool calls — they can
+      // legitimately take an hour on a real research task. Opt out of the
+      // default tool wrapper timeout; cancellation flows through ctx.abort.
+      timeoutMs: null,
       execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
         run(params, ctx).pipe(Effect.orDie),
     }

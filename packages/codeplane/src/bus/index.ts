@@ -5,8 +5,21 @@ import { BusEvent } from "./bus-event"
 import { GlobalBus } from "./global"
 import { InstanceState } from "@/effect"
 import { makeRuntime } from "@/effect/run-service"
+import { Flag } from "@/flag/flag"
 
 const log = Log.create({ service: "bus" })
+
+// Bus PubSubs are sliding, not unbounded: a slow or wedged subscriber would
+// otherwise hold every event in memory forever. Sliding evicts the oldest
+// payload first so publishers stay non-blocking and recent events keep
+// flowing. Subscribers that fall behind lose history — but every state-
+// mutating event is also persisted via SyncEvent in `EventTable`, so a
+// reconnecting client can replay the gap via `/sync/history`.
+//
+// Capacity is sized for ~30s of dense delta traffic from a single session.
+// A reasoning-heavy turn emits ~100 part-delta events per second peak;
+// 4096 covers ~40s of that on a fully wedged subscriber.
+const BUS_BUFFER_SIZE = Flag.CODEPLANE_BUS_BUFFER_SIZE ?? 4096
 
 type BusProperties<D extends BusEvent.Definition<string, Schema.Top>> = Schema.Schema.Type<D["properties"]>
 
@@ -45,7 +58,7 @@ export const layer = Layer.effect(
   Effect.gen(function* () {
     const state = yield* InstanceState.make<State>(
       Effect.fn("Bus.state")(function* (ctx) {
-        const wildcard = yield* PubSub.unbounded<Payload>()
+        const wildcard = yield* PubSub.sliding<Payload>(BUS_BUFFER_SIZE)
         const typed = new Map<string, PubSub.PubSub<Payload>>()
 
         yield* Effect.addFinalizer(() =>
@@ -68,12 +81,24 @@ export const layer = Layer.effect(
 
     function getOrCreate<D extends BusEvent.Definition>(state: State, def: D) {
       return Effect.gen(function* () {
-        let ps = state.typed.get(def.type)
-        if (!ps) {
-          ps = yield* PubSub.unbounded<Payload>()
-          state.typed.set(def.type, ps)
+        const existing = state.typed.get(def.type)
+        if (existing) return existing as unknown as PubSub.PubSub<Payload<D>>
+
+        // PubSub.sliding suspends, so two concurrent callers can both
+        // observe `existing === undefined` and both allocate. Resolve
+        // by re-checking after allocation: whichever fiber's `set()`
+        // runs first wins the Map slot; the loser shuts down its
+        // unused PubSub and returns the winner's. This keeps every
+        // subscriber on the same channel, so a typed publish reaches
+        // all subscribers regardless of allocation order.
+        const created = yield* PubSub.sliding<Payload>(BUS_BUFFER_SIZE)
+        const winner = state.typed.get(def.type)
+        if (winner) {
+          yield* PubSub.shutdown(created)
+          return winner as unknown as PubSub.PubSub<Payload<D>>
         }
-        return ps as unknown as PubSub.PubSub<Payload<D>>
+        state.typed.set(def.type, created)
+        return created as unknown as PubSub.PubSub<Payload<D>>
       })
     }
 
@@ -171,18 +196,42 @@ export const defaultLayer = layer
 
 const { runPromise, runSync } = makeRuntime(Service, layer)
 
-// runSync is safe here because the subscribe chain (InstanceState.get, PubSub.subscribe,
-// Scope.make, Effect.forkScoped) is entirely synchronous. If any step becomes async, this will throw.
 export async function publish<D extends BusEvent.Definition>(def: D, properties: BusProperties<D>) {
   return runPromise((svc) => svc.publish(def, properties))
 }
 
+// runSync is safe because the entire subscribe chain is synchronous Effect
+// nodes:
+//   - InstanceState.get → ScopedCache lookup, sync after first init
+//   - getOrCreate       → Map.get + (PubSub.sliding = Effect.sync(...)) + Map.set
+//   - PubSub.subscribe  → Effect.sync allocation
+//   - Scope.make        → sync
+//   - Effect.forkScoped → schedules a fiber, doesn't await it
+//
+// If anything in that chain ever yields, `runSync` throws AsyncFiberException
+// — we wrap it so the error names the actual call site rather than dumping
+// an unhelpful internal stack at the user. Callers that need to subscribe
+// from genuinely async contexts should use `Bus.Service.subscribeCallback`
+// directly (returns an Effect) rather than this convenience wrapper.
+function runSyncSubscribe<R>(label: string, f: (svc: Interface) => Effect.Effect<R>): R {
+  try {
+    return runSync(f)
+  } catch (e) {
+    throw new Error(
+      `Bus.${label} can only be called synchronously. The subscribe chain yielded — ` +
+        `something in InstanceState/getOrCreate/PubSub became async. Use ` +
+        `Bus.Service.${label}Callback in an Effect context instead.`,
+      { cause: e },
+    )
+  }
+}
+
 export function subscribe<D extends BusEvent.Definition>(def: D, callback: (event: Payload<D>) => unknown) {
-  return runSync((svc) => svc.subscribeCallback(def, callback))
+  return runSyncSubscribe("subscribe", (svc) => svc.subscribeCallback(def, callback))
 }
 
 export function subscribeAll(callback: (event: any) => unknown) {
-  return runSync((svc) => svc.subscribeAllCallback(callback))
+  return runSyncSubscribe("subscribeAll", (svc) => svc.subscribeAllCallback(callback))
 }
 
 export * as Bus from "."

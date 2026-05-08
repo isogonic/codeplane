@@ -584,6 +584,11 @@ export const BashTool = Tool.define(
             .replaceAll("${maxLines}", String(limits.maxLines))
             .replaceAll("${maxBytes}", String(limits.maxBytes)),
           parameters: Parameters,
+          // Bash takes its own per-call `timeout` parameter without a hard
+          // upper bound — long builds/test suites legitimately exceed any
+          // global default. We rely on bash's internal timeout race +
+          // ctx.abort propagation rather than the wrapper safety net.
+          timeoutMs: null,
           execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
             Effect.gen(function* () {
               const cwd = params.workdir

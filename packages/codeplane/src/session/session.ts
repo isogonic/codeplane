@@ -507,29 +507,35 @@ export const layer: Layer.Layer<Service, never, Bus.Service | Storage.Service> =
     })
 
     const remove: Interface["remove"] = Effect.fnUntraced(function* (sessionID: SessionID) {
-      try {
-        const session = yield* get(sessionID)
-        const kids = yield* children(sessionID)
-        for (const child of kids) {
-          yield* remove(child.id)
-        }
+      // Removing a session that's already gone is a no-op (idempotent
+      // by design — DELETE handlers retry, and concurrent deletes are
+      // safe). Anything else (e.g. a child remove hits a SQL lock,
+      // SyncEvent fails to publish) MUST propagate so the caller can
+      // retry. The previous version swallowed every failure into a
+      // log line, leaving orphan children + the parent row coexisting
+      // in inconsistent states.
+      const row = yield* db((d) => d.select().from(SessionTable).where(eq(SessionTable.id, sessionID)).get())
+      if (!row) return
+      const session = fromRow(row)
 
-        // `remove` needs to work in all cases, such as a broken
-        // sessions that run cleanup. In certain cases these will
-        // run without any instance state, so we need to turn off
-        // publishing of events in that case
-        const hasInstance = yield* InstanceState.directory.pipe(
-          Effect.as(true),
-          Effect.catchCause(() => Effect.succeed(false)),
-        )
-
-        yield* Effect.sync(() => {
-          SyncEvent.run(Event.Deleted, { sessionID, info: session }, { publish: hasInstance })
-          SyncEvent.remove(sessionID)
-        })
-      } catch (e) {
-        log.error(e)
+      const kids = yield* children(sessionID)
+      for (const child of kids) {
+        yield* remove(child.id)
       }
+
+      // `remove` needs to work even when no InstanceState is bound
+      // (e.g. cleanup of orphan sessions during boot). In that mode
+      // we still update the local DB but skip bus publish so a
+      // detached process doesn't try to broadcast.
+      const hasInstance = yield* InstanceState.directory.pipe(
+        Effect.as(true),
+        Effect.catchCause(() => Effect.succeed(false)),
+      )
+
+      yield* Effect.sync(() => {
+        SyncEvent.run(Event.Deleted, { sessionID, info: session }, { publish: hasInstance })
+        SyncEvent.remove(sessionID)
+      })
     })
 
     const updateMessage = <T extends MessageV2.Info>(msg: T): Effect.Effect<T> =>

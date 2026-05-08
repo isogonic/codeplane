@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import type { NamedError } from "@codeplane-ai/shared/util/error"
 import { APICallError } from "ai"
 import { setTimeout as sleep } from "node:timers/promises"
-import { Effect, Schedule } from "effect"
+import { Effect, Exit, Schedule } from "effect"
 import { SessionRetry } from "../../src/session/retry"
 import { MessageV2 } from "../../src/session/message-v2"
 import { ProviderID } from "../../src/provider/schema"
@@ -27,10 +27,19 @@ function wrap(message: unknown): ReturnType<NamedError["toObject"]> {
 }
 
 describe("session.retry.delay", () => {
+  // Jitter takes 50% of the computed delay and adds a uniform random in [0, 50%),
+  // so a 2000 ms target now lands in [1000, 2000). Provider-supplied retry-after
+  // values are honored verbatim and do NOT have jitter applied.
+
   test("caps delay at 30 seconds when headers missing", () => {
     const error = apiError()
     const delays = Array.from({ length: 10 }, (_, index) => SessionRetry.delay(index + 1, error))
-    expect(delays).toStrictEqual([2000, 4000, 8000, 16000, 30000, 30000, 30000, 30000, 30000, 30000])
+    // base: 2000, 4000, 8000, 16000, 30000, 30000, ... — with jitter each is in [base/2, base).
+    const expectedBases = [2000, 4000, 8000, 16000, 30000, 30000, 30000, 30000, 30000, 30000]
+    delays.forEach((d, i) => {
+      expect(d).toBeGreaterThanOrEqual(expectedBases[i] / 2)
+      expect(d).toBeLessThanOrEqual(expectedBases[i])
+    })
   })
 
   test("prefers retry-after-ms when shorter than exponential", () => {
@@ -53,31 +62,95 @@ describe("session.retry.delay", () => {
 
   test("ignores invalid retry hints", () => {
     const error = apiError({ "retry-after": "not-a-number" })
-    expect(SessionRetry.delay(1, error)).toBe(2000)
+    const d = SessionRetry.delay(1, error)
+    // Falls through to jittered exponential at attempt 1: [1000, 2000).
+    expect(d).toBeGreaterThanOrEqual(1000)
+    expect(d).toBeLessThanOrEqual(2000)
   })
 
   test("ignores malformed date retry hints", () => {
     const error = apiError({ "retry-after": "Invalid Date String" })
-    expect(SessionRetry.delay(1, error)).toBe(2000)
+    const d = SessionRetry.delay(1, error)
+    expect(d).toBeGreaterThanOrEqual(1000)
+    expect(d).toBeLessThanOrEqual(2000)
   })
 
   test("ignores past date retry hints", () => {
     const pastDate = new Date(Date.now() - 5000).toUTCString()
     const error = apiError({ "retry-after": pastDate })
-    expect(SessionRetry.delay(1, error)).toBe(2000)
+    const d = SessionRetry.delay(1, error)
+    expect(d).toBeGreaterThanOrEqual(1000)
+    expect(d).toBeLessThanOrEqual(2000)
   })
 
-  test("uses retry-after values even when exceeding 10 minutes with headers", () => {
+  test("respects retry-after values within the global cap", () => {
     const error = apiError({ "retry-after": "50" })
     expect(SessionRetry.delay(1, error)).toBe(50000)
 
+    // 700_000 ms exceeds RETRY_MAX_DELAY (5 min) so it gets clamped down.
     const longError = apiError({ "retry-after-ms": "700000" })
-    expect(SessionRetry.delay(1, longError)).toBe(700000)
+    expect(SessionRetry.delay(1, longError)).toBe(SessionRetry.RETRY_MAX_DELAY)
   })
 
   test("caps oversized header delays to the runtime timer limit", () => {
     const error = apiError({ "retry-after-ms": "999999999999" })
     expect(SessionRetry.delay(1, error)).toBe(SessionRetry.RETRY_MAX_DELAY)
+  })
+
+  test("policy stops retrying once max attempts exhausted", async () => {
+    // The schedule signals "stop" by returning `Cause.done` from its step,
+    // which surfaces to the caller as a failed Effect (not a tagged value).
+    // We capture each step via Effect.exit so we can distinguish "another
+    // retry was scheduled" (Success) from "schedule terminated" (Failure).
+    const error = apiError({ "retry-after-ms": "0" })
+    let attempts = 0
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const step = yield* Schedule.toStepWithMetadata(
+          SessionRetry.policy({
+            parse: (err) => err as MessageV2.APIError,
+            set: () => Effect.sync(() => undefined),
+            maxAttempts: 3,
+          }),
+        )
+        // Loop until the schedule terminates.
+        for (let i = 0; i < 20; i++) {
+          const exit = yield* step(error).pipe(Effect.exit)
+          if (Exit.isFailure(exit)) return
+          attempts += 1
+        }
+        throw new Error("policy did not terminate within 20 iterations")
+      }),
+    )
+    expect(attempts).toBe(3)
+  })
+
+  test("policy stops retrying once total delay budget exhausted", async () => {
+    // Schedule.toStepWithMetadata actually sleeps for the computed delay, so
+    // the budget needs to be small enough that the test finishes promptly.
+    // Header asks for 200ms, budget is 100ms — first step clamps to 100,
+    // second step sees the budget exhausted and stops.
+    const error = apiError({ "retry-after-ms": "200" })
+    let attempts = 0
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const step = yield* Schedule.toStepWithMetadata(
+          SessionRetry.policy({
+            parse: (err) => err as MessageV2.APIError,
+            set: () => Effect.sync(() => undefined),
+            maxAttempts: 100,
+            maxTotalDelayMs: 100,
+          }),
+        )
+        for (let i = 0; i < 20; i++) {
+          const exit = yield* step(error).pipe(Effect.exit)
+          if (Exit.isFailure(exit)) return
+          attempts += 1
+        }
+        throw new Error("policy did not terminate within 20 iterations")
+      }),
+    )
+    expect(attempts).toBe(1)
   })
 
   test("policy updates retry status and increments attempts", async () => {
@@ -167,6 +240,31 @@ describe("session.retry.retryable", () => {
     const msg = "Too many requests, please slow down"
     const error = wrap(msg)
     expect(SessionRetry.retryable(error)).toBe(msg)
+  })
+
+  test("does not retry FreeUsageLimitError even when provider says isRetryable", () => {
+    // Free-tier exhaustion is a hard limit. Even if the provider's response
+    // is marked retryable (or returns a 5xx), retrying just delays the same
+    // failure. We surface it immediately so the user can upgrade.
+    const error = new MessageV2.APIError({
+      message: "Free usage limit reached",
+      isRetryable: true,
+      statusCode: 429,
+      responseBody: '{"error":{"type":"FreeUsageLimitError","message":"Free usage limit reached"}}',
+    }).toObject() as MessageV2.APIError
+
+    expect(SessionRetry.retryable(error)).toBeUndefined()
+  })
+
+  test("does not retry FreeUsageLimitError surfaced as 5xx", () => {
+    const error = new MessageV2.APIError({
+      message: "Internal error",
+      isRetryable: true,
+      statusCode: 503,
+      responseBody: '{"error":{"type":"FreeUsageLimitError"}}',
+    }).toObject() as MessageV2.APIError
+
+    expect(SessionRetry.retryable(error)).toBeUndefined()
   })
 
   test("does not retry context overflow errors", () => {

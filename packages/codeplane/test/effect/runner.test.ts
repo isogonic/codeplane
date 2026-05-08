@@ -136,30 +136,166 @@ describe("Runner", () => {
   )
 
   it.live(
-    "queued ensureRunning callers share the follow-up run",
+    "each queued ensureRunning gets its own FIFO slot",
+    // Behavioral fix: previously two queue:true callers shared a single slot,
+    // which silently dropped messages. Now each enqueues independently.
     Effect.gen(function* () {
       const s = yield* Scope.Scope
       const runner = Runner.make<string>(s)
       const calls = yield* Ref.make(0)
+      const order = yield* Ref.make<string[]>([])
 
-      const first = Effect.sleep("50 millis").pipe(Effect.as("first"))
-      const second = Effect.gen(function* () {
-        yield* Ref.update(calls, (n) => n + 1)
-        return "second"
+      const first = Effect.gen(function* () {
+        yield* Ref.update(order, (a) => [...a, "first"])
+        yield* Effect.sleep("50 millis")
+        return "first"
       })
+      const work = (label: string) =>
+        Effect.gen(function* () {
+          yield* Ref.update(calls, (n) => n + 1)
+          yield* Ref.update(order, (a) => [...a, label])
+          return label
+        })
 
       const a = yield* runner.ensureRunning(first).pipe(Effect.forkChild)
       yield* Effect.sleep("10 millis")
       const [b, c] = yield* Effect.all(
-        [runner.ensureRunning(second, { queue: true }), runner.ensureRunning(second, { queue: true })],
+        [runner.ensureRunning(work("two"), { queue: true }), runner.ensureRunning(work("three"), { queue: true })],
         { concurrency: "unbounded" },
       )
       const firstExit = yield* Fiber.await(a)
 
       expect(Exit.isSuccess(firstExit)).toBe(true)
-      expect(b).toBe("second")
-      expect(c).toBe("second")
-      expect(yield* Ref.get(calls)).toBe(1)
+      expect(b).toBe("two")
+      expect(c).toBe("three")
+      expect(yield* Ref.get(calls)).toBe(2)
+      expect(yield* Ref.get(order)).toEqual(["first", "two", "three"])
+    }),
+  )
+
+  it.live(
+    "FIFO queue runs many items in submission order",
+    Effect.gen(function* () {
+      const s = yield* Scope.Scope
+      const runner = Runner.make<string>(s)
+      const order = yield* Ref.make<string[]>([])
+
+      const block = yield* Deferred.make<void>()
+      const head = Effect.gen(function* () {
+        yield* Ref.update(order, (a) => [...a, "head"])
+        yield* Deferred.await(block)
+        return "head"
+      })
+      const tail = (label: string) =>
+        Effect.gen(function* () {
+          yield* Ref.update(order, (a) => [...a, label])
+          return label
+        })
+
+      const fa = yield* runner.ensureRunning(head).pipe(Effect.forkChild)
+      yield* Effect.sleep("10 millis")
+      const fbs = yield* Effect.all(
+        ["one", "two", "three", "four"].map((l) => runner.ensureRunning(tail(l), { queue: true }).pipe(Effect.forkChild)),
+      )
+      yield* Effect.sleep("10 millis")
+      yield* Deferred.succeed(block, undefined)
+
+      yield* Fiber.await(fa)
+      const exits = yield* Effect.all(fbs.map((f) => Fiber.await(f)))
+      for (const e of exits) expect(Exit.isSuccess(e)).toBe(true)
+      expect(yield* Ref.get(order)).toEqual(["head", "one", "two", "three", "four"])
+    }),
+  )
+
+  it.live(
+    "queue rejects with QueueFull at capacity",
+    Effect.gen(function* () {
+      const s = yield* Scope.Scope
+      const runner = Runner.make<string>(s, { queueCapacity: 2 })
+
+      const block = yield* Deferred.make<void>()
+      const fa = yield* runner.ensureRunning(Deferred.await(block).pipe(Effect.as("active"))).pipe(Effect.forkChild)
+      yield* Effect.sleep("10 millis")
+
+      // Two slots fit.
+      const f1 = yield* runner.ensureRunning(Effect.succeed("q1"), { queue: true }).pipe(Effect.forkChild)
+      const f2 = yield* runner.ensureRunning(Effect.succeed("q2"), { queue: true }).pipe(Effect.forkChild)
+      yield* Effect.sleep("10 millis")
+
+      // Third overflows.
+      const exit = yield* runner.ensureRunning(Effect.succeed("q3"), { queue: true }).pipe(Effect.exit)
+      expect(Exit.isFailure(exit)).toBe(true)
+      // QueueFull surfaces as a defect (die), so the cause has a Die node.
+      // Just verify the run is still alive.
+      expect(runner.busy).toBe(true)
+
+      yield* Deferred.succeed(block, undefined)
+      yield* Fiber.await(fa)
+      yield* Effect.all([Fiber.await(f1), Fiber.await(f2)])
+    }),
+  )
+
+  it.live(
+    "onQueueChange fires when items enqueue and dequeue",
+    Effect.gen(function* () {
+      const s = yield* Scope.Scope
+      const observed = yield* Ref.make<number[]>([])
+      const runner = Runner.make<string>(s, {
+        onQueueChange: (depth) => Ref.update(observed, (a) => [...a, depth]),
+      })
+
+      const block = yield* Deferred.make<void>()
+      const fa = yield* runner.ensureRunning(Deferred.await(block).pipe(Effect.as("a"))).pipe(Effect.forkChild)
+      yield* Effect.sleep("10 millis")
+
+      const f1 = yield* runner.ensureRunning(Effect.succeed("1"), { queue: true }).pipe(Effect.forkChild)
+      const f2 = yield* runner.ensureRunning(Effect.succeed("2"), { queue: true }).pipe(Effect.forkChild)
+      yield* Effect.sleep("10 millis")
+
+      yield* Deferred.succeed(block, undefined)
+      yield* Effect.all([Fiber.await(fa), Fiber.await(f1), Fiber.await(f2)])
+
+      // We should have seen depth 1 (after first enqueue), 2 (after second),
+      // 1 (after first runs), 0 (after second runs).
+      const seen = yield* Ref.get(observed)
+      expect(seen).toContain(1)
+      expect(seen).toContain(2)
+      expect(seen[seen.length - 1]).toBe(0)
+    }),
+  )
+
+  it.live(
+    "queued ensureRunning still runs after the active run fails",
+    // Regression: a failing first run must NOT poison the queued follow-up.
+    // Each ensureRunning(work, {queue:true}) is an independent submission and
+    // should be evaluated on its own merits (its own work decides its exit).
+    Effect.gen(function* () {
+      const s = yield* Scope.Scope
+      const runner = Runner.make<string, string>(s)
+      const ran = yield* Ref.make<string[]>([])
+
+      const first = Effect.gen(function* () {
+        yield* Ref.update(ran, (a) => [...a, "first"])
+        yield* Effect.sleep("30 millis")
+        return yield* Effect.fail("boom")
+      })
+      const second = Effect.gen(function* () {
+        yield* Ref.update(ran, (a) => [...a, "second"])
+        return "second-ok"
+      })
+
+      const [exitA, exitB] = yield* Effect.all(
+        [
+          runner.ensureRunning(first).pipe(Effect.exit),
+          runner.ensureRunning(second, { queue: true }).pipe(Effect.exit),
+        ],
+        { concurrency: "unbounded" },
+      )
+
+      expect(Exit.isFailure(exitA)).toBe(true)
+      expect(Exit.isSuccess(exitB)).toBe(true)
+      if (Exit.isSuccess(exitB)) expect(exitB.value).toBe("second-ok")
+      expect(yield* Ref.get(ran)).toEqual(["first", "second"])
     }),
   )
 
@@ -404,7 +540,9 @@ describe("Runner", () => {
 
       const run = yield* runner.ensureRunning(Effect.succeed("run-result")).pipe(Effect.forkChild)
       yield* Effect.sleep("10 millis")
-      expect(runner.state._tag).toBe("ShellThenRun")
+      expect(runner.state._tag).toBe("Shell")
+      // Formerly: ShellThenRun. Now: a Shell with one queued item.
+      if (runner.state._tag === "Shell") expect(runner.state.queue.length).toBe(1)
 
       yield* Deferred.succeed(gate, undefined)
       yield* Fiber.await(sh)
@@ -417,7 +555,8 @@ describe("Runner", () => {
   )
 
   it.live(
-    "multiple ensureRunning callers share the queued run behind shell",
+    "ensureRunning callers each get their own slot behind shell",
+    // Formerly "share the queued run behind shell" — sharing was the bug.
     Effect.gen(function* () {
       const s = yield* Scope.Scope
       const runner = Runner.make<string>(s)
@@ -441,12 +580,12 @@ describe("Runner", () => {
       const [exitA, exitB] = yield* Effect.all([Fiber.await(a), Fiber.await(b)])
       expect(Exit.isSuccess(exitA)).toBe(true)
       expect(Exit.isSuccess(exitB)).toBe(true)
-      expect(yield* Ref.get(calls)).toBe(1)
+      expect(yield* Ref.get(calls)).toBe(2)
     }),
   )
 
   it.live(
-    "cancel during shell_then_run cancels both",
+    "cancel during shell-with-queue cancels both",
     Effect.gen(function* () {
       const s = yield* Scope.Scope
       const runner = Runner.make<string>(s)
@@ -456,7 +595,8 @@ describe("Runner", () => {
 
       const run = yield* runner.ensureRunning(Effect.succeed("y")).pipe(Effect.forkChild)
       yield* Effect.sleep("10 millis")
-      expect(runner.state._tag).toBe("ShellThenRun")
+      expect(runner.state._tag).toBe("Shell")
+      if (runner.state._tag === "Shell") expect(runner.state.queue.length).toBe(1)
 
       yield* runner.cancel
       expect(runner.busy).toBe(false)
@@ -464,6 +604,43 @@ describe("Runner", () => {
       yield* Fiber.await(sh)
       const exit = yield* Fiber.await(run)
       expect(Exit.isFailure(exit)).toBe(true)
+    }),
+  )
+
+  it.live(
+    "cancel drains the entire FIFO queue (multi-item)",
+    Effect.gen(function* () {
+      const s = yield* Scope.Scope
+      const runner = Runner.make<string>(s)
+      const reached = yield* Ref.make<string[]>([])
+
+      const fa = yield* runner
+        .ensureRunning(Effect.never.pipe(Effect.as("active")))
+        .pipe(Effect.forkChild)
+      yield* Effect.sleep("10 millis")
+      const fbs = yield* Effect.all(
+        ["q1", "q2", "q3"].map((l) =>
+          runner
+            .ensureRunning(
+              Effect.gen(function* () {
+                yield* Ref.update(reached, (a) => [...a, l])
+                return l
+              }),
+              { queue: true },
+            )
+            .pipe(Effect.forkChild),
+        ),
+      )
+      yield* Effect.sleep("10 millis")
+
+      yield* runner.cancel
+      expect(runner.busy).toBe(false)
+
+      const exits = yield* Effect.all([Fiber.await(fa), ...fbs.map((f) => Fiber.await(f))])
+      // Every caller fails (Cancelled).
+      for (const e of exits) expect(Exit.isFailure(e)).toBe(true)
+      // None of the queued bodies should have run.
+      expect(yield* Ref.get(reached)).toEqual([])
     }),
   )
 

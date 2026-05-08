@@ -21,7 +21,9 @@ describe("AsyncQueue", () => {
     const q = new AsyncQueue<number>()
     for (let i = 0; i < 5; i++) q.push(i)
     const out: number[] = []
-    for (let i = 0; i < 5; i++) out.push(await q.next())
+    // next() returns T | undefined since AsyncQueue gained close() —
+    // an open queue with buffered items never returns undefined here.
+    for (let i = 0; i < 5; i++) out.push((await q.next())!)
     expect(out).toEqual([0, 1, 2, 3, 4])
   })
 

@@ -66,7 +66,33 @@ export const Flag = {
     copy === undefined ? process.platform === "win32" : truthy("CODEPLANE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT"),
   CODEPLANE_ENABLE_EXA: truthy("CODEPLANE_ENABLE_EXA") || CODEPLANE_EXPERIMENTAL || truthy("CODEPLANE_EXPERIMENTAL_EXA"),
   CODEPLANE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS: number("CODEPLANE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS"),
+  // Hard ceiling on how long any individual tool may run before its execute()
+  // is rejected with a timeout error. Catches MCP servers that hang on the
+  // wire and tools that don't honor their abort signal. The model receives a
+  // tool-error result and can choose to retry or move on, rather than the
+  // whole stream stalling until LLM_STREAM_IDLE_TIMEOUT_MS fires and we lose
+  // every other in-flight part of the turn. Default 5 min — generous, since
+  // legit long-running work (compaction, big bash) should finish well under
+  // it; tighten via env per deployment.
+  CODEPLANE_TOOL_TIMEOUT_MS: number("CODEPLANE_TOOL_TIMEOUT_MS"),
   CODEPLANE_EXPERIMENTAL_OUTPUT_TOKEN_MAX: number("CODEPLANE_EXPERIMENTAL_OUTPUT_TOKEN_MAX"),
+  CODEPLANE_RETRY_MAX_ATTEMPTS: number("CODEPLANE_RETRY_MAX_ATTEMPTS"),
+  CODEPLANE_LLM_STREAM_IDLE_TIMEOUT_MS: number("CODEPLANE_LLM_STREAM_IDLE_TIMEOUT_MS"),
+  CODEPLANE_MAX_CONCURRENT_LLM_CALLS: number("CODEPLANE_MAX_CONCURRENT_LLM_CALLS"),
+  CODEPLANE_BUS_BUFFER_SIZE: number("CODEPLANE_BUS_BUFFER_SIZE"),
+  CODEPLANE_SSE_BUFFER_SIZE: number("CODEPLANE_SSE_BUFFER_SIZE"),
+  // Opt-in: auto-resume sessions whose latest user message had no assistant
+  // reply when the server died. Off by default because replaying a half-run
+  // turn doubles the spend of an already-failed turn and may compound side
+  // effects (file writes, shell commands) that the previous attempt
+  // partially applied. Operators that have idempotent agents and want
+  // continuity can flip this on.
+  CODEPLANE_EXPERIMENTAL_AUTO_RESUME: truthy("CODEPLANE_EXPERIMENTAL_AUTO_RESUME"),
+  // Sessions older than this in milliseconds are not auto-resumed even when
+  // CODEPLANE_EXPERIMENTAL_AUTO_RESUME is on. Default 1 hour: if a server
+  // was down longer than that, the user has likely moved on and replaying
+  // would surprise them.
+  CODEPLANE_AUTO_RESUME_MAX_AGE_MS: number("CODEPLANE_AUTO_RESUME_MAX_AGE_MS"),
   CODEPLANE_EXPERIMENTAL_OXFMT: CODEPLANE_EXPERIMENTAL || truthy("CODEPLANE_EXPERIMENTAL_OXFMT"),
   CODEPLANE_EXPERIMENTAL_LSP_TY: truthy("CODEPLANE_EXPERIMENTAL_LSP_TY"),
   CODEPLANE_EXPERIMENTAL_LSP_TOOL: CODEPLANE_EXPERIMENTAL || truthy("CODEPLANE_EXPERIMENTAL_LSP_TOOL"),
