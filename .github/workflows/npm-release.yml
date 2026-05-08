@@ -45,7 +45,10 @@ jobs:
             echo "Release tags must start with v." >&2
             exit 1
           fi
-          if [[ "$tag" == *-desktop ]]; then
+          if [[ "$tag" == *-desktop || "$tag" == *-mobile ]]; then
+            # Platform-specific re-tags (`-desktop`, `-mobile`) only exist
+            # to drive the matching platform-release workflow; they MUST
+            # NOT republish to npm — the source `v<x.y.z>` tag already did.
             echo "enabled=false" >> "$GITHUB_OUTPUT"
             echo "source_tag=$tag" >> "$GITHUB_OUTPUT"
             echo "version=${tag#v}" >> "$GITHUB_OUTPUT"

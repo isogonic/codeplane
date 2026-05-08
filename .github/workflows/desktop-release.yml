@@ -43,6 +43,17 @@ jobs:
             echo "Release tags must start with v." >&2
             exit 1
           fi
+          # `v<x.y.z>-mobile` is the mobile-release sibling tag and is
+          # NOT a desktop-release trigger. Skip without doing anything so
+          # the desktop release isn't accidentally re-built / re-promoted
+          # on every mobile-tag push.
+          if [[ "$tag" == *-mobile ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "source_tag=${tag%-mobile}" >> "$GITHUB_OUTPUT"
+            echo "desktop_tag=${tag%-mobile}-desktop" >> "$GITHUB_OUTPUT"
+            echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [[ "$tag" == *-desktop ]]; then
             source_tag="${tag%-desktop}"
             desktop_tag="$tag"

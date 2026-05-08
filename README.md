@@ -20,6 +20,7 @@
   <p>
     <a href="https://github.com/devinoldenburg/codeplane/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/devinoldenburg/codeplane?style=flat-square&label=release&color=0a0a0a&labelColor=0a0a0a" /></a>
     <a href="https://github.com/devinoldenburg/codeplane/actions/workflows/desktop-release.yml"><img alt="Desktop build" src="https://img.shields.io/github/actions/workflow/status/devinoldenburg/codeplane/desktop-release.yml?style=flat-square&label=desktop&color=0a0a0a&labelColor=0a0a0a" /></a>
+    <a href="https://github.com/devinoldenburg/codeplane/actions/workflows/mobile-release.yml"><img alt="Mobile build" src="https://img.shields.io/github/actions/workflow/status/devinoldenburg/codeplane/mobile-release.yml?style=flat-square&label=mobile&color=0a0a0a&labelColor=0a0a0a" /></a>
     <a href="https://github.com/devinoldenburg/codeplane/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-0a0a0a?style=flat-square&labelColor=0a0a0a" /></a>
     <a href="https://github.com/devinoldenburg/codeplane/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/devinoldenburg/codeplane?style=flat-square&color=0a0a0a&labelColor=0a0a0a" /></a>
   </p>
@@ -520,7 +521,7 @@ codeplane instance open <id>                                       # resolve, st
 | **Windows Desktop** | packaged | Auto-update in place. |
 | **Linux Desktop** (AppImage) | packaged | Auto-update in place. |
 | **CLI / npm install** | n/a | `npm install -g codeplane-ai@latest`. |
-| **iOS / Android shell** | new in v28 | Side-loaded via Xcode / Android Studio for now; the picker badges every saved instance whose server has shipped a new release so you know when to refresh. |
+| **iOS / Android shell** | new in v28 | **Production updates ship via the App Store (iOS) and the Play Store (Android)** — that's the user-facing path. Each `v<x.y.z>` tag also spawns a [`-mobile` release](https://github.com/devinoldenburg/codeplane/releases?q=mobile) that carries `.ipa` / `.xcarchive.zip` / `.apk` / `.aab` artefacts produced by `mobile-release.yml`, intended for sideloading, TestFlight, internal QA, and CI bookkeeping — NOT the production update path. |
 
 The Desktop's in-app Updates panel detects whether the running mac bundle is properly code-signed at startup. If it isn't, it pre-empts the Squirrel.Mac signature failure and surfaces a one-click manual-download path **before** the first failed download attempt instead of after.
 
@@ -568,8 +569,9 @@ codeplane/
 │   ├── publish.ts            ← release driver
 │   └── sync-version.ts       ← propagates version across workspaces
 ├── .github/workflows/
-│   ├── npm-release.yml       ← triggered on v* tag push
-│   └── desktop-release.yml   ← triggered on v*-desktop tag push
+│   ├── npm-release.yml       ← triggered on v* tag push (skips -desktop / -mobile)
+│   ├── desktop-release.yml   ← triggered on v* tag push (creates v*-desktop)
+│   └── mobile-release.yml    ← triggered on v* tag push (creates v*-mobile)
 ├── AGENTS.md                 ← canonical operations manual for contributors and agents
 ├── CONTRIBUTING.md
 ├── SECURITY.md
