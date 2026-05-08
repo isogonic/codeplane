@@ -93,29 +93,83 @@ function readInjectedSnapshot(): LiveActivityState {
   }
 }
 
+/**
+ * Send a message back to the picker shell. We try every channel the
+ * embedded UI might be hosted by because the same code runs in
+ * three places:
+ *
+ *   1. **Native iOS via @capgo/inappbrowser** (the production mobile
+ *      shell). The plugin auto-injects `window.mobileApp.postMessage`
+ *      into every page; the host catches it via
+ *      `InAppBrowser.addListener("messageFromWebview", …)`. THIS is
+ *      the canonical native path — earlier revisions targeted a
+ *      `webkit.messageHandlers.codeplaneLA` handler that the shell
+ *      never registered, so toggles silently went nowhere.
+ *
+ *   2. **Web dev preview / iframe**. `window.parent.postMessage`
+ *      reaches the picker's `window` listener.
+ *
+ *   3. **Top-level web** (the user opens the same UI in a desktop
+ *      browser without the shell). Both channels resolve to no-ops,
+ *      which matches the menu state — `supported()` is false, so the
+ *      toggle isn't rendered.
+ *
+ * Calling all available channels is safe: the shell-side listeners
+ * each ignore messages they don't recognise.
+ */
 function postToggle(message: LiveActivityToggleMessage): void {
-  // window.parent for the iframe (web fallback) path; if we're the top
-  // window the listener on `window.parent` is `window` itself, which
-  // is no-op. The native InAppBrowser path uses
-  // window.webkit.messageHandlers when available — we try both because
-  // the embedded UI doesn't know which surface it's running inside.
+  postToShell(message)
+}
+
+interface MobileAppBridge {
+  postMessage: (data: Record<string, unknown>) => void
+}
+
+function getMobileAppBridge(): MobileAppBridge | undefined {
+  if (typeof window === "undefined") return undefined
+  const bridge = (window as unknown as { mobileApp?: MobileAppBridge }).mobileApp
+  return bridge && typeof bridge.postMessage === "function" ? bridge : undefined
+}
+
+/**
+ * Generic shell-bridge sender — used by both the LA toggle and the
+ * task-state emitter ({@link postTaskEvent}). The native channel
+ * accepts arbitrary `Record<string, unknown>`; the shell side
+ * discriminates on `type`.
+ */
+function postToShell(message: Record<string, unknown> & { type: string }): void {
+  // Native InAppBrowser channel — preferred when present. The plugin
+  // auto-injects `window.mobileApp` so a runtime check is sufficient.
+  const native = getMobileAppBridge()
+  if (native) {
+    try {
+      native.postMessage(message)
+    } catch {
+      /* native bridge transient failure — fall through to postMessage */
+    }
+  }
+  // Iframe / dev fallback — never throws on top-level windows because
+  // `window.parent === window`, the message just lands on our own
+  // listener which ignores its own `type`.
   try {
     window.parent?.postMessage(message, "*")
   } catch {
     /* postMessage to a cross-origin parent that has gone away — ignore */
   }
-  // Best-effort native bridge — if the shell wired up a message
-  // handler with this name, that route is preferred (no parent-frame
-  // confusion). We catch typing errors silently because the handler
-  // may not exist on every webview.
-  try {
-    const handler = (window as unknown as {
-      webkit?: { messageHandlers?: { codeplaneLA?: { postMessage: (data: unknown) => void } } }
-    }).webkit?.messageHandlers?.codeplaneLA
-    handler?.postMessage(message)
-  } catch {
-    /* no native handler — postMessage above is the canonical path */
-  }
+}
+
+export function postTaskEvent(message: {
+  type: "codeplane:task"
+  taskId: string
+  phase: "queued" | "running" | "completed" | "failed"
+  queueDepth: number
+  currentMessage: string
+  progress: number | null
+  startedAt: string
+  elapsedSeconds?: number
+  turns?: number
+}): void {
+  postToShell(message)
 }
 
 export const LiveActivity = createSimpleContext({
@@ -216,6 +270,12 @@ export const LiveActivity = createSimpleContext({
       supported,
       /** Reactive accessor: is `sessionId` currently a Live Activity? */
       enabled,
+      /**
+       * Snapshot of every session id currently opted in. Reactive — the
+       * task-event emitter relies on this to know which sessions to
+       * watch for state changes.
+       */
+      enabledSessionIds: () => Array.from(store.enabledSessionIds),
       /** Reactive count of how many sessions are currently opted in. */
       count: () => store.enabledSessionIds.size,
       /** Cap as advertised by the shell. */

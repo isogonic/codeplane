@@ -8,6 +8,7 @@ import { LocalProvider } from "@/context/local"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { SDKProvider } from "@/context/sdk"
 import { SyncProvider, useSync } from "@/context/sync"
+import { LiveActivityTaskEmitter } from "@/context/live-activity-task-emitter"
 import { decode64 } from "@/utils/base64"
 
 function DirectoryDataProvider(props: ParentProps<{ directory: string }>) {
@@ -60,7 +61,16 @@ function DirectoryDataProvider(props: ParentProps<{ directory: string }>) {
         kill: (input) => globalSDK.client.global.bashInteractive.kill({ callID: input.callID }).then(() => {}),
       }}
     >
-      <LocalProvider>{props.children}</LocalProvider>
+      <LocalProvider>
+        {/* Renders nothing — only watches sync state for opted-in
+            sessions and emits `codeplane:task` postMessages so the
+            mobile shell's task-monitor can drive ActivityKit. Outside
+            the LocalProvider tree it'd fire on the wrong scope; keep
+            it adjacent to the children so it lives for the same
+            lifetime as the rest of the directory's UI. */}
+        <LiveActivityTaskEmitter />
+        {props.children}
+      </LocalProvider>
     </DataProvider>
   )
 }

@@ -3,6 +3,7 @@ import { InAppBrowser, ToolBarType } from "@capgo/inappbrowser"
 import type { CodeplaneMobileAPI } from "../platform/api"
 import type { SavedInstance } from "@codeplane-ai/shared/instance"
 import {
+  isTaskMessage,
   isToggleMessage,
   MAX_LIVE_ACTIVITY_SESSIONS,
   type LiveActivityStateMessage,
@@ -203,13 +204,17 @@ export const WebviewHost: Component<{
     // shell injects on every navigation, so it has to be ready
     // regardless of whether we're on native or web.
     const state = await loadLAState()
-    // The iframe-driven monitor only exists in the web dev preview —
-    // on native there is no iframe to listen to. (Native Live
-    // Activities arrive via the server-side push path that
-    // `live-activities.registerForUpdates()` already wires.)
-    if (isNative || !frameRef) return
+    // We create a monitor on BOTH transports:
+    //   • web preview / dev — `frame` listens on `window.message` for
+    //     events from the iframe's contentWindow.
+    //   • native iOS — no `frame`, so the monitor's iframe listener is
+    //     skipped. The host instead pumps events into `taskMonitor.ingest`
+    //     from its `messageFromWebview` listener (set up in the native
+    //     post-open block below). Either way the same selectTopTwo /
+    //     start / update / end logic runs.
+    if (!isNative && !frameRef) return
     taskMonitor = createTaskMonitor({
-      frame: frameRef,
+      ...(isNative ? {} : { frame: frameRef! }),
       liveActivities: props.api.liveActivities,
       // Single activity per instance — only sessions the user has
       // explicitly opted in surface as Live Activities. The monitor
@@ -220,7 +225,7 @@ export const WebviewHost: Component<{
       enabled: state.liveActivitiesEnabled,
       optedInSessionIds: state.opted,
     })
-    // Push initial state to the embedded UI as soon as the iframe is
+    // Push initial state to the embedded UI as soon as the monitor is
     // wired so the toggle renders in the right state on first paint.
     broadcastLAState()
   }
@@ -649,6 +654,50 @@ export const WebviewHost: Component<{
       } catch {
         /* listener registration failed — proceed without auto-inject;
            the JS-side staircase in `openInWebView` still fires */
+      }
+
+      // messageFromWebview is the inverse of `InAppBrowser.postMessage`
+      // — it fires on the host every time the embedded WKWebView calls
+      // `window.mobileApp.postMessage(...)`. THIS is the channel the
+      // embedded Codeplane web UI uses to send LA toggles and per-task
+      // progress events to the shell on native iOS; without it the
+      // toggle silently no-ops because there's no parent frame to
+      // postMessage to. (The dev / web preview path still uses
+      // `window.parent.postMessage` and is handled by the
+      // `onWindowMessage` listener registered above.)
+      try {
+        const handle = await InAppBrowser.addListener(
+          "messageFromWebview",
+          (event: { data?: unknown } & object) => {
+            const data = event?.data
+            if (isToggleMessage(data)) {
+              void applyLAToggle(data.sessionId, data.enabled)
+              return
+            }
+            if (isTaskMessage(data)) {
+              void taskMonitor?.ingest({
+                type: "codeplane:task",
+                taskId: data.taskId,
+                phase: data.phase,
+                queueDepth: data.queueDepth,
+                currentMessage: data.currentMessage,
+                progress: data.progress,
+                startedAt: data.startedAt,
+                elapsedSeconds: data.elapsedSeconds,
+                turns: data.turns,
+              })
+              return
+            }
+            // Anything else is from a third-party page or future
+            // protocol extension — ignore quietly.
+          },
+        )
+        offHandles.push(handle)
+      } catch {
+        /* listener registration failed — toggles + task events from
+           inside the WKWebView will not reach the shell on this
+           session; the user will see the toggle flip back via the
+           shell's broadcast staying out-of-sync. Better than crashing. */
       }
 
       // Auto-open is driven by the `createEffect` below (it tracks
