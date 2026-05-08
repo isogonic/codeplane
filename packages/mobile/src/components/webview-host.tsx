@@ -272,6 +272,7 @@ export const WebviewHost: Component<{
       // exists), so duplicates are harmless.
       void injectCloseButton()
       void injectLAState()
+      void injectFontFallback()
       window.setTimeout(() => void injectCloseButton(), 250)
       window.setTimeout(() => void injectCloseButton(), 750)
       window.setTimeout(() => void injectCloseButton(), 1500)
@@ -282,6 +283,11 @@ export const WebviewHost: Component<{
       // landed and the toggle would flash hidden→visible.
       window.setTimeout(() => void injectLAState(), 250)
       window.setTimeout(() => void injectLAState(), 1500)
+      // Same staircase for the font fallback so emoji glyphs are in
+      // place before the first message paints. The injection itself
+      // is idempotent (checks for `#__codeplane_mobile_fonts`).
+      window.setTimeout(() => void injectFontFallback(), 250)
+      window.setTimeout(() => void injectFontFallback(), 1500)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       console.warn("[webview-host] InAppBrowser.openWebView failed", err)
@@ -304,6 +310,61 @@ export const WebviewHost: Component<{
       // Non-fatal — the button's only purpose is the close affordance,
       // and the user can still kill the modal by force-quitting.
       console.warn("[webview-host] failed to inject close button", err)
+    }
+  }
+
+  /**
+   * Inject the platform-specific font-family fallback into the loaded
+   * instance UI — covers two reported bugs:
+   *
+   *   1. Emojis render as `[?]` tofu inside the WKWebView when the
+   *      user's instance is running an OLDER codeplane version (≤ v28.0.2)
+   *      whose CSS font-family stacks didn't yet include the Apple
+   *      Color Emoji / Segoe UI Emoji / Noto Color Emoji families.
+   *      Mobile-shell users can't always upgrade their server, so the
+   *      shell guarantees the fallback at load time regardless.
+   *
+   *   2. The thinking-indicator's braille glyph (`⠿` etc.) falls
+   *      through to .notdef on iOS because no shipped iOS font has
+   *      U+2800–U+28FF coverage. The SVG fallback in `LogoLoader`
+   *      handles that path on its own (pixel-density probe → `svg`
+   *      render mode), so this injection's job is purely the emoji
+   *      side; no font binary is shipped.
+   *
+   * The injection overrides the two CSS variables the chat surface
+   * actually uses (`--font-family-sans` / `--font-family-mono`) on
+   * `:root`, so any rule reading `var(--font-family-sans)` picks up
+   * the new tail. We deliberately do NOT brute-force `* { font-family
+   * !important }` — that would fight every monospace / icon-font
+   * declaration in the app.
+   *
+   * Idempotent — the injected `<style id="__codeplane_mobile_fonts">`
+   * checks for itself and bails on re-runs, so the URL-change loop
+   * doesn't pile up duplicate stylesheets across SPA navigations or
+   * SSO redirect chains.
+   */
+  const injectFontFallback = async () => {
+    if (!isNative) return
+    const code = `(function(){try{
+      if (document.getElementById('__codeplane_mobile_fonts')) return;
+      var s = document.createElement('style');
+      s.id = '__codeplane_mobile_fonts';
+      s.textContent = [
+        ':root, body {',
+        '  --font-family-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji" !important;',
+        '  --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji" !important;',
+        '}'
+      ].join('\\n');
+      (document.head || document.documentElement).appendChild(s);
+    }catch(_){/* swallow — font fallback failure should not break the UI */}})();`
+    try {
+      await InAppBrowser.executeScript({ code })
+    } catch (err) {
+      // Non-fatal — without the override the embedded UI keeps its
+      // original (pre-v28.0.3) font stack, which renders text fine but
+      // shows tofu for emoji. The close button + LA state injections
+      // still go through.
+      console.warn("[webview-host] failed to inject font fallback", err)
     }
   }
 
@@ -449,6 +510,12 @@ export const WebviewHost: Component<{
             // Re-inject LA state too so it survives every navigation
             // (SSO redirect chain, in-app SPA route changes, etc).
             void injectLAState()
+            // Re-inject the font fallback — every redirect / SPA route
+            // change replaces (or may replace) the document, so the
+            // `#__codeplane_mobile_fonts` style element from the
+            // previous page is gone. The script is idempotent so a
+            // re-fired URL change against the SAME document is a no-op.
+            void injectFontFallback()
           },
         )
         offHandles.push(handle)
