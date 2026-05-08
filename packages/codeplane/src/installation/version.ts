@@ -1,5 +1,5 @@
 import semver from "semver"
-import { CodeplaneDesktopReleaseSuffix } from "@codeplane-ai/shared/version"
+import { CodeplaneDesktopReleaseSuffix, CodeplaneMobileReleaseSuffix } from "@codeplane-ai/shared/version"
 
 declare global {
   const CODEPLANE_VERSION: string
@@ -10,6 +10,7 @@ export const InstallationVersion = typeof CODEPLANE_VERSION === "string" ? CODEP
 export const InstallationChannel = typeof CODEPLANE_CHANNEL === "string" ? CODEPLANE_CHANNEL : "local"
 export const InstallationLocal = InstallationChannel === "local"
 export const DesktopReleaseSuffix = CodeplaneDesktopReleaseSuffix
+export const MobileReleaseSuffix = CodeplaneMobileReleaseSuffix
 
 export function cleanVersion(input: string) {
   return input.trim().replace(/^v/, "")
@@ -17,6 +18,28 @@ export function cleanVersion(input: string) {
 
 export function isDesktopReleaseVersion(input: string) {
   return cleanVersion(input).endsWith(DesktopReleaseSuffix)
+}
+
+export function isMobileReleaseVersion(input: string) {
+  return cleanVersion(input).endsWith(MobileReleaseSuffix)
+}
+
+/**
+ * Platform-specific release tags (`v<x.y.z>-desktop`, `v<x.y.z>-mobile`)
+ * carry binaries for ONE platform only and MUST NOT be considered as
+ * upgrade targets for the generic CLI / web / TUI / server install. The
+ * release picker filters them out and the upgrade impl rejects them up
+ * front so a stale `-mobile` tag can't get coerced to its base version
+ * by `semver.coerce` and surface as an "available update".
+ *
+ * Bug this prevents (reported by a user on a 28.0.1 desktop install):
+ *   "Version 28.0.6-mobile ist verfügbar. Du nutzt 28.0.1."
+ * The mobile release contains iOS / Android artefacts only — installing
+ * it onto a desktop, server, or CLI install would have no chance of
+ * working.
+ */
+export function isPlatformReleaseVersion(input: string) {
+  return isDesktopReleaseVersion(input) || isMobileReleaseVersion(input)
 }
 
 export function comparableVersion(input: string) {

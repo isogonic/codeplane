@@ -423,6 +423,17 @@ export const GlobalRoutes = lazy(() =>
                     method,
                   }
                 }
+                if (Installation.isMobileReleaseVersion(target)) {
+                  // Same shape as the desktop guard above. Mobile artefacts
+                  // (iOS / Android) update through the App Store / Play
+                  // Store, not through the in-app update path.
+                  return {
+                    success: false as const,
+                    status: 400 as const,
+                    error: `Mobile release targets (${target}) are only valid for the mobile shell — update via the App Store / Play Store`,
+                    method,
+                  }
+                }
                 if (Installation.isSameVersion(InstallationVersion, target)) {
                   return {
                     success: true as const,
