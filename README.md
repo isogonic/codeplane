@@ -292,6 +292,8 @@ A [Capacitor](https://capacitorjs.com)-based iOS + Android shell that connects t
 - **Update-aware instance picker** — every saved instance polls `/global/version` in the background and badges itself when the server has shipped a new release.
 - **Offline-aware UI cache** (phase 1 today; phase 2 ships the asset cache) — the picker tracks freshness even when the server's UI bundle hasn't been pre-fetched yet.
 
+**iOS beta — join the TestFlight:** [testflight.apple.com/join/dnYQ6BFg](https://testflight.apple.com/join/dnYQ6BFg). Builds track the latest `v*-mobile` release tag; Apple pushes new builds automatically when each release pipeline finishes.
+
 Lives in [`packages/mobile/`](packages/mobile/). The mobile app is a **shell**, not a second runtime — your sessions, providers, MCP servers, and SQLite database stay on the Codeplane server. Phones never see provider keys.
 
 <br />

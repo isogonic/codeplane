@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "28.1.6",
+  "version": "28.1.7",
   "name": "@codeplane-ai/shared",
   "type": "module",
   "license": "MIT",
