@@ -1394,25 +1394,14 @@ const ChatPage: Component = () => {
 
       {/* Main pane */}
       <section class="flex-1 min-w-0 min-h-0 flex flex-col">
-        {/* Header — title + Files / Memory / New chat (mobile gets the
-            sessions popover in the leftmost slot). */}
+        {/* Header — title + Files / Memory.
+            Note: we deliberately do NOT render a sessions hamburger here on
+            mobile. The main titlebar's mobile menu (top of screen) already
+            opens the workspace sidebar — which on the `/chat` route
+            renders `ChatSidebarPanel` with the same session list. Showing
+            a second hamburger inside the chat header creates two stacked
+            "open sessions" buttons that look like the UI is duplicated. */}
       <header class="chat-header shrink-0 flex items-center border-b border-border-weak-base">
-        {/* Mobile-only sessions popover — desktop has the sidebar above. */}
-        <div class="md:hidden">
-          <SessionsPopover
-            sessions={sortedSessions()}
-            activeID={activeID()}
-            messageCountLabel={messageCountLabel}
-            getMessageCount={getSessionMessageCount}
-            onPick={(id) => navigate(`/chat/${id}`)}
-            onRename={renameSession}
-            onDelete={(id) => {
-              if (window.confirm(language.t("chat.session.deleteConfirm"))) deleteSession(id)
-            }}
-            onNew={newSession}
-            sending={sending()}
-          />
-        </div>
         <div class="flex-1 min-w-0">
           <Show when={active()} keyed>
             {(session) => (

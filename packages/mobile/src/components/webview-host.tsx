@@ -132,10 +132,14 @@ export const WebviewHost: Component<{
         /* contentWindow is cross-origin and got navigated away — drop */
       }
     }
-    // TODO(native): when running under InAppBrowser, also call
-    // `InAppBrowser.executeScript({ code: "window.dispatchEvent(...)" })`
-    // so the embedded UI receives the snapshot. The web-fallback path
-    // is enough for the dev preview that runs the iframe.
+    // Native InAppBrowser path: re-inject the snapshot via
+    // `executeScript` so the embedded UI's window-level message
+    // listener picks up the new state. Fire-and-forget — the embedded
+    // UI keeps the previous frame state if the inject fails for any
+    // reason (e.g. modal already torn down).
+    if (isNative) {
+      void injectLAState()
+    }
   }
 
   /**
@@ -267,9 +271,17 @@ export const WebviewHost: Component<{
       // is idempotent (the script no-ops if our button already
       // exists), so duplicates are harmless.
       void injectCloseButton()
+      void injectLAState()
       window.setTimeout(() => void injectCloseButton(), 250)
       window.setTimeout(() => void injectCloseButton(), 750)
       window.setTimeout(() => void injectCloseButton(), 1500)
+      // Re-inject the LA state on the same staircase. SPA-style apps
+      // sometimes replace `document` between the openWebView resolve
+      // and the first true page paint; without these later passes the
+      // embedded UI would render its first frame before the snapshot
+      // landed and the toggle would flash hidden→visible.
+      window.setTimeout(() => void injectLAState(), 250)
+      window.setTimeout(() => void injectLAState(), 1500)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       console.warn("[webview-host] InAppBrowser.openWebView failed", err)
@@ -292,6 +304,53 @@ export const WebviewHost: Component<{
       // Non-fatal — the button's only purpose is the close affordance,
       // and the user can still kill the modal by force-quitting.
       console.warn("[webview-host] failed to inject close button", err)
+    }
+  }
+
+  /**
+   * Inject the Live Activity snapshot into the WKWebView. The embedded
+   * Codeplane web UI reads `window.__codeplaneLA` to decide whether to
+   * render the bell toggle / overflow menu item, AND a postMessage on
+   * `window` to keep its reactive context in sync. Both signals come
+   * from this script — the embedded UI never reaches back into the
+   * shell on its own.
+   *
+   * Called once right after `openWebView` resolves and again on every
+   * `urlChangeEvent` so that SPA navigations + SSO redirects don't
+   * lose the snapshot when the document is replaced. The script is
+   * idempotent (overwrites the global + dispatches the message
+   * unconditionally) so re-runs are safe.
+   *
+   * The `Codeplane/Mobile` UA tag the picker's Capacitor config
+   * already appends is the second half of the gate the embedded UI
+   * checks — without that tag, even an injected `supported: true` is
+   * ignored on the embedded side. That keeps a malicious page from
+   * forging a Live Activity surface for itself outside the shell.
+   */
+  const injectLAState = async () => {
+    if (!isNative) return
+    const payload = {
+      type: "codeplane:la-state",
+      supported: laSupported(),
+      enabledSessionIds: optedInSessionIds(),
+      maxAllowed: MAX_LIVE_ACTIVITY_SESSIONS,
+    }
+    const json = JSON.stringify(payload)
+    const code = `(function(){try{
+      var data = ${json};
+      window.__codeplaneLA = {
+        supported: data.supported,
+        enabledSessionIds: data.enabledSessionIds,
+        maxAllowed: data.maxAllowed,
+      };
+      window.dispatchEvent(new MessageEvent('message', { data: data, source: window }));
+    }catch(_){/* injection failed — embedded UI falls through to its inert default */}})();`
+    try {
+      await InAppBrowser.executeScript({ code })
+    } catch (err) {
+      // Non-fatal — without the snapshot the embedded UI just keeps
+      // the toggle hidden, which is the safe default.
+      console.warn("[webview-host] failed to inject LA state", err)
     }
   }
 
@@ -387,6 +446,9 @@ export const WebviewHost: Component<{
             // eslint-disable-next-line no-console
             console.log("[webview-host] urlChange →", url ?? event)
             void injectCloseButton()
+            // Re-inject LA state too so it survives every navigation
+            // (SSO redirect chain, in-app SPA route changes, etc).
+            void injectLAState()
           },
         )
         offHandles.push(handle)

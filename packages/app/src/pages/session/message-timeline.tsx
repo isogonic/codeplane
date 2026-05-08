@@ -24,6 +24,7 @@ import { SessionContextUsage } from "@/components/session-context-usage"
 import { useDialog } from "@codeplane-ai/ui/context/dialog"
 import { createResizeObserver } from "@solid-primitives/resize-observer"
 import { useLanguage } from "@/context/language"
+import { useLiveActivity } from "@/context/live-activity"
 import { useSessionKey } from "@/pages/session/session-layout"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { usePlatform } from "@/context/platform"
@@ -243,6 +244,9 @@ export function MessageTimeline(props: {
   const language = useLanguage()
   const { params, sessionKey } = useSessionKey()
   const platform = usePlatform()
+  // Live Activity bridge — only renders the menu item when the host
+  // is a mobile shell that can actually surface activities (iOS 16.2+).
+  const liveActivity = useLiveActivity()
 
   const rendered = createMemo(() => props.renderedUserMessages.map((message) => message.id))
   const sessionID = createMemo(() => params.id)
@@ -933,6 +937,40 @@ export function MessageTimeline(props: {
                                   >
                                     <DropdownMenu.ItemLabel>{language.t("common.rename")}</DropdownMenu.ItemLabel>
                                   </DropdownMenu.Item>
+                                  {/* Live Activity opt-in — only shown when the host is
+                                      a mobile shell that supports iOS Live Activities.
+                                      Mirrors the `bell` toggle in the chat surface but
+                                      lives in the session "⋯" menu since the session
+                                      view doesn't have a header icon row to hang it
+                                      off of. Posts `codeplane:la-toggle` to the shell;
+                                      the shell persists the choice and broadcasts back. */}
+                                  <Show when={liveActivity.supported()}>
+                                    {(() => {
+                                      const enabled = createMemo(() => liveActivity.enabled(id))
+                                      const disabled = createMemo(() => !enabled() && liveActivity.atLimit())
+                                      const label = createMemo(() => {
+                                        if (enabled()) return language.t("session.liveActivity.menu.on")
+                                        if (disabled()) {
+                                          return language.t("session.liveActivity.menu.limit", {
+                                            max: String(liveActivity.maxAllowed()),
+                                          })
+                                        }
+                                        return language.t("session.liveActivity.menu.off")
+                                      })
+                                      return (
+                                        <DropdownMenu.Item
+                                          aria-disabled={disabled()}
+                                          onSelect={() => {
+                                            if (disabled()) return
+                                            liveActivity.toggle(id, !enabled(), titleValue())
+                                            setTitle("menuOpen", false)
+                                          }}
+                                        >
+                                          <DropdownMenu.ItemLabel>{label()}</DropdownMenu.ItemLabel>
+                                        </DropdownMenu.Item>
+                                      )
+                                    })()}
+                                  </Show>
                                   <Show when={shareEnabled()}>
                                     <DropdownMenu.Item
                                       onSelect={() => {

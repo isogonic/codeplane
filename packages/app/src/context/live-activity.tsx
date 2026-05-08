@@ -60,17 +60,45 @@ const INITIAL: LiveActivityState = {
 }
 
 /**
+ * UA tag the mobile picker's Capacitor config appends to every
+ * outbound request from the WKWebView (`appendUserAgent: "Codeplane/Mobile"`
+ * in `capacitor.config.ts`). The embedded UI sees this in
+ * `navigator.userAgent`, so it can distinguish "loaded inside the
+ * iOS picker shell" from "loaded by a desktop browser pointing at
+ * the same Codeplane URL".
+ *
+ * We require this tag IN ADDITION to the `__codeplaneLA` snapshot
+ * being present — defence-in-depth, so a remote Codeplane server
+ * can't unilaterally set `supported: true` via a stray `<script>`
+ * on the page and surface a Live Activity toggle on a desktop
+ * browser. The shell side is the only thing that:
+ *   (a) uses a WKWebView whose UA carries `Codeplane/Mobile`, AND
+ *   (b) injects `window.__codeplaneLA` via `executeScript`.
+ * Both signals together indicate a genuine native shell.
+ */
+const MOBILE_SHELL_UA_TAG = "Codeplane/Mobile"
+
+function isInsideMobileShell(): boolean {
+  if (typeof navigator === "undefined") return false
+  return navigator.userAgent.includes(MOBILE_SHELL_UA_TAG)
+}
+
+/**
  * Read the synchronous shell-injected snapshot, if any. This is the
  * only thing on the page that knows whether the host is mobile *before*
  * any postMessage arrives — used to avoid a flash-of-no-toggle on
  * mount. Falls through to the inert default off-mobile.
+ *
+ * `supported` is gated on BOTH the snapshot AND the UA tag. Either
+ * one missing → `supported: false` (toggle hidden).
  */
 function readInjectedSnapshot(): LiveActivityState {
   if (typeof window === "undefined") return INITIAL
   const snap = window.__codeplaneLA
   if (!snap) return INITIAL
+  const inShell = isInsideMobileShell()
   return {
-    supported: !!snap.supported,
+    supported: !!snap.supported && inShell,
     enabledSessionIds: new Set(snap.enabledSessionIds ?? []),
     maxAllowed: snap.maxAllowed ?? MAX_LIVE_ACTIVITY_SESSIONS,
     lastError: undefined,
@@ -119,15 +147,22 @@ export const LiveActivity = createSimpleContext({
     const onMessage = (event: MessageEvent) => {
       const data = event.data
       if (!isStateMessage(data)) return
+      // Same UA gate as the synchronous snapshot — a desktop browser
+      // page that listens to `message` events and posts a fake
+      // `codeplane:la-state { supported: true }` to itself can't trick
+      // the toggle into rendering. The UA tag is set by the picker's
+      // Capacitor config and is the only signal a remote page can't
+      // forge from the page's own JS.
+      const inShell = isInsideMobileShell()
       setStore(
         reconcile({
-          supported: data.supported,
+          supported: data.supported && inShell,
           enabledSessionIds: new Set(data.enabledSessionIds),
           maxAllowed: data.maxAllowed,
           lastError: data.lastError,
         }),
       )
-      setSupported(data.supported)
+      setSupported(data.supported && inShell)
     }
 
     onMount(() => {
