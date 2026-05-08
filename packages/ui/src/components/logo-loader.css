@@ -3,15 +3,35 @@
   align-items: center;
   justify-content: center;
   /* Sized to match the original braille-character box so callers don't have
-   * to retune layout. Color follows the surrounding text via currentColor on
-   * the SVG circles (see logo-loader.tsx). */
+   * to retune layout. Color follows the surrounding text via currentColor. */
   color: var(--text-base);
   height: 20px;
   width: 12px;
   user-select: none;
 }
 
-[data-component="logo-loader"] [data-slot="logo-loader-frame"] {
+/* Braille path — v27 style. Restored on every platform that can actually
+ * draw the U+2800–U+28FF code points (desktop browsers, macOS / Windows /
+ * Linux native engines). The font / size / line-height match the chat
+ * surface's mono stack so the glyph aligns with the surrounding text. */
+[data-component="logo-loader"][data-render="braille"] {
+  font-family: var(--font-family-mono);
+  font-feature-settings: var(--font-family-mono--font-feature-settings);
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0;
+}
+
+[data-component="logo-loader"][data-render="braille"] [data-slot="logo-loader-frame"] {
+  display: inline-block;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* SVG fallback path — used when the runtime can't render braille
+ * glyphs (iOS Safari / Capacitor WKWebView). Same viewBox as the braille
+ * box so layout doesn't shift between paths. */
+[data-component="logo-loader"][data-render="svg"] [data-slot="logo-loader-frame"] {
   display: block;
   width: 100%;
   height: 100%;
