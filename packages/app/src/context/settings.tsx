@@ -52,11 +52,29 @@ export const monoDefault = "System Mono"
 export const sansDefault = "System Sans"
 export const terminalDefault = "JetBrainsMono Nerd Font Mono"
 
+// Emoji-glyph fallback appended to every font stack. Without it the
+// iOS WKWebView running inside the Capacitor mobile shell renders every
+// emoji as a `[?]` "tofu" — the engine doesn't auto-fall-back to the
+// system Apple Color Emoji font when our font-family chain only lists
+// Latin-glyph fonts. Listing the emoji font as the LAST family lets
+// the per-glyph fallback pick it for codepoints the regular fonts
+// don't have, without affecting Latin text. Cross-platform stack:
+//   - Apple Color Emoji  (iOS / macOS)
+//   - Segoe UI Emoji     (Windows)
+//   - Segoe UI Symbol    (Windows symbol fallback)
+//   - Noto Color Emoji   (Android / Linux)
+// Same shape Tailwind, Primer, Bootstrap, and the wider web standard
+// converged on; safe to append everywhere.
+const emojiFallback = '"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"'
+
 const monoFallback =
-  'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
-const sansFallback = 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+  'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace, ' +
+  emojiFallback
+const sansFallback =
+  "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif, " + emojiFallback
 const terminalFallback =
-  '"JetBrainsMono Nerd Font Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
+  '"JetBrainsMono Nerd Font Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace, ' +
+  emojiFallback
 
 const monoBase = monoFallback
 const sansBase = sansFallback
