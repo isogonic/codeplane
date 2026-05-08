@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "28.1.9",
+  "version": "28.1.10",
   "name": "codeplane",
   "type": "module",
   "license": "MIT",
