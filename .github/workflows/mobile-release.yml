@@ -369,7 +369,13 @@ jobs:
 
       - uses: android-actions/setup-android@v3
         with:
-          packages: "platform-tools platforms;android-34 build-tools;34.0.0"
+          # SDK 36 + build-tools 36.0.0 — matches packages/mobile/android/
+          # variables.gradle (`compileSdkVersion = 36`). Bumping below 36
+          # makes the build fail with:
+          #   "Dependency 'androidx.browser:browser:1.9.0' requires libraries
+          #    and applications that depend on it to compile against version
+          #    36 or later of the Android APIs."
+          packages: "platform-tools platforms;android-36 build-tools;36.0.0"
 
       - name: Build picker bundle + Capacitor sync
         working-directory: packages/mobile

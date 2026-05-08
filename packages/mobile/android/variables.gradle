@@ -1,7 +1,12 @@
 ext {
     minSdkVersion = 23
-    compileSdkVersion = 35
-    targetSdkVersion = 35
+    // SDK 36 is required by androidx.browser:browser:1.9.0 (transitively
+    // pulled in via @capgo/inappbrowser). Bumping to 36 unlocks AGP 8.9+
+    // which the same dep also requires. minSdk stays at 23 so the app
+    // still installs on Android 6.0+ — compileSdk only affects which APIs
+    // the build can REFERENCE, not which devices the resulting APK runs on.
+    compileSdkVersion = 36
+    targetSdkVersion = 36
     androidxActivityVersion = '1.9.2'
     androidxAppCompatVersion = '1.7.0'
     androidxCoordinatorLayoutVersion = '1.2.0'
