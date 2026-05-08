@@ -31,7 +31,20 @@ import UIKit
 import WebKit
 
 @objc(CodeplaneOfflineCachePlugin)
-public class CodeplaneOfflineCachePlugin: CAPPlugin {
+public class CodeplaneOfflineCachePlugin: CAPPlugin, CAPBridgedPlugin {
+    // Capacitor 7 plugin discovery requires `CAPBridgedPlugin` —
+    // see the matching block in `LiveActivitiesPlugin.swift` for the
+    // full rationale. Without these properties the bridge silently
+    // refuses to instantiate the plugin and the JS side falls
+    // through to the web stub.
+    public let identifier = "CodeplaneOfflineCachePlugin"
+    public let jsName = "CodeplaneOfflineCache"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "isSupported", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "openInstance", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "closeInstance", returnType: CAPPluginReturnPromise),
+    ]
+
     /// Active per-instance presentations, keyed by `instanceId`. Held
     /// strongly so ARC doesn't reap the view controller while the
     /// modal is on screen.

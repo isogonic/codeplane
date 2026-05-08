@@ -23,7 +23,26 @@ import ActivityKit
 import Foundation
 
 @objc(CodeplaneLiveActivitiesPlugin)
-public class CodeplaneLiveActivitiesPlugin: CAPPlugin {
+public class CodeplaneLiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
+    // Capacitor 7 requires conformance to `CAPBridgedPlugin` for plugin
+    // discovery — the legacy `CAP_PLUGIN(...)` macro in the .m file
+    // alone is no longer sufficient (it only registers the JS-method
+    // mapping, not the plugin class itself with the bridge). Without
+    // these three properties, `Native.isSupported()` rejects with
+    // `"plugin is not implemented on ios"` even though the class
+    // exists in the binary. Worth pinning for `OfflineCachePlugin`
+    // too — same pattern lives there.
+    public let identifier = "CodeplaneLiveActivitiesPlugin"
+    public let jsName = "CodeplaneLiveActivities"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "isSupported", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "start", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "update", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "end", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "list", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "registerForUpdates", returnType: CAPPluginReturnPromise),
+    ]
+
     /// Maps Capacitor-facing activity IDs to live ActivityKit handles.
     /// We use the ActivityKit `id` directly so the JS side stays in sync.
     private var activities: [String: Any] = [:]
