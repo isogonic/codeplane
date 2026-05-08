@@ -1673,6 +1673,35 @@ export default function Page() {
     setFollowup("edit", sessionID, (value) => (value?.id === id ? undefined : value))
   }
 
+  // Reorder is purely a UI concern — the followup queue lives entirely in
+  // client state until each draft is sent to the server one at a time. We
+  // accept an explicit `ids` array (rather than from→to indices) so the
+  // dock can call us during a live drag without us having to recompute
+  // indices ourselves; the dock already knows the target order.
+  //
+  // The store update is a no-op when the order hasn't actually changed —
+  // matters for drag-over events that fire on the same item repeatedly,
+  // and avoids triggering a `failed` clear when the user dragged onto
+  // themselves.
+  const reorderFollowup = (sessionID: string, ids: string[]) => {
+    if (followupBusy(sessionID)) return
+    setFollowup("items", sessionID, (items) => {
+      const current = items ?? []
+      if (current.length !== ids.length) return current
+      const byID = new Map(current.map((entry) => [entry.id, entry] as const))
+      const next: FollowupItem[] = []
+      for (const id of ids) {
+        const entry = byID.get(id)
+        // Drop the reorder if any id doesn't exist — refusing the change
+        // is safer than letting a stale dock truncate the queue.
+        if (!entry) return current
+        next.push(entry)
+      }
+      const same = next.every((entry, i) => entry.id === current[i]?.id)
+      return same ? current : next
+    })
+  }
+
   const clearFollowupEdit = () => {
     const id = params.id
     if (!id) return
@@ -2008,6 +2037,11 @@ export default function Page() {
                       },
                       onEdit: editFollowup,
                       onDelete: deleteFollowup,
+                      onReorder: (ids) => {
+                        const id = params.id
+                        if (!id) return
+                        reorderFollowup(id, ids)
+                      },
                       onEditLoaded: clearFollowupEdit,
                     }
                   : undefined
