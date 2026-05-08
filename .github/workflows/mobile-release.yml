@@ -1,0 +1,516 @@
+name: mobile-release
+
+# Mirrors the shape of `desktop-release.yml`: triggers on every `v*` tag,
+# resolves the source release (the npm-release page), creates / syncs a
+# `v<x.y.z>-mobile` GitHub release, then runs platform-specific Capacitor
+# builds and uploads the resulting artefacts.
+#
+# IMPORTANT — production update path:
+#   The mobile shell's user-facing update path is the App Store (iOS) and
+#   the Play Store (Android), NOT this workflow's GitHub release. The
+#   `-mobile` release exists for sideloading, TestFlight uploads, internal
+#   QA, and CI artefact storage — exactly the same way the `-desktop`
+#   release isn't a substitute for the in-app electron-updater on signed
+#   builds. The release page itself states this so users don't pull an
+#   .ipa thinking it's the official update.
+#
+# Signing secrets handling:
+#   • iOS  — IOS_P12_BASE64 + IOS_P12_PASSWORD + IOS_PROVISIONING_PROFILE_BASE64.
+#            Absent → archive `unsigned`, upload as `App.xcarchive.zip` (still
+#            useful for testers with Xcode + a free Apple ID + 7-day
+#            provisioning, AltStore, or notarisation later).
+#   • Android — ANDROID_KEYSTORE_BASE64 + ANDROID_KEYSTORE_PASSWORD +
+#               ANDROID_KEY_ALIAS + ANDROID_KEY_PASSWORD.
+#            Absent → fall through to the debug keystore. APK is still
+#            installable on devices that allow "Unknown sources"; the
+#            output is just labelled `-debug-signed` so nobody confuses
+#            it with a Play Store-eligible build.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing v* or v*-mobile tag to build and publish"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    runs-on: ubuntu-24.04
+    outputs:
+      enabled: ${{ steps.resolve.outputs.enabled }}
+      source_tag: ${{ steps.resolve.outputs.source_tag }}
+      mobile_tag: ${{ steps.resolve.outputs.mobile_tag }}
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ inputs.tag || github.ref_name }}"
+          if [ -z "$tag" ]; then
+            echo "A release tag is required." >&2
+            exit 1
+          fi
+          if [[ "$tag" != v* ]]; then
+            echo "Release tags must start with v." >&2
+            exit 1
+          fi
+          # `v<x.y.z>-desktop` is the desktop-release sibling tag and is
+          # NOT a mobile-release trigger. Skip without doing anything so
+          # the mobile release isn't accidentally re-built / re-promoted
+          # on every desktop-tag push.
+          if [[ "$tag" == *-desktop ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "source_tag=${tag%-desktop}" >> "$GITHUB_OUTPUT"
+            echo "mobile_tag=${tag%-desktop}-mobile" >> "$GITHUB_OUTPUT"
+            echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$tag" == *-mobile ]]; then
+            source_tag="${tag%-mobile}"
+            mobile_tag="$tag"
+          else
+            source_tag="$tag"
+            mobile_tag="${tag}-mobile"
+          fi
+          # Skip the mobile release on a re-push of an existing `-mobile`
+          # tag (matches the desktop-release symmetry: rebuilding from a
+          # platform tag is workflow_dispatch territory only).
+          if [[ "${{ github.event_name }}" == "push" && "$tag" == *-mobile ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "source_tag=$source_tag" >> "$GITHUB_OUTPUT"
+            echo "mobile_tag=$mobile_tag" >> "$GITHUB_OUTPUT"
+            echo "version=${source_tag#v}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+          echo "source_tag=$source_tag" >> "$GITHUB_OUTPUT"
+          echo "mobile_tag=$mobile_tag" >> "$GITHUB_OUTPUT"
+          echo "version=${source_tag#v}" >> "$GITHUB_OUTPUT"
+
+  create-release:
+    needs: resolve
+    if: ${{ needs.resolve.outputs.enabled == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ needs.resolve.outputs.source_tag }}
+
+      - name: Create or sync mobile release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          title="${{ needs.resolve.outputs.source_tag }} (mobile shell)"
+          notes_file="$(mktemp)"
+          if gh release view "${{ needs.resolve.outputs.source_tag }}" --repo "${{ github.repository }}" --json name,body > base-release.json 2>/dev/null; then
+            source_title="$(jq -r '.name // empty' base-release.json)"
+            if [ -n "$source_title" ]; then
+              title="$source_title — mobile shell"
+            fi
+            jq -r '.body // ""' base-release.json > "$notes_file"
+          else
+            : > "$notes_file"
+          fi
+          # Prepend a clear "this is for sideloading / TestFlight" banner
+          # to the notes so users don't confuse this release with the
+          # production App Store / Play Store update. The desktop release
+          # gets its (signed-vs-ad-hoc) note inside the README; the mobile
+          # release needs the warning right on the page because the App
+          # Store path is the ONLY production path on iOS.
+          banner="$(mktemp)"
+          {
+            echo "## 📱 Mobile shell — sideload / TestFlight artefacts"
+            echo ""
+            echo "> **The user-facing update path for the Codeplane mobile shell is the App Store (iOS) and the Play Store (Android).** This release exists for sideloading, TestFlight uploads, internal QA, and CI artefact storage — it is NOT how end users update."
+            echo ""
+            echo "Artefacts:"
+            echo "- \`Codeplane-iOS.ipa\` (or \`Codeplane-iOS.xcarchive.zip\` when no Apple Developer signing cert is configured)"
+            echo "- \`Codeplane-Android.apk\` (and \`Codeplane-Android.aab\` when an Android keystore is configured)"
+            echo "- \`codeplane-mobile-web-bundle.tar.gz\` — the Vite-built picker bundle the native shell wraps; useful when you want to preview the shell UI in a browser without rebuilding."
+            echo ""
+            echo "---"
+            echo ""
+            cat "$notes_file"
+          } > "$banner"
+          if gh release view "${{ needs.resolve.outputs.mobile_tag }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release edit "${{ needs.resolve.outputs.mobile_tag }}" \
+              --title "$title" \
+              --notes-file "$banner" \
+              --repo "${{ github.repository }}"
+            exit 0
+          fi
+          gh release create "${{ needs.resolve.outputs.mobile_tag }}" \
+            --target "$(git rev-parse HEAD)" \
+            --title "$title" \
+            --notes-file "$banner" \
+            --repo "${{ github.repository }}"
+
+  build-web-bundle:
+    needs:
+      - resolve
+      - create-release
+    if: ${{ needs.resolve.outputs.enabled == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ needs.resolve.outputs.source_tag }}
+
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: .github-workflow
+
+      - uses: ./.github-workflow/.github/actions/setup-bun
+
+      - name: Verify mobile package version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(bun --eval 'console.log((await Bun.file("packages/mobile/package.json").json()).version)')
+          if [ "$version" != "${{ needs.resolve.outputs.version }}" ]; then
+            echo "packages/mobile/package.json version $version does not match ${{ needs.resolve.outputs.version }}" >&2
+            exit 1
+          fi
+
+      - name: Build picker web bundle
+        working-directory: packages/mobile
+        run: bun run build
+        env:
+          CODEPLANE_VERSION: ${{ needs.resolve.outputs.version }}
+
+      - name: Tarball the web bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd packages/mobile
+          tar -czf "codeplane-mobile-web-bundle-${{ needs.resolve.outputs.version }}.tar.gz" -C dist .
+
+      - name: Upload web bundle
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd packages/mobile
+          gh release upload "${{ needs.resolve.outputs.mobile_tag }}" \
+            "codeplane-mobile-web-bundle-${{ needs.resolve.outputs.version }}.tar.gz" \
+            --clobber \
+            --repo "${{ github.repository }}"
+
+  build-ios:
+    needs:
+      - resolve
+      - create-release
+    if: ${{ needs.resolve.outputs.enabled == 'true' }}
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ needs.resolve.outputs.source_tag }}
+
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: .github-workflow
+
+      - uses: ./.github-workflow/.github/actions/setup-bun
+
+      - name: Build picker bundle + Capacitor sync
+        working-directory: packages/mobile
+        run: bun run cap:sync
+        env:
+          CODEPLANE_VERSION: ${{ needs.resolve.outputs.version }}
+
+      # Same shape as desktop-release: configure signing only when the
+      # cert secret is present. Absence is FINE — we still produce an
+      # `.xcarchive.zip` testers can re-sign locally with their Apple ID.
+      - name: Configure iOS code signing
+        id: ios_signing
+        shell: bash
+        env:
+          IOS_P12: ${{ secrets.IOS_P12_BASE64 }}
+          IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+          IOS_PROVISIONING_PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$IOS_P12" ] || [ -z "$IOS_PROVISIONING_PROFILE" ]; then
+            echo "iOS signing secrets not configured — packaging unsigned .xcarchive only."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          KEYCHAIN_PATH="$RUNNER_TEMP/codeplane-mobile.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          P12_PATH="$RUNNER_TEMP/codeplane-mobile.p12"
+          PROFILE_PATH="$RUNNER_TEMP/codeplane-mobile.mobileprovision"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+          echo "$IOS_P12" | base64 --decode > "$P12_PATH"
+          security import "$P12_PATH" -P "$IOS_P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" >/dev/null
+          echo "$IOS_PROVISIONING_PROFILE" | base64 --decode > "$PROFILE_PATH"
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/codeplane-mobile.mobileprovision"
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Archive iOS app
+        working-directory: packages/mobile/ios/App
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/App.xcarchive \
+            archive \
+            CODE_SIGNING_ALLOWED=${{ steps.ios_signing.outputs.signed == 'true' && 'YES' || 'NO' }} \
+            CODE_SIGNING_REQUIRED=${{ steps.ios_signing.outputs.signed == 'true' && 'YES' || 'NO' }}
+
+      - name: Export signed IPA
+        if: steps.ios_signing.outputs.signed == 'true'
+        working-directory: packages/mobile/ios/App
+        env:
+          IOS_EXPORT_OPTIONS: ${{ secrets.IOS_EXPORT_OPTIONS_PLIST_BASE64 }}
+        run: |
+          set -euo pipefail
+          PLIST_PATH="$RUNNER_TEMP/ExportOptions.plist"
+          if [ -n "$IOS_EXPORT_OPTIONS" ]; then
+            echo "$IOS_EXPORT_OPTIONS" | base64 --decode > "$PLIST_PATH"
+          else
+            cat > "$PLIST_PATH" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>signingStyle</key><string>automatic</string>
+          </dict>
+          </plist>
+          PLIST
+          fi
+          xcodebuild \
+            -exportArchive \
+            -archivePath build/App.xcarchive \
+            -exportPath build/ipa \
+            -exportOptionsPlist "$PLIST_PATH"
+
+      - name: Stage iOS artefacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd packages/mobile/ios/App/build
+          mkdir -p out
+          if [ -d ipa ] && ls ipa/*.ipa >/dev/null 2>&1; then
+            cp ipa/*.ipa "out/Codeplane-iOS-${{ needs.resolve.outputs.version }}.ipa"
+          fi
+          # Always ship the .xcarchive zip — useful regardless of signing
+          # status (testers can re-sign with their own Apple ID via Xcode).
+          ditto -c -k --sequesterRsrc --keepParent App.xcarchive "out/Codeplane-iOS-${{ needs.resolve.outputs.version }}.xcarchive.zip"
+
+      - name: Upload iOS artefacts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd packages/mobile/ios/App/build/out
+          shopt -s nullglob
+          files=(*)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No iOS artefacts produced." >&2
+            exit 1
+          fi
+          gh release upload "${{ needs.resolve.outputs.mobile_tag }}" "${files[@]}" \
+            --clobber \
+            --repo "${{ github.repository }}"
+
+  build-android:
+    needs:
+      - resolve
+      - create-release
+    if: ${{ needs.resolve.outputs.enabled == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ needs.resolve.outputs.source_tag }}
+
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: .github-workflow
+
+      - uses: ./.github-workflow/.github/actions/setup-bun
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools platforms;android-34 build-tools;34.0.0"
+
+      - name: Build picker bundle + Capacitor sync
+        working-directory: packages/mobile
+        run: bun run cap:sync
+        env:
+          CODEPLANE_VERSION: ${{ needs.resolve.outputs.version }}
+
+      - name: Configure Android signing
+        id: android_signing
+        shell: bash
+        env:
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$ANDROID_KEYSTORE" ]; then
+            echo "Android keystore secret not configured — falling back to debug keystore."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          KEYSTORE_PATH="$RUNNER_TEMP/codeplane-mobile.keystore"
+          echo "$ANDROID_KEYSTORE" | base64 --decode > "$KEYSTORE_PATH"
+          {
+            echo "CODEPLANE_KEYSTORE_PATH=$KEYSTORE_PATH"
+            echo "CODEPLANE_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD"
+            echo "CODEPLANE_KEY_ALIAS=$ANDROID_KEY_ALIAS"
+            echo "CODEPLANE_KEY_PASSWORD=$ANDROID_KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build Android release APK + AAB
+        working-directory: packages/mobile/android
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.android_signing.outputs.signed }}" = "true" ]; then
+            ./gradlew \
+              -PCODEPLANE_KEYSTORE_PATH="$CODEPLANE_KEYSTORE_PATH" \
+              -PCODEPLANE_KEYSTORE_PASSWORD="$CODEPLANE_KEYSTORE_PASSWORD" \
+              -PCODEPLANE_KEY_ALIAS="$CODEPLANE_KEY_ALIAS" \
+              -PCODEPLANE_KEY_PASSWORD="$CODEPLANE_KEY_PASSWORD" \
+              assembleRelease bundleRelease
+          else
+            # Without signing config Gradle's `assembleRelease` errors out
+            # on the unsigned variant — fall back to `assembleDebug`,
+            # which produces a debug-signed APK that's still installable
+            # on devices with "Allow from unknown sources" enabled.
+            ./gradlew assembleDebug
+          fi
+
+      - name: Stage Android artefacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p packages/mobile/android/out
+          cd packages/mobile/android
+          shopt -s nullglob
+          for apk in app/build/outputs/apk/release/*.apk; do
+            cp "$apk" "out/Codeplane-Android-${{ needs.resolve.outputs.version }}.apk"
+            break
+          done
+          for apk in app/build/outputs/apk/debug/*.apk; do
+            # Only used when the release build path was unavailable.
+            if [ ! -f out/Codeplane-Android-${{ needs.resolve.outputs.version }}.apk ]; then
+              cp "$apk" "out/Codeplane-Android-${{ needs.resolve.outputs.version }}-debug-signed.apk"
+            fi
+          done
+          for aab in app/build/outputs/bundle/release/*.aab; do
+            cp "$aab" "out/Codeplane-Android-${{ needs.resolve.outputs.version }}.aab"
+            break
+          done
+
+      - name: Upload Android artefacts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd packages/mobile/android/out
+          shopt -s nullglob
+          files=(*)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No Android artefacts produced." >&2
+            exit 1
+          fi
+          gh release upload "${{ needs.resolve.outputs.mobile_tag }}" "${files[@]}" \
+            --clobber \
+            --repo "${{ github.repository }}"
+
+  publish-release:
+    needs:
+      - resolve
+      - build-web-bundle
+      - build-ios
+      - build-android
+    # Always run so a single platform job failing or hanging doesn't leave
+    # the mobile release un-promoted. The release was created up-front
+    # (not as a draft) so it stays visible regardless; this step just
+    # ensures the title/notes mirror the source release. We deliberately
+    # do NOT pass `--latest` here — the desktop-release sets `--latest`
+    # for `v<x.y.z>-desktop`, and only one release can be `--latest`. The
+    # source `v<x.y.z>` is the canonical "latest" anyway.
+    if: ${{ needs.resolve.outputs.enabled == 'true' && always() }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          title="${{ needs.resolve.outputs.source_tag }} (mobile shell)"
+          notes_file="$(mktemp)"
+          if gh release view "${{ needs.resolve.outputs.source_tag }}" --repo "${{ github.repository }}" --json name,body > base-release.json 2>/dev/null; then
+            source_title="$(jq -r '.name // empty' base-release.json)"
+            if [ -n "$source_title" ]; then
+              title="$source_title — mobile shell"
+            fi
+            jq -r '.body // ""' base-release.json > "$notes_file"
+          else
+            : > "$notes_file"
+          fi
+          banner="$(mktemp)"
+          {
+            echo "## 📱 Mobile shell — sideload / TestFlight artefacts"
+            echo ""
+            echo "> **The user-facing update path for the Codeplane mobile shell is the App Store (iOS) and the Play Store (Android).** This release exists for sideloading, TestFlight uploads, internal QA, and CI artefact storage — it is NOT how end users update."
+            echo ""
+            echo "Artefacts:"
+            echo "- \`Codeplane-iOS.ipa\` (or \`Codeplane-iOS.xcarchive.zip\` when no Apple Developer signing cert is configured)"
+            echo "- \`Codeplane-Android.apk\` (and \`Codeplane-Android.aab\` when an Android keystore is configured)"
+            echo "- \`codeplane-mobile-web-bundle.tar.gz\` — the Vite-built picker bundle the native shell wraps; useful when you want to preview the shell UI in a browser without rebuilding."
+            echo ""
+            echo "---"
+            echo ""
+            cat "$notes_file"
+          } > "$banner"
+          gh release edit "${{ needs.resolve.outputs.mobile_tag }}" \
+            --draft=false \
+            --title "$title" \
+            --notes-file "$banner" \
+            --repo "${{ github.repository }}"
