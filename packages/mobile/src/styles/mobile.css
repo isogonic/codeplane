@@ -68,6 +68,13 @@ body,
   margin: 0;
   color: var(--text-base);
   background: var(--background-base);
+  /*
+   * Emoji-glyph fallback (Apple Color Emoji on iOS / macOS, Segoe UI Emoji
+   * on Windows, Noto Color Emoji on Android) MUST be in the chain — the
+   * iOS WKWebView running this picker shell renders every emoji as a
+   * `[?]` tofu without it. Listing the emoji families LAST lets per-glyph
+   * fallback pick them up for codepoints the Latin fonts lack.
+   */
   font-family:
     -apple-system,
     "SF Pro Text",
@@ -77,7 +84,11 @@ body,
     "Helvetica Neue",
     Helvetica,
     Arial,
-    sans-serif;
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    "Noto Color Emoji";
   font-size: 15px;
   letter-spacing: -0.005em;
   -webkit-font-smoothing: antialiased;
@@ -401,7 +412,9 @@ body {
 
 .mobile-card__url {
   font-size: 12px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, monospace, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
   color: var(--text-weak);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -616,7 +629,9 @@ body {
 }
 
 .mobile-textarea {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, monospace, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
   font-size: 14px;
   resize: vertical;
   min-height: 96px;
@@ -877,7 +892,9 @@ body {
 }
 
 .instance-connect__host {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, monospace, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
   font-size: 12px;
   color: var(--text-weak);
   margin: 0;
