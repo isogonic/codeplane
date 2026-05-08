@@ -1,39 +1,47 @@
 /**
  * Mobile offline-cache native bridge — phase 2b.
  *
- * Capacitor plugin handle for the iOS-side `CodeplaneOfflineCache`
- * plugin (see `packages/mobile/build/ios-offline-cache/` and
- * `packages/mobile/ios/App/App/plugins/OfflineCachePlugin/`). It
- * exposes the offline UI presenter to the picker:
+ * Capacitor plugin handle for the platform-native `CodeplaneOfflineCache`
+ * plugin. Both platforms expose the same JS surface and the picker
+ * routes through it identically; the implementations differ only in
+ * how the per-request hook is wired natively.
  *
- *   1. `isSupported()` — true on iOS 11+ where `WKURLSchemeHandler`
- *      exists. The picker checks this AND `assetCache.get(...)` is
- *      `ready` before opting an instance into the offline path —
- *      otherwise it falls back to the live-origin `@capgo/inappbrowser`
- *      flow.
+ *   1. `isSupported()` — true on iOS 11+ (`WKURLSchemeHandler` floor)
+ *      and Android 5.0+ (`WebViewClient.shouldInterceptRequest` floor).
+ *      The picker checks this AND `assetCache.get(...)` is `ready`
+ *      before opting an instance into the offline path — otherwise
+ *      it falls back to the live-origin `@capgo/inappbrowser` flow.
  *
- *   2. `openInstance(...)` — present a fullscreen modal hosting a
- *      WKWebView whose URL scheme `codeplane-cache:` is handled by
- *      `CodeplaneCacheSchemeHandler.swift`. Static asset requests
- *      are served from the on-disk crawl tree the JS-side
- *      `asset-cache.ts` already populates; everything else (API,
- *      SSE, websocket-upgrade-as-HTTP) is proxied to the live origin
- *      via `URLSession.shared` with the per-instance auth headers
- *      injected. Cookies share `WKWebsiteDataStore.default()` with
- *      the existing InAppBrowser flow so SSO sessions carry over
- *      between paths.
+ *   2. `openInstance(...)` — present a fullscreen modal:
+ *
+ *      • **iOS** (`packages/mobile/ios/App/App/plugins/OfflineCachePlugin/`):
+ *        WKWebView whose `codeplane-cache:` scheme is handled by
+ *        `CodeplaneCacheSchemeHandler.swift`. Static asset requests
+ *        are served from disk; dynamic paths are PROXIED through
+ *        `URLSession.shared` with the per-instance auth headers
+ *        layered on. Cookies share `WKWebsiteDataStore.default()`.
+ *
+ *      • **Android** (`packages/mobile/android/app/src/main/java/ai/codeplane/mobile/`):
+ *        Android's `shouldInterceptRequest` doesn't expose request
+ *        bodies, so we can't reliably proxy POST / PUT / PATCH /
+ *        DELETE without losing data. Instead the WebView navigates
+ *        DIRECTLY to the live origin and `OfflineCacheInterceptor`
+ *        short-circuits ONLY static GETs (matching extensions for
+ *        the bundle: html / js / css / fonts / images / source maps
+ *        / wasm). Everything else flows through the WebView's normal
+ *        network stack with the system `CookieManager` carrying SSO.
+ *        Auth headers ride on the initial navigation only — same as
+ *        the InAppBrowser flow.
+ *
+ *      End user behaviour is identical across both platforms: first
+ *      paint is instant from disk, then dynamic data hits the live
+ *      API exactly the way it would have without the cache.
  *
  *   3. `closeInstance(...)` — explicit dismiss. Implicit dismiss
- *      (interactive swipe / `viewDidDisappear`) ALSO fires the same
- *      `closeEvent` listener so the picker reconciles state without
- *      the JS side having to call back.
- *
- * No Android implementation yet — the plugin's `isSupported()` will
- * resolve to `{ supported: false }` on Android and the picker stays
- * on the InAppBrowser path. Android needs a `WebViewAssetLoader` +
- * `shouldInterceptRequest` adapter; that's the obvious follow-up
- * (single Kotlin file, same shape as the Swift handler) but it
- * doesn't gate the iOS rollout.
+ *      (iOS: `viewDidDisappear`, Android: back-press / system gesture
+ *      / X-button / broadcast finish) ALSO fires the same `closeEvent`
+ *      listener so the picker reconciles state without the JS side
+ *      having to call back.
  */
 
 import { registerPlugin } from "@capacitor/core"
@@ -41,7 +49,15 @@ import { Filesystem, Directory } from "@capacitor/filesystem"
 import type { PluginListenerHandle } from "@capacitor/core"
 
 interface NativeOfflineCachePlugin {
-  isSupported(): Promise<{ supported: boolean; minIOS?: string; reason?: string }>
+  isSupported(): Promise<{
+    supported: boolean
+    /** Set on iOS — minimum iOS version with `WKURLSchemeHandler`. */
+    minIOS?: string
+    /** Set on Android — minimum Android version with the intercept API. */
+    minAndroid?: string
+    /** Set when `supported: false` — human-readable diagnostic. */
+    reason?: string
+  }>
   openInstance(input: {
     instanceId: string
     version: string

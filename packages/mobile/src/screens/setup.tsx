@@ -1,7 +1,7 @@
 import { Component, Show, createMemo, createResource, createSignal } from "solid-js"
 import type { SavedInstance } from "@codeplane-ai/shared/instance"
 import type { CodeplaneMobileAPI } from "../platform/api"
-import { MobileHeader, PlusIcon } from "../components/mobile-header"
+import { MobileHeader, PlusIcon, SettingsIcon } from "../components/mobile-header"
 import { InstanceList } from "../components/instance-list"
 import { BottomSheet } from "../components/bottom-sheet"
 import { InstanceForm } from "../components/instance-form"
@@ -44,6 +44,7 @@ type SheetState =
 export const SetupScreen: Component<{
   api: CodeplaneMobileAPI
   onOpenInstance: (instance: SavedInstance) => void
+  onOpenSettings: () => void
 }> = (props) => {
   const [sheet, setSheet] = createSignal<SheetState>({ kind: "closed" })
   const [refreshKey, setRefreshKey] = createSignal(0)
@@ -197,6 +198,19 @@ export const SetupScreen: Component<{
         title="Codeplane"
         elevated={scrolled()}
         onTitlePress={onTitleTap}
+        leading={
+          <button
+            type="button"
+            class="mobile-icon-button"
+            aria-label="Settings"
+            onClick={() => {
+              props.api.haptics.selection().catch(() => {})
+              props.onOpenSettings()
+            }}
+          >
+            <SettingsIcon />
+          </button>
+        }
         trailing={
           <button
             type="button"

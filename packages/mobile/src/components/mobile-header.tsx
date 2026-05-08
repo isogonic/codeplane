@@ -129,27 +129,42 @@ export const RightChevron: Component = () => (
 )
 
 /**
- * Gear / settings icon — used in the picker's leading header slot to
- * open the app-level settings screen. Mirrors the optical weight of
- * `PlusIcon` (22×22, stroke 2) so the two corners feel paired.
+ * Settings icon — three horizontal sliders, the iOS Control-Center
+ * convention. Replaces the previous cog because at 22px on the
+ * dark picker background, the cog's eight rounded teeth read as
+ * a sunburst (i.e. a theme-toggle glyph) and got mistaken for one.
+ * Sliders are unambiguous, share the same horizontal/vertical
+ * symmetry as `PlusIcon`, and stay legible at the small size.
+ *
+ * The track segments break around each knob rather than passing
+ * through it, which is what makes the row read as "an adjustable
+ * control" rather than three lines with three discs floating on
+ * top.
  */
 export const SettingsIcon: Component = () => (
-  <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden role="presentation">
-    <circle
-      cx="11"
-      cy="11"
-      r="2.6"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-    <path
-      d="M11 2.5v2.2M11 17.3v2.2M19.5 11h-2.2M4.7 11H2.5M17.01 4.99l-1.56 1.56M6.55 15.45l-1.56 1.56M17.01 17.01l-1.56-1.56M6.55 6.55L4.99 4.99"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 22 22"
+    fill="none"
+    aria-hidden
+    role="presentation"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    {/* Row 1 — knob at x=15 */}
+    <line x1="3" y1="6" x2="13" y2="6" />
+    <line x1="17" y1="6" x2="19" y2="6" />
+    <circle cx="15" cy="6" r="2" />
+    {/* Row 2 — knob at x=8 */}
+    <line x1="3" y1="11" x2="6" y2="11" />
+    <line x1="10" y1="11" x2="19" y2="11" />
+    <circle cx="8" cy="11" r="2" />
+    {/* Row 3 — knob at x=14 */}
+    <line x1="3" y1="16" x2="12" y2="16" />
+    <line x1="16" y1="16" x2="19" y2="16" />
+    <circle cx="14" cy="16" r="2" />
   </svg>
 )
