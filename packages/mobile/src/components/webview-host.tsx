@@ -188,7 +188,21 @@ export const WebviewHost: Component<{
    * `laSupported()` stuck at its default `false`, so the embedded
    * UI's "Show on Lock Screen" menu item never rendered.
    */
-  const loadLAState = async () => {
+  type LAStateLoad = {
+    liveActivitiesEnabled: boolean
+    opted: string[]
+    supportedStatus: { supported: boolean; enabled: boolean }
+  }
+
+  /**
+   * One-shot loader for the LA state. Reads the persisted prefs and
+   * the native `isSupported` flag, populates the signals, and returns
+   * the resolved object so callers that need its fields can read them
+   * without re-fetching.
+   *
+   * Wrapped by `ensureLAStateLoaded` for promise-caching — see below.
+   */
+  const loadLAState = async (): Promise<LAStateLoad> => {
     const [liveActivitiesEnabled, opted, supportedStatus] = await Promise.all([
       props.api.instances.prefs.getLiveActivitiesEnabled(props.instance.id),
       props.api.instances.prefs.getLiveActivitySessionIds(props.instance.id),
@@ -199,11 +213,42 @@ export const WebviewHost: Component<{
     return { liveActivitiesEnabled, opted, supportedStatus }
   }
 
+  /**
+   * Cached promise for the LA-state load. Every `injectLAState` call
+   * awaits this so the snapshot we send to the page reflects the real
+   * `isSupported` answer, not whatever `laSupported()` happened to
+   * return at the moment of the call.
+   *
+   * Why: SolidJS runs `createEffect` before `onMount`. The effect
+   * calls `openInWebView()` which, on resolve, fires the inject
+   * staircase. Meanwhile `onMount` kicks off `wireTaskMonitor` which
+   * is what populates `laSupported`. Whichever async settles first
+   * wins — and on a cold launch the WKWebView often opens BEFORE the
+   * native `liveActivities.isSupported()` round-trip completes, so
+   * the first inject's `supported: laSupported()` is the default
+   * `false`. The page's `LiveActivityProvider` reads that snapshot,
+   * sets `supported = false`, and the toggle stays hidden until the
+   * user navigates the embedded UI (next `urlChangeEvent` re-injects
+   * — but by then they've already seen it disappear).
+   *
+   * Promise-caching here means: the first caller (whoever wins the
+   * race) starts the load; everyone else awaits the SAME promise.
+   * No duplicate native round-trips, no stale reads.
+   */
+  let laStatePromise: Promise<LAStateLoad> | undefined
+  const ensureLAStateLoaded = (): Promise<LAStateLoad> => {
+    if (!laStatePromise) laStatePromise = loadLAState()
+    return laStatePromise
+  }
+
   const wireTaskMonitor = async () => {
     // Always populate the LA state — it drives the snapshot the
     // shell injects on every navigation, so it has to be ready
-    // regardless of whether we're on native or web.
-    const state = await loadLAState()
+    // regardless of whether we're on native or web. We go through
+    // `ensureLAStateLoaded()` so this shares the same cached promise
+    // as `injectLAState` — whichever caller arrives first does the
+    // native round-trip.
+    const state = await ensureLAStateLoaded()
     // We create a monitor on BOTH transports:
     //   • web preview / dev — `frame` listens on `window.message` for
     //     events from the iframe's contentWindow.
@@ -485,12 +530,22 @@ export const WebviewHost: Component<{
    */
   const injectLAState = async () => {
     if (!isNative) return
+    // Wait for the cached LA-state load to settle so `laSupported()`
+    // reflects the real native `isSupported()` answer, not the
+    // default `false` that's still in the signal during the cold-open
+    // race. See `ensureLAStateLoaded` for the rationale.
+    await ensureLAStateLoaded().catch(() => undefined)
     const payload = {
       type: "codeplane:la-state",
       supported: laSupported(),
       enabledSessionIds: optedInSessionIds(),
       maxAllowed: MAX_LIVE_ACTIVITY_SESSIONS,
     }
+    // eslint-disable-next-line no-console
+    console.log("[webview-host] la: injecting state", {
+      supported: payload.supported,
+      enabled: payload.enabledSessionIds.length,
+    })
     // Two-channel update — `executeScript` writes the synchronous
     // `window.__codeplaneLA` snapshot the embedded UI reads on first
     // mount, AND `postMessage` fires the plugin's `messageFromNative`
@@ -544,6 +599,14 @@ export const WebviewHost: Component<{
     //     events that fire later, so order doesn't matter for
     //     correctness as long as both are in flight before
     //     openWebView resolves).
+    //
+    // Kick off the LA-state load IMMEDIATELY so its cached promise is
+    // in flight before openInWebView's inject staircase starts. The
+    // first inject `await`s this same promise so the snapshot we send
+    // to the page reflects the real native `isSupported` answer rather
+    // than the default `false` — fixing the cold-open race that hid
+    // the toggle on first launch.
+    void ensureLAStateLoaded()
     const offNetPromise = watchNetwork()
     const wireTaskPromise = wireTaskMonitor()
 
@@ -805,7 +868,18 @@ export const WebviewHost: Component<{
     setLoaded(false)
     setBrowserOpen(false)
     setOpenError(null)
-    if (isNative) void openInWebView()
+    if (isNative) {
+      // Kick off the native `isSupported()` round-trip BEFORE the
+      // openWebView call starts the WKWebView creation. Solid runs
+      // this createEffect before `onMount`, so this is the earliest
+      // point at which we can launch the load — and `injectLAState`
+      // (which fires after openWebView resolves) will await the same
+      // cached promise. The result: the inject's `supported` field
+      // reflects the real native answer instead of the default
+      // `false`, and the toggle renders on first paint.
+      void ensureLAStateLoaded()
+      void openInWebView()
+    }
   })
 
   const startWebSession = () => {
