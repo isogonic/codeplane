@@ -1,6 +1,6 @@
 import { Provider } from "@/provider"
 import { Log } from "@/util"
-import { Context, Effect, Layer, Record } from "effect"
+import { Context, Effect, Layer, Record, Semaphore } from "effect"
 import * as Stream from "effect/Stream"
 import { streamText, wrapLanguageModel, type ModelMessage, type Tool, tool, jsonSchema } from "ai"
 import { mergeDeep, pipe } from "remeda"
@@ -27,6 +27,27 @@ import * as OtelTracer from "@effect/opentelemetry/Tracer"
 
 const log = Log.create({ service: "llm" })
 export const OUTPUT_TOKEN_MAX = ProviderTransform.OUTPUT_TOKEN_MAX
+
+// Inactivity guard: if the provider stops emitting events for this long, we
+// fail the stream as a retryable APIError so the outer SessionRetry policy
+// can pick it up. The cause is most often a wedged proxy or a TCP zombie;
+// without this guard the only thing that ends the stream is a user cancel.
+//
+// Default 90s comfortably exceeds Anthropic's own per-chunk pacing during
+// extended thinking (~60s typical max). Override via
+// CODEPLANE_LLM_STREAM_IDLE_TIMEOUT_MS for ops who terminate elsewhere.
+const STREAM_IDLE_TIMEOUT_MS = Flag.CODEPLANE_LLM_STREAM_IDLE_TIMEOUT_MS ?? 90_000
+
+// Optional global cap on concurrently active LLM streams. Disabled by default
+// (single-user CLI use case); enable in multi-tenant deployments to prevent a
+// thundering herd from starving the upstream provider on a 429 storm. The
+// permit is held for the lifetime of the stream scope (from start through
+// last event or error), not just the streamText() call, so this caps real
+// in-flight concurrency rather than just request creation.
+const llmSemaphore: Semaphore.Semaphore | undefined = Flag.CODEPLANE_MAX_CONCURRENT_LLM_CALLS
+  ? Semaphore.makeUnsafe(Flag.CODEPLANE_MAX_CONCURRENT_LLM_CALLS)
+  : undefined
+
 type Result = Awaited<ReturnType<typeof streamText>>
 
 export type StreamInput = {
@@ -391,6 +412,14 @@ const live: Layer.Layer<
                 ...(input.parentSessionID ? { "x-parent-session-id": input.parentSessionID } : {}),
                 "User-Agent": `codeplane/${InstallationVersion}`,
               }),
+          // Idempotency-Key: lets the provider deduplicate retries after a
+          // network blip — without it, a TCP reset followed by SessionRetry
+          // can charge twice and produce two assistant turns. Anthropic
+          // honors this on v1/messages; OpenAI ignores unknown headers
+          // harmlessly. Key is `<sessionID>-<user.id>` so retries of the
+          // SAME upstream call reuse it (intentional dedupe), but a fresh
+          // user message gets a fresh key.
+          "Idempotency-Key": `${input.sessionID}-${input.user.id}`,
           ...input.model.headers,
           ...headers,
         },
@@ -427,14 +456,53 @@ const live: Layer.Layer<
       Stream.scoped(
         Stream.unwrap(
           Effect.gen(function* () {
+            // Hold a global permit for the entire stream lifetime if a cap is
+            // configured. The acquire/release pair is wired into the same
+            // scope as the AbortController, so a stream that gets canceled or
+            // errors out releases its permit immediately — even mid-stream.
+            if (llmSemaphore) {
+              yield* Effect.acquireRelease(llmSemaphore.take(1), () => llmSemaphore.release(1))
+            }
+
             const ctrl = yield* Effect.acquireRelease(
               Effect.sync(() => new AbortController()),
               (ctrl) => Effect.sync(() => ctrl.abort()),
             )
 
+            // Inter-element idle watchdog. Reset on each event; if it fires
+            // without being reset, abort the underlying request — the AI SDK
+            // turns the abort into an AbortError that the outer retry policy
+            // sees as a non-retryable user-cancel-shaped failure (which is
+            // correct: a wedged provider stream is no longer viable). We
+            // implement this as a setTimeout watchdog rather than wrapping
+            // the Stream with `Stream.timeout` because Stream-level timeouts
+            // are observed to interact badly with the AI SDK's
+            // already-ended AsyncIterable, mis-cancelling normal completions.
+            let idleTimer: ReturnType<typeof setTimeout> | undefined
+            const armIdle = () => {
+              if (idleTimer) clearTimeout(idleTimer)
+              idleTimer = setTimeout(() => {
+                log.warn("stream idle timeout — aborting", {
+                  ms: STREAM_IDLE_TIMEOUT_MS,
+                  sessionID: input.sessionID,
+                })
+                ctrl.abort()
+              }, STREAM_IDLE_TIMEOUT_MS)
+              idleTimer.unref?.()
+            }
+            yield* Effect.addFinalizer(() =>
+              Effect.sync(() => {
+                if (idleTimer) clearTimeout(idleTimer)
+              }),
+            )
+            armIdle()
+
             const result = yield* run({ ...input, abort: ctrl.signal })
 
-            return Stream.fromAsyncIterable(result.fullStream, (e) => (e instanceof Error ? e : new Error(String(e))))
+            return Stream.fromAsyncIterable(
+              result.fullStream,
+              (e) => (e instanceof Error ? e : new Error(String(e))),
+            ).pipe(Stream.tap(() => Effect.sync(armIdle)))
           }),
         ),
       )

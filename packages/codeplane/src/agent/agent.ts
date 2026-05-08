@@ -382,23 +382,66 @@ export const layer = Layer.effect(
         } satisfies Parameters<typeof generateObject>[0]
 
         if (isOpenaiOauth) {
+          // Wrap the streaming path so a stalled upstream cannot hang
+          // indefinitely. Two layers of defence:
+          //   1. AbortController surfaces network errors as a thrown
+          //      AbortError instead of letting the for-await loop wait
+          //      forever on a TCP read that never completes.
+          //   2. Effect.timeout caps the whole thing at 60s — well past
+          //      any reasonable schema-generation latency, but short
+          //      enough to make a stall observable to the caller.
+          // Errors are NOT swallowed: onError forwards into a captured
+          // ref, and we re-throw at the end so retry policies upstream
+          // get a chance.
+          const controller = new AbortController()
           return yield* Effect.promise(async () => {
+            let streamErr: unknown
             const result = streamObject({
               ...params,
+              abortSignal: controller.signal,
               providerOptions: ProviderTransform.providerOptions(resolved, {
                 instructions: system.join("\n"),
                 store: false,
               }),
-              onError: () => {},
+              onError: (e) => {
+                // Capture so we can re-throw if the stream ends without
+                // emitting an `error` chunk (some providers close the
+                // socket on error without ever surfacing it as a part).
+                streamErr = (e as { error?: unknown })?.error ?? e
+              },
             })
             for await (const part of result.fullStream) {
               if (part.type === "error") throw part.error
             }
+            if (streamErr) throw streamErr
             return result.object
-          })
+          }).pipe(
+            // `timeoutOrElse` keeps the error channel as the original `never`;
+            // `Effect.timeout` would add `TimeoutError`, which the Service
+            // interface declares as `never`. Surface a stalled stream as a
+            // defect so the caller's retry policy treats it like any other
+            // upstream failure.
+            Effect.timeoutOrElse({
+              duration: "60 seconds",
+              orElse: () => Effect.die(new Error("Agent.generate: stream stalled for 60s")),
+            }),
+            // Fires for any failure cause including the timeout above and
+            // interrupts; ensures the AbortController is released even when
+            // the caller cancels mid-flight.
+            Effect.tapCause(() => Effect.sync(() => controller.abort())),
+          )
         }
 
-        return yield* Effect.promise(() => generateObject(params).then((r) => r.object))
+        return yield* Effect.promise(() => generateObject(params).then((r) => r.object)).pipe(
+          // generateObject does its own retries via maxRetries. Cap the
+          // wall time so a single hung request can't pin the generation
+          // flow indefinitely. Surface as a defect (matching the streaming
+          // branch above) to keep the public Effect signature `never`-erred.
+          Effect.timeoutOrElse({
+            duration: "60 seconds",
+            orElse: () => Effect.die(new Error("Agent.generate: request stalled for 60s")),
+          }),
+        )
       }),
     })
   }),

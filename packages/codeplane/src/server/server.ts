@@ -26,6 +26,7 @@ import { WorkspaceRoutes } from "./routes/control/workspace"
 import { ExperimentalHttpApiServer } from "./routes/instance/httpapi/server"
 import { WorkspacePaths } from "./routes/instance/httpapi/workspace"
 import { CronScheduler } from "@/cron"
+import { PromptQueueWorker } from "@/session/prompt-queue-worker"
 import { UpdateChecker } from "@/installation/update-checker"
 import { makeRuntime } from "@/effect/run-service"
 import { Context } from "effect"
@@ -38,6 +39,7 @@ initProjectors()
 
 const log = Log.create({ service: "server" })
 const cronSchedulerRuntime = makeRuntime(CronScheduler.Service, CronScheduler.defaultLayer)
+const promptQueueWorkerRuntime = makeRuntime(PromptQueueWorker.Service, PromptQueueWorker.defaultLayer)
 
 export type Listener = {
   hostname: string
@@ -128,6 +130,9 @@ export async function listen(opts: {
   await cronSchedulerRuntime.runPromise((svc) => svc.start()).catch((err) => {
     log.error("failed to start cron scheduler", { error: err instanceof Error ? err.message : String(err) })
   })
+  await promptQueueWorkerRuntime.runPromise((svc) => svc.start()).catch((err) => {
+    log.error("failed to start prompt queue worker", { error: err instanceof Error ? err.message : String(err) })
+  })
   UpdateChecker.start()
 
   const next = new URL("http://localhost")
@@ -157,6 +162,7 @@ export async function listen(opts: {
         if (mdns) MDNS.unpublish()
         UpdateChecker.stop()
         await cronSchedulerRuntime.runPromise((svc) => svc.stop()).catch(() => undefined)
+        await promptQueueWorkerRuntime.runPromise((svc) => svc.stop()).catch(() => undefined)
         await server.stop(close)
       })()
       return closing

@@ -53,9 +53,25 @@ const ReleaseNotesCache = {
 
 export const GlobalDisposedEvent = BusEvent.define("global.disposed", Schema.Struct({}))
 
-async function streamEvents(c: Context, subscribe: (q: AsyncQueue<string | null>) => () => void) {
+/**
+ * Cap on outbound buffer per global SSE connection. Same risk as the
+ * per-instance stream — a slow consumer holding heartbeats + cross-instance
+ * events otherwise pins unbounded RSS. Drop-oldest-on-overflow, surface a
+ * one-shot `server.dropped` so the client knows to refetch state.
+ */
+const GLOBAL_SSE_OUTBOUND_MAX = 4096
+
+async function streamEvents(c: Context, subscribe: (q: AsyncQueue<string>) => () => void) {
   return streamSSE(c, async (stream) => {
-    const q = new AsyncQueue<string | null>()
+    let droppedSinceLastFlush = false
+    let totalDropped = 0
+    const q = new AsyncQueue<string>({
+      maxSize: GLOBAL_SSE_OUTBOUND_MAX,
+      onDrop: () => {
+        droppedSinceLastFlush = true
+        totalDropped += 1
+      },
+    })
     let done = false
 
     q.push(
@@ -85,8 +101,12 @@ async function streamEvents(c: Context, subscribe: (q: AsyncQueue<string | null>
       done = true
       clearInterval(heartbeat)
       unsub()
-      q.push(null)
-      log.info("global event disconnected")
+      q.close()
+      if (totalDropped > 0) {
+        log.warn("global event disconnected with drops", { totalDropped })
+      } else {
+        log.info("global event disconnected")
+      }
     }
 
     const unsub = subscribe(q)
@@ -95,7 +115,13 @@ async function streamEvents(c: Context, subscribe: (q: AsyncQueue<string | null>
 
     try {
       for await (const data of q) {
-        if (data === null) return
+        // Surface backlog overflow once per flush so the client can refetch.
+        if (droppedSinceLastFlush) {
+          droppedSinceLastFlush = false
+          await stream.writeSSE({
+            data: JSON.stringify({ payload: { type: "server.dropped", properties: {} } }),
+          })
+        }
         await stream.writeSSE({ data })
       }
     } finally {

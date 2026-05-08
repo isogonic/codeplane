@@ -81,11 +81,25 @@ const elog = EffectLogger.create({ service: "session.prompt" })
 
 export interface Interface {
   readonly cancel: (sessionID: SessionID) => Effect.Effect<void>
-  readonly prompt: (input: PromptInput) => Effect.Effect<MessageV2.WithParts>
-  readonly loop: (input: LoopInput) => Effect.Effect<MessageV2.WithParts>
+  /**
+   * Submit a user message and run the loop to completion.
+   * Returns `Session.BusyError` typed-failure if the per-session queue
+   * is full (callers map this to a 429-style response). Other failures
+   * are persisted onto the assistant message and the loop returns
+   * normally — they are not raised through this error channel.
+   */
+  readonly prompt: (input: PromptInput) => Effect.Effect<MessageV2.WithParts, Session.BusyError>
+  /** Drive `runLoop` for an existing session (no new user message). Same BusyError contract as `prompt`. */
+  readonly loop: (input: LoopInput) => Effect.Effect<MessageV2.WithParts, Session.BusyError>
   readonly shell: (input: ShellInput) => Effect.Effect<MessageV2.WithParts>
-  readonly command: (input: CommandInput) => Effect.Effect<MessageV2.WithParts>
+  readonly command: (input: CommandInput) => Effect.Effect<MessageV2.WithParts, Session.BusyError>
   readonly resolvePromptParts: (template: string) => Effect.Effect<PromptInput["parts"]>
+  /**
+   * Persist a terminal failure on a session's latest assistant message
+   * and publish `session.error`. Used by the fire-and-forget
+   * `prompt_async` route to make failures survive a restart.
+   */
+  readonly recordError: (input: { sessionID: SessionID; error: unknown }) => Effect.Effect<void>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@codeplane/SessionPrompt") {}
@@ -188,6 +202,48 @@ export const layer = Layer.effect(
     const cancel = Effect.fn("SessionPrompt.cancel")(function* (sessionID: SessionID) {
       yield* elog.info("cancel", { sessionID })
       yield* state.cancel(sessionID)
+    })
+
+    /**
+     * Persist a terminal failure on the latest assistant message of a
+     * session and publish a `session.error` event. Used by the
+     * fire-and-forget `prompt_async` route, which would otherwise lose
+     * the error if no client is subscribed at the moment of failure —
+     * the Bus.publish alone is lossy because (a) async callers are by
+     * definition not subscribed, (b) the SSE resume buffer only
+     * replays events emitted after a connection started. The DB write
+     * is the durable record that survives a server restart.
+     *
+     * Idempotent: if the latest assistant has already settled (its
+     * own halt path wrote an error or it finished cleanly), we do
+     * nothing on the message and just publish the bus event so any
+     * live subscribers see the failure too.
+     */
+    const recordError = Effect.fn("SessionPrompt.recordError")(function* (input: {
+      sessionID: SessionID
+      error: unknown
+    }) {
+      // findMessage already returns Option<WithParts> — don't wrap in
+      // Effect.option (would yield Option<Option<...>>).
+      const last = yield* sessions.findMessage(input.sessionID, (m) => m.info.role !== "user")
+      const providerID =
+        Option.isSome(last) && last.value.info.role === "assistant" ? last.value.info.providerID : undefined
+      const error = MessageV2.fromError(input.error, {
+        providerID: (providerID ?? "unknown") as ProviderID,
+      })
+
+      if (Option.isSome(last) && last.value.info.role === "assistant") {
+        const info = last.value.info
+        if (typeof info.time.completed !== "number" && !info.error) {
+          yield* sessions.updateMessage({
+            ...info,
+            error,
+            time: { ...info.time, completed: Date.now() },
+          })
+        }
+      }
+
+      yield* bus.publish(Session.Event.Error, { sessionID: input.sessionID, error })
     })
 
     const resolvePromptParts = Effect.fn("SessionPrompt.resolvePromptParts")(function* (template: string) {
@@ -1516,7 +1572,9 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       return { info, parts }
     }, Effect.scoped)
 
-    const prompt: (input: PromptInput) => Effect.Effect<MessageV2.WithParts> = Effect.fn("SessionPrompt.prompt")(
+    const prompt: (input: PromptInput) => Effect.Effect<MessageV2.WithParts, Session.BusyError> = Effect.fn(
+      "SessionPrompt.prompt",
+    )(
       function* (input: PromptInput) {
         const session = yield* sessions.get(input.sessionID)
         yield* revert.cleanup(session)
@@ -1664,6 +1722,15 @@ NOTE: At any point in time through this workflow you should feel free to ask the
               providerID: lastUser.model.providerID,
               history: msgs,
             }).pipe(
+              // Cap the title generator: a stuck small-model call would
+              // otherwise hang as a background fiber until instance
+              // shutdown. 60s far exceeds reasonable title latency and
+              // keeps a hung provider from accumulating zombie fibers
+              // across long sessions.
+              Effect.timeoutOrElse({
+                duration: "60 seconds",
+                orElse: () => Effect.die(new Error("title generator timed out")),
+              }),
               Effect.catchCause((cause) => {
                 slog.warn("title generator failed", { error: Cause.squash(cause) })
                 return Effect.void
@@ -1853,14 +1920,25 @@ NOTE: At any point in time through this workflow you should feel free to ask the
           continue
         }
 
-        yield* compaction.prune({ sessionID }).pipe(Effect.ignore, Effect.forkIn(scope))
+        // Prune is best-effort cleanup; cap it so a stuck DB transaction
+        // can't leave a fiber hanging in the instance scope past shutdown.
+        yield* compaction
+          .prune({ sessionID })
+          .pipe(
+            Effect.timeoutOrElse({
+              duration: "5 minutes",
+              orElse: () => Effect.die(new Error("compaction.prune timed out")),
+            }),
+            Effect.ignore,
+            Effect.forkIn(scope),
+          )
         return yield* lastAssistant(sessionID)
       },
     )
 
-    const loop: (input: LoopInput) => Effect.Effect<MessageV2.WithParts> = Effect.fn("SessionPrompt.loop")(function* (
-      input: LoopInput,
-    ) {
+    const loop: (input: LoopInput) => Effect.Effect<MessageV2.WithParts, Session.BusyError> = Effect.fn(
+      "SessionPrompt.loop",
+    )(function* (input: LoopInput) {
       return yield* state.ensureRunning(input.sessionID, lastAssistant(input.sessionID), runLoop(input.sessionID))
     })
 
@@ -1993,6 +2071,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       shell,
       command,
       resolvePromptParts,
+      recordError,
     })
   }),
 )

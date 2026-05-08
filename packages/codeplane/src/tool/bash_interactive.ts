@@ -139,6 +139,12 @@ export const BashInteractiveTool = Tool.define(
     return {
       description: DESCRIPTION,
       parameters: Parameters,
+      // Bash has its own per-call timeout (`params.timeout`, max 10 min) and
+      // its own SIGTERM/SIGKILL escalation. The wrapper timeout is purely a
+      // safety net for the case where the inner cleanup itself hangs — give
+      // it 30 s of slack past MAX_TIMEOUT_MS so it never preempts a
+      // legitimately-running command.
+      timeoutMs: MAX_TIMEOUT_MS + 30_000,
       execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
         Effect.gen(function* () {
           const command = params.command

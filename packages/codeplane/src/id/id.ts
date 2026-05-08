@@ -15,6 +15,9 @@ const prefixes = {
   entry: "ent",
   cron: "cron",
   crun: "crun",
+  // Prompt job: a queued/in-flight prompt invocation persisted across server
+  // restarts. See packages/codeplane/src/session/prompt-queue.ts.
+  pjob: "pjob",
 } as const
 
 export function schema(prefix: keyof typeof prefixes) {

@@ -261,6 +261,10 @@ export const SshTool = Tool.define(
     return {
       description: DESCRIPTION,
       parameters: Parameters,
+      // SSH commands can legitimately run a long deploy or sync. The
+      // sub-operations honor their own timeout and the abort signal, so the
+      // tool wrapper's safety-net timeout would just preempt healthy work.
+      timeoutMs: null,
       execute: (params: Params, ctx: Tool.Context) =>
         Effect.gen(function* () {
           const operation: Operation = (params as { operation?: Operation }).operation ?? "exec"

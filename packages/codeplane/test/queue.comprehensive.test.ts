@@ -39,7 +39,10 @@ describe("AsyncQueue", () => {
   test("works with objects", async () => {
     const q = new AsyncQueue<{ id: number }>()
     q.push({ id: 1 })
-    expect((await q.next()).id).toBe(1)
+    // next() now returns T | undefined (undefined signals end-of-stream
+    // after close()). Open queue with a value buffered → never undefined.
+    const out = await q.next()
+    expect(out?.id).toBe(1)
   })
   test("async iterator yields values", async () => {
     const q = new AsyncQueue<number>()
@@ -56,6 +59,59 @@ describe("AsyncQueue", () => {
       expect(await q.next()).toBe(i)
     })
   }
+
+  test("maxSize drops oldest item when full and invokes onDrop", () => {
+    const dropped: number[] = []
+    const q = new AsyncQueue<number>({ maxSize: 3, onDrop: (n) => dropped.push(n) })
+    q.push(1)
+    q.push(2)
+    q.push(3)
+    q.push(4) // forces 1 to be dropped
+    q.push(5) // forces 2 to be dropped
+    expect(dropped).toEqual([1, 2])
+    expect(q.size).toBe(3)
+  })
+
+  test("maxSize does not drop when a consumer is waiting", async () => {
+    const dropped: number[] = []
+    const q = new AsyncQueue<number>({ maxSize: 1, onDrop: (n) => dropped.push(n) })
+    const pending = q.next()
+    q.push(99)
+    expect(await pending).toBe(99)
+    expect(dropped).toEqual([])
+  })
+
+  test("close ends pending consumers with undefined", async () => {
+    const q = new AsyncQueue<number>()
+    const pending = q.next()
+    q.close()
+    expect(await pending).toBeUndefined()
+  })
+
+  test("close terminates async iteration after draining buffered items", async () => {
+    const q = new AsyncQueue<number>()
+    q.push(1)
+    q.push(2)
+    q.close()
+    const seen: number[] = []
+    for await (const n of q) seen.push(n)
+    expect(seen).toEqual([1, 2])
+  })
+
+  test("push after close is silently dropped", () => {
+    const q = new AsyncQueue<number>()
+    q.close()
+    q.push(1)
+    expect(q.size).toBe(0)
+  })
+
+  test("clear discards buffered items", () => {
+    const q = new AsyncQueue<number>()
+    q.push(1)
+    q.push(2)
+    q.clear()
+    expect(q.size).toBe(0)
+  })
 })
 
 describe("work concurrent", () => {

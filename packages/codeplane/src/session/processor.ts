@@ -515,12 +515,22 @@ export const layer: Layer.Layer<
               }
               ctx.snapshot = undefined
             }
+            // Per-step background summarize. Bounded so a hung small
+            // model doesn't accumulate one zombie fiber per finish-step
+            // over a long turn. 90s past any reasonable summary latency.
             yield* summary
               .summarize({
                 sessionID: ctx.sessionID,
                 messageID: ctx.assistantMessage.parentID,
               })
-              .pipe(Effect.ignore, Effect.forkIn(scope))
+              .pipe(
+                Effect.timeoutOrElse({
+                  duration: "90 seconds",
+                  orElse: () => Effect.die(new Error("summarize timed out")),
+                }),
+                Effect.ignore,
+                Effect.forkIn(scope),
+              )
             if (
               !ctx.assistantMessage.summary &&
               isOverflow({ cfg: yield* config.get(), tokens: usage.tokens, model: ctx.model })

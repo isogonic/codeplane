@@ -19,6 +19,12 @@ export const Info = Schema.Union([
   }),
   Schema.Struct({
     type: Schema.Literal("busy"),
+    /**
+     * Number of user messages queued behind the active turn. 0 means only the
+     * active turn is in flight. Optional for backward-compat with older
+     * clients that don't render this.
+     */
+    queued: Schema.optional(Schema.Number),
   }),
 ])
   .annotate({ identifier: "SessionStatus" })

@@ -87,14 +87,25 @@ export namespace AppFileSystem {
         yield* fs.makeDirectory(path, { recursive: true })
       })
 
+      // Atomic-ish write: stage into a sibling tmp file, then rename onto the
+      // destination. POSIX `rename(2)` is atomic; Windows `MoveFileEx` with
+      // REPLACE_EXISTING is atomic for files on the same volume (which is
+      // always true here since the tmp lives next to the destination). Result:
+      // a reader either sees the previous file or the new file — never a
+      // truncated half-write — even on SIGKILL or power loss.
+      //
+      // The `.tmp.` prefix is filtered by our own glob() callers (which
+      // already filter migration markers and similar). The random suffix
+      // avoids collisions when two effects race writing to the same path.
       const writeWithDirs = Effect.fn("FileSystem.writeWithDirs")(function* (
         path: string,
         content: string | Uint8Array,
         mode?: number,
       ) {
-        const write = typeof content === "string" ? fs.writeFileString(path, content) : fs.writeFile(path, content)
+        const tmp = `${path}.tmp.${Date.now().toString(36)}.${Math.random().toString(36).slice(2, 8)}`
+        const write = typeof content === "string" ? fs.writeFileString(tmp, content) : fs.writeFile(tmp, content)
 
-        yield* write.pipe(
+        const writeWithDirEnsure = write.pipe(
           Effect.catchIf(
             (e) => e.reason._tag === "NotFound",
             () =>
@@ -104,7 +115,17 @@ export namespace AppFileSystem {
               }),
           ),
         )
-        if (mode) yield* fs.chmod(path, mode)
+
+        // If anything fails between staging and rename — including a fault in
+        // chmod — clean up the tmp file so we don't leak debris. We don't
+        // catch the cleanup error: if rm fails on a tmp file we can't help.
+        const cleanup = fs.remove(tmp).pipe(Effect.catch(() => Effect.void))
+
+        yield* Effect.gen(function* () {
+          yield* writeWithDirEnsure
+          if (mode) yield* fs.chmod(tmp, mode)
+          yield* fs.rename(tmp, path)
+        }).pipe(Effect.onError(() => cleanup))
       })
 
       const glob = Effect.fn("FileSystem.glob")(function* (pattern: string, options?: Glob.Options) {

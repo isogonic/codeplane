@@ -6,6 +6,8 @@ import z from "zod"
 import { Session } from "@/session"
 import { MessageV2 } from "@/session/message-v2"
 import { SessionPrompt } from "@/session/prompt"
+import { PromptQueue } from "@/session/prompt-queue"
+import { Instance } from "@/project/instance"
 import { SessionRunState } from "@/session/run-state"
 import { SessionCompaction } from "@/session/compaction"
 import { SessionRevert } from "@/session/revert"
@@ -429,8 +431,15 @@ export const SessionRoutes = lazy(() =>
       ),
       async (c) =>
         jsonRequest("SessionRoutes.abort", c, function* () {
+          const sessionID = c.req.valid("param").sessionID
           const svc = yield* SessionPrompt.Service
-          yield* svc.cancel(c.req.valid("param").sessionID)
+          yield* svc.cancel(sessionID)
+          // Also drain any pending prompt-jobs for this session so they
+          // don't fire after the user thinks they've stopped the session.
+          // Errors here are non-fatal — the cancel above already did the
+          // critical part (interrupting the in-process Runner).
+          const queue = yield* PromptQueue.Service
+          yield* queue.cancelSession(sessionID).pipe(Effect.catch(() => Effect.succeed(0)))
           return true
         }),
     )
@@ -916,17 +925,60 @@ export const SessionRoutes = lazy(() =>
       async (c) => {
         const sessionID = c.req.valid("param").sessionID
         const body = c.req.valid("json")
-        void runRequest(
-          "SessionRoutes.prompt_async",
+        // Persist the request to the prompt-queue table and return 204
+        // immediately. The PromptQueueWorker drains the table on its tick
+        // (per-session FIFO), so the client gets these guarantees:
+        //   - the request survives a server restart (table-backed)
+        //   - retries are bounded and tracked
+        //   - concurrent prompt_async calls for the same session form a
+        //     real FIFO queue, not a depth-1 race
+        // We snapshot `Instance.directory` here because the worker runs
+        // outside any HTTP request and needs to know which project to
+        // re-enter via `Instance.provide`.
+        await runRequest(
+          "SessionRoutes.prompt_async.enqueue",
           c,
-          SessionPrompt.Service.use((svc) =>
-            svc.prompt({ ...body, sessionID } as unknown as SessionPrompt.PromptInput),
+          PromptQueue.Service.use((svc) =>
+            svc.enqueue({
+              sessionID,
+              directory: Instance.directory,
+              payload: JSON.stringify(body),
+            }),
           ),
         ).catch((err) => {
-          log.error("prompt_async failed", { sessionID, error: err })
-          void Bus.publish(Session.Event.Error, {
-            sessionID,
-            error: new NamedError.Unknown({ message: err instanceof Error ? err.message : String(err) }).toObject(),
+          log.error("prompt_async enqueue failed", { sessionID, error: err })
+          // Enqueue failed — fall back to the previous fire-and-forget path
+          // so a queue-table outage doesn't break the endpoint outright. The
+          // caller still sees 204 (the contract) but the worker won't pick
+          // this one up; the in-process invocation is the consolation.
+          void runRequest(
+            "SessionRoutes.prompt_async.fallback",
+            c,
+            SessionPrompt.Service.use((svc) =>
+              svc.prompt({ ...body, sessionID } as unknown as SessionPrompt.PromptInput),
+            ),
+          ).catch(async (err2) => {
+            log.error("prompt_async fallback failed", { sessionID, error: err2 })
+            // Persist the failure onto the latest assistant message via
+            // recordError so it survives a restart and shows up on the
+            // next session load. Without this, a fire-and-forget caller
+            // who isn't subscribed at the moment of failure loses the
+            // error entirely — Bus.publish is best-effort delivery and
+            // the SSE resume buffer only covers post-reconnect events.
+            await runRequest(
+              "SessionRoutes.prompt_async.recordError",
+              c,
+              SessionPrompt.Service.use((svc) => svc.recordError({ sessionID, error: err2 })),
+            ).catch((err3) => {
+              log.error("prompt_async recordError failed", { sessionID, error: err3 })
+              // Last-ditch fallback so the failure isn't entirely silent.
+              void Bus.publish(Session.Event.Error, {
+                sessionID,
+                error: new NamedError.Unknown({
+                  message: err2 instanceof Error ? err2.message : String(err2),
+                }).toObject(),
+              })
+            })
           })
         })
 

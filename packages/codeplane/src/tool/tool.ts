@@ -1,9 +1,22 @@
-import { Effect, Schema } from "effect"
+import { Duration, Effect, Schema } from "effect"
 import type { MessageV2 } from "../session/message-v2"
 import type { Permission } from "../permission"
 import type { SessionID, MessageID } from "../session/schema"
 import * as Truncate from "./truncate"
 import { Agent } from "@/agent/agent"
+
+/**
+ * Hard upper bound on a single tool execution. Anything that would legitimately
+ * run longer than this (long bash builds, deep codesearches, MCP servers doing
+ * remote work) must opt-in by declaring `timeoutMs` on its `Def` — a missing
+ * timeout means "use the default", and the default is conservative on purpose
+ * so a hung MCP server or stuck subprocess can't pin a turn forever.
+ *
+ * Tools that already implement their own timeout (bash_interactive, mcp-exa)
+ * should still be wrapped: the outer timeout is a safety net for the case where
+ * the inner timeout fires but cleanup itself hangs.
+ */
+export const DEFAULT_TOOL_TIMEOUT_MS = 5 * 60_000
 
 interface Metadata {
   [key: string]: any
@@ -38,6 +51,13 @@ export interface Def<
   id: string
   description: string
   parameters: Parameters
+  /**
+   * Per-tool override of {@link DEFAULT_TOOL_TIMEOUT_MS}. Set to a positive
+   * number of milliseconds to extend (or shorten) the wall-clock budget, or
+   * to `null` to opt this tool out of the timeout entirely (only do that for
+   * tools that genuinely cannot misbehave — e.g. pure data formatting).
+   */
+  timeoutMs?: number | null
   execute(args: Schema.Schema.Type<Parameters>, ctx: Context): Effect.Effect<ExecuteResult<M>>
   formatValidationError?(error: unknown): string
 }
@@ -88,6 +108,17 @@ function wrap<Parameters extends Schema.Decoder<unknown>, Result extends Metadat
       // every LLM tool invocation.
       const decode = Schema.decodeUnknownEffect(toolInfo.parameters)
       const execute = toolInfo.execute
+      // Resolve the per-tool timeout once at init. `null` means "no timeout"
+      // (an explicit opt-out), `undefined` falls back to the default. We bake
+      // this in at wrap time so swapping it later requires re-init (matches
+      // how the rest of the Def fields work).
+      const timeoutSetting = toolInfo.timeoutMs
+      const timeoutMs =
+        timeoutSetting === null
+          ? undefined
+          : typeof timeoutSetting === "number" && timeoutSetting > 0
+            ? timeoutSetting
+            : DEFAULT_TOOL_TIMEOUT_MS
       toolInfo.execute = (args, ctx) => {
         const attrs = {
           "tool.name": id,
@@ -106,7 +137,27 @@ function wrap<Parameters extends Schema.Decoder<unknown>, Result extends Metadat
                   ),
             ),
           )
-          const result = yield* execute(decoded as Schema.Schema.Type<Parameters>, ctx)
+          const inner = execute(decoded as Schema.Schema.Type<Parameters>, ctx)
+          const guarded =
+            timeoutMs === undefined
+              ? inner
+              : Effect.timeoutOrElse(inner, {
+                  // Convert the timeout into a defect (Effect.die) so it surfaces
+                  // through the same `Effect.orDie` boundary below, the same way
+                  // any other tool failure does. The model sees a clear message
+                  // explaining why and can decide to retry with different args.
+                  // Effect 4 beta has no `timeoutFail`; `timeoutOrElse` with
+                  // `Effect.die` is the idiomatic equivalent.
+                  duration: Duration.millis(timeoutMs),
+                  orElse: () =>
+                    Effect.die(
+                      new Error(
+                        `Tool ${id} timed out after ${Math.round(timeoutMs / 1000)}s. ` +
+                          `If this work legitimately takes longer, break it into smaller steps or use a tool with a longer budget.`,
+                      ),
+                    ),
+                })
+          const result = yield* guarded
           if (result.metadata.truncated !== undefined) {
             return result
           }

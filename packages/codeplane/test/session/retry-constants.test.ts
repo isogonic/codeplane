@@ -20,8 +20,10 @@ describe("retry constants", () => {
     expect(RETRY_MAX_DELAY_NO_HEADERS).toBe(30_000)
   })
 
-  test("RETRY_MAX_DELAY is 32-bit max", () => {
-    expect(RETRY_MAX_DELAY).toBe(2_147_483_647)
+  test("RETRY_MAX_DELAY is bounded to 5 minutes", () => {
+    // Used to be 2_147_483_647 (~25 days) — a malicious or buggy
+    // `retry-after` header could pin a session in retry for weeks.
+    expect(RETRY_MAX_DELAY).toBe(5 * 60_000)
   })
 
   test("FREE_USAGE_EXCEEDED_MESSAGE is non-empty", () => {
