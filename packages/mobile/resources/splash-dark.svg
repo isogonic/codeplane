@@ -1,11 +1,17 @@
 <svg width="2732" height="2732" viewBox="0 0 2732 2732" xmlns="http://www.w3.org/2000/svg">
   <!--
-    Dark-mode splash. Same chevron + sizing as splash.svg, painted
-    white so it reads against the dark systemBackgroundColor that the
-    LaunchScreen.storyboard paints behind us in dark mode. See
-    splash.svg for the rationale on the transparent canvas and the
-    scale=0.75 sizing math.
+    Dark-mode splash. Identical to splash.svg now that we paint the
+    canvas opaque #0B0D10 with a white chevron — the previous design
+    relied on `systemBackgroundColor` to flip between white and black
+    behind a transparent canvas, which produced a visible flash on
+    light-mode devices when the Capacitor splash plugin's brand-dark
+    backdrop took over from the storyboard. We keep this file (rather
+    than collapse to a single image) so a future `@capacitor/assets`
+    regen still has both source PNGs to fan out — and so a future
+    decision to re-introduce a theme-adaptive splash has a clear hook
+    to edit, without having to remember the dual-asset convention.
   -->
+  <rect width="2732" height="2732" fill="#0B0D10"/>
   <g transform="translate(1174 1174) scale(0.75)">
     <path
       d="M64 64L448 256L64 448V320L256 256L64 192V64Z"
