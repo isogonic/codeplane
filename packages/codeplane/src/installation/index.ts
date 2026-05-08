@@ -16,6 +16,8 @@ import {
   InstallationChannel,
   InstallationVersion,
   isDesktopReleaseVersion,
+  isMobileReleaseVersion,
+  isPlatformReleaseVersion,
 } from "./version"
 
 const log = Log.create({ service: "installation" })
@@ -328,8 +330,15 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
           ),
         )
         const data = yield* HttpClientResponse.schemaBodyJson(GitHubReleaseList)(response)
-        const release = data.find((item) => !item.draft && !item.prerelease && !isDesktopReleaseVersion(item.tag_name))
-        if (!release) return yield* Effect.fail(new Error("No non-desktop GitHub release found"))
+        // Platform-specific tags (`v<x.y.z>-desktop`, `v<x.y.z>-mobile`)
+        // carry per-platform binaries only — they MUST NOT be picked as
+        // upgrade targets for the generic install. Filtering both keeps
+        // a stale `-mobile` tag from being semver-coerced to its base
+        // version and surfaced as an "available update" on a desktop /
+        // CLI install (the bug a user hit on 28.0.1: "Version
+        // 28.0.6-mobile ist verfügbar. Du nutzt 28.0.1.").
+        const release = data.find((item) => !item.draft && !item.prerelease && !isPlatformReleaseVersion(item.tag_name))
+        if (!release) return yield* Effect.fail(new Error("No platform-agnostic GitHub release found"))
         return cleanVersion(release.tag_name)
       }, Effect.orDie)
 
@@ -337,6 +346,19 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
         if (isDesktopReleaseVersion(target)) {
           return yield* new UpgradeFailedError({
             stderr: `Desktop release targets (${target}) cannot be installed through Codeplane updates`,
+          })
+        }
+        if (isMobileReleaseVersion(target)) {
+          // Mobile shell artefacts (.ipa / .xcarchive.zip / .apk / .aab) are
+          // for sideloading, TestFlight, and CI only — production updates
+          // for the mobile shell go through the App Store / Play Store, NOT
+          // through this codepath. Refuse the install with a clear message
+          // so the user isn't left guessing why nothing happened.
+          return yield* new UpgradeFailedError({
+            stderr:
+              `Mobile release targets (${target}) carry iOS / Android shell artefacts only. ` +
+              `Update the Codeplane mobile app via the App Store (iOS) or Play Store (Android); ` +
+              `this code path is for the CLI / web / TUI / server install.`,
           })
         }
         let result: { code: ChildProcessSpawner.ExitCode; stdout: string; stderr: string } | undefined
@@ -483,5 +505,13 @@ export const defaultLayer = layer.pipe(
   Layer.provide(CrossSpawnSpawner.defaultLayer),
 )
 
-export { cleanVersion, comparableVersion, hasUpdate, isDesktopReleaseVersion, isSameVersion } from "./version"
+export {
+  cleanVersion,
+  comparableVersion,
+  hasUpdate,
+  isDesktopReleaseVersion,
+  isMobileReleaseVersion,
+  isPlatformReleaseVersion,
+  isSameVersion,
+} from "./version"
 export * as Installation from "."

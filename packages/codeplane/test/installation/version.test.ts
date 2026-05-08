@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test"
 import {
   cleanVersion,
   isDesktopReleaseVersion,
+  isMobileReleaseVersion,
+  isPlatformReleaseVersion,
   comparableVersion,
   isSameVersion,
   hasUpdate,
@@ -9,6 +11,7 @@ import {
   InstallationChannel,
   InstallationLocal,
   DesktopReleaseSuffix,
+  MobileReleaseSuffix,
 } from "../../src/installation/version"
 
 describe("cleanVersion", () => {
@@ -54,12 +57,64 @@ describe("isDesktopReleaseVersion", () => {
     expect(isDesktopReleaseVersion("1.2.3")).toBe(false)
   })
 
+  test("returns false for mobile suffix", () => {
+    expect(isDesktopReleaseVersion("1.2.3-mobile")).toBe(false)
+  })
+
   test("returns false when suffix not at end", () => {
     expect(isDesktopReleaseVersion("1.2.3-desktop-rc")).toBe(false)
   })
 
   test("DesktopReleaseSuffix is '-desktop'", () => {
     expect(DesktopReleaseSuffix).toBe("-desktop")
+  })
+})
+
+describe("isMobileReleaseVersion", () => {
+  test("returns true when suffix matches", () => {
+    expect(isMobileReleaseVersion("1.2.3-mobile")).toBe(true)
+  })
+
+  test("returns true with leading v", () => {
+    expect(isMobileReleaseVersion("v1.2.3-mobile")).toBe(true)
+  })
+
+  test("returns false when no suffix", () => {
+    expect(isMobileReleaseVersion("1.2.3")).toBe(false)
+  })
+
+  test("returns false for desktop suffix", () => {
+    expect(isMobileReleaseVersion("1.2.3-desktop")).toBe(false)
+  })
+
+  test("returns false when suffix not at end", () => {
+    expect(isMobileReleaseVersion("1.2.3-mobile-rc")).toBe(false)
+  })
+
+  test("MobileReleaseSuffix is '-mobile'", () => {
+    expect(MobileReleaseSuffix).toBe("-mobile")
+  })
+})
+
+describe("isPlatformReleaseVersion", () => {
+  // Combined gate the release-picker uses to filter out BOTH `-desktop`
+  // and `-mobile` tags. The bug this prevents (28.0.6-mobile getting
+  // semver-coerced to 28.0.6 and surfaced as an "available update" on a
+  // 28.0.1 desktop install) goes through this exact predicate.
+  test("returns true for desktop tag", () => {
+    expect(isPlatformReleaseVersion("v1.2.3-desktop")).toBe(true)
+  })
+
+  test("returns true for mobile tag", () => {
+    expect(isPlatformReleaseVersion("v1.2.3-mobile")).toBe(true)
+  })
+
+  test("returns false for canonical tag", () => {
+    expect(isPlatformReleaseVersion("v1.2.3")).toBe(false)
+  })
+
+  test("returns false for empty input", () => {
+    expect(isPlatformReleaseVersion("")).toBe(false)
   })
 })
 
