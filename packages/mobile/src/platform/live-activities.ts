@@ -299,9 +299,41 @@ export function createLiveActivities(): CodeplaneLiveActivitiesAPI {
 
   if (!isiOS) return noop
 
+  // One-time startup probe so the picker's bring-up tells us whether
+  // the native CodeplaneLiveActivities plugin is reachable AT ALL.
+  // Three months of "the toggle doesn't show up" reports turned out
+  // to be Capacitor's `registerPlugin` falling through to the web
+  // stub because the native plugin wasn't linked into the binary —
+  // and the silent `.catch(() => ({supported: false}))` we used to
+  // have on every isSupported call masked it. Now if the plugin isn't
+  // there, the very first message in the device console is the real
+  // reason ("plugin not implemented", "PluginCallError", etc.).
+  // eslint-disable-next-line no-console
+  console.log("[live-activity] probing native plugin…")
+  Native.isSupported().then(
+    (r) => {
+      // eslint-disable-next-line no-console
+      console.log("[live-activity] native plugin reachable", r)
+    },
+    (err) => {
+      const reason = err instanceof Error ? err.message : String(err)
+      // eslint-disable-next-line no-console
+      console.error(
+        "[live-activity] NATIVE PLUGIN UNREACHABLE — falling through to web stub. " +
+          "This is why the Lock Screen toggle is hidden. Reason:",
+        reason,
+      )
+    },
+  )
+
   return {
     async isSupported() {
-      return Native.isSupported().catch(() => ({ supported: false, enabled: false }))
+      return Native.isSupported().catch((err) => {
+        const reason = err instanceof Error ? err.message : String(err)
+        // eslint-disable-next-line no-console
+        console.error("[live-activity] isSupported failed:", reason)
+        return { supported: false, enabled: false }
+      })
     },
     async start(attributes, contentState, options) {
       try {
@@ -354,7 +386,9 @@ export function createLiveActivities(): CodeplaneLiveActivitiesAPI {
           instanceId: a.instanceId,
           startedAt: a.startedAt,
         }))
-      } catch {
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn("[live-activity] list failed:", err instanceof Error ? err.message : err)
         return []
       }
     },
@@ -362,7 +396,9 @@ export function createLiveActivities(): CodeplaneLiveActivitiesAPI {
       try {
         const { token } = await Native.registerForUpdates()
         return token ?? null
-      } catch {
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn("[live-activity] registerForUpdates failed:", err instanceof Error ? err.message : err)
         return null
       }
     },
