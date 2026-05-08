@@ -366,7 +366,13 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          # JDK 21 is required by capacitor-android since 7.x — the
+          # plugin's own bytecode is compiled with `--release 21`, so a
+          # JDK-17 builder fails at compileDebugJavaWithJavac with:
+          #   "error: invalid source release: 21"
+          # AGP 8.9.x supports JDK 17 OR 21; we pick 21 to satisfy the
+          # transitive plugin requirement.
+          java-version: "21"
 
       - uses: android-actions/setup-android@v3
         with:
