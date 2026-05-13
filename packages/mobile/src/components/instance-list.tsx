@@ -1,4 +1,5 @@
-import { Component, For, Show, createSignal, onCleanup } from "solid-js"
+import { For, Show, createSignal, onCleanup } from "solid-js"
+import type { Component } from "solid-js"
 import type { SavedInstance } from "@codeplane-ai/shared/instance"
 import { RightChevron } from "./mobile-header"
 import type { UICacheAPI, UICacheEntry } from "../platform/ui-cache"

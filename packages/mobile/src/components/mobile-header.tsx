@@ -1,4 +1,5 @@
-import { Component, JSX, Show } from "solid-js"
+import { Show } from "solid-js"
+import type { Component, JSX } from "solid-js"
 import {
   ArrowLeft01Icon,
   ArrowRight01Icon,

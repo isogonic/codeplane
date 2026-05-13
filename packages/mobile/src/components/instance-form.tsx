@@ -1,4 +1,5 @@
-import { Component, Show, createSignal, createEffect } from "solid-js"
+import { Show, createSignal, createEffect } from "solid-js"
+import type { Component } from "solid-js"
 import type { SavedInstance } from "@codeplane-ai/shared/instance"
 import { formatHeaders, parseHeaders } from "@codeplane-ai/shared/headers"
 

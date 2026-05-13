@@ -1,4 +1,5 @@
-import { Component, JSX, onCleanup, onMount } from "solid-js"
+import { onCleanup, onMount } from "solid-js"
+import type { Component, JSX } from "solid-js"
 import type { CodeplaneMobileAPI } from "../platform/api"
 
 /**

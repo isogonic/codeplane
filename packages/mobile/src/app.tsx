@@ -1,4 +1,5 @@
-import { Component, Show, createMemo, createSignal, onMount, onCleanup } from "solid-js"
+import { Show, createMemo, createSignal, onMount, onCleanup } from "solid-js"
+import type { Component } from "solid-js"
 import type { SavedInstance } from "@codeplane-ai/shared/instance"
 import { createCodeplaneMobile } from "./platform/api"
 import { MobileShell } from "./components/mobile-shell"

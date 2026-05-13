@@ -1,4 +1,5 @@
-import { Component, Show, createEffect, createSignal, onCleanup, onMount } from "solid-js"
+import { Show, createEffect, createSignal, onCleanup, onMount } from "solid-js"
+import type { Component } from "solid-js"
 import { InAppBrowser, ToolBarType } from "@capgo/inappbrowser"
 import type { CodeplaneMobileAPI } from "../platform/api"
 import type { SavedInstance } from "@codeplane-ai/shared/instance"

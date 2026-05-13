@@ -1,4 +1,5 @@
-import { Component, JSX, Show, createEffect, onCleanup } from "solid-js"
+import { Show, createEffect, onCleanup } from "solid-js"
+import type { Component, JSX } from "solid-js"
 import { Portal } from "solid-js/web"
 
 /**
