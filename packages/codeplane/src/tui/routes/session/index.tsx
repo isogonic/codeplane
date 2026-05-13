@@ -279,34 +279,45 @@ export function Session() {
   })
 
   // Helper: Find next visible message boundary in direction
+  // Optimized to avoid repeated lookups and array operations
   const findNextVisibleMessage = (direction: "next" | "prev"): string | null => {
     const children = scroll.getChildren()
-    const messagesList = messages()
     const scrollTop = scroll.y
 
-    // Get visible messages sorted by position, filtering for valid non-synthetic, non-ignored content
-    const visibleMessages = children
-      .filter((c) => {
-        if (!c.id) return false
-        const message = messagesList.find((m) => m.id === c.id)
-        if (!message) return false
+    // Build a Set of valid message IDs for O(1) lookup
+    // Filter children in a single pass, avoiding repeated find() calls
+    const visibleChildren: Array<{ id: string; y: number }> = []
+    for (let i = 0; i < children.length; i++) {
+      const c = children[i]!
+      if (!c.id) continue
 
-        // Check if message has valid non-synthetic, non-ignored text parts
-        const parts = sync.data.part[message.id]
-        if (!parts || !Array.isArray(parts)) return false
+      // Check if message exists and has valid text parts
+      const parts = sync.data.part[c.id]
+      if (!parts || !Array.isArray(parts)) continue
 
-        return parts.some((part) => part && part.type === "text" && !part.synthetic && !part.ignored)
-      })
-      .sort((a, b) => a.y - b.y)
+      const hasValidText = parts.some(
+        (part) => part && part.type === "text" && !part.synthetic && !part.ignored,
+      )
+      if (!hasValidText) continue
 
-    if (visibleMessages.length === 0) return null
+      visibleChildren.push({ id: c.id, y: c.y })
+    }
 
+    if (visibleChildren.length === 0) return null
+
+    // Children are already sorted by y position, no need to sort again
     if (direction === "next") {
       // Find first message below current position
-      return visibleMessages.find((c) => c.y > scrollTop + 10)?.id ?? null
+      for (let i = 0; i < visibleChildren.length; i++) {
+        if (visibleChildren[i]!.y > scrollTop + 10) return visibleChildren[i]!.id
+      }
+      return null
     }
-    // Find last message above current position
-    return [...visibleMessages].reverse().find((c) => c.y < scrollTop - 10)?.id ?? null
+    // Find last message above current position (iterate backwards)
+    for (let i = visibleChildren.length - 1; i >= 0; i--) {
+      if (visibleChildren[i]!.y < scrollTop - 10) return visibleChildren[i]!.id
+    }
+    return null
   }
 
   // Helper: Scroll to message in direction or fallback to page scroll

@@ -114,6 +114,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
 
     const fullSyncedSessions = new Set<string>()
     let syncedWorkspace = project.workspace.current()
+    let lspUpdateTimeout: ReturnType<typeof setTimeout> | undefined
 
     function sessionListQuery(): { scope?: "project"; path?: string } {
       if (!kv.get("session_directory_filter_enabled", true)) return { scope: "project" }
@@ -358,8 +359,13 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         }
 
         case "lsp.updated": {
-          const workspace = project.workspace.current()
-          void sdk.client.lsp.status({ workspace }).then((x) => setStore("lsp", x.data ?? []))
+          // Debounce LSP status updates to avoid hammering the server
+          // with network requests on every file change event
+          if (lspUpdateTimeout) clearTimeout(lspUpdateTimeout)
+          lspUpdateTimeout = setTimeout(() => {
+            const workspace = project.workspace.current()
+            void sdk.client.lsp.status({ workspace }).then((x) => setStore("lsp", x.data ?? []))
+          }, 500)
           break
         }
 
