@@ -99,7 +99,7 @@ export function ModesSettings(props: { layout?: "dialog" | "page" } = {}) {
   const setEnabled = useMutation(() => ({
     mutationFn: async (input: { mode: ModeEntry; enabled: boolean }) => {
       const config = { ...(input.mode.source === "mode" ? globalSync.data.config.mode : globalSync.data.config.agent) }
-      config[input.mode.name] = { ...(config[input.mode.name] ?? {}), disable: !input.enabled }
+      config[input.mode.name] = { ...config[input.mode.name], disable: !input.enabled }
       await updateConfig(input.mode.source, config)
       await globalSDK.client.global.dispose().catch(() => undefined)
     },

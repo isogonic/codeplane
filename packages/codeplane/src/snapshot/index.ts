@@ -2,7 +2,7 @@ import { Cause, Duration, Effect, Layer, Schedule, Schema, Semaphore, Context, S
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import { formatPatch, structuredPatch } from "diff"
 import path from "path"
-import z from "zod"
+
 import * as CrossSpawnSpawner from "@/effect/cross-spawn-spawner"
 import { InstanceState } from "@/effect"
 import { AppFileSystem } from "@codeplane-ai/shared/filesystem"

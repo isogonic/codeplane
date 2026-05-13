@@ -56,7 +56,7 @@ const state = () => {
             }),
           updateGlobal: (next) =>
             Effect.sync(() => {
-              config = { ...config, ...next, git: { ...(config.git ?? {}), ...(next.git ?? {}) } }
+              config = { ...config, ...next, git: { ...config.git, ...next.git } }
               return config
             }),
           invalidate: () => Effect.void,

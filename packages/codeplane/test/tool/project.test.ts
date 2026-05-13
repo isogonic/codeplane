@@ -77,7 +77,7 @@ describe("tool.project", () => {
 
   it.live("configures editable project commands and includes them in context", () =>
     provideTmpdirInstance(
-      (dir) =>
+      (_dir) =>
         Effect.gen(function* () {
           yield* run({
             operation: "config_set",

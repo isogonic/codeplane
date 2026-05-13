@@ -24,8 +24,6 @@ import { createResizeObserver } from "@solid-primitives/resize-observer"
 import { useLanguage } from "@/context/language"
 import { useLiveActivity } from "@/context/live-activity"
 import { useSessionKey } from "@/pages/session/session-layout"
-import { useGlobalSDK } from "@/context/global-sdk"
-import { usePlatform } from "@/context/platform"
 import { useSettings } from "@/context/settings"
 import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
@@ -233,7 +231,6 @@ export function MessageTimeline(props: {
   let touchGesture: number | undefined
 
   const navigate = useNavigate()
-  const globalSDK = useGlobalSDK()
   const sdk = useSDK()
   const sync = useSync()
   const fileReference = useFileReference()
@@ -241,7 +238,6 @@ export function MessageTimeline(props: {
   const dialog = useDialog()
   const language = useLanguage()
   const { params, sessionKey } = useSessionKey()
-  const platform = usePlatform()
   // Live Activity bridge — only renders the menu item when the host
   // is a mobile shell that can actually surface activities (iOS 16.2+).
   const liveActivity = useLiveActivity()
@@ -395,7 +391,6 @@ export function MessageTimeline(props: {
     ms: pace(640),
   })
 
-  let more: HTMLButtonElement | undefined
   let head: HTMLDivElement | undefined
 
   createResizeObserver(
@@ -859,7 +854,7 @@ export function MessageTimeline(props: {
                               aria-label={language.t("common.moreOptions")}
                               aria-expanded={title.menuOpen}
                               ref={(el: HTMLButtonElement) => {
-                                more = el
+                                // no-op: the ref was previously used for focus management
                               }}
                             />
                             <DropdownMenu.Portal>

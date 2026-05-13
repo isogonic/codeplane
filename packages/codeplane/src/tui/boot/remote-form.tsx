@@ -96,7 +96,7 @@ function decomposeExisting(existing?: SavedInstance) {
     ignoreCert: false,
   }
   if (!existing) return empty
-  const headers = { ...(existing.headers ?? {}) }
+  const headers = { ...existing.headers }
   let username = ""
   let password = ""
   const authKey = Object.keys(headers).find((k) => k.toLowerCase() === "authorization")
@@ -223,7 +223,7 @@ export function RemoteInstanceForm(props: {
       }
     }
     return {
-      ...(props.existing ?? {}),
+      ...props.existing,
       id,
       url: trimmedUrl,
       label: trimmedLabel,

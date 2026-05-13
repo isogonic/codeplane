@@ -76,7 +76,7 @@ const state = (client: HttpClient.HttpClient, initial: Config.Info, auth: Record
             }),
           updateGlobal: (next) =>
             Effect.sync(() => {
-              config = { ...config, ...next, git: { ...(config.git ?? {}), ...(next.git ?? {}) } }
+              config = { ...config, ...next, git: { ...config.git, ...next.git } }
               return config
             }),
           invalidate: () => Effect.void,

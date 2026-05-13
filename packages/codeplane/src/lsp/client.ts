@@ -172,7 +172,7 @@ export async function create(input: { serverID: string; server: LSPServer.Handle
     pullDiagnostics.set(filePath, next)
   }
   const emitRegistrationChange = () => {
-    for (const listener of [...registrationListeners]) listener()
+    for (const listener of registrationListeners) listener()
   }
 
   // --- LSP connection handlers ---

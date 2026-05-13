@@ -112,7 +112,7 @@ function registryKey(registry: string) {
 
 function merge(base: Info, next: Info): Info {
   const scopes = {
-    ...(base.scopes ?? {}),
+    ...base.scopes,
     ...Object.fromEntries(
       Object.entries(next.scopes ?? {}).map(([scope, value]) => [normalizeScope(scope) ?? scope, value]),
     ),

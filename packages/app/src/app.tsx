@@ -62,7 +62,6 @@ const SettingsRoute = lazy(loadSettings)
 const CronRoute = lazy(loadCron)
 const Session = lazy(loadSession)
 const ChatRoute = lazy(loadChat)
-const Loading = () => <div class="size-full" />
 const ModesRedirect = () => <Navigate href="/settings/modes" />
 const ModelsRedirect = () => <Navigate href="/settings/models" />
 const McpRedirect = () => <Navigate href="/settings/mcp" />

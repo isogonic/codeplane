@@ -245,7 +245,7 @@ function parseJson(code: string): unknown {
   try {
     return JSON.parse(trimmed)
   } catch (err) {
-    throw new Error(`invalid JSON: ${err instanceof Error ? err.message : String(err)}`)
+    throw new Error(`invalid JSON: ${err instanceof Error ? err.message : String(err)}`, { cause: err })
   }
 }
 

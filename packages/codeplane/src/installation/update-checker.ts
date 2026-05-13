@@ -1,4 +1,3 @@
-import { Effect } from "effect"
 import { GlobalBus } from "@/bus/global"
 import { Log } from "@/util"
 import { AppRuntime } from "@/effect/app-runtime"

@@ -64,7 +64,7 @@ export function createServerVersionWatcher(options: ServerVersionWatcherOptions)
     abort = new AbortController()
     try {
       const response = await fetchImpl(`${base}/global/version`, {
-        headers: { ...(options.headers ?? {}) },
+        headers: options.headers,
         redirect: "follow",
         signal: abort.signal,
       })

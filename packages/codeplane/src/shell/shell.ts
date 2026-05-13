@@ -34,7 +34,7 @@ export async function killTree(proc: ChildProcess, opts?: { exited?: () => boole
     if (!opts?.exited?.()) {
       process.kill(-pid, "SIGKILL")
     }
-  } catch (_e) {
+  } catch {
     proc.kill("SIGTERM")
     await sleep(SIGKILL_TIMEOUT_MS)
     if (!opts?.exited?.()) {

@@ -21,26 +21,29 @@ export type SessionCache = {
 }
 
 export function cachedSessionIDs(store: SessionCache) {
-  return new Set(
-    [
-      ...Object.keys(store.message),
-      ...Object.keys(store.session_diff),
-      ...Object.keys(store.todo),
-      ...Object.keys(store.permission),
-      ...Object.keys(store.question),
-      ...Object.keys(store.session_status),
-      ...Object.values(store.part)
-        .map((parts) => parts?.find((part) => !!part?.sessionID)?.sessionID)
-        .filter((sessionID): sessionID is string => !!sessionID),
-    ].filter(Boolean),
-  )
+  const result = new Set<string>()
+  // Single-pass collection of all session IDs — avoids creating
+  // N intermediate arrays from multiple Object.keys/values calls.
+  for (const id of Object.keys(store.message)) result.add(id)
+  for (const id of Object.keys(store.session_diff)) result.add(id)
+  for (const id of Object.keys(store.todo)) result.add(id)
+  for (const id of Object.keys(store.permission)) result.add(id)
+  for (const id of Object.keys(store.question)) result.add(id)
+  for (const id of Object.keys(store.session_status)) result.add(id)
+  for (const parts of Object.values(store.part)) {
+    const sessionID = parts?.find((part) => !!part?.sessionID)?.sessionID
+    if (sessionID) result.add(sessionID)
+  }
+  return result
 }
 
 export function dropSessionCaches(store: SessionCache, sessionIDs: Iterable<string>) {
   const stale = new Set(Array.from(sessionIDs).filter(Boolean))
   if (stale.size === 0) return
 
-  for (const key of Object.keys(store.part)) {
+  // Collect keys first to avoid iterating over a dict being modified.
+  const partKeys = Object.keys(store.part)
+  for (const key of partKeys) {
     const parts = store.part[key]
     if (!parts?.some((part) => stale.has(part?.sessionID ?? ""))) continue
     delete store.part[key]

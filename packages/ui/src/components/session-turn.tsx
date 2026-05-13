@@ -445,8 +445,6 @@ export function SessionTurn(
     return undefined
   })
 
-  const stepCount = createMemo(() => turnTrace().completedCount + turnTrace().running.length)
-
   const thinkingStart = createMemo<number | undefined>(() => {
     if (!showThinking()) return undefined
     const last = assistantMessages().at(-1)?.time.created

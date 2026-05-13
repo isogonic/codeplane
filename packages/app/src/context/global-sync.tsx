@@ -173,8 +173,12 @@ function createGlobalSync() {
     const loadChildren = (
       parents: Session[],
       seen = new Set(parents.map((session) => session.id)),
-    ): Promise<Session[]> =>
-      Promise.all(
+      depth = 0,
+    ): Promise<Session[]> => {
+      // Guard against deeply nested session trees causing stack overflow.
+      // 10 levels of nesting is more than enough for any real session hierarchy.
+      if (depth >= 10 || parents.length === 0) return Promise.resolve([])
+      return Promise.all(
         parents.map((parent) =>
           retry(() => globalSDK.client.session.children({ directory, sessionID: parent.id }))
             .then((x) =>
@@ -192,8 +196,9 @@ function createGlobalSync() {
       ).then((results) => {
         const childSessions = results.flat()
         if (childSessions.length === 0) return []
-        return loadChildren(childSessions, seen).then((nested) => [...childSessions, ...nested])
+        return loadChildren(childSessions, seen, depth + 1).then((nested) => [...childSessions, ...nested])
       })
+    }
     const promise = queryClient
       .fetchQuery({
         ...loadSessionsQuery(directory, scope.key),

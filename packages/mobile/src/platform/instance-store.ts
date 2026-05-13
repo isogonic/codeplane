@@ -17,7 +17,6 @@ import { mobilePreferences } from "./storage"
 import type { SSOConfig } from "./sso-types"
 
 const KEY_INSTANCES = "cp:instances:v1"
-const KEY_LAST = "cp:instances:last"
 const KEY_SSO_CONFIG = (id: string) => `cp:sso:config:${id}`
 
 type Persisted = SavedInstance & { headers?: Record<string, string> }

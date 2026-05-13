@@ -2,7 +2,6 @@ import { spawn, spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { createWriteStream } from "node:fs"
 import fs from "node:fs/promises"
-import os from "node:os"
 import path from "node:path"
 import { Readable, Transform } from "node:stream"
 import { pipeline } from "node:stream/promises"
@@ -15,6 +14,8 @@ const CONFIG_FILES = ["codeplane.jsonc", "codeplane.json", "config.json"] as con
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[\w.+-]+)?$/
 const NPM_FETCH_TIMEOUT_MS = Number(process.env.CODEPLANE_NPM_FETCH_TIMEOUT_MS) || 120_000
 const cleanVersion = (value: string) => (value ?? "").toString().trim().replace(/^[vV]+/, "")
+
+// Call paths() each time to respect CODEPLANE_HOME_DIR changes (e.g., in tests)
 const localVersionFile = () => path.join(CodeplaneHome.paths().local_server, "default-version")
 const localCliVersionFile = () => path.join(CodeplaneHome.paths().bin, ".codeplane-version")
 

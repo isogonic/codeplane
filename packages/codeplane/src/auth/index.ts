@@ -59,7 +59,9 @@ export const layer = Layer.effect(
       if (process.env.CODEPLANE_AUTH_CONTENT) {
         try {
           return JSON.parse(process.env.CODEPLANE_AUTH_CONTENT)
-        } catch (err) {}
+        } catch {
+          // Ignore parse errors for dummy auth content
+        }
       }
 
       const data = (yield* fsys.readJson(file).pipe(Effect.orElseSucceed(() => ({})))) as Record<string, unknown>

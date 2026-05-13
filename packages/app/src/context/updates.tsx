@@ -52,27 +52,6 @@ function isReleaseVersion(value: string | undefined | null) {
   return /^\d+\.\d+\.\d+/.test(value)
 }
 
-function isNewer(current: string, previous: string | null) {
-  if (!previous) return false
-  if (current === previous) return false
-  const parse = (v: string) =>
-    v
-      .replace(/^v/, "")
-      .split(/[-+]/)[0]
-      .split(".")
-      .map((n) => Number.parseInt(n, 10))
-      .filter((n) => Number.isFinite(n))
-  const a = parse(current)
-  const b = parse(previous)
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    const x = a[i] ?? 0
-    const y = b[i] ?? 0
-    if (x > y) return true
-    if (x < y) return false
-  }
-  return false
-}
-
 export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContext({
   name: "Updates",
   init: () => {

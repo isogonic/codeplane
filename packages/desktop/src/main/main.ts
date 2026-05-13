@@ -196,7 +196,7 @@ const logger = createDesktopLogger(
 // poll/fetch recovers cleanly. Log and swallow instead of crashing the shell.
 const isTransientNetError = (value: unknown): boolean => {
   const message = value instanceof Error ? value.message : typeof value === "string" ? value : ""
-  return /^net::ERR_/.test(message)
+  return message.startsWith("net::ERR_")
 }
 process.on("uncaughtException", (error) => {
   logger.log("main", isTransientNetError(error) ? "process.uncaught.net" : "process.uncaught", { error })
@@ -321,7 +321,7 @@ function readDesktopStorage(name: string | undefined, key: string) {
 function writeDesktopStorage(name: string | undefined, key: string, value: string) {
   const persist = { ...desktopPersistState() }
   const storageName = desktopStorageName(name)
-  persist[storageName] = { ...(persist[storageName] ?? {}), [key]: value }
+  persist[storageName] = { ...persist[storageName], [key]: value }
   store.set("persist", persist)
 }
 
