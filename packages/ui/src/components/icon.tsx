@@ -14,85 +14,87 @@ import { splitProps, type ComponentProps, createMemo } from "solid-js"
  * system — HugeIcons doesn't carry brand marks.
  */
 
-import AccessIcon from "@hugeicons/core-free-icons/AccessIcon"
-import AlertCircleIcon from "@hugeicons/core-free-icons/AlertCircleIcon"
-import ArchiveIcon from "@hugeicons/core-free-icons/ArchiveIcon"
-import ArrowDataTransferHorizontalIcon from "@hugeicons/core-free-icons/ArrowDataTransferHorizontalIcon"
-import ArrowDown01Icon from "@hugeicons/core-free-icons/ArrowDown01Icon"
-import ArrowDownLeft01Icon from "@hugeicons/core-free-icons/ArrowDownLeft01Icon"
-import ArrowLeft01Icon from "@hugeicons/core-free-icons/ArrowLeft01Icon"
-import ArrowRight01Icon from "@hugeicons/core-free-icons/ArrowRight01Icon"
-import ArrowRightDoubleIcon from "@hugeicons/core-free-icons/ArrowRightDoubleIcon"
-import ArrowUp01Icon from "@hugeicons/core-free-icons/ArrowUp01Icon"
-import ArrowUpDownIcon from "@hugeicons/core-free-icons/ArrowUpDownIcon"
-import BrainIcon from "@hugeicons/core-free-icons/BrainIcon"
-import BubbleChatIcon from "@hugeicons/core-free-icons/BubbleChatIcon"
-import Camera01Icon from "@hugeicons/core-free-icons/Camera01Icon"
-import Cancel01Icon from "@hugeicons/core-free-icons/Cancel01Icon"
-import CancelCircleIcon from "@hugeicons/core-free-icons/CancelCircleIcon"
-import ChatBotIcon from "@hugeicons/core-free-icons/ChatBotIcon"
-import CheckListIcon from "@hugeicons/core-free-icons/CheckListIcon"
-import CheckmarkCircle01Icon from "@hugeicons/core-free-icons/CheckmarkCircle01Icon"
-import CloudUploadIcon from "@hugeicons/core-free-icons/CloudUploadIcon"
-import CodeIcon from "@hugeicons/core-free-icons/CodeIcon"
-import CodeSimpleIcon from "@hugeicons/core-free-icons/CodeSimpleIcon"
-import CodeSquareIcon from "@hugeicons/core-free-icons/CodeSquareIcon"
-import CollapseIcon from "@hugeicons/core-free-icons/CollapseIcon"
-import CommandLineIcon from "@hugeicons/core-free-icons/CommandLineIcon"
-import Comment01Icon from "@hugeicons/core-free-icons/Comment01Icon"
-import Copy01Icon from "@hugeicons/core-free-icons/Copy01Icon"
-import CubeIcon from "@hugeicons/core-free-icons/CubeIcon"
-import CursorPointer02Icon from "@hugeicons/core-free-icons/CursorPointer02Icon"
-import Delete02Icon from "@hugeicons/core-free-icons/Delete02Icon"
-import DiscordIcon from "@hugeicons/core-free-icons/DiscordIcon"
-import Download01Icon from "@hugeicons/core-free-icons/Download01Icon"
-import DragDropIcon from "@hugeicons/core-free-icons/DragDropIcon"
-import Edit01Icon from "@hugeicons/core-free-icons/Edit01Icon"
-import Edit02Icon from "@hugeicons/core-free-icons/Edit02Icon"
-import ExpandIcon from "@hugeicons/core-free-icons/ExpandIcon"
-import EyeIcon from "@hugeicons/core-free-icons/EyeIcon"
-import FileEditIcon from "@hugeicons/core-free-icons/FileEditIcon"
-import Folder01Icon from "@hugeicons/core-free-icons/Folder01Icon"
-import FolderAddIcon from "@hugeicons/core-free-icons/FolderAddIcon"
-import GitBranchIcon from "@hugeicons/core-free-icons/GitBranchIcon"
-import GitForkIcon from "@hugeicons/core-free-icons/GitForkIcon"
-import Github01Icon from "@hugeicons/core-free-icons/Github01Icon"
-import GlobeIcon from "@hugeicons/core-free-icons/GlobeIcon"
-import HashtagIcon from "@hugeicons/core-free-icons/HashtagIcon"
-import HelpCircleIcon from "@hugeicons/core-free-icons/HelpCircleIcon"
-import HierarchySquare01Icon from "@hugeicons/core-free-icons/HierarchySquare01Icon"
-import Home01Icon from "@hugeicons/core-free-icons/Home01Icon"
-import Image01Icon from "@hugeicons/core-free-icons/Image01Icon"
-import KeyboardIcon from "@hugeicons/core-free-icons/KeyboardIcon"
-import LayoutBottomIcon from "@hugeicons/core-free-icons/LayoutBottomIcon"
-import LayoutLeftIcon from "@hugeicons/core-free-icons/LayoutLeftIcon"
-import LayoutRightIcon from "@hugeicons/core-free-icons/LayoutRightIcon"
-import LeftToRightListBulletIcon from "@hugeicons/core-free-icons/LeftToRightListBulletIcon"
-import Link01Icon from "@hugeicons/core-free-icons/Link01Icon"
-import LinkSquare02Icon from "@hugeicons/core-free-icons/LinkSquare02Icon"
-import McpServerIcon from "@hugeicons/core-free-icons/McpServerIcon"
-import Menu01Icon from "@hugeicons/core-free-icons/Menu01Icon"
-import MinusSignIcon from "@hugeicons/core-free-icons/MinusSignIcon"
-import Notification01Icon from "@hugeicons/core-free-icons/Notification01Icon"
-import PencilEdit01Icon from "@hugeicons/core-free-icons/PencilEdit01Icon"
-import PlusSignIcon from "@hugeicons/core-free-icons/PlusSignIcon"
-import ProgressIcon from "@hugeicons/core-free-icons/ProgressIcon"
-import RefreshIcon from "@hugeicons/core-free-icons/RefreshIcon"
-import ReturnRequestIcon from "@hugeicons/core-free-icons/ReturnRequestIcon"
-import Search01Icon from "@hugeicons/core-free-icons/Search01Icon"
-import SearchList01Icon from "@hugeicons/core-free-icons/SearchList01Icon"
-import ServerStack01Icon from "@hugeicons/core-free-icons/ServerStack01Icon"
-import Settings02Icon from "@hugeicons/core-free-icons/Settings02Icon"
-import Share01Icon from "@hugeicons/core-free-icons/Share01Icon"
-import Shield01Icon from "@hugeicons/core-free-icons/Shield01Icon"
-import SidebarLeft01Icon from "@hugeicons/core-free-icons/SidebarLeft01Icon"
-import SlidersHorizontalIcon from "@hugeicons/core-free-icons/SlidersHorizontalIcon"
-import SparklesIcon from "@hugeicons/core-free-icons/SparklesIcon"
-import SquareArrowUpRightIcon from "@hugeicons/core-free-icons/SquareArrowUpRightIcon"
-import StopIcon from "@hugeicons/core-free-icons/StopIcon"
-import TerminalIcon from "@hugeicons/core-free-icons/TerminalIcon"
-import TextAlignRightIcon from "@hugeicons/core-free-icons/TextAlignRightIcon"
-import Tick01Icon from "@hugeicons/core-free-icons/Tick01Icon"
+import {
+  AccessIcon,
+  AlertCircleIcon,
+  ArchiveIcon,
+  ArrowDataTransferHorizontalIcon,
+  ArrowDown01Icon,
+  ArrowDownLeft01Icon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  ArrowRightDoubleIcon,
+  ArrowUp01Icon,
+  ArrowUpDownIcon,
+  BrainIcon,
+  BubbleChatIcon,
+  Camera01Icon,
+  Cancel01Icon,
+  CancelCircleIcon,
+  ChatBotIcon,
+  CheckListIcon,
+  CheckmarkCircle01Icon,
+  CloudUploadIcon,
+  CodeIcon,
+  CodeSimpleIcon,
+  CodeSquareIcon,
+  CollapseIcon,
+  CommandLineIcon,
+  Comment01Icon,
+  Copy01Icon,
+  CubeIcon,
+  CursorPointer02Icon,
+  Delete02Icon,
+  DiscordIcon,
+  Download01Icon,
+  DragDropIcon,
+  Edit01Icon,
+  Edit02Icon,
+  ExpandIcon,
+  EyeIcon,
+  FileEditIcon,
+  Folder01Icon,
+  FolderAddIcon,
+  GitBranchIcon,
+  GitForkIcon,
+  Github01Icon,
+  GlobeIcon,
+  HashtagIcon,
+  HelpCircleIcon,
+  HierarchySquare01Icon,
+  Home01Icon,
+  Image01Icon,
+  KeyboardIcon,
+  LayoutBottomIcon,
+  LayoutLeftIcon,
+  LayoutRightIcon,
+  LeftToRightListBulletIcon,
+  Link01Icon,
+  LinkSquare02Icon,
+  McpServerIcon,
+  Menu01Icon,
+  MinusSignIcon,
+  Notification01Icon,
+  PencilEdit01Icon,
+  PlusSignIcon,
+  ProgressIcon,
+  RefreshIcon,
+  ReturnRequestIcon,
+  Search01Icon,
+  SearchList01Icon,
+  ServerStack01Icon,
+  Settings02Icon,
+  Share01Icon,
+  Shield01Icon,
+  SidebarLeft01Icon,
+  SlidersHorizontalIcon,
+  SparklesIcon,
+  SquareArrowUpRightIcon,
+  StopIcon,
+  TerminalIcon,
+  TextAlignRightIcon,
+  Tick01Icon,
+} from "@hugeicons/core-free-icons"
 
 type IconData = readonly (readonly [string, { readonly [key: string]: string | number }])[]
 
