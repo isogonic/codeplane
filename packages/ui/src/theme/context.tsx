@@ -60,6 +60,26 @@ function applyMode(mode: "light" | "dark"): void {
   root.dataset.theme = SINGLE_THEME_ID
 }
 
+/*
+ * Drop the legacy multi-theme localStorage keys + the runtime-injected
+ * `<style id="oc-theme">` element on first load. Earlier versions of
+ * the app cached the resolved CSS for whichever JSON theme the user
+ * had selected (Dracula, Tokyonight, etc.); with the picker gone, that
+ * cache just re-injects stale tokens that override `shadcn.css`. Clean
+ * it up once so the new monochrome palette wins. */
+function purgeLegacyThemeArtifacts(): void {
+  if (typeof document !== "object") return
+  if (typeof localStorage === "object") {
+    try {
+      localStorage.removeItem("codeplane-theme-id")
+      localStorage.removeItem("codeplane-theme-css-light")
+      localStorage.removeItem("codeplane-theme-css-dark")
+    } catch {}
+  }
+  document.getElementById("oc-theme")?.remove()
+  document.getElementById("oc-theme-preload")?.remove()
+}
+
 export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
   name: "Theme",
   init: (props: { defaultTheme?: string; onThemeApplied?: (theme: WebTheme, mode: "light" | "dark") => void }) => {
@@ -77,6 +97,7 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
     })
 
     onMount(() => {
+      purgeLegacyThemeArtifacts()
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
       const onMedia = () => {
         if (store.colorScheme !== "system") return

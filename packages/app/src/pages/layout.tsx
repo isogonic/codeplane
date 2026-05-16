@@ -2646,17 +2646,40 @@ export default function Layout(props: ParentProps) {
               >
                 <Show when={!autoselecting.loading} fallback={<div class="size-full" />}>
                   <ErrorBoundary
-                    fallback={(err, reset) => (
-                      <div class="size-full flex flex-col items-center justify-center gap-4 p-6 text-center">
-                        <div class="text-14-medium text-text-strong">
-                          {language.t("error.page.title")}
+                    fallback={(err, reset) => {
+                      /* Dynamic-`import()` failures after an HMR update (deleted
+                         modules, renamed exports, stale Vite chunks) surface as
+                         "Importing a module script failed" / "Failed to fetch
+                         dynamically imported module". A reload resolves it
+                         every time, so just do it for the user instead of
+                         showing the dead-end error screen. The session-storage
+                         guard prevents an infinite reload if the bundle is
+                         actually broken. */
+                      const message = err instanceof Error ? err.message : String(err)
+                      const isStaleChunk =
+                        /failed to fetch dynamically imported module/i.test(message) ||
+                        /importing a module script failed/i.test(message) ||
+                        /dynamically imported module/i.test(message)
+                      if (isStaleChunk && typeof window !== "undefined") {
+                        const flag = "codeplane-stale-chunk-reload"
+                        if (sessionStorage.getItem(flag) !== "1") {
+                          sessionStorage.setItem(flag, "1")
+                          window.location.reload()
+                          return <div class="size-full" />
+                        }
+                      }
+                      return (
+                        <div class="size-full flex flex-col items-center justify-center gap-4 p-6 text-center">
+                          <div class="text-14-medium text-text-strong">
+                            {language.t("error.page.title")}
+                          </div>
+                          <div class="text-12-regular text-text-weak max-w-md break-words">
+                            {message || language.t("error.chain.unknown")}
+                          </div>
+                          <Button onClick={reset}>{language.t("common.refresh")}</Button>
                         </div>
-                        <div class="text-12-regular text-text-weak max-w-md break-words">
-                          {(err instanceof Error ? err.message : String(err)) || language.t("error.chain.unknown")}
-                        </div>
-                        <Button onClick={reset}>{language.t("common.refresh")}</Button>
-                      </div>
-                    )}
+                      )
+                    }}
                   >
                     <Suspense fallback={<div class="size-full" />}>{props.children}</Suspense>
                   </ErrorBoundary>
