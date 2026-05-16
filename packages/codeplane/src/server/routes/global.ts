@@ -350,6 +350,48 @@ export const GlobalRoutes = lazy(() =>
       },
     )
     .post(
+      "/restart",
+      describeRoute({
+        summary: "Restart codeplane",
+        description:
+          "Dispose all instances so mode, plugin, and MCP changes are reloaded on the next request. " +
+          "If disposal fails, exits the process so a supervisor (docker/systemd/pm2) can restart it.",
+        operationId: "global.restart",
+        responses: {
+          200: {
+            description: "Restart result",
+            content: {
+              "application/json": {
+                schema: resolver(
+                  z.object({
+                    ok: z.literal(true),
+                    method: z.enum(["reload", "exit"]),
+                  }),
+                ),
+              },
+            },
+          },
+        },
+      }),
+      async (c) => {
+        try {
+          await Instance.disposeAll()
+          GlobalBus.emit("event", {
+            directory: "global",
+            payload: {
+              type: GlobalDisposedEvent.type,
+              properties: {},
+            },
+          })
+          return c.json({ ok: true as const, method: "reload" as const })
+        } catch (error) {
+          log.warn("restart dispose failed, falling back to process exit", { error })
+          setTimeout(() => process.exit(0), 500)
+          return c.json({ ok: true as const, method: "exit" as const })
+        }
+      },
+    )
+    .post(
       "/upgrade",
       describeRoute({
         summary: "Upgrade codeplane",

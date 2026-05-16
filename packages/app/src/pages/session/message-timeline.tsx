@@ -885,11 +885,8 @@ export function MessageTimeline(props: {
                                   </DropdownMenu.Item>
                                   {/* Live Activity opt-in — only shown when the host is
                                       a mobile shell that supports iOS Live Activities.
-                                      Mirrors the `bell` toggle in the chat surface but
-                                      lives in the session "⋯" menu since the session
-                                      view doesn't have a header icon row to hang it
-                                      off of. Posts `codeplane:la-toggle` to the shell;
-                                      the shell persists the choice and broadcasts back. */}
+                                      Posts `codeplane:la-toggle` to the shell; the
+                                      shell persists the choice and broadcasts back. */}
                                   <Show when={liveActivity.supported()}>
                                     {(() => {
                                       const enabled = createMemo(() => liveActivity.enabled(id))

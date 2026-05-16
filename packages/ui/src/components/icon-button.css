@@ -1,147 +1,133 @@
+/*
+ * Icon button — Logic's shadcn `radix-nova` look.
+ *
+ * Variants:
+ *   primary   → bg-primary text-primary-foreground (filled neutral)
+ *   secondary → bg-secondary + inset border (outline-style)
+ *   ghost     → transparent, hover:bg-muted
+ *
+ * Sizes: small (22px), normal (28px), large (32px). All square.
+ */
+
 [data-component="icon-button"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-sm);
+  border-style: solid;
+  border-width: 1px;
+  border-color: transparent;
+  border-radius: var(--radius-md);
+  background-clip: padding-box;
   text-decoration: none;
   user-select: none;
   aspect-ratio: 1;
   flex-shrink: 0;
+  cursor: default;
+  outline: none;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    box-shadow 120ms ease,
+    border-color 120ms ease,
+    opacity 120ms ease;
+
+  &:focus-visible:not(:disabled) {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+  }
 
   &[data-variant="primary"] {
-    background-color: var(--icon-strong-base);
+    background-color: var(--primary);
 
-    [data-slot="icon-svg"] {
-      /* color: var(--icon-weak-base); */
-      color: var(--icon-invert-base);
-
-      /* &:hover:not(:disabled) { */
-      /*   color: var(--icon-weak-hover); */
-      /* } */
-      /* &:active:not(:disabled) { */
-      /*   color: var(--icon-strong-active); */
-      /* } */
-    }
+    [data-slot="icon-svg"] { color: var(--primary-foreground); }
 
     &:hover:not(:disabled) {
-      background-color: var(--icon-strong-hover);
-    }
-    &:focus:not(:disabled) {
-      background-color: var(--icon-strong-focus);
+      background-color: color-mix(in oklab, var(--primary) 88%, transparent);
     }
     &:active:not(:disabled) {
-      background-color: var(--icon-strong-active);
+      background-color: color-mix(in oklab, var(--primary) 92%, transparent);
     }
     &:disabled {
-      background-color: var(--icon-strong-disabled);
-
-      [data-slot="icon-svg"] {
-        color: var(--icon-invert-base);
-      }
+      opacity: 0.5;
+      pointer-events: none;
     }
   }
 
   &[data-variant="secondary"] {
-    border: transparent;
-    background-color: var(--button-secondary-base);
-    color: var(--text-strong);
-    box-shadow: var(--shadow-xs-border-base);
+    background-color: var(--secondary);
+    color: var(--secondary-foreground);
+    box-shadow: inset 0 0 0 1px var(--border);
+
+    [data-slot="icon-svg"] { color: var(--foreground); }
 
     &:hover:not(:disabled) {
-      background-color: var(--button-secondary-hover);
+      background-color: var(--accent);
+      color: var(--accent-foreground);
     }
-    &:focus:not(:disabled) {
-      background-color: var(--button-secondary-base);
+    &:active:not(:disabled) { background-color: var(--accent); }
+    &:focus-visible:not(:disabled) {
+      box-shadow:
+        inset 0 0 0 1px var(--ring),
+        0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+      border-color: transparent;
     }
-    &:focus-visible:not(:active) {
-      background-color: var(--button-secondary-base);
-      box-shadow: var(--shadow-xs-border-focus);
-    }
-    &:focus-visible:active {
-      box-shadow: none;
-    }
-    &:active:not(:disabled) {
-      background-color: var(--button-secondary-base);
-    }
-
-    [data-slot="icon-svg"] {
-      color: var(--icon-strong-base);
-    }
-
     &:disabled {
-      background-color: var(--icon-strong-disabled);
-      color: var(--icon-invert-base);
+      opacity: 0.5;
       cursor: not-allowed;
     }
   }
 
   &[data-variant="ghost"] {
     background-color: transparent;
-    /* color: var(--icon-base); */
 
-    [data-slot="icon-svg"] {
-      color: var(--icon-base);
-    }
+    [data-slot="icon-svg"] { color: var(--muted-foreground); }
 
     &:hover:not(:disabled) {
-      background-color: var(--surface-base-hover);
-
-      /* [data-slot="icon-svg"] { */
-      /*   color: var(--icon-hover); */
-      /* } */
+      background-color: var(--muted);
+      [data-slot="icon-svg"] { color: var(--foreground); }
     }
-    &:focus-visible:not(:disabled) {
-      background-color: var(--surface-base-hover);
-    }
-    &:active:not(:disabled) {
-      background-color: var(--surface-base-active);
-      /* [data-slot="icon-svg"] { */
-      /*   color: var(--icon-active); */
-      /* } */
-    }
-    &:selected:not(:disabled) {
-      background-color: var(--surface-base-active);
-      /* [data-slot="icon-svg"] { */
-      /*   color: var(--icon-selected); */
-      /* } */
+    &:focus-visible:not(:disabled) { background-color: var(--muted); }
+    &:active:not(:disabled),
+    &[aria-expanded="true"],
+    &[data-selected="true"]:not(:disabled),
+    &[data-active="true"] {
+      background-color: var(--accent);
+      [data-slot="icon-svg"] { color: var(--accent-foreground); }
     }
     &:disabled {
-      color: var(--icon-invert-base);
+      opacity: 0.5;
       cursor: not-allowed;
+      [data-slot="icon-svg"] { color: var(--icon-disabled); }
     }
   }
 
   &[data-size="normal"] {
-    width: 24px;
-    height: 24px;
-
+    width: 28px;
+    height: 28px;
     font-size: var(--font-size-small);
-    line-height: var(--line-height-large);
-    gap: calc(var(--spacing) * 0.5);
+    line-height: 1;
+    gap: 4px;
   }
 
   &[data-size="small"] {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
+    border-radius: var(--radius-sm);
   }
 
   &[data-size="large"] {
+    width: 32px;
     height: 32px;
-    /* padding: 0 8px 0 6px; */
+    border-radius: var(--radius-lg);
     gap: 8px;
-
-    /* text-12-medium */
     font-family: var(--font-family-sans);
     font-size: var(--font-size-small);
-    font-style: normal;
     font-weight: var(--font-weight-medium);
-    line-height: var(--line-height-large); /* 166.667% */
+    line-height: 1;
     letter-spacing: var(--letter-spacing-normal);
   }
 
-  &:focus {
-    outline: none;
-  }
+  &:focus { outline: none; }
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -153,13 +139,8 @@
 }
 
 @keyframes stop-pulse {
-  0%,
-  100% {
-    transform: scale(0.95);
-  }
-  50% {
-    transform: scale(1.12);
-  }
+  0%, 100% { transform: scale(0.95); }
+  50% { transform: scale(1.12); }
 }
 
 [data-component="icon-button"].titlebar-icon {
@@ -169,13 +150,11 @@
 }
 
 [data-component="icon-button"].titlebar-icon[data-variant="ghost"][aria-expanded="true"] {
-  background-color: var(--surface-raised-base-active);
+  background-color: var(--accent);
 }
-
 [data-component="icon-button"].titlebar-icon[data-variant="ghost"][aria-expanded="true"] [data-slot="icon-svg"] {
-  color: var(--icon-strong-base);
+  color: var(--accent-foreground);
 }
-
 [data-component="icon-button"].titlebar-icon[data-variant="ghost"][aria-expanded="true"]:hover:not(:disabled) {
-  background-color: var(--surface-raised-base-active);
+  background-color: var(--accent);
 }

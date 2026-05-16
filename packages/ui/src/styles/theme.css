@@ -57,11 +57,17 @@
   --container-6xl: 72rem;
   --container-7xl: 80rem;
 
-  --radius-xs: 0.125rem;
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.625rem;
+  /* Radius scale tuned to Logic's shadcn `radix-nova` ladder
+     (--radius: 0.625rem with 0.6/0.8/1/1.4/1.8/2.2/2.6 multipliers). The
+     legacy `xs/sm/md/lg/xl` names are kept for backwards-compat but their
+     resolved sizes now match shadcn's `rounded-sm/md/lg/xl/2xl` defaults. */
+  --radius-xs: 0.25rem;
+  --radius-sm: calc(0.625rem * 0.6); /* ~6px */
+  --radius-md: calc(0.625rem * 0.8); /* ~8px */
+  --radius-lg: 0.625rem; /* 10px — shadcn's default */
+  --radius-xl: calc(0.625rem * 1.4); /* ~14px */
+  --radius-2xl: calc(0.625rem * 1.8); /* ~18px */
+  --radius-3xl: calc(0.625rem * 2.2); /* ~22px */
 
   --shadow-xs:
     0 1px 2px -0.5px light-dark(hsl(0 0% 0% / 0.04), hsl(0 0% 0% / 0.06)),

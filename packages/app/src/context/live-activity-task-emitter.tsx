@@ -7,8 +7,7 @@
  * how to ingest `codeplane:task` postMessages. Nothing in the Codeplane
  * web UI was producing them, so even after the shell-side bridge was
  * fixed (the `messageFromWebview` listener) the activity never started
- * — there was no signal to start FROM. This component sits at the same
- * level as the rest of the chat-surface providers and observes:
+ * — there was no signal to start FROM. This component observes:
  *
  *   1. The set of opted-in session ids (`useLiveActivity().enabledSessionIds`).
  *   2. Each session's `session_status` (idle / busy / retry) and message
@@ -62,9 +61,8 @@ function previewFromUserMessage(messages: Message[] | undefined): string {
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i]
     if (!m || m.role !== "user") continue
-    // Try the message's `info.title` first (set by the chat UI when
-    // it displays a heading), then fall back to flattening any text
-    // parts.
+    // Try the message's `info.title` first, then fall back to
+    // flattening any text parts.
     const title = (m as Message & { info?: { title?: string } }).info?.title
     if (typeof title === "string" && title.trim()) return title
     return ""

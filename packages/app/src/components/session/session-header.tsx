@@ -3,11 +3,9 @@ import { Button } from "@codeplane-ai/ui/button"
 import { DropdownMenu } from "@codeplane-ai/ui/dropdown-menu"
 import { Icon } from "@codeplane-ai/ui/icon"
 import { IconButton } from "@codeplane-ai/ui/icon-button"
-import { Keybind } from "@codeplane-ai/ui/keybind"
 import { Spinner } from "@codeplane-ai/ui/spinner"
 import { showToast } from "@codeplane-ai/ui/toast"
 import { Tooltip, TooltipKeybind } from "@codeplane-ai/ui/tooltip"
-import { getFilename } from "@codeplane-ai/shared/util/path"
 import { createEffect, createMemo, createSignal, For, onMount, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Portal } from "solid-js/web"
@@ -141,20 +139,8 @@ export function SessionHeader() {
   const { params, view } = useSessionLayout()
 
   const projectDirectory = createMemo(() => decode64(params.dir) ?? "")
-  const project = createMemo(() => {
-    const directory = projectDirectory()
-    if (!directory) return
-    return layout.projects.list().find((p) => p.worktree === directory || p.sandboxes?.includes(directory))
-  })
-  const name = createMemo(() => {
-    const current = project()
-    if (current) return current.name || getFilename(current.worktree)
-    return getFilename(projectDirectory())
-  })
-  const hotkey = createMemo(() => command.keybind("file.open"))
   const os = createMemo(() => detectOS(platform))
   const configurableHeader = import.meta.env.VITE_CODEPLANE_CHANNEL === "beta"
-  const search = createMemo(() => !configurableHeader || settings.general.showSearch())
   const tree = createMemo(() => !configurableHeader || settings.general.showFileTree())
   const term = createMemo(() => !configurableHeader || settings.general.showTerminal())
   const status = createMemo(() => !configurableHeader || settings.general.showStatus())
@@ -269,53 +255,14 @@ export function SessionHeader() {
       .catch((err: unknown) => showRequestError(language, err))
   }
 
-  const [centerMount, setCenterMount] = createSignal<HTMLElement | null>(null)
   const [rightMount, setRightMount] = createSignal<HTMLElement | null>(null)
   onMount(() => {
-    setCenterMount(document.getElementById("codeplane-titlebar-center"))
     setRightMount(document.getElementById("codeplane-titlebar-right"))
-  })
-  const titlebarCenterMount = createMemo(() => {
-    if (inlineDesktopHeader()) return null
-    if (!search()) return null
-    return centerMount()
   })
   const titlebarRightMount = createMemo(() => {
     if (inlineDesktopHeader()) return null
     return rightMount()
   })
-
-  const SearchTrigger = (props: { inline?: boolean }) => (
-    <Button
-      type="button"
-      variant="ghost"
-      size="small"
-      classList={{
-        "w-full max-w-full min-w-0 items-center gap-2 justify-between rounded-md border border-border-weak-base bg-surface-panel shadow-none":
-          true,
-        "hidden md:flex w-[240px] cursor-default": !props.inline,
-        "flex md:w-[280px]": !!props.inline,
-      }}
-      onClick={() => command.trigger("file.open")}
-      aria-label={language.t("session.header.searchFiles")}
-    >
-      <div class="flex min-w-0 flex-1 items-center overflow-visible">
-        <span class="flex-1 min-w-0 text-12-regular text-text-weak truncate text-left">
-          {language.t("session.header.search.placeholder", {
-            project: name(),
-          })}
-        </span>
-      </div>
-
-      <Show when={hotkey()} keyed>
-        {(keybind) => (
-          <Keybind class="shrink-0 !border-0 !bg-transparent !shadow-none px-0 text-text-weaker">
-            {keybind}
-          </Keybind>
-        )}
-      </Show>
-    </Button>
-  )
 
   const OpenControl = () => (
     <Show when={projectDirectory()}>
@@ -476,13 +423,6 @@ export function SessionHeader() {
 
   return (
     <>
-      <Show when={titlebarCenterMount()} keyed>
-        {(mount) => (
-          <Portal mount={mount}>
-            <SearchTrigger />
-          </Portal>
-        )}
-      </Show>
       <Show when={titlebarRightMount()} keyed>
         {(mount) => (
           <Portal mount={mount}>
@@ -495,11 +435,7 @@ export function SessionHeader() {
       </Show>
       <Show when={inlineDesktopHeader()}>
         <div class="shrink-0 flex items-center gap-3 px-3 py-2 border-b border-border-weak-base bg-background-base">
-          <div class="flex min-w-0 flex-1 justify-center">
-            <Show when={search()}>
-              <SearchTrigger inline />
-            </Show>
-          </div>
+          <div class="flex min-w-0 flex-1" />
           <div class="flex items-center gap-2 shrink-0">
             <OpenControl />
             <PanelControls />

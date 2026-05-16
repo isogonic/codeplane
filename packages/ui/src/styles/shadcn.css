@@ -1,0 +1,340 @@
+/*
+ * shadcn / radix-nova design tokens — tuned for real contrast.
+ *
+ * The first cut pinned background and card to pure white in light mode and
+ * to very-close shades in dark mode; the result read as flat and washed
+ * out. This revision separates the canvas from the elevated surface so
+ * cards / popovers / dialogs visibly "lift" off the page, and pushes
+ * borders one step toward visible without going harsh.
+ *
+ * Dark mode flips off both `.dark` class on `<html>` (set by
+ * `theme/context.tsx`) AND `[data-color-scheme="dark"]` (the data attribute
+ * the same context sets in lockstep).
+ */
+
+:root {
+  /* ─────────────────── canvas + surfaces (light) ───────────────────────
+     Canvas is a half-step off-white so the pure-white cards / popovers
+     pop. Muted / accent are darker than before so hover states actually
+     register. Borders are a clean greyscale step that reads at a glance. */
+  --background: oklch(0.985 0 0); /* off-white canvas */
+  --foreground: oklch(0.13 0 0);  /* near-black ink */
+  --card: oklch(1 0 0);           /* pure white — lifts off the canvas */
+  --card-foreground: oklch(0.13 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.13 0 0);
+  --primary: oklch(0.18 0 0);     /* filled neutral CTA */
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.955 0 0);
+  --secondary-foreground: oklch(0.18 0 0);
+  --muted: oklch(0.96 0 0);       /* hover wash */
+  --muted-foreground: oklch(0.48 0 0); /* readable secondary text */
+  --accent: oklch(0.93 0 0);      /* active wash, also nav highlight */
+  --accent-foreground: oklch(0.13 0 0);
+  --destructive: oklch(0.58 0.225 27);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.89 0 0);      /* visible-not-harsh border */
+  --input: oklch(0.89 0 0);
+  --ring: oklch(0.68 0 0);
+  --sidebar: var(--background);
+  --sidebar-foreground: oklch(0.13 0 0);
+  --sidebar-primary: oklch(0.18 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.93 0 0);
+  --sidebar-accent-foreground: oklch(0.13 0 0);
+  --sidebar-border: oklch(0.89 0 0);
+  --sidebar-ring: oklch(0.68 0 0);
+
+  /* ─────── Legacy Codeplane tokens, re-routed (light) ──────────────────
+     Every old `--surface-*` / `--text-*` / `--icon-*` / `--button-*` /
+     `--border-*` / `--input-*` token resolves to the new palette so the
+     existing CSS-driven components inherit the new contrast without
+     touching their stylesheets. */
+  --surface-raised-stronger-non-alpha: var(--popover);
+  --surface-raised-stronger: var(--popover);
+  --surface-raised-stronger-hover: var(--accent);
+  --surface-stronger-non-alpha: var(--card);
+  --surface-strong: var(--card);
+  --surface-raised-strong: var(--card);
+  --surface-raised-strong-hover: var(--muted);
+  --surface-raised-base: var(--muted);
+  --surface-raised-base-hover: var(--accent);
+  --surface-raised-base-active: var(--accent);
+  --surface-base: var(--muted);
+  --surface-base-hover: var(--accent);
+  --surface-base-active: oklch(0.9 0 0);
+  --surface-base-interactive-active: color-mix(in oklab, var(--primary) 12%, transparent);
+  --surface-weak: var(--muted);
+  --surface-weaker: var(--accent);
+  --surface-inset-base: var(--muted);
+  --surface-inset-base-hover: var(--accent);
+  --surface-inset-strong: var(--accent);
+  --surface-inset-strong-hover: oklch(0.9 0 0);
+  --surface-float-base: var(--primary);
+  --surface-float-base-hover: oklch(0.27 0 0);
+  --base: var(--muted);
+  --base2: var(--muted);
+  --base3: var(--accent);
+  --background-base: var(--background);
+  --background-weak: var(--muted);
+  --background-strong: var(--card);
+  --background-stronger: var(--card);
+
+  --text-strong: var(--foreground);
+  --text-stronger: var(--foreground);
+  --text-base: var(--muted-foreground);
+  --text-weak: color-mix(in oklab, var(--muted-foreground) 78%, transparent);
+  --text-weaker: color-mix(in oklab, var(--muted-foreground) 50%, transparent);
+  --text-invert-strong: var(--primary-foreground);
+  --text-invert-base: var(--primary-foreground);
+  --text-invert-weak: color-mix(in oklab, var(--primary-foreground) 78%, transparent);
+  --text-invert-weaker: color-mix(in oklab, var(--primary-foreground) 60%, transparent);
+  --text-on-interactive-base: var(--primary-foreground);
+  --text-on-interactive-weak: color-mix(in oklab, var(--primary-foreground) 78%, transparent);
+  --text-on-brand-base: color-mix(in oklab, var(--foreground) 70%, transparent);
+
+  --button-primary-base: var(--primary);
+  --button-secondary-base: var(--card);
+  --button-secondary-hover: var(--muted);
+  --button-ghost-hover: var(--muted);
+  --button-ghost-hover2: var(--accent);
+
+  --border-base: var(--border);
+  --border-hover: color-mix(in oklab, var(--foreground) 28%, transparent);
+  --border-active: color-mix(in oklab, var(--foreground) 50%, transparent);
+  --border-selected: var(--ring);
+  --border-disabled: var(--border);
+  --border-focus: var(--ring);
+  --border-weak-base: var(--border);
+  --border-weak-hover: color-mix(in oklab, var(--foreground) 16%, transparent);
+  --border-weak-active: color-mix(in oklab, var(--foreground) 24%, transparent);
+  --border-weak-selected: color-mix(in oklab, var(--ring) 60%, transparent);
+  --border-weak-disabled: var(--border);
+  --border-weak-focus: var(--ring);
+  --border-weaker-base: color-mix(in oklab, var(--border) 75%, transparent);
+  --border-strong-base: color-mix(in oklab, var(--foreground) 22%, transparent);
+  --border-strong-hover: color-mix(in oklab, var(--foreground) 32%, transparent);
+  --border-strong-selected: var(--ring);
+
+  --input-base: var(--card);
+  --input-hover: var(--muted);
+  --input-active: var(--card);
+  --input-selected: var(--accent);
+  --input-focus: var(--card);
+  --input-disabled: var(--muted);
+
+  --icon-base: var(--muted-foreground);
+  --icon-hover: var(--foreground);
+  --icon-active: var(--foreground);
+  --icon-selected: var(--foreground);
+  --icon-disabled: color-mix(in oklab, var(--muted-foreground) 40%, transparent);
+  --icon-focus: var(--foreground);
+  --icon-invert-base: var(--primary-foreground);
+  --icon-strong-base: var(--foreground);
+  --icon-strong-hover: var(--foreground);
+  --icon-strong-active: oklch(0 0 0);
+  --icon-strong-selected: var(--foreground);
+  --icon-strong-focus: var(--foreground);
+  --icon-strong-disabled: color-mix(in oklab, var(--foreground) 22%, transparent);
+  --icon-weak-base: color-mix(in oklab, var(--muted-foreground) 60%, transparent);
+  --icon-weak-hover: var(--muted-foreground);
+  --icon-weak-active: var(--foreground);
+  --icon-weak-selected: var(--muted-foreground);
+  --icon-on-interactive-base: var(--primary-foreground);
+  --icon-brand-base: var(--foreground);
+
+  --radius: 0.625rem;
+
+  /* Shadows pitched a tad darker than v1 so cards / popovers / dialogs
+     read as elevated against the now-off-white canvas. */
+  --shadow-2xs: 0 1px 0 0 oklch(0 0 0 / 0.05);
+  --shadow-xs:
+    0 1px 2px 0 oklch(0 0 0 / 0.07),
+    0 1px 1px -1px oklch(0 0 0 / 0.05);
+  --shadow-sm:
+    0 2px 6px -1px oklch(0 0 0 / 0.08),
+    0 1px 2px -1px oklch(0 0 0 / 0.05);
+  --shadow-md:
+    0 8px 20px -4px oklch(0 0 0 / 0.1),
+    0 2px 4px -2px oklch(0 0 0 / 0.05);
+  --shadow-lg:
+    0 24px 48px -12px oklch(0 0 0 / 0.22),
+    0 10px 20px -8px oklch(0 0 0 / 0.1);
+
+  --shadow-xs-border-base: inset 0 0 0 1px var(--border);
+  --shadow-xs-border: inset 0 0 0 1px var(--border);
+  --shadow-lg-border-base:
+    inset 0 0 0 1px var(--border),
+    0 24px 48px -12px oklch(0 0 0 / 0.22),
+    0 10px 20px -8px oklch(0 0 0 / 0.1);
+  --shadow-xs-border-focus:
+    0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent),
+    inset 0 0 0 1px var(--ring);
+  --shadow-xs-border-select:
+    0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent),
+    inset 0 0 0 1px var(--ring);
+  --shadow-xs-border-hover: inset 0 0 0 1px var(--border-hover);
+  --shadow-xs-border-critical-base: inset 0 0 0 1px var(--destructive);
+  --shadow-xs-border-critical-focus:
+    0 0 0 3px color-mix(in oklab, var(--destructive) 20%, transparent),
+    inset 0 0 0 1px var(--destructive);
+}
+
+.dark,
+:root[data-color-scheme="dark"] {
+  /* ─────────────────── canvas + surfaces (dark) ────────────────────────
+     A darker canvas with distinctly-lighter cards / popovers so the
+     elevation hierarchy reads at a glance. Foreground is bright enough
+     to be legible without glowing. */
+  --background: oklch(0.115 0 0); /* deeper canvas */
+  --foreground: oklch(0.97 0 0);
+  --card: oklch(0.185 0 0);       /* clearly lifted off canvas */
+  --card-foreground: oklch(0.97 0 0);
+  --popover: oklch(0.21 0 0);     /* slightly brighter still for menus */
+  --popover-foreground: oklch(0.97 0 0);
+  --primary: oklch(0.95 0 0);
+  --primary-foreground: oklch(0.18 0 0);
+  --secondary: oklch(0.235 0 0);
+  --secondary-foreground: oklch(0.97 0 0);
+  --muted: oklch(0.235 0 0);
+  --muted-foreground: oklch(0.72 0 0); /* readable secondary text */
+  --accent: oklch(0.275 0 0);
+  --accent-foreground: oklch(0.97 0 0);
+  --destructive: oklch(0.7 0.19 22);
+  --destructive-foreground: oklch(0.97 0 0);
+  --border: oklch(1 0 0 / 14%);   /* visible ring on dark cards */
+  --input: oklch(1 0 0 / 18%);
+  --ring: oklch(0.65 0 0);
+  --sidebar: var(--background);
+  --sidebar-foreground: oklch(0.97 0 0);
+  --sidebar-primary: oklch(0.95 0 0);
+  --sidebar-primary-foreground: oklch(0.18 0 0);
+  --sidebar-accent: oklch(0.275 0 0);
+  --sidebar-accent-foreground: oklch(0.97 0 0);
+  --sidebar-border: oklch(1 0 0 / 14%);
+  --sidebar-ring: oklch(0.65 0 0);
+
+  --surface-raised-stronger-non-alpha: var(--popover);
+  --surface-raised-stronger: var(--popover);
+  --surface-raised-stronger-hover: var(--accent);
+  --surface-stronger-non-alpha: var(--card);
+  --surface-strong: var(--card);
+  --surface-raised-strong: var(--card);
+  --surface-raised-strong-hover: var(--accent);
+  --surface-raised-base: color-mix(in oklab, var(--foreground) 7%, transparent);
+  --surface-raised-base-hover: color-mix(in oklab, var(--foreground) 11%, transparent);
+  --surface-raised-base-active: color-mix(in oklab, var(--foreground) 16%, transparent);
+  --surface-base: color-mix(in oklab, var(--foreground) 5%, transparent);
+  --surface-base-hover: color-mix(in oklab, var(--foreground) 9%, transparent);
+  --surface-base-active: color-mix(in oklab, var(--foreground) 14%, transparent);
+  --surface-base-interactive-active: color-mix(in oklab, var(--primary) 22%, transparent);
+  --surface-weak: color-mix(in oklab, var(--foreground) 9%, transparent);
+  --surface-weaker: color-mix(in oklab, var(--foreground) 14%, transparent);
+  --surface-inset-base: oklch(0 0 0 / 0.5);
+  --surface-inset-base-hover: oklch(0 0 0 / 0.6);
+  --surface-inset-strong: oklch(0 0 0 / 0.8);
+  --surface-inset-strong-hover: oklch(0 0 0 / 0.85);
+  --surface-float-base: oklch(0.21 0 0);
+  --surface-float-base-hover: oklch(0.275 0 0);
+  --base: var(--surface-base);
+  --base2: var(--surface-base);
+  --base3: var(--surface-base-hover);
+  --background-base: var(--background);
+  --background-weak: var(--card);
+  --background-strong: var(--background);
+  --background-stronger: var(--card);
+
+  --text-strong: var(--foreground);
+  --text-stronger: var(--foreground);
+  --text-base: var(--muted-foreground);
+  --text-weak: color-mix(in oklab, var(--muted-foreground) 72%, transparent);
+  --text-weaker: color-mix(in oklab, var(--muted-foreground) 48%, transparent);
+  --text-invert-strong: var(--primary-foreground);
+  --text-invert-base: var(--primary-foreground);
+  --text-invert-weak: color-mix(in oklab, var(--primary-foreground) 72%, transparent);
+  --text-invert-weaker: color-mix(in oklab, var(--primary-foreground) 52%, transparent);
+  --text-on-interactive-base: var(--primary-foreground);
+  --text-on-interactive-weak: color-mix(in oklab, var(--primary-foreground) 72%, transparent);
+  --text-on-brand-base: color-mix(in oklab, var(--foreground) 72%, transparent);
+
+  --button-primary-base: var(--primary);
+  --button-secondary-base: var(--card);
+  --button-secondary-hover: var(--accent);
+  --button-ghost-hover: color-mix(in oklab, var(--foreground) 9%, transparent);
+  --button-ghost-hover2: color-mix(in oklab, var(--foreground) 14%, transparent);
+
+  --border-base: var(--border);
+  --border-hover: color-mix(in oklab, var(--foreground) 30%, transparent);
+  --border-active: color-mix(in oklab, var(--foreground) 48%, transparent);
+  --border-selected: var(--ring);
+  --border-disabled: var(--border);
+  --border-focus: var(--ring);
+  --border-weak-base: var(--border);
+  --border-weak-hover: color-mix(in oklab, var(--foreground) 20%, transparent);
+  --border-weak-active: color-mix(in oklab, var(--foreground) 30%, transparent);
+  --border-weak-selected: color-mix(in oklab, var(--ring) 60%, transparent);
+  --border-weak-disabled: var(--border);
+  --border-weak-focus: var(--ring);
+  --border-weaker-base: color-mix(in oklab, var(--foreground) 7%, transparent);
+  --border-strong-base: color-mix(in oklab, var(--foreground) 30%, transparent);
+  --border-strong-hover: color-mix(in oklab, var(--foreground) 38%, transparent);
+  --border-strong-selected: var(--ring);
+
+  --input-base: var(--card);
+  --input-hover: var(--accent);
+  --input-active: var(--card);
+  --input-selected: color-mix(in oklab, var(--ring) 35%, transparent);
+  --input-focus: var(--card);
+  --input-disabled: color-mix(in oklab, var(--foreground) 7%, transparent);
+
+  --icon-base: var(--muted-foreground);
+  --icon-hover: var(--foreground);
+  --icon-active: var(--foreground);
+  --icon-selected: var(--foreground);
+  --icon-disabled: color-mix(in oklab, var(--muted-foreground) 40%, transparent);
+  --icon-focus: var(--foreground);
+  --icon-invert-base: var(--primary-foreground);
+  --icon-strong-base: var(--foreground);
+  --icon-strong-hover: var(--foreground);
+  --icon-strong-active: var(--foreground);
+  --icon-strong-selected: var(--foreground);
+  --icon-strong-focus: var(--foreground);
+  --icon-strong-disabled: color-mix(in oklab, var(--foreground) 22%, transparent);
+  --icon-weak-base: color-mix(in oklab, var(--muted-foreground) 60%, transparent);
+  --icon-weak-hover: var(--muted-foreground);
+  --icon-weak-active: var(--foreground);
+  --icon-weak-selected: var(--muted-foreground);
+  --icon-on-interactive-base: var(--primary-foreground);
+  --icon-brand-base: var(--foreground);
+
+  --shadow-2xs: 0 1px 0 0 oklch(0 0 0 / 0.4);
+  --shadow-xs:
+    0 1px 2px 0 oklch(0 0 0 / 0.5),
+    0 1px 1px -1px oklch(0 0 0 / 0.35);
+  --shadow-sm:
+    0 2px 6px -1px oklch(0 0 0 / 0.55),
+    0 1px 2px -1px oklch(0 0 0 / 0.35);
+  --shadow-md:
+    0 8px 20px -4px oklch(0 0 0 / 0.6),
+    0 2px 4px -2px oklch(0 0 0 / 0.4);
+  --shadow-lg:
+    0 24px 48px -12px oklch(0 0 0 / 0.75),
+    0 10px 20px -8px oklch(0 0 0 / 0.5);
+  --shadow-xs-border-base: inset 0 0 0 1px var(--border);
+  --shadow-xs-border: inset 0 0 0 1px var(--border);
+  --shadow-lg-border-base:
+    inset 0 0 0 1px var(--border),
+    0 24px 48px -12px oklch(0 0 0 / 0.75),
+    0 10px 20px -8px oklch(0 0 0 / 0.5);
+  --shadow-xs-border-focus:
+    0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent),
+    inset 0 0 0 1px var(--ring);
+  --shadow-xs-border-select:
+    0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent),
+    inset 0 0 0 1px var(--ring);
+  --shadow-xs-border-hover: inset 0 0 0 1px var(--border-hover);
+  --shadow-xs-border-critical-base: inset 0 0 0 1px var(--destructive);
+  --shadow-xs-border-critical-focus:
+    0 0 0 3px color-mix(in oklab, var(--destructive) 35%, transparent),
+    inset 0 0 0 1px var(--destructive);
+}

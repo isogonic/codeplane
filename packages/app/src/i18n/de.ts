@@ -671,6 +671,7 @@ export const dict = {
   "settings.general.row.version.action.checking": "Suche…",
   "settings.general.row.version.action.update": "Jetzt aktualisieren",
   "settings.general.row.version.action.updating": "Wird aktualisiert…",
+  "settings.general.row.version.action.whatsNew": "Neuigkeiten",
   "sound.option.none": "Keine",
   "sound.option.alert01": "Alarm 01",
   "sound.option.alert02": "Alarm 02",

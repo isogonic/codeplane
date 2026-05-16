@@ -90,7 +90,6 @@ import {
 } from "./layout/sidebar-workspace"
 import { ProjectDragOverlay, SortableProject, type ProjectSidebarContext } from "./layout/sidebar-project"
 import { SidebarContent } from "./layout/sidebar-shell"
-import { ChatSidebarPanel } from "./layout/sidebar-chat"
 import { CronSidebarPanel } from "./layout/sidebar-cron"
 import { isCronSessionInfo } from "./layout/sidebar-cron-helpers"
 import { DialogArchivedSessions } from "@/components/dialog-archived-sessions"
@@ -177,7 +176,6 @@ export default function Layout(props: ParentProps) {
       slug: match[1],
     }
   })
-  const availableThemeEntries = createMemo(() => theme.ids().map((id) => [id, theme.themes()[id]] as const))
   const colorSchemeOrder: ColorScheme[] = ["system", "light", "dark"]
   const colorSchemeKey: Record<ColorScheme, "theme.scheme.system" | "theme.scheme.light" | "theme.scheme.dark"> = {
     system: "theme.scheme.system",
@@ -195,11 +193,8 @@ export default function Layout(props: ParentProps) {
     pathname === "/mcp" ||
     pathname === "/plugins" ||
     pathname === "/skills"
-  const isChatRoutePath = (pathname: string) =>
-    pathname === "/chat" || pathname.startsWith("/chat/")
   const settingsRouteSelected = createMemo(() => isSettingsPath(location.pathname))
   const globalRouteSelected = createMemo(() => isGlobalRoutePath(location.pathname))
-  const chatRouteSelected = createMemo(() => isChatRoutePath(location.pathname))
   const cronRouteSelected = createMemo(() => isCronRoutePath(location.pathname))
   const cronRouteProjectID = createMemo(() => new URLSearchParams(location.search).get("projectID") ?? undefined)
   const cronSessionRouteSelected = createMemo(
@@ -294,7 +289,6 @@ export default function Layout(props: ParentProps) {
   const sidebarRouteKey = createMemo(() => {
     if (!layoutReady()) return
     if (settingsRouteSelected()) return "settings"
-    if (chatRouteSelected()) return "chat"
     if (globalRouteSelected()) return "global"
     if (cronContextActive()) {
       const project = cronProject()
@@ -309,8 +303,7 @@ export default function Layout(props: ParentProps) {
       !initialDirectory &&
       !isGlobalRoutePath(location.pathname) &&
       !isSettingsPath(location.pathname) &&
-      !isCronRoutePath(location.pathname) &&
-      !isChatRoutePath(location.pathname),
+      !isCronRoutePath(location.pathname),
     busyWorkspaces: {} as Record<string, boolean>,
     hoverProject: undefined as string | undefined,
     scrollSessionKey: undefined as string | undefined,
@@ -486,19 +479,6 @@ export default function Layout(props: ParentProps) {
     clearSidebarHoverState()
     navigate(href)
     layout.mobileSidebar.hide()
-  }
-
-  function cycleTheme(direction = 1) {
-    const ids = availableThemeEntries().map(([id]) => id)
-    if (ids.length === 0) return
-    const currentIndex = ids.indexOf(theme.themeId())
-    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + direction + ids.length) % ids.length
-    const nextThemeId = ids[nextIndex]
-    theme.setTheme(nextThemeId)
-    showToast({
-      title: language.t("toast.theme.title"),
-      description: theme.name(nextThemeId),
-    })
   }
 
   function cycleColorScheme(direction = 1) {
@@ -1285,27 +1265,7 @@ export default function Layout(props: ParentProps) {
           })
         },
       },
-      {
-        id: "theme.cycle",
-        title: language.t("command.theme.cycle"),
-        category: language.t("command.category.theme"),
-        keybind: "mod+shift+t",
-        onSelect: () => cycleTheme(1),
-      },
     ]
-
-    for (const [id] of availableThemeEntries()) {
-      commands.push({
-        id: `theme.set.${id}`,
-        title: language.t("command.theme.set", { theme: theme.name(id) }),
-        category: language.t("command.category.theme"),
-        onSelect: () => theme.commitPreview(),
-        onHighlight: () => {
-          theme.previewTheme(id)
-          return () => theme.cancelPreview()
-        },
-      })
-    }
 
     commands.push({
       id: "theme.scheme.cycle",
@@ -2554,8 +2514,6 @@ export default function Layout(props: ParentProps) {
             current={currentSettingsSection}
             onSelect={selectSettingsSection}
           />
-        ) : chatRouteSelected() ? (
-          <ChatSidebarPanel mobile={mobile} width={panel} />
         ) : cronContextActive() ? (
           <div
             classList={{

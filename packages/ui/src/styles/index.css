@@ -2,6 +2,9 @@
 
 @import "./colors.css" layer(theme);
 @import "./theme.css" layer(theme);
+/* Logic / shadcn radix-nova tokens — overrides anything above. Keep last
+   in the `theme` layer so the new monochrome palette wins. */
+@import "./shadcn.css" layer(theme);
 
 @import "./base.css" layer(base);
 @import "katex/dist/katex.min.css" layer(base);

@@ -3,123 +3,46 @@ import { createStore } from "solid-js/store"
 import { makeEventListener } from "@solid-primitives/event-listener"
 import { createSimpleContext } from "../context/helper"
 import oc2ThemeJson from "./themes/oc-2.json"
-import { resolveThemeVariant, themeToCss } from "./resolve"
 import type { WebTheme } from "./types"
+
+/*
+ * Theme context — strict light/dark switcher.
+ *
+ * The legacy multi-theme system (Dracula / Tokyonight / Catppuccin / 35
+ * other themes that loaded JSON at runtime and injected `<style>` rules
+ * into `<head>`) has been removed. The shared UI now ships a single
+ * Logic-style monochrome design, with the actual token values living in
+ * `packages/ui/src/styles/shadcn.css`. This module just toggles the
+ * `.dark` class on `<html>` so that file's selectors flip light ↔ dark.
+ *
+ * The old API surface (`themeId()`, `themes()`, `setTheme()`,
+ * `previewTheme()`, `ids()`, `name()`, `loadThemes()`, `registerTheme()`,
+ * `commitPreview()` / `cancelPreview()`) is preserved so existing
+ * consumers (terminal palette, command palette entries, settings rows)
+ * keep compiling. The picker methods are no-ops; `themes()` returns the
+ * single bundled theme; `themeId()` is always `"oc-2"`.
+ */
 
 export type ColorScheme = "light" | "dark" | "system"
 
-const STORAGE_KEYS = {
-  THEME_ID: "codeplane-theme-id",
-  COLOR_SCHEME: "codeplane-color-scheme",
-  THEME_CSS_LIGHT: "codeplane-theme-css-light",
-  THEME_CSS_DARK: "codeplane-theme-css-dark",
-} as const
-
-const THEME_STYLE_ID = "oc-theme"
-let files: Record<string, () => Promise<{ default: WebTheme }>> | undefined
-let ids: string[] | undefined
-let known: Set<string> | undefined
-
-function getFiles() {
-  if (files) return files
-  files = import.meta.glob<{ default: WebTheme }>("./themes/*.json")
-  return files
-}
-
-function themeIDs() {
-  if (ids) return ids
-  ids = Object.keys(getFiles())
-    .map((path) => path.slice("./themes/".length, -".json".length))
-    .sort()
-  return ids
-}
-
-function knownThemes() {
-  if (known) return known
-  known = new Set(themeIDs())
-  return known
-}
-
-const names: Record<string, string> = {
-  "oc-2": "OC-2",
-  amoled: "AMOLED",
-  aura: "Aura",
-  ayu: "Ayu",
-  carbonfox: "Carbonfox",
-  catppuccin: "Catppuccin",
-  "catppuccin-frappe": "Catppuccin Frappe",
-  "catppuccin-macchiato": "Catppuccin Macchiato",
-  cobalt2: "Cobalt2",
-  cursor: "Cursor",
-  dracula: "Dracula",
-  everforest: "Everforest",
-  flexoki: "Flexoki",
-  github: "GitHub",
-  gruvbox: "Gruvbox",
-  kanagawa: "Kanagawa",
-  "lucent-orng": "Lucent Orng",
-  material: "Material",
-  matrix: "Matrix",
-  mercury: "Mercury",
-  monokai: "Monokai",
-  nightowl: "Night Owl",
-  nord: "Nord",
-  "one-dark": "One Dark",
-  onedarkpro: "One Dark Pro",
-  codeplane: "Codeplane",
-  orng: "Orng",
-  "osaka-jade": "Osaka Jade",
-  palenight: "Palenight",
-  rosepine: "Rose Pine",
-  shadesofpurple: "Shades of Purple",
-  solarized: "Solarized",
-  synthwave84: "Synthwave '84",
-  tokyonight: "Tokyonight",
-  vercel: "Vercel",
-  vesper: "Vesper",
-  zenburn: "Zenburn",
-}
+const STORAGE_KEY = "codeplane-color-scheme"
+const SINGLE_THEME_ID = "oc-2"
 const oc2Theme = oc2ThemeJson as WebTheme
 
-function normalize(id: string | null | undefined) {
-  return id === "oc-1" ? "oc-2" : id
-}
-
-function read(key: string) {
+function read(): string | null {
   if (typeof localStorage !== "object") return null
   try {
-    return localStorage.getItem(key)
+    return localStorage.getItem(STORAGE_KEY)
   } catch {
     return null
   }
 }
 
-function write(key: string, value: string) {
+function write(value: string): void {
   if (typeof localStorage !== "object") return
   try {
-    localStorage.setItem(key, value)
+    localStorage.setItem(STORAGE_KEY, value)
   } catch {}
-}
-
-function drop(key: string) {
-  if (typeof localStorage !== "object") return
-  try {
-    localStorage.removeItem(key)
-  } catch {}
-}
-
-function clear() {
-  drop(STORAGE_KEYS.THEME_CSS_LIGHT)
-  drop(STORAGE_KEYS.THEME_CSS_DARK)
-}
-
-function ensureThemeStyleElement(): HTMLStyleElement {
-  const existing = document.getElementById(THEME_STYLE_ID) as HTMLStyleElement | null
-  if (existing) return existing
-  const element = document.createElement("style")
-  element.id = THEME_STYLE_ID
-  document.head.appendChild(element)
-  return element
 }
 
 function getSystemMode(): "light" | "dark" {
@@ -127,232 +50,83 @@ function getSystemMode(): "light" | "dark" {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
 }
 
-function applyThemeCss(theme: WebTheme, themeId: string, mode: "light" | "dark") {
-  const isDark = mode === "dark"
-  const variant = isDark ? theme.dark : theme.light
-  const tokens = resolveThemeVariant(variant, isDark)
-  const css = themeToCss(tokens)
-
-  if (themeId !== "oc-2") {
-    write(isDark ? STORAGE_KEYS.THEME_CSS_DARK : STORAGE_KEYS.THEME_CSS_LIGHT, css)
-  }
-
-  const fullCss = `:root {
-  color-scheme: ${mode};
-  --text-mix-blend-mode: ${isDark ? "plus-lighter" : "multiply"};
-  ${css}
-}`
-
-  document.getElementById("oc-theme-preload")?.remove()
-  ensureThemeStyleElement().textContent = fullCss
-  document.documentElement.dataset.theme = themeId
-  document.documentElement.dataset.colorScheme = mode
-}
-
-function cacheThemeVariants(theme: WebTheme, themeId: string) {
-  if (themeId === "oc-2") return
-  for (const mode of ["light", "dark"] as const) {
-    const isDark = mode === "dark"
-    const variant = isDark ? theme.dark : theme.light
-    const tokens = resolveThemeVariant(variant, isDark)
-    const css = themeToCss(tokens)
-    write(isDark ? STORAGE_KEYS.THEME_CSS_DARK : STORAGE_KEYS.THEME_CSS_LIGHT, css)
-  }
+function applyMode(mode: "light" | "dark"): void {
+  if (typeof document !== "object") return
+  const root = document.documentElement
+  if (mode === "dark") root.classList.add("dark")
+  else root.classList.remove("dark")
+  root.style.colorScheme = mode
+  root.dataset.colorScheme = mode
+  root.dataset.theme = SINGLE_THEME_ID
 }
 
 export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
   name: "Theme",
   init: (props: { defaultTheme?: string; onThemeApplied?: (theme: WebTheme, mode: "light" | "dark") => void }) => {
-    const themeId = normalize(read(STORAGE_KEYS.THEME_ID) ?? props.defaultTheme) ?? "oc-2"
-    const colorScheme = (read(STORAGE_KEYS.COLOR_SCHEME) as ColorScheme | null) ?? "system"
+    void props.defaultTheme
+    const colorScheme = (read() as ColorScheme | null) ?? "system"
     const mode = colorScheme === "system" ? getSystemMode() : colorScheme
+
     const [store, setStore] = createStore({
-      themes: {
-        "oc-2": oc2Theme,
-      } as Record<string, WebTheme>,
-      themeId,
+      themes: { [SINGLE_THEME_ID]: oc2Theme } as Record<string, WebTheme>,
+      themeId: SINGLE_THEME_ID,
       colorScheme,
       mode,
       previewThemeId: null as string | null,
       previewScheme: null as ColorScheme | null,
     })
 
-    const loads = new Map<string, Promise<WebTheme | undefined>>()
-
-    const load = (id: string) => {
-      const next = normalize(id)
-      if (!next) return Promise.resolve(undefined)
-      const hit = store.themes[next]
-      if (hit) return Promise.resolve(hit)
-      const pending = loads.get(next)
-      if (pending) return pending
-      const file = getFiles()[`./themes/${next}.json`]
-      if (!file) return Promise.resolve(undefined)
-      const task = file()
-        .then((mod) => {
-          const theme = mod.default
-          setStore("themes", next, theme)
-          return theme
-        })
-        .finally(() => {
-          loads.delete(next)
-        })
-      loads.set(next, task)
-      return task
-    }
-
-    const applyTheme = (theme: WebTheme, themeId: string, mode: "light" | "dark") => {
-      applyThemeCss(theme, themeId, mode)
-      props.onThemeApplied?.(theme, mode)
-    }
-
-    const ids = () => {
-      const extra = Object.keys(store.themes)
-        .filter((id) => !knownThemes().has(id))
-        .sort()
-      const all = themeIDs()
-      if (extra.length === 0) return all
-      return [...all, ...extra]
-    }
-
-    const loadThemes = () => Promise.all(themeIDs().map(load)).then(() => store.themes)
-
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEYS.THEME_ID && e.newValue) {
-        const next = normalize(e.newValue)
-        if (!next) return
-        if (next !== "oc-2" && !knownThemes().has(next) && !store.themes[next]) return
-        setStore("themeId", next)
-        if (next === "oc-2") {
-          clear()
-          return
-        }
-        void load(next).then((theme) => {
-          if (!theme || store.themeId !== next) return
-          cacheThemeVariants(theme, next)
-        })
-      }
-      if (e.key === STORAGE_KEYS.COLOR_SCHEME && e.newValue) {
-        setStore("colorScheme", e.newValue as ColorScheme)
-        setStore("mode", e.newValue === "system" ? getSystemMode() : (e.newValue as "light" | "dark"))
-      }
-    }
-
     onMount(() => {
-      makeEventListener(window, "storage", onStorage)
-
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
       const onMedia = () => {
         if (store.colorScheme !== "system") return
         setStore("mode", getSystemMode())
       }
       makeEventListener(mediaQuery, "change", onMedia)
-
-      const rawTheme = read(STORAGE_KEYS.THEME_ID)
-      const savedTheme = normalize(rawTheme ?? props.defaultTheme) ?? "oc-2"
-      const savedScheme = (read(STORAGE_KEYS.COLOR_SCHEME) as ColorScheme | null) ?? "system"
-      if (rawTheme && rawTheme !== savedTheme) {
-        write(STORAGE_KEYS.THEME_ID, savedTheme)
-        clear()
-      }
-      if (savedTheme !== store.themeId) setStore("themeId", savedTheme)
-      if (savedScheme !== store.colorScheme) setStore("colorScheme", savedScheme)
-      setStore("mode", savedScheme === "system" ? getSystemMode() : savedScheme)
-      void load(savedTheme).then((theme) => {
-        if (!theme || store.themeId !== savedTheme) return
-        cacheThemeVariants(theme, savedTheme)
-      })
+      applyMode(store.mode)
+      props.onThemeApplied?.(oc2Theme, store.mode)
     })
 
     createEffect(() => {
-      const theme = store.themes[store.themeId]
-      if (!theme) return
-      applyTheme(theme, store.themeId, store.mode)
+      const effective = store.previewScheme
+        ? store.previewScheme === "system"
+          ? getSystemMode()
+          : store.previewScheme
+        : store.mode
+      applyMode(effective)
     })
-
-    const setTheme = (id: string) => {
-      const next = normalize(id)
-      if (!next) {
-        console.warn(`Theme "${id}" not found`)
-        return
-      }
-      if (next !== "oc-2" && !knownThemes().has(next) && !store.themes[next]) {
-        console.warn(`Theme "${id}" not found`)
-        return
-      }
-      setStore("themeId", next)
-      if (next === "oc-2") {
-        write(STORAGE_KEYS.THEME_ID, next)
-        clear()
-        return
-      }
-      void load(next).then((theme) => {
-        if (!theme || store.themeId !== next) return
-        cacheThemeVariants(theme, next)
-        write(STORAGE_KEYS.THEME_ID, next)
-      })
-    }
 
     const setColorScheme = (scheme: ColorScheme) => {
       setStore("colorScheme", scheme)
-      write(STORAGE_KEYS.COLOR_SCHEME, scheme)
+      write(scheme)
       setStore("mode", scheme === "system" ? getSystemMode() : scheme)
     }
+
+    /* Picker / preview hooks are kept as no-ops so the rest of the
+       codebase keeps compiling — there's only one theme to pick from. */
+    const noop = () => {}
 
     return {
       themeId: () => store.themeId,
       colorScheme: () => store.colorScheme,
       mode: () => store.mode,
-      ids,
-      name: (id: string) => store.themes[id]?.name ?? names[id] ?? id,
-      loadThemes,
+      ids: () => [SINGLE_THEME_ID],
+      name: (id: string) => (id === SINGLE_THEME_ID ? "Codeplane" : id),
+      loadThemes: () => Promise.resolve(store.themes),
       themes: () => store.themes,
-      setTheme,
+      setTheme: noop,
       setColorScheme,
-      registerTheme: (theme: WebTheme) => setStore("themes", theme.id, theme),
-      previewTheme: (id: string) => {
-        const next = normalize(id)
-        if (!next) return
-        if (next !== "oc-2" && !knownThemes().has(next) && !store.themes[next]) return
-        setStore("previewThemeId", next)
-        void load(next).then((theme) => {
-          if (!theme || store.previewThemeId !== next) return
-          const mode = store.previewScheme
-            ? store.previewScheme === "system"
-              ? getSystemMode()
-              : store.previewScheme
-            : store.mode
-          applyTheme(theme, next, mode)
-        })
-      },
+      registerTheme: noop,
+      previewTheme: noop,
       previewColorScheme: (scheme: ColorScheme) => {
         setStore("previewScheme", scheme)
-        const mode = scheme === "system" ? getSystemMode() : scheme
-        const id = store.previewThemeId ?? store.themeId
-        void load(id).then((theme) => {
-          if (!theme) return
-          if ((store.previewThemeId ?? store.themeId) !== id) return
-          if (store.previewScheme !== scheme) return
-          applyTheme(theme, id, mode)
-        })
       },
       commitPreview: () => {
-        if (store.previewThemeId) {
-          setTheme(store.previewThemeId)
-        }
-        if (store.previewScheme) {
-          setColorScheme(store.previewScheme)
-        }
-        setStore("previewThemeId", null)
+        if (store.previewScheme) setColorScheme(store.previewScheme)
         setStore("previewScheme", null)
       },
       cancelPreview: () => {
-        setStore("previewThemeId", null)
         setStore("previewScheme", null)
-        void load(store.themeId).then((theme) => {
-          if (!theme) return
-          applyTheme(theme, store.themeId, store.mode)
-        })
       },
     }
   },

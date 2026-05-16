@@ -14,7 +14,6 @@ import { EventSessionError } from "@codeplane-ai/sdk/v2"
 import { Persist, persisted } from "@/utils/persist"
 import { playSoundById } from "@/utils/sound"
 import { createRecentSessionErrorGate, describeSessionError, isIgnorableSessionError } from "@/utils/session-error"
-import { isChatSurfaceSession } from "@/pages/layout/helpers"
 import { useServer } from "./server"
 
 type NotificationBase = {
@@ -79,26 +78,10 @@ function createNotificationIndex(): NotificationIndex {
   }
 }
 
-// Path-only check — matches `isChatSurfaceSession(session)` but works
-// from a notification that has only a `directory` string (no live
-// Session object). Hoisted to module scope so both `buildNotificationIndex`
-// (for the project / session indexes) and the visibleList memo (for the
-// global notification center) use the SAME predicate.
-function isChatSurfaceDirectory(directory: string | undefined): boolean {
-  if (!directory) return false
-  return directory.split(/[/\\]/).includes(".codeplane-chats")
-}
-
 function buildNotificationIndex(list: Notification[]) {
   const index = createNotificationIndex()
 
   list.forEach((notification) => {
-    // Chat-surface sessions are filtered out of every index so unseen
-    // counts, project badges, and "any unseen errors?" all ignore them.
-    // The chat surface owns its own UI for surfacing in-progress / done /
-    // errored turns inline in the thread.
-    if (isChatSurfaceDirectory(notification.directory)) return
-
     if (notification.session) {
       const all = index.session.all[notification.session] ?? []
       index.session.all[notification.session] = [...all, notification]
@@ -254,17 +237,6 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
         if (meta.disposed) return
         if (!session) return
         if (session.parentID) return
-        // Chat-surface sessions live under `~/.codeplane-chats/<id>/` and
-        // their replies are visible in the chat thread the moment they
-        // arrive — the user is already on /chat watching them stream in.
-        // Surfacing a "Antwort bereit" toast / system notification for
-        // every chat turn is just noise, and routing the notification's
-        // href to /<base64dir>/session/<id> would jump them OUT of the
-        // chat surface into the project session view (a different UX).
-        // Skip both the system notification AND the notification-center
-        // entry for these sessions — same shape as the existing
-        // `parentID` skip for child agents.
-        if (isChatSurfaceSession(session)) return
 
         if (settings.sounds.agentEnabled()) {
           void playSoundById(settings.sounds.agent())
@@ -301,13 +273,6 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
       void lookup(directory, sessionID).then((session) => {
         if (meta.disposed) return
         if (session?.parentID) return
-        // Chat-surface sessions handle their own error display inline in
-        // the chat thread (the failed-message bubble). Skip the global
-        // notification path for the same reason as `handleSessionIdle` —
-        // the user is on /chat watching the stream, and a system toast
-        // pointing at /<base64dir>/session/<id> would jump them out of
-        // the chat surface.
-        if (session && isChatSurfaceSession(session)) return
 
         if (settings.sounds.errorsEnabled()) {
           void playSoundById(settings.sounds.errors())
@@ -347,16 +312,7 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
       unsub()
     })
 
-    // Chat-surface notifications (sessions under `~/.codeplane-chats/<id>/`)
-    // are filtered out of the global notification center. New ones are
-    // never appended (`handleSessionIdle` / `handleSessionError` skip
-    // them up front), but historical entries persisted from before the
-    // skip landed need to be hidden too — otherwise the user keeps
-    // seeing "Hii in 3e858def ist bereit" rows from a chat they're
-    // already on. The same predicate (`isChatSurfaceDirectory`) is used
-    // by `buildNotificationIndex` so the project / session indexes stay
-    // in sync with the visible list.
-    const visibleList = createMemo(() => store.list.filter((n) => !isChatSurfaceDirectory(n.directory)))
+    const visibleList = createMemo(() => store.list)
 
     return {
       ready,

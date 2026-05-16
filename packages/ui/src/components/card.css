@@ -1,61 +1,54 @@
+/*
+ * Card — Logic's shadcn `radix-nova` look: `rounded-xl`, `bg-card`,
+ * `ring-1 ring-foreground/10`, no left accent bar. Variant accent shows
+ * only on the title icon so the surface stays neutral.
+ */
+
 [data-component="card"] {
-  --card-pad-y: 10px;
-  --card-pad-r: 12px;
-  --card-pad-l: 10px;
+  --card-pad-y: 16px;
+  --card-pad-x: 16px;
+  --card-gap: 6px;
+  --card-icon: 16px;
+  --card-accent: var(--foreground);
 
   width: 100%;
   display: flex;
   flex-direction: column;
   position: relative;
-  background: transparent;
+  background-color: var(--card);
+  color: var(--card-foreground);
   border: none;
-  border-radius: var(--radius-md);
-  padding: var(--card-pad-y) var(--card-pad-r) var(--card-pad-y) var(--card-pad-l);
+  border-radius: var(--radius-xl);
+  padding: var(--card-pad-y) var(--card-pad-x);
+  box-shadow: inset 0 0 0 1px var(--border);
+  overflow: hidden;
+  gap: var(--card-gap);
 
-  /* text-14-regular */
   font-family: var(--font-family-sans);
   font-size: var(--font-size-base);
-  font-style: normal;
   font-weight: var(--font-weight-regular);
   line-height: var(--line-height-large);
   letter-spacing: var(--letter-spacing-normal);
-  color: var(--text-strong);
-
-  --card-gap: 8px;
-  --card-icon: 16px;
-  --card-indent: 0px;
-  --card-line-pad: 8px;
-
-  --card-accent: var(--icon-active);
 
   &:has([data-slot="card-title"]) {
     gap: 8px;
   }
 
-  &:has([data-slot="card-title-icon"]) {
-    --card-indent: calc(var(--card-icon) + var(--card-gap));
-  }
-
-  &::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: var(--card-line-pad);
-    bottom: var(--card-line-pad);
-    width: 2px;
-    border-radius: 2px;
-    background-color: var(--card-accent);
-  }
-
-  :where([data-card="title"], [data-slot="card-title"]) {
-    color: var(--text-strong);
-    font-weight: var(--font-weight-medium);
-  }
+  &[data-variant="error"] { --card-accent: var(--destructive); }
+  &[data-variant="warning"] { --card-accent: oklch(0.75 0.15 80); }
+  &[data-variant="success"] { --card-accent: oklch(0.65 0.18 145); }
+  &[data-variant="info"] { --card-accent: oklch(0.65 0.16 230); }
 
   :where([data-slot="card-title"]) {
     display: flex;
     align-items: center;
     gap: var(--card-gap);
+    color: var(--card-foreground);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.3;
+    letter-spacing: var(--letter-spacing-tight);
   }
 
   :where([data-slot="card-title"]) [data-component="icon"] {
@@ -72,7 +65,7 @@
   }
 
   :where([data-slot="card-title-icon"][data-placeholder]) [data-component="icon"] {
-    color: var(--text-weak);
+    color: var(--muted-foreground);
   }
 
   :where([data-slot="card-title-icon"])
@@ -81,14 +74,19 @@
     stroke-width: 1.5px !important;
   }
 
-  :where([data-card="description"], [data-slot="card-description"]) {
-    color: var(--text-base);
+  :where([data-slot="card-description"]) {
+    color: var(--muted-foreground);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-large);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     word-break: break-word;
   }
 
-  :where([data-card="actions"], [data-slot="card-actions"]) {
-    padding-left: var(--card-indent);
+  :where([data-slot="card-actions"]) {
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 }

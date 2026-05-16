@@ -1,5 +1,4 @@
 import { useLocation, useNavigate, useParams } from "@solidjs/router"
-// useNavigate is used by CronPageHeader and CronTaskRow below
 import { useMutation, useQuery, useQueryClient } from "@tanstack/solid-query"
 import { createEffect, createMemo, For, Show, type Accessor } from "solid-js"
 import { createStore } from "solid-js/store"
@@ -28,7 +27,6 @@ import {
   type CronUpdateInput,
 } from "@/utils/cron-client"
 import { base64Encode } from "@codeplane-ai/shared/util/encode"
-import { getFilename } from "@codeplane-ai/shared/util/path"
 import { decode64 } from "@/utils/base64"
 import { cronProjectForDirectory, cronProjectIDForRoute, cronTaskInScope, type CronProjectScope } from "./cron-scope"
 
@@ -140,12 +138,7 @@ export default function CronPage() {
   return (
     <div class="size-full overflow-y-auto">
       <div class="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-6 px-6 py-8">
-        <CronPageHeader
-          selectedProject={selectedProject}
-          selectedProjectID={selectedProjectID}
-          projects={projects}
-          taskCount={() => tasksForSelected().length}
-        />
+        <CronPageHeader selectedProject={selectedProject} />
         <CronTasksSection
           server={httpServer}
           tasks={tasksForSelected}
@@ -158,13 +151,9 @@ export default function CronPage() {
 
 function CronPageHeader(props: {
   selectedProject: Accessor<CronProject | undefined>
-  selectedProjectID: Accessor<string | undefined>
-  projects: Accessor<{ id: string; name?: string; worktree: string }[]>
-  taskCount: Accessor<number>
 }) {
   const language = useLanguage()
   const dialog = useDialog()
-  const navigate = useNavigate()
 
   const openEditor = () => {
     const project = props.selectedProject()
@@ -192,33 +181,6 @@ function CronPageHeader(props: {
           {language.t("cron.create")}
         </Button>
       </div>
-      <Show when={props.projects().filter((p) => p.id !== "global").length > 1}>
-        <div class="flex flex-wrap gap-2">
-          <For each={props.projects().filter((p) => p.id !== "global")}>
-            {(project) => {
-              const active = () => project.id === props.selectedProjectID()
-              const label = () =>
-                project.name?.trim() ||
-                getFilename(project.worktree) ||
-                project.id
-              return (
-                <button
-                  type="button"
-                  class="px-3 py-1.5 rounded-md text-13-regular border transition-colors"
-                  classList={{
-                    "border-border-interactive-base bg-surface-base-active text-text-strong": active(),
-                    "border-border-weak-base text-text-base hover:border-border-base hover:bg-surface-raised-base-hover":
-                      !active(),
-                  }}
-                  onClick={() => navigate(`/cron/worktree/${base64Encode(project.worktree)}?projectID=${encodeURIComponent(project.id)}`)}
-                >
-                  {label()}
-                </button>
-              )
-            }}
-          </For>
-        </div>
-      </Show>
     </div>
   )
 }

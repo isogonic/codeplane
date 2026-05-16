@@ -344,3 +344,52 @@
     }
   }
 }
+
+/* Tree-branch indicators for task (sub-session) tools: each card gets an
+   L-shaped connector entering from the upper-left, and consecutive task
+   collapsibles share a continuous vertical line through the gap between
+   them. The decoration sits on the collapsible (positioning context) while
+   the card is indented to make room.
+
+   Flat `[data-tool="task"]` is used instead of nested `:has()` because
+   Safari/Chrome reject `:has(:has())`. */
+[data-component="collapsible"].tool-collapsible[data-tool="task"],
+[data-component="collapsible"].tool-collapsible[data-tool="task"]:hover {
+  position: relative;
+}
+
+[data-component="collapsible"].tool-collapsible[data-tool="task"] [data-component="task-tool-card"] {
+  margin-left: 18px;
+}
+
+[data-component="collapsible"].tool-collapsible[data-tool="task"]::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 0;
+  width: 14px;
+  height: 50%;
+  border-left: 1px solid var(--border-weak-base, rgba(255, 255, 255, 0.16));
+  border-bottom: 1px solid var(--border-weak-base, rgba(255, 255, 255, 0.16));
+  border-bottom-left-radius: 8px;
+  pointer-events: none;
+}
+
+[data-component="collapsible"].tool-collapsible[data-tool="task"]
+  + [data-component="collapsible"].tool-collapsible[data-tool="task"]::before {
+  top: calc(-1 * var(--tool-content-gap, 4px));
+  height: calc(50% + var(--tool-content-gap, 4px));
+}
+
+[data-component="collapsible"].tool-collapsible[data-tool="task"]:has(
+    + [data-component="collapsible"].tool-collapsible[data-tool="task"]
+  )::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  bottom: calc(-1 * var(--tool-content-gap, 4px));
+  width: 1px;
+  background: var(--border-weak-base, rgba(255, 255, 255, 0.16));
+  pointer-events: none;
+}

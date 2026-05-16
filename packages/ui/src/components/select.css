@@ -1,6 +1,12 @@
+/*
+ * Select — Logic's shadcn `radix-nova` style. Trigger is a small outline
+ * button; "form" variant fills width and gets `bg-card` + ring on focus.
+ * Content matches popover (`bg-popover`, ring-1, soft shadow).
+ */
+
 [data-component="select"] {
   [data-slot="select-select-trigger"] {
-    padding: 0 4px 0 8px;
+    padding: 0 6px 0 10px;
     box-shadow: none;
 
     [data-slot="select-select-trigger-value"] {
@@ -9,38 +15,33 @@
       white-space: nowrap;
     }
     [data-slot="select-select-trigger-icon"] {
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      color: var(--text-weak);
+      color: var(--muted-foreground);
       transition: transform 0.1s ease-in-out;
     }
 
     &[data-expanded] {
-      &[data-variant="secondary"] {
-        background-color: var(--button-secondary-hover);
-      }
-      &[data-variant="ghost"] {
-        background-color: var(--surface-raised-base-active);
-      }
+      &[data-variant="secondary"] { background-color: var(--accent); }
+      &[data-variant="ghost"] { background-color: var(--accent); }
       &[data-variant="primary"] {
-        background-color: var(--icon-strong-active);
+        background-color: color-mix(in oklab, var(--primary) 88%, transparent);
       }
     }
 
     &:not([data-expanded]):focus-visible {
       &[data-variant="secondary"] {
-        background-color: var(--button-secondary-base);
+        background-color: var(--secondary);
+        box-shadow:
+          inset 0 0 0 1px var(--ring),
+          0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
       }
-      &[data-variant="ghost"] {
-        background-color: var(--surface-raised-base-hover);
-      }
-      &[data-variant="primary"] {
-        background-color: var(--icon-strong-base);
-      }
+      &[data-variant="ghost"] { background-color: var(--muted); }
+      &[data-variant="primary"] { background-color: var(--primary); }
     }
   }
 
@@ -49,13 +50,12 @@
 
     [data-slot="select-select-trigger"] {
       width: 100%;
-      padding: 2px 12px;
+      padding: 0 10px;
       height: 32px;
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border-weak-base);
-      background-color: var(--input-base);
+      border-radius: var(--radius-lg);
+      background-color: var(--card);
+      box-shadow: inset 0 0 0 1px var(--border);
       justify-content: space-between;
-      box-shadow: none;
 
       [data-slot="select-select-trigger-value"] {
         overflow: hidden;
@@ -63,32 +63,28 @@
         white-space: nowrap;
         font-size: 14px;
         font-weight: var(--font-weight-regular);
-        color: var(--text-strong);
+        color: var(--foreground);
       }
 
       &[data-expanded],
       &:focus-visible {
-        border-color: transparent;
+        background-color: var(--card);
         box-shadow:
-          0 0 0 3px var(--border-weak-selected),
-          0 0 0 1px var(--border-selected),
-          0 1px 2px -1px rgba(19, 16, 16, 0.25),
-          0 1px 2px 0 rgba(19, 16, 16, 0.08),
-          0 1px 3px 0 rgba(19, 16, 16, 0.12);
-        background-color: var(--input-base);
+          inset 0 0 0 1px var(--ring),
+          0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
       }
     }
   }
 
   &[data-trigger-style="settings"] {
     [data-slot="select-select-trigger"] {
-      padding: 6px 6px 6px 12px;
+      padding: 6px 6px 6px 10px;
       box-shadow: none;
-      border-radius: 6px;
+      border-radius: var(--radius-md);
       min-width: 160px;
       height: 32px;
       justify-content: flex-end;
-      gap: 12px;
+      gap: 10px;
       background-color: transparent;
 
       [data-slot="select-select-trigger-value"] {
@@ -105,8 +101,8 @@
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        color: var(--text-weak);
-        background-color: var(--surface-raised-base);
+        color: var(--muted-foreground);
+        background-color: var(--muted);
         border-radius: 4px;
         transition: transform 0.1s ease-in-out;
       }
@@ -114,8 +110,8 @@
       &[data-slot="select-select-trigger"]:hover:not(:disabled),
       &[data-slot="select-select-trigger"][data-expanded],
       &[data-slot="select-select-trigger"][data-expanded]:hover:not(:disabled) {
-        background-color: var(--input-base);
-        box-shadow: var(--shadow-xs-border-base);
+        background-color: var(--card);
+        box-shadow: inset 0 0 0 1px var(--border);
       }
 
       &:not([data-expanded]):not(:focus-visible):focus {
@@ -131,14 +127,16 @@
   max-width: 23rem;
   overflow: hidden;
   border-radius: var(--radius-md);
-  background-color: var(--surface-raised-stronger-non-alpha);
+  background-color: var(--popover);
+  color: var(--popover-foreground);
   padding: 4px;
-  box-shadow: var(--shadow-xs-border);
+  box-shadow:
+    inset 0 0 0 1px var(--border),
+    0 8px 24px -6px oklch(0 0 0 / 0.14),
+    0 2px 6px -2px oklch(0 0 0 / 0.08);
   z-index: 60;
 
-  &[data-expanded] {
-    animation: select-open 0.15s ease-out;
-  }
+  &[data-expanded] { animation: select-open 0.12s ease-out; }
 
   [data-slot="select-select-content-list"] {
     overflow-y: auto;
@@ -150,13 +148,8 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
 
-    &::-webkit-scrollbar {
-      display: none;
-    }
-
-    &:focus {
-      outline: none;
-    }
+    &::-webkit-scrollbar { display: none; }
+    &:focus { outline: none; }
 
     > *:not([role="presentation"]) + *:not([role="presentation"]) {
       margin-top: 2px;
@@ -167,33 +160,32 @@
     position: relative;
     display: flex;
     align-items: center;
-    padding: 2px 8px;
-    gap: 12px;
-    border-radius: 4px;
+    padding: 4px 8px;
+    gap: 10px;
+    border-radius: var(--radius-sm);
     cursor: default;
 
-    /* text-12-medium */
     font-family: var(--font-family-sans);
     font-size: var(--font-size-small);
-    font-style: normal;
     font-weight: var(--font-weight-medium);
-    line-height: var(--line-height-large); /* 166.667% */
+    line-height: 1.4;
     letter-spacing: var(--letter-spacing-normal);
 
-    color: var(--text-strong);
-
+    color: var(--popover-foreground);
     transition:
-      background-color 0.2s ease-in-out,
-      color 0.2s ease-in-out;
+      background-color 0.15s ease-in-out,
+      color 0.15s ease-in-out;
     outline: none;
     user-select: none;
 
     &[data-highlighted] {
-      background: var(--surface-raised-base-hover);
+      background-color: var(--accent);
+      color: var(--accent-foreground);
     }
     &[data-disabled] {
-      background-color: var(--surface-raised-base);
+      color: var(--muted-foreground);
       pointer-events: none;
+      opacity: 0.6;
     }
     [data-slot="select-select-item-indicator"] {
       display: flex;
@@ -203,29 +195,24 @@
       width: 16px;
       height: 16px;
     }
-    &:focus {
-      outline: none;
-    }
+    &:focus { outline: none; }
     &:hover {
-      background: var(--surface-raised-base-hover);
+      background-color: var(--accent);
+      color: var(--accent-foreground);
     }
   }
 }
 
 [data-component="select-content"][data-trigger-style="settings"] {
   min-width: 160px;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   padding: 0;
 
-  [data-slot="select-select-content-list"] {
-    padding: 4px;
-  }
+  [data-slot="select-select-content-list"] { padding: 4px; }
 
   [data-slot="select-select-item"] {
-    /* text-14-regular */
     font-family: var(--font-family-sans);
     font-size: var(--font-size-base);
-    font-style: normal;
     font-weight: var(--font-weight-regular);
     line-height: var(--line-height-large);
     letter-spacing: var(--letter-spacing-normal);
@@ -233,12 +220,6 @@
 }
 
 @keyframes select-open {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }

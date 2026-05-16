@@ -22,18 +22,12 @@ import {
 } from "@/context/settings"
 import { decode64 } from "@/utils/base64"
 import { playSoundById, SOUND_OPTIONS } from "@/utils/sound"
-import { Link } from "./link"
 import { SettingsList } from "./settings-list"
 
 let demoSoundState = {
   cleanup: undefined as (() => void) | undefined,
   timeout: undefined as NodeJS.Timeout | undefined,
   run: 0,
-}
-
-type ThemeOption = {
-  id: string
-  name: string
 }
 
 // To prevent audio from overlapping/playing very quickly when navigating the settings menus,
@@ -84,7 +78,6 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
   const versionInfo = (): VersionInfo | undefined => updates.status() as VersionInfo | undefined
 
   onMount(() => {
-    void theme.loadThemes()
     void refetchVersion()
   })
 
@@ -113,8 +106,6 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
 
     permission.disableAutoAccept(params.id, value)
   }
-
-  const themeOptions = createMemo<ThemeOption[]>(() => theme.ids().map((id) => ({ id, name: theme.name(id) })))
 
   const colorSchemeOptions = createMemo((): { value: ColorScheme; label: string }[] => [
     { value: "system", label: language.t("theme.scheme.system") },
@@ -375,36 +366,6 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
         </SettingsRow>
 
         <SettingsRow
-          title={language.t("settings.general.row.theme.title")}
-          description={
-            <>
-              {language.t("settings.general.row.theme.description")}{" "}
-              <Link href="https://github.com/devinoldenburg/codeplane">{language.t("common.learnMore")}</Link>
-            </>
-          }
-        >
-          <Select
-            data-action="settings-theme"
-            options={themeOptions()}
-            current={themeOptions().find((o) => o.id === theme.themeId())}
-            value={(o) => o.id}
-            label={(o) => o.name}
-            onSelect={(option) => {
-              if (!option) return
-              theme.setTheme(option.id)
-            }}
-            onHighlight={(option) => {
-              if (!option) return
-              theme.previewTheme(option.id)
-              return () => theme.cancelPreview()
-            }}
-            variant="secondary"
-            size="small"
-            triggerVariant="settings"
-          />
-        </SettingsRow>
-
-        <SettingsRow
           title={language.t("settings.general.row.uiFont.title")}
           description={language.t("settings.general.row.uiFont.description")}
         >
@@ -586,7 +547,12 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
         current,
         latest: info.latest,
       })
-    if (info.method === "desktop")
+    // Without the desktop bridge (e.g., a remote browser viewing a
+    // desktop-managed server) we can't drive the update from here, so we
+    // still point the user at the desktop app. With the bridge, fall
+    // through to the regular "up to date" copy — the Update button below
+    // talks straight to electron-updater.
+    if (info.method === "desktop" && !updates.hasDesktopBridge())
       return language.t("settings.general.row.version.descriptionDesktopManaged", { current })
     if (info.method === "unknown")
       return language.t("settings.general.row.version.descriptionUnknownMethod", { current })
@@ -621,7 +587,7 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
               when={
                 versionInfo()?.hasUpdate &&
                 versionInfo()?.method !== "unknown" &&
-                versionInfo()?.method !== "desktop"
+                (versionInfo()?.method !== "desktop" || updates.hasDesktopBridge())
               }
               fallback={
                 <Button

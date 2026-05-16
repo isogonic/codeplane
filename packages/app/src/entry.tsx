@@ -154,10 +154,6 @@ const forward: Platform["forward"] = () => {
   window.history.forward()
 }
 
-const restart: Platform["restart"] = async () => {
-  window.location.reload()
-}
-
 const root = document.getElementById("root")
 if (!(root instanceof HTMLElement) && import.meta.env.DEV) {
   throw new Error(getRootNotFoundError())
@@ -168,6 +164,38 @@ const getCurrentUrl = () => {
   if (import.meta.env.DEV)
     return `http://${import.meta.env.VITE_CODEPLANE_SERVER_HOST ?? "localhost"}:${import.meta.env.VITE_CODEPLANE_SERVER_PORT ?? "4096"}`
   return location.origin
+}
+
+const waitForServer = async (origin: string, timeoutMs = 30_000) => {
+  const start = Date.now()
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const response = await fetch(`${origin}/global/health`, { method: "GET", cache: "no-store" })
+      if (response.ok) return true
+    } catch {
+      // not ready yet
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500))
+  }
+  return false
+}
+
+const restart: Platform["restart"] = async () => {
+  const origin = getCurrentUrl()
+  try {
+    const response = await fetch(`${origin}/global/restart`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    })
+    if (response.ok) {
+      const data = (await response.json().catch(() => ({}))) as { method?: "reload" | "exit" }
+      if (data.method === "exit") await waitForServer(origin)
+    }
+  } catch {
+    // Server may already be exiting — wait for it to come back.
+    await waitForServer(origin)
+  }
+  window.location.reload()
 }
 
 const isLocalDevHost = () => location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "::1"

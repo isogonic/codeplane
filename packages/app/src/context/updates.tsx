@@ -11,12 +11,48 @@ import { DialogWhatsNew } from "@/components/dialog-whats-new"
 export type ReleaseNotes = PlatformReleaseNotes
 
 const LAST_SEEN_KEY = "codeplane:last-seen-version"
+
+type DesktopUpdaterBridge = {
+  status: () => Promise<{ current: string; latest: string | null; hasUpdate: boolean; method: string }>
+  check: () => Promise<{ ok: true; updateAvailable: boolean; version?: string } | { ok: false; error: string }>
+  download: () => Promise<{ ok: true; mocked?: boolean } | { ok: false; error: string }>
+  install?: () => Promise<{ ok: true; mocked?: boolean }>
+  onUpdateAvailable: (cb: (info: { version: string }) => void) => () => void
+  onUpdateNotAvailable: (cb: (info: { version: string } | undefined) => void) => () => void
+  onUpdateDownloaded: (cb: (info: { version: string }) => void) => () => void
+  onProgress: (cb: (info: { percent: number; transferred: number; total: number }) => void) => () => void
+  onError: (cb: (message: string) => void) => () => void
+  onRequiresManualDownload: (cb: (info: { version: string | null; url: string; reason: string }) => void) => () => void
+}
 type DesktopStorageWindow = Window & {
   codeplaneDesktop?: {
     storage?: {
       getItem: (storageName: string | undefined, key: string) => string | null
       setItem: (storageName: string | undefined, key: string, value: string) => void
     }
+    desktopUpdater?: DesktopUpdaterBridge
+    auth?: {
+      openExternal: (url: string) => Promise<boolean>
+    }
+  }
+}
+
+function getDesktopUpdater(): DesktopUpdaterBridge | undefined {
+  if (typeof window === "undefined") return undefined
+  return (window as DesktopStorageWindow).codeplaneDesktop?.desktopUpdater
+}
+
+function openExternal(url: string) {
+  try {
+    if (typeof window === "undefined") return
+    const opener = (window as DesktopStorageWindow).codeplaneDesktop?.auth?.openExternal
+    if (opener) {
+      void opener(url)
+      return
+    }
+    window.open(url, "_blank", "noopener,noreferrer")
+  } catch {
+    // ignore — best-effort UX, the toast description still names the version
   }
 }
 
@@ -85,6 +121,12 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
     const [upgrading, setUpgrading] = createSignal(false)
     const [status, setStatus] = createSignal<PlatformUpdateStatus | undefined>(undefined)
     let reloadTimer: ReturnType<typeof setTimeout> | undefined
+    // When the user is running inside the Electron shell the same preload
+    // that exposes storage also exposes the desktop's electron-updater
+    // bridge. We mirror its status into the in-instance settings so the
+    // "Update now" / "Check for updates" buttons drive a real install
+    // instead of pointing the user back at the selector page.
+    const desktopUpdater = getDesktopUpdater()
 
     // Release notes always come from the *connected server*. When the user
     // is in an instance — desktop or web — "What's new" describes the
@@ -123,20 +165,39 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
       if (previous !== current) writeLastSeen(current)
     }
 
-    // Always reflect the *connected server's* version in the in-instance
-    // settings UI. The desktop shell's own version is handled exclusively
-    // on the selector page.
+    // Reflects the *connected server's* version. When that server runs as
+    // a desktop-managed local instance the server-side /global/upgrade
+    // route refuses to do anything (electron-updater owns the lifecycle),
+    // so we layer the desktop shell's update status on top of the
+    // server's response. `current` still comes from the server, but
+    // `latest` / `hasUpdate` come from electron-updater — which is the
+    // only source that can decide whether a new desktop release exists.
     const fetchStatus = async (refresh = false) => {
       try {
         const url = `${globalSDK.url}/global/version${refresh ? "?refresh=1" : ""}`
         const response = await fetch(url)
         if (!response.ok) throw new Error(`Status ${response.status}`)
         const next = (await response.json()) as PlatformUpdateStatus
-        setStatus(next)
-        checkPostUpdate(next.current)
-        return next
+        const merged = desktopUpdater && next.method === "desktop" ? await mergeDesktopStatus(next) : next
+        setStatus(merged)
+        checkPostUpdate(merged.current)
+        return merged
       } catch {
         return undefined
+      }
+    }
+
+    const mergeDesktopStatus = async (next: PlatformUpdateStatus): Promise<PlatformUpdateStatus> => {
+      if (!desktopUpdater) return next
+      try {
+        const shell = await desktopUpdater.status()
+        return {
+          ...next,
+          latest: shell.latest ?? next.latest,
+          hasUpdate: shell.hasUpdate,
+        }
+      } catch {
+        return next
       }
     }
 
@@ -203,11 +264,16 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
       reloadTimer = setTimeout(() => window.location.reload(), 4_500)
     }
 
-    // Upgrades the *connected server*. Always goes through the SDK, even
-    // when running inside the desktop shell — the desktop's own update
-    // path is intentionally separate (selector page only).
+    // Upgrades the *connected server*. Goes through the SDK for normal
+    // installs, but routes through the desktop bridge when the server
+    // reports method=desktop — the SDK path would short-circuit with an
+    // error because electron-updater owns the lifecycle in that case.
     const startUpgrade = async (target?: string) => {
       if (upgrading()) return
+      if (desktopUpdater && status()?.method === "desktop") {
+        await startDesktopUpgrade()
+        return
+      }
       setUpgrading(true)
       showToast({
         id: "codeplane.update",
@@ -277,6 +343,69 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
       }
     }
 
+    // Drives a desktop-shell update via the electron-updater bridge. We
+    // own the "upgrading" signal for the duration of the download — the
+    // bridge's onUpdateDownloaded / onError / onRequiresManualDownload
+    // events clear it. The shell auto-restarts ~1.5s after the download
+    // completes; until then we keep the loading toast pinned.
+    const startDesktopUpgrade = async () => {
+      if (!desktopUpdater) return
+      setUpgrading(true)
+      showToast({
+        id: "codeplane.update",
+        title: language.t("toast.update.installing.title"),
+        description: language.t("toast.update.installing.description"),
+        variant: "loading",
+        persistent: true,
+      })
+      try {
+        const result = await desktopUpdater.download()
+        if (!result.ok) {
+          showToast({
+            id: "codeplane.update",
+            title: language.t("toast.update.failed.title"),
+            description: result.error || language.t("toast.update.failed.description"),
+            variant: "error",
+            icon: "warning",
+            actions: [
+              {
+                label: language.t("toast.update.action.retry"),
+                onClick: () => void startDesktopUpgrade(),
+              },
+              {
+                label: language.t("toast.update.action.dismiss"),
+                onClick: "dismiss",
+              },
+            ],
+          })
+          setUpgrading(false)
+        }
+        // On success we wait for onUpdateDownloaded / onError to settle
+        // the loading state — the shell relaunches once the download
+        // finishes, so we never reach a "downloaded but not installed"
+        // resting state.
+      } catch (err) {
+        showToast({
+          id: "codeplane.update",
+          title: language.t("toast.update.failed.title"),
+          description: err instanceof Error ? err.message : String(err),
+          variant: "error",
+          icon: "warning",
+          actions: [
+            {
+              label: language.t("toast.update.action.retry"),
+              onClick: () => void startDesktopUpgrade(),
+            },
+            {
+              label: language.t("toast.update.action.dismiss"),
+              onClick: "dismiss",
+            },
+          ],
+        })
+        setUpgrading(false)
+      }
+    }
+
     const recheck = async (notify = true) => {
       const next = await fetchStatus(true)
       if (notify && next?.hasUpdate && next.latest) showAvailable(next.latest)
@@ -308,10 +437,85 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
       }
     })
 
+    // Desktop-shell update lifecycle. Only attaches inside the Electron
+    // shell where electron-updater is running; otherwise these are
+    // no-ops because `desktopUpdater` is undefined.
+    const desktopUnsubs: Array<() => void> = []
+    if (desktopUpdater) {
+      desktopUnsubs.push(
+        desktopUpdater.onUpdateAvailable((info) => {
+          if (!info.version) return
+          setStatus((prev) =>
+            prev
+              ? { ...prev, latest: info.version, hasUpdate: true }
+              : { current: "", latest: info.version, hasUpdate: true, method: "desktop" },
+          )
+          showAvailable(info.version)
+        }),
+        desktopUpdater.onUpdateNotAvailable((info) => {
+          setStatus((prev) =>
+            prev ? { ...prev, latest: info?.version ?? prev.latest, hasUpdate: false } : prev,
+          )
+        }),
+        desktopUpdater.onUpdateDownloaded((info) => {
+          if (info.version) announcedAvailable.delete(info.version)
+          // The shell quits and installs ~1.5s after this fires, so we
+          // surface a restart-style toast with no manual restart action.
+          showInstalled(info.version, true, false)
+          setUpgrading(false)
+        }),
+        desktopUpdater.onError((message) => {
+          if (!upgrading()) return
+          showToast({
+            id: "codeplane.update",
+            title: language.t("toast.update.failed.title"),
+            description: message || language.t("toast.update.failed.description"),
+            variant: "error",
+            icon: "warning",
+            actions: [
+              {
+                label: language.t("toast.update.action.retry"),
+                onClick: () => void startDesktopUpgrade(),
+              },
+              {
+                label: language.t("toast.update.action.dismiss"),
+                onClick: "dismiss",
+              },
+            ],
+          })
+          setUpgrading(false)
+        }),
+        desktopUpdater.onRequiresManualDownload((info) => {
+          // Unsigned macOS builds can't self-update through electron-updater
+          // — fall back to "open the GitHub release in a browser" so the
+          // user can grab the installer manually.
+          showToast({
+            id: "codeplane.update",
+            title: language.t("toast.update.failed.title"),
+            description: info.reason || language.t("toast.update.failed.description"),
+            variant: "error",
+            icon: "warning",
+            actions: [
+              {
+                label: language.t("toast.update.action.updateNow"),
+                onClick: () => openExternal(info.url),
+              },
+              {
+                label: language.t("toast.update.action.dismiss"),
+                onClick: "dismiss",
+              },
+            ],
+          })
+          setUpgrading(false)
+        }),
+      )
+    }
+
     void fetchStatus(false)
 
     onCleanup(() => {
       unsub()
+      for (const off of desktopUnsubs) off()
       if (reloadTimer) clearTimeout(reloadTimer)
     })
 
@@ -320,6 +524,7 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
       recheck,
       status,
       isUpgrading: upgrading,
+      hasDesktopBridge: () => !!desktopUpdater,
       openWhatsNew: (version?: string) => {
         const v = version ?? status()?.current
         if (!v) return

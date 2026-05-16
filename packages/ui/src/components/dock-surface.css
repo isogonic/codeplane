@@ -1,18 +1,32 @@
+/*
+ * Dock surface — the chat composer's chrome. `bg-card` rounded-xl with a
+ * 1px ring, no harsh shadow. Focus-within adds a soft `ring/35` halo.
+ * The tray sits above and joins via `data-dock-attach="top"`.
+ */
+
 [data-dock-surface="shell"] {
-  background-color: var(--surface-raised-stronger-non-alpha);
-  box-shadow: var(--shadow-xs-border);
+  background-color: var(--card);
+  color: var(--card-foreground);
+  box-shadow: inset 0 0 0 1px var(--border);
   position: relative;
   z-index: 10;
-  border-radius: 12px;
+  border-radius: var(--radius-xl);
   overflow: clip;
+  transition: box-shadow 120ms ease;
+}
+
+[data-dock-surface="shell"]:focus-within {
+  box-shadow:
+    inset 0 0 0 1px var(--ring),
+    0 0 0 3px color-mix(in oklab, var(--ring) 35%, transparent);
 }
 
 [data-dock-surface="tray"] {
-  background-color: var(--background-base);
-  border: 1px solid var(--border-weak-base);
+  background-color: color-mix(in oklab, var(--muted) 70%, transparent);
+  box-shadow: inset 0 0 0 1px var(--border);
   position: relative;
   z-index: 0;
-  border-radius: 12px;
+  border-radius: var(--radius-xl);
   overflow: clip;
 }
 
@@ -20,4 +34,5 @@
   margin-top: -0.875rem;
   border-top-left-radius: 0;
   border-top-right-radius: 0;
+  padding-top: 0.875rem;
 }

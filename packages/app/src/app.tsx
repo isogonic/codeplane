@@ -26,7 +26,6 @@ import {
   Suspense,
 } from "solid-js"
 import { Dynamic } from "solid-js/web"
-import { ChatProvider } from "@/context/chat"
 import { CommandProvider } from "@/context/command"
 import { CommentsProvider } from "@/context/comments"
 import { LiveActivityProvider } from "@/context/live-activity"
@@ -55,13 +54,11 @@ const loadNotifications = () => import("@/pages/notifications")
 const loadSettings = () => import("@/pages/settings")
 const loadCron = () => import("@/pages/cron")
 const loadSession = () => import("@/pages/session")
-const loadChat = () => import("@/pages/chat")
 const HomeRoute = lazy(loadHome)
 const NotificationsRoute = lazy(loadNotifications)
 const SettingsRoute = lazy(loadSettings)
 const CronRoute = lazy(loadCron)
 const Session = lazy(loadSession)
-const ChatRoute = lazy(loadChat)
 const Loading = () => <div class="size-full" />
 const ModesRedirect = () => <Navigate href="/settings/modes" />
 const ModelsRedirect = () => <Navigate href="/settings/models" />
@@ -75,7 +72,6 @@ if (typeof location === "object") {
   if (pathname.startsWith("/settings")) void loadSettings()
   if (pathname === "/notifications") void loadNotifications()
   if (pathname.startsWith("/cron")) void loadCron()
-  if (pathname === "/chat" || pathname.startsWith("/chat/")) void loadChat()
 }
 
 if (typeof window === "object" && typeof requestIdleCallback === "function") {
@@ -85,7 +81,6 @@ if (typeof window === "object" && typeof requestIdleCallback === "function") {
     void loadNotifications()
     void loadCron()
     void loadSession()
-    void loadChat()
   }
   requestIdleCallback(preloadOthers, { timeout: 3000 })
 } else if (typeof window === "object") {
@@ -95,7 +90,6 @@ if (typeof window === "object" && typeof requestIdleCallback === "function") {
     void loadNotifications()
     void loadCron()
     void loadSession()
-    void loadChat()
   }, 1500)
 }
 
@@ -142,11 +136,9 @@ function AppShellProviders(props: ParentProps) {
               <ModelsProvider>
                 <CommandProvider>
                   <HighlightsProvider>
-                    <ChatProvider>
-                      <LiveActivityProvider>
-                        <Layout>{props.children}</Layout>
-                      </LiveActivityProvider>
-                    </ChatProvider>
+                    <LiveActivityProvider>
+                      <Layout>{props.children}</Layout>
+                    </LiveActivityProvider>
                   </HighlightsProvider>
                 </CommandProvider>
               </ModelsProvider>
@@ -356,7 +348,6 @@ export function AppInterface(props: {
                   root={(routerProps) => <RouterRoot appChildren={props.children}>{routerProps.children}</RouterRoot>}
                 >
                   <Route path="/" component={HomeRoute} />
-                  <Route path="/chat/:id?" component={ChatRoute} />
                   <Route path="/notifications" component={NotificationsRoute} />
                   <Route path="/modes" component={ModesRedirect} />
                   <Route path="/models" component={ModelsRedirect} />
