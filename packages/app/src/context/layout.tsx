@@ -22,11 +22,36 @@ const DEFAULT_SESSION_WIDTH = 600
 const DEFAULT_TERMINAL_HEIGHT = 280
 export type AvatarColorKey = (typeof AVATAR_COLOR_KEYS)[number]
 
-export function getAvatarColors(key?: string) {
+/*
+ * Deterministic string → palette-index hash. The same project name
+ * always gets the same colour, but two projects with different names
+ * land on different colours (modulo the 6-slot palette). FNV-1a 32-bit
+ * gives us a clean distribution with no allocations per call.
+ */
+function hashAvatarSeed(seed: string): number {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < seed.length; i++) {
+    hash ^= seed.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return (hash >>> 0) % AVATAR_COLOR_KEYS.length
+}
+
+export function getAvatarColors(key?: string, seed?: string) {
   if (key && AVATAR_COLOR_KEYS.includes(key as AvatarColorKey)) {
     return {
       background: `var(--avatar-background-${key})`,
       foreground: `var(--avatar-text-${key})`,
+    }
+  }
+  /* No explicit override — pick a palette slot from the seed (typically
+     the project name) so each project gets a distinct, colourful avatar
+     instead of every tile rendering the same washed-out lavender. */
+  if (seed) {
+    const k = AVATAR_COLOR_KEYS[hashAvatarSeed(seed)]
+    return {
+      background: `var(--avatar-background-${k})`,
+      foreground: `var(--avatar-text-${k})`,
     }
   }
   return {

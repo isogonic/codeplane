@@ -44,7 +44,7 @@ export const ProjectIcon = (props: { project: LocalProject; class?: string; noti
         <Avatar
           fallback={name()}
           src={getProjectAvatarSource(props.project.icon)}
-          {...getAvatarColors(props.project.icon?.color)}
+          {...getAvatarColors(props.project.icon?.color, props.project.worktree || name())}
           class="size-full rounded"
           classList={{ "badge-mask": notify() }}
         />
