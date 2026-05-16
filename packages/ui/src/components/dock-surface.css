@@ -15,15 +15,6 @@
   transition: box-shadow 120ms ease;
 }
 
-/* When a tray is attached underneath, the shell's rounded bottom corners
-   would peek out past the tray's square top, leaving little visible
-   "ears" on the left and right. Square the bottom corners in that case
-   so the shell + tray reads as one continuous card. */
-[data-dock-surface="shell"]:has(+ [data-dock-surface="tray"][data-dock-attach="top"]) {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
 [data-dock-surface="shell"]:focus-within {
   box-shadow:
     inset 0 0 0 1px var(--ring),
@@ -39,13 +30,12 @@
   overflow: clip;
 }
 
-/* The attached tray overlaps the shell by 1px so the two 1px rings stack
-   into a single continuous border — no doubled seam, no gap. The extra
-   internal padding-top gives the tray's content (model / mode pickers)
-   real breathing room from the shell content above. */
+/* Sit the attached tray as a separate rounded card below the shell with
+   a small gap. The previous incarnation overlapped the two by negative
+   margin so the rings merged, but the shell's rounded bottom corners
+   then peeked past the tray's square top on the left and right; the
+   user prefers two clearly-rounded cards stacked with breathing room
+   between them. */
 [data-dock-surface="tray"][data-dock-attach="top"] {
-  margin-top: -1px;
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-  padding-top: 0.5rem;
+  margin-top: 0.25rem;
 }
