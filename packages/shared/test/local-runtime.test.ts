@@ -93,6 +93,26 @@ describe("local runtime registry config", () => {
       "npm registry lookup failed for codeplane-ai@latest at https://registry.example.com/custom/codeplane-ai/latest with HTTP 404",
     )
   })
+
+  test("resolves safe npm dist-tags", async () => {
+    let request: Request | undefined
+    globalThis.fetch = (async (input, init) => {
+      request = input instanceof Request ? input : new Request(input instanceof URL ? input.toString() : input, init)
+      return new Response(JSON.stringify({ version: "27.4.0", dist: { tarball: "https://registry.example.com/codeplane.tgz" } }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    }) as typeof globalThis.fetch
+
+    const manifest = await fetchNpmPackageManifest({ name: "codeplane-ai", version: "next" })
+
+    expect(manifest.version).toBe("27.4.0")
+    expect(request?.url).toBe("https://registry.npmjs.org/codeplane-ai/next")
+  })
+
+  test("rejects unsafe npm dist-tags", async () => {
+    await expect(fetchNpmPackageManifest({ name: "codeplane-ai", version: "../latest" })).rejects.toThrow(/Invalid version/)
+  })
 })
 
 describe("local runtime fetch timeout", () => {

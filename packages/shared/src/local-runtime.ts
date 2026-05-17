@@ -13,6 +13,7 @@ import type { LocalInstallProgress, LocalTarget } from "./instance"
 
 const CONFIG_FILES = ["codeplane.jsonc", "codeplane.json", "config.json"] as const
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
+const NPM_TAG_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
 export function resolveNpmFetchTimeout(value = process.env.CODEPLANE_NPM_FETCH_TIMEOUT_MS) {
   const parsed = Number(value)
   if (!Number.isFinite(parsed) || parsed < 1_000) return 120_000
@@ -364,8 +365,8 @@ export async function fetchNpmPackageManifest(input: { name: string; version?: s
       }
     : await npmRegistry()
   const requested = cleanVersion(input.version || "latest")
-  // Allow "latest" / dist-tag passthrough, but validate concrete versions.
-  if (requested !== "latest" && !VERSION_PATTERN.test(requested)) {
+  // Allow npm dist-tag passthrough, but reject values that cannot be a safe tag or concrete version.
+  if (!VERSION_PATTERN.test(requested) && !NPM_TAG_PATTERN.test(requested)) {
     throw new Error(`Invalid version "${requested}" requested for ${input.name}`)
   }
   const url = new URL(`${registryPath(input.name)}/${requested}`, config.registry)
