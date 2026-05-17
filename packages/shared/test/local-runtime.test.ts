@@ -14,6 +14,7 @@ import {
   readPreferredLocalVersion,
   resolveCodeplaneLocalTarget,
   resolveLocalBinaryPath,
+  resolveNpmFetchTimeout,
   writePreferredLocalVersion,
 } from "../src/local-runtime"
 
@@ -81,6 +82,16 @@ describe("local runtime registry config", () => {
     expect(manifest.version).toBe("27.3.1")
     expect(request?.url).toBe("https://registry.example.com/custom/codeplane-ai/latest")
     expect(request?.headers.get("authorization")).toBe("Bearer secret-token")
+  })
+})
+
+describe("local runtime fetch timeout", () => {
+  test("falls back for invalid or too-small values and caps huge values", () => {
+    expect(resolveNpmFetchTimeout(undefined)).toBe(120_000)
+    expect(resolveNpmFetchTimeout("0")).toBe(120_000)
+    expect(resolveNpmFetchTimeout("999")).toBe(120_000)
+    expect(resolveNpmFetchTimeout("5000")).toBe(5_000)
+    expect(resolveNpmFetchTimeout("9999999")).toBe(600_000)
   })
 })
 

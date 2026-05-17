@@ -13,7 +13,12 @@ import type { LocalInstallProgress, LocalTarget } from "./instance"
 
 const CONFIG_FILES = ["codeplane.jsonc", "codeplane.json", "config.json"] as const
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[\w.+-]+)?$/
-const NPM_FETCH_TIMEOUT_MS = Number(process.env.CODEPLANE_NPM_FETCH_TIMEOUT_MS) || 120_000
+export function resolveNpmFetchTimeout(value = process.env.CODEPLANE_NPM_FETCH_TIMEOUT_MS) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed < 1_000) return 120_000
+  return Math.min(parsed, 600_000)
+}
+const NPM_FETCH_TIMEOUT_MS = resolveNpmFetchTimeout()
 const cleanVersion = (value: string) => (value ?? "").toString().trim().replace(/^[vV]+/, "")
 const localVersionFile = () => path.join(CodeplaneHome.paths().local_server, "default-version")
 const localCliVersionFile = () => path.join(CodeplaneHome.paths().bin, ".codeplane-version")
