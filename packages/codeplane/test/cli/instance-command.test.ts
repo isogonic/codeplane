@@ -72,6 +72,31 @@ describe("cli instance helpers", () => {
     })
   })
 
+  test("leaves state unchanged when no local instances exist", () => {
+    expect(
+      applyLocalInstanceVersion(
+        {
+          lastInstanceID: "remote-1",
+          instances: [
+            {
+              id: "remote-1",
+              url: "https://example.com",
+            },
+          ],
+        },
+        "28.1.25",
+      ),
+    ).toEqual({
+      lastInstanceID: "remote-1",
+      instances: [
+        {
+          id: "remote-1",
+          url: "https://example.com",
+        },
+      ],
+    })
+  })
+
   test("formats instance summaries for list output", () => {
     expect(
       formatInstanceSummary(
