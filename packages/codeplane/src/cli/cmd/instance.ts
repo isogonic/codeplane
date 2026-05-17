@@ -55,7 +55,7 @@ type InstanceLocalTargetArgs = {
 // Username/password compose into an Authorization: Basic … header that
 // overrides any Authorization line in --header (the explicit field wins),
 // matching the desktop's saved-instance form behavior.
-function composeRemoteHeaders(input: InstanceAddArgs): Record<string, string> | undefined {
+export function composeRemoteHeaders(input: InstanceAddArgs): Record<string, string> | undefined {
   const headers = parseInstanceHeaders(input.header)
   const user = (input.username ?? "").trim()
   const pass = input.password ?? ""

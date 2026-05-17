@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test"
-import { applyLocalInstanceVersion, formatInstanceSummary, formatLocalTarget, parseInstanceHeaders } from "../../src/cli/cmd/instance"
+import {
+  applyLocalInstanceVersion,
+  composeRemoteHeaders,
+  formatInstanceSummary,
+  formatLocalTarget,
+  parseInstanceHeaders,
+} from "../../src/cli/cmd/instance"
 
 describe("cli instance helpers", () => {
   test("parses repeated header flags", () => {
@@ -12,6 +18,19 @@ describe("cli instance helpers", () => {
   test("rejects header flags with control characters", () => {
     expect(() => parseInstanceHeaders(["Authorization: Bearer ok\nX-Injected: yes"])).toThrow(/control characters/)
     expect(() => parseInstanceHeaders(["Bad\0Name: value"])).toThrow(/control characters/)
+  })
+
+  test("basic auth fields override existing authorization headers", () => {
+    expect(
+      composeRemoteHeaders({
+        header: ["Authorization: Bearer stale", "X-Env: prod"],
+        username: "alice",
+        password: "secret",
+      }),
+    ).toEqual({
+      Authorization: "Basic YWxpY2U6c2VjcmV0",
+      "X-Env": "prod",
+    })
   })
 
   test("updates all saved local instance versions", () => {
