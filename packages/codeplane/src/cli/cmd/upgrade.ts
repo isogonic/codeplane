@@ -3,6 +3,10 @@ import { Installation } from "@/installation"
 import { InstallationVersion, hasUpdate, isSameVersion } from "@/installation/version"
 import { cmd } from "./cmd"
 
+export function normalizeUpgradeTarget(target: string | undefined) {
+  return target?.replace(/^[vV]/, "")
+}
+
 // User-facing `codeplane upgrade` command.
 //
 // Until v27.4.43 the auto-upgrade scheduler in `cli/upgrade.ts` only
@@ -46,7 +50,7 @@ export const UpgradeCommand = cmd<unknown, { target?: string; check?: boolean }>
       process.exit(2)
     }
 
-    const target = args.target?.replace(/^v/, "")
+    const target = normalizeUpgradeTarget(args.target)
     const latest = target
       ? target
       : await AppRuntime.runPromise(Installation.Service.use((svc) => svc.latest(method))).catch(() => undefined)
