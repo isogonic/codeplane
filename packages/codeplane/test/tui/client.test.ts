@@ -249,6 +249,12 @@ describe("wsUrlForInstance", () => {
       "/api",
       "ws://h/instance/path/api",
     ],
+    [
+      "instance base path joins pathname query strings",
+      { id: "a", url: "https://h/base" },
+      "/api/events?since=1",
+      "wss://h/base/api/events?since=1",
+    ],
   ]
   for (let i = 0; i < cases.length; i++) {
     const [name, instance, pathname, expected] = cases[i]
