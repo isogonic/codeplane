@@ -125,6 +125,24 @@ describe("local runtime version listing", () => {
       "npm registry packument lookup failed for codeplane-ai at https://registry.example.com/custom/codeplane-ai with HTTP 404",
     )
   })
+
+  test("sorts versions with semver precedence", async () => {
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          "dist-tags": { latest: "27.4.2" },
+          versions: {
+            "27.4.2-rc.10": {},
+            "27.4.2-rc.2": {},
+            "27.4.2": {},
+            "27.4.1": {},
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      )) as unknown as typeof globalThis.fetch
+
+    expect((await fetchCodeplaneVersions()).versions).toEqual(["27.4.2", "27.4.2-rc.10", "27.4.2-rc.2", "27.4.1"])
+  })
 })
 
 describe("local runtime fetch timeout", () => {

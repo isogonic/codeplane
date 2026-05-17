@@ -7,6 +7,7 @@ import path from "node:path"
 import { Readable, Transform } from "node:stream"
 import { pipeline } from "node:stream/promises"
 import type { ReadableStream as NodeReadableStream } from "node:stream/web"
+import semver from "semver"
 import { CodeplaneHome } from "./home"
 import { CodeplaneVersion } from "./version"
 import type { LocalInstallProgress, LocalTarget } from "./instance"
@@ -436,25 +437,6 @@ export type CodeplaneVersionList = {
   versions: string[]
 }
 
-function compareSemverDesc(a: string, b: string) {
-  const split = (v: string) => {
-    const [core, pre = ""] = v.split("-", 2)
-    const nums = core.split(".").map((n) => Number.parseInt(n, 10) || 0)
-    while (nums.length < 3) nums.push(0)
-    return { nums, pre }
-  }
-  const left = split(a)
-  const right = split(b)
-  for (let i = 0; i < 3; i++) {
-    if (left.nums[i] !== right.nums[i]) return right.nums[i] - left.nums[i]
-  }
-  // Stable releases sort before prereleases of the same core version.
-  if (!left.pre && right.pre) return -1
-  if (left.pre && !right.pre) return 1
-  if (left.pre === right.pre) return 0
-  return right.pre.localeCompare(left.pre)
-}
-
 export async function fetchCodeplaneVersions(input: { name?: string; registry?: string } = {}): Promise<CodeplaneVersionList> {
   const name = input.name ?? "codeplane-ai"
   const config: RegistryConfig = input.registry
@@ -487,7 +469,7 @@ export async function fetchCodeplaneVersions(input: { name?: string; registry?: 
   const versions = Object.keys(payload.versions ?? {})
     .map(cleanVersion)
     .filter((v) => VERSION_PATTERN.test(v))
-    .sort(compareSemverDesc)
+    .sort(semver.rcompare)
   return { latest: distTags.latest, distTags, versions }
 }
 
