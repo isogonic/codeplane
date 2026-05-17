@@ -1,0 +1,498 @@
+# ─────────────────────────────────────────────────────────────────────────
+#  GitLab CI port of the three GitHub workflows
+#  (`.github/workflows/{npm,desktop,mobile}-release.yml`).
+#
+#  Scope: Linux runners only. The original desktop workflow built mac (.dmg)
+#  and win (.exe) too, and the mobile workflow built iOS via xcodebuild on a
+#  macos-14 runner. Both are dropped here per the migration brief — no
+#  macOS / Windows GitLab Runners are available. Re-introduce them later by
+#  adding `tags: [macos]` / `tags: [windows]` jobs that mirror these.
+#
+#  Asset hosting: GitHub Releases natively store binary attachments; GitLab
+#  Releases only store *links* to artefacts. The pattern here is:
+#    1. Build the binary as a job artifact (so it survives across stages).
+#    2. Upload it to the project's Generic Package Registry with `curl`.
+#    3. Add the Generic Package URL as an asset link on the GitLab Release
+#       via `release-cli`.
+#  That gives the same end-user experience as the GitHub release page: one
+#  release entry, click an artefact, downloads start.
+#
+#  Required CI/CD variables — set these under
+#  Settings → CI/CD → Variables in GitLab (masked & protected where
+#  the value is a secret):
+#    NPM_TOKEN                 — npm classic auth token (for npm-publish)
+#    ANDROID_KEYSTORE_BASE64   — base64 of release.keystore (optional)
+#    ANDROID_KEYSTORE_PASSWORD — keystore password (optional)
+#    ANDROID_KEY_ALIAS         — signing key alias (optional)
+#    ANDROID_KEY_PASSWORD      — signing key password (optional)
+#    GITLAB_TOKEN_PROJECT_RW   — a project-access-token with `api` scope,
+#                                used by curl + release-cli when CI_JOB_TOKEN
+#                                isn't enough (creating releases on protected
+#                                tags). Falls back to CI_JOB_TOKEN.
+# ─────────────────────────────────────────────────────────────────────────
+
+stages:
+  - resolve
+  - release-create
+  - build
+  - release-publish
+
+variables:
+  # Bun's own install cache lives here; cached across jobs keyed off bun.lock.
+  BUN_INSTALL_CACHE_DIR: "$CI_PROJECT_DIR/.bun-cache"
+  BUN_VERSION: "1.3.12"
+  # GitLab Generic Package channel used for release artefacts.
+  PACKAGE_REGISTRY_URL: "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic"
+  # Token used by release-cli + curl uploads. Project access token preferred
+  # because CI_JOB_TOKEN cannot create releases on protected tags by default.
+  RELEASE_TOKEN: "${GITLAB_TOKEN_PROJECT_RW:-$CI_JOB_TOKEN}"
+
+# Every release job triggers on a `v*` tag push or a manual run. Branch
+# pipelines stay silent — same shape as the GitHub workflows' `on: push: tags`.
+.tag-rule: &tag-rule
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9].*/'
+
+# Shared anchors -----------------------------------------------------------
+
+.bun-setup: &bun-setup
+  image: oven/bun:${BUN_VERSION}
+  cache:
+    key:
+      files:
+        - bun.lock
+    paths:
+      - .bun-cache/
+  before_script:
+    - apt-get update -qq && apt-get install -y --no-install-recommends curl jq ca-certificates >/dev/null
+    - bun install --frozen-lockfile
+
+# release-cli — used for creating / editing GitLab Releases via the API.
+.release-cli: &release-cli
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  before_script:
+    - apk add --no-cache curl jq bash
+
+# ─────────────────────────────────────────────────────────────────────────
+#  STAGE 1 — resolve
+#  Parse the tag, decide which pipelines run.
+# ─────────────────────────────────────────────────────────────────────────
+
+resolve:tag:
+  <<: *tag-rule
+  stage: resolve
+  image: alpine:3.20
+  before_script:
+    - apk add --no-cache bash
+  script:
+    - |
+      bash -euo pipefail <<'EOF'
+      tag="$CI_COMMIT_TAG"
+      if [ -z "$tag" ]; then echo "A release tag is required."; exit 1; fi
+      if [[ "$tag" != v* ]]; then echo "Tags must start with v."; exit 1; fi
+
+      # Tag shape (mirrors the GitHub resolver logic):
+      #   v<x.y.z>          — base tag: publish npm + create both -desktop and -mobile releases
+      #   v<x.y.z>-desktop  — manual desktop re-tag (no npm, only desktop)
+      #   v<x.y.z>-mobile   — manual mobile re-tag  (no npm, only mobile)
+
+      run_npm=0; run_desktop=0; run_mobile=0; base="$tag"
+      case "$tag" in
+        *-desktop) run_desktop=1; base="${tag%-desktop}" ;;
+        *-mobile)  run_mobile=1;  base="${tag%-mobile}" ;;
+        *)         run_npm=1; run_desktop=1; run_mobile=1 ;;
+      esac
+      version="${base#v}"
+      desktop_tag="${base}-desktop"
+      mobile_tag="${base}-mobile"
+
+      {
+        echo "RUN_NPM=$run_npm"
+        echo "RUN_DESKTOP=$run_desktop"
+        echo "RUN_MOBILE=$run_mobile"
+        echo "SOURCE_TAG=$base"
+        echo "DESKTOP_TAG=$desktop_tag"
+        echo "MOBILE_TAG=$mobile_tag"
+        echo "RELEASE_VERSION=$version"
+      } > resolved.env
+      cat resolved.env
+      EOF
+  artifacts:
+    reports:
+      dotenv: resolved.env
+
+# ─────────────────────────────────────────────────────────────────────────
+#  STAGE 2 — release-create
+#  Create or sync the GitLab Releases up-front. Matches the GitHub flow:
+#  the release page is live before any build job uploads to it, so it
+#  stays visible if a single platform build fails.
+# ─────────────────────────────────────────────────────────────────────────
+
+release-create:desktop:
+  <<: [*tag-rule, *release-cli]
+  stage: release-create
+  needs:
+    - job: resolve:tag
+      artifacts: true
+  script:
+    - |
+      bash -euo pipefail <<'EOF'
+      [ "$RUN_DESKTOP" = "1" ] || { echo "Skipping (RUN_DESKTOP=0)"; exit 0; }
+      banner=$(cat <<MD
+      ## Desktop Shell
+
+      > **The user-facing update path for the Codeplane desktop app is the in-app updater (electron-updater).** This release page is the source of binaries for first install and the auto-updater feed; once installed, end users update silently in-app — they do not re-download from this page.
+      >
+      > Artefacts (Linux only on GitLab CI; see \`.github/workflows/desktop-release.yml\` for the macOS / Windows variants):
+      > - \`codeplane-desktop-<ver>-linux-*.AppImage\` / \`*.deb\` / \`*.tar.gz\` — Linux distributions
+      > - \`latest-linux.yml\` — electron-updater feed (do not download manually)
+      > - \`codeplane-desktop-linux-x64.AppImage\` — stable version-less alias for install scripts
+      MD
+      )
+      if ! release-cli get --tag-name "$DESKTOP_TAG" >/dev/null 2>&1; then
+        release-cli create \
+          --tag-name "$DESKTOP_TAG" \
+          --name "$SOURCE_TAG" \
+          --description "$banner" \
+          --ref "$CI_COMMIT_SHA"
+      else
+        release-cli update \
+          --tag-name "$DESKTOP_TAG" \
+          --name "$SOURCE_TAG" \
+          --description "$banner"
+      fi
+      EOF
+
+release-create:mobile:
+  <<: [*tag-rule, *release-cli]
+  stage: release-create
+  needs:
+    - job: resolve:tag
+      artifacts: true
+  script:
+    - |
+      bash -euo pipefail <<'EOF'
+      [ "$RUN_MOBILE" = "1" ] || { echo "Skipping (RUN_MOBILE=0)"; exit 0; }
+      banner=$(cat <<MD
+      ## Mobile Shell
+
+      > **The user-facing update path for the Codeplane mobile shell is the App Store (iOS) and the Play Store (Android).** This release exists for sideloading, internal QA, and CI artefact storage — it is NOT how end users update.
+      >
+      > Artefacts (Android + web bundle only on GitLab CI; iOS requires a macOS runner — see \`.github/workflows/mobile-release.yml\`):
+      > - \`Codeplane-Android.apk\` (and \`Codeplane-Android.aab\` when an Android keystore is configured)
+      > - \`codeplane-mobile-web-bundle.tar.gz\` — the Vite-built picker bundle the native shell wraps
+      MD
+      )
+      if ! release-cli get --tag-name "$MOBILE_TAG" >/dev/null 2>&1; then
+        release-cli create \
+          --tag-name "$MOBILE_TAG" \
+          --name "$SOURCE_TAG" \
+          --description "$banner" \
+          --ref "$CI_COMMIT_SHA"
+      else
+        release-cli update \
+          --tag-name "$MOBILE_TAG" \
+          --name "$SOURCE_TAG" \
+          --description "$banner"
+      fi
+      EOF
+
+# ─────────────────────────────────────────────────────────────────────────
+#  STAGE 3 — build
+#  npm publish, desktop linux, mobile web bundle, mobile android.
+# ─────────────────────────────────────────────────────────────────────────
+
+# ── npm publish ──────────────────────────────────────────────────────────
+publish:npm:
+  <<: [*tag-rule, *bun-setup]
+  stage: build
+  needs:
+    - job: resolve:tag
+      artifacts: true
+  script:
+    - |
+      bash -euo pipefail <<'EOF'
+      [ "$RUN_NPM" = "1" ] || { echo "Skipping (RUN_NPM=0)"; exit 0; }
+
+      # Version sanity check — same as the GitHub job.
+      for file in packages/codeplane/package.json packages/sdk/js/package.json packages/plugin/package.json; do
+        pkg_version="$(bun --eval "console.log((await Bun.file('$file').json()).version)")"
+        if [ "$pkg_version" != "$RELEASE_VERSION" ]; then
+          echo "$file version $pkg_version does not match $RELEASE_VERSION" >&2
+          exit 1
+        fi
+      done
+
+      # Configure npm auth from CI/CD variable.
+      if [ -z "${NPM_TOKEN:-}" ]; then
+        echo "NPM_TOKEN is not set — cannot publish." >&2
+        exit 1
+      fi
+      printf '//registry.npmjs.org/:_authToken=%s\n' "$NPM_TOKEN" > "$HOME/.npmrc"
+
+      CODEPLANE_VERSION="$RELEASE_VERSION" \
+      CODEPLANE_PUBLISH_NPM_ONLY=1 \
+      NODE_AUTH_TOKEN="$NPM_TOKEN" \
+        bun ./script/publish.ts
+      EOF
+
+# ── Desktop Linux build ──────────────────────────────────────────────────
+build:desktop-linux:
+  <<: *tag-rule
+  stage: build
+  needs:
+    - job: resolve:tag
+      artifacts: true
+    - job: release-create:desktop
+      optional: true
+  image: oven/bun:${BUN_VERSION}
+  cache:
+    key:
+      files:
+        - bun.lock
+    paths:
+      - .bun-cache/
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y --no-install-recommends curl jq ca-certificates dpkg fakeroot rpm libarchive-tools >/dev/null
+    - bun install --frozen-lockfile
+  script:
+    - |
+      bash -euo pipefail <<'EOF'
+      [ "$RUN_DESKTOP" = "1" ] || { echo "Skipping (RUN_DESKTOP=0)"; exit 0; }
+
+      # Version sanity.
+      version=$(bun --eval 'console.log((await Bun.file("packages/desktop/package.json").json()).version)')
+      [ "$version" = "$RELEASE_VERSION" ] || { echo "desktop version $version != $RELEASE_VERSION"; exit 1; }
+
+      # Build the desktop bundle (Vite + electron compile).
+      ( cd packages/desktop && CODEPLANE_VERSION="$RELEASE_VERSION" bun run build )
+
+      # No code-signing on Linux — electron-builder happily produces unsigned
+      # AppImage / deb / tar.gz. Match the original GitHub job's defaults.
+      export CSC_IDENTITY_AUTO_DISCOVERY=false
+
+      ( cd packages/desktop && bunx electron-builder --linux AppImage deb tar.gz --x64 --publish never )
+
+      # Stable version-less alias for install scripts.
+      cd packages/desktop/release
+      appimage=$(ls codeplane-desktop-"$RELEASE_VERSION"-linux-*.AppImage 2>/dev/null | head -n 1 || true)
+      [ -n "$appimage" ] && cp "$appimage" codeplane-desktop-linux-x64.AppImage || true
+
+      # Upload every built file to the Generic Package Registry and attach to
+      # the release as an asset link. Files already attached are overwritten
+      # (curl --upload-file is idempotent against the same package version).
+      shopt -s nullglob
+      for f in codeplane-desktop-* latest-linux.yml; do
+        [ -f "$f" ] || continue
+        url="$PACKAGE_REGISTRY_URL/codeplane-desktop/$RELEASE_VERSION/$(basename "$f")"
+        echo "uploading: $f → $url"
+        curl --fail --silent --show-error \
+          --header "JOB-TOKEN: $RELEASE_TOKEN" \
+          --upload-file "$f" "$url"
+        echo "$url" >> "$CI_PROJECT_DIR/desktop-assets.txt"
+      done
+      EOF
+  artifacts:
+    when: always
+    paths:
+      - desktop-assets.txt
+      - packages/desktop/release/
+
+# ── Mobile web bundle ────────────────────────────────────────────────────
+build:mobile-web-bundle:
+  <<: [*tag-rule, *bun-setup]
+  stage: build
+  needs:
+    - job: resolve:tag
+      artifacts: true
+    - job: release-create:mobile
+      optional: true
+  script:
+    - |
+      bash -euo pipefail <<'EOF'
+      [ "$RUN_MOBILE" = "1" ] || { echo "Skipping (RUN_MOBILE=0)"; exit 0; }
+
+      version=$(bun --eval 'console.log((await Bun.file("packages/mobile/package.json").json()).version)')
+      [ "$version" = "$RELEASE_VERSION" ] || { echo "mobile version $version != $RELEASE_VERSION"; exit 1; }
+
+      ( cd packages/mobile && CODEPLANE_VERSION="$RELEASE_VERSION" bun run build )
+
+      tarball="codeplane-mobile-web-bundle-$RELEASE_VERSION.tar.gz"
+      ( cd packages/mobile && tar -czf "$tarball" -C dist . )
+
+      url="$PACKAGE_REGISTRY_URL/codeplane-mobile/$RELEASE_VERSION/$tarball"
+      curl --fail --silent --show-error \
+        --header "JOB-TOKEN: $RELEASE_TOKEN" \
+        --upload-file "packages/mobile/$tarball" "$url"
+      echo "$url" >> "$CI_PROJECT_DIR/mobile-web-assets.txt"
+      EOF
+  artifacts:
+    when: always
+    paths:
+      - mobile-web-assets.txt
+      - packages/mobile/codeplane-mobile-web-bundle-*.tar.gz
+
+# ── Android build ────────────────────────────────────────────────────────
+build:mobile-android:
+  <<: *tag-rule
+  stage: build
+  needs:
+    - job: resolve:tag
+      artifacts: true
+    - job: release-create:mobile
+      optional: true
+  # The Android SDK + JDK 21 baked-in image. `cimg/android` has been stable
+  # for years; pinning the exact tag because Gradle's SDK lookup breaks on
+  # silent SDK component bumps.
+  image: cimg/android:2025.04.1
+  cache:
+    key:
+      files:
+        - bun.lock
+    paths:
+      - .bun-cache/
+  before_script:
+    # cimg/android is Ubuntu-based but doesn't ship bun. Install the same
+    # version the rest of the pipeline uses + accept the SDK licences.
+    - sudo apt-get update -qq
+    - sudo apt-get install -y --no-install-recommends curl jq ca-certificates unzip >/dev/null
+    - curl -fsSL https://bun.sh/install | bash -s -- "bun-v${BUN_VERSION}"
+    - export PATH="$HOME/.bun/bin:$PATH" && echo 'export PATH="$HOME/.bun/bin:$PATH"' >> "$BASH_ENV"
+    - bun install --frozen-lockfile
+    - yes | sdkmanager --licenses >/dev/null 2>&1 || true
+    - sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+  script:
+    - |
+      bash -euo pipefail <<'EOF'
+      export PATH="$HOME/.bun/bin:$PATH"
+      [ "$RUN_MOBILE" = "1" ] || { echo "Skipping (RUN_MOBILE=0)"; exit 0; }
+
+      ( cd packages/mobile && CODEPLANE_VERSION="$RELEASE_VERSION" bun run cap:sync )
+
+      signed=0
+      if [ -n "${ANDROID_KEYSTORE_BASE64:-}" ]; then
+        KEYSTORE_PATH="$CI_PROJECT_DIR/codeplane-mobile.keystore"
+        echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_PATH"
+        signed=1
+      fi
+
+      cd packages/mobile/android
+      if [ "$signed" = "1" ]; then
+        ./gradlew \
+          -PCODEPLANE_KEYSTORE_PATH="$KEYSTORE_PATH" \
+          -PCODEPLANE_KEYSTORE_PASSWORD="${ANDROID_KEYSTORE_PASSWORD}" \
+          -PCODEPLANE_KEY_ALIAS="${ANDROID_KEY_ALIAS}" \
+          -PCODEPLANE_KEY_PASSWORD="${ANDROID_KEY_PASSWORD}" \
+          assembleRelease bundleRelease
+      else
+        # Match the GitHub fallback: produce a debug-signed APK so the
+        # release isn't silent when the keystore vars aren't set.
+        ./gradlew assembleDebug
+      fi
+
+      # Stage the artefacts with stable names.
+      mkdir -p out
+      shopt -s nullglob
+      for apk in app/build/outputs/apk/release/*.apk; do
+        cp "$apk" "out/Codeplane-Android-$RELEASE_VERSION.apk"; break
+      done
+      for apk in app/build/outputs/apk/debug/*.apk; do
+        if [ ! -f "out/Codeplane-Android-$RELEASE_VERSION.apk" ]; then
+          cp "$apk" "out/Codeplane-Android-$RELEASE_VERSION-debug-signed.apk"
+        fi
+      done
+      for aab in app/build/outputs/bundle/release/*.aab; do
+        cp "$aab" "out/Codeplane-Android-$RELEASE_VERSION.aab"; break
+      done
+
+      # Upload + record asset links.
+      cd out
+      shopt -s nullglob
+      for f in *; do
+        [ -f "$f" ] || continue
+        url="$PACKAGE_REGISTRY_URL/codeplane-mobile/$RELEASE_VERSION/$f"
+        echo "uploading: $f → $url"
+        curl --fail --silent --show-error \
+          --header "JOB-TOKEN: $RELEASE_TOKEN" \
+          --upload-file "$f" "$url"
+        echo "$url" >> "$CI_PROJECT_DIR/mobile-android-assets.txt"
+      done
+      EOF
+  artifacts:
+    when: always
+    paths:
+      - mobile-android-assets.txt
+      - packages/mobile/android/out/
+
+# ─────────────────────────────────────────────────────────────────────────
+#  STAGE 4 — release-publish
+#  Attach every Generic Package URL to the release as an asset link, then
+#  flip the release out of "still building" by re-asserting the title +
+#  description. Always runs (even on partial build failures) — mirrors the
+#  `always()` guard in the GitHub workflow.
+# ─────────────────────────────────────────────────────────────────────────
+
+release-publish:desktop:
+  <<: *release-cli
+  stage: release-publish
+  needs:
+    - job: resolve:tag
+      artifacts: true
+    - job: build:desktop-linux
+      artifacts: true
+      optional: true
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9].*/'
+      when: always
+  script:
+    - |
+      bash -euo pipefail <<'EOF'
+      [ "$RUN_DESKTOP" = "1" ] || { echo "Skipping (RUN_DESKTOP=0)"; exit 0; }
+      if [ ! -f desktop-assets.txt ]; then
+        echo "No desktop assets — release stays as the banner-only entry."
+        exit 0
+      fi
+      args=()
+      while IFS= read -r url; do
+        [ -z "$url" ] && continue
+        name=$(basename "$url")
+        args+=(--assets-link "{\"name\":\"$name\",\"url\":\"$url\",\"link_type\":\"package\"}")
+      done < desktop-assets.txt
+      release-cli update --tag-name "$DESKTOP_TAG" "${args[@]}"
+      EOF
+
+release-publish:mobile:
+  <<: *release-cli
+  stage: release-publish
+  needs:
+    - job: resolve:tag
+      artifacts: true
+    - job: build:mobile-web-bundle
+      artifacts: true
+      optional: true
+    - job: build:mobile-android
+      artifacts: true
+      optional: true
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9].*/'
+      when: always
+  script:
+    - |
+      bash -euo pipefail <<'EOF'
+      [ "$RUN_MOBILE" = "1" ] || { echo "Skipping (RUN_MOBILE=0)"; exit 0; }
+      args=()
+      for f in mobile-web-assets.txt mobile-android-assets.txt; do
+        [ -f "$f" ] || continue
+        while IFS= read -r url; do
+          [ -z "$url" ] && continue
+          name=$(basename "$url")
+          args+=(--assets-link "{\"name\":\"$name\",\"url\":\"$url\",\"link_type\":\"package\"}")
+        done < "$f"
+      done
+      if [ ${#args[@]} -eq 0 ]; then
+        echo "No mobile assets — release stays as the banner-only entry."
+        exit 0
+      fi
+      release-cli update --tag-name "$MOBILE_TAG" "${args[@]}"
+      EOF
