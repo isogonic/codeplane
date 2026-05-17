@@ -6,6 +6,7 @@ import path from "node:path"
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import {
   fetchNpmPackageManifest,
+  fetchCodeplaneVersions,
   installCodeplaneLocalPackage,
   installManagedCodeplaneCli,
   localBinaryCandidates,
@@ -112,6 +113,17 @@ describe("local runtime registry config", () => {
 
   test("rejects unsafe npm dist-tags", async () => {
     await expect(fetchNpmPackageManifest({ name: "codeplane-ai", version: "../latest" })).rejects.toThrow(/Invalid version/)
+  })
+})
+
+describe("local runtime version listing", () => {
+  test("includes resolved registry URL in packument errors", async () => {
+    process.env.CODEPLANE_NPM_REGISTRY = "https://registry.example.com/custom"
+    globalThis.fetch = (async () => new Response("missing", { status: 404 })) as unknown as typeof globalThis.fetch
+
+    await expect(fetchCodeplaneVersions()).rejects.toThrow(
+      "npm registry packument lookup failed for codeplane-ai at https://registry.example.com/custom/codeplane-ai with HTTP 404",
+    )
   })
 })
 

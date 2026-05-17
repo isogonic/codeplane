@@ -471,7 +471,7 @@ export async function fetchCodeplaneVersions(input: { name?: string; registry?: 
     description: `npm packument ${name}`,
   })
   if (!response.ok) {
-    throw new Error(`npm registry packument lookup failed for ${name} with HTTP ${response.status}`)
+    throw new Error(`npm registry packument lookup failed for ${name} at ${url.toString()} with HTTP ${response.status}`)
   }
   const payload = (await response.json()) as {
     "dist-tags"?: Record<string, unknown>
