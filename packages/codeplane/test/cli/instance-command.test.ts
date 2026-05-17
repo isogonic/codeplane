@@ -187,4 +187,18 @@ describe("cli instance helpers", () => {
       versions: ["28.2.1", "28.2.0"],
     })
   })
+
+  test("caps local runtime version output", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions(
+          {
+            distTags: {},
+            versions: Array.from({ length: 150 }, (_, index) => `28.2.${index}`),
+          },
+          150,
+        ),
+      ).versions,
+    ).toHaveLength(100)
+  })
 })

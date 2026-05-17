@@ -123,7 +123,7 @@ export function formatLocalTarget(target: LocalTarget, nameOnly?: boolean, binar
 }
 
 export function formatLocalVersions(input: { latest?: string; distTags: Record<string, string>; versions: string[] }, limit = 10) {
-  const count = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10
+  const count = Math.min(Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10, 100)
   return formatJson({
     latest: input.latest,
     distTags: input.distTags,
