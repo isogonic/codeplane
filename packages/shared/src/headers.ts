@@ -2,6 +2,10 @@
 // Accepts both newline-separated and `;`-separated input so existing data
 // from either UI keeps working. Each entry is `Name: Value`.
 
+function hasControlCharacter(value: string) {
+  return /[\r\n\0]/.test(value)
+}
+
 export function parseHeaders(raw: string): Record<string, string> {
   if (!raw) return {}
   const out: Record<string, string> = {}
@@ -27,6 +31,7 @@ export function parseHeaders(raw: string): Record<string, string> {
       const name = trimmed.slice(0, idx).trim()
       const value = trimmed.slice(idx + 1).trim()
       if (!name || !value) continue
+      if (hasControlCharacter(name) || hasControlCharacter(value)) continue
       out[name] = value
     }
   }

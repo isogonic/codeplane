@@ -23,6 +23,10 @@ describe("parseHeaders", () => {
   test("returns {} for empty input", () => {
     expect(parseHeaders("")).toEqual({})
   })
+
+  test("drops entries with control characters after trimming", () => {
+    expect(parseHeaders("Good: ok\nBad\0Name: no\nAlso-Bad: no\0pe")).toEqual({ Good: "ok" })
+  })
 })
 
 describe("formatHeaders", () => {
