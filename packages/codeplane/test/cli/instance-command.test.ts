@@ -3,6 +3,7 @@ import {
   applyLocalInstanceVersion,
   composeRemoteHeaders,
   formatInstanceSummary,
+  formatLocalVersions,
   formatLocalTarget,
   parseInstanceHeaders,
 } from "../../src/cli/cmd/instance"
@@ -157,5 +158,24 @@ describe("cli instance helpers", () => {
         true,
       ),
     ).toBe("codeplane")
+  })
+
+  test("formats local runtime versions with a limit", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions(
+          {
+            latest: "28.2.1",
+            distTags: { latest: "28.2.1", next: "28.3.0-beta.1" },
+            versions: ["28.2.1", "28.2.0", "28.1.0"],
+          },
+          2,
+        ),
+      ),
+    ).toEqual({
+      latest: "28.2.1",
+      distTags: { latest: "28.2.1", next: "28.3.0-beta.1" },
+      versions: ["28.2.1", "28.2.0"],
+    })
   })
 })

@@ -2,6 +2,7 @@ import { localInstanceUrl, type SavedInstance } from "@codeplane-ai/shared/insta
 import type { State as InstanceState } from "@codeplane-ai/shared/instance-store"
 import {
   fetchCodeplaneLatestVersion,
+  fetchCodeplaneVersions,
   readPreferredLocalVersion,
   resolveLocalBinaryPath,
 } from "@codeplane-ai/shared/local-runtime"
@@ -50,6 +51,10 @@ type InstanceLocalVersionArgs = {
 type InstanceLocalTargetArgs = {
   binaryName?: boolean
   nameOnly?: boolean
+}
+
+type InstanceLocalVersionsArgs = {
+  limit?: number
 }
 
 // Combine --header lines with the dedicated --username / --password fields.
@@ -113,6 +118,15 @@ export function formatLocalTarget(target: LocalTarget, nameOnly?: boolean, binar
   if (binaryName) return target.binaryName
   if (nameOnly) return target.packageName ?? target.archiveName.replace(/\.(?:tgz|tar\.gz|zip)$/, "")
   return formatJson(target)
+}
+
+export function formatLocalVersions(input: { latest?: string; distTags: Record<string, string>; versions: string[] }, limit = 10) {
+  const count = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10
+  return formatJson({
+    latest: input.latest,
+    distTags: input.distTags,
+    versions: input.versions.slice(0, count),
+  })
 }
 
 function autoInstanceID(label?: string, kind = "instance") {
@@ -561,6 +575,7 @@ export const InstanceLocalCommand = cmd({
   builder: (yargs: Argv) =>
     yargs
       .command(InstanceLocalTargetCommand)
+      .command(InstanceLocalVersionsCommand)
       .command(InstanceLocalStatusCommand)
       .command(InstanceLocalInstallCommand)
       .command(InstanceLocalUpdateCommand)
@@ -584,6 +599,21 @@ export const InstanceLocalTargetCommand = cmd({
   async handler(args) {
     const input = args as InstanceLocalTargetArgs
     console.log(formatLocalTarget(await createInstanceService().localTarget(), input.nameOnly, input.binaryName))
+  },
+})
+
+export const InstanceLocalVersionsCommand = cmd({
+  command: "versions",
+  describe: "list npm-published local runtime versions",
+  builder: (yargs: Argv) =>
+    yargs.option("limit", {
+      type: "number",
+      default: 10,
+      describe: "maximum number of versions to print",
+    }),
+  async handler(args) {
+    const input = args as InstanceLocalVersionsArgs
+    console.log(formatLocalVersions(await fetchCodeplaneVersions(), input.limit))
   },
 })
 
