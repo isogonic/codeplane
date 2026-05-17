@@ -80,6 +80,7 @@ export function parseInstanceHeaders(input: string[] = []) {
     const key = item.slice(0, divider).trim()
     const value = item.slice(divider + 1).trim()
     if (!key) throw new Error(`Invalid header "${item}". Use name:value.`)
+    if (!value) throw new Error(`Invalid header "${item}". Header values cannot be empty.`)
     if (/[\r\n\0]/.test(key) || /[\r\n\0]/.test(value)) {
       throw new Error(`Invalid header "${item}". Header names and values cannot contain control characters.`)
     }

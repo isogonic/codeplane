@@ -21,6 +21,10 @@ describe("cli instance helpers", () => {
     expect(() => parseInstanceHeaders(["Bad\0Name: value"])).toThrow(/control characters/)
   })
 
+  test("rejects header flags with empty values", () => {
+    expect(() => parseInstanceHeaders(["X-Empty:"])).toThrow(/cannot be empty/)
+  })
+
   test("basic auth fields override existing authorization headers", () => {
     expect(
       composeRemoteHeaders({
