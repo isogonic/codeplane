@@ -141,4 +141,21 @@ describe("cli instance helpers", () => {
       ),
     ).toBe("codeplane-darwin-arm64")
   })
+
+  test("formats local target as binary name for scripts", () => {
+    expect(
+      formatLocalTarget(
+        {
+          os: "darwin",
+          arch: "arm64",
+          packageName: "codeplane-darwin-arm64",
+          archiveName: "codeplane-darwin-arm64.tgz",
+          archiveExt: ".tgz",
+          binaryName: "codeplane",
+        },
+        false,
+        true,
+      ),
+    ).toBe("codeplane")
+  })
 })

@@ -48,6 +48,7 @@ type InstanceLocalVersionArgs = {
 }
 
 type InstanceLocalTargetArgs = {
+  binaryName?: boolean
   nameOnly?: boolean
 }
 
@@ -108,7 +109,8 @@ function formatJson(input: unknown) {
   return JSON.stringify(input, null, 2)
 }
 
-export function formatLocalTarget(target: LocalTarget, nameOnly?: boolean) {
+export function formatLocalTarget(target: LocalTarget, nameOnly?: boolean, binaryName?: boolean) {
+  if (binaryName) return target.binaryName
   if (nameOnly) return target.packageName ?? target.archiveName.replace(/\.(?:tgz|tar\.gz|zip)$/, "")
   return formatJson(target)
 }
@@ -574,9 +576,14 @@ export const InstanceLocalTargetCommand = cmd({
       type: "boolean",
       default: false,
       describe: "print only the npm package name",
+    }).option("binary-name", {
+      type: "boolean",
+      default: false,
+      describe: "print only the platform binary name",
     }),
   async handler(args) {
-    console.log(formatLocalTarget(await createInstanceService().localTarget(), (args as InstanceLocalTargetArgs).nameOnly))
+    const input = args as InstanceLocalTargetArgs
+    console.log(formatLocalTarget(await createInstanceService().localTarget(), input.nameOnly, input.binaryName))
   },
 })
 
