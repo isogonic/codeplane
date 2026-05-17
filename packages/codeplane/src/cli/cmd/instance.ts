@@ -26,6 +26,7 @@ type InstanceAddArgs = {
   ignoreCertificateErrors?: boolean
   label?: string
   local?: boolean
+  setDefault?: boolean
   target?: string
   "runtime-version"?: string
   username?: string
@@ -248,6 +249,11 @@ export const InstanceAddCommand = cmd({
         default: false,
         describe: "create a shared local runtime entry instead of a remote server",
       })
+      .option("set-default", {
+        type: "boolean",
+        default: false,
+        describe: "select the saved instance as the default after adding it",
+      })
       .option("runtime-version", {
         type: "string",
         describe: "local runtime version to pin when --local is used",
@@ -275,6 +281,7 @@ export const InstanceAddCommand = cmd({
         }
     if (!instance.url) throw new Error("A remote target is required unless --local is used.")
     await service.save(instance)
+    if (input.setDefault) await service.setLast(id)
     console.log(formatJson(instance))
   },
 })
