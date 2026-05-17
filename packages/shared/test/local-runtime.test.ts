@@ -143,6 +143,24 @@ describe("local runtime version listing", () => {
 
     expect((await fetchCodeplaneVersions()).versions).toEqual(["27.4.2", "27.4.2-rc.10", "27.4.2-rc.2", "27.4.1"])
   })
+
+  test("ignores unsafe dist-tag names", async () => {
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          "dist-tags": {
+            latest: "27.4.2",
+            "../latest": "99.0.0",
+          },
+          versions: {
+            "27.4.2": {},
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      )) as unknown as typeof globalThis.fetch
+
+    expect((await fetchCodeplaneVersions()).distTags).toEqual({ latest: "27.4.2" })
+  })
 })
 
 describe("local runtime fetch timeout", () => {
