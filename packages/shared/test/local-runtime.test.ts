@@ -12,6 +12,7 @@ import {
   managedCodeplaneCliPath,
   managedCodeplaneCliStatus,
   readPreferredLocalVersion,
+  resolveLocalArch,
   resolveCodeplaneLocalTarget,
   resolveLocalBinaryPath,
   resolveNpmFetchTimeout,
@@ -92,6 +93,14 @@ describe("local runtime fetch timeout", () => {
     expect(resolveNpmFetchTimeout("999")).toBe(120_000)
     expect(resolveNpmFetchTimeout("5000")).toBe(5_000)
     expect(resolveNpmFetchTimeout("9999999")).toBe(600_000)
+  })
+})
+
+describe("local runtime architecture", () => {
+  test("accepts published architectures and rejects unsupported ones", () => {
+    expect(resolveLocalArch("arm64")).toBe("arm64")
+    expect(resolveLocalArch("x64")).toBe("x64")
+    expect(() => resolveLocalArch("ia32")).toThrow(/Unsupported architecture/)
   })
 })
 

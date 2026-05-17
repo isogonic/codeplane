@@ -171,9 +171,13 @@ const registryPath = (name: string) => {
   return name.replace("/", "%2f")
 }
 
+export function resolveLocalArch(arch = process.arch) {
+  if (arch === "arm64" || arch === "x64") return arch
+  throw new Error(`Unsupported architecture "${arch}". Codeplane local runtimes are published for arm64 and x64.`)
+}
+
 function detectArch() {
-  if (process.arch === "arm64") return "arm64" as const
-  return "x64" as const
+  return resolveLocalArch()
 }
 
 function detectOs() {
