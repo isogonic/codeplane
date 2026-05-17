@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { applyLocalInstanceVersion, formatInstanceSummary, parseInstanceHeaders } from "../../src/cli/cmd/instance"
+import { applyLocalInstanceVersion, formatInstanceSummary, formatLocalTarget, parseInstanceHeaders } from "../../src/cli/cmd/instance"
 
 describe("cli instance helpers", () => {
   test("parses repeated header flags", () => {
@@ -75,5 +75,21 @@ describe("cli instance helpers", () => {
       headers: 1,
       ignoreCertificateErrors: true,
     })
+  })
+
+  test("formats local target as package name for scripts", () => {
+    expect(
+      formatLocalTarget(
+        {
+          os: "darwin",
+          arch: "arm64",
+          packageName: "codeplane-darwin-arm64",
+          archiveName: "codeplane-darwin-arm64.tgz",
+          archiveExt: ".tgz",
+          binaryName: "codeplane",
+        },
+        true,
+      ),
+    ).toBe("codeplane-darwin-arm64")
   })
 })

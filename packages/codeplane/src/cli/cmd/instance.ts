@@ -5,6 +5,7 @@ import {
   readPreferredLocalVersion,
   resolveLocalBinaryPath,
 } from "@codeplane-ai/shared/local-runtime"
+import type { LocalTarget } from "@codeplane-ai/shared/instance"
 import { Global } from "@/global"
 import path from "path"
 import open from "open"
@@ -44,6 +45,10 @@ type InstanceProbeArgs = {
 
 type InstanceLocalVersionArgs = {
   version?: string
+}
+
+type InstanceLocalTargetArgs = {
+  nameOnly?: boolean
 }
 
 // Combine --header lines with the dedicated --username / --password fields.
@@ -98,6 +103,11 @@ export function formatInstanceSummary(instance: SavedInstance, lastInstanceID?: 
 
 function formatJson(input: unknown) {
   return JSON.stringify(input, null, 2)
+}
+
+export function formatLocalTarget(target: LocalTarget, nameOnly?: boolean) {
+  if (nameOnly) return target.packageName ?? target.archiveName.replace(/\.(?:tgz|tar\.gz|zip)$/, "")
+  return formatJson(target)
 }
 
 function autoInstanceID(label?: string, kind = "instance") {
@@ -556,8 +566,14 @@ export const InstanceLocalCommand = cmd({
 export const InstanceLocalTargetCommand = cmd({
   command: "target",
   describe: "show the resolved npm package target for this machine",
-  async handler() {
-    console.log(formatJson(await createInstanceService().localTarget()))
+  builder: (yargs: Argv) =>
+    yargs.option("name-only", {
+      type: "boolean",
+      default: false,
+      describe: "print only the npm package name",
+    }),
+  async handler(args) {
+    console.log(formatLocalTarget(await createInstanceService().localTarget(), (args as InstanceLocalTargetArgs).nameOnly))
   },
 })
 
