@@ -16,6 +16,14 @@ describe("parseHeaders", () => {
     })
   })
 
+  test("preserves semicolons inside cookie and content-type values", () => {
+    expect(parseHeaders("Cookie: a=1; b=2; X-Env: prod\nContent-Type: text/plain; charset=utf-8")).toEqual({
+      Cookie: "a=1; b=2",
+      "X-Env": "prod",
+      "Content-Type": "text/plain; charset=utf-8",
+    })
+  })
+
   test("ignores blanks and malformed entries", () => {
     expect(parseHeaders("\n\nA: b\n\n   ;:nope;C: d ;")).toEqual({ A: "b", C: "d" })
   })
