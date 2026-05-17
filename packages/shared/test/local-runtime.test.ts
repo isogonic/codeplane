@@ -84,6 +84,15 @@ describe("local runtime registry config", () => {
     expect(request?.url).toBe("https://registry.example.com/custom/codeplane-ai/latest")
     expect(request?.headers.get("authorization")).toBe("Bearer secret-token")
   })
+
+  test("includes resolved registry URL in manifest errors", async () => {
+    process.env.CODEPLANE_NPM_REGISTRY = "https://registry.example.com/custom"
+    globalThis.fetch = (async () => new Response("missing", { status: 404 })) as unknown as typeof globalThis.fetch
+
+    await expect(fetchNpmPackageManifest({ name: "codeplane-ai", version: "latest" })).rejects.toThrow(
+      "npm registry lookup failed for codeplane-ai@latest at https://registry.example.com/custom/codeplane-ai/latest with HTTP 404",
+    )
+  })
 })
 
 describe("local runtime fetch timeout", () => {

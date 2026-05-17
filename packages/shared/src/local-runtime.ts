@@ -379,14 +379,14 @@ export async function fetchNpmPackageManifest(input: { name: string; version?: s
     description: `npm manifest ${input.name}@${requested}`,
   })
   if (!response.ok) {
-    throw new Error(`npm registry lookup failed for ${input.name}@${requested} with HTTP ${response.status}`)
+    throw new Error(`npm registry lookup failed for ${input.name}@${requested} at ${url.toString()} with HTTP ${response.status}`)
   }
   const payload = (await response.json()) as {
     version?: unknown
     dist?: { tarball?: unknown; integrity?: unknown; shasum?: unknown }
   }
   if (typeof payload.version !== "string" || typeof payload.dist?.tarball !== "string") {
-    throw new Error(`npm registry payload for ${input.name}@${requested} is missing version or tarball`)
+    throw new Error(`npm registry payload for ${input.name}@${requested} at ${url.toString()} is missing version or tarball`)
   }
   return {
     version: cleanVersion(payload.version),
