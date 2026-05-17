@@ -82,30 +82,21 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
   })
 
   const dir = createMemo(() => decode64(params.dir))
-  const accepting = createMemo(() => {
-    const value = dir()
-    if (!value) return false
-    if (!params.id) return permission.isAutoAcceptingDirectory(value)
-    return permission.isAutoAccepting(params.id, value)
-  })
-
-  const toggleAccept = (checked: boolean) => {
-    const value = dir()
-    if (!value) return
-
-    if (!params.id) {
-      if (permission.isAutoAcceptingDirectory(value) === checked) return
-      permission.toggleAutoAcceptDirectory(value)
-      return
-    }
-
-    if (checked) {
-      permission.enableAutoAccept(params.id, value)
-      return
-    }
-
-    permission.disableAutoAccept(params.id, value)
-  }
+  /*
+   * Settings → General is a global page (no `dir` / `params.id` in the
+   * route) so the auto-accept toggle here controls the GLOBAL flag, not
+   * a per-directory rule. The previous wiring read `dir()` and the
+   * toggle silently disabled itself when there was no project context —
+   * which is always, on this page. Bind directly to the global accessor
+   * so the toggle reflects + writes the real state every time.
+   *
+   * Per-directory + per-session auto-accept settings still exist
+   * (they're set inside a session view), but they're additive: the
+   * global flag short-circuits `shouldAutoRespond` before the lineage
+   * walk, so flipping it on accepts every request everywhere.
+   */
+  const accepting = createMemo(() => permission.isGlobalAutoAccept())
+  const toggleAccept = (checked: boolean) => permission.setGlobalAutoAccept(checked)
 
   const colorSchemeOptions = createMemo((): { value: ColorScheme; label: string }[] => [
     { value: "system", label: language.t("theme.scheme.system") },
@@ -191,7 +182,7 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
           description={language.t("toast.permissions.autoaccept.on.description")}
         >
           <div data-action="settings-auto-accept-permissions">
-            <Switch checked={accepting()} disabled={!dir()} onChange={toggleAccept} />
+            <Switch checked={accepting()} onChange={toggleAccept} />
           </div>
         </SettingsRow>
 

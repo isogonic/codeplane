@@ -1,5 +1,15 @@
 import { base64Encode } from "@codeplane-ai/shared/util/encode"
 
+/*
+ * Reserved sentinel key for the user's "auto-accept every permission
+ * everywhere" flag. Stored inside the same `autoAccept` record as
+ * per-directory + per-session keys so a single persisted blob carries
+ * the whole picture. The `@` prefix can't collide with a real
+ * directory-accept key (those are `<base64>/*`) or a session-accept
+ * key (those are session-id-shaped).
+ */
+export const GLOBAL_AUTO_ACCEPT_KEY = "@global"
+
 export function acceptKey(sessionID: string, directory?: string) {
   if (!directory) return sessionID
   return `${base64Encode(directory)}/${sessionID}`
@@ -7,6 +17,10 @@ export function acceptKey(sessionID: string, directory?: string) {
 
 export function directoryAcceptKey(directory: string) {
   return `${base64Encode(directory)}/*`
+}
+
+export function isGlobalAutoAccepting(autoAccept: Record<string, boolean>) {
+  return autoAccept[GLOBAL_AUTO_ACCEPT_KEY] === true
 }
 
 function accepted(autoAccept: Record<string, boolean>, sessionID: string, directory?: string) {

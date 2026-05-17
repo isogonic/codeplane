@@ -10,7 +10,9 @@ import { decode64 } from "@/utils/base64"
 import {
   acceptKey,
   directoryAcceptKey,
+  GLOBAL_AUTO_ACCEPT_KEY,
   isDirectoryAutoAccepting,
+  isGlobalAutoAccepting,
   autoRespondsPermission,
 } from "./permission-auto-respond"
 import { useServer } from "./server"
@@ -141,17 +143,45 @@ export const { use: usePermission, provider: PermissionProvider } = createSimple
     }
 
     function isAutoAccepting(sessionID: string, directory?: string) {
+      if (isGlobalAutoAccepting(store.autoAccept)) return true
       const session = directory ? globalSync.child(directory, { bootstrap: false })[0].session : []
       return autoRespondsPermission(store.autoAccept, session, { sessionID }, directory)
     }
 
     function isAutoAcceptingDirectory(directory: string) {
+      if (isGlobalAutoAccepting(store.autoAccept)) return true
       return isDirectoryAutoAccepting(store.autoAccept, directory)
     }
 
     function shouldAutoRespond(permission: PermissionRequest, directory?: string) {
+      /* When the user has flipped on the global auto-accept toggle in
+         Settings → General, every permission request — across every
+         project, every session — is approved without prompting. Short-
+         circuit before walking the directory/session lineage so we
+         don't pay the cost on every request. */
+      if (isGlobalAutoAccepting(store.autoAccept)) return true
       const session = directory ? globalSync.child(directory, { bootstrap: false })[0].session : []
       return autoRespondsPermission(store.autoAccept, session, permission, directory)
+    }
+
+    function isGlobalAutoAccept() {
+      return isGlobalAutoAccepting(store.autoAccept)
+    }
+
+    function setGlobalAutoAccept(value: boolean) {
+      setStore(
+        produce((draft) => {
+          if (value) {
+            draft.autoAccept[GLOBAL_AUTO_ACCEPT_KEY] = true
+          } else {
+            delete draft.autoAccept[GLOBAL_AUTO_ACCEPT_KEY]
+          }
+        }),
+      )
+    }
+
+    function toggleGlobalAutoAccept() {
+      setGlobalAutoAccept(!isGlobalAutoAccept())
     }
 
     function bumpEnableVersion(sessionID: string, directory?: string) {
@@ -246,6 +276,9 @@ export const { use: usePermission, provider: PermissionProvider } = createSimple
       },
       isAutoAccepting,
       isAutoAcceptingDirectory,
+      isGlobalAutoAccept,
+      setGlobalAutoAccept,
+      toggleGlobalAutoAccept,
       toggleAutoAccept(sessionID: string, directory: string) {
         if (isAutoAccepting(sessionID, directory)) {
           disable(sessionID, directory)
