@@ -9,6 +9,11 @@ describe("cli instance helpers", () => {
     })
   })
 
+  test("rejects header flags with control characters", () => {
+    expect(() => parseInstanceHeaders(["Authorization: Bearer ok\nX-Injected: yes"])).toThrow(/control characters/)
+    expect(() => parseInstanceHeaders(["Bad\0Name: value"])).toThrow(/control characters/)
+  })
+
   test("updates all saved local instance versions", () => {
     expect(
       applyLocalInstanceVersion(
