@@ -33,18 +33,24 @@
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 20px;
-  padding: 16px 20px;
+  gap: 16px;
+  padding: 14px 16px;
   max-height: min(420px, calc(100dvh - 96px));
   overflow: hidden;
   pointer-events: auto;
   transition: all 150ms ease-out;
 
+  /* Always-dark surface, regardless of light/dark mode. Matches shadcn's
+     sonner pattern: toasts read as a single high-contrast pill against
+     any canvas behind them, so the message is unmistakable. */
   border-radius: var(--radius-lg);
-  border: 1px solid var(--border-weak-base);
-  background: var(--surface-float-base);
-  color: var(--text-invert-base);
-  box-shadow: var(--shadow-md);
+  border: none;
+  background-color: oklch(0.205 0 0);
+  color: oklch(0.985 0 0);
+  box-shadow:
+    inset 0 0 0 1px oklch(1 0 0 / 0.12),
+    0 16px 32px -8px oklch(0 0 0 / 0.35),
+    0 4px 8px -2px oklch(0 0 0 / 0.18);
 
   [data-slot="toast-inner"] {
     display: flex;
@@ -90,10 +96,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    margin-top: 2px;
 
     [data-component="icon"] {
-      color: var(--text-invert-stronger);
-      /* color: var(--icon-invert-base); */
+      color: oklch(0.985 0 0);
     }
   }
 
@@ -101,7 +107,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
     min-height: 0;
     min-width: 0;
     overflow-x: hidden;
@@ -114,34 +120,32 @@
   }
 
   [data-slot="toast-title"] {
-    color: var(--text-invert-strong);
+    /* Bright white title against the always-dark toast surface. */
+    color: oklch(0.985 0 0);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 
-    /* text-14-medium */
     font-family: var(--font-family-sans);
     font-size: 14px;
-    font-style: normal;
     font-weight: var(--font-weight-medium);
-    line-height: var(--line-height-large); /* 142.857% */
+    line-height: 1.3;
     letter-spacing: var(--letter-spacing-normal);
 
     margin: 0;
   }
 
   [data-slot="toast-description"] {
-    color: var(--text-invert-base);
+    /* Slightly dimmed grey for the body so the title leads. */
+    color: oklch(0.82 0 0);
     text-wrap-style: pretty;
     overflow-wrap: anywhere;
     word-break: break-word;
 
-    /* text-14-regular */
     font-family: var(--font-family-sans);
-    font-size: var(--font-size-base);
-    font-style: normal;
+    font-size: 13px;
     font-weight: var(--font-weight-regular);
-    line-height: var(--line-height-x-large); /* 171.429% */
+    line-height: 1.5;
     letter-spacing: var(--letter-spacing-normal);
 
     margin: 0;
@@ -150,39 +154,92 @@
   [data-slot="toast-actions"] {
     display: flex;
     flex-wrap: wrap;
-    gap: 16px;
-    margin-top: 8px;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
   }
 
+  /*
+   * Two action tiers, matching shadcn's sonner toast:
+   *
+   *   First action  → filled light button (CTA, e.g. "Update now"). Reads
+   *                   as a real "do this" affordance against the dark
+   *                   toast surface.
+   *   Other actions → quiet ghost-text buttons (e.g. "Later", "Dismiss",
+   *                   "What's new"). Click target stays, but the visual
+   *                   weight is much lower so the eye picks up the CTA
+   *                   first.
+   *
+   * Before this change both tiers rendered as the same dim text; users
+   * couldn't tell which button was the primary action.
+   */
   [data-slot="toast-action"] {
-    background: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    padding: 0 12px;
     border: none;
-    padding: 0;
+    border-radius: var(--radius-md);
     cursor: pointer;
     min-width: 0;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    transition: background-color 120ms ease, color 120ms ease;
 
-    color: var(--text-invert-weak);
     font-family: var(--font-family-sans);
-    font-size: var(--font-size-base);
+    font-size: 13px;
     font-weight: var(--font-weight-medium);
-    line-height: var(--line-height-large);
+    line-height: 1;
     letter-spacing: var(--letter-spacing-normal);
 
-    &:hover {
-      text-decoration: underline;
-    }
+    /* Filled primary action — light button on the dark toast. */
+    background-color: oklch(0.985 0 0);
+    color: oklch(0.18 0 0);
 
-    &:first-child {
-      color: var(--text-invert-strong);
+    &:hover {
+      background-color: oklch(0.93 0 0);
+    }
+    &:active {
+      background-color: oklch(0.9 0 0);
+    }
+    &:focus-visible {
+      outline: 2px solid oklch(0.985 0 0 / 0.45);
+      outline-offset: 2px;
+    }
+  }
+
+  /* Every action after the first is a ghost text button. */
+  [data-slot="toast-action"] ~ [data-slot="toast-action"] {
+    background-color: transparent;
+    color: oklch(0.82 0 0);
+    padding: 0 8px;
+
+    &:hover {
+      background-color: oklch(1 0 0 / 0.08);
+      color: oklch(0.985 0 0);
+    }
+    &:active {
+      background-color: oklch(1 0 0 / 0.12);
     }
   }
 
   [data-slot="toast-close-button"] {
     flex-shrink: 0;
+    color: oklch(0.82 0 0);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 2px;
+    cursor: pointer;
+    transition: background-color 120ms ease, color 120ms ease;
+
+    &:hover {
+      background-color: oklch(1 0 0 / 0.1);
+      color: oklch(0.985 0 0);
+    }
   }
 
   [data-slot="toast-progress-track"] {
@@ -191,7 +248,7 @@
     left: 0;
     right: 0;
     height: 3px;
-    background-color: var(--surface-base);
+    background-color: oklch(1 0 0 / 0.08);
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
     overflow: hidden;
   }
@@ -199,7 +256,7 @@
   [data-slot="toast-progress-fill"] {
     height: 100%;
     width: var(--kb-toast-progress-fill-width);
-    background-color: var(--color-primary);
+    background-color: oklch(0.985 0 0);
     transition: width 250ms linear;
   }
 }
