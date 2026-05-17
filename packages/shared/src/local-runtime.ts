@@ -19,7 +19,7 @@ export function resolveNpmFetchTimeout(value = process.env.CODEPLANE_NPM_FETCH_T
   return Math.min(parsed, 600_000)
 }
 const NPM_FETCH_TIMEOUT_MS = resolveNpmFetchTimeout()
-const cleanVersion = (value: string) => (value ?? "").toString().trim().replace(/^[vV]+/, "")
+const cleanVersion = (value: string) => (value ?? "").toString().trim().replace(/^[vV](?=\d)/, "")
 const localVersionFile = () => path.join(CodeplaneHome.paths().local_server, "default-version")
 const localCliVersionFile = () => path.join(CodeplaneHome.paths().bin, ".codeplane-version")
 

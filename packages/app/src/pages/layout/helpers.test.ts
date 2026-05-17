@@ -8,13 +8,16 @@ import {
 } from "./deep-links"
 import { type Session } from "@codeplane-ai/sdk/v2/client"
 import {
+  childSessionIndex,
   childSessionOnPath,
   childSessions,
   displayName,
   effectiveWorkspaceOrder,
   errorMessage,
+  hasMoreVisibleSessions,
   hasProjectPermissions,
   latestRootSession,
+  loadedRootSessionCount,
   sortedRootSessions,
   workspaceKey,
 } from "./helpers"
@@ -306,6 +309,39 @@ describe("layout workspace helpers", () => {
     ]
 
     expect(childSessions(list, "root", 120_000).map((item) => item.id)).toEqual(["new", "old"])
+  })
+
+  test("indexes visible child sessions by parent", () => {
+    const list = [
+      session({ id: "root", directory: "/workspace" }),
+      session({ id: "old", directory: "/workspace", parentID: "root", time: { created: 1, updated: 1 } }),
+      session({ id: "new", directory: "/workspace", parentID: "root", time: { created: 2, updated: 3 } }),
+      session({ id: "archived", directory: "/workspace", parentID: "root", time: { created: 4, updated: 4, archived: 4 } }),
+      session({ id: "leaf", directory: "/workspace", parentID: "new", time: { created: 5, updated: 5 } }),
+    ]
+
+    const result = childSessionIndex(list, 120_000)
+
+    expect(result.get("root")?.map((item) => item.id)).toEqual(["new", "old"])
+    expect(result.get("new")?.map((item) => item.id)).toEqual(["leaf"])
+    expect(result.get("archived")).toBeUndefined()
+  })
+
+  test("keeps load more visible only while unloaded visible sessions may remain", () => {
+    expect(hasMoreVisibleSessions({ loadedRootCount: 3, total: 5, visible: 3 })).toBe(true)
+    expect(hasMoreVisibleSessions({ loadedRootCount: 5, total: 5, visible: 3 })).toBe(false)
+    expect(hasMoreVisibleSessions({ loadedRootCount: 3, total: 3, visible: 3 })).toBe(false)
+  })
+
+  test("counts loaded root sessions without applying visible-only sidebar filters", () => {
+    const list = [
+      session({ id: "visible", directory: "/workspace" }),
+      session({ id: "cron", directory: "/workspace", title: "[Cron] daily report" }),
+      session({ id: "child", directory: "/workspace", parentID: "visible" }),
+      session({ id: "archived", directory: "/workspace", time: { created: 1, updated: 1, archived: 1 } }),
+    ]
+
+    expect(loadedRootSessionCount(list)).toBe(2)
   })
 
   test("formats fallback project display name", () => {

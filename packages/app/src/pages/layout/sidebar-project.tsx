@@ -293,17 +293,17 @@ export const SortableProject = (props: {
   const hoverOpen = () => isHoverProject() && preview() && !selected() && !state.menu
 
   const label = (directory: string) => {
-    const [data] = globalSync.child(directory, { bootstrap: false })
+    const [data] = globalSync.peek(directory, { bootstrap: false })
     const kind =
       directory === props.project.worktree ? language.t("workspace.type.local") : language.t("workspace.type.sandbox")
     const name = props.ctx.workspaceLabel(directory, data.vcs?.branch, props.project.id)
     return `${kind} : ${name}`
   }
 
-  const projectStore = createMemo(() => globalSync.child(props.project.worktree, { bootstrap: false })[0])
+  const projectStore = createMemo(() => globalSync.peek(props.project.worktree, { bootstrap: false })[0])
   const projectSessions = createMemo(() => sortedRootSessions(projectStore(), props.sortNow(), props.project.worktree))
   const workspaceSessions = (directory: string) => {
-    const [data] = globalSync.child(directory, { bootstrap: false })
+    const [data] = globalSync.peek(directory, { bootstrap: false })
     return sortedRootSessions(data, props.sortNow(), directory)
   }
 

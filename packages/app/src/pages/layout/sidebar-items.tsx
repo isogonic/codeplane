@@ -31,7 +31,7 @@ export const ProjectIcon = (props: { project: LocalProject; class?: string; noti
   const hasError = createMemo(() => dirs().some((directory) => notification.project.unseenHasError(directory)))
   const hasPermissions = createMemo(() =>
     dirs().some((directory) => {
-      const [store] = globalSync.child(directory, { bootstrap: false })
+      const [store] = globalSync.peek(directory, { bootstrap: false })
       return hasProjectPermissions(store.permission, (item) => !permission.autoResponds(item, directory))
     }),
   )
@@ -74,6 +74,7 @@ export type SessionItemProps = {
   showChild?: boolean
   level?: number
   sidebarExpanded: Accessor<boolean>
+  childSessions?: (parentID: string) => Session[] | undefined
   clearHoverProjectSoon: () => void
   prefetchSession: (session: Session, priority?: "high" | "low") => void
   archiveSession: (session: Session) => Promise<void>
@@ -154,7 +155,7 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
   const providers = useProviders()
   const unseenCount = createMemo(() => notification.session.unseenCount(props.session.id))
   const hasError = createMemo(() => notification.session.unseenHasError(props.session.id))
-  const [sessionStore] = globalSync.child(props.session.directory)
+  const [sessionStore] = globalSync.peek(props.session.directory, { bootstrap: false })
   const preview = createMemo(() =>
     getSessionPreview({
       messages: sessionStore.message[props.session.id],
@@ -251,7 +252,7 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
   )
   const children = createMemo(() => {
     if (!props.showChild) return
-    return childSessions(sessionStore.session, props.session.id, Date.now())
+    return props.childSessions?.(props.session.id) ?? childSessions(sessionStore.session, props.session.id, Date.now())
   })
 
   const warm = (span: number, priority: "high" | "low") => {

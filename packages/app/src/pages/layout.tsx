@@ -772,7 +772,7 @@ export default function Layout(props: ParentProps) {
   })
 
   const currentSessions = createMemo(() => {
-    const now = Date.now()
+    const now = sortNow()
     const dirs = visibleSessionDirs()
     if (dirs.length === 0) return [] as Session[]
 

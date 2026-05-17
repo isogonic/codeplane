@@ -159,10 +159,14 @@ if (!(root instanceof HTMLElement) && import.meta.env.DEV) {
   throw new Error(getRootNotFoundError())
 }
 
+const isLoopbackHost = (host: string) => host === "localhost" || host === "127.0.0.1" || host === "::1"
+
 const getCurrentUrl = () => {
   if (location.hostname.includes("example.invalid")) return "http://localhost:4096"
-  if (import.meta.env.DEV)
-    return `http://${import.meta.env.VITE_CODEPLANE_SERVER_HOST ?? "localhost"}:${import.meta.env.VITE_CODEPLANE_SERVER_PORT ?? "4096"}`
+  if (import.meta.env.DEV) {
+    const host = import.meta.env.VITE_CODEPLANE_SERVER_HOST ?? (isLoopbackHost(location.hostname) ? location.hostname : "localhost")
+    return `http://${host}:${import.meta.env.VITE_CODEPLANE_SERVER_PORT ?? "4096"}`
+  }
   return location.origin
 }
 
@@ -198,7 +202,7 @@ const restart: Platform["restart"] = async () => {
   window.location.reload()
 }
 
-const isLocalDevHost = () => location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "::1"
+const isLocalDevHost = () => isLoopbackHost(location.hostname)
 
 const getDefaultUrl = () => {
   if (import.meta.env.DEV && isLocalDevHost()) return getCurrentUrl()

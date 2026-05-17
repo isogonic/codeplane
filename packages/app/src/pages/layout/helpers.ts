@@ -47,6 +47,28 @@ export const childSessions = (sessions: Session[] | undefined, parentID: string,
     .filter((session) => session.parentID === parentID && !session.time?.archived)
     .sort(sortSessions(now))
 
+export const childSessionIndex = (sessions: Session[] | undefined, now: number) => {
+  const result = (sessions ?? []).reduce((map, session) => {
+    const parentID = session.parentID
+    if (!parentID || session.time?.archived) return map
+    const list = map.get(parentID)
+    if (list) {
+      list.push(session)
+      return map
+    }
+    map.set(parentID, [session])
+    return map
+  }, new Map<string, Session[]>())
+  result.forEach((list) => list.sort(sortSessions(now)))
+  return result
+}
+
+export const loadedRootSessionCount = (sessions: Session[] | undefined) =>
+  (sessions ?? []).filter((session) => !session.parentID && !session.time?.archived).length
+
+export const hasMoreVisibleSessions = (input: { loadedRootCount: number; total: number; visible: number }) =>
+  input.loadedRootCount < input.total && input.visible < input.total
+
 export const latestRootSession = (stores: SessionStore[], now: number) =>
   stores.flatMap((store) => roots(store)).sort(sortSessions(now))[0]
 

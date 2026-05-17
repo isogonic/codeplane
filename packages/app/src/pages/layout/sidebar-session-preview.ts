@@ -9,14 +9,18 @@ export type SessionPreview = {
   duration?: number
 }
 
-const byTime = (a: Message, b: Message) => a.time.created - b.time.created || a.id.localeCompare(b.id)
-
 const textPart = (part: Part): part is Extract<Part, { type: "text" }> =>
   part.type === "text" && !part.synthetic && !part.ignored
 
 const userMessage = (message: Message): message is UserMessage => message.role === "user"
 
 const assistantMessage = (message: Message): message is AssistantMessage => message.role === "assistant"
+
+const newer = (candidate: Message, current: Message | undefined) => {
+  if (!current) return true
+  if (candidate.time.created !== current.time.created) return candidate.time.created > current.time.created
+  return candidate.id > current.id
+}
 
 export function getSessionPreview(input: {
   messages: Message[] | undefined
@@ -25,17 +29,27 @@ export function getSessionPreview(input: {
 }): SessionPreview {
   if (!input.messages) return { loading: true }
 
-  const messages = input.messages.slice().sort(byTime)
-  const user = messages.findLast(userMessage)
-  const assistant = user
-    ? (messages.findLast(
-        (message): message is AssistantMessage => assistantMessage(message) && message.parentID === user.id,
-      ) ??
-      messages.findLast(
-        (message): message is AssistantMessage =>
-          assistantMessage(message) && message.time.created >= user.time.created,
-      ))
-    : messages.findLast(assistantMessage)
+  let user: UserMessage | undefined
+  let assistant: AssistantMessage | undefined
+  let assistantAfterUser: AssistantMessage | undefined
+
+  for (const message of input.messages) {
+    if (userMessage(message) && newer(message, user)) {
+      user = message
+    }
+  }
+
+  for (const message of input.messages) {
+    if (!assistantMessage(message)) continue
+    if (!user) {
+      if (newer(message, assistant)) assistant = message
+      continue
+    }
+    if (message.parentID === user.id && newer(message, assistant)) assistant = message
+    if (message.time.created >= user.time.created && newer(message, assistantAfterUser)) assistantAfterUser = message
+  }
+
+  assistant = assistant ?? assistantAfterUser
 
   const prompt = user
     ? (input.parts[user.id] ?? [])

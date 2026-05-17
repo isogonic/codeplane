@@ -86,6 +86,31 @@ describe("getSessionPreview", () => {
     })
   })
 
+  test("returns the newest prompt without relying on message array order", () => {
+    const old = user({ id: "u1", created: 1 })
+    const latest = user({ id: "u2", created: 10, modelID: "claude-opus-4" })
+
+    const result = getSessionPreview({
+      messages: [
+        assistant({ id: "a2", parentID: latest.id, created: 11, completed: 20, cost: 0.01 }),
+        latest,
+        assistant({ id: "a1", parentID: old.id, created: 2, completed: 3, cost: 0.02 }),
+        old,
+      ],
+      parts: {
+        [old.id]: [text({ id: "p1", messageID: old.id, value: "old prompt" })],
+        [latest.id]: [text({ id: "p2", messageID: latest.id, value: "new prompt" })],
+      },
+    })
+
+    expect(result).toMatchObject({
+      prompt: "new prompt",
+      modelID: "claude-sonnet-4",
+      cost: 0.01,
+      duration: 9,
+    })
+  })
+
   test("uses the user selected model while the last prompt is unanswered", () => {
     const last = user({ id: "u1", created: 1, modelID: "claude-opus-4" })
 

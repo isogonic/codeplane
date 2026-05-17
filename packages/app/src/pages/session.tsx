@@ -28,6 +28,7 @@ import { FileReferenceProvider, type FileReferenceSelection } from "@codeplane-a
 import { createAutoScroll } from "@codeplane-ai/ui/hooks"
 import { previewSelectedLines } from "@codeplane-ai/ui/pierre/selection-bridge"
 import { Button } from "@codeplane-ai/ui/button"
+import { Spinner } from "@codeplane-ai/ui/spinner"
 import { showToast } from "@codeplane-ai/ui/toast"
 import { checksum } from "@codeplane-ai/shared/util/encode"
 import { useSearchParams } from "@solidjs/router"
@@ -1208,6 +1209,12 @@ export default function Page() {
     </div>
   )
 
+  const sessionLoading = () => (
+    <div class="size-full flex items-center justify-center bg-background-stronger text-text-weak">
+      <Spinner class="size-4" />
+    </div>
+  )
+
   createEffect(
     on(
       activeFileTab,
@@ -1951,7 +1958,7 @@ export default function Page() {
             <div class="flex-1 min-h-0 overflow-hidden">
               <Switch>
                 <Match when={params.id}>
-                  <Show when={messagesReady()}>
+                  <Show when={messagesReady()} fallback={sessionLoading()}>
                     <MessageTimeline
                       mobileChanges={mobilePanel()}
                       mobileFallback={

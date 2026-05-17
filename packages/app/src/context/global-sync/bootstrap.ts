@@ -268,7 +268,7 @@ export async function bootstrapDirectory(input: {
   providerRev.set(revKey, rev)
   ;(async () => {
     const slow = [
-      () => Promise.resolve(input.loadSessions(input.directory, { all: true })),
+      () => Promise.resolve(input.loadSessions(input.directory)),
       () =>
         input.queryClient.fetchQuery(
           loadAgentsQuery(
@@ -351,7 +351,6 @@ export async function bootstrapDirectory(input: {
             )
           }),
         ),
-      () => Promise.resolve(input.loadSessions(input.directory, { all: true })),
       () =>
         retry(() =>
           input.sdk.mcp.status().then((x) => {

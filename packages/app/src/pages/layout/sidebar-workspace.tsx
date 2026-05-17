@@ -18,7 +18,13 @@ import { loadSessionsQuery, useGlobalSync } from "@/context/global-sync"
 import { useLanguage } from "@/context/language"
 import { useServer } from "@/context/server"
 import { NewSessionItem, SessionItem, SessionSkeleton } from "./sidebar-items"
-import { sortedRootSessions, workspaceKey } from "./helpers"
+import {
+  childSessionIndex,
+  hasMoreVisibleSessions,
+  loadedRootSessionCount,
+  sortedRootSessions,
+  workspaceKey,
+} from "./helpers"
 import { useQuery } from "@tanstack/solid-query"
 
 type InlineEditorComponent = (props: {
@@ -69,7 +75,7 @@ export const WorkspaceDragOverlay = (props: {
     const directory = props.activeWorkspace()
     if (!directory) return
 
-    const [workspaceStore] = globalSync.child(directory, { bootstrap: false })
+    const [workspaceStore] = globalSync.peek(directory, { bootstrap: false })
     const kind =
       directory === project.worktree ? language.t("workspace.type.local") : language.t("workspace.type.sandbox")
     const name = props.workspaceLabel(directory, workspaceStore.vcs?.branch, project.id)
@@ -247,6 +253,7 @@ const WorkspaceSessionList = (props: {
   showNew: Accessor<boolean>
   loading: Accessor<boolean>
   sessions: Accessor<Session[]>
+  childSessions: Accessor<Map<string, Session[]>>
   hasMore: Accessor<boolean>
   loadMore: () => Promise<void>
   language: ReturnType<typeof useLanguage>
@@ -275,6 +282,7 @@ const WorkspaceSessionList = (props: {
           slug={props.slug()}
           mobile={props.mobile}
           showChild
+          childSessions={(parentID) => props.childSessions().get(parentID)}
           sidebarExpanded={props.ctx.sidebarExpanded}
           clearHoverProjectSoon={props.ctx.clearHoverProjectSoon}
           prefetchSession={props.ctx.prefetchSession}
@@ -412,6 +420,7 @@ export const SortableWorkspace = (props: {
   })
   const slug = createMemo(() => base64Encode(props.directory))
   const sessions = createMemo(() => sortedRootSessions(workspaceStore, props.sortNow(), props.directory))
+  const children = createMemo(() => childSessionIndex(workspaceStore.session, props.sortNow()))
   const local = createMemo(() => props.directory === props.project.worktree)
   const active = createMemo(() => workspaceKey(props.ctx.currentDir()) === workspaceKey(props.directory))
   const workspaceValue = createMemo(() => {
@@ -422,7 +431,10 @@ export const SortableWorkspace = (props: {
   const open = createMemo(() => props.ctx.workspaceExpanded(props.directory, local()))
   const boot = createMemo(() => open() || active())
   const count = createMemo(() => sessions()?.length ?? 0)
-  const hasMore = createMemo(() => workspaceStore.sessionTotal > count())
+  const loadedRootCount = createMemo(() => loadedRootSessionCount(workspaceStore.session))
+  const hasMore = createMemo(() =>
+    hasMoreVisibleSessions({ loadedRootCount: loadedRootCount(), total: workspaceStore.sessionTotal, visible: count() }),
+  )
   const query = useQuery(() => ({ ...loadSessionsQuery(props.directory, server.scope.key) }))
   const busy = createMemo(() => props.ctx.isBusy(props.directory))
   const loading = () => query.isLoading && count() === 0
@@ -467,18 +479,6 @@ export const SortableWorkspace = (props: {
     if (!boot()) return
     globalSync.child(props.directory, { bootstrap: true })
   })
-
-  createEffect((previousDir: string | undefined) => {
-    const dir = props.directory
-    const more = hasMore()
-    const isLoading = loading()
-    if (!dir) return previousDir
-    const dirChanged = dir !== previousDir
-    if (dirChanged || (more && !isLoading && !loadingAll)) {
-      void loadAllSessions()
-    }
-    return dir
-  }, undefined as string | undefined)
 
   return (
     <div
@@ -552,6 +552,7 @@ export const SortableWorkspace = (props: {
             showNew={showNew}
             loading={() => query.isLoading && count() === 0}
             sessions={sessions}
+            childSessions={children}
             hasMore={hasMore}
             loadMore={loadAllSessions}
             language={language}
@@ -579,9 +580,13 @@ export const LocalWorkspace = (props: {
   })
   const slug = createMemo(() => base64Encode(props.project.worktree))
   const sessions = createMemo(() => sortedRootSessions(workspace(), props.sortNow(), props.project.worktree))
+  const children = createMemo(() => childSessionIndex(workspace().session, props.sortNow()))
   const count = createMemo(() => sessions()?.length ?? 0)
   const query = useQuery(() => ({ ...loadSessionsQuery(props.project.worktree, server.scope.key) }))
-  const hasMore = createMemo(() => workspace().sessionTotal > count())
+  const loadedRootCount = createMemo(() => loadedRootSessionCount(workspace().session))
+  const hasMore = createMemo(() =>
+    hasMoreVisibleSessions({ loadedRootCount: loadedRootCount(), total: workspace().sessionTotal, visible: count() }),
+  )
   const loading = () => query.isLoading && count() === 0
   let loadingAll = false
   const loadAllSessions = async () => {
@@ -593,18 +598,6 @@ export const LocalWorkspace = (props: {
       loadingAll = false
     }
   }
-
-  createEffect((previousDir: string | undefined) => {
-    const dir = props.project.worktree
-    const more = hasMore()
-    const isLoading = loading()
-    if (!dir) return previousDir
-    const dirChanged = dir !== previousDir
-    if (dirChanged || (more && !isLoading && !loadingAll)) {
-      void loadAllSessions()
-    }
-    return dir
-  }, undefined as string | undefined)
 
   return (
     <div class="size-full min-h-0 flex flex-col py-2">
@@ -620,6 +613,7 @@ export const LocalWorkspace = (props: {
           showNew={() => false}
           loading={loading}
           sessions={sessions}
+          childSessions={children}
           hasMore={hasMore}
           loadMore={loadAllSessions}
           language={language}

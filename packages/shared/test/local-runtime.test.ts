@@ -124,6 +124,10 @@ describe("preferred local runtime version", () => {
     await writePreferredLocalVersion("v27.3.1+build.5")
     expect(await readPreferredLocalVersion("27.0.0")).toBe("27.3.1+build.5")
   })
+
+  test("rejects doubled version prefixes", async () => {
+    await expect(writePreferredLocalVersion("vv27.3.1")).rejects.toThrow(/Invalid Codeplane version/)
+  })
 })
 
 describe("local binary resolver", () => {
