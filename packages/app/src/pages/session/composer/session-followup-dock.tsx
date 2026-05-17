@@ -12,7 +12,7 @@ import { Button } from "@codeplane-ai/ui/button"
 import { DockTray } from "@codeplane-ai/ui/dock-surface"
 import { Icon } from "@codeplane-ai/ui/icon"
 import { IconButton } from "@codeplane-ai/ui/icon-button"
-import { ConstrainDragYAxis } from "@/utils/solid-dnd"
+import { ConstrainDragXAxis } from "@/utils/solid-dnd"
 import { useLanguage } from "@/context/language"
 
 type Item = { id: string; text: string }
@@ -252,7 +252,7 @@ export function SessionFollowupDock(props: {
           >
             <DragDropProvider onDragOver={handleDragOver} collisionDetector={closestCenter}>
               <DragDropSensors />
-              <ConstrainDragYAxis />
+              <ConstrainDragXAxis />
               <SortableProvider ids={ids()}>
                 <For each={props.items}>
                   {(item) => (
