@@ -119,6 +119,11 @@ describe("preferred local runtime version", () => {
     await writePreferredLocalVersion("v27.3.1")
     expect(await readPreferredLocalVersion("27.0.0")).toBe("27.3.1")
   })
+
+  test("accepts stable semver build metadata", async () => {
+    await writePreferredLocalVersion("v27.3.1+build.5")
+    expect(await readPreferredLocalVersion("27.0.0")).toBe("27.3.1+build.5")
+  })
 })
 
 describe("local binary resolver", () => {

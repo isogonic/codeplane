@@ -12,7 +12,7 @@ import { CodeplaneVersion } from "./version"
 import type { LocalInstallProgress, LocalTarget } from "./instance"
 
 const CONFIG_FILES = ["codeplane.jsonc", "codeplane.json", "config.json"] as const
-const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[\w.+-]+)?$/
+const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
 export function resolveNpmFetchTimeout(value = process.env.CODEPLANE_NPM_FETCH_TIMEOUT_MS) {
   const parsed = Number(value)
   if (!Number.isFinite(parsed) || parsed < 1_000) return 120_000
