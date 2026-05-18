@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import {
   applyLocalInstanceVersion,
   composeRemoteHeaders,
+  filterInstanceSummaries,
   formatInstanceSummary,
   formatLocalVersions,
   formatLocalTarget,
@@ -134,6 +135,17 @@ describe("cli instance helpers", () => {
       headers: 1,
       ignoreCertificateErrors: true,
     })
+  })
+
+  test("filters instance summaries by type", () => {
+    const summaries = [
+      { id: "local-1", type: "local" as const },
+      { id: "remote-1", type: "remote" as const },
+    ]
+
+    expect(filterInstanceSummaries(summaries, "local")).toEqual([{ id: "local-1", type: "local" }])
+    expect(filterInstanceSummaries(summaries, "remote")).toEqual([{ id: "remote-1", type: "remote" }])
+    expect(filterInstanceSummaries(summaries)).toBe(summaries)
   })
 
   test("formats local target as package name for scripts", () => {

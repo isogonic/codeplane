@@ -20,6 +20,7 @@ import type { Argv } from "yargs"
 
 type InstanceListArgs = {
   json?: boolean
+  type?: "local" | "remote"
 }
 
 type InstanceAddArgs = {
@@ -103,13 +104,18 @@ export function formatInstanceSummary(instance: SavedInstance, lastInstanceID?: 
   return {
     id: instance.id,
     default: instance.id === lastInstanceID,
-    type: instance.local ? "local" : "remote",
+    type: instance.local ? ("local" as const) : ("remote" as const),
     label: instance.label,
     url: instance.url,
     version: instance.local?.binaryVersion,
     headers: Object.keys(instance.headers ?? {}).length,
     ignoreCertificateErrors: Boolean(instance.ignoreCertificateErrors),
   }
+}
+
+export function filterInstanceSummaries<T extends { type: "local" | "remote" }>(instances: T[], type?: "local" | "remote") {
+  if (!type) return instances
+  return instances.filter((item) => item.type === type)
 }
 
 function formatJson(input: unknown) {
@@ -224,16 +230,25 @@ export const InstanceListCommand = cmd({
   aliases: ["ls"],
   describe: "list saved instances",
   builder: (yargs: Argv) =>
-    yargs.option("json", {
-      type: "boolean",
-      default: false,
-      describe: "print JSON instead of a table",
-    }),
+    yargs
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "print JSON instead of a table",
+      })
+      .option("type", {
+        choices: ["local", "remote"] as const,
+        describe: "only list local or remote instances",
+      }),
   async handler(args) {
+    const input = args as InstanceListArgs
     const service = createInstanceService()
     const state = await service.store.getState()
-    const output = state.instances.map((item) => formatInstanceSummary(item, state.lastInstanceID))
-    if ((args as InstanceListArgs).json) {
+    const output = filterInstanceSummaries(
+      state.instances.map((item) => formatInstanceSummary(item, state.lastInstanceID)),
+      input.type,
+    )
+    if (input.json) {
       console.log(formatJson(output))
       return
     }
