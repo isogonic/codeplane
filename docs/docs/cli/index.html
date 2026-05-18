@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CLI reference · Codeplane docs</title>
+    <meta name="description" content="Every codeplane CLI command, every flag." />
+    <link rel="icon" href="/assets/logo.svg" />
+    <link rel="stylesheet" href="/assets/site.css" />
+    <link rel="canonical" href="https://codeplane.cc/docs/cli/" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container site-header__inner">
+        <a href="/" class="site-header__logo"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="currentColor"/><path d="M9 8.5L7 12l2 3.5M15 8.5l2 3.5-2 3.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Codeplane</span></a>
+        <nav class="site-header__nav">
+          <a href="/docs/" class="active">Docs</a>
+          <a href="/docs/install/">Install</a>
+          <a href="https://github.com/devinoldenburg/codeplane">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <div class="container">
+      <div class="docs-layout">
+        <aside class="docs-sidebar">
+          <div class="docs-sidebar__group"><h5>Get started</h5><ul><li><a href="/docs/install/">Install</a></li><li><a href="/docs/quickstart/">Quick start</a></li><li><a href="/docs/configuration/">Configuration</a></li></ul></div>
+          <div class="docs-sidebar__group"><h5>Surfaces</h5><ul><li><a href="/docs/tui/">Terminal (TUI)</a></li><li><a href="/docs/desktop/">Desktop</a></li><li><a href="/docs/web/">Web</a></li><li><a href="/docs/mobile/">Mobile</a></li></ul></div>
+          <div class="docs-sidebar__group"><h5>Reference</h5><ul><li><a href="/docs/cli/" class="active">CLI commands</a></li><li><a href="/docs/instances/">Instances</a></li><li><a href="/docs/sessions/">Sessions</a></li><li><a href="/docs/permissions/">Permissions</a></li><li><a href="/docs/keybinds/">Keybinds</a></li><li><a href="/docs/api/">HTTP API</a></li></ul></div>
+          <div class="docs-sidebar__group"><h5>Extend</h5><ul><li><a href="/docs/mcp/">MCP servers</a></li><li><a href="/docs/plugins/">Plugins</a></li><li><a href="/docs/sdk/">TypeScript SDK</a></li><li><a href="/docs/self-hosting/">Self-hosting</a></li><li><a href="/docs/themes/">Themes</a></li></ul></div>
+        </aside>
+
+        <article class="docs-content">
+          <h1>CLI reference</h1>
+          <p class="lede">
+            The <code>codeplane</code> binary is the single entry point. Every front-end
+            (TUI, web, desktop, mobile) ultimately routes through the same server it
+            boots. The commands below cover everything you can do from a shell.
+          </p>
+
+          <h2>Synopsis</h2>
+          <pre><code>codeplane &lt;command&gt; [options]
+
+Commands:
+  completion              generate shell completion script
+  serve                   start a headless codeplane server
+  web                     start a server and open the web interface
+  tui                     start the terminal UI
+  instance                manage saved Codeplane instances + shared runtime
+  upgrade [target]        upgrade codeplane to the latest (or specific) version
+
+Options:
+  -h, --help              show help
+  -v, --version           show version number
+      --print-logs        print logs to stderr
+      --log-level &lt;lvl&gt;   DEBUG, INFO, WARN, or ERROR
+      --pure              run without external plugins</code></pre>
+
+          <h2><code>codeplane serve</code></h2>
+          <p>Boots the HTTP + WebSocket server with no UI. Every other Codeplane client (desktop, mobile, web) eventually talks to this.</p>
+          <pre><code>codeplane serve [options]
+
+  --port &lt;n&gt;          port to bind (default: 4096)
+  --hostname &lt;host&gt;   bind address (default: 127.0.0.1; use 0.0.0.0 for LAN)
+  --share             print a connection QR + share URL for the mobile app
+  --instance &lt;name&gt;   run under a named instance (see `codeplane instance`)
+  --auth &lt;token&gt;      require Bearer token on every request
+  --no-tls            disable HTTPS even if certs exist (dev / loopback only)</code></pre>
+          <p>The server is single-process. Killing it stops every connected client gracefully.</p>
+
+          <h2><code>codeplane web</code></h2>
+          <p>Boots the same server + opens the web UI in your default browser. Convenience wrapper around <code>codeplane serve</code> + <code>open</code>.</p>
+          <pre><code>codeplane web [options]
+
+  --port &lt;n&gt;          port to bind (default: 4096)
+  --no-open           start the server but don't auto-launch the browser
+  &lt;all serve flags&gt;   every flag from `codeplane serve` is accepted too</code></pre>
+
+          <h2><code>codeplane tui</code></h2>
+          <p>Full-screen terminal UI. Spawns a server in the background if one isn't running.</p>
+          <pre><code>codeplane tui [options]
+
+  --instance &lt;name&gt;   pick a saved instance (instead of localhost)
+  --session &lt;id&gt;      jump straight into an existing session
+  --mode &lt;mode&gt;       start in a specific mode (chat, build, plan, ...)</code></pre>
+          <p>Hit <span class="kbd">?</span> inside the TUI for the full keybinding overlay. Quit with <span class="kbd">q</span> or <span class="kbd">Ctrl+C</span>.</p>
+
+          <h2><code>codeplane instance</code></h2>
+          <p>Codeplane can talk to multiple servers — your laptop's local one, a remote VPS, a teammate's machine. The <code>instance</code> command manages the address book.</p>
+          <pre><code>codeplane instance &lt;subcommand&gt;
+
+  list                    list every saved instance
+  add &lt;name&gt; &lt;url&gt;        register a remote server
+  remove &lt;name&gt;           drop one
+  default &lt;name&gt;          set the default for `tui` / `web` etc.
+  runtime                 manage the shared local runtime cache</code></pre>
+          <p>Full guide at <a href="/docs/instances/">Instances</a>.</p>
+
+          <h2><code>codeplane upgrade</code></h2>
+          <p>Re-runs the installer in place. Picks up the latest stable release and replaces the binary.</p>
+          <pre><code>codeplane upgrade [target]
+
+  target              optional version to pin (e.g. `28.1.20`); defaults to latest
+  --beta              follow the beta channel instead of stable
+  --check             print the latest available version, don't install
+  --force             reinstall even if you're already on the target</code></pre>
+
+          <h2><code>codeplane completion</code></h2>
+          <p>Prints a shell completion script to stdout. Pipe it into the right place for your shell:</p>
+          <pre><code># bash
+codeplane completion bash &gt; /etc/bash_completion.d/codeplane
+
+# zsh — add to your fpath
+codeplane completion zsh &gt; "${fpath[1]}/_codeplane"
+
+# fish
+codeplane completion fish &gt; ~/.config/fish/completions/codeplane.fish</code></pre>
+
+          <h2>Global options</h2>
+          <table>
+            <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+            <tbody>
+              <tr><td><code>-h, --help</code></td><td>Print help for the current command + exit.</td></tr>
+              <tr><td><code>-v, --version</code></td><td>Print the semver (e.g. <code>28.1.20</code>) and exit.</td></tr>
+              <tr><td><code>--print-logs</code></td><td>Echo internal logs to stderr in real time. Useful when something hangs.</td></tr>
+              <tr><td><code>--log-level &lt;DEBUG|INFO|WARN|ERROR&gt;</code></td><td>Filter log verbosity. <code>DEBUG</code> shows every request the agent issues.</td></tr>
+              <tr><td><code>--pure</code></td><td>Skip loading user plugins and project-local plugin code. Handy for debugging.</td></tr>
+            </tbody>
+          </table>
+
+          <h2>Environment variables</h2>
+          <p>The CLI reads these (in addition to anything <code>codeplane.json</code> sets).</p>
+          <table>
+            <thead><tr><th>Variable</th><th>Purpose</th></tr></thead>
+            <tbody>
+              <tr><td><code>ANTHROPIC_API_KEY</code></td><td>Default key for Anthropic models.</td></tr>
+              <tr><td><code>OPENAI_API_KEY</code></td><td>Default key for OpenAI models.</td></tr>
+              <tr><td><code>OPENAI_BASE_URL</code></td><td>Point the OpenAI client at an alternative endpoint (Ollama, vLLM, LM Studio).</td></tr>
+              <tr><td><code>OPENROUTER_API_KEY</code></td><td>Default key for OpenRouter.</td></tr>
+              <tr><td><code>CODEPLANE_HOME</code></td><td>Override the user data directory (default <code>~/.codeplane</code>).</td></tr>
+              <tr><td><code>CODEPLANE_LOG_LEVEL</code></td><td>Equivalent to <code>--log-level</code> as an env var.</td></tr>
+            </tbody>
+          </table>
+
+          <h2>Exit codes</h2>
+          <table>
+            <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+            <tbody>
+              <tr><td><code>0</code></td><td>Success.</td></tr>
+              <tr><td><code>1</code></td><td>Generic error (bad flag, unreachable instance, etc.). Detail is on stderr.</td></tr>
+              <tr><td><code>2</code></td><td>Usage error — invalid subcommand or required argument missing.</td></tr>
+              <tr><td><code>3</code></td><td>Authentication failed (server requires a token you didn't provide).</td></tr>
+              <tr><td><code>130</code></td><td>You hit <span class="kbd">Ctrl+C</span>. Sessions are saved before exit.</td></tr>
+            </tbody>
+          </table>
+        </article>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="site-footer__bottom"><div>© 2026 Codeplane · MIT licensed</div><div><a href="https://github.com/devinoldenburg/codeplane">github.com/devinoldenburg/codeplane</a></div></div>
+      </div>
+    </footer>
+  </body>
+</html>

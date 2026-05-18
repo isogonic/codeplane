@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Install Codeplane</title>
+    <meta name="description" content="Install Codeplane on macOS, Linux, Windows, iOS, Android. CLI, desktop app, npm, Homebrew, sideload, scripted curl install." />
+    <link rel="icon" href="/assets/logo.svg" />
+    <link rel="stylesheet" href="/assets/site.css" />
+    <link rel="canonical" href="https://codeplane.cc/docs/install/" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container site-header__inner">
+        <a href="/" class="site-header__logo" aria-label="Codeplane home">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="5" fill="currentColor" />
+            <path d="M9 8.5L7 12l2 3.5M15 8.5l2 3.5-2 3.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span>Codeplane</span>
+        </a>
+        <nav class="site-header__nav">
+          <a href="/docs/" class="active">Docs</a>
+          <a href="/docs/install/">Install</a>
+          <a href="https://github.com/devinoldenburg/codeplane">GitHub</a>
+          <a href="https://github.com/devinoldenburg/codeplane/releases" class="site-header__cta">
+            Latest release
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M9 6.65032C9 6.65032 15.9383 6.10759 16.9154 7.08463C17.8924 8.06167 17.3496 15 17.3496 15M16.5 7.5L6.5 17.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/>
+            </svg>
+          </a>
+        </nav>
+      </div>
+    </header>
+
+    <section class="section">
+      <div class="container-narrow">
+        <div class="eyebrow">Install</div>
+        <h1 style="font-size: clamp(36px, 5vw, 56px); letter-spacing: -0.03em; line-height: 1.05; margin: 0 0 24px;">Get Codeplane on your machine.</h1>
+        <p class="lede">
+          Codeplane ships as a single standalone binary (no Node or runtime required) plus
+          native shells for desktop and mobile. Pick the path that fits your platform.
+        </p>
+      </div>
+    </section>
+
+    <section class="section section--tight">
+      <div class="container-narrow">
+
+        <div class="tabs" role="tablist" aria-label="Install method">
+          <button class="tab" role="tab" aria-selected="true" data-target="macos">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5.75c0-2 1.5-4 3.5-4 0 2-1.5 4-3.5 4z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M12.5 8.09c-.51 0-.91-.16-1.36-.35-.56-.23-1.2-.49-2.25-.49C7.02 7.25 4 8.75 4 12.75c0 4.65 3.1 9.5 5.1 9.5.67 0 1.27-.26 1.85-.51.52-.23 1.03-.45 1.55-.45.51 0 1.02.22 1.55.45.57.25 1.18.51 1.85.51 1.39 0 3.06-2.35 4.1-5.35-1.62-.68-2.66-2.28-2.66-4.15 0-1.63.87-2.71 2.16-3.5-1-1.5-2.48-2-3.55-2-1.05 0-1.68.26-2.25.49-.45.18-.69.35-1.2.35z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>
+            macOS
+          </button>
+          <button class="tab" role="tab" aria-selected="false" data-target="linux">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="9" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M6 19l2-3m10 3l-2-3M9 19v2m6-2v2M7.5 14L4 19l4 1m8.5-6L20 19l-4 1" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>
+            Linux
+          </button>
+          <button class="tab" role="tab" aria-selected="false" data-target="windows">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="8" height="8" stroke="currentColor" stroke-width="1.5"/><rect x="13" y="3" width="8" height="8" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="13" width="8" height="8" stroke="currentColor" stroke-width="1.5"/><rect x="13" y="13" width="8" height="8" stroke="currentColor" stroke-width="1.5"/></svg>
+            Windows
+          </button>
+          <button class="tab" role="tab" aria-selected="false" data-target="npm">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2" y="6" width="20" height="12" stroke="currentColor" stroke-width="1.5"/><path d="M6 18v-8h4v8m4-4v-4h4v4m-4 4v-4" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/></svg>
+            npm / Bun
+          </button>
+          <button class="tab" role="tab" aria-selected="false" data-target="mobile">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M12 19h0" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/></svg>
+            Mobile
+          </button>
+        </div>
+
+        <!-- macOS -->
+        <div class="tab-panel" data-active="true" data-panel="macos">
+          <h2 style="margin-top:0;">macOS</h2>
+          <p class="lede" style="font-size:17px; margin-bottom:32px;">
+            One-line installer for the CLI + standalone <code>.dmg</code> for the desktop app.
+            Both are signed for Apple Silicon and Intel.
+          </p>
+
+          <h3>CLI · scripted installer</h3>
+          <pre><code>curl -fsSL https://codeplane.cc/install | bash</code></pre>
+          <p class="muted">
+            Detects <code>darwin-arm64</code> or <code>darwin-x64</code>, downloads the
+            matching ~94 MB binary into <code>~/.codeplane/bin/</code>, symlinks
+            <code>codeplane</code> into <code>/usr/local/bin</code> (or
+            <code>$PATH</code> equivalent). Pin a version with <code>-v 28.1.20</code>;
+            skip the PATH edit with <code>--no-modify-path</code>.
+          </p>
+
+          <h3>CLI · Homebrew</h3>
+          <pre><code>brew install devinoldenburg/codeplane/codeplane</code></pre>
+          <p class="muted">
+            Same binary, managed via Homebrew so <code>brew upgrade</code> picks up new
+            releases. Tap lives at
+            <a href="https://github.com/devinoldenburg/homebrew-codeplane">github.com/devinoldenburg/homebrew-codeplane</a>.
+          </p>
+
+          <h3>Desktop · <code>.dmg</code></h3>
+          <p>Download the right disk image for your chip and drag <code>Codeplane.app</code> into <code>/Applications</code>:</p>
+          <ul>
+            <li><a href="https://github.com/devinoldenburg/codeplane/releases/latest/download/codeplane-desktop-macos-apple-silicon.dmg">Apple Silicon (M1 / M2 / M3 / M4)</a></li>
+            <li><a href="https://github.com/devinoldenburg/codeplane/releases/latest/download/codeplane-desktop-macos-intel.dmg">Intel</a></li>
+          </ul>
+          <p class="muted">
+            The desktop app updates itself silently through electron-updater after first
+            launch — you don't need to come back here for new versions.
+          </p>
+
+          <div class="callout">
+            <span class="callout__icon"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M12 8v4M12 16h0" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/></svg></span>
+            <div class="callout__body">
+              <strong>Gatekeeper note.</strong> If you sideload the <code>.dmg</code> from a
+              CI build (not signed with our Developer ID), strip the quarantine flag once:
+              <code>xattr -dr com.apple.quarantine /Applications/Codeplane.app</code>.
+            </div>
+          </div>
+        </div>
+
+        <!-- Linux -->
+        <div class="tab-panel" data-panel="linux">
+          <h2 style="margin-top:0;">Linux</h2>
+          <p class="lede" style="font-size:17px; margin-bottom:32px;">
+            Standalone binary plus desktop packages for the major distributions.
+            Tested on x86_64; arm64 binaries ship alongside.
+          </p>
+
+          <h3>CLI · scripted installer</h3>
+          <pre><code>curl -fsSL https://codeplane.cc/install | bash</code></pre>
+          <p class="muted">
+            Detects <code>linux-x64</code> or <code>linux-arm64</code>, drops the binary
+            into <code>~/.codeplane/bin/</code>, edits your shell rc to put it on PATH.
+            Add <code>-v &lt;version&gt;</code> to pin, <code>--no-modify-path</code> to
+            skip the PATH edit.
+          </p>
+
+          <h3>Desktop · AppImage / deb / tar.gz</h3>
+          <ul>
+            <li><a href="https://github.com/devinoldenburg/codeplane/releases/latest/download/codeplane-desktop-linux-x64.AppImage"><code>.AppImage</code></a> — universal, no install needed (<code>chmod +x</code> and run).</li>
+            <li><code>.deb</code> for Debian / Ubuntu / Mint — <code>sudo dpkg -i codeplane-desktop-*-linux-amd64.deb</code></li>
+            <li><code>.tar.gz</code> for any other distro — extract anywhere, run <code>./codeplane-desktop</code>.</li>
+          </ul>
+          <p class="muted">
+            Browse all Linux artefacts at
+            <a href="https://github.com/devinoldenburg/codeplane/releases/latest">/releases/latest</a>.
+          </p>
+
+          <h3>Headless server</h3>
+          <pre><code>codeplane serve --port 4096 --hostname 0.0.0.0</code></pre>
+          <p class="muted">
+            Run on any Linux box to expose Codeplane on your LAN or behind a reverse proxy.
+            Use <code>systemd</code> to keep it alive across reboots — see
+            <a href="/docs/self-hosting">Self-hosting</a>.
+          </p>
+        </div>
+
+        <!-- Windows -->
+        <div class="tab-panel" data-panel="windows">
+          <h2 style="margin-top:0;">Windows</h2>
+          <p class="lede" style="font-size:17px; margin-bottom:32px;">
+            NSIS installer plus a portable <code>.zip</code>. WSL2 users can also follow the
+            Linux instructions for a CLI install.
+          </p>
+
+          <h3>Desktop · installer</h3>
+          <p>Download and run:</p>
+          <ul>
+            <li><a href="https://github.com/devinoldenburg/codeplane/releases/latest/download/codeplane-desktop-windows-x64.exe">codeplane-desktop-windows-x64.exe</a> — NSIS installer (signed when the release ships a code-signing cert).</li>
+          </ul>
+          <p class="muted">
+            Installs into <code>%LOCALAPPDATA%\Programs\Codeplane</code> and registers a
+            Start menu entry. Updates land silently via electron-updater.
+          </p>
+
+          <h3>CLI · PowerShell</h3>
+          <pre><code>irm https://codeplane.cc/install | iex</code></pre>
+          <p class="muted">
+            PowerShell-friendly installer (mirrors the curl flow on macOS / Linux). Drops the
+            binary in <code>%USERPROFILE%\.codeplane\bin\codeplane.exe</code> and adds it to
+            <code>PATH</code> for the current user.
+          </p>
+
+          <h3>CLI · WSL2</h3>
+          <pre><code>curl -fsSL https://codeplane.cc/install | bash</code></pre>
+          <p class="muted">
+            Inside a WSL2 shell, the regular Linux installer works end-to-end. The CLI runs
+            from the WSL filesystem; the desktop / web UI from Windows side talks to it via
+            <code>localhost</code>.
+          </p>
+        </div>
+
+        <!-- npm -->
+        <div class="tab-panel" data-panel="npm">
+          <h2 style="margin-top:0;">npm / Bun</h2>
+          <p class="lede" style="font-size:17px; margin-bottom:32px;">
+            The same single-file native binary, published under <code>codeplane</code> on
+            npm — handy when your tooling lives in <code>~/.npm-global</code> or you want
+            <code>bunx</code> on-demand runs.
+          </p>
+
+          <h3>Global install</h3>
+          <pre><code>npm install -g codeplane
+# or
+bun install -g codeplane
+# or
+pnpm add -g codeplane</code></pre>
+
+          <h3>One-shot run (no install)</h3>
+          <pre><code>bunx codeplane web
+# or
+npx codeplane@latest web</code></pre>
+          <p class="muted">
+            Useful for trying it without polluting your global package list. The first run
+            downloads the platform-specific binary; subsequent runs reuse the cached one.
+          </p>
+
+          <h3>SDK + plugin packages</h3>
+          <ul>
+            <li><code>@codeplane-ai/sdk</code> — TypeScript client for the Codeplane HTTP API.</li>
+            <li><code>@codeplane-ai/plugin</code> — base classes for writing Codeplane plugins.</li>
+          </ul>
+          <p class="muted">Both ship the same version number as the CLI; see <a href="/docs/sdk">SDK docs</a>.</p>
+        </div>
+
+        <!-- Mobile -->
+        <div class="tab-panel" data-panel="mobile">
+          <h2 style="margin-top:0;">Mobile</h2>
+          <p class="lede" style="font-size:17px; margin-bottom:32px;">
+            Native iOS + Android shells that wrap the Codeplane web UI. Pair them with a
+            Codeplane server you already run on your laptop / VPS — the shell handles
+            sign-in, picker, live activities, and offline cache.
+          </p>
+
+          <h3>iOS — TestFlight</h3>
+          <p>
+            <a href="https://testflight.apple.com/join/codeplane" class="btn">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:14px;height:14px;"><path d="M12 5.75c0-2 1.5-4 3.5-4 0 2-1.5 4-3.5 4z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M12.5 8.09c-.51 0-.91-.16-1.36-.35-.56-.23-1.2-.49-2.25-.49C7.02 7.25 4 8.75 4 12.75c0 4.65 3.1 9.5 5.1 9.5.67 0 1.27-.26 1.85-.51.52-.23 1.03-.45 1.55-.45.51 0 1.02.22 1.55.45.57.25 1.18.51 1.85.51 1.39 0 3.06-2.35 4.1-5.35-1.62-.68-2.66-2.28-2.66-4.15 0-1.63.87-2.71 2.16-3.5-1-1.5-2.48-2-3.55-2-1.05 0-1.68.26-2.25.49-.45.18-.69.35-1.2.35z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>
+              Join the TestFlight beta
+            </a>
+          </p>
+          <p class="muted">
+            Public beta channel. Codeplane lands in the App Store at
+            <a href="https://apps.apple.com/app/codeplane">apps.apple.com/app/codeplane</a> once it's out of beta.
+          </p>
+
+          <h3>iOS — sideload <code>.ipa</code></h3>
+          <p>
+            Each mobile release ships an <code>.ipa</code> + <code>.xcarchive.zip</code> at
+            <a href="https://github.com/devinoldenburg/codeplane/releases">/releases</a>
+            (look for the <code>v&lt;x.y.z&gt;-mobile</code> tag). Pair with AltStore /
+            Sideloadly / a free Apple ID and you can install it without a paid dev account.
+          </p>
+
+          <h3>Android — Play Store</h3>
+          <p>
+            <a href="https://play.google.com/store/apps/details?id=ai.codeplane" class="btn">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:14px;height:14px;"><rect x="6.5" y="4" width="11" height="15" rx="5.5" stroke="currentColor" stroke-width="1.5"/></svg>
+              Open Google Play
+            </a>
+          </p>
+
+          <h3>Android — APK / AAB sideload</h3>
+          <pre><code>adb install Codeplane-Android-&lt;version&gt;.apk</code></pre>
+          <p class="muted">
+            APK + AAB for every release are at <a href="https://github.com/devinoldenburg/codeplane/releases">/releases</a>
+            under the <code>v&lt;x.y.z&gt;-mobile</code> tag.
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container-narrow">
+        <h2 style="margin-bottom: 8px;">Verifying the install</h2>
+        <p class="muted" style="margin-bottom: 32px;">Same check on every platform — print the version, run a smoke command.</p>
+        <pre><code>codeplane --version
+codeplane --help
+codeplane web --port 4096</code></pre>
+        <p>The first command should print the semantic version (<code>28.2.2</code> at the
+        time of writing). The second lists every subcommand. The third boots a local server
+        and opens the web UI in your default browser.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container-narrow">
+        <h2 style="margin-bottom: 8px;">Uninstalling</h2>
+        <p class="muted" style="margin-bottom: 24px;">No registry rot, no system services. Codeplane is a single binary + a config dir.</p>
+
+        <h3 style="margin-top: 24px;">macOS / Linux</h3>
+        <pre><code>rm -rf ~/.codeplane                              # binary + cache
+rm -rf ~/Library/Application\ Support/Codeplane  # macOS user data
+rm -rf ~/.config/codeplane                       # Linux user data
+sudo rm /usr/local/bin/codeplane                 # PATH symlink</code></pre>
+
+        <h3 style="margin-top: 24px;">Windows</h3>
+        <p>Uninstall the desktop app via <strong>Settings → Apps</strong>. Remove the CLI binary at
+        <code>%USERPROFILE%\.codeplane\</code> and the user data at
+        <code>%APPDATA%\Codeplane\</code>.</p>
+
+        <h3 style="margin-top: 24px;">Mobile</h3>
+        <p>Long-press the app icon → Delete. All session state lives on the
+        Codeplane server you connected to; the shell only caches preferences locally.</p>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="site-footer__inner">
+          <a href="/" class="site-footer__brand">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="5" fill="currentColor" />
+              <path d="M9 8.5L7 12l2 3.5M15 8.5l2 3.5-2 3.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            Codeplane
+          </a>
+          <div class="site-footer__cols">
+            <div class="site-footer__col">
+              <h5>Product</h5>
+              <a href="/docs/install/">Install</a>
+              <a href="/docs/">Docs</a>
+              <a href="/docs/changelog">Changelog</a>
+            </div>
+            <div class="site-footer__col">
+              <h5>Surfaces</h5>
+              <a href="/docs/tui">Terminal</a>
+              <a href="/docs/desktop">Desktop</a>
+              <a href="/docs/web">Web</a>
+              <a href="/docs/mobile">Mobile</a>
+            </div>
+            <div class="site-footer__col">
+              <h5>Community</h5>
+              <a href="https://github.com/devinoldenburg/codeplane">GitHub</a>
+              <a href="https://github.com/devinoldenburg/codeplane/issues">Issues</a>
+              <a href="https://github.com/devinoldenburg/codeplane/releases">Releases</a>
+            </div>
+          </div>
+        </div>
+        <div class="site-footer__bottom">
+          <div>© 2026 Codeplane · MIT licensed</div>
+          <div><a href="https://github.com/devinoldenburg/codeplane">github.com/devinoldenburg/codeplane</a></div>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      (function () {
+        const tabs = document.querySelectorAll(".tab");
+        const panels = document.querySelectorAll(".tab-panel");
+        function activate(target) {
+          tabs.forEach((t) => t.setAttribute("aria-selected", String(t.dataset.target === target)));
+          panels.forEach((p) => p.setAttribute("data-active", String(p.dataset.panel === target)));
+        }
+        tabs.forEach((tab) => tab.addEventListener("click", () => activate(tab.dataset.target)));
+        const hash = location.hash.replace(/^#/, "");
+        if (hash) activate(hash);
+      })();
+    </script>
+  </body>
+</html>

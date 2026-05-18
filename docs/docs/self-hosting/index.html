@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Self-hosting · Codeplane docs</title>
+    <link rel="icon" href="/assets/logo.svg" /><link rel="stylesheet" href="/assets/site.css" />
+    <link rel="canonical" href="https://codeplane.cc/docs/self-hosting/" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container site-header__inner">
+        <a href="/" class="site-header__logo"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="currentColor"/><path d="M9 8.5L7 12l2 3.5M15 8.5l2 3.5-2 3.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Codeplane</span></a>
+        <nav class="site-header__nav"><a href="/docs/" class="active">Docs</a><a href="/docs/install/">Install</a><a href="https://github.com/devinoldenburg/codeplane">GitHub</a></nav>
+      </div>
+    </header>
+
+    <div class="container"><div class="docs-layout">
+      <aside class="docs-sidebar">
+        <div class="docs-sidebar__group"><h5>Get started</h5><ul><li><a href="/docs/install/">Install</a></li><li><a href="/docs/quickstart/">Quick start</a></li><li><a href="/docs/configuration/">Configuration</a></li></ul></div>
+        <div class="docs-sidebar__group"><h5>Surfaces</h5><ul><li><a href="/docs/tui/">Terminal (TUI)</a></li><li><a href="/docs/desktop/">Desktop</a></li><li><a href="/docs/web/">Web</a></li><li><a href="/docs/mobile/">Mobile</a></li></ul></div>
+        <div class="docs-sidebar__group"><h5>Reference</h5><ul><li><a href="/docs/cli/">CLI commands</a></li><li><a href="/docs/instances/">Instances</a></li><li><a href="/docs/sessions/">Sessions</a></li><li><a href="/docs/permissions/">Permissions</a></li><li><a href="/docs/keybinds/">Keybinds</a></li><li><a href="/docs/api/">HTTP API</a></li></ul></div>
+        <div class="docs-sidebar__group"><h5>Extend</h5><ul><li><a href="/docs/mcp/">MCP servers</a></li><li><a href="/docs/plugins/">Plugins</a></li><li><a href="/docs/sdk/">TypeScript SDK</a></li><li><a href="/docs/self-hosting/" class="active">Self-hosting</a></li><li><a href="/docs/themes/">Themes</a></li></ul></div>
+      </aside>
+
+      <article class="docs-content">
+        <h1>Self-hosting</h1>
+        <p class="lede">Run a Codeplane server on a box you own, then point every desktop / mobile / browser at it. One server, one set of sessions, every device.</p>
+
+        <h2>Minimum requirements</h2>
+        <ul>
+          <li>Linux x86_64 or arm64 (also runs on macOS / Windows servers, but Linux is the focus here).</li>
+          <li>1 GB RAM idle; 2-4 GB peak when running large diffs / parsing big trees.</li>
+          <li>Outbound HTTPS to your model provider (OpenAI / Anthropic / OpenRouter / your own).</li>
+          <li>Inbound TCP on whatever port you bind (default 4096).</li>
+        </ul>
+
+        <h2>Install the binary</h2>
+        <pre><code>curl -fsSL https://codeplane.cc/install | bash
+# OR: download the platform tarball from /releases/latest manually</code></pre>
+        <p>Pin a version in production with <code>-v 28.1.20</code> so an auto-upgrade can't surprise you mid-deploy.</p>
+
+        <h2>Run as a systemd service</h2>
+        <p>Create <code>/etc/systemd/system/codeplane.service</code>:</p>
+        <pre><code>[Unit]
+Description=Codeplane server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=codeplane
+Group=codeplane
+EnvironmentFile=/etc/codeplane.env
+ExecStart=/usr/local/bin/codeplane serve --port 4096 --hostname 127.0.0.1
+Restart=on-failure
+RestartSec=3
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+        <p>Drop secrets in <code>/etc/codeplane.env</code> (mode <code>0600</code>):</p>
+        <pre><code>ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+CODEPLANE_HOME=/var/lib/codeplane
+CODEPLANE_LOG_LEVEL=INFO</code></pre>
+        <p>Enable + start:</p>
+        <pre><code>sudo useradd -r -m -d /var/lib/codeplane codeplane
+sudo systemctl daemon-reload
+sudo systemctl enable --now codeplane
+sudo journalctl -fu codeplane     # follow the logs</code></pre>
+
+        <h2>Reverse proxy (nginx)</h2>
+        <p>Codeplane speaks plain HTTP + Server-Sent Events. Front it with nginx for TLS:</p>
+        <pre><code>server {
+  listen 443 ssl http2;
+  server_name codeplane.example.com;
+
+  ssl_certificate     /etc/letsencrypt/live/codeplane.example.com/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/codeplane.example.com/privkey.pem;
+
+  location / {
+    proxy_pass         http://127.0.0.1:4096;
+    proxy_http_version 1.1;
+    proxy_set_header   Host              $host;
+    proxy_set_header   X-Real-IP         $remote_addr;
+    proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Forwarded-Proto $scheme;
+
+    # SSE: disable buffering + raise timeouts.
+    proxy_buffering    off;
+    proxy_read_timeout 24h;
+    chunked_transfer_encoding off;
+  }
+}</code></pre>
+
+        <h2>Reverse proxy (Caddy)</h2>
+        <pre><code>codeplane.example.com {
+  reverse_proxy 127.0.0.1:4096 {
+    flush_interval -1
+  }
+}</code></pre>
+        <p>Caddy issues + renews the Let's Encrypt cert automatically. <code>flush_interval -1</code> disables buffering so SSE streams in real-time.</p>
+
+        <h2>Docker</h2>
+        <pre><code>docker run -d --name codeplane \
+  -p 4096:4096 \
+  -e ANTHROPIC_API_KEY=sk-ant-... \
+  -v codeplane-data:/data \
+  -e CODEPLANE_HOME=/data \
+  ghcr.io/devinoldenburg/codeplane:latest \
+  serve --port 4096 --hostname 0.0.0.0</code></pre>
+        <p>Image is published as <code>ghcr.io/devinoldenburg/codeplane:&lt;version&gt;</code> and <code>:latest</code>. Multi-arch (linux/amd64 + linux/arm64).</p>
+
+        <h2>Authentication</h2>
+        <p>By default the server has no auth — anyone who can reach the port can drive the agent. Two ways to lock it down:</p>
+        <ol>
+          <li><strong>Bearer token</strong>. Pass <code>--auth &lt;token&gt;</code> on the server; clients send <code>Authorization: Bearer &lt;token&gt;</code>. Built into the CLI + desktop + mobile picker.</li>
+          <li><strong>Reverse proxy auth</strong>. Wrap with mTLS, OIDC, Cloudflare Access, Tailscale Funnel, etc. Codeplane trusts the upstream IP / headers — no app-level setup needed.</li>
+        </ol>
+        <p>For exposed deployments behind nginx, the simplest path is Tailscale or Cloudflare Access — both terminate auth before any traffic reaches Codeplane.</p>
+
+        <h2>Backups</h2>
+        <p>State lives in <code>$CODEPLANE_HOME</code> (default <code>~/.codeplane</code>; <code>/var/lib/codeplane</code> in the systemd unit above):</p>
+        <ul>
+          <li><code>sessions.db</code> — SQLite, holds every message, tool call, permission record.</li>
+          <li><code>config/</code> — merged config + auth tokens.</li>
+          <li><code>cache/</code> — model + tool caches; safe to drop, will rebuild.</li>
+        </ul>
+        <p>Stop the service before snapshotting <code>sessions.db</code> for a consistent copy. <code>sqlite3 sessions.db ".backup '/backup/codeplane.db'"</code> works on a running server too.</p>
+
+        <h2>Upgrading</h2>
+        <pre><code>sudo systemctl stop codeplane
+sudo codeplane upgrade               # or pin: codeplane upgrade 28.1.20
+sudo systemctl start codeplane
+sudo journalctl -fu codeplane        # confirm no migration errors</code></pre>
+        <p>Migrations run at the next start. They're forward-compatible — rolling back to an earlier minor version after upgrade is safe; rolling back across a major version isn't supported.</p>
+      </article>
+    </div></div>
+
+    <footer class="site-footer"><div class="container"><div class="site-footer__bottom"><div>© 2026 Codeplane · MIT licensed</div></div></div></footer>
+  </body>
+</html>
