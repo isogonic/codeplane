@@ -557,6 +557,17 @@ describe("cli instance helpers", () => {
     ).toEqual(["28.10.0", "28.2.1", "28.2.1-rc.1", "28.2.0"])
   })
 
+  test("deduplicates local runtime versions before sorting", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions({
+          distTags: {},
+          versions: ["28.2.0", "28.2.1", "28.2.0", "28.2.1"],
+        }),
+      ).versions,
+    ).toEqual(["28.2.1", "28.2.0"])
+  })
+
   test("ignores malformed local runtime versions before semver sorting", () => {
     expect(
       JSON.parse(
