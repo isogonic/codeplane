@@ -126,7 +126,7 @@ export function formatLocalVersions(input: { latest?: string; distTags: Record<s
   const count = Math.min(Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10, 100)
   return formatJson({
     latest: input.latest,
-    distTags: input.distTags,
+    distTags: Object.fromEntries(Object.entries(input.distTags).sort(([left], [right]) => left.localeCompare(right))),
     total: input.versions.length,
     versions: input.versions.slice(0, count),
   })

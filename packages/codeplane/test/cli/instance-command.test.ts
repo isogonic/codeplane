@@ -202,4 +202,17 @@ describe("cli instance helpers", () => {
       ).versions,
     ).toHaveLength(100)
   })
+
+  test("sorts local runtime dist tags for stable output", () => {
+    expect(
+      Object.keys(
+        JSON.parse(
+          formatLocalVersions({
+            distTags: { zeta: "28.2.1", latest: "28.2.0", beta: "28.3.0-beta.1" },
+            versions: [],
+          }),
+        ).distTags,
+      ),
+    ).toEqual(["beta", "latest", "zeta"])
+  })
 })
