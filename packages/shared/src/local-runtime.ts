@@ -475,7 +475,7 @@ export async function fetchCodeplaneVersions(input: { name?: string; registry?: 
   }
   const versions = Object.keys(payload.versions ?? {})
     .map(cleanVersion)
-    .filter((v) => VERSION_PATTERN.test(v))
+    .filter((v) => VERSION_PATTERN.test(v) && semver.valid(v))
     .sort(semver.rcompare)
   return { latest: distTags.latest, distTags, versions }
 }
