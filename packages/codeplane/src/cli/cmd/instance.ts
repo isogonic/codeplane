@@ -348,7 +348,8 @@ export function formatLocalVersions(
   if (countOnly && (tag || latestOnly || tagOnly || versionOnly)) {
     throw new Error("Use --count-only without --tag, --latest-only, --tag-only, or --version-only.")
   }
-  if (tag !== undefined && !tag.trim()) throw new Error("Local runtime dist-tag cannot be empty.")
+  const selectedTag = tag?.trim()
+  if (tag !== undefined && !selectedTag) throw new Error("Local runtime dist-tag cannot be empty.")
   const selectedRange = range?.trim()
   if (range !== undefined && !selectedRange) throw new Error("Local runtime semver range cannot be empty.")
   if (selectedRange && !semver.validRange(selectedRange)) throw new Error(`Invalid local runtime semver range "${range}".`)
@@ -374,11 +375,11 @@ export function formatLocalVersions(
     ([tagName, version]) => typeof version === "string" && distTags[tagName] !== undefined && distTags[tagName] !== version,
   ).length
   if (tagOnly) {
-    if (tag || major !== undefined || latestOnly) throw new Error("Use --tag-only without --tag, --major, or --latest-only.")
+    if (selectedTag || major !== undefined || latestOnly) throw new Error("Use --tag-only without --tag, --major, or --latest-only.")
     return Object.keys(distTags).join("\n")
   }
   if (latestOnly) {
-    if (tag || major !== undefined) throw new Error("Use --latest-only without --tag or --major.")
+    if (selectedTag || major !== undefined) throw new Error("Use --latest-only without --tag or --major.")
     const latestVersion = [input.latest, distTags.latest]
       .filter((version): version is string => typeof version === "string")
       .map(normalizeLocalRuntimeVersion)
@@ -388,10 +389,10 @@ export function formatLocalVersions(
     }
     return latestVersion
   }
-  if (tag) {
-    if (!LOCAL_RUNTIME_TAG_PATTERN.test(tag)) throw new Error(`Invalid local runtime dist-tag "${tag}".`)
-    const version = distTags[tag]
-    if (!version) throw new Error(`Local runtime dist-tag "${tag}" was not found.`)
+  if (selectedTag) {
+    if (!LOCAL_RUNTIME_TAG_PATTERN.test(selectedTag)) throw new Error(`Invalid local runtime dist-tag "${tag}".`)
+    const version = distTags[selectedTag]
+    if (!version) throw new Error(`Local runtime dist-tag "${selectedTag}" was not found.`)
     return version
   }
   const selectedMajor = normalizeLocalVersionMajor(major)

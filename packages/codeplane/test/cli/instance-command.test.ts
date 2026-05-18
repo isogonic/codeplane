@@ -879,6 +879,20 @@ describe("cli instance helpers", () => {
     ).toBe("28.3.0-beta.1")
   })
 
+  test("trims local runtime dist tags before lookup", () => {
+    expect(
+      formatLocalVersions(
+        {
+          latest: "28.2.1",
+          distTags: { latest: "28.2.1", next: "28.3.0-beta.1" },
+          versions: ["28.2.1"],
+        },
+        10,
+        " next ",
+      ),
+    ).toBe("28.3.0-beta.1")
+  })
+
   test("formats latest local runtime version for scripts", () => {
     expect(
       formatLocalVersions(
