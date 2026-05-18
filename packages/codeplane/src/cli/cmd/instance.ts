@@ -68,6 +68,7 @@ type InstanceLocalTargetArgs = {
 type InstanceLocalVersionsArgs = {
   countOnly?: boolean
   jsonLines?: boolean
+  latestStableOnly?: boolean
   latestOnly?: boolean
   limit?: number
   major?: number
@@ -282,9 +283,13 @@ export function formatLocalVersions(
   oldestOnly?: boolean,
   newestOnly?: boolean,
   range?: string,
+  latestStableOnly?: boolean,
 ) {
   if (stableOnly && prereleaseOnly) throw new Error("Use either --stable-only or --prerelease-only, not both.")
   if (versionOnly && (tag || latestOnly || tagOnly)) throw new Error("Use --version-only without --tag, --latest-only, or --tag-only.")
+  if (latestStableOnly && (tag || latestOnly || tagOnly || versionOnly || countOnly || jsonLines || oldestOnly || newestOnly || prereleaseOnly)) {
+    throw new Error("Use --latest-stable-only without --tag, --latest-only, --tag-only, --version-only, --count-only, --json-lines, --oldest-only, --newest-only, or --prerelease-only.")
+  }
   if (newestOnly && (tag || latestOnly || tagOnly || versionOnly || countOnly || jsonLines || oldestOnly)) {
     throw new Error("Use --newest-only without --tag, --latest-only, --tag-only, --version-only, --count-only, --json-lines, or --oldest-only.")
   }
@@ -365,6 +370,7 @@ export function formatLocalVersions(
   const count = Math.min(requestedLimit, 100)
   const shownVersions = versions.slice(0, count)
   if (countOnly) return String(versions.length)
+  if (latestStableOnly) return newestStableVersion ?? ""
   if (newestOnly) return versions[0] ?? ""
   if (oldestOnly) return versions.at(-1) ?? ""
   if (versionOnly) return shownVersions.join("\n")
@@ -1011,6 +1017,10 @@ export const InstanceLocalVersionsCommand = cmd({
       type: "boolean",
       default: false,
       describe: "print only the latest stable runtime version",
+    }).option("latest-stable-only", {
+      type: "boolean",
+      default: false,
+      describe: "print only the newest stable version from the selected runtime versions",
     }).option("oldest-only", {
       type: "boolean",
       default: false,
@@ -1062,6 +1072,7 @@ export const InstanceLocalVersionsCommand = cmd({
         input.oldestOnly,
         input.newestOnly,
         input.range,
+        input.latestStableOnly,
       ),
     )
   },

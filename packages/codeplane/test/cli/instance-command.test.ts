@@ -1404,6 +1404,37 @@ describe("cli instance helpers", () => {
     ).toBe("28.2.1")
   })
 
+  test("formats the latest stable selected local runtime version for scripts", () => {
+    expect(
+      formatLocalVersions(
+        {
+          distTags: {},
+          versions: ["29.0.0", "28.3.0-beta.1", "28.2.1", "28.1.0"],
+        },
+        1,
+        undefined,
+        28,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        undefined,
+        true,
+      ),
+    ).toBe("28.2.1")
+  })
+
+  test("rejects conflicting latest-stable-only local runtime flags", () => {
+    expect(() =>
+      formatLocalVersions({ distTags: {}, versions: [] }, 10, undefined, undefined, false, false, false, true, false, false, false, false, false, undefined, true),
+    ).toThrow(/Use --latest-stable-only/)
+  })
+
   test("rejects conflicting oldest-only local runtime flags", () => {
     expect(() =>
       formatLocalVersions({ distTags: {}, versions: [] }, 10, undefined, undefined, false, false, false, false, false, true, false, true),
