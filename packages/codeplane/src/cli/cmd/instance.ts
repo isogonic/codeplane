@@ -197,9 +197,10 @@ export function formatLocalVersions(
   }
   const selectedMajor = normalizeLocalVersionMajor(major)
   const distTags = Object.fromEntries(Object.entries(input.distTags).sort(([left], [right]) => left.localeCompare(right)))
-  const versions = (Array.isArray(input.versions) ? input.versions.filter((version) => typeof version === "string") : []).filter(
-    (version) => selectedMajor === undefined || version.startsWith(`${selectedMajor}.`),
-  ).sort(semver.rcompare)
+  const versions = (Array.isArray(input.versions) ? input.versions.filter((version) => typeof version === "string") : [])
+    .filter((version) => LOCAL_RUNTIME_VERSION_PATTERN.test(version))
+    .filter((version) => selectedMajor === undefined || version.startsWith(`${selectedMajor}.`))
+    .sort(semver.rcompare)
   const matchingDistTags = Object.fromEntries(
     Object.entries(distTags).filter(([, version]) => selectedMajor !== undefined && version.startsWith(`${selectedMajor}.`)),
   )
