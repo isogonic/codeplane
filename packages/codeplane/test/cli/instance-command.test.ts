@@ -615,6 +615,7 @@ describe("cli instance helpers", () => {
       invalidDistTagCount: 0,
       invalidVersionCount: 0,
       nonStringVersionCount: 0,
+      normalizedVersionCount: 0,
       rawVersionCount: 3,
       validVersionCount: 3,
       prereleaseVersionCount: 0,
@@ -651,14 +652,15 @@ describe("cli instance helpers", () => {
   })
 
   test("normalizes v-prefixed local runtime versions before sorting", () => {
-    expect(
-      JSON.parse(
-        formatLocalVersions({
-          distTags: {},
-          versions: ["v28.2.1", "28.2.0"],
-        }),
-      ).versions,
-    ).toEqual(["28.2.1", "28.2.0"])
+    const output = JSON.parse(
+      formatLocalVersions({
+        distTags: {},
+        versions: ["v28.2.1", "28.2.0"],
+      }),
+    )
+
+    expect(output.versions).toEqual(["28.2.1", "28.2.0"])
+    expect(output.normalizedVersionCount).toBe(1)
   })
 
   test("deduplicates local runtime versions before sorting", () => {
@@ -779,6 +781,7 @@ describe("cli instance helpers", () => {
       invalidDistTagCount: 0,
       invalidVersionCount: 0,
       nonStringVersionCount: 0,
+      normalizedVersionCount: 0,
       rawVersionCount: 4,
       validVersionCount: 4,
       prereleaseVersionCount: 0,
@@ -863,6 +866,7 @@ describe("cli instance helpers", () => {
       invalidDistTagCount: 0,
       invalidVersionCount: 1,
       nonStringVersionCount: 0,
+      normalizedVersionCount: 0,
       rawVersionCount: 0,
       validVersionCount: 0,
       prereleaseVersionCount: 0,

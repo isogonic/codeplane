@@ -320,7 +320,9 @@ export function formatLocalVersions(
   const selectedMajor = normalizeLocalVersionMajor(major)
   const rawVersions = Array.isArray(input.versions) ? input.versions : []
   const invalidVersionInputCount = input.versions === undefined || Array.isArray(input.versions) ? 0 : 1
-  const stringVersions = rawVersions.filter((version) => typeof version === "string").map(normalizeLocalRuntimeVersion)
+  const rawStringVersions = rawVersions.filter((version) => typeof version === "string")
+  const stringVersions = rawStringVersions.map(normalizeLocalRuntimeVersion)
+  const normalizedVersionCount = rawStringVersions.filter((version, index) => stringVersions[index] !== version).length
   const nonStringVersionCount = rawVersions.length - stringVersions.length
   const validVersions = stringVersions.filter((version) => LOCAL_RUNTIME_VERSION_PATTERN.test(version) && semver.valid(version))
   const uniqueVersions = Array.from(new Set(validVersions))
@@ -355,6 +357,7 @@ export function formatLocalVersions(
     invalidDistTagCount,
     invalidVersionCount: rawVersions.length - validVersions.length + invalidVersionInputCount,
     nonStringVersionCount,
+    normalizedVersionCount,
     rawVersionCount: rawVersions.length,
     validVersionCount: validVersions.length,
     prereleaseVersionCount,
