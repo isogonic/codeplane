@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Permissions · Codeplane docs</title>
+    <link rel="icon" href="/assets/logo.svg" /><link rel="stylesheet" href="/assets/site.css" />
+    <link rel="canonical" href="https://codeplane.cc/docs/permissions/" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container site-header__inner">
+        <a href="/" class="site-header__logo"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="currentColor"/><path d="M9 8.5L7 12l2 3.5M15 8.5l2 3.5-2 3.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Codeplane</span></a>
+        <nav class="site-header__nav"><a href="/docs/" class="active">Docs</a><a href="/docs/install/">Install</a><a href="https://github.com/devinoldenburg/codeplane">GitHub</a></nav>
+      </div>
+    </header>
+
+    <div class="container"><div class="docs-layout">
+      <aside class="docs-sidebar">
+        <div class="docs-sidebar__group"><h5>Get started</h5><ul><li><a href="/docs/install/">Install</a></li><li><a href="/docs/quickstart/">Quick start</a></li><li><a href="/docs/configuration/">Configuration</a></li></ul></div>
+        <div class="docs-sidebar__group"><h5>Surfaces</h5><ul><li><a href="/docs/tui/">Terminal (TUI)</a></li><li><a href="/docs/desktop/">Desktop</a></li><li><a href="/docs/web/">Web</a></li><li><a href="/docs/mobile/">Mobile</a></li></ul></div>
+        <div class="docs-sidebar__group"><h5>Reference</h5><ul><li><a href="/docs/cli/">CLI commands</a></li><li><a href="/docs/instances/">Instances</a></li><li><a href="/docs/sessions/">Sessions</a></li><li><a href="/docs/permissions/" class="active">Permissions</a></li><li><a href="/docs/keybinds/">Keybinds</a></li><li><a href="/docs/api/">HTTP API</a></li></ul></div>
+        <div class="docs-sidebar__group"><h5>Extend</h5><ul><li><a href="/docs/mcp/">MCP servers</a></li><li><a href="/docs/plugins/">Plugins</a></li><li><a href="/docs/sdk/">TypeScript SDK</a></li><li><a href="/docs/self-hosting/">Self-hosting</a></li><li><a href="/docs/themes/">Themes</a></li></ul></div>
+      </aside>
+
+      <article class="docs-content">
+        <h1>Permissions</h1>
+        <p class="lede">Codeplane sandboxes every side-effecting action. The first time the agent wants to edit a file, run a shell command, or call a tool it hasn't used before, you get a prompt. Permissions are decided per directory + per session, with optional global override.</p>
+
+        <h2>Decision categories</h2>
+        <table>
+          <thead><tr><th>Category</th><th>What it covers</th></tr></thead>
+          <tbody>
+            <tr><td><code>edit</code></td><td>Any file write — create, modify, delete.</td></tr>
+            <tr><td><code>shell</code></td><td>Shell commands run via the <code>bash</code> tool.</td></tr>
+            <tr><td><code>read</code></td><td>Reading files (default: <code>allow</code> — turn down for sensitive paths).</td></tr>
+            <tr><td><code>net</code></td><td>HTTP requests from tools that need the network.</td></tr>
+            <tr><td><code>tool</code></td><td>Any tool not in the categories above (plugin tools, MCP tools).</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Decision values</h2>
+        <ul>
+          <li><strong><code>"allow"</code></strong> — go ahead, don't prompt.</li>
+          <li><strong><code>"ask"</code></strong> — prompt every time. Default for <code>edit</code> + <code>shell</code>.</li>
+          <li><strong><code>"deny"</code></strong> — refuse silently; the tool call fails.</li>
+        </ul>
+
+        <h2>Rule grammar</h2>
+        <pre><code>"permission": {
+  "edit":  "ask",
+  "shell": "ask",
+  "rules": {
+    "shell": {
+      "git diff*":      "allow",
+      "git log*":       "allow",
+      "npm test":       "allow",
+      "rm -rf*":        "ask"
+    },
+    "edit": {
+      "**/*.lock":      "deny",
+      "node_modules/**":"deny"
+    },
+    "tool": {
+      "mcp__github__*": "ask",
+      "mcp__github__create_issue": "allow"
+    }
+  }
+}</code></pre>
+        <p><strong>Shell</strong> globs match the full command line (including args). <strong>Edit</strong> globs match the file path relative to the project root. <strong>Tool</strong> patterns match the tool name (<code>mcp__server__tool</code> or plugin tool IDs).</p>
+
+        <h2>Scopes</h2>
+        <p>An <em>Always</em> grant is stored at one of three scopes, picked at prompt time:</p>
+        <ul>
+          <li><strong>Session</strong> — applies until the session ends; lost on next session.</li>
+          <li><strong>Directory</strong> — applies to every session opened from this project root.</li>
+          <li><strong>Global</strong> — applies to every session, every project (see below).</li>
+        </ul>
+
+        <h2>Global auto-accept</h2>
+        <p>Settings → General → <em>Berechtigungen automatisch akzeptieren</em> / <em>Auto-accept permissions</em> flips a global flag that short-circuits every permission check. Useful for trusted local-only setups; never recommended for self-hosted servers exposed to others.</p>
+
+        <h2>Where decisions live</h2>
+        <p>Persisted in the server's permission store (SQLite, alongside sessions). Clear all auto-accept grants with the <em>Reset auto-accept rules</em> button in Settings → Reset, or by removing the corresponding keys from the store directly.</p>
+      </article>
+    </div></div>
+    <footer class="site-footer"><div class="container"><div class="site-footer__bottom"><div>© 2026 Codeplane · MIT licensed</div></div></div></footer>
+  </body>
+</html>
