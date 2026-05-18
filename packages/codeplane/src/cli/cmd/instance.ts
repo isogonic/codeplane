@@ -27,6 +27,7 @@ type InstanceListArgs = {
   jsonLines?: boolean
   labelOnly?: boolean
   tlsSkippedOnly?: boolean
+  tlsVerifyOnly?: boolean
   type?: "local" | "remote"
   urlOnly?: boolean
 }
@@ -191,6 +192,14 @@ export function filterTlsSkippedInstanceSummaries<T extends { ignoreCertificateE
   return instances.filter((item) => item.ignoreCertificateErrors)
 }
 
+export function filterTlsVerifyInstanceSummaries<T extends { ignoreCertificateErrors?: boolean }>(
+  instances: T[],
+  tlsVerifyOnly?: boolean,
+) {
+  if (!tlsVerifyOnly) return instances
+  return instances.filter((item) => !item.ignoreCertificateErrors)
+}
+
 export function formatInstanceIDs(instances: { id: string }[]) {
   return instances.map((item) => item.id).join("\n")
 }
@@ -212,6 +221,7 @@ export function formatInstanceJsonLines(instances: unknown[]) {
 }
 
 export function validateInstanceListOutput(input: InstanceListArgs) {
+  if (input.tlsSkippedOnly && input.tlsVerifyOnly) throw new Error("Use either --tls-skipped-only or --tls-verify-only, not both.")
   const modes = [
     input.json ? "--json" : undefined,
     input.jsonLines ? "--json-lines" : undefined,
@@ -498,6 +508,11 @@ export const InstanceListCommand = cmd({
         default: false,
         describe: "only show instances that skip TLS certificate validation",
       })
+      .option("tls-verify-only", {
+        type: "boolean",
+        default: false,
+        describe: "only show instances that verify TLS certificates",
+      })
       .option("id-only", {
         type: "boolean",
         default: false,
@@ -523,15 +538,18 @@ export const InstanceListCommand = cmd({
     validateInstanceListOutput(input)
     const service = createInstanceService()
     const state = await service.store.getState()
-    const output = filterTlsSkippedInstanceSummaries(
-      filterDefaultInstanceSummaries(
-        filterInstanceSummaries(
-          state.instances.map((item) => formatInstanceSummary(item, state.lastInstanceID)),
-          input.type,
+    const output = filterTlsVerifyInstanceSummaries(
+      filterTlsSkippedInstanceSummaries(
+        filterDefaultInstanceSummaries(
+          filterInstanceSummaries(
+            state.instances.map((item) => formatInstanceSummary(item, state.lastInstanceID)),
+            input.type,
+          ),
+          input.defaultOnly,
         ),
-        input.defaultOnly,
+        input.tlsSkippedOnly,
       ),
-      input.tlsSkippedOnly,
+      input.tlsVerifyOnly,
     )
     if (input.json) {
       console.log(formatJson(output))

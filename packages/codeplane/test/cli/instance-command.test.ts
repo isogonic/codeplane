@@ -5,6 +5,7 @@ import {
   filterDefaultInstanceSummaries,
   filterInstanceSummaries,
   filterTlsSkippedInstanceSummaries,
+  filterTlsVerifyInstanceSummaries,
   formatInstanceCount,
   formatInstanceIDs,
   formatInstanceJsonLines,
@@ -325,6 +326,20 @@ describe("cli instance helpers", () => {
     expect(filterTlsSkippedInstanceSummaries(summaries)).toBe(summaries)
   })
 
+  test("filters instance summaries to TLS-verified entries", () => {
+    const summaries = [
+      { id: "remote-1", ignoreCertificateErrors: true },
+      { id: "remote-2", ignoreCertificateErrors: false },
+      { id: "local-1" },
+    ]
+
+    expect(filterTlsVerifyInstanceSummaries(summaries, true)).toEqual([
+      { id: "remote-2", ignoreCertificateErrors: false },
+      { id: "local-1" },
+    ])
+    expect(filterTlsVerifyInstanceSummaries(summaries)).toBe(summaries)
+  })
+
   test("formats instance ids for script output", () => {
     expect(formatInstanceIDs([{ id: "local-1" }, { id: "remote-1" }])).toBe("local-1\nremote-1")
     expect(formatInstanceIDs([])).toBe("")
@@ -360,6 +375,10 @@ describe("cli instance helpers", () => {
     expect(() => validateInstanceListOutput({ json: true, idOnly: true })).toThrow(/Use only one instance list output mode/)
     expect(() => validateInstanceListOutput({ jsonLines: true, countOnly: true })).toThrow(/--json-lines, --count-only/)
     expect(validateInstanceListOutput({ urlOnly: true })).toBeUndefined()
+  })
+
+  test("rejects conflicting TLS instance list filters", () => {
+    expect(() => validateInstanceListOutput({ tlsSkippedOnly: true, tlsVerifyOnly: true })).toThrow(/tls-skipped-only or --tls-verify-only/)
   })
 
   test("rejects invalid instance summary filters", () => {
