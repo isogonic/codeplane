@@ -24,6 +24,7 @@ type InstanceListArgs = {
   defaultOnly?: boolean
   idOnly?: boolean
   json?: boolean
+  jsonLines?: boolean
   labelOnly?: boolean
   tlsSkippedOnly?: boolean
   type?: "local" | "remote"
@@ -203,6 +204,10 @@ export function formatInstanceLabels(instances: { id: string; label?: string }[]
 
 export function formatInstanceCount(instances: unknown[]) {
   return String(instances.length)
+}
+
+export function formatInstanceJsonLines(instances: unknown[]) {
+  return instances.map((item) => JSON.stringify(item)).join("\n")
 }
 
 function formatJson(input: unknown) {
@@ -450,6 +455,11 @@ export const InstanceListCommand = cmd({
         default: false,
         describe: "print JSON instead of a table",
       })
+      .option("json-lines", {
+        type: "boolean",
+        default: false,
+        describe: "print saved instances as newline-delimited JSON",
+      })
       .option("type", {
         choices: ["local", "remote"] as const,
         describe: "only list local or remote instances",
@@ -500,6 +510,10 @@ export const InstanceListCommand = cmd({
     )
     if (input.json) {
       console.log(formatJson(output))
+      return
+    }
+    if (input.jsonLines) {
+      console.log(formatInstanceJsonLines(output))
       return
     }
     if (input.idOnly) {

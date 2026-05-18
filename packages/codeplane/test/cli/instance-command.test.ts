@@ -7,6 +7,7 @@ import {
   filterTlsSkippedInstanceSummaries,
   formatInstanceCount,
   formatInstanceIDs,
+  formatInstanceJsonLines,
   formatInstanceLabels,
   formatInstanceTable,
   formatInstanceURLs,
@@ -343,6 +344,13 @@ describe("cli instance helpers", () => {
   test("formats instance counts for script output", () => {
     expect(formatInstanceCount([{ id: "local-1" }, { id: "remote-1" }])).toBe("2")
     expect(formatInstanceCount([])).toBe("0")
+  })
+
+  test("formats instance summaries as json lines for script output", () => {
+    expect(formatInstanceJsonLines([{ id: "local-1" }, { id: "remote-1" }])).toBe(
+      '{"id":"local-1"}\n{"id":"remote-1"}',
+    )
+    expect(formatInstanceJsonLines([])).toBe("")
   })
 
   test("rejects invalid instance summary filters", () => {
