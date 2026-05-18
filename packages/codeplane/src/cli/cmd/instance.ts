@@ -377,6 +377,8 @@ export function formatLocalVersions(
     validVersionCount: validVersions.length,
     prereleaseVersionCount,
     selectedVersionCount: versions.length,
+    selectedStableVersionCount: stableVersionCount,
+    selectedPrereleaseVersionCount: prereleaseVersionCount,
     stableVersionCount,
     total: versions.length,
     ...(versions[0] ? { newestVersion: versions[0] } : {}),
