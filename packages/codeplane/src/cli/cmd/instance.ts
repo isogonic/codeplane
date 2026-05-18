@@ -59,6 +59,7 @@ type InstanceLocalTargetArgs = {
 }
 
 type InstanceLocalVersionsArgs = {
+  latestOnly?: boolean
   limit?: number
   major?: number
   tag?: string
@@ -170,7 +171,12 @@ export function formatLocalVersions(
   limit = 10,
   tag?: string,
   major?: number,
+  latestOnly?: boolean,
 ) {
+  if (latestOnly) {
+    if (!input.latest) throw new Error("Local runtime latest version was not found.")
+    return input.latest
+  }
   if (tag) {
     const version = input.distTags[tag]
     if (!version) throw new Error(`Local runtime dist-tag "${tag}" was not found.`)
@@ -714,10 +720,14 @@ export const InstanceLocalVersionsCommand = cmd({
     }).option("tag", {
       type: "string",
       describe: "print only one npm dist-tag version",
+    }).option("latest-only", {
+      type: "boolean",
+      default: false,
+      describe: "print only the latest stable runtime version",
     }),
   async handler(args) {
     const input = args as InstanceLocalVersionsArgs
-    console.log(formatLocalVersions(await fetchCodeplaneVersions(), input.limit, input.tag, input.major))
+    console.log(formatLocalVersions(await fetchCodeplaneVersions(), input.limit, input.tag, input.major, input.latestOnly))
   },
 })
 
