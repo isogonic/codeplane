@@ -285,7 +285,7 @@ describe("cli instance helpers", () => {
       },
     ])
 
-    expect(table).toEndWith("2 saved instances.")
+    expect(table).toEndWith("2 saved instances; 1 default.")
   })
 
   test("filters instance summaries by type", () => {

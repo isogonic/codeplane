@@ -378,6 +378,7 @@ async function localStatus(version?: string) {
 
 export function formatInstanceTable(instances: ReturnType<typeof formatInstanceSummary>[]) {
   if (instances.length === 0) return "No saved instances."
+  const defaultCount = instances.filter((item) => item.default).length
   const widths = {
     id: Math.max(2, ...instances.map((item) => item.id.length)),
     type: Math.max(4, ...instances.map((item) => item.type.length)),
@@ -409,7 +410,7 @@ export function formatInstanceTable(instances: ReturnType<typeof formatInstanceS
       ].join("  "),
     ),
     "─".repeat(header.length),
-    `${instances.length} saved ${instances.length === 1 ? "instance" : "instances"}.`,
+    `${instances.length} saved ${instances.length === 1 ? "instance" : "instances"}; ${defaultCount} default.`,
   ].join("\n")
 }
 
