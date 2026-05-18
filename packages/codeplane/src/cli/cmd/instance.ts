@@ -110,7 +110,7 @@ export function formatInstanceSummary(instance: SavedInstance, lastInstanceID?: 
     label: instance.label,
     url: instance.url,
     version: instance.local?.binaryVersion,
-    headers: Object.keys(instance.headers ?? {}).length,
+    headers: Object.values(instance.headers ?? {}).filter((value) => value.trim()).length,
     ignoreCertificateErrors: Boolean(instance.ignoreCertificateErrors),
   }
 }

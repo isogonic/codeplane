@@ -138,6 +138,19 @@ describe("cli instance helpers", () => {
     })
   })
 
+  test("ignores empty persisted headers in instance summaries", () => {
+    expect(
+      formatInstanceSummary({
+        id: "remote-1",
+        url: "https://example.com",
+        headers: {
+          Authorization: "   ",
+          "X-Env": "prod",
+        },
+      }).headers,
+    ).toBe(1)
+  })
+
   test("filters instance summaries by type", () => {
     const summaries = [
       { id: "local-1", type: "local" as const },
