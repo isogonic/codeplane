@@ -1328,6 +1328,26 @@ describe("cli instance helpers", () => {
     ).toEqual(["latest"])
   })
 
+  test("reports selected prerelease local runtime dist tags", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions(
+          {
+            distTags: { latest: "28.2.1", next: "29.0.0-beta.1", rc: "29.0.0-rc.1" },
+            versions: ["28.2.1", "29.0.0-beta.1", "29.0.0-rc.1"],
+          },
+          10,
+          undefined,
+          undefined,
+          false,
+          false,
+          false,
+          true,
+        ),
+      ).selectedDistTags,
+    ).toEqual(["next", "rc"])
+  })
+
   test("reports the oldest local runtime version", () => {
     expect(
       JSON.parse(
