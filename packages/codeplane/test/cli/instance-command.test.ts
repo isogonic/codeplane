@@ -95,6 +95,7 @@ describe("cli instance helpers", () => {
   test("rejects unsafe explicit instance ids", () => {
     expect(() => validateInstanceID(".")).toThrow(/cannot be . or ../)
     expect(() => validateInstanceID("..")).toThrow(/cannot be . or ../)
+    expect(() => validateInstanceID("local.")).toThrow(/cannot end with a dot/)
     expect(() => validateInstanceID("../local")).toThrow(/letters, numbers/)
     expect(() => validateInstanceID("local/one")).toThrow(/letters, numbers/)
     expect(() => validateInstanceID("local one")).toThrow(/letters, numbers/)

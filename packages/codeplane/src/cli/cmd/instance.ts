@@ -177,6 +177,7 @@ export function validateInstanceID(id: string) {
   if (!trimmed) throw new Error("Instance id cannot be empty.")
   if (trimmed === "." || trimmed === "..") throw new Error("Instance id cannot be . or ...")
   if (trimmed.length > 80) throw new Error("Instance id cannot exceed 80 characters.")
+  if (trimmed.endsWith(".")) throw new Error("Instance id cannot end with a dot.")
   if (WINDOWS_RESERVED_INSTANCE_IDS.has(trimmed.toLowerCase())) throw new Error(`Instance id "${trimmed}" is reserved on Windows.`)
   if (!/^[A-Za-z0-9._-]+$/.test(trimmed)) {
     throw new Error("Instance id can only contain letters, numbers, dots, underscores, and dashes.")
