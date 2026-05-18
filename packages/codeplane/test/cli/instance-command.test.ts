@@ -809,6 +809,57 @@ describe("cli instance helpers", () => {
     })
   })
 
+  test("formats local runtime versions for one semver range", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions(
+          {
+            latest: "28.2.1",
+            distTags: {},
+            versions: ["29.0.0", "28.3.0-beta.1", "28.2.1", "28.1.0"],
+          },
+          10,
+          undefined,
+          undefined,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          ">=28.2.0 <29.0.0",
+        ),
+      ),
+    ).toMatchObject({
+      range: ">=28.2.0 <29.0.0",
+      versions: ["28.3.0-beta.1", "28.2.1"],
+    })
+  })
+
+  test("rejects invalid local runtime semver ranges", () => {
+    expect(() =>
+      formatLocalVersions(
+        { distTags: {}, versions: [] },
+        10,
+        undefined,
+        undefined,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        "not a range |||",
+      ),
+    ).toThrow(/Invalid local runtime semver range/)
+  })
+
   test("rejects invalid local runtime major filters", () => {
     expect(normalizeLocalVersionMajor(28)).toBe(28)
     expect(normalizeLocalVersionMajor()).toBeUndefined()

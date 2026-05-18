@@ -73,6 +73,7 @@ type InstanceLocalVersionsArgs = {
   newestOnly?: boolean
   oldestOnly?: boolean
   prereleaseOnly?: boolean
+  range?: string
   stableOnly?: boolean
   tag?: string
   tagOnly?: boolean
@@ -274,6 +275,7 @@ export function formatLocalVersions(
   jsonLines?: boolean,
   oldestOnly?: boolean,
   newestOnly?: boolean,
+  range?: string,
 ) {
   if (stableOnly && prereleaseOnly) throw new Error("Use either --stable-only or --prerelease-only, not both.")
   if (versionOnly && (tag || latestOnly || tagOnly)) throw new Error("Use --version-only without --tag, --latest-only, or --tag-only.")
@@ -289,6 +291,8 @@ export function formatLocalVersions(
   if (countOnly && (tag || latestOnly || tagOnly || versionOnly)) {
     throw new Error("Use --count-only without --tag, --latest-only, --tag-only, or --version-only.")
   }
+  const selectedRange = range?.trim()
+  if (selectedRange && !semver.validRange(selectedRange)) throw new Error(`Invalid local runtime semver range "${range}".`)
   const rawDistTags = input.distTags && typeof input.distTags === "object" && !Array.isArray(input.distTags) ? input.distTags : {}
   const distTags = Object.fromEntries(
     Object.entries(rawDistTags)
@@ -329,6 +333,7 @@ export function formatLocalVersions(
   const duplicateVersionCount = validVersions.length - uniqueVersions.length
   const versions = uniqueVersions
     .filter((version) => selectedMajor === undefined || version.startsWith(`${selectedMajor}.`))
+    .filter((version) => !selectedRange || semver.satisfies(version, selectedRange, { includePrerelease: true }))
     .filter((version) => !stableOnly || !semver.prerelease(version)?.length)
     .filter((version) => !prereleaseOnly || semver.prerelease(version)?.length)
     .sort(semver.rcompare)
@@ -369,6 +374,7 @@ export function formatLocalVersions(
     ...(newestPrereleaseVersion ? { newestPrereleaseVersion } : {}),
     ...(versions.at(-1) ? { oldestVersion: versions.at(-1) } : {}),
     ...(selectedMajor === undefined ? {} : { major: selectedMajor }),
+    ...(selectedRange ? { range: selectedRange } : {}),
     ...(stableOnly ? { stableOnly: true } : {}),
     ...(prereleaseOnly ? { prereleaseOnly: true } : {}),
     ...(selectedMajor === undefined ? {} : { matchingDistTags }),
@@ -966,6 +972,9 @@ export const InstanceLocalVersionsCommand = cmd({
     }).option("major", {
       type: "number",
       describe: "only include versions from one major release line",
+    }).option("range", {
+      type: "string",
+      describe: "only include versions matching a semver range",
     }).option("tag", {
       type: "string",
       describe: "print only one npm dist-tag version",
@@ -1023,6 +1032,7 @@ export const InstanceLocalVersionsCommand = cmd({
         input.jsonLines,
         input.oldestOnly,
         input.newestOnly,
+        input.range,
       ),
     )
   },
