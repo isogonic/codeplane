@@ -424,7 +424,7 @@ describe("install codeplane local package", () => {
 
     const dest = path.join(home, "local_server", "binaries", "27.3.1")
     await expect(installCodeplaneLocalPackage({ version: "27.3.1", directory: dest })).rejects.toThrow(
-      /tarball download failed/,
+      new RegExp(`tarball download failed.*https://registry\\.example\\.com/${target.packageName}/-/${target.packageName}-27\\.3\\.1\\.tgz`),
     )
 
     const parent = path.dirname(dest)
