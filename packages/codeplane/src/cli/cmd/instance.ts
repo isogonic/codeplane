@@ -300,15 +300,25 @@ export function formatLocalVersions(
   const selectedRange = range?.trim()
   if (selectedRange && !semver.validRange(selectedRange)) throw new Error(`Invalid local runtime semver range "${range}".`)
   const rawDistTags = input.distTags && typeof input.distTags === "object" && !Array.isArray(input.distTags) ? input.distTags : {}
+  const normalizedDistTagEntries = Object.entries(rawDistTags).map(([tagName, version]) => [
+    tagName,
+    typeof version === "string" ? normalizeLocalRuntimeVersion(version) : version,
+  ] as const)
   const distTags = Object.fromEntries(
-    Object.entries(rawDistTags)
+    normalizedDistTagEntries
       .filter(
         ([tagName, version]) =>
-          LOCAL_RUNTIME_TAG_PATTERN.test(tagName) && LOCAL_RUNTIME_VERSION_PATTERN.test(version) && Boolean(semver.valid(version)),
+          typeof version === "string" &&
+          LOCAL_RUNTIME_TAG_PATTERN.test(tagName) &&
+          LOCAL_RUNTIME_VERSION_PATTERN.test(version) &&
+          Boolean(semver.valid(version)),
       )
       .sort(([left], [right]) => left.localeCompare(right)),
   )
   const invalidDistTagCount = Object.keys(rawDistTags).length - Object.keys(distTags).length
+  const normalizedDistTagCount = Object.entries(rawDistTags).filter(
+    ([tagName, version]) => typeof version === "string" && distTags[tagName] !== undefined && distTags[tagName] !== version,
+  ).length
   if (tagOnly) {
     if (tag || major !== undefined || latestOnly) throw new Error("Use --tag-only without --tag, --major, or --latest-only.")
     return Object.keys(distTags).join("\n")
@@ -361,8 +371,10 @@ export function formatLocalVersions(
   if (jsonLines) return shownVersions.map((version) => JSON.stringify({ version })).join("\n")
   const stableShown = shownVersions.filter((version) => !semver.prerelease(version)?.length).length
   const prereleaseShown = shownVersions.length - stableShown
+  const hasSelectedDistTagFilter = selectedMajor !== undefined || Boolean(selectedRange) || stableOnly || prereleaseOnly
+  const selectedVersionSet = new Set(versions)
   const matchingDistTags = Object.fromEntries(
-    Object.entries(distTags).filter(([, version]) => selectedMajor !== undefined && version.startsWith(`${selectedMajor}.`)),
+    Object.entries(distTags).filter(([, version]) => hasSelectedDistTagFilter && selectedVersionSet.has(version)),
   )
   return formatJson({
     latest: input.latest,
@@ -372,6 +384,7 @@ export function formatLocalVersions(
     invalidDistTagCount,
     invalidVersionCount: rawVersions.length - validVersions.length + invalidVersionInputCount,
     nonStringVersionCount,
+    normalizedDistTagCount,
     normalizedVersionCount,
     rawVersionCount: rawVersions.length,
     validVersionCount: validVersions.length,
@@ -389,10 +402,10 @@ export function formatLocalVersions(
     ...(selectedRange ? { range: selectedRange } : {}),
     ...(stableOnly ? { stableOnly: true } : {}),
     ...(prereleaseOnly ? { prereleaseOnly: true } : {}),
-    ...(selectedMajor === undefined ? {} : { matchingDistTags }),
+    ...(hasSelectedDistTagFilter ? { matchingDistTags } : {}),
     ...(input.registry ? { registry: input.registry } : {}),
-    ...(selectedMajor === undefined ? {} : { selectedDistTags: Object.keys(matchingDistTags) }),
-    ...(selectedMajor === undefined ? {} : { selectedDistTagCount: Object.keys(matchingDistTags).length }),
+    ...(hasSelectedDistTagFilter ? { selectedDistTags: Object.keys(matchingDistTags) } : {}),
+    ...(hasSelectedDistTagFilter ? { selectedDistTagCount: Object.keys(matchingDistTags).length } : {}),
     effectiveLimit: count,
     limit: count,
     requestedLimit,

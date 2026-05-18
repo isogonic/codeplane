@@ -659,6 +659,7 @@ describe("cli instance helpers", () => {
       invalidDistTagCount: 0,
       invalidVersionCount: 0,
       nonStringVersionCount: 0,
+      normalizedDistTagCount: 0,
       normalizedVersionCount: 0,
       rawVersionCount: 3,
       validVersionCount: 3,
@@ -827,6 +828,7 @@ describe("cli instance helpers", () => {
       invalidDistTagCount: 0,
       invalidVersionCount: 0,
       nonStringVersionCount: 0,
+      normalizedDistTagCount: 0,
       normalizedVersionCount: 0,
       rawVersionCount: 4,
       validVersionCount: 4,
@@ -863,7 +865,7 @@ describe("cli instance helpers", () => {
         formatLocalVersions(
           {
             latest: "28.2.1",
-            distTags: {},
+            distTags: { latest: "28.2.1", next: "29.0.0-beta.1" },
             versions: ["29.0.0", "28.3.0-beta.1", "28.2.1", "28.1.0"],
           },
           10,
@@ -883,6 +885,9 @@ describe("cli instance helpers", () => {
       ),
     ).toMatchObject({
       range: ">=28.2.0 <29.0.0",
+      matchingDistTags: { latest: "28.2.1" },
+      selectedDistTags: ["latest"],
+      selectedDistTagCount: 1,
       versions: ["28.3.0-beta.1", "28.2.1"],
     })
   })
@@ -979,6 +984,7 @@ describe("cli instance helpers", () => {
       invalidDistTagCount: 0,
       invalidVersionCount: 1,
       nonStringVersionCount: 0,
+      normalizedDistTagCount: 0,
       normalizedVersionCount: 0,
       rawVersionCount: 0,
       validVersionCount: 0,
@@ -1013,6 +1019,20 @@ describe("cli instance helpers", () => {
         ).distTags,
       ),
     ).toEqual(["beta", "latest", "zeta"])
+  })
+
+  test("normalizes tagged local runtime dist tag values", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions({
+          distTags: { latest: "v28.2.0", next: "28.3.0-beta.1" },
+          versions: [],
+        }),
+      ),
+    ).toMatchObject({
+      distTags: { latest: "28.2.0", next: "28.3.0-beta.1" },
+      normalizedDistTagCount: 1,
+    })
   })
 
   test("omits malformed local runtime dist tags from formatted output", () => {
