@@ -12,6 +12,7 @@ import {
   mergeSignedInHeader,
   normalizeLocalVersionMajor,
   parseInstanceHeaders,
+  localInstanceVersions,
   validateInstanceID,
   validateLocalRuntimeVersion,
 } from "../../src/cli/cmd/instance"
@@ -153,6 +154,19 @@ describe("cli instance helpers", () => {
         },
       ],
     })
+  })
+
+  test("summarizes unique local instance versions", () => {
+    expect(
+      localInstanceVersions({
+        instances: [
+          { id: "local-a", url: "local://a", local: { binaryVersion: "28.2.0" } },
+          { id: "remote", url: "https://example.com" },
+          { id: "local-b", url: "local://b", local: { binaryVersion: "28.1.0" } },
+          { id: "local-c", url: "local://c", local: { binaryVersion: "28.2.0" } },
+        ],
+      }),
+    ).toEqual(["28.1.0", "28.2.0"])
   })
 
   test("formats instance summaries for list output", () => {

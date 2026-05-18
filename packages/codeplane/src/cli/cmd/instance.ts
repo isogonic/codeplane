@@ -111,6 +111,10 @@ export function applyLocalInstanceVersion(state: InstanceState, version: string)
   }
 }
 
+export function localInstanceVersions(state: InstanceState) {
+  return Array.from(new Set(state.instances.flatMap((item) => (item.local ? [item.local.binaryVersion] : [])))).sort()
+}
+
 export function validateInstanceID(id: string) {
   const trimmed = id.trim()
   if (!trimmed) throw new Error("Instance id cannot be empty.")
@@ -800,12 +804,14 @@ export const InstanceLocalUpdateCommand = cmd({
     const service = createInstanceService()
     const version = await fetchCodeplaneLatestVersion()
     const result = await service.installLocal(version, (progress) => printProgress(`${progress.percent}% ${progress.message}`))
-    const next = applyLocalInstanceVersion(await service.store.getState(), version)
+    const state = await service.store.getState()
+    const next = applyLocalInstanceVersion(state, version)
     await service.store.replace(next)
     console.log(
       formatJson({
         ...result,
         binaryPath: await localBinaryPath(version),
+        previousLocalVersions: localInstanceVersions(state),
         updatedLocalInstances: next.instances.filter((item) => item.local).length,
       }),
     )
