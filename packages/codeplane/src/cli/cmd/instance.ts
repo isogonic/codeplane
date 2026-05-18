@@ -64,6 +64,7 @@ type InstanceLocalVersionsArgs = {
   limit?: number
   major?: number
   tag?: string
+  tagOnly?: boolean
 }
 
 const LOCAL_RUNTIME_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
@@ -197,7 +198,12 @@ export function formatLocalVersions(
   tag?: string,
   major?: number,
   latestOnly?: boolean,
+  tagOnly?: boolean,
 ) {
+  if (tagOnly) {
+    if (tag || major !== undefined || latestOnly) throw new Error("Use --tag-only without --tag, --major, or --latest-only.")
+    return Object.keys(input.distTags).sort((left, right) => left.localeCompare(right)).join("\n")
+  }
   if (latestOnly) {
     if (tag || major !== undefined) throw new Error("Use --latest-only without --tag or --major.")
     if (!input.latest) throw new Error("Local runtime latest version was not found.")
@@ -763,10 +769,14 @@ export const InstanceLocalVersionsCommand = cmd({
       type: "boolean",
       default: false,
       describe: "print only the latest stable runtime version",
+    }).option("tag-only", {
+      type: "boolean",
+      default: false,
+      describe: "print only npm dist-tag names, one per line",
     }),
   async handler(args) {
     const input = args as InstanceLocalVersionsArgs
-    console.log(formatLocalVersions(await fetchCodeplaneVersions(), input.limit, input.tag, input.major, input.latestOnly))
+    console.log(formatLocalVersions(await fetchCodeplaneVersions(), input.limit, input.tag, input.major, input.latestOnly, input.tagOnly))
   },
 })
 

@@ -545,6 +545,28 @@ describe("cli instance helpers", () => {
     ).toEqual(["beta", "latest", "zeta"])
   })
 
+  test("formats local runtime dist tag names for scripts", () => {
+    expect(
+      formatLocalVersions(
+        {
+          distTags: { zeta: "28.2.1", latest: "28.2.0", beta: "28.3.0-beta.1" },
+          versions: [],
+        },
+        10,
+        undefined,
+        undefined,
+        false,
+        true,
+      ),
+    ).toBe("beta\nlatest\nzeta")
+  })
+
+  test("rejects conflicting local runtime dist tag name output flags", () => {
+    expect(() =>
+      formatLocalVersions({ distTags: { latest: "28.2.0" }, versions: [] }, 10, "latest", undefined, false, true),
+    ).toThrow(/without --tag/)
+  })
+
   test("reports ignored malformed local runtime versions", () => {
     expect(
       JSON.parse(
