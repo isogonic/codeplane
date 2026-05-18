@@ -885,6 +885,8 @@ describe("cli instance helpers", () => {
       latestDistTagVersion: "28.2.1",
       newestVersion: "28.2.1",
       newestShownVersion: "28.2.1",
+      latestMajorVersion: "28.2.1",
+      latestMajor: 28,
       latestStableVersion: "28.2.1",
       newestStableVersion: "28.2.1",
       oldestVersion: "28.1.0",
@@ -1182,6 +1184,8 @@ describe("cli instance helpers", () => {
       latestDistTagVersion: "28.2.1",
       newestVersion: "28.2.1",
       newestShownVersion: "28.2.1",
+      latestMajorVersion: "28.2.1",
+      latestMajor: 28,
       latestStableVersion: "28.2.1",
       newestStableVersion: "28.2.1",
       oldestVersion: "28.1.0",
@@ -1861,6 +1865,17 @@ describe("cli instance helpers", () => {
         true,
       ),
     ).toBe("28.2.1")
+  })
+
+  test("reports the latest local runtime major metadata", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions({
+          distTags: {},
+          versions: ["29.0.0-beta.1", "28.2.1", "28.1.0"],
+        }),
+      ),
+    ).toMatchObject({ latestMajorVersion: "28.2.1", latestMajor: 28 })
   })
 
   test("formats the latest stable selected local runtime version for scripts", () => {
