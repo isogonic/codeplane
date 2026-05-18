@@ -132,17 +132,18 @@ export function formatLocalTarget(target: LocalTarget, nameOnly?: boolean, binar
 }
 
 export function formatLocalVersions(
-  input: { latest?: string; distTags: Record<string, string>; versions: string[] },
+  input: { latest?: string; distTags: Record<string, string>; versions?: unknown },
   limit = 10,
   tag?: string,
 ) {
   if (tag) return input.distTags[tag] ?? ""
+  const versions = Array.isArray(input.versions) ? input.versions.filter((version) => typeof version === "string") : []
   const count = Math.min(Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10, 100)
   return formatJson({
     latest: input.latest,
     distTags: Object.fromEntries(Object.entries(input.distTags).sort(([left], [right]) => left.localeCompare(right))),
-    total: input.versions.length,
-    versions: input.versions.slice(0, count),
+    total: versions.length,
+    versions: versions.slice(0, count),
   })
 }
 

@@ -257,8 +257,23 @@ describe("cli instance helpers", () => {
           },
           150,
         ),
-      ).versions,
-    ).toHaveLength(100)
+    ).versions,
+  ).toHaveLength(100)
+  })
+
+  test("formats malformed local runtime versions as empty", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions({
+          distTags: {},
+          versions: "28.2.1",
+        }),
+      ),
+    ).toEqual({
+      distTags: {},
+      total: 0,
+      versions: [],
+    })
   })
 
   test("sorts local runtime dist tags for stable output", () => {
