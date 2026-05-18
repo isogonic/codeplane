@@ -266,6 +266,7 @@ export function formatLocalVersions(
     limit: count,
     shown: Math.min(versions.length, count),
     stableShown: shownVersions.filter((version) => !semver.prerelease(version)?.length).length,
+    prereleaseShown: shownVersions.filter((version) => semver.prerelease(version)?.length).length,
     omitted: Math.max(versions.length - count, 0),
     versions: shownVersions,
   })

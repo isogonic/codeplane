@@ -414,6 +414,7 @@ describe("cli instance helpers", () => {
       limit: 2,
       shown: 2,
       stableShown: 2,
+      prereleaseShown: 0,
       omitted: 1,
       versions: ["28.2.1", "28.2.0"],
     })
@@ -519,6 +520,7 @@ describe("cli instance helpers", () => {
       limit: 10,
       shown: 2,
       stableShown: 2,
+      prereleaseShown: 0,
       omitted: 0,
       versions: ["28.2.1", "28.1.0"],
     })
@@ -581,6 +583,7 @@ describe("cli instance helpers", () => {
       limit: 10,
       shown: 0,
       stableShown: 0,
+      prereleaseShown: 0,
       omitted: 0,
       versions: [],
     })
