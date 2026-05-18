@@ -57,6 +57,7 @@ type InstanceProbeArgs = {
 type InstanceLocalVersionArgs = {
   installedOnly?: boolean
   pathOnly?: boolean
+  versionOnly?: boolean
   version?: string
 }
 
@@ -486,9 +487,12 @@ export function formatLocalVersions(
   })
 }
 
-export function formatLocalStatus(status: LocalStatus & { target?: LocalTarget }, pathOnly?: boolean, installedOnly?: boolean) {
-  if (pathOnly && installedOnly) throw new Error("Use either --path-only or --installed-only, not both.")
+export function formatLocalStatus(status: LocalStatus & { target?: LocalTarget }, pathOnly?: boolean, installedOnly?: boolean, versionOnly?: boolean) {
+  if ([pathOnly, installedOnly, versionOnly].filter(Boolean).length > 1) {
+    throw new Error("Use only one of --path-only, --installed-only, or --version-only.")
+  }
   const normalized = status.binaryPath ? { ...status, binaryPath: status.binaryPath.trim() } : status
+  if (versionOnly) return normalized.binaryVersion
   if (installedOnly) return normalized.installed ? "true" : "false"
   if (pathOnly) {
     if (!normalized.installed) throw new Error(`Local runtime ${normalized.binaryVersion} is not installed.`)
@@ -1172,10 +1176,15 @@ export const InstanceLocalStatusCommand = cmd({
         type: "boolean",
         default: false,
         describe: "print only true or false for whether the runtime is installed",
+      })
+      .option("version-only", {
+        type: "boolean",
+        default: false,
+        describe: "print only the resolved local runtime version",
       }),
   async handler(args) {
     const input = args as InstanceLocalVersionArgs
-    console.log(formatLocalStatus(await localStatus(input.version), input.pathOnly, input.installedOnly))
+    console.log(formatLocalStatus(await localStatus(input.version), input.pathOnly, input.installedOnly, input.versionOnly))
   },
 })
 

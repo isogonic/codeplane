@@ -640,6 +640,22 @@ describe("cli instance helpers", () => {
     ).toBe("false")
   })
 
+  test("formats local status version for scripts", () => {
+    expect(
+      formatLocalStatus(
+        {
+          binaryVersion: "28.2.2",
+          installed: true,
+          binaryPath: "/tmp/codeplane/bin/codeplane",
+          archive: "/tmp/codeplane.tgz",
+        },
+        false,
+        false,
+        true,
+      ),
+    ).toBe("28.2.2")
+  })
+
   test("rejects conflicting local status script flags", () => {
     expect(() =>
       formatLocalStatus(
@@ -652,7 +668,20 @@ describe("cli instance helpers", () => {
         true,
         true,
       ),
-    ).toThrow(/--path-only or --installed-only/)
+    ).toThrow(/--path-only, --installed-only, or --version-only/)
+    expect(() =>
+      formatLocalStatus(
+        {
+          binaryVersion: "28.2.2",
+          installed: true,
+          binaryPath: "/tmp/codeplane/bin/codeplane",
+          archive: "/tmp/codeplane.tgz",
+        },
+        false,
+        true,
+        true,
+      ),
+    ).toThrow(/--path-only, --installed-only, or --version-only/)
   })
 
   test("trims local status path output for scripts", () => {
