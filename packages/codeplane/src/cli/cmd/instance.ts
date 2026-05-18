@@ -291,12 +291,13 @@ export function formatLocalVersions(
 }
 
 export function formatLocalStatus(status: LocalStatus & { target?: LocalTarget }, pathOnly?: boolean) {
+  const normalized = status.binaryPath ? { ...status, binaryPath: status.binaryPath.trim() } : status
   if (pathOnly) {
-    if (!status.installed) throw new Error(`Local runtime ${status.binaryVersion} is not installed.`)
-    if (!status.binaryPath?.trim()) throw new Error("Local runtime binary path is unavailable.")
-    return status.binaryPath.trim()
+    if (!normalized.installed) throw new Error(`Local runtime ${normalized.binaryVersion} is not installed.`)
+    if (!normalized.binaryPath) throw new Error("Local runtime binary path is unavailable.")
+    return normalized.binaryPath
   }
-  return formatJson(status)
+  return formatJson(normalized)
 }
 
 function autoInstanceID(label?: string, kind = "instance") {
