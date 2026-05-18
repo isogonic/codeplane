@@ -173,6 +173,8 @@ async function npmRegistry() {
   } satisfies RegistryConfig
 }
 
+const registryConfigHint = "Check npm.registry in Codeplane config, CODEPLANE_NPM_REGISTRY, or npm_config_registry."
+
 const registryPath = (name: string) => {
   if (!name.startsWith("@")) return name
   return name.replace("/", "%2f")
@@ -398,7 +400,9 @@ export async function fetchNpmPackageManifest(input: { name: string; version?: s
     description: `npm manifest ${input.name}@${requested}`,
   })
   if (!response.ok) {
-    throw new Error(`npm registry lookup failed for ${input.name}@${requested} at ${url.toString()} with HTTP ${response.status}`)
+    throw new Error(
+      `npm registry lookup failed for ${input.name}@${requested} at ${url.toString()} with HTTP ${response.status}. ${registryConfigHint}`,
+    )
   }
   const payload = (await response.json()) as {
     version?: unknown
@@ -470,7 +474,7 @@ export async function fetchCodeplaneVersions(input: { name?: string; registry?: 
     description: `npm packument ${name}`,
   })
   if (!response.ok) {
-    throw new Error(`npm registry packument lookup failed for ${name} at ${url.toString()} with HTTP ${response.status}`)
+    throw new Error(`npm registry packument lookup failed for ${name} at ${url.toString()} with HTTP ${response.status}. ${registryConfigHint}`)
   }
   const payload = (await response.json()) as {
     "dist-tags"?: Record<string, unknown>
