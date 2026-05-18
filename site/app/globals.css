@@ -187,6 +187,11 @@ body {
 }
 .docs-prose a {
   @apply underline underline-offset-4 decoration-line hover:decoration-ink transition-colors;
+  overflow-wrap: anywhere;
+}
+.docs-prose code,
+.docs-prose strong code {
+  overflow-wrap: anywhere;
 }
 .docs-prose table {
   @apply w-full border-collapse my-5 text-[13px];

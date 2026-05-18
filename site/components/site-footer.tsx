@@ -13,7 +13,7 @@ export async function SiteFooter() {
     <footer className="mt-24 border-t border-line">
       <div className="rail">
         <div className="container">
-          <div className="grid grid-cols-2 border-line text-center text-[13px] text-ink-2 md:grid-cols-5">
+          <div className="grid grid-cols-1 border-line text-center text-[13px] text-ink-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
             <FootCell href="https://github.com/devinoldenburg/codeplane">
               GitHub <span className="text-ink-muted">[fork]</span>
             </FootCell>

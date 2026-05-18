@@ -107,3 +107,60 @@ jobs:
           CODEPLANE_VERSION: ${{ needs.resolve.outputs.version }}
           CODEPLANE_PUBLISH_NPM_ONLY: "1"
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub release (CLI / general)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.resolve.outputs.source_tag }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          # The bare v<x.y.z> tag is the "general" release record for a
+          # Codeplane version. The desktop / mobile workflows already
+          # create their own per-platform records and the changelog
+          # page (codeplane.cc/docs/changelog/) groups by base version —
+          # but without this step the parent row has no body, only the
+          # collapsible platform sub-rows. This step creates / updates
+          # the parent release record with auto-generated notes plus a
+          # banner describing what the CLI is (vs the platform builds).
+
+          notes_file="$(mktemp)"
+          {
+            echo "## CLI · npm release"
+            echo ""
+            echo "> **Codeplane $VERSION on npm.** The CLI is published as **\`codeplane-ai\`** (the wrapper) plus platform-specific binary packages (\`codeplane-darwin-arm64\`, \`codeplane-linux-x64\`, etc.) installed via \`optionalDependencies\`. The same binary is also fetched by the [\`/install\`](https://codeplane.cc/install) bash one-liner."
+            echo ">"
+            echo "> Install one of:"
+            echo "> - \`curl -fsSL https://codeplane.cc/install | bash\` — pulls the matching binary straight from npm"
+            echo "> - \`npm install -g codeplane-ai\` — npm / pnpm / bun all work"
+            echo ">"
+            echo "> The desktop app (.dmg / .exe / .AppImage) lives at [\`v${VERSION}-desktop\`](https://github.com/${{ github.repository }}/releases/tag/v${VERSION}-desktop). The iOS shell lives at [\`v${VERSION}-mobile\`](https://github.com/${{ github.repository }}/releases/tag/v${VERSION}-mobile)."
+            echo ""
+            echo "---"
+            echo ""
+          } > "$notes_file"
+
+          # Append auto-generated changelog (commits since previous tag).
+          # `gh api` is more reliable than `gh release generate-notes` for
+          # tags that don't yet have a release record.
+          previous_tag="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | grep -vE -- '-desktop$|-mobile$' | grep -v "^${TAG}$" | head -1)"
+          if [ -n "$previous_tag" ]; then
+            gh api repos/${{ github.repository }}/releases/generate-notes \
+              -f tag_name="$TAG" \
+              -f previous_tag_name="$previous_tag" \
+              --jq '.body' >> "$notes_file" || true
+          fi
+
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release edit "$TAG" \
+              --title "$TAG" \
+              --notes-file "$notes_file" \
+              --repo "${{ github.repository }}"
+          else
+            gh release create "$TAG" \
+              --target "$(git rev-parse HEAD)" \
+              --title "$TAG" \
+              --notes-file "$notes_file" \
+              --repo "${{ github.repository }}"
+          fi
