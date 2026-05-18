@@ -127,6 +127,7 @@ export function formatLocalVersions(input: { latest?: string; distTags: Record<s
   return formatJson({
     latest: input.latest,
     distTags: input.distTags,
+    total: input.versions.length,
     versions: input.versions.slice(0, count),
   })
 }
