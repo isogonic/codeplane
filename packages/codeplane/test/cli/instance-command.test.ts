@@ -9,6 +9,7 @@ import {
   formatLocalVersions,
   formatLocalTarget,
   parseInstanceHeaders,
+  validateInstanceID,
 } from "../../src/cli/cmd/instance"
 
 describe("cli instance helpers", () => {
@@ -50,6 +51,12 @@ describe("cli instance helpers", () => {
       Authorization: "Basic YWxpY2U6c2VjcmV0",
       "X-Env": "prod",
     })
+  })
+
+  test("rejects empty explicit instance ids", () => {
+    expect(validateInstanceID("remote-1")).toBe("remote-1")
+    expect(validateInstanceID(" remote-1 ")).toBe("remote-1")
+    expect(() => validateInstanceID("   ")).toThrow(/cannot be empty/)
   })
 
   test("updates all saved local instance versions", () => {

@@ -104,6 +104,12 @@ export function applyLocalInstanceVersion(state: InstanceState, version: string)
   }
 }
 
+export function validateInstanceID(id: string) {
+  const trimmed = id.trim()
+  if (!trimmed) throw new Error("Instance id cannot be empty.")
+  return trimmed
+}
+
 export function formatInstanceSummary(instance: SavedInstance, lastInstanceID?: string) {
   return {
     id: instance.id,
@@ -352,7 +358,9 @@ export const InstanceAddCommand = cmd({
     const input = args as InstanceAddArgs
     const service = createInstanceService()
     const version = input.local ? await localVersion(input["runtime-version"]) : undefined
-    const id = input.id || autoInstanceID(input.label || input.target, input.local ? "local" : "remote")
+    const id = input.id
+      ? validateInstanceID(input.id)
+      : autoInstanceID(input.label || input.target, input.local ? "local" : "remote")
     const instance = input.local
       ? {
           id,
