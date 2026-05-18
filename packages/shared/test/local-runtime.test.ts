@@ -126,7 +126,7 @@ describe("local runtime registry config", () => {
     globalThis.fetch = (async () => new Response("missing", { status: 404 })) as unknown as typeof globalThis.fetch
 
     await expect(fetchNpmPackageManifest({ name: "codeplane-ai", version: "latest" })).rejects.toThrow(
-      "npm registry lookup failed for codeplane-ai@latest at https://registry.example.com/custom/codeplane-ai/latest with HTTP 404. Check npm.registry in Codeplane config, CODEPLANE_NPM_REGISTRY, or npm_config_registry.",
+      "npm registry lookup failed for codeplane-ai@latest at https://registry.example.com/custom/codeplane-ai/latest with HTTP 404. Response: missing Check npm.registry in Codeplane config, CODEPLANE_NPM_REGISTRY, or npm_config_registry.",
     )
   })
 
@@ -168,7 +168,7 @@ describe("local runtime version listing", () => {
     globalThis.fetch = (async () => new Response("missing", { status: 404 })) as unknown as typeof globalThis.fetch
 
     await expect(fetchCodeplaneVersions()).rejects.toThrow(
-      "npm registry packument lookup failed for codeplane-ai at https://registry.example.com/custom/codeplane-ai with HTTP 404. Check npm.registry in Codeplane config, CODEPLANE_NPM_REGISTRY, or npm_config_registry.",
+      "npm registry packument lookup failed for codeplane-ai at https://registry.example.com/custom/codeplane-ai with HTTP 404. Response: missing Check npm.registry in Codeplane config, CODEPLANE_NPM_REGISTRY, or npm_config_registry.",
     )
   })
 

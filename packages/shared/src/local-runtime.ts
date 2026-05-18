@@ -50,6 +50,12 @@ async function fetchWithTimeout(url: URL | string, init: RequestInit & { timeout
   }
 }
 
+async function responseSnippet(response: Response) {
+  const text = await response.text().catch(() => "")
+  const snippet = text.replace(/\s+/g, " ").trim().slice(0, 160)
+  return snippet ? ` Response: ${snippet}` : ""
+}
+
 type RegistryConfig = {
   registry: string
   token?: string
@@ -407,7 +413,7 @@ export async function fetchNpmPackageManifest(input: { name: string; version?: s
   })
   if (!response.ok) {
     throw new Error(
-      `npm registry lookup failed for ${input.name}@${requested} at ${url.toString()} with HTTP ${response.status}. ${registryConfigHint}`,
+      `npm registry lookup failed for ${input.name}@${requested} at ${url.toString()} with HTTP ${response.status}.${await responseSnippet(response)} ${registryConfigHint}`,
     )
   }
   const payload = (await response.json()) as {
@@ -481,7 +487,7 @@ export async function fetchCodeplaneVersions(input: { name?: string; registry?: 
     description: `npm packument ${name}`,
   })
   if (!response.ok) {
-    throw new Error(`npm registry packument lookup failed for ${name} at ${url.toString()} with HTTP ${response.status}. ${registryConfigHint}`)
+    throw new Error(`npm registry packument lookup failed for ${name} at ${url.toString()} with HTTP ${response.status}.${await responseSnippet(response)} ${registryConfigHint}`)
   }
   const payload = (await response.json()) as {
     "dist-tags"?: Record<string, unknown>
@@ -575,7 +581,7 @@ export async function installCodeplaneLocalPackage(input: {
     })
     if (!response.ok) {
       throw new Error(
-        `npm tarball download failed for ${target.packageName}@${version} at ${tarball.toString()} with HTTP ${response.status}. ${registryConfigHint}`,
+        `npm tarball download failed for ${target.packageName}@${version} at ${tarball.toString()} with HTTP ${response.status}.${await responseSnippet(response)} ${registryConfigHint}`,
       )
     }
     if (!response.body) {
