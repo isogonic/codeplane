@@ -199,6 +199,16 @@ describe("local runtime platform", () => {
   })
 })
 
+describe("local runtime target", () => {
+  test("reports the package and executable names for this machine", () => {
+    const target = resolveCodeplaneLocalTarget()
+
+    expect(target.packageName).toStartWith(`codeplane-${target.os}-${target.arch}`)
+    expect(target.archiveName).toBe(`${target.packageName}.tgz`)
+    expect(target.binaryName).toBe(target.os === "windows" ? "codeplane.exe" : "codeplane")
+  })
+})
+
 describe("preferred local runtime version", () => {
   test("persists and reloads the shared preferred version", async () => {
     expect(await readPreferredLocalVersion("27.0.0")).toBe("27.0.0")
