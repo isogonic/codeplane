@@ -151,7 +151,12 @@ async function readConfigRegistry() {
       if (!npm || typeof npm !== "object") continue
       return {
         registry: normalizeRegistry(typeof npm.registry === "string" ? npm.registry : undefined),
-        token: typeof npm.token === "string" ? npm.token.trim() || undefined : undefined,
+        token:
+          typeof npm.token === "string"
+            ? npm.token.trim() || undefined
+            : typeof npm.auth_token === "string"
+              ? npm.auth_token.trim() || undefined
+              : undefined,
         alwaysAuth: npm.always_auth === true,
       } satisfies RegistryConfig
     } catch {}

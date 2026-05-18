@@ -95,6 +95,32 @@ describe("local runtime registry config", () => {
     expect(request?.headers.get("authorization")).toBe("Bearer secret-token")
   })
 
+  test("reads standard auth_token from Codeplane npm config", async () => {
+    await fs.writeFile(
+      path.join(home, "codeplane.jsonc"),
+      JSON.stringify({
+        npm: {
+          registry: "https://registry.example.com/custom",
+          auth_token: "standard-secret-token",
+        },
+      }),
+    )
+
+    let request: Request | undefined
+    globalThis.fetch = (async (input, init) => {
+      request = input instanceof Request ? input : new Request(input instanceof URL ? input.toString() : input, init)
+      return new Response(JSON.stringify({ version: "27.3.1", dist: { tarball: "https://registry.example.com/custom/codeplane.tgz" } }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    }) as typeof globalThis.fetch
+
+    const manifest = await fetchNpmPackageManifest({ name: "codeplane-ai", version: "latest" })
+
+    expect(manifest.version).toBe("27.3.1")
+    expect(request?.headers.get("authorization")).toBe("Bearer standard-secret-token")
+  })
+
   test("includes resolved registry URL in manifest errors", async () => {
     process.env.CODEPLANE_NPM_REGISTRY = "https://registry.example.com/custom"
     globalThis.fetch = (async () => new Response("missing", { status: 404 })) as unknown as typeof globalThis.fetch
