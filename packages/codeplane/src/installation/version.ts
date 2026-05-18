@@ -17,11 +17,15 @@ export function cleanVersion(input: string) {
 }
 
 export function isDesktopReleaseVersion(input: string) {
-  return cleanVersion(input).endsWith(DesktopReleaseSuffix)
+  const clean = cleanVersion(input)
+  if (!clean.endsWith(DesktopReleaseSuffix)) return false
+  return Boolean(semver.valid(clean.slice(0, -DesktopReleaseSuffix.length)))
 }
 
 export function isMobileReleaseVersion(input: string) {
-  return cleanVersion(input).endsWith(MobileReleaseSuffix)
+  const clean = cleanVersion(input)
+  if (!clean.endsWith(MobileReleaseSuffix)) return false
+  return Boolean(semver.valid(clean.slice(0, -MobileReleaseSuffix.length)))
 }
 
 /**

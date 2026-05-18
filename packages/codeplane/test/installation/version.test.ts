@@ -69,6 +69,10 @@ describe("isDesktopReleaseVersion", () => {
     expect(isDesktopReleaseVersion("1.2.3-desktop-rc")).toBe(false)
   })
 
+  test("returns false when desktop suffix has no semver base", () => {
+    expect(isDesktopReleaseVersion("not-a-version-desktop")).toBe(false)
+  })
+
   test("DesktopReleaseSuffix is '-desktop'", () => {
     expect(DesktopReleaseSuffix).toBe("-desktop")
   })
@@ -93,6 +97,10 @@ describe("isMobileReleaseVersion", () => {
 
   test("returns false when suffix not at end", () => {
     expect(isMobileReleaseVersion("1.2.3-mobile-rc")).toBe(false)
+  })
+
+  test("returns false when mobile suffix has no semver base", () => {
+    expect(isMobileReleaseVersion("not-a-version-mobile")).toBe(false)
   })
 
   test("MobileReleaseSuffix is '-mobile'", () => {
