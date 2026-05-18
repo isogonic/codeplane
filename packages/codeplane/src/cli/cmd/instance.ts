@@ -23,6 +23,7 @@ type InstanceListArgs = {
   defaultOnly?: boolean
   idOnly?: boolean
   json?: boolean
+  labelOnly?: boolean
   type?: "local" | "remote"
   urlOnly?: boolean
 }
@@ -179,6 +180,10 @@ export function formatInstanceIDs(instances: { id: string }[]) {
 
 export function formatInstanceURLs(instances: { url: string }[]) {
   return instances.map((item) => item.url).join("\n")
+}
+
+export function formatInstanceLabels(instances: { id: string; label?: string }[]) {
+  return instances.map((item) => item.label || item.id).join("\n")
 }
 
 function formatJson(input: unknown) {
@@ -398,6 +403,11 @@ export const InstanceListCommand = cmd({
         default: false,
         describe: "print only saved instance ids, one per line",
       })
+      .option("label-only", {
+        type: "boolean",
+        default: false,
+        describe: "print only saved instance labels, one per line",
+      })
       .option("url-only", {
         type: "boolean",
         default: false,
@@ -420,6 +430,10 @@ export const InstanceListCommand = cmd({
     }
     if (input.idOnly) {
       console.log(formatInstanceIDs(output))
+      return
+    }
+    if (input.labelOnly) {
+      console.log(formatInstanceLabels(output))
       return
     }
     if (input.urlOnly) {

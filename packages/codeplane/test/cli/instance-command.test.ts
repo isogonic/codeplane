@@ -5,6 +5,7 @@ import {
   filterDefaultInstanceSummaries,
   filterInstanceSummaries,
   formatInstanceIDs,
+  formatInstanceLabels,
   formatInstanceURLs,
   formatLocalStatus,
   formatInstanceSummary,
@@ -261,6 +262,11 @@ describe("cli instance helpers", () => {
       "local://one\nhttps://example.com",
     )
     expect(formatInstanceURLs([])).toBe("")
+  })
+
+  test("formats instance labels for script output", () => {
+    expect(formatInstanceLabels([{ id: "local-1", label: "Local" }, { id: "remote-1" }])).toBe("Local\nremote-1")
+    expect(formatInstanceLabels([])).toBe("")
   })
 
   test("rejects invalid instance summary filters", () => {
