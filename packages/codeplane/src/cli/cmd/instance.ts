@@ -232,7 +232,7 @@ export function formatLocalVersions(
 export function formatLocalStatus(status: LocalStatus & { target?: LocalTarget }, pathOnly?: boolean) {
   if (pathOnly) {
     if (!status.binaryPath?.trim()) throw new Error("Local runtime binary path is unavailable.")
-    return status.binaryPath
+    return status.binaryPath.trim()
   }
   return formatJson(status)
 }
