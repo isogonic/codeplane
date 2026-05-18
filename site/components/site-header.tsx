@@ -10,7 +10,7 @@ import { Logo } from "./logo"
  */
 export function SiteHeader({ active }: { active?: "docs" | "install" }) {
   return (
-    <header className="sticky top-0 z-50 border-b border-line bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/85">
+    <header className="sticky top-0 z-50 border-b border-line bg-surface">
       <div className="container flex h-[76px] items-center gap-3 sm:gap-6 text-[14px]">
         <Link
           href="/"
