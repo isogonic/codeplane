@@ -1,13 +1,14 @@
 import Link from "next/link"
+import { latestCliVersion } from "@/lib/releases"
 
 /*
- * opencode.ai-style footer: a 5-cell horizontal nav grid with vertical
- * borders matching the column rails, then a centred copyright + minor
- * links strip. The "fork notice" line is the bridge that names the
- * upstream project so anyone landing here from a search has it called
- * out before reading anything else.
+ * Site footer. The published version label is resolved at build time
+ * from the npm registry so it never drifts out of sync with the actual
+ * release. The "fork notice" line stays prominent — anyone who scrolled
+ * past it on the homepage sees it again here.
  */
-export function SiteFooter() {
+export async function SiteFooter() {
+  const version = await latestCliVersion()
   return (
     <footer className="mt-24 border-t border-line">
       <div className="rail">
@@ -31,7 +32,7 @@ export function SiteFooter() {
             </div>
             <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1">
               <a className="hover:text-ink" href="https://github.com/devinoldenburg/codeplane">github.com/devinoldenburg/codeplane</a>
-              <Link className="hover:text-ink" href="/docs/changelog/">v28.4.1</Link>
+              <Link className="hover:text-ink" href="/docs/changelog/">v{version}</Link>
             </div>
           </div>
         </div>
@@ -42,7 +43,7 @@ export function SiteFooter() {
 
 function FootCell({ href, children }: { href: string; children: React.ReactNode }) {
   const className =
-    "block border-line py-6 transition-colors hover:text-ink border-r last:border-r-0 max-md:nth-last-child-1:border-r-0"
+    "block border-line py-6 transition-colors hover:text-ink border-r last:border-r-0"
   if (href.startsWith("/")) {
     return <Link href={href} className={className}>{children}</Link>
   }

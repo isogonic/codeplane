@@ -75,7 +75,7 @@ export default function Home() {
         <section className="container border-b border-line py-10">
           <div className="border border-line bg-[var(--code-bg)] p-5 font-mono text-[12.5px] leading-[1.65] text-[var(--code-fg)] overflow-x-auto">
             <div className="text-[var(--code-muted)]"># codeplane web --port 4096</div>
-            <div className="text-[var(--code-muted)]"># Loaded codeplane.json (3 providers, 2 MCP servers)</div>
+            <div className="text-[var(--code-muted)]"># Loaded codeplane.jsonc (3 providers, 2 MCP servers)</div>
             <div className="text-[var(--code-muted)]"># Listening on http://localhost:4096</div>
             <div>&nbsp;</div>
             <div className="text-[var(--code-fg)]">› implement age-validate on register, write a test</div>

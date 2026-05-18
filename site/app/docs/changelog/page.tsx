@@ -1,87 +1,125 @@
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
+import { allReleases, type Release } from "@/lib/releases"
 
+/*
+ * Changelog page — sourced straight from GitHub releases at build time.
+ * Every Codeplane release (CLI, desktop, and mobile) lives there with
+ * the workflow-generated release notes; this page renders the most
+ * recent 30 entries in a single timeline. No hand-curated copy that
+ * drifts out of sync.
+ */
 export const metadata = {
   title: "Changelog",
-  description: "Notable changes per Codeplane release. Every entry maps to a tag at github.com/devinoldenburg/codeplane/releases.",
+  description: "Notable changes per Codeplane release — pulled directly from GitHub Releases at build time.",
   alternates: { canonical: "/docs/changelog/" },
   openGraph: {
     title: "Changelog · Codeplane",
-    description: "Notable changes per Codeplane release. Every entry maps to a tag at github.com/devinoldenburg/codeplane/releases.",
+    description: "Notable changes per Codeplane release — pulled directly from GitHub Releases at build time.",
     url: "/docs/changelog/",
     type: "article",
   },
   twitter: {
     title: "Changelog · Codeplane",
-    description: "Notable changes per Codeplane release. Every entry maps to a tag at github.com/devinoldenburg/codeplane/releases.",
+    description: "Notable changes per Codeplane release — pulled directly from GitHub Releases at build time.",
     card: "summary_large_image",
   },
 }
 
-export default function Changelog() {
+function shapeOf(tag: string): "cli" | "desktop" | "mobile" {
+  if (tag.endsWith("-desktop")) return "desktop"
+  if (tag.endsWith("-mobile")) return "mobile"
+  return "cli"
+}
+
+function shortenBody(body: string | null): string {
+  if (!body) return ""
+  // Strip GitHub Generate-release-notes preamble ("## What's Changed",
+  // "**Full Changelog**" trailer) so the body reads like a commit
+  // message list rather than a templated form.
+  let out = body
+  out = out.replace(/^##\s+What['']s\s+Changed\s*\n/i, "")
+  out = out.replace(/\*\*Full Changelog\*\*:[^\n]*$/im, "")
+  out = out.replace(/^\s+|\s+$/g, "")
+  return out
+}
+
+function formatDate(iso: string | null): string {
+  if (!iso) return ""
+  const d = new Date(iso)
+  return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+}
+
+export default async function ChangelogPage() {
+  const releases = await allReleases()
+  const visible = releases.filter((r) => !r.prerelease).slice(0, 30)
+
   return (
     <>
       <SiteHeader active="docs" />
       <DocsLayout active="/docs/changelog/">
         <h1>Changelog</h1>
-        <p className="lede">Notable changes per release. Every entry maps to a tag at <a href="https://github.com/devinoldenburg/codeplane/releases">github.com/devinoldenburg/codeplane/releases</a> where the source binaries + full git log live.</p>
+        <p className="lede">
+          Notable changes per release, pulled directly from{" "}
+          <a href="https://github.com/devinoldenburg/codeplane/releases">
+            github.com/devinoldenburg/codeplane/releases
+          </a>{" "}
+          at site build time. Each release ID is linked to its GitHub release page where the
+          attached binaries + full commit history live.
+        </p>
 
-        <h2>28.2.x</h2>
+        {visible.length === 0 ? (
+          <p className="text-ink-muted">
+            (Couldn&apos;t reach the GitHub API at build time. Browse{" "}
+            <a href="https://github.com/devinoldenburg/codeplane/releases">
+              github.com/devinoldenburg/codeplane/releases
+            </a>{" "}
+            directly.)
+          </p>
+        ) : (
+          <ul className="!pl-0 !list-none">
+            {visible.map((r) => (
+              <ReleaseEntry key={r.tag_name} release={r} />
+            ))}
+          </ul>
+        )}
 
-        <h3>v28.2.4 (current)</h3>
-        <ul>
-          <li>Docs site rebuilt in Next.js (App Router, static export), deployed via a GitHub Actions workflow.</li>
-          <li>Build runs on every <code>site/**</code> change; <code>/install</code> bash one-liner is preserved.</li>
-        </ul>
-
-        <h3>v28.2.3</h3>
-        <ul>
-          <li>Docs site phase 2: plugins, sdk, instances, sessions, permissions, keybinds, themes, api, changelog pages.</li>
-        </ul>
-
-        <h3>v28.2.2</h3>
-        <ul>
-          <li>Release infrastructure: full GitLab CI port of the three GitHub release workflows.</li>
-          <li>Site: <code>codeplane.cc</code> ported to a monochrome OpenAI-style docs site.</li>
-        </ul>
-
-        <h3>v28.1.24</h3>
-        <ul>
-          <li><strong>Fix:</strong> Settings → General <em>Auto-accept permissions</em> toggle now actually toggles. Added a real global auto-accept flag.</li>
-        </ul>
-
-        <h3>v28.1.22</h3>
-        <ul>
-          <li><strong>Fix:</strong> Queued follow-up drag was locked to horizontal — flipped the axis constraint so up/down reorder actually moves the row.</li>
-        </ul>
-
-        <h3>v28.1.21</h3>
-        <ul>
-          <li>Toast restyle: first action reads as a filled white CTA, secondary actions stay as quiet ghost text.</li>
-        </ul>
-
-        <h3>v28.1.12</h3>
-        <ul>
-          <li><strong>UI refactor:</strong> Logic <code>radix-nova</code> design language ported across the shared SolidJS UI.</li>
-          <li>Real <code>@hugeicons/core-free-icons</code> glyphs replace the hand-rolled SVG path map.</li>
-          <li>Strict light/dark switcher — 35-theme picker removed.</li>
-          <li>Stronger contrast tokens; rounded composer with symmetric tray padding.</li>
-          <li>Project avatars get a deterministic FNV-1a hash colour.</li>
-          <li>New <code>.gitlab-ci.yml</code> + <code>GITLAB_CI.md</code> for the Linux release pipeline.</li>
-        </ul>
-
-        <h2>28.0.x</h2>
-        <p>Highlights of the pre-design-language history:</p>
-        <ul>
-          <li>iOS Live Activities for long-running sessions.</li>
-          <li>Multi-instance address book + remote server picker.</li>
-          <li>Queued follow-ups with live reorder.</li>
-          <li>Session revert / branch / share.</li>
-          <li>Plugin SDK general availability.</li>
-        </ul>
+        <h2>Older history</h2>
+        <p>
+          Every release before this site existed lives on the{" "}
+          <a href="https://github.com/devinoldenburg/codeplane/releases?page=2">
+            second page of /releases
+          </a>{" "}
+          on GitHub. The Codeplane project began at v28.0.0; nothing older exists in this fork.
+        </p>
       </DocsLayout>
       <SiteFooter />
     </>
+  )
+}
+
+function ReleaseEntry({ release }: { release: Release }) {
+  const shape = shapeOf(release.tag_name)
+  const body = shortenBody(release.body)
+  const label = shape === "cli" ? "CLI" : shape === "desktop" ? "Desktop" : "Mobile"
+  return (
+    <li className="!grid-cols-1 border-t border-line py-6 first:border-t-0">
+      <div className="flex flex-wrap items-baseline gap-3">
+        <a
+          href={release.html_url}
+          className="font-bold !text-ink !decoration-line hover:!decoration-ink"
+        >
+          {release.tag_name}
+        </a>
+        <span className="text-[11px] uppercase tracking-wider text-ink-muted">{label}</span>
+        <span className="text-[12px] text-ink-muted">{formatDate(release.published_at)}</span>
+      </div>
+      {body ? (
+        <pre className="!my-3 !p-0 !bg-transparent !border-0 !text-[13px] !leading-relaxed text-ink-2 whitespace-pre-wrap">{body}</pre>
+      ) : (
+        <p className="!my-3 text-ink-muted">No release notes attached.</p>
+      )}
+    </li>
   )
 }

@@ -27,9 +27,10 @@ export default function Configuration() {
       <DocsLayout active="/docs/configuration/">
         <h1>Configuration</h1>
         <p className="lede">
-          Codeplane reads <code>codeplane.json</code> from three locations, in order — every
-          file <strong>merges</strong> over the previous one, so project settings beat user
-          settings, which beat the bundled defaults.
+          Codeplane reads <code>codeplane.jsonc</code> (JSON-with-comments;{" "}
+          <code>codeplane.json</code> also accepted) from each of these locations in turn — every
+          file <strong>merges</strong> over the previous one, so project settings beat instance
+          settings, which beat user-global settings, which beat the bundled defaults.
         </p>
 
         <h2>Where it lives</h2>
@@ -37,10 +38,18 @@ export default function Configuration() {
           <thead><tr><th>Layer</th><th>Path</th><th>Use it for</th></tr></thead>
           <tbody>
             <tr><td>Defaults</td><td>shipped inside the binary</td><td>provider templates, MCP server entries, agent presets</td></tr>
-            <tr><td>User</td><td><code>~/.codeplane/codeplane.json</code></td><td>API keys, preferred model, theme</td></tr>
-            <tr><td>Project</td><td><code>&lt;project&gt;/.codeplane/codeplane.json</code></td><td>per-repo rules, permission overrides, project agents</td></tr>
+            <tr><td>User · macOS</td><td><code>~/Library/Application Support/Codeplane/codeplane.jsonc</code></td><td>API keys, preferred model, theme</td></tr>
+            <tr><td>User · Linux</td><td><code>$XDG_CONFIG_HOME/Codeplane/codeplane.jsonc</code><br/>(defaults to <code>~/.config/Codeplane/</code>)</td><td>same as above</td></tr>
+            <tr><td>User · Windows</td><td><code>%APPDATA%\Codeplane\codeplane.jsonc</code></td><td>same as above</td></tr>
+            <tr><td>Per-instance</td><td><code>{`<user-root>/instances/<id>/codeplane.jsonc`}</code></td><td>everything an isolated instance overrides — providers, MCP, plugins, agents</td></tr>
+            <tr><td>Project</td><td><code>{`<project>/.codeplane/codeplane.jsonc`}</code></td><td>per-repo rules, permission overrides, project agents</td></tr>
           </tbody>
         </table>
+        <p className="text-ink-muted">
+          Override the user root with <code>CODEPLANE_HOME_DIR</code> (full path). Per-instance is
+          enabled automatically when you pass <code>--instance &lt;id&gt;</code> to any CLI command;
+          the directory is created on first use.
+        </p>
         <p>Schema published at <a href="https://codeplane.cc/config.json">https://codeplane.cc/config.json</a>:</p>
         <pre><code>{`{
   "$schema": "https://codeplane.cc/config.json",

@@ -3,22 +3,25 @@
 import { useState } from "react"
 
 /*
- * The hero install block on the landing page: a row of monospace tabs
- * (curl / npm / bun / brew) sat above a one-line install command. The
- * tabs aren't on the docs install page — that one has a full per-OS
- * panel set — these are the five quick paths a returning user copy/pastes.
+ * Hero install tabs. Only methods that ACTUALLY exist are listed:
+ *
+ *   curl  → docs/install bash script, fetches the npm tarball
+ *   npm   → published as `codeplane-ai` (the wrapper package). NOT
+ *           `codeplane` — that name is taken by an unrelated package.
+ *   bun   → same npm package via `bun install`.
+ *
+ * Homebrew tap, AUR (codeplane-bin), and pnpm-specific commands
+ * deliberately omitted — none of them have a published artefact today.
  */
-type TabId = "curl" | "npm" | "bun" | "brew" | "paru"
+type TabId = "curl" | "npm" | "bun"
 
 const COMMANDS: Record<TabId, string> = {
   curl: "curl -fsSL https://codeplane.cc/install | bash",
-  npm: "npm install -g codeplane",
-  bun: "bun install -g codeplane",
-  brew: "brew install devinoldenburg/codeplane/codeplane",
-  paru: "paru -S codeplane-bin",
+  npm: "npm install -g codeplane-ai",
+  bun: "bun install -g codeplane-ai",
 }
 
-const TABS: TabId[] = ["curl", "npm", "bun", "brew", "paru"]
+const TABS: TabId[] = ["curl", "npm", "bun"]
 
 export function HeroInstall() {
   const [active, setActive] = useState<TabId>("curl")

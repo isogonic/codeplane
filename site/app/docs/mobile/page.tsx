@@ -29,10 +29,21 @@ export default function Mobile() {
         <p className="lede">A native mobile shell that wraps the Codeplane web UI. The agent runs on a Codeplane server you already host — the phone is a thin client.</p>
 
         <h2>Install</h2>
-        <p><strong>iOS</strong> — <a href="https://testflight.apple.com/join/codeplane">TestFlight beta</a>, or sideload the <code>.ipa</code> from <a href="https://github.com/devinoldenburg/codeplane/releases">releases</a>.</p>
         <p>
-          <strong>Android</strong> — not yet available. The Play Store listing will follow once the
-          iOS TestFlight track stabilises. Track progress in the <Link href="/docs/changelog/">changelog</Link>.
+          <strong>iOS</strong> — TestFlight is invite-only today. Request an invite by opening an{" "}
+          <a href="https://github.com/devinoldenburg/codeplane/issues/new?title=TestFlight%20invite&body=Apple%20ID%3A%20%3Cyour-email%3E">
+            invite-request issue
+          </a>{" "}
+          with the Apple ID email you want added. Alternatively, sideload the{" "}
+          <code>.xcarchive.zip</code> from{" "}
+          <a href="https://github.com/devinoldenburg/codeplane/releases">releases</a>{" "}
+          and re-sign + install via Xcode Organizer.
+        </p>
+        <p>
+          <strong>Android</strong> — no Play Store listing yet. A debug-signed APK ships with every
+          mobile release (<code>Codeplane-Android-{`<x.y.z>`}-debug-signed.apk</code>) for testing,
+          but is not a production build. Play Store rollout is tracked in the{" "}
+          <Link href="/docs/changelog/">changelog</Link>.
         </p>
 
         <h2>First launch</h2>

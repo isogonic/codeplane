@@ -1,25 +1,33 @@
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { InstallTabs } from "@/components/install-tabs"
+import { latestCliVersion, latestDesktopTag, latestMobileTag } from "@/lib/releases"
 
 export const metadata = {
   title: "Install Codeplane",
-  description: "Get Codeplane on macOS, Linux, Windows, iOS, or via npm/Bun. One-line installer, .dmg/.AppImage/.exe downloads, TestFlight beta.",
+  description: "Install Codeplane on macOS, Linux, Windows, or iOS. One-line bash installer, codeplane-ai on npm/Bun, or a signed desktop bundle from the latest release.",
   alternates: { canonical: "/docs/install/" },
   openGraph: {
     title: "Install Codeplane · Codeplane",
-    description: "Get Codeplane on macOS, Linux, Windows, iOS, or via npm/Bun. One-line installer, .dmg/.AppImage/.exe downloads, TestFlight beta.",
+    description: "Install Codeplane on macOS, Linux, Windows, or iOS. One-line bash installer, codeplane-ai on npm/Bun, or a signed desktop bundle from the latest release.",
     url: "/docs/install/",
     type: "article",
   },
   twitter: {
     title: "Install Codeplane · Codeplane",
-    description: "Get Codeplane on macOS, Linux, Windows, iOS, or via npm/Bun. One-line installer, .dmg/.AppImage/.exe downloads, TestFlight beta.",
+    description: "Install Codeplane on macOS, Linux, Windows, or iOS. One-line bash installer, codeplane-ai on npm/Bun, or a signed desktop bundle from the latest release.",
     card: "summary_large_image",
   },
 }
 
-export default function InstallPage() {
+export default async function InstallPage() {
+  /* All three are resolved at build time. Each helper has a hardcoded
+   * fallback inside so a flaky GitHub API call can't break the build. */
+  const [cliVersion, desktopTag, mobileTag] = await Promise.all([
+    latestCliVersion(),
+    latestDesktopTag(),
+    latestMobileTag(),
+  ])
   return (
     <>
       <SiteHeader active="install" />
@@ -30,15 +38,15 @@ export default function InstallPage() {
             Get Codeplane on your machine.
           </h1>
           <p className="text-[19px] leading-relaxed text-ink-muted">
-            Codeplane ships as a single standalone binary (no Node or runtime required) plus
-            native shells for desktop and mobile. Pick the path that fits your platform.
+            Codeplane ships as a standalone CLI binary (via npm) plus a signed Electron desktop
+            bundle. Mobile is iOS-only and invite-only today. Pick the path that fits your platform.
           </p>
         </div>
       </section>
 
       <section className="py-8">
         <div className="container max-w-prose">
-          <InstallTabs />
+          <InstallTabs desktopTag={desktopTag} cliVersion={cliVersion} mobileTag={mobileTag} />
         </div>
       </section>
 
@@ -58,17 +66,21 @@ codeplane web --port 4096`}
       <section className="py-16">
         <div className="container max-w-prose">
           <h2 className="mb-2 text-[28px] leading-tight tracking-tighter font-semibold">Uninstalling</h2>
-          <p className="mb-8 text-ink-muted">No registry rot, no system services. Codeplane is a single binary + a config dir.</p>
-          <h3 className="mt-6 font-semibold">macOS / Linux</h3>
+          <p className="mb-8 text-ink-muted">Codeplane is one binary plus a config directory — nothing in the system registry, nothing in launchd.</p>
+          <h3 className="mt-6 font-semibold">macOS / Linux (CLI from npm or bash installer)</h3>
           <pre className="rounded-md bg-[var(--code-bg)] p-5 font-mono text-[13.5px] leading-relaxed text-[var(--code-fg)] overflow-x-auto">
-{`rm -rf ~/.codeplane                              # binary + cache
-rm -rf ~/Library/Application\\ Support/Codeplane  # macOS user data
-rm -rf ~/.config/codeplane                       # Linux user data
-sudo rm /usr/local/bin/codeplane                 # PATH symlink`}
+{`# bash-installed CLI
+rm -rf ~/.codeplane
+
+# npm-installed CLI
+npm uninstall -g codeplane-ai
+
+# Codeplane config + local sessions (per-user)
+rm -rf ~/.config/codeplane            # Linux / macOS XDG_CONFIG_HOME`}
           </pre>
-          <h3 className="mt-6 font-semibold">Windows</h3>
-          <p>Uninstall the desktop app via <strong>Settings → Apps</strong>. Remove <code>%USERPROFILE%\.codeplane\</code> + <code>%APPDATA%\Codeplane\</code>.</p>
-          <h3 className="mt-6 font-semibold">Mobile</h3>
+          <h3 className="mt-6 font-semibold">Desktop app</h3>
+          <p>macOS: drag Codeplane out of <code>/Applications</code>. Windows: <strong>Settings → Apps → Codeplane → Uninstall</strong>. Linux: <code>sudo apt remove codeplane-desktop</code> or just delete the unpacked AppImage / tar.gz directory.</p>
+          <h3 className="mt-6 font-semibold">iOS</h3>
           <p>Long-press the app icon → Delete.</p>
         </div>
       </section>

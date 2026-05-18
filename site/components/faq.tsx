@@ -60,7 +60,7 @@ const ITEMS: Item[] = [
     a: (
       <>
         Anything OpenAI-compatible: OpenAI, Anthropic, OpenRouter, Ollama, vLLM, custom self-hosted
-        endpoints. Provider config lives in your <code>codeplane.json</code>. Per-session overrides
+        endpoints. Provider config lives in your <code>codeplane.jsonc</code>. Per-session overrides
         let you switch models without restarting the server.
       </>
     ),
