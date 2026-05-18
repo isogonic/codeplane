@@ -12,7 +12,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 env:
@@ -144,7 +144,11 @@ jobs:
           # Append auto-generated changelog (commits since previous tag).
           # `gh api` is more reliable than `gh release generate-notes` for
           # tags that don't yet have a release record.
-          previous_tag="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | grep -vE -- '-desktop$|-mobile$' | grep -v "^${TAG}$" | head -1)"
+          git fetch --force --tags origin 'refs/tags/v*:refs/tags/v*'
+          previous_tag="$(
+            git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname |
+              awk -v tag="$TAG" '$0 !~ /-(desktop|mobile)$/ && $0 != tag { print; exit }'
+          )"
           if [ -n "$previous_tag" ]; then
             gh api repos/${{ github.repository }}/releases/generate-notes \
               -f tag_name="$TAG" \
