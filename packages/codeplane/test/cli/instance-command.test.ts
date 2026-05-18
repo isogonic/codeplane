@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import {
   applyLocalInstanceVersion,
   composeRemoteHeaders,
+  filterDefaultInstanceSummaries,
   filterInstanceSummaries,
   formatLocalStatus,
   formatInstanceSummary,
@@ -166,6 +167,17 @@ describe("cli instance helpers", () => {
     expect(filterInstanceSummaries(summaries, "local")).toEqual([{ id: "local-1", type: "local" }])
     expect(filterInstanceSummaries(summaries, "remote")).toEqual([{ id: "remote-1", type: "remote" }])
     expect(filterInstanceSummaries(summaries)).toBe(summaries)
+  })
+
+  test("filters instance summaries to the default selection", () => {
+    const summaries = [
+      { id: "local-1", default: true },
+      { id: "remote-1", default: false },
+      { id: "remote-2" },
+    ]
+
+    expect(filterDefaultInstanceSummaries(summaries, true)).toEqual([{ id: "local-1", default: true }])
+    expect(filterDefaultInstanceSummaries(summaries)).toBe(summaries)
   })
 
   test("rejects invalid instance summary filters", () => {

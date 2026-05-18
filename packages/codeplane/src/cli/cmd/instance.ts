@@ -19,6 +19,7 @@ import { InstanceDaemonCommand } from "./instance-daemon"
 import type { Argv } from "yargs"
 
 type InstanceListArgs = {
+  defaultOnly?: boolean
   json?: boolean
   type?: "local" | "remote"
 }
@@ -119,6 +120,11 @@ export function filterInstanceSummaries<T extends { type: "local" | "remote" }>(
   if (!type) return instances
   if (type !== "local" && type !== "remote") throw new Error(`Invalid instance type "${type}". Use local or remote.`)
   return instances.filter((item) => item.type === type)
+}
+
+export function filterDefaultInstanceSummaries<T extends { default?: boolean }>(instances: T[], defaultOnly?: boolean) {
+  if (!defaultOnly) return instances
+  return instances.filter((item) => item.default)
 }
 
 function formatJson(input: unknown) {
@@ -263,14 +269,22 @@ export const InstanceListCommand = cmd({
       .option("type", {
         choices: ["local", "remote"] as const,
         describe: "only list local or remote instances",
+      })
+      .option("default-only", {
+        type: "boolean",
+        default: false,
+        describe: "only show the default selected instance",
       }),
   async handler(args) {
     const input = args as InstanceListArgs
     const service = createInstanceService()
     const state = await service.store.getState()
-    const output = filterInstanceSummaries(
-      state.instances.map((item) => formatInstanceSummary(item, state.lastInstanceID)),
-      input.type,
+    const output = filterDefaultInstanceSummaries(
+      filterInstanceSummaries(
+        state.instances.map((item) => formatInstanceSummary(item, state.lastInstanceID)),
+        input.type,
+      ),
+      input.defaultOnly,
     )
     if (input.json) {
       console.log(formatJson(output))
