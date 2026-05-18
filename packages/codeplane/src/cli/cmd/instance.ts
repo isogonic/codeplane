@@ -428,6 +428,7 @@ export function formatLocalVersions(
     ...(hasSelectedDistTagFilter ? { selectedDistTagCount: Object.keys(matchingDistTags).length } : {}),
     effectiveLimit: count,
     limit: count,
+    limitCapped: requestedLimit !== count,
     requestedLimit,
     shown: Math.min(versions.length, count),
     stableShown,
