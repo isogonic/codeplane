@@ -244,6 +244,7 @@ export function formatLocalVersions(
     prereleaseVersionCount,
     stableVersionCount,
     total: versions.length,
+    ...(versions[0] ? { newestVersion: versions[0] } : {}),
     ...(selectedMajor === undefined ? {} : { major: selectedMajor }),
     ...(selectedMajor === undefined ? {} : { matchingDistTags }),
     limit: count,
