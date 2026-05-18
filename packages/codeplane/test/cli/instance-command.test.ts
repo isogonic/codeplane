@@ -508,6 +508,24 @@ describe("cli instance helpers", () => {
     ).toBe("codeplane")
   })
 
+  test("formats local target as platform label for scripts", () => {
+    expect(
+      formatLocalTarget(
+        {
+          os: "linux",
+          arch: "x64",
+          packageName: "codeplane-linux-x64-baseline-musl",
+          archiveName: "codeplane-linux-x64-baseline-musl.tgz",
+          archiveExt: ".tgz",
+          binaryName: "codeplane",
+        },
+        false,
+        false,
+        true,
+      ),
+    ).toBe("linux/x64/baseline/musl")
+  })
+
   test("rejects conflicting local target script flags", () => {
     expect(() =>
       formatLocalTarget(
@@ -522,7 +540,22 @@ describe("cli instance helpers", () => {
         true,
         true,
       ),
-    ).toThrow(/not both/)
+    ).toThrow(/Use only one/)
+    expect(() =>
+      formatLocalTarget(
+        {
+          os: "darwin",
+          arch: "arm64",
+          packageName: "codeplane-darwin-arm64",
+          archiveName: "codeplane-darwin-arm64.tgz",
+          archiveExt: ".tgz",
+          binaryName: "codeplane",
+        },
+        false,
+        true,
+        true,
+      ),
+    ).toThrow(/Use only one/)
   })
 
   test("formats local status as a path for scripts", () => {

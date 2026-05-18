@@ -62,6 +62,7 @@ type InstanceLocalVersionArgs = {
 type InstanceLocalTargetArgs = {
   binaryName?: boolean
   nameOnly?: boolean
+  platformOnly?: boolean
 }
 
 type InstanceLocalVersionsArgs = {
@@ -240,12 +241,15 @@ function formatJson(input: unknown) {
   return JSON.stringify(input, null, 2)
 }
 
-export function formatLocalTarget(target: LocalTarget, nameOnly?: boolean, binaryName?: boolean) {
-  if (nameOnly && binaryName) throw new Error("Use either --name-only or --binary-name, not both.")
+export function formatLocalTarget(target: LocalTarget, nameOnly?: boolean, binaryName?: boolean, platformOnly?: boolean) {
+  if ([nameOnly, binaryName, platformOnly].filter(Boolean).length > 1) {
+    throw new Error("Use only one of --name-only, --binary-name, or --platform-only.")
+  }
   const packageName = target.packageName ?? target.archiveName.replace(/\.(?:tgz|tar\.gz|zip)$/, "")
   const variants = packageName.split("-").slice(3)
   if (binaryName) return target.binaryName
   if (nameOnly) return packageName
+  if (platformOnly) return [target.os, target.arch, ...variants].join("/")
   return formatJson({
     ...target,
     packageName,
@@ -954,10 +958,14 @@ export const InstanceLocalTargetCommand = cmd({
       type: "boolean",
       default: false,
       describe: "print only the platform binary name",
+    }).option("platform-only", {
+      type: "boolean",
+      default: false,
+      describe: "print only the resolved os/arch platform label",
     }),
   async handler(args) {
     const input = args as InstanceLocalTargetArgs
-    console.log(formatLocalTarget(await createInstanceService().localTarget(), input.nameOnly, input.binaryName))
+    console.log(formatLocalTarget(await createInstanceService().localTarget(), input.nameOnly, input.binaryName, input.platformOnly))
   },
 })
 
