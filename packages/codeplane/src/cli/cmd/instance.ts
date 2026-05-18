@@ -304,10 +304,11 @@ export function formatLocalVersions(
   }
   if (latestOnly) {
     if (tag || major !== undefined) throw new Error("Use --latest-only without --tag or --major.")
-    if (!input.latest || !LOCAL_RUNTIME_VERSION_PATTERN.test(input.latest) || !semver.valid(input.latest)) {
+    const latestVersion = typeof input.latest === "string" ? input.latest : distTags.latest
+    if (!latestVersion || !LOCAL_RUNTIME_VERSION_PATTERN.test(latestVersion) || !semver.valid(latestVersion)) {
       throw new Error("Local runtime latest version was not found.")
     }
-    return input.latest
+    return latestVersion
   }
   if (tag) {
     if (!LOCAL_RUNTIME_TAG_PATTERN.test(tag)) throw new Error(`Invalid local runtime dist-tag "${tag}".`)

@@ -709,6 +709,21 @@ describe("cli instance helpers", () => {
     ).toBe("28.2.1")
   })
 
+  test("formats latest local runtime version from dist tag fallback", () => {
+    expect(
+      formatLocalVersions(
+        {
+          distTags: { latest: "28.2.1" },
+          versions: ["28.2.1"],
+        },
+        10,
+        undefined,
+        undefined,
+        true,
+      ),
+    ).toBe("28.2.1")
+  })
+
   test("reports missing latest local runtime version", () => {
     expect(() => formatLocalVersions({ distTags: {}, versions: [] }, 10, undefined, undefined, true)).toThrow(
       /latest version was not found/,
