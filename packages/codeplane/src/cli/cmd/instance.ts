@@ -24,6 +24,7 @@ type InstanceListArgs = {
   idOnly?: boolean
   json?: boolean
   type?: "local" | "remote"
+  urlOnly?: boolean
 }
 
 type InstanceAddArgs = {
@@ -167,6 +168,10 @@ export function filterDefaultInstanceSummaries<T extends { default?: boolean }>(
 
 export function formatInstanceIDs(instances: { id: string }[]) {
   return instances.map((item) => item.id).join("\n")
+}
+
+export function formatInstanceURLs(instances: { url: string }[]) {
+  return instances.map((item) => item.url).join("\n")
 }
 
 function formatJson(input: unknown) {
@@ -348,6 +353,11 @@ export const InstanceListCommand = cmd({
         type: "boolean",
         default: false,
         describe: "print only saved instance ids, one per line",
+      })
+      .option("url-only", {
+        type: "boolean",
+        default: false,
+        describe: "print only saved instance URLs, one per line",
       }),
   async handler(args) {
     const input = args as InstanceListArgs
@@ -366,6 +376,10 @@ export const InstanceListCommand = cmd({
     }
     if (input.idOnly) {
       console.log(formatInstanceIDs(output))
+      return
+    }
+    if (input.urlOnly) {
+      console.log(formatInstanceURLs(output))
       return
     }
     console.log(formatInstanceTable(output))
