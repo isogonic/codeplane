@@ -216,6 +216,20 @@ describe("cli instance helpers", () => {
     })
   })
 
+  test("formats one local runtime dist tag for scripts", () => {
+    expect(
+      formatLocalVersions(
+        {
+          latest: "28.2.1",
+          distTags: { latest: "28.2.1", next: "28.3.0-beta.1" },
+          versions: ["28.2.1"],
+        },
+        10,
+        "next",
+      ),
+    ).toBe("28.3.0-beta.1")
+  })
+
   test("caps local runtime version output", () => {
     expect(
       JSON.parse(

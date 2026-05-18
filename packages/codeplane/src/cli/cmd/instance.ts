@@ -57,6 +57,7 @@ type InstanceLocalTargetArgs = {
 
 type InstanceLocalVersionsArgs = {
   limit?: number
+  tag?: string
 }
 
 // Combine --header lines with the dedicated --username / --password fields.
@@ -129,7 +130,12 @@ export function formatLocalTarget(target: LocalTarget, nameOnly?: boolean, binar
   return formatJson(target)
 }
 
-export function formatLocalVersions(input: { latest?: string; distTags: Record<string, string>; versions: string[] }, limit = 10) {
+export function formatLocalVersions(
+  input: { latest?: string; distTags: Record<string, string>; versions: string[] },
+  limit = 10,
+  tag?: string,
+) {
+  if (tag) return input.distTags[tag] ?? ""
   const count = Math.min(Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10, 100)
   return formatJson({
     latest: input.latest,
@@ -634,10 +640,13 @@ export const InstanceLocalVersionsCommand = cmd({
       type: "number",
       default: 10,
       describe: "maximum number of versions to print",
+    }).option("tag", {
+      type: "string",
+      describe: "print only one npm dist-tag version",
     }),
   async handler(args) {
     const input = args as InstanceLocalVersionsArgs
-    console.log(formatLocalVersions(await fetchCodeplaneVersions(), input.limit))
+    console.log(formatLocalVersions(await fetchCodeplaneVersions(), input.limit, input.tag))
   },
 })
 
