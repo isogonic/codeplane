@@ -357,7 +357,7 @@ export function formatLocalVersions(
   const rawStringVersions = rawVersions.filter((version) => typeof version === "string")
   const stringVersions = rawStringVersions.map(normalizeLocalRuntimeVersion)
   const normalizedVersionCount = rawStringVersions.filter((version, index) => stringVersions[index] !== version).length
-  const nonStringVersionCount = rawVersions.length - stringVersions.length
+  const nonStringVersionCount = rawVersions.length - stringVersions.length + invalidVersionInputCount
   const validVersions = stringVersions.filter((version) => LOCAL_RUNTIME_VERSION_PATTERN.test(version) && semver.valid(version))
   const uniqueVersions = Array.from(new Set(validVersions))
   const duplicateVersionCount = validVersions.length - uniqueVersions.length

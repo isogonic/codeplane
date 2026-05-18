@@ -983,7 +983,7 @@ describe("cli instance helpers", () => {
       duplicateVersionCount: 0,
       invalidDistTagCount: 0,
       invalidVersionCount: 1,
-      nonStringVersionCount: 0,
+      nonStringVersionCount: 1,
       normalizedDistTagCount: 0,
       normalizedVersionCount: 0,
       rawVersionCount: 0,
