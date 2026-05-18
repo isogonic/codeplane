@@ -460,6 +460,7 @@ export function formatLocalVersions(
     selectedStableVersionCount: stableVersionCount,
     selectedPrereleaseVersionCount: prereleaseVersionCount,
     stableVersionCount,
+    sort: "semver-desc",
     total: versions.length,
     unselectedVersionCount: uniqueVersions.length - versions.length,
     ...(distTags.latest ? { latestDistTagVersion: distTags.latest } : {}),
