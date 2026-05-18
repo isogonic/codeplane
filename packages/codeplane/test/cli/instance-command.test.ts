@@ -24,6 +24,12 @@ describe("cli instance helpers", () => {
     })
   })
 
+  test("replaces repeated headers case-insensitively", () => {
+    expect(parseInstanceHeaders(["Authorization: Bearer stale", "authorization: Bearer fresh"])).toEqual({
+      authorization: "Bearer fresh",
+    })
+  })
+
   test("parses header values containing additional colons", () => {
     expect(parseInstanceHeaders(["Authorization: Bearer issuer:token:value"])).toEqual({
       Authorization: "Bearer issuer:token:value",
