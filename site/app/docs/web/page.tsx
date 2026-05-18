@@ -31,6 +31,10 @@ export default function Web() {
         <h2>Open it</h2>
         <pre><code>{`codeplane web                # boot a local server + open the browser
 codeplane serve --port 4096  # server only — visit http://localhost:4096 by hand`}</code></pre>
+        <p>
+          Pass an explicit port if you want a stable bookmark. Without config or <code>--port</code>,
+          the CLI may bind an available random port.
+        </p>
 
         <h2>What&apos;s in the UI</h2>
         <ul>
@@ -43,6 +47,13 @@ codeplane serve --port 4096  # server only — visit http://localhost:4096 by ha
 
         <h2>Sharing a session</h2>
         <p>Each session has a stable URL. Copy from the browser bar to share. Sessions can also be exported as Markdown via the toolbar&apos;s <em>Share</em> button.</p>
+
+        <h2>Live state</h2>
+        <p>
+          The web app keeps a long-lived <code>/event</code> Server-Sent Events subscription open.
+          If a proxy buffers or times out SSE, the UI may load but stop receiving streamed tokens,
+          permission prompts, or status updates.
+        </p>
 
         <h2>Themes</h2>
         <p>Light, dark, system — via Settings → Appearance → Color scheme. Palette is the Logic <code>radix-nova</code> monochrome — see <Link href="/docs/themes/">Themes</Link>.</p>

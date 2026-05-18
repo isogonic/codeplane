@@ -43,7 +43,7 @@ export const directories = Effect.fn("ConfigPaths.directories")(function* (direc
 })
 
 export function fileInDirectory(dir: string, name: string) {
-  return [path.join(dir, `${name}.json`), path.join(dir, `${name}.jsonc`)]
+  return [path.join(dir, `${name}.jsonc`), path.join(dir, `${name}.json`)]
 }
 
 /** Read a config file, returning undefined for missing files and throwing JsonError for other failures. */

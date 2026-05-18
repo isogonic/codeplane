@@ -13,13 +13,12 @@ export async function SiteFooter() {
     <footer className="mt-24 border-t border-line">
       <div className="rail">
         <div className="container">
-          <div className="grid grid-cols-1 border-line text-center text-[13px] text-ink-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-1 border-line text-center text-[13px] text-ink-2 sm:grid-cols-2 md:grid-cols-4">
             <FootCell href="https://github.com/devinoldenburg/codeplane">
               GitHub <span className="text-ink-muted">[fork]</span>
             </FootCell>
             <FootCell href="/docs/">Docs</FootCell>
             <FootCell href="/docs/changelog/">Changelog</FootCell>
-            <FootCell href="https://github.com/devinoldenburg/codeplane/discussions">Discussions</FootCell>
             <FootCell href="https://opencode.ai">Upstream</FootCell>
           </div>
           <div className="flex flex-col items-center gap-2 border-t border-line py-7 text-center text-[12px] text-ink-muted">

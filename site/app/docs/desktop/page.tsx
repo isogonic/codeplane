@@ -43,6 +43,10 @@ export default function Desktop() {
           <li><strong>Remote</strong>. Paste the URL of a server you run (see <Link href="/docs/self-hosting/">Self-hosting</Link>).</li>
           <li><strong>Saved instance</strong>. Servers added via <code>codeplane instance add</code> show up here automatically.</li>
         </ol>
+        <p>
+          Desktop-managed local servers set <code>CODEPLANE_DESKTOP_MANAGED=1</code> so the server
+          knows updates are handled by the desktop shell, not the CLI updater.
+        </p>
 
         <h2>Updates</h2>
         <p>The desktop app updates itself silently via electron-updater. On launch it checks GitHub Releases for a newer <code>latest-mac.yml</code> / <code>latest.yml</code> / <code>latest-linux.yml</code>, downloads the delta, and applies it the next time you quit + reopen.</p>
@@ -54,6 +58,13 @@ export default function Desktop() {
           <li>File-open intent — drop a folder onto the dock icon to open it as a project.</li>
           <li>Notifications — system-level alerts when a long-running session finishes.</li>
         </ul>
+
+        <h2>Logs and recovery</h2>
+        <p>
+          Desktop logs live under the Codeplane log directory, with <code>CODEPLANE_DESKTOP_LOG_DIR</code>
+          available for tests and debugging. If a local server will not start, verify
+          <code>codeplane instance local status</code> from the CLI and inspect the desktop log next.
+        </p>
       </DocsLayout>
       <SiteFooter />
     </>

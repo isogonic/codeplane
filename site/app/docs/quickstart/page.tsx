@@ -48,12 +48,15 @@ bun install -g codeplane-ai`}</code></pre>
 export OPENAI_API_KEY=sk-...
 # or
 export OPENROUTER_API_KEY=sk-or-...`}</code></pre>
-        <p>To pin providers and models permanently, see <Link href="/docs/configuration/">Configuration</Link>.</p>
+        <p>
+          To pin providers and models permanently, see <Link href="/docs/providers/">Providers</Link>
+          and <Link href="/docs/configuration/"> Configuration</Link>.
+        </p>
 
         <h2>3. Launch a server</h2>
         <h3>Web (recommended first time)</h3>
-        <pre><code>codeplane web</code></pre>
-        <p>Boots a local server, opens your default browser.</p>
+        <pre><code>codeplane web --port 4096</code></pre>
+        <p>Boots a local server on a stable URL and opens your default browser.</p>
 
         <h3>Terminal (no GUI)</h3>
         <pre><code>codeplane tui</code></pre>
@@ -67,7 +70,15 @@ export OPENROUTER_API_KEY=sk-or-...`}</code></pre>
         <pre><code>What&apos;s the structure of this repo? Give me a 3-line summary.</code></pre>
         <p>The first time the agent edits a file or runs a shell command, you&apos;ll get a permission prompt — that&apos;s the per-directory approval layer. See <Link href="/docs/permissions/">Permissions</Link> for how to relax it.</p>
 
-        <h2>5. Pick up the same session anywhere</h2>
+        <h2>5. Confirm the server is healthy</h2>
+        <pre><code>{`curl -fsS http://127.0.0.1:4096/global/health
+curl -fsS http://127.0.0.1:4096/global/version`}</code></pre>
+        <p>
+          The first call should return <code>{`{ "healthy": true, "version": "..." }`}</code>.
+          The second includes the detected install method and latest known version.
+        </p>
+
+        <h2>6. Pick up the same session anywhere</h2>
         <ul>
           <li>The <strong>desktop app</strong> — point it at <code>http://localhost:4096</code> via Add Server.</li>
           <li>The <strong>TUI</strong> — <code>codeplane tui</code> picks up the active server automatically.</li>
@@ -78,6 +89,16 @@ export OPENROUTER_API_KEY=sk-or-...`}</code></pre>
             <code>codeplane.local</code> service name.
           </li>
         </ul>
+
+        <h2>7. Save the server as an instance</h2>
+        <pre><code>{`codeplane instance add http://127.0.0.1:4096 --id laptop --label "Laptop"
+codeplane instance use laptop
+codeplane tui --instance laptop`}</code></pre>
+        <p>
+          Saved instances are shared by the TUI, web client, desktop app, and mobile shell. Remote
+          servers behind Basic Auth can be saved with <code>--username</code> and
+          <code>--password</code>.
+        </p>
 
         <h2>What next</h2>
         <table>

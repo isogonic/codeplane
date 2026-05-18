@@ -17,6 +17,7 @@ const ROUTES: Entry[] = [
   { path: "/docs/install/",        priority: 0.9, changeFrequency: "weekly" },
   { path: "/docs/quickstart/",     priority: 0.8, changeFrequency: "monthly" },
   { path: "/docs/configuration/",  priority: 0.8, changeFrequency: "monthly" },
+  { path: "/docs/providers/",      priority: 0.8, changeFrequency: "monthly" },
   { path: "/docs/cli/",            priority: 0.8, changeFrequency: "monthly" },
   { path: "/docs/tui/",            priority: 0.7, changeFrequency: "monthly" },
   { path: "/docs/desktop/",        priority: 0.7, changeFrequency: "monthly" },
@@ -28,10 +29,13 @@ const ROUTES: Entry[] = [
   { path: "/docs/keybinds/",       priority: 0.6, changeFrequency: "monthly" },
   { path: "/docs/themes/",         priority: 0.5, changeFrequency: "monthly" },
   { path: "/docs/api/",            priority: 0.7, changeFrequency: "monthly" },
+  { path: "/docs/architecture/",   priority: 0.7, changeFrequency: "monthly" },
   { path: "/docs/mcp/",            priority: 0.7, changeFrequency: "monthly" },
   { path: "/docs/plugins/",        priority: 0.7, changeFrequency: "monthly" },
   { path: "/docs/sdk/",            priority: 0.7, changeFrequency: "monthly" },
   { path: "/docs/self-hosting/",   priority: 0.7, changeFrequency: "monthly" },
+  { path: "/docs/troubleshooting/", priority: 0.7, changeFrequency: "monthly" },
+  { path: "/docs/release/",        priority: 0.6, changeFrequency: "weekly" },
   { path: "/docs/changelog/",      priority: 0.6, changeFrequency: "weekly" },
 ]
 

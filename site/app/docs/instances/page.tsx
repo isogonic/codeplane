@@ -1,20 +1,21 @@
+import Link from "next/link"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
 
 export const metadata = {
   title: "Instances",
-  description: "Manage multiple Codeplane servers from a single client — local, remote, and homelab — all in one address book.",
+  description: "Manage saved Codeplane servers and the shared local runtime: remote URLs, Basic Auth headers, local runtime versions, daemons, probing, and storage.",
   alternates: { canonical: "/docs/instances/" },
   openGraph: {
     title: "Instances · Codeplane",
-    description: "Manage multiple Codeplane servers from a single client — local, remote, and homelab — all in one address book.",
+    description: "Manage saved Codeplane servers and the shared local runtime: remote URLs, Basic Auth headers, local runtime versions, daemons, probing, and storage.",
     url: "/docs/instances/",
     type: "article",
   },
   twitter: {
     title: "Instances · Codeplane",
-    description: "Manage multiple Codeplane servers from a single client — local, remote, and homelab — all in one address book.",
+    description: "Manage saved Codeplane servers and the shared local runtime: remote URLs, Basic Auth headers, local runtime versions, daemons, probing, and storage.",
     card: "summary_large_image",
   },
 }
@@ -25,26 +26,102 @@ export default function Instances() {
       <SiteHeader active="docs" />
       <DocsLayout active="/docs/instances/">
         <h1>Instances</h1>
-        <p className="lede">A Codeplane <em>instance</em> is a server endpoint your client knows about. Manage many — local laptop, VPS, teammate&apos;s machine — from one address book.</p>
+        <p className="lede">
+          A Codeplane instance is a saved server endpoint. It can be a remote URL you operate, or a
+          managed local runtime that the desktop/TUI can start on demand. Instances are shared
+          across clients through <code>instances.json</code>.
+        </p>
 
-        <h2>List what you have</h2>
-        <pre><code>codeplane instance list</code></pre>
+        <h2>List and inspect</h2>
+        <pre><code>{`codeplane instance list
+codeplane instance list --json
+codeplane instance list --type remote --url-only
+codeplane instance show laptop`}</code></pre>
+        <p>
+          The table marks the default instance with <code>*</code>, shows whether TLS verification
+          is skipped, and includes the pinned local runtime version for local entries.
+        </p>
 
-        <h2>Add an instance</h2>
-        <pre><code>{`codeplane instance add prod https://codeplane.example.com
-codeplane instance add laptop http://192.168.1.42:4096 --auth eyJ...`}</code></pre>
+        <h2>Add a remote instance</h2>
+        <pre><code>{`codeplane instance add https://codeplane.example.com \\
+  --id prod \\
+  --label "Production" \\
+  --username codeplane \\
+  --password "$CODEPLANE_SERVER_PASSWORD" \\
+  --set-default`}</code></pre>
+        <p>
+          <code>--username</code> and <code>--password</code> compose an
+          <code>Authorization: Basic ...</code> header. You can also pass repeatable raw headers:
+        </p>
+        <pre><code>{`codeplane instance add https://codeplane.example.com \\
+  --id cf-prod \\
+  --header "CF-Access-Client-Id:$CF_ACCESS_CLIENT_ID" \\
+  --header "CF-Access-Client-Secret:$CF_ACCESS_CLIENT_SECRET"`}</code></pre>
 
-        <h2>Pick a default</h2>
-        <pre><code>codeplane instance default prod</code></pre>
+        <h2>Select, probe, open, remove</h2>
+        <pre><code>{`codeplane instance use prod
+codeplane instance probe prod
+codeplane instance probe https://codeplane.example.com --json
+codeplane instance open prod
+codeplane instance remove prod`}</code></pre>
+        <p>
+          <code>open</code> resolves a saved instance. For local runtimes it starts the server if
+          needed and prints the live URL.
+        </p>
 
-        <h2>Remove one</h2>
-        <pre><code>codeplane instance remove laptop</code></pre>
+        <h2>Browser-assisted sign-in</h2>
+        <pre><code>{`codeplane instance sign-in prod`}</code></pre>
+        <p>
+          Use this for remote servers behind Cloudflare Access, identity-aware proxies, or custom
+          SSO. Codeplane opens the URL, waits for you to paste a full header line such as
+          <code>Cookie: CF_Authorization=...</code>, saves it, then probes the server.
+        </p>
 
-        <h2>Shared local runtime</h2>
-        <p>Every front-end can boot a managed local server on demand — that&apos;s the &ldquo;Local server&rdquo; entry in the desktop / mobile picker. The runtime is shared; <code>codeplane instance runtime --reset</code> wipes the cache.</p>
+        <h2>Managed local runtime</h2>
+        <pre><code>{`codeplane instance add --local --id local --label "Local runtime" --set-default
+codeplane instance local target
+codeplane instance local versions --latest-only
+codeplane instance local status
+codeplane instance local install 28.18.0
+codeplane instance local update`}</code></pre>
+        <p>
+          The local runtime is downloaded from npm into <code>local_server/</code> under the global
+          Codeplane root. This keeps desktop and TUI from each downloading separate 50 MB binaries
+          for the same version.
+        </p>
 
-        <h2>Where the address book lives</h2>
-        <p><code>$CODEPLANE_HOME/instances.json</code> (default <code>~/.codeplane/instances.json</code>). Plain JSON; safe to edit by hand.</p>
+        <h2>Daemons</h2>
+        <pre><code>{`codeplane instance daemon start local
+codeplane instance daemon status
+codeplane instance daemon status local --json
+codeplane instance daemon stop local`}</code></pre>
+        <p>
+          Daemons keep a saved local instance running after the client exits. This matters for
+          scheduled jobs: cron tasks only fire while a server process is alive.
+        </p>
+
+        <h2>Storage</h2>
+        <table>
+          <thead><tr><th>File</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>&lt;global-root&gt;/instances.json</code></td><td>Saved instance registry and default selection.</td></tr>
+            <tr><td><code>&lt;global-root&gt;/local_server/</code></td><td>Shared npm-backed runtime binaries.</td></tr>
+            <tr><td><code>&lt;global-root&gt;/instances/&lt;id&gt;/daemon.json</code></td><td>Daemon PID, port, URL, binary path, and launch version.</td></tr>
+            <tr><td><code>&lt;global-root&gt;/instances/&lt;id&gt;/daemon.log</code></td><td>Detached daemon stdout/stderr.</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Rules of thumb</h2>
+        <ul>
+          <li>Use stable IDs such as <code>laptop</code>, <code>vps</code>, or <code>prod</code>; URLs and labels can change.</li>
+          <li>Use <code>--ignore-certificate-errors</code> only for local labs with known self-signed certs.</li>
+          <li>Prefer Basic Auth or an upstream auth proxy for anything reachable beyond loopback.</li>
+          <li>Use <code>instance local update</code> after a new release if the desktop/TUI managed local server is pinned old.</li>
+        </ul>
+
+        <p>
+          For exposing an instance safely, read <Link href="/docs/self-hosting/">Self-hosting</Link>.
+        </p>
       </DocsLayout>
       <SiteFooter />
     </>

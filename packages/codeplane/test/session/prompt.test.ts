@@ -110,6 +110,18 @@ function errorTool(parts: MessageV2.Part[]) {
   return part?.state.status === "error" ? (part as ErrorToolPart) : undefined
 }
 
+async function waitForRunningShell(sessionID: SessionID) {
+  const start = Date.now()
+  while (Date.now() - start < 5000) {
+    const msgs = await MessageV2.filterCompacted(MessageV2.stream(sessionID))
+    const assistant = msgs.find((item) => item.info.role === "assistant")
+    const tool = assistant ? toolPart(assistant.parts) : undefined
+    if (tool?.state.status === "running") return
+    await new Promise((done) => setTimeout(done, 20))
+  }
+  throw new Error("timed out waiting for running shell")
+}
+
 const mcp = Layer.succeed(
   MCP.Service,
   MCP.Service.of({
@@ -1619,7 +1631,7 @@ unix(
             const sh = yield* prompt
               .shell({ sessionID: chat.id, agent: "build", command: "sleep 30" })
               .pipe(Effect.forkChild)
-            yield* Effect.sleep(50)
+            yield* Effect.promise(() => waitForRunningShell(chat.id))
 
             yield* prompt.cancel(chat.id)
 
@@ -1656,7 +1668,7 @@ unix(
             const sh = yield* prompt
               .shell({ sessionID: chat.id, agent: "build", command: "trap '' TERM; sleep 30" })
               .pipe(Effect.forkChild)
-            yield* Effect.sleep(50)
+            yield* Effect.promise(() => waitForRunningShell(chat.id))
 
             yield* prompt.cancel(chat.id)
 
@@ -1738,7 +1750,7 @@ unix(
           const sh = yield* prompt
             .shell({ sessionID: chat.id, agent: "build", command: "sleep 30" })
             .pipe(Effect.forkChild)
-          yield* Effect.sleep(50)
+          yield* Effect.promise(() => waitForRunningShell(chat.id))
 
           const loop = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
           yield* Effect.sleep(50)

@@ -70,11 +70,16 @@ Then run it with:
 Replace `<platform>` with your platform (e.g., `darwin-arm64`, `linux-x64`).
 
 - Core pieces:
-  - `packages/codeplane`: Codeplane core business logic & server.
-  - `packages/app`: The web app, written in SolidJS.
-  - `packages/console/app`: The public website and account console.
-  - `packages/web`: The documentation site.
-  - `packages/plugin`: Source for `@codeplane-ai/plugin`
+  - `packages/codeplane`: CLI, server, TUI host, session runtime, tools, providers.
+  - `packages/app`: SolidJS web app served by the server and wrapped by desktop/mobile.
+  - `packages/desktop`: Electron desktop shell and updater integration.
+  - `packages/mobile`: Native mobile shell packaging.
+  - `packages/shared`: home paths, saved instances, shared local runtime helpers.
+  - `packages/sdk/js`: generated TypeScript SDK.
+  - `packages/plugin`: source for `@codeplane-ai/plugin`.
+  - `packages/ui`: shared UI components and theme system.
+  - `site`: Next.js static website and documentation source.
+  - `docs`: static Pages output plus schema/install compatibility files.
 
 ### Understanding development commands
 
@@ -88,8 +93,8 @@ bun --cwd packages/codeplane dev serve --port 4096
 
 # Production
 codeplane --help          # Show all available commands
-codeplane serve           # Start headless API server
-codeplane web             # Start server + open web interface
+codeplane serve --port 4096
+codeplane web --port 4096
 codeplane <directory>     # Start server + open web interface for a directory
 ```
 
@@ -101,7 +106,7 @@ To start the Codeplane headless API server:
 bun --cwd packages/codeplane dev serve
 ```
 
-This starts the headless server on port 4096 by default. You can specify a different port:
+The CLI default port is `0`, which lets the OS choose a free port. Pass an explicit port when you need a stable URL:
 
 ```bash
 bun --cwd packages/codeplane dev serve --port 8080

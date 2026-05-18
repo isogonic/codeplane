@@ -161,7 +161,7 @@ describe("Truncate", () => {
     it.live("large single-line file truncates with byte message", () =>
       Effect.gen(function* () {
         const svc = yield* Truncate.Service
-        const content = yield* Effect.promise(() => Filesystem.readText(path.join(FIXTURES_DIR, "models-api.json")))
+        const content = "x".repeat(Truncate.MAX_BYTES + 1)
         const result = yield* svc.output(content)
 
         expect(result.truncated).toBe(true)

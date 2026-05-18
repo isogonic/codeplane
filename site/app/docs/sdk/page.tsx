@@ -5,17 +5,17 @@ import { DocsLayout } from "@/components/docs-sidebar"
 
 export const metadata = {
   title: "TypeScript SDK",
-  description: "Drive Codeplane from your own TypeScript code — sessions, messages, streaming, tools. Same wire format as the front-ends.",
+  description: "Drive Codeplane from TypeScript: generated clients, local server helpers, Basic Auth headers, directory routing, events, and SDK regeneration.",
   alternates: { canonical: "/docs/sdk/" },
   openGraph: {
     title: "TypeScript SDK · Codeplane",
-    description: "Drive Codeplane from your own TypeScript code — sessions, messages, streaming, tools. Same wire format as the front-ends.",
+    description: "Drive Codeplane from TypeScript: generated clients, local server helpers, Basic Auth headers, directory routing, events, and SDK regeneration.",
     url: "/docs/sdk/",
     type: "article",
   },
   twitter: {
     title: "TypeScript SDK · Codeplane",
-    description: "Drive Codeplane from your own TypeScript code — sessions, messages, streaming, tools. Same wire format as the front-ends.",
+    description: "Drive Codeplane from TypeScript: generated clients, local server helpers, Basic Auth headers, directory routing, events, and SDK regeneration.",
     card: "summary_large_image",
   },
 }
@@ -26,77 +26,97 @@ export default function SDK() {
       <SiteHeader active="docs" />
       <DocsLayout active="/docs/sdk/">
         <h1>TypeScript SDK</h1>
-        <p className="lede">Drive Codeplane from your own code. The SDK wraps the <Link href="/docs/api/">HTTP API</Link> with typed methods, streaming helpers, and an event subscription primitive.</p>
+        <p className="lede">
+          <code>@codeplane-ai/sdk</code> is generated from the server OpenAPI metadata and wrapped
+          with helpers for directory routing, local server startup, and response compatibility
+          checks.
+        </p>
 
         <h2>Install</h2>
         <pre><code>{`npm install @codeplane-ai/sdk
 # or
 bun add @codeplane-ai/sdk`}</code></pre>
 
-        <h2>Connect</h2>
-        <pre><code>{`import { Codeplane } from "@codeplane-ai/sdk/v2"
+        <h2>Connect to an existing server</h2>
+        <pre><code>{`import { createCodeplaneClient } from "@codeplane-ai/sdk/v2"
 
-const client = new Codeplane({
-  baseURL: "http://localhost:4096",
-  // token: process.env.CODEPLANE_TOKEN,
+const client = createCodeplaneClient({
+  baseUrl: "http://127.0.0.1:4096",
+  headers: {
+    Authorization: "Basic " + Buffer.from("codeplane:" + process.env.CODEPLANE_SERVER_PASSWORD).toString("base64"),
+  },
 })
 
-const projects = await client.project.list()
-console.log(projects)`}</code></pre>
+const health = await client.global.health()
+console.log(health)`}</code></pre>
+        <p>
+          Use <code>baseUrl</code>, not <code>baseURL</code>. If the server uses Basic Auth, send a
+          normal <code>Authorization: Basic ...</code> header.
+        </p>
+
+        <h2>Route requests to a directory</h2>
+        <pre><code>{`const client = createCodeplaneClient({
+  baseUrl: "http://127.0.0.1:4096",
+  directory: "/Users/me/Code/app",
+})
+
+const project = await client.project.current()`}</code></pre>
+        <p>
+          The SDK sets <code>x-codeplane-directory</code> and rewrites it into query params where
+          older server routes expect them. For workspace-mode experiments, pass
+          <code>experimental_workspaceID</code>.
+        </p>
+
+        <h2>Start an embedded local server</h2>
+        <pre><code>{`import { createCodeplane } from "@codeplane-ai/sdk/v2"
+
+const { client, server } = await createCodeplane({
+  port: 0,
+  hostname: "127.0.0.1",
+})
+
+try {
+  console.log(await client.global.version())
+} finally {
+  await server.stop()
+}`}</code></pre>
 
         <h2>Common operations</h2>
-
-        <h3>Create a session + send a message</h3>
-        <pre><code>{`const project = await client.project.create({ directory: "/Users/me/Code/myrepo" })
-const session = await client.session.create({ projectID: project.id })
-
-const stream = client.session.send({
-  sessionID: session.id,
-  text:      "Add a /healthz endpoint to the server.",
-})
-
-for await (const event of stream) {
-  if (event.type === "text") process.stdout.write(event.delta)
-  if (event.type === "tool")  console.log("[tool]", event.name, event.input)
-  if (event.type === "done")  break
-}`}</code></pre>
-
-        <h3>Subscribe to live updates</h3>
-        <pre><code>{`const unsubscribe = client.event.listen((event) => {
-  if (event.details.type === "permission.asked") {
-    client.permission.respond({
-      sessionID:    event.details.properties.sessionID,
-      permissionID: event.details.properties.id,
-      response:     "always",
-    })
-  }
-})
-
-// Later
-unsubscribe()`}</code></pre>
-
-        <h3>List + replay history</h3>
-        <pre><code>{`const sessions = await client.session.list({ projectID: project.id })
-for (const s of sessions) {
-  const messages = await client.message.list({ sessionID: s.id })
-  console.log(s.title, messages.length, "messages")
-}`}</code></pre>
-
-        <h2>API surface</h2>
         <table>
           <thead><tr><th>Namespace</th><th>What it manages</th></tr></thead>
           <tbody>
-            <tr><td><code>client.project</code></td><td>Worktrees.</td></tr>
-            <tr><td><code>client.session</code></td><td>Threads: <code>send</code> (streaming), <code>abort</code>, <code>archive</code>, <code>share</code>.</td></tr>
-            <tr><td><code>client.message</code></td><td>Read history; replay events.</td></tr>
-            <tr><td><code>client.permission</code></td><td>List pending requests, respond.</td></tr>
-            <tr><td><code>client.config</code></td><td>Read + patch <code>codeplane.json</code> remotely.</td></tr>
-            <tr><td><code>client.agent</code> / <code>client.mode</code></td><td>Inspect available agents and modes.</td></tr>
-            <tr><td><code>client.event</code></td><td>SSE subscription primitive.</td></tr>
+            <tr><td><code>client.global</code></td><td>Health, version, update metadata, global event stream.</td></tr>
+            <tr><td><code>client.project</code></td><td>Project list/current/update/git init.</td></tr>
+            <tr><td><code>client.session</code></td><td>Session list/get/create/delete/status and higher-level session actions.</td></tr>
+            <tr><td><code>client.permission</code></td><td>Pending approvals and replies.</td></tr>
+            <tr><td><code>client.question</code></td><td>Pending question prompts and replies.</td></tr>
+            <tr><td><code>client.config</code></td><td>Resolved config and config updates.</td></tr>
+            <tr><td><code>client.provider</code></td><td>Provider catalog, auth methods, OAuth authorize/callback.</td></tr>
+            <tr><td><code>client.mcp</code></td><td>Configured MCP server status.</td></tr>
           </tbody>
         </table>
 
-        <p>Source: <a href="https://github.com/devinoldenburg/codeplane/tree/main/packages/sdk">packages/sdk</a>.</p>
+        <h2>Events</h2>
+        <p>
+          Generated SDK methods cover JSON endpoints. For low-level SSE, connect directly to
+          <code>/event</code> or use the generated event helpers exposed by the current SDK build.
+          Reconnect with <code>Last-Event-ID</code> to use server replay.
+        </p>
+
+        <h2>Regenerating the SDK</h2>
+        <pre><code>{`bun --cwd packages/sdk/js script/build.ts`}</code></pre>
+        <p>
+          The script asks the CLI to generate the OpenAPI spec, then regenerates both SDK surfaces.
+          Run it after route, schema, or version changes that affect generated output.
+        </p>
+
+        <h2>When to use raw HTTP instead</h2>
+        <ul>
+          <li>You are debugging server route behavior and need exact request/response payloads.</li>
+          <li>You are using another language.</li>
+          <li>You are testing a route not yet represented in the generated client.</li>
+        </ul>
+        <p>Raw endpoint map: <Link href="/docs/api/">HTTP API</Link>.</p>
       </DocsLayout>
       <SiteFooter />
     </>

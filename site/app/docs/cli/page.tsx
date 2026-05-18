@@ -54,14 +54,18 @@ Top-level options (accepted by every subcommand):
         <p>Boots the HTTP + WebSocket + SSE server with no client. Refuses to bind a non-loopback hostname without <code>--password</code> (or <code>CODEPLANE_SERVER_PASSWORD</code>) — exposing the server to a network without HTTP Basic Auth would put your provider keys, MCP servers, and plugins in front of anyone who can reach the port.</p>
         <pre><code>{`codeplane serve [options]
 
-  --port <n>                 port to listen on (default 4096)
+  --port <n>                 port to listen on (default 0, meaning pick a free port)
   --hostname <host>          bind address (127.0.0.1 by default; use 0.0.0.0 for LAN)
   --mdns                     enable mDNS service discovery (forces hostname to 0.0.0.0)
   --mdns-domain <domain>     custom mDNS service name (default: codeplane.local)
-  --cors-allowed-origin <o>  add an allowed CORS origin (repeatable)
+  --cors <origin>            add an allowed CORS origin (repeatable)
   -i, --instance <id>        use a per-instance Codeplane home folder
   --username <user>          HTTP Basic Auth username (defaults to "codeplane")
   --password <secret>        HTTP Basic Auth password — required when --hostname is non-local`}</code></pre>
+        <p>
+          If you want a stable URL, pass <code>--port</code> or set <code>server.port</code> in
+          config. The random-port default is deliberate for managed local runtimes and tests.
+        </p>
 
         <h2><code>codeplane web</code></h2>
         <p>Boots the server and opens the web UI in your default browser. Every <code>serve</code> flag is accepted here too.</p>
@@ -83,19 +87,21 @@ Top-level options (accepted by every subcommand):
         <p>Manage the saved-instance registry and the shared local runtime cache.</p>
         <pre><code>{`codeplane instance <subcommand>
 
-  list [--json] [--type local|remote] [--default]
+  list [--json] [--json-lines] [--type local|remote] [--default-only]
                              list saved instances
   add [target] [opts]        save a remote URL/host or a local runtime entry
-                             flags: --id, --label, --header H, --insecure,
-                                    --username, --password, --local, --select,
-                                    --version (local-runtime version)
+                             flags: --id, --label, --header H,
+                                    --ignore-certificate-errors, --username,
+                                    --password, --local, --set-default,
+                                    --runtime-version
   remove <id>                drop a saved instance
-  select <id>                set the default for TUI / Web / Desktop
+  use <id>                   set the default for TUI / Web / Desktop
   show <id> [--json]         print one saved instance
-  default [--json]           print the currently selected default
-  rename <id> <new-id>       move a saved instance to a different id
-  local <subcommand>         manage the shared local runtime versions
-                             (list, install, remove, prune)
+  probe <target> [--json]    check a saved instance or raw URL via /global/version
+  open <id>                  resolve and open a saved instance, starting local runtime if needed
+  sign-in <id>               browser-assisted auth header capture for remote instances
+  local <subcommand>         manage npm-backed shared local runtime
+                             (target, versions, status, install, update)
   daemon <subcommand>        manage long-running background servers
                              (start <id>, stop <id>, status [id] [--json])`}</code></pre>
         <p className="text-ink-muted">
@@ -143,12 +149,24 @@ codeplane completion fish > ~/.config/fish/completions/codeplane.fish`}</code></
             <tr><td><code>CODEPLANE_CACHE_DIR</code></td><td>Override the cache directory.</td></tr>
             <tr><td><code>CODEPLANE_LOG_DIR</code></td><td>Override the log directory.</td></tr>
             <tr><td><code>CODEPLANE_BIN_DIR</code></td><td>Override the <code>bin/</code> folder used for installed runtime binaries.</td></tr>
+            <tr><td><code>CODEPLANE_STATE_DIR</code></td><td>Override state files such as plugin metadata.</td></tr>
             <tr><td><code>CODEPLANE_SERVER_PASSWORD</code></td><td>Same as <code>--password</code> on <code>serve</code> / <code>web</code>.</td></tr>
+            <tr><td><code>CODEPLANE_SERVER_USERNAME</code></td><td>Same as <code>--username</code>, defaults to <code>codeplane</code>.</td></tr>
             <tr><td><code>CODEPLANE_PURE</code></td><td>Set to <code>1</code> by <code>--pure</code> to disable external plugins.</td></tr>
+            <tr><td><code>CODEPLANE_CONFIG</code></td><td>Load one explicit config file before normal project config discovery.</td></tr>
             <tr><td><code>CODEPLANE_CONFIG_DIR</code></td><td>Additional directory to load config from (in addition to the default lookup chain).</td></tr>
             <tr><td><code>CODEPLANE_CONFIG_CONTENT</code></td><td>Inline JSON-with-comments content merged on top of disk config.</td></tr>
+            <tr><td><code>CODEPLANE_DISABLE_PROJECT_CONFIG</code></td><td>Skip project config and instruction discovery.</td></tr>
+            <tr><td><code>CODEPLANE_MODELS_URL</code></td><td>Override the <code>models.dev</code> catalog source.</td></tr>
           </tbody>
         </table>
+
+        <h2>Generated and hidden commands</h2>
+        <p>
+          <code>codeplane generate</code> is intentionally hidden from normal help. It is used by
+          the SDK build pipeline to emit OpenAPI data for client generation. Treat it as a build
+          command, not a public automation API.
+        </p>
 
         <h2>Exit codes</h2>
         <table>

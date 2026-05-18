@@ -47,5 +47,14 @@
   "options": {
     "typeAware": true
   },
-  "ignorePatterns": ["**/node_modules", "**/dist", "**/.build", "**/.sst", "**/.cache", "**/*.d.ts", "**/sdk.gen.ts"]
+  "ignorePatterns": [
+    "**/node_modules",
+    "**/dist",
+    "**/.build",
+    "**/.sst",
+    "**/.cache",
+    "**/*.d.ts",
+    "**/sdk.gen.ts",
+    "docs/_next"
+  ]
 }

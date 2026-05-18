@@ -25,7 +25,7 @@ export default function Themes() {
       <SiteHeader active="docs" />
       <DocsLayout active="/docs/themes/">
         <h1>Themes</h1>
-        <p className="lede">Codeplane ships a single, intentional palette — monochrome OKLCH, ported from Logic&apos;s shadcn <code>radix-nova</code>. Light, dark, and system are the three options.</p>
+        <p className="lede">Codeplane ships one bundled UI theme, <code>oc-2</code>, plus three color-scheme modes: light, dark, and system. The old multi-theme picker remains as a compatibility API, but it always resolves to the single bundled theme.</p>
 
         <h2>Switching</h2>
         <p>Settings → Appearance → Color scheme.</p>
@@ -39,18 +39,24 @@ export default function Themes() {
         <h2>Why no theme picker</h2>
         <p>Earlier Codeplane versions shipped 35 themes (Dracula, Tokyonight, Catppuccin, etc.). They were dropped in v28.2.0 — every additional palette is one more permutation to test, and they fought with the design language.</p>
 
-        <h2>Custom CSS</h2>
-        <p>The web UI loads <code>$CODEPLANE_HOME/custom.css</code> after every other stylesheet.</p>
-        <pre><code>{`:root {
-  --primary:    oklch(0.55 0.2 264);   /* tint the CTAs blue */
-  --ring:       oklch(0.55 0.2 264);
-}
+        <h2>Implementation files</h2>
+        <table>
+          <thead><tr><th>File</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>packages/ui/src/theme/context.tsx</code></td><td>Single-theme compatibility context, color-scheme state, localStorage cleanup.</td></tr>
+            <tr><td><code>packages/ui/src/theme/themes/oc-2.json</code></td><td>Bundled theme definition.</td></tr>
+            <tr><td><code>packages/ui/src/theme/resolve.ts</code></td><td>Resolve compact theme tokens to CSS variables.</td></tr>
+            <tr><td><code>packages/ui/src/theme/loader.ts</code></td><td>Runtime theme CSS loader kept for compatibility.</td></tr>
+            <tr><td><code>packages/app/src/pages/layout.tsx</code></td><td>Color-scheme commands and UI integration.</td></tr>
+          </tbody>
+        </table>
 
-.dark {
-  --primary:    oklch(0.75 0.18 264);  /* lighter blue on dark */
-  --ring:       oklch(0.75 0.18 264);
-}`}</code></pre>
-        <p>Full token reference is at <code>packages/ui/src/styles/shadcn.css</code> in the repo.</p>
+        <h2>Plugin theme metadata</h2>
+        <p>
+          Plugin metadata can still record theme definitions for compatibility with older plugin
+          APIs, but the active app theme is the bundled <code>oc-2</code> theme. Treat custom theme
+          injection as internal/experimental unless a future release exposes a stable picker again.
+        </p>
 
         <h2>Syntax highlighting</h2>
         <p>Code blocks use highlight.js with a GitHub-style palette tuned for OKLCH contrast in both modes. The TUI uses its own ANSI palette tied to the surrounding theme.</p>

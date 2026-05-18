@@ -59,47 +59,80 @@ export default function Configuration() {
         <h2>Top-level shape</h2>
         <pre><code>{`{
   "$schema": "https://codeplane.cc/config.json",
-  "provider":   { /* models + auth */ },
+  "server": { /* default serve/web network options */ },
+  "model": "anthropic/claude-sonnet-4-6",
+  "small_model": "openai/gpt-5.2-mini",
+  "provider": { /* model providers and overrides */ },
   "permission": { /* what the agent may do without asking */ },
-  "agent":      { /* personalities the user can switch between */ },
-  "mode":       { /* per-mode prompt + tool overrides */ },
-  "mcp":        { /* Model Context Protocol servers */ },
-  "rules":      { /* per-directory rule files */ },
-  "commit":     { /* git commit author / co-author config */ },
-  "telemetry":  false,
-  "theme":      "system"
+  "agent": { /* named primary and sub-agent configs */ },
+  "mcp": { /* local and remote Model Context Protocol servers */ },
+  "plugin": ["@my-org/codeplane-plugin"],
+  "instructions": ["AGENTS.md", ".codeplane/rules.md"],
+  "command": { /* project command definitions */ },
+  "autoupdate": "notify",
+  "share": "manual",
+  "tool_output": { "max_lines": 2000, "max_bytes": 51200 },
+  "compaction": { "auto": true, "prune": true }
 }`}</code></pre>
 
-        <h2>provider</h2>
+        <h2>server</h2>
+        <pre><code>{`"server": {
+  "port": 4096,
+  "hostname": "127.0.0.1",
+  "mdns": false,
+  "mdnsDomain": "codeplane.local",
+  "cors": ["https://codeplane.example.com"]
+}`}</code></pre>
+        <p>
+          These values become defaults for <code>codeplane serve</code> and <code>codeplane web</code>.
+          Explicit CLI flags win over config. If neither config nor CLI sets <code>port</code>, the
+          CLI default is <code>0</code>, so the OS selects a free port.
+        </p>
+
+        <h2>provider and models</h2>
         <pre><code>{`"provider": {
   "anthropic": {
-    "apiKey": "{env:ANTHROPIC_API_KEY}",
-    "default": "claude-sonnet-4-6"
+    "options": {
+      "apiKey": "{env:ANTHROPIC_API_KEY}",
+      "timeout": 300000
+    }
   },
   "openai": {
-    "apiKey": "{env:OPENAI_API_KEY}",
-    "baseUrl": "{env:OPENAI_BASE_URL}",
-    "default": "gpt-5.2"
+    "options": {
+      "apiKey": "{env:OPENAI_API_KEY}",
+      "baseURL": "{env:OPENAI_BASE_URL}"
+    }
   },
-  "openrouter": { "apiKey": "{env:OPENROUTER_API_KEY}" },
-  "ollama":     { "baseUrl": "http://localhost:11434/v1" }
-}`}</code></pre>
-        <p>String values may use <code>{`{env:VAR}`}</code> placeholders.</p>
+  "local-ollama": {
+    "name": "Ollama",
+    "api": "openai",
+    "options": {
+      "baseURL": "http://localhost:11434/v1",
+      "apiKey": "ollama"
+    }
+  }
+},
+"model": "anthropic/claude-sonnet-4-6",
+"small_model": "openai/gpt-5.2-mini",
+"disabled_providers": ["example-provider"]`}</code></pre>
+        <p>
+          String values may use <code>{`{env:VAR}`}</code> placeholders. See{" "}
+          <Link href="/docs/providers/">Providers</Link> for model overrides, OAuth, and custom
+          OpenAI-compatible endpoints.
+        </p>
 
         <h2>permission</h2>
         <pre><code>{`"permission": {
-  "edit":  "ask",
-  "shell": "ask",
-  "read":  "allow",
-  "rules": {
-    "shell": {
-      "npm:*":      "allow",
-      "git diff*":  "allow",
-      "rm -rf*":    "ask"
-    },
-    "edit": {
-      "**/*.lock":  "deny"
-    }
+  "read": "allow",
+  "edit": {
+    "*": "ask",
+    "**/*.lock": "deny"
+  },
+  "bash": {
+    "git diff*": "allow",
+    "git log*": "allow",
+    "bun test*": "allow",
+    "*": "ask"
   }
 }`}</code></pre>
         <p>Full grammar at <Link href="/docs/permissions/">Permissions</Link>.</p>
@@ -108,21 +141,26 @@ export default function Configuration() {
         <pre><code>{`"agent": {
   "build": {
     "description": "Implement features, edit files, run tests.",
-    "model":  "anthropic:claude-sonnet-4-6",
+    "model":  "anthropic/claude-sonnet-4-6",
     "prompt": "You are a careful senior engineer..."
   },
   "review": {
     "description": "Read-only code reviewer.",
-    "model":  "anthropic:claude-opus-4-7",
-    "tools":  { "edit": "deny", "shell": "deny" }
+    "model":  "anthropic/claude-opus-4-7",
+    "permission": { "edit": "deny", "bash": "deny" }
   }
 }`}</code></pre>
+        <p>
+          Agent files can also live under <code>agents/*.md</code> or <code>.codeplane/agents/*.md</code>.
+          Frontmatter supplies keys such as <code>model</code>, <code>mode</code>, <code>steps</code>,
+          <code>color</code>, and <code>permission</code>; the Markdown body becomes the prompt.
+        </p>
 
         <h2>mode</h2>
         <pre><code>{`"mode": {
   "plan": {
     "description": "Think first, no file edits.",
-    "tools": { "edit": "deny" },
+    "permission": { "edit": "deny", "bash": "deny" },
     "prompt": "Produce a step-by-step plan before any action..."
   }
 }`}</code></pre>
@@ -130,23 +168,66 @@ export default function Configuration() {
         <h2>mcp</h2>
         <pre><code>{`"mcp": {
   "filesystem": {
-    "command": "npx",
-    "args":    ["-y", "@modelcontextprotocol/server-filesystem", "/Users/me/Code"]
+    "type": "local",
+    "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/Users/me/Code"],
+    "environment": { "LOG_LEVEL": "warn" },
+    "timeout": 30000
   },
-  "github": {
-    "command": "uvx",
-    "args":    ["mcp-server-github"],
-    "env":     { "GITHUB_TOKEN": "{env:GITHUB_TOKEN}" }
+  "remote-docs": {
+    "type": "remote",
+    "url": "https://mcp.example.com/sse",
+    "headers": { "Authorization": "Bearer {env:MCP_TOKEN}" },
+    "oauth": false
   }
 }`}</code></pre>
         <p>Full reference at <Link href="/docs/mcp/">MCP servers</Link>.</p>
 
-        <h2>rules / commit / theme / telemetry</h2>
-        <pre><code>{`"rules":     ["./AGENTS.md", "./.codeplane/rules.md"],
-"commit":    { "coauthor": true },
-"theme":     "system",
-"telemetry": false`}</code></pre>
-        <p><code>telemetry</code> is disabled by default; Codeplane has no telemetry endpoint — the key exists so you can confirm it&apos;s off in audits.</p>
+        <h2>plugin and instructions</h2>
+        <pre><code>{`"plugin": [
+  "./plugins/company-tools.ts",
+  ["@my-org/codeplane-plugin", { "tenant": "prod" }]
+],
+"instructions": [
+  "AGENTS.md",
+  ".codeplane/security.md",
+  "docs/engineering/**/*.md"
+]`}</code></pre>
+        <p>
+          Relative plugin paths are resolved relative to the config file that declared them. The
+          instruction list supplements the built-in discovery of <code>AGENTS.md</code> and
+          compatible project instruction files.
+        </p>
+
+        <h2>command</h2>
+        <pre><code>{`"command": {
+  "fix-tests": {
+    "template": "Find the failing tests, fix the root cause, and rerun the smallest reliable test command.",
+    "description": "Repair a broken test suite",
+    "agent": "build",
+    "model": "anthropic/claude-sonnet-4-6",
+    "subtask": false
+  }
+}`}</code></pre>
+        <p>
+          Commands are prompt templates. You can define them inline, or place Markdown files under
+          <code>commands/*.md</code> or <code>.codeplane/commands/*.md</code>; frontmatter supplies
+          <code>description</code>, <code>agent</code>, <code>model</code>, and
+          <code>subtask</code>, while the Markdown body becomes <code>template</code>.
+        </p>
+
+        <h2>runtime behavior</h2>
+        <table>
+          <thead><tr><th>Key</th><th>Values</th><th>Use it for</th></tr></thead>
+          <tbody>
+            <tr><td><code>share</code></td><td><code>manual</code>, <code>auto</code>, <code>disabled</code></td><td>Control public session sharing.</td></tr>
+            <tr><td><code>autoupdate</code></td><td><code>true</code>, <code>false</code>, <code>notify</code></td><td>Auto-install patches or show update notifications.</td></tr>
+            <tr><td><code>snapshot</code></td><td><code>true</code>, <code>false</code></td><td>Enable filesystem snapshots for revert/undo.</td></tr>
+            <tr><td><code>tool_output.max_lines</code></td><td>positive integer</td><td>Truncate long tool output previews after this many lines.</td></tr>
+            <tr><td><code>tool_output.max_bytes</code></td><td>positive integer</td><td>Truncate long tool output previews after this many bytes.</td></tr>
+            <tr><td><code>compaction.auto</code></td><td><code>true</code>, <code>false</code></td><td>Compact automatically when context is full.</td></tr>
+            <tr><td><code>compaction.prune</code></td><td><code>true</code>, <code>false</code></td><td>Prune old tool outputs during compaction.</td></tr>
+          </tbody>
+        </table>
 
         <h2>Validating</h2>
         <pre><code>{`jq . codeplane.json && \\

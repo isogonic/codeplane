@@ -1,0 +1,5 @@
+User-Agent: *
+Allow: /
+
+Host: https://codeplane.cc
+Sitemap: https://codeplane.cc/sitemap.xml

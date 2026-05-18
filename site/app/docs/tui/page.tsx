@@ -29,8 +29,8 @@ export default function TUI() {
 
         <h2>Launching</h2>
         <pre><code>{`codeplane tui                       # local server
-codeplane tui --instance prod       # remote instance
-codeplane tui --session ses_abc...  # jump into a session`}</code></pre>
+codeplane tui --instance prod       # saved local or remote instance
+codeplane tui --route /settings     # open an initial route`}</code></pre>
         <p>The TUI spawns a server in the background if one isn&apos;t running. Quit with <span className="kbd">q</span> or <span className="kbd">Ctrl+C</span> — sessions auto-save before exit.</p>
 
         <h2>Layout</h2>
@@ -61,6 +61,21 @@ codeplane tui --session ses_abc...  # jump into a session`}</code></pre>
           <li><strong>Live activity</strong> on iOS isn&apos;t relevant in the TUI; everything happens inline.</li>
           <li><strong>Plugin UI panels</strong> (web-only widgets) gracefully degrade to text descriptions.</li>
         </ul>
+
+        <h2>Managed local runtime</h2>
+        <p>
+          When attached to a saved local instance, the TUI can launch the npm-backed runtime binary
+          from the shared <code>local_server/</code> cache. Inspect it with
+          <code>codeplane instance local status</code> and update it with
+          <code>codeplane instance local update</code>.
+        </p>
+
+        <h2>SSH and remote work</h2>
+        <p>
+          The TUI is the best fit for SSH sessions because it has no browser dependency. Start the
+          server on the remote host with <code>codeplane serve --hostname 127.0.0.1 --port 4096</code>,
+          tunnel the port if needed, and attach from your terminal.
+        </p>
       </DocsLayout>
       <SiteFooter />
     </>

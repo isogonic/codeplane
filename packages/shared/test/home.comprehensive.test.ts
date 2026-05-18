@@ -41,6 +41,7 @@ describe("CodeplaneHome.paths", () => {
         "commands",
         "config",
         "data",
+        "globalRoot",
         "home",
         "instances",
         "local_server",

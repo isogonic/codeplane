@@ -208,9 +208,8 @@ describe("readPreferredLocalVersion / writePreferredLocalVersion", () => {
     expect(await readPreferredLocalVersion("0.0.0")).toBe("1.2.3")
   })
 
-  test("write strips multiple leading vs", async () => {
-    await writePreferredLocalVersion("vv2.0.0")
-    expect(await readPreferredLocalVersion("0.0.0")).toBe("2.0.0")
+  test("write rejects doubled version prefixes", async () => {
+    await expect(writePreferredLocalVersion("vv2.0.0")).rejects.toThrow(/Invalid Codeplane version/)
   })
 
   test("write strips capital V", async () => {
@@ -308,13 +307,13 @@ describe("resolveLocalBinaryPath - file probing", () => {
 })
 
 describe("fetchNpmPackageManifest - input validation", () => {
-  test("rejects invalid concrete versions before the network call", async () => {
+  test("rejects unsafe versions before the network call", async () => {
     let called = false
     globalThis.fetch = (async () => {
       called = true
       return new Response("", { status: 200 })
     }) as never
-    await expect(fetchNpmPackageManifest({ name: "codeplane-ai", version: "not-a-version" }))
+    await expect(fetchNpmPackageManifest({ name: "codeplane-ai", version: "../latest" }))
       .rejects.toThrow(/Invalid version/)
     expect(called).toBe(false)
   })

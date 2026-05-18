@@ -65,6 +65,49 @@ codeplane web --port 4096`}
 
       <section className="py-16">
         <div className="container max-w-prose">
+          <h2 className="mb-2 text-[28px] leading-tight tracking-tighter font-semibold">Choosing an install path</h2>
+          <table className="my-8 w-full border-collapse text-left text-[13px]">
+            <thead>
+              <tr><th className="border-b border-line bg-surface-2 px-4 py-3">Path</th><th className="border-b border-line bg-surface-2 px-4 py-3">Use it when</th><th className="border-b border-line bg-surface-2 px-4 py-3">Update path</th></tr>
+            </thead>
+            <tbody>
+              <tr><td className="border-b border-line px-4 py-3">Bash installer</td><td className="border-b border-line px-4 py-3">You want one standalone CLI binary on macOS/Linux.</td><td className="border-b border-line px-4 py-3"><code>codeplane upgrade</code></td></tr>
+              <tr><td className="border-b border-line px-4 py-3">npm/Bun global</td><td className="border-b border-line px-4 py-3">You already manage developer tools with a JS package manager.</td><td className="border-b border-line px-4 py-3"><code>npm update -g codeplane-ai</code> or reinstall.</td></tr>
+              <tr><td className="border-b border-line px-4 py-3">Desktop app</td><td className="border-b border-line px-4 py-3">You want native windows, notifications, and a managed local server.</td><td className="border-b border-line px-4 py-3">Electron updater from GitHub Releases.</td></tr>
+              <tr><td className="border-b border-line px-4 py-3">Source checkout</td><td className="border-b border-line px-4 py-3">You are contributing to Codeplane itself.</td><td className="border-b border-line px-4 py-3"><code>git pull</code>, <code>bun install</code>, package scripts.</td></tr>
+            </tbody>
+          </table>
+          <p>
+            A server that should be reachable from another device must bind a non-loopback address
+            and use Basic Auth. Example: <code>codeplane serve --hostname 0.0.0.0 --port 4096 --password "$SECRET"</code>.
+          </p>
+        </div>
+      </section>
+
+      <section className="py-16">
+        <div className="container max-w-prose">
+          <h2 className="mb-2 text-[28px] leading-tight tracking-tighter font-semibold">Directory layout</h2>
+          <p className="mb-8 text-ink-muted">The binary can be replaced safely; user state lives in the Codeplane home directory.</p>
+          <pre className="rounded-md bg-[var(--code-bg)] p-5 font-mono text-[13.5px] leading-relaxed text-[var(--code-fg)] overflow-x-auto">
+{`# macOS
+~/Library/Application Support/Codeplane
+
+# Linux
+~/.config/Codeplane
+
+# Windows
+%APPDATA%\\Codeplane`}
+          </pre>
+          <p>
+            Override with <code>CODEPLANE_HOME_DIR</code>. Logs, data, cache, state, and installed
+            runtime binaries can each be redirected with the matching <code>CODEPLANE_*_DIR</code>
+            environment variables.
+          </p>
+        </div>
+      </section>
+
+      <section className="py-16">
+        <div className="container max-w-prose">
           <h2 className="mb-2 text-[28px] leading-tight tracking-tighter font-semibold">Uninstalling</h2>
           <p className="mb-8 text-ink-muted">Codeplane is one binary plus a config directory — nothing in the system registry, nothing in launchd.</p>
           <h3 className="mt-6 font-semibold">macOS / Linux (CLI from npm or bash installer)</h3>

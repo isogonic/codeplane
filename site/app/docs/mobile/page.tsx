@@ -48,7 +48,7 @@ export default function Mobile() {
 
         <h2>First launch</h2>
         <ol>
-          <li><strong>QR code</strong>. On your laptop, run <code>codeplane serve --share</code>. Scan the printed QR from the mobile app&apos;s <em>Add server</em> screen.</li>
+          <li><strong>Manual URL</strong>. On your laptop, run <code>codeplane serve --hostname 0.0.0.0 --port 4096 --password "$SECRET" --mdns</code>. Add the LAN URL in the mobile app.</li>
           <li><strong>URL paste</strong>. If you self-host (see <Link href="/docs/self-hosting/">Self-hosting</Link>), paste the public URL.</li>
           <li><strong>Local network</strong>. The shell auto-discovers Codeplane servers on the same Wi-Fi via mDNS.</li>
         </ol>
@@ -74,6 +74,13 @@ export default function Mobile() {
 
         <h2>Offline behaviour</h2>
         <p>Sessions live on the server. When offline, the shell shows a cached copy of the most recent timeline and queues outgoing messages. Auto-reconnect uses exponential backoff (1s, 2s, 5s, 15s, then every 30s).</p>
+
+        <h2>Security notes</h2>
+        <p>
+          Mobile is a thin client. Do not expose a Codeplane server directly on a public interface
+          without Basic Auth and a network boundary such as VPN, Cloudflare Access, or a private
+          reverse proxy.
+        </p>
       </DocsLayout>
       <SiteFooter />
     </>

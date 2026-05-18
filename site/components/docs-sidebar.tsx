@@ -12,6 +12,7 @@ const sections = [
       { href: "/docs/install/",      label: "Install" },
       { href: "/docs/quickstart/",   label: "Quick start" },
       { href: "/docs/configuration/", label: "Configuration" },
+      { href: "/docs/providers/", label: "Providers" },
     ],
   },
   {
@@ -32,6 +33,7 @@ const sections = [
       { href: "/docs/permissions/", label: "Permissions" },
       { href: "/docs/keybinds/",    label: "Keybinds" },
       { href: "/docs/api/",         label: "HTTP API" },
+      { href: "/docs/architecture/", label: "Architecture" },
     ],
   },
   {
@@ -42,11 +44,13 @@ const sections = [
       { href: "/docs/sdk/",          label: "TypeScript SDK" },
       { href: "/docs/self-hosting/", label: "Self-hosting" },
       { href: "/docs/themes/",       label: "Themes" },
+      { href: "/docs/troubleshooting/", label: "Troubleshooting" },
     ],
   },
   {
     title: "Releases",
     items: [
+      { href: "/docs/release/",      label: "Release process" },
       { href: "/docs/changelog/",    label: "Changelog" },
     ],
   },

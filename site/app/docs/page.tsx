@@ -30,7 +30,8 @@ type Entry = { href: string; title: string; body: string }
 const GET_STARTED: Entry[] = [
   { href: "/docs/install/",       title: "Install",       body: "Get the binary or desktop app on macOS, Linux, Windows. iOS via TestFlight; Android coming soon." },
   { href: "/docs/quickstart/",    title: "Quick start",   body: "From `codeplane web` to your first agent reply, in under a minute." },
-  { href: "/docs/configuration/", title: "Configuration", body: "The codeplane.json reference — every key, every default." },
+  { href: "/docs/configuration/", title: "Configuration", body: "The codeplane.jsonc reference: providers, agents, permissions, MCP, server, runtime tuning." },
+  { href: "/docs/providers/",     title: "Providers",     body: "Models, auth methods, OAuth flows, API-key setup, custom OpenAI-compatible endpoints." },
 ]
 
 const SURFACES: Entry[] = [
@@ -48,6 +49,7 @@ const REFERENCE: Entry[] = [
   { href: "/docs/permissions/", title: "Permissions", body: "Per-directory and per-session approval rules. Global auto-accept toggle." },
   { href: "/docs/keybinds/",    title: "Keybinds",    body: "Every shortcut across web, desktop, TUI. Custom bindings." },
   { href: "/docs/api/",         title: "HTTP API",    body: "Every endpoint the front-ends talk to — drive Codeplane from anywhere." },
+  { href: "/docs/architecture/", title: "Architecture", body: "How CLI, server, app, desktop, mobile, shared runtime, config, and release artifacts fit together." },
 ]
 
 const EXTEND: Entry[] = [
@@ -56,6 +58,8 @@ const EXTEND: Entry[] = [
   { href: "/docs/sdk/",          title: "TypeScript SDK",  body: "Drive Codeplane from your own code — sessions, messages, streaming." },
   { href: "/docs/self-hosting/", title: "Self-hosting",    body: "Run a server on your VPS or homelab. systemd, Docker, reverse proxies, auth." },
   { href: "/docs/themes/",       title: "Themes",          body: "Strict light + dark, and how the monochrome OKLCH palette is wired." },
+  { href: "/docs/troubleshooting/", title: "Troubleshooting", body: "Install, server, auth, provider, MCP, desktop, mobile, and release failure playbooks." },
+  { href: "/docs/release/",      title: "Release process", body: "Version sync, validation, GitHub release tags, npm, desktop, mobile, and Pages deploys." },
 ]
 
 export default function DocsIndex() {
@@ -91,14 +95,6 @@ export default function DocsIndex() {
                   File an issue
                 </a>{" "}
                 on GitHub.
-              </div>
-            </li>
-            <li>
-              <div>
-                <a className="underline underline-offset-4 decoration-line hover:decoration-ink hover:text-ink" href="https://github.com/devinoldenburg/codeplane/discussions">
-                  Discussions board
-                </a>{" "}
-                for questions and feature ideas.
               </div>
             </li>
             <li>

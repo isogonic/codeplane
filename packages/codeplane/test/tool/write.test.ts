@@ -265,12 +265,18 @@ describe("tool.write", () => {
     it.live("throws error when OS denies write access", () =>
       provideTmpdirInstance((dir) =>
         Effect.gen(function* () {
-          const readonlyPath = path.join(dir, "readonly.txt")
+          const readonlyDir = path.join(dir, "readonly")
+          const readonlyPath = path.join(readonlyDir, "readonly.txt")
+          yield* Effect.promise(() => fs.mkdir(readonlyDir))
           yield* Effect.promise(() => fs.writeFile(readonlyPath, "test", "utf-8"))
-          yield* Effect.promise(() => fs.chmod(readonlyPath, 0o444))
+          yield* Effect.promise(() => fs.chmod(readonlyDir, 0o555))
           const exit = yield* run({ filePath: readonlyPath, content: "new content" }).pipe(Effect.exit)
           expect(exit._tag).toBe("Failure")
-        }),
+        }).pipe(
+          Effect.ensuring(
+            Effect.promise(() => fs.chmod(path.join(dir, "readonly"), 0o755)).pipe(Effect.catch(() => Effect.void)),
+          ),
+        ),
       ),
     )
   })

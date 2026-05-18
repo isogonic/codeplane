@@ -147,7 +147,6 @@ export const make = <A, E = never>(
           const promoted = yield* promoteHead(st.queue)
           return [
             Effect.gen(function* () {
-              cancelledShells.delete(id)
               yield* onQueueChange(promoted.dropped)
             }),
             promoted.state,
@@ -155,7 +154,6 @@ export const make = <A, E = never>(
         }
         return [
           Effect.gen(function* () {
-            cancelledShells.delete(id)
             yield* idle
           }),
           { _tag: "Idle" } as const,
@@ -274,8 +272,8 @@ export const make = <A, E = never>(
           Effect.uninterruptible(
             Effect.gen(function* () {
               const exit = yield* Fiber.await(fiber)
-              if (Exit.isSuccess(exit)) return exit.value
               const cancelled = cancelledShells.delete(id)
+              if (Exit.isSuccess(exit)) return exit.value
               if ((cancelled || Cause.hasInterruptsOnly(exit.cause)) && onInterrupt) return yield* onInterrupt
               return yield* Effect.failCause(exit.cause)
             }),
