@@ -135,9 +135,14 @@ export function applyLocalInstanceVersion(state: InstanceState, version: string)
 }
 
 export function localInstanceVersions(state: InstanceState) {
-  return Array.from(new Set(state.instances.flatMap((item) => (item.local ? [item.local.binaryVersion] : []))))
-    .filter((version): version is string => typeof version === "string")
-    .map(normalizeLocalRuntimeVersion)
+  return Array.from(
+    new Set(
+      state.instances
+        .flatMap((item) => (item.local ? [item.local.binaryVersion] : []))
+        .filter((version): version is string => typeof version === "string")
+        .map(normalizeLocalRuntimeVersion),
+    ),
+  )
     .filter((version) => LOCAL_RUNTIME_VERSION_PATTERN.test(version) && Boolean(semver.valid(version)))
     .sort(semver.rcompare)
 }

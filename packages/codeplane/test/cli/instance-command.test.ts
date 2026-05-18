@@ -227,6 +227,7 @@ describe("cli instance helpers", () => {
       localInstanceVersions({
         instances: [
           { id: "local-a", url: "local://a", local: { binaryVersion: "v28.2.0" } },
+          { id: "local-c", url: "local://c", local: { binaryVersion: "28.2.0" } },
           { id: "local-b", url: "local://b", local: { binaryVersion: "28.1.0" } },
         ],
       }),
