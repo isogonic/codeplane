@@ -178,14 +178,19 @@ export function resolveLocalArch(arch = process.arch) {
   throw new Error(`Unsupported architecture "${arch}". Codeplane local runtimes are published for arm64 and x64.`)
 }
 
+export function resolveLocalOs(platform = process.platform) {
+  if (platform === "darwin") return "darwin" as const
+  if (platform === "win32") return "windows" as const
+  if (platform === "linux") return "linux" as const
+  throw new Error(`Unsupported platform "${platform}". Codeplane local runtimes are published for macOS, Linux, and Windows.`)
+}
+
 function detectArch() {
   return resolveLocalArch()
 }
 
 function detectOs() {
-  if (process.platform === "darwin") return "darwin" as const
-  if (process.platform === "win32") return "windows" as const
-  return "linux" as const
+  return resolveLocalOs()
 }
 
 function detectMusl() {

@@ -14,6 +14,7 @@ import {
   managedCodeplaneCliStatus,
   readPreferredLocalVersion,
   resolveLocalArch,
+  resolveLocalOs,
   resolveCodeplaneLocalTarget,
   resolveLocalBinaryPath,
   resolveNpmFetchTimeout,
@@ -178,6 +179,15 @@ describe("local runtime architecture", () => {
     expect(resolveLocalArch("arm64")).toBe("arm64")
     expect(resolveLocalArch("x64")).toBe("x64")
     expect(() => resolveLocalArch("ia32")).toThrow(/Unsupported architecture/)
+  })
+})
+
+describe("local runtime platform", () => {
+  test("accepts published platforms and rejects unsupported ones", () => {
+    expect(resolveLocalOs("darwin")).toBe("darwin")
+    expect(resolveLocalOs("linux")).toBe("linux")
+    expect(resolveLocalOs("win32")).toBe("windows")
+    expect(() => resolveLocalOs("freebsd")).toThrow(/Unsupported platform/)
   })
 })
 
