@@ -120,10 +120,13 @@ body {
   color: var(--ink-muted);
   white-space: pre;
 }
-.bullet-list > li > .title {
+.bullet-list .title {
   font-weight: 700;
   color: var(--ink);
-  margin-right: 1.25rem;
+}
+.bullet-list .title::after {
+  content: "  ";
+  white-space: pre;
 }
 
 /*
