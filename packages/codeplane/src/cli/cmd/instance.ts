@@ -3,6 +3,7 @@ import type { State as InstanceState } from "@codeplane-ai/shared/instance-store
 import {
   fetchCodeplaneLatestVersion,
   fetchCodeplaneVersions,
+  managedCodeplaneCliStatus,
   readPreferredLocalVersion,
   resolveLocalBinaryPath,
 } from "@codeplane-ai/shared/local-runtime"
@@ -517,6 +518,20 @@ export function formatLocalStatus(status: LocalStatus & { target?: LocalTarget }
     ...(normalized.target
       ? { targetPackageName: normalized.target.packageName ?? normalized.target.archiveName.replace(/\.(?:tgz|tar\.gz|zip)$/, "") }
       : {}),
+  })
+}
+
+export function formatLocalStatusWithCli(
+  status: LocalStatus & { target?: LocalTarget },
+  cli: Awaited<ReturnType<typeof managedCodeplaneCliStatus>>,
+  pathOnly?: boolean,
+  installedOnly?: boolean,
+  versionOnly?: boolean,
+) {
+  if (pathOnly || installedOnly || versionOnly) return formatLocalStatus(status, pathOnly, installedOnly, versionOnly)
+  return formatJson({
+    ...JSON.parse(formatLocalStatus(status)),
+    managedCli: cli,
   })
 }
 
@@ -1205,7 +1220,15 @@ export const InstanceLocalStatusCommand = cmd({
       }),
   async handler(args) {
     const input = args as InstanceLocalVersionArgs
-    console.log(formatLocalStatus(await localStatus(input.version), input.pathOnly, input.installedOnly, input.versionOnly))
+    console.log(
+      formatLocalStatusWithCli(
+        await localStatus(input.version),
+        await managedCodeplaneCliStatus(),
+        input.pathOnly,
+        input.installedOnly,
+        input.versionOnly,
+      ),
+    )
   },
 })
 

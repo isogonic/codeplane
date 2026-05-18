@@ -13,6 +13,7 @@ import {
   formatInstanceTable,
   formatInstanceURLs,
   formatLocalStatus,
+  formatLocalStatusWithCli,
   formatInstanceSummary,
   formatLocalVersions,
   formatLocalTarget,
@@ -740,6 +741,51 @@ describe("cli instance helpers", () => {
         }),
       ).targetPackageName,
     ).toBe("codeplane-linux-x64-musl")
+  })
+
+  test("includes managed CLI status in local status JSON output", () => {
+    expect(
+      JSON.parse(
+        formatLocalStatusWithCli(
+          {
+            binaryVersion: "28.2.2",
+            installed: true,
+            binaryPath: "/tmp/codeplane/bin/codeplane",
+            archive: "/tmp/codeplane.tgz",
+          },
+          {
+            cliInstalled: true,
+            cliPath: "/tmp/codeplane/bin/codeplane",
+            cliVersion: "28.2.2",
+          },
+        ),
+      ).managedCli,
+    ).toEqual({
+      cliInstalled: true,
+      cliPath: "/tmp/codeplane/bin/codeplane",
+      cliVersion: "28.2.2",
+    })
+  })
+
+  test("keeps local status script output unchanged when managed CLI status is available", () => {
+    expect(
+      formatLocalStatusWithCli(
+        {
+          binaryVersion: "28.2.2",
+          installed: true,
+          binaryPath: "/tmp/codeplane/bin/codeplane",
+          archive: "/tmp/codeplane.tgz",
+        },
+        {
+          cliInstalled: true,
+          cliPath: "/tmp/codeplane/bin/codeplane",
+          cliVersion: "28.2.2",
+        },
+        false,
+        false,
+        true,
+      ),
+    ).toBe("28.2.2")
   })
 
   test("trims local status binary version in JSON and script output", () => {
