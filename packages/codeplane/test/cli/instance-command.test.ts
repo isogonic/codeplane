@@ -338,7 +338,9 @@ describe("cli instance helpers", () => {
   })
 
   test("formats instance labels for script output", () => {
-    expect(formatInstanceLabels([{ id: "local-1", label: "Local" }, { id: "remote-1" }])).toBe("Local\nremote-1")
+    expect(formatInstanceLabels([{ id: "local-1", label: " Local " }, { id: "remote-1", label: "   " }])).toBe(
+      "Local\nremote-1",
+    )
     expect(formatInstanceLabels([])).toBe("")
   })
 

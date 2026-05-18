@@ -200,7 +200,7 @@ export function formatInstanceURLs(instances: { url: string }[]) {
 }
 
 export function formatInstanceLabels(instances: { id: string; label?: string }[]) {
-  return instances.map((item) => item.label || item.id).join("\n")
+  return instances.map((item) => item.label?.trim() || item.id).join("\n")
 }
 
 export function formatInstanceCount(instances: unknown[]) {
