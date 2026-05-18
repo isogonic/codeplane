@@ -222,6 +222,17 @@ describe("cli instance helpers", () => {
     ).toEqual(["28.2.0"])
   })
 
+  test("ignores non-string saved local instance versions", () => {
+    expect(
+      localInstanceVersions({
+        instances: [
+          { id: "local-a", url: "local://a", local: { binaryVersion: "28.2.0" } },
+          { id: "local-b", url: "local://b", local: { binaryVersion: 28 } as never },
+        ],
+      }),
+    ).toEqual(["28.2.0"])
+  })
+
   test("formats instance summaries for list output", () => {
     expect(
       formatInstanceSummary(
