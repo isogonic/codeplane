@@ -655,6 +655,18 @@ describe("cli instance helpers", () => {
     ).toThrow(/without --tag/)
   })
 
+  test("rejects conflicting local runtime version-only output flags", () => {
+    expect(() =>
+      formatLocalVersions({ latest: "28.2.0", distTags: { latest: "28.2.0" }, versions: [] }, 10, undefined, undefined, true, false, false, false, true),
+    ).toThrow(/without --tag, --latest-only, or --tag-only/)
+    expect(() =>
+      formatLocalVersions({ distTags: { latest: "28.2.0" }, versions: [] }, 10, "latest", undefined, false, false, false, false, true),
+    ).toThrow(/without --tag, --latest-only, or --tag-only/)
+    expect(() =>
+      formatLocalVersions({ distTags: { latest: "28.2.0" }, versions: [] }, 10, undefined, undefined, false, true, false, false, true),
+    ).toThrow(/without --tag, --latest-only, or --tag-only/)
+  })
+
   test("reports ignored malformed local runtime versions", () => {
     expect(
       JSON.parse(
