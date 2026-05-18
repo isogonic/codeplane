@@ -216,6 +216,7 @@ export function formatLocalVersions(
     total: versions.length,
     ...(selectedMajor === undefined ? {} : { major: selectedMajor }),
     ...(selectedMajor === undefined ? {} : { matchingDistTags }),
+    limit: count,
     shown: Math.min(versions.length, count),
     omitted: Math.max(versions.length - count, 0),
     versions: versions.slice(0, count),
