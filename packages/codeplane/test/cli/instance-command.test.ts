@@ -261,6 +261,19 @@ describe("cli instance helpers", () => {
     ).toBe("28.3.0-beta.1")
   })
 
+  test("rejects missing local runtime dist tags", () => {
+    expect(() =>
+      formatLocalVersions(
+        {
+          distTags: { latest: "28.2.1" },
+          versions: ["28.2.1"],
+        },
+        10,
+        "next",
+      ),
+    ).toThrow(/dist-tag "next" was not found/)
+  })
+
   test("caps local runtime version output", () => {
     expect(
       JSON.parse(

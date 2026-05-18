@@ -136,7 +136,11 @@ export function formatLocalVersions(
   limit = 10,
   tag?: string,
 ) {
-  if (tag) return input.distTags[tag] ?? ""
+  if (tag) {
+    const version = input.distTags[tag]
+    if (!version) throw new Error(`Local runtime dist-tag "${tag}" was not found.`)
+    return version
+  }
   const versions = Array.isArray(input.versions) ? input.versions.filter((version) => typeof version === "string") : []
   const count = Math.min(Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10, 100)
   return formatJson({
