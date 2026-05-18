@@ -499,6 +499,11 @@ export function formatLocalVersions(
     omitted: Math.max(versions.length - count, 0),
     hasMore: versions.length > count,
     versions: shownVersions,
+    versionRecords: shownVersions.map((version) => ({
+      version,
+      major: semver.major(version),
+      prerelease: Boolean(semver.prerelease(version)?.length),
+    })),
   })
 }
 

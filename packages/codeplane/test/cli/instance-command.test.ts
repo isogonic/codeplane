@@ -904,6 +904,10 @@ describe("cli instance helpers", () => {
       omitted: 1,
       hasMore: true,
       versions: ["28.2.1", "28.2.0"],
+      versionRecords: [
+        { version: "28.2.1", major: 28, prerelease: false },
+        { version: "28.2.0", major: 28, prerelease: false },
+      ],
     })
   })
 
@@ -1206,6 +1210,10 @@ describe("cli instance helpers", () => {
       omitted: 0,
       hasMore: false,
       versions: ["28.2.1", "28.1.0"],
+      versionRecords: [
+        { version: "28.2.1", major: 28, prerelease: false },
+        { version: "28.1.0", major: 28, prerelease: false },
+      ],
     })
   })
 
@@ -1419,6 +1427,7 @@ describe("cli instance helpers", () => {
       omitted: 0,
       hasMore: false,
       versions: [],
+      versionRecords: [],
     })
   })
 
@@ -1673,6 +1682,20 @@ describe("cli instance helpers", () => {
         true,
       ),
     ).toBe('{"version":"28.3.0-beta.1","prerelease":true}\n{"version":"28.2.1","prerelease":false}')
+  })
+
+  test("reports local runtime version records", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions({
+          distTags: {},
+          versions: ["29.0.0-beta.1", "28.2.1"],
+        }),
+      ).versionRecords,
+    ).toEqual([
+      { version: "29.0.0-beta.1", major: 29, prerelease: true },
+      { version: "28.2.1", major: 28, prerelease: false },
+    ])
   })
 
   test("formats ranged local runtime versions as json lines", () => {
