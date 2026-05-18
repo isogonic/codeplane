@@ -260,6 +260,8 @@ export function formatLocalVersions(
   const count = Math.min(Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10, 100)
   const shownVersions = versions.slice(0, count)
   if (versionOnly) return shownVersions.join("\n")
+  const stableShown = shownVersions.filter((version) => !semver.prerelease(version)?.length).length
+  const prereleaseShown = shownVersions.length - stableShown
   const matchingDistTags = Object.fromEntries(
     Object.entries(distTags).filter(([, version]) => selectedMajor !== undefined && version.startsWith(`${selectedMajor}.`)),
   )
@@ -283,8 +285,10 @@ export function formatLocalVersions(
     ...(selectedMajor === undefined ? {} : { selectedDistTagCount: Object.keys(matchingDistTags).length }),
     limit: count,
     shown: Math.min(versions.length, count),
-    stableShown: shownVersions.filter((version) => !semver.prerelease(version)?.length).length,
-    prereleaseShown: shownVersions.filter((version) => semver.prerelease(version)?.length).length,
+    stableShown,
+    prereleaseShown,
+    stableOmitted: Math.max(stableVersionCount - stableShown, 0),
+    prereleaseOmitted: Math.max(prereleaseVersionCount - prereleaseShown, 0),
     omitted: Math.max(versions.length - count, 0),
     versions: shownVersions,
   })

@@ -455,6 +455,8 @@ describe("cli instance helpers", () => {
       shown: 2,
       stableShown: 2,
       prereleaseShown: 0,
+      stableOmitted: 1,
+      prereleaseOmitted: 0,
       omitted: 1,
       versions: ["28.2.1", "28.2.0"],
     })
@@ -563,6 +565,8 @@ describe("cli instance helpers", () => {
       shown: 2,
       stableShown: 2,
       prereleaseShown: 0,
+      stableOmitted: 0,
+      prereleaseOmitted: 0,
       omitted: 0,
       versions: ["28.2.1", "28.1.0"],
     })
@@ -627,6 +631,8 @@ describe("cli instance helpers", () => {
       shown: 0,
       stableShown: 0,
       prereleaseShown: 0,
+      stableOmitted: 0,
+      prereleaseOmitted: 0,
       omitted: 0,
       versions: [],
     })
@@ -725,6 +731,20 @@ describe("cli instance helpers", () => {
         }),
       ).stableVersionCount,
     ).toBe(2)
+  })
+
+  test("reports omitted local runtime stable and prerelease counts", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions(
+          {
+            distTags: {},
+            versions: ["28.4.0-beta.1", "28.3.0", "28.2.0", "28.1.0-beta.1"],
+          },
+          2,
+        ),
+      ),
+    ).toMatchObject({ stableOmitted: 1, prereleaseOmitted: 1, omitted: 2 })
   })
 
   test("formats only stable local runtime versions", () => {
