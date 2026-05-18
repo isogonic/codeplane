@@ -642,8 +642,19 @@ describe("cli instance helpers", () => {
           distTags: {},
           versions: ["28.2.0", "28.10.0", "28.2.1-rc.1", "28.2.1"],
         }),
-      ).versions,
+    ).versions,
     ).toEqual(["28.10.0", "28.2.1", "28.2.1-rc.1", "28.2.0"])
+  })
+
+  test("normalizes v-prefixed local runtime versions before sorting", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions({
+          distTags: {},
+          versions: ["v28.2.1", "28.2.0"],
+        }),
+      ).versions,
+    ).toEqual(["28.2.1", "28.2.0"])
   })
 
   test("deduplicates local runtime versions before sorting", () => {

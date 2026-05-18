@@ -81,6 +81,7 @@ type InstanceLocalVersionsArgs = {
 
 const LOCAL_RUNTIME_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
 const LOCAL_RUNTIME_TAG_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
+const normalizeLocalRuntimeVersion = (version: string) => version.trim().replace(/^[vV](?=\d)/, "")
 
 // Combine --header lines with the dedicated --username / --password fields.
 // Username/password compose into an Authorization: Basic … header that
@@ -145,7 +146,7 @@ export function validateInstanceID(id: string) {
 }
 
 export function validateLocalRuntimeVersion(version: string) {
-  const trimmed = version.trim().replace(/^[vV](?=\d)/, "")
+  const trimmed = normalizeLocalRuntimeVersion(version)
   if (!LOCAL_RUNTIME_VERSION_PATTERN.test(trimmed) || !semver.valid(trimmed)) {
     throw new Error(`Invalid local runtime version "${version}". Expected semver like 28.2.1 or 28.2.1-rc.0.`)
   }
@@ -319,7 +320,7 @@ export function formatLocalVersions(
   const selectedMajor = normalizeLocalVersionMajor(major)
   const rawVersions = Array.isArray(input.versions) ? input.versions : []
   const invalidVersionInputCount = input.versions === undefined || Array.isArray(input.versions) ? 0 : 1
-  const stringVersions = rawVersions.filter((version) => typeof version === "string")
+  const stringVersions = rawVersions.filter((version) => typeof version === "string").map(normalizeLocalRuntimeVersion)
   const nonStringVersionCount = rawVersions.length - stringVersions.length
   const validVersions = stringVersions.filter((version) => LOCAL_RUNTIME_VERSION_PATTERN.test(version) && semver.valid(version))
   const uniqueVersions = Array.from(new Set(validVersions))
