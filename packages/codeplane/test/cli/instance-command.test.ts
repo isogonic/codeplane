@@ -9,6 +9,7 @@ import {
   formatLocalVersions,
   formatLocalTarget,
   mergeSignedInHeader,
+  normalizeLocalVersionMajor,
   parseInstanceHeaders,
   validateInstanceID,
 } from "../../src/cli/cmd/instance"
@@ -337,6 +338,13 @@ describe("cli instance helpers", () => {
       omitted: 0,
       versions: ["28.2.1", "28.1.0"],
     })
+  })
+
+  test("rejects invalid local runtime major filters", () => {
+    expect(normalizeLocalVersionMajor(28)).toBe(28)
+    expect(normalizeLocalVersionMajor()).toBeUndefined()
+    expect(() => normalizeLocalVersionMajor(-1)).toThrow(/Invalid major version/)
+    expect(() => normalizeLocalVersionMajor(28.5)).toThrow(/Invalid major version/)
   })
 
   test("rejects missing local runtime dist tags", () => {

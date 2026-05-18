@@ -153,6 +153,12 @@ export function formatLocalTarget(target: LocalTarget, nameOnly?: boolean, binar
   return formatJson(target)
 }
 
+export function normalizeLocalVersionMajor(major?: number) {
+  if (major === undefined) return undefined
+  if (!Number.isInteger(major) || major < 0) throw new Error(`Invalid major version "${major}". Use a non-negative integer.`)
+  return major
+}
+
 export function formatLocalVersions(
   input: { latest?: string; distTags: Record<string, string>; versions?: unknown },
   limit = 10,
@@ -164,8 +170,9 @@ export function formatLocalVersions(
     if (!version) throw new Error(`Local runtime dist-tag "${tag}" was not found.`)
     return version
   }
+  const selectedMajor = normalizeLocalVersionMajor(major)
   const versions = (Array.isArray(input.versions) ? input.versions.filter((version) => typeof version === "string") : []).filter(
-    (version) => major === undefined || version.startsWith(`${major}.`),
+    (version) => selectedMajor === undefined || version.startsWith(`${selectedMajor}.`),
   )
   const count = Math.min(Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10, 100)
   return formatJson({
@@ -173,7 +180,7 @@ export function formatLocalVersions(
     distTags: Object.fromEntries(Object.entries(input.distTags).sort(([left], [right]) => left.localeCompare(right))),
     distTagCount: Object.keys(input.distTags).length,
     total: versions.length,
-    ...(major === undefined ? {} : { major }),
+    ...(selectedMajor === undefined ? {} : { major: selectedMajor }),
     shown: Math.min(versions.length, count),
     omitted: Math.max(versions.length - count, 0),
     versions: versions.slice(0, count),
