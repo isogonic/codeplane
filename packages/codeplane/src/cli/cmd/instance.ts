@@ -20,6 +20,7 @@ import { InstanceDaemonCommand } from "./instance-daemon"
 import type { Argv } from "yargs"
 
 type InstanceListArgs = {
+  countOnly?: boolean
   defaultOnly?: boolean
   idOnly?: boolean
   json?: boolean
@@ -187,6 +188,10 @@ export function formatInstanceURLs(instances: { url: string }[]) {
 
 export function formatInstanceLabels(instances: { id: string; label?: string }[]) {
   return instances.map((item) => item.label || item.id).join("\n")
+}
+
+export function formatInstanceCount(instances: unknown[]) {
+  return String(instances.length)
 }
 
 function formatJson(input: unknown) {
@@ -431,6 +436,11 @@ export const InstanceListCommand = cmd({
         type: "boolean",
         default: false,
         describe: "print only saved instance URLs, one per line",
+      })
+      .option("count-only", {
+        type: "boolean",
+        default: false,
+        describe: "print only the number of saved instances after filters",
       }),
   async handler(args) {
     const input = args as InstanceListArgs
@@ -457,6 +467,10 @@ export const InstanceListCommand = cmd({
     }
     if (input.urlOnly) {
       console.log(formatInstanceURLs(output))
+      return
+    }
+    if (input.countOnly) {
+      console.log(formatInstanceCount(output))
       return
     }
     console.log(formatInstanceTable(output))
