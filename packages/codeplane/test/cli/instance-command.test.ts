@@ -554,6 +554,20 @@ describe("cli instance helpers", () => {
     ).toEqual(["beta", "latest", "zeta"])
   })
 
+  test("omits malformed local runtime dist tags from formatted output", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions({
+          distTags: { latest: "28.2.0", "../bad": "28.2.1", old: "broken" },
+          versions: [],
+        }),
+      ),
+    ).toMatchObject({
+      distTags: { latest: "28.2.0" },
+      distTagCount: 1,
+    })
+  })
+
   test("formats local runtime dist tag names for scripts", () => {
     expect(
       formatLocalVersions(

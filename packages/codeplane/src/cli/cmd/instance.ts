@@ -202,9 +202,14 @@ export function formatLocalVersions(
   latestOnly?: boolean,
   tagOnly?: boolean,
 ) {
+  const distTags = Object.fromEntries(
+    Object.entries(input.distTags)
+      .filter(([tagName, version]) => LOCAL_RUNTIME_TAG_PATTERN.test(tagName) && LOCAL_RUNTIME_VERSION_PATTERN.test(version))
+      .sort(([left], [right]) => left.localeCompare(right)),
+  )
   if (tagOnly) {
     if (tag || major !== undefined || latestOnly) throw new Error("Use --tag-only without --tag, --major, or --latest-only.")
-    return Object.keys(input.distTags).sort((left, right) => left.localeCompare(right)).join("\n")
+    return Object.keys(distTags).join("\n")
   }
   if (latestOnly) {
     if (tag || major !== undefined) throw new Error("Use --latest-only without --tag or --major.")
@@ -213,12 +218,11 @@ export function formatLocalVersions(
   }
   if (tag) {
     if (!LOCAL_RUNTIME_TAG_PATTERN.test(tag)) throw new Error(`Invalid local runtime dist-tag "${tag}".`)
-    const version = input.distTags[tag]
+    const version = distTags[tag]
     if (!version) throw new Error(`Local runtime dist-tag "${tag}" was not found.`)
     return version
   }
   const selectedMajor = normalizeLocalVersionMajor(major)
-  const distTags = Object.fromEntries(Object.entries(input.distTags).sort(([left], [right]) => left.localeCompare(right)))
   const rawVersions = Array.isArray(input.versions) ? input.versions.filter((version) => typeof version === "string") : []
   const validVersions = rawVersions.filter((version) => LOCAL_RUNTIME_VERSION_PATTERN.test(version))
   const versions = validVersions
@@ -231,7 +235,7 @@ export function formatLocalVersions(
   return formatJson({
     latest: input.latest,
     distTags,
-    distTagCount: Object.keys(input.distTags).length,
+    distTagCount: Object.keys(distTags).length,
     invalidVersionCount: rawVersions.length - validVersions.length,
     total: versions.length,
     ...(selectedMajor === undefined ? {} : { major: selectedMajor }),
