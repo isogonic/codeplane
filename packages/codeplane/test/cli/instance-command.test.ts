@@ -1054,4 +1054,32 @@ describe("cli instance helpers", () => {
       ).oldestVersion,
     ).toBe("28.1.0")
   })
+
+  test("formats the oldest selected local runtime version for scripts", () => {
+    expect(
+      formatLocalVersions(
+        {
+          distTags: {},
+          versions: ["29.0.0", "28.2.1", "28.1.0", "27.9.9"],
+        },
+        1,
+        undefined,
+        28,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+      ),
+    ).toBe("28.1.0")
+  })
+
+  test("rejects conflicting oldest-only local runtime flags", () => {
+    expect(() =>
+      formatLocalVersions({ distTags: {}, versions: [] }, 10, undefined, undefined, false, false, false, false, false, true, false, true),
+    ).toThrow(/Use --oldest-only/)
+  })
 })

@@ -69,6 +69,7 @@ type InstanceLocalVersionsArgs = {
   latestOnly?: boolean
   limit?: number
   major?: number
+  oldestOnly?: boolean
   prereleaseOnly?: boolean
   stableOnly?: boolean
   tag?: string
@@ -244,9 +245,13 @@ export function formatLocalVersions(
   versionOnly?: boolean,
   countOnly?: boolean,
   jsonLines?: boolean,
+  oldestOnly?: boolean,
 ) {
   if (stableOnly && prereleaseOnly) throw new Error("Use either --stable-only or --prerelease-only, not both.")
   if (versionOnly && (tag || latestOnly || tagOnly)) throw new Error("Use --version-only without --tag, --latest-only, or --tag-only.")
+  if (oldestOnly && (tag || latestOnly || tagOnly || versionOnly || countOnly || jsonLines)) {
+    throw new Error("Use --oldest-only without --tag, --latest-only, --tag-only, --version-only, --count-only, or --json-lines.")
+  }
   if (jsonLines && (tag || latestOnly || tagOnly || versionOnly || countOnly)) {
     throw new Error("Use --json-lines without --tag, --latest-only, --tag-only, --version-only, or --count-only.")
   }
@@ -298,6 +303,7 @@ export function formatLocalVersions(
   const count = Math.min(Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10, 100)
   const shownVersions = versions.slice(0, count)
   if (countOnly) return String(versions.length)
+  if (oldestOnly) return versions.at(-1) ?? ""
   if (versionOnly) return shownVersions.join("\n")
   if (jsonLines) return shownVersions.map((version) => JSON.stringify({ version })).join("\n")
   const stableShown = shownVersions.filter((version) => !semver.prerelease(version)?.length).length
@@ -913,6 +919,10 @@ export const InstanceLocalVersionsCommand = cmd({
       type: "boolean",
       default: false,
       describe: "print only the latest stable runtime version",
+    }).option("oldest-only", {
+      type: "boolean",
+      default: false,
+      describe: "print only the oldest selected runtime version",
     }).option("stable-only", {
       type: "boolean",
       default: false,
@@ -953,6 +963,7 @@ export const InstanceLocalVersionsCommand = cmd({
         input.versionOnly,
         input.countOnly,
         input.jsonLines,
+        input.oldestOnly,
       ),
     )
   },
