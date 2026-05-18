@@ -444,6 +444,7 @@ export function formatLocalVersions(
   return formatJson({
     latest: input.latest,
     distTags,
+    distTagNames: Object.keys(distTags),
     distTagCount: Object.keys(distTags).length,
     duplicateVersionCount,
     invalidDistTagCount,
