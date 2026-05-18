@@ -2,7 +2,22 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
 
-export const metadata = { title: "Permissions" }
+export const metadata = {
+  title: "Permissions",
+  description: "Per-directory and per-session approval rules in Codeplane, plus the global auto-accept toggle. Every dangerous tool stays gated.",
+  alternates: { canonical: "/docs/permissions/" },
+  openGraph: {
+    title: "Permissions · Codeplane",
+    description: "Per-directory and per-session approval rules in Codeplane, plus the global auto-accept toggle. Every dangerous tool stays gated.",
+    url: "/docs/permissions/",
+    type: "article",
+  },
+  twitter: {
+    title: "Permissions · Codeplane",
+    description: "Per-directory and per-session approval rules in Codeplane, plus the global auto-accept toggle. Every dangerous tool stays gated.",
+    card: "summary_large_image",
+  },
+}
 
 export default function Permissions() {
   return (

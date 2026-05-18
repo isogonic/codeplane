@@ -3,7 +3,22 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
 
-export const metadata = { title: "TypeScript SDK" }
+export const metadata = {
+  title: "TypeScript SDK",
+  description: "Drive Codeplane from your own TypeScript code — sessions, messages, streaming, tools. Same wire format as the front-ends.",
+  alternates: { canonical: "/docs/sdk/" },
+  openGraph: {
+    title: "TypeScript SDK · Codeplane",
+    description: "Drive Codeplane from your own TypeScript code — sessions, messages, streaming, tools. Same wire format as the front-ends.",
+    url: "/docs/sdk/",
+    type: "article",
+  },
+  twitter: {
+    title: "TypeScript SDK · Codeplane",
+    description: "Drive Codeplane from your own TypeScript code — sessions, messages, streaming, tools. Same wire format as the front-ends.",
+    card: "summary_large_image",
+  },
+}
 
 export default function SDK() {
   return (

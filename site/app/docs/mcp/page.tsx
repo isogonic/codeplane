@@ -2,7 +2,22 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
 
-export const metadata = { title: "MCP servers" }
+export const metadata = {
+  title: "MCP servers",
+  description: "Wire any Model Context Protocol server into your Codeplane sessions. Bundled with Filesystem, GitHub, and Sequential Thinking.",
+  alternates: { canonical: "/docs/mcp/" },
+  openGraph: {
+    title: "MCP servers · Codeplane",
+    description: "Wire any Model Context Protocol server into your Codeplane sessions. Bundled with Filesystem, GitHub, and Sequential Thinking.",
+    url: "/docs/mcp/",
+    type: "article",
+  },
+  twitter: {
+    title: "MCP servers · Codeplane",
+    description: "Wire any Model Context Protocol server into your Codeplane sessions. Bundled with Filesystem, GitHub, and Sequential Thinking.",
+    card: "summary_large_image",
+  },
+}
 
 export default function MCP() {
   return (

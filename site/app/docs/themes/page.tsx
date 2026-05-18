@@ -2,7 +2,22 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
 
-export const metadata = { title: "Themes" }
+export const metadata = {
+  title: "Themes",
+  description: "Strict light and dark themes for Codeplane — and how the monochrome OKLCH palette is wired through the shared UI.",
+  alternates: { canonical: "/docs/themes/" },
+  openGraph: {
+    title: "Themes · Codeplane",
+    description: "Strict light and dark themes for Codeplane — and how the monochrome OKLCH palette is wired through the shared UI.",
+    url: "/docs/themes/",
+    type: "article",
+  },
+  twitter: {
+    title: "Themes · Codeplane",
+    description: "Strict light and dark themes for Codeplane — and how the monochrome OKLCH palette is wired through the shared UI.",
+    card: "summary_large_image",
+  },
+}
 
 export default function Themes() {
   return (

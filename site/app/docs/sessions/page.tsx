@@ -3,7 +3,22 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
 
-export const metadata = { title: "Sessions" }
+export const metadata = {
+  title: "Sessions",
+  description: "Threads, branches, archives, sharing, queued follow-ups, revert. Everything Codeplane sessions can do.",
+  alternates: { canonical: "/docs/sessions/" },
+  openGraph: {
+    title: "Sessions · Codeplane",
+    description: "Threads, branches, archives, sharing, queued follow-ups, revert. Everything Codeplane sessions can do.",
+    url: "/docs/sessions/",
+    type: "article",
+  },
+  twitter: {
+    title: "Sessions · Codeplane",
+    description: "Threads, branches, archives, sharing, queued follow-ups, revert. Everything Codeplane sessions can do.",
+    card: "summary_large_image",
+  },
+}
 
 export default function Sessions() {
   return (

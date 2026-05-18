@@ -2,7 +2,22 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
 
-export const metadata = { title: "Changelog" }
+export const metadata = {
+  title: "Changelog",
+  description: "Notable changes per Codeplane release. Every entry maps to a tag at github.com/devinoldenburg/codeplane/releases.",
+  alternates: { canonical: "/docs/changelog/" },
+  openGraph: {
+    title: "Changelog · Codeplane",
+    description: "Notable changes per Codeplane release. Every entry maps to a tag at github.com/devinoldenburg/codeplane/releases.",
+    url: "/docs/changelog/",
+    type: "article",
+  },
+  twitter: {
+    title: "Changelog · Codeplane",
+    description: "Notable changes per Codeplane release. Every entry maps to a tag at github.com/devinoldenburg/codeplane/releases.",
+    card: "summary_large_image",
+  },
+}
 
 export default function Changelog() {
   return (

@@ -2,7 +2,22 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
 
-export const metadata = { title: "Keybinds" }
+export const metadata = {
+  title: "Keybinds",
+  description: "Every shortcut across web, desktop, and TUI. Custom bindings, sequence chords, and the keymap escape hatch.",
+  alternates: { canonical: "/docs/keybinds/" },
+  openGraph: {
+    title: "Keybinds · Codeplane",
+    description: "Every shortcut across web, desktop, and TUI. Custom bindings, sequence chords, and the keymap escape hatch.",
+    url: "/docs/keybinds/",
+    type: "article",
+  },
+  twitter: {
+    title: "Keybinds · Codeplane",
+    description: "Every shortcut across web, desktop, and TUI. Custom bindings, sequence chords, and the keymap escape hatch.",
+    card: "summary_large_image",
+  },
+}
 
 export default function Keybinds() {
   return (

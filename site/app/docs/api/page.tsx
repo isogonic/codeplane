@@ -3,7 +3,22 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
 
-export const metadata = { title: "HTTP API" }
+export const metadata = {
+  title: "HTTP API",
+  description: "Every HTTP endpoint the Codeplane front-ends talk to — drive Codeplane from your own code, language, or CI.",
+  alternates: { canonical: "/docs/api/" },
+  openGraph: {
+    title: "HTTP API · Codeplane",
+    description: "Every HTTP endpoint the Codeplane front-ends talk to — drive Codeplane from your own code, language, or CI.",
+    url: "/docs/api/",
+    type: "article",
+  },
+  twitter: {
+    title: "HTTP API · Codeplane",
+    description: "Every HTTP endpoint the Codeplane front-ends talk to — drive Codeplane from your own code, language, or CI.",
+    card: "summary_large_image",
+  },
+}
 
 export default function API() {
   return (

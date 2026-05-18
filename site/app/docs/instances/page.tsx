@@ -2,7 +2,22 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
 
-export const metadata = { title: "Instances" }
+export const metadata = {
+  title: "Instances",
+  description: "Manage multiple Codeplane servers from a single client — local, remote, and homelab — all in one address book.",
+  alternates: { canonical: "/docs/instances/" },
+  openGraph: {
+    title: "Instances · Codeplane",
+    description: "Manage multiple Codeplane servers from a single client — local, remote, and homelab — all in one address book.",
+    url: "/docs/instances/",
+    type: "article",
+  },
+  twitter: {
+    title: "Instances · Codeplane",
+    description: "Manage multiple Codeplane servers from a single client — local, remote, and homelab — all in one address book.",
+    card: "summary_large_image",
+  },
+}
 
 export default function Instances() {
   return (

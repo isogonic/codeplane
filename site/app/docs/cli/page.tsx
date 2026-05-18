@@ -2,7 +2,22 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
 
-export const metadata = { title: "CLI reference" }
+export const metadata = {
+  title: "CLI reference",
+  description: "Every subcommand and flag for the Codeplane CLI: serve, web, tui, instance, upgrade, completion.",
+  alternates: { canonical: "/docs/cli/" },
+  openGraph: {
+    title: "CLI reference · Codeplane",
+    description: "Every subcommand and flag for the Codeplane CLI: serve, web, tui, instance, upgrade, completion.",
+    url: "/docs/cli/",
+    type: "article",
+  },
+  twitter: {
+    title: "CLI reference · Codeplane",
+    description: "Every subcommand and flag for the Codeplane CLI: serve, web, tui, instance, upgrade, completion.",
+    card: "summary_large_image",
+  },
+}
 
 export default function CLI() {
   return (

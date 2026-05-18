@@ -158,7 +158,10 @@ function PanelMobile() {
   return (
     <div className="docs-prose">
       <h2 className="mt-0">Mobile</h2>
-      <p className="lede !mb-8 !text-[17px]">Native iOS + Android shells. They wrap the web UI and connect to a Codeplane server you self-host.</p>
+      <p className="lede !mb-8 !text-[17px]">
+        Native shell that wraps the web UI and connects to a Codeplane server you self-host.
+        iOS is in public TestFlight today; Android is in active development.
+      </p>
       <h3>iOS — TestFlight</h3>
       <p>
         <a className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm font-medium text-surface no-underline" href="https://testflight.apple.com/join/codeplane">
@@ -167,14 +170,20 @@ function PanelMobile() {
       </p>
       <h3>iOS — sideload <code>.ipa</code></h3>
       <p>Each mobile release ships an <code>.ipa</code> at <a href="https://github.com/devinoldenburg/codeplane/releases">/releases</a> (look for <code>v&lt;x.y.z&gt;-mobile</code>). Pair with AltStore / Sideloadly.</p>
-      <h3>Android — Play Store</h3>
+      <h3>Android — coming soon</h3>
       <p>
-        <a className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm font-medium text-surface no-underline" href="https://play.google.com/store/apps/details?id=ai.codeplane">
-          <HugeiconsIcon icon={AndroidIcon} size={14} strokeWidth={1.5} /> Open Google Play
-        </a>
+        <span
+          aria-disabled="true"
+          className="inline-flex cursor-not-allowed items-center gap-2 rounded-full border border-line bg-surface-3 px-4 py-2 text-sm font-medium text-ink-muted no-underline"
+        >
+          <HugeiconsIcon icon={AndroidIcon} size={14} strokeWidth={1.5} /> Google Play — not yet available
+        </span>
       </p>
-      <h3>Android — APK sideload</h3>
-      <pre><code>{`adb install Codeplane-Android-<version>.apk`}</code></pre>
+      <p className="text-ink-muted">
+        The Android shell isn&apos;t shipping on Google Play yet. The first Play Store rollout will
+        be announced in the <a href="/docs/changelog/">changelog</a> once the TestFlight track is stable.
+        Until then, follow the iOS TestFlight above or self-host the web UI from any mobile browser.
+      </p>
     </div>
   )
 }

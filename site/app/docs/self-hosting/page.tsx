@@ -2,7 +2,22 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
 
-export const metadata = { title: "Self-hosting" }
+export const metadata = {
+  title: "Self-hosting",
+  description: "Run a Codeplane server on your VPS or homelab. systemd units, Docker, reverse proxies, auth, and TLS — every supported path documented.",
+  alternates: { canonical: "/docs/self-hosting/" },
+  openGraph: {
+    title: "Self-hosting · Codeplane",
+    description: "Run a Codeplane server on your VPS or homelab. systemd units, Docker, reverse proxies, auth, and TLS — every supported path documented.",
+    url: "/docs/self-hosting/",
+    type: "article",
+  },
+  twitter: {
+    title: "Self-hosting · Codeplane",
+    description: "Run a Codeplane server on your VPS or homelab. systemd units, Docker, reverse proxies, auth, and TLS — every supported path documented.",
+    card: "summary_large_image",
+  },
+}
 
 export default function SelfHosting() {
   return (

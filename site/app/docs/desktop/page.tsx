@@ -3,7 +3,22 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
 
-export const metadata = { title: "Desktop" }
+export const metadata = {
+  title: "Desktop",
+  description: "Native macOS, Windows, and Linux desktop app for Codeplane. Auto-updates via electron-updater; deep links into the same self-hosted server.",
+  alternates: { canonical: "/docs/desktop/" },
+  openGraph: {
+    title: "Desktop · Codeplane",
+    description: "Native macOS, Windows, and Linux desktop app for Codeplane. Auto-updates via electron-updater; deep links into the same self-hosted server.",
+    url: "/docs/desktop/",
+    type: "article",
+  },
+  twitter: {
+    title: "Desktop · Codeplane",
+    description: "Native macOS, Windows, and Linux desktop app for Codeplane. Auto-updates via electron-updater; deep links into the same self-hosted server.",
+    card: "summary_large_image",
+  },
+}
 
 export default function Desktop() {
   return (

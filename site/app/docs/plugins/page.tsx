@@ -3,7 +3,22 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
 
-export const metadata = { title: "Plugins" }
+export const metadata = {
+  title: "Plugins",
+  description: "Build custom tools, agents, slash commands, and prompts for Codeplane with the @codeplane-ai/plugin SDK.",
+  alternates: { canonical: "/docs/plugins/" },
+  openGraph: {
+    title: "Plugins · Codeplane",
+    description: "Build custom tools, agents, slash commands, and prompts for Codeplane with the @codeplane-ai/plugin SDK.",
+    url: "/docs/plugins/",
+    type: "article",
+  },
+  twitter: {
+    title: "Plugins · Codeplane",
+    description: "Build custom tools, agents, slash commands, and prompts for Codeplane with the @codeplane-ai/plugin SDK.",
+    card: "summary_large_image",
+  },
+}
 
 export default function Plugins() {
   return (

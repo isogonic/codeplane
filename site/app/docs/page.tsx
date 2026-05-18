@@ -18,7 +18,22 @@ import {
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 
-export const metadata = { title: "Docs" }
+export const metadata = {
+  title: "Docs",
+  description: "Documentation for Codeplane — install, CLI reference, configuration, surfaces (terminal, desktop, web, mobile), MCP, plugins, SDK, self-hosting.",
+  alternates: { canonical: "/docs/" },
+  openGraph: {
+    title: "Docs · Codeplane",
+    description: "Documentation for Codeplane — install, CLI reference, configuration, surfaces (terminal, desktop, web, mobile), MCP, plugins, SDK, self-hosting.",
+    url: "/docs/",
+    type: "article",
+  },
+  twitter: {
+    title: "Docs · Codeplane",
+    description: "Documentation for Codeplane — install, CLI reference, configuration, surfaces (terminal, desktop, web, mobile), MCP, plugins, SDK, self-hosting.",
+    card: "summary_large_image",
+  },
+}
 
 export default function DocsIndex() {
   return (
@@ -39,7 +54,7 @@ export default function DocsIndex() {
       </section>
 
       <Section title="Get started">
-        <Card href="/docs/install/" icon={Download01Icon} title="Install" body="Get the binary or the desktop app on macOS, Linux, Windows, iOS, Android." />
+        <Card href="/docs/install/" icon={Download01Icon} title="Install" body="Get the binary or the desktop app on macOS, Linux, Windows. iOS via TestFlight; Android coming soon." />
         <Card href="/docs/quickstart/" icon={SparklesIcon} title="Quick start" body="From `codeplane web` to your first agent reply, in under a minute." />
         <Card href="/docs/configuration/" icon={Settings02Icon} title="Configuration" body="The codeplane.json reference — every key, every default." />
       </Section>
@@ -48,7 +63,7 @@ export default function DocsIndex() {
         <Card href="/docs/tui/" icon={TerminalIcon} title="TUI" body="Full-screen terminal interface." />
         <Card href="/docs/desktop/" icon={EyeIcon} title="Desktop" body="Native macOS / Windows / Linux." />
         <Card href="/docs/web/" icon={GlobeIcon} title="Web" body="Same UI in your browser." />
-        <Card href="/docs/mobile/" icon={SmartPhone01Icon} title="Mobile" body="iOS + Android shells." />
+        <Card href="/docs/mobile/" icon={SmartPhone01Icon} title="Mobile" body="Native iOS shell (TestFlight). Android in development." />
       </Section>
 
       <Section title="Reference">

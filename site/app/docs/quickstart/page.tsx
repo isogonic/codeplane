@@ -3,7 +3,22 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
 
-export const metadata = { title: "Quick start" }
+export const metadata = {
+  title: "Quick start",
+  description: "From `codeplane web` to your first agent reply in under a minute — install, run the server, open the UI, plug in a model.",
+  alternates: { canonical: "/docs/quickstart/" },
+  openGraph: {
+    title: "Quick start · Codeplane",
+    description: "From `codeplane web` to your first agent reply in under a minute — install, run the server, open the UI, plug in a model.",
+    url: "/docs/quickstart/",
+    type: "article",
+  },
+  twitter: {
+    title: "Quick start · Codeplane",
+    description: "From `codeplane web` to your first agent reply in under a minute — install, run the server, open the UI, plug in a model.",
+    card: "summary_large_image",
+  },
+}
 
 export default function Quickstart() {
   return (

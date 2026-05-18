@@ -2,7 +2,22 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
 
-export const metadata = { title: "Terminal (TUI)" }
+export const metadata = {
+  title: "Terminal (TUI)",
+  description: "Full-screen terminal interface for Codeplane. Zero-friction for SSH and ops work; same sessions as the web and desktop apps.",
+  alternates: { canonical: "/docs/tui/" },
+  openGraph: {
+    title: "Terminal (TUI) · Codeplane",
+    description: "Full-screen terminal interface for Codeplane. Zero-friction for SSH and ops work; same sessions as the web and desktop apps.",
+    url: "/docs/tui/",
+    type: "article",
+  },
+  twitter: {
+    title: "Terminal (TUI) · Codeplane",
+    description: "Full-screen terminal interface for Codeplane. Zero-friction for SSH and ops work; same sessions as the web and desktop apps.",
+    card: "summary_large_image",
+  },
+}
 
 export default function TUI() {
   return (

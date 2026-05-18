@@ -3,7 +3,22 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
 
-export const metadata = { title: "Web" }
+export const metadata = {
+  title: "Web",
+  description: "Open any browser at the Codeplane server URL. Nothing to install. Same sessions, same models, same permissions as every other surface.",
+  alternates: { canonical: "/docs/web/" },
+  openGraph: {
+    title: "Web · Codeplane",
+    description: "Open any browser at the Codeplane server URL. Nothing to install. Same sessions, same models, same permissions as every other surface.",
+    url: "/docs/web/",
+    type: "article",
+  },
+  twitter: {
+    title: "Web · Codeplane",
+    description: "Open any browser at the Codeplane server URL. Nothing to install. Same sessions, same models, same permissions as every other surface.",
+    card: "summary_large_image",
+  },
+}
 
 export default function Web() {
   return (

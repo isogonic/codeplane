@@ -63,7 +63,7 @@ export default function Home() {
             </div>
             <div><span className="text-[var(--code-muted)]">$</span> curl -fsSL https://codeplane.cc/install | bash</div>
             <div className="text-[var(--code-muted)]"># Detecting platform: darwin-arm64</div>
-            <div className="text-[var(--code-muted)]"># Downloading codeplane v28.2.4 (94 MB)</div>
+            <div className="text-[var(--code-muted)]"># Downloading codeplane v28.3.1 (94 MB)</div>
             <div className="text-[var(--code-muted)]"># Installing to ~/.codeplane/bin</div>
             <div className="text-[var(--code-muted)]"># Symlinking → /usr/local/bin/codeplane</div>
             <div>&nbsp;</div>
@@ -101,7 +101,7 @@ export default function Home() {
               Open any browser at the server URL. Nothing to install.
             </SurfaceCard>
             <SurfaceCard href="/docs/mobile/" icon={SmartPhone01Icon} title="Mobile">
-              iOS + Android shell that wraps the web UI. Live activities supported.
+              Native iOS shell (TestFlight today) wrapping the web UI, with Live Activities. Android in development.
             </SurfaceCard>
           </div>
         </div>

@@ -2,7 +2,22 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { InstallTabs } from "@/components/install-tabs"
 
-export const metadata = { title: "Install Codeplane" }
+export const metadata = {
+  title: "Install Codeplane",
+  description: "Get Codeplane on macOS, Linux, Windows, iOS, or via npm/Bun. One-line installer, .dmg/.AppImage/.exe downloads, TestFlight beta.",
+  alternates: { canonical: "/docs/install/" },
+  openGraph: {
+    title: "Install Codeplane · Codeplane",
+    description: "Get Codeplane on macOS, Linux, Windows, iOS, or via npm/Bun. One-line installer, .dmg/.AppImage/.exe downloads, TestFlight beta.",
+    url: "/docs/install/",
+    type: "article",
+  },
+  twitter: {
+    title: "Install Codeplane · Codeplane",
+    description: "Get Codeplane on macOS, Linux, Windows, iOS, or via npm/Bun. One-line installer, .dmg/.AppImage/.exe downloads, TestFlight beta.",
+    card: "summary_large_image",
+  },
+}
 
 export default function InstallPage() {
   return (

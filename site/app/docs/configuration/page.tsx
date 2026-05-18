@@ -3,7 +3,22 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
 
-export const metadata = { title: "Configuration" }
+export const metadata = {
+  title: "Configuration",
+  description: "The codeplane.json reference — every provider, model, MCP server, permission rule, and agent setting, with sensible defaults.",
+  alternates: { canonical: "/docs/configuration/" },
+  openGraph: {
+    title: "Configuration · Codeplane",
+    description: "The codeplane.json reference — every provider, model, MCP server, permission rule, and agent setting, with sensible defaults.",
+    url: "/docs/configuration/",
+    type: "article",
+  },
+  twitter: {
+    title: "Configuration · Codeplane",
+    description: "The codeplane.json reference — every provider, model, MCP server, permission rule, and agent setting, with sensible defaults.",
+    card: "summary_large_image",
+  },
+}
 
 export default function Configuration() {
   return (

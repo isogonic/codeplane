@@ -3,7 +3,22 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
 
-export const metadata = { title: "Mobile" }
+export const metadata = {
+  title: "Mobile",
+  description: "Native iOS shell for Codeplane (TestFlight today). Wraps the web UI, supports Live Activities, follows sessions running on your self-hosted server.",
+  alternates: { canonical: "/docs/mobile/" },
+  openGraph: {
+    title: "Mobile · Codeplane",
+    description: "Native iOS shell for Codeplane (TestFlight today). Wraps the web UI, supports Live Activities, follows sessions running on your self-hosted server.",
+    url: "/docs/mobile/",
+    type: "article",
+  },
+  twitter: {
+    title: "Mobile · Codeplane",
+    description: "Native iOS shell for Codeplane (TestFlight today). Wraps the web UI, supports Live Activities, follows sessions running on your self-hosted server.",
+    card: "summary_large_image",
+  },
+}
 
 export default function Mobile() {
   return (
@@ -11,11 +26,14 @@ export default function Mobile() {
       <SiteHeader active="docs" />
       <DocsLayout active="/docs/mobile/">
         <h1>Mobile</h1>
-        <p className="lede">iOS and Android shells that wrap the Codeplane web UI. The agent runs on a Codeplane server you already host — the phone is a thin client.</p>
+        <p className="lede">A native mobile shell that wraps the Codeplane web UI. The agent runs on a Codeplane server you already host — the phone is a thin client.</p>
 
         <h2>Install</h2>
         <p><strong>iOS</strong> — <a href="https://testflight.apple.com/join/codeplane">TestFlight beta</a>, or sideload the <code>.ipa</code> from <a href="https://github.com/devinoldenburg/codeplane/releases">releases</a>.</p>
-        <p><strong>Android</strong> — <a href="https://play.google.com/store/apps/details?id=ai.codeplane">Google Play</a>, or <code>adb install</code> the APK.</p>
+        <p>
+          <strong>Android</strong> — not yet available. The Play Store listing will follow once the
+          iOS TestFlight track stabilises. Track progress in the <Link href="/docs/changelog/">changelog</Link>.
+        </p>
 
         <h2>First launch</h2>
         <ol>
