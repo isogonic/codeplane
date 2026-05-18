@@ -45,6 +45,8 @@ describe("cli instance helpers", () => {
   test("rejects header flags with control characters", () => {
     expect(() => parseInstanceHeaders(["Authorization: Bearer ok\nX-Injected: yes"])).toThrow(/control characters/)
     expect(() => parseInstanceHeaders(["Bad\0Name: value"])).toThrow(/control characters/)
+    expect(() => parseInstanceHeaders(["X-Test: bad\u007fvalue"])).toThrow(/control characters/)
+    expect(() => parseInstanceHeaders(["X-Test: bad\tvalue"])).toThrow(/control characters/)
   })
 
   test("rejects header flags with empty values", () => {
