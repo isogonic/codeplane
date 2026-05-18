@@ -258,6 +258,33 @@ describe("cli instance helpers", () => {
     expect(table).toContain("skip")
   })
 
+  test("formats instance table with a saved instance count footer", () => {
+    const table = formatInstanceTable([
+      {
+        id: "remote-1",
+        default: false,
+        type: "remote",
+        label: undefined,
+        url: "https://example.com",
+        version: undefined,
+        headers: 0,
+        ignoreCertificateErrors: false,
+      },
+      {
+        id: "local-1",
+        default: true,
+        type: "local",
+        label: "Local",
+        url: "http://127.0.0.1",
+        version: "28.2.1",
+        headers: 0,
+        ignoreCertificateErrors: false,
+      },
+    ])
+
+    expect(table).toEndWith("2 saved instances.")
+  })
+
   test("filters instance summaries by type", () => {
     const summaries = [
       { id: "local-1", type: "local" as const },

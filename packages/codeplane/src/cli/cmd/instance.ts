@@ -390,6 +390,8 @@ export function formatInstanceTable(instances: ReturnType<typeof formatInstanceS
         item.url,
       ].join("  "),
     ),
+    "─".repeat(header.length),
+    `${instances.length} saved ${instances.length === 1 ? "instance" : "instances"}.`,
   ].join("\n")
 }
 
