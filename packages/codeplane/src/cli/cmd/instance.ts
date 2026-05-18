@@ -190,6 +190,7 @@ export function formatLocalVersions(
   latestOnly?: boolean,
 ) {
   if (latestOnly) {
+    if (tag || major !== undefined) throw new Error("Use --latest-only without --tag or --major.")
     if (!input.latest) throw new Error("Local runtime latest version was not found.")
     return input.latest
   }
