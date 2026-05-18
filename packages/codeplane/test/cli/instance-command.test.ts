@@ -917,6 +917,7 @@ describe("cli instance helpers", () => {
     expect(normalizeLocalVersionMajor(28)).toBe(28)
     expect(normalizeLocalVersionMajor()).toBeUndefined()
     expect(() => normalizeLocalVersionMajor(-1)).toThrow(/Invalid major version/)
+    expect(() => normalizeLocalVersionMajor(-0)).toThrow(/Invalid major version/)
     expect(() => normalizeLocalVersionMajor(28.5)).toThrow(/Invalid major version/)
     expect(() => normalizeLocalVersionMajor(Number.MAX_SAFE_INTEGER + 1)).toThrow(/Invalid major version/)
   })
