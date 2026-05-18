@@ -18,6 +18,12 @@ describe("cli instance helpers", () => {
     })
   })
 
+  test("parses header values containing additional colons", () => {
+    expect(parseInstanceHeaders(["Authorization: Bearer issuer:token:value"])).toEqual({
+      Authorization: "Bearer issuer:token:value",
+    })
+  })
+
   test("rejects header flags with control characters", () => {
     expect(() => parseInstanceHeaders(["Authorization: Bearer ok\nX-Injected: yes"])).toThrow(/control characters/)
     expect(() => parseInstanceHeaders(["Bad\0Name: value"])).toThrow(/control characters/)
