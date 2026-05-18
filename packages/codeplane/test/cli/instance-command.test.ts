@@ -1058,10 +1058,10 @@ describe("cli instance helpers", () => {
           versions: ["28.2.1"],
         }),
       ),
-    ).toMatchObject({
+      ).toMatchObject({
       distTags: {},
       distTagCount: 0,
-      invalidDistTagCount: 0,
+      invalidDistTagCount: 1,
     })
   })
 

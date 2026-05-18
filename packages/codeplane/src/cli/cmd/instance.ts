@@ -310,6 +310,7 @@ export function formatLocalVersions(
   const selectedRange = range?.trim()
   if (selectedRange && !semver.validRange(selectedRange)) throw new Error(`Invalid local runtime semver range "${range}".`)
   const rawDistTags = input.distTags && typeof input.distTags === "object" && !Array.isArray(input.distTags) ? input.distTags : {}
+  const invalidDistTagInputCount = input.distTags === undefined || (typeof input.distTags === "object" && !Array.isArray(input.distTags)) ? 0 : 1
   const normalizedDistTagEntries = Object.entries(rawDistTags).map(([tagName, version]) => [
     tagName,
     typeof version === "string" ? normalizeLocalRuntimeVersion(version) : version,
@@ -325,7 +326,7 @@ export function formatLocalVersions(
       )
       .sort(([left], [right]) => left.localeCompare(right)),
   )
-  const invalidDistTagCount = Object.keys(rawDistTags).length - Object.keys(distTags).length
+  const invalidDistTagCount = Object.keys(rawDistTags).length - Object.keys(distTags).length + invalidDistTagInputCount
   const normalizedDistTagCount = Object.entries(rawDistTags).filter(
     ([tagName, version]) => typeof version === "string" && distTags[tagName] !== undefined && distTags[tagName] !== version,
   ).length
