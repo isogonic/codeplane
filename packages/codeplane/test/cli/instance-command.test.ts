@@ -538,6 +538,7 @@ describe("cli instance helpers", () => {
       newestVersion: "28.2.1",
       newestStableVersion: "28.2.1",
       oldestVersion: "28.1.0",
+      effectiveLimit: 2,
       limit: 2,
       shown: 2,
       stableShown: 2,
@@ -673,6 +674,7 @@ describe("cli instance helpers", () => {
       matchingDistTags: { latest: "28.2.1" },
       selectedDistTags: ["latest"],
       selectedDistTagCount: 1,
+      effectiveLimit: 10,
       limit: 10,
       shown: 2,
       stableShown: 2,
@@ -710,17 +712,18 @@ describe("cli instance helpers", () => {
   })
 
   test("caps local runtime version output", () => {
-    expect(
-      JSON.parse(
-        formatLocalVersions(
-          {
-            distTags: {},
-            versions: Array.from({ length: 150 }, (_, index) => `28.2.${index}`),
-          },
-          150,
-        ),
-    ).versions,
-  ).toHaveLength(100)
+    const output = JSON.parse(
+      formatLocalVersions(
+        {
+          distTags: {},
+          versions: Array.from({ length: 150 }, (_, index) => `28.2.${index}`),
+        },
+        150,
+      ),
+    )
+
+    expect(output.versions).toHaveLength(100)
+    expect(output.effectiveLimit).toBe(100)
   })
 
   test("formats malformed local runtime versions as empty", () => {
@@ -741,6 +744,7 @@ describe("cli instance helpers", () => {
       selectedVersionCount: 0,
       stableVersionCount: 0,
       total: 0,
+      effectiveLimit: 10,
       limit: 10,
       shown: 0,
       stableShown: 0,
