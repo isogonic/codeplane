@@ -270,6 +270,23 @@ describe("cli instance helpers", () => {
     ).toBe("codeplane")
   })
 
+  test("rejects conflicting local target script flags", () => {
+    expect(() =>
+      formatLocalTarget(
+        {
+          os: "darwin",
+          arch: "arm64",
+          packageName: "codeplane-darwin-arm64",
+          archiveName: "codeplane-darwin-arm64.tgz",
+          archiveExt: ".tgz",
+          binaryName: "codeplane",
+        },
+        true,
+        true,
+      ),
+    ).toThrow(/not both/)
+  })
+
   test("formats local status as a path for scripts", () => {
     expect(
       formatLocalStatus(

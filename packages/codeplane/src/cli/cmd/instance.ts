@@ -168,6 +168,7 @@ function formatJson(input: unknown) {
 }
 
 export function formatLocalTarget(target: LocalTarget, nameOnly?: boolean, binaryName?: boolean) {
+  if (nameOnly && binaryName) throw new Error("Use either --name-only or --binary-name, not both.")
   if (binaryName) return target.binaryName
   if (nameOnly) return target.packageName ?? target.archiveName.replace(/\.(?:tgz|tar\.gz|zip)$/, "")
   return formatJson(target)
