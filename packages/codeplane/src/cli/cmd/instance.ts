@@ -377,6 +377,7 @@ export function formatLocalVersions(
     stableOmitted: Math.max(stableVersionCount - stableShown, 0),
     prereleaseOmitted: Math.max(prereleaseVersionCount - prereleaseShown, 0),
     omitted: Math.max(versions.length - count, 0),
+    hasMore: versions.length > count,
     versions: shownVersions,
   })
 }

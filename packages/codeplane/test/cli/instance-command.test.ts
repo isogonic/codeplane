@@ -631,6 +631,7 @@ describe("cli instance helpers", () => {
       stableOmitted: 1,
       prereleaseOmitted: 0,
       omitted: 1,
+      hasMore: true,
       versions: ["28.2.1", "28.2.0"],
     })
   })
@@ -794,6 +795,7 @@ describe("cli instance helpers", () => {
       stableOmitted: 0,
       prereleaseOmitted: 0,
       omitted: 0,
+      hasMore: false,
       versions: ["28.2.1", "28.1.0"],
     })
   })
@@ -836,6 +838,7 @@ describe("cli instance helpers", () => {
 
     expect(output.versions).toHaveLength(100)
     expect(output.effectiveLimit).toBe(100)
+    expect(output.hasMore).toBe(true)
   })
 
   test("formats malformed local runtime versions as empty", () => {
@@ -865,6 +868,7 @@ describe("cli instance helpers", () => {
       stableOmitted: 0,
       prereleaseOmitted: 0,
       omitted: 0,
+      hasMore: false,
       versions: [],
     })
   })
