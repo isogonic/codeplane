@@ -68,6 +68,7 @@ type InstanceLocalVersionsArgs = {
 }
 
 const LOCAL_RUNTIME_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
+const LOCAL_RUNTIME_TAG_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
 
 // Combine --header lines with the dedicated --username / --password fields.
 // Username/password compose into an Authorization: Basic … header that
@@ -211,6 +212,7 @@ export function formatLocalVersions(
     return input.latest
   }
   if (tag) {
+    if (!LOCAL_RUNTIME_TAG_PATTERN.test(tag)) throw new Error(`Invalid local runtime dist-tag "${tag}".`)
     const version = input.distTags[tag]
     if (!version) throw new Error(`Local runtime dist-tag "${tag}" was not found.`)
     return version

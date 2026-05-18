@@ -503,6 +503,10 @@ describe("cli instance helpers", () => {
     ).toThrow(/dist-tag "next" was not found/)
   })
 
+  test("rejects unsafe local runtime dist tag names", () => {
+    expect(() => formatLocalVersions({ distTags: {}, versions: [] }, 10, "../latest")).toThrow(/Invalid local runtime dist-tag/)
+  })
+
   test("caps local runtime version output", () => {
     expect(
       JSON.parse(
