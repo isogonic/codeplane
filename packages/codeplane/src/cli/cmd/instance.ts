@@ -341,19 +341,22 @@ async function localStatus(version?: string) {
   }
 }
 
-function formatInstanceTable(instances: ReturnType<typeof formatInstanceSummary>[]) {
+export function formatInstanceTable(instances: ReturnType<typeof formatInstanceSummary>[]) {
   if (instances.length === 0) return "No saved instances."
   const widths = {
     id: Math.max(2, ...instances.map((item) => item.id.length)),
     type: Math.max(4, ...instances.map((item) => item.type.length)),
     label: Math.max(5, ...instances.map((item) => (item.label || "-").length)),
     version: Math.max(7, ...instances.map((item) => (item.version || "-").length)),
+    headers: Math.max(7, ...instances.map((item) => String(item.headers).length)),
   }
   const header = [
     "ID".padEnd(widths.id),
     "Type".padEnd(widths.type),
     "Label".padEnd(widths.label),
     "Version".padEnd(widths.version),
+    "Headers".padEnd(widths.headers),
+    "TLS",
     "URL",
   ].join("  ")
   return [
@@ -365,6 +368,8 @@ function formatInstanceTable(instances: ReturnType<typeof formatInstanceSummary>
         item.type.padEnd(widths.type),
         (item.label || "-").padEnd(widths.label),
         (item.version || "-").padEnd(widths.version),
+        String(item.headers).padEnd(widths.headers),
+        item.ignoreCertificateErrors ? "skip" : "verify",
         item.url,
       ].join("  "),
     ),

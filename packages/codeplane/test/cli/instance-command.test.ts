@@ -6,6 +6,7 @@ import {
   filterInstanceSummaries,
   formatInstanceIDs,
   formatInstanceLabels,
+  formatInstanceTable,
   formatInstanceURLs,
   formatLocalStatus,
   formatInstanceSummary,
@@ -234,6 +235,26 @@ describe("cli instance helpers", () => {
         },
       }).headers,
     ).toBe(1)
+  })
+
+  test("formats instance table with remote diagnostics", () => {
+    const table = formatInstanceTable([
+      {
+        id: "remote-1",
+        default: false,
+        type: "remote",
+        label: "Remote",
+        url: "https://example.com",
+        version: undefined,
+        headers: 2,
+        ignoreCertificateErrors: true,
+      },
+    ])
+
+    expect(table).toContain("Headers")
+    expect(table).toContain("TLS")
+    expect(table).toContain("2")
+    expect(table).toContain("skip")
   })
 
   test("filters instance summaries by type", () => {
