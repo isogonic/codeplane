@@ -244,6 +244,7 @@ export function formatLocalVersions(
   const prereleaseVersionCount = versions.filter((version) => semver.prerelease(version)?.length).length
   const stableVersionCount = versions.length - prereleaseVersionCount
   const newestStableVersion = versions.find((version) => !semver.prerelease(version)?.length)
+  const newestPrereleaseVersion = versions.find((version) => semver.prerelease(version)?.length)
   const count = Math.min(Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10, 100)
   const shownVersions = versions.slice(0, count)
   const matchingDistTags = Object.fromEntries(
@@ -260,6 +261,7 @@ export function formatLocalVersions(
     total: versions.length,
     ...(versions[0] ? { newestVersion: versions[0] } : {}),
     ...(newestStableVersion ? { newestStableVersion } : {}),
+    ...(newestPrereleaseVersion ? { newestPrereleaseVersion } : {}),
     ...(versions.at(-1) ? { oldestVersion: versions.at(-1) } : {}),
     ...(selectedMajor === undefined ? {} : { major: selectedMajor }),
     ...(stableOnly ? { stableOnly: true } : {}),

@@ -730,6 +730,17 @@ describe("cli instance helpers", () => {
     ).toBe("28.3.0-beta.1")
   })
 
+  test("reports the newest local runtime prerelease version", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions({
+          distTags: {},
+          versions: ["28.1.0", "28.3.0-beta.1", "28.2.1"],
+        }),
+      ).newestPrereleaseVersion,
+    ).toBe("28.3.0-beta.1")
+  })
+
   test("reports the oldest local runtime version", () => {
     expect(
       JSON.parse(
