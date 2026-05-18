@@ -4,25 +4,26 @@ import { DocsLayout } from "@/components/docs-sidebar"
 import { allReleases, type Release } from "@/lib/releases"
 
 /*
- * Changelog page — sourced straight from GitHub releases at build time.
- * Every Codeplane release (CLI, desktop, mobile) lives there with the
- * workflow-generated release notes; this page parses each entry's
- * markdown body into proper line-by-line blocks so headings, bullets,
- * and prose don't collapse into a wall of unspaced text.
+ * Changelog page — sourced straight from GitHub releases at build time
+ * and grouped by base version (e.g. v28.4.2). Within each group the
+ * CLI release body is shown by default; the platform-specific
+ * `-desktop` and `-mobile` sub-records nest underneath as collapsible
+ * <details> elements so the page reads as one entry per version
+ * without losing the per-platform notes.
  */
 export const metadata = {
   title: "Changelog",
-  description: "Notable changes per Codeplane release — pulled directly from GitHub Releases at build time.",
+  description: "Notable changes per Codeplane release — pulled directly from GitHub Releases at build time, grouped by base version.",
   alternates: { canonical: "/docs/changelog/" },
   openGraph: {
     title: "Changelog · Codeplane",
-    description: "Notable changes per Codeplane release — pulled directly from GitHub Releases at build time.",
+    description: "Notable changes per Codeplane release — pulled directly from GitHub Releases at build time, grouped by base version.",
     url: "/docs/changelog/",
     type: "article",
   },
   twitter: {
     title: "Changelog · Codeplane",
-    description: "Notable changes per Codeplane release — pulled directly from GitHub Releases at build time.",
+    description: "Notable changes per Codeplane release — pulled directly from GitHub Releases at build time, grouped by base version.",
     card: "summary_large_image",
   },
 }
@@ -31,6 +32,10 @@ function shapeOf(tag: string): "cli" | "desktop" | "mobile" {
   if (tag.endsWith("-desktop")) return "desktop"
   if (tag.endsWith("-mobile")) return "mobile"
   return "cli"
+}
+
+function baseTagOf(tag: string): string {
+  return tag.replace(/-desktop$|-mobile$/, "")
 }
 
 function shortenBody(body: string | null): string {
@@ -49,34 +54,23 @@ function formatDate(iso: string | null): string {
 }
 
 /*
- * Light-touch inline markdown renderer. Handles only the constructs we
- * actually see in GitHub release notes:
- *
- *   - **bold** / __bold__       → <strong>
- *   - `code`                    → <code>
- *   - [text](url) / bare URL    → <a>
- *   - @user / #123              → linked to github
- *
- * Headings and bullets are handled at the line level (renderBody below),
- * since they only ever appear at the start of a line.
+ * Light-touch inline markdown renderer — handles only the constructs
+ * GitHub release notes actually use: **bold**, `code`, [text](url),
+ * bare URLs, @user, #123. Headings and bullets are line-level and
+ * handled in renderBody below.
  */
 function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
-  // Tokenise — order matters. Codespans first (they swallow other syntax),
-  // then bold, then markdown links, then bare URLs / #refs / @mentions.
   const out: React.ReactNode[] = []
   let i = 0
   let buf = ""
   let n = 0
-
   const flush = () => {
     if (buf) {
       out.push(buf)
       buf = ""
     }
   }
-
   while (i < text.length) {
-    // `code`
     if (text[i] === "`") {
       const end = text.indexOf("`", i + 1)
       if (end !== -1) {
@@ -90,8 +84,7 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
         continue
       }
     }
-    // **bold** or __bold__
-    if ((text.startsWith("**", i) || text.startsWith("__", i))) {
+    if (text.startsWith("**", i) || text.startsWith("__", i)) {
       const tok = text.slice(i, i + 2)
       const end = text.indexOf(tok, i + 2)
       if (end !== -1) {
@@ -105,18 +98,15 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
         continue
       }
     }
-    // [text](url)
     if (text[i] === "[") {
       const closeBracket = text.indexOf("]", i + 1)
       if (closeBracket !== -1 && text[closeBracket + 1] === "(") {
         const closeParen = text.indexOf(")", closeBracket + 2)
         if (closeParen !== -1) {
           flush()
-          const linkText = text.slice(i + 1, closeBracket)
-          const linkHref = text.slice(closeBracket + 2, closeParen)
           out.push(
-            <a key={`${keyPrefix}-l${n++}`} href={linkHref} className="underline underline-offset-4 decoration-line hover:decoration-ink hover:text-ink">
-              {linkText}
+            <a key={`${keyPrefix}-l${n++}`} href={text.slice(closeBracket + 2, closeParen)} className="underline underline-offset-4 decoration-line hover:decoration-ink hover:text-ink">
+              {text.slice(i + 1, closeBracket)}
             </a>,
           )
           i = closeParen + 1
@@ -124,45 +114,42 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
         }
       }
     }
-    // bare URL
     if (text.startsWith("http://", i) || text.startsWith("https://", i)) {
-      const match = text.slice(i).match(/^https?:\/\/[^\s)<>"']+/)
-      if (match) {
+      const m = text.slice(i).match(/^https?:\/\/[^\s)<>"']+/)
+      if (m) {
         flush()
         out.push(
-          <a key={`${keyPrefix}-u${n++}`} href={match[0]} className="underline underline-offset-4 decoration-line hover:decoration-ink hover:text-ink break-all">
-            {match[0]}
+          <a key={`${keyPrefix}-u${n++}`} href={m[0]} className="underline underline-offset-4 decoration-line hover:decoration-ink hover:text-ink break-all">
+            {m[0]}
           </a>,
         )
-        i += match[0].length
+        i += m[0].length
         continue
       }
     }
-    // @user (only when preceded by start-of-string or whitespace)
     if (text[i] === "@" && (i === 0 || /\s/.test(text[i - 1]))) {
-      const match = text.slice(i).match(/^@([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}[A-Za-z0-9])?)/)
-      if (match) {
+      const m = text.slice(i).match(/^@([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}[A-Za-z0-9])?)/)
+      if (m) {
         flush()
         out.push(
-          <a key={`${keyPrefix}-m${n++}`} href={`https://github.com/${match[1]}`} className="underline underline-offset-4 decoration-line hover:decoration-ink hover:text-ink">
-            {match[0]}
+          <a key={`${keyPrefix}-m${n++}`} href={`https://github.com/${m[1]}`} className="underline underline-offset-4 decoration-line hover:decoration-ink hover:text-ink">
+            {m[0]}
           </a>,
         )
-        i += match[0].length
+        i += m[0].length
         continue
       }
     }
-    // #123 (PR / issue ref)
     if (text[i] === "#" && (i === 0 || /\s/.test(text[i - 1]))) {
-      const match = text.slice(i).match(/^#(\d+)/)
-      if (match) {
+      const m = text.slice(i).match(/^#(\d+)/)
+      if (m) {
         flush()
         out.push(
-          <a key={`${keyPrefix}-i${n++}`} href={`https://github.com/devinoldenburg/codeplane/pull/${match[1]}`} className="underline underline-offset-4 decoration-line hover:decoration-ink hover:text-ink">
-            {match[0]}
+          <a key={`${keyPrefix}-i${n++}`} href={`https://github.com/devinoldenburg/codeplane/pull/${m[1]}`} className="underline underline-offset-4 decoration-line hover:decoration-ink hover:text-ink">
+            {m[0]}
           </a>,
         )
-        i += match[0].length
+        i += m[0].length
         continue
       }
     }
@@ -234,19 +221,56 @@ function renderBody(body: string, keyPrefix: string): React.ReactNode {
             </div>
           )
         }
-        return (
-          <p key={k}>
-            {renderInline(b.text, k)}
-          </p>
-        )
+        return <p key={k}>{renderInline(b.text, k)}</p>
       })}
     </div>
   )
 }
 
+type Group = {
+  base: string
+  cli?: Release
+  desktop?: Release
+  mobile?: Release
+  newestDate: string
+}
+
+function parseSemver(base: string): [number, number, number] {
+  const m = base.match(/^v?(\d+)\.(\d+)\.(\d+)/)
+  if (!m) return [0, 0, 0]
+  return [Number(m[1]), Number(m[2]), Number(m[3])]
+}
+
+function groupReleases(releases: Release[]): Group[] {
+  const map = new Map<string, Group>()
+  for (const r of releases) {
+    const base = baseTagOf(r.tag_name)
+    const shape = shapeOf(r.tag_name)
+    let g = map.get(base)
+    if (!g) {
+      g = { base, newestDate: r.published_at ?? "" }
+      map.set(base, g)
+    }
+    if (shape === "cli") g.cli = r
+    else if (shape === "desktop") g.desktop = r
+    else if (shape === "mobile") g.mobile = r
+    if ((r.published_at ?? "") > g.newestDate) g.newestDate = r.published_at ?? ""
+  }
+  // Sort by semver descending — published_at can lie when a workflow
+  // is re-triggered for an older version, putting v28.4.0 above v28.4.1.
+  return Array.from(map.values()).sort((a, b) => {
+    const va = parseSemver(a.base)
+    const vb = parseSemver(b.base)
+    for (let i = 0; i < 3; i++) {
+      if (vb[i] !== va[i]) return vb[i] - va[i]
+    }
+    return b.newestDate.localeCompare(a.newestDate)
+  })
+}
+
 export default async function ChangelogPage() {
   const releases = await allReleases()
-  const visible = releases.filter((r) => !r.prerelease).slice(0, 30)
+  const groups = groupReleases(releases.filter((r) => !r.prerelease)).slice(0, 25)
 
   return (
     <>
@@ -258,11 +282,11 @@ export default async function ChangelogPage() {
           <a href="https://github.com/devinoldenburg/codeplane/releases">
             github.com/devinoldenburg/codeplane/releases
           </a>{" "}
-          at site build time. Each release tag is linked to its GitHub page where the attached
-          binaries and full commit history live.
+          at build time. Each row is one Codeplane version; the per-platform notes (Desktop /
+          Mobile) are collapsed under their parent and expand inline when you click them.
         </p>
 
-        {visible.length === 0 ? (
+        {groups.length === 0 ? (
           <p className="text-ink-muted">
             (Couldn&apos;t reach the GitHub API at build time. Browse{" "}
             <a href="https://github.com/devinoldenburg/codeplane/releases">
@@ -272,19 +296,19 @@ export default async function ChangelogPage() {
           </p>
         ) : (
           <div className="!my-8 flex flex-col">
-            {visible.map((r) => (
-              <ReleaseEntry key={r.tag_name} release={r} />
+            {groups.map((g) => (
+              <ReleaseGroup key={g.base} group={g} />
             ))}
           </div>
         )}
 
         <h2>Older history</h2>
         <p>
-          Every release before this changelog existed lives on the{" "}
+          Every release before this page existed lives on{" "}
           <a href="https://github.com/devinoldenburg/codeplane/releases?page=2">
-            second page of /releases
-          </a>{" "}
-          on GitHub. The Codeplane project began at v28.0.0; nothing older exists in this fork.
+            github.com/devinoldenburg/codeplane/releases?page=2
+          </a>
+          . The Codeplane project began at v28.0.0; nothing older exists in this fork.
         </p>
       </DocsLayout>
       <SiteFooter />
@@ -292,27 +316,74 @@ export default async function ChangelogPage() {
   )
 }
 
-function ReleaseEntry({ release }: { release: Release }) {
-  const shape = shapeOf(release.tag_name)
-  const body = shortenBody(release.body)
-  const label = shape === "cli" ? "CLI" : shape === "desktop" ? "Desktop" : "Mobile"
+function ReleaseGroup({ group }: { group: Group }) {
+  const headerRelease = group.cli ?? group.desktop ?? group.mobile
+  if (!headerRelease) return null
+
+  // Pick a primary body to display: prefer the CLI release; fall back to
+  // whichever platform release has the longest body (usually the most
+  // informative, since the desktop workflow regenerates notes from the
+  // same source commits).
+  const primary =
+    group.cli ?? (
+      (group.desktop?.body?.length ?? 0) >= (group.mobile?.body?.length ?? 0)
+        ? group.desktop
+        : group.mobile
+    )
+  const primaryBody = primary ? shortenBody(primary.body) : ""
+  const primaryLabel = primary === group.cli ? "CLI" : primary === group.desktop ? "Desktop" : "Mobile"
+
   return (
     <div className="border-t border-line py-7 first:border-t-0">
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
         <a
-          href={release.html_url}
-          className="font-bold !text-ink !decoration-line hover:!decoration-ink"
+          href={headerRelease.html_url}
+          className="text-[15px] font-bold !text-ink !decoration-line hover:!decoration-ink"
         >
-          {release.tag_name}
+          {group.base}
         </a>
-        <span className="border border-line bg-surface-2 px-2 py-[1px] text-[10px] font-bold uppercase tracking-wider text-ink-muted">
-          {label}
-        </span>
-        <span className="text-[12px] text-ink-muted">{formatDate(release.published_at)}</span>
+        <span className="text-[12px] text-ink-muted">{formatDate(group.newestDate)}</span>
+        {primary ? (
+          <span className="border border-line bg-surface-2 px-2 py-[1px] text-[10px] font-bold uppercase tracking-wider text-ink-muted">
+            {primaryLabel}
+          </span>
+        ) : null}
       </div>
-      {body ? renderBody(body, release.tag_name) : (
+
+      {primaryBody ? renderBody(primaryBody, group.base) : (
         <p className="mt-3 text-[13px] text-ink-muted">No release notes attached.</p>
       )}
+
+      <div className="mt-4 flex flex-col gap-2">
+        {group.cli && primary !== group.cli ? (
+          <PlatformDetails release={group.cli} label="CLI" />
+        ) : null}
+        {group.desktop && primary !== group.desktop ? (
+          <PlatformDetails release={group.desktop} label="Desktop" />
+        ) : null}
+        {group.mobile && primary !== group.mobile ? (
+          <PlatformDetails release={group.mobile} label="Mobile" />
+        ) : null}
+      </div>
     </div>
+  )
+}
+
+function PlatformDetails({ release, label }: { release: Release; label: string }) {
+  const body = shortenBody(release.body)
+  return (
+    <details className="group border border-line bg-surface">
+      <summary className="cursor-pointer list-none px-4 py-2 text-[13px] text-ink-muted hover:text-ink select-none">
+        <span className="mr-2 inline-block w-3 text-ink-muted group-open:hidden">+</span>
+        <span className="mr-2 inline-block w-3 text-ink-muted hidden group-open:inline-block">−</span>
+        <span className="font-bold uppercase tracking-wider text-[11px] text-ink">{label}</span>
+        <span className="ml-2 text-ink-muted">{release.tag_name}</span>
+      </summary>
+      <div className="px-4 pb-4 -mt-1">
+        {body ? renderBody(body, release.tag_name) : (
+          <p className="mt-2 text-[13px] text-ink-muted">No release notes attached.</p>
+        )}
+      </div>
+    </details>
   )
 }
