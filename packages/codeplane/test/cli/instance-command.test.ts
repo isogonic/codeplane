@@ -152,6 +152,26 @@ describe("cli instance helpers", () => {
     })
   })
 
+  test("preserves saved local instance metadata when updating versions", () => {
+    expect(
+      applyLocalInstanceVersion(
+        {
+          instances: [
+            {
+              id: "local-1",
+              url: "local://one",
+              local: {
+                binaryVersion: "28.1.0",
+                pid: 1234,
+              } as never,
+            },
+          ],
+        },
+        "28.2.0",
+      ).instances[0].local as Record<string, unknown>,
+    ).toEqual({ binaryVersion: "28.2.0", pid: 1234 })
+  })
+
   test("leaves state unchanged when no local instances exist", () => {
     expect(
       applyLocalInstanceVersion(

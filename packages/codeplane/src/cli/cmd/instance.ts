@@ -123,7 +123,7 @@ export function parseInstanceHeaders(input: string[] = []) {
 export function applyLocalInstanceVersion(state: InstanceState, version: string): InstanceState {
   return {
     ...state,
-    instances: state.instances.map((item) => (item.local ? { ...item, local: { binaryVersion: version } } : item)),
+    instances: state.instances.map((item) => (item.local ? { ...item, local: { ...item.local, binaryVersion: version } } : item)),
   }
 }
 
