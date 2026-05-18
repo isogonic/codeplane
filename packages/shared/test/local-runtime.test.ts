@@ -404,6 +404,49 @@ describe("install codeplane local package", () => {
     }
   })
 
+  test("reports every extracted binary candidate when the payload is missing the binary", async () => {
+    const target = resolveCodeplaneLocalTarget()
+    const fixture = await fs.mkdtemp(path.join(os.tmpdir(), "codeplane-fixture-"))
+    try {
+      const packageDir = path.join(fixture, "package")
+      await fs.mkdir(packageDir, { recursive: true })
+      await fs.writeFile(path.join(packageDir, "package.json"), JSON.stringify({ name: target.packageName, version: "27.3.1" }))
+      const tgz = path.join(fixture, "fixture.tgz")
+      const tar = spawnSync("tar", ["-czf", tgz, "-C", fixture, "package"])
+      if (tar.status !== 0) throw new Error(`tar failed: ${tar.stderr?.toString()}`)
+      const tarballBytes = await fs.readFile(tgz)
+
+      let callIndex = 0
+      globalThis.fetch = (async () => {
+        callIndex += 1
+        if (callIndex === 1) {
+          return new Response(
+            JSON.stringify({
+              version: "27.3.1",
+              dist: {
+                tarball: `https://registry.example.com/${target.packageName}/-/${target.packageName}-27.3.1.tgz`,
+              },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          )
+        }
+        return new Response(tarballBytes, {
+          status: 200,
+          headers: { "content-length": String(tarballBytes.length) },
+        })
+      }) as unknown as typeof globalThis.fetch
+
+      await expect(
+        installCodeplaneLocalPackage({
+          version: "27.3.1",
+          directory: path.join(home, "local_server", "binaries", "27.3.1"),
+        }),
+      ).rejects.toThrow(new RegExp(`Tried:\\n- .+bin/${target.binaryName}\\n- .+${target.binaryName}`))
+    } finally {
+      await fs.rm(fixture, { force: true, recursive: true })
+    }
+  })
+
   test("cleans temporary package roots after failed downloads", async () => {
     const target = resolveCodeplaneLocalTarget()
     globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {

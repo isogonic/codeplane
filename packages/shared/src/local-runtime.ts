@@ -599,7 +599,12 @@ export async function installCodeplaneLocalPackage(input: {
     const extractedBinary = await resolveLocalBinaryPath(packageRoot, target.binaryName)
     if (!extractedBinary) {
       throw new Error(
-        `Extracted ${target.packageName}@${version} but binary ${target.binaryName} was not found in the package payload`,
+        `Extracted ${target.packageName}@${version} but binary ${target.binaryName} was not found in the package payload. Tried:\n${localBinaryCandidates(
+          packageRoot,
+          target.binaryName,
+        )
+          .map((candidate) => `- ${candidate}`)
+          .join("\n")}`,
       )
     }
     if (target.os !== "windows") {
