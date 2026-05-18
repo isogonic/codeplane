@@ -943,6 +943,12 @@ describe("cli instance helpers", () => {
     expect(output.hasMore).toBe(true)
   })
 
+  test("rejects invalid local runtime version limits", () => {
+    expect(() => formatLocalVersions({ distTags: {}, versions: [] }, 0)).toThrow(/Invalid local runtime version limit/)
+    expect(() => formatLocalVersions({ distTags: {}, versions: [] }, -1)).toThrow(/Invalid local runtime version limit/)
+    expect(() => formatLocalVersions({ distTags: {}, versions: [] }, 1.5)).toThrow(/Invalid local runtime version limit/)
+  })
+
   test("formats malformed local runtime versions as empty", () => {
     expect(
       JSON.parse(

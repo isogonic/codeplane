@@ -348,7 +348,8 @@ export function formatLocalVersions(
   const stableVersionCount = versions.length - prereleaseVersionCount
   const newestStableVersion = versions.find((version) => !semver.prerelease(version)?.length)
   const newestPrereleaseVersion = versions.find((version) => semver.prerelease(version)?.length)
-  const requestedLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10
+  if (!Number.isSafeInteger(limit) || limit < 1) throw new Error(`Invalid local runtime version limit "${limit}". Use a positive safe integer.`)
+  const requestedLimit = limit
   const count = Math.min(requestedLimit, 100)
   const shownVersions = versions.slice(0, count)
   if (countOnly) return String(versions.length)
