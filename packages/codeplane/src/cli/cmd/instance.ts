@@ -397,7 +397,8 @@ export function formatLocalVersions(
     }
     return latestVersion
   }
-  const latest = typeof input.latest === "string" ? normalizeLocalRuntimeVersion(input.latest) : input.latest
+  const normalizedLatest = typeof input.latest === "string" ? normalizeLocalRuntimeVersion(input.latest) : undefined
+  const latest = normalizedLatest && LOCAL_RUNTIME_VERSION_PATTERN.test(normalizedLatest) && semver.valid(normalizedLatest) ? normalizedLatest : undefined
   if (selectedTag) {
     if (!LOCAL_RUNTIME_TAG_PATTERN.test(selectedTag)) throw new Error(`Invalid local runtime dist-tag "${tag}".`)
     const version = distTags[selectedTag]

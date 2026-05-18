@@ -1318,6 +1318,10 @@ describe("cli instance helpers", () => {
     expect(JSON.parse(formatLocalVersions({ latest: "v28.2.1", distTags: {}, versions: ["28.2.1"] })).latest).toBe("28.2.1")
   })
 
+  test("omits malformed local runtime latest JSON output", () => {
+    expect(JSON.parse(formatLocalVersions({ latest: "broken", distTags: {}, versions: ["28.2.1"] }))).not.toHaveProperty("latest")
+  })
+
   test("falls back to valid dist-tag latest output", () => {
     expect(formatLocalVersions({ latest: "broken", distTags: { latest: "28.2.1" }, versions: [] }, 10, undefined, undefined, true)).toBe("28.2.1")
   })
