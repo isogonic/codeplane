@@ -331,7 +331,7 @@ describe("cli instance helpers", () => {
         formatLocalVersions(
           {
             latest: "28.2.1",
-            distTags: { latest: "28.2.1" },
+            distTags: { latest: "28.2.1", old: "27.9.9" },
             versions: ["29.0.0", "28.2.1", "28.1.0", "27.9.9"],
           },
           10,
@@ -341,10 +341,11 @@ describe("cli instance helpers", () => {
       ),
     ).toEqual({
       latest: "28.2.1",
-      distTags: { latest: "28.2.1" },
-      distTagCount: 1,
+      distTags: { latest: "28.2.1", old: "27.9.9" },
+      distTagCount: 2,
       total: 2,
       major: 28,
+      matchingDistTags: { latest: "28.2.1" },
       shown: 2,
       omitted: 0,
       versions: ["28.2.1", "28.1.0"],

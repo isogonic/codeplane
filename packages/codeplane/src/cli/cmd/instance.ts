@@ -172,16 +172,21 @@ export function formatLocalVersions(
     return version
   }
   const selectedMajor = normalizeLocalVersionMajor(major)
+  const distTags = Object.fromEntries(Object.entries(input.distTags).sort(([left], [right]) => left.localeCompare(right)))
   const versions = (Array.isArray(input.versions) ? input.versions.filter((version) => typeof version === "string") : []).filter(
     (version) => selectedMajor === undefined || version.startsWith(`${selectedMajor}.`),
   ).sort(semver.rcompare)
+  const matchingDistTags = Object.fromEntries(
+    Object.entries(distTags).filter(([, version]) => selectedMajor !== undefined && version.startsWith(`${selectedMajor}.`)),
+  )
   const count = Math.min(Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10, 100)
   return formatJson({
     latest: input.latest,
-    distTags: Object.fromEntries(Object.entries(input.distTags).sort(([left], [right]) => left.localeCompare(right))),
+    distTags,
     distTagCount: Object.keys(input.distTags).length,
     total: versions.length,
     ...(selectedMajor === undefined ? {} : { major: selectedMajor }),
+    ...(selectedMajor === undefined ? {} : { matchingDistTags }),
     shown: Math.min(versions.length, count),
     omitted: Math.max(versions.length - count, 0),
     versions: versions.slice(0, count),
