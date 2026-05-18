@@ -211,6 +211,18 @@ export function formatInstanceJsonLines(instances: unknown[]) {
   return instances.map((item) => JSON.stringify(item)).join("\n")
 }
 
+export function validateInstanceListOutput(input: InstanceListArgs) {
+  const modes = [
+    input.json ? "--json" : undefined,
+    input.jsonLines ? "--json-lines" : undefined,
+    input.idOnly ? "--id-only" : undefined,
+    input.labelOnly ? "--label-only" : undefined,
+    input.urlOnly ? "--url-only" : undefined,
+    input.countOnly ? "--count-only" : undefined,
+  ].filter((mode): mode is string => Boolean(mode))
+  if (modes.length > 1) throw new Error(`Use only one instance list output mode: ${modes.join(", ")}.`)
+}
+
 function formatJson(input: unknown) {
   return JSON.stringify(input, null, 2)
 }
@@ -502,6 +514,7 @@ export const InstanceListCommand = cmd({
       }),
   async handler(args) {
     const input = args as InstanceListArgs
+    validateInstanceListOutput(input)
     const service = createInstanceService()
     const state = await service.store.getState()
     const output = filterTlsSkippedInstanceSummaries(

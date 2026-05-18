@@ -20,6 +20,7 @@ import {
   parseInstanceHeaders,
   localInstanceVersions,
   validateInstanceID,
+  validateInstanceListOutput,
   validateLocalRuntimeVersion,
 } from "../../src/cli/cmd/instance"
 
@@ -351,6 +352,12 @@ describe("cli instance helpers", () => {
       '{"id":"local-1"}\n{"id":"remote-1"}',
     )
     expect(formatInstanceJsonLines([])).toBe("")
+  })
+
+  test("rejects conflicting instance list output modes", () => {
+    expect(() => validateInstanceListOutput({ json: true, idOnly: true })).toThrow(/Use only one instance list output mode/)
+    expect(() => validateInstanceListOutput({ jsonLines: true, countOnly: true })).toThrow(/--json-lines, --count-only/)
+    expect(validateInstanceListOutput({ urlOnly: true })).toBeUndefined()
   })
 
   test("rejects invalid instance summary filters", () => {
