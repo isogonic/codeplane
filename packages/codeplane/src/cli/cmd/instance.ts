@@ -275,7 +275,7 @@ export function formatLocalVersions(
   const rawVersions = Array.isArray(input.versions) ? input.versions : []
   const invalidVersionInputCount = input.versions === undefined || Array.isArray(input.versions) ? 0 : 1
   const stringVersions = rawVersions.filter((version) => typeof version === "string")
-  const validVersions = stringVersions.filter((version) => LOCAL_RUNTIME_VERSION_PATTERN.test(version))
+  const validVersions = stringVersions.filter((version) => LOCAL_RUNTIME_VERSION_PATTERN.test(version) && semver.valid(version))
   const versions = validVersions
     .filter((version) => selectedMajor === undefined || version.startsWith(`${selectedMajor}.`))
     .filter((version) => !stableOnly || !semver.prerelease(version)?.length)

@@ -562,7 +562,7 @@ describe("cli instance helpers", () => {
       JSON.parse(
         formatLocalVersions({
           distTags: {},
-          versions: ["28.2.0", "broken", "28.2", "28.2.1"],
+          versions: ["28.2.0", "broken", "28.2", "28.2.1-..bad", "28.2.1"],
         }),
       ).versions,
     ).toEqual(["28.2.1", "28.2.0"])
