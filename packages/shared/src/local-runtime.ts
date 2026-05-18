@@ -532,95 +532,100 @@ export async function installCodeplaneLocalPackage(input: {
   await fs.rm(tempRoot, { recursive: true, force: true })
   await fs.mkdir(packageRoot, { recursive: true })
 
-  input.progress?.({
-    version,
-    phase: "download",
-    message: `Downloading ${target.packageName}@${version} from npm…`,
-    percent: 8,
-    binaryVersion: version,
-  })
+  try {
+    input.progress?.({
+      version,
+      phase: "download",
+      message: `Downloading ${target.packageName}@${version} from npm…`,
+      percent: 8,
+      binaryVersion: version,
+    })
 
-  const tarball = new URL(manifest.tarball)
-  const response = await fetchWithTimeout(tarball, {
-    redirect: "follow",
-    headers:
-      registry.token && (registry.alwaysAuth || tarball.origin === new URL(registry.registry).origin)
-        ? { authorization: `Bearer ${registry.token}` }
-        : undefined,
-    description: `npm tarball ${target.packageName}@${version}`,
-    signal: input.signal,
-    timeoutMs: NPM_FETCH_TIMEOUT_MS,
-  })
-  if (!response.ok) {
-    throw new Error(`npm tarball download failed for ${target.packageName}@${version} with HTTP ${response.status}`)
-  }
-  if (!response.body) {
-    throw new Error(`npm tarball download for ${target.packageName}@${version} returned an empty body`)
-  }
+    const tarball = new URL(manifest.tarball)
+    const response = await fetchWithTimeout(tarball, {
+      redirect: "follow",
+      headers:
+        registry.token && (registry.alwaysAuth || tarball.origin === new URL(registry.registry).origin)
+          ? { authorization: `Bearer ${registry.token}` }
+          : undefined,
+      description: `npm tarball ${target.packageName}@${version}`,
+      signal: input.signal,
+      timeoutMs: NPM_FETCH_TIMEOUT_MS,
+    })
+    if (!response.ok) {
+      throw new Error(`npm tarball download failed for ${target.packageName}@${version} with HTTP ${response.status}`)
+    }
+    if (!response.body) {
+      throw new Error(`npm tarball download for ${target.packageName}@${version} returned an empty body`)
+    }
 
-  const total = Number(response.headers.get("content-length") ?? "0")
-  let transferred = 0
-  const buffers: Buffer[] = []
-  const stream = Readable.fromWeb(response.body as unknown as NodeReadableStream)
-  const meter = new Transform({
-    transform(chunk: Buffer, _enc, callback) {
-      transferred += chunk.length
-      buffers.push(chunk)
-      input.progress?.({
-        version,
-        phase: "download",
-        message: `Downloading ${target.packageName}@${version}…`,
-        percent: total > 0 ? Math.min(82, 8 + Math.round((transferred / total) * 72)) : 40,
-        binaryVersion: version,
-        transferred,
-        total: total || undefined,
-      })
-      callback(null, chunk)
-    },
-  })
-  await pipeline(stream, meter, createWriteStream(archive))
-  const tarballBytes = Buffer.concat(buffers)
-  if (manifest.integrity) {
-    verifyIntegrity(tarballBytes, manifest.integrity, `${target.packageName}@${version}`)
-  } else if (manifest.shasum) {
-    verifyShasum(tarballBytes, manifest.shasum, `${target.packageName}@${version}`)
-  }
+    const total = Number(response.headers.get("content-length") ?? "0")
+    let transferred = 0
+    const buffers: Buffer[] = []
+    const stream = Readable.fromWeb(response.body as unknown as NodeReadableStream)
+    const meter = new Transform({
+      transform(chunk: Buffer, _enc, callback) {
+        transferred += chunk.length
+        buffers.push(chunk)
+        input.progress?.({
+          version,
+          phase: "download",
+          message: `Downloading ${target.packageName}@${version}…`,
+          percent: total > 0 ? Math.min(82, 8 + Math.round((transferred / total) * 72)) : 40,
+          binaryVersion: version,
+          transferred,
+          total: total || undefined,
+        })
+        callback(null, chunk)
+      },
+    })
+    await pipeline(stream, meter, createWriteStream(archive))
+    const tarballBytes = Buffer.concat(buffers)
+    if (manifest.integrity) {
+      verifyIntegrity(tarballBytes, manifest.integrity, `${target.packageName}@${version}`)
+    } else if (manifest.shasum) {
+      verifyShasum(tarballBytes, manifest.shasum, `${target.packageName}@${version}`)
+    }
 
-  input.progress?.({
-    version,
-    phase: "extract",
-    message: `Extracting ${target.packageName}@${version}…`,
-    percent: 86,
-    binaryVersion: version,
-  })
+    input.progress?.({
+      version,
+      phase: "extract",
+      message: `Extracting ${target.packageName}@${version}…`,
+      percent: 86,
+      binaryVersion: version,
+    })
 
-  await extract(archive, packageRoot)
-  const extractedBinary = await resolveLocalBinaryPath(packageRoot, target.binaryName)
-  if (!extractedBinary) {
-    throw new Error(
-      `Extracted ${target.packageName}@${version} but binary ${target.binaryName} was not found in the package payload`,
-    )
-  }
-  if (target.os !== "windows") {
-    await fs.chmod(extractedBinary, 0o755).catch(() => undefined)
-  }
-  await fs.rm(input.directory, { recursive: true, force: true })
-  await fs.rename(packageRoot, input.directory)
-  await fs.rm(tempRoot, { recursive: true, force: true })
-  const binaryPath = path.join(input.directory, path.relative(packageRoot, extractedBinary))
+    await extract(archive, packageRoot)
+    const extractedBinary = await resolveLocalBinaryPath(packageRoot, target.binaryName)
+    if (!extractedBinary) {
+      throw new Error(
+        `Extracted ${target.packageName}@${version} but binary ${target.binaryName} was not found in the package payload`,
+      )
+    }
+    if (target.os !== "windows") {
+      await fs.chmod(extractedBinary, 0o755).catch(() => undefined)
+    }
+    await fs.rm(input.directory, { recursive: true, force: true })
+    await fs.rename(packageRoot, input.directory)
+    await fs.rm(tempRoot, { recursive: true, force: true })
+    const binaryPath = path.join(input.directory, path.relative(packageRoot, extractedBinary))
 
-  input.progress?.({
-    version,
-    phase: "ready",
-    message: `${target.packageName}@${version} is ready locally.`,
-    percent: 100,
-    binaryVersion: version,
-  })
+    input.progress?.({
+      version,
+      phase: "ready",
+      message: `${target.packageName}@${version} is ready locally.`,
+      percent: 100,
+      binaryVersion: version,
+    })
 
-  return {
-    binaryPath,
-    packageName: target.packageName,
-    target,
-    version,
+    return {
+      binaryPath,
+      packageName: target.packageName,
+      target,
+      version,
+    }
+  } catch (error) {
+    await fs.rm(tempRoot, { recursive: true, force: true })
+    throw error
   }
 }

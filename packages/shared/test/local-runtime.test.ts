@@ -403,6 +403,34 @@ describe("install codeplane local package", () => {
       await fs.rm(fixture, { force: true, recursive: true })
     }
   })
+
+  test("cleans temporary package roots after failed downloads", async () => {
+    const target = resolveCodeplaneLocalTarget()
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
+      const url = input instanceof URL ? input.toString() : input instanceof Request ? input.url : String(input)
+      if (url.endsWith(`/${target.packageName}/27.3.1`)) {
+        return new Response(
+          JSON.stringify({
+            version: "27.3.1",
+            dist: {
+              tarball: `https://registry.example.com/${target.packageName}/-/${target.packageName}-27.3.1.tgz`,
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        )
+      }
+      return new Response("nope", { status: 500 })
+    }) as unknown as typeof globalThis.fetch
+
+    const dest = path.join(home, "local_server", "binaries", "27.3.1")
+    await expect(installCodeplaneLocalPackage({ version: "27.3.1", directory: dest })).rejects.toThrow(
+      /tarball download failed/,
+    )
+
+    const parent = path.dirname(dest)
+    const entries = await fs.readdir(parent).catch(() => [])
+    expect(entries.filter((entry) => entry.startsWith("27.3.1.tmp-"))).toEqual([])
+  })
 })
 
 describe("managed local cli", () => {
