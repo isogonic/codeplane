@@ -184,6 +184,7 @@ export function validateInstanceID(id: string) {
   const trimmed = id.trim()
   if (!trimmed) throw new Error("Instance id cannot be empty.")
   if (trimmed === "." || trimmed === "..") throw new Error("Instance id cannot be . or ...")
+  if (trimmed.startsWith(".")) throw new Error("Instance id cannot start with a dot.")
   if (trimmed.length > 80) throw new Error("Instance id cannot exceed 80 characters.")
   if (trimmed.endsWith(".")) throw new Error("Instance id cannot end with a dot.")
   if (WINDOWS_RESERVED_INSTANCE_IDS.has(trimmed.toLowerCase().split(".")[0])) throw new Error(`Instance id "${trimmed}" is reserved on Windows.`)
