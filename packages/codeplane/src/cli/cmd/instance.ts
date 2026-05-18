@@ -451,6 +451,12 @@ export function formatLocalVersions(
   return formatJson({
     latest,
     distTags,
+    distTagRecords: Object.entries(distTags).map(([tag, version]) => ({
+      tag,
+      version,
+      major: semver.major(version),
+      prerelease: Boolean(semver.prerelease(version)?.length),
+    })),
     distTagNames: Object.keys(distTags),
     distTagCount: Object.keys(distTags).length,
     duplicateVersionCount,

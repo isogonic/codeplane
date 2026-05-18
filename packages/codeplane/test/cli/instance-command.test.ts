@@ -862,6 +862,10 @@ describe("cli instance helpers", () => {
       ).toEqual({
       latest: "28.2.1",
       distTags: { latest: "28.2.1", next: "28.3.0-beta.1" },
+      distTagRecords: [
+        { tag: "latest", version: "28.2.1", major: 28, prerelease: false },
+        { tag: "next", version: "28.3.0-beta.1", major: 28, prerelease: true },
+      ],
       distTagNames: ["latest", "next"],
       distTagCount: 2,
       duplicateVersionCount: 0,
@@ -1165,6 +1169,10 @@ describe("cli instance helpers", () => {
     ).toEqual({
       latest: "28.2.1",
       distTags: { latest: "28.2.1", old: "27.9.9" },
+      distTagRecords: [
+        { tag: "latest", version: "28.2.1", major: 28, prerelease: false },
+        { tag: "old", version: "27.9.9", major: 27, prerelease: false },
+      ],
       distTagNames: ["latest", "old"],
       distTagCount: 2,
       duplicateVersionCount: 0,
@@ -1395,6 +1403,7 @@ describe("cli instance helpers", () => {
       ),
       ).toEqual({
       distTags: {},
+      distTagRecords: [],
       distTagNames: [],
       distTagCount: 0,
       duplicateVersionCount: 0,
@@ -1442,6 +1451,20 @@ describe("cli instance helpers", () => {
         ).distTags,
       ),
     ).toEqual(["beta", "latest", "zeta"])
+  })
+
+  test("reports local runtime dist tag records", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions({
+          distTags: { next: "29.0.0-beta.1", latest: "28.2.1" },
+          versions: [],
+        }),
+      ).distTagRecords,
+    ).toEqual([
+      { tag: "latest", version: "28.2.1", major: 28, prerelease: false },
+      { tag: "next", version: "29.0.0-beta.1", major: 29, prerelease: true },
+    ])
   })
 
   test("normalizes tagged local runtime dist tag values", () => {
