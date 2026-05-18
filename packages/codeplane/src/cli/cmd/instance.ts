@@ -77,6 +77,7 @@ export function composeRemoteHeaders(input: InstanceAddArgs): Record<string, str
   const headers = parseInstanceHeaders(input.header)
   const user = (input.username ?? "").trim()
   const pass = input.password ?? ""
+  if (!user && pass) throw new Error("Use --password with --username for HTTP Basic Auth.")
   if (user || pass) {
     const authKey = Object.keys(headers).find((k) => k.toLowerCase() === "authorization")
     if (authKey) delete headers[authKey]
