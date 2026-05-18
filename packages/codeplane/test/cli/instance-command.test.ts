@@ -398,6 +398,7 @@ describe("cli instance helpers", () => {
       stableVersionCount: 3,
       total: 3,
       newestVersion: "28.2.1",
+      oldestVersion: "28.1.0",
       limit: 2,
       shown: 2,
       omitted: 1,
@@ -496,6 +497,7 @@ describe("cli instance helpers", () => {
       stableVersionCount: 2,
       total: 2,
       newestVersion: "28.2.1",
+      oldestVersion: "28.1.0",
       major: 28,
       matchingDistTags: { latest: "28.2.1" },
       limit: 10,
@@ -658,5 +660,16 @@ describe("cli instance helpers", () => {
         }),
       ).newestVersion,
     ).toBe("28.3.0-beta.1")
+  })
+
+  test("reports the oldest local runtime version", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions({
+          distTags: {},
+          versions: ["28.1.0", "28.3.0-beta.1", "28.2.1"],
+        }),
+      ).oldestVersion,
+    ).toBe("28.1.0")
   })
 })
