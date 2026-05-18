@@ -313,7 +313,10 @@ export function formatLocalVersions(
   }
   if (latestOnly) {
     if (tag || major !== undefined) throw new Error("Use --latest-only without --tag or --major.")
-    const latestVersion = typeof input.latest === "string" ? input.latest : distTags.latest
+    const latestVersion = [input.latest, distTags.latest]
+      .filter((version): version is string => typeof version === "string")
+      .map(normalizeLocalRuntimeVersion)
+      .find((version) => LOCAL_RUNTIME_VERSION_PATTERN.test(version) && Boolean(semver.valid(version)))
     if (!latestVersion || !LOCAL_RUNTIME_VERSION_PATTERN.test(latestVersion) || !semver.valid(latestVersion)) {
       throw new Error("Local runtime latest version was not found.")
     }

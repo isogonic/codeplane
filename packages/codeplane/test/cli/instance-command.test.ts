@@ -914,6 +914,14 @@ describe("cli instance helpers", () => {
     ).toThrow(/dist-tag "next" was not found/)
   })
 
+  test("normalizes tagged local runtime latest output", () => {
+    expect(formatLocalVersions({ latest: "v28.2.1", distTags: {}, versions: [] }, 10, undefined, undefined, true)).toBe("28.2.1")
+  })
+
+  test("falls back to valid dist-tag latest output", () => {
+    expect(formatLocalVersions({ latest: "broken", distTags: { latest: "28.2.1" }, versions: [] }, 10, undefined, undefined, true)).toBe("28.2.1")
+  })
+
   test("rejects unsafe local runtime dist tag names", () => {
     expect(() => formatLocalVersions({ distTags: {}, versions: [] }, 10, "../latest")).toThrow(/Invalid local runtime dist-tag/)
   })
