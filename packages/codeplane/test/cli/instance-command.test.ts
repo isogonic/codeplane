@@ -61,6 +61,10 @@ describe("cli instance helpers", () => {
     expect(() => parseInstanceHeaders(["Bad@Name: value"])).toThrow(/Header name is not valid/)
   })
 
+  test("rejects overlong header names", () => {
+    expect(() => parseInstanceHeaders([`${"x".repeat(129)}: value`])).toThrow(/cannot exceed 128/)
+  })
+
   test("basic auth fields override existing authorization headers", () => {
     expect(
       composeRemoteHeaders({
