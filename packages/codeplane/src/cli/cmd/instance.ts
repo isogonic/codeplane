@@ -204,7 +204,11 @@ export function formatLocalTarget(target: LocalTarget, nameOnly?: boolean, binar
   const packageName = target.packageName ?? target.archiveName.replace(/\.(?:tgz|tar\.gz|zip)$/, "")
   if (binaryName) return target.binaryName
   if (nameOnly) return packageName
-  return formatJson({ ...target, packageName })
+  return formatJson({
+    ...target,
+    packageName,
+    platform: [target.os, target.arch, ...packageName.split("-").slice(3)].join("/"),
+  })
 }
 
 export function normalizeLocalVersionMajor(major?: number) {
