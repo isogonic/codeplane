@@ -129,6 +129,7 @@ export function validateInstanceID(id: string) {
   const trimmed = id.trim()
   if (!trimmed) throw new Error("Instance id cannot be empty.")
   if (trimmed === "." || trimmed === "..") throw new Error("Instance id cannot be . or ...")
+  if (trimmed.length > 80) throw new Error("Instance id cannot exceed 80 characters.")
   if (!/^[A-Za-z0-9._-]+$/.test(trimmed)) {
     throw new Error("Instance id can only contain letters, numbers, dots, underscores, and dashes.")
   }

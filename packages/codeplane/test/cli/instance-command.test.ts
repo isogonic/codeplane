@@ -76,6 +76,10 @@ describe("cli instance helpers", () => {
     expect(() => validateInstanceID("   ")).toThrow(/cannot be empty/)
   })
 
+  test("rejects overlong explicit instance ids", () => {
+    expect(() => validateInstanceID("a".repeat(81))).toThrow(/cannot exceed 80/)
+  })
+
   test("rejects unsafe explicit instance ids", () => {
     expect(() => validateInstanceID(".")).toThrow(/cannot be . or ../)
     expect(() => validateInstanceID("..")).toThrow(/cannot be . or ../)
