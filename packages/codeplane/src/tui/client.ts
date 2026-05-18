@@ -40,6 +40,9 @@ export function wsUrlForInstance(instance: SavedInstance, pathname: string) {
     throw new Error(`Invalid instance URL: ${instance.url}`)
   }
   const url = new URL(pathname.replace(/^\/+/, ""), `${baseUrl}/`)
+  if (url.protocol !== "http:" && url.protocol !== "https:" && url.protocol !== "ws:" && url.protocol !== "wss:") {
+    throw new Error(`Instance URL protocol is not websocket-compatible: ${url.protocol}`)
+  }
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:"
   return url.toString()
 }

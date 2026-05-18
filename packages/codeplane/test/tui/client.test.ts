@@ -270,4 +270,8 @@ describe("wsUrlForInstance", () => {
   test("throws on whitespace-only url", () => {
     expect(() => wsUrlForInstance({ id: "x", url: "   " }, "/p")).toThrow(/Invalid instance URL/)
   })
+
+  test("throws on unsupported protocols", () => {
+    expect(() => wsUrlForInstance({ id: "x", url: "ftp://example.com" }, "/p")).toThrow(/websocket-compatible/)
+  })
 })
