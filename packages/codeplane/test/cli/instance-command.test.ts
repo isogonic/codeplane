@@ -176,6 +176,17 @@ describe("cli instance helpers", () => {
     ).toEqual(["28.10.0", "28.2.0", "28.1.0"])
   })
 
+  test("ignores malformed saved local instance versions", () => {
+    expect(
+      localInstanceVersions({
+        instances: [
+          { id: "local-a", url: "local://a", local: { binaryVersion: "28.2.0" } },
+          { id: "local-b", url: "local://b", local: { binaryVersion: "broken" } },
+        ],
+      }),
+    ).toEqual(["28.2.0"])
+  })
+
   test("formats instance summaries for list output", () => {
     expect(
       formatInstanceSummary(
