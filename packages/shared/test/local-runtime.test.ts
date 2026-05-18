@@ -262,6 +262,13 @@ describe("preferred local runtime version", () => {
   test("rejects semver-shaped invalid prereleases", async () => {
     await expect(writePreferredLocalVersion("27.3.1-..bad")).rejects.toThrow(/Invalid Codeplane version/)
   })
+
+  test("falls back for semver-shaped invalid preferred versions", async () => {
+    await fs.mkdir(path.join(home, "local_server"), { recursive: true })
+    await fs.writeFile(path.join(home, "local_server", "default-version"), "27.3.1-..bad\n")
+
+    expect(await readPreferredLocalVersion("27.0.0")).toBe("27.0.0")
+  })
 })
 
 describe("local binary resolver", () => {

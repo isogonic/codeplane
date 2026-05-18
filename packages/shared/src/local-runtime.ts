@@ -355,7 +355,7 @@ export async function installManagedCodeplaneCli(input: { version: string; binar
 export async function readPreferredLocalVersion(fallback = CodeplaneVersion) {
   const value = await fs.readFile(localVersionFile(), "utf8").catch(() => "")
   const next = cleanVersion(value)
-  return next && VERSION_PATTERN.test(next) ? next : fallback
+  return next && VERSION_PATTERN.test(next) && semver.valid(next) ? next : fallback
 }
 
 export async function writePreferredLocalVersion(version: string) {
