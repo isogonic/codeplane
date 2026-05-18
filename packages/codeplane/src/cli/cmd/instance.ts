@@ -440,7 +440,7 @@ export function formatLocalVersions(
   if (newestOnly) return versions[0] ?? ""
   if (oldestOnly) return versions.at(-1) ?? ""
   if (versionOnly) return shownVersions.join("\n")
-  if (jsonLines) return shownVersions.map((version) => JSON.stringify({ version })).join("\n")
+  if (jsonLines) return shownVersions.map((version) => JSON.stringify({ version, prerelease: Boolean(semver.prerelease(version)?.length) })).join("\n")
   const stableShown = shownVersions.filter((version) => !semver.prerelease(version)?.length).length
   const prereleaseShown = shownVersions.length - stableShown
   const hasSelectedDistTagFilter = selectedMajor !== undefined || Boolean(selectedRange) || stableOnly || prereleaseOnly

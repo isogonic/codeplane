@@ -1668,7 +1668,7 @@ describe("cli instance helpers", () => {
         false,
         true,
       ),
-    ).toBe('{"version":"28.3.0-beta.1"}\n{"version":"28.2.1"}')
+    ).toBe('{"version":"28.3.0-beta.1","prerelease":true}\n{"version":"28.2.1","prerelease":false}')
   })
 
   test("formats ranged local runtime versions as json lines", () => {
@@ -1692,7 +1692,7 @@ describe("cli instance helpers", () => {
         false,
         ">=28.0.0 <29.0.0",
       ),
-    ).toBe('{"version":"28.2.1"}\n{"version":"28.1.0"}')
+    ).toBe('{"version":"28.2.1","prerelease":false}\n{"version":"28.1.0","prerelease":false}')
   })
 
   test("rejects conflicting local runtime json lines output flags", () => {
