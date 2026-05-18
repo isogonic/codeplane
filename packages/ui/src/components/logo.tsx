@@ -12,7 +12,7 @@ export const Mark = (props: { class?: string }) => {
       <path
         data-slot="logo-plane-mark"
         d="M64 64L448 256L64 448V320L256 256L64 192V64Z"
-        fill="var(--icon-strong-base)"
+        fill="var(--text-strong, currentColor)"
       />
     </svg>
   )
@@ -30,7 +30,7 @@ export const Splash = (props: Pick<ComponentProps<"svg">, "ref" | "class">) => {
     >
       <path
         d="M64 64L448 256L64 448V320L256 256L64 192V64Z"
-        fill="var(--icon-strong-base)"
+        fill="var(--text-strong, currentColor)"
       />
     </svg>
   )
@@ -46,7 +46,7 @@ export const Logo = (props: { class?: string }) => {
     >
       <path
         d="M64 64L448 256L64 448V320L256 256L64 192V64Z"
-        fill="var(--icon-strong-base)"
+        fill="var(--text-strong, currentColor)"
       />
     </svg>
   )
