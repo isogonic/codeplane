@@ -556,6 +556,17 @@ describe("managed local cli", () => {
     expect(secondStat.mtimeMs).toBe(firstStat.mtimeMs)
   })
 
+  test("does not report cli directories as installed binaries", async () => {
+    await fs.mkdir(managedCodeplaneCliPath(), { recursive: true })
+    await fs.writeFile(path.join(home, "bin", ".codeplane-version"), "27.3.1\n")
+
+    expect(await managedCodeplaneCliStatus()).toEqual({
+      cliInstalled: false,
+      cliPath: managedCodeplaneCliPath(),
+      cliVersion: "27.3.1",
+    })
+  })
+
   test("reports every missing binary candidate", async () => {
     await expect(installManagedCodeplaneCli({ version: "27.3.1" })).rejects.toThrow(/Tried:\n- .+bin.+codeplane/)
   })

@@ -306,7 +306,7 @@ export async function resolveLocalBinaryPath(versionRoot: string, binaryName: st
 
 export async function managedCodeplaneCliStatus() {
   const cliPath = managedCodeplaneCliPath()
-  const cliInstalled = await pathExists(cliPath)
+  const cliInstalled = await fs.stat(cliPath).then((stat) => stat.isFile()).catch(() => false)
   const cliVersion = cleanVersion(await fs.readFile(localCliVersionFile(), "utf8").catch(() => ""))
   return {
     cliInstalled,
