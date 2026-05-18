@@ -30,6 +30,17 @@ export async function SiteFooter() {
               </a>
               {" "}for personal use — not affiliated with Anomaly.
             </div>
+            <div>
+              Built by{" "}
+              <a
+                className="underline underline-offset-4 decoration-line hover:decoration-ink hover:text-ink"
+                href="https://devinoldenburg.com"
+                rel="author"
+              >
+                Devin Oldenburg
+              </a>
+              .
+            </div>
             <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1">
               <a className="hover:text-ink" href="https://github.com/devinoldenburg/codeplane">github.com/devinoldenburg/codeplane</a>
               <Link className="hover:text-ink" href="/docs/changelog/">v{version}</Link>
