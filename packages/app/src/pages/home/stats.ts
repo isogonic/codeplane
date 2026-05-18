@@ -1,7 +1,17 @@
-import type { Session, SnapshotFileDiff } from "@codeplane-ai/sdk/v2/client"
+import type { AssistantMessage, Message, Session, SnapshotFileDiff } from "@codeplane-ai/sdk/v2/client"
 import { diffs as listDiffs } from "@/utils/diffs"
 
 export const DAY_MS = 24 * 60 * 60 * 1000
+
+export type Range = "all" | "30d" | "7d"
+
+export const RANGE_DAYS: Record<Range, number | undefined> = {
+  all: undefined,
+  "30d": 30,
+  "7d": 7,
+}
+
+export const HEATMAP_DAYS = 364
 
 export type ProjectInput = {
   directory: string
@@ -10,6 +20,7 @@ export type ProjectInput = {
   worktree: string
   sessions: Session[]
   sessionDiffs?: Record<string, SnapshotFileDiff[] | undefined>
+  sessionMessages?: Record<string, Message[] | undefined>
 }
 
 export type ProjectAggregate = {
@@ -25,6 +36,12 @@ export type ProjectAggregate = {
   lastActivity?: number
 }
 
+export type PreferredModel = {
+  modelID: string
+  providerID?: string
+  messages: number
+}
+
 export type Totals = {
   projects: number
   sessions: number
@@ -35,6 +52,21 @@ export type Totals = {
   thisWeek: number
   today: number
   lastActivity?: number
+  messages: number
+  tokens: number
+  activeDays: number
+  currentStreak: number
+  longestStreak: number
+  peakHour?: number
+  preferredModel?: PreferredModel
+}
+
+export type ModelStat = {
+  modelID: string
+  providerID?: string
+  messages: number
+  tokens: number
+  sessions: number
 }
 
 export type DayBucket = {
@@ -60,6 +92,7 @@ export type HomeStats = {
   projects: ProjectAggregate[]
   recent: RecentSession[]
   buckets: DayBucket[]
+  models: ModelStat[]
 }
 
 type Diff = ReturnType<typeof listDiffs>[number]
@@ -67,6 +100,15 @@ type Diff = ReturnType<typeof listDiffs>[number]
 const isVisible = (session: Session) => !session.parentID && !session.time?.archived
 
 const sessionTime = (session: Session) => session.time.updated ?? session.time.created
+
+const isAssistant = (message: Message): message is AssistantMessage => message.role === "assistant"
+
+const messageTokens = (message: AssistantMessage) => {
+  const t = message.tokens
+  if (!t) return 0
+  if (typeof t.total === "number" && t.total > 0) return t.total
+  return (t.input ?? 0) + (t.output ?? 0) + (t.reasoning ?? 0) + (t.cache?.read ?? 0) + (t.cache?.write ?? 0)
+}
 
 const patchStats = (patch: string) =>
   patch.split("\n").reduce(
@@ -127,6 +169,14 @@ export const startOfDay = (timestamp: number) => {
   return date.getTime()
 }
 
+const rangeStart = (now: number, range: Range): number | undefined => {
+  const days = RANGE_DAYS[range]
+  if (days === undefined) return undefined
+  return startOfDay(now) - (days - 1) * DAY_MS
+}
+
+const inRange = (time: number, start?: number) => start === undefined || time >= start
+
 export function aggregateProjects(input: ProjectInput[]): ProjectAggregate[] {
   return input
     .map((project) => {
@@ -170,10 +220,91 @@ export function aggregateProjects(input: ProjectInput[]): ProjectAggregate[] {
     })
 }
 
-export function aggregateTotals(projects: ProjectAggregate[], allSessions: Session[], now: number): Totals {
+export function streaks(activeDays: Set<number>, now: number) {
+  if (activeDays.size === 0) return { current: 0, longest: 0 }
+  const sorted = [...activeDays].sort((a, b) => a - b)
+  let longest = 1
+  let run = 1
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i]! - sorted[i - 1]! === DAY_MS) {
+      run += 1
+      if (run > longest) longest = run
+    } else {
+      run = 1
+    }
+  }
+  let current = 0
+  let day = startOfDay(now)
+  if (!activeDays.has(day)) day -= DAY_MS
+  while (activeDays.has(day)) {
+    current += 1
+    day -= DAY_MS
+  }
+  return { current, longest }
+}
+
+const collectMessages = (input: ProjectInput[]) => {
+  const all: Array<{ message: Message; sessionID: string }> = []
+  for (const project of input) {
+    if (!project.sessionMessages) continue
+    for (const session of project.sessions) {
+      if (!isVisible(session)) continue
+      const messages = project.sessionMessages[session.id]
+      if (!messages) continue
+      for (const message of messages) all.push({ message, sessionID: session.id })
+    }
+  }
+  return all
+}
+
+export function aggregateTotals(
+  projects: ProjectAggregate[],
+  allSessions: Session[],
+  allMessages: ReturnType<typeof collectMessages>,
+  now: number,
+  range: Range,
+): Totals {
   const dayStart = startOfDay(now)
   const weekStart = dayStart - 6 * DAY_MS
-  const visible = allSessions.filter(isVisible)
+  const start = rangeStart(now, range)
+  const visible = allSessions.filter(isVisible).filter((session) => inRange(sessionTime(session), start))
+
+  const activeDaySet = new Set<number>()
+  const hourCounts = new Array<number>(24).fill(0)
+  const modelMessages = new Map<string, { count: number; providerID?: string }>()
+  let totalTokens = 0
+  let messageCount = 0
+  for (const { message } of allMessages) {
+    const created = message.time.created
+    if (!inRange(created, start)) continue
+    messageCount += 1
+    activeDaySet.add(startOfDay(created))
+    hourCounts[new Date(created).getHours()] += 1
+    if (isAssistant(message)) {
+      totalTokens += messageTokens(message)
+      const key = message.modelID || ""
+      if (key) {
+        const existing = modelMessages.get(key)
+        if (existing) existing.count += 1
+        else modelMessages.set(key, { count: 1, providerID: message.providerID })
+      }
+    }
+  }
+
+  const peakHour = hourCounts.reduce<{ hour: number; count: number }>(
+    (best, count, hour) => (count > best.count ? { hour, count } : best),
+    { hour: -1, count: 0 },
+  )
+
+  let preferred: PreferredModel | undefined
+  for (const [modelID, info] of modelMessages) {
+    if (!preferred || info.count > preferred.messages) {
+      preferred = { modelID, providerID: info.providerID, messages: info.count }
+    }
+  }
+
+  const { current, longest } = streaks(activeDaySet, now)
+
   return {
     projects: projects.length,
     sessions: visible.length,
@@ -189,19 +320,59 @@ export function aggregateTotals(projects: ProjectAggregate[], allSessions: Sessi
       if (max === undefined) return value
       return value > max ? value : max
     }, undefined),
+    messages: messageCount,
+    tokens: totalTokens,
+    activeDays: activeDaySet.size,
+    currentStreak: current,
+    longestStreak: longest,
+    peakHour: peakHour.count > 0 ? peakHour.hour : undefined,
+    preferredModel: preferred,
   }
 }
 
-export function dailyBuckets(sessions: Session[], now: number, days = 14): DayBucket[] {
+export function aggregateModels(
+  allMessages: ReturnType<typeof collectMessages>,
+  now: number,
+  range: Range,
+): ModelStat[] {
+  const start = rangeStart(now, range)
+  const byModel = new Map<string, { providerID?: string; messages: number; tokens: number; sessions: Set<string> }>()
+  for (const { message, sessionID } of allMessages) {
+    if (!inRange(message.time.created, start)) continue
+    if (!isAssistant(message)) continue
+    const modelID = message.modelID || ""
+    if (!modelID) continue
+    let entry = byModel.get(modelID)
+    if (!entry) {
+      entry = { providerID: message.providerID, messages: 0, tokens: 0, sessions: new Set() }
+      byModel.set(modelID, entry)
+    }
+    entry.messages += 1
+    entry.tokens += messageTokens(message)
+    entry.sessions.add(sessionID)
+  }
+  return [...byModel.entries()]
+    .map(([modelID, info]) => ({
+      modelID,
+      providerID: info.providerID,
+      messages: info.messages,
+      tokens: info.tokens,
+      sessions: info.sessions.size,
+    }))
+    .sort((a, b) => b.messages - a.messages)
+}
+
+export function dailyBuckets(messages: ReturnType<typeof collectMessages>, now: number): DayBucket[] {
+  const days = HEATMAP_DAYS
   const today = startOfDay(now)
   const buckets: DayBucket[] = []
   for (let i = days - 1; i >= 0; i--) {
     buckets.push({ start: today - i * DAY_MS, count: 0 })
   }
+  if (buckets.length === 0) return buckets
   const start = buckets[0]!.start
-  for (const session of sessions) {
-    if (!isVisible(session)) continue
-    const time = sessionTime(session)
+  for (const { message } of messages) {
+    const time = message.time.created
     if (time < start) continue
     const dayStart = startOfDay(time)
     const index = Math.round((dayStart - start) / DAY_MS)
@@ -235,11 +406,13 @@ export function recentSessions(input: ProjectInput[], limit = 8): RecentSession[
   return all.sort((a, b) => b.updated - a.updated).slice(0, limit)
 }
 
-export function buildHomeStats(input: ProjectInput[], now: number): HomeStats {
+export function buildHomeStats(input: ProjectInput[], now: number, range: Range = "all"): HomeStats {
   const projects = aggregateProjects(input)
   const allSessions = input.flatMap((project) => project.sessions)
-  const totals = aggregateTotals(projects, allSessions, now)
-  const buckets = dailyBuckets(allSessions, now)
+  const allMessages = collectMessages(input)
+  const totals = aggregateTotals(projects, allSessions, allMessages, now, range)
+  const buckets = dailyBuckets(allMessages, now)
   const recent = recentSessions(input)
-  return { projects, totals, buckets, recent }
+  const models = aggregateModels(allMessages, now, range)
+  return { projects, totals, buckets, recent, models }
 }

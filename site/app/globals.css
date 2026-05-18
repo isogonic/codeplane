@@ -158,32 +158,32 @@ body {
   @apply my-4 pl-0 list-none;
 }
 .docs-prose ul > li {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0 0.75rem;
+  position: relative;
+  padding-left: 2.25rem;
   margin: 0.5rem 0;
-  align-items: baseline;
 }
 .docs-prose ul > li::before {
   content: "[*]";
   color: var(--ink-muted);
-  white-space: pre;
+  position: absolute;
+  left: 0;
+  top: 0;
 }
 .docs-prose ol {
   counter-reset: list;
 }
 .docs-prose ol > li {
   counter-increment: list;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0 0.75rem;
+  position: relative;
+  padding-left: 2.75rem;
   margin: 0.5rem 0;
-  align-items: baseline;
 }
 .docs-prose ol > li::before {
   content: "[" counter(list) "]";
   color: var(--ink-muted);
-  white-space: pre;
+  position: absolute;
+  left: 0;
+  top: 0;
 }
 .docs-prose a {
   @apply underline underline-offset-4 decoration-line hover:decoration-ink transition-colors;
@@ -203,6 +203,38 @@ body {
 .docs-prose th {
   @apply font-bold bg-surface-2;
 }
+
+@media (max-width: 640px) {
+  .docs-prose table,
+  .docs-prose thead,
+  .docs-prose tbody,
+  .docs-prose tr,
+  .docs-prose th,
+  .docs-prose td {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .docs-prose thead {
+    display: none;
+  }
+
+  .docs-prose tr {
+    border-bottom: 1px solid var(--line);
+    padding: 0.75rem 0;
+  }
+
+  .docs-prose td {
+    border-bottom: 0;
+    padding: 0.25rem 0;
+  }
+
+  .docs-prose td:first-child {
+    font-weight: 700;
+  }
+}
+
 .docs-prose code {
   @apply text-[0.92em];
 }
@@ -218,6 +250,15 @@ body {
 .docs-prose pre code {
   @apply bg-transparent p-0;
 }
+
+@media (max-width: 640px) {
+  pre,
+  pre code {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}
+
 .docs-prose hr {
   @apply my-12 border-line;
 }

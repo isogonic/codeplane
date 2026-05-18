@@ -61,6 +61,7 @@ function createGlobalSync() {
   const booting = new Map<string, Promise<void>>()
   const sessionLoads = new Map<string, Promise<void>>()
   const diffLoads = new Map<string, Promise<void>>()
+  const messageLoads = new Map<string, Promise<void>>()
   const shouldReportSessionError = createRecentSessionErrorGate()
 
   const [globalStore, setGlobalStore] = createStore<GlobalStore>({
@@ -294,6 +295,34 @@ function createGlobalSync() {
     return promise
   }
 
+  async function loadSessionMessage(directory: string, sessionID: string, options?: { force?: boolean }) {
+    const [store, setStore] = children.child(directory, { bootstrap: false })
+    const cached = store.message[sessionID]
+    if (cached !== undefined && !options?.force) return
+
+    const key = `${directory}\n${sessionID}`
+    const pending = messageLoads.get(key)
+    if (pending) return pending
+
+    children.pin(directory)
+    const promise = retry(() => sdkFor(directory).session.messages({ sessionID, limit: 10_000 }))
+      .then((x) => {
+        if (!children.children[directory]) return
+        const items = (x.data ?? []).filter((entry) => !!entry?.info?.id)
+        const messages = items.map((entry) => entry.info).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+        setStore("message", sessionID, reconcile(messages, { key: "id" }))
+      })
+      .catch(() => {
+        // best-effort: home stats tolerate partial data
+      })
+      .finally(() => {
+        messageLoads.delete(key)
+        children.unpin(directory)
+      })
+    messageLoads.set(key, promise)
+    return promise
+  }
+
   async function loadSessionDiff(directory: string, sessionID: string, options?: { force?: boolean }) {
     const [store, setStore] = children.child(directory, { bootstrap: false })
     const cached = store.session_diff[sessionID]
@@ -467,6 +496,11 @@ function createGlobalSync() {
     loadSessionDiffs(directory: string, sessionIDs: string[], options?: { force?: boolean }) {
       return Promise.all(
         [...new Set(sessionIDs)].map((sessionID) => loadSessionDiff(directory, sessionID, options)),
+      ).then(() => undefined)
+    },
+    loadSessionMessages(directory: string, sessionIDs: string[], options?: { force?: boolean }) {
+      return Promise.all(
+        [...new Set(sessionIDs)].map((sessionID) => loadSessionMessage(directory, sessionID, options)),
       ).then(() => undefined)
     },
     meta(directory: string, patch: ProjectMeta) {

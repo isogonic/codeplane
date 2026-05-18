@@ -42,7 +42,7 @@ export function InstallTabs({
   const [active, setActive] = useState<TabId>("macos")
   return (
     <>
-      <div role="tablist" className="mb-7 flex gap-1 overflow-x-auto border-b border-line">
+      <div role="tablist" className="mb-7 flex flex-wrap gap-x-1 gap-y-2 border-b border-line pb-1">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -63,7 +63,7 @@ export function InstallTabs({
 
       {active === "macos"   && <PanelMacOS   desktopTag={desktopTag} cliVersion={cliVersion} />}
       {active === "linux"   && <PanelLinux   desktopTag={desktopTag} cliVersion={cliVersion} />}
-      {active === "windows" && <PanelWindows desktopTag={desktopTag} cliVersion={cliVersion} />}
+      {active === "windows" && <PanelWindows desktopTag={desktopTag} />}
       {active === "npm"     && <PanelNpm />}
       {active === "mobile"  && <PanelMobile  mobileTag={mobileTag} />}
     </>
@@ -162,7 +162,7 @@ function PanelLinux({ desktopTag, cliVersion }: { desktopTag: string; cliVersion
   )
 }
 
-function PanelWindows({ desktopTag, cliVersion }: { desktopTag: string; cliVersion: string }) {
+function PanelWindows({ desktopTag }: { desktopTag: string }) {
   const v = desktopTag.replace(/^v/, "").replace(/-desktop$/, "")
   return (
     <div className="docs-prose">

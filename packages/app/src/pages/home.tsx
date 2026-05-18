@@ -1,4 +1,4 @@
-import { createEffect, createMemo, For, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js"
 import { DateTime } from "luxon"
 import { useNavigate } from "@solidjs/router"
 import { Avatar } from "@codeplane-ai/ui/avatar"
@@ -7,27 +7,52 @@ import { useGlobalSync } from "@/context/global-sync"
 import { displayName } from "@/pages/layout/helpers"
 import { useLayout, getAvatarColors } from "@/context/layout"
 import { useLanguage } from "@/context/language"
+import { useProviders } from "@/hooks/use-providers"
 import { sessionTitle } from "@/utils/session-title"
-import { buildHomeStats, type DayBucket, type RecentSession, type ProjectAggregate } from "./home/stats"
+import {
+  buildHomeStats,
+  type DayBucket,
+  type ModelStat,
+  type ProjectAggregate,
+  type Range,
+  type RecentSession,
+} from "./home/stats"
+
+const RANGES: Range[] = ["all", "30d", "7d"]
+const RANGE_LABEL_KEY = {
+  all: "home.range.all",
+  "30d": "home.range.30d",
+  "7d": "home.range.7d",
+} as const
+const HEATMAP_ROWS = 7
+const HEATMAP_COLS = 52
+const HEATMAP_GAP_PX = 3
+const DUNE_TOKENS = 250_000
 
 export default function Home() {
   const layout = useLayout()
   const language = useLanguage()
   const globalSync = useGlobalSync()
   const navigate = useNavigate()
+  const providers = useProviders()
+
+  const [range, setRange] = createSignal<Range>("all")
+  const [tab, setTab] = createSignal<"overview" | "models">("overview")
 
   const formatNumber = createMemo(() => new Intl.NumberFormat(language.intl()))
-  const formatDay = createMemo(
-    () => new Intl.DateTimeFormat(language.intl(), { weekday: "short", day: "numeric", month: "short" }),
-  )
-  const formatRelative = (time: number) => DateTime.fromMillis(time).setLocale(language.intl()).toRelative() ?? ""
+  const formatRelative = (time: number) =>
+    DateTime.fromMillis(time).setLocale(language.intl()).toRelative() ?? ""
+  const formatHour = (hour: number) =>
+    new Intl.DateTimeFormat(language.intl(), { hour: "numeric" }).format(new Date(2000, 0, 1, hour))
+
   const emptyDiffRefresh = new Set<string>()
   const diffRefreshKey = (worktree: string, session: { id: string; time: { created: number; updated?: number } }) =>
     `${worktree}\n${session.id}\n${session.time.updated ?? session.time.created}`
+  const messageRefresh = new Set<string>()
 
   const stats = createMemo(() => {
-    const projects = layout.projects.list()
-    const inputs = projects.map((project) => {
+    const projectsList = layout.projects.list()
+    const inputs = projectsList.map((project) => {
       const [child] = globalSync.child(project.worktree, { bootstrap: false })
       return {
         directory: project.worktree,
@@ -36,9 +61,10 @@ export default function Home() {
         iconColor: project.icon?.color,
         sessions: child.session ?? [],
         sessionDiffs: child.session_diff,
+        sessionMessages: child.message,
       }
     })
-    return buildHomeStats(inputs, Date.now())
+    return buildHomeStats(inputs, Date.now(), range())
   })
 
   createEffect(() => {
@@ -71,9 +97,22 @@ export default function Home() {
     })
   })
 
-  const peakBucket = createMemo(() => {
-    const max = stats().buckets.reduce((value, bucket) => Math.max(value, bucket.count), 0)
-    return Math.max(1, max)
+  createEffect(() => {
+    layout.projects.list().forEach((project) => {
+      const [child] = globalSync.child(project.worktree, { bootstrap: false })
+      const targets = child.session
+        .filter((session) => !session.parentID && !session.time?.archived)
+        .filter((session) => child.message[session.id] === undefined)
+        .filter((session) => {
+          const key = `${project.worktree}\n${session.id}`
+          if (messageRefresh.has(key)) return false
+          messageRefresh.add(key)
+          return true
+        })
+        .map((session) => session.id)
+      if (targets.length === 0) return
+      void globalSync.project.loadSessionMessages(project.worktree, targets)
+    })
   })
 
   const openProject = (worktree: string) => {
@@ -99,6 +138,21 @@ export default function Home() {
       deletions: formatNumber().format(deletions),
     })
 
+  const modelDisplayName = (modelID: string, providerID?: string) => {
+    if (!modelID) return modelID
+    const all = providers.all()
+    if (providerID) {
+      const provider = all.find((p) => p.id === providerID)
+      const model = provider?.models[modelID]
+      if (model?.name) return model.name
+    }
+    for (const provider of all) {
+      const model = provider.models[modelID]
+      if (model?.name) return model.name
+    }
+    return modelID
+  }
+
   return (
     <div class="size-full overflow-y-auto">
       <div class="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-4 px-4 py-5 sm:gap-6 sm:px-6 sm:py-8">
@@ -108,29 +162,17 @@ export default function Home() {
           formatRelative={formatRelative}
         />
 
-        <HeroStats
+        <StatsPanel
+          tab={tab}
+          setTab={setTab}
+          range={range}
+          setRange={setRange}
           totals={() => stats().totals}
-          formatNumber={formatNumber}
-          tToday={(count) => language.t("home.stat.today", { count })}
-          tArchived={(count) => language.t("home.stat.archived", { count })}
-          labels={{
-            sessions: language.t("home.stat.sessions"),
-            files: language.t("home.stat.files"),
-            lines: language.t("home.stat.lines"),
-            thisWeek: language.t("home.stat.thisWeek"),
-          }}
-        />
-
-        <ActivityChart
           buckets={() => stats().buckets}
-          peak={peakBucket}
-          totalThisWindow={() => stats().buckets.reduce((total, bucket) => total + bucket.count, 0)}
-          formatDay={formatDay}
+          models={() => stats().models}
           formatNumber={formatNumber}
-          tTitle={language.t("home.activity.title")}
-          tSubtitle={language.t("home.activity.subtitle")}
-          tEmpty={language.t("home.activity.empty")}
-          tDayLabel={(count, date) => language.t("home.activity.dayLabel", { count, date })}
+          formatHour={formatHour}
+          modelDisplayName={modelDisplayName}
         />
 
         <div class="grid grid-cols-1 gap-6">
@@ -181,115 +223,262 @@ function Header(props: {
   )
 }
 
-function HeroStats(props: {
+function StatsPanel(props: {
+  tab: () => "overview" | "models"
+  setTab: (value: "overview" | "models") => void
+  range: () => Range
+  setRange: (value: Range) => void
   totals: () => ReturnType<typeof buildHomeStats>["totals"]
-  formatNumber: () => Intl.NumberFormat
-  tToday: (count: number) => string
-  tArchived: (count: number) => string
-  labels: { sessions: string; files: string; lines: string; thisWeek: string }
-}) {
-  const lines = () => props.totals().additions + props.totals().deletions
-  return (
-    <div class="grid grid-cols-2 gap-px sm:gap-0 sm:grid-cols-4 overflow-hidden rounded-xl sm:rounded-lg border border-border-weaker-base bg-border-weaker-base sm:bg-background-base shadow-[var(--shadow-xs)]">
-      <Stat
-        label={props.labels.sessions}
-        value={props.formatNumber().format(props.totals().sessions)}
-        hint={() => (props.totals().archived > 0 ? props.tArchived(props.totals().archived) : undefined)}
-      />
-      <Stat label={props.labels.files} value={props.formatNumber().format(props.totals().files)} />
-      <Stat
-        label={props.labels.lines}
-        value={props.formatNumber().format(lines())}
-        hint={() => {
-          const t = props.totals()
-          if (t.additions === 0 && t.deletions === 0) return undefined
-          return `+${props.formatNumber().format(t.additions)} -${props.formatNumber().format(t.deletions)}`
-        }}
-      />
-      <Stat
-        label={props.labels.thisWeek}
-        value={props.formatNumber().format(props.totals().thisWeek)}
-        hint={() => (props.totals().today > 0 ? props.tToday(props.totals().today) : undefined)}
-      />
-    </div>
-  )
-}
-
-function Stat(props: { label: string; value: string; hint?: () => string | undefined }) {
-  return (
-    <div class="min-w-0 bg-background-base px-3 py-3 sm:px-4 sm:border-b sm:border-r sm:border-border-weaker-base sm:last:border-r-0 sm:border-b-0 sm:[&:nth-child(2)]:border-r sm:[&:nth-child(3)]:border-b-0">
-      <div class="text-20-medium text-text-strong tabular-nums">{props.value}</div>
-      <div class="pt-0.5 text-12-regular text-text-weak truncate">{props.label}</div>
-      <Show when={props.hint?.()} keyed>
-        {(hint) => <div class="pt-1 text-12-regular text-text-base tabular-nums truncate">{hint}</div>}
-      </Show>
-    </div>
-  )
-}
-
-function ActivityChart(props: {
   buckets: () => DayBucket[]
-  peak: () => number
-  totalThisWindow: () => number
-  formatDay: () => Intl.DateTimeFormat
+  models: () => ModelStat[]
   formatNumber: () => Intl.NumberFormat
-  tTitle: string
-  tSubtitle: string
-  tEmpty: string
-  tDayLabel: (count: number, date: string) => string
+  formatHour: (hour: number) => string
+  modelDisplayName: (modelID: string, providerID?: string) => string
 }) {
-  const barHeight = (count: number) => `${Math.max(count > 0 ? 8 : 2, Math.round((count / props.peak()) * 100))}%`
+  const language = useLanguage()
   return (
-    <section class="flex flex-col gap-3">
-      <div class="flex items-baseline justify-between gap-3">
-        <div class="text-14-medium text-text-strong">{props.tTitle}</div>
-        <div class="text-12-regular text-text-weak">{props.tSubtitle}</div>
+    <section class="overflow-hidden rounded-lg border border-border-weaker-base bg-background-base shadow-[var(--shadow-xs)]">
+      <div class="flex items-center justify-between gap-3 border-b border-border-weaker-base px-3 py-2 sm:px-4">
+        <PillGroup
+          value={props.tab()}
+          onChange={(value) => props.setTab(value as "overview" | "models")}
+          options={[
+            { value: "overview", label: language.t("home.tab.overview") },
+            { value: "models", label: language.t("home.tab.models") },
+          ]}
+        />
+        <PillGroup
+          value={props.range()}
+          onChange={(value) => props.setRange(value as Range)}
+          options={RANGES.map((r) => ({ value: r, label: language.t(RANGE_LABEL_KEY[r]) }))}
+        />
       </div>
-      <Show
-        when={props.totalThisWindow() > 0}
-        fallback={
-          <div class="rounded-lg border border-border-weaker-base bg-background-base px-4 py-8 text-center text-12-regular text-text-weak shadow-[var(--shadow-xs)]">
-            {props.tEmpty}
-          </div>
-        }
-      >
-        <div class="rounded-lg border border-border-weaker-base bg-background-base px-4 pt-4 pb-3 shadow-[var(--shadow-xs)]">
-          <div class="flex h-28 items-end gap-1.5">
-            <For each={props.buckets()}>
-              {(bucket) => {
-                const date = () => props.formatDay().format(new Date(bucket.start))
-                const filled = () => bucket.count > 0
-                return (
-                  <div
-                    class="group relative flex h-full flex-1 flex-col justify-end"
-                    title={props.tDayLabel(bucket.count, date())}
-                  >
-                    <div
-                      classList={{
-                        "w-full rounded-sm transition-colors": true,
-                        "bg-[color-mix(in_srgb,var(--text-interactive-base)_55%,transparent)] group-hover:bg-text-interactive-base":
-                          filled(),
-                        "bg-[color-mix(in_srgb,var(--text-weak)_18%,transparent)] group-hover:bg-[color-mix(in_srgb,var(--text-weak)_30%,transparent)]":
-                          !filled(),
-                      }}
-                      style={{ height: barHeight(bucket.count) }}
-                    />
-                  </div>
-                )
-              }}
-            </For>
-          </div>
-          <div class="mt-2 flex justify-between text-12-regular text-text-weak tabular-nums">
-            <Show when={props.buckets()[0]} keyed>
-              {(first) => <span>{props.formatDay().format(new Date(first.start))}</span>}
-            </Show>
-            <Show when={props.buckets().at(-1)} keyed>
-              {(last) => <span>{props.formatDay().format(new Date(last.start))}</span>}
-            </Show>
-          </div>
-        </div>
+      <Show when={props.tab() === "overview"}>
+        <OverviewTab
+          totals={props.totals}
+          buckets={props.buckets}
+          formatNumber={props.formatNumber}
+          formatHour={props.formatHour}
+          modelDisplayName={props.modelDisplayName}
+        />
+      </Show>
+      <Show when={props.tab() === "models"}>
+        <ModelsTab models={props.models} formatNumber={props.formatNumber} modelDisplayName={props.modelDisplayName} />
       </Show>
     </section>
+  )
+}
+
+function PillGroup<T extends string>(props: {
+  value: T
+  onChange: (value: T) => void
+  options: Array<{ value: T; label: string }>
+}) {
+  return (
+    <div class="inline-flex items-center gap-0.5 rounded-md bg-surface-base p-0.5">
+      <For each={props.options}>
+        {(option) => (
+          <button
+            type="button"
+            class="rounded px-2.5 py-1 text-12-medium tabular-nums transition-colors"
+            classList={{
+              "bg-background-base text-text-strong shadow-[var(--shadow-xs)]": props.value === option.value,
+              "text-text-weak hover:text-text-base": props.value !== option.value,
+            }}
+            onClick={() => props.onChange(option.value)}
+          >
+            {option.label}
+          </button>
+        )}
+      </For>
+    </div>
+  )
+}
+
+function OverviewTab(props: {
+  totals: () => ReturnType<typeof buildHomeStats>["totals"]
+  buckets: () => DayBucket[]
+  formatNumber: () => Intl.NumberFormat
+  formatHour: (hour: number) => string
+  modelDisplayName: (modelID: string, providerID?: string) => string
+}) {
+  const language = useLanguage()
+  const tokenFormatter = createMemo(
+    () => new Intl.NumberFormat(language.intl(), { notation: "compact", maximumFractionDigits: 1 }),
+  )
+  const streakLabel = (days: number) => language.t("home.stat.streak.value", { count: days })
+  const duneRatio = () => {
+    const tokens = props.totals().tokens
+    if (tokens < DUNE_TOKENS) return undefined
+    return Math.round(tokens / DUNE_TOKENS)
+  }
+
+  return (
+    <>
+      <div class="grid grid-cols-2 gap-px bg-border-weaker-base sm:grid-cols-4">
+        <Stat label={language.t("home.stat.sessions")} value={props.formatNumber().format(props.totals().sessions)} />
+        <Stat label={language.t("home.stat.messages")} value={props.formatNumber().format(props.totals().messages)} />
+        <Stat label={language.t("home.stat.tokens")} value={tokenFormatter().format(props.totals().tokens)} />
+        <Stat
+          label={language.t("home.stat.activeDays")}
+          value={props.formatNumber().format(props.totals().activeDays)}
+        />
+        <Stat label={language.t("home.stat.streak.current")} value={streakLabel(props.totals().currentStreak)} />
+        <Stat label={language.t("home.stat.streak.longest")} value={streakLabel(props.totals().longestStreak)} />
+        <Stat
+          label={language.t("home.stat.peakHour")}
+          value={props.totals().peakHour !== undefined ? props.formatHour(props.totals().peakHour!) : "—"}
+        />
+        <Stat
+          label={language.t("home.stat.preferredModel")}
+          value={
+            props.totals().preferredModel
+              ? props.modelDisplayName(
+                  props.totals().preferredModel!.modelID,
+                  props.totals().preferredModel!.providerID,
+                )
+              : "—"
+          }
+        />
+      </div>
+
+      <div class="px-3 py-4 sm:px-4">
+        <Heatmap buckets={props.buckets} formatNumber={props.formatNumber} />
+      </div>
+
+      <Show when={duneRatio()} keyed>
+        {(ratio) => (
+          <div class="border-t border-border-weaker-base px-3 py-2 text-12-regular text-text-weak sm:px-4">
+            {language.t("home.stat.footer.dune", { count: ratio })}
+          </div>
+        )}
+      </Show>
+    </>
+  )
+}
+
+function ModelsTab(props: {
+  models: () => ModelStat[]
+  formatNumber: () => Intl.NumberFormat
+  modelDisplayName: (modelID: string, providerID?: string) => string
+}) {
+  const language = useLanguage()
+  const tokenFormatter = createMemo(
+    () => new Intl.NumberFormat(language.intl(), { notation: "compact", maximumFractionDigits: 1 }),
+  )
+  return (
+    <Show
+      when={props.models().length > 0}
+      fallback={
+        <div class="px-4 py-10 text-center text-12-regular text-text-weak">{language.t("home.models.empty")}</div>
+      }
+    >
+      <div class="divide-y divide-border-weaker-base">
+        <For each={props.models()}>
+          {(model) => {
+            const peak = props.models()[0]?.messages ?? 1
+            return (
+              <div class="flex items-center gap-3 px-3 py-3 sm:px-4">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="truncate text-14-medium text-text-strong">
+                      {props.modelDisplayName(model.modelID, model.providerID)}
+                    </span>
+                    <span class="shrink-0 text-12-regular text-text-base tabular-nums">
+                      {language.t("home.models.messages", { count: props.formatNumber().format(model.messages) })}
+                    </span>
+                  </div>
+                  <div class="mt-1.5 h-1 overflow-hidden rounded-full bg-surface-base">
+                    <div
+                      class="h-full rounded-full bg-[color-mix(in_srgb,var(--text-interactive-base)_55%,transparent)]"
+                      style={{ width: `${Math.round((model.messages / Math.max(peak, 1)) * 100)}%` }}
+                    />
+                  </div>
+                  <div class="mt-1.5 flex items-center justify-between gap-3 text-12-regular text-text-weak tabular-nums">
+                    <span>
+                      {language.t("home.models.sessions", { count: props.formatNumber().format(model.sessions) })}
+                    </span>
+                    <span>{language.t("home.models.tokens", { value: tokenFormatter().format(model.tokens) })}</span>
+                  </div>
+                </div>
+              </div>
+            )
+          }}
+        </For>
+      </div>
+    </Show>
+  )
+}
+
+function Stat(props: { label: string; value: string }) {
+  return (
+    <div class="min-w-0 bg-background-base px-3 py-3 sm:px-4">
+      <div class="truncate text-12-regular text-text-weak">{props.label}</div>
+      <div class="pt-0.5 truncate text-18-medium text-text-strong tabular-nums">{props.value}</div>
+    </div>
+  )
+}
+
+function Heatmap(props: { buckets: () => DayBucket[]; formatNumber: () => Intl.NumberFormat }) {
+  const language = useLanguage()
+  const formatDay = createMemo(
+    () => new Intl.DateTimeFormat(language.intl(), { day: "numeric", month: "short", year: "numeric" }),
+  )
+  const peak = createMemo(() => Math.max(1, ...props.buckets().map((bucket) => bucket.count)))
+  const intensity = (count: number) => {
+    if (count <= 0) return 0
+    const ratio = count / peak()
+    if (ratio < 0.25) return 1
+    if (ratio < 0.5) return 2
+    if (ratio < 0.75) return 3
+    return 4
+  }
+  const cellSize = `calc((100cqi - ${(HEATMAP_COLS - 1) * HEATMAP_GAP_PX}px) / ${HEATMAP_COLS})`
+
+  return (
+    <Show
+      when={props.buckets().length > 0}
+      fallback={
+        <div class="rounded-md border border-dashed border-border-weaker-base px-4 py-6 text-center text-12-regular text-text-weak">
+          {language.t("home.activity.empty")}
+        </div>
+      }
+    >
+      <div class="w-full" style={{ "container-type": "inline-size", "--heatmap-cell": cellSize }}>
+        <div
+          class="grid"
+          style={{
+            "grid-template-columns": `repeat(${HEATMAP_COLS}, var(--heatmap-cell))`,
+            "grid-template-rows": `repeat(${HEATMAP_ROWS}, var(--heatmap-cell))`,
+            "grid-auto-flow": "column",
+            gap: `${HEATMAP_GAP_PX}px`,
+          }}
+        >
+          <For each={props.buckets()}>
+            {(bucket) => (
+              <div
+                class="rounded-[2px]"
+                style={{ width: "var(--heatmap-cell)", height: "var(--heatmap-cell)" }}
+                classList={{
+                  "bg-[color-mix(in_srgb,var(--text-weak)_15%,transparent)]": intensity(bucket.count) === 0,
+                  "bg-[color-mix(in_srgb,var(--text-interactive-base)_25%,transparent)]":
+                    intensity(bucket.count) === 1,
+                  "bg-[color-mix(in_srgb,var(--text-interactive-base)_45%,transparent)]":
+                    intensity(bucket.count) === 2,
+                  "bg-[color-mix(in_srgb,var(--text-interactive-base)_70%,transparent)]":
+                    intensity(bucket.count) === 3,
+                  "bg-text-interactive-base": intensity(bucket.count) === 4,
+                }}
+                title={language.t("home.activity.dayLabel", {
+                  count: bucket.count,
+                  date: formatDay().format(new Date(bucket.start)),
+                })}
+              />
+            )}
+          </For>
+        </div>
+      </div>
+    </Show>
   )
 }
 
@@ -414,3 +603,4 @@ function RecentSection(props: {
     </section>
   )
 }
+

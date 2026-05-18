@@ -1,6 +1,15 @@
 import { describe, expect, test } from "bun:test"
-import type { Session, SnapshotFileDiff } from "@codeplane-ai/sdk/v2/client"
-import { aggregateProjects, aggregateTotals, buildHomeStats, dailyBuckets, DAY_MS, recentSessions } from "./stats"
+import type { AssistantMessage, Message, Session, SnapshotFileDiff } from "@codeplane-ai/sdk/v2/client"
+import {
+  aggregateModels,
+  aggregateProjects,
+  aggregateTotals,
+  buildHomeStats,
+  dailyBuckets,
+  DAY_MS,
+  recentSessions,
+  streaks,
+} from "./stats"
 
 const now = new Date("2026-04-27T12:00:00Z").getTime()
 
@@ -36,6 +45,47 @@ const patchDiff = (file: string, patch: string): SnapshotFileDiff => ({
   deletions: 0,
   status: "modified",
 })
+
+const assistant = (overrides: {
+  id: string
+  sessionID: string
+  created: number
+  modelID?: string
+  providerID?: string
+  tokens?: Partial<AssistantMessage["tokens"]>
+}): AssistantMessage =>
+  ({
+    id: overrides.id,
+    sessionID: overrides.sessionID,
+    role: "assistant",
+    time: { created: overrides.created },
+    parentID: "u" + overrides.id,
+    modelID: overrides.modelID ?? "claude-opus-4-7",
+    providerID: overrides.providerID ?? "anthropic",
+    mode: "default",
+    agent: "default",
+    path: { cwd: "/", root: "/" },
+    cost: 0,
+    tokens: {
+      total: overrides.tokens?.total,
+      input: overrides.tokens?.input ?? 0,
+      output: overrides.tokens?.output ?? 0,
+      reasoning: overrides.tokens?.reasoning ?? 0,
+      cache: { read: overrides.tokens?.cache?.read ?? 0, write: overrides.tokens?.cache?.write ?? 0 },
+    },
+  }) as AssistantMessage
+
+const user = (overrides: { id: string; sessionID: string; created: number }): Message =>
+  ({
+    id: overrides.id,
+    sessionID: overrides.sessionID,
+    role: "user",
+    time: { created: overrides.created },
+    agent: "default",
+    model: { providerID: "anthropic", modelID: "claude-opus-4-7" },
+  }) as Message
+
+const emptyMessages: Message[] = []
 
 describe("aggregateProjects", () => {
   test("counts visible sessions and aggregates summary", () => {
@@ -201,7 +251,7 @@ describe("aggregateProjects", () => {
 })
 
 describe("aggregateTotals", () => {
-  test("counts today and this week correctly", () => {
+  test("counts today, this week, messages and tokens", () => {
     const sessions: Session[] = [
       session({ id: "today", created: now }),
       session({ id: "yesterday", created: dayAgo(1) }),
@@ -209,12 +259,20 @@ describe("aggregateTotals", () => {
       session({ id: "old", created: dayAgo(8) }),
     ]
     const projects = aggregateProjects([{ directory: "/a", worktree: "/a", name: "A", sessions }])
-    const totals = aggregateTotals(projects, sessions, now)
+    const messages = [
+      { message: assistant({ id: "1", sessionID: "today", created: now, tokens: { input: 10, output: 20 } }), sessionID: "today" },
+      { message: user({ id: "2", sessionID: "today", created: now }), sessionID: "today" },
+      { message: assistant({ id: "3", sessionID: "yesterday", created: dayAgo(1), tokens: { total: 100 } }), sessionID: "yesterday" },
+    ]
+    const totals = aggregateTotals(projects, sessions, messages, now, "all")
     expect(totals).toMatchObject({
       projects: 1,
       sessions: 4,
       today: 1,
       thisWeek: 3,
+      messages: 3,
+      tokens: 130,
+      activeDays: 2,
     })
   })
 
@@ -224,26 +282,92 @@ describe("aggregateTotals", () => {
       session({ id: "archived", created: now, time: { created: now, archived: now } as Session["time"] }),
     ]
     const projects = aggregateProjects([{ directory: "/a", worktree: "/a", name: "A", sessions }])
-    const totals = aggregateTotals(projects, sessions, now)
+    const totals = aggregateTotals(projects, sessions, [], now, "all")
     expect(totals.sessions).toBe(1)
     expect(totals.archived).toBe(1)
+  })
+
+  test("identifies peak hour and preferred model", () => {
+    const sessions: Session[] = [session({ id: "s", created: now })]
+    const projects = aggregateProjects([{ directory: "/a", worktree: "/a", name: "A", sessions }])
+    const messages = [
+      { message: assistant({ id: "1", sessionID: "s", created: new Date(2026, 3, 27, 10).getTime(), modelID: "opus" }), sessionID: "s" },
+      { message: assistant({ id: "2", sessionID: "s", created: new Date(2026, 3, 27, 10).getTime(), modelID: "opus" }), sessionID: "s" },
+      { message: assistant({ id: "3", sessionID: "s", created: new Date(2026, 3, 27, 14).getTime(), modelID: "sonnet" }), sessionID: "s" },
+    ]
+    const totals = aggregateTotals(projects, sessions, messages, now, "all")
+    expect(totals.peakHour).toBe(10)
+    expect(totals.preferredModel?.modelID).toBe("opus")
+    expect(totals.preferredModel?.messages).toBe(2)
+  })
+
+  test("filters by range", () => {
+    const sessions: Session[] = [session({ id: "s", created: dayAgo(20) })]
+    const projects = aggregateProjects([{ directory: "/a", worktree: "/a", name: "A", sessions }])
+    const messages = [
+      { message: assistant({ id: "old", sessionID: "s", created: dayAgo(20), tokens: { total: 50 } }), sessionID: "s" },
+      { message: assistant({ id: "new", sessionID: "s", created: dayAgo(2), tokens: { total: 10 } }), sessionID: "s" },
+    ]
+    const totalsAll = aggregateTotals(projects, sessions, messages, now, "all")
+    const totals7d = aggregateTotals(projects, sessions, messages, now, "7d")
+    expect(totalsAll.tokens).toBe(60)
+    expect(totals7d.tokens).toBe(10)
+  })
+})
+
+describe("streaks", () => {
+  test("computes current and longest streak", () => {
+    const today = new Date(now)
+    today.setHours(0, 0, 0, 0)
+    const start = today.getTime()
+    const days = new Set([start, start - DAY_MS, start - 2 * DAY_MS, start - 5 * DAY_MS, start - 6 * DAY_MS])
+    const result = streaks(days, now)
+    expect(result.current).toBe(3)
+    expect(result.longest).toBe(3)
+  })
+
+  test("returns zero for empty set", () => {
+    expect(streaks(new Set(), now)).toEqual({ current: 0, longest: 0 })
+  })
+})
+
+describe("aggregateModels", () => {
+  test("breaks down by model with tokens and session counts", () => {
+    const messages = [
+      { message: assistant({ id: "1", sessionID: "s1", created: now, modelID: "opus", tokens: { total: 100 } }), sessionID: "s1" },
+      { message: assistant({ id: "2", sessionID: "s2", created: now, modelID: "opus", tokens: { total: 50 } }), sessionID: "s2" },
+      { message: assistant({ id: "3", sessionID: "s1", created: now, modelID: "sonnet", tokens: { total: 30 } }), sessionID: "s1" },
+    ]
+    const breakdown = aggregateModels(messages, now, "all")
+    expect(breakdown[0]).toMatchObject({ modelID: "opus", messages: 2, tokens: 150, sessions: 2 })
+    expect(breakdown[1]).toMatchObject({ modelID: "sonnet", messages: 1, tokens: 30, sessions: 1 })
   })
 })
 
 describe("dailyBuckets", () => {
-  test("buckets sessions by day, oldest first", () => {
-    const sessions: Session[] = [
-      session({ id: "today", created: now }),
-      session({ id: "today2", created: now - 1000 * 60 * 60 }),
-      session({ id: "y", created: dayAgo(1) }),
-      session({ id: "old", created: dayAgo(13) }),
-      session({ id: "tooOld", created: dayAgo(20) }),
+  test("always returns 364 buckets ending today", () => {
+    const messages = [
+      { message: assistant({ id: "1", sessionID: "s", created: now }), sessionID: "s" },
+      { message: assistant({ id: "2", sessionID: "s", created: now - 1000 * 60 * 60 }), sessionID: "s" },
+      { message: assistant({ id: "3", sessionID: "s", created: dayAgo(1) }), sessionID: "s" },
+      { message: assistant({ id: "4", sessionID: "s", created: dayAgo(13) }), sessionID: "s" },
+      { message: assistant({ id: "5", sessionID: "s", created: dayAgo(40) }), sessionID: "s" },
+      { message: assistant({ id: "6", sessionID: "s", created: dayAgo(400) }), sessionID: "s" },
     ]
-    const buckets = dailyBuckets(sessions, now, 14)
-    expect(buckets).toHaveLength(14)
+    const buckets = dailyBuckets(messages, now)
+    expect(buckets).toHaveLength(364)
     expect(buckets[buckets.length - 1]?.count).toBe(2)
     expect(buckets[buckets.length - 2]?.count).toBe(1)
-    expect(buckets[0]?.count).toBe(1)
+    expect(buckets[buckets.length - 14]?.count).toBe(1)
+    expect(buckets[buckets.length - 41]?.count).toBe(1)
+    // anything older than 364 days is dropped
+    expect(buckets.reduce((total, b) => total + b.count, 0)).toBe(5)
+  })
+
+  test("empty input still returns 364 zero-count buckets", () => {
+    const buckets = dailyBuckets([], now)
+    expect(buckets).toHaveLength(364)
+    expect(buckets.every((b) => b.count === 0)).toBe(true)
   })
 })
 
@@ -294,7 +418,7 @@ describe("recentSessions", () => {
 })
 
 describe("buildHomeStats", () => {
-  test("composes the full result", () => {
+  test("composes the full result with messages", () => {
     const stats = buildHomeStats(
       [
         {
@@ -302,14 +426,43 @@ describe("buildHomeStats", () => {
           worktree: "/a",
           name: "A",
           sessions: [session({ id: "1", created: now, summary: { additions: 1, deletions: 0, files: 1 } })],
+          sessionMessages: {
+            "1": [assistant({ id: "m1", sessionID: "1", created: now, tokens: { total: 42 } })],
+          },
         },
       ],
       now,
+      "all",
     )
     expect(stats.totals.projects).toBe(1)
     expect(stats.totals.sessions).toBe(1)
+    expect(stats.totals.messages).toBe(1)
+    expect(stats.totals.tokens).toBe(42)
     expect(stats.projects[0]?.name).toBe("A")
     expect(stats.recent[0]?.id).toBe("1")
+    expect(stats.buckets).toHaveLength(364)
     expect(stats.buckets.at(-1)?.count).toBe(1)
+    expect(stats.models[0]?.modelID).toBe("claude-opus-4-7")
+  })
+
+  test("handles missing message data gracefully", () => {
+    const stats = buildHomeStats(
+      [
+        {
+          directory: "/a",
+          worktree: "/a",
+          name: "A",
+          sessions: [session({ id: "1", created: now })],
+        },
+      ],
+      now,
+      "all",
+    )
+    expect(stats.totals.messages).toBe(0)
+    expect(stats.totals.tokens).toBe(0)
+    expect(stats.models).toHaveLength(0)
   })
 })
+
+// avoid "declared but unused" if no test references it
+void emptyMessages
