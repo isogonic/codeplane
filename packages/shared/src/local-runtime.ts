@@ -15,6 +15,7 @@ import type { LocalInstallProgress, LocalTarget } from "./instance"
 const CONFIG_FILES = ["codeplane.jsonc", "codeplane.json", "config.json"] as const
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
 const NPM_TAG_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
+const NPM_PACKAGE_NAME_PATTERN = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/i
 export function resolveNpmFetchTimeout(value = process.env.CODEPLANE_NPM_FETCH_TIMEOUT_MS) {
   const parsed = Number(value)
   if (!Number.isFinite(parsed) || parsed < 1_000) return 120_000
@@ -176,6 +177,7 @@ async function npmRegistry() {
 const registryConfigHint = "Check npm.registry in Codeplane config, CODEPLANE_NPM_REGISTRY, or npm_config_registry."
 
 const registryPath = (name: string) => {
+  if (!NPM_PACKAGE_NAME_PATTERN.test(name)) throw new Error(`Invalid npm package name "${name}".`)
   if (!name.startsWith("@")) return name
   return name.replace("/", "%2f")
 }

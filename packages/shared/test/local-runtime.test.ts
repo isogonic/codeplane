@@ -149,6 +149,11 @@ describe("local runtime registry config", () => {
   test("rejects unsafe npm dist-tags", async () => {
     await expect(fetchNpmPackageManifest({ name: "codeplane-ai", version: "../latest" })).rejects.toThrow(/Invalid version/)
   })
+
+  test("rejects unsafe npm package names for manifest lookups", async () => {
+    await expect(fetchNpmPackageManifest({ name: "../codeplane-ai", version: "latest" })).rejects.toThrow(/Invalid npm package name/)
+    await expect(fetchNpmPackageManifest({ name: "@scope/../codeplane-ai", version: "latest" })).rejects.toThrow(/Invalid npm package name/)
+  })
 })
 
 describe("local runtime version listing", () => {
@@ -159,6 +164,10 @@ describe("local runtime version listing", () => {
     await expect(fetchCodeplaneVersions()).rejects.toThrow(
       "npm registry packument lookup failed for codeplane-ai at https://registry.example.com/custom/codeplane-ai with HTTP 404. Check npm.registry in Codeplane config, CODEPLANE_NPM_REGISTRY, or npm_config_registry.",
     )
+  })
+
+  test("rejects unsafe npm package names for version listings", async () => {
+    await expect(fetchCodeplaneVersions({ name: "../codeplane-ai" })).rejects.toThrow(/Invalid npm package name/)
   })
 
   test("sorts versions with semver precedence", async () => {
