@@ -465,6 +465,7 @@ export type SessionStatus =
     }
   | {
       type: "busy"
+      queued?: number
     }
 
 export type EventSessionStatus = {
@@ -1891,6 +1892,16 @@ export type ServerConfig = {
   cors?: Array<string>
 }
 
+/**
+ * Commit behavior for Codeplane-created commits.
+ */
+export type CommitConfig = {
+  /**
+   * When true, commits made through Codeplane include Co-Authored-By: Codeplane <noreply@codeplane.cc>.
+   */
+  coauthor?: boolean
+}
+
 export type PermissionActionConfig = "ask" | "allow" | "deny"
 
 export type PermissionObjectConfig = {
@@ -2231,6 +2242,7 @@ export type Config = {
       subtask?: boolean
     }
   }
+  commit?: CommitConfig
   /**
    * Additional skill folder paths
    */
@@ -3413,6 +3425,25 @@ export type GlobalDisposeResponses = {
 }
 
 export type GlobalDisposeResponse = GlobalDisposeResponses[keyof GlobalDisposeResponses]
+
+export type GlobalRestartData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/global/restart"
+}
+
+export type GlobalRestartResponses = {
+  /**
+   * Restart result
+   */
+  200: {
+    ok: true
+    method: "reload" | "exit"
+  }
+}
+
+export type GlobalRestartResponse = GlobalRestartResponses[keyof GlobalRestartResponses]
 
 export type GlobalUpgradeData = {
   body?: {

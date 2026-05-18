@@ -3,7 +3,7 @@
   "info": {
     "title": "codeplane",
     "description": "codeplane api",
-    "version": "28.0.15"
+    "version": "28.2.2"
   },
   "paths": {
     "/global/cron": {
@@ -935,6 +935,42 @@
           {
             "lang": "js",
             "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.dispose({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/global/restart": {
+      "post": {
+        "operationId": "global.restart",
+        "summary": "Restart codeplane",
+        "description": "Dispose all instances so mode, plugin, and MCP changes are reloaded on the next request. If disposal fails, exits the process so a supervisor (docker/systemd/pm2) can restart it.",
+        "responses": {
+          "200": {
+            "description": "Restart result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "method": {
+                      "type": "string",
+                      "enum": ["reload", "exit"]
+                    }
+                  },
+                  "required": ["ok", "method"]
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.restart({\n  ...\n})"
           }
         ]
       }
@@ -6763,7 +6799,7 @@
           }
         ],
         "summary": "Subscribe to events",
-        "description": "Get events",
+        "description": "Server-Sent Events stream. Each event has an `id:` field (monotonic, per server process). Reconnect with the standard `Last-Event-ID` header to replay missed events from an in-memory ring buffer (last ~1024 events). If the requested id is older than the buffer's tail, the server emits a `server.resume_failed` event and the client should refetch state.",
         "responses": {
           "200": {
             "description": "Event stream",
@@ -8850,6 +8886,9 @@
               "type": {
                 "type": "string",
                 "const": "busy"
+              },
+              "queued": {
+                "type": "number"
               }
             },
             "required": ["type"]
@@ -13172,6 +13211,16 @@
           }
         }
       },
+      "CommitConfig": {
+        "description": "Commit behavior for Codeplane-created commits.",
+        "type": "object",
+        "properties": {
+          "coauthor": {
+            "description": "When true, commits made through Codeplane include Co-Authored-By: Codeplane <noreply@codeplane.cc>.",
+            "type": "boolean"
+          }
+        }
+      },
       "PermissionActionConfig": {
         "type": "string",
         "enum": ["ask", "allow", "deny"]
@@ -13828,6 +13877,9 @@
               },
               "required": ["template"]
             }
+          },
+          "commit": {
+            "$ref": "#/components/schemas/CommitConfig"
           },
           "skills": {
             "description": "Additional skill folder paths",

@@ -32,7 +32,7 @@
 //
 // Drop into `android/app/src/main/java/ai/codeplane/mobile/`.
 
-package ai.codeplane.mobile;
+package cc.codeplane.mobile;
 
 import android.net.Uri;
 import android.util.Log;

@@ -50,7 +50,7 @@ Homebrew's `cocoapods`) to:
 - Share `CodeplaneActivityAttributes.swift` between both targets
   (the IPC contract between processes)
 - Configure the widget's Build Settings (iOS 16.2 deployment target,
-  bundle ID `ai.codeplane.mobile.LiveActivityWidget`, Swift 5,
+  bundle ID `cc.codeplane.mobile.LiveActivityWidget`, Swift 5,
   signing inherited from the App target, `PRODUCT_NAME=$(TARGET_NAME)`)
 - Add an *Embed App Extensions* copy phase to the App target so the
   `.appex` ships inside `App.app/PlugIns/`
@@ -114,7 +114,7 @@ Same flow — right-click `App` → **Add Files to "App"…** →
 | --- | --- |
 | Product Name | `CodeplaneLiveActivityWidget` |
 | Team | _whatever signs the App target_ |
-| Bundle Identifier | `ai.codeplane.mobile.LiveActivityWidget` (auto-derived) |
+| Bundle Identifier | `cc.codeplane.mobile.LiveActivityWidget` (auto-derived) |
 | Language | Swift |
 | **Include Live Activity** | ✅ **TICK THIS** — without it Xcode generates the wrong scaffolding |
 | Include Configuration App Intent | ❌ leave unchecked |

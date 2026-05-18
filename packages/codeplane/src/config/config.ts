@@ -28,6 +28,7 @@ import { zod, ZodOverride } from "@/util/effect-zod"
 import { NonNegativeInt, PositiveInt, withStatics, type DeepMutable } from "@/util/schema"
 import { ConfigAgent } from "./agent"
 import { ConfigCommand } from "./command"
+import { ConfigCommit } from "./commit"
 import { ConfigFormatter } from "./formatter"
 import { ConfigGit } from "./git"
 import { ConfigLayout } from "./layout"
@@ -96,6 +97,9 @@ export const Info = Schema.Struct({
   }),
   command: Schema.optional(Schema.Record(Schema.String, ConfigCommand.Info)).annotate({
     description: "Command configuration, see https://github.com/devinoldenburg/codeplane",
+  }),
+  commit: Schema.optional(ConfigCommit.Info).annotate({
+    description: "Commit behavior for Codeplane-created commits.",
   }),
   skills: Schema.optional(ConfigSkills.Info).annotate({ description: "Additional skill folder paths" }),
   watcher: Schema.optional(

@@ -74,6 +74,7 @@ import type {
   GlobalHealthResponses,
   GlobalReleaseNotesErrors,
   GlobalReleaseNotesResponses,
+  GlobalRestartResponses,
   GlobalUpgradeErrors,
   GlobalUpgradeResponses,
   GlobalVersionResponses,
@@ -676,6 +677,18 @@ export class Global extends HeyApiClient {
   public dispose<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
     return (options?.client ?? this.client).post<GlobalDisposeResponses, unknown, ThrowOnError>({
       url: "/global/dispose",
+      ...options,
+    })
+  }
+
+  /**
+   * Restart codeplane
+   *
+   * Dispose all instances so mode, plugin, and MCP changes are reloaded on the next request. If disposal fails, exits the process so a supervisor (docker/systemd/pm2) can restart it.
+   */
+  public restart<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
+    return (options?.client ?? this.client).post<GlobalRestartResponses, unknown, ThrowOnError>({
+      url: "/global/restart",
       ...options,
     })
   }
@@ -3759,7 +3772,7 @@ export class Event extends HeyApiClient {
   /**
    * Subscribe to events
    *
-   * Get events
+   * Server-Sent Events stream. Each event has an `id:` field (monotonic, per server process). Reconnect with the standard `Last-Event-ID` header to replay missed events from an in-memory ring buffer (last ~1024 events). If the requested id is older than the buffer's tail, the server emits a `server.resume_failed` event and the client should refetch state.
    */
   public subscribe<ThrowOnError extends boolean = false>(
     parameters?: {

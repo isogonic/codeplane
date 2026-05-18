@@ -153,6 +153,60 @@ describe("tool.git", () => {
     ),
   )
 
+  git.it.live("adds Codeplane co-author trailer to commits when enabled", () =>
+    provideTmpdirInstance(
+      (dir) =>
+        Effect.gen(function* () {
+          git.state.config().commit = { coauthor: true }
+          yield* Effect.promise(() => Bun.write(path.join(dir, "coauthor.txt"), "hello\n"))
+
+          yield* git.run({ operation: "add", cwd: dir, files: ["coauthor.txt"] })
+          yield* git.run({ operation: "commit", cwd: dir, message: "add coauthor file" })
+
+          const log = yield* git.run({ operation: "run", cwd: dir, args: ["log", "-1", "--pretty=%B"] })
+          expect(log.output).toContain("add coauthor file")
+          expect(log.output).toContain("Co-Authored-By: Codeplane <noreply@codeplane.cc>")
+        }),
+      { git: true },
+    ),
+  )
+
+  git.it.live("adds Codeplane co-author trailer to raw commit runs when enabled", () =>
+    provideTmpdirInstance(
+      (dir) =>
+        Effect.gen(function* () {
+          git.state.config().commit = { coauthor: true }
+          yield* Effect.promise(() => Bun.write(path.join(dir, "raw-coauthor.txt"), "hello\n"))
+
+          yield* git.run({ operation: "add", cwd: dir, files: ["raw-coauthor.txt"] })
+          yield* git.run({ operation: "run", cwd: dir, args: ["commit", "-m", "add raw coauthor file"] })
+
+          const log = yield* git.run({ operation: "run", cwd: dir, args: ["log", "-1", "--pretty=%B"] })
+          expect(log.output).toContain("add raw coauthor file")
+          expect(log.output).toContain("Co-Authored-By: Codeplane <noreply@codeplane.cc>")
+        }),
+      { git: true },
+    ),
+  )
+
+  git.it.live("does not add Codeplane co-author trailer by default", () =>
+    provideTmpdirInstance(
+      (dir) =>
+        Effect.gen(function* () {
+          delete git.state.config().commit
+          yield* Effect.promise(() => Bun.write(path.join(dir, "plain.txt"), "hello\n"))
+
+          yield* git.run({ operation: "add", cwd: dir, files: ["plain.txt"] })
+          yield* git.run({ operation: "commit", cwd: dir, message: "add plain file" })
+
+          const log = yield* git.run({ operation: "run", cwd: dir, args: ["log", "-1", "--pretty=%B"] })
+          expect(log.output).toContain("add plain file")
+          expect(log.output).not.toContain("Co-Authored-By: Codeplane <noreply@codeplane.cc>")
+        }),
+      { git: true },
+    ),
+  )
+
   git.it.live("stores host config and redacted credential metadata", () =>
     provideTmpdirInstance((dir) =>
       Effect.gen(function* () {

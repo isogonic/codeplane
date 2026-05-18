@@ -28,7 +28,7 @@ import { MobileHeader } from "../components/mobile-header"
  *   │ ┌───────────────────────────┐ │
  *   │ │ Version            28.0.13│ │
  *   │ │ Build                   28│ │
- *   │ │ Bundle ID  ai.codeplane.…│ │
+ *   │ │ Bundle ID  cc.codeplane.…│ │
  *   │ └───────────────────────────┘ │
  *   │                               │
  *   │ DEVICE                        │

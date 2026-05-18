@@ -486,7 +486,7 @@ The implementation lives in [`packages/shared/src/home.ts`](packages/shared/src/
 
 For IT-deployed installs, Codeplane reads a managed configuration directory in addition to the user home:
 
-- **macOS** — `/Library/Application Support/Codeplane`, plus managed preferences from MDM-deployed `.mobileconfig` profiles under the `ai.codeplane.managed` plist domain.
+- **macOS** — `/Library/Application Support/Codeplane`, plus managed preferences from MDM-deployed `.mobileconfig` profiles under the `cc.codeplane.managed` plist domain.
 - **Windows** — `%ProgramData%\Codeplane`.
 - **Linux** — `/etc/Codeplane`.
 

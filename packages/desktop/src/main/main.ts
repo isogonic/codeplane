@@ -118,10 +118,10 @@ async function githubApiHeaders(): Promise<Record<string, string>> {
 }
 const GITHUB_RELEASES_API_URL = "https://api.github.com/repos/devinoldenburg/codeplane/releases"
 const DESKTOP_STORAGE_DIRECT = "__direct__"
-const APP_ID = "ai.codeplane.desktop"
+const APP_ID = "cc.codeplane.desktop"
 const APP_NAME = "Codeplane"
 const APP_COPYRIGHT = "Copyright © 2026 Devin Oldenburg"
-const APP_WEBSITE = "https://codeplane.ai"
+const APP_WEBSITE = "https://codeplane.cc"
 const USER_DATA_OVERRIDE = process.env.CODEPLANE_DESKTOP_USER_DATA_DIR?.trim()
 const LEGACY_USER_DATA_NAME = "@codeplane-ai/desktop"
 if (USER_DATA_OVERRIDE && !process.env.CODEPLANE_HOME_DIR) process.env.CODEPLANE_HOME_DIR = USER_DATA_OVERRIDE

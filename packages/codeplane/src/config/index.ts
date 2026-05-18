@@ -1,6 +1,7 @@
 export * as Config from "./config"
 export * as ConfigAgent from "./agent"
 export * as ConfigCommand from "./command"
+export * as ConfigCommit from "./commit"
 export * as ConfigError from "./error"
 export * as ConfigFormatter from "./formatter"
 export * as ConfigGit from "./git"

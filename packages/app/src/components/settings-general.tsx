@@ -6,6 +6,7 @@ import { TextField } from "@codeplane-ai/ui/text-field"
 import { useTheme, type ColorScheme } from "@codeplane-ai/ui/theme/context"
 import { useParams } from "@solidjs/router"
 import { useLanguage } from "@/context/language"
+import { useGlobalSync } from "@/context/global-sync"
 import { usePermission } from "@/context/permission"
 import { useUpdates } from "@/context/updates"
 import {
@@ -61,6 +62,7 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
   const theme = useTheme()
   const language = useLanguage()
   const permission = usePermission()
+  const globalSync = useGlobalSync()
   const params = useParams()
   const settings = useSettings()
   const updates = useUpdates()
@@ -97,6 +99,8 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
    */
   const accepting = createMemo(() => permission.isGlobalAutoAccept())
   const toggleAccept = (checked: boolean) => permission.setGlobalAutoAccept(checked)
+  const coauthoring = createMemo(() => globalSync.data.config.commit?.coauthor === true)
+  const toggleCoauthoring = (checked: boolean) => globalSync.updateConfig({ commit: { coauthor: checked } })
 
   const colorSchemeOptions = createMemo((): { value: ColorScheme; label: string }[] => [
     { value: "system", label: language.t("theme.scheme.system") },
@@ -201,6 +205,15 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
             size="small"
             triggerVariant="settings"
           />
+        </SettingsRow>
+
+        <SettingsRow
+          title={language.t("settings.general.row.codeplaneCoauthor.title")}
+          description={language.t("settings.general.row.codeplaneCoauthor.description")}
+        >
+          <div data-action="settings-codeplane-coauthor">
+            <Switch checked={coauthoring()} onChange={(checked) => void toggleCoauthoring(checked)} />
+          </div>
         </SettingsRow>
 
         <SettingsRow

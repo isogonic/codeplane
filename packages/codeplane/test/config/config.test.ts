@@ -164,6 +164,26 @@ test("loads npm registry integration config", async () => {
   })
 })
 
+test("loads commit co-author config", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await writeConfig(dir, {
+        $schema: "https://example.invalid/config.json",
+        commit: {
+          coauthor: true,
+        },
+      })
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await load()
+      expect(config.commit?.coauthor).toBe(true)
+    },
+  })
+})
+
 test("loads formatter boolean config", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
@@ -2268,8 +2288,8 @@ test("parseManagedPlist strips MDM metadata keys", async () => {
       await ConfigManaged.parseManagedPlist(
         JSON.stringify({
           PayloadDisplayName: "Codeplane Managed",
-          PayloadIdentifier: "ai.codeplane.managed.test",
-          PayloadType: "ai.codeplane.managed",
+          PayloadIdentifier: "cc.codeplane.managed.test",
+          PayloadType: "cc.codeplane.managed",
           PayloadUUID: "AAAA-BBBB-CCCC",
           PayloadVersion: 1,
           _manualProfile: true,

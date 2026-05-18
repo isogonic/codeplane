@@ -14,7 +14,7 @@ import { KeyboardResize, KeyboardStyle } from "@capacitor/keyboard"
  * actual instance UIs are loaded over the network at runtime.
  */
 const config: CapacitorConfig = {
-  appId: "ai.codeplane.mobile",
+  appId: "cc.codeplane.mobile",
   appName: "Codeplane",
   webDir: "dist",
   ios: {

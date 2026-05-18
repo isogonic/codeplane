@@ -642,6 +642,9 @@ export const dict = {
     "Wählen Sie, ob Folgefragen sofort steuern oder in einer Warteschlange warten",
   "settings.general.row.followup.option.queue": "Warteschlange",
   "settings.general.row.followup.option.steer": "Steuern",
+  "settings.general.row.codeplaneCoauthor.title": "Codeplane-Co-Autor",
+  "settings.general.row.codeplaneCoauthor.description":
+    "Fuegt Commits aus Codeplane Co-Authored-By: Codeplane <noreply@codeplane.cc> hinzu",
   "settings.general.row.reasoningSummaries.title": "Reasoning-Zusammenfassungen anzeigen",
   "settings.general.row.reasoningSummaries.description":
     "Zusammenfassungen des Modell-Reasonings in der Timeline anzeigen",

@@ -11,7 +11,7 @@
 // very first request (the SPA shell) lands in the intercept layer
 // rather than going out over the network.
 
-package ai.codeplane.mobile;
+package cc.codeplane.mobile;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;
@@ -46,18 +46,18 @@ import java.util.Map;
 public class OfflineCacheActivity extends Activity {
     private static final String TAG = "OfflineCacheActivity";
 
-    static final String EXTRA_PLUGIN_INSTANCE_ID = "ai.codeplane.mobile.PLUGIN_INSTANCE_ID";
-    static final String EXTRA_INSTANCE_ID = "ai.codeplane.mobile.INSTANCE_ID";
-    static final String EXTRA_VERSION = "ai.codeplane.mobile.VERSION";
-    static final String EXTRA_ORIGIN_URL = "ai.codeplane.mobile.ORIGIN_URL";
-    static final String EXTRA_CACHE_DIR = "ai.codeplane.mobile.CACHE_DIR";
-    static final String EXTRA_ROOT_DIR = "ai.codeplane.mobile.ROOT_DIR";
-    static final String EXTRA_TITLE = "ai.codeplane.mobile.TITLE";
-    static final String EXTRA_TOOLBAR_COLOR = "ai.codeplane.mobile.TOOLBAR_COLOR";
-    static final String EXTRA_AUTH_HEADERS = "ai.codeplane.mobile.AUTH_HEADERS";
-    static final String EXTRA_PRESENTATION_ID = "ai.codeplane.mobile.PRESENTATION_ID";
+    static final String EXTRA_PLUGIN_INSTANCE_ID = "cc.codeplane.mobile.PLUGIN_INSTANCE_ID";
+    static final String EXTRA_INSTANCE_ID = "cc.codeplane.mobile.INSTANCE_ID";
+    static final String EXTRA_VERSION = "cc.codeplane.mobile.VERSION";
+    static final String EXTRA_ORIGIN_URL = "cc.codeplane.mobile.ORIGIN_URL";
+    static final String EXTRA_CACHE_DIR = "cc.codeplane.mobile.CACHE_DIR";
+    static final String EXTRA_ROOT_DIR = "cc.codeplane.mobile.ROOT_DIR";
+    static final String EXTRA_TITLE = "cc.codeplane.mobile.TITLE";
+    static final String EXTRA_TOOLBAR_COLOR = "cc.codeplane.mobile.TOOLBAR_COLOR";
+    static final String EXTRA_AUTH_HEADERS = "cc.codeplane.mobile.AUTH_HEADERS";
+    static final String EXTRA_PRESENTATION_ID = "cc.codeplane.mobile.PRESENTATION_ID";
 
-    static final String ACTION_FINISH = "ai.codeplane.mobile.OfflineCacheActivity.FINISH";
+    static final String ACTION_FINISH = "cc.codeplane.mobile.OfflineCacheActivity.FINISH";
 
     // No synthetic host on Android. We load the LIVE origin and
     // intercept only static GETs — see the comment block at the top

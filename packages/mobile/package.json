@@ -2,11 +2,11 @@
   "$schema": "https://json.schemastore.org/package.json",
   "name": "@codeplane-ai/mobile",
   "private": true,
-  "version": "28.2.1",
+  "version": "28.2.2",
   "productName": "Codeplane",
   "description": "Codeplane Mobile — iOS + Android shell that connects to remote Codeplane servers and renders the matching web UI, optimised for touch.",
   "license": "MIT",
-  "homepage": "https://codeplane.ai",
+  "homepage": "https://codeplane.cc",
   "repository": {
     "type": "git",
     "url": "https://github.com/devinoldenburg/codeplane.git"

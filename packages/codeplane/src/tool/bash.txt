@@ -59,6 +59,7 @@ Git Safety Protocol:
 - NEVER run destructive/irreversible git commands (like push --force, hard reset, etc) unless the user explicitly requests them
 - NEVER skip hooks (--no-verify, --no-gpg-sign, etc) unless the user explicitly requests it
 - NEVER run force push to main/master, warn the user if they request it
+- Prefer the native git tool for commits so Codeplane settings are applied automatically, including the Codeplane co-author trailer when enabled.
 - Avoid git commit --amend. ONLY use --amend when ALL conditions are met:
   (1) User explicitly requested amend, OR the commit succeeded and pre-commit hooks auto-modified files that need including — verify by checking `git log` that HEAD is the new commit before amending
   (2) HEAD commit was created by you in this conversation (verify: git log -1 --format='%an %ae')

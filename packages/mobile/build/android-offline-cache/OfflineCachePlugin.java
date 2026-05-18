@@ -17,7 +17,7 @@
 // `@CapacitorPlugin`-annotated class in the APK; no manual register
 // call is needed in `MainActivity`.
 
-package ai.codeplane.mobile;
+package cc.codeplane.mobile;
 
 import android.content.Intent;
 import android.os.Build;

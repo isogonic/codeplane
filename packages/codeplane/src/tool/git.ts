@@ -150,6 +150,20 @@ function commandMetadata(args: string[]) {
   ]
 }
 
+const CODEPLANE_COAUTHOR_TRAILER = "Co-Authored-By: Codeplane <noreply@codeplane.cc>"
+const CODEPLANE_COAUTHOR_PATTERN = /^Co-authored-by:\s*Codeplane\s*<[^>]+>\s*$/im
+
+function withCodeplaneCoauthor(message: string) {
+  if (CODEPLANE_COAUTHOR_PATTERN.test(message)) return message
+  return `${message.trimEnd()}\n\n${CODEPLANE_COAUTHOR_TRAILER}`
+}
+
+function withCodeplaneCoauthorArgs(args: string[]) {
+  if (args[0] !== "commit") return args
+  if (args.some((arg) => CODEPLANE_COAUTHOR_PATTERN.test(arg))) return args
+  return [...args, "--trailer", CODEPLANE_COAUTHOR_TRAILER]
+}
+
 export const GitTool = Tool.define<
   typeof Parameters,
   Record<string, unknown>,
@@ -536,6 +550,7 @@ export const GitTool = Tool.define<
           )
         case "commit":
           if (!params.message) return yield* Effect.fail(new Error("message is required for git commit"))
+          const message = (yield* config.get()).commit?.coauthor ? withCodeplaneCoauthor(params.message) : params.message
           return yield* runGit(
             params,
             ctx,
@@ -543,7 +558,7 @@ export const GitTool = Tool.define<
               "commit",
               ...(params.all ? ["-a"] : []),
               "-m",
-              params.message,
+              message,
               ...pathspec(params.files),
               ...(params.args ?? []),
             ],
@@ -609,7 +624,12 @@ export const GitTool = Tool.define<
         }
         case "run":
           if (!params.args?.length) return yield* Effect.fail(new Error('args is required for operation="run"'))
-          return yield* runGit(params, ctx, params.args, `git ${params.args[0]}`)
+          return yield* runGit(
+            params,
+            ctx,
+            (yield* config.get()).commit?.coauthor ? withCodeplaneCoauthorArgs(params.args) : params.args,
+            `git ${params.args[0]}`,
+          )
       }
     })
 

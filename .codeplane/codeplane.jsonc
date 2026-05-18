@@ -1,5 +1,5 @@
 {
-  "$schema": "https://codeplane.ai/config.json",
+  "$schema": "https://codeplane.cc/config.json",
   "provider": {},
   "permission": {
     "edit": {

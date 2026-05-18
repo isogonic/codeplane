@@ -27,7 +27,7 @@ public class CodeplaneLiveActivitiesPlugin: CAPPlugin {
     /// Maps Capacitor-facing activity IDs to live ActivityKit handles.
     /// We use the ActivityKit `id` directly so the JS side stays in sync.
     private var activities: [String: Any] = [:]
-    private let queue = DispatchQueue(label: "ai.codeplane.live-activities", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "cc.codeplane.live-activities", qos: .userInitiated)
 
     @objc public func isSupported(_ call: CAPPluginCall) {
         if #available(iOS 16.2, *) {

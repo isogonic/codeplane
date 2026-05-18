@@ -1,4 +1,4 @@
-package ai.codeplane.mobile;
+package cc.codeplane.mobile;
 
 import com.getcapacitor.BridgeActivity;
 

@@ -32,7 +32,7 @@ require "pathname"
 PROJECT_PATH         = "ios/App/App.xcodeproj"
 APP_TARGET_NAME      = "App"
 WIDGET_TARGET_NAME   = "CodeplaneLiveActivityWidget"
-WIDGET_BUNDLE_ID     = "ai.codeplane.mobile.LiveActivityWidget"
+WIDGET_BUNDLE_ID     = "cc.codeplane.mobile.LiveActivityWidget"
 WIDGET_DEPLOYMENT    = "16.2"  # 16.1 lacks `context.isStale`
 SWIFT_VERSION        = "5.0"
 

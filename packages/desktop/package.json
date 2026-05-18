@@ -2,11 +2,11 @@
   "$schema": "https://json.schemastore.org/package.json",
   "name": "@codeplane-ai/desktop",
   "private": true,
-  "version": "28.2.1",
+  "version": "28.2.2",
   "productName": "Codeplane",
   "description": "Codeplane Desktop connects to remote Codeplane servers and caches the matching UI locally for fast native use.",
   "license": "MIT",
-  "homepage": "https://codeplane.ai",
+  "homepage": "https://codeplane.cc",
   "repository": {
     "type": "git",
     "url": "https://github.com/devinoldenburg/codeplane.git"
@@ -59,7 +59,7 @@
     "vite-plugin-solid": "2.11.10"
   },
   "build": {
-    "appId": "ai.codeplane.desktop",
+    "appId": "cc.codeplane.desktop",
     "productName": "Codeplane",
     "executableName": "Codeplane",
     "copyright": "Copyright © 2026 Devin Oldenburg",
