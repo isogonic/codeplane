@@ -152,6 +152,21 @@ describe("local runtime registry config", () => {
     expect(request?.url).toBe("https://registry.npmjs.org/codeplane-ai/next")
   })
 
+  test("encodes scoped npm package names for manifest lookups", async () => {
+    let request: Request | undefined
+    globalThis.fetch = (async (input, init) => {
+      request = input instanceof Request ? input : new Request(input instanceof URL ? input.toString() : input, init)
+      return new Response(JSON.stringify({ version: "27.4.0", dist: { tarball: "https://registry.example.com/codeplane.tgz" } }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    }) as typeof globalThis.fetch
+
+    await fetchNpmPackageManifest({ name: "@codeplane-ai/sdk", version: "latest" })
+
+    expect(request?.url).toBe("https://registry.npmjs.org/@codeplane-ai%2fsdk/latest")
+  })
+
   test("rejects unsafe npm dist-tags", async () => {
     await expect(fetchNpmPackageManifest({ name: "codeplane-ai", version: "../latest" })).rejects.toThrow(/Invalid version/)
   })
