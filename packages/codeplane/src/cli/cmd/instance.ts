@@ -61,6 +61,7 @@ type InstanceLocalVersionArgs = {
 }
 
 type InstanceLocalTargetArgs = {
+  archiveName?: boolean
   binaryName?: boolean
   nameOnly?: boolean
   platformOnly?: boolean
@@ -279,12 +280,13 @@ function formatJson(input: unknown) {
   return JSON.stringify(input, null, 2)
 }
 
-export function formatLocalTarget(target: LocalTarget, nameOnly?: boolean, binaryName?: boolean, platformOnly?: boolean) {
-  if ([nameOnly, binaryName, platformOnly].filter(Boolean).length > 1) {
-    throw new Error("Use only one of --name-only, --binary-name, or --platform-only.")
+export function formatLocalTarget(target: LocalTarget, nameOnly?: boolean, binaryName?: boolean, platformOnly?: boolean, archiveName?: boolean) {
+  if ([nameOnly, binaryName, platformOnly, archiveName].filter(Boolean).length > 1) {
+    throw new Error("Use only one of --name-only, --binary-name, --platform-only, or --archive-name.")
   }
   const packageName = target.packageName ?? target.archiveName.replace(/\.(?:tgz|tar\.gz|zip)$/, "")
   const variants = packageName.split("-").slice(3)
+  if (archiveName) return target.archiveName
   if (binaryName) return target.binaryName
   if (nameOnly) return packageName
   if (platformOnly) return [target.os, target.arch, ...variants].join("/")
@@ -1045,6 +1047,10 @@ export const InstanceLocalTargetCommand = cmd({
       type: "boolean",
       default: false,
       describe: "print only the platform binary name",
+    }).option("archive-name", {
+      type: "boolean",
+      default: false,
+      describe: "print only the platform package archive name",
     }).option("platform-only", {
       type: "boolean",
       default: false,
@@ -1052,7 +1058,7 @@ export const InstanceLocalTargetCommand = cmd({
     }),
   async handler(args) {
     const input = args as InstanceLocalTargetArgs
-    console.log(formatLocalTarget(await createInstanceService().localTarget(), input.nameOnly, input.binaryName, input.platformOnly))
+    console.log(formatLocalTarget(await createInstanceService().localTarget(), input.nameOnly, input.binaryName, input.platformOnly, input.archiveName))
   },
 })
 

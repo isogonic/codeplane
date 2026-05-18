@@ -530,6 +530,25 @@ describe("cli instance helpers", () => {
     ).toBe("codeplane")
   })
 
+  test("formats local target as archive name for scripts", () => {
+    expect(
+      formatLocalTarget(
+        {
+          os: "linux",
+          arch: "x64",
+          packageName: "codeplane-linux-x64-musl",
+          archiveName: "codeplane-linux-x64-musl.tgz",
+          archiveExt: ".tgz",
+          binaryName: "codeplane",
+        },
+        false,
+        false,
+        false,
+        true,
+      ),
+    ).toBe("codeplane-linux-x64-musl.tgz")
+  })
+
   test("formats local target as platform label for scripts", () => {
     expect(
       formatLocalTarget(
