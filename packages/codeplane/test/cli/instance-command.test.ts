@@ -353,13 +353,27 @@ describe("cli instance helpers", () => {
       formatLocalStatus(
         {
           binaryVersion: "28.2.2",
-          installed: false,
+          installed: true,
           binaryPath: "",
           archive: "/tmp/codeplane.tgz",
         },
         true,
       ),
     ).toThrow(/binary path is unavailable/)
+  })
+
+  test("rejects local status path output when runtime is not installed", () => {
+    expect(() =>
+      formatLocalStatus(
+        {
+          binaryVersion: "28.2.2",
+          installed: false,
+          binaryPath: "/tmp/codeplane/bin/codeplane",
+          archive: "/tmp/codeplane.tgz",
+        },
+        true,
+      ),
+    ).toThrow(/is not installed/)
   })
 
   test("formats local runtime versions with a limit", () => {
