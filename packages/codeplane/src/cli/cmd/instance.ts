@@ -226,8 +226,9 @@ export function formatLocalVersions(
     return version
   }
   const selectedMajor = normalizeLocalVersionMajor(major)
-  const rawVersions = Array.isArray(input.versions) ? input.versions.filter((version) => typeof version === "string") : []
-  const validVersions = rawVersions.filter((version) => LOCAL_RUNTIME_VERSION_PATTERN.test(version))
+  const rawVersions = Array.isArray(input.versions) ? input.versions : []
+  const stringVersions = rawVersions.filter((version) => typeof version === "string")
+  const validVersions = stringVersions.filter((version) => LOCAL_RUNTIME_VERSION_PATTERN.test(version))
   const versions = validVersions
     .filter((version) => selectedMajor === undefined || version.startsWith(`${selectedMajor}.`))
     .sort(semver.rcompare)

@@ -627,10 +627,10 @@ describe("cli instance helpers", () => {
       JSON.parse(
         formatLocalVersions({
           distTags: {},
-          versions: ["28.2.0", "broken", "28.2"],
+          versions: ["28.2.0", "broken", "28.2", 28],
         }),
       ).invalidVersionCount,
-    ).toBe(2)
+    ).toBe(3)
   })
 
   test("reports local runtime prerelease version counts", () => {
