@@ -63,6 +63,7 @@ type InstanceLocalVersionsArgs = {
   latestOnly?: boolean
   limit?: number
   major?: number
+  prereleaseOnly?: boolean
   stableOnly?: boolean
   tag?: string
   tagOnly?: boolean
@@ -205,6 +206,7 @@ export function formatLocalVersions(
   latestOnly?: boolean,
   tagOnly?: boolean,
   stableOnly?: boolean,
+  prereleaseOnly?: boolean,
 ) {
   const distTags = Object.fromEntries(
     Object.entries(input.distTags)
@@ -236,6 +238,7 @@ export function formatLocalVersions(
   const versions = validVersions
     .filter((version) => selectedMajor === undefined || version.startsWith(`${selectedMajor}.`))
     .filter((version) => !stableOnly || !semver.prerelease(version)?.length)
+    .filter((version) => !prereleaseOnly || semver.prerelease(version)?.length)
     .sort(semver.rcompare)
   const prereleaseVersionCount = versions.filter((version) => semver.prerelease(version)?.length).length
   const stableVersionCount = versions.length - prereleaseVersionCount
@@ -256,6 +259,7 @@ export function formatLocalVersions(
     ...(versions.at(-1) ? { oldestVersion: versions.at(-1) } : {}),
     ...(selectedMajor === undefined ? {} : { major: selectedMajor }),
     ...(stableOnly ? { stableOnly: true } : {}),
+    ...(prereleaseOnly ? { prereleaseOnly: true } : {}),
     ...(selectedMajor === undefined ? {} : { matchingDistTags }),
     limit: count,
     shown: Math.min(versions.length, count),
@@ -798,6 +802,10 @@ export const InstanceLocalVersionsCommand = cmd({
       type: "boolean",
       default: false,
       describe: "only include stable runtime versions",
+    }).option("prerelease-only", {
+      type: "boolean",
+      default: false,
+      describe: "only include prerelease runtime versions",
     }).option("tag-only", {
       type: "boolean",
       default: false,
@@ -805,7 +813,18 @@ export const InstanceLocalVersionsCommand = cmd({
     }),
   async handler(args) {
     const input = args as InstanceLocalVersionsArgs
-    console.log(formatLocalVersions(await fetchCodeplaneVersions(), input.limit, input.tag, input.major, input.latestOnly, input.tagOnly, input.stableOnly))
+    console.log(
+      formatLocalVersions(
+        await fetchCodeplaneVersions(),
+        input.limit,
+        input.tag,
+        input.major,
+        input.latestOnly,
+        input.tagOnly,
+        input.stableOnly,
+        input.prereleaseOnly,
+      ),
+    )
   },
 })
 

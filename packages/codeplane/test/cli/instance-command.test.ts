@@ -685,6 +685,26 @@ describe("cli instance helpers", () => {
     ).toMatchObject({ stableOnly: true, versions: ["28.2.1", "28.1.0"] })
   })
 
+  test("formats only prerelease local runtime versions", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions(
+          {
+            distTags: {},
+            versions: ["28.2.1", "28.3.0-beta.1", "28.3.0-rc.1"],
+          },
+          10,
+          undefined,
+          undefined,
+          false,
+          false,
+          false,
+          true,
+        ),
+      ),
+    ).toMatchObject({ prereleaseOnly: true, versions: ["28.3.0-rc.1", "28.3.0-beta.1"] })
+  })
+
   test("reports the newest local runtime version", () => {
     expect(
       JSON.parse(
