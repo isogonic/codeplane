@@ -341,14 +341,19 @@ export async function installManagedCodeplaneCli(input: { version: string; binar
 
   const temp = `${cliPath}.tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
-  await fs.mkdir(path.dirname(cliPath), { recursive: true })
-  await fs.copyFile(source, temp)
-  if (target.os !== "windows") {
-    await fs.chmod(temp, 0o755).catch(() => undefined)
+  try {
+    await fs.mkdir(path.dirname(cliPath), { recursive: true })
+    await fs.copyFile(source, temp)
+    if (target.os !== "windows") {
+      await fs.chmod(temp, 0o755).catch(() => undefined)
+    }
+    await fs.rm(cliPath, { force: true }).catch(() => undefined)
+    await fs.rename(temp, cliPath)
+    await fs.writeFile(localCliVersionFile(), `${version}\n`)
+  } catch (error) {
+    await fs.rm(temp, { force: true }).catch(() => undefined)
+    throw error
   }
-  await fs.rm(cliPath, { force: true }).catch(() => undefined)
-  await fs.rename(temp, cliPath)
-  await fs.writeFile(localCliVersionFile(), `${version}\n`)
 
   return {
     cliInstalled: true,

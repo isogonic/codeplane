@@ -559,4 +559,16 @@ describe("managed local cli", () => {
   test("reports every missing binary candidate", async () => {
     await expect(installManagedCodeplaneCli({ version: "27.3.1" })).rejects.toThrow(/Tried:\n- .+bin.+codeplane/)
   })
+
+  test("cleans temporary cli binaries after failed installs", async () => {
+    const source = path.join(home, "local_server", "binaries", "27.3.1", "bin", process.platform === "win32" ? "codeplane.exe" : "codeplane")
+    await fs.mkdir(path.dirname(source), { recursive: true })
+    await fs.writeFile(source, "binary\n")
+    await fs.mkdir(managedCodeplaneCliPath(), { recursive: true })
+
+    await expect(installManagedCodeplaneCli({ version: "27.3.1", binaryPath: source })).rejects.toThrow()
+
+    const entries = await fs.readdir(path.dirname(managedCodeplaneCliPath()))
+    expect(entries.filter((entry) => entry.includes(".tmp-"))).toEqual([])
+  })
 })
