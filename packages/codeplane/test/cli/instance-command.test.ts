@@ -720,6 +720,25 @@ describe("cli instance helpers", () => {
     ).toMatchObject({ prereleaseOnly: true, versions: ["28.3.0-rc.1", "28.3.0-beta.1"] })
   })
 
+  test("formats selected local runtime versions for scripts", () => {
+    expect(
+      formatLocalVersions(
+        {
+          distTags: {},
+          versions: ["28.2.1", "28.3.0-beta.1", "28.1.0"],
+        },
+        2,
+        undefined,
+        undefined,
+        false,
+        false,
+        false,
+        false,
+        true,
+      ),
+    ).toBe("28.3.0-beta.1\n28.2.1")
+  })
+
   test("rejects conflicting stable and prerelease filters", () => {
     expect(() =>
       formatLocalVersions({ distTags: {}, versions: [] }, 10, undefined, undefined, false, false, true, true),

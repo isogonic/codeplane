@@ -68,6 +68,7 @@ type InstanceLocalVersionsArgs = {
   stableOnly?: boolean
   tag?: string
   tagOnly?: boolean
+  versionOnly?: boolean
 }
 
 const LOCAL_RUNTIME_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
@@ -212,6 +213,7 @@ export function formatLocalVersions(
   tagOnly?: boolean,
   stableOnly?: boolean,
   prereleaseOnly?: boolean,
+  versionOnly?: boolean,
 ) {
   if (stableOnly && prereleaseOnly) throw new Error("Use either --stable-only or --prerelease-only, not both.")
   const distTags = Object.fromEntries(
@@ -252,6 +254,7 @@ export function formatLocalVersions(
   const newestPrereleaseVersion = versions.find((version) => semver.prerelease(version)?.length)
   const count = Math.min(Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10, 100)
   const shownVersions = versions.slice(0, count)
+  if (versionOnly) return shownVersions.join("\n")
   const matchingDistTags = Object.fromEntries(
     Object.entries(distTags).filter(([, version]) => selectedMajor !== undefined && version.startsWith(`${selectedMajor}.`)),
   )
@@ -833,6 +836,10 @@ export const InstanceLocalVersionsCommand = cmd({
       type: "boolean",
       default: false,
       describe: "print only npm dist-tag names, one per line",
+    }).option("version-only", {
+      type: "boolean",
+      default: false,
+      describe: "print only selected runtime versions, one per line",
     }),
   async handler(args) {
     const input = args as InstanceLocalVersionsArgs
@@ -846,6 +853,7 @@ export const InstanceLocalVersionsCommand = cmd({
         input.tagOnly,
         input.stableOnly,
         input.prereleaseOnly,
+        input.versionOnly,
       ),
     )
   },
