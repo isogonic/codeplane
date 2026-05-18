@@ -186,6 +186,24 @@ describe("local runtime version listing", () => {
 
     expect((await fetchCodeplaneVersions()).distTags).toEqual({ latest: "27.4.2" })
   })
+
+  test("ignores dist-tags pointing at invalid semver values", async () => {
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          "dist-tags": {
+            latest: "27.4.2",
+            bad: "27.4.2-..bad",
+          },
+          versions: {
+            "27.4.2": {},
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      )) as unknown as typeof globalThis.fetch
+
+    expect((await fetchCodeplaneVersions()).distTags).toEqual({ latest: "27.4.2" })
+  })
 })
 
 describe("local runtime fetch timeout", () => {

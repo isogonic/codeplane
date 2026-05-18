@@ -469,8 +469,9 @@ export async function fetchCodeplaneVersions(input: { name?: string; registry?: 
   const distTagsRaw = payload["dist-tags"] ?? {}
   const distTags: Record<string, string> = {}
   for (const [tag, value] of Object.entries(distTagsRaw)) {
-    if (NPM_TAG_PATTERN.test(tag) && typeof value === "string" && VERSION_PATTERN.test(cleanVersion(value))) {
-      distTags[tag] = cleanVersion(value)
+    const version = typeof value === "string" ? cleanVersion(value) : undefined
+    if (NPM_TAG_PATTERN.test(tag) && version && VERSION_PATTERN.test(version) && semver.valid(version)) {
+      distTags[tag] = version
     }
   }
   const versions = Object.keys(payload.versions ?? {})
