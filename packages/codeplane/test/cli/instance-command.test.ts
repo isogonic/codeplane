@@ -892,6 +892,33 @@ describe("cli instance helpers", () => {
     ).toBe("28.3.0-beta.1\n28.2.1")
   })
 
+  test("formats selected local runtime versions as json lines", () => {
+    expect(
+      formatLocalVersions(
+        {
+          distTags: {},
+          versions: ["28.2.1", "28.3.0-beta.1", "28.1.0"],
+        },
+        2,
+        undefined,
+        undefined,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+      ),
+    ).toBe('{"version":"28.3.0-beta.1"}\n{"version":"28.2.1"}')
+  })
+
+  test("rejects conflicting local runtime json lines output flags", () => {
+    expect(() =>
+      formatLocalVersions({ distTags: { latest: "28.2.0" }, versions: [] }, 10, "latest", undefined, false, false, false, false, false, false, true),
+    ).toThrow(/Use --json-lines/)
+  })
+
   test("formats local runtime version counts for scripts", () => {
     expect(
       formatLocalVersions(

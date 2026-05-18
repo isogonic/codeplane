@@ -64,6 +64,7 @@ type InstanceLocalTargetArgs = {
 
 type InstanceLocalVersionsArgs = {
   countOnly?: boolean
+  jsonLines?: boolean
   latestOnly?: boolean
   limit?: number
   major?: number
@@ -237,9 +238,13 @@ export function formatLocalVersions(
   prereleaseOnly?: boolean,
   versionOnly?: boolean,
   countOnly?: boolean,
+  jsonLines?: boolean,
 ) {
   if (stableOnly && prereleaseOnly) throw new Error("Use either --stable-only or --prerelease-only, not both.")
   if (versionOnly && (tag || latestOnly || tagOnly)) throw new Error("Use --version-only without --tag, --latest-only, or --tag-only.")
+  if (jsonLines && (tag || latestOnly || tagOnly || versionOnly || countOnly)) {
+    throw new Error("Use --json-lines without --tag, --latest-only, --tag-only, --version-only, or --count-only.")
+  }
   if (countOnly && (tag || latestOnly || tagOnly || versionOnly)) {
     throw new Error("Use --count-only without --tag, --latest-only, --tag-only, or --version-only.")
   }
@@ -284,6 +289,7 @@ export function formatLocalVersions(
   const shownVersions = versions.slice(0, count)
   if (countOnly) return String(versions.length)
   if (versionOnly) return shownVersions.join("\n")
+  if (jsonLines) return shownVersions.map((version) => JSON.stringify({ version })).join("\n")
   const stableShown = shownVersions.filter((version) => !semver.prerelease(version)?.length).length
   const prereleaseShown = shownVersions.length - stableShown
   const matchingDistTags = Object.fromEntries(
@@ -904,6 +910,10 @@ export const InstanceLocalVersionsCommand = cmd({
       type: "boolean",
       default: false,
       describe: "print only the number of selected runtime versions",
+    }).option("json-lines", {
+      type: "boolean",
+      default: false,
+      describe: "print selected runtime versions as newline-delimited JSON",
     }),
   async handler(args) {
     const input = args as InstanceLocalVersionsArgs
@@ -919,6 +929,7 @@ export const InstanceLocalVersionsCommand = cmd({
         input.prereleaseOnly,
         input.versionOnly,
         input.countOnly,
+        input.jsonLines,
       ),
     )
   },
