@@ -229,6 +229,7 @@ export function formatLocalVersions(
     .filter((version) => selectedMajor === undefined || version.startsWith(`${selectedMajor}.`))
     .sort(semver.rcompare)
   const prereleaseVersionCount = versions.filter((version) => semver.prerelease(version)?.length).length
+  const stableVersionCount = versions.length - prereleaseVersionCount
   const matchingDistTags = Object.fromEntries(
     Object.entries(distTags).filter(([, version]) => selectedMajor !== undefined && version.startsWith(`${selectedMajor}.`)),
   )
@@ -239,6 +240,7 @@ export function formatLocalVersions(
     distTagCount: Object.keys(distTags).length,
     invalidVersionCount: rawVersions.length - validVersions.length,
     prereleaseVersionCount,
+    stableVersionCount,
     total: versions.length,
     ...(selectedMajor === undefined ? {} : { major: selectedMajor }),
     ...(selectedMajor === undefined ? {} : { matchingDistTags }),

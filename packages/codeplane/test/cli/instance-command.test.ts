@@ -394,6 +394,7 @@ describe("cli instance helpers", () => {
       distTagCount: 2,
       invalidVersionCount: 0,
       prereleaseVersionCount: 0,
+      stableVersionCount: 3,
       total: 3,
       limit: 2,
       shown: 2,
@@ -489,6 +490,7 @@ describe("cli instance helpers", () => {
       distTagCount: 2,
       invalidVersionCount: 0,
       prereleaseVersionCount: 0,
+      stableVersionCount: 2,
       total: 2,
       major: 28,
       matchingDistTags: { latest: "28.2.1" },
@@ -550,6 +552,7 @@ describe("cli instance helpers", () => {
       distTagCount: 0,
       invalidVersionCount: 0,
       prereleaseVersionCount: 0,
+      stableVersionCount: 0,
       total: 0,
       limit: 10,
       shown: 0,
@@ -626,6 +629,17 @@ describe("cli instance helpers", () => {
           versions: ["28.2.1", "28.3.0-beta.1", "28.3.0-rc.1"],
         }),
       ).prereleaseVersionCount,
+    ).toBe(2)
+  })
+
+  test("reports local runtime stable version counts", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions({
+          distTags: {},
+          versions: ["28.2.1", "28.3.0-beta.1", "28.1.0"],
+        }),
+      ).stableVersionCount,
     ).toBe(2)
   })
 })
