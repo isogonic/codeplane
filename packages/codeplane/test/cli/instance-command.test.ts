@@ -426,6 +426,21 @@ describe("cli instance helpers", () => {
     ).toBe("linux/x64/baseline/musl")
   })
 
+  test("includes local target package variants in JSON output", () => {
+    expect(
+      JSON.parse(
+        formatLocalTarget({
+          os: "linux",
+          arch: "x64",
+          packageName: "codeplane-linux-x64-baseline-musl",
+          archiveName: "codeplane-linux-x64-baseline-musl.tgz",
+          archiveExt: ".tgz",
+          binaryName: "codeplane",
+        }),
+      ),
+    ).toMatchObject({ variantCount: 2, variants: ["baseline", "musl"] })
+  })
+
   test("formats local target as binary name for scripts", () => {
     expect(
       formatLocalTarget(
