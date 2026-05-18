@@ -412,6 +412,7 @@ export function formatLocalVersions(
     stableVersionCount,
     total: versions.length,
     unselectedVersionCount: uniqueVersions.length - versions.length,
+    ...(distTags.latest ? { latestDistTagVersion: distTags.latest } : {}),
     ...(versions[0] ? { newestVersion: versions[0] } : {}),
     ...(shownVersions[0] ? { newestShownVersion: shownVersions[0] } : {}),
     ...(newestStableVersion ? { newestStableVersion } : {}),

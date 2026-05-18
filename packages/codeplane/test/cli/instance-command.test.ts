@@ -672,6 +672,7 @@ describe("cli instance helpers", () => {
       stableVersionCount: 3,
       total: 3,
       unselectedVersionCount: 0,
+      latestDistTagVersion: "28.2.1",
       newestVersion: "28.2.1",
       newestShownVersion: "28.2.1",
       newestStableVersion: "28.2.1",
@@ -861,6 +862,7 @@ describe("cli instance helpers", () => {
       stableVersionCount: 2,
       total: 2,
       unselectedVersionCount: 2,
+      latestDistTagVersion: "28.2.1",
       newestVersion: "28.2.1",
       newestShownVersion: "28.2.1",
       newestStableVersion: "28.2.1",
@@ -1063,6 +1065,7 @@ describe("cli instance helpers", () => {
       ),
     ).toMatchObject({
       distTags: { latest: "28.2.0", next: "28.3.0-beta.1" },
+      latestDistTagVersion: "28.2.0",
       normalizedDistTagCount: 1,
     })
   })
