@@ -19,6 +19,10 @@ describe("cleanVersion", () => {
     expect(cleanVersion("v1.2.3")).toBe("1.2.3")
   })
 
+  test("strips leading uppercase V", () => {
+    expect(cleanVersion("V1.2.3")).toBe("1.2.3")
+  })
+
   test("trims whitespace", () => {
     expect(cleanVersion("  1.2.3  ")).toBe("1.2.3")
   })

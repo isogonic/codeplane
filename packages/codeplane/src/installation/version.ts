@@ -13,7 +13,7 @@ export const DesktopReleaseSuffix = CodeplaneDesktopReleaseSuffix
 export const MobileReleaseSuffix = CodeplaneMobileReleaseSuffix
 
 export function cleanVersion(input: string) {
-  return input.trim().replace(/^v/, "")
+  return input.trim().replace(/^[vV]/, "")
 }
 
 export function isDesktopReleaseVersion(input: string) {
