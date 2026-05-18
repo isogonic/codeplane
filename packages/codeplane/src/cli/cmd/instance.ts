@@ -300,6 +300,7 @@ export function formatLocalVersions(
   const rawVersions = Array.isArray(input.versions) ? input.versions : []
   const invalidVersionInputCount = input.versions === undefined || Array.isArray(input.versions) ? 0 : 1
   const stringVersions = rawVersions.filter((version) => typeof version === "string")
+  const nonStringVersionCount = rawVersions.length - stringVersions.length
   const validVersions = stringVersions.filter((version) => LOCAL_RUNTIME_VERSION_PATTERN.test(version) && semver.valid(version))
   const uniqueVersions = Array.from(new Set(validVersions))
   const duplicateVersionCount = validVersions.length - uniqueVersions.length
@@ -330,6 +331,7 @@ export function formatLocalVersions(
     duplicateVersionCount,
     invalidDistTagCount,
     invalidVersionCount: rawVersions.length - validVersions.length + invalidVersionInputCount,
+    nonStringVersionCount,
     prereleaseVersionCount,
     selectedVersionCount: versions.length,
     stableVersionCount,

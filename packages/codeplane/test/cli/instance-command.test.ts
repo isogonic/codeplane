@@ -548,6 +548,7 @@ describe("cli instance helpers", () => {
       duplicateVersionCount: 0,
       invalidDistTagCount: 0,
       invalidVersionCount: 0,
+      nonStringVersionCount: 0,
       prereleaseVersionCount: 0,
       selectedVersionCount: 3,
       stableVersionCount: 3,
@@ -680,6 +681,7 @@ describe("cli instance helpers", () => {
       duplicateVersionCount: 0,
       invalidDistTagCount: 0,
       invalidVersionCount: 0,
+      nonStringVersionCount: 0,
       prereleaseVersionCount: 0,
       selectedVersionCount: 2,
       stableVersionCount: 2,
@@ -757,6 +759,7 @@ describe("cli instance helpers", () => {
       duplicateVersionCount: 0,
       invalidDistTagCount: 0,
       invalidVersionCount: 1,
+      nonStringVersionCount: 0,
       prereleaseVersionCount: 0,
       selectedVersionCount: 0,
       stableVersionCount: 0,
@@ -844,6 +847,17 @@ describe("cli instance helpers", () => {
         }),
       ).invalidVersionCount,
     ).toBe(3)
+  })
+
+  test("reports non-string local runtime version entries", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions({
+          distTags: {},
+          versions: ["28.2.0", 28, null],
+        }),
+      ).nonStringVersionCount,
+    ).toBe(2)
   })
 
   test("reports local runtime prerelease version counts", () => {
