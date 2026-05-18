@@ -413,6 +413,7 @@ describe("cli instance helpers", () => {
       oldestVersion: "28.1.0",
       limit: 2,
       shown: 2,
+      stableShown: 2,
       omitted: 1,
       versions: ["28.2.1", "28.2.0"],
     })
@@ -517,6 +518,7 @@ describe("cli instance helpers", () => {
       matchingDistTags: { latest: "28.2.1" },
       limit: 10,
       shown: 2,
+      stableShown: 2,
       omitted: 0,
       versions: ["28.2.1", "28.1.0"],
     })
@@ -578,6 +580,7 @@ describe("cli instance helpers", () => {
       total: 0,
       limit: 10,
       shown: 0,
+      stableShown: 0,
       omitted: 0,
       versions: [],
     })

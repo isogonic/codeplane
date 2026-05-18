@@ -243,10 +243,11 @@ export function formatLocalVersions(
     .sort(semver.rcompare)
   const prereleaseVersionCount = versions.filter((version) => semver.prerelease(version)?.length).length
   const stableVersionCount = versions.length - prereleaseVersionCount
+  const count = Math.min(Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10, 100)
+  const shownVersions = versions.slice(0, count)
   const matchingDistTags = Object.fromEntries(
     Object.entries(distTags).filter(([, version]) => selectedMajor !== undefined && version.startsWith(`${selectedMajor}.`)),
   )
-  const count = Math.min(Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10, 100)
   return formatJson({
     latest: input.latest,
     distTags,
@@ -264,8 +265,9 @@ export function formatLocalVersions(
     ...(selectedMajor === undefined ? {} : { matchingDistTags }),
     limit: count,
     shown: Math.min(versions.length, count),
+    stableShown: shownVersions.filter((version) => !semver.prerelease(version)?.length).length,
     omitted: Math.max(versions.length - count, 0),
-    versions: versions.slice(0, count),
+    versions: shownVersions,
   })
 }
 
