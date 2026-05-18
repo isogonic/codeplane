@@ -364,12 +364,63 @@ install_from_binary() {
     chmod 755 "${INSTALL_DIR}/codeplane"
 }
 
+# Codeplane's `tui` (and the default `codeplane` invocation) spawns a
+# child process that needs either Bun or Node.js 22+ available. The TUI
+# launcher checks bin paths next to the codeplane executable first, so
+# linking an already-installed bun into $INSTALL_DIR makes the TUI work
+# regardless of how the user's shell PATH is configured (a common
+# failure mode on fresh installs where no ~/.zshrc exists yet).
+ensure_runtime() {
+    local link_path="${INSTALL_DIR}/bun"
+    if [ -L "$link_path" ] || [ -x "$link_path" ]; then
+        return 0
+    fi
+
+    local found=""
+    for candidate in "$HOME/.bun/bin/bun" "/opt/homebrew/bin/bun" "/usr/local/bin/bun" "/usr/bin/bun"; do
+        if [ -x "$candidate" ]; then
+            found="$candidate"
+            break
+        fi
+    done
+
+    if [ -z "$found" ]; then
+        found=$(command -v bun 2>/dev/null || true)
+    fi
+
+    if [ -n "$found" ]; then
+        ln -sf "$found" "$link_path"
+        print_message info "${MUTED}Linked${NC} bun ${MUTED}runtime → ${NC}$link_path"
+        return 0
+    fi
+
+    # Fall back to Node 22+ if available.
+    local node_found=""
+    node_found=$(command -v node 2>/dev/null || true)
+    if [ -n "$node_found" ]; then
+        local node_major
+        node_major=$("$node_found" --version 2>/dev/null | sed -n 's/^v\([0-9][0-9]*\).*/\1/p')
+        if [ -n "$node_major" ] && [ "$node_major" -ge 22 ]; then
+            ln -sf "$node_found" "${INSTALL_DIR}/node"
+            print_message info "${MUTED}Linked${NC} node ${MUTED}runtime → ${NC}${INSTALL_DIR}/node"
+            return 0
+        fi
+    fi
+
+    print_message warning ""
+    print_message warning "No bun runtime found. Codeplane's TUI needs bun (preferred) or Node.js 22+."
+    print_message info   "  Install bun:  ${MUTED}curl -fsSL https://bun.sh/install | bash${NC}"
+    print_message info   "  Or set:       ${MUTED}export CODEPLANE_TUI_RUNTIME=/path/to/node${NC}"
+    print_message warning ""
+}
+
 if [ -n "$binary_path" ]; then
     install_from_binary
 else
     check_version
     download_and_install
 fi
+ensure_runtime
 
 
 add_to_path() {
