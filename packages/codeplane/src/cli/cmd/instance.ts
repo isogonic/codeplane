@@ -81,6 +81,7 @@ type InstanceLocalVersionsArgs = {
   oldestOnly?: boolean
   prereleaseOnly?: boolean
   range?: string
+  registry?: string
   stableOnly?: boolean
   tag?: string
   tagOnly?: boolean
@@ -1097,6 +1098,9 @@ export const InstanceLocalVersionsCommand = cmd({
     }).option("range", {
       type: "string",
       describe: "only include versions matching a semver range",
+    }).option("registry", {
+      type: "string",
+      describe: "npm registry URL to query instead of configured defaults",
     }).option("tag", {
       type: "string",
       describe: "print only one npm dist-tag version",
@@ -1153,7 +1157,7 @@ export const InstanceLocalVersionsCommand = cmd({
     const input = args as InstanceLocalVersionsArgs
     console.log(
       formatLocalVersions(
-        await fetchCodeplaneVersions(),
+        await fetchCodeplaneVersions({ registry: input.registry }),
         input.limit,
         input.tag,
         input.major,
