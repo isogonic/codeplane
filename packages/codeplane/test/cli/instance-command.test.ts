@@ -182,6 +182,21 @@ describe("cli instance helpers", () => {
     ).toBe("codeplane-darwin-arm64")
   })
 
+  test("formats local target package name from archive fallback", () => {
+    expect(
+      formatLocalTarget(
+        {
+          os: "linux",
+          arch: "x64",
+          archiveName: "codeplane-linux-x64.tar.gz",
+          archiveExt: ".tar.gz",
+          binaryName: "codeplane",
+        },
+        true,
+      ),
+    ).toBe("codeplane-linux-x64")
+  })
+
   test("formats local target as binary name for scripts", () => {
     expect(
       formatLocalTarget(
