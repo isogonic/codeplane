@@ -474,7 +474,7 @@ export function formatLocalVersions(
     ...(distTags.latest ? { latestDistTagVersion: distTags.latest } : {}),
     ...(versions[0] ? { newestVersion: versions[0] } : {}),
     ...(shownVersions[0] ? { newestShownVersion: shownVersions[0] } : {}),
-    ...(newestStableVersion ? { newestStableVersion } : {}),
+    ...(newestStableVersion ? { latestStableVersion: newestStableVersion, newestStableVersion } : {}),
     ...(newestPrereleaseVersion ? { newestPrereleaseVersion } : {}),
     ...(versions.at(-1) ? { oldestVersion: versions.at(-1) } : {}),
     ...(shownVersions.at(-1) ? { oldestShownVersion: shownVersions.at(-1) } : {}),
