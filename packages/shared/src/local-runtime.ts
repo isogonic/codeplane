@@ -26,7 +26,7 @@ const localVersionFile = () => path.join(CodeplaneHome.paths().local_server, "de
 const localCliVersionFile = () => path.join(CodeplaneHome.paths().bin, ".codeplane-version")
 
 function assertValidVersion(version: string, context: string) {
-  if (!VERSION_PATTERN.test(version)) {
+  if (!VERSION_PATTERN.test(version) || !semver.valid(version)) {
     throw new Error(`Invalid Codeplane version "${version}" (${context}). Expected semver like ${CodeplaneVersion} or ${CodeplaneVersion}-rc.0.`)
   }
 }

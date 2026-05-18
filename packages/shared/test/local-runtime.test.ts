@@ -224,6 +224,10 @@ describe("preferred local runtime version", () => {
   test("rejects doubled version prefixes", async () => {
     await expect(writePreferredLocalVersion("vv27.3.1")).rejects.toThrow(/Invalid Codeplane version/)
   })
+
+  test("rejects semver-shaped invalid prereleases", async () => {
+    await expect(writePreferredLocalVersion("27.3.1-..bad")).rejects.toThrow(/Invalid Codeplane version/)
+  })
 })
 
 describe("local binary resolver", () => {
