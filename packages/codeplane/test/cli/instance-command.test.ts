@@ -165,9 +165,10 @@ describe("cli instance helpers", () => {
           { id: "remote", url: "https://example.com" },
           { id: "local-b", url: "local://b", local: { binaryVersion: "28.1.0" } },
           { id: "local-c", url: "local://c", local: { binaryVersion: "28.2.0" } },
+          { id: "local-d", url: "local://d", local: { binaryVersion: "28.10.0" } },
         ],
       }),
-    ).toEqual(["28.1.0", "28.2.0"])
+    ).toEqual(["28.10.0", "28.2.0", "28.1.0"])
   })
 
   test("formats instance summaries for list output", () => {

@@ -114,7 +114,7 @@ export function applyLocalInstanceVersion(state: InstanceState, version: string)
 }
 
 export function localInstanceVersions(state: InstanceState) {
-  return Array.from(new Set(state.instances.flatMap((item) => (item.local ? [item.local.binaryVersion] : [])))).sort()
+  return Array.from(new Set(state.instances.flatMap((item) => (item.local ? [item.local.binaryVersion] : [])))).sort(semver.rcompare)
 }
 
 export function validateInstanceID(id: string) {
