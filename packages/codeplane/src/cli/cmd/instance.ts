@@ -202,7 +202,7 @@ export function formatLocalTarget(target: LocalTarget, nameOnly?: boolean, binar
 
 export function normalizeLocalVersionMajor(major?: number) {
   if (major === undefined) return undefined
-  if (!Number.isInteger(major) || major < 0) throw new Error(`Invalid major version "${major}". Use a non-negative integer.`)
+  if (!Number.isSafeInteger(major) || major < 0) throw new Error(`Invalid major version "${major}". Use a non-negative safe integer.`)
   return major
 }
 

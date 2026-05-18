@@ -546,6 +546,7 @@ describe("cli instance helpers", () => {
     expect(normalizeLocalVersionMajor()).toBeUndefined()
     expect(() => normalizeLocalVersionMajor(-1)).toThrow(/Invalid major version/)
     expect(() => normalizeLocalVersionMajor(28.5)).toThrow(/Invalid major version/)
+    expect(() => normalizeLocalVersionMajor(Number.MAX_SAFE_INTEGER + 1)).toThrow(/Invalid major version/)
   })
 
   test("rejects missing local runtime dist tags", () => {
