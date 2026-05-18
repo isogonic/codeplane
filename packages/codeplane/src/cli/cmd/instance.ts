@@ -214,7 +214,9 @@ export function formatLocalVersions(
   }
   if (latestOnly) {
     if (tag || major !== undefined) throw new Error("Use --latest-only without --tag or --major.")
-    if (!input.latest) throw new Error("Local runtime latest version was not found.")
+    if (!input.latest || !LOCAL_RUNTIME_VERSION_PATTERN.test(input.latest) || !semver.valid(input.latest)) {
+      throw new Error("Local runtime latest version was not found.")
+    }
     return input.latest
   }
   if (tag) {

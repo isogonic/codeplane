@@ -463,6 +463,9 @@ describe("cli instance helpers", () => {
     expect(() => formatLocalVersions({ distTags: {}, versions: [] }, 10, undefined, undefined, true)).toThrow(
       /latest version was not found/,
     )
+    expect(() => formatLocalVersions({ latest: "broken", distTags: {}, versions: [] }, 10, undefined, undefined, true)).toThrow(
+      /latest version was not found/,
+    )
   })
 
   test("rejects conflicting local runtime version selectors", () => {
