@@ -260,7 +260,8 @@ describe("tool.read truncation", () => {
       const dir = yield* tmpdirScoped()
       const base = yield* load(path.join(FIXTURES_DIR, "models-api.json"))
       const target = 60 * 1024
-      const content = base.length >= target ? base : base.repeat(Math.ceil(target / base.length))
+      const line = base.replace(/\s+/g, " ").slice(0, 1000)
+      const content = Array.from({ length: Math.ceil(target / line.length) }, () => line).join("\n")
       yield* put(path.join(dir, "large.json"), content)
 
       const result = yield* exec(dir, { filePath: path.join(dir, "large.json") })
