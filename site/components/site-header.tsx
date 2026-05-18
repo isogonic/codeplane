@@ -2,14 +2,11 @@ import Link from "next/link"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Download01Icon } from "@hugeicons/core-free-icons"
 import { Logo } from "./logo"
-import { Wordmark } from "./wordmark"
 
 /*
- * opencode.ai-style sticky header: paper-cream surface with a single
- * 1px bottom rule, paper-plane mark + "codeplane" wordmark on the
- * left, monospace nav links in the centre/right, and a black-on-cream
- * "Download" button as the only filled CTA. Sits on top of the .rail
- * column lines so the whole page reads as one bordered shaft.
+ * Sticky header — paper-plane mark on the left (no wordmark — the logo
+ * stands alone), monospace nav links centre/right, black-on-white
+ * "Download" CTA on the right.
  */
 export function SiteHeader({ active }: { active?: "docs" | "install" }) {
   return (
@@ -18,10 +15,9 @@ export function SiteHeader({ active }: { active?: "docs" | "install" }) {
         <Link
           href="/"
           aria-label="Codeplane home"
-          className="inline-flex items-center gap-2 text-ink"
+          className="inline-flex items-center text-ink"
         >
-          <Logo size={24} />
-          <Wordmark size={22} />
+          <Logo size={26} />
         </Link>
         <nav className="ml-auto flex items-center gap-5 sm:gap-7 text-ink-2">
           <a
