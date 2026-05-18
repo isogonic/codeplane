@@ -260,7 +260,7 @@ export function normalizeLocalVersionMajor(major?: number) {
 }
 
 export function formatLocalVersions(
-  input: { latest?: string; distTags: Record<string, string>; registry?: string; versions?: unknown },
+  input: { latest?: string; distTags?: unknown; registry?: string; versions?: unknown },
   limit = 10,
   tag?: string,
   major?: number,
@@ -288,15 +288,16 @@ export function formatLocalVersions(
   if (countOnly && (tag || latestOnly || tagOnly || versionOnly)) {
     throw new Error("Use --count-only without --tag, --latest-only, --tag-only, or --version-only.")
   }
+  const rawDistTags = input.distTags && typeof input.distTags === "object" && !Array.isArray(input.distTags) ? input.distTags : {}
   const distTags = Object.fromEntries(
-    Object.entries(input.distTags)
+    Object.entries(rawDistTags)
       .filter(
         ([tagName, version]) =>
           LOCAL_RUNTIME_TAG_PATTERN.test(tagName) && LOCAL_RUNTIME_VERSION_PATTERN.test(version) && Boolean(semver.valid(version)),
       )
       .sort(([left], [right]) => left.localeCompare(right)),
   )
-  const invalidDistTagCount = Object.keys(input.distTags).length - Object.keys(distTags).length
+  const invalidDistTagCount = Object.keys(rawDistTags).length - Object.keys(distTags).length
   if (tagOnly) {
     if (tag || major !== undefined || latestOnly) throw new Error("Use --tag-only without --tag, --major, or --latest-only.")
     return Object.keys(distTags).join("\n")

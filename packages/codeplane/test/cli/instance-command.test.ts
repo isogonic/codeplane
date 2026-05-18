@@ -871,6 +871,21 @@ describe("cli instance helpers", () => {
     })
   })
 
+  test("formats malformed local runtime dist tags as empty", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions({
+          distTags: ["latest", "28.2.1"],
+          versions: ["28.2.1"],
+        }),
+      ),
+    ).toMatchObject({
+      distTags: {},
+      distTagCount: 0,
+      invalidDistTagCount: 0,
+    })
+  })
+
   test("formats local runtime dist tag names for scripts", () => {
     expect(
       formatLocalVersions(
