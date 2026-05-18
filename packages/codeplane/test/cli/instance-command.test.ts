@@ -4,6 +4,7 @@ import {
   composeRemoteHeaders,
   filterDefaultInstanceSummaries,
   filterInstanceSummaries,
+  formatInstanceIDs,
   formatLocalStatus,
   formatInstanceSummary,
   formatLocalVersions,
@@ -195,6 +196,11 @@ describe("cli instance helpers", () => {
 
     expect(filterDefaultInstanceSummaries(summaries, true)).toEqual([{ id: "local-1", default: true }])
     expect(filterDefaultInstanceSummaries(summaries)).toBe(summaries)
+  })
+
+  test("formats instance ids for script output", () => {
+    expect(formatInstanceIDs([{ id: "local-1" }, { id: "remote-1" }])).toBe("local-1\nremote-1")
+    expect(formatInstanceIDs([])).toBe("")
   })
 
   test("rejects invalid instance summary filters", () => {

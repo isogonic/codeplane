@@ -21,6 +21,7 @@ import type { Argv } from "yargs"
 
 type InstanceListArgs = {
   defaultOnly?: boolean
+  idOnly?: boolean
   json?: boolean
   type?: "local" | "remote"
 }
@@ -142,6 +143,10 @@ export function filterInstanceSummaries<T extends { type: "local" | "remote" }>(
 export function filterDefaultInstanceSummaries<T extends { default?: boolean }>(instances: T[], defaultOnly?: boolean) {
   if (!defaultOnly) return instances
   return instances.filter((item) => item.default)
+}
+
+export function formatInstanceIDs(instances: { id: string }[]) {
+  return instances.map((item) => item.id).join("\n")
 }
 
 function formatJson(input: unknown) {
@@ -307,6 +312,11 @@ export const InstanceListCommand = cmd({
         type: "boolean",
         default: false,
         describe: "only show the default selected instance",
+      })
+      .option("id-only", {
+        type: "boolean",
+        default: false,
+        describe: "print only saved instance ids, one per line",
       }),
   async handler(args) {
     const input = args as InstanceListArgs
@@ -321,6 +331,10 @@ export const InstanceListCommand = cmd({
     )
     if (input.json) {
       console.log(formatJson(output))
+      return
+    }
+    if (input.idOnly) {
+      console.log(formatInstanceIDs(output))
       return
     }
     console.log(formatInstanceTable(output))
