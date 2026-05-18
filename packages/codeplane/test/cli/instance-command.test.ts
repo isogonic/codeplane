@@ -625,6 +625,7 @@ describe("cli instance helpers", () => {
       registry: "https://registry.example.com/codeplane-ai",
       effectiveLimit: 2,
       limit: 2,
+      requestedLimit: 2,
       shown: 2,
       stableShown: 2,
       prereleaseShown: 0,
@@ -789,6 +790,7 @@ describe("cli instance helpers", () => {
       selectedDistTagCount: 1,
       effectiveLimit: 10,
       limit: 10,
+      requestedLimit: 10,
       shown: 2,
       stableShown: 2,
       prereleaseShown: 0,
@@ -838,6 +840,7 @@ describe("cli instance helpers", () => {
 
     expect(output.versions).toHaveLength(100)
     expect(output.effectiveLimit).toBe(100)
+    expect(output.requestedLimit).toBe(150)
     expect(output.hasMore).toBe(true)
   })
 
@@ -862,6 +865,7 @@ describe("cli instance helpers", () => {
       total: 0,
       effectiveLimit: 10,
       limit: 10,
+      requestedLimit: 10,
       shown: 0,
       stableShown: 0,
       prereleaseShown: 0,

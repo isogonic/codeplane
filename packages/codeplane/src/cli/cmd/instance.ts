@@ -334,7 +334,8 @@ export function formatLocalVersions(
   const stableVersionCount = versions.length - prereleaseVersionCount
   const newestStableVersion = versions.find((version) => !semver.prerelease(version)?.length)
   const newestPrereleaseVersion = versions.find((version) => semver.prerelease(version)?.length)
-  const count = Math.min(Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10, 100)
+  const requestedLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10
+  const count = Math.min(requestedLimit, 100)
   const shownVersions = versions.slice(0, count)
   if (countOnly) return String(versions.length)
   if (newestOnly) return versions[0] ?? ""
@@ -371,6 +372,7 @@ export function formatLocalVersions(
     ...(selectedMajor === undefined ? {} : { selectedDistTagCount: Object.keys(matchingDistTags).length }),
     effectiveLimit: count,
     limit: count,
+    requestedLimit,
     shown: Math.min(versions.length, count),
     stableShown,
     prereleaseShown,
