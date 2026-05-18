@@ -250,7 +250,10 @@ export function formatLocalVersions(
   }
   const distTags = Object.fromEntries(
     Object.entries(input.distTags)
-      .filter(([tagName, version]) => LOCAL_RUNTIME_TAG_PATTERN.test(tagName) && LOCAL_RUNTIME_VERSION_PATTERN.test(version))
+      .filter(
+        ([tagName, version]) =>
+          LOCAL_RUNTIME_TAG_PATTERN.test(tagName) && LOCAL_RUNTIME_VERSION_PATTERN.test(version) && Boolean(semver.valid(version)),
+      )
       .sort(([left], [right]) => left.localeCompare(right)),
   )
   const invalidDistTagCount = Object.keys(input.distTags).length - Object.keys(distTags).length

@@ -742,14 +742,14 @@ describe("cli instance helpers", () => {
     expect(
       JSON.parse(
         formatLocalVersions({
-          distTags: { latest: "28.2.0", "../bad": "28.2.1", old: "broken" },
+          distTags: { latest: "28.2.0", "../bad": "28.2.1", old: "broken", rc: "28.2.1-..bad" },
           versions: [],
         }),
       ),
     ).toMatchObject({
       distTags: { latest: "28.2.0" },
       distTagCount: 1,
-      invalidDistTagCount: 2,
+      invalidDistTagCount: 3,
     })
   })
 
