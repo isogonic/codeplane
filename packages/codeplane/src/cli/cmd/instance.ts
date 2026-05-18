@@ -146,6 +146,7 @@ export function formatLocalVersions(
   return formatJson({
     latest: input.latest,
     distTags: Object.fromEntries(Object.entries(input.distTags).sort(([left], [right]) => left.localeCompare(right))),
+    distTagCount: Object.keys(input.distTags).length,
     total: versions.length,
     shown: Math.min(versions.length, count),
     omitted: Math.max(versions.length - count, 0),
