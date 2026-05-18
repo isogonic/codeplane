@@ -510,7 +510,12 @@ export function formatLocalStatus(status: LocalStatus & { target?: LocalTarget }
     if (!normalized.binaryPath) throw new Error("Local runtime binary path is unavailable.")
     return normalized.binaryPath
   }
-  return formatJson(normalized)
+  return formatJson({
+    ...normalized,
+    ...(normalized.target
+      ? { targetPackageName: normalized.target.packageName ?? normalized.target.archiveName.replace(/\.(?:tgz|tar\.gz|zip)$/, "") }
+      : {}),
+  })
 }
 
 function autoInstanceID(label?: string, kind = "instance") {

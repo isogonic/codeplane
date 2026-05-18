@@ -722,6 +722,26 @@ describe("cli instance helpers", () => {
     ).toBe("/tmp/codeplane/bin/codeplane")
   })
 
+  test("includes local status target package name in JSON output", () => {
+    expect(
+      JSON.parse(
+        formatLocalStatus({
+          binaryVersion: "28.2.2",
+          installed: true,
+          binaryPath: "/tmp/codeplane/bin/codeplane",
+          archive: "/tmp/codeplane.tgz",
+          target: {
+            os: "linux",
+            arch: "x64",
+            archiveName: "codeplane-linux-x64-musl.tgz",
+            archiveExt: ".tgz",
+            binaryName: "codeplane",
+          },
+        }),
+      ).targetPackageName,
+    ).toBe("codeplane-linux-x64-musl")
+  })
+
   test("trims local status binary version in JSON and script output", () => {
     const status = {
       binaryVersion: " 28.2.2 ",
