@@ -833,6 +833,32 @@ describe("cli instance helpers", () => {
     ).toBe("28.3.0-beta.1\n28.2.1")
   })
 
+  test("formats local runtime version counts for scripts", () => {
+    expect(
+      formatLocalVersions(
+        {
+          distTags: {},
+          versions: ["28.2.1", "28.3.0-beta.1", "28.1.0"],
+        },
+        1,
+        undefined,
+        undefined,
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+      ),
+    ).toBe("2")
+  })
+
+  test("rejects conflicting local runtime count-only output flags", () => {
+    expect(() =>
+      formatLocalVersions({ distTags: { latest: "28.2.0" }, versions: [] }, 10, undefined, undefined, true, false, false, false, false, true),
+    ).toThrow(/without --tag, --latest-only, --tag-only, or --version-only/)
+  })
+
   test("rejects conflicting stable and prerelease filters", () => {
     expect(() =>
       formatLocalVersions({ distTags: {}, versions: [] }, 10, undefined, undefined, false, false, true, true),

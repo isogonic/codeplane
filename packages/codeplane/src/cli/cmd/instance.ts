@@ -62,6 +62,7 @@ type InstanceLocalTargetArgs = {
 }
 
 type InstanceLocalVersionsArgs = {
+  countOnly?: boolean
   latestOnly?: boolean
   limit?: number
   major?: number
@@ -222,9 +223,13 @@ export function formatLocalVersions(
   stableOnly?: boolean,
   prereleaseOnly?: boolean,
   versionOnly?: boolean,
+  countOnly?: boolean,
 ) {
   if (stableOnly && prereleaseOnly) throw new Error("Use either --stable-only or --prerelease-only, not both.")
   if (versionOnly && (tag || latestOnly || tagOnly)) throw new Error("Use --version-only without --tag, --latest-only, or --tag-only.")
+  if (countOnly && (tag || latestOnly || tagOnly || versionOnly)) {
+    throw new Error("Use --count-only without --tag, --latest-only, --tag-only, or --version-only.")
+  }
   const distTags = Object.fromEntries(
     Object.entries(input.distTags)
       .filter(([tagName, version]) => LOCAL_RUNTIME_TAG_PATTERN.test(tagName) && LOCAL_RUNTIME_VERSION_PATTERN.test(version))
@@ -264,6 +269,7 @@ export function formatLocalVersions(
   const newestPrereleaseVersion = versions.find((version) => semver.prerelease(version)?.length)
   const count = Math.min(Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10, 100)
   const shownVersions = versions.slice(0, count)
+  if (countOnly) return String(versions.length)
   if (versionOnly) return shownVersions.join("\n")
   const stableShown = shownVersions.filter((version) => !semver.prerelease(version)?.length).length
   const prereleaseShown = shownVersions.length - stableShown
@@ -870,6 +876,10 @@ export const InstanceLocalVersionsCommand = cmd({
       type: "boolean",
       default: false,
       describe: "print only selected runtime versions, one per line",
+    }).option("count-only", {
+      type: "boolean",
+      default: false,
+      describe: "print only the number of selected runtime versions",
     }),
   async handler(args) {
     const input = args as InstanceLocalVersionsArgs
@@ -884,6 +894,7 @@ export const InstanceLocalVersionsCommand = cmd({
         input.stableOnly,
         input.prereleaseOnly,
         input.versionOnly,
+        input.countOnly,
       ),
     )
   },
