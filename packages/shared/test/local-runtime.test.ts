@@ -176,7 +176,10 @@ describe("local runtime version listing", () => {
         { status: 200, headers: { "content-type": "application/json" } },
       )) as unknown as typeof globalThis.fetch
 
-    expect((await fetchCodeplaneVersions()).versions).toEqual(["27.4.2", "27.4.2-rc.10", "27.4.2-rc.2", "27.4.1"])
+    const result = await fetchCodeplaneVersions()
+
+    expect(result.registry).toBe("https://registry.npmjs.org/codeplane-ai")
+    expect(result.versions).toEqual(["27.4.2", "27.4.2-rc.10", "27.4.2-rc.2", "27.4.1"])
   })
 
   test("ignores semver-shaped invalid version keys", async () => {

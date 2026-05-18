@@ -551,6 +551,7 @@ describe("cli instance helpers", () => {
           {
             latest: "28.2.1",
             distTags: { latest: "28.2.1", next: "28.3.0-beta.1" },
+            registry: "https://registry.example.com/codeplane-ai",
             versions: ["28.2.1", "28.2.0", "28.1.0"],
           },
           2,
@@ -571,6 +572,7 @@ describe("cli instance helpers", () => {
       newestVersion: "28.2.1",
       newestStableVersion: "28.2.1",
       oldestVersion: "28.1.0",
+      registry: "https://registry.example.com/codeplane-ai",
       effectiveLimit: 2,
       limit: 2,
       shown: 2,

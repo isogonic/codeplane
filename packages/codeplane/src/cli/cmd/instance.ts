@@ -249,7 +249,7 @@ export function normalizeLocalVersionMajor(major?: number) {
 }
 
 export function formatLocalVersions(
-  input: { latest?: string; distTags: Record<string, string>; versions?: unknown },
+  input: { latest?: string; distTags: Record<string, string>; registry?: string; versions?: unknown },
   limit = 10,
   tag?: string,
   major?: number,
@@ -347,6 +347,7 @@ export function formatLocalVersions(
     ...(stableOnly ? { stableOnly: true } : {}),
     ...(prereleaseOnly ? { prereleaseOnly: true } : {}),
     ...(selectedMajor === undefined ? {} : { matchingDistTags }),
+    ...(input.registry ? { registry: input.registry } : {}),
     ...(selectedMajor === undefined ? {} : { selectedDistTags: Object.keys(matchingDistTags) }),
     ...(selectedMajor === undefined ? {} : { selectedDistTagCount: Object.keys(matchingDistTags).length }),
     effectiveLimit: count,

@@ -455,6 +455,7 @@ export async function fetchCodeplaneLatestVersion(channel = "latest") {
 export type CodeplaneVersionList = {
   latest?: string
   distTags: Record<string, string>
+  registry: string
   versions: string[]
 }
 
@@ -492,7 +493,7 @@ export async function fetchCodeplaneVersions(input: { name?: string; registry?: 
     .map(cleanVersion)
     .filter((v) => VERSION_PATTERN.test(v) && semver.valid(v))
     .sort(semver.rcompare)
-  return { latest: distTags.latest, distTags, versions }
+  return { latest: distTags.latest, distTags, registry: url.toString(), versions }
 }
 
 function extract(archive: string, directory: string) {
