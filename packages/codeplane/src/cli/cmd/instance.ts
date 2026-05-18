@@ -87,6 +87,30 @@ type InstanceLocalVersionsArgs = {
 
 const LOCAL_RUNTIME_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
 const LOCAL_RUNTIME_TAG_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
+const WINDOWS_RESERVED_INSTANCE_IDS = new Set([
+  "con",
+  "prn",
+  "aux",
+  "nul",
+  "com1",
+  "com2",
+  "com3",
+  "com4",
+  "com5",
+  "com6",
+  "com7",
+  "com8",
+  "com9",
+  "lpt1",
+  "lpt2",
+  "lpt3",
+  "lpt4",
+  "lpt5",
+  "lpt6",
+  "lpt7",
+  "lpt8",
+  "lpt9",
+])
 const normalizeLocalRuntimeVersion = (version: string) => version.trim().replace(/^[vV](?=\d)/, "")
 
 // Combine --header lines with the dedicated --username / --password fields.
@@ -152,6 +176,7 @@ export function validateInstanceID(id: string) {
   if (!trimmed) throw new Error("Instance id cannot be empty.")
   if (trimmed === "." || trimmed === "..") throw new Error("Instance id cannot be . or ...")
   if (trimmed.length > 80) throw new Error("Instance id cannot exceed 80 characters.")
+  if (WINDOWS_RESERVED_INSTANCE_IDS.has(trimmed.toLowerCase())) throw new Error(`Instance id "${trimmed}" is reserved on Windows.`)
   if (!/^[A-Za-z0-9._-]+$/.test(trimmed)) {
     throw new Error("Instance id can only contain letters, numbers, dots, underscores, and dashes.")
   }

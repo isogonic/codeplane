@@ -97,6 +97,11 @@ describe("cli instance helpers", () => {
     expect(() => validateInstanceID("local\nInjected")).toThrow(/letters, numbers/)
   })
 
+  test("rejects Windows-reserved explicit instance ids", () => {
+    expect(() => validateInstanceID("con")).toThrow(/reserved on Windows/)
+    expect(() => validateInstanceID("LPT1")).toThrow(/reserved on Windows/)
+  })
+
   test("validates explicit local runtime versions", () => {
     expect(validateLocalRuntimeVersion("v28.2.1")).toBe("28.2.1")
     expect(validateLocalRuntimeVersion(" 28.2.1-rc.0 ")).toBe("28.2.1-rc.0")
