@@ -1,0 +1,84 @@
+name: pages
+
+# Build the Next.js site at /site, statically export it, and deploy the
+# `out/` directory to GitHub Pages. The legacy hand-written /docs HTML
+# stays in main as a fallback / git-history reference but the live
+# site is whatever this workflow last published.
+#
+# GitHub Pages source MUST be set to "GitHub Actions" (Repo Settings →
+# Pages → Build and deployment → Source). The previous "Deploy from a
+# branch" setup that pointed at /docs no longer applies once this
+# workflow runs.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/pages.yml"
+      - "docs/install" # the bash one-liner is mirrored into the build
+      - "docs/CNAME"
+  # Allow manual re-runs from the Actions tab — useful if a deploy fails
+  # mid-rollout and you want to retry without bumping a commit.
+  workflow_dispatch:
+
+# One in-flight deployment at a time; cancel queued runs since only the
+# most-recent push matters for the live site.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install site deps
+        working-directory: site
+        run: bun install --frozen-lockfile
+
+      - name: Build static export
+        working-directory: site
+        # `next build` honours `output: "export"` in next.config.ts and
+        # writes the static tree to `site/out/`.
+        run: bun run build
+
+      - name: Stage extras into the export
+        # GitHub Pages needs a few things Next can't generate:
+        #   - The bash install script served at /install
+        #   - The CNAME file (so codeplane.cc keeps resolving)
+        #   - The legacy schema endpoints (config.json, tui.json)
+        run: |
+          set -euo pipefail
+          cp docs/install        site/out/install
+          cp docs/CNAME          site/out/CNAME
+          cp docs/config.json    site/out/config.json
+          cp docs/tui.json       site/out/tui.json
+          # Ensure Pages doesn't run Jekyll over the export (it would
+          # eat any _underscore-prefixed file).
+          touch site/out/.nojekyll
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

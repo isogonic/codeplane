@@ -1,0 +1,53 @@
+import { SiteHeader } from "@/components/site-header"
+import { SiteFooter } from "@/components/site-footer"
+import { DocsLayout } from "@/components/docs-sidebar"
+
+export const metadata = { title: "Terminal (TUI)" }
+
+export default function TUI() {
+  return (
+    <>
+      <SiteHeader active="docs" />
+      <DocsLayout active="/docs/tui/">
+        <h1>Terminal (TUI)</h1>
+        <p className="lede">Full-screen terminal interface. The same agent, sessions, and tools as the web UI — driven entirely by your keyboard, in any terminal that speaks UTF-8 and ANSI.</p>
+
+        <h2>Launching</h2>
+        <pre><code>{`codeplane tui                       # local server
+codeplane tui --instance prod       # remote instance
+codeplane tui --session ses_abc...  # jump into a session`}</code></pre>
+        <p>The TUI spawns a server in the background if one isn&apos;t running. Quit with <span className="kbd">q</span> or <span className="kbd">Ctrl+C</span> — sessions auto-save before exit.</p>
+
+        <h2>Layout</h2>
+        <ul>
+          <li><strong>Sidebar</strong> — projects + sessions. Toggle with <span className="kbd">Ctrl+B</span>.</li>
+          <li><strong>Timeline</strong> — message thread. Scroll with <span className="kbd">k</span> / <span className="kbd">j</span>.</li>
+          <li><strong>Composer</strong> — type messages. <span className="kbd">Enter</span> sends; <span className="kbd">Shift+Enter</span> newlines.</li>
+        </ul>
+
+        <h2>Keybindings</h2>
+        <table>
+          <thead><tr><th>Key</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td><span className="kbd">?</span></td><td>Show the keybind overlay.</td></tr>
+            <tr><td><span className="kbd">Ctrl+N</span></td><td>New session.</td></tr>
+            <tr><td><span className="kbd">Ctrl+K</span></td><td>Quick-switch (sessions, files, commands).</td></tr>
+            <tr><td><span className="kbd">Ctrl+B</span></td><td>Toggle the sidebar.</td></tr>
+            <tr><td><span className="kbd">/</span></td><td>Search the current session.</td></tr>
+            <tr><td><span className="kbd">Ctrl+R</span></td><td>Revert the agent to the previous message.</td></tr>
+            <tr><td><span className="kbd">Ctrl+L</span></td><td>Clear the visible buffer (history is kept).</td></tr>
+          </tbody>
+        </table>
+
+        <h2>What&apos;s different from the web UI</h2>
+        <ul>
+          <li><strong>No mouse needed</strong> — but mouse scroll + selection work if your terminal supports them.</li>
+          <li><strong>Inline diffs</strong> render with <code>+</code>/<code>-</code> prefixes; the web UI shows side-by-side.</li>
+          <li><strong>Live activity</strong> on iOS isn&apos;t relevant in the TUI; everything happens inline.</li>
+          <li><strong>Plugin UI panels</strong> (web-only widgets) gracefully degrade to text descriptions.</li>
+        </ul>
+      </DocsLayout>
+      <SiteFooter />
+    </>
+  )
+}
