@@ -110,6 +110,15 @@ export function validateInstanceID(id: string) {
   return trimmed
 }
 
+export function mergeSignedInHeader(existing: Record<string, string> | undefined, headerLine: string) {
+  const parsed = parseInstanceHeaders([headerLine])
+  const [headerName, headerValue] = Object.entries(parsed)[0]
+  const filtered = Object.fromEntries(
+    Object.entries(existing ?? {}).filter(([key]) => key.toLowerCase() !== headerName.toLowerCase()),
+  )
+  return { ...filtered, [headerName]: headerValue }
+}
+
 export function formatInstanceSummary(instance: SavedInstance, lastInstanceID?: string) {
   return {
     id: instance.id,
@@ -556,27 +565,20 @@ export const InstanceSignInCommand = cmd({
       return
     }
 
-    const colon = headerLine.indexOf(":")
-    if (colon <= 0) {
-      fail(`Invalid header "${headerLine}". Use the form  NAME: VALUE.`)
-    }
-    const headerName = headerLine.slice(0, colon).trim()
-    const headerValue = headerLine.slice(colon + 1).trim()
-    if (!headerName || !headerValue) {
-      fail(`Invalid header "${headerLine}". Both NAME and VALUE must be non-empty.`)
-    }
-
     // Replace any existing header with the same name (case-insensitive)
     // so re-running sign-in cleanly overwrites a stale cookie. Other
     // headers stay (e.g. an X-API-Key the user might have configured
     // alongside CF Access).
-    const existing = saved!.headers ?? {}
-    const filtered = Object.fromEntries(
-      Object.entries(existing).filter(([k]) => k.toLowerCase() !== headerName.toLowerCase()),
-    )
+    const headers = (() => {
+      try {
+        return mergeSignedInHeader(saved!.headers, headerLine)
+      } catch (error) {
+        fail(error instanceof Error ? error.message : String(error))
+      }
+    })()
     const updated: SavedInstance = {
       ...saved!,
-      headers: { ...filtered, [headerName]: headerValue },
+      headers,
     }
     await service.save(updated)
 

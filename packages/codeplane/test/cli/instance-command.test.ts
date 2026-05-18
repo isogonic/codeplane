@@ -8,6 +8,7 @@ import {
   formatInstanceSummary,
   formatLocalVersions,
   formatLocalTarget,
+  mergeSignedInHeader,
   parseInstanceHeaders,
   validateInstanceID,
 } from "../../src/cli/cmd/instance"
@@ -57,6 +58,14 @@ describe("cli instance helpers", () => {
     expect(validateInstanceID("remote-1")).toBe("remote-1")
     expect(validateInstanceID(" remote-1 ")).toBe("remote-1")
     expect(() => validateInstanceID("   ")).toThrow(/cannot be empty/)
+  })
+
+  test("merges signed-in headers with strict validation", () => {
+    expect(mergeSignedInHeader({ authorization: "Bearer stale", "X-Env": "prod" }, "Authorization: Bearer fresh")).toEqual({
+      "X-Env": "prod",
+      Authorization: "Bearer fresh",
+    })
+    expect(() => mergeSignedInHeader(undefined, "Bad Header: value")).toThrow(/Header name is not valid/)
   })
 
   test("updates all saved local instance versions", () => {
