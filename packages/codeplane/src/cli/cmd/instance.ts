@@ -110,6 +110,9 @@ export function applyLocalInstanceVersion(state: InstanceState, version: string)
 export function validateInstanceID(id: string) {
   const trimmed = id.trim()
   if (!trimmed) throw new Error("Instance id cannot be empty.")
+  if (!/^[A-Za-z0-9._-]+$/.test(trimmed)) {
+    throw new Error("Instance id can only contain letters, numbers, dots, underscores, and dashes.")
+  }
   return trimmed
 }
 

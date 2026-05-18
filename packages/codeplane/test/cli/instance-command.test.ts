@@ -62,6 +62,13 @@ describe("cli instance helpers", () => {
     expect(() => validateInstanceID("   ")).toThrow(/cannot be empty/)
   })
 
+  test("rejects unsafe explicit instance ids", () => {
+    expect(() => validateInstanceID("../local")).toThrow(/letters, numbers/)
+    expect(() => validateInstanceID("local/one")).toThrow(/letters, numbers/)
+    expect(() => validateInstanceID("local one")).toThrow(/letters, numbers/)
+    expect(() => validateInstanceID("local\nInjected")).toThrow(/letters, numbers/)
+  })
+
   test("merges signed-in headers with strict validation", () => {
     expect(mergeSignedInHeader({ authorization: "Bearer stale", "X-Env": "prod" }, "Authorization: Bearer fresh")).toEqual({
       "X-Env": "prod",
