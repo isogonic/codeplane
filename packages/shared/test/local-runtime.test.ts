@@ -22,6 +22,8 @@ import {
 } from "../src/local-runtime"
 
 const env = {
+  CODEPLANE_BIN_DIR: process.env.CODEPLANE_BIN_DIR,
+  CODEPLANE_GLOBAL_HOME_DIR: process.env.CODEPLANE_GLOBAL_HOME_DIR,
   CODEPLANE_HOME_DIR: process.env.CODEPLANE_HOME_DIR,
   CODEPLANE_NPM_REGISTRY: process.env.CODEPLANE_NPM_REGISTRY,
   npm_config_registry: process.env.npm_config_registry,
@@ -33,6 +35,8 @@ let originalFetch: typeof globalThis.fetch
 beforeEach(async () => {
   home = await fs.mkdtemp(path.join(os.tmpdir(), "codeplane-shared-"))
   process.env.CODEPLANE_HOME_DIR = home
+  delete process.env.CODEPLANE_BIN_DIR
+  delete process.env.CODEPLANE_GLOBAL_HOME_DIR
   delete process.env.CODEPLANE_NPM_REGISTRY
   delete process.env.npm_config_registry
   originalFetch = globalThis.fetch
@@ -40,6 +44,10 @@ beforeEach(async () => {
 
 afterEach(async () => {
   globalThis.fetch = originalFetch
+  if (env.CODEPLANE_BIN_DIR === undefined) delete process.env.CODEPLANE_BIN_DIR
+  else process.env.CODEPLANE_BIN_DIR = env.CODEPLANE_BIN_DIR
+  if (env.CODEPLANE_GLOBAL_HOME_DIR === undefined) delete process.env.CODEPLANE_GLOBAL_HOME_DIR
+  else process.env.CODEPLANE_GLOBAL_HOME_DIR = env.CODEPLANE_GLOBAL_HOME_DIR
   if (env.CODEPLANE_HOME_DIR === undefined) delete process.env.CODEPLANE_HOME_DIR
   else process.env.CODEPLANE_HOME_DIR = env.CODEPLANE_HOME_DIR
   if (env.CODEPLANE_NPM_REGISTRY === undefined) delete process.env.CODEPLANE_NPM_REGISTRY
