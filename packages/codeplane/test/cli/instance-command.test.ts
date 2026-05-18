@@ -528,6 +528,7 @@ describe("cli instance helpers", () => {
       latest: "28.2.1",
       distTags: { latest: "28.2.1", next: "28.3.0-beta.1" },
       distTagCount: 2,
+      duplicateVersionCount: 0,
       invalidDistTagCount: 0,
       invalidVersionCount: 0,
       prereleaseVersionCount: 0,
@@ -568,6 +569,17 @@ describe("cli instance helpers", () => {
         }),
       ).versions,
     ).toEqual(["28.2.1", "28.2.0"])
+  })
+
+  test("reports duplicate local runtime version counts", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions({
+          distTags: {},
+          versions: ["28.2.0", "28.2.1", "28.2.0", "28.2.1"],
+        }),
+      ).duplicateVersionCount,
+    ).toBe(2)
   })
 
   test("ignores malformed local runtime versions before semver sorting", () => {
@@ -647,6 +659,7 @@ describe("cli instance helpers", () => {
       latest: "28.2.1",
       distTags: { latest: "28.2.1", old: "27.9.9" },
       distTagCount: 2,
+      duplicateVersionCount: 0,
       invalidDistTagCount: 0,
       invalidVersionCount: 0,
       prereleaseVersionCount: 0,
@@ -721,6 +734,7 @@ describe("cli instance helpers", () => {
       ).toEqual({
       distTags: {},
       distTagCount: 0,
+      duplicateVersionCount: 0,
       invalidDistTagCount: 0,
       invalidVersionCount: 1,
       prereleaseVersionCount: 0,
