@@ -819,6 +819,19 @@ describe("cli instance helpers", () => {
     ).toThrow(/binary path is unavailable/)
   })
 
+  test("marks local status uninstalled when binary path is blank", () => {
+    expect(
+      JSON.parse(
+        formatLocalStatus({
+          binaryVersion: "28.2.2",
+          installed: true,
+          binaryPath: "   ",
+          archive: "/tmp/codeplane.tgz",
+        }),
+      ).installed,
+    ).toBe(false)
+  })
+
   test("rejects local status path output when runtime is not installed", () => {
     expect(() =>
       formatLocalStatus(

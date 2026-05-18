@@ -508,15 +508,16 @@ export function formatLocalStatus(status: LocalStatus & { target?: LocalTarget }
   const normalized = {
     ...status,
     binaryVersion: status.binaryVersion.trim(),
+    installed: status.installed && Boolean(status.binaryPath?.trim()),
     ...(status.binaryPath ? { binaryPath: status.binaryPath.trim() } : {}),
   }
-  if (versionOnly) return normalized.binaryVersion
-  if (installedOnly) return normalized.installed ? "true" : "false"
   if (pathOnly) {
-    if (!normalized.installed) throw new Error(`Local runtime ${normalized.binaryVersion} is not installed.`)
+    if (!status.installed) throw new Error(`Local runtime ${normalized.binaryVersion} is not installed.`)
     if (!normalized.binaryPath) throw new Error("Local runtime binary path is unavailable.")
     return normalized.binaryPath
   }
+  if (versionOnly) return normalized.binaryVersion
+  if (installedOnly) return normalized.installed ? "true" : "false"
   return formatJson({
     ...normalized,
     ...(normalized.target
