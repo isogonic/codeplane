@@ -331,7 +331,7 @@ describe("cli instance helpers", () => {
   })
 
   test("formats instance URLs for script output", () => {
-    expect(formatInstanceURLs([{ url: "local://one" }, { url: "https://example.com" }])).toBe(
+    expect(formatInstanceURLs([{ url: " local://one " }, { url: "" }, { url: "https://example.com" }])).toBe(
       "local://one\nhttps://example.com",
     )
     expect(formatInstanceURLs([])).toBe("")

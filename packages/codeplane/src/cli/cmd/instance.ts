@@ -196,7 +196,7 @@ export function formatInstanceIDs(instances: { id: string }[]) {
 }
 
 export function formatInstanceURLs(instances: { url: string }[]) {
-  return instances.map((item) => item.url).join("\n")
+  return instances.map((item) => item.url.trim()).filter(Boolean).join("\n")
 }
 
 export function formatInstanceLabels(instances: { id: string; label?: string }[]) {
