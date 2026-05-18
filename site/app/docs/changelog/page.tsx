@@ -320,18 +320,10 @@ function ReleaseGroup({ group }: { group: Group }) {
   const headerRelease = group.cli ?? group.desktop ?? group.mobile
   if (!headerRelease) return null
 
-  // Pick a primary body to display: prefer the CLI release; fall back to
-  // whichever platform release has the longest body (usually the most
-  // informative, since the desktop workflow regenerates notes from the
-  // same source commits).
-  const primary =
-    group.cli ?? (
-      (group.desktop?.body?.length ?? 0) >= (group.mobile?.body?.length ?? 0)
-        ? group.desktop
-        : group.mobile
-    )
-  const primaryBody = primary ? shortenBody(primary.body) : ""
-  const primaryLabel = primary === group.cli ? "CLI" : primary === group.desktop ? "Desktop" : "Mobile"
+  // The general (CLI) release is always the headline. Its body is shown
+  // inline; both Desktop and Mobile are rendered as collapsed <details>
+  // below as separate per-platform changelogs.
+  const generalBody = group.cli ? shortenBody(group.cli.body) : ""
 
   return (
     <div className="border-t border-line py-7 first:border-t-0">
@@ -343,27 +335,19 @@ function ReleaseGroup({ group }: { group: Group }) {
           {group.base}
         </a>
         <span className="text-[12px] text-ink-muted">{formatDate(group.newestDate)}</span>
-        {primary ? (
-          <span className="border border-line bg-surface-2 px-2 py-[1px] text-[10px] font-bold uppercase tracking-wider text-ink-muted">
-            {primaryLabel}
-          </span>
-        ) : null}
       </div>
 
-      {primaryBody ? renderBody(primaryBody, group.base) : (
-        <p className="mt-3 text-[13px] text-ink-muted">No release notes attached.</p>
-      )}
+      {generalBody
+        ? renderBody(generalBody, group.base)
+        : (
+          <p className="mt-3 text-[13px] text-ink-muted">
+            No general (CLI) release notes for this version — see the platform changelogs below.
+          </p>
+        )}
 
       <div className="mt-4 flex flex-col gap-2">
-        {group.cli && primary !== group.cli ? (
-          <PlatformDetails release={group.cli} label="CLI" />
-        ) : null}
-        {group.desktop && primary !== group.desktop ? (
-          <PlatformDetails release={group.desktop} label="Desktop" />
-        ) : null}
-        {group.mobile && primary !== group.mobile ? (
-          <PlatformDetails release={group.mobile} label="Mobile" />
-        ) : null}
+        {group.desktop ? <PlatformDetails release={group.desktop} label="Desktop" /> : null}
+        {group.mobile ? <PlatformDetails release={group.mobile} label="Mobile" /> : null}
       </div>
     </div>
   )
