@@ -1,4 +1,4 @@
-import { localInstanceUrl, type SavedInstance } from "@codeplane-ai/shared/instance"
+import { localInstanceUrl, type LocalStatus, type SavedInstance } from "@codeplane-ai/shared/instance"
 import type { State as InstanceState } from "@codeplane-ai/shared/instance-store"
 import {
   fetchCodeplaneLatestVersion,
@@ -46,6 +46,7 @@ type InstanceProbeArgs = {
 }
 
 type InstanceLocalVersionArgs = {
+  pathOnly?: boolean
   version?: string
 }
 
@@ -136,6 +137,11 @@ export function formatLocalVersions(input: { latest?: string; distTags: Record<s
     total: input.versions.length,
     versions: input.versions.slice(0, count),
   })
+}
+
+export function formatLocalStatus(status: LocalStatus & { target?: LocalTarget }, pathOnly?: boolean) {
+  if (pathOnly) return status.binaryPath
+  return formatJson(status)
 }
 
 function autoInstanceID(label?: string, kind = "instance") {
@@ -639,12 +645,19 @@ export const InstanceLocalStatusCommand = cmd({
   command: "status [version]",
   describe: "show whether a local runtime version is installed",
   builder: (yargs: Argv) =>
-    yargs.positional("version", {
-      type: "string",
-      describe: "runtime version, defaults to the shared preferred version",
-    }),
+    yargs
+      .positional("version", {
+        type: "string",
+        describe: "runtime version, defaults to the shared preferred version",
+      })
+      .option("path-only", {
+        type: "boolean",
+        default: false,
+        describe: "print only the resolved runtime binary path",
+      }),
   async handler(args) {
-    console.log(formatJson(await localStatus((args as InstanceLocalVersionArgs).version)))
+    const input = args as InstanceLocalVersionArgs
+    console.log(formatLocalStatus(await localStatus(input.version), input.pathOnly))
   },
 })
 

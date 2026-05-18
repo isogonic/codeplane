@@ -3,6 +3,7 @@ import {
   applyLocalInstanceVersion,
   composeRemoteHeaders,
   filterInstanceSummaries,
+  formatLocalStatus,
   formatInstanceSummary,
   formatLocalVersions,
   formatLocalTarget,
@@ -179,6 +180,20 @@ describe("cli instance helpers", () => {
         true,
       ),
     ).toBe("codeplane")
+  })
+
+  test("formats local status as a path for scripts", () => {
+    expect(
+      formatLocalStatus(
+        {
+          binaryVersion: "28.2.2",
+          installed: true,
+          binaryPath: "/tmp/codeplane/bin/codeplane",
+          archive: "/tmp/codeplane.tgz",
+        },
+        true,
+      ),
+    ).toBe("/tmp/codeplane/bin/codeplane")
   })
 
   test("formats local runtime versions with a limit", () => {
