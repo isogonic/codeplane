@@ -58,6 +58,7 @@ type InstanceLocalTargetArgs = {
 
 type InstanceLocalVersionsArgs = {
   limit?: number
+  major?: number
   tag?: string
 }
 
@@ -141,19 +142,23 @@ export function formatLocalVersions(
   input: { latest?: string; distTags: Record<string, string>; versions?: unknown },
   limit = 10,
   tag?: string,
+  major?: number,
 ) {
   if (tag) {
     const version = input.distTags[tag]
     if (!version) throw new Error(`Local runtime dist-tag "${tag}" was not found.`)
     return version
   }
-  const versions = Array.isArray(input.versions) ? input.versions.filter((version) => typeof version === "string") : []
+  const versions = (Array.isArray(input.versions) ? input.versions.filter((version) => typeof version === "string") : []).filter(
+    (version) => major === undefined || version.startsWith(`${major}.`),
+  )
   const count = Math.min(Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10, 100)
   return formatJson({
     latest: input.latest,
     distTags: Object.fromEntries(Object.entries(input.distTags).sort(([left], [right]) => left.localeCompare(right))),
     distTagCount: Object.keys(input.distTags).length,
     total: versions.length,
+    ...(major === undefined ? {} : { major }),
     shown: Math.min(versions.length, count),
     omitted: Math.max(versions.length - count, 0),
     versions: versions.slice(0, count),
@@ -666,13 +671,16 @@ export const InstanceLocalVersionsCommand = cmd({
       type: "number",
       default: 10,
       describe: "maximum number of versions to print",
+    }).option("major", {
+      type: "number",
+      describe: "only include versions from one major release line",
     }).option("tag", {
       type: "string",
       describe: "print only one npm dist-tag version",
     }),
   async handler(args) {
     const input = args as InstanceLocalVersionsArgs
-    console.log(formatLocalVersions(await fetchCodeplaneVersions(), input.limit, input.tag))
+    console.log(formatLocalVersions(await fetchCodeplaneVersions(), input.limit, input.tag, input.major))
   },
 })
 

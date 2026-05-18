@@ -297,6 +297,32 @@ describe("cli instance helpers", () => {
     ).toBe("28.3.0-beta.1")
   })
 
+  test("formats local runtime versions for one major release line", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions(
+          {
+            latest: "28.2.1",
+            distTags: { latest: "28.2.1" },
+            versions: ["29.0.0", "28.2.1", "28.1.0", "27.9.9"],
+          },
+          10,
+          undefined,
+          28,
+        ),
+      ),
+    ).toEqual({
+      latest: "28.2.1",
+      distTags: { latest: "28.2.1" },
+      distTagCount: 1,
+      total: 2,
+      major: 28,
+      shown: 2,
+      omitted: 0,
+      versions: ["28.2.1", "28.1.0"],
+    })
+  })
+
   test("rejects missing local runtime dist tags", () => {
     expect(() =>
       formatLocalVersions(
