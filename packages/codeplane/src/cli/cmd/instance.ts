@@ -282,6 +282,7 @@ export function formatLocalVersions(
     ...(stableOnly ? { stableOnly: true } : {}),
     ...(prereleaseOnly ? { prereleaseOnly: true } : {}),
     ...(selectedMajor === undefined ? {} : { matchingDistTags }),
+    ...(selectedMajor === undefined ? {} : { selectedDistTags: Object.keys(matchingDistTags) }),
     ...(selectedMajor === undefined ? {} : { selectedDistTagCount: Object.keys(matchingDistTags).length }),
     limit: count,
     shown: Math.min(versions.length, count),

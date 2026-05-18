@@ -581,6 +581,7 @@ describe("cli instance helpers", () => {
       oldestVersion: "28.1.0",
       major: 28,
       matchingDistTags: { latest: "28.2.1" },
+      selectedDistTags: ["latest"],
       selectedDistTagCount: 1,
       limit: 10,
       shown: 2,
@@ -868,6 +869,22 @@ describe("cli instance helpers", () => {
         ),
       ).selectedDistTagCount,
     ).toBe(1)
+  })
+
+  test("reports selected local runtime dist-tag names", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions(
+          {
+            distTags: { latest: "28.2.1", next: "29.0.0-beta.1", legacy: "27.9.0" },
+            versions: ["28.2.1", "29.0.0-beta.1", "27.9.0"],
+          },
+          10,
+          undefined,
+          28,
+        ),
+      ).selectedDistTags,
+    ).toEqual(["latest"])
   })
 
   test("reports the oldest local runtime version", () => {
