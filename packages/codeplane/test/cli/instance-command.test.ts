@@ -1035,10 +1035,46 @@ describe("cli instance helpers", () => {
   test("rejects conflicting local runtime version selectors", () => {
     expect(() =>
       formatLocalVersions({ latest: "28.2.1", distTags: { latest: "28.2.1" }, versions: ["28.2.1"] }, 10, "latest", undefined, true),
-    ).toThrow(/without --tag or --major/)
+    ).toThrow(/without --tag, --major, or --range/)
     expect(() =>
       formatLocalVersions({ latest: "28.2.1", distTags: { latest: "28.2.1" }, versions: ["28.2.1"] }, 10, undefined, 28, true),
-    ).toThrow(/without --tag or --major/)
+    ).toThrow(/without --tag, --major, or --range/)
+    expect(() =>
+      formatLocalVersions(
+        { latest: "28.2.1", distTags: { latest: "28.2.1" }, versions: ["28.2.1"] },
+        10,
+        "latest",
+        undefined,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        ">=28.0.0 <29.0.0",
+      ),
+    ).toThrow(/Use --tag without --major or --range/)
+    expect(() =>
+      formatLocalVersions(
+        { latest: "28.2.1", distTags: { latest: "28.2.1" }, versions: ["28.2.1"] },
+        10,
+        undefined,
+        undefined,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        ">=28.0.0 <29.0.0",
+      ),
+    ).toThrow(/without --tag, --major, or --range/)
   })
 
   test("formats local runtime versions for one major release line", () => {

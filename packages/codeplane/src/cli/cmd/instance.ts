@@ -357,6 +357,7 @@ export function formatLocalVersions(
   const selectedRange = range?.trim()
   if (range !== undefined && !selectedRange) throw new Error("Local runtime semver range cannot be empty.")
   if (selectedRange && !semver.validRange(selectedRange)) throw new Error(`Invalid local runtime semver range "${range}".`)
+  if (selectedTag && (major !== undefined || selectedRange)) throw new Error("Use --tag without --major or --range.")
   const rawDistTags = input.distTags && typeof input.distTags === "object" && !Array.isArray(input.distTags) ? input.distTags : {}
   const invalidDistTagInputCount = input.distTags === undefined || (typeof input.distTags === "object" && !Array.isArray(input.distTags)) ? 0 : 1
   const normalizedDistTagEntries = Object.entries(rawDistTags).map(([tagName, version]) => [
@@ -379,11 +380,11 @@ export function formatLocalVersions(
     ([tagName, version]) => typeof version === "string" && distTags[tagName] !== undefined && distTags[tagName] !== version,
   ).length
   if (tagOnly) {
-    if (selectedTag || major !== undefined || latestOnly) throw new Error("Use --tag-only without --tag, --major, or --latest-only.")
+    if (selectedTag || major !== undefined || selectedRange || latestOnly) throw new Error("Use --tag-only without --tag, --major, --range, or --latest-only.")
     return Object.keys(distTags).join("\n")
   }
   if (latestOnly) {
-    if (selectedTag || major !== undefined) throw new Error("Use --latest-only without --tag or --major.")
+    if (selectedTag || major !== undefined || selectedRange) throw new Error("Use --latest-only without --tag, --major, or --range.")
     const latestVersion = [input.latest, distTags.latest]
       .filter((version): version is string => typeof version === "string")
       .map(normalizeLocalRuntimeVersion)
