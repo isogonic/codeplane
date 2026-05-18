@@ -3,55 +3,58 @@
 @tailwind utilities;
 
 /*
- * Monochrome palette. Both modes are tuned by hand — pure #000 / #fff
- * on a screen refract subtly off-grid; pulling each end inward by a
- * hair gives clean contrast without the edge-shimmer.
+ * opencode.ai-style palette — warm paper cream surface, dark charcoal
+ * ink, faint stone borders. Monospace is the primary typeface; the
+ * "sans" family aliases back to mono so headlines pick up the same
+ * blocky look. Tuned by eye against opencode.ai screenshots so the
+ * look matches at first glance.
  */
 :root {
-  --ink: #0a0a0a;
-  --ink-2: #1a1a1a;
-  --ink-muted: #525252;
-  --ink-soft: #737373;
-  --line: #e5e5e5;
-  --line-soft: #f0f0f0;
-  --surface: #ffffff;
-  --surface-2: #fafafa;
-  --surface-3: #f5f5f5;
-  --code-bg: #0a0a0a;
-  --code-fg: #fafafa;
-  --code-muted: #a3a3a3;
+  --ink: #211e1e;
+  --ink-2: #4b4646;
+  --ink-muted: #656363;
+  --ink-soft: #8a8585;
+  --line: #cfcecd;
+  --line-soft: #dcd9d8;
+  --surface: #f1ecec;
+  --surface-2: #ebe6e6;
+  --surface-3: #e3dede;
+  --code-bg: #0f0d0d;
+  --code-fg: #ebe6e6;
+  --code-muted: #8a8585;
+  --accent: #211e1e;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --ink: #f5f5f5;
-    --ink-2: #e5e5e5;
-    --ink-muted: #a3a3a3;
-    --ink-soft: #737373;
-    --line: #262626;
-    --line-soft: #1a1a1a;
-    --surface: #0a0a0a;
-    --surface-2: #111111;
-    --surface-3: #171717;
-    --code-bg: #171717;
-    --code-fg: #fafafa;
-    --code-muted: #737373;
+    --ink: #ebe6e6;
+    --ink-2: #cfcecd;
+    --ink-muted: #8a8585;
+    --ink-soft: #656363;
+    --line: #2a2626;
+    --line-soft: #1c1818;
+    --surface: #0f0d0d;
+    --surface-2: #161313;
+    --surface-3: #1c1818;
+    --code-bg: #1c1818;
+    --code-fg: #ebe6e6;
+    --code-muted: #8a8585;
   }
 }
 
 [data-theme="dark"] {
-  --ink: #f5f5f5;
-  --ink-2: #e5e5e5;
-  --ink-muted: #a3a3a3;
-  --ink-soft: #737373;
-  --line: #262626;
-  --line-soft: #1a1a1a;
-  --surface: #0a0a0a;
-  --surface-2: #111111;
-  --surface-3: #171717;
-  --code-bg: #171717;
-  --code-fg: #fafafa;
-  --code-muted: #737373;
+  --ink: #ebe6e6;
+  --ink-2: #cfcecd;
+  --ink-muted: #8a8585;
+  --ink-soft: #656363;
+  --line: #2a2626;
+  --line-soft: #1c1818;
+  --surface: #0f0d0d;
+  --surface-2: #161313;
+  --surface-3: #1c1818;
+  --code-bg: #1c1818;
+  --code-fg: #ebe6e6;
+  --code-muted: #8a8585;
 }
 
 html {
@@ -61,70 +64,148 @@ html {
 body {
   background: var(--surface);
   color: var(--ink);
-  font-feature-settings: "ss01", "cv11";
+  font-family: "JetBrains Mono", "IBM Plex Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-feature-settings: "zero", "ss01";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Prose styles — used inside docs pages. Tailwind utilities cover most
-   of the cases but we want a few opinionated defaults for raw <p>, <h2>,
-   <table>, <pre> when they live inside an .docs-prose container so the
-   page authors don't have to remember to slap classes on every node. */
+/*
+ * Column rails — opencode.ai draws two faint vertical lines flanking
+ * the centred content column, all the way from the header down past
+ * the footer. The .rail wrapper handles that; pages put their content
+ * inside .rail > .container.
+ */
+.rail {
+  position: relative;
+}
+.rail::before,
+.rail::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+  pointer-events: none;
+}
+.rail::before { left: max(1rem, calc(50% - 520px)); }
+.rail::after  { right: max(1rem, calc(50% - 520px)); }
+
+@media (max-width: 640px) {
+  .rail::before,
+  .rail::after { display: none; }
+}
+
+/* Horizontal section divider matching the rail colour. */
+.section-divider {
+  border-color: var(--line);
+}
+
+/* Bullet marker used in opencode-style feature lists: literal [*]. */
+.bullet-list {
+  list-style: none;
+  padding: 0;
+}
+.bullet-list > li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 1.25rem;
+  margin: 1.25rem 0;
+  align-items: baseline;
+  color: var(--ink-2);
+}
+.bullet-list > li::before {
+  content: "[*]";
+  color: var(--ink-muted);
+  white-space: pre;
+}
+.bullet-list > li > .title {
+  font-weight: 700;
+  color: var(--ink);
+  margin-right: 1.25rem;
+}
+
+/*
+ * Docs prose — kept compatible with the existing docs pages but
+ * re-tuned for the monospace cream theme. Headings stay bold (no
+ * tracking-tight on mono — kerning is already even).
+ */
 .docs-prose h1 {
-  @apply text-[40px] leading-[1.1] tracking-tighter font-semibold mb-4;
+  @apply text-[32px] leading-tight font-bold mb-4 mt-0;
 }
 .docs-prose > p:first-of-type,
 .docs-prose .lede {
-  @apply text-[19px] text-ink-muted leading-relaxed mb-10;
+  @apply text-[16px] text-ink-muted leading-relaxed mb-10;
 }
 .docs-prose h2 {
-  @apply text-[28px] leading-tight tracking-tighter font-semibold mt-16 mb-4;
+  @apply text-[22px] leading-snug font-bold mt-14 mb-4;
 }
 .docs-prose h2:first-of-type {
   @apply mt-8;
 }
 .docs-prose h3 {
-  @apply text-[19px] tracking-tight font-semibold mt-10 mb-3;
+  @apply text-[16px] font-bold mt-9 mb-3;
 }
 .docs-prose p {
-  @apply my-4 leading-relaxed;
+  @apply my-4 leading-relaxed text-[15px];
 }
 .docs-prose ul,
 .docs-prose ol {
-  @apply my-4 pl-6;
+  @apply my-4 pl-0 list-none;
 }
-.docs-prose ul {
-  @apply list-disc;
+.docs-prose ul > li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 0.75rem;
+  margin: 0.5rem 0;
+  align-items: baseline;
+}
+.docs-prose ul > li::before {
+  content: "[*]";
+  color: var(--ink-muted);
+  white-space: pre;
 }
 .docs-prose ol {
-  @apply list-decimal;
+  counter-reset: list;
 }
-.docs-prose li {
-  @apply my-2;
+.docs-prose ol > li {
+  counter-increment: list;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 0.75rem;
+  margin: 0.5rem 0;
+  align-items: baseline;
+}
+.docs-prose ol > li::before {
+  content: "[" counter(list) "]";
+  color: var(--ink-muted);
+  white-space: pre;
 }
 .docs-prose a {
-  @apply border-b border-line hover:border-ink transition-colors;
+  @apply underline underline-offset-4 decoration-line hover:decoration-ink transition-colors;
 }
 .docs-prose table {
-  @apply w-full border-collapse my-5 text-sm;
+  @apply w-full border-collapse my-5 text-[13px];
 }
 .docs-prose th,
 .docs-prose td {
   @apply text-left py-3 px-4 border-b border-line align-top;
 }
 .docs-prose th {
-  @apply font-semibold bg-surface-2;
+  @apply font-bold bg-surface-2;
 }
 .docs-prose code {
-  @apply font-mono text-[0.92em];
+  @apply text-[0.92em];
 }
 .docs-prose :not(pre) > code {
-  @apply bg-surface-3 px-[6px] py-[2px] rounded;
+  @apply bg-surface-3 px-[6px] py-[2px];
 }
 .docs-prose pre {
-  @apply my-5 p-5 rounded-md overflow-x-auto text-[13.5px] leading-relaxed;
+  @apply my-5 p-5 overflow-x-auto text-[13px] leading-relaxed;
   background: var(--code-bg);
   color: var(--code-fg);
+  border: 1px solid var(--line);
 }
 .docs-prose pre code {
   @apply bg-transparent p-0;
@@ -133,8 +214,8 @@ body {
   @apply my-12 border-line;
 }
 
-/* Subtle keyboard "key" cap. */
+/* Inline keycap, still used by a couple of doc pages. */
 .kbd {
-  @apply inline-block px-[6px] py-[1px] font-mono text-xs border border-line bg-surface-2 rounded;
+  @apply inline-block px-[6px] py-[1px] text-xs border border-line bg-surface-2;
   border-bottom-width: 2px;
 }

@@ -1,47 +1,56 @@
 import Link from "next/link"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowUpRight01Icon } from "@hugeicons/core-free-icons"
+import { Download01Icon } from "@hugeicons/core-free-icons"
 import { Logo } from "./logo"
+import { Wordmark } from "./wordmark"
 
 /*
- * Sticky site header — translucent with backdrop blur so it floats over
- * long-form content without losing the underlying texture. Every page
- * embeds this once via the root layout; the `active` prop highlights the
- * active section in the nav.
+ * opencode.ai-style sticky header: paper-cream surface with a single
+ * 1px bottom rule, paper-plane mark + "codeplane" wordmark on the
+ * left, monospace nav links in the centre/right, and a black-on-cream
+ * "Download" button as the only filled CTA. Sits on top of the .rail
+ * column lines so the whole page reads as one bordered shaft.
  */
 export function SiteHeader({ active }: { active?: "docs" | "install" }) {
   return (
-    <header className="sticky top-0 z-50 border-b border-line bg-surface/85 backdrop-blur-md backdrop-saturate-150">
-      <div className="container flex h-16 items-center gap-6">
-        <Link href="/" aria-label="Codeplane home" className="inline-flex items-center gap-3 font-semibold tracking-tight text-[15px] text-ink">
-          <Logo />
-          <span>Codeplane</span>
+    <header className="sticky top-0 z-50 border-b border-line bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/85">
+      <div className="container flex h-[76px] items-center gap-3 sm:gap-6 text-[14px]">
+        <Link
+          href="/"
+          aria-label="Codeplane home"
+          className="inline-flex items-center gap-2 text-ink"
+        >
+          <Logo size={24} />
+          <Wordmark size={22} />
         </Link>
-        <nav className="ml-auto flex items-center gap-6 text-sm text-ink-muted">
+        <nav className="ml-auto flex items-center gap-5 sm:gap-7 text-ink-2">
+          <a
+            href="https://github.com/devinoldenburg/codeplane"
+            className="hidden sm:inline transition-colors hover:text-ink"
+          >
+            GitHub <span className="text-ink-muted">[fork]</span>
+          </a>
           <Link
             href="/docs/"
-            className={`py-1 transition-colors hover:text-ink ${active === "docs" ? "text-ink" : ""}`}
+            className={`transition-colors hover:text-ink ${active === "docs" ? "text-ink" : ""}`}
           >
             Docs
           </Link>
-          <Link
-            href="/docs/install/"
-            className={`hidden sm:inline py-1 transition-colors hover:text-ink ${active === "install" ? "text-ink" : ""}`}
-          >
-            Install
-          </Link>
           <a
-            href="https://github.com/devinoldenburg/codeplane"
-            className="hidden sm:inline py-1 transition-colors hover:text-ink"
+            href="https://opencode.ai"
+            className="hidden md:inline transition-colors hover:text-ink"
+            title="Upstream — Codeplane is an experimental fork of opencode."
           >
-            GitHub
+            Upstream
           </a>
           <Link
             href="/docs/install/"
-            className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm font-medium text-surface hover:opacity-85 transition-opacity"
+            className={`inline-flex items-center gap-2 border border-ink bg-ink px-3 py-2 font-bold text-surface transition-opacity hover:opacity-85 ${
+              active === "install" ? "opacity-100" : ""
+            }`}
           >
-            Get Codeplane
-            <HugeiconsIcon icon={ArrowUpRight01Icon} size={14} strokeWidth={1.5} />
+            <HugeiconsIcon icon={Download01Icon} size={14} strokeWidth={1.75} />
+            Download
           </Link>
         </nav>
       </div>

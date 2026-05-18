@@ -1,10 +1,10 @@
 import type { Config } from "tailwindcss"
 
 /*
- * Monochrome OpenAI-style palette. Every brand colour lives in CSS
- * variables on :root + .dark so we get prefers-color-scheme + manual
- * override out of the box. Tailwind classes (e.g. `text-ink`) resolve
- * to `var(--ink)` so the same class works in both modes.
+ * opencode.ai-style palette + typography. The site is monospace-first;
+ * every "font-sans" Tailwind utility aliases back to the same mono
+ * stack so a page author can use either class without surprise.
+ * Container caps at 1040px to match the centred column on opencode.ai.
  */
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
@@ -13,7 +13,7 @@ const config: Config = {
     container: {
       center: true,
       padding: "1.5rem",
-      screens: { "2xl": "1120px" },
+      screens: { "2xl": "1040px" },
     },
     extend: {
       colors: {
@@ -28,33 +28,42 @@ const config: Config = {
         "surface-3": "var(--surface-3)",
         "code-bg": "var(--code-bg)",
         "code-fg": "var(--code-fg)",
+        "code-muted": "var(--code-muted)",
+        accent: "var(--accent)",
       },
       fontFamily: {
         sans: [
-          "Inter",
-          "ui-sans-serif",
-          "system-ui",
-          "-apple-system",
-          "BlinkMacSystemFont",
-          "Segoe UI",
-          "Helvetica",
-          "Arial",
-          "sans-serif",
+          "JetBrains Mono",
+          "IBM Plex Mono",
+          "SF Mono",
+          "ui-monospace",
+          "Menlo",
+          "Consolas",
+          "monospace",
         ],
-        mono: ["ui-monospace", "SF Mono", "JetBrains Mono", "Menlo", "Consolas", "monospace"],
+        mono: [
+          "JetBrains Mono",
+          "IBM Plex Mono",
+          "SF Mono",
+          "ui-monospace",
+          "Menlo",
+          "Consolas",
+          "monospace",
+        ],
       },
       letterSpacing: {
-        tightest: "-0.035em",
-        tighter: "-0.025em",
+        tightest: "-0.03em",
+        tighter: "-0.02em",
       },
       borderRadius: {
-        sm: "6px",
-        md: "10px",
-        lg: "14px",
-        xl: "20px",
+        sm: "2px",
+        md: "4px",
+        lg: "6px",
+        xl: "8px",
       },
       maxWidth: {
-        prose: "760px",
+        prose: "720px",
+        column: "1040px",
       },
     },
   },
