@@ -70,6 +70,7 @@ type InstanceLocalVersionsArgs = {
   latestOnly?: boolean
   limit?: number
   major?: number
+  newestOnly?: boolean
   oldestOnly?: boolean
   prereleaseOnly?: boolean
   stableOnly?: boolean
@@ -271,9 +272,13 @@ export function formatLocalVersions(
   countOnly?: boolean,
   jsonLines?: boolean,
   oldestOnly?: boolean,
+  newestOnly?: boolean,
 ) {
   if (stableOnly && prereleaseOnly) throw new Error("Use either --stable-only or --prerelease-only, not both.")
   if (versionOnly && (tag || latestOnly || tagOnly)) throw new Error("Use --version-only without --tag, --latest-only, or --tag-only.")
+  if (newestOnly && (tag || latestOnly || tagOnly || versionOnly || countOnly || jsonLines || oldestOnly)) {
+    throw new Error("Use --newest-only without --tag, --latest-only, --tag-only, --version-only, --count-only, --json-lines, or --oldest-only.")
+  }
   if (oldestOnly && (tag || latestOnly || tagOnly || versionOnly || countOnly || jsonLines)) {
     throw new Error("Use --oldest-only without --tag, --latest-only, --tag-only, --version-only, --count-only, or --json-lines.")
   }
@@ -329,6 +334,7 @@ export function formatLocalVersions(
   const count = Math.min(Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10, 100)
   const shownVersions = versions.slice(0, count)
   if (countOnly) return String(versions.length)
+  if (newestOnly) return versions[0] ?? ""
   if (oldestOnly) return versions.at(-1) ?? ""
   if (versionOnly) return shownVersions.join("\n")
   if (jsonLines) return shownVersions.map((version) => JSON.stringify({ version })).join("\n")
@@ -960,6 +966,10 @@ export const InstanceLocalVersionsCommand = cmd({
       type: "boolean",
       default: false,
       describe: "print only the oldest selected runtime version",
+    }).option("newest-only", {
+      type: "boolean",
+      default: false,
+      describe: "print only the newest selected runtime version",
     }).option("stable-only", {
       type: "boolean",
       default: false,
@@ -1001,6 +1011,7 @@ export const InstanceLocalVersionsCommand = cmd({
         input.countOnly,
         input.jsonLines,
         input.oldestOnly,
+        input.newestOnly,
       ),
     )
   },
