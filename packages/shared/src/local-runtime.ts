@@ -58,8 +58,12 @@ type RegistryConfig = {
 
 function normalizeRegistry(value: string | undefined) {
   const trimmed = value?.trim()
-  if (!trimmed) return "https://registry.npmjs.org/"
-  return trimmed.endsWith("/") ? trimmed : `${trimmed}/`
+  const registry = trimmed ? (trimmed.endsWith("/") ? trimmed : `${trimmed}/`) : "https://registry.npmjs.org/"
+  try {
+    return new URL(registry).toString()
+  } catch {
+    throw new Error(`Invalid npm registry URL "${value}". ${registryConfigHint}`)
+  }
 }
 
 function stripJsonComments(raw: string) {

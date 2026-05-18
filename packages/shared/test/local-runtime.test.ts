@@ -130,6 +130,12 @@ describe("local runtime registry config", () => {
     )
   })
 
+  test("rejects invalid configured npm registry URLs", async () => {
+    process.env.CODEPLANE_NPM_REGISTRY = "registry.example.com/no-scheme"
+
+    await expect(fetchNpmPackageManifest({ name: "codeplane-ai", version: "latest" })).rejects.toThrow(/Invalid npm registry URL/)
+  })
+
   test("resolves safe npm dist-tags", async () => {
     let request: Request | undefined
     globalThis.fetch = (async (input, init) => {
