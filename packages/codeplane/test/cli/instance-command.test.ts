@@ -113,7 +113,9 @@ describe("cli instance helpers", () => {
 
   test("rejects Windows-reserved explicit instance ids", () => {
     expect(() => validateInstanceID("con")).toThrow(/reserved on Windows/)
+    expect(() => validateInstanceID("con.txt")).toThrow(/reserved on Windows/)
     expect(() => validateInstanceID("LPT1")).toThrow(/reserved on Windows/)
+    expect(() => validateInstanceID("LPT1.log")).toThrow(/reserved on Windows/)
   })
 
   test("validates explicit local runtime versions", () => {
