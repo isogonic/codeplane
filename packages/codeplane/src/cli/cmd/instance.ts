@@ -65,6 +65,8 @@ type InstanceLocalVersionsArgs = {
   tag?: string
 }
 
+const LOCAL_RUNTIME_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
+
 // Combine --header lines with the dedicated --username / --password fields.
 // Username/password compose into an Authorization: Basic … header that
 // overrides any Authorization line in --header (the explicit field wins),
@@ -112,6 +114,14 @@ export function validateInstanceID(id: string) {
   if (!trimmed) throw new Error("Instance id cannot be empty.")
   if (!/^[A-Za-z0-9._-]+$/.test(trimmed)) {
     throw new Error("Instance id can only contain letters, numbers, dots, underscores, and dashes.")
+  }
+  return trimmed
+}
+
+export function validateLocalRuntimeVersion(version: string) {
+  const trimmed = version.trim().replace(/^[vV](?=\d)/, "")
+  if (!LOCAL_RUNTIME_VERSION_PATTERN.test(trimmed)) {
+    throw new Error(`Invalid local runtime version "${version}". Expected semver like 28.2.1 or 28.2.1-rc.0.`)
   }
   return trimmed
 }
@@ -231,7 +241,7 @@ function printProgress(message: string) {
 }
 
 async function localVersion(version?: string) {
-  return version || (await readPreferredLocalVersion())
+  return version ? validateLocalRuntimeVersion(version) : await readPreferredLocalVersion()
 }
 
 async function localBinaryPath(version: string) {

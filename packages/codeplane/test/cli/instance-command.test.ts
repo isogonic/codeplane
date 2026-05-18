@@ -13,6 +13,7 @@ import {
   normalizeLocalVersionMajor,
   parseInstanceHeaders,
   validateInstanceID,
+  validateLocalRuntimeVersion,
 } from "../../src/cli/cmd/instance"
 
 describe("cli instance helpers", () => {
@@ -67,6 +68,13 @@ describe("cli instance helpers", () => {
     expect(() => validateInstanceID("local/one")).toThrow(/letters, numbers/)
     expect(() => validateInstanceID("local one")).toThrow(/letters, numbers/)
     expect(() => validateInstanceID("local\nInjected")).toThrow(/letters, numbers/)
+  })
+
+  test("validates explicit local runtime versions", () => {
+    expect(validateLocalRuntimeVersion("v28.2.1")).toBe("28.2.1")
+    expect(validateLocalRuntimeVersion(" 28.2.1-rc.0 ")).toBe("28.2.1-rc.0")
+    expect(() => validateLocalRuntimeVersion("latest")).toThrow(/Invalid local runtime version/)
+    expect(() => validateLocalRuntimeVersion("28.2")).toThrow(/Invalid local runtime version/)
   })
 
   test("merges signed-in headers with strict validation", () => {
