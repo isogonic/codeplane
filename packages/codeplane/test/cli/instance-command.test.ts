@@ -66,6 +66,10 @@ describe("cli instance helpers", () => {
     expect(() => parseInstanceHeaders([`${"x".repeat(129)}: value`])).toThrow(/cannot exceed 128/)
   })
 
+  test("rejects overlong header values", () => {
+    expect(() => parseInstanceHeaders([`X-Token: ${"x".repeat(8193)}`])).toThrow(/cannot exceed 8192/)
+  })
+
   test("basic auth fields override existing authorization headers", () => {
     expect(
       composeRemoteHeaders({

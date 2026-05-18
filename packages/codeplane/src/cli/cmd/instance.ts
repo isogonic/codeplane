@@ -150,6 +150,7 @@ export function parseInstanceHeaders(input: string[] = []) {
       throw new Error(`Invalid header "${item}". Header names and values cannot contain control characters.`)
     }
     if (key.length > 128) throw new Error(`Invalid header "${item}". Header names cannot exceed 128 characters.`)
+    if (value.length > 8192) throw new Error(`Invalid header "${item}". Header values cannot exceed 8192 characters.`)
     if (!/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(key)) throw new Error(`Invalid header "${item}". Header name is not valid.`)
     const existingKey = Object.keys(result).find((name) => name.toLowerCase() === key.toLowerCase())
     if (existingKey) delete result[existingKey]
