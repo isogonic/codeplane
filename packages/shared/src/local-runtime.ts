@@ -321,7 +321,9 @@ export async function installManagedCodeplaneCli(input: { version: string; binar
     (await resolveLocalBinaryPath(versionRoot, target.binaryName))
   if (!source) {
     throw new Error(
-      `Codeplane ${version} binary not found in ${versionRoot}. Tried ${localBinaryCandidates(versionRoot, target.binaryName).join(" and ")}.`,
+      `Codeplane ${version} binary not found in ${versionRoot}. Tried:\n${localBinaryCandidates(versionRoot, target.binaryName)
+        .map((candidate) => `- ${candidate}`)
+        .join("\n")}`,
     )
   }
 

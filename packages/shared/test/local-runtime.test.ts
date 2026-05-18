@@ -403,4 +403,8 @@ describe("managed local cli", () => {
     expect(secondContents).toBe("first\n")
     expect(secondStat.mtimeMs).toBe(firstStat.mtimeMs)
   })
+
+  test("reports every missing binary candidate", async () => {
+    await expect(installManagedCodeplaneCli({ version: "27.3.1" })).rejects.toThrow(/Tried:\n- .+bin.+codeplane/)
+  })
 })
