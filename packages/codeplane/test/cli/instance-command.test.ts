@@ -587,11 +587,11 @@ describe("cli instance helpers", () => {
           versions: "28.2.1",
         }),
       ),
-    ).toEqual({
+      ).toEqual({
       distTags: {},
       distTagCount: 0,
       invalidDistTagCount: 0,
-      invalidVersionCount: 0,
+      invalidVersionCount: 1,
       prereleaseVersionCount: 0,
       stableVersionCount: 0,
       total: 0,
