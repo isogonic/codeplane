@@ -356,6 +356,7 @@ export function formatLocalVersions(
     invalidVersionCount: rawVersions.length - validVersions.length + invalidVersionInputCount,
     nonStringVersionCount,
     rawVersionCount: rawVersions.length,
+    validVersionCount: validVersions.length,
     prereleaseVersionCount,
     selectedVersionCount: versions.length,
     stableVersionCount,
