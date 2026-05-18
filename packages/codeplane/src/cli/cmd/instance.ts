@@ -124,6 +124,9 @@ export function composeRemoteHeaders(input: InstanceAddArgs): Record<string, str
   const user = (input.username ?? "").trim()
   const pass = input.password ?? ""
   if (!user && pass) throw new Error("Use --password with --username for HTTP Basic Auth.")
+  if (/[\x00-\x1F\x7F]/.test(user) || /[\x00-\x1F\x7F]/.test(pass)) {
+    throw new Error("HTTP Basic Auth username and password cannot contain control characters.")
+  }
   if (user || pass) {
     const authKey = Object.keys(headers).find((k) => k.toLowerCase() === "authorization")
     if (authKey) delete headers[authKey]
