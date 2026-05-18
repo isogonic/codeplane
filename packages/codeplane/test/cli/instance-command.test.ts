@@ -300,6 +300,17 @@ describe("cli instance helpers", () => {
     })
   })
 
+  test("sorts local runtime versions with semver precedence", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions({
+          distTags: {},
+          versions: ["28.2.0", "28.10.0", "28.2.1-rc.1", "28.2.1"],
+        }),
+      ).versions,
+    ).toEqual(["28.10.0", "28.2.1", "28.2.1-rc.1", "28.2.0"])
+  })
+
   test("formats one local runtime dist tag for scripts", () => {
     expect(
       formatLocalVersions(

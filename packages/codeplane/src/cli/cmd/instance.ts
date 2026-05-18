@@ -11,6 +11,7 @@ import { Global } from "@/global"
 import path from "path"
 import open from "open"
 import { createInterface } from "node:readline"
+import semver from "semver"
 import { createInstanceService } from "../../tui/instance-service"
 import { normalizeInstanceUrl } from "../../tui/client"
 import { UI } from "../ui"
@@ -173,7 +174,7 @@ export function formatLocalVersions(
   const selectedMajor = normalizeLocalVersionMajor(major)
   const versions = (Array.isArray(input.versions) ? input.versions.filter((version) => typeof version === "string") : []).filter(
     (version) => selectedMajor === undefined || version.startsWith(`${selectedMajor}.`),
-  )
+  ).sort(semver.rcompare)
   const count = Math.min(Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10, 100)
   return formatJson({
     latest: input.latest,
