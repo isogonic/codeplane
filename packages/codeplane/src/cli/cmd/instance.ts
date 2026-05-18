@@ -115,8 +115,9 @@ export function formatInstanceSummary(instance: SavedInstance, lastInstanceID?: 
   }
 }
 
-export function filterInstanceSummaries<T extends { type: "local" | "remote" }>(instances: T[], type?: "local" | "remote") {
+export function filterInstanceSummaries<T extends { type: "local" | "remote" }>(instances: T[], type?: string) {
   if (!type) return instances
+  if (type !== "local" && type !== "remote") throw new Error(`Invalid instance type "${type}". Use local or remote.`)
   return instances.filter((item) => item.type === type)
 }
 

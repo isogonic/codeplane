@@ -149,6 +149,10 @@ describe("cli instance helpers", () => {
     expect(filterInstanceSummaries(summaries)).toBe(summaries)
   })
 
+  test("rejects invalid instance summary filters", () => {
+    expect(() => filterInstanceSummaries([], "worker")).toThrow(/Invalid instance type/)
+  })
+
   test("formats local target as package name for scripts", () => {
     expect(
       formatLocalTarget(
