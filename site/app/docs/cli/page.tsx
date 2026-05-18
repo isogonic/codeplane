@@ -4,17 +4,17 @@ import { DocsLayout } from "@/components/docs-sidebar"
 
 export const metadata = {
   title: "CLI reference",
-  description: "Every subcommand and flag for the Codeplane CLI: serve, web, tui, instance, upgrade, completion.",
+  description: "Every Codeplane subcommand and flag, sourced from packages/codeplane/src/cli — serve, web, tui, instance, upgrade, completion.",
   alternates: { canonical: "/docs/cli/" },
   openGraph: {
     title: "CLI reference · Codeplane",
-    description: "Every subcommand and flag for the Codeplane CLI: serve, web, tui, instance, upgrade, completion.",
+    description: "Every Codeplane subcommand and flag, sourced from packages/codeplane/src/cli — serve, web, tui, instance, upgrade, completion.",
     url: "/docs/cli/",
     type: "article",
   },
   twitter: {
     title: "CLI reference · Codeplane",
-    description: "Every subcommand and flag for the Codeplane CLI: serve, web, tui, instance, upgrade, completion.",
+    description: "Every Codeplane subcommand and flag, sourced from packages/codeplane/src/cli — serve, web, tui, instance, upgrade, completion.",
     card: "summary_large_image",
   },
 }
@@ -26,74 +26,98 @@ export default function CLI() {
       <DocsLayout active="/docs/cli/">
         <h1>CLI reference</h1>
         <p className="lede">
-          The <code>codeplane</code> binary is the single entry point. Every front-end (TUI,
-          web, desktop, mobile) ultimately routes through the same server it boots.
+          The <code>codeplane</code> binary is the single entry point. Every front-end (TUI, web,
+          desktop, mobile) ultimately routes through the same server it boots. Every flag below is
+          mirrored to the source in <code>packages/codeplane/src/cli</code>; if you see one here
+          and not in <code>codeplane --help</code>, file an issue.
         </p>
 
         <h2>Synopsis</h2>
         <pre><code>{`codeplane <command> [options]
 
 Commands:
-  completion              generate shell completion script
-  serve                   start a headless codeplane server
-  web                     start a server and open the web interface
+  serve                   start a headless Codeplane server
+  web                     start a server and open the web UI in the browser
   tui                     start the terminal UI
-  instance                manage saved Codeplane instances + shared runtime
-  upgrade [target]        upgrade codeplane to the latest (or specific) version
+  instance                manage saved Codeplane instances + the shared local runtime
+  upgrade [target]        upgrade Codeplane to the latest (or a specific) version
+  completion              generate shell completion script
 
-Options:
+Top-level options (accepted by every subcommand):
   -h, --help              show help
-  -v, --version           show version number
-      --print-logs        print logs to stderr
-      --log-level <lvl>   DEBUG, INFO, WARN, or ERROR
-      --pure              run without external plugins`}</code></pre>
+  -v, --version           show the version number
+      --print-logs        also print logs to stderr (logs always go to file)
+      --log-level <lvl>   DEBUG | INFO | WARN | ERROR
+      --pure              run without external plugins (sets CODEPLANE_PURE=1)`}</code></pre>
 
         <h2><code>codeplane serve</code></h2>
-        <p>Boots the HTTP + WebSocket server with no UI.</p>
+        <p>Boots the HTTP + WebSocket + SSE server with no client. Refuses to bind a non-loopback hostname without <code>--password</code> (or <code>CODEPLANE_SERVER_PASSWORD</code>) — exposing the server to a network without HTTP Basic Auth would put your provider keys, MCP servers, and plugins in front of anyone who can reach the port.</p>
         <pre><code>{`codeplane serve [options]
 
-  --port <n>          port to bind (default: 4096)
-  --hostname <host>   bind address (default: 127.0.0.1; use 0.0.0.0 for LAN)
-  --share             print a connection QR + share URL for the mobile app
-  --instance <name>   run under a named instance (see \`codeplane instance\`)
-  --auth <token>      require Bearer token on every request
-  --no-tls            disable HTTPS even if certs exist (dev / loopback only)`}</code></pre>
+  --port <n>                 port to listen on (default 4096)
+  --hostname <host>          bind address (127.0.0.1 by default; use 0.0.0.0 for LAN)
+  --mdns                     enable mDNS service discovery (forces hostname to 0.0.0.0)
+  --mdns-domain <domain>     custom mDNS service name (default: codeplane.local)
+  --cors-allowed-origin <o>  add an allowed CORS origin (repeatable)
+  -i, --instance <id>        use a per-instance Codeplane home folder
+  --username <user>          HTTP Basic Auth username (defaults to "codeplane")
+  --password <secret>        HTTP Basic Auth password — required when --hostname is non-local`}</code></pre>
 
         <h2><code>codeplane web</code></h2>
-        <p>Boots the same server + opens the web UI in your default browser.</p>
+        <p>Boots the server and opens the web UI in your default browser. Every <code>serve</code> flag is accepted here too.</p>
         <pre><code>{`codeplane web [options]
 
-  --port <n>          port to bind (default: 4096)
-  --no-open           start the server but don't auto-launch the browser
-  <all serve flags>   every flag from \`codeplane serve\` is accepted too`}</code></pre>
+  (every flag from \`codeplane serve\` above)
+  -i, --instance <id>        same as serve`}</code></pre>
+        <p className="text-ink-muted">The web UI is hosted at the same URL the server is bound to — no separate dev server.</p>
 
         <h2><code>codeplane tui</code></h2>
-        <p>Full-screen terminal UI. Spawns a server in the background if one isn&apos;t running.</p>
+        <p>Full-screen terminal UI. Talks to a server you point it at — local runtime, saved instance, or running daemon.</p>
         <pre><code>{`codeplane tui [options]
 
-  --instance <name>   pick a saved instance (instead of localhost)
-  --session <id>      jump straight into an existing session
-  --mode <mode>       start in a specific mode (chat, build, plan, ...)`}</code></pre>
-        <p>Hit <span className="kbd">?</span> inside the TUI for the full keybinding overlay.</p>
+  -i, --instance <id>        saved instance id (else uses the default selected one)
+      --route <path>         initial TUI route to open (e.g. "/sessions")`}</code></pre>
+        <p>Press <span className="kbd">?</span> inside the TUI for the live keybinding overlay.</p>
 
         <h2><code>codeplane instance</code></h2>
+        <p>Manage the saved-instance registry and the shared local runtime cache.</p>
         <pre><code>{`codeplane instance <subcommand>
 
-  list                    list every saved instance
-  add <name> <url>        register a remote server
-  remove <name>           drop one
-  default <name>          set the default for \`tui\` / \`web\` etc.
-  runtime                 manage the shared local runtime cache`}</code></pre>
+  list [--json] [--type local|remote] [--default]
+                             list saved instances
+  add [target] [opts]        save a remote URL/host or a local runtime entry
+                             flags: --id, --label, --header H, --insecure,
+                                    --username, --password, --local, --select,
+                                    --version (local-runtime version)
+  remove <id>                drop a saved instance
+  select <id>                set the default for TUI / Web / Desktop
+  show <id> [--json]         print one saved instance
+  default [--json]           print the currently selected default
+  rename <id> <new-id>       move a saved instance to a different id
+  local <subcommand>         manage the shared local runtime versions
+                             (list, install, remove, prune)
+  daemon <subcommand>        manage long-running background servers
+                             (start <id>, stop <id>, status [id] [--json])`}</code></pre>
+        <p className="text-ink-muted">
+          Every flag and subcommand here is sourced from{" "}
+          <code>packages/codeplane/src/cli/cmd/instance.ts</code> and{" "}
+          <code>instance-daemon.ts</code>. New flags land in code first, then on this page.
+        </p>
 
         <h2><code>codeplane upgrade</code></h2>
         <pre><code>{`codeplane upgrade [target]
 
-  target              optional version to pin; defaults to latest
-  --beta              follow the beta channel instead of stable
-  --check             print the latest available version, don't install
-  --force             reinstall even if you're already on the target`}</code></pre>
+  target                  optional version to install (defaults to latest stable)
+  --check                 print the latest available version without installing`}</code></pre>
+        <p className="text-ink-muted">
+          The upgrade path depends on how Codeplane was installed: npm/pnpm/bun for the npm
+          install, the bash installer for the curl path, the desktop in-app updater for the
+          electron build. If the installer can&apos;t be detected, you&apos;ll get a clear
+          message pointing at the manual download.
+        </p>
 
         <h2><code>codeplane completion</code></h2>
+        <p>Generate a shell-completion script for the current shell.</p>
         <pre><code>{`# bash
 codeplane completion bash > /etc/bash_completion.d/codeplane
 
@@ -104,15 +128,25 @@ codeplane completion zsh > "\${fpath[1]}/_codeplane"
 codeplane completion fish > ~/.config/fish/completions/codeplane.fish`}</code></pre>
 
         <h2>Environment variables</h2>
+        <p className="text-ink-muted">
+          These are the env vars Codeplane reads directly. Provider API keys can live in your
+          shell environment, but the canonical way to point Codeplane at a provider is the{" "}
+          <code>{`{env:VAR}`}</code> placeholder syntax inside <code>codeplane.jsonc</code> — see{" "}
+          <a href="/docs/configuration/">Configuration</a>.
+        </p>
         <table>
           <thead><tr><th>Variable</th><th>Purpose</th></tr></thead>
           <tbody>
-            <tr><td><code>ANTHROPIC_API_KEY</code></td><td>Default key for Anthropic models.</td></tr>
-            <tr><td><code>OPENAI_API_KEY</code></td><td>Default key for OpenAI models.</td></tr>
-            <tr><td><code>OPENAI_BASE_URL</code></td><td>Point the OpenAI client at an alternative endpoint (Ollama, vLLM, LM Studio).</td></tr>
-            <tr><td><code>OPENROUTER_API_KEY</code></td><td>Default key for OpenRouter.</td></tr>
-            <tr><td><code>CODEPLANE_HOME</code></td><td>Override the user data directory (default <code>~/.codeplane</code>).</td></tr>
-            <tr><td><code>CODEPLANE_LOG_LEVEL</code></td><td>Equivalent to <code>--log-level</code> as an env var.</td></tr>
+            <tr><td><code>CODEPLANE_HOME_DIR</code></td><td>Override the per-user root folder (where <code>codeplane.jsonc</code> + per-instance directories live).</td></tr>
+            <tr><td><code>CODEPLANE_GLOBAL_HOME_DIR</code></td><td>Override only the shared bits (<code>instances.json</code> + <code>local_server/</code>) — set internally by the CLI&apos;s preflight when <code>--instance</code> is used.</td></tr>
+            <tr><td><code>CODEPLANE_DATA_DIR</code></td><td>Override the SQLite + cache root (rare).</td></tr>
+            <tr><td><code>CODEPLANE_CACHE_DIR</code></td><td>Override the cache directory.</td></tr>
+            <tr><td><code>CODEPLANE_LOG_DIR</code></td><td>Override the log directory.</td></tr>
+            <tr><td><code>CODEPLANE_BIN_DIR</code></td><td>Override the <code>bin/</code> folder used for installed runtime binaries.</td></tr>
+            <tr><td><code>CODEPLANE_SERVER_PASSWORD</code></td><td>Same as <code>--password</code> on <code>serve</code> / <code>web</code>.</td></tr>
+            <tr><td><code>CODEPLANE_PURE</code></td><td>Set to <code>1</code> by <code>--pure</code> to disable external plugins.</td></tr>
+            <tr><td><code>CODEPLANE_CONFIG_DIR</code></td><td>Additional directory to load config from (in addition to the default lookup chain).</td></tr>
+            <tr><td><code>CODEPLANE_CONFIG_CONTENT</code></td><td>Inline JSON-with-comments content merged on top of disk config.</td></tr>
           </tbody>
         </table>
 
@@ -121,10 +155,9 @@ codeplane completion fish > ~/.config/fish/completions/codeplane.fish`}</code></
           <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
           <tbody>
             <tr><td><code>0</code></td><td>Success.</td></tr>
-            <tr><td><code>1</code></td><td>Generic error.</td></tr>
-            <tr><td><code>2</code></td><td>Usage error.</td></tr>
-            <tr><td><code>3</code></td><td>Authentication failed.</td></tr>
-            <tr><td><code>130</code></td><td>Ctrl+C. Sessions are saved before exit.</td></tr>
+            <tr><td><code>1</code></td><td>Refused to bind a non-loopback hostname without <code>--password</code>, or upgrade target not found.</td></tr>
+            <tr><td><code>2</code></td><td>Usage error (yargs validation failure) or auto-upgrade method unknown.</td></tr>
+            <tr><td><code>130</code></td><td>Ctrl-C / SIGINT. Sessions persist to SQLite before exit.</td></tr>
           </tbody>
         </table>
       </DocsLayout>

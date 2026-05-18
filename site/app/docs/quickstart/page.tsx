@@ -31,9 +31,15 @@ export default function Quickstart() {
         <h2>1. Install the CLI</h2>
         <p>One line on macOS or Linux:</p>
         <pre><code>{`curl -fsSL https://codeplane.cc/install | bash`}</code></pre>
-        <p>On Windows in PowerShell:</p>
-        <pre><code>{`irm https://codeplane.cc/install | iex`}</code></pre>
-        <p>Per-platform options at <Link href="/docs/install/">Install</Link>.</p>
+        <p>Or via npm / Bun anywhere:</p>
+        <pre><code>{`npm install -g codeplane-ai
+# or
+bun install -g codeplane-ai`}</code></pre>
+        <p>
+          Windows users: the bash one-liner works under WSL2; native Windows uses the npm install
+          above (no PowerShell installer ships today). Per-platform options at{" "}
+          <Link href="/docs/install/">Install</Link>.
+        </p>
 
         <h2>2. Provide an API key</h2>
         <p>Codeplane needs at least one model provider configured. Fastest path is an env var:</p>
@@ -65,7 +71,12 @@ export OPENROUTER_API_KEY=sk-or-...`}</code></pre>
         <ul>
           <li>The <strong>desktop app</strong> — point it at <code>http://localhost:4096</code> via Add Server.</li>
           <li>The <strong>TUI</strong> — <code>codeplane tui</code> picks up the active server automatically.</li>
-          <li>The <strong>mobile app</strong> — scan the QR code shown by <code>codeplane serve --share</code> from your phone.</li>
+          <li>
+            The <strong>mobile app</strong> — start the server with mDNS so phones on the same Wi-Fi
+            discover it automatically: <code>codeplane serve --mdns --password $(openssl rand -hex 16)</code>.
+            The mobile shell then sees the instance under its{" "}
+            <code>codeplane.local</code> service name.
+          </li>
         </ul>
 
         <h2>What next</h2>
