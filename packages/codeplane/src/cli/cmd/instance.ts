@@ -496,7 +496,11 @@ export function formatLocalStatus(status: LocalStatus & { target?: LocalTarget }
   if ([pathOnly, installedOnly, versionOnly].filter(Boolean).length > 1) {
     throw new Error("Use only one of --path-only, --installed-only, or --version-only.")
   }
-  const normalized = status.binaryPath ? { ...status, binaryPath: status.binaryPath.trim() } : status
+  const normalized = {
+    ...status,
+    binaryVersion: status.binaryVersion.trim(),
+    ...(status.binaryPath ? { binaryPath: status.binaryPath.trim() } : {}),
+  }
   if (versionOnly) return normalized.binaryVersion
   if (installedOnly) return normalized.installed ? "true" : "false"
   if (pathOnly) {

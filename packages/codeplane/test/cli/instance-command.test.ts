@@ -722,6 +722,18 @@ describe("cli instance helpers", () => {
     ).toBe("/tmp/codeplane/bin/codeplane")
   })
 
+  test("trims local status binary version in JSON and script output", () => {
+    const status = {
+      binaryVersion: " 28.2.2 ",
+      installed: true,
+      binaryPath: "/tmp/codeplane/bin/codeplane",
+      archive: "/tmp/codeplane.tgz",
+    }
+
+    expect(JSON.parse(formatLocalStatus(status)).binaryVersion).toBe("28.2.2")
+    expect(formatLocalStatus(status, false, false, true)).toBe("28.2.2")
+  })
+
   test("rejects missing local status paths for scripts", () => {
     expect(() =>
       formatLocalStatus(
