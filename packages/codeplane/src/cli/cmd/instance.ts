@@ -397,6 +397,7 @@ export function formatLocalVersions(
     }
     return latestVersion
   }
+  const latest = typeof input.latest === "string" ? normalizeLocalRuntimeVersion(input.latest) : input.latest
   if (selectedTag) {
     if (!LOCAL_RUNTIME_TAG_PATTERN.test(selectedTag)) throw new Error(`Invalid local runtime dist-tag "${tag}".`)
     const version = distTags[selectedTag]
@@ -446,7 +447,7 @@ export function formatLocalVersions(
     Object.entries(distTags).filter(([, version]) => hasSelectedDistTagFilter && selectedVersionSet.has(version)),
   )
   return formatJson({
-    latest: input.latest,
+    latest,
     distTags,
     distTagNames: Object.keys(distTags),
     distTagCount: Object.keys(distTags).length,
