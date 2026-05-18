@@ -663,6 +663,8 @@ describe("cli instance helpers", () => {
       normalizedVersionCount: 0,
       rawVersionCount: 3,
       validVersionCount: 3,
+      availableStableVersionCount: 3,
+      availablePrereleaseVersionCount: 0,
       prereleaseVersionCount: 0,
       selectedVersionCount: 3,
       selectedStableVersionCount: 3,
@@ -733,6 +735,20 @@ describe("cli instance helpers", () => {
         }),
       ).duplicateVersionCount,
     ).toBe(2)
+  })
+
+  test("reports available local runtime stability counts before filters", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions({
+          distTags: {},
+          versions: ["28.2.0", "28.3.0-beta.1", "28.3.0-rc.1"],
+        }),
+      ),
+    ).toMatchObject({
+      availableStableVersionCount: 1,
+      availablePrereleaseVersionCount: 2,
+    })
   })
 
   test("ignores malformed local runtime versions before semver sorting", () => {
@@ -835,6 +851,8 @@ describe("cli instance helpers", () => {
       normalizedVersionCount: 0,
       rawVersionCount: 4,
       validVersionCount: 4,
+      availableStableVersionCount: 4,
+      availablePrereleaseVersionCount: 0,
       prereleaseVersionCount: 0,
       selectedVersionCount: 2,
       selectedStableVersionCount: 2,
@@ -995,6 +1013,8 @@ describe("cli instance helpers", () => {
       normalizedVersionCount: 0,
       rawVersionCount: 0,
       validVersionCount: 0,
+      availableStableVersionCount: 0,
+      availablePrereleaseVersionCount: 0,
       prereleaseVersionCount: 0,
       selectedVersionCount: 0,
       selectedStableVersionCount: 0,

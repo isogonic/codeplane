@@ -360,6 +360,8 @@ export function formatLocalVersions(
   const nonStringVersionCount = rawVersions.length - stringVersions.length + invalidVersionInputCount
   const validVersions = stringVersions.filter((version) => LOCAL_RUNTIME_VERSION_PATTERN.test(version) && semver.valid(version))
   const uniqueVersions = Array.from(new Set(validVersions))
+  const availablePrereleaseVersionCount = uniqueVersions.filter((version) => semver.prerelease(version)?.length).length
+  const availableStableVersionCount = uniqueVersions.length - availablePrereleaseVersionCount
   const duplicateVersionCount = validVersions.length - uniqueVersions.length
   const versions = uniqueVersions
     .filter((version) => selectedMajor === undefined || version.startsWith(`${selectedMajor}.`))
@@ -401,6 +403,8 @@ export function formatLocalVersions(
     normalizedVersionCount,
     rawVersionCount: rawVersions.length,
     validVersionCount: validVersions.length,
+    availableStableVersionCount,
+    availablePrereleaseVersionCount,
     prereleaseVersionCount,
     selectedVersionCount: versions.length,
     selectedStableVersionCount: stableVersionCount,
