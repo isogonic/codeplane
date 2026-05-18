@@ -243,6 +243,7 @@ describe("cli instance helpers", () => {
       latest: "28.2.1",
       distTags: { latest: "28.2.1", next: "28.3.0-beta.1" },
       total: 3,
+      shown: 2,
       versions: ["28.2.1", "28.2.0"],
     })
   })
@@ -299,6 +300,7 @@ describe("cli instance helpers", () => {
     ).toEqual({
       distTags: {},
       total: 0,
+      shown: 0,
       versions: [],
     })
   })

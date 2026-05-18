@@ -147,6 +147,7 @@ export function formatLocalVersions(
     latest: input.latest,
     distTags: Object.fromEntries(Object.entries(input.distTags).sort(([left], [right]) => left.localeCompare(right))),
     total: versions.length,
+    shown: Math.min(versions.length, count),
     versions: versions.slice(0, count),
   })
 }
