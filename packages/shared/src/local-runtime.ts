@@ -567,7 +567,9 @@ export async function installCodeplaneLocalPackage(input: {
       timeoutMs: NPM_FETCH_TIMEOUT_MS,
     })
     if (!response.ok) {
-      throw new Error(`npm tarball download failed for ${target.packageName}@${version} at ${tarball.toString()} with HTTP ${response.status}`)
+      throw new Error(
+        `npm tarball download failed for ${target.packageName}@${version} at ${tarball.toString()} with HTTP ${response.status}. ${registryConfigHint}`,
+      )
     }
     if (!response.body) {
       throw new Error(`npm tarball download for ${target.packageName}@${version} returned an empty body`)
