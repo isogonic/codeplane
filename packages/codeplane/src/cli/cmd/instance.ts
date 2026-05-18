@@ -201,8 +201,9 @@ export function formatLocalVersions(
   }
   const selectedMajor = normalizeLocalVersionMajor(major)
   const distTags = Object.fromEntries(Object.entries(input.distTags).sort(([left], [right]) => left.localeCompare(right)))
-  const versions = (Array.isArray(input.versions) ? input.versions.filter((version) => typeof version === "string") : [])
-    .filter((version) => LOCAL_RUNTIME_VERSION_PATTERN.test(version))
+  const rawVersions = Array.isArray(input.versions) ? input.versions.filter((version) => typeof version === "string") : []
+  const validVersions = rawVersions.filter((version) => LOCAL_RUNTIME_VERSION_PATTERN.test(version))
+  const versions = validVersions
     .filter((version) => selectedMajor === undefined || version.startsWith(`${selectedMajor}.`))
     .sort(semver.rcompare)
   const matchingDistTags = Object.fromEntries(
@@ -213,6 +214,7 @@ export function formatLocalVersions(
     latest: input.latest,
     distTags,
     distTagCount: Object.keys(input.distTags).length,
+    invalidVersionCount: rawVersions.length - validVersions.length,
     total: versions.length,
     ...(selectedMajor === undefined ? {} : { major: selectedMajor }),
     ...(selectedMajor === undefined ? {} : { matchingDistTags }),

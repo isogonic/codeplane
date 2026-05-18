@@ -337,6 +337,7 @@ describe("cli instance helpers", () => {
       latest: "28.2.1",
       distTags: { latest: "28.2.1", next: "28.3.0-beta.1" },
       distTagCount: 2,
+      invalidVersionCount: 0,
       total: 3,
       limit: 2,
       shown: 2,
@@ -424,6 +425,7 @@ describe("cli instance helpers", () => {
       latest: "28.2.1",
       distTags: { latest: "28.2.1", old: "27.9.9" },
       distTagCount: 2,
+      invalidVersionCount: 0,
       total: 2,
       major: 28,
       matchingDistTags: { latest: "28.2.1" },
@@ -479,6 +481,7 @@ describe("cli instance helpers", () => {
     ).toEqual({
       distTags: {},
       distTagCount: 0,
+      invalidVersionCount: 0,
       total: 0,
       limit: 10,
       shown: 0,
@@ -498,5 +501,16 @@ describe("cli instance helpers", () => {
         ).distTags,
       ),
     ).toEqual(["beta", "latest", "zeta"])
+  })
+
+  test("reports ignored malformed local runtime versions", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions({
+          distTags: {},
+          versions: ["28.2.0", "broken", "28.2"],
+        }),
+      ).invalidVersionCount,
+    ).toBe(2)
   })
 })
