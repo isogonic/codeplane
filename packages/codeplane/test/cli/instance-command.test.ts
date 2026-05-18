@@ -310,6 +310,20 @@ describe("cli instance helpers", () => {
     ).toBe("codeplane-linux-x64")
   })
 
+  test("includes local target package name fallback in JSON output", () => {
+    expect(
+      JSON.parse(
+        formatLocalTarget({
+          os: "linux",
+          arch: "x64",
+          archiveName: "codeplane-linux-x64.tar.gz",
+          archiveExt: ".tar.gz",
+          binaryName: "codeplane",
+        }),
+      ).packageName,
+    ).toBe("codeplane-linux-x64")
+  })
+
   test("formats local target as binary name for scripts", () => {
     expect(
       formatLocalTarget(
