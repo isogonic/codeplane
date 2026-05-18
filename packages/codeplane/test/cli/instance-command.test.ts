@@ -4,6 +4,7 @@ import {
   composeRemoteHeaders,
   filterDefaultInstanceSummaries,
   filterInstanceSummaries,
+  filterTlsSkippedInstanceSummaries,
   formatInstanceCount,
   formatInstanceIDs,
   formatInstanceLabels,
@@ -305,6 +306,19 @@ describe("cli instance helpers", () => {
 
     expect(filterDefaultInstanceSummaries(summaries, true)).toEqual([{ id: "local-1", default: true }])
     expect(filterDefaultInstanceSummaries(summaries)).toBe(summaries)
+  })
+
+  test("filters instance summaries to skipped TLS entries", () => {
+    const summaries = [
+      { id: "remote-1", ignoreCertificateErrors: true },
+      { id: "remote-2", ignoreCertificateErrors: false },
+      { id: "local-1" },
+    ]
+
+    expect(filterTlsSkippedInstanceSummaries(summaries, true)).toEqual([
+      { id: "remote-1", ignoreCertificateErrors: true },
+    ])
+    expect(filterTlsSkippedInstanceSummaries(summaries)).toBe(summaries)
   })
 
   test("formats instance ids for script output", () => {

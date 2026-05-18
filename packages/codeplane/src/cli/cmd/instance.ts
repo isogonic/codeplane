@@ -25,6 +25,7 @@ type InstanceListArgs = {
   idOnly?: boolean
   json?: boolean
   labelOnly?: boolean
+  tlsSkippedOnly?: boolean
   type?: "local" | "remote"
   urlOnly?: boolean
 }
@@ -177,6 +178,14 @@ export function filterInstanceSummaries<T extends { type: "local" | "remote" }>(
 export function filterDefaultInstanceSummaries<T extends { default?: boolean }>(instances: T[], defaultOnly?: boolean) {
   if (!defaultOnly) return instances
   return instances.filter((item) => item.default)
+}
+
+export function filterTlsSkippedInstanceSummaries<T extends { ignoreCertificateErrors?: boolean }>(
+  instances: T[],
+  tlsSkippedOnly?: boolean,
+) {
+  if (!tlsSkippedOnly) return instances
+  return instances.filter((item) => item.ignoreCertificateErrors)
 }
 
 export function formatInstanceIDs(instances: { id: string }[]) {
@@ -435,6 +444,11 @@ export const InstanceListCommand = cmd({
         default: false,
         describe: "only show the default selected instance",
       })
+      .option("tls-skipped-only", {
+        type: "boolean",
+        default: false,
+        describe: "only show instances that skip TLS certificate validation",
+      })
       .option("id-only", {
         type: "boolean",
         default: false,
@@ -459,12 +473,15 @@ export const InstanceListCommand = cmd({
     const input = args as InstanceListArgs
     const service = createInstanceService()
     const state = await service.store.getState()
-    const output = filterDefaultInstanceSummaries(
-      filterInstanceSummaries(
-        state.instances.map((item) => formatInstanceSummary(item, state.lastInstanceID)),
-        input.type,
+    const output = filterTlsSkippedInstanceSummaries(
+      filterDefaultInstanceSummaries(
+        filterInstanceSummaries(
+          state.instances.map((item) => formatInstanceSummary(item, state.lastInstanceID)),
+          input.type,
+        ),
+        input.defaultOnly,
       ),
-      input.defaultOnly,
+      input.tlsSkippedOnly,
     )
     if (input.json) {
       console.log(formatJson(output))
