@@ -1027,6 +1027,32 @@ describe("cli instance helpers", () => {
     })
   })
 
+  test("trims local runtime semver ranges before filtering", () => {
+    expect(
+      JSON.parse(
+        formatLocalVersions(
+          {
+            distTags: {},
+            versions: ["28.2.1", "28.1.0", "27.9.9"],
+          },
+          10,
+          undefined,
+          undefined,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          " >=28.0.0 <29.0.0 ",
+        ),
+      ).versions,
+    ).toEqual(["28.2.1", "28.1.0"])
+  })
+
   test("rejects invalid local runtime semver ranges", () => {
     expect(() =>
       formatLocalVersions(
