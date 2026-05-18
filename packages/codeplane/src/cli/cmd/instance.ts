@@ -70,6 +70,7 @@ type InstanceLocalVersionsArgs = {
   countOnly?: boolean
   jsonLines?: boolean
   latestPrereleaseOnly?: boolean
+  latestMajorOnly?: boolean
   latestStableOnly?: boolean
   latestOnly?: boolean
   limit?: number
@@ -287,9 +288,13 @@ export function formatLocalVersions(
   range?: string,
   latestStableOnly?: boolean,
   latestPrereleaseOnly?: boolean,
+  latestMajorOnly?: boolean,
 ) {
   if (stableOnly && prereleaseOnly) throw new Error("Use either --stable-only or --prerelease-only, not both.")
   if (versionOnly && (tag || latestOnly || tagOnly)) throw new Error("Use --version-only without --tag, --latest-only, or --tag-only.")
+  if (latestMajorOnly && (tag || latestOnly || tagOnly || versionOnly || countOnly || jsonLines || oldestOnly || newestOnly || major !== undefined)) {
+    throw new Error("Use --latest-major-only without --tag, --latest-only, --tag-only, --version-only, --count-only, --json-lines, --oldest-only, --newest-only, or --major.")
+  }
   if (latestStableOnly && (tag || latestOnly || tagOnly || versionOnly || countOnly || jsonLines || oldestOnly || newestOnly || prereleaseOnly)) {
     throw new Error("Use --latest-stable-only without --tag, --latest-only, --tag-only, --version-only, --count-only, --json-lines, --oldest-only, --newest-only, or --prerelease-only.")
   }
@@ -374,11 +379,13 @@ export function formatLocalVersions(
   const stableVersionCount = versions.length - prereleaseVersionCount
   const newestStableVersion = versions.find((version) => !semver.prerelease(version)?.length)
   const newestPrereleaseVersion = versions.find((version) => semver.prerelease(version)?.length)
+  const latestMajorVersion = versions.find((version) => !semver.prerelease(version)?.length) ?? versions[0]
   if (!Number.isSafeInteger(limit) || limit < 1) throw new Error(`Invalid local runtime version limit "${limit}". Use a positive safe integer.`)
   const requestedLimit = limit
   const count = Math.min(requestedLimit, 100)
   const shownVersions = versions.slice(0, count)
   if (countOnly) return String(versions.length)
+  if (latestMajorOnly) return latestMajorVersion ? String(semver.major(latestMajorVersion)) : ""
   if (latestStableOnly) return newestStableVersion ?? ""
   if (latestPrereleaseOnly) return newestPrereleaseVersion ?? ""
   if (newestOnly) return versions[0] ?? ""
@@ -1044,6 +1051,10 @@ export const InstanceLocalVersionsCommand = cmd({
       type: "boolean",
       default: false,
       describe: "print only the newest prerelease version from the selected runtime versions",
+    }).option("latest-major-only", {
+      type: "boolean",
+      default: false,
+      describe: "print only the newest stable runtime major, falling back to prerelease when needed",
     }).option("oldest-only", {
       type: "boolean",
       default: false,
@@ -1097,6 +1108,7 @@ export const InstanceLocalVersionsCommand = cmd({
         input.range,
         input.latestStableOnly,
         input.latestPrereleaseOnly,
+        input.latestMajorOnly,
       ),
     )
   },

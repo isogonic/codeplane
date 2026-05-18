@@ -851,6 +851,60 @@ describe("cli instance helpers", () => {
     ).toBe("28.2.1")
   })
 
+  test("formats latest local runtime major for scripts", () => {
+    expect(
+      formatLocalVersions(
+        {
+          distTags: {},
+          versions: ["29.0.0-beta.1", "28.2.1", "27.9.0"],
+        },
+        10,
+        undefined,
+        undefined,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        undefined,
+        false,
+        false,
+        true,
+      ),
+    ).toBe("28")
+  })
+
+  test("falls back to prerelease for latest local runtime major scripts", () => {
+    expect(
+      formatLocalVersions(
+        {
+          distTags: {},
+          versions: ["29.0.0-beta.1", "28.3.0-rc.1"],
+        },
+        10,
+        undefined,
+        undefined,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        undefined,
+        false,
+        false,
+        true,
+      ),
+    ).toBe("29")
+  })
+
   test("reports missing latest local runtime version", () => {
     expect(() => formatLocalVersions({ distTags: {}, versions: [] }, 10, undefined, undefined, true)).toThrow(
       /latest version was not found/,
@@ -1559,6 +1613,30 @@ describe("cli instance helpers", () => {
         true,
       ),
     ).toThrow(/Use --latest-prerelease-only/)
+  })
+
+  test("rejects conflicting latest-major-only local runtime flags", () => {
+    expect(() =>
+      formatLocalVersions(
+        { distTags: {}, versions: [] },
+        10,
+        undefined,
+        28,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        undefined,
+        false,
+        false,
+        true,
+      ),
+    ).toThrow(/Use --latest-major-only/)
   })
 
   test("rejects conflicting oldest-only local runtime flags", () => {
