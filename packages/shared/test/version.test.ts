@@ -3,9 +3,12 @@ import {
   CodeplaneVersion,
   CodeplaneReleasePrefix,
   CodeplaneDesktopReleaseSuffix,
+  CodeplaneMobileReleaseSuffix,
   codeplaneReleaseTag,
   codeplaneDesktopReleaseVersion,
   codeplaneDesktopReleaseTag,
+  codeplaneMobileReleaseVersion,
+  codeplaneMobileReleaseTag,
 } from "../src/version"
 
 describe("CodeplaneVersion", () => {
@@ -28,6 +31,12 @@ describe("CodeplaneReleasePrefix", () => {
 describe("CodeplaneDesktopReleaseSuffix", () => {
   test("equals '-desktop'", () => {
     expect(CodeplaneDesktopReleaseSuffix).toBe("-desktop")
+  })
+})
+
+describe("CodeplaneMobileReleaseSuffix", () => {
+  test("equals '-mobile'", () => {
+    expect(CodeplaneMobileReleaseSuffix).toBe("-mobile")
   })
 })
 
@@ -90,5 +99,33 @@ describe("codeplaneDesktopReleaseTag", () => {
 
   test("composes prefix + version + suffix", () => {
     expect(codeplaneDesktopReleaseTag("3.4.5")).toBe(`${CodeplaneReleasePrefix}3.4.5${CodeplaneDesktopReleaseSuffix}`)
+  })
+})
+
+describe("codeplaneMobileReleaseVersion", () => {
+  test("appends '-mobile' to default version", () => {
+    expect(codeplaneMobileReleaseVersion()).toBe(`${CodeplaneVersion}-mobile`)
+  })
+
+  test("appends '-mobile' to provided version", () => {
+    expect(codeplaneMobileReleaseVersion("1.2.3")).toBe("1.2.3-mobile")
+  })
+
+  test("preserves prerelease tags", () => {
+    expect(codeplaneMobileReleaseVersion("1.2.3-beta.1")).toBe("1.2.3-beta.1-mobile")
+  })
+})
+
+describe("codeplaneMobileReleaseTag", () => {
+  test("returns v<version>-mobile using default", () => {
+    expect(codeplaneMobileReleaseTag()).toBe(`v${CodeplaneVersion}-mobile`)
+  })
+
+  test("returns v<version>-mobile with custom", () => {
+    expect(codeplaneMobileReleaseTag("1.2.3")).toBe("v1.2.3-mobile")
+  })
+
+  test("composes prefix + version + suffix", () => {
+    expect(codeplaneMobileReleaseTag("3.4.5")).toBe(`${CodeplaneReleasePrefix}3.4.5${CodeplaneMobileReleaseSuffix}`)
   })
 })
