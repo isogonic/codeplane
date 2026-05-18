@@ -87,6 +87,7 @@ describe("cli instance helpers", () => {
     expect(validateLocalRuntimeVersion(" 28.2.1-rc.0 ")).toBe("28.2.1-rc.0")
     expect(() => validateLocalRuntimeVersion("latest")).toThrow(/Invalid local runtime version/)
     expect(() => validateLocalRuntimeVersion("28.2")).toThrow(/Invalid local runtime version/)
+    expect(() => validateLocalRuntimeVersion("28.2.1-..bad")).toThrow(/Invalid local runtime version/)
   })
 
   test("merges signed-in headers with strict validation", () => {

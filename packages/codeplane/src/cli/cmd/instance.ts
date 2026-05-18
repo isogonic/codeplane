@@ -130,7 +130,7 @@ export function validateInstanceID(id: string) {
 
 export function validateLocalRuntimeVersion(version: string) {
   const trimmed = version.trim().replace(/^[vV](?=\d)/, "")
-  if (!LOCAL_RUNTIME_VERSION_PATTERN.test(trimmed)) {
+  if (!LOCAL_RUNTIME_VERSION_PATTERN.test(trimmed) || !semver.valid(trimmed)) {
     throw new Error(`Invalid local runtime version "${version}". Expected semver like 28.2.1 or 28.2.1-rc.0.`)
   }
   return trimmed
