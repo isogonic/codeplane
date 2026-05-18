@@ -207,6 +207,7 @@ export function formatLocalVersions(
       .filter(([tagName, version]) => LOCAL_RUNTIME_TAG_PATTERN.test(tagName) && LOCAL_RUNTIME_VERSION_PATTERN.test(version))
       .sort(([left], [right]) => left.localeCompare(right)),
   )
+  const invalidDistTagCount = Object.keys(input.distTags).length - Object.keys(distTags).length
   if (tagOnly) {
     if (tag || major !== undefined || latestOnly) throw new Error("Use --tag-only without --tag, --major, or --latest-only.")
     return Object.keys(distTags).join("\n")
@@ -238,6 +239,7 @@ export function formatLocalVersions(
     latest: input.latest,
     distTags,
     distTagCount: Object.keys(distTags).length,
+    invalidDistTagCount,
     invalidVersionCount: rawVersions.length - validVersions.length,
     prereleaseVersionCount,
     stableVersionCount,

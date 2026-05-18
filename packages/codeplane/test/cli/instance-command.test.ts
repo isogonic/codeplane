@@ -392,6 +392,7 @@ describe("cli instance helpers", () => {
       latest: "28.2.1",
       distTags: { latest: "28.2.1", next: "28.3.0-beta.1" },
       distTagCount: 2,
+      invalidDistTagCount: 0,
       invalidVersionCount: 0,
       prereleaseVersionCount: 0,
       stableVersionCount: 3,
@@ -488,6 +489,7 @@ describe("cli instance helpers", () => {
       latest: "28.2.1",
       distTags: { latest: "28.2.1", old: "27.9.9" },
       distTagCount: 2,
+      invalidDistTagCount: 0,
       invalidVersionCount: 0,
       prereleaseVersionCount: 0,
       stableVersionCount: 2,
@@ -550,6 +552,7 @@ describe("cli instance helpers", () => {
     ).toEqual({
       distTags: {},
       distTagCount: 0,
+      invalidDistTagCount: 0,
       invalidVersionCount: 0,
       prereleaseVersionCount: 0,
       stableVersionCount: 0,
@@ -585,6 +588,7 @@ describe("cli instance helpers", () => {
     ).toMatchObject({
       distTags: { latest: "28.2.0" },
       distTagCount: 1,
+      invalidDistTagCount: 2,
     })
   })
 
