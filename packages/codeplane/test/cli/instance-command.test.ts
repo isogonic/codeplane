@@ -705,6 +705,12 @@ describe("cli instance helpers", () => {
     ).toMatchObject({ prereleaseOnly: true, versions: ["28.3.0-rc.1", "28.3.0-beta.1"] })
   })
 
+  test("rejects conflicting stable and prerelease filters", () => {
+    expect(() =>
+      formatLocalVersions({ distTags: {}, versions: [] }, 10, undefined, undefined, false, false, true, true),
+    ).toThrow(/--stable-only or --prerelease-only/)
+  })
+
   test("reports the newest local runtime version", () => {
     expect(
       JSON.parse(

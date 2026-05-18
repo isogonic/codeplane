@@ -208,6 +208,7 @@ export function formatLocalVersions(
   stableOnly?: boolean,
   prereleaseOnly?: boolean,
 ) {
+  if (stableOnly && prereleaseOnly) throw new Error("Use either --stable-only or --prerelease-only, not both.")
   const distTags = Object.fromEntries(
     Object.entries(input.distTags)
       .filter(([tagName, version]) => LOCAL_RUNTIME_TAG_PATTERN.test(tagName) && LOCAL_RUNTIME_VERSION_PATTERN.test(version))
