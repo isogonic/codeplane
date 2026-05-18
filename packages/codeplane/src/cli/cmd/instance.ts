@@ -344,7 +344,9 @@ export function formatLocalVersions(
   if (countOnly && (tag || latestOnly || tagOnly || versionOnly)) {
     throw new Error("Use --count-only without --tag, --latest-only, --tag-only, or --version-only.")
   }
+  if (tag !== undefined && !tag.trim()) throw new Error("Local runtime dist-tag cannot be empty.")
   const selectedRange = range?.trim()
+  if (range !== undefined && !selectedRange) throw new Error("Local runtime semver range cannot be empty.")
   if (selectedRange && !semver.validRange(selectedRange)) throw new Error(`Invalid local runtime semver range "${range}".`)
   const rawDistTags = input.distTags && typeof input.distTags === "object" && !Array.isArray(input.distTags) ? input.distTags : {}
   const invalidDistTagInputCount = input.distTags === undefined || (typeof input.distTags === "object" && !Array.isArray(input.distTags)) ? 0 : 1

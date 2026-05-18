@@ -1047,6 +1047,28 @@ describe("cli instance helpers", () => {
     ).toThrow(/Invalid local runtime semver range/)
   })
 
+  test("rejects blank local runtime selectors", () => {
+    expect(() => formatLocalVersions({ distTags: {}, versions: [] }, 10, "   ")).toThrow(/dist-tag cannot be empty/)
+    expect(() =>
+      formatLocalVersions(
+        { distTags: {}, versions: [] },
+        10,
+        undefined,
+        undefined,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        "   ",
+      ),
+    ).toThrow(/semver range cannot be empty/)
+  })
+
   test("rejects invalid local runtime major filters", () => {
     expect(normalizeLocalVersionMajor(28)).toBe(28)
     expect(normalizeLocalVersionMajor()).toBeUndefined()
