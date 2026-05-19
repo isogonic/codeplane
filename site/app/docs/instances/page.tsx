@@ -27,9 +27,19 @@ export default function Instances() {
       <DocsLayout active="/docs/instances/">
         <h1>Instances</h1>
         <p className="lede">
-          A Codeplane instance is a saved server endpoint. It can be a remote URL you operate, or a
-          managed local runtime that the desktop/TUI can start on demand. Instances are shared
-          across clients through <code>instances.json</code>.
+          Every running Codeplane is an <strong>instance</strong>: one server process that owns
+          its own sessions, projects, config and state directory. A device can run as many
+          instances as you want — each on its own port, each with its own data — and clients
+          (TUI, web, desktop, mobile) always attach to one specific instance at a time.
+        </p>
+        <p>
+          Instances become <strong>saved</strong> when you record them in{" "}
+          <code>instances.json</code>: the cross-instance address book at the global root. Saved
+          instances are addressable by id (<code>--instance laptop</code>) and show up in the
+          desktop/TUI server pickers. An instance does not have to be saved to exist — any{" "}
+          <code>codeplane web</code>, <code>codeplane serve</code>, or{" "}
+          <code>codeplane tui</code> invocation already <em>is</em> an instance. Saving just
+          gives you a stable handle to it.
         </p>
 
         <h2>List and inspect</h2>

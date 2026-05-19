@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
@@ -28,10 +29,15 @@ export default function TUI() {
         <p className="lede">Full-screen terminal interface. The same agent, sessions, and tools as the web UI — driven entirely by your keyboard, in any terminal that speaks UTF-8 and ANSI.</p>
 
         <h2>Launching</h2>
-        <pre><code>{`codeplane tui                       # local server
-codeplane tui --instance prod       # saved local or remote instance
+        <pre><code>{`codeplane tui                       # boot/attach a local instance
+codeplane tui --instance prod       # attach a saved local or remote instance
 codeplane tui --route /settings     # open an initial route`}</code></pre>
-        <p>The TUI spawns a server in the background if one isn&apos;t running. Quit with <span className="kbd">q</span> or <span className="kbd">Ctrl+C</span> — sessions auto-save before exit.</p>
+        <p>
+          The TUI spawns an <Link href="/docs/instances/">instance</Link> in the background if
+          one isn&apos;t running, then attaches as a client. Quit with{" "}
+          <span className="kbd">q</span> or <span className="kbd">Ctrl+C</span> — the instance
+          keeps running unless you started it yourself, and sessions auto-save before exit.
+        </p>
 
         <h2>Layout</h2>
         <ul>
@@ -72,9 +78,10 @@ codeplane tui --route /settings     # open an initial route`}</code></pre>
 
         <h2>SSH and remote work</h2>
         <p>
-          The TUI is the best fit for SSH sessions because it has no browser dependency. Start the
-          server on the remote host with <code>codeplane serve --hostname 127.0.0.1 --port 4096</code>,
-          tunnel the port if needed, and attach from your terminal.
+          The TUI is the best fit for SSH sessions because it has no browser dependency. Boot an
+          instance on the remote host with{" "}
+          <code>codeplane serve --hostname 127.0.0.1 --port 4096</code>, tunnel the port if
+          needed, and attach from your terminal.
         </p>
       </DocsLayout>
       <SiteFooter />

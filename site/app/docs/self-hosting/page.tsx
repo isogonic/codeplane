@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { DocsLayout } from "@/components/docs-sidebar"
@@ -25,15 +26,20 @@ export default function SelfHosting() {
       <SiteHeader active="docs" />
       <DocsLayout active="/docs/self-hosting/">
         <h1>Self-hosting</h1>
-        <p className="lede">Run a Codeplane server on a box you own, then point every desktop / mobile / browser at it. One server, one set of sessions, every device.</p>
+        <p className="lede">
+          Run a Codeplane <Link href="/docs/instances/">instance</Link> on a box you own, then
+          point every desktop / mobile / browser client at it. One instance, one set of
+          sessions, every device. You can run several side-by-side (different ports, different
+          state roots) when you want isolated environments.
+        </p>
 
         <h2>Minimum requirements</h2>
         <ul>
           <li>Linux x86_64 or arm64 (also runs on macOS / Windows; Linux is the focus).</li>
-          <li>1 GB RAM idle; 2-4 GB peak.</li>
+          <li>1 GB RAM idle; 2-4 GB peak — <em>per instance</em>.</li>
           <li>Outbound HTTPS to your model provider.</li>
           <li>Inbound TCP on the bind port you choose, typically 4096.</li>
-          <li>A real auth boundary before exposing the server beyond loopback.</li>
+          <li>A real auth boundary before exposing the instance beyond loopback.</li>
         </ul>
 
         <h2>Install</h2>

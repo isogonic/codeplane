@@ -37,15 +37,20 @@ export default function Desktop() {
         </ul>
         <p>Full install matrix at <Link href="/docs/install/">Install</Link>.</p>
 
-        <h2>Connecting to a server</h2>
+        <h2>Connecting to an instance</h2>
+        <p>
+          The desktop app is a <em>client</em>. It always attaches to one running Codeplane{" "}
+          <Link href="/docs/instances/">instance</Link>. You can have many — local managed
+          instances, remote URLs, saved entries — and switch with the picker.
+        </p>
         <ol>
-          <li><strong>Local</strong>. <em>Add local server</em> spawns a Codeplane server on <code>http://localhost:4096</code>.</li>
-          <li><strong>Remote</strong>. Paste the URL of a server you run (see <Link href="/docs/self-hosting/">Self-hosting</Link>).</li>
-          <li><strong>Saved instance</strong>. Servers added via <code>codeplane instance add</code> show up here automatically.</li>
+          <li><strong>Local</strong>. <em>Add local instance</em> spawns a new Codeplane instance on <code>http://localhost:4096</code>, managed by the desktop shell.</li>
+          <li><strong>Remote</strong>. Paste the URL of an instance you run elsewhere (see <Link href="/docs/self-hosting/">Self-hosting</Link>).</li>
+          <li><strong>Saved instance</strong>. Anything added via <code>codeplane instance add</code> shows up here automatically.</li>
         </ol>
         <p>
-          Desktop-managed local servers set <code>CODEPLANE_DESKTOP_MANAGED=1</code> so the server
-          knows updates are handled by the desktop shell, not the CLI updater.
+          Desktop-managed local instances set <code>CODEPLANE_DESKTOP_MANAGED=1</code> so the
+          instance knows updates are handled by the desktop shell, not the CLI updater.
         </p>
 
         <h2>Updates</h2>
@@ -62,7 +67,7 @@ export default function Desktop() {
         <h2>Logs and recovery</h2>
         <p>
           Desktop logs live under the Codeplane log directory, with <code>CODEPLANE_DESKTOP_LOG_DIR</code>
-          available for tests and debugging. If a local server will not start, verify
+          available for tests and debugging. If a local instance will not start, verify
           <code>codeplane instance local status</code> from the CLI and inspect the desktop log next.
         </p>
       </DocsLayout>

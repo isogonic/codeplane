@@ -26,19 +26,25 @@ export default function Web() {
       <SiteHeader active="docs" />
       <DocsLayout active="/docs/web/">
         <h1>Web</h1>
-        <p className="lede">The Codeplane web UI runs in any modern browser. It&apos;s the canonical UI — the desktop + mobile shells both wrap it.</p>
+        <p className="lede">
+          The Codeplane web UI runs in any modern browser. It&apos;s the canonical client — the
+          desktop and mobile shells both wrap it — and it always attaches to one specific{" "}
+          <Link href="/docs/instances/">instance</Link>.
+        </p>
 
         <h2>Open it</h2>
-        <pre><code>{`codeplane web                # boot a local server + open the browser
-codeplane serve --port 4096  # server only — visit http://localhost:4096 by hand`}</code></pre>
+        <pre><code>{`codeplane web                # boot a local instance + open the browser
+codeplane serve --port 4096  # boot an instance only — visit http://localhost:4096 by hand`}</code></pre>
         <p>
           Pass an explicit port if you want a stable bookmark. Without config or <code>--port</code>,
-          the CLI may bind an available random port.
+          the CLI may bind an available random port. The browser tab is one client of that
+          running instance — open more tabs or other clients (desktop/TUI/mobile) and they all
+          share state because they all attach to the same instance.
         </p>
 
         <h2>What&apos;s in the UI</h2>
         <ul>
-          <li><strong>Top bar</strong> — server picker, status, settings, quick-switcher (<span className="kbd">⌘K</span>).</li>
+          <li><strong>Top bar</strong> — instance picker, status, settings, quick-switcher (<span className="kbd">⌘K</span>).</li>
           <li><strong>Left rail</strong> — projects + sessions tree.</li>
           <li><strong>Center pane</strong> — message timeline. Streamed thinking, tool calls, diffs, terminal output.</li>
           <li><strong>Right rail</strong> — review tab, timeline, terminal pane, todos panel.</li>

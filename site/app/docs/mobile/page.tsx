@@ -26,7 +26,11 @@ export default function Mobile() {
       <SiteHeader active="docs" />
       <DocsLayout active="/docs/mobile/">
         <h1>Mobile</h1>
-        <p className="lede">A native mobile shell that wraps the Codeplane web UI. The agent runs on a Codeplane server you already host — the phone is a thin client.</p>
+        <p className="lede">
+          A native mobile shell that wraps the Codeplane web UI. The agent runs on a Codeplane{" "}
+          <Link href="/docs/instances/">instance</Link> you already host — the phone is a thin
+          client. Switch between several saved instances right from the app.
+        </p>
 
         <h2>Install</h2>
         <p>
@@ -48,9 +52,9 @@ export default function Mobile() {
 
         <h2>First launch</h2>
         <ol>
-          <li><strong>Manual URL</strong>. On your laptop, run <code>codeplane serve --hostname 0.0.0.0 --port 4096 --password "$SECRET" --mdns</code>. Add the LAN URL in the mobile app.</li>
-          <li><strong>URL paste</strong>. If you self-host (see <Link href="/docs/self-hosting/">Self-hosting</Link>), paste the public URL.</li>
-          <li><strong>Local network</strong>. The shell auto-discovers Codeplane servers on the same Wi-Fi via mDNS.</li>
+          <li><strong>Manual URL</strong>. On your laptop, boot a LAN-reachable instance with <code>codeplane serve --hostname 0.0.0.0 --port 4096 --password "$SECRET" --mdns</code>. Add the LAN URL in the mobile app.</li>
+          <li><strong>URL paste</strong>. If you self-host (see <Link href="/docs/self-hosting/">Self-hosting</Link>), paste the public URL of the instance.</li>
+          <li><strong>Local network</strong>. The shell auto-discovers Codeplane instances on the same Wi-Fi via mDNS.</li>
         </ol>
 
         <h2>What works on mobile</h2>
@@ -73,13 +77,13 @@ export default function Mobile() {
         <p>When a session is busy, the iOS shell publishes a Live Activity to the lock screen + Dynamic Island. Toggle in <strong>Settings → Sessions → Live activity</strong>. Live Activities respect Focus modes.</p>
 
         <h2>Offline behaviour</h2>
-        <p>Sessions live on the server. When offline, the shell shows a cached copy of the most recent timeline and queues outgoing messages. Auto-reconnect uses exponential backoff (1s, 2s, 5s, 15s, then every 30s).</p>
+        <p>Sessions live on the instance. When offline, the shell shows a cached copy of the most recent timeline and queues outgoing messages. Auto-reconnect uses exponential backoff (1s, 2s, 5s, 15s, then every 30s).</p>
 
         <h2>Security notes</h2>
         <p>
-          Mobile is a thin client. Do not expose a Codeplane server directly on a public interface
-          without Basic Auth and a network boundary such as VPN, Cloudflare Access, or a private
-          reverse proxy.
+          Mobile is a thin client. Do not expose a Codeplane instance directly on a public
+          interface without Basic Auth and a network boundary such as VPN, Cloudflare Access, or
+          a private reverse proxy.
         </p>
       </DocsLayout>
       <SiteFooter />

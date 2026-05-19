@@ -44,19 +44,19 @@ const SURFACES: Entry[] = [
 const REFERENCE: Entry[] = [
   { href: "/docs/cli/",         title: "CLI",         body: "codeplane serve, web, tui, instance, upgrade, completion." },
   { href: "/docs/configuration/", title: "Config schema", body: "Every key in codeplane.json — provider, model, MCP, permission rules, agents." },
-  { href: "/docs/instances/",   title: "Instances",   body: "Manage multiple Codeplane servers from one client." },
+  { href: "/docs/instances/",   title: "Instances",   body: "Every running Codeplane is an instance — manage many on one device, switch from any client." },
   { href: "/docs/sessions/",    title: "Sessions",    body: "Threads, branches, archives, sharing, queued follow-ups, revert." },
   { href: "/docs/permissions/", title: "Permissions", body: "Per-directory and per-session approval rules. Global auto-accept toggle." },
   { href: "/docs/keybinds/",    title: "Keybinds",    body: "Every shortcut across web, desktop, TUI. Custom bindings." },
   { href: "/docs/api/",         title: "HTTP API",    body: "Every endpoint the front-ends talk to — drive Codeplane from anywhere." },
-  { href: "/docs/architecture/", title: "Architecture", body: "How CLI, server, app, desktop, mobile, shared runtime, config, and release artifacts fit together." },
+  { href: "/docs/architecture/", title: "Architecture", body: "Codeplane → Instance → workspaces/sessions. How clients (TUI, web, desktop, mobile) attach and what an instance owns." },
 ]
 
 const EXTEND: Entry[] = [
   { href: "/docs/mcp/",          title: "MCP servers",     body: "Wire any Model Context Protocol server into your sessions." },
   { href: "/docs/plugins/",      title: "Plugins",         body: "Custom tools, agents, prompts via @codeplane-ai/plugin." },
   { href: "/docs/sdk/",          title: "TypeScript SDK",  body: "Drive Codeplane from your own code — sessions, messages, streaming." },
-  { href: "/docs/self-hosting/", title: "Self-hosting",    body: "Run a server on your VPS or homelab. systemd, Docker, reverse proxies, auth." },
+  { href: "/docs/self-hosting/", title: "Self-hosting",    body: "Run a long-lived Codeplane instance on your VPS or homelab. systemd, Docker, reverse proxies, auth." },
   { href: "/docs/themes/",       title: "Themes",          body: "Strict light + dark, and how the monochrome OKLCH palette is wired." },
   { href: "/docs/troubleshooting/", title: "Troubleshooting", body: "Install, server, auth, provider, MCP, desktop, mobile, and release failure playbooks." },
   { href: "/docs/release/",      title: "Release process", body: "Version sync, validation, GitHub release tags, npm, desktop, mobile, and Pages deploys." },

@@ -53,24 +53,35 @@ export OPENROUTER_API_KEY=sk-or-...`}</code></pre>
           and <Link href="/docs/configuration/"> Configuration</Link>.
         </p>
 
-        <h2>3. Launch a server</h2>
+        <h2>3. Start an instance</h2>
+        <p>
+          Every running Codeplane is an <strong>instance</strong> — one server process with its
+          own sessions and state. Pick whichever launch verb suits you; the running result is
+          the same instance, just exposed through a different front door.
+        </p>
         <h3>Web (recommended first time)</h3>
         <pre><code>codeplane web --port 4096</code></pre>
-        <p>Boots a local server on a stable URL and opens your default browser.</p>
+        <p>Boots a local instance on a stable URL and opens your default browser.</p>
 
         <h3>Terminal (no GUI)</h3>
         <pre><code>codeplane tui</code></pre>
-        <p>Full-screen text UI. Same agent, same sessions.</p>
+        <p>Boots an instance and attaches the full-screen text UI. Same agent, same sessions.</p>
 
         <h3>Headless (server-only)</h3>
         <pre><code>codeplane serve --port 4096</code></pre>
-        <p>No browser, no TUI — just the HTTP server. Useful for VPS setups; see <Link href="/docs/self-hosting/">Self-hosting</Link>.</p>
+        <p>Boots an instance with no browser and no TUI — just the HTTP/SSE surface. Useful for VPS setups; see <Link href="/docs/self-hosting/">Self-hosting</Link>.</p>
+
+        <p>
+          You can run several instances at once on the same machine — each on its own port, each
+          with its own state directory — and switch between them per-client. See{" "}
+          <Link href="/docs/instances/">Instances</Link> for the address book + lifecycle.
+        </p>
 
         <h2>4. Send your first message</h2>
         <pre><code>What&apos;s the structure of this repo? Give me a 3-line summary.</code></pre>
         <p>The first time the agent edits a file or runs a shell command, you&apos;ll get a permission prompt — that&apos;s the per-directory approval layer. See <Link href="/docs/permissions/">Permissions</Link> for how to relax it.</p>
 
-        <h2>5. Confirm the server is healthy</h2>
+        <h2>5. Confirm the instance is healthy</h2>
         <pre><code>{`curl -fsS http://127.0.0.1:4096/global/health
 curl -fsS http://127.0.0.1:4096/global/version`}</code></pre>
         <p>
@@ -78,25 +89,30 @@ curl -fsS http://127.0.0.1:4096/global/version`}</code></pre>
           The second includes the detected install method and latest known version.
         </p>
 
-        <h2>6. Pick up the same session anywhere</h2>
+        <h2>6. Attach another client to the same instance</h2>
+        <p>
+          All clients share state by attaching to the same instance. Same machine or remote, the
+          URL is the address:
+        </p>
         <ul>
           <li>The <strong>desktop app</strong> — point it at <code>http://localhost:4096</code> via Add Server.</li>
-          <li>The <strong>TUI</strong> — <code>codeplane tui</code> picks up the active server automatically.</li>
+          <li>The <strong>TUI</strong> — <code>codeplane tui</code> picks up the active instance automatically.</li>
           <li>
-            The <strong>mobile app</strong> — start the server with mDNS so phones on the same Wi-Fi
-            discover it automatically: <code>codeplane serve --mdns --password $(openssl rand -hex 16)</code>.
-            The mobile shell then sees the instance under its{" "}
-            <code>codeplane.local</code> service name.
+            The <strong>mobile app</strong> — start the instance with mDNS so phones on the same
+            Wi-Fi discover it automatically:{" "}
+            <code>codeplane serve --mdns --password $(openssl rand -hex 16)</code>. The mobile
+            shell then sees the instance under its <code>codeplane.local</code> service name.
           </li>
         </ul>
 
-        <h2>7. Save the server as an instance</h2>
+        <h2>7. Save the instance for reuse</h2>
         <pre><code>{`codeplane instance add http://127.0.0.1:4096 --id laptop --label "Laptop"
 codeplane instance use laptop
 codeplane tui --instance laptop`}</code></pre>
         <p>
-          Saved instances are shared by the TUI, web client, desktop app, and mobile shell. Remote
-          servers behind Basic Auth can be saved with <code>--username</code> and
+          Saved instances live in <code>instances.json</code> and are shared by the TUI, web
+          client, desktop app, and mobile shell — every client can pick one to attach to.
+          Remote instances behind Basic Auth can be saved with <code>--username</code> and
           <code>--password</code>.
         </p>
 
