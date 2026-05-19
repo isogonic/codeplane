@@ -24,7 +24,29 @@ const TOKEN_REFERENCES = {
   harryPotter: 1_500_000, // Harry Potter complete series
 }
 
+// Devin Oldenburg's observed token consumption: ~2 billion tokens over 10 days
+// of heavy daily usage = 200M tokens/day. Used as the upper-bound comparison
+// point for "are you using as much as the most prolific user we've seen?"
+const DEVIN_TOKENS_PER_DAY = 200_000_000
+
 const DEFINITIONS: Definition[] = [
+  // ---------------- Reference power user ----------------
+  {
+    key: "home.fact.devin.match",
+    available: (t) =>
+      t.tokens >= 10_000_000 && t.activeDays >= 5 && t.tokens / Math.max(t.activeDays, 1) >= DEVIN_TOKENS_PER_DAY * 0.5,
+    build: (t) => ({
+      percent: Math.round(((t.tokens / Math.max(t.activeDays, 1)) / DEVIN_TOKENS_PER_DAY) * 100),
+    }),
+  },
+  {
+    key: "home.fact.devin.behind",
+    available: (t) =>
+      t.tokens >= 1_000_000 && t.activeDays >= 5 && t.tokens / Math.max(t.activeDays, 1) < DEVIN_TOKENS_PER_DAY * 0.5,
+    build: (t) => ({
+      ratio: Math.max(2, Math.round(DEVIN_TOKENS_PER_DAY / Math.max(1, t.tokens / Math.max(t.activeDays, 1)))),
+    }),
+  },
   // ---------------- Token book comparisons ----------------
   {
     key: "home.fact.tokens.novel",

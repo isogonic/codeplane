@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, For, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js"
 import { DateTime } from "luxon"
 import { useNavigate } from "@solidjs/router"
 import { Avatar } from "@codeplane-ai/ui/avatar"
@@ -10,14 +10,19 @@ import { useLanguage } from "@/context/language"
 import { useProviders } from "@/hooks/use-providers"
 import { sessionTitle } from "@/utils/session-title"
 import {
-  buildHomeStats,
+  aggregateProjects,
+  recentSessions,
   type DayBucket,
   type ModelStat,
   type ProjectAggregate,
   type Range,
   type RecentSession,
+  type Totals,
 } from "./home/stats"
 import { pickFunFact } from "./home/fun-facts"
+import { createHomeCache } from "./home/cache"
+import { combineAggregates, heatmapBuckets, modelBreakdown, preferredModel } from "./home/aggregate"
+import { AnimatedNumber } from "./home/animated-number"
 
 const RANGES: Range[] = ["all", "30d", "7d"]
 const RANGE_LABEL_KEY = {
@@ -35,9 +40,16 @@ export default function Home() {
   const globalSync = useGlobalSync()
   const navigate = useNavigate()
   const providers = useProviders()
+  const cache = createHomeCache()
 
   const [range, setRange] = createSignal<Range>("all")
   const [tab, setTab] = createSignal<"overview" | "models">("overview")
+  const [tick, setTick] = createSignal(0)
+
+  // Re-tick every 30s so stats stay live even when nothing else triggers
+  // re-render (counts shift when a long-running session writes a new message).
+  const interval = setInterval(() => setTick((t) => t + 1), 30_000)
+  onCleanup(() => clearInterval(interval))
 
   const formatNumber = createMemo(() => new Intl.NumberFormat(language.intl()))
   const formatRelative = (time: number) =>
@@ -48,11 +60,13 @@ export default function Home() {
   const emptyDiffRefresh = new Set<string>()
   const diffRefreshKey = (worktree: string, session: { id: string; time: { created: number; updated?: number } }) =>
     `${worktree}\n${session.id}\n${session.time.updated ?? session.time.created}`
-  const messageRefresh = new Set<string>()
+  const inflightMessageFetch = new Set<string>()
 
-  const stats = createMemo(() => {
-    const projectsList = layout.projects.list()
-    const inputs = projectsList.map((project) => {
+  // Sessions with their containing project, refreshed whenever the project list
+  // or any project's session store changes.
+  const projectInputs = createMemo(() => {
+    tick()
+    return layout.projects.list().map((project) => {
       const [child] = globalSync.child(project.worktree, { bootstrap: false })
       return {
         directory: project.worktree,
@@ -61,12 +75,62 @@ export default function Home() {
         iconColor: project.icon?.color,
         sessions: child.session ?? [],
         sessionDiffs: child.session_diff,
-        sessionMessages: child.message,
+        messageStore: child.message,
       }
     })
-    return buildHomeStats(inputs, Date.now(), range())
   })
 
+  // Drop cached aggregates for sessions that no longer exist (deleted projects,
+  // archived sessions). Runs whenever the session list changes.
+  createEffect(() => {
+    const alive: string[] = []
+    for (const project of projectInputs()) {
+      for (const session of project.sessions) {
+        if (session.parentID || session.time?.archived) continue
+        alive.push(session.id)
+      }
+    }
+    cache.syncWithSessionList(alive)
+  })
+
+  // Sync per-session aggregates: when the in-memory message store changes for
+  // a session, fold the fresh messages into the persistent aggregate cache.
+  createEffect(() => {
+    for (const project of projectInputs()) {
+      for (const session of project.sessions) {
+        if (session.parentID || session.time?.archived) continue
+        const messages = project.messageStore[session.id]
+        if (!messages) continue
+        const updatedAt = session.time.updated ?? session.time.created
+        if (!cache.isStale(session.id, updatedAt) && cache.get(session.id)?.messages === messages.length) continue
+        cache.applyMessages(session.id, updatedAt, messages)
+      }
+    }
+  })
+
+  // Fetch missing/stale messages. Only sessions whose `time.updated` is newer
+  // than what's in cache get an API call — refreshes are essentially free for
+  // unchanged sessions.
+  createEffect(() => {
+    for (const project of projectInputs()) {
+      const targets: string[] = []
+      for (const session of project.sessions) {
+        if (session.parentID || session.time?.archived) continue
+        const updatedAt = session.time.updated ?? session.time.created
+        const inflightKey = `${project.worktree}\n${session.id}\n${updatedAt}`
+        if (inflightMessageFetch.has(inflightKey)) continue
+        if (!cache.isStale(session.id, updatedAt)) continue
+        // Already loaded into the in-memory store for this updatedAt? skip.
+        if (project.messageStore[session.id] !== undefined && cache.get(session.id)?.updatedAt === updatedAt) continue
+        inflightMessageFetch.add(inflightKey)
+        targets.push(session.id)
+      }
+      if (targets.length === 0) continue
+      void globalSync.project.loadSessionMessages(project.worktree, targets, { force: true })
+    }
+  })
+
+  // Diffs for sessions whose summary doesn't tell us about file changes.
   createEffect(() => {
     layout.projects.list().forEach((project) => {
       const [child] = globalSync.child(project.worktree, { bootstrap: false })
@@ -83,10 +147,7 @@ export default function Home() {
           if (cached.length > 0) return false
           return !emptyDiffRefresh.has(diffRefreshKey(project.worktree, session))
         })
-        .map((session) => ({
-          id: session.id,
-          key: diffRefreshKey(project.worktree, session),
-        }))
+        .map((session) => ({ id: session.id, key: diffRefreshKey(project.worktree, session) }))
       if (sessions.length === 0) return
       sessions.forEach((session) => emptyDiffRefresh.add(session.key))
       void globalSync.project.loadSessionDiffs(
@@ -97,23 +158,77 @@ export default function Home() {
     })
   })
 
-  createEffect(() => {
-    layout.projects.list().forEach((project) => {
-      const [child] = globalSync.child(project.worktree, { bootstrap: false })
-      const targets = child.session
-        .filter((session) => !session.parentID && !session.time?.archived)
-        .filter((session) => child.message[session.id] === undefined)
-        .filter((session) => {
-          const key = `${project.worktree}\n${session.id}`
-          if (messageRefresh.has(key)) return false
-          messageRefresh.add(key)
-          return true
-        })
-        .map((session) => session.id)
-      if (targets.length === 0) return
-      void globalSync.project.loadSessionMessages(project.worktree, targets)
-    })
+  // Build stats from the cache. Recomputes whenever the cache store changes
+  // (which happens after each aggregate.applyMessages call).
+  const stats = createMemo(() => {
+    tick()
+    // Force dependency on the aggregate store so we re-run when it updates.
+    const aggregates = Object.values(cache.store.aggregates)
+    const now = Date.now()
+    const r = range()
+
+    const projects = projectInputs()
+    const projectAggregates = aggregateProjects(
+      projects.map((project) => ({
+        directory: project.directory,
+        worktree: project.worktree,
+        name: project.name,
+        iconColor: project.iconColor,
+        sessions: project.sessions,
+        sessionDiffs: project.sessionDiffs,
+      })),
+    )
+    const visibleSessions = projects.flatMap((project) =>
+      project.sessions.filter((session) => !session.parentID && !session.time?.archived),
+    )
+    const dayStart = (() => {
+      const d = new Date(now)
+      d.setHours(0, 0, 0, 0)
+      return d.getTime()
+    })()
+    const weekStart = dayStart - 6 * 24 * 60 * 60 * 1000
+    const sessionTime = (session: { time: { created: number; updated?: number } }) =>
+      session.time.updated ?? session.time.created
+
+    const combined = combineAggregates(aggregates, now, r)
+    const totals: Totals = {
+      projects: projectAggregates.length,
+      sessions: visibleSessions.length,
+      archived: projectAggregates.reduce((total, project) => total + project.archived, 0),
+      files: projectAggregates.reduce((total, project) => total + project.files, 0),
+      additions: projectAggregates.reduce((total, project) => total + project.additions, 0),
+      deletions: projectAggregates.reduce((total, project) => total + project.deletions, 0),
+      today: visibleSessions.filter((session) => sessionTime(session) >= dayStart).length,
+      thisWeek: visibleSessions.filter((session) => sessionTime(session) >= weekStart).length,
+      lastActivity: projectAggregates.reduce<number | undefined>((max, project) => {
+        const value = project.lastActivity
+        if (value === undefined) return max
+        if (max === undefined) return value
+        return value > max ? value : max
+      }, undefined),
+      ...combined,
+      preferredModel: preferredModel(aggregates, r, now),
+    }
+    const recent = recentSessions(
+      projects.map((project) => ({
+        directory: project.directory,
+        worktree: project.worktree,
+        name: project.name,
+        iconColor: project.iconColor,
+        sessions: project.sessions,
+        sessionDiffs: project.sessionDiffs,
+      })),
+    )
+
+    return {
+      totals,
+      projects: projectAggregates,
+      recent,
+      buckets: heatmapBuckets(aggregates, now),
+      models: modelBreakdown(aggregates, r, now),
+    }
   })
+
 
   const openProject = (worktree: string) => {
     navigate(`/${base64Encode(worktree)}`)
@@ -228,7 +343,7 @@ function StatsPanel(props: {
   setTab: (value: "overview" | "models") => void
   range: () => Range
   setRange: (value: Range) => void
-  totals: () => ReturnType<typeof buildHomeStats>["totals"]
+  totals: () => Totals
   buckets: () => DayBucket[]
   models: () => ModelStat[]
   formatNumber: () => Intl.NumberFormat
@@ -296,7 +411,7 @@ function PillGroup<T extends string>(props: {
 }
 
 function OverviewTab(props: {
-  totals: () => ReturnType<typeof buildHomeStats>["totals"]
+  totals: () => Totals
   buckets: () => DayBucket[]
   formatNumber: () => Intl.NumberFormat
   formatHour: (hour: number) => string
@@ -306,26 +421,46 @@ function OverviewTab(props: {
   const tokenFormatter = createMemo(
     () => new Intl.NumberFormat(language.intl(), { notation: "compact", maximumFractionDigits: 1 }),
   )
-  const streakLabel = (days: number) => language.t("home.stat.streak.value", { count: days })
   const fact = createMemo(() => pickFunFact(props.totals(), Date.now()))
 
   return (
     <>
       <div class="grid grid-cols-2 gap-px bg-border-weaker-base sm:grid-cols-4">
-        <Stat label={language.t("home.stat.sessions")} value={props.formatNumber().format(props.totals().sessions)} />
-        <Stat label={language.t("home.stat.messages")} value={props.formatNumber().format(props.totals().messages)} />
-        <Stat label={language.t("home.stat.tokens")} value={tokenFormatter().format(props.totals().tokens)} />
-        <Stat
-          label={language.t("home.stat.activeDays")}
-          value={props.formatNumber().format(props.totals().activeDays)}
+        <NumericStat
+          label={language.t("home.stat.sessions")}
+          value={props.totals().sessions}
+          format={(v) => props.formatNumber().format(Math.round(v))}
         />
-        <Stat label={language.t("home.stat.streak.current")} value={streakLabel(props.totals().currentStreak)} />
-        <Stat label={language.t("home.stat.streak.longest")} value={streakLabel(props.totals().longestStreak)} />
-        <Stat
+        <NumericStat
+          label={language.t("home.stat.messages")}
+          value={props.totals().messages}
+          format={(v) => props.formatNumber().format(Math.round(v))}
+        />
+        <NumericStat
+          label={language.t("home.stat.tokens")}
+          value={props.totals().tokens}
+          format={(v) => tokenFormatter().format(Math.round(v))}
+        />
+        <NumericStat
+          label={language.t("home.stat.activeDays")}
+          value={props.totals().activeDays}
+          format={(v) => props.formatNumber().format(Math.round(v))}
+        />
+        <NumericStat
+          label={language.t("home.stat.streak.current")}
+          value={props.totals().currentStreak}
+          format={(v) => language.t("home.stat.streak.value", { count: Math.round(v) })}
+        />
+        <NumericStat
+          label={language.t("home.stat.streak.longest")}
+          value={props.totals().longestStreak}
+          format={(v) => language.t("home.stat.streak.value", { count: Math.round(v) })}
+        />
+        <TextStat
           label={language.t("home.stat.peakHour")}
           value={props.totals().peakHour !== undefined ? props.formatHour(props.totals().peakHour!) : "—"}
         />
-        <Stat
+        <TextStat
           label={language.t("home.stat.preferredModel")}
           value={
             props.totals().preferredModel
@@ -406,11 +541,22 @@ function ModelsTab(props: {
   )
 }
 
-function Stat(props: { label: string; value: string }) {
+function TextStat(props: { label: string; value: string }) {
   return (
     <div class="min-w-0 bg-background-base px-3 py-3 sm:px-4">
       <div class="truncate text-12-regular text-text-weak">{props.label}</div>
       <div class="pt-0.5 truncate text-18-medium text-text-strong tabular-nums">{props.value}</div>
+    </div>
+  )
+}
+
+function NumericStat(props: { label: string; value: number; format: (value: number) => string }) {
+  return (
+    <div class="min-w-0 bg-background-base px-3 py-3 sm:px-4">
+      <div class="truncate text-12-regular text-text-weak">{props.label}</div>
+      <div class="pt-0.5 truncate text-18-medium text-text-strong tabular-nums">
+        <AnimatedNumber value={props.value} format={props.format} />
+      </div>
     </div>
   )
 }

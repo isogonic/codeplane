@@ -474,6 +474,8 @@ export const dict = {
   "home.stat.streak.value": "{{count}}d",
   "home.stat.peakHour": "Spitzenstunde",
   "home.stat.preferredModel": "Bevorzugtes Modell",
+  "home.fact.devin.match": "Du erreichst ~{{percent}}% von Devin Oldenburgs Referenz­wert (~200M Token/Tag).",
+  "home.fact.devin.behind": "Devin Oldenburg verbraucht ~{{ratio}}× mehr Token pro Tag als du.",
   "home.fact.tokens.novel": "Das entspricht ~{{count}} durchschnittlichen Romanen an Token.",
   "home.fact.tokens.dune": "Du hast ~{{count}}× mehr Token verbraucht als Dune (Buch).",
   "home.fact.tokens.lotr": "Genug Token für ~{{count}}× Der Herr der Ringe.",
