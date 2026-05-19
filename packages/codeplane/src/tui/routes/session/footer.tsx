@@ -50,36 +50,51 @@ export function Footer() {
   })
 
   return (
-    <box flexDirection="row" justifyContent="space-between" gap={1} flexShrink={0}>
-      <text fg={theme.textMuted}>{directory()}</text>
+    <box
+      flexDirection="row"
+      justifyContent="space-between"
+      gap={1}
+      flexShrink={0}
+      borderColor={theme.borderSubtle}
+      border={["top"]}
+      paddingTop={1}
+    >
+      <text fg={theme.textMuted}>
+        <span style={{ fg: theme.accent }}>▎</span> {directory()}
+      </text>
       <box gap={2} flexDirection="row" flexShrink={0}>
         <Switch>
           <Match when={store.welcome}>
             <text fg={theme.text}>
-              Get started <span style={{ fg: theme.textMuted }}>/connect</span>
+              <span style={{ fg: theme.accent }}>▸</span> Get started{" "}
+              <span style={{ fg: theme.textMuted }}>/connect</span>
             </text>
           </Match>
           <Match when={connected()}>
             <Show when={permissions().length > 0}>
               <text fg={theme.warning}>
-                <span style={{ fg: theme.warning }}>△</span> {permissions().length} Permission
-                {permissions().length > 1 ? "s" : ""}
+                <span style={{ fg: theme.warning }}>⚠ </span>
+                <b>
+                  {permissions().length} Permission
+                  {permissions().length > 1 ? "s" : ""}
+                </b>
               </text>
             </Show>
-            <text fg={theme.text}>
-              <span style={{ fg: lsp().length > 0 ? theme.success : theme.textMuted }}>•</span> {lsp().length} LSP
+            <text fg={theme.textMuted}>
+              <span style={{ fg: lsp().length > 0 ? theme.success : theme.textMuted }}>●</span>{" "}
+              <span style={{ fg: lsp().length > 0 ? theme.text : theme.textMuted }}>{lsp().length} LSP</span>
             </text>
             <Show when={mcp()}>
-              <text fg={theme.text}>
+              <text fg={theme.textMuted}>
                 <Switch>
                   <Match when={mcpError()}>
-                    <span style={{ fg: theme.error }}>⊙ </span>
+                    <span style={{ fg: theme.error }}>● </span>
                   </Match>
                   <Match when={true}>
-                    <span style={{ fg: theme.success }}>⊙ </span>
+                    <span style={{ fg: theme.success }}>● </span>
                   </Match>
                 </Switch>
-                {mcp()} MCP
+                <span style={{ fg: theme.text }}>{mcp()} MCP</span>
               </text>
             </Show>
             <text fg={theme.textMuted}>/status</text>

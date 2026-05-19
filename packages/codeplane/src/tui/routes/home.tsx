@@ -9,6 +9,7 @@ import { useRouteData } from "@/tui/context/route"
 import { usePromptRef } from "../context/prompt"
 import { useLocal } from "../context/local"
 import { TuiPluginRuntime } from "@/tui/plugin/runtime"
+import { useTheme } from "../context/theme"
 
 let once = false
 const placeholder = {
@@ -24,6 +25,7 @@ export function Home() {
   const [ref, setRef] = createSignal<PromptRef | undefined>()
   const args = useArgs()
   const local = useLocal()
+  const { theme } = useTheme()
   let sent = false
 
   const bind = (r: PromptRef | undefined) => {
@@ -77,6 +79,18 @@ export function Home() {
               placeholders={placeholder}
             />
           </TuiPluginRuntime.Slot>
+        </box>
+        <box width="100%" maxWidth={75} flexDirection="row" justifyContent="space-between" paddingTop={1} flexShrink={0}>
+          <text fg={theme.textMuted}>
+            <span style={{ fg: theme.accent }}>/</span> commands
+            <span style={{ fg: theme.borderSubtle }}> · </span>
+            <span style={{ fg: theme.accent }}>@</span> files
+            <span style={{ fg: theme.borderSubtle }}> · </span>
+            <span style={{ fg: theme.accent }}>!</span> shell
+          </text>
+          <text fg={theme.textMuted}>
+            <span style={{ fg: theme.text }}>?</span> help
+          </text>
         </box>
         <TuiPluginRuntime.Slot name="home_bottom" />
         <box flexGrow={1} minHeight={0} />

@@ -242,12 +242,12 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
   return (
     <box gap={1} paddingBottom={1}>
       <box paddingLeft={4} paddingRight={4}>
-        <box flexDirection="row" justifyContent="space-between">
-          <text fg={theme.text} attributes={TextAttributes.BOLD}>
+        <box flexDirection="row" justifyContent="space-between" alignItems="center">
+          <text fg={theme.accent} attributes={TextAttributes.BOLD}>
             {props.title}
           </text>
           <text fg={theme.textMuted} onMouseUp={() => dialog.clear()}>
-            esc
+            <span style={{ fg: theme.textMuted }}>esc</span>
           </text>
         </box>
         <box paddingTop={1}>
@@ -370,6 +370,8 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
           justifyContent="space-between"
           flexShrink={0}
           paddingTop={1}
+          borderColor={theme.borderSubtle}
+          border={["top"]}
         >
           <box flexDirection="row" gap={2}>
             <For each={left()}>
