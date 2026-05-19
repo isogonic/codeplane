@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test"
+import { $ } from "bun"
 import { Effect } from "effect"
 import fs from "fs/promises"
 import path from "path"
@@ -68,6 +69,30 @@ describe("session.list", () => {
     })
 
     expect(sessions.map((s) => s.id)).toContain(created.id)
+  })
+
+  test("excludes nested project sessions from ancestor directories", async () => {
+    await using parent = await tmpdir()
+    const nested = path.join(parent.path, "nested-project")
+    await fs.mkdir(nested, { recursive: true })
+    await $`git init`.cwd(nested).quiet()
+    await $`git config core.fsmonitor false`.cwd(nested).quiet()
+    await $`git config commit.gpgsign false`.cwd(nested).quiet()
+    await $`git config user.email "test@codeplane.test"`.cwd(nested).quiet()
+    await $`git config user.name "Test"`.cwd(nested).quiet()
+    await $`git commit --allow-empty -m "root commit"`.cwd(nested).quiet()
+
+    const created = await Instance.provide({
+      directory: nested,
+      fn: async () => svc.create({ title: "nested-project-session" }),
+    })
+
+    const sessions = await Instance.provide({
+      directory: parent.path,
+      fn: async () => [...svc.list({ directory: parent.path, roots: true })],
+    })
+
+    expect(sessions.map((s) => s.id)).not.toContain(created.id)
   })
 
   test("filters root sessions", async () => {

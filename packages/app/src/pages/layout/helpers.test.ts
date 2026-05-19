@@ -175,6 +175,33 @@ describe("layout workspace helpers", () => {
     expect(result?.id).toBe("nested")
   })
 
+  test("filters nested project sessions by project id", () => {
+    const result = sortedRootSessions(
+      {
+        project: "parent",
+        path: { directory: "/workspace" },
+        session: [
+          session({
+            id: "parent-session",
+            projectID: "parent",
+            directory: "/workspace",
+            time: { created: 2, updated: 2, archived: undefined },
+          }),
+          session({
+            id: "child-session",
+            projectID: "child",
+            directory: "/workspace/nested-project",
+            time: { created: 3, updated: 3, archived: undefined },
+          }),
+        ],
+      },
+      120_000,
+      "/workspace",
+    )
+
+    expect(result.map((item) => item.id)).toEqual(["parent-session"])
+  })
+
   test("uses explicit workspace directory when resolved path differs", () => {
     const result = sortedRootSessions(
       {
@@ -304,7 +331,12 @@ describe("layout workspace helpers", () => {
       session({ id: "root", directory: "/workspace" }),
       session({ id: "old", directory: "/workspace", parentID: "root", time: { created: 1, updated: 1 } }),
       session({ id: "new", directory: "/workspace", parentID: "root", time: { created: 2, updated: 3 } }),
-      session({ id: "archived", directory: "/workspace", parentID: "root", time: { created: 4, updated: 4, archived: 4 } }),
+      session({
+        id: "archived",
+        directory: "/workspace",
+        parentID: "root",
+        time: { created: 4, updated: 4, archived: 4 },
+      }),
       session({ id: "leaf", directory: "/workspace", parentID: "new", time: { created: 5, updated: 5 } }),
     ]
 
@@ -316,7 +348,12 @@ describe("layout workspace helpers", () => {
       session({ id: "root", directory: "/workspace" }),
       session({ id: "old", directory: "/workspace", parentID: "root", time: { created: 1, updated: 1 } }),
       session({ id: "new", directory: "/workspace", parentID: "root", time: { created: 2, updated: 3 } }),
-      session({ id: "archived", directory: "/workspace", parentID: "root", time: { created: 4, updated: 4, archived: 4 } }),
+      session({
+        id: "archived",
+        directory: "/workspace",
+        parentID: "root",
+        time: { created: 4, updated: 4, archived: 4 },
+      }),
       session({ id: "leaf", directory: "/workspace", parentID: "new", time: { created: 5, updated: 5 } }),
     ]
 

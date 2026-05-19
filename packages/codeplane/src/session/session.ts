@@ -1,9 +1,9 @@
 import { Slug } from "@codeplane-ai/shared/util/slug"
+import { AppFileSystem } from "@codeplane-ai/shared/filesystem"
 import path from "path"
 import { BusEvent } from "@/bus/bus-event"
 import { Bus } from "@/bus"
 import { Decimal } from "decimal.js"
-import z from "zod"
 import { type ProviderMetadata, type LanguageModelUsage } from "ai"
 import { Flag } from "../flag/flag"
 import { InstallationVersion } from "../installation/version"
@@ -51,6 +51,32 @@ function directoryCondition(directory: string) {
       sql`${SessionTable.directory} like ${`${escaped}\\%`} escape '\\'`,
     ) ?? eq(SessionTable.directory, root)
   )
+}
+
+function projectDirectoryScore(
+  directory: string,
+  project: Pick<typeof ProjectTable.$inferSelect, "id" | "worktree" | "sandboxes">,
+) {
+  if (project.id === ProjectID.global) return -1
+  return [project.worktree, ...project.sandboxes].reduce((score, root) => {
+    if (!root || root === "/") return score
+    if (!AppFileSystem.contains(root, directory)) return score
+    return Math.max(score, root.replace(/[\\/]+$/, "").length)
+  }, -1)
+}
+
+function directoryConditions(directory: string) {
+  const projects = Database.use((db) =>
+    db
+      .select({ id: ProjectTable.id, worktree: ProjectTable.worktree, sandboxes: ProjectTable.sandboxes })
+      .from(ProjectTable)
+      .all(),
+  )
+  const project = projects
+    .map((project, index) => ({ project, index, score: projectDirectoryScore(directory, project) }))
+    .filter((item) => item.score >= 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index)[0]?.project
+  return [directoryCondition(directory), eq(SessionTable.project_id, project?.id ?? ProjectID.global)]
 }
 
 export function isDefaultTitle(title: string) {
@@ -775,10 +801,9 @@ export function* list(input?: {
   limit?: number
   archived?: boolean
 }) {
-  const project = Instance.project
   const conditions: SQL[] = input?.directory
-    ? [directoryCondition(input.directory)]
-    : [eq(SessionTable.project_id, project.id)]
+    ? directoryConditions(input.directory)
+    : [eq(SessionTable.project_id, Instance.project.id)]
 
   if (input?.workspaceID) {
     conditions.push(eq(SessionTable.workspace_id, input.workspaceID))
@@ -827,7 +852,7 @@ export function* listGlobal(input?: {
   const conditions: SQL[] = []
 
   if (input?.directory) {
-    conditions.push(directoryCondition(input.directory))
+    conditions.push(...directoryConditions(input.directory))
   }
   if (input?.roots) {
     conditions.push(isNull(SessionTable.parent_id))

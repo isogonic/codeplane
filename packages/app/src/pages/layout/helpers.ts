@@ -4,6 +4,7 @@ import { directoryContains, directoryKey } from "@/context/global-sync/utils"
 import { isCronSessionInfo } from "./sidebar-cron-helpers"
 
 type SessionStore = {
+  project?: string
   session?: Session[]
   path: { directory: string }
 }
@@ -26,7 +27,11 @@ function sortSessions(now: number) {
 
 const sessionInDirectory = (session: Session, directory: string) => directoryContains(directory, session.directory)
 
-const isRootVisibleSession = (session: Session, directories: string[]) =>
+const sessionInProject = (session: Session, project?: string) =>
+  !project || !session.projectID || session.projectID === project
+
+const isRootVisibleSession = (session: Session, directories: string[], project?: string) =>
+  sessionInProject(session, project) &&
   directories.some((directory) => sessionInDirectory(session, directory)) &&
   !session.parentID &&
   !session.time?.archived &&
@@ -36,16 +41,14 @@ export const roots = (store: SessionStore, directory?: string) => {
   const directories = [directory, store.path.directory]
     .filter((value): value is string => !!value)
     .filter((value, index, list) => list.findIndex((item) => directoryKey(item) === directoryKey(value)) === index)
-  return (store.session ?? []).filter((session) => isRootVisibleSession(session, directories))
+  return (store.session ?? []).filter((session) => isRootVisibleSession(session, directories, store.project))
 }
 
 export const sortedRootSessions = (store: SessionStore, now: number, directory?: string) =>
   roots(store, directory).sort(sortSessions(now))
 
 export const childSessions = (sessions: Session[] | undefined, parentID: string, now: number) =>
-  (sessions ?? [])
-    .filter((session) => session.parentID === parentID && !session.time?.archived)
-    .sort(sortSessions(now))
+  (sessions ?? []).filter((session) => session.parentID === parentID && !session.time?.archived).sort(sortSessions(now))
 
 export const childSessionIndex = (sessions: Session[] | undefined, now: number) => {
   const result = (sessions ?? []).reduce((map, session) => {
