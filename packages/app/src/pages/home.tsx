@@ -17,6 +17,7 @@ import {
   type Range,
   type RecentSession,
 } from "./home/stats"
+import { pickFunFact } from "./home/fun-facts"
 
 const RANGES: Range[] = ["all", "30d", "7d"]
 const RANGE_LABEL_KEY = {
@@ -27,7 +28,6 @@ const RANGE_LABEL_KEY = {
 const HEATMAP_ROWS = 7
 const HEATMAP_COLS = 52
 const HEATMAP_GAP_PX = 3
-const DUNE_TOKENS = 250_000
 
 export default function Home() {
   const layout = useLayout()
@@ -307,11 +307,7 @@ function OverviewTab(props: {
     () => new Intl.NumberFormat(language.intl(), { notation: "compact", maximumFractionDigits: 1 }),
   )
   const streakLabel = (days: number) => language.t("home.stat.streak.value", { count: days })
-  const duneRatio = () => {
-    const tokens = props.totals().tokens
-    if (tokens < DUNE_TOKENS) return undefined
-    return Math.round(tokens / DUNE_TOKENS)
-  }
+  const fact = createMemo(() => pickFunFact(props.totals(), Date.now()))
 
   return (
     <>
@@ -346,10 +342,10 @@ function OverviewTab(props: {
         <Heatmap buckets={props.buckets} formatNumber={props.formatNumber} />
       </div>
 
-      <Show when={duneRatio()} keyed>
-        {(ratio) => (
+      <Show when={fact()} keyed>
+        {(f) => (
           <div class="border-t border-border-weaker-base px-3 py-2 text-12-regular text-text-weak sm:px-4">
-            {language.t("home.stat.footer.dune", { count: ratio })}
+            {language.t(f.key as Parameters<typeof language.t>[0], f.params)}
           </div>
         )}
       </Show>
