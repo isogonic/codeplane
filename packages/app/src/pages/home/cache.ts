@@ -1,8 +1,30 @@
-import { createStore, produce } from "solid-js/store"
+import { createStore, reconcile } from "solid-js/store"
 import { useServer } from "@/context/server"
 import { Persist, persisted } from "@/utils/persist"
 import { aggregateSessionMessages, SESSION_AGGREGATE_VERSION, type SessionAggregate } from "./aggregate"
 import type { Message } from "@codeplane-ai/sdk/v2/client"
+
+/**
+ * Sanity caps so a corrupted persisted aggregate can never multiply itself
+ * into the trillions on display. If any single aggregate breaches these
+ * caps, we treat it as poisoned and drop it instead of summing it in.
+ */
+const MAX_SAFE_DAYS_PER_AGGREGATE = 10_000
+const MAX_SAFE_COUNT_PER_DAY = 100_000
+const MAX_SAFE_TOKENS_PER_DAY = 1_000_000_000
+
+function looksSane(aggregate: SessionAggregate | undefined): aggregate is SessionAggregate {
+  if (!aggregate || !aggregate.days || typeof aggregate.days !== "object") return false
+  const keys = Object.keys(aggregate.days)
+  if (keys.length > MAX_SAFE_DAYS_PER_AGGREGATE) return false
+  for (const key of keys) {
+    const daily = aggregate.days[Number(key)]
+    if (!daily) continue
+    if (!Number.isFinite(daily.count) || daily.count < 0 || daily.count > MAX_SAFE_COUNT_PER_DAY) return false
+    if (!Number.isFinite(daily.tokens) || daily.tokens < 0 || daily.tokens > MAX_SAFE_TOKENS_PER_DAY) return false
+  }
+  return true
+}
 
 export type HomeCacheStore = {
   version: number
@@ -27,13 +49,17 @@ export function createHomeCache() {
     }),
   )
 
-  // If the persisted shape is from an older version, wipe the aggregates so we
-  // never iterate a record that's missing fields the current shape expects.
-  // Bare migration: drop everything and let the home page re-fetch from the
-  // session store; cheaper than trying to upgrade in place.
-  if (store.version !== SESSION_AGGREGATE_VERSION) {
+  // Wipe aggregates if the persisted shape is from an older version, OR if
+  // any single aggregate looks corrupted (e.g., inflated counts from earlier
+  // versions with the reconcile-merge bug). Bare migration: drop everything
+  // and let the home page re-fetch from the session store.
+  const persistedAggregates = store.aggregates ?? {}
+  const allLookSane =
+    store.version === SESSION_AGGREGATE_VERSION &&
+    Object.values(persistedAggregates).every((aggregate) => looksSane(aggregate))
+  if (!allLookSane) {
     setStore("version", SESSION_AGGREGATE_VERSION)
-    setStore("aggregates", {})
+    setStore("aggregates", reconcile({}))
   }
 
   function get(sessionID: string): SessionAggregate | undefined {
@@ -49,15 +75,14 @@ export function createHomeCache() {
 
   function applyMessages(sessionID: string, sessionUpdatedAt: number, messages: Message[]) {
     const next = aggregateSessionMessages(sessionID, sessionUpdatedAt, messages)
-    // Full replace — not `reconcile(..., { merge: true })`, which would keep
-    // stale per-day records that the latest fetch no longer contains, leading
-    // to inflated/incorrect aggregate counts over time.
-    setStore(
-      "aggregates",
-      produce((draft) => {
-        draft[sessionID] = next
-      }),
-    )
+    // If the aggregate we just built somehow looks insane (massive day
+    // counts, broken numbers), refuse to commit it — better an empty cell
+    // than an inflated one. Sanity check is cheap.
+    if (!looksSane(next)) return
+    // Path-based set REPLACES the entry — no merge, no proxy reuse.
+    // `reconcile(next)` (without `merge`) drops leaf properties from the
+    // previous value so days that are no longer present disappear.
+    setStore("aggregates", sessionID, reconcile(next))
   }
 
   function drop(sessionIDs: string[]) {

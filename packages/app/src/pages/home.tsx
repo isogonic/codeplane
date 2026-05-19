@@ -34,8 +34,20 @@ const HEATMAP_ROWS = 7
 const HEATMAP_COLS = 52
 const HEATMAP_GAP_PX = 3
 
-const nonNegative = (value: unknown): number => {
+// Per-tile sanity ceilings. Anything past these is plainly a bug — display
+// caps to the ceiling rather than rendering a 14-digit number that exists
+// only because of a memory-corruption-class issue upstream.
+const TILE_CEILINGS = {
+  sessions: 1_000_000,
+  messages: 100_000_000,
+  tokens: 100_000_000_000,
+  activeDays: 365 * 50,
+  streak: 365 * 50,
+} as const
+
+const clampStat = (value: unknown, ceiling: number): number => {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return 0
+  if (value > ceiling) return ceiling
   return value
 }
 
@@ -425,33 +437,37 @@ function OverviewTab(props: {
       <div class="grid grid-cols-2 gap-px bg-border-weaker-base sm:grid-cols-4">
         <NumericStat
           label={language.t("home.stat.sessions")}
-          value={nonNegative(props.totals().sessions)}
-          format={(v) => props.formatNumber().format(Math.max(0, Math.round(v)))}
+          value={clampStat(props.totals().sessions, TILE_CEILINGS.sessions)}
+          format={(v) => props.formatNumber().format(clampStat(Math.round(v), TILE_CEILINGS.sessions))}
         />
         <NumericStat
           label={language.t("home.stat.messages")}
-          value={nonNegative(props.totals().messages)}
-          format={(v) => props.formatNumber().format(Math.max(0, Math.round(v)))}
+          value={clampStat(props.totals().messages, TILE_CEILINGS.messages)}
+          format={(v) => props.formatNumber().format(clampStat(Math.round(v), TILE_CEILINGS.messages))}
         />
         <NumericStat
           label={language.t("home.stat.tokens")}
-          value={nonNegative(props.totals().tokens)}
-          format={(v) => tokenFormatter().format(Math.max(0, Math.round(v)))}
+          value={clampStat(props.totals().tokens, TILE_CEILINGS.tokens)}
+          format={(v) => tokenFormatter().format(clampStat(Math.round(v), TILE_CEILINGS.tokens))}
         />
         <NumericStat
           label={language.t("home.stat.activeDays")}
-          value={nonNegative(props.totals().activeDays)}
-          format={(v) => props.formatNumber().format(Math.max(0, Math.round(v)))}
+          value={clampStat(props.totals().activeDays, TILE_CEILINGS.activeDays)}
+          format={(v) => props.formatNumber().format(clampStat(Math.round(v), TILE_CEILINGS.activeDays))}
         />
         <NumericStat
           label={language.t("home.stat.streak.current")}
-          value={nonNegative(props.totals().currentStreak)}
-          format={(v) => language.t("home.stat.streak.value", { count: Math.max(0, Math.round(v)) })}
+          value={clampStat(props.totals().currentStreak, TILE_CEILINGS.streak)}
+          format={(v) =>
+            language.t("home.stat.streak.value", { count: clampStat(Math.round(v), TILE_CEILINGS.streak) })
+          }
         />
         <NumericStat
           label={language.t("home.stat.streak.longest")}
-          value={nonNegative(props.totals().longestStreak)}
-          format={(v) => language.t("home.stat.streak.value", { count: Math.max(0, Math.round(v)) })}
+          value={clampStat(props.totals().longestStreak, TILE_CEILINGS.streak)}
+          format={(v) =>
+            language.t("home.stat.streak.value", { count: clampStat(Math.round(v), TILE_CEILINGS.streak) })
+          }
         />
         <TextStat
           label={language.t("home.stat.peakHour")}
