@@ -34,6 +34,11 @@ const HEATMAP_ROWS = 7
 const HEATMAP_COLS = 52
 const HEATMAP_GAP_PX = 3
 
+const nonNegative = (value: unknown): number => {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return 0
+  return value
+}
+
 export default function Home() {
   const layout = useLayout()
   const language = useLanguage()
@@ -420,33 +425,33 @@ function OverviewTab(props: {
       <div class="grid grid-cols-2 gap-px bg-border-weaker-base sm:grid-cols-4">
         <NumericStat
           label={language.t("home.stat.sessions")}
-          value={props.totals().sessions}
-          format={(v) => props.formatNumber().format(Math.round(v))}
+          value={nonNegative(props.totals().sessions)}
+          format={(v) => props.formatNumber().format(Math.max(0, Math.round(v)))}
         />
         <NumericStat
           label={language.t("home.stat.messages")}
-          value={props.totals().messages}
-          format={(v) => props.formatNumber().format(Math.round(v))}
+          value={nonNegative(props.totals().messages)}
+          format={(v) => props.formatNumber().format(Math.max(0, Math.round(v)))}
         />
         <NumericStat
           label={language.t("home.stat.tokens")}
-          value={props.totals().tokens}
-          format={(v) => tokenFormatter().format(Math.round(v))}
+          value={nonNegative(props.totals().tokens)}
+          format={(v) => tokenFormatter().format(Math.max(0, Math.round(v)))}
         />
         <NumericStat
           label={language.t("home.stat.activeDays")}
-          value={props.totals().activeDays}
-          format={(v) => props.formatNumber().format(Math.round(v))}
+          value={nonNegative(props.totals().activeDays)}
+          format={(v) => props.formatNumber().format(Math.max(0, Math.round(v)))}
         />
         <NumericStat
           label={language.t("home.stat.streak.current")}
-          value={props.totals().currentStreak}
-          format={(v) => language.t("home.stat.streak.value", { count: Math.round(v) })}
+          value={nonNegative(props.totals().currentStreak)}
+          format={(v) => language.t("home.stat.streak.value", { count: Math.max(0, Math.round(v)) })}
         />
         <NumericStat
           label={language.t("home.stat.streak.longest")}
-          value={props.totals().longestStreak}
-          format={(v) => language.t("home.stat.streak.value", { count: Math.round(v) })}
+          value={nonNegative(props.totals().longestStreak)}
+          format={(v) => language.t("home.stat.streak.value", { count: Math.max(0, Math.round(v)) })}
         />
         <TextStat
           label={language.t("home.stat.peakHour")}
