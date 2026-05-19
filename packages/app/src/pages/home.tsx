@@ -75,7 +75,6 @@ export default function Home() {
         iconColor: project.icon?.color,
         sessions: child.session ?? [],
         sessionDiffs: child.session_diff,
-        messageStore: child.message,
       }
     })
   })
@@ -93,40 +92,33 @@ export default function Home() {
     cache.syncWithSessionList(alive)
   })
 
-  // Sync per-session aggregates: when the in-memory message store changes for
-  // a session, fold the fresh messages into the persistent aggregate cache.
+  // Fetch full message history for every stale session and write the
+  // aggregate straight to cache. Uses a dedicated stats-only API path so the
+  // session-detail page's paginated message store can never clobber the
+  // home aggregates (and vice versa).
   createEffect(() => {
     for (const project of projectInputs()) {
-      for (const session of project.sessions) {
-        if (session.parentID || session.time?.archived) continue
-        const messages = project.messageStore[session.id]
-        if (!messages) continue
-        const updatedAt = session.time.updated ?? session.time.created
-        if (!cache.isStale(session.id, updatedAt) && cache.get(session.id)?.messages === messages.length) continue
-        cache.applyMessages(session.id, updatedAt, messages)
-      }
-    }
-  })
-
-  // Fetch missing/stale messages. Only sessions whose `time.updated` is newer
-  // than what's in cache get an API call — refreshes are essentially free for
-  // unchanged sessions.
-  createEffect(() => {
-    for (const project of projectInputs()) {
-      const targets: string[] = []
       for (const session of project.sessions) {
         if (session.parentID || session.time?.archived) continue
         const updatedAt = session.time.updated ?? session.time.created
         const inflightKey = `${project.worktree}\n${session.id}\n${updatedAt}`
         if (inflightMessageFetch.has(inflightKey)) continue
         if (!cache.isStale(session.id, updatedAt)) continue
-        // Already loaded into the in-memory store for this updatedAt? skip.
-        if (project.messageStore[session.id] !== undefined && cache.get(session.id)?.updatedAt === updatedAt) continue
         inflightMessageFetch.add(inflightKey)
-        targets.push(session.id)
+        const worktree = project.worktree
+        const sessionID = session.id
+        void (async () => {
+          try {
+            const messages = (await globalSync.project.fetchSessionMessagesForStats(worktree, sessionID)) as never
+            cache.applyMessages(sessionID, updatedAt, messages)
+          } catch {
+            // Best-effort — leave the previous cached aggregate untouched and
+            // retry on the next session.updated event tick.
+          } finally {
+            inflightMessageFetch.delete(inflightKey)
+          }
+        })()
       }
-      if (targets.length === 0) continue
-      void globalSync.project.loadSessionMessages(project.worktree, targets, { force: true })
     }
   })
 

@@ -1,22 +1,28 @@
 import type { AssistantMessage, Message } from "@codeplane-ai/sdk/v2/client"
 import { DAY_MS, startOfDay, type DayBucket, type ModelStat, type Range, type Totals } from "./stats"
 
-export const SESSION_AGGREGATE_VERSION = 2
+/** Bump whenever the cached aggregate shape changes. */
+export const SESSION_AGGREGATE_VERSION = 3
+
+export type DailyMetrics = {
+  /** Total messages on this day. */
+  count: number
+  /** Sum of assistant-message tokens on this day. */
+  tokens: number
+  /** 24-bucket histogram of hour-of-day for messages on this day. */
+  hours: number[]
+  /** Per-model breakdown of messages and tokens on this day. */
+  models: Record<string, { count: number; tokens: number; providerID?: string }>
+}
 
 export type SessionAggregate = {
   sessionID: string
   /** Session.time.updated at the moment we built this aggregate. */
   updatedAt: number
-  /** Newest message time observed; used as a tiebreaker when session.time.updated is missing. */
+  /** Newest message time observed; tiebreaker when session.time.updated is missing. */
   newestMessageAt: number
-  tokens: number
-  messages: number
-  /** Per-model message + token counts. */
-  models: Record<string, { count: number; tokens: number; providerID?: string }>
-  /** 24-bucket histogram of hour-of-day for every message in the session. */
-  hourCounts: number[]
-  /** dayStartMs → message count. Compact representation; one entry per active day in the session. */
-  dayActivity: Record<number, number>
+  /** dayStartMs → metrics for that day. Compact: only days with activity. */
+  days: Record<number, DailyMetrics>
 }
 
 const isAssistant = (message: Message): message is AssistantMessage => message.role === "assistant"
@@ -28,51 +34,45 @@ const messageTokens = (message: AssistantMessage) => {
   return (t.input ?? 0) + (t.output ?? 0) + (t.reasoning ?? 0) + (t.cache?.read ?? 0) + (t.cache?.write ?? 0)
 }
 
+function blankDay(): DailyMetrics {
+  return { count: 0, tokens: 0, hours: new Array<number>(24).fill(0), models: {} }
+}
+
 /**
- * Roll a session's full message list into a compact aggregate suitable for
- * caching. Discards raw message bodies, keeps only the numbers we need to
- * regenerate every home-page metric (totals, peak hour, streaks, heatmap,
- * model breakdown).
+ * Roll a session's full message list into a compact per-day aggregate that
+ * preserves enough information to recompute every home-page metric for any
+ * range filter without re-reading the original messages.
  */
 export function aggregateSessionMessages(
   sessionID: string,
   sessionUpdatedAt: number,
   messages: Message[],
 ): SessionAggregate {
-  const hourCounts = new Array<number>(24).fill(0)
-  const dayActivity: Record<number, number> = {}
-  const models: SessionAggregate["models"] = {}
-  let tokens = 0
-  let count = 0
+  const days: Record<number, DailyMetrics> = {}
   let newestMessageAt = 0
   for (const message of messages) {
-    count += 1
     const created = message.time.created
     if (created > newestMessageAt) newestMessageAt = created
+    const dayKey = startOfDay(created)
+    let day = days[dayKey]
+    if (!day) {
+      day = blankDay()
+      days[dayKey] = day
+    }
+    day.count += 1
     const hour = new Date(created).getHours()
-    hourCounts[hour] = (hourCounts[hour] ?? 0) + 1
-    const day = startOfDay(created)
-    dayActivity[day] = (dayActivity[day] ?? 0) + 1
+    day.hours[hour] = (day.hours[hour] ?? 0) + 1
     if (!isAssistant(message)) continue
     const t = messageTokens(message)
-    tokens += t
+    day.tokens += t
     const modelID = message.modelID
     if (!modelID) continue
-    const entry = models[modelID] ?? { count: 0, tokens: 0, providerID: message.providerID }
+    const entry = day.models[modelID] ?? { count: 0, tokens: 0, providerID: message.providerID }
     entry.count += 1
     entry.tokens += t
-    models[modelID] = entry
+    day.models[modelID] = entry
   }
-  return {
-    sessionID,
-    updatedAt: sessionUpdatedAt,
-    newestMessageAt,
-    tokens,
-    messages: count,
-    models,
-    hourCounts,
-    dayActivity,
-  }
+  return { sessionID, updatedAt: sessionUpdatedAt, newestMessageAt, days }
 }
 
 const RANGE_DAYS: Record<Range, number | undefined> = {
@@ -112,17 +112,20 @@ export function streaks(activeDays: Set<number>, now: number) {
   return { current, longest }
 }
 
+export type CombinedTotals = {
+  messages: number
+  tokens: number
+  activeDays: number
+  currentStreak: number
+  longestStreak: number
+  peakHour?: number
+}
+
 /**
- * Aggregate cross-session metrics for the overview tab. Range filters
- * collapse the per-day activity map so totals reflect only the requested
- * window. Heatmap buckets are always 364 days regardless of the filter —
- * that's a separate concern.
+ * Sum every aggregate's per-day metrics within the range. Exact — no scaling,
+ * no approximation — because each per-day record is self-contained.
  */
-export function combineAggregates(
-  aggregates: SessionAggregate[],
-  now: number,
-  range: Range,
-): { messages: number; tokens: number; activeDays: number; currentStreak: number; longestStreak: number; peakHour?: number } {
+export function combineAggregates(aggregates: SessionAggregate[], now: number, range: Range): CombinedTotals {
   const start = rangeStart(now, range)
   const hourCounts = new Array<number>(24).fill(0)
   const activeDaySet = new Set<number>()
@@ -130,24 +133,14 @@ export function combineAggregates(
   let tokens = 0
 
   for (const aggregate of aggregates) {
-    // Token + message totals don't have a per-message timestamp inside the
-    // aggregate, so we only contribute counts that fall inside the range as
-    // determined by the activity map.
-    let inRangeMessages = 0
-    for (const [dayStartRaw, count] of Object.entries(aggregate.dayActivity)) {
-      const dayStart = Number(dayStartRaw)
-      if (!inRange(dayStart, start)) continue
-      inRangeMessages += count
-      activeDaySet.add(dayStart)
+    for (const [dayKeyRaw, daily] of Object.entries(aggregate.days)) {
+      const dayKey = Number(dayKeyRaw)
+      if (!inRange(dayKey, start)) continue
+      messages += daily.count
+      tokens += daily.tokens
+      if (daily.count > 0) activeDaySet.add(dayKey)
+      for (let h = 0; h < 24; h++) hourCounts[h] += daily.hours[h] ?? 0
     }
-    if (inRangeMessages === 0) continue
-    messages += inRangeMessages
-    // Hour counts and tokens get scaled by the fraction of messages in range.
-    // For the all/365-day window every message qualifies so it's exact; for
-    // 7d/30d we approximate (still better than dropping the session entirely).
-    const scale = aggregate.messages > 0 ? inRangeMessages / aggregate.messages : 0
-    tokens += aggregate.tokens * scale
-    for (let h = 0; h < 24; h++) hourCounts[h] += (aggregate.hourCounts[h] ?? 0) * scale
   }
 
   const peak = hourCounts.reduce<{ hour: number; count: number }>(
@@ -159,7 +152,7 @@ export function combineAggregates(
 
   return {
     messages,
-    tokens: Math.round(tokens),
+    tokens,
     activeDays: activeDaySet.size,
     currentStreak: current,
     longestStreak: longest,
@@ -175,23 +168,22 @@ export function preferredModel(
   const start = rangeStart(now, range)
   const totals = new Map<string, { count: number; providerID?: string }>()
   for (const aggregate of aggregates) {
-    let inRangeFactor = 0
-    for (const [dayStartRaw, count] of Object.entries(aggregate.dayActivity)) {
-      const dayStart = Number(dayStartRaw)
-      if (inRange(dayStart, start)) inRangeFactor += count
-    }
-    if (inRangeFactor === 0) continue
-    const scale = aggregate.messages > 0 ? inRangeFactor / aggregate.messages : 0
-    for (const [modelID, info] of Object.entries(aggregate.models)) {
-      const existing = totals.get(modelID)
-      const next = (existing?.count ?? 0) + info.count * scale
-      totals.set(modelID, { count: next, providerID: existing?.providerID ?? info.providerID })
+    for (const [dayKeyRaw, daily] of Object.entries(aggregate.days)) {
+      const dayKey = Number(dayKeyRaw)
+      if (!inRange(dayKey, start)) continue
+      for (const [modelID, info] of Object.entries(daily.models)) {
+        const existing = totals.get(modelID)
+        totals.set(modelID, {
+          count: (existing?.count ?? 0) + info.count,
+          providerID: existing?.providerID ?? info.providerID,
+        })
+      }
     }
   }
   let preferred: Totals["preferredModel"] | undefined
   for (const [modelID, info] of totals) {
     if (!preferred || info.count > preferred.messages) {
-      preferred = { modelID, providerID: info.providerID, messages: Math.round(info.count) }
+      preferred = { modelID, providerID: info.providerID, messages: info.count }
     }
   }
   return preferred
@@ -204,30 +196,32 @@ export function modelBreakdown(aggregates: SessionAggregate[], range: Range, now
     { providerID?: string; messages: number; tokens: number; sessions: Set<string> }
   >()
   for (const aggregate of aggregates) {
-    let inRangeFactor = 0
-    for (const [dayStartRaw, count] of Object.entries(aggregate.dayActivity)) {
-      const dayStart = Number(dayStartRaw)
-      if (inRange(dayStart, start)) inRangeFactor += count
-    }
-    if (inRangeFactor === 0) continue
-    const scale = aggregate.messages > 0 ? inRangeFactor / aggregate.messages : 0
-    for (const [modelID, info] of Object.entries(aggregate.models)) {
-      let entry = byModel.get(modelID)
-      if (!entry) {
-        entry = { providerID: info.providerID, messages: 0, tokens: 0, sessions: new Set() }
-        byModel.set(modelID, entry)
+    let touched = false
+    for (const [dayKeyRaw, daily] of Object.entries(aggregate.days)) {
+      const dayKey = Number(dayKeyRaw)
+      if (!inRange(dayKey, start)) continue
+      for (const [modelID, info] of Object.entries(daily.models)) {
+        let entry = byModel.get(modelID)
+        if (!entry) {
+          entry = { providerID: info.providerID, messages: 0, tokens: 0, sessions: new Set() }
+          byModel.set(modelID, entry)
+        }
+        entry.messages += info.count
+        entry.tokens += info.tokens
+        if (info.count > 0) {
+          entry.sessions.add(aggregate.sessionID)
+          touched = true
+        }
       }
-      entry.messages += info.count * scale
-      entry.tokens += info.tokens * scale
-      entry.sessions.add(aggregate.sessionID)
     }
+    void touched
   }
   return [...byModel.entries()]
     .map(([modelID, info]) => ({
       modelID,
       providerID: info.providerID,
-      messages: Math.round(info.messages),
-      tokens: Math.round(info.tokens),
+      messages: info.messages,
+      tokens: info.tokens,
       sessions: info.sessions.size,
     }))
     .sort((a, b) => b.messages - a.messages)
@@ -243,13 +237,13 @@ export function heatmapBuckets(aggregates: SessionAggregate[], now: number): Day
     buckets.push({ start: today - i * DAY_MS, count: 0 })
   }
   for (const aggregate of aggregates) {
-    for (const [dayStartRaw, count] of Object.entries(aggregate.dayActivity)) {
-      const dayStart = Number(dayStartRaw)
-      if (dayStart < start) continue
-      const index = Math.round((dayStart - start) / DAY_MS)
+    for (const [dayKeyRaw, daily] of Object.entries(aggregate.days)) {
+      const dayKey = Number(dayKeyRaw)
+      if (dayKey < start) continue
+      const index = Math.round((dayKey - start) / DAY_MS)
       const bucket = buckets[index]
       if (!bucket) continue
-      bucket.count += count
+      bucket.count += daily.count
     }
   }
   return buckets
