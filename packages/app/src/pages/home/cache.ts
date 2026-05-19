@@ -1,4 +1,4 @@
-import { createStore, reconcile } from "solid-js/store"
+import { createStore, produce } from "solid-js/store"
 import { useServer } from "@/context/server"
 import { Persist, persisted } from "@/utils/persist"
 import { aggregateSessionMessages, SESSION_AGGREGATE_VERSION, type SessionAggregate } from "./aggregate"
@@ -49,7 +49,15 @@ export function createHomeCache() {
 
   function applyMessages(sessionID: string, sessionUpdatedAt: number, messages: Message[]) {
     const next = aggregateSessionMessages(sessionID, sessionUpdatedAt, messages)
-    setStore("aggregates", sessionID, reconcile(next, { merge: true }))
+    // Full replace — not `reconcile(..., { merge: true })`, which would keep
+    // stale per-day records that the latest fetch no longer contains, leading
+    // to inflated/incorrect aggregate counts over time.
+    setStore(
+      "aggregates",
+      produce((draft) => {
+        draft[sessionID] = next
+      }),
+    )
   }
 
   function drop(sessionIDs: string[]) {
