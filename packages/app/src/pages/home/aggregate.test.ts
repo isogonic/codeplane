@@ -197,6 +197,38 @@ describe("heatmapBuckets", () => {
   })
 })
 
+describe("defensive handling", () => {
+  test("malformed aggregate without days field doesn't crash combineAggregates", () => {
+    const broken = { sessionID: "x", updatedAt: now, newestMessageAt: now } as unknown as Parameters<
+      typeof combineAggregates
+    >[0][number]
+    const result = combineAggregates([broken], now, "all")
+    expect(result.messages).toBe(0)
+    expect(result.tokens).toBe(0)
+  })
+
+  test("undefined entries in aggregate list are skipped", () => {
+    const result = combineAggregates([undefined as never, null as never], now, "all")
+    expect(result.messages).toBe(0)
+  })
+
+  test("modelBreakdown handles missing days/models gracefully", () => {
+    const broken = { sessionID: "x", updatedAt: now, newestMessageAt: now } as unknown as Parameters<
+      typeof modelBreakdown
+    >[0][number]
+    expect(modelBreakdown([broken], "all", now)).toEqual([])
+  })
+
+  test("heatmapBuckets handles missing days field", () => {
+    const broken = { sessionID: "x", updatedAt: now, newestMessageAt: now } as unknown as Parameters<
+      typeof heatmapBuckets
+    >[0][number]
+    const buckets = heatmapBuckets([broken], now)
+    expect(buckets).toHaveLength(HEATMAP_DAYS_REFERENCE)
+    expect(buckets.every((b) => b.count === 0)).toBe(true)
+  })
+})
+
 describe("streaks (exported)", () => {
   test("computes from a Set of day starts", () => {
     const today = startOfDay(now)

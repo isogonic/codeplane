@@ -27,6 +27,15 @@ export function createHomeCache() {
     }),
   )
 
+  // If the persisted shape is from an older version, wipe the aggregates so we
+  // never iterate a record that's missing fields the current shape expects.
+  // Bare migration: drop everything and let the home page re-fetch from the
+  // session store; cheaper than trying to upgrade in place.
+  if (store.version !== SESSION_AGGREGATE_VERSION) {
+    setStore("version", SESSION_AGGREGATE_VERSION)
+    setStore("aggregates", {})
+  }
+
   function get(sessionID: string): SessionAggregate | undefined {
     return store.aggregates[sessionID]
   }

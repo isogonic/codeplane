@@ -133,13 +133,16 @@ export function combineAggregates(aggregates: SessionAggregate[], now: number, r
   let tokens = 0
 
   for (const aggregate of aggregates) {
+    if (!aggregate || !aggregate.days) continue
     for (const [dayKeyRaw, daily] of Object.entries(aggregate.days)) {
+      if (!daily) continue
       const dayKey = Number(dayKeyRaw)
       if (!inRange(dayKey, start)) continue
-      messages += daily.count
-      tokens += daily.tokens
-      if (daily.count > 0) activeDaySet.add(dayKey)
-      for (let h = 0; h < 24; h++) hourCounts[h] += daily.hours[h] ?? 0
+      messages += daily.count ?? 0
+      tokens += daily.tokens ?? 0
+      if ((daily.count ?? 0) > 0) activeDaySet.add(dayKey)
+      const hours = daily.hours ?? []
+      for (let h = 0; h < 24; h++) hourCounts[h] += hours[h] ?? 0
     }
   }
 
@@ -168,13 +171,17 @@ export function preferredModel(
   const start = rangeStart(now, range)
   const totals = new Map<string, { count: number; providerID?: string }>()
   for (const aggregate of aggregates) {
+    if (!aggregate || !aggregate.days) continue
     for (const [dayKeyRaw, daily] of Object.entries(aggregate.days)) {
+      if (!daily) continue
       const dayKey = Number(dayKeyRaw)
       if (!inRange(dayKey, start)) continue
-      for (const [modelID, info] of Object.entries(daily.models)) {
+      const models = daily.models ?? {}
+      for (const [modelID, info] of Object.entries(models)) {
+        if (!info) continue
         const existing = totals.get(modelID)
         totals.set(modelID, {
-          count: (existing?.count ?? 0) + info.count,
+          count: (existing?.count ?? 0) + (info.count ?? 0),
           providerID: existing?.providerID ?? info.providerID,
         })
       }
@@ -196,25 +203,24 @@ export function modelBreakdown(aggregates: SessionAggregate[], range: Range, now
     { providerID?: string; messages: number; tokens: number; sessions: Set<string> }
   >()
   for (const aggregate of aggregates) {
-    let touched = false
+    if (!aggregate || !aggregate.days) continue
     for (const [dayKeyRaw, daily] of Object.entries(aggregate.days)) {
+      if (!daily) continue
       const dayKey = Number(dayKeyRaw)
       if (!inRange(dayKey, start)) continue
-      for (const [modelID, info] of Object.entries(daily.models)) {
+      const models = daily.models ?? {}
+      for (const [modelID, info] of Object.entries(models)) {
+        if (!info) continue
         let entry = byModel.get(modelID)
         if (!entry) {
           entry = { providerID: info.providerID, messages: 0, tokens: 0, sessions: new Set() }
           byModel.set(modelID, entry)
         }
-        entry.messages += info.count
-        entry.tokens += info.tokens
-        if (info.count > 0) {
-          entry.sessions.add(aggregate.sessionID)
-          touched = true
-        }
+        entry.messages += info.count ?? 0
+        entry.tokens += info.tokens ?? 0
+        if ((info.count ?? 0) > 0) entry.sessions.add(aggregate.sessionID)
       }
     }
-    void touched
   }
   return [...byModel.entries()]
     .map(([modelID, info]) => ({
@@ -237,13 +243,15 @@ export function heatmapBuckets(aggregates: SessionAggregate[], now: number): Day
     buckets.push({ start: today - i * DAY_MS, count: 0 })
   }
   for (const aggregate of aggregates) {
+    if (!aggregate || !aggregate.days) continue
     for (const [dayKeyRaw, daily] of Object.entries(aggregate.days)) {
+      if (!daily) continue
       const dayKey = Number(dayKeyRaw)
       if (dayKey < start) continue
       const index = Math.round((dayKey - start) / DAY_MS)
       const bucket = buckets[index]
       if (!bucket) continue
-      bucket.count += daily.count
+      bucket.count += daily.count ?? 0
     }
   }
   return buckets
