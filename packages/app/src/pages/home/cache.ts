@@ -1,30 +1,8 @@
-import { createStore, reconcile } from "solid-js/store"
+import { createEffect, createSignal } from "solid-js"
 import { useServer } from "@/context/server"
-import { Persist, persisted } from "@/utils/persist"
+import { checksum } from "@codeplane-ai/shared/util/encode"
 import { aggregateSessionMessages, SESSION_AGGREGATE_VERSION, type SessionAggregate } from "./aggregate"
 import type { Message } from "@codeplane-ai/sdk/v2/client"
-
-/**
- * Sanity caps so a corrupted persisted aggregate can never multiply itself
- * into the trillions on display. If any single aggregate breaches these
- * caps, we treat it as poisoned and drop it instead of summing it in.
- */
-const MAX_SAFE_DAYS_PER_AGGREGATE = 10_000
-const MAX_SAFE_COUNT_PER_DAY = 100_000
-const MAX_SAFE_TOKENS_PER_DAY = 1_000_000_000
-
-function looksSane(aggregate: SessionAggregate | undefined): aggregate is SessionAggregate {
-  if (!aggregate || !aggregate.days || typeof aggregate.days !== "object") return false
-  const keys = Object.keys(aggregate.days)
-  if (keys.length > MAX_SAFE_DAYS_PER_AGGREGATE) return false
-  for (const key of keys) {
-    const daily = aggregate.days[Number(key)]
-    if (!daily) continue
-    if (!Number.isFinite(daily.count) || daily.count < 0 || daily.count > MAX_SAFE_COUNT_PER_DAY) return false
-    if (!Number.isFinite(daily.tokens) || daily.tokens < 0 || daily.tokens > MAX_SAFE_TOKENS_PER_DAY) return false
-  }
-  return true
-}
 
 export type HomeCacheStore = {
   version: number
@@ -33,87 +11,119 @@ export type HomeCacheStore = {
 }
 
 /**
- * Persistent per-server cache of per-session message aggregates.
+ * Per-instance persistent cache of per-session message aggregates.
  *
- * Survives page reloads so the home page can render immediately from cache
- * and only re-fetch sessions whose `time.updated` is newer than the
- * `updatedAt` we stored.
+ * Implementation note (why not `persisted()` + `createStore` like the rest of
+ * the app): the helper layers `solid-js/store` proxies and deep-merge
+ * normalisation. With both in play it is genuinely hard to be certain that
+ * "write a fresh aggregate for session X" doesn't somehow merge per-day
+ * leaves from the previous aggregate — which is exactly the bug pattern that
+ * produced wildly inflated counts (sum-of-history rather than current value).
+ *
+ * We use a plain `createSignal` + immutable spread (`{ ...prev, [id]: next }`)
+ * so every applyMessages call provably replaces the entry, and we serialise
+ * to localStorage ourselves so we control exactly what hits storage.
  */
 export function createHomeCache() {
   const server = useServer()
-  const [store, setStore, _, ready] = persisted(
-    Persist.server(server.scope, "home-stats", ["home-stats.v1"]),
-    createStore<HomeCacheStore>({
-      version: SESSION_AGGREGATE_VERSION,
-      aggregates: {},
-    }),
-  )
+  const storageKey = (() => {
+    const scope = server.scope
+    const scopeKey = typeof scope === "string" ? scope : scope.key
+    return `codeplane.server.${tokenize(scopeKey, "server")}.dat:home-stats`
+  })()
 
-  // Wipe aggregates if the persisted shape is from an older version, OR if
-  // any single aggregate looks corrupted (e.g., inflated counts from earlier
-  // versions with the reconcile-merge bug). Bare migration: drop everything
-  // and let the home page re-fetch from the session store.
-  const persistedAggregates = store.aggregates ?? {}
-  const allLookSane =
-    store.version === SESSION_AGGREGATE_VERSION &&
-    Object.values(persistedAggregates).every((aggregate) => looksSane(aggregate))
-  if (!allLookSane) {
-    setStore("version", SESSION_AGGREGATE_VERSION)
-    setStore("aggregates", reconcile({}))
-  }
+  const initial = ((): HomeCacheStore => {
+    if (typeof localStorage === "undefined") return { version: SESSION_AGGREGATE_VERSION, aggregates: {} }
+    try {
+      const raw = localStorage.getItem(storageKey)
+      if (!raw) return { version: SESSION_AGGREGATE_VERSION, aggregates: {} }
+      const parsed = JSON.parse(raw) as Partial<HomeCacheStore>
+      if (parsed?.version !== SESSION_AGGREGATE_VERSION) {
+        return { version: SESSION_AGGREGATE_VERSION, aggregates: {} }
+      }
+      const aggregates =
+        parsed.aggregates && typeof parsed.aggregates === "object" && !Array.isArray(parsed.aggregates)
+          ? parsed.aggregates
+          : {}
+      return { version: SESSION_AGGREGATE_VERSION, aggregates }
+    } catch {
+      return { version: SESSION_AGGREGATE_VERSION, aggregates: {} }
+    }
+  })()
+
+  const [state, setState] = createSignal<HomeCacheStore>(initial)
+
+  // Persist on every change. Synchronous write — fine for localStorage and
+  // for the typical aggregate size (a few hundred KB at most).
+  createEffect(() => {
+    const value = state()
+    if (typeof localStorage === "undefined") return
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(value))
+    } catch {
+      // Quota or disabled — silent. Stats still work in-memory for this session.
+    }
+  })
 
   function get(sessionID: string): SessionAggregate | undefined {
-    return store.aggregates[sessionID]
+    return state().aggregates[sessionID]
   }
 
   function isStale(sessionID: string, sessionUpdatedAt: number): boolean {
-    const cached = store.aggregates[sessionID]
+    const cached = state().aggregates[sessionID]
     if (!cached) return true
-    if (store.version !== SESSION_AGGREGATE_VERSION) return true
     return cached.updatedAt < sessionUpdatedAt
   }
 
   function applyMessages(sessionID: string, sessionUpdatedAt: number, messages: Message[]) {
     const next = aggregateSessionMessages(sessionID, sessionUpdatedAt, messages)
-    // If the aggregate we just built somehow looks insane (massive day
-    // counts, broken numbers), refuse to commit it — better an empty cell
-    // than an inflated one. Sanity check is cheap.
-    if (!looksSane(next)) return
-    // Path-based set REPLACES the entry — no merge, no proxy reuse.
-    // `reconcile(next)` (without `merge`) drops leaf properties from the
-    // previous value so days that are no longer present disappear.
-    setStore("aggregates", sessionID, reconcile(next))
+    setState((prev) => ({
+      version: SESSION_AGGREGATE_VERSION,
+      aggregates: { ...prev.aggregates, [sessionID]: next },
+    }))
   }
 
   function drop(sessionIDs: string[]) {
     if (sessionIDs.length === 0) return
-    setStore("aggregates", (prev) => {
-      const next = { ...prev }
-      for (const id of sessionIDs) delete next[id]
-      return next
+    setState((prev) => {
+      const aggregates = { ...prev.aggregates }
+      for (const id of sessionIDs) delete aggregates[id]
+      return { version: SESSION_AGGREGATE_VERSION, aggregates }
     })
   }
 
   function syncWithSessionList(sessionIDs: string[]) {
     const known = new Set(sessionIDs)
     const stale: string[] = []
-    for (const id of Object.keys(store.aggregates)) {
+    for (const id of Object.keys(state().aggregates)) {
       if (!known.has(id)) stale.push(id)
     }
     if (stale.length > 0) drop(stale)
   }
 
   function all(): SessionAggregate[] {
-    return Object.values(store.aggregates)
+    return Object.values(state().aggregates)
   }
 
   return {
-    ready,
-    store,
+    ready: () => true,
+    /** Reactive read — tracks changes. */
+    get store() {
+      return state()
+    },
     get,
     isStale,
     applyMessages,
     syncWithSessionList,
     all,
   }
+}
+
+/** Compact, filesystem/key-safe token derived from a string. Mirrors the
+ * exact tokenisation `Persist.server` uses internally so cache entries land
+ * at the same localStorage key as before. */
+function tokenize(value: string, fallback: string): string {
+  const head = (value.slice(0, 18) || fallback).replace(/[^a-zA-Z0-9._-]/g, "-")
+  const sum = checksum(value) ?? "0"
+  return `${head}.${sum}`
 }
