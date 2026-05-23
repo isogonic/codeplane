@@ -13,7 +13,14 @@ import { useGlobalSDK } from "@/context/global-sdk"
 import { useGlobalSync } from "@/context/global-sync"
 import { useLanguage } from "@/context/language"
 import { useServer } from "@/context/server"
-import { type FormState, headerRow, modelRow, validateCustomProvider } from "./dialog-custom-provider-form"
+import {
+  customProviderModelsURL,
+  type FormState,
+  headerRow,
+  modelRow,
+  readCustomProviderModelsResponse,
+  validateCustomProvider,
+} from "./dialog-custom-provider-form"
 import { DialogSelectProvider } from "./dialog-select-provider"
 
 type Props = {
@@ -102,7 +109,7 @@ export function DialogCustomProvider(props: Props) {
       const current = server.current
       if (!current) throw new Error(language.t("error.globalSDK.noServerAvailable"))
 
-      const response = await fetch(new URL("provider/custom-models", `${current.http.url.replace(/\/+$/, "")}/`), {
+      const response = await fetch(customProviderModelsURL(current.http.url), {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -116,8 +123,7 @@ export function DialogCustomProvider(props: Props) {
           headers: headers(),
         }),
       })
-      if (!response.ok) throw new Error(language.t("provider.custom.models.fetch.error"))
-      const result = (await response.json()) as { models: Array<{ id: string; name: string }> }
+      const result = await readCustomProviderModelsResponse(response, language.t("provider.custom.models.fetch.error"))
       if (result.models.length === 0) throw new Error(language.t("provider.custom.models.fetch.empty"))
       return result
     },

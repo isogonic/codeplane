@@ -41,6 +41,25 @@ export type FormState = {
   }
 }
 
+export type CustomProviderModelsResult = {
+  models: Array<{ id: string; name: string }>
+}
+
+export function customProviderModelsURL(serverURL: string) {
+  return new URL("/provider/custom-models", serverURL).toString()
+}
+
+export async function readCustomProviderModelsResponse(response: Response, errorMessage: string) {
+  if (!response.ok) throw new Error(errorMessage)
+  const contentType = response.headers.get("content-type")?.split(";")[0].trim().toLowerCase()
+  if (contentType !== "application/json") throw new Error(errorMessage)
+  const result = await response.json().catch(() => undefined)
+  if (!result || typeof result !== "object" || !Array.isArray((result as CustomProviderModelsResult).models)) {
+    throw new Error(errorMessage)
+  }
+  return result as CustomProviderModelsResult
+}
+
 type ValidateArgs = {
   form: FormState
   t: Translator

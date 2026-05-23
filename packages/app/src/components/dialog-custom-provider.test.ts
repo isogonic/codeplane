@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test"
-import { validateCustomProvider } from "./dialog-custom-provider-form"
+import {
+  customProviderModelsURL,
+  readCustomProviderModelsResponse,
+  validateCustomProvider,
+} from "./dialog-custom-provider-form"
 
 const t = (key: string) => key
 
@@ -76,5 +80,33 @@ describe("validateCustomProvider", () => {
       key: "provider.custom.error.duplicate",
       value: undefined,
     })
+  })
+})
+
+describe("custom provider model fetching", () => {
+  test("targets the API root even when the app is served below /app", () => {
+    expect(customProviderModelsURL("https://example.com/app")).toBe("https://example.com/provider/custom-models")
+    expect(customProviderModelsURL("https://example.com/app/")).toBe("https://example.com/provider/custom-models")
+  })
+
+  test("rejects HTML responses without surfacing JSON parse errors", async () => {
+    await expect(
+      readCustomProviderModelsResponse(
+        new Response("<!doctype html>", { status: 200, headers: { "content-type": "text/html; charset=utf-8" } }),
+        "fetch failed",
+      ),
+    ).rejects.toThrow("fetch failed")
+  })
+
+  test("accepts JSON responses with charset", async () => {
+    await expect(
+      readCustomProviderModelsResponse(
+        Response.json(
+          { models: [{ id: "model-a", name: "Model A" }] },
+          { headers: { "content-type": "application/json; charset=utf-8" } },
+        ),
+        "fetch failed",
+      ),
+    ).resolves.toEqual({ models: [{ id: "model-a", name: "Model A" }] })
   })
 })
