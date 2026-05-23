@@ -20,7 +20,7 @@ bottom.
 - **Lint**: `bun lint` from repo root (oxlint, 0 errors required, warnings tolerated).
 - **Typecheck**: `bun turbo typecheck` from repo root (8 packages must all pass).
 - **Tests**: cannot run from repo root (guard `do-not-run-tests-from-root`); run from each package dir, e.g. `bun --cwd packages/codeplane test`.
-- **Version sync**: `bun run version:sync` after editing `packages/shared/src/version.ts`.
+- **Version bump**: `bun run version:bump` for a patch, or `bun run version:bump minor|major|X.Y.Z`. It edits `packages/shared/src/version.ts` and syncs every versioned file.
 - **Release**: tag a `vX.Y.Z` GitHub release on `main`; the `npm-release` and `desktop-release` workflows trigger automatically and publish to npm + GitHub releases.
 - **Tools must be parallel** when independent — see [Style guide → Tool calling](#tool-calling).
 - **Use Bun APIs** (`Bun.file`, `Bun.write`) over `node:fs/promises` when both work.
@@ -112,7 +112,8 @@ opencode/
 │   └── vscode/                ← VSCode extension package
 └── script/
     ├── publish.ts             ← top-level release driver
-    └── sync-version.ts        ← propagates version across all package.jsons
+    ├── bump-version.ts        ← bumps packages/shared/src/version.ts + syncs files
+    └── sync-version.ts        ← propagates version across versioned files
 ```
 
 Each subpackage may have its own `AGENTS.md` with package-specific rules.
@@ -148,7 +149,7 @@ workaround. In practice, edit consumer `package.json` files directly.
 | `@codeplane-ai/ui` (`packages/ui`) | Shared SolidJS component library (Button, Dialog, Toast, …). | `src/components/`, `src/i18n/`, `src/theme/` |
 | `@codeplane-ai/script` (`packages/script`) | Release-script helpers. Reads env vars (`CODEPLANE_VERSION`, `CODEPLANE_BUMP`, `CODEPLANE_CHANNEL`, `CODEPLANE_RELEASE`). | `src/index.ts` (exports `Script.{version,channel,preview,release,team}`) |
 | `@codeplane-ai/web` (`packages/web`) | Astro-built marketing site. Hosts the **logo SVGs** referenced by the README (`src/assets/logo-ornate-{light,dark}.svg`). | `src/assets/`, `astro.config.mjs` |
-| `@codeplane-ai/extensions/zed` | Zed editor extension manifest (`extension.toml`). Updated automatically by `script/sync-version.ts`. | `extension.toml` |
+| `@codeplane-ai/extensions/zed` | Zed editor extension manifest (`extension.toml`). | `extension.toml` |
 | `sdks/vscode` | VS Code extension. Has its own `package.json`. | `sdks/vscode/package.json` |
 
 Per-platform npm packages **published from the build** (not in this repo as
@@ -180,7 +181,7 @@ Before any release:
 - [ ] All of the above
 - [ ] Local build smoke test: `bun --cwd packages/codeplane script/build.ts --skip-embed-web-ui --skip-install --single` produces a working `dist/codeplane-<platform>-<arch>/bin/codeplane --version`.
 - [ ] `git fetch origin main` and rebase if remote has commits you don't.
-- [ ] Bump version using `packages/shared/src/version.ts` + `bun run version:sync`.
+- [ ] Bump version with `bun run version:bump` (patch) or `bun run version:bump X.Y.Z` (exact).
 - [ ] Commit with a release-style message.
 - [ ] Push to `origin/main`.
 - [ ] `gh release create vX.Y.Z --target main --title "vX.Y.Z" --notes ...` — see [Release notes template](#release-notes-template).
@@ -643,10 +644,11 @@ This is the most failure-prone workflow in the repo. Read it carefully.
 ```
 1. git status — check for uncommitted in-flight work (decide: ship or stash)
 2. git fetch origin main && git log HEAD..origin/main — rebase if behind
-3. Edit packages/shared/src/version.ts:
-     export const CodeplaneVersion = "27.4.X+1"
-4. bun run version:sync                  — propagates to 16 package.json files,
-                                            extension.toml, README.md
+3. bun run version:bump patch            — bumps packages/shared/src/version.ts
+                                            and runs version:sync
+   # or: bun run version:bump X.Y.Z      — exact version, v-prefix accepted
+4. Confirm version:bump output           — packageJsons should match the expected
+                                            release bump count, README updates if needed
 5. bun turbo typecheck                   — all 8 packages must be green
 6. bun lint                              — 0 errors (warnings ok)
 7. (optional but recommended) build smoke test:
@@ -669,29 +671,33 @@ If you hit a failure mid-flow, see [Common pitfalls / footguns](#common-pitfalls
 
 ### How the version bump propagates
 
-`bun run version:sync` runs `script/sync-version.ts`, which reads
-`packages/shared/src/version.ts` and updates:
+`bun run version:bump [patch|minor|major|X.Y.Z]` runs
+`script/bump-version.ts`. It updates the single source of truth,
+`packages/shared/src/version.ts`, then calls the same sync path as
+`bun run version:sync`.
 
-- Every `package.json` `version` field (16 currently).
-- `packages/extensions/zed/extension.toml` `version` field and every
-  `releases/download/v{old}/...` URL (rewritten to `v{new}`).
+`bun run version:sync` runs `script/sync-version.ts`, which reads the current
+version source and updates:
+
+- Every `package.json` `version` field (9 currently on a release bump).
 - `README.md` desktop-tag URLs, "current desktop release" badges, and the
-  CLI/desktop badges.
+  CLI/desktop/mobile badges.
 
 The script's output looks like:
 
 ```
-$ bun script/sync-version.ts
+$ bun run version:bump patch
+Bumped Codeplane version 28.21.5 -> 28.21.6
 {
-  "version": "27.4.21",
-  "packageJsons": 16,
-  "zed": true,
+  "version": "28.21.6",
+  "packageJsons": 9,
   "readme": true
 }
 ```
 
-If `packageJsons` drops below 16, a workspace was removed — verify that's
-intentional (e.g. v27.4.7 removed `packages/console/`).
+`packageJsons` is the number of files changed in that run. If it drops below
+the expected release bump count, verify that a workspace was intentionally
+removed or stopped carrying a `version` field.
 
 ### The two release tag workflows
 
@@ -2015,8 +2021,10 @@ bun --cwd packages/codeplane test
 bun --cwd packages/codeplane test test/sync/index.test.ts   # single file
 
 # Bump version + sync
-# (edit packages/shared/src/version.ts manually)
-bun run version:sync
+bun run version:bump                 # patch bump
+bun run version:bump minor           # minor bump
+bun run version:bump 28.22.0         # exact version
+bun run version:sync                 # resync only, no bump
 
 # Local dev
 bun run dev:server         # backend on :4096
@@ -2044,8 +2052,7 @@ bun script/build.ts
 
 ```bash
 # 1. Bump
-$EDITOR packages/shared/src/version.ts          # 27.4.X → 27.4.X+1
-bun run version:sync
+bun run version:bump patch                      # or: bun run version:bump 27.4.X+1
 
 # 2. Verify
 bun turbo typecheck                              # 8/8 green
@@ -2169,10 +2176,10 @@ git fetch origin main — origin ahead of HEAD?
   └── Yes ──► git pull --rebase origin main (resolve version conflicts as "theirs").
   │
   ▼
-Edit packages/shared/src/version.ts. Bump (usually patch).
+Run `bun run version:bump patch` (or exact `bun run version:bump X.Y.Z`).
   │
   ▼
-bun run version:sync — verify packageJsons count matches expectation.
+Verify `version:bump` output — `packageJsons` count matches expectation.
   │
   ▼
 bun turbo typecheck — green?

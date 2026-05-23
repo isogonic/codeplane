@@ -10,6 +10,7 @@
     "dev:server": "bun run --cwd packages/codeplane --conditions=browser src/index.ts web",
     "dev:web": "bun --cwd packages/app dev",
     "version:sync": "bun script/sync-version.ts",
+    "version:bump": "bun script/bump-version.ts",
     "lint": "oxlint",
     "typecheck": "bun turbo typecheck",
     "postinstall": "bun run --cwd packages/codeplane fix-node-pty",
