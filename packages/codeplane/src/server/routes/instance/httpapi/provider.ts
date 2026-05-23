@@ -11,6 +11,25 @@ import { ExperimentalInstanceHttpApiAnnotations } from "./openapi"
 
 const root = "/provider"
 
+const CustomProviderModelsInput = Schema.Struct({
+  baseURL: Schema.String,
+  apiKey: Schema.optional(Schema.String),
+  headers: Schema.optional(Schema.Record(Schema.String, Schema.String)),
+})
+
+const CustomProviderModel = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+})
+
+const CustomProviderModelsResult = Schema.Struct({
+  models: Schema.Array(CustomProviderModel),
+})
+
+function modelsURL(baseURL: string) {
+  return `${baseURL.trim().replace(/\/+$/, "")}/models`
+}
+
 export const ProviderApi = HttpApi.make("provider")
   .add(
     HttpApiGroup.make("provider")
@@ -53,6 +72,16 @@ export const ProviderApi = HttpApi.make("provider")
             identifier: "provider.oauth.callback",
             summary: "Handle OAuth callback",
             description: "Handle the OAuth callback from a provider after user authorization.",
+          }),
+        ),
+        HttpApiEndpoint.post("customModels", `${root}/custom-models`, {
+          payload: CustomProviderModelsInput,
+          success: CustomProviderModelsResult,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "provider.customModels",
+            summary: "Fetch custom provider models",
+            description: "Fetch models from an OpenAI-compatible custom provider endpoint.",
           }),
         ),
       )
@@ -127,8 +156,38 @@ export const providerHandlers = Layer.unwrap(
       return true
     })
 
+    const customModels = Effect.fn("ProviderHttpApi.customModels")(function* (ctx: {
+      payload: typeof CustomProviderModelsInput.Type
+    }) {
+      const headers = new Headers(ctx.payload.headers ?? {})
+      if (ctx.payload.apiKey && !headers.has("authorization"))
+        headers.set("authorization", `Bearer ${ctx.payload.apiKey}`)
+
+      const result = yield* Effect.promise(async () => {
+        const response = await fetch(modelsURL(ctx.payload.baseURL), { headers })
+        if (!response.ok) throw new Error(`Failed to fetch models: ${response.status}`)
+        return (await response.json()) as { data?: Array<{ id?: unknown; name?: unknown }> }
+      }).pipe(Effect.catch(() => Effect.fail(new HttpApiError.BadRequest({}))))
+
+      return {
+        models: (result.data ?? [])
+          .map((item) =>
+            typeof item.id === "string" && item.id
+              ? { id: item.id, name: typeof item.name === "string" && item.name ? item.name : item.id }
+              : undefined,
+          )
+          .filter((item): item is { id: string; name: string } => !!item)
+          .sort((a, b) => a.id.localeCompare(b.id)),
+      }
+    })
+
     return HttpApiBuilder.group(ProviderApi, "provider", (handlers) =>
-      handlers.handle("list", list).handle("auth", auth).handle("authorize", authorize).handle("callback", callback),
+      handlers
+        .handle("list", list)
+        .handle("auth", auth)
+        .handle("authorize", authorize)
+        .handle("callback", callback)
+        .handle("customModels", customModels),
     )
   }),
 ).pipe(

@@ -15,11 +15,13 @@ const context = Context.empty() as Context.Context<unknown>
 const env = makeRuntime(Env.Service, Env.defaultLayer)
 const set = (key: string, value: string) => env.runSync((svc) => svc.set(key, value))
 
-function request(route: string, directory: string) {
+function request(route: string, directory: string, init?: RequestInit) {
   return ExperimentalHttpApiServer.webHandler().handler(
     new Request(`http://localhost${route}`, {
+      ...init,
       headers: {
         "x-codeplane-directory": directory,
+        ...init?.headers,
       },
     }),
     context,
@@ -70,5 +72,41 @@ describe("provider HttpApi", () => {
         expect(Object.keys(catalog?.models ?? {}).length).toBeGreaterThan(Object.keys(runtime?.models ?? {}).length)
       },
     })
+  })
+
+  test("fetches OpenAI-compatible custom provider models", async () => {
+    const upstream = Bun.serve({
+      port: 0,
+      fetch: async (req) => {
+        expect(new URL(req.url).pathname).toBe("/v1/models")
+        expect(req.headers.get("authorization")).toBe("Bearer test-key")
+        return Response.json({
+          data: [{ id: "z-model" }, { id: "a-model", name: "A Model" }, { id: 123 }],
+        })
+      },
+    })
+
+    try {
+      await using tmp = await tmpdir()
+      await Instance.provide({
+        directory: tmp.path,
+        fn: async () => {
+          const response = await request("/provider/custom-models", tmp.path, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ baseURL: `${upstream.url}v1/`, apiKey: "test-key" }),
+          })
+          const body = (await response.json()) as { models: Array<{ id: string; name: string }> }
+
+          expect(response.status).toBe(200)
+          expect(body.models).toEqual([
+            { id: "a-model", name: "A Model" },
+            { id: "z-model", name: "z-model" },
+          ])
+        },
+      })
+    } finally {
+      await upstream.stop()
+    }
   })
 })

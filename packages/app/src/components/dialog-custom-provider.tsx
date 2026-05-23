@@ -6,12 +6,13 @@ import { ProviderIcon } from "@codeplane-ai/ui/provider-icon"
 import { useMutation } from "@tanstack/solid-query"
 import { TextField } from "@codeplane-ai/ui/text-field"
 import { showToast } from "@codeplane-ai/ui/toast"
-import { batch, For } from "solid-js"
+import { batch, createEffect, For, onCleanup, Show } from "solid-js"
 import { createStore, produce } from "solid-js/store"
 import { Link } from "@/components/link"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { useGlobalSync } from "@/context/global-sync"
 import { useLanguage } from "@/context/language"
+import { useServer } from "@/context/server"
 import { type FormState, headerRow, modelRow, validateCustomProvider } from "./dialog-custom-provider-form"
 import { DialogSelectProvider } from "./dialog-select-provider"
 
@@ -24,6 +25,7 @@ export function DialogCustomProvider(props: Props) {
   const globalSync = useGlobalSync()
   const globalSDK = useGlobalSDK()
   const language = useLanguage()
+  const server = useServer()
 
   const [form, setForm] = createStore<FormState>({
     providerID: "",
@@ -80,6 +82,76 @@ export function DialogCustomProvider(props: Props) {
       }),
     )
   }
+
+  const headers = () =>
+    Object.fromEntries(
+      form.headers
+        .map((h) => ({ key: h.key.trim(), value: h.value.trim() }))
+        .filter((h) => !!h.key && !!h.value)
+        .map((h) => [h.key, h.value]),
+    )
+
+  const canFetchModels = () => /^https?:\/\//.test(form.baseURL.trim())
+  const canAutoFetchModels = () =>
+    canFetchModels() &&
+    (!!form.apiKey.trim() ||
+      form.headers.some((h) => h.key.trim().toLowerCase() === "authorization" && !!h.value.trim()))
+
+  const fetchModelsMutation = useMutation(() => ({
+    mutationFn: async (_input?: { silent?: boolean }) => {
+      const current = server.current
+      if (!current) throw new Error(language.t("error.globalSDK.noServerAvailable"))
+
+      const response = await fetch(new URL("provider/custom-models", `${current.http.url.replace(/\/+$/, "")}/`), {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(current.http.password
+            ? { Authorization: `Basic ${btoa(`${current.http.username ?? "codeplane"}:${current.http.password}`)}` }
+            : {}),
+        },
+        body: JSON.stringify({
+          baseURL: form.baseURL.trim(),
+          apiKey: form.apiKey.trim().match(/^\{env:[^}]+\}$/) ? undefined : form.apiKey.trim() || undefined,
+          headers: headers(),
+        }),
+      })
+      if (!response.ok) throw new Error(language.t("provider.custom.models.fetch.error"))
+      const result = (await response.json()) as { models: Array<{ id: string; name: string }> }
+      if (result.models.length === 0) throw new Error(language.t("provider.custom.models.fetch.empty"))
+      return result
+    },
+    onSuccess: (result, input) => {
+      setForm(
+        "models",
+        result.models.map((m) => ({ ...modelRow(), id: m.id, name: m.name })),
+      )
+      if (input?.silent) return
+      showToast({
+        variant: "success",
+        icon: "circle-check",
+        title: language.t("provider.custom.models.fetch.success", { count: result.models.length }),
+      })
+    },
+    onError: (err, input) => {
+      if (input?.silent) return
+      const message = err instanceof Error ? err.message : String(err)
+      showToast({ title: language.t("common.requestFailed"), description: message })
+    },
+  }))
+
+  let lastAutoFetch = ""
+  createEffect(() => {
+    const key = JSON.stringify({ baseURL: form.baseURL.trim(), apiKey: form.apiKey.trim(), headers: headers() })
+    const emptyModels = form.models.every((m) => !m.id.trim() && !m.name.trim())
+    if (!emptyModels || !canAutoFetchModels() || fetchModelsMutation.isPending || key === lastAutoFetch) return
+
+    const timeout = setTimeout(() => {
+      lastAutoFetch = key
+      fetchModelsMutation.mutate({ silent: true })
+    }, 600)
+    onCleanup(() => clearTimeout(timeout))
+  })
 
   const setField = (key: "providerID" | "name" | "baseURL" | "apiKey", value: string) => {
     setForm(key, value)
@@ -226,7 +298,23 @@ export function DialogCustomProvider(props: Props) {
           </div>
 
           <div class="flex flex-col gap-3">
-            <label class="text-12-medium text-text-weak">{language.t("provider.custom.models.label")}</label>
+            <div class="flex items-center justify-between gap-3">
+              <label class="text-12-medium text-text-weak">{language.t("provider.custom.models.label")}</label>
+              <Button
+                type="button"
+                size="small"
+                variant="ghost"
+                onClick={() => fetchModelsMutation.mutate({})}
+                disabled={!canFetchModels() || fetchModelsMutation.isPending}
+              >
+                <Show
+                  when={!fetchModelsMutation.isPending}
+                  fallback={language.t("provider.custom.models.fetch.loading")}
+                >
+                  {language.t("provider.custom.models.fetch")}
+                </Show>
+              </Button>
+            </div>
             <For each={form.models}>
               {(m, i) => (
                 <div class="flex gap-2 items-start" data-row={m.row}>
