@@ -108,14 +108,17 @@ export default function MCP() {
       "clientId": "{env:MCP_CLIENT_ID}",
       "clientSecret": "{env:MCP_CLIENT_SECRET}",
       "scope": "tools:read tools:write",
+      "callbackPort": 19876,
       "redirectUri": "http://127.0.0.1:19876/mcp/oauth/callback"
     }
   }
 }`}</code></pre>
         <p>
           Omit <code>clientId</code> when the authorization server supports dynamic client
-          registration. Set <code>oauth</code> to <code>false</code> for simple bearer-token
-          servers.
+          registration. Codeplane includes <code>scope</code> in the dynamic client metadata
+          and uses <code>callbackPort</code> to build the default loopback redirect URI when
+          <code>redirectUri</code> is omitted. Set <code>oauth</code> to <code>false</code> for
+          simple bearer-token servers.
         </p>
 
         <h2>Debugging</h2>

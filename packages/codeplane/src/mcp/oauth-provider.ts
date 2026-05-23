@@ -18,6 +18,7 @@ export interface McpOAuthConfig {
   clientId?: string
   clientSecret?: string
   scope?: string
+  callbackPort?: number
   redirectUri?: string
 }
 
@@ -38,7 +39,7 @@ export class McpOAuthProvider implements OAuthClientProvider {
     if (this.config.redirectUri) {
       return this.config.redirectUri
     }
-    return `http://127.0.0.1:${OAUTH_CALLBACK_PORT}${OAUTH_CALLBACK_PATH}`
+    return `http://127.0.0.1:${this.config.callbackPort ?? OAUTH_CALLBACK_PORT}${OAUTH_CALLBACK_PATH}`
   }
 
   get clientMetadata(): OAuthClientMetadata {
@@ -48,6 +49,7 @@ export class McpOAuthProvider implements OAuthClientProvider {
       client_uri: "https://github.com/devinoldenburg/codeplane",
       grant_types: ["authorization_code", "refresh_token"],
       response_types: ["code"],
+      scope: this.config.scope,
       token_endpoint_auth_method: this.config.clientSecret ? "client_secret_post" : "none",
     }
   }

@@ -29,6 +29,9 @@ export const OAuth = Schema.Struct({
     description: "OAuth client secret (if required by the authorization server)",
   }),
   scope: Schema.optional(Schema.String).annotate({ description: "OAuth scopes to request during authorization" }),
+  callbackPort: Schema.optional(Schema.Number).annotate({
+    description: "Local OAuth callback port used when redirectUri is omitted. Defaults to 19876.",
+  }),
   redirectUri: Schema.optional(Schema.String).annotate({
     description: "OAuth redirect URI (default: http://127.0.0.1:19876/mcp/oauth/callback).",
   }),
