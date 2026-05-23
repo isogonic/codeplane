@@ -6,7 +6,6 @@ import { fileURLToPath } from "url"
 
 const dir = fileURLToPath(new URL("..", import.meta.url))
 process.chdir(dir)
-const publishTarball = "codeplane-publish.tgz"
 
 async function removePackedTarballs() {
   await Promise.all(Array.from(new Bun.Glob("*.tgz").scanSync()).map((file) => Bun.file(file).delete()))
@@ -23,9 +22,10 @@ async function published(name: string, version: string) {
 
 async function packForPublish() {
   await removePackedTarballs()
-  await $`bun pm pack --filename ${publishTarball}`
-  if (!(await Bun.file(publishTarball).exists())) throw new Error("No tarball created for @codeplane-ai/sdk")
-  return publishTarball
+  await $`bun pm pack --destination . --quiet`
+  const tarballs = Array.from(new Bun.Glob("*.tgz").scanSync())
+  if (tarballs.length !== 1) throw new Error(`Expected one tarball for @codeplane-ai/sdk, found ${tarballs.length}`)
+  return tarballs[0]
 }
 
 const originalText = await Bun.file("package.json").text()

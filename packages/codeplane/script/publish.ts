@@ -9,7 +9,6 @@ process.chdir(dir)
 const repo = process.env.GH_REPO ?? "devinoldenburg/codeplane"
 const repoURL = `https://github.com/${repo}`
 const npmOnly = process.env.CODEPLANE_PUBLISH_NPM_ONLY === "1"
-const publishTarball = "codeplane-publish.tgz"
 
 async function removePackedTarballs(dir: string) {
   await Promise.all(
@@ -28,9 +27,10 @@ async function published(name: string, version: string) {
 
 async function packForPublish(dir: string) {
   await removePackedTarballs(dir)
-  await $`bun pm pack --filename ${publishTarball}`.cwd(dir)
-  if (!(await Bun.file(`${dir}/${publishTarball}`).exists())) throw new Error(`No tarball created for ${dir}`)
-  return publishTarball
+  await $`bun pm pack --destination . --quiet`.cwd(dir)
+  const tarballs = Array.from(new Bun.Glob("*.tgz").scanSync({ cwd: dir }))
+  if (tarballs.length !== 1) throw new Error(`Expected one tarball for ${dir}, found ${tarballs.length}`)
+  return tarballs[0]
 }
 
 async function publish(dir: string, name: string, version: string) {
