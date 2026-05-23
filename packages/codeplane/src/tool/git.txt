@@ -10,6 +10,6 @@ Credential and host configuration:
 
 Safety:
 - Prefer specific operations before operation="run".
-- When Codeplane co-authoring is enabled in settings, operation="commit" and operation="run" with args beginning `commit` automatically append `Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com>`.
+- When Codeplane co-authoring is enabled in settings, operation="commit" and operation="run" with args beginning `commit` automatically append `Co-Authored-By: codeplane-agent[bot] <287208015+codeplane-agent[bot]@users.noreply.github.com>`.
 - For operation="run", pass Git arguments only, without the leading "git".
 - Never print tokens or credential values in messages.

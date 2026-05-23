@@ -627,7 +627,7 @@ export const dict = {
   "settings.general.row.followup.option.steer": "นำทาง",
   "settings.general.row.codeplaneCoauthor.title": "ผู้ร่วมเขียน Codeplane",
   "settings.general.row.codeplaneCoauthor.description":
-    "เพิ่ม Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com> ลงในคอมมิตที่สร้างผ่าน Codeplane",
+    "เพิ่ม Co-Authored-By: codeplane-agent[bot] <287208015+codeplane-agent[bot]@users.noreply.github.com> ลงในคอมมิตที่สร้างผ่าน Codeplane",
   "settings.general.row.reasoningSummaries.title": "แสดงสรุปการใช้เหตุผล",
   "settings.general.row.reasoningSummaries.description": "แสดงสรุปการใช้เหตุผลของโมเดลในไทม์ไลน์",
   "settings.general.row.shellToolPartsExpanded.title": "ขยายส่วนเครื่องมือ shell",

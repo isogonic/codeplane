@@ -629,7 +629,7 @@ export const dict = {
   "settings.general.row.followup.option.steer": "引导",
   "settings.general.row.codeplaneCoauthor.title": "Codeplane 共同作者",
   "settings.general.row.codeplaneCoauthor.description":
-    "为通过 Codeplane 创建的提交添加 Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com>",
+    "为通过 Codeplane 创建的提交添加 Co-Authored-By: codeplane-agent[bot] <287208015+codeplane-agent[bot]@users.noreply.github.com>",
   "settings.general.row.reasoningSummaries.title": "显示推理摘要",
   "settings.general.row.reasoningSummaries.description": "在时间线中显示模型推理摘要",
   "settings.general.row.shellToolPartsExpanded.title": "展开 shell 工具部分",

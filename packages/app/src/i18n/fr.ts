@@ -575,7 +575,7 @@ export const dict = {
   "settings.general.row.followup.option.steer": "Diriger",
   "settings.general.row.codeplaneCoauthor.title": "Coauteur Codeplane",
   "settings.general.row.codeplaneCoauthor.description":
-    "Ajoute Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com> aux commits effectués via Codeplane",
+    "Ajoute Co-Authored-By: codeplane-agent[bot] <287208015+codeplane-agent[bot]@users.noreply.github.com> aux commits effectués via Codeplane",
   "settings.general.row.reasoningSummaries.title": "Afficher les résumés de raisonnement",
   "settings.general.row.reasoningSummaries.description":
     "Afficher les résumés de raisonnement du modèle dans la chronologie",

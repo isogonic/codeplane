@@ -641,7 +641,7 @@ export const dict = {
   "settings.general.row.followup.option.steer": "Yönlendir",
   "settings.general.row.codeplaneCoauthor.title": "Codeplane ortak yazarı",
   "settings.general.row.codeplaneCoauthor.description":
-    "Codeplane üzerinden yapılan commitlere Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com> ekle",
+    "Codeplane üzerinden yapılan commitlere Co-Authored-By: codeplane-agent[bot] <287208015+codeplane-agent[bot]@users.noreply.github.com> ekle",
   "settings.general.row.reasoningSummaries.title": "Akıl yürütme özetlerini göster",
   "settings.general.row.reasoningSummaries.description": "Zaman çizelgesinde model akıl yürütme özetlerini görüntüle",
   "settings.general.row.shellToolPartsExpanded.title": "Kabuk araç bileşenlerini genişlet",

@@ -633,7 +633,7 @@ export const dict = {
   "settings.general.row.followup.option.steer": "Usmjeri",
   "settings.general.row.codeplaneCoauthor.title": "Codeplane koautor",
   "settings.general.row.codeplaneCoauthor.description":
-    "Dodaj Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com> commitima napravljenim kroz Codeplane",
+    "Dodaj Co-Authored-By: codeplane-agent[bot] <287208015+codeplane-agent[bot]@users.noreply.github.com> commitima napravljenim kroz Codeplane",
   "settings.general.row.reasoningSummaries.title": "Prikaži sažetke rasuđivanja",
   "settings.general.row.reasoningSummaries.description": "Prikaži sažetke rasuđivanja modela na vremenskoj traci",
 

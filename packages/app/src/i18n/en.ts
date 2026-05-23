@@ -960,7 +960,7 @@ export const dict = {
   "settings.general.row.followup.option.steer": "Steer",
   "settings.general.row.codeplaneCoauthor.title": "Codeplane co-author",
   "settings.general.row.codeplaneCoauthor.description":
-    "Add Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com> to commits made through Codeplane",
+    "Add Co-Authored-By: codeplane-agent[bot] <287208015+codeplane-agent[bot]@users.noreply.github.com> to commits made through Codeplane",
   "settings.general.row.showFileTree.title": "File tree",
   "settings.general.row.showFileTree.description": "Show the file tree toggle and panel in sessions",
   "settings.general.row.showNavigation.title": "Navigation controls",

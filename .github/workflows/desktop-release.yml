@@ -88,7 +88,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          gh_release() {
+            local attempt
+            for attempt in 1 2 3; do
+              if gh release "$@"; then
+                return 0
+              fi
+              sleep $((attempt * 5))
+            done
+            return 1
+          }
+
           title="${{ needs.resolve.outputs.source_tag }}"
+          desktop_tag="${{ needs.resolve.outputs.desktop_tag }}"
+          source_sha="$(git rev-parse HEAD)"
           notes_file="$(mktemp)"
           if gh release view "${{ needs.resolve.outputs.source_tag }}" --repo "${{ github.repository }}" --json name,body > base-release.json 2>/dev/null; then
             source_title="$(jq -r '.name // empty' base-release.json)"
@@ -121,8 +134,12 @@ jobs:
             echo ""
             cat "$notes_file"
           } > "$banner"
-          if gh release view "${{ needs.resolve.outputs.desktop_tag }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release edit "${{ needs.resolve.outputs.desktop_tag }}" \
+          if ! git ls-remote --exit-code --tags origin "refs/tags/${desktop_tag}" >/dev/null 2>&1; then
+            git tag "$desktop_tag" "$source_sha"
+            git push origin "refs/tags/${desktop_tag}"
+          fi
+          if gh release view "$desktop_tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh_release edit "$desktop_tag" \
               --title "$title" \
               --notes-file "$banner" \
               --repo "${{ github.repository }}"
@@ -134,8 +151,8 @@ jobs:
           # the release is visible immediately and downloads start landing
           # on it as soon as the first platform finishes building, instead
           # of being hidden as a draft until every platform completes.
-          gh release create "${{ needs.resolve.outputs.desktop_tag }}" \
-            --target "$(git rev-parse HEAD)" \
+          gh_release create "$desktop_tag" \
+            --target "$source_sha" \
             --title "$title" \
             --notes-file "$banner" \
             --repo "${{ github.repository }}"
@@ -320,6 +337,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          gh_release() {
+            local attempt
+            for attempt in 1 2 3; do
+              if gh release "$@"; then
+                return 0
+              fi
+              sleep $((attempt * 5))
+            done
+            return 1
+          }
+
           title="${{ needs.resolve.outputs.source_tag }}"
           notes_file="$(mktemp)"
           if gh release view "${{ needs.resolve.outputs.source_tag }}" --repo "${{ github.repository }}" --json name,body > base-release.json 2>/dev/null; then
@@ -348,7 +376,7 @@ jobs:
             echo ""
             cat "$notes_file"
           } > "$banner"
-          gh release edit "${{ needs.resolve.outputs.desktop_tag }}" \
+          gh_release edit "${{ needs.resolve.outputs.desktop_tag }}" \
             --draft=false \
             --latest \
             --title "$title" \

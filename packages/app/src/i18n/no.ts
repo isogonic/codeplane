@@ -636,7 +636,7 @@ export const dict = {
   "settings.general.row.followup.option.steer": "Styr",
   "settings.general.row.codeplaneCoauthor.title": "Codeplane-medforfatter",
   "settings.general.row.codeplaneCoauthor.description":
-    "Legg til Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com> i commits laget gjennom Codeplane",
+    "Legg til Co-Authored-By: codeplane-agent[bot] <287208015+codeplane-agent[bot]@users.noreply.github.com> i commits laget gjennom Codeplane",
   "settings.general.row.reasoningSummaries.title": "Vis resonneringssammendrag",
   "settings.general.row.reasoningSummaries.description": "Vis sammendrag av modellresonnering i tidslinjen",
   "settings.general.row.shellToolPartsExpanded.title": "Utvid shell-verktøydeler",

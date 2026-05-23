@@ -7,7 +7,7 @@ import { withStatics } from "@/util/schema"
 export const Info = Schema.Struct({
   coauthor: Schema.optional(Schema.Boolean).annotate({
     description:
-      "When true, commits made through Codeplane include Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com>.",
+      "When true, commits made through Codeplane include Co-Authored-By: codeplane-agent[bot] <287208015+codeplane-agent[bot]@users.noreply.github.com>.",
   }),
 })
   .annotate({ identifier: "CommitConfig" })

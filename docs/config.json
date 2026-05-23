@@ -90,7 +90,7 @@
       "type": "object",
       "properties": {
         "coauthor": {
-          "description": "When true, commits made through Codeplane include Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com>.",
+          "description": "When true, commits made through Codeplane include Co-Authored-By: codeplane-agent[bot] <287208015+codeplane-agent[bot]@users.noreply.github.com>.",
           "type": "boolean"
         }
       },

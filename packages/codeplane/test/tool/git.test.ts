@@ -166,7 +166,7 @@ describe("tool.git", () => {
           const log = yield* git.run({ operation: "run", cwd: dir, args: ["log", "-1", "--pretty=%B"] })
           expect(log.output).toContain("add coauthor file")
           expect(log.output).toContain(
-            "Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com>",
+            "Co-Authored-By: codeplane-agent[bot] <287208015+codeplane-agent[bot]@users.noreply.github.com>",
           )
         }),
       { git: true },
@@ -186,7 +186,7 @@ describe("tool.git", () => {
           const log = yield* git.run({ operation: "run", cwd: dir, args: ["log", "-1", "--pretty=%B"] })
           expect(log.output).toContain("add raw coauthor file")
           expect(log.output).toContain(
-            "Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com>",
+            "Co-Authored-By: codeplane-agent[bot] <287208015+codeplane-agent[bot]@users.noreply.github.com>",
           )
         }),
       { git: true },
@@ -205,7 +205,7 @@ describe("tool.git", () => {
 
           const log = yield* git.run({ operation: "run", cwd: dir, args: ["log", "-1", "--pretty=%B"] })
           expect(log.output).toContain("add plain file")
-          expect(log.output).not.toContain("Co-Authored-By: codeplaneai[bot]")
+          expect(log.output).not.toContain("Co-Authored-By: codeplane-agent[bot]")
         }),
       { git: true },
     ),

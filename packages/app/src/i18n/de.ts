@@ -686,7 +686,7 @@ export const dict = {
   "settings.general.row.followup.option.steer": "Steuern",
   "settings.general.row.codeplaneCoauthor.title": "Codeplane-Co-Autor",
   "settings.general.row.codeplaneCoauthor.description":
-    "Fügt Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com> zu Commits hinzu, die über Codeplane erstellt wurden",
+    "Fügt Co-Authored-By: codeplane-agent[bot] <287208015+codeplane-agent[bot]@users.noreply.github.com> zu Commits hinzu, die über Codeplane erstellt wurden",
   "settings.general.row.reasoningSummaries.title": "Reasoning-Zusammenfassungen anzeigen",
   "settings.general.row.reasoningSummaries.description":
     "Zusammenfassungen des Modell-Reasonings in der Timeline anzeigen",
