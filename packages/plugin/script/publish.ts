@@ -6,6 +6,10 @@ import { fileURLToPath } from "url"
 const dir = fileURLToPath(new URL("..", import.meta.url))
 process.chdir(dir)
 
+async function removePackedTarballs() {
+  await Promise.all(Array.from(new Bun.Glob("*.tgz").scanSync()).map((file) => Bun.file(file).delete()))
+}
+
 async function published(name: string, version: string) {
   return (await $`npm view ${name}@${version} version`.nothrow()).exitCode === 0
 }
@@ -30,8 +34,9 @@ if (await published(pkg.name, pkg.version)) {
   }
   await Bun.write("package.json", JSON.stringify(pkg, null, 2))
   try {
-    await $`bun pm pack`
-    await $`npm publish *.tgz --tag ${Script.channel} --access public`
+    await removePackedTarballs()
+    await $`bun pm pack --filename codeplane-publish.tgz`
+    await $`npm publish codeplane-publish.tgz --tag ${Script.channel} --access public`
   } finally {
     await Bun.write("package.json", originalText)
   }

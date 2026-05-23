@@ -10,6 +10,12 @@ const repo = process.env.GH_REPO ?? "devinoldenburg/codeplane"
 const repoURL = `https://github.com/${repo}`
 const npmOnly = process.env.CODEPLANE_PUBLISH_NPM_ONLY === "1"
 
+async function removePackedTarballs(dir: string) {
+  await Promise.all(
+    Array.from(new Bun.Glob("*.tgz").scanSync({ cwd: dir })).map((file) => Bun.file(`${dir}/${file}`).delete()),
+  )
+}
+
 async function published(name: string, version: string) {
   return (await $`npm view ${name}@${version} version`.nothrow()).exitCode === 0
 }
@@ -22,14 +28,14 @@ async function publish(dir: string, name: string, version: string) {
     console.log(`already published ${name}@${version}`)
     return
   }
-  await $`rm -f *.tgz`.cwd(dir)
-  await $`bun pm pack`.cwd(dir)
+  await removePackedTarballs(dir)
+  await $`bun pm pack --filename codeplane-publish.tgz`.cwd(dir)
   // Detect "already published" coming back from npm itself (race between
   // our `published()` check and the actual PUT, e.g. another retry of the
   // workflow ran in parallel) and treat it as success — the package IS
   // on the registry at the version we wanted, which is the only thing
   // the rest of this script cares about.
-  const result = await $`npm publish *.tgz --access public --tag ${Script.channel}`.cwd(dir).nothrow()
+  const result = await $`npm publish codeplane-publish.tgz --access public --tag ${Script.channel}`.cwd(dir).nothrow()
   if (result.exitCode !== 0) {
     const stderr = result.stderr.toString()
     if (/cannot publish over the previously published versions/i.test(stderr)) {
