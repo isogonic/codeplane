@@ -202,6 +202,55 @@ describe("getSessionContextMetrics", () => {
     expect(metrics.speed.peak).toBe(20)
   })
 
+  test("filters isolated TPS spikes from peak and sparkline data", () => {
+    const normal = Array.from({ length: 9 }, (_, index) =>
+      assistant(
+        `a${index + 1}`,
+        { input: 0, output: 250, reasoning: 0, read: 0, write: 0 },
+        0,
+        "openai",
+        "gpt-4.1",
+        {
+          created: index * 6_000,
+          completed: index * 6_000 + 5_000,
+        },
+      ),
+    )
+    const spike = assistant("spike", { input: 0, output: 700, reasoning: 0, read: 0, write: 0 }, 0, "openai", "gpt-4.1", {
+      created: 60_000,
+      completed: 60_500,
+    })
+
+    const metrics = getSessionContextMetrics([...normal, spike], [{ id: "openai", models: {} }])
+
+    expect(metrics.speed.turns.map((turn) => turn.id)).not.toContain("spike")
+    expect(metrics.speed.turns).toHaveLength(9)
+    expect(metrics.speed.peak).toBe(50)
+    expect(metrics.speed.recent).toBe(50)
+    expect(metrics.speed.current).toBe(50)
+  })
+
+  test("keeps consistently high TPS sessions", () => {
+    const messages = Array.from({ length: 8 }, (_, index) =>
+      assistant(
+        `a${index + 1}`,
+        { input: 0, output: 400, reasoning: 0, read: 0, write: 0 },
+        0,
+        "openai",
+        "gpt-4.1",
+        {
+          created: index * 2_000,
+          completed: index * 2_000 + 1_000,
+        },
+      ),
+    )
+
+    const metrics = getSessionContextMetrics(messages, [{ id: "openai", models: {} }])
+
+    expect(metrics.speed.turns).toHaveLength(8)
+    expect(metrics.speed.peak).toBe(400)
+  })
+
   test("preserves fallback labels and null usage when model metadata is missing", () => {
     const messages = [assistant("a1", { input: 40, output: 10, reasoning: 0, read: 0, write: 0 }, 0.1, "p-1", "m-1")]
     const providers = [{ id: "p-1", models: {} }]

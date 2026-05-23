@@ -65,6 +65,10 @@ type CompletedAssistantMessage = AssistantMessage & {
 const RECENT_WINDOW = 5
 const MIN_TURN_MS = 250
 const MIN_TURN_TOKENS = 4
+const OUTLIER_MIN_TURNS = 8
+const OUTLIER_MIN_TPS = 300
+const OUTLIER_RATIO = 8
+const OUTLIER_MAD_MULTIPLIER = 12
 
 const tokenTotal = (msg: AssistantMessage) => {
   return msg.tokens.input + msg.tokens.output + msg.tokens.reasoning + msg.tokens.cache.read + msg.tokens.cache.write
@@ -258,11 +262,26 @@ const weightedAverage = (turns: TurnSpeed[]): number | null => {
   return (tokens / ms) * 1000
 }
 
+// Peak is a display metric, not a billing/trace metric. A single locally tiny
+// step window can pair with a large provider usage block and produce nonsense
+// rates like 1k+ tok/s while the rest of the session sits around 50 tok/s.
+// Drop those isolated spikes before calculating the meter and sparkline.
+const removeSpeedOutliers = (turns: TurnSpeed[]): TurnSpeed[] => {
+  if (turns.length < OUTLIER_MIN_TURNS) return turns
+  const center = median(turns.map((turn) => turn.tps))
+  if (!center || center <= 0) return turns
+  const deviations = turns.map((turn) => Math.abs(turn.tps - center))
+  const mad = median(deviations) ?? 0
+  const spread = Math.max(mad, center * 0.15)
+  const threshold = Math.max(OUTLIER_MIN_TPS, center * OUTLIER_RATIO, center + spread * OUTLIER_MAD_MULTIPLIER)
+  return turns.filter((turn) => turn.tps <= threshold)
+}
+
 const buildSpeed = (
   messages: Message[],
   partsByMessage: Record<string, Part[] | undefined> | undefined,
 ): SpeedMetrics => {
-  const turns = collectTurnSpeeds(messages, partsByMessage)
+  const turns = removeSpeedOutliers(collectTurnSpeeds(messages, partsByMessage))
   if (turns.length === 0) {
     return { lifetime: null, recent: null, peak: null, current: null, turns }
   }
