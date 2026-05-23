@@ -116,6 +116,17 @@ jobs:
           VERSION: ${{ needs.resolve.outputs.version }}
         run: |
           set -euo pipefail
+          gh_release() {
+            local attempt
+            for attempt in 1 2 3; do
+              if gh release "$@"; then
+                return 0
+              fi
+              sleep $((attempt * 5))
+            done
+            return 1
+          }
+
           # The bare v<x.y.z> tag is the "general" release record for a
           # Codeplane version. The desktop / mobile workflows already
           # create their own per-platform records and the changelog
@@ -143,8 +154,10 @@ jobs:
 
           # Append auto-generated changelog (commits since previous tag).
           # `gh api` is more reliable than `gh release generate-notes` for
-          # tags that don't yet have a release record.
-          git fetch --force --tags origin 'refs/tags/v*:refs/tags/v*'
+          # tags that don't yet have a release record. Fetching tags is only
+          # for selecting a nicer previous_tag_name, so it must never block
+          # the release record after npm publishing has already succeeded.
+          git fetch --force --tags origin 'refs/tags/v*:refs/tags/v*' || true
           previous_tag=""
           while IFS= read -r candidate; do
             if [[ "$candidate" == *-desktop || "$candidate" == *-mobile || "$candidate" == "$TAG" ]]; then
@@ -158,15 +171,20 @@ jobs:
               -f tag_name="$TAG" \
               -f previous_tag_name="$previous_tag" \
               --jq '.body' >> "$notes_file" || true
+          else
+            gh api repos/${{ github.repository }}/releases/generate-notes \
+              -f tag_name="$TAG" \
+              -f target_commitish="$(git rev-parse HEAD)" \
+              --jq '.body' >> "$notes_file" || true
           fi
 
           if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release edit "$TAG" \
+            gh_release edit "$TAG" \
               --title "$TAG" \
               --notes-file "$notes_file" \
               --repo "${{ github.repository }}"
           else
-            gh release create "$TAG" \
+            gh_release create "$TAG" \
               --target "$(git rev-parse HEAD)" \
               --title "$TAG" \
               --notes-file "$notes_file" \
