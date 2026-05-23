@@ -5,6 +5,7 @@ import { ExperimentalHttpApiServer } from "../../src/server/routes/instance/http
 import { Instance } from "../../src/project/instance"
 import { Env } from "../../src/env"
 import { Log } from "../../src/util"
+import { Server } from "../../src/server/server"
 import { makeRuntime } from "../../src/effect/run-service"
 import { resetDatabase } from "../fixture/db"
 import { tmpdir } from "../fixture/fixture"
@@ -105,6 +106,36 @@ describe("provider HttpApi", () => {
           ])
         },
       })
+    } finally {
+      await upstream.stop()
+    }
+  })
+
+  test("serves custom provider models through default provider routes", async () => {
+    const upstream = Bun.serve({
+      port: 0,
+      fetch: async (req) => {
+        expect(new URL(req.url).pathname).toBe("/v1/models")
+        expect(req.headers.get("authorization")).toBe("Bearer test-key")
+        return Response.json({ data: [{ id: "ordis-model" }] })
+      },
+    })
+
+    try {
+      await using tmp = await tmpdir()
+      const response = await Server.Default().app.request(
+        `/provider/custom-models?directory=${encodeURIComponent(tmp.path)}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ baseURL: `${upstream.url}v1/`, apiKey: "test-key" }),
+        },
+      )
+      const body = (await response.json()) as { models: Array<{ id: string; name: string }> }
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get("content-type")).toContain("application/json")
+      expect(body.models).toEqual([{ id: "ordis-model", name: "ordis-model" }])
     } finally {
       await upstream.stop()
     }

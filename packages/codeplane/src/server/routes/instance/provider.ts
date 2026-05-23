@@ -11,6 +11,11 @@ import { errors } from "../../error"
 import { lazy } from "@/util/lazy"
 import { Effect } from "effect"
 import { makeRuntime } from "@/effect/run-service"
+import {
+  CustomProviderModelsInputZod,
+  CustomProviderModelsResultZod,
+  fetchCustomProviderModels,
+} from "./custom-provider-models"
 
 const configRuntime = makeRuntime(Config.Service, Config.defaultLayer)
 const providerRuntime = makeRuntime(Provider.Service, Provider.defaultLayer)
@@ -76,6 +81,33 @@ export const ProviderRoutes = lazy(() =>
         },
       }),
       async (c) => c.json(await providerAuthRuntime.runPromise((svc) => svc.methods())),
+    )
+    .post(
+      "/custom-models",
+      describeRoute({
+        summary: "Fetch custom provider models",
+        description: "Fetch models from an OpenAI-compatible custom provider endpoint.",
+        operationId: "provider.customModels",
+        responses: {
+          200: {
+            description: "Custom provider models",
+            content: {
+              "application/json": {
+                schema: resolver(CustomProviderModelsResultZod),
+              },
+            },
+          },
+          ...errors(400),
+        },
+      }),
+      validator("json", CustomProviderModelsInputZod),
+      async (c) => {
+        try {
+          return c.json(await fetchCustomProviderModels(c.req.valid("json")))
+        } catch {
+          return c.json({ data: {}, errors: [], success: false } as const, 400)
+        }
+      },
     )
     .post(
       "/:providerID/oauth/authorize",

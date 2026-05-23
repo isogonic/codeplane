@@ -8,6 +8,7 @@ import { Effect, Layer, Schema } from "effect"
 import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiError, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { Authorization } from "./auth"
 import { ExperimentalInstanceHttpApiAnnotations } from "./openapi"
+import { fetchCustomProviderModels } from "../custom-provider-models"
 
 const root = "/provider"
 
@@ -25,10 +26,6 @@ const CustomProviderModel = Schema.Struct({
 const CustomProviderModelsResult = Schema.Struct({
   models: Schema.Array(CustomProviderModel),
 })
-
-function modelsURL(baseURL: string) {
-  return `${baseURL.trim().replace(/\/+$/, "")}/models`
-}
 
 export const ProviderApi = HttpApi.make("provider")
   .add(
@@ -159,26 +156,9 @@ export const providerHandlers = Layer.unwrap(
     const customModels = Effect.fn("ProviderHttpApi.customModels")(function* (ctx: {
       payload: typeof CustomProviderModelsInput.Type
     }) {
-      const headers = new Headers(ctx.payload.headers ?? {})
-      if (ctx.payload.apiKey && !headers.has("authorization"))
-        headers.set("authorization", `Bearer ${ctx.payload.apiKey}`)
-
-      const result = yield* Effect.promise(async () => {
-        const response = await fetch(modelsURL(ctx.payload.baseURL), { headers })
-        if (!response.ok) throw new Error(`Failed to fetch models: ${response.status}`)
-        return (await response.json()) as { data?: Array<{ id?: unknown; name?: unknown }> }
-      }).pipe(Effect.catch(() => Effect.fail(new HttpApiError.BadRequest({}))))
-
-      return {
-        models: (result.data ?? [])
-          .map((item) =>
-            typeof item.id === "string" && item.id
-              ? { id: item.id, name: typeof item.name === "string" && item.name ? item.name : item.id }
-              : undefined,
-          )
-          .filter((item): item is { id: string; name: string } => !!item)
-          .sort((a, b) => a.id.localeCompare(b.id)),
-      }
+      return yield* Effect.promise(() => fetchCustomProviderModels(ctx.payload)).pipe(
+        Effect.catch(() => Effect.fail(new HttpApiError.BadRequest({}))),
+      )
     })
 
     return HttpApiBuilder.group(ProviderApi, "provider", (handlers) =>
