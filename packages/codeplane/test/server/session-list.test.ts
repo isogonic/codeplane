@@ -71,6 +71,30 @@ describe("session.list", () => {
     expect(sessions.map((s) => s.id)).toContain(created.id)
   })
 
+  test("excludes parent directory sessions from nested directory lists", async () => {
+    await using tmp = await tmpdir({ git: true })
+    const subdir = path.join(tmp.path, "packages", "app")
+    await fs.mkdir(subdir, { recursive: true })
+
+    const parent = await Instance.provide({
+      directory: tmp.path,
+      fn: async () => svc.create({ title: "parent-session" }),
+    })
+    const child = await Instance.provide({
+      directory: subdir,
+      fn: async () => svc.create({ title: "child-session" }),
+    })
+
+    const sessions = await Instance.provide({
+      directory: subdir,
+      fn: async () => [...svc.list({ directory: subdir, roots: true })],
+    })
+    const ids = sessions.map((s) => s.id)
+
+    expect(ids).toContain(child.id)
+    expect(ids).not.toContain(parent.id)
+  })
+
   test("excludes nested project sessions from ancestor directories", async () => {
     await using parent = await tmpdir()
     const nested = path.join(parent.path, "nested-project")

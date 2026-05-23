@@ -55,6 +55,11 @@ function statusToPhase(status: StatusShape, hasError: boolean, lastWasAssistant:
   return "queued"
 }
 
+export function shouldEmitCleanupTaskEvent(input: { stillEnabled: boolean; phase: Phase }) {
+  if (!input.stillEnabled) return true
+  return input.phase === "completed" || input.phase === "failed"
+}
+
 /** Pull a single-line preview from the most recent user message. */
 function previewFromUserMessage(messages: Message[] | undefined): string {
   if (!messages || messages.length === 0) return ""
@@ -94,6 +99,7 @@ interface PerSessionEmitterProps {
  */
 const PerSessionEmitter: Component<PerSessionEmitterProps> = (props) => {
   const sync = useSync()
+  const live = useLiveActivity()
 
   // Reactive snapshot of everything the emitter cares about for this
   // session. Splitting these into named memos keeps the dependency
@@ -156,14 +162,16 @@ const PerSessionEmitter: Component<PerSessionEmitterProps> = (props) => {
   )
 
   onCleanup(() => {
+    const currentPhase = phase()
+    if (!shouldEmitCleanupTaskEvent({ stillEnabled: live.enabled(props.sessionId), phase: currentPhase })) return
+
     // Best-effort terminal frame so the Lock Screen doesn't leave a
-    // stale "running" badge on a session the user has just opted out
-    // of. The shell's `setOptedInSessionIds` already drains the
-    // activity, so this is belt-and-braces.
+    // stale badge on a session the user has just opted out of, without
+    // falsely completing running work during route/project remounts.
     postTaskEvent({
       type: "codeplane:task",
       taskId: props.sessionId,
-      phase: "completed",
+      phase: currentPhase === "failed" ? "failed" : "completed",
       queueDepth: 0,
       currentMessage: previewTitle(),
       progress: 1,

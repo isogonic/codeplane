@@ -73,6 +73,7 @@ import {
   errorMessage,
   latestRootSession,
   sortedRootSessions,
+  visibleSessionDirectories,
   workspaceKey,
 } from "./layout/helpers"
 import {
@@ -743,14 +744,12 @@ export default function Layout(props: ParentProps) {
 
   const visibleSessionDirs = createMemo(() => {
     const project = currentProject()
-    if (!project) return [] as string[]
-    if (!workspaceSetting()) return [project.worktree]
-
-    const activeDir = currentDir()
-    return workspaceIds(project).filter((directory) => {
-      const expanded = store.workspaceExpanded[directory] ?? directory === project.worktree
-      const active = workspaceKey(directory) === workspaceKey(activeDir)
-      return expanded || active
+    return visibleSessionDirectories({
+      project,
+      currentDirectory: currentDir(),
+      workspacesEnabled: workspaceSetting(),
+      workspaces: workspaceIds(project),
+      expanded: store.workspaceExpanded,
     })
   })
 
@@ -2188,6 +2187,7 @@ export default function Layout(props: ParentProps) {
     })
     const projectId = createMemo(() => project()?.id ?? "")
     const worktree = createMemo(() => project()?.worktree ?? "")
+    const sessionDirectory = createMemo(() => currentDir() || worktree())
     const slug = createMemo(() => {
       const dir = worktree()
       if (!dir) return ""
@@ -2395,7 +2395,7 @@ export default function Layout(props: ParentProps) {
                           icon="new-session"
                           class="w-full"
                           onClick={() => {
-                            const dir = worktree()
+                            const dir = sessionDirectory()
                             if (!dir) return
                             navigateWithSidebarReset(`/${base64Encode(dir)}/session`)
                           }}
@@ -2407,6 +2407,7 @@ export default function Layout(props: ParentProps) {
                         <LocalWorkspace
                           ctx={workspaceSidebarCtx}
                           project={project}
+                          directory={sessionDirectory}
                           sortNow={sortNow}
                           mobile={panelProps.mobile}
                         />

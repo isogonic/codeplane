@@ -38,6 +38,7 @@ import { getSessionPrefetch, SESSION_PREFETCH_TTL } from "@/context/global-sync/
 import { useGlobalSync } from "@/context/global-sync"
 import { useLanguage } from "@/context/language"
 import { useLayout } from "@/context/layout"
+import { usePermission } from "@/context/permission"
 import { usePrompt } from "@/context/prompt"
 import { useSDK } from "@/context/sdk"
 import { useSettings } from "@/context/settings"
@@ -45,6 +46,8 @@ import { useSync } from "@/context/sync"
 import { useTerminal } from "@/context/terminal"
 import { type FollowupDraft, sendFollowupDraft } from "@/components/prompt-input/submit"
 import { createSessionComposerState, SessionComposerRegion } from "@/pages/session/composer"
+import { sessionPermissionRequest, sessionQuestionRequest } from "@/pages/session/composer/session-request-tree"
+import { nextRunnableFollowup, type FollowupItem } from "@/pages/session/followup-queue"
 import {
   createOpenReviewFile,
   createSessionTabs,
@@ -69,7 +72,6 @@ import { same } from "@/utils/same"
 import { formatServerError } from "@/utils/server-errors"
 
 const emptyUserMessages: UserMessage[] = []
-type FollowupItem = FollowupDraft & { id: string }
 type FollowupEdit = Pick<FollowupItem, "id" | "prompt" | "context">
 const emptyFollowups: FollowupItem[] = []
 
@@ -330,6 +332,7 @@ export default function Page() {
   const queryClient = useQueryClient()
   const dialog = useDialog()
   const language = useLanguage()
+  const permission = usePermission()
   const sdk = useSDK()
   const settings = useSettings()
   const prompt = usePrompt()
@@ -1565,6 +1568,25 @@ export default function Page() {
     return followup.items[id] ?? emptyFollowups
   })
 
+  const followupStore = (item: FollowupItem) => globalSync.child(item.sessionDirectory, { bootstrap: false })[0]
+
+  const followupSession = (sessionID: string, item: FollowupItem) =>
+    followupStore(item).session.find((entry) => entry.id === sessionID)
+
+  const followupSessionBusy = (sessionID: string, item: FollowupItem) => {
+    return (followupStore(item).session_status[sessionID] ?? { type: "idle" as const }).type !== "idle"
+  }
+
+  const followupBlocked = (sessionID: string, item: FollowupItem) => {
+    const store = followupStore(item)
+    return (
+      !!sessionQuestionRequest(store.session, store.question, sessionID) ||
+      !!sessionPermissionRequest(store.session, store.permission, sessionID, (request) => {
+        return !permission.autoResponds(request, item.sessionDirectory)
+      })
+    )
+  }
+
   const editingFollowup = createMemo(() => {
     const id = params.id
     if (!id) return
@@ -1579,12 +1601,20 @@ export default function Page() {
       if (input.manual) setFollowup("paused", input.sessionID, undefined)
       setFollowup("failed", input.sessionID, undefined)
 
+      const client =
+        item.sessionDirectory === sdk.directory
+          ? sdk.client
+          : sdk.createClient({
+              directory: item.sessionDirectory,
+              throwOnError: true,
+            })
+
       const ok = await sendFollowupDraft({
-        client: sdk.client,
+        client,
         sync,
         globalSync,
         draft: item,
-        optimisticBusy: item.sessionDirectory === sdk.directory,
+        optimisticBusy: true,
       }).catch((err) => {
         setFollowup("failed", input.sessionID, input.id)
         fail(err)
@@ -1644,10 +1674,11 @@ export default function Page() {
   const followupDock = createMemo(() => queuedFollowups().map((item) => ({ id: item.id, text: followupText(item) })))
 
   const sendFollowup = (sessionID: string, id: string, opts?: { manual?: boolean }) => {
-    const session = sync.session.get(sessionID)
-    if (session?.parentID || session?.time.archived) return Promise.resolve()
     const item = (followup.items[sessionID] ?? []).find((entry) => entry.id === id)
     if (!item) return Promise.resolve()
+    const session = followupSession(sessionID, item)
+    if (session?.parentID || session?.time.archived || session?.cronRunID) return Promise.resolve()
+    if (followupMutation.isPending) return Promise.resolve()
     if (followupBusy(sessionID)) return Promise.resolve()
 
     return followupMutation.mutateAsync({ sessionID, id, manual: opts?.manual })
@@ -1809,20 +1840,18 @@ export default function Page() {
   const timelineActions = createMemo(() => (archived() ? undefined : { revert }))
 
   createEffect(() => {
-    const sessionID = params.id
-    if (!sessionID) return
+    const next = nextRunnableFollowup({
+      items: followup.items,
+      failed: followup.failed,
+      paused: followup.paused,
+      sending: followupMutation.isPending,
+      session: followupSession,
+      busy: followupSessionBusy,
+      blocked: followupBlocked,
+    })
+    if (!next) return
 
-    const item = queuedFollowups()[0]
-    if (!item) return
-    if (followupBusy(sessionID)) return
-    if (followup.failed[sessionID] === item.id) return
-    if (followup.paused[sessionID]) return
-    if (isChildSession()) return
-    if (archived()) return
-    if (composer.blocked()) return
-    if (busy(sessionID)) return
-
-    void sendFollowup(sessionID, item.id)
+    void sendFollowup(next.sessionID, next.item.id)
   })
 
   createResizeObserver(

@@ -72,6 +72,25 @@ export const loadedRootSessionCount = (sessions: Session[] | undefined) =>
 export const hasMoreVisibleSessions = (input: { loadedRootCount: number; total: number; visible: number }) =>
   input.loadedRootCount < input.total && input.visible < input.total
 
+export function visibleSessionDirectories(input: {
+  project?: { worktree: string }
+  currentDirectory?: string
+  workspacesEnabled: boolean
+  workspaces: string[]
+  expanded?: Record<string, boolean | undefined>
+}) {
+  if (!input.project) return [] as string[]
+  if (!input.workspacesEnabled) return [input.currentDirectory || input.project.worktree]
+
+  const active = input.currentDirectory ? workspaceKey(input.currentDirectory) : undefined
+  const local = workspaceKey(input.project.worktree)
+  return input.workspaces.filter((directory) => {
+    const key = workspaceKey(directory)
+    const expanded = input.expanded?.[directory] ?? input.expanded?.[key] ?? key === local
+    return expanded || key === active
+  })
+}
+
 export const latestRootSession = (stores: SessionStore[], now: number) =>
   stores.flatMap((store) => roots(store)).sort(sortSessions(now))[0]
 

@@ -19,6 +19,7 @@ import {
   latestRootSession,
   loadedRootSessionCount,
   sortedRootSessions,
+  visibleSessionDirectories,
   workspaceKey,
 } from "./helpers"
 
@@ -124,6 +125,39 @@ describe("layout workspace helpers", () => {
   test("keeps local first while preserving known order", () => {
     const result = effectiveWorkspaceOrder("/root", ["/root", "/b", "/c"], ["/root", "/c", "/a", "/b"])
     expect(result).toEqual(["/root", "/c", "/b"])
+  })
+
+  test("uses the active nested folder as the session scope when workspaces are disabled", () => {
+    const result = visibleSessionDirectories({
+      project: { worktree: "/workspace" },
+      currentDirectory: "/workspace/packages/app",
+      workspacesEnabled: false,
+      workspaces: ["/workspace"],
+    })
+
+    expect(result).toEqual(["/workspace/packages/app"])
+  })
+
+  test("falls back to the project root session scope without an active directory", () => {
+    const result = visibleSessionDirectories({
+      project: { worktree: "/workspace" },
+      workspacesEnabled: false,
+      workspaces: ["/workspace"],
+    })
+
+    expect(result).toEqual(["/workspace"])
+  })
+
+  test("keeps expanded workspaces and the active workspace when workspaces are enabled", () => {
+    const result = visibleSessionDirectories({
+      project: { worktree: "/workspace" },
+      currentDirectory: "/workspace/packages/app",
+      workspacesEnabled: true,
+      workspaces: ["/workspace", "/workspace/worktree-a", "/workspace/packages/app"],
+      expanded: { "/workspace/worktree-a": true },
+    })
+
+    expect(result).toEqual(["/workspace", "/workspace/worktree-a", "/workspace/packages/app"])
   })
 
   test("finds the latest root session across workspaces", () => {

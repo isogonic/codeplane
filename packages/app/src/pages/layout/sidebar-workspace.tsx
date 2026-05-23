@@ -568,6 +568,7 @@ export const SortableWorkspace = (props: {
 export const LocalWorkspace = (props: {
   ctx: WorkspaceSidebarContext
   project: LocalProject
+  directory: Accessor<string>
   sortNow: Accessor<number>
   mobile?: boolean
 }): JSX.Element => {
@@ -575,14 +576,14 @@ export const LocalWorkspace = (props: {
   const language = useLanguage()
   const server = useServer()
   const workspace = createMemo(() => {
-    const [store] = globalSync.child(props.project.worktree)
+    const [store] = globalSync.child(props.directory())
     return store
   })
-  const slug = createMemo(() => base64Encode(props.project.worktree))
-  const sessions = createMemo(() => sortedRootSessions(workspace(), props.sortNow(), props.project.worktree))
+  const slug = createMemo(() => base64Encode(props.directory()))
+  const sessions = createMemo(() => sortedRootSessions(workspace(), props.sortNow(), props.directory()))
   const children = createMemo(() => childSessionIndex(workspace().session, props.sortNow()))
   const count = createMemo(() => sessions()?.length ?? 0)
-  const query = useQuery(() => ({ ...loadSessionsQuery(props.project.worktree, server.scope.key) }))
+  const query = useQuery(() => ({ ...loadSessionsQuery(props.directory(), server.scope.key) }))
   const loadedRootCount = createMemo(() => loadedRootSessionCount(workspace().session))
   const hasMore = createMemo(() =>
     hasMoreVisibleSessions({ loadedRootCount: loadedRootCount(), total: workspace().sessionTotal, visible: count() }),
@@ -593,7 +594,7 @@ export const LocalWorkspace = (props: {
     if (loadingAll) return
     loadingAll = true
     try {
-      await globalSync.project.loadSessions(props.project.worktree, { all: true })
+      await globalSync.project.loadSessions(props.directory(), { all: true })
     } finally {
       loadingAll = false
     }
@@ -606,7 +607,7 @@ export const LocalWorkspace = (props: {
         class="flex-1 min-h-0 overflow-y-auto no-scrollbar [overflow-anchor:none]"
       >
         <WorkspaceSessionList
-          directory={props.project.worktree}
+          directory={props.directory()}
           slug={slug}
           mobile={props.mobile}
           ctx={props.ctx}
@@ -626,7 +627,7 @@ export const LocalWorkspace = (props: {
         projectWorktree={props.project.worktree}
         footer
       />
-      <ArchivedSessionsButton directory={props.project.worktree} ctx={props.ctx} language={language} footer />
+      <ArchivedSessionsButton directory={props.directory()} ctx={props.ctx} language={language} footer />
     </div>
   )
 }
