@@ -68,6 +68,7 @@ export function ToolErrorCard(props: ToolErrorCardProps) {
     if (parts.length <= 1) return cleaned()
     return parts.slice(1).join(": ").trim() || cleaned()
   })
+  const summary = createMemo(() => body().split("\n").find((line) => line.trim())?.trim() ?? body())
 
   const copy = async () => {
     const text = cleaned()
@@ -88,43 +89,47 @@ export function ToolErrorCard(props: ToolErrorCardProps) {
       <Collapsible
         class="tool-collapsible"
         data-open={open() ? "true" : "false"}
+        variant="ghost"
         open={open()}
         onOpenChange={(value) => setState("open", value)}
       >
         <Collapsible.Trigger>
-          <div data-component="tool-trigger">
-            <div data-slot="basic-tool-tool-trigger-content">
-              <span data-slot="basic-tool-tool-indicator" data-component="tool-error-card-icon">
-                <Icon name="circle-ban-sign" size="small" style={{ "stroke-width": 1.5 }} />
-              </span>
-              <div data-slot="basic-tool-tool-info">
-                <div data-slot="basic-tool-tool-info-structured">
-                  <div data-slot="basic-tool-tool-info-main">
-                    <span data-slot="basic-tool-tool-title">{name()}</span>
-                    <Show
-                      when={split.href && split.subtitle}
-                      fallback={<span data-slot="basic-tool-tool-subtitle">{subtitle()}</span>}
-                    >
-                      <a
-                        data-slot="basic-tool-tool-subtitle"
-                        class="clickable subagent-link"
-                        href={split.href!}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {subtitle()}
-                      </a>
-                    </Show>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div data-slot="tool-error-trigger">
+            <span data-slot="tool-error-icon">
+              <Icon name="warning" size="small" style={{ "stroke-width": 1.5 }} />
+            </span>
+            <span data-slot="tool-error-tool">{name()}</span>
+            <Show when={subtitle()} keyed>
+              {(value) => (
+                <Show
+                  when={split.href && split.subtitle}
+                  fallback={<span data-slot="tool-error-kind">{value}</span>}
+                >
+                  <a
+                    data-slot="tool-error-kind"
+                    class="clickable subagent-link"
+                    href={split.href!}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {value}
+                  </a>
+                </Show>
+              )}
+            </Show>
+            <Show when={summary()} keyed>
+              {(value) => (
+                <span data-slot="tool-error-summary" title={value}>
+                  {value}
+                </span>
+              )}
+            </Show>
             <Collapsible.Arrow />
           </div>
         </Collapsible.Trigger>
         <Collapsible.Content>
-          <div data-slot="tool-error-card-content">
+          <div data-slot="tool-error-content">
             <Show when={open()}>
-              <div data-slot="tool-error-card-copy">
+              <div data-slot="tool-error-copy">
                 <Tooltip
                   value={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.toolErrorCard.copyError")}
                   placement="top"
@@ -144,7 +149,7 @@ export function ToolErrorCard(props: ToolErrorCardProps) {
                 </Tooltip>
               </div>
             </Show>
-            <Show when={body()} keyed>{(value) => <div data-slot="tool-error-card-description">{value}</div>}</Show>
+            <Show when={body()} keyed>{(value) => <div data-slot="tool-error-description">{value}</div>}</Show>
           </div>
         </Collapsible.Content>
       </Collapsible>
