@@ -9,6 +9,7 @@ export async function upgrade() {
   const config = await AppRuntime.runPromise(Config.Service.use((cfg) => cfg.getGlobal()))
   if (config.autoupdate === false || Flag.CODEPLANE_DISABLE_AUTOUPDATE) return
   const method = await AppRuntime.runPromise(Installation.Service.use((svc) => svc.method()))
+  if (!Installation.canUpgradeInPlace(method)) return
   const latest = await AppRuntime.runPromise(Installation.Service.use((svc) => svc.latest(method))).catch(() => {})
   if (!latest) return
 
@@ -26,7 +27,6 @@ export async function upgrade() {
     return
   }
 
-  if (method === "unknown") return
   await AppRuntime.runPromise(Installation.Service.use((svc) => svc.upgrade(method, latest)))
     .then(() => Bus.publish(Installation.Event.Updated, { version: latest }))
     .catch(() => {})

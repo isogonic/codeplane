@@ -546,11 +546,6 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
       info.current === "local" || info.current === "dev"
         ? language.t("settings.general.row.version.developmentBuild")
         : info.current
-    if (info.hasUpdate && info.latest)
-      return language.t("settings.general.row.version.descriptionHasUpdate", {
-        current,
-        latest: info.latest,
-      })
     // Without the desktop bridge (e.g., a remote browser viewing a
     // desktop-managed server) we can't drive the update from here, so we
     // still point the user at the desktop app. With the bridge, fall
@@ -558,9 +553,25 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
     // talks straight to electron-updater.
     if (info.method === "desktop" && !updates.hasDesktopBridge())
       return language.t("settings.general.row.version.descriptionDesktopManaged", { current })
+    if (info.method === "managed-local")
+      return language.t("settings.general.row.version.descriptionManagedLocal", { current })
     if (info.method === "unknown")
       return language.t("settings.general.row.version.descriptionUnknownMethod", { current })
+    if (info.hasUpdate && info.latest)
+      return language.t("settings.general.row.version.descriptionHasUpdate", {
+        current,
+        latest: info.latest,
+      })
     return language.t("settings.general.row.version.descriptionUpToDate", { current })
+  }
+
+  const canRunVersionUpdate = () => {
+    const info = versionInfo()
+    if (!info?.hasUpdate) return false
+    if (!info.latest) return false
+    if (info.method === "unknown" || info.method === "managed-local") return false
+    if (info.method === "desktop" && !updates.hasDesktopBridge()) return false
+    return true
   }
 
   const UpdatesSection = () => (
@@ -589,9 +600,7 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
             </Show>
             <Show
               when={
-                versionInfo()?.hasUpdate &&
-                versionInfo()?.method !== "unknown" &&
-                (versionInfo()?.method !== "desktop" || updates.hasDesktopBridge())
+                canRunVersionUpdate()
               }
               fallback={
                 <Button

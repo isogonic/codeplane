@@ -128,6 +128,7 @@ export const dict: Record<string, string> = {
   "ui.tool.bashInteractive": "Interactive shell",
   "ui.tool.bashInteractive.kill": "Stop",
   "ui.tool.ssh": "SSH",
+  "ui.tool.git": "Git",
   "ui.tool.patch": "Patch",
   "ui.tool.todos": "To-dos",
   "ui.tool.todos.read": "Read to-dos",

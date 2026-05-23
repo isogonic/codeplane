@@ -340,6 +340,17 @@ const TOOL_SAMPLES = {
     title: "Run session tests",
     metadata: { command: "bun test --filter session" },
   },
+  git: {
+    tool: "git",
+    input: { operation: "status", cwd: "/project", instance: "" },
+    output: "## main...origin/main\n M packages/ui/src/components/message-part.tsx",
+    title: "git status",
+    metadata: {
+      operation: "status",
+      command: ["git", "status", "--short", "--branch", "--untracked-files=all"],
+      exitCode: 0,
+    },
+  },
   edit: {
     tool: "edit",
     input: {

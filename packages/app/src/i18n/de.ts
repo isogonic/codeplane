@@ -707,6 +707,8 @@ export const dict = {
     "Du nutzt Version {{current}}. Automatische Updates sind für diese Installation nicht verfügbar — bitte manuell aktualisieren.",
   "settings.general.row.version.descriptionDesktopManaged":
     "Du nutzt Version {{current}}. Updates werden von der Codeplane-Desktop-App verwaltet — öffne den Updates-Bereich der Desktop-App, um nach einer neuen Version zu suchen.",
+  "settings.general.row.version.descriptionManagedLocal":
+    "Du nutzt Version {{current}}. Diese lokale Laufzeit wird vom Launcher verwaltet; starte Codeplane neu, um eine neuere Laufzeit zu verwenden.",
   "settings.general.row.version.action.check": "Nach Updates suchen",
   "settings.general.row.version.action.checking": "Suche…",
   "settings.general.row.version.action.update": "Jetzt aktualisieren",

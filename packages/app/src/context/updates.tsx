@@ -7,6 +7,7 @@ import { useLanguage } from "./language"
 import { type PlatformReleaseNotes, type PlatformUpdateStatus } from "./platform"
 import { formatServerError } from "@/utils/server-errors"
 import { DialogWhatsNew } from "@/components/dialog-whats-new"
+import { normalizeUpdateStatus } from "./update-version"
 
 export type ReleaseNotes = PlatformReleaseNotes
 
@@ -177,7 +178,7 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
         const url = `${globalSDK.url}/global/version${refresh ? "?refresh=1" : ""}`
         const response = await fetch(url)
         if (!response.ok) throw new Error(`Status ${response.status}`)
-        const next = (await response.json()) as PlatformUpdateStatus
+        const next = normalizeUpdateStatus((await response.json()) as PlatformUpdateStatus)
         const merged = desktopUpdater && next.method === "desktop" ? await mergeDesktopStatus(next) : next
         setStatus(merged)
         checkPostUpdate(merged.current)
@@ -190,7 +191,7 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
     const mergeDesktopStatus = async (next: PlatformUpdateStatus): Promise<PlatformUpdateStatus> => {
       if (!desktopUpdater) return next
       try {
-        const shell = await desktopUpdater.status()
+        const shell = normalizeUpdateStatus(await desktopUpdater.status())
         return {
           ...next,
           latest: shell.latest ?? next.latest,
@@ -412,20 +413,24 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
       return next
     }
 
-    // Subscribes to the *server's* update lifecycle events. Desktop-shell
-    // events (electron-updater) never reach this context — they are
-    // consumed by the selector page where the desktop install flow lives.
+    // Subscribes to the connected server's update lifecycle. Desktop-shell
+    // events are attached separately below when the Electron bridge exists.
     const unsub = globalSDK.event.listen((e) => {
       const event = e.details
       if (event.type === "installation.update-available") {
         const version = event.properties?.version
         if (!version) return
-        setStatus((prev) =>
-          prev
-            ? { ...prev, latest: version, hasUpdate: true }
-            : { current: "", latest: version, hasUpdate: true, method: "unknown" },
-        )
-        showAvailable(version)
+        let shouldAnnounce = false
+        setStatus((prev) => {
+          const next = normalizeUpdateStatus(
+            prev
+              ? { ...prev, latest: version, hasUpdate: true }
+              : { current: "", latest: version, hasUpdate: true, method: "unknown" },
+          )
+          shouldAnnounce = next.hasUpdate
+          return next
+        })
+        if (shouldAnnounce) showAvailable(version)
         return
       }
 
@@ -445,16 +450,21 @@ export const { use: useUpdates, provider: UpdatesProvider } = createSimpleContex
       desktopUnsubs.push(
         desktopUpdater.onUpdateAvailable((info) => {
           if (!info.version) return
-          setStatus((prev) =>
-            prev
-              ? { ...prev, latest: info.version, hasUpdate: true }
-              : { current: "", latest: info.version, hasUpdate: true, method: "desktop" },
-          )
-          showAvailable(info.version)
+          let shouldAnnounce = false
+          setStatus((prev) => {
+            const next = normalizeUpdateStatus(
+              prev
+                ? { ...prev, latest: info.version, hasUpdate: true }
+                : { current: "", latest: info.version, hasUpdate: true, method: "desktop" },
+            )
+            shouldAnnounce = next.hasUpdate
+            return next
+          })
+          if (shouldAnnounce) showAvailable(info.version)
         }),
         desktopUpdater.onUpdateNotAvailable((info) => {
           setStatus((prev) =>
-            prev ? { ...prev, latest: info?.version ?? prev.latest, hasUpdate: false } : prev,
+            prev ? normalizeUpdateStatus({ ...prev, latest: info?.version ?? prev.latest, hasUpdate: false }) : prev,
           )
         }),
         desktopUpdater.onUpdateDownloaded((info) => {

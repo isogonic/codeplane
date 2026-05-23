@@ -67,6 +67,10 @@ export function getReleaseType(current: string, latest: string): ReleaseType {
   return "patch"
 }
 
+export function canUpgradeInPlace(method: Method) {
+  return method !== "unknown" && method !== "desktop" && method !== "managed-local"
+}
+
 export const Info = z
   .object({
     version: z.string(),

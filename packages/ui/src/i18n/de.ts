@@ -157,6 +157,7 @@ export const dict = {
   "ui.fileSearch.close": "Suche schließen",
   "ui.tool.task": "Aufgabe",
   "ui.tool.skill": "Fähigkeit",
+  "ui.tool.git": "Git",
   "ui.basicTool.called": "`{{tool}}` aufgerufen",
   "ui.toolErrorCard.failed": "Fehlgeschlagen",
   "ui.toolErrorCard.copyError": "Fehler kopieren",

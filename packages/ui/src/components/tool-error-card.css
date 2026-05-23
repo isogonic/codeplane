@@ -1,6 +1,8 @@
-[data-component="card"][data-kind="tool-error-card"] {
-  --card-pad-y: 8px;
-  --card-line-pad: 12px;
+[data-component="tool-error-inline"] {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  color: var(--text-base);
 
   > [data-component="collapsible"].tool-collapsible {
     gap: 0px;
@@ -10,14 +12,41 @@
     gap: 4px;
   }
 
+  [data-component="tool-trigger"] {
+    min-height: 28px;
+    padding: 3px 0;
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 6px;
+  }
+
+  [data-component="tool-trigger"]:hover {
+    background-color: color-mix(in oklab, var(--destructive) 8%, transparent);
+  }
+
+  [data-slot="basic-tool-tool-trigger-content"] {
+    gap: 7px;
+  }
+
+  [data-slot="basic-tool-tool-title"] {
+    color: var(--text-strong);
+  }
+
+  [data-slot="basic-tool-tool-subtitle"] {
+    color: var(--text-weaker);
+  }
+
   [data-component="tool-error-card-icon"] [data-component="icon"] {
-    color: var(--card-accent);
+    color: var(--destructive);
   }
 
   [data-slot="tool-error-card-content"] {
     position: relative;
-    padding-left: 24px;
-    margin-bottom: 8px;
+    padding-left: 23px;
+    margin-top: -1px;
+    margin-bottom: 6px;
     -webkit-user-select: text;
     user-select: text;
   }
@@ -42,13 +71,23 @@
     pointer-events: auto;
   }
 
+  [data-slot="tool-error-card-description"] {
+    color: var(--text-weak);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-large);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
   [data-slot="tool-error-card-content"] :where(*)::selection {
-    background: var(--surface-critical-base);
-    color: var(--text-on-critical-base);
+    background: color-mix(in oklab, var(--destructive) 24%, transparent);
+    color: var(--text-strong);
   }
 
   [data-slot="tool-error-card-content"] :where(*)::-moz-selection {
-    background: var(--surface-critical-base);
-    color: var(--text-on-critical-base);
+    background: color-mix(in oklab, var(--destructive) 24%, transparent);
+    color: var(--text-strong);
   }
 }

@@ -2206,6 +2206,11 @@ function setupAutoUpdater() {
 
   autoUpdater.on("update-available", (info: UpdateInfo) => {
     desktopShellLatestVersion = info.version
+    if (compareVersions(info.version, app.getVersion()) <= 0) {
+      logger.log("main", "updater.update-available.ignored-current", { current: app.getVersion(), latest: info.version })
+      broadcastUpdater("updater:update-not-available", { version: info.version })
+      return
+    }
     broadcastUpdater("updater:update-available", { version: info.version })
   })
   autoUpdater.on("update-not-available", (info: UpdateInfo) => {

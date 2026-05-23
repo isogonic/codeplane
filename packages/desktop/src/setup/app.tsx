@@ -166,6 +166,43 @@ type DesktopUpdateState =
   | { kind: "manual-required"; current: string; latest: string | null; url: string }
   | { kind: "error"; current: string; message: string }
 
+function cleanVersion(input: string | null | undefined) {
+  return (input ?? "").trim().replace(/^[vV]/, "")
+}
+
+function versionParts(input: string) {
+  const parts = cleanVersion(input)
+    .replace(/-(desktop|mobile)$/i, "")
+    .split(/[+-]/)[0]
+    .split(".")
+    .map((part) => Number.parseInt(part, 10))
+  if (parts.length === 0 || parts.some((part) => !Number.isFinite(part))) return
+  return parts
+}
+
+function compareVersions(a: string | null | undefined, b: string | null | undefined) {
+  const leftClean = cleanVersion(a)
+  const rightClean = cleanVersion(b)
+  if (leftClean === rightClean) return 0
+  const left = versionParts(leftClean)
+  const right = versionParts(rightClean)
+  if (!left || !right) return leftClean.localeCompare(rightClean)
+  for (let i = 0; i < Math.max(left.length, right.length); i++) {
+    const diff = (left[i] ?? 0) - (right[i] ?? 0)
+    if (diff !== 0) return diff
+  }
+  return 0
+}
+
+function isVersionNewer(current: string | null | undefined, latest: string | null | undefined) {
+  const cleanCurrent = cleanVersion(current)
+  const cleanLatest = cleanVersion(latest)
+  if (!cleanLatest) return false
+  if (!cleanCurrent) return true
+  if (cleanCurrent === "dev" || cleanCurrent === "local") return false
+  return compareVersions(cleanLatest, cleanCurrent) > 0
+}
+
 // This card updates the desktop Electron shell itself. It checks GitHub
 // releases via electron-updater, downloads the matching installer, and
 // relaunches the app once the download is in place so the new shell takes
@@ -204,7 +241,7 @@ const DesktopUpdateCard: Component = () => {
     try {
       const status = await api.desktopUpdater.status()
       logSetup("desktop-update.status", status)
-      if (status.hasUpdate && status.latest) {
+      if (status.hasUpdate && status.latest && isVersionNewer(status.current, status.latest)) {
         setState({ kind: "available", current: status.current, latest: status.latest })
         void loadNotes(status.latest)
       } else {
@@ -231,11 +268,11 @@ const DesktopUpdateCard: Component = () => {
         setState({ kind: "error", current, message: result.error })
         return
       }
-      if (!result.updateAvailable) {
-        setState({ kind: "idle", current, latest: current })
+      const latest = result.version ?? current
+      if (!result.updateAvailable || !isVersionNewer(current, latest)) {
+        setState({ kind: "idle", current, latest })
         return
       }
-      const latest = result.version ?? current
       setState({ kind: "available", current, latest })
       void loadNotes(latest)
     } catch (error) {
@@ -267,13 +304,15 @@ const DesktopUpdateCard: Component = () => {
 
   const offAvailable = api.desktopUpdater.onUpdateAvailable((info) => {
     logSetup("desktop-update.event.available", info)
+    let shouldLoadNotes = false
     setState((prev) => {
-      const current = prev.kind === "loading" ? info.version : prev.current
-      const latest =
-        info.version || (prev.kind !== "loading" && "latest" in prev && prev.latest ? prev.latest : current)
+      const current = prev.kind === "loading" ? api.version : prev.current
+      const latest = info.version || (prev.kind !== "loading" && "latest" in prev && prev.latest ? prev.latest : current)
+      if (!isVersionNewer(current, latest)) return { kind: "idle", current, latest }
+      shouldLoadNotes = true
       return { kind: "available", current, latest }
     })
-    if (info.version) void loadNotes(info.version)
+    if (shouldLoadNotes && info.version) void loadNotes(info.version)
   })
   const offNotAvailable = api.desktopUpdater.onUpdateNotAvailable((info) => {
     logSetup("desktop-update.event.not-available", info)
@@ -2168,12 +2207,13 @@ export const App: Component = () => {
         }
 
         const current = target.local.binaryVersion || ""
-        if (current === latest) {
+        if (current && !isVersionNewer(current, latest)) {
           showToast({
             id: progressToastId,
             variant: "success",
             icon: "check",
-            title: `${targetLabel} is already on v${latest}`,
+            title: `${targetLabel} is already on v${current}`,
+            description: current === latest ? undefined : `Latest released version: v${latest}.`,
           })
           logSetup("instance.update.already-latest", { id, version: latest })
           return
@@ -2265,7 +2305,7 @@ export const App: Component = () => {
       }
       const cur = probed.version ?? undefined
       const lat = probed.latest ?? undefined
-      if (cur && lat && cur !== lat) {
+      if (cur && lat && isVersionNewer(cur, lat)) {
         showToast({
           id: progressToastId,
           variant: "default",

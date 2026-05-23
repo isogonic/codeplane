@@ -1,7 +1,6 @@
 import { type ComponentProps, createMemo, Show, splitProps } from "solid-js"
 import { createStore } from "solid-js/store"
 import stripAnsi from "strip-ansi"
-import { Card, CardDescription } from "./card"
 import { Collapsible } from "./collapsible"
 import { Icon } from "./icon"
 import { IconButton } from "./icon-button"
@@ -9,7 +8,7 @@ import { Tooltip } from "./tooltip"
 import { useI18n } from "../context/i18n"
 import { showToast } from "./toast"
 
-export interface ToolErrorCardProps extends Omit<ComponentProps<typeof Card>, "children" | "variant"> {
+export interface ToolErrorCardProps extends Omit<ComponentProps<"div">, "children"> {
   tool: string
   error: string
   defaultOpen?: boolean
@@ -38,6 +37,7 @@ export function ToolErrorCard(props: ToolErrorCardProps) {
       codesearch: "ui.tool.codesearch",
       bash: "ui.tool.shell",
       ssh: "ui.tool.ssh",
+      git: "ui.tool.git",
       apply_patch: "ui.tool.patch",
       question: "ui.tool.questions",
     }
@@ -84,7 +84,7 @@ export function ToolErrorCard(props: ToolErrorCardProps) {
   }
 
   return (
-    <Card {...rest} data-kind="tool-error-card" data-open={open() ? "true" : "false"} variant="error">
+    <div {...rest} data-component="tool-error-inline" data-open={open() ? "true" : "false"}>
       <Collapsible
         class="tool-collapsible"
         data-open={open() ? "true" : "false"}
@@ -144,10 +144,10 @@ export function ToolErrorCard(props: ToolErrorCardProps) {
                 </Tooltip>
               </div>
             </Show>
-            <Show when={body()} keyed>{(value) => <CardDescription>{value}</CardDescription>}</Show>
+            <Show when={body()} keyed>{(value) => <div data-slot="tool-error-card-description">{value}</div>}</Show>
           </div>
         </Collapsible.Content>
       </Collapsible>
-    </Card>
+    </div>
   )
 }

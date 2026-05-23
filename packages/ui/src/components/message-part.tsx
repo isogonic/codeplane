@@ -382,6 +382,12 @@ export function getToolInfo(tool: string, input: any = {}): ToolInfo {
         title: i18n.t("ui.tool.shell"),
         subtitle: input.description,
       }
+    case "git":
+      return {
+        icon: "branch",
+        title: i18n.t("ui.tool.git"),
+        subtitle: input.operation,
+      }
     case "edit":
       return {
         icon: "code-lines",
@@ -2345,6 +2351,183 @@ ToolRegistry.register({
             <div data-slot="basic-tool-tool-info-main">
               <span data-slot="basic-tool-tool-title">
                 <TextShimmer text={i18n.t("ui.tool.ssh")} active={pending()} />
+              </span>
+              <Show when={subtitle()} keyed>
+                {(value) => (
+                  <Show when={pending()} fallback={<ShellSubmessage text={value} animate={sawPending} />}>
+                    <span data-slot="basic-tool-tool-subtitle">{value}</span>
+                  </Show>
+                )}
+              </Show>
+            </div>
+          </div>
+        }
+      >
+        <div data-component="bash-output">
+          <div data-slot="bash-copy">
+            <Tooltip
+              value={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
+              placement="top"
+              gutter={4}
+            >
+              <IconButton
+                icon={copied() ? "check" : "copy"}
+                size="small"
+                variant="secondary"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={handleCopy}
+                aria-label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
+              />
+            </Tooltip>
+          </div>
+          <div data-slot="bash-scroll" data-scrollable>
+            <pre data-slot="bash-pre">
+              <code>{text()}</code>
+            </pre>
+          </div>
+        </div>
+      </BasicTool>
+    )
+  },
+})
+
+const gitOperationTitle: Record<string, string> = {
+  config_set: "config",
+  config_list: "config",
+  credential_set: "credential",
+  credential_list: "credentials",
+  credential_remove: "credential",
+}
+
+function stringArray(value: unknown) {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is string => typeof item === "string" && item.length > 0)
+}
+
+function redactGitText(text: string) {
+  return text
+    .replace(/(https?:\/\/)([^/@\s]+)@/gi, "$1<redacted>@")
+    .replace(/((?:authorization|credential|password|token|extraheader)[^\s:=]*\s*[:=]\s*)[^\s]+/gi, "$1<redacted>")
+}
+
+function redactGitArg(arg: string) {
+  if (/(authorization|credential|password|token|extraheader)/i.test(arg)) return "<redacted>"
+  return redactGitText(arg)
+}
+
+function gitOperation(input: Record<string, unknown>, metadata: Record<string, unknown>) {
+  if (typeof metadata.operation === "string" && metadata.operation) return metadata.operation
+  if (typeof input.operation === "string" && input.operation) return input.operation
+  return "status"
+}
+
+function gitTitleOperation(input: Record<string, unknown>, operation: string) {
+  const args = stringArray(input.args)
+  if (operation === "run" && args[0]) return redactGitArg(args[0]).replace(/[-_]/g, " ")
+  return (gitOperationTitle[operation] ?? operation).replace(/[-_]/g, " ")
+}
+
+function compactGitPath(input: unknown, directory?: string) {
+  if (typeof input !== "string" || !input) return ""
+  const relative = relativizeProjectPath(input, directory)
+  if (relative !== input) return relative.replace(/^[/\\]/, "") || getFilename(input) || "."
+  if (!/^(?:[A-Za-z]:)?[/\\]/.test(input)) return input
+  return getFilename(input) || input
+}
+
+function gitSubtitle(input: Record<string, unknown>, metadata: Record<string, unknown>, cwd: string) {
+  const files = stringArray(input.files)
+  const target = [
+    metadata.name,
+    input.name,
+    metadata.instance,
+    input.instance,
+    metadata.branch,
+    input.branch,
+    metadata.ref,
+    input.ref,
+    metadata.remote,
+    input.remote,
+    input.host,
+    input.url,
+  ].find((value): value is string => typeof value === "string" && value.length > 0)
+  return [target ? redactGitArg(target) : undefined, files.length ? `${files.length} file${files.length === 1 ? "" : "s"}` : undefined, cwd]
+    .filter((value): value is string => typeof value === "string" && value.length > 0)
+    .join(" · ")
+}
+
+function gitInputCommand(input: Record<string, unknown>, operation: string) {
+  const args = stringArray(input.args).map(redactGitArg)
+  const files = stringArray(input.files).map(redactGitArg)
+  if (operation === "run" && args.length) return ["git", ...args].join(" ")
+  if (operation === "commit") {
+    return ["git", "commit", ...(input.all ? ["-a"] : []), ...(files.length ? files : [])].join(" ")
+  }
+  if (operation === "add") return ["git", "add", ...(files.length ? files : ["."])].join(" ")
+  if (operation === "restore") return ["git", "restore", ...files].join(" ")
+  if (operation === "fetch")
+    return ["git", "fetch", input.branch ? (input.remote ?? "origin") : (input.remote ?? "--all"), input.branch, ...args]
+      .filter((value): value is string => typeof value === "string" && value.length > 0)
+      .join(" ")
+  if (operation === "pull" || operation === "push")
+    return ["git", operation, input.setUpstream ? "-u" : undefined, input.remote, input.branch, ...args]
+      .filter((value): value is string => typeof value === "string" && value.length > 0)
+      .join(" ")
+  if (operation === "merge" || operation === "rebase")
+    return ["git", operation, input.ref, ...args]
+      .filter((value): value is string => typeof value === "string" && value.length > 0)
+      .join(" ")
+  if (operation === "diff" || operation === "log" || operation === "show")
+    return ["git", operation, input.ref, ...files, ...args]
+      .filter((value): value is string => typeof value === "string" && value.length > 0)
+      .join(" ")
+  return ["git", operation.replace(/_/g, " "), ...args].join(" ")
+}
+
+function gitCommand(input: Record<string, unknown>, metadata: Record<string, unknown>, operation: string) {
+  const command = stringArray(metadata.command).map(redactGitArg)
+  if (command.length) return command.join(" ")
+  return gitInputCommand(input, operation)
+}
+
+ToolRegistry.register({
+  name: "git",
+  render(props) {
+    const data = useData()
+    const i18n = useI18n()
+    const pending = () => props.status === "pending" || props.status === "running"
+    const sawPending = pending()
+    const operation = createMemo(() => gitOperation(props.input, props.metadata))
+    const title = createMemo(() => `${i18n.t("ui.tool.git")} ${gitTitleOperation(props.input, operation())}`)
+    const cwd = createMemo(() => compactGitPath(props.input.cwd, data.directory))
+    const subtitle = createMemo(() => gitSubtitle(props.input, props.metadata, cwd()))
+    const command = createMemo(() => gitCommand(props.input, props.metadata, operation()))
+    const text = createMemo(() => {
+      const out = redactGitText(
+        stripAnsi(props.output || (typeof props.metadata.output === "string" ? props.metadata.output : "") || ""),
+      )
+      return `$ ${command()}${out ? "\n\n" + out : ""}`
+    })
+    const [copied, setCopied] = createSignal(false)
+
+    const handleCopy = async () => {
+      const content = text()
+      if (!content) return
+      await copyText(i18n, content, i18n.t("ui.message.copiedCode"))
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+
+    return (
+      <BasicTool
+        {...props}
+        icon="branch"
+        animated
+        trigger={
+          <div data-slot="basic-tool-tool-info-structured">
+            <div data-slot="basic-tool-tool-info-main">
+              <span data-slot="basic-tool-tool-title">
+                <TextShimmer text={title()} active={pending()} />
               </span>
               <Show when={subtitle()} keyed>
                 {(value) => (

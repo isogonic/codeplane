@@ -2,7 +2,7 @@
 import { ToolErrorCard } from "./tool-error-card"
 
 const docs = `### Overview
-Tool call failure summary styled like a tool trigger.
+Tool call failure summary styled as an inline tool row.
 
 ### API
 - Required: \`tool\` (tool id, e.g. apply_patch, bash)

@@ -61,6 +61,14 @@ describe("installation", () => {
       expect(Installation.isSameVersion("v26.5.44", "26.5.44")).toBe(true)
       expect(Installation.cleanVersion("v27.0.0")).toBe("27.0.0")
     })
+
+    test("only package-manager and self-hosted methods can upgrade in place", () => {
+      expect(Installation.canUpgradeInPlace("npm")).toBe(true)
+      expect(Installation.canUpgradeInPlace("selfhosted")).toBe(true)
+      expect(Installation.canUpgradeInPlace("desktop")).toBe(false)
+      expect(Installation.canUpgradeInPlace("managed-local")).toBe(false)
+      expect(Installation.canUpgradeInPlace("unknown")).toBe(false)
+    })
   })
 
   describe("latest", () => {

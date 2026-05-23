@@ -27,7 +27,7 @@ let lastAnnounced: string | undefined
 function shouldSkip(method: Method) {
   if (InstallationLocal) return true
   if (InstallationVersion === "local" || InstallationVersion === "dev") return true
-  if (method === "unknown") return true
+  if (!Installation.canUpgradeInPlace(method)) return true
   return false
 }
 

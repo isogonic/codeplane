@@ -41,7 +41,19 @@ export const UpgradeCommand = cmd<unknown, { target?: string; check?: boolean }>
     process.stdout.write(`Current : ${InstallationVersion}\n`)
     process.stdout.write(`Method  : ${method}\n`)
 
-    if (method === "unknown") {
+    if (!Installation.canUpgradeInPlace(method)) {
+      if (method === "desktop") {
+        process.stderr.write(
+          `\nThis Codeplane server is managed by the desktop app. Use the desktop Updates panel to update the shell, or update local runtimes from the instance selector.\n`,
+        )
+        process.exit(2)
+      }
+      if (method === "managed-local") {
+        process.stderr.write(
+          `\nThis Codeplane server is a managed local runtime. Restart Codeplane to pick up the newest runtime, or run \`codeplane instance local install <version>\` to pre-fetch one.\n`,
+        )
+        process.exit(2)
+      }
       process.stderr.write(
         `\nCannot determine how this build of codeplane was installed, so no automatic upgrade path exists.\n` +
           `Re-install manually from https://github.com/devinoldenburg/codeplane/releases/latest, or use the\n` +

@@ -992,6 +992,8 @@ export const dict = {
     "You are on version {{current}}. Automatic updates are unavailable for this install — update manually.",
   "settings.general.row.version.descriptionDesktopManaged":
     "You are on version {{current}}. Updates are managed by the Codeplane desktop app — open the desktop's Updates panel to check for a new version.",
+  "settings.general.row.version.descriptionManagedLocal":
+    "You are on version {{current}}. This local runtime is managed by the launcher; restart Codeplane to pick up a newer runtime.",
   "settings.general.row.version.action.check": "Check for updates",
   "settings.general.row.version.action.checking": "Checking…",
   "settings.general.row.version.action.update": "Update now",
