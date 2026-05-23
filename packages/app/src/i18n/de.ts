@@ -98,7 +98,7 @@ export const dict = {
   "dialog.provider.tag.recommended": "Empfohlen",
   "dialog.provider.codeplane.note": "Kuratierte Modelle inklusive Claude, GPT, Gemini und mehr",
   "dialog.provider.codeplane.tagline": "Zuverlässige, optimierte Modelle",
-  "dialog.provider.anthropic.note": "Mit Claude Pro/Max oder API-Schlüssel verbinden",
+  "dialog.provider.anthropic.note": "Mit einem Anthropic-API-Schlüssel verbinden",
   "dialog.provider.copilot.note": "Mit Copilot oder API-Schlüssel verbinden",
   "dialog.provider.openai.note": "Mit ChatGPT Pro/Plus oder API-Schlüssel verbinden",
   "dialog.provider.google.note": "Gemini-Modelle für schnelle, strukturierte Antworten",

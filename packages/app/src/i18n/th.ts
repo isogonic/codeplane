@@ -100,7 +100,7 @@ export const dict = {
   "dialog.provider.tag.recommended": "แนะนำ",
   "dialog.provider.codeplane.note": "โมเดลที่คัดสรร รวมถึง Claude, GPT, Gemini และอื่น ๆ",
   "dialog.provider.codeplane.tagline": "โมเดลที่เชื่อถือได้และปรับให้เหมาะสม",
-  "dialog.provider.anthropic.note": "เข้าถึงโมเดล Claude โดยตรง รวมถึง Pro และ Max",
+  "dialog.provider.anthropic.note": "เชื่อมต่อด้วยคีย์ API ของ Anthropic",
   "dialog.provider.copilot.note": "โมเดล AI สำหรับการช่วยเหลือในการเขียนโค้ดผ่าน GitHub Copilot",
   "dialog.provider.openai.note": "โมเดล GPT สำหรับงาน AI ทั่วไปที่รวดเร็วและมีความสามารถ",
   "dialog.provider.google.note": "โมเดล Gemini สำหรับการตอบสนองที่รวดเร็วและมีโครงสร้าง",

@@ -92,7 +92,7 @@ export const dict = {
   "dialog.provider.tag.recommended": "推奨",
   "dialog.provider.codeplane.note": "Claude, GPT, Geminiなどを含む厳選されたモデル",
   "dialog.provider.codeplane.tagline": "信頼性の高い最適化モデル",
-  "dialog.provider.anthropic.note": "Claude Pro/MaxまたはAPIキーで接続",
+  "dialog.provider.anthropic.note": "Anthropic APIキーで接続",
   "dialog.provider.copilot.note": "CopilotまたはAPIキーで接続",
   "dialog.provider.openai.note": "ChatGPT Pro/PlusまたはAPIキーで接続",
   "dialog.provider.google.note": "高速で構造化された応答のためのGeminiモデル",

@@ -100,7 +100,7 @@ export const dict = {
   "dialog.provider.tag.recommended": "Preporučeno",
   "dialog.provider.codeplane.note": "Kurirani modeli uključujući Claude, GPT, Gemini i druge",
   "dialog.provider.codeplane.tagline": "Pouzdani optimizovani modeli",
-  "dialog.provider.anthropic.note": "Direktan pristup Claude modelima, uključujući Pro i Max",
+  "dialog.provider.anthropic.note": "Poveži se pomoću Anthropic API ključa",
   "dialog.provider.copilot.note": "AI modeli za pomoć pri kodiranju putem GitHub Copilot",
   "dialog.provider.openai.note": "GPT modeli za brze, sposobne opšte AI zadatke",
   "dialog.provider.google.note": "Gemini modeli za brze, strukturirane odgovore",

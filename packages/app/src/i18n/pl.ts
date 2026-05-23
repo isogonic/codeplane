@@ -92,7 +92,7 @@ export const dict = {
   "dialog.provider.tag.recommended": "Zalecane",
   "dialog.provider.codeplane.note": "Wyselekcjonowane modele, w tym Claude, GPT, Gemini i inne",
   "dialog.provider.codeplane.tagline": "Niezawodne, zoptymalizowane modele",
-  "dialog.provider.anthropic.note": "Bezpośredni dostęp do modeli Claude, w tym Pro i Max",
+  "dialog.provider.anthropic.note": "Połącz za pomocą klucza API Anthropic",
   "dialog.provider.copilot.note": "Modele AI do pomocy w kodowaniu przez GitHub Copilot",
   "dialog.provider.openai.note": "Modele GPT do szybkich i wszechstronnych zadań AI",
   "dialog.provider.google.note": "Modele Gemini do szybkich i ustrukturyzowanych odpowiedzi",

@@ -104,7 +104,7 @@ export const dict = {
   "dialog.provider.tag.recommended": "Önerilen",
   "dialog.provider.codeplane.note": "Claude, GPT, Gemini ve daha fazlasını içeren seçilmiş modeller",
   "dialog.provider.codeplane.tagline": "Güvenilir optimize edilmiş modeller",
-  "dialog.provider.anthropic.note": "Pro ve Max dahil Claude modellerine doğrudan erişim",
+  "dialog.provider.anthropic.note": "Anthropic API anahtarıyla bağlan",
   "dialog.provider.copilot.note": "GitHub Copilot üzerinden kodlama yardımı için yapay zekâ modelleri",
   "dialog.provider.openai.note": "Hızlı ve yetenekli genel yapay zekâ görevleri için GPT modelleri",
   "dialog.provider.google.note": "Hızlı ve yapılandırılmış yanıtlar için Gemini modelleri",

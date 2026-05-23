@@ -92,7 +92,7 @@ export const dict = {
   "dialog.provider.tag.recommended": "추천",
   "dialog.provider.codeplane.note": "Claude, GPT, Gemini 등을 포함한 엄선된 모델",
   "dialog.provider.codeplane.tagline": "신뢰할 수 있는 최적화 모델",
-  "dialog.provider.anthropic.note": "Claude Pro/Max 또는 API 키로 연결",
+  "dialog.provider.anthropic.note": "Anthropic API 키로 연결",
   "dialog.provider.copilot.note": "Copilot 또는 API 키로 연결",
   "dialog.provider.openai.note": "ChatGPT Pro/Plus 또는 API 키로 연결",
   "dialog.provider.google.note": "빠르고 구조화된 응답을 위한 Gemini 모델",

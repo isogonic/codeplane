@@ -92,7 +92,7 @@ export const dict = {
   "dialog.provider.tag.recommended": "موصى به",
   "dialog.provider.codeplane.note": "نماذج مختارة تتضمن Claude و GPT و Gemini والمزيد",
   "dialog.provider.codeplane.tagline": "نماذج موثوقة ومحسنة",
-  "dialog.provider.anthropic.note": "اتصل باستخدام Claude Pro/Max أو مفتاح API",
+  "dialog.provider.anthropic.note": "اتصل باستخدام مفتاح API من Anthropic",
   "dialog.provider.copilot.note": "اتصل باستخدام Copilot أو مفتاح API",
   "dialog.provider.openai.note": "اتصل باستخدام ChatGPT Pro/Plus أو مفتاح API",
   "dialog.provider.google.note": "نماذج Gemini لاستجابات سريعة ومنظمة",

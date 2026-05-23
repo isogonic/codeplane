@@ -104,7 +104,7 @@ export const dict = {
   "dialog.provider.tag.recommended": "推薦",
   "dialog.provider.codeplane.note": "精選模型，包含 Claude、GPT、Gemini 等等",
   "dialog.provider.codeplane.tagline": "可靠的優化模型",
-  "dialog.provider.anthropic.note": "使用 Claude Pro/Max 或 API 金鑰連線",
+  "dialog.provider.anthropic.note": "使用 Anthropic API 金鑰連線",
   "dialog.provider.openai.note": "使用 ChatGPT Pro/Plus 或 API 金鑰連線",
   "dialog.provider.copilot.note": "使用 Copilot 或 API 金鑰連線",
   "dialog.provider.google.note": "Gemini 模型，提供快速且結構化的回應",

@@ -127,7 +127,7 @@ export const dict = {
   "dialog.provider.tag.recommended": "推荐",
   "dialog.provider.codeplane.note": "包含 Claude、GPT、Gemini 等的精选模型",
   "dialog.provider.codeplane.tagline": "可靠的优化模型",
-  "dialog.provider.anthropic.note": "使用 Claude Pro/Max 或 API 密钥连接",
+  "dialog.provider.anthropic.note": "使用 Anthropic API 密钥连接",
   "dialog.provider.copilot.note": "使用 Copilot 或 API 密钥连接",
   "dialog.provider.openai.note": "使用 ChatGPT Pro/Plus 或 API 密钥连接",
   "dialog.provider.google.note": "使用 Google 账号或 API 密钥连接",
