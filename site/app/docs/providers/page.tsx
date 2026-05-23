@@ -116,6 +116,20 @@ codeplane web --port 4096`}</code></pre>
           <code>local-vllm</code> later can make old sessions point at a missing provider.
         </p>
 
+        <h2>Google Vertex Anthropic</h2>
+        <pre><code>{`export GOOGLE_CLOUD_PROJECT=my-gcp-project
+export VERTEX_LOCATION=us
+
+codeplane web --port 4096`}</code></pre>
+        <p>
+          Claude models on Google Vertex use <code>google-vertex</code> or{" "}
+          <code>google-vertex-anthropic</code>. For continental multi-regions{" "}
+          <code>us</code> and <code>eu</code>, Codeplane automatically uses Google's Regional{" "}
+          Endpoint Platform host, for example <code>aiplatform.us.rep.googleapis.com</code>.
+          Regional locations such as <code>us-central1</code> continue to use the standard{" "}
+          <code>{`{location}-aiplatform.googleapis.com`}</code> host.
+        </p>
+
         <h2>Model controls</h2>
         <ul>
           <li><strong><code>model</code></strong> sets the default model for normal sessions.</li>

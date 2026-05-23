@@ -61,6 +61,38 @@ function paid(providers: Awaited<ReturnType<typeof list>>) {
   return Object.values(item.models).filter((model) => model.cost.input > 0).length
 }
 
+function languageBaseURL(language: unknown) {
+  return (language as { config: { baseURL: string } }).config.baseURL
+}
+
+function vertexClaudeModel(providerID: "google-vertex" | "google-vertex-anthropic"): Provider.Model {
+  return {
+    id: ModelID.make("claude-sonnet-4-6@default"),
+    providerID: ProviderID.make(providerID),
+    api: {
+      id: "claude-sonnet-4-6@default",
+      url: "https://${GOOGLE_VERTEX_ENDPOINT}/v1/projects/${GOOGLE_VERTEX_PROJECT}/locations/${GOOGLE_VERTEX_LOCATION}/publishers/anthropic/models",
+      npm: "@ai-sdk/google-vertex/anthropic",
+    },
+    name: "Claude Sonnet 4.6",
+    capabilities: {
+      temperature: true,
+      reasoning: true,
+      attachment: true,
+      toolcall: true,
+      input: { text: true, audio: false, image: true, video: false, pdf: true },
+      output: { text: true, audio: false, image: false, video: false, pdf: false },
+      interleaved: false,
+    },
+    cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
+    limit: { context: 200000, output: 64000 },
+    status: "active",
+    options: {},
+    headers: {},
+    release_date: "2026-01-01",
+  }
+}
+
 test("provider loaded from env variable", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
@@ -2371,6 +2403,87 @@ test("Google Vertex: supports OpenAI compatible models", async () => {
 
       expect(model).toBeDefined()
       expect(model.api.npm).toBe("@ai-sdk/openai-compatible")
+    },
+  })
+})
+
+test("Google Vertex: uses REP endpoint for Claude continental multi-regions", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "codeplane.json"),
+        JSON.stringify({
+          $schema: "https://example.invalid/config.json",
+        }),
+      )
+    },
+  })
+
+  await Instance.provide({
+    directory: tmp.path,
+    init: async () => {
+      set("GOOGLE_CLOUD_PROJECT", "test-project")
+      set("VERTEX_LOCATION", "eu")
+    },
+    fn: async () => {
+      const language = await getLanguage(vertexClaudeModel("google-vertex"))
+      expect(languageBaseURL(language)).toBe(
+        "https://aiplatform.eu.rep.googleapis.com/v1/projects/test-project/locations/eu/publishers/anthropic/models",
+      )
+    },
+  })
+})
+
+test("Google Vertex Anthropic: uses REP endpoint for continental multi-regions", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "codeplane.json"),
+        JSON.stringify({
+          $schema: "https://example.invalid/config.json",
+        }),
+      )
+    },
+  })
+
+  await Instance.provide({
+    directory: tmp.path,
+    init: async () => {
+      set("GOOGLE_CLOUD_PROJECT", "test-project")
+      set("VERTEX_LOCATION", "us")
+    },
+    fn: async () => {
+      const language = await getLanguage(vertexClaudeModel("google-vertex-anthropic"))
+      expect(languageBaseURL(language)).toBe(
+        "https://aiplatform.us.rep.googleapis.com/v1/projects/test-project/locations/us/publishers/anthropic/models",
+      )
+    },
+  })
+})
+
+test("Google Vertex: keeps regional Claude endpoints unchanged", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "codeplane.json"),
+        JSON.stringify({
+          $schema: "https://example.invalid/config.json",
+        }),
+      )
+    },
+  })
+
+  await Instance.provide({
+    directory: tmp.path,
+    init: async () => {
+      set("GOOGLE_CLOUD_PROJECT", "test-project")
+      set("VERTEX_LOCATION", "europe-west1")
+    },
+    fn: async () => {
+      const language = await getLanguage(vertexClaudeModel("google-vertex"))
+      expect(languageBaseURL(language)).toBe(
+        "https://europe-west1-aiplatform.googleapis.com/v1/projects/test-project/locations/europe-west1/publishers/anthropic/models",
+      )
     },
   })
 })
