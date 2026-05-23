@@ -57,6 +57,14 @@ export function providerModelEntries(input: {
     .sort((a, b) => a.model.name.localeCompare(b.model.name) || a.id.localeCompare(b.id))
 }
 
+export function filterProviderModelEntries<T extends { id: string; model: { name: string } }>(entries: T[], query: string) {
+  const normalized = query.trim().toLowerCase()
+  if (!normalized) return entries
+  return entries.filter(
+    (entry) => entry.id.toLowerCase().includes(normalized) || entry.model.name.toLowerCase().includes(normalized),
+  )
+}
+
 function modelConfig(model: Model): ProviderModelConfig {
   const limit =
     model.limit.context && model.limit.output

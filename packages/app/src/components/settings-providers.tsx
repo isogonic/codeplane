@@ -18,7 +18,12 @@ import { DialogConnectProvider } from "./dialog-connect-provider"
 import { DialogSelectProvider } from "./dialog-select-provider"
 import { DialogCustomProvider } from "./dialog-custom-provider"
 import { SettingsList } from "./settings-list"
-import { buildProviderModelConfig, providerModelCatalog, providerModelEntries } from "./settings-provider-models"
+import {
+  buildProviderModelConfig,
+  filterProviderModelEntries,
+  providerModelCatalog,
+  providerModelEntries,
+} from "./settings-provider-models"
 
 type ProviderSource = "env" | "api" | "config" | "custom"
 type ProviderItem = ReturnType<ReturnType<typeof useProviders>["connected"]>[number]
@@ -295,6 +300,7 @@ function ProviderModelsDialog(props: { provider: Provider }) {
     added: {} as Record<string, Provider["models"][string]>,
     addModelID: "",
     addModelName: "",
+    search: "",
     addError: "",
     error: "",
   })
@@ -316,6 +322,7 @@ function ProviderModelsDialog(props: { provider: Provider }) {
       }),
     ].sort((a, b) => a.model.name.localeCompare(b.model.name) || a.id.localeCompare(b.id))
   })
+  const filteredEntries = createMemo(() => filterProviderModelEntries(entries(), state.search))
 
   const selectedIDs = createMemo(() =>
     entries()
@@ -471,6 +478,22 @@ function ProviderModelsDialog(props: { provider: Provider }) {
           </div>
         </div>
 
+        <div class="mx-2.5">
+          <TextField
+            variant="normal"
+            type="search"
+            value={state.search}
+            onChange={(value) => setState("search", value)}
+            placeholder={language.t("common.search.placeholder")}
+            label={language.t("common.search.placeholder")}
+            hideLabel
+            spellcheck={false}
+            autocorrect="off"
+            autocomplete="off"
+            autocapitalize="off"
+          />
+        </div>
+
         <form class="mx-2.5 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2" onSubmit={addModel}>
           <TextField
             variant="normal"
@@ -507,14 +530,14 @@ function ProviderModelsDialog(props: { provider: Provider }) {
         <div class="px-2.5">
           <SettingsList>
             <Show
-              when={entries().length > 0}
+              when={filteredEntries().length > 0}
               fallback={
                 <div class="px-4 py-10 text-center text-12-regular text-text-weak">
                   {language.t("settings.providers.models.empty")}
                 </div>
               }
             >
-              <For each={entries()}>
+              <For each={filteredEntries()}>
                 {(entry) => (
                   <div class="flex flex-wrap items-center justify-between gap-4 py-3 border-b border-border-weak-base last:border-none">
                     <div class="min-w-0">

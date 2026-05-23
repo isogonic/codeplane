@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import type { Model, Provider, ProviderConfig } from "@codeplane-ai/sdk/v2/client"
-import { buildProviderModelConfig, providerModelEntries } from "./settings-provider-models"
+import { buildProviderModelConfig, filterProviderModelEntries, providerModelEntries } from "./settings-provider-models"
 
 const model = (providerID: string, id: string, name = id): Model => ({
   id,
@@ -121,6 +121,21 @@ describe("provider model configuration helpers", () => {
       ["llama", true],
       ["sonnet", false],
     ])
+  })
+
+  test("filters provider models by name or id", () => {
+    const entries = providerModelEntries({
+      provider: provider("ordis", [
+        model("ordis", "abliterated-model", "Abliterated Model"),
+        model("ordis", "nvidia/active-speaker-detection", "Active Speaker Detection"),
+        model("ordis", "agent-max", "Agent Max"),
+      ]),
+    })
+
+    expect(filterProviderModelEntries(entries, "speaker").map((entry) => entry.id)).toEqual([
+      "nvidia/active-speaker-detection",
+    ])
+    expect(filterProviderModelEntries(entries, "AGENT").map((entry) => entry.id)).toEqual(["agent-max"])
   })
 
   test("builds whitelist config and clears stale blacklist", () => {
