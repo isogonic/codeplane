@@ -9,6 +9,7 @@ process.chdir(dir)
 const repo = process.env.GH_REPO ?? "devinoldenburg/codeplane"
 const repoURL = `https://github.com/${repo}`
 const npmOnly = process.env.CODEPLANE_PUBLISH_NPM_ONLY === "1"
+const publishTarball = "codeplane-publish.tgz"
 
 async function removePackedTarballs(dir: string) {
   await Promise.all(
@@ -17,7 +18,19 @@ async function removePackedTarballs(dir: string) {
 }
 
 async function published(name: string, version: string) {
-  return (await $`npm view ${name}@${version} version`.nothrow()).exitCode === 0
+  return (
+    (await Bun.spawn(["npm", "view", `${name}@${version}`, "version"], {
+      stdout: "ignore",
+      stderr: "ignore",
+    }).exited) === 0
+  )
+}
+
+async function packForPublish(dir: string) {
+  await removePackedTarballs(dir)
+  await $`bun pm pack --filename ${publishTarball}`.cwd(dir)
+  if (!(await Bun.file(`${dir}/${publishTarball}`).exists())) throw new Error(`No tarball created for ${dir}`)
+  return publishTarball
 }
 
 async function publish(dir: string, name: string, version: string) {
@@ -28,14 +41,13 @@ async function publish(dir: string, name: string, version: string) {
     console.log(`already published ${name}@${version}`)
     return
   }
-  await removePackedTarballs(dir)
-  await $`bun pm pack --filename codeplane-publish.tgz`.cwd(dir)
+  const tarball = await packForPublish(dir)
   // Detect "already published" coming back from npm itself (race between
   // our `published()` check and the actual PUT, e.g. another retry of the
   // workflow ran in parallel) and treat it as success — the package IS
   // on the registry at the version we wanted, which is the only thing
   // the rest of this script cares about.
-  const result = await $`npm publish codeplane-publish.tgz --access public --tag ${Script.channel}`.cwd(dir).nothrow()
+  const result = await $`npm publish ${tarball} --access public --tag ${Script.channel}`.cwd(dir).nothrow()
   if (result.exitCode !== 0) {
     const stderr = result.stderr.toString()
     if (/cannot publish over the previously published versions/i.test(stderr)) {
