@@ -46,7 +46,7 @@ export function createInstanceStore(file: string) {
         : state.instances.map((item, index) => (index === existing ? instance : item))
     await write(file, {
       instances,
-      lastInstanceID: instance.id,
+      lastInstanceID: state.lastInstanceID,
     })
     return instances
   }
@@ -56,7 +56,7 @@ export function createInstanceStore(file: string) {
     const instances = state.instances.filter((item) => item.id !== id)
     await write(file, {
       instances,
-      lastInstanceID: state.lastInstanceID === id ? instances[0]?.id : state.lastInstanceID,
+      lastInstanceID: state.lastInstanceID === id ? undefined : state.lastInstanceID,
     })
     return instances
   }

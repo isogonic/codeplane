@@ -71,10 +71,16 @@ describe("save", () => {
     expect(list).toHaveLength(1)
     expect(list[0]?.id).toBe("a")
   })
-  test("save updates lastInstanceID", async () => {
+  test("save preserves lastInstanceID", async () => {
+    const store = createInstanceStore(file)
+    await store.setLast("selected")
+    await store.save(sample("a"))
+    expect(await store.getLast()).toBe("selected")
+  })
+  test("save does not create lastInstanceID", async () => {
     const store = createInstanceStore(file)
     await store.save(sample("a"))
-    expect(await store.getLast()).toBe("a")
+    expect(await store.getLast()).toBeUndefined()
   })
   test("save replaces existing instance", async () => {
     const store = createInstanceStore(file)
@@ -145,23 +151,26 @@ describe("remove", () => {
     const list = await store.remove("nope")
     expect(list).toHaveLength(1)
   })
-  test("remove updates lastInstanceID when last is removed", async () => {
+  test("remove clears lastInstanceID when last is removed", async () => {
     const store = createInstanceStore(file)
     await store.save(sample("a"))
     await store.save(sample("b"))
+    await store.setLast("b")
     await store.remove("b")
-    expect(await store.getLast()).toBe("a")
+    expect(await store.getLast()).toBeUndefined()
   })
   test("remove leaves lastInstanceID untouched if not removed", async () => {
     const store = createInstanceStore(file)
     await store.save(sample("a"))
     await store.save(sample("b"))
+    await store.setLast("b")
     await store.remove("a")
     expect(await store.getLast()).toBe("b")
   })
   test("remove last empties lastInstanceID", async () => {
     const store = createInstanceStore(file)
     await store.save(sample("only"))
+    await store.setLast("only")
     await store.remove("only")
     expect(await store.getLast()).toBeUndefined()
   })
@@ -340,10 +349,10 @@ describe("edge cases", () => {
 })
 
 describe("stress: serial saves", () => {
-  test("100 sequential saves end with correct last", async () => {
+  test("100 sequential saves do not select a last instance", async () => {
     const store = createInstanceStore(file)
     for (let i = 0; i < 100; i++) await store.save(sample(`x${i}`))
     expect((await store.list()).length).toBe(100)
-    expect(await store.getLast()).toBe("x99")
+    expect(await store.getLast()).toBeUndefined()
   })
 })

@@ -85,7 +85,7 @@ export function mobileInstanceStore(headersStore: HeadersStore) {
       idx === -1
         ? [...state.instances, persisted]
         : state.instances.map((item, i) => (i === idx ? persisted : item))
-    await writeState({ instances: next, lastInstanceID: instance.id })
+    await writeState({ instances: next, lastInstanceID: state.lastInstanceID })
     if (instance.headers && Object.keys(instance.headers).length > 0 && !("__secure" in instance.headers)) {
       await headersStore.set(instance.id, instance.headers)
     }

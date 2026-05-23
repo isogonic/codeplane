@@ -559,6 +559,9 @@ export const dict = {
   "settings.general.row.followup.description": "اختر ما إذا كانت طلبات المتابعة توجه فورًا أو تنتظر في قائمة انتظار",
   "settings.general.row.followup.option.queue": "قائمة انتظار",
   "settings.general.row.followup.option.steer": "توجيه",
+  "settings.general.row.codeplaneCoauthor.title": "مؤلف مشارك في Codeplane",
+  "settings.general.row.codeplaneCoauthor.description":
+    "أضف Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com> إلى الالتزامات التي تُنشأ عبر Codeplane",
   "settings.general.row.reasoningSummaries.title": "إظهار ملخصات الاستنتاج",
   "settings.general.row.reasoningSummaries.description": "عرض ملخصات استنتاج النموذج في الشريط الزمني",
   "settings.general.row.shellToolPartsExpanded.title": "توسيع أجزاء أداة shell",

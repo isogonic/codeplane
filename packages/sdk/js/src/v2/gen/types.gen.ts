@@ -1897,7 +1897,7 @@ export type ServerConfig = {
  */
 export type CommitConfig = {
   /**
-   * When true, commits made through Codeplane include Co-Authored-By: Codeplane <noreply@codeplane.cc>.
+   * When true, commits made through Codeplane include Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com>.
    */
   coauthor?: boolean
 }

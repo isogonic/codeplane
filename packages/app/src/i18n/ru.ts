@@ -632,6 +632,9 @@ export const dict = {
     "Выберите, отправлять ли уточняющие вопросы сразу или помещать их в очередь",
   "settings.general.row.followup.option.queue": "Очередь",
   "settings.general.row.followup.option.steer": "Направлять",
+  "settings.general.row.codeplaneCoauthor.title": "Соавтор Codeplane",
+  "settings.general.row.codeplaneCoauthor.description":
+    "Добавляет Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com> к коммитам, созданным через Codeplane",
   "settings.general.row.reasoningSummaries.title": "Показывать сводки рассуждений",
   "settings.general.row.reasoningSummaries.description": "Отображать сводки рассуждений модели в ленте",
 

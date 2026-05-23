@@ -622,6 +622,9 @@ export const dict = {
   "settings.general.row.followup.description": "選擇後續追問提示是立即引導還是進入佇列等待",
   "settings.general.row.followup.option.queue": "佇列",
   "settings.general.row.followup.option.steer": "引導",
+  "settings.general.row.codeplaneCoauthor.title": "Codeplane 共同作者",
+  "settings.general.row.codeplaneCoauthor.description":
+    "為透過 Codeplane 建立的提交加入 Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com>",
   "settings.general.row.reasoningSummaries.title": "顯示推理摘要",
   "settings.general.row.reasoningSummaries.description": "在時間軸中顯示模型推理摘要",
 

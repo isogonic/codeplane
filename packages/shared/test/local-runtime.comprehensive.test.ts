@@ -15,6 +15,12 @@ import {
 
 const env = {
   CODEPLANE_HOME_DIR: process.env.CODEPLANE_HOME_DIR,
+  CODEPLANE_GLOBAL_HOME_DIR: process.env.CODEPLANE_GLOBAL_HOME_DIR,
+  CODEPLANE_BIN_DIR: process.env.CODEPLANE_BIN_DIR,
+  CODEPLANE_DATA_DIR: process.env.CODEPLANE_DATA_DIR,
+  CODEPLANE_CACHE_DIR: process.env.CODEPLANE_CACHE_DIR,
+  CODEPLANE_STATE_DIR: process.env.CODEPLANE_STATE_DIR,
+  CODEPLANE_LOG_DIR: process.env.CODEPLANE_LOG_DIR,
   CODEPLANE_NPM_REGISTRY: process.env.CODEPLANE_NPM_REGISTRY,
   npm_config_registry: process.env.npm_config_registry,
 }
@@ -25,6 +31,12 @@ let originalFetch: typeof globalThis.fetch
 beforeEach(async () => {
   home = await fs.mkdtemp(path.join(os.tmpdir(), "codeplane-shared-comp-"))
   process.env.CODEPLANE_HOME_DIR = home
+  delete process.env.CODEPLANE_GLOBAL_HOME_DIR
+  delete process.env.CODEPLANE_BIN_DIR
+  delete process.env.CODEPLANE_DATA_DIR
+  delete process.env.CODEPLANE_CACHE_DIR
+  delete process.env.CODEPLANE_STATE_DIR
+  delete process.env.CODEPLANE_LOG_DIR
   delete process.env.CODEPLANE_NPM_REGISTRY
   delete process.env.npm_config_registry
   originalFetch = globalThis.fetch
@@ -34,6 +46,18 @@ afterEach(async () => {
   globalThis.fetch = originalFetch
   if (env.CODEPLANE_HOME_DIR === undefined) delete process.env.CODEPLANE_HOME_DIR
   else process.env.CODEPLANE_HOME_DIR = env.CODEPLANE_HOME_DIR
+  if (env.CODEPLANE_GLOBAL_HOME_DIR === undefined) delete process.env.CODEPLANE_GLOBAL_HOME_DIR
+  else process.env.CODEPLANE_GLOBAL_HOME_DIR = env.CODEPLANE_GLOBAL_HOME_DIR
+  if (env.CODEPLANE_BIN_DIR === undefined) delete process.env.CODEPLANE_BIN_DIR
+  else process.env.CODEPLANE_BIN_DIR = env.CODEPLANE_BIN_DIR
+  if (env.CODEPLANE_DATA_DIR === undefined) delete process.env.CODEPLANE_DATA_DIR
+  else process.env.CODEPLANE_DATA_DIR = env.CODEPLANE_DATA_DIR
+  if (env.CODEPLANE_CACHE_DIR === undefined) delete process.env.CODEPLANE_CACHE_DIR
+  else process.env.CODEPLANE_CACHE_DIR = env.CODEPLANE_CACHE_DIR
+  if (env.CODEPLANE_STATE_DIR === undefined) delete process.env.CODEPLANE_STATE_DIR
+  else process.env.CODEPLANE_STATE_DIR = env.CODEPLANE_STATE_DIR
+  if (env.CODEPLANE_LOG_DIR === undefined) delete process.env.CODEPLANE_LOG_DIR
+  else process.env.CODEPLANE_LOG_DIR = env.CODEPLANE_LOG_DIR
   if (env.CODEPLANE_NPM_REGISTRY === undefined) delete process.env.CODEPLANE_NPM_REGISTRY
   else process.env.CODEPLANE_NPM_REGISTRY = env.CODEPLANE_NPM_REGISTRY
   if (env.npm_config_registry === undefined) delete process.env.npm_config_registry

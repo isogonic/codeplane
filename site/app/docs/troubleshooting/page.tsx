@@ -27,28 +27,64 @@ export default function Troubleshooting() {
       <DocsLayout active="/docs/troubleshooting/">
         <h1>Troubleshooting</h1>
         <p className="lede">
-          Start with logs, version, config, and the health endpoint. Most failures reduce to one of
-          four things: wrong binary/version, wrong home directory, missing auth, or a proxy buffering
-          long-lived streams.
+          Start with the exact binary, version, config paths, and health endpoint. Most failures
+          reduce to wrong <code>PATH</code> order, wrong binary version, missing TUI assets, missing
+          auth, or a proxy buffering long-lived streams.
         </p>
 
         <h2>Baseline commands</h2>
-        <pre><code>{`codeplane --version
+        <pre><code>{`which -a codeplane
+codeplane --version
 codeplane --help
+codeplane config paths
 codeplane serve --port 4096 --hostname 127.0.0.1 --print-logs --log-level DEBUG
 curl -fsS http://127.0.0.1:4096/global/health
 curl -fsS http://127.0.0.1:4096/global/version`}</code></pre>
+        <p>
+          If the first <code>which -a</code> entry is not the install you expect, fix that before
+          debugging the server. Shells can also cache command paths; after moving binaries, run{" "}
+          <code>hash -r</code> in bash/zsh or open a new terminal.
+        </p>
 
         <h2>Install problems</h2>
         <table>
           <thead><tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr></thead>
           <tbody>
-            <tr><td><code>codeplane: command not found</code></td><td>npm/Bun global bin directory is not in <code>PATH</code>.</td><td>Print <code>npm bin -g</code> or <code>bun pm bin -g</code>, add it to <code>PATH</code>, then reopen the shell.</td></tr>
-            <tr><td>Wrong version after upgrade</td><td>Multiple binaries installed.</td><td>Run <code>which -a codeplane</code> and remove the older binary first in <code>PATH</code>.</td></tr>
-            <tr><td>Desktop opens an old runtime</td><td>Managed local runtime cache is pinned.</td><td>Use <code>codeplane instance local update</code> or remove the saved local instance and add it again.</td></tr>
-            <tr><td>Postinstall fails on <code>node-pty</code></td><td>Native dependency repair failed.</td><td>Re-run install with the repo-supported Bun version, then run <code>bun --cwd packages/codeplane fix-node-pty</code> in a checkout.</td></tr>
+            <tr><td><code>codeplane: command not found</code></td><td>No Codeplane directory or package-manager global bin directory is on <code>PATH</code>.</td><td>Run <code>~/.codeplane/bin/codeplane --version</code>. If that works, add <code>export PATH=$HOME/.codeplane/bin:$PATH</code> or reopen the shell. For npm/Bun, add the package manager global bin directory.</td></tr>
+            <tr><td>Wrong version after upgrade</td><td>Multiple <code>codeplane</code> commands are installed.</td><td>Run <code>which -a codeplane</code>, remove or reorder the older entry, then run <code>hash -r</code>.</td></tr>
+            <tr><td><code>npm install -g codeplane-ai</code> succeeds but the old CLI still runs</td><td>A curl-installed <code>~/.codeplane/bin/codeplane</code> or another shim appears first on <code>PATH</code>.</td><td>Use the first path shown by <code>which -a codeplane</code>. Either update that install owner or move npm's global bin directory earlier on <code>PATH</code>.</td></tr>
+            <tr><td><code>error: Module not found "/$bunfs/src/tui/node-main.tsx"</code></td><td>The installed packaged binary is missing <code>runtime/tui/node-main.js</code> and fell back to source paths inside Bun's read-only virtual filesystem.</td><td>Rerun <code>curl -fsSL https://codeplane.cc/install | bash</code> or reinstall <code>codeplane-ai@latest</code>. Current packaged binaries fail with a clear missing-bundle error instead of this source-path fallback.</td></tr>
+            <tr><td><code>Codeplane TUI bundle missing</code></td><td>The CLI binary cannot find its sibling <code>runtime/tui/node-main.js</code>.</td><td>For curl installs, rerun the installer. For npm installs, reinstall <code>codeplane-ai</code> so the wrapper can resolve the platform package and set <code>CODEPLANE_BIN_DIR</code>.</td></tr>
+            <tr><td><code>Cannot find module '@opentui/core-darwin-arm64/index.ts'</code></td><td>The native OpenTUI renderer package was not installed next to the TUI bundle.</td><td>Rerun the curl installer or reinstall <code>codeplane-ai@latest</code>. The platform package must include the matching <code>@opentui/core-*</code> dependency.</td></tr>
+            <tr><td>TUI prints that no Bun runtime was found</td><td>The TUI launcher needs Bun, or Node.js 22+ as a fallback, to run the bundled TUI entry.</td><td>Install Bun, install Node.js 22+, or set <code>CODEPLANE_TUI_RUNTIME=/absolute/path/to/bun</code>.</td></tr>
+            <tr><td><code>Unsupported OS/Arch</code></td><td>The bash installer could not map the host to a published platform package.</td><td>Use npm on native Windows, WSL2 on Windows, or a source checkout for unsupported hosts.</td></tr>
+            <tr><td><code>codeplane-&lt;platform&gt;-&lt;arch&gt;@X.Y.Z not published</code></td><td>The GitHub release exists before the npm workflow has published every platform package, or the publish failed.</td><td>Install the latest published version from npm, then check the release workflow status before testing the new tag.</td></tr>
+            <tr><td>Postinstall fails on <code>node-pty</code></td><td>Native dependency repair failed in a source checkout or old package state.</td><td>Re-run install with the repo-supported Bun version, then run <code>bun --cwd packages/codeplane fix-node-pty</code> in a checkout.</td></tr>
           </tbody>
         </table>
+
+        <h2>Installer repair commands</h2>
+        <pre><code>{`# Repair curl install, including same-version missing TUI assets
+curl -fsSL https://codeplane.cc/install | bash
+
+# Repair or update npm global install
+npm install -g codeplane-ai@latest
+
+# Repair or update Bun global install
+bun install -g codeplane-ai@latest
+
+# Inspect curl-installed TUI assets
+~/.codeplane/bin/codeplane --version
+test -f ~/.codeplane/bin/runtime/tui/node-main.js
+ls ~/.codeplane/bin/node_modules/@opentui
+
+# Inspect command precedence
+which -a codeplane
+hash -r`}</code></pre>
+        <p>
+          Do not assume that installing with npm replaces the curl-installed binary. It installs a
+          different command owner; <code>PATH</code> decides which one runs.
+        </p>
 
         <h2>Server startup</h2>
         <table>
@@ -103,8 +139,8 @@ curl -fsS http://127.0.0.1:4096/global/version`}</code></pre>
         <h2>When filing an issue</h2>
         <p>Include:</p>
         <ul>
-          <li><code>codeplane --version</code></li>
-          <li>Install method: npm, bash installer, desktop, managed local runtime, source checkout.</li>
+          <li><code>which -a codeplane</code> and <code>codeplane --version</code>.</li>
+          <li>Install method: curl installer, npm/Bun/pnpm global, desktop, managed local runtime, or source checkout.</li>
           <li>Server command, with secrets redacted.</li>
           <li>Relevant config snippets, with API keys and tokens removed.</li>
           <li>The smallest log excerpt around the failure.</li>

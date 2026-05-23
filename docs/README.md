@@ -47,9 +47,10 @@ values: https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-gi
 The app can add this trailer when the setting is enabled:
 
 ```text
-Co-Authored-By: Codeplane <noreply@codeplane.cc>
+Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com>
 ```
 
-For GitHub to show a Codeplane avatar/profile, create or configure the GitHub
-account that owns the `noreply@codeplane.cc` email address, verify the email,
-and set that account's profile image to the Codeplane logo.
+GitHub resolves that noreply address to the `codeplaneai[bot]` bot user for
+the CodeplaneAI GitHub App: https://github.com/apps/codeplaneai. That keeps the
+co-author avatar and profile attached to the app instead of a standalone email
+identity.

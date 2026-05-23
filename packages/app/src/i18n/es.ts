@@ -635,6 +635,9 @@ export const dict = {
     "Elige si los prompts de seguimiento se dirigen inmediatamente o esperan en una cola",
   "settings.general.row.followup.option.queue": "Cola",
   "settings.general.row.followup.option.steer": "Dirigir",
+  "settings.general.row.codeplaneCoauthor.title": "Coautor de Codeplane",
+  "settings.general.row.codeplaneCoauthor.description":
+    "Añade Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com> a los commits realizados mediante Codeplane",
   "settings.general.row.reasoningSummaries.title": "Mostrar resúmenes de razonamiento",
   "settings.general.row.reasoningSummaries.description":
     "Mostrar resúmenes del razonamiento del modelo en la línea de tiempo",

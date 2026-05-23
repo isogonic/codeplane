@@ -220,6 +220,110 @@ print_message() {
     echo -e "${color}${message}${NC}"
 }
 
+native_tui_package() {
+    local native_os="$os"
+    if [ "$native_os" = "windows" ]; then
+        native_os="win32"
+    fi
+    printf "@opentui/core-%s-%s" "$native_os" "$arch"
+}
+
+has_tui_assets() {
+    if [ ! -f "${INSTALL_DIR}/runtime/tui/node-main.js" ]; then
+        return 1
+    fi
+    local native_pkg
+    native_pkg=$(native_tui_package)
+    local native_name="${native_pkg##*/}"
+    [ -d "${INSTALL_DIR}/node_modules/@opentui/${native_name}" ]
+}
+
+install_native_tui_dependency() {
+    local package_json="$1"
+    local scratch_dir="$2"
+    if [ ! -f "$package_json" ]; then
+        return 0
+    fi
+
+    local native_pkg
+    native_pkg=$(native_tui_package)
+    local native_name="${native_pkg##*/}"
+    local native_version
+    native_version=$(sed -n "s#.*\"${native_pkg}\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*#\1#p" "$package_json" | head -1)
+    if [ -z "$native_version" ]; then
+        print_message warning "${MUTED}No ${native_pkg} dependency declared; skipping native TUI dependency install.${NC}"
+        return 0
+    fi
+
+    local dep_filename="${native_name}-${native_version}.tgz"
+    local dep_url="https://registry.npmjs.org/@opentui/${native_name}/-/${dep_filename}"
+    local dep_dir="${INSTALL_DIR}/node_modules/@opentui/${native_name}"
+    print_message info "${MUTED}Installing${NC} ${native_pkg} ${MUTED}for the TUI renderer${NC}"
+    curl -fsSL -o "${scratch_dir}/${dep_filename}" "$dep_url"
+    rm -rf "$dep_dir"
+    mkdir -p "$dep_dir"
+    tar -xzf "${scratch_dir}/${dep_filename}" -C "$dep_dir" --strip-components=1
+}
+
+path_dir_can_host_shim() {
+    local dir="$1"
+    if [ -z "$dir" ]; then
+        return 1
+    fi
+    case "$dir" in
+        /*) ;;
+        *) return 1 ;;
+    esac
+    case "$dir" in
+        "$INSTALL_DIR"|"$INSTALL_DIR"/) return 1 ;;
+        "$HOME"/*|/opt/homebrew/bin|/usr/local/bin) ;;
+        *) return 1 ;;
+    esac
+    [ -d "$dir" ] && [ -w "$dir" ] && [ -x "$dir" ]
+}
+
+write_codeplane_shim() {
+    local dir="$1"
+    local shim="$dir/codeplane"
+    if [ -L "$shim" ]; then
+        ln -sf "${INSTALL_DIR}/codeplane" "$shim"
+    elif [ -e "$shim" ]; then
+        if ! grep -q "codeplane installer shim" "$shim" 2>/dev/null; then
+            return 1
+        fi
+        printf '#!/usr/bin/env sh\n# codeplane installer shim\nexec "%s" "$@"\n' "${INSTALL_DIR}/codeplane" > "$shim"
+        chmod 755 "$shim"
+    elif ! ln -s "${INSTALL_DIR}/codeplane" "$shim" 2>/dev/null; then
+        printf '#!/usr/bin/env sh\n# codeplane installer shim\nexec "%s" "$@"\n' "${INSTALL_DIR}/codeplane" > "$shim"
+        chmod 755 "$shim"
+    fi
+    print_message info "${MUTED}Linked${NC} codeplane ${MUTED}command → ${NC}$shim"
+}
+
+ensure_codeplane_command() {
+    if command -v codeplane >/dev/null 2>&1; then
+        return 0
+    fi
+
+    local old_ifs="$IFS"
+    IFS=:
+    for dir in $PATH; do
+        IFS="$old_ifs"
+        if path_dir_can_host_shim "$dir" && write_codeplane_shim "$dir"; then
+            return 0
+        fi
+        IFS=:
+    done
+    IFS="$old_ifs"
+
+    print_message warning ""
+    print_message warning "The codeplane binary was installed, but this shell does not have a writable user bin directory already on PATH."
+    print_message info "  Run now:     ${MUTED}${INSTALL_DIR}/codeplane${NC}"
+    print_message info "  New shells:  ${MUTED}codeplane${NC} after your shell config reloads"
+    print_message info "  Or run:      ${MUTED}export PATH=${INSTALL_DIR}:\$PATH${NC}"
+    print_message warning ""
+}
+
 check_version() {
     if command -v codeplane >/dev/null 2>&1; then
         codeplane_path=$(which codeplane)
@@ -229,9 +333,11 @@ check_version() {
 
         if [[ "$installed_version" != "$specific_version" ]]; then
             print_message info "${MUTED}Installed version: ${NC}$installed_version."
-        else
+        elif has_tui_assets; then
             print_message info "${MUTED}Version ${NC}$specific_version${MUTED} already installed"
             exit 0
+        else
+            print_message info "${MUTED}Version ${NC}$specific_version${MUTED} already installed, but TUI assets are missing. Reinstalling assets.${NC}"
         fi
     fi
 }
@@ -351,9 +457,11 @@ download_and_install() {
             exit 1
         fi
     else
-        mv "$tmp_dir/bin/codeplane" "${INSTALL_DIR}/codeplane"
+        rm -rf "${INSTALL_DIR}/runtime"
+        cp -R "$tmp_dir/bin/." "${INSTALL_DIR}/"
     fi
 
+    install_native_tui_dependency "$tmp_dir/package.json" "$tmp_dir"
     chmod 755 "${INSTALL_DIR}/codeplane"
     rm -rf "$tmp_dir"
 }
@@ -421,6 +529,7 @@ else
     download_and_install
 fi
 ensure_runtime
+ensure_codeplane_command
 
 
 add_to_path() {

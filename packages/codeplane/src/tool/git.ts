@@ -150,8 +150,9 @@ function commandMetadata(args: string[]) {
   ]
 }
 
-const CODEPLANE_COAUTHOR_TRAILER = "Co-Authored-By: Codeplane <noreply@codeplane.cc>"
-const CODEPLANE_COAUTHOR_PATTERN = /^Co-authored-by:\s*Codeplane\s*<[^>]+>\s*$/im
+const CODEPLANE_COAUTHOR_TRAILER =
+  "Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com>"
+const CODEPLANE_COAUTHOR_PATTERN = /^Co-authored-by:\s*(?:Codeplane|codeplaneai\[bot\])\s*<[^>]+>\s*$/im
 
 function withCodeplaneCoauthor(message: string) {
   if (CODEPLANE_COAUTHOR_PATTERN.test(message)) return message

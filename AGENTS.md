@@ -24,6 +24,7 @@ bottom.
 - **Release**: tag a `vX.Y.Z` GitHub release on `main`; the `npm-release` and `desktop-release` workflows trigger automatically and publish to npm + GitHub releases.
 - **Tools must be parallel** when independent — see [Style guide → Tool calling](#tool-calling).
 - **Use Bun APIs** (`Bun.file`, `Bun.write`) over `node:fs/promises` when both work.
+- **Website docs move with behavior**: user-visible install, update, config, CLI, release, or troubleshooting changes require matching updates under `site/app/docs/**`; curl installer changes also require `docs/install` to stay in sync.
 
 If the user shouts "BUMP ALL PUSH ALL AND CREATE NEW RELEASE HERE WE GOOO" at
 you, follow the [Release checklist](#release-checklist-do-not-skip-steps)
@@ -82,6 +83,7 @@ opencode/
 ├── bun.lock
 ├── bunfig.toml
 ├── turbo.json                 ← turbo task graph
+├── site/                      ← Next.js static website for codeplane.cc
 ├── tsconfig.json              ← root tsconfig (extended by packages)
 ├── .oxlintrc.json             ← oxlint config (rules + ignorePatterns)
 ├── .gitignore
@@ -151,6 +153,7 @@ workaround. In practice, edit consumer `package.json` files directly.
 | `@codeplane-ai/web` (`packages/web`) | Astro-built marketing site. Hosts the **logo SVGs** referenced by the README (`src/assets/logo-ornate-{light,dark}.svg`). | `src/assets/`, `astro.config.mjs` |
 | `@codeplane-ai/extensions/zed` | Zed editor extension manifest (`extension.toml`). | `extension.toml` |
 | `sdks/vscode` | VS Code extension. Has its own `package.json`. | `sdks/vscode/package.json` |
+| `site` | Top-level Next.js static website deployed to `codeplane.cc` through GitHub Pages. | `site/app/docs/`, `site/components/`, `site/package.json` |
 
 Per-platform npm packages **published from the build** (not in this repo as
 sources, generated into `packages/codeplane/dist/<name>/`):
@@ -175,11 +178,21 @@ Before any commit / push:
 - [ ] `bun --cwd packages/codeplane test` — for changes touching `codeplane/`
   (also `app/`, `shared/`, `ui/` as appropriate). Tests cannot run from repo
   root.
+- [ ] User-visible behavior changes update the matching website docs under
+  `site/app/docs/**` in the same change. This includes install, update,
+  config, CLI, provider, MCP, permission, instance, release, and
+  troubleshooting behavior.
+- [ ] Curl installer changes keep `docs/install`, `site/app/docs/install/`,
+  `site/app/docs/troubleshooting/`, and homepage install copy in sync.
+- [ ] Website/docs changes run `bun --cwd site run typecheck` and
+  `bun --cwd site run build`.
 
 Before any release:
 
 - [ ] All of the above
 - [ ] Local build smoke test: `bun --cwd packages/codeplane script/build.ts --skip-embed-web-ui --skip-install --single` produces a working `dist/codeplane-<platform>-<arch>/bin/codeplane --version`.
+- [ ] If user-facing behavior changed, verify the public Next.js docs and the
+  release notes describe the behavior that actually ships.
 - [ ] `git fetch origin main` and rebase if remote has commits you don't.
 - [ ] Bump version with `bun run version:bump` (patch) or `bun run version:bump X.Y.Z` (exact).
 - [ ] Commit with a release-style message.
@@ -1183,6 +1196,31 @@ Failure modes I've actually seen:
   retry, or wait — `if: always()` ensures `publish-release` still runs.
 - electron-builder native module rebuild fails on Linux when missing
   `libnss3.so` headers — usually a transient action runner issue.
+
+### `.github/workflows/pages.yml`
+
+Deploys the public Next.js website to GitHub Pages. It runs for changes under:
+
+- `site/**`: the Next.js app, including all public docs under
+  `site/app/docs/**`.
+- `.github/workflows/pages.yml`: the deploy workflow itself.
+- `docs/install`: the bash one-liner mirrored to `https://codeplane.cc/install`.
+- `docs/CNAME`: the custom Pages domain.
+
+Key steps:
+
+1. `bun --cwd site install` and `bun --cwd site run build` produce
+   `site/out/`.
+2. The workflow copies `docs/install` to `site/out/install`, so curl install
+   changes are deployed with the website and remain fetchable at `/install`.
+3. The workflow copies `docs/CNAME` to `site/out/CNAME` before uploading the
+   Pages artifact.
+
+If you change install, update, release, troubleshooting, config, CLI, provider,
+MCP, permission, or instance behavior, update the matching page under
+`site/app/docs/**` in the same change. If you change the curl installer, update
+both `docs/install` and the install/troubleshooting docs. Do not rely on
+release notes alone for behavior users must follow.
 
 ### Workflow auth
 

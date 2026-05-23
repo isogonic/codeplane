@@ -32,7 +32,7 @@ describe("tui.instance-store", () => {
         label: "Example",
       },
     ])
-    expect(await target.getLast()).toBe("remote-1")
+    expect(await target.getLast()).toBeUndefined()
   })
 
   test("updates existing instances in place", async () => {
@@ -66,13 +66,14 @@ describe("tui.instance-store", () => {
     ])
   })
 
-  test("removes instances and repairs the last selection", async () => {
+  test("removes instances and clears the removed last selection", async () => {
     const target = await store()
     await target.save({ id: "a", url: "https://a.example.com" })
     await target.save({ id: "b", url: "https://b.example.com" })
+    await target.setLast("b")
     await target.remove("b")
 
     expect(await target.list()).toEqual([{ id: "a", url: "https://a.example.com" }])
-    expect(await target.getLast()).toBe("a")
+    expect(await target.getLast()).toBeUndefined()
   })
 })

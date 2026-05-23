@@ -29,8 +29,8 @@ export default function ReleaseProcess() {
         <p className="lede">
           A Codeplane release is a version bump on <code>main</code> plus a GitHub release tag.
           The tag fans out into npm, desktop, and mobile workflows. The website deploy is a
-          separate Pages build triggered by changes under <code>site/</code> or the mirrored static
-          files under <code>docs/</code>.
+          separate Pages build triggered by changes under <code>site/</code>, the Pages workflow,
+          <code>docs/install</code>, or <code>docs/CNAME</code>.
         </p>
 
         <h2>Version source of truth</h2>
@@ -38,7 +38,7 @@ export default function ReleaseProcess() {
           Edit <code>packages/shared/src/version.ts</code>, then run <code>bun run version:sync</code>.
           The sync script updates package versions across workspaces and the website package.
         </p>
-        <pre><code>{`export const CodeplaneVersion = "28.18.0"
+        <pre><code>{`export const CodeplaneVersion = "X.Y.Z"
 
 bun run version:sync`}</code></pre>
 
@@ -48,6 +48,8 @@ bun run version:sync`}</code></pre>
           <li>Fetch both remotes and tags.</li>
           <li>Review <code>HEAD..remote/main</code> before pushing.</li>
           <li>Make source changes and regenerate any checked-in outputs.</li>
+          <li>Update <code>site/app/docs/**</code> for user-visible install, update, config, CLI, release, or troubleshooting behavior changes.</li>
+          <li>Keep <code>docs/install</code>, <code>site/app/docs/install/</code>, and <code>site/app/docs/troubleshooting/</code> in sync for curl installer changes.</li>
           <li>Run site validation if docs or website changed.</li>
           <li>Run repo validation: typecheck, lint, focused tests, build smoke.</li>
           <li>Bump version and run <code>bun run version:sync</code>.</li>
@@ -58,8 +60,8 @@ bun run version:sync`}</code></pre>
         </ol>
 
         <h2>Validation commands</h2>
-        <pre><code>{`bun --cwd site typecheck
-bun --cwd site build
+        <pre><code>{`bun --cwd site run typecheck
+bun --cwd site run build
 bun turbo typecheck
 bun lint
 bun --cwd packages/codeplane test test/config/config.test.ts test/tool/git.test.ts
@@ -68,6 +70,22 @@ bun --cwd packages/codeplane script/build.ts --skip-embed-web-ui --skip-install 
           Root tests intentionally fail with a guard. Run package tests from package directories,
           and use focused tests for the area changed.
         </p>
+
+        <h2>Website and install docs</h2>
+        <p>
+          The public website is the Next.js app under <code>site/</code>. The Pages workflow builds it,
+          then copies <code>docs/install</code> into <code>site/out/install</code> and <code>docs/CNAME</code>
+          into <code>site/out/CNAME</code> before deploying.
+        </p>
+        <table>
+          <thead><tr><th>Change</th><th>Documentation that must move with it</th></tr></thead>
+          <tbody>
+            <tr><td>User-visible install or update behavior</td><td><code>site/app/docs/install/page.tsx</code> and <code>site/app/docs/troubleshooting/page.tsx</code>.</td></tr>
+            <tr><td>Curl installer script behavior</td><td><code>docs/install</code>, install docs, troubleshooting docs, and any homepage install copy that mentions the behavior.</td></tr>
+            <tr><td>Release workflow, publishing, or Pages deploy behavior</td><td><code>site/app/docs/release/page.tsx</code> and this repository guide.</td></tr>
+            <tr><td>Config, CLI flags, providers, MCP, permissions, or instances</td><td>The matching page under <code>site/app/docs/</code> plus quickstart links when the first-run path changes.</td></tr>
+          </tbody>
+        </table>
 
         <h2>GitHub release</h2>
         <pre><code>{`gh release create vX.Y.Z \\
@@ -96,7 +114,7 @@ EOF
             <tr><td><code>npm-release</code></td><td><code>v*</code> base tag</td><td><code>codeplane-ai</code>, SDK, plugin, platform runtime packages on npm.</td></tr>
             <tr><td><code>desktop-release</code></td><td><code>v*</code> base tag</td><td><code>vX.Y.Z-desktop</code> release with macOS, Windows, Linux installers.</td></tr>
             <tr><td><code>mobile-release</code></td><td><code>v*</code> base tag</td><td><code>vX.Y.Z-mobile</code> release with iOS/Android artifacts.</td></tr>
-            <tr><td><code>pages</code></td><td><code>site/**</code>, workflow, or mirrored docs files</td><td>Static <code>codeplane.cc</code> deployment.</td></tr>
+            <tr><td><code>pages</code></td><td><code>site/**</code>, <code>.github/workflows/pages.yml</code>, <code>docs/install</code>, or <code>docs/CNAME</code></td><td>Static <code>codeplane.cc</code> deployment plus mirrored <code>/install</code> script.</td></tr>
           </tbody>
         </table>
 
@@ -119,7 +137,7 @@ npm view codeplane-ai@X.Y.Z version`}</code></pre>
             <tr><td>Push rejected</td><td><code>git fetch</code>, rebase, resolve version files by keeping the intended release bump, rerun validation.</td></tr>
             <tr><td>npm workflow fails before publish</td><td>Fix source, bump to a new patch/minor, create a new release tag. Do not retag a public release.</td></tr>
             <tr><td>Desktop matrix partially fails</td><td>Inspect the failed platform job; successful artifacts may still be attached to the paired release.</td></tr>
-            <tr><td>Pages deploy does not change live site</td><td>Check Pages source mode and the latest <code>pages</code> workflow. Legacy branch mode serves <code>/docs</code>.</td></tr>
+            <tr><td>Pages deploy does not change live site</td><td>Check the latest <code>pages</code> workflow and confirm the change touched one of the watched paths: <code>site/**</code>, <code>.github/workflows/pages.yml</code>, <code>docs/install</code>, or <code>docs/CNAME</code>.</td></tr>
             <tr><td>Smoke install cannot find binary</td><td>Run <code>node_modules/.bin/codeplane --version</code> inside the temp prefix.</td></tr>
           </tbody>
         </table>

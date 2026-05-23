@@ -627,6 +627,9 @@ export const dict = {
   "settings.general.row.followup.description": "选择跟进提示是立即引导还是在队列中等待",
   "settings.general.row.followup.option.queue": "排队",
   "settings.general.row.followup.option.steer": "引导",
+  "settings.general.row.codeplaneCoauthor.title": "Codeplane 共同作者",
+  "settings.general.row.codeplaneCoauthor.description":
+    "为通过 Codeplane 创建的提交添加 Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com>",
   "settings.general.row.reasoningSummaries.title": "显示推理摘要",
   "settings.general.row.reasoningSummaries.description": "在时间线中显示模型推理摘要",
   "settings.general.row.shellToolPartsExpanded.title": "展开 shell 工具部分",

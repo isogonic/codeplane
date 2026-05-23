@@ -634,6 +634,9 @@ export const dict = {
   "settings.general.row.followup.description": "Velg om oppfølgingsspørsmål skal kjøres umiddelbart eller vente i kø",
   "settings.general.row.followup.option.queue": "Kø",
   "settings.general.row.followup.option.steer": "Styr",
+  "settings.general.row.codeplaneCoauthor.title": "Codeplane-medforfatter",
+  "settings.general.row.codeplaneCoauthor.description":
+    "Legg til Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com> i commits laget gjennom Codeplane",
   "settings.general.row.reasoningSummaries.title": "Vis resonneringssammendrag",
   "settings.general.row.reasoningSummaries.description": "Vis sammendrag av modellresonnering i tidslinjen",
   "settings.general.row.shellToolPartsExpanded.title": "Utvid shell-verktøydeler",

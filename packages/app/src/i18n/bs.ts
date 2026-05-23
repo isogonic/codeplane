@@ -631,6 +631,9 @@ export const dict = {
   "settings.general.row.followup.description": "Odaberi da li upiti nadovezivanja usmjeravaju odmah ili čekaju u redu",
   "settings.general.row.followup.option.queue": "Red čekanja",
   "settings.general.row.followup.option.steer": "Usmjeri",
+  "settings.general.row.codeplaneCoauthor.title": "Codeplane koautor",
+  "settings.general.row.codeplaneCoauthor.description":
+    "Dodaj Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com> commitima napravljenim kroz Codeplane",
   "settings.general.row.reasoningSummaries.title": "Prikaži sažetke rasuđivanja",
   "settings.general.row.reasoningSummaries.description": "Prikaži sažetke rasuđivanja modela na vremenskoj traci",
 

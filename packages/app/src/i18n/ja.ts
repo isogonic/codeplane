@@ -565,6 +565,9 @@ export const dict = {
     "フォローアッププロンプトを即座に実行するか、キューで待機させるかを選択します",
   "settings.general.row.followup.option.queue": "キューに追加",
   "settings.general.row.followup.option.steer": "即座に実行 (Steer)",
+  "settings.general.row.codeplaneCoauthor.title": "Codeplane 共同作成者",
+  "settings.general.row.codeplaneCoauthor.description":
+    "Codeplane から作成されたコミットに Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com> を追加します",
   "settings.general.row.reasoningSummaries.title": "推論の要約を表示",
   "settings.general.row.reasoningSummaries.description": "タイムラインにモデルの推論の要約を表示します",
   "settings.general.row.shellToolPartsExpanded.title": "shell ツールパーツを展開",

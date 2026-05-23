@@ -3,7 +3,7 @@
   "info": {
     "title": "codeplane",
     "description": "codeplane api",
-    "version": "28.18.0"
+    "version": "28.21.8"
   },
   "paths": {
     "/global/cron": {
@@ -13216,7 +13216,7 @@
         "type": "object",
         "properties": {
           "coauthor": {
-            "description": "When true, commits made through Codeplane include Co-Authored-By: Codeplane <noreply@codeplane.cc>.",
+            "description": "When true, commits made through Codeplane include Co-Authored-By: codeplaneai[bot] <287208015+codeplaneai[bot]@users.noreply.github.com>.",
             "type": "boolean"
           }
         }

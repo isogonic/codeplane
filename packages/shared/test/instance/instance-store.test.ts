@@ -50,6 +50,7 @@ describe("instance-store", () => {
     const store = createInstanceStore(files.current)
 
     await store.save({ id: "remote-1", url: "https://example.com", label: "Primary" })
+    await store.setLast("remote-1")
     await fs.mkdir(path.dirname(files.legacy), { recursive: true })
     await fs.writeFile(
       files.legacy,

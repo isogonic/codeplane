@@ -31,16 +31,14 @@ describe("instance-store - bulk save/list cycles", () => {
   }
 })
 
-describe("instance-store - getLast tracks the latest save target", () => {
+describe("instance-store - getLast is explicit", () => {
   for (let n = 1; n <= 30; n++) {
-    test(`getLast tracks last of ${n} saved instances`, async () => {
+    test(`save does not select any of ${n} saved instances`, async () => {
       const store = createInstanceStore(file)
-      let lastID = ""
       for (let i = 0; i < n; i++) {
-        lastID = `id-${i}`
-        await store.save({ id: lastID, url: `http://localhost:${i + 1000}` })
+        await store.save({ id: `id-${i}`, url: `http://localhost:${i + 1000}` })
       }
-      expect(await store.getLast()).toBe(lastID)
+      expect(await store.getLast()).toBeUndefined()
     })
   }
 })
@@ -82,24 +80,27 @@ describe("instance-store - remove behavior", () => {
   test("remove the last instance leaves the list empty", async () => {
     const store = createInstanceStore(file)
     await store.save({ id: "only", url: "http://x" })
+    await store.setLast("only")
     await store.remove("only")
     expect(await store.list()).toEqual([])
     expect(await store.getLast()).toBeUndefined()
   })
 
-  test("remove the last instance reassigns getLast to the first remaining", async () => {
+  test("remove the last instance clears getLast instead of reassigning", async () => {
     const store = createInstanceStore(file)
     await store.save({ id: "a", url: "http://a" })
     await store.save({ id: "b", url: "http://b" })
+    await store.setLast("b")
     expect(await store.getLast()).toBe("b")
     await store.remove("b")
-    expect(await store.getLast()).toBe("a")
+    expect(await store.getLast()).toBeUndefined()
   })
 
   test("remove a non-last instance preserves getLast", async () => {
     const store = createInstanceStore(file)
     await store.save({ id: "a", url: "http://a" })
     await store.save({ id: "b", url: "http://b" })
+    await store.setLast("b")
     expect(await store.getLast()).toBe("b")
     await store.remove("a")
     expect(await store.getLast()).toBe("b")

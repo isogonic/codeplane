@@ -40,6 +40,11 @@ bun install -g codeplane-ai`}</code></pre>
           above (no PowerShell installer ships today). Per-platform options at{" "}
           <Link href="/docs/install/">Install</Link>.
         </p>
+        <p>
+          If <code>codeplane</code> is not available immediately after the bash installer, run{" "}
+          <code>~/.codeplane/bin/codeplane --version</code> or open a new shell. The detailed
+          install guide covers <code>PATH</code>, npm-vs-curl precedence, and TUI asset repair.
+        </p>
 
         <h2>2. Provide an API key</h2>
         <p>Codeplane needs at least one model provider configured. Fastest path is an env var:</p>
@@ -65,7 +70,12 @@ export OPENROUTER_API_KEY=sk-or-...`}</code></pre>
 
         <h3>Terminal (no GUI)</h3>
         <pre><code>codeplane tui</code></pre>
-        <p>Boots an instance and attaches the full-screen text UI. Same agent, same sessions.</p>
+        <p>
+          Boots an instance and attaches the full-screen text UI. Same agent, same sessions. If the
+          TUI reports a missing <code>runtime/tui/node-main.js</code> bundle or <code>@opentui/core-*</code>
+          native package, use <Link href="/docs/troubleshooting/">Troubleshooting</Link> to repair
+          the install owner you are actually running.
+        </p>
 
         <h3>Headless (server-only)</h3>
         <pre><code>codeplane serve --port 4096</code></pre>

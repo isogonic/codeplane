@@ -157,6 +157,12 @@ async function resolveLaunchTarget() {
       args: [bundled],
     }
   }
+  if (isPackagedBinary()) {
+    throw new Error(
+      "Codeplane TUI bundle missing from this install. Expected runtime/tui/node-main.js next to the executable. " +
+        "Reinstall the codeplane package or set CODEPLANE_TUI_BUNDLE to a built node-main.js.",
+    )
+  }
   return {
     command: runtime,
     // Bun runs the .tsx entry directly with the @opentui/solid preload

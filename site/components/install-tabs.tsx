@@ -87,9 +87,10 @@ function PanelMacOS({ desktopTag, cliVersion }: { desktopTag: string; cliVersion
       <pre><code>{`curl -fsSL https://codeplane.cc/install | bash`}</code></pre>
       <p className="text-ink-muted">
         Detects <code>darwin-arm64</code> / <code>darwin-x64</code>, downloads the matching binary
-        from npm (<code>codeplane-{`<target>`}</code>) into <code>~/.codeplane/bin/</code>, and edits
-        your shell rc to add it to <code>PATH</code>. Pin a version with{" "}
-        <code>{`bash -s -- --version ${cliVersion}`}</code>; skip the PATH edit with{" "}
+        from npm (<code>codeplane-{`<target>`}</code>) into <code>~/.codeplane/bin/</code>, installs
+        the bundled TUI assets and native OpenTUI dependency, then tries to expose a{" "}
+        <code>codeplane</code> shim through your existing <code>PATH</code>. Pin a version with{" "}
+        <code>{`bash -s -- --version ${cliVersion}`}</code>; skip shell-profile edits with{" "}
         <code>--no-modify-path</code>.
       </p>
 
@@ -126,7 +127,8 @@ function PanelLinux({ desktopTag, cliVersion }: { desktopTag: string; cliVersion
       <pre><code>{`curl -fsSL https://codeplane.cc/install | bash`}</code></pre>
       <p className="text-ink-muted">
         Picks the right <code>linux-x64</code> / <code>linux-arm64</code> binary from npm, including
-        the musl variant on Alpine. Pin with{" "}
+        the musl variant on Alpine. The install includes <code>runtime/tui/node-main.js</code>
+        and the matching <code>@opentui/core-*</code> native package. Pin with{" "}
         <code>{`bash -s -- --version ${cliVersion}`}</code>.
       </p>
 
@@ -219,9 +221,11 @@ pnpm add -g codeplane-ai`}</code></pre>
 # or
 npx codeplane-ai@latest web`}</code></pre>
       <p className="text-ink-muted">
-        After install, the binary lives at <code>$(npm prefix -g)/bin/codeplane</code> and{" "}
-        <code>codeplane --version</code> should print the same version <code>npm view codeplane-ai
-        version</code> reports.
+        After install, the global <code>codeplane</code> command is the <code>codeplane-ai</code>
+        wrapper. It resolves the real platform package and points the spawned binary at its sibling
+        TUI assets. If <code>codeplane --version</code> disagrees with <code>npm view codeplane-ai
+        version</code>, run <code>which -a codeplane</code> and remove the older command first on
+        <code>PATH</code>.
       </p>
     </div>
   )
