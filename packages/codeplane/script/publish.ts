@@ -22,6 +22,7 @@ async function publish(dir: string, name: string, version: string) {
     console.log(`already published ${name}@${version}`)
     return
   }
+  await $`rm -f *.tgz`.cwd(dir)
   await $`bun pm pack`.cwd(dir)
   // Detect "already published" coming back from npm itself (race between
   // our `published()` check and the actual PUT, e.g. another retry of the

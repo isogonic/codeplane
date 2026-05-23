@@ -13,12 +13,10 @@ on:
 
 permissions:
   contents: write
-  id-token: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   GH_REPO: ${{ github.repository }}
-  NPM_CONFIG_PROVENANCE: "true"
 
 concurrency:
   group: ${{ github.workflow }}-${{ inputs.tag || github.ref_name }}
@@ -72,7 +70,7 @@ jobs:
           node-version: "22.14.0"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Upgrade npm for trusted publishing
+      - name: Upgrade npm
         run: npm install -g npm@^11.10.0
 
       - uses: ./.github/actions/setup-bun
@@ -82,8 +80,10 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
+          set -euo pipefail
           if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            exit 0
+            echo "NPM_TOKEN secret is required for npm package publishing." >&2
+            exit 1
           fi
           printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$HOME/.npmrc"
 
