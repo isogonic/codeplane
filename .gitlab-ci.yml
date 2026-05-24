@@ -40,7 +40,7 @@ stages:
 variables:
   # Bun's own install cache lives here; cached across jobs keyed off bun.lock.
   BUN_INSTALL_CACHE_DIR: "$CI_PROJECT_DIR/.bun-cache"
-  BUN_VERSION: "1.3.12"
+  BUN_VERSION: "1.3.13"
   # GitLab Generic Package channel used for release artefacts.
   PACKAGE_REGISTRY_URL: "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic"
   # Token used by release-cli + curl uploads. Project access token preferred

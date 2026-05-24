@@ -224,7 +224,7 @@ for (const item of targets) {
   console.log(`building ${name}`)
   await $`mkdir -p dist/${name}/bin`
 
-  await Bun.build({
+  const mainResult = await Bun.build({
     // The bundler classifies the build by `target`. Without this, it defaults
     // to a browser-style classifier that rejects "bun" builtin imports — even
     // though `compile.target` below produces a Bun standalone executable.
@@ -269,6 +269,12 @@ for (const item of targets) {
       CODEPLANE_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
     },
   })
+  if (!mainResult.success) {
+    throw new AggregateError(
+      mainResult.logs.map((log) => new Error(log.message)),
+      `Failed to build Codeplane CLI bundle for ${name}`,
+    )
+  }
 
   await buildTUIBundle(`dist/${name}/bin/runtime/tui`)
 
