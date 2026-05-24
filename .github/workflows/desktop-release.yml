@@ -103,37 +103,20 @@ jobs:
           desktop_tag="${{ needs.resolve.outputs.desktop_tag }}"
           source_sha="$(git rev-parse HEAD)"
           notes_file="$(mktemp)"
-          if gh release view "${{ needs.resolve.outputs.source_tag }}" --repo "${{ github.repository }}" --json name,body > base-release.json 2>/dev/null; then
-            source_title="$(jq -r '.name // empty' base-release.json)"
-            if [ -n "$source_title" ]; then
-              title="$source_title"
-            fi
-            jq -r '.body // ""' base-release.json > "$notes_file"
-          else
-            : > "$notes_file"
+          gh release view "${{ needs.resolve.outputs.source_tag }}" --repo "${{ github.repository }}" --json name,body > base-release.json
+          source_title="$(jq -r '.name // empty' base-release.json)"
+          if [ -n "$source_title" ]; then
+            title="$source_title"
           fi
-          # Prepend a "Desktop Shell" banner so users know this page is the
-          # source of binaries for first install and the auto-updater feed —
-          # once installed, end users update silently in-app via
-          # electron-updater, not by re-downloading from here. Same shape
-          # as the mobile banner: plain header, single blockquote callout.
-          banner="$(mktemp)"
-          {
-            echo "## Desktop Shell"
-            echo ""
-            echo "> **The user-facing update path for the Codeplane desktop app is the in-app updater (electron-updater).** This release page is the source of binaries for first install and the auto-updater feed; once installed, end users update silently in-app — they do not re-download from this page."
-            echo ">"
-            echo "> Artefacts:"
-            echo "> - \`codeplane-desktop-<ver>-mac-arm64.dmg\` / \`codeplane-desktop-<ver>-mac-x64.dmg\` — macOS installers (Apple Silicon / Intel)"
-            echo "> - \`codeplane-desktop-<ver>-win-x64.exe\` — Windows installer"
-            echo "> - \`codeplane-desktop-<ver>-linux-amd64.deb\`, \`-linux-x86_64.AppImage\`, \`-linux-x64.tar.gz\` — Linux distributions"
-            echo "> - \`latest.yml\` / \`latest-mac.yml\` / \`latest-linux.yml\` — electron-updater feeds (do not download manually)"
-            echo "> - Stable version-less aliases (e.g. \`codeplane-desktop-macos-apple-silicon.dmg\`, \`codeplane-desktop-windows-x64.exe\`) for install scripts that always want the latest"
-            echo ""
-            echo "---"
-            echo ""
-            cat "$notes_file"
-          } > "$banner"
+          jq -r '.body // ""' base-release.json > "$notes_file"
+          if ! grep -q '[^[:space:]]' "$notes_file"; then
+            echo "Source release ${{ needs.resolve.outputs.source_tag }} is missing notes." >&2
+            exit 1
+          fi
+          if grep -Eiq '^[[:space:]]*No notable changes\.?[[:space:]]*$|^BLOCKED:|rolls forward in-flight|bumps version metadata|<area>|^## CLI · npm release$|^## Desktop Shell$|^## Mobile Shell$' "$notes_file"; then
+            echo "Source release ${{ needs.resolve.outputs.source_tag }} still contains placeholder or boilerplate notes." >&2
+            exit 1
+          fi
           if ! git ls-remote --exit-code --tags origin "refs/tags/${desktop_tag}" >/dev/null 2>&1; then
             git tag "$desktop_tag" "$source_sha"
             git push origin "refs/tags/${desktop_tag}"
@@ -141,7 +124,7 @@ jobs:
           if gh release view "$desktop_tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
             gh_release edit "$desktop_tag" \
               --title "$title" \
-              --notes-file "$banner" \
+              --notes-file "$notes_file" \
               --repo "${{ github.repository }}"
             exit 0
           fi
@@ -154,7 +137,7 @@ jobs:
           gh_release create "$desktop_tag" \
             --target "$source_sha" \
             --title "$title" \
-            --notes-file "$banner" \
+            --notes-file "$notes_file" \
             --repo "${{ github.repository }}"
 
   build-desktop:
@@ -350,35 +333,19 @@ jobs:
 
           title="${{ needs.resolve.outputs.source_tag }}"
           notes_file="$(mktemp)"
-          if gh release view "${{ needs.resolve.outputs.source_tag }}" --repo "${{ github.repository }}" --json name,body > base-release.json 2>/dev/null; then
-            source_title="$(jq -r '.name // empty' base-release.json)"
-            if [ -n "$source_title" ]; then
-              title="$source_title"
-            fi
-            jq -r '.body // ""' base-release.json > "$notes_file"
-          else
-            : > "$notes_file"
+          gh release view "${{ needs.resolve.outputs.source_tag }}" --repo "${{ github.repository }}" --json name,body > base-release.json
+          source_title="$(jq -r '.name // empty' base-release.json)"
+          if [ -n "$source_title" ]; then
+            title="$source_title"
           fi
-          banner="$(mktemp)"
-          {
-            echo "## Desktop Shell"
-            echo ""
-            echo "> **The user-facing update path for the Codeplane desktop app is the in-app updater (electron-updater).** This release page is the source of binaries for first install and the auto-updater feed; once installed, end users update silently in-app — they do not re-download from this page."
-            echo ">"
-            echo "> Artefacts:"
-            echo "> - \`codeplane-desktop-<ver>-mac-arm64.dmg\` / \`codeplane-desktop-<ver>-mac-x64.dmg\` — macOS installers (Apple Silicon / Intel)"
-            echo "> - \`codeplane-desktop-<ver>-win-x64.exe\` — Windows installer"
-            echo "> - \`codeplane-desktop-<ver>-linux-amd64.deb\`, \`-linux-x86_64.AppImage\`, \`-linux-x64.tar.gz\` — Linux distributions"
-            echo "> - \`latest.yml\` / \`latest-mac.yml\` / \`latest-linux.yml\` — electron-updater feeds (do not download manually)"
-            echo "> - Stable version-less aliases (e.g. \`codeplane-desktop-macos-apple-silicon.dmg\`, \`codeplane-desktop-windows-x64.exe\`) for install scripts that always want the latest"
-            echo ""
-            echo "---"
-            echo ""
-            cat "$notes_file"
-          } > "$banner"
+          jq -r '.body // ""' base-release.json > "$notes_file"
+          if grep -Eiq '^[[:space:]]*No notable changes\.?[[:space:]]*$|^BLOCKED:|rolls forward in-flight|bumps version metadata|<area>|^## CLI · npm release$|^## Desktop Shell$|^## Mobile Shell$' "$notes_file"; then
+            echo "Source release ${{ needs.resolve.outputs.source_tag }} still contains placeholder or boilerplate notes." >&2
+            exit 1
+          fi
           gh_release edit "${{ needs.resolve.outputs.desktop_tag }}" \
             --draft=false \
             --latest \
             --title "$title" \
-            --notes-file "$banner" \
+            --notes-file "$notes_file" \
             --repo "${{ github.repository }}"

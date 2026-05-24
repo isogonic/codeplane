@@ -44,6 +44,7 @@ export type LocalInstanceManagerInput = {
   configDir: string
   dataDir: string
   log?(event: string, data?: unknown): void
+  extraEnv?(): Promise<Record<string, string | undefined>> | Record<string, string | undefined>
   // When true, every spawned local server is told CODEPLANE_DESKTOP_MANAGED=1
   // so its Installation.method() returns "desktop" and the in-instance
   // /global/upgrade route returns a "use the desktop's Updates panel"
@@ -239,6 +240,8 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
       // trying to npm-install when there's no global npm install to
       // upgrade in the first place.
       env.CODEPLANE_MANAGED_BY = config.desktopManaged ? "desktop" : "tui"
+      const extraEnv = await config.extraEnv?.()
+      if (extraEnv) Object.assign(env, extraEnv)
 
       // Spawn from the user's home, not the per-instance data dir. The picker
       // seeds itself from the server's process.cwd(), so anchoring at $HOME

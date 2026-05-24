@@ -117,49 +117,33 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # Match the desktop-release convention: title is just the
-          # source tag (`v<x.y.z>`). Any descriptive suffix from the
-          # source release name is dropped — the existing release-list
-          # history shows the established pattern is short, version-only
-          # titles for the platform-specific releases.
           title="${{ needs.resolve.outputs.source_tag }}"
           notes_file="$(mktemp)"
-          if gh release view "${{ needs.resolve.outputs.source_tag }}" --repo "${{ github.repository }}" --json body > base-release.json 2>/dev/null; then
-            jq -r '.body // ""' base-release.json > "$notes_file"
-          else
-            : > "$notes_file"
+          gh release view "${{ needs.resolve.outputs.source_tag }}" --repo "${{ github.repository }}" --json name,body > base-release.json
+          source_title="$(jq -r '.name // empty' base-release.json)"
+          if [ -n "$source_title" ]; then
+            title="$source_title"
           fi
-          # Prepend a "Mobile Shell" banner so users don't confuse this
-          # release with the production App Store / Play Store update. The
-          # whole banner body lives inside a single blockquote — header is
-          # plain, the rest renders as one quoted callout above whatever
-          # the source release body said.
-          banner="$(mktemp)"
-          {
-            echo "## Mobile Shell"
-            echo ""
-            echo "> **The user-facing update path for the Codeplane mobile shell is the App Store (iOS) and the Play Store (Android).** This release exists for sideloading, TestFlight uploads, internal QA, and CI artefact storage — it is NOT how end users update."
-            echo ">"
-            echo "> Artefacts:"
-            echo "> - \`Codeplane-iOS.ipa\` (or \`Codeplane-iOS.xcarchive.zip\` when no Apple Developer signing cert is configured)"
-            echo "> - \`Codeplane-Android.apk\` (and \`Codeplane-Android.aab\` when an Android keystore is configured)"
-            echo "> - \`codeplane-mobile-web-bundle.tar.gz\` — the Vite-built picker bundle the native shell wraps; useful when you want to preview the shell UI in a browser without rebuilding."
-            echo ""
-            echo "---"
-            echo ""
-            cat "$notes_file"
-          } > "$banner"
+          jq -r '.body // ""' base-release.json > "$notes_file"
+          if ! grep -q '[^[:space:]]' "$notes_file"; then
+            echo "Source release ${{ needs.resolve.outputs.source_tag }} is missing notes." >&2
+            exit 1
+          fi
+          if grep -Eiq '^[[:space:]]*No notable changes\.?[[:space:]]*$|^BLOCKED:|rolls forward in-flight|bumps version metadata|<area>|^## CLI · npm release$|^## Desktop Shell$|^## Mobile Shell$' "$notes_file"; then
+            echo "Source release ${{ needs.resolve.outputs.source_tag }} still contains placeholder or boilerplate notes." >&2
+            exit 1
+          fi
           if gh release view "${{ needs.resolve.outputs.mobile_tag }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
             gh release edit "${{ needs.resolve.outputs.mobile_tag }}" \
               --title "$title" \
-              --notes-file "$banner" \
+              --notes-file "$notes_file" \
               --repo "${{ github.repository }}"
             exit 0
           fi
           gh release create "${{ needs.resolve.outputs.mobile_tag }}" \
             --target "$(git rev-parse HEAD)" \
             --title "$title" \
-            --notes-file "$banner" \
+            --notes-file "$notes_file" \
             --repo "${{ github.repository }}"
 
   build-web-bundle:
@@ -495,35 +479,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # Match the desktop-release convention: title is just the
-          # source tag (`v<x.y.z>`). Any descriptive suffix from the
-          # source release name is dropped — the existing release-list
-          # history shows the established pattern is short, version-only
-          # titles for the platform-specific releases.
           title="${{ needs.resolve.outputs.source_tag }}"
           notes_file="$(mktemp)"
-          if gh release view "${{ needs.resolve.outputs.source_tag }}" --repo "${{ github.repository }}" --json body > base-release.json 2>/dev/null; then
-            jq -r '.body // ""' base-release.json > "$notes_file"
-          else
-            : > "$notes_file"
+          gh release view "${{ needs.resolve.outputs.source_tag }}" --repo "${{ github.repository }}" --json name,body > base-release.json
+          source_title="$(jq -r '.name // empty' base-release.json)"
+          if [ -n "$source_title" ]; then
+            title="$source_title"
           fi
-          banner="$(mktemp)"
-          {
-            echo "## Mobile Shell"
-            echo ""
-            echo "> **The user-facing update path for the Codeplane mobile shell is the App Store (iOS) and the Play Store (Android).** This release exists for sideloading, TestFlight uploads, internal QA, and CI artefact storage — it is NOT how end users update."
-            echo ">"
-            echo "> Artefacts:"
-            echo "> - \`Codeplane-iOS.ipa\` (or \`Codeplane-iOS.xcarchive.zip\` when no Apple Developer signing cert is configured)"
-            echo "> - \`Codeplane-Android.apk\` (and \`Codeplane-Android.aab\` when an Android keystore is configured)"
-            echo "> - \`codeplane-mobile-web-bundle.tar.gz\` — the Vite-built picker bundle the native shell wraps; useful when you want to preview the shell UI in a browser without rebuilding."
-            echo ""
-            echo "---"
-            echo ""
-            cat "$notes_file"
-          } > "$banner"
+          jq -r '.body // ""' base-release.json > "$notes_file"
+          if grep -Eiq '^[[:space:]]*No notable changes\.?[[:space:]]*$|^BLOCKED:|rolls forward in-flight|bumps version metadata|<area>|^## CLI · npm release$|^## Desktop Shell$|^## Mobile Shell$' "$notes_file"; then
+            echo "Source release ${{ needs.resolve.outputs.source_tag }} still contains placeholder or boilerplate notes." >&2
+            exit 1
+          fi
           gh release edit "${{ needs.resolve.outputs.mobile_tag }}" \
             --draft=false \
             --title "$title" \
-            --notes-file "$banner" \
+            --notes-file "$notes_file" \
             --repo "${{ github.repository }}"

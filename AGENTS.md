@@ -186,7 +186,7 @@ Before any release:
 - [ ] Bump version with `bun run version:bump` (patch) or `bun run version:bump X.Y.Z` (exact).
 - [ ] Commit with a release-style message.
 - [ ] Push to `origin/main`.
-- [ ] `gh release create vX.Y.Z --target main --title "vX.Y.Z" --notes ...` — see [Release notes template](#release-notes-template).
+- [ ] `gh release create vX.Y.Z --target main --title "vX.Y.Z" --notes ...` — see [Release notes requirements](#release-notes-requirements).
 
 ---
 
@@ -761,69 +761,45 @@ Windows build meant the release never went live. Now the release is visible
 the moment `create-release` runs and is auto-promoted to `--latest` even if
 one matrix job fails.
 
-### Release notes template
+### Release notes requirements
 
-GitHub release notes follow a fixed structure. **Do not** title or open the
-notes with `Codeplane <version>`. Start at `## Highlights`. Keep section
-headings factual.
+GitHub release notes must be **release-specific and precise**.
 
-For a routine release:
+Never do any of the following:
 
-```md
-## Highlights
+- Start with generic filler like `Codeplane vX.Y.Z rolls forward in-flight work`
+- Mention only version bumps, release mechanics, or artifact lists
+- Paste banners like `CLI · npm release`, `Desktop Shell`, or `Mobile Shell`
+- Use placeholders like `<area>`, `...`, `various fixes`, `stability improvements`, or `internal cleanup`
+- Rely on GitHub auto-generated notes for the public release body
 
-Codeplane **vX.Y.Z** rolls forward in-flight <area> work and bumps version
-metadata across all workspaces.
+Every release must include:
 
-## What's new
+- A one-sentence opening summary that says exactly what shipped
+- A `## Changes` section with bullets naming the exact affected surface and the exact behavior change
+- A `## Verification` section with the exact commands or checks that were run
 
-- **<area>**: short bullet describing the change.
-- **<area>**: …
+Use file paths in bullets when they materially improve precision or future debugging.
+If you cannot write at least one precise user-facing change bullet, stop and inspect the diffs until you can, or do not cut the release.
 
-## Validation
-
-- **Typecheck**: 8/8 packages clean (`bun turbo typecheck`).
-- **Lint**: 0 errors (`bun lint`).
-
-## Release artifacts
-
-- npm: `codeplane-ai@X.Y.Z`, `@codeplane-ai/sdk@X.Y.Z`, `@codeplane-ai/plugin@X.Y.Z`
-- Desktop installers publish on the paired `vX.Y.Z-desktop` release line —
-  created as a real release immediately (no draft).
-```
-
-For a hotfix (most common case for this repo):
+Example:
 
 ```md
-## Hotfix
+## Summary
 
-Codeplane **vX.Y.Z** fixes <one-sentence description of the user-visible bug>.
+Codeplane **vX.Y.Z** fixes desktop-managed computer use by routing native control through the Electron host and refreshes the macOS permissions dialog after System Settings opens.
 
-### Root cause
+## Changes
 
-A precise paragraph explaining what was wrong, ideally referencing the file
-and line that contained the bug.
+- `packages/desktop/src/main/main.ts`, `packages/desktop/src/main/computer-bridge.ts`: desktop-managed local servers now forward `computer` actions to the Electron process, so granted macOS Accessibility / Screen Recording permissions apply to the running tool.
+- `packages/app/src/components/settings-general.tsx`: the Computer use permissions dialog now uses a stacked layout and re-checks permission state after the user opens System Settings.
+- `packages/ui/src/components/message-part.tsx`: `tools`, `computer`, and `browser` now render as first-class native tool cards instead of generic fallback output.
 
-### Fix
+## Verification
 
-1. **`path/to/file`**: bullet describing the change.
-2. **`path/to/other`**: bullet describing the change.
-
-### Verified
-
-- Test command run, expected output, actual output (or "smoke test passes").
-- Typecheck / lint status.
-
-### Upgrade
-
-\`\`\`sh
-npm install -g codeplane-ai@X.Y.Z
-\`\`\`
-
-## Release artifacts
-
-- npm: `codeplane-ai@X.Y.Z`, `@codeplane-ai/sdk@X.Y.Z`, `@codeplane-ai/plugin@X.Y.Z`
-- Desktop installers publish on the paired `vX.Y.Z-desktop` release line.
+- `bun --cwd packages/codeplane test test/tool/computer.test.ts`
+- `bun --cwd packages/codeplane typecheck`
+- `bun --cwd packages/desktop typecheck`
 ```
 
 `gh release create` with `--notes "$(cat <<'EOF' ... EOF)"` — the heredoc
@@ -2102,20 +2078,19 @@ git push origin main
 
 # 4. Create GitHub release (this triggers both workflows)
 gh release create v27.4.X+1 --target main --title "v27.4.X+1" --notes "$(cat <<'EOF'
-## Highlights
+## Summary
 
-Codeplane **v27.4.X+1** ships in-flight <area> work and bumps version
-metadata across all workspaces.
+Codeplane **v27.4.X+1** fixes desktop-managed computer use by routing native control through the Electron host and refreshes the macOS permissions dialog after System Settings opens.
 
-## Validation
+## Changes
 
-- **Typecheck**: 8/8 packages clean (`bun turbo typecheck`).
-- **Lint**: 0 errors (`bun lint`).
+- `packages/desktop/src/main/main.ts`, `packages/desktop/src/main/computer-bridge.ts`: desktop-managed local servers now forward `computer` actions to the Electron process, so granted macOS permissions apply to the running tool.
+- `packages/app/src/components/settings-general.tsx`: the Computer use permissions dialog now uses a stacked layout and re-checks permission state after the user opens System Settings.
 
-## Release artifacts
+## Verification
 
-- npm: `codeplane-ai@27.4.X+1`, `@codeplane-ai/sdk@27.4.X+1`, `@codeplane-ai/plugin@27.4.X+1`
-- Desktop installers publish on the paired `v27.4.X+1-desktop` release line.
+- `bun turbo typecheck`
+- `bun lint`
 EOF
 )"
 

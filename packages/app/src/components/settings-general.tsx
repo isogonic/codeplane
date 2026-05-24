@@ -121,7 +121,7 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
     if (tool === "browser") settings.general.setBrowserUse(checked)
     if (tool === "computer") settings.general.setComputerUse(checked)
     void (async () => {
-      if (checked && platform.systemPermissions) {
+      if (checked && tool === "computer" && platform.systemPermissions) {
         const status = await platform.systemPermissions.check()
         const missing = status.permissions.filter((p) => !p.granted)
         if (missing.length > 0) {
@@ -738,11 +738,31 @@ function DesktopPermissionsDialog(props: { tool: "browser" | "computer"; missing
   const platform = usePlatform()
   const dialog = useDialog()
   const [requesting, setRequesting] = createSignal<string | null>(null)
+  const [permissions, setPermissions] = createSignal(props.missing)
+
+  const relevantKeys = new Set(props.missing.map((permission) => permission.key))
+
+  const refresh = async () => {
+    const status = await platform.systemPermissions?.check()
+    if (!status) return
+    setPermissions(status.permissions.filter((permission) => relevantKeys.has(permission.key)))
+  }
+
+  onMount(() => {
+    void refresh()
+  })
 
   const request = async (key: string) => {
     setRequesting(key)
     try {
       await platform.systemPermissions?.request(key)
+      const poll = async (remaining: number) => {
+        if (remaining <= 0) return
+        await refresh()
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+        await poll(remaining - 2000)
+      }
+      void poll(20_000)
     } finally {
       setRequesting(null)
     }
@@ -756,19 +776,21 @@ function DesktopPermissionsDialog(props: { tool: "browser" | "computer"; missing
   return (
     <Dialog
       title={language.t("settings.general.row.computerUse.permissionsTitle", { tool: toolLabel() })}
+      size="large"
+      class="w-[min(100vw-2rem,38rem)]"
       transition
     >
-      <div class="flex flex-col gap-4">
+      <div class="flex w-full flex-col gap-5">
         <p class="text-14-regular text-text-base">
           {language.t("settings.general.row.computerUse.permissionsBody", {
             tool: toolLabel(),
-            count: String(props.missing.length),
+            count: String(permissions().length),
           })}
         </p>
-        <div class="flex flex-col gap-2">
-          {props.missing.map((p) => (
-            <div class="flex items-center justify-between gap-3 rounded-lg border border-border-weak-base px-4 py-3">
-              <div class="flex flex-col gap-0.5">
+        <div class="flex flex-col gap-3">
+          {permissions().map((p) => (
+            <div class="flex flex-col gap-3 rounded-xl border border-border-weak-base px-4 py-4 sm:flex-row sm:items-start sm:justify-between">
+              <div class="flex min-w-0 flex-1 flex-col gap-1">
                 <span class="text-14-medium text-text-strong">{p.label}</span>
                 <span class="text-12-regular text-text-weak">
                   {p.granted
@@ -776,23 +798,27 @@ function DesktopPermissionsDialog(props: { tool: "browser" | "computer"; missing
                     : language.t("settings.general.row.computerUse.permissionMissing")}
                 </span>
               </div>
-              <Button
-                size="small"
-                variant="secondary"
-                disabled={requesting() === p.key}
-                onClick={() => void request(p.key)}
-              >
-                {requesting() === p.key
-                  ? language.t("settings.general.row.computerUse.permissionOpening")
-                  : language.t("settings.general.row.computerUse.permissionOpenSettings")}
-              </Button>
+              <Show when={!p.granted}>
+                <div class="sm:shrink-0">
+                  <Button
+                    size="small"
+                    variant="secondary"
+                    disabled={requesting() === p.key}
+                    onClick={() => void request(p.key)}
+                  >
+                    {requesting() === p.key
+                      ? language.t("settings.general.row.computerUse.permissionOpening")
+                      : language.t("settings.general.row.computerUse.permissionOpenSettings")}
+                  </Button>
+                </div>
+              </Show>
             </div>
           ))}
         </div>
         <p class="text-12-regular text-text-weak">
           {language.t("settings.general.row.computerUse.permissionsFooter")}
         </p>
-        <div class="flex justify-end">
+        <div class="flex justify-end border-t border-border-weak-base pt-1">
           <Button variant="secondary" size="large" onClick={() => dialog.close()}>
             {language.t("settings.general.row.computerUse.permissionDone")}
           </Button>

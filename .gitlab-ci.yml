@@ -138,28 +138,26 @@ release-create:desktop:
     - |
       bash -euo pipefail <<'EOF'
       [ "$RUN_DESKTOP" = "1" ] || { echo "Skipping (RUN_DESKTOP=0)"; exit 0; }
-      banner=$(cat <<MD
-      ## Desktop Shell
-
-      > **The user-facing update path for the Codeplane desktop app is the in-app updater (electron-updater).** This release page is the source of binaries for first install and the auto-updater feed; once installed, end users update silently in-app — they do not re-download from this page.
-      >
-      > Artefacts (Linux only on GitLab CI; see \`.github/workflows/desktop-release.yml\` for the macOS / Windows variants):
-      > - \`codeplane-desktop-<ver>-linux-*.AppImage\` / \`*.deb\` / \`*.tar.gz\` — Linux distributions
-      > - \`latest-linux.yml\` — electron-updater feed (do not download manually)
-      > - \`codeplane-desktop-linux-x64.AppImage\` — stable version-less alias for install scripts
-      MD
-      )
+      release_json=$(curl --fail --silent --show-error \
+        https://api.github.com/repos/devinoldenburg/codeplane/releases/tags/${SOURCE_TAG})
+      title=$(printf '%s' "$release_json" | jq -r '.name // .tag_name')
+      notes=$(printf '%s' "$release_json" | jq -r '.body // ""')
+      printf '%s\n' "$notes" | grep -q '[^[:space:]]' || { echo "Source release $SOURCE_TAG is missing notes." >&2; exit 1; }
+      printf '%s\n' "$notes" | grep -Eiq '^[[:space:]]*No notable changes\.?[[:space:]]*$|^BLOCKED:|rolls forward in-flight|bumps version metadata|<area>|^## CLI · npm release$|^## Desktop Shell$|^## Mobile Shell$' && {
+        echo "Source release $SOURCE_TAG still contains placeholder or boilerplate notes." >&2
+        exit 1
+      }
       if ! release-cli get --tag-name "$DESKTOP_TAG" >/dev/null 2>&1; then
         release-cli create \
           --tag-name "$DESKTOP_TAG" \
-          --name "$SOURCE_TAG" \
-          --description "$banner" \
+          --name "$title" \
+          --description "$notes" \
           --ref "$CI_COMMIT_SHA"
       else
         release-cli update \
           --tag-name "$DESKTOP_TAG" \
-          --name "$SOURCE_TAG" \
-          --description "$banner"
+          --name "$title" \
+          --description "$notes"
       fi
       EOF
 
@@ -173,27 +171,26 @@ release-create:mobile:
     - |
       bash -euo pipefail <<'EOF'
       [ "$RUN_MOBILE" = "1" ] || { echo "Skipping (RUN_MOBILE=0)"; exit 0; }
-      banner=$(cat <<MD
-      ## Mobile Shell
-
-      > **The user-facing update path for the Codeplane mobile shell is the App Store (iOS) and the Play Store (Android).** This release exists for sideloading, internal QA, and CI artefact storage — it is NOT how end users update.
-      >
-      > Artefacts (Android + web bundle only on GitLab CI; iOS requires a macOS runner — see \`.github/workflows/mobile-release.yml\`):
-      > - \`Codeplane-Android.apk\` (and \`Codeplane-Android.aab\` when an Android keystore is configured)
-      > - \`codeplane-mobile-web-bundle.tar.gz\` — the Vite-built picker bundle the native shell wraps
-      MD
-      )
+      release_json=$(curl --fail --silent --show-error \
+        https://api.github.com/repos/devinoldenburg/codeplane/releases/tags/${SOURCE_TAG})
+      title=$(printf '%s' "$release_json" | jq -r '.name // .tag_name')
+      notes=$(printf '%s' "$release_json" | jq -r '.body // ""')
+      printf '%s\n' "$notes" | grep -q '[^[:space:]]' || { echo "Source release $SOURCE_TAG is missing notes." >&2; exit 1; }
+      printf '%s\n' "$notes" | grep -Eiq '^[[:space:]]*No notable changes\.?[[:space:]]*$|^BLOCKED:|rolls forward in-flight|bumps version metadata|<area>|^## CLI · npm release$|^## Desktop Shell$|^## Mobile Shell$' && {
+        echo "Source release $SOURCE_TAG still contains placeholder or boilerplate notes." >&2
+        exit 1
+      }
       if ! release-cli get --tag-name "$MOBILE_TAG" >/dev/null 2>&1; then
         release-cli create \
           --tag-name "$MOBILE_TAG" \
-          --name "$SOURCE_TAG" \
-          --description "$banner" \
+          --name "$title" \
+          --description "$notes" \
           --ref "$CI_COMMIT_SHA"
       else
         release-cli update \
           --tag-name "$MOBILE_TAG" \
-          --name "$SOURCE_TAG" \
-          --description "$banner"
+          --name "$title" \
+          --description "$notes"
       fi
       EOF
 

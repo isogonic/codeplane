@@ -538,6 +538,10 @@ export function createDesktopUIHost(input: {
   getInstance(id: string): DesktopHostInstance | undefined
   getSession(instance: DesktopHostInstance): Session
   ensureReady?(instance: DesktopHostInstance): Promise<DesktopHostInstance>
+  handleInternalRequest?(
+    request: http.IncomingMessage,
+    reqUrl: URL,
+  ): Promise<{ status?: number; headers?: Record<string, string>; body?: string | Uint8Array } | undefined>
   log?(event: string, data?: unknown): void
 }) {
   let activeID = ""
@@ -613,6 +617,12 @@ export function createDesktopUIHost(input: {
     server = http.createServer((request, response) => {
       void (async () => {
         const reqUrl = new URL(request.url ?? "/", origin || "http://127.0.0.1")
+        const internal = input.handleInternalRequest ? await input.handleInternalRequest(request, reqUrl) : undefined
+        if (internal) {
+          response.writeHead(internal.status ?? 200, internal.headers)
+          response.end(internal.body)
+          return
+        }
         if (reqUrl.pathname.startsWith("/instance/")) {
           const [, , id, ...rest] = reqUrl.pathname.split("/")
           const instance = id ? input.getInstance(id) : undefined
@@ -792,6 +802,7 @@ export function createDesktopUIHost(input: {
   }
 
   return {
+    origin: () => ensureServer(),
     bootstrap(instances: DesktopHostInstance[], currentID?: string) {
       if (!origin) throw new Error("Desktop UI host is not ready")
       if (currentID) activeID = currentID

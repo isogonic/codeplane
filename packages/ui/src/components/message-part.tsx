@@ -354,6 +354,12 @@ export function getToolInfo(tool: string, input: any = {}): ToolInfo {
         title: i18n.t("ui.tool.webfetch"),
         subtitle: input.url,
       }
+    case "browser":
+      return {
+        icon: "window-cursor",
+        title: "Browser",
+        subtitle: input.url || input.ref || input.selector || input.action,
+      }
     case "websearch":
       return {
         icon: "window-cursor",
@@ -387,6 +393,18 @@ export function getToolInfo(tool: string, input: any = {}): ToolInfo {
       return {
         icon: "branch",
         title: i18n.t("ui.tool.git"),
+        subtitle: input.operation,
+      }
+    case "computer":
+      return {
+        icon: "keyboard",
+        title: "Computer",
+        subtitle: input.action,
+      }
+    case "tools":
+      return {
+        icon: "server",
+        title: "Tools",
         subtitle: input.operation,
       }
     case "edit":
@@ -573,6 +591,7 @@ function renderable(part: PartType, reasoningDisplay: ReasoningDisplay = "full")
 function toolDefaultOpen(tool: string, shell = false, edit = false) {
   if (tool === "bash") return shell
   if (tool === "edit" || tool === "write" || tool === "apply_patch") return edit
+  if (tool === "tools") return true
 }
 
 function partDefaultOpen(part: PartType, shell = false, edit = false) {
@@ -1942,6 +1961,46 @@ ToolRegistry.register({
 })
 
 ToolRegistry.register({
+  name: "browser",
+  render(props) {
+    const action = createMemo(() => {
+      const value = props.metadata.action
+      if (typeof value === "string" && value) return value
+      return typeof props.input.action === "string" && props.input.action ? props.input.action : "navigate"
+    })
+    const target = createMemo(() => {
+      const url = typeof props.input.url === "string" ? props.input.url : ""
+      if (url) return url
+      const ref = typeof props.input.ref === "string" ? props.input.ref : ""
+      if (ref) return ref
+      const selector = typeof props.input.selector === "string" ? props.input.selector : ""
+      if (selector) return selector
+      if (typeof props.input.x === "number" && typeof props.input.y === "number") {
+        return `(${props.input.x}, ${props.input.y})`
+      }
+      return ""
+    })
+
+    return (
+      <BasicTool
+        {...props}
+        icon="window-cursor"
+        trigger={{
+          title: "Browser",
+          subtitle: [action(), target()].filter(Boolean).join(" · "),
+        }}
+      >
+        <Show when={typeof props.output === "string" && props.output.length > 0}>
+          <div data-component="tool-output" data-scrollable>
+            <Markdown text={props.output as string} />
+          </div>
+        </Show>
+      </BasicTool>
+    )
+  },
+})
+
+ToolRegistry.register({
   name: "websearch",
   render(props) {
     const i18n = useI18n()
@@ -2564,6 +2623,76 @@ ToolRegistry.register({
             </pre>
           </div>
         </div>
+      </BasicTool>
+    )
+  },
+})
+
+ToolRegistry.register({
+  name: "computer",
+  render(props) {
+    const action = createMemo(() => {
+      const value = props.metadata.action
+      if (typeof value === "string" && value) return value
+      if (typeof props.input.action === "string" && props.input.action) {
+        if (props.input.action === "batch") {
+          const count = Array.isArray(props.input.actions) ? props.input.actions.length : 0
+          return count > 0 ? `batch(${count})` : "batch"
+        }
+        return props.input.action
+      }
+      return "computer"
+    })
+
+    return (
+      <BasicTool
+        {...props}
+        icon="keyboard"
+        trigger={{
+          title: "Computer",
+          subtitle: action(),
+        }}
+      >
+        <Show when={typeof props.output === "string" && props.output.length > 0}>
+          <div data-component="tool-output" data-scrollable>
+            <Markdown text={props.output as string} />
+          </div>
+        </Show>
+      </BasicTool>
+    )
+  },
+})
+
+ToolRegistry.register({
+  name: "tools",
+  render(props) {
+    const operation = createMemo(() => {
+      const value = props.metadata.operation
+      if (typeof value === "string" && value) return value
+      return typeof props.input.operation === "string" && props.input.operation ? props.input.operation : "status"
+    })
+    const scope = createMemo(() => {
+      if (typeof props.input.tool === "string" && props.input.tool) return props.input.tool
+      if (typeof props.input.instance === "string" && props.input.instance) return props.input.instance
+      if (typeof props.metadata.tool === "string" && props.metadata.tool) return props.metadata.tool
+      if (typeof props.metadata.instance === "string" && props.metadata.instance) return props.metadata.instance
+      return ""
+    })
+
+    return (
+      <BasicTool
+        {...props}
+        icon="server"
+        trigger={{
+          title: "Tools",
+          subtitle: [operation(), scope()].filter(Boolean).join(" · "),
+        }}
+      >
+        <Show when={typeof props.output === "string" && props.output.length > 0}>
+          <div data-component="tool-output" data-scrollable>
+            <Markdown text={props.output as string} />
+          </div>
+        </Show>
       </BasicTool>
     )
   },

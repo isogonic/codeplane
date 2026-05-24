@@ -88,23 +88,34 @@ bun --cwd packages/codeplane script/build.ts --skip-embed-web-ui --skip-install 
         </table>
 
         <h2>GitHub release</h2>
-        <pre><code>{`gh release create vX.Y.Z \\
-  --repo devinoldenburg/codeplane \\
-  --target main \\
-  --title "vX.Y.Z" \\
+        <pre><code>{`gh release create vX.Y.Z \
+  --repo devinoldenburg/codeplane \
+  --target main \
+  --title "vX.Y.Z" \
   --notes "$(cat <<'EOF'
-## Highlights
+## Summary
 
-Codeplane **vX.Y.Z** ...
+Codeplane **vX.Y.Z** fixes desktop-managed computer use by routing native control through the Electron host and refreshes the macOS permissions dialog after System Settings opens.
 
-## Validation
+## Changes
 
-- ...
+- \`packages/desktop/src/main/main.ts\`, \`packages/desktop/src/main/computer-bridge.ts\`: desktop-managed local servers now forward \`computer\` actions to the Electron process, so granted macOS permissions apply to the running tool.
+- \`packages/app/src/components/settings-general.tsx\`: the Computer use permissions dialog now uses a stacked layout and re-checks permission state after the user opens System Settings.
+
+## Verification
+
+- \`bun turbo typecheck\`
+- \`bun lint\`
 EOF
 )"`}</code></pre>
         <p>
           Creating the base release tag starts the release workflows. Do not create the
           <code>-desktop</code> or <code>-mobile</code> tags by hand for a normal release.
+        </p>
+        <p>
+          Release bodies must be precise. Do not paste boilerplate banners, generic changelog filler,
+          GitHub auto-generated notes, or placeholders like <code>&lt;area&gt;</code>. Name the exact
+          surface changed and the exact shipped behavior.
         </p>
 
         <h2>Workflow outputs</h2>

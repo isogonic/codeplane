@@ -22,6 +22,8 @@ const it = testEffect(
   ),
 )
 
+const originalFetch = globalThis.fetch
+
 const ctx = {
   sessionID: SessionID.make("ses_test"),
   messageID: MessageID.make("msg_test"),
@@ -34,6 +36,9 @@ const ctx = {
 
 afterEach(async () => {
   await Instance.disposeAll()
+  globalThis.fetch = originalFetch
+  delete process.env.CODEPLANE_DESKTOP_BRIDGE_ORIGIN
+  delete process.env.CODEPLANE_DESKTOP_BRIDGE_TOKEN
 })
 
 function init() {
@@ -91,25 +96,27 @@ describe("tool.computer", () => {
       const previousDesktopManaged = process.env.CODEPLANE_DESKTOP_MANAGED
       yield* Effect.addFinalizer(() => setDesktopEnv(previous, previousDesktopManaged))
 
-      yield* provideTmpdirInstance(() =>
-        Effect.gen(function* () {
-          yield* setDesktopEnv("app", "1")
-          const def = yield* init()
-          let asked = false
-          const result = yield* def.execute(
-            { action: "batch", actions: [{ action: "move", coordinate: [1, 1] }] },
-            {
-              ...ctx,
-              ask: () =>
-                Effect.sync(() => {
-                  asked = true
-                }),
-            },
-          )
+      yield* provideTmpdirInstance(
+        () =>
+          Effect.gen(function* () {
+            yield* setDesktopEnv("app", "1")
+            const def = yield* init()
+            let asked = false
+            const result = yield* def.execute(
+              { action: "batch", actions: [{ action: "move", coordinate: [1, 1] }] },
+              {
+                ...ctx,
+                ask: () =>
+                  Effect.sync(() => {
+                    asked = true
+                  }),
+              },
+            )
 
-          expect(result.output).toContain("Computer use is disabled")
-          expect(asked).toBe(false)
-        }),
+            expect(result.output).toContain("Computer use is disabled")
+            expect(asked).toBe(false)
+          }),
+        { config: { tools: { computer: false } } },
       )
 
       yield* provideTmpdirInstance(
@@ -148,6 +155,65 @@ describe("tool.computer", () => {
 
             expect(asked).toBe(true)
             expect(Exit.isFailure(exit)).toBe(true)
+          }),
+        { config: { tools: { computer: true } } },
+      )
+    }),
+  )
+
+  it.live("routes desktop computer actions through the desktop bridge when available", () =>
+    Effect.gen(function* () {
+      const previous = process.env.CODEPLANE_CLIENT
+      const previousDesktopManaged = process.env.CODEPLANE_DESKTOP_MANAGED
+      yield* Effect.addFinalizer(() => setDesktopEnv(previous, previousDesktopManaged))
+
+      yield* provideTmpdirInstance(
+        () =>
+          Effect.gen(function* () {
+            yield* setDesktopEnv("app", "1")
+            process.env.CODEPLANE_DESKTOP_BRIDGE_ORIGIN = "http://127.0.0.1:43210"
+            process.env.CODEPLANE_DESKTOP_BRIDGE_TOKEN = "bridge-token"
+
+            const requests: Array<{ url: string; token: string | null; body: string }> = []
+            globalThis.fetch = (async (input, init) => {
+              const headers = (init?.headers ?? {}) as Record<string, string>
+              requests.push({
+                url: String(input),
+                token: headers["X-Codeplane-Bridge-Token"] ?? null,
+                body: typeof init?.body === "string" ? init.body : "",
+              })
+              return new Response(
+                JSON.stringify({
+                  ok: true,
+                  actions: [{ action: "move", point: { x: 12, y: 34 }, amount: 5 }],
+                  cursor: { x: 12, y: 34 },
+                  screenshot: {
+                    dataUrl: "data:image/png;base64,AAAA",
+                    width: 1440,
+                    height: 900,
+                  },
+                }),
+                {
+                  status: 200,
+                  headers: { "Content-Type": "application/json" },
+                },
+              )
+            }) as typeof fetch
+
+            const def = yield* init()
+            const result = yield* def.execute(
+              { action: "move", coordinate: [12, 34] },
+              { ...ctx, extra: { model: model(true) } },
+            )
+
+            expect(requests).toHaveLength(1)
+            expect(requests[0]?.url).toBe("http://127.0.0.1:43210/__desktop/computer")
+            expect(requests[0]?.token).toBe("bridge-token")
+            expect(requests[0]?.body).toContain('"action":"move"')
+            expect(result.metadata.width).toBe(1440)
+            expect(result.metadata.height).toBe(900)
+            expect(result.metadata.cursor).toEqual({ x: 12, y: 34 })
+            expect(result.attachments?.[0]?.url).toBe("data:image/png;base64,AAAA")
           }),
         { config: { tools: { computer: true } } },
       )

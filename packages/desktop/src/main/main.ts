@@ -25,6 +25,7 @@ import { createInstanceStore, type State as InstanceStoreState } from "@codeplan
 import { createServerVersionWatcher, type ServerVersionWatcher } from "@codeplane-ai/shared/server-version-watcher"
 import { createWriteStream, existsSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs"
 import { execFile, spawn } from "node:child_process"
+import { randomUUID } from "node:crypto"
 import { promisify } from "node:util"
 import os from "node:os"
 import path from "path"
@@ -39,6 +40,11 @@ import {
   type DesktopUIPrepareProgress,
 } from "./ui-host"
 import { createLocalInstanceManager, type LocalInstanceProgress } from "./local-instance"
+import {
+  desktopComputerNeedsAccessibility,
+  performDesktopComputer,
+  type DesktopComputerInput,
+} from "./computer-bridge"
 import { reconnectOverlayScript } from "./reconnect-overlay"
 import { codeplaneDesktopReleaseTag, codeplaneReleaseTag, CodeplaneVersion } from "@codeplane-ai/shared/version"
 import type { SavedInstance } from "@codeplane-ai/shared/instance"
@@ -66,9 +72,28 @@ const GITHUB_API_HEADERS = {
   accept: "application/vnd.github+json",
   "user-agent": "codeplane-desktop-updater",
 }
+const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8" }
 
 let githubTokenCache: { token: string | null; resolvedAt: number } | undefined
 const GITHUB_TOKEN_TTL_MS = 5 * 60 * 1000
+const desktopBridgeToken = randomUUID()
+
+function jsonResponse(body: unknown, status = 200) {
+  return {
+    status,
+    headers: JSON_HEADERS,
+    body: JSON.stringify(body),
+  }
+}
+
+async function readJsonBody(request: import("node:http").IncomingMessage) {
+  const chunks: Buffer[] = []
+  for await (const chunk of request) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  }
+  const raw = chunks.length > 0 ? Buffer.concat(chunks).toString("utf8") : "{}"
+  return JSON.parse(raw) as Record<string, unknown>
+}
 
 async function resolveGithubToken(): Promise<string | null> {
   if (githubTokenCache && Date.now() - githubTokenCache.resolvedAt < GITHUB_TOKEN_TTL_MS) {
@@ -221,18 +246,6 @@ const configuredPartitions = new Set<string>()
 // Keyed by window id so multiple instance windows don't share state.
 const windowVersionWatchers = new Map<number, ServerVersionWatcher>()
 const windowReconnecting = new Set<number>()
-const localManager = createLocalInstanceManager({
-  binariesDir: codeplaneHome.local_server_binaries,
-  configDir: codeplaneHome.root,
-  dataDir: codeplaneHome.local_server,
-  log: (event, data) => logger.log("local-instance", event, data),
-  // The desktop owns the lifecycle of the local runtime spawned by
-  // the desktop. Tells the spawned server's Installation.method() to
-  // return "desktop" so /global/upgrade short-circuits with the
-  // "use the desktop's Updates panel" message instead of attempting
-  // an npm install.
-  desktopManaged: true,
-})
 const uiHost = createDesktopUIHost({
   cacheDir: app.getPath("userData"),
   getInstance: getInstanceLive,
@@ -242,7 +255,81 @@ const uiHost = createDesktopUIHost({
     if (!saved?.local) return instance
     return ensureLocalRunning(saved)
   },
+  handleInternalRequest: async (request, reqUrl) => {
+    if (reqUrl.pathname !== "/__desktop/computer") return
+
+    if (request.method !== "POST") {
+      return jsonResponse({ ok: false, error: "Method not allowed." }, 405)
+    }
+
+    const providedToken = request.headers["x-codeplane-bridge-token"]
+    const token = Array.isArray(providedToken) ? providedToken[0] : providedToken
+    if (token !== desktopBridgeToken) {
+      logger.log("ui-host", "computer.bridge.unauthorized", { pathname: reqUrl.pathname })
+      return jsonResponse({ ok: false, error: "Unauthorized desktop bridge request." }, 403)
+    }
+
+    let params: DesktopComputerInput
+    try {
+      params = (await readJsonBody(request)) as DesktopComputerInput
+    } catch (error) {
+      logger.log("ui-host", "computer.bridge.invalid-json", { error })
+      return jsonResponse({ ok: false, error: "Invalid computer tool payload." }, 400)
+    }
+
+    try {
+      if (process.platform === "darwin") {
+        const missing: string[] = []
+        if (desktopComputerNeedsAccessibility(params) && !(await checkMacOSAccessibility())) {
+          missing.push("Accessibility")
+        }
+        if (!checkMacOSScreenRecording()) {
+          missing.push("Screen Recording")
+        }
+        if (missing.length > 0) {
+          logger.log("ui-host", "computer.bridge.permissions-missing", { missing })
+          return jsonResponse(
+            {
+              ok: false,
+              error:
+                `Missing macOS permissions: ${missing.join(", ")}. ` +
+                "Grant them in Desktop Settings -> General -> Computer use, then retry. A desktop restart may still be required.",
+            },
+            403,
+          )
+        }
+      }
+
+      const result = await performDesktopComputer(params)
+      logger.log("ui-host", "computer.bridge.success", {
+        action: params.action,
+        count: result.actions.length,
+        height: result.screenshot.height,
+        width: result.screenshot.width,
+      })
+      return jsonResponse({ ok: true, ...result })
+    } catch (error) {
+      logger.log("ui-host", "computer.bridge.error", { error })
+      return jsonResponse({ ok: false, error: error instanceof Error ? error.message : String(error) }, 500)
+    }
+  },
   log: (event, data) => logger.log("ui-host", event, data),
+})
+const localManager = createLocalInstanceManager({
+  binariesDir: codeplaneHome.local_server_binaries,
+  configDir: codeplaneHome.root,
+  dataDir: codeplaneHome.local_server,
+  log: (event, data) => logger.log("local-instance", event, data),
+  extraEnv: async () => ({
+    CODEPLANE_DESKTOP_BRIDGE_ORIGIN: await uiHost.origin(),
+    CODEPLANE_DESKTOP_BRIDGE_TOKEN: desktopBridgeToken,
+  }),
+  // The desktop owns the lifecycle of the local runtime spawned by
+  // the desktop. Tells the spawned server's Installation.method() to
+  // return "desktop" so /global/upgrade short-circuits with the
+  // "use the desktop's Updates panel" message instead of attempting
+  // an npm install.
+  desktopManaged: true,
 })
 
 app.setName(APP_NAME)

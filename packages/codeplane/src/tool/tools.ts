@@ -436,26 +436,25 @@ export const ToolsTool = Tool.define<
       return {
         title: operation === "status" ? "tools status" : `tools ${operation}`,
         output: [
-          "<tools>",
-          `operation: ${operation}`,
-          params.tool ? `tool: ${params.tool}` : undefined,
-          params.instance ? `instance: ${params.instance}` : undefined,
+          `# Tools ${operation}`,
+          [params.tool ? `tool=${params.tool}` : undefined, params.instance ? `instance=${params.instance}` : undefined]
+            .filter(Boolean)
+            .join(" · ") || undefined,
           "",
-          "Native tools:",
+          "## Native tools",
           formatRows(toolRows),
           "",
-          "Local requirements:",
+          "## Local requirements",
           formatRows(binaryRows),
           "",
-          "Git host credentials:",
+          "## Git host credentials",
           formatRows(credentialRows),
           "",
           operation === "status" ? "Forge auth checks: skipped; run operation=check or operation=doctor." : undefined,
-          checkRows.length ? ["Forge auth checks:", formatRows(checkRows)].join("\n") : undefined,
+          checkRows.length ? ["## Forge auth checks", formatRows(checkRows)].join("\n") : undefined,
           recommendations.length
-            ? ["", "Recommendations:", ...recommendations.map((item) => `- ${item}`)].join("\n")
+            ? ["", "## Recommendations", ...recommendations.map((item) => `- ${item}`)].join("\n")
             : undefined,
-          "</tools>",
         ]
           .filter((item): item is string => Boolean(item))
           .join("\n"),

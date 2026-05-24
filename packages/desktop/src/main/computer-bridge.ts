@@ -1,94 +1,42 @@
-import { Effect, Schema } from "effect"
-import * as Tool from "./tool"
-import DESCRIPTION from "./computer.txt"
 import { spawnSync } from "node:child_process"
-import { existsSync } from "node:fs"
+import { existsSync, promises as fs } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { Agent } from "@/agent/agent"
-import { Config } from "@/config"
-import { Flag } from "@/flag/flag"
-import { Provider } from "@/provider"
 
-const AtomicAction = Schema.Union([
-  Schema.Literal("screenshot"),
-  Schema.Literal("mouse_move"),
-  Schema.Literal("move"),
-  Schema.Literal("left_click"),
-  Schema.Literal("click"),
-  Schema.Literal("double_click"),
-  Schema.Literal("right_click"),
-  Schema.Literal("middle_click"),
-  Schema.Literal("left_click_drag"),
-  Schema.Literal("drag"),
-  Schema.Literal("scroll"),
-  Schema.Literal("type"),
-  Schema.Literal("key"),
-  Schema.Literal("keypress"),
-  Schema.Literal("wait"),
-  Schema.Literal("open_app"),
-])
+export type DesktopComputerPoint = { x: number; y: number }
 
-const Fields = {
-  coordinate: Schema.optional(Schema.mutable(Schema.Array(Schema.Number))).annotate({
-    description: "Screen coordinate [x, y] for mouse actions, in pixels from the top-left of the primary/virtual desktop.",
-  }),
-  to: Schema.optional(Schema.mutable(Schema.Array(Schema.Number))).annotate({
-    description: "Destination coordinate [x, y] for drag actions.",
-  }),
-  text: Schema.optional(Schema.String).annotate({
-    description: "Text to type, app name for open_app, or optional notes/modifier hint for the action.",
-  }),
-  key: Schema.optional(Schema.String).annotate({
-    description: "Key or shortcut to press, such as Enter, Escape, Tab, Cmd+S, Ctrl+L, or Alt+F4.",
-  }),
-  scrollAmount: Schema.optional(Schema.Number).annotate({
-    description: "Scroll amount. Positive scrolls down, negative scrolls up. Defaults to 5 notches/lines.",
-  }),
-  durationMs: Schema.optional(Schema.Number).annotate({
-    description: "Delay for wait actions or post-action settling time in milliseconds.",
-  }),
+export type DesktopComputerStep = {
+  action: string
+  coordinate?: number[]
+  to?: number[]
+  text?: string
+  key?: string
+  scrollAmount?: number
+  durationMs?: number
 }
 
-const Step = Schema.Struct({
-  action: AtomicAction.annotate({
-    description:
-      "Desktop action: screenshot, mouse_move/move, left_click/click, double_click, right_click, middle_click, left_click_drag/drag, scroll, type, key/keypress, wait, or open_app.",
-  }),
-  ...Fields,
-})
+export type DesktopComputerInput = DesktopComputerStep & {
+  actions?: DesktopComputerStep[]
+}
 
-const Action = Schema.Union([AtomicAction, Schema.Literal("batch")])
-
-export const Parameters = Schema.Struct({
-  action: Action.annotate({
-    description:
-      "Desktop action. Use batch with actions[] for fast multi-step cursor/keyboard control without reinitializing the native controller between steps.",
-  }),
-  ...Fields,
-  actions: Schema.optional(Schema.mutable(Schema.Array(Step))).annotate({
-    description:
-      "Fast action batch. Use with action='batch' to run multiple moves, clicks, drags, scrolls, keypresses, typing, waits, and app launches in one native control pass.",
-  }),
-})
-
-type Point = { x: number; y: number }
-type Screenshot = { dataUrl: string; width: number; height: number; path: string }
-type ToolScreenshot = Pick<Screenshot, "dataUrl" | "width" | "height">
-type StepInput = Schema.Schema.Type<typeof Step>
-type ParametersInput = Schema.Schema.Type<typeof Parameters>
-type RuntimeAction = {
+export type DesktopComputerAction = {
   action: string
-  point?: Point
-  target?: Point
+  point?: DesktopComputerPoint
+  target?: DesktopComputerPoint
   amount: number
   text?: string
   key?: string
   durationMs?: number
 }
 
+export type DesktopComputerResult = {
+  actions: DesktopComputerAction[]
+  screenshot: { dataUrl: string; width: number; height: number }
+  cursor?: DesktopComputerPoint
+}
+
 const CLICK_DELAY_US = 60_000
-let agentCursor: Point | undefined
+let desktopCursor: DesktopComputerPoint | undefined
 
 function commandExists(command: string) {
   const probe = spawnSync(process.platform === "win32" ? "where.exe" : "which", [command], {
@@ -113,7 +61,7 @@ function runCommand(command: string, args: string[], options?: { timeout?: numbe
 }
 
 function tempPngPath() {
-  return path.join(tmpdir(), `codeplane-computer-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.png`)
+  return path.join(tmpdir(), `codeplane-desktop-computer-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.png`)
 }
 
 function readPngSize(bytes: Uint8Array) {
@@ -125,13 +73,12 @@ function readPngSize(bytes: Uint8Array) {
   return { width: view.getUint32(16), height: view.getUint32(20) }
 }
 
-async function screenshotFromFile(file: string): Promise<Screenshot> {
-  const bytes = new Uint8Array(await Bun.file(file).arrayBuffer())
+async function screenshotFromFile(file: string) {
+  const bytes = await fs.readFile(file)
   const size = readPngSize(bytes)
   return {
     ...size,
-    path: file,
-    dataUrl: `data:image/png;base64,${Buffer.from(bytes).toString("base64")}`,
+    dataUrl: `data:image/png;base64,${bytes.toString("base64")}`,
   }
 }
 
@@ -168,7 +115,7 @@ $bitmap.Dispose()
 }
 
 function captureLinux(file: string) {
-  const attempts: Array<{ command: string; args: string[] }> = [
+  const attempts = [
     { command: "gnome-screenshot", args: ["-p", "-f", file] },
     { command: "grim", args: [file] },
     { command: "spectacle", args: ["-b", "-p", "-o", file] },
@@ -194,7 +141,7 @@ function captureLinux(file: string) {
   )
 }
 
-async function captureScreen(): Promise<Screenshot> {
+async function captureScreen() {
   const file = tempPngPath()
   if (process.platform === "darwin") captureMac(file)
   else if (process.platform === "win32") captureWindows(file)
@@ -202,54 +149,7 @@ async function captureScreen(): Promise<Screenshot> {
   return screenshotFromFile(file)
 }
 
-function isPoint(value: unknown): value is Point {
-  if (!value || typeof value !== "object") return false
-  const point = value as Partial<Point>
-  return typeof point.x === "number" && typeof point.y === "number"
-}
-
-async function runDesktopBridge(params: ParametersInput): Promise<{
-  actions: RuntimeAction[]
-  screenshot: ToolScreenshot
-  cursor?: Point
-}> {
-  const token = process.env.CODEPLANE_DESKTOP_BRIDGE_TOKEN?.trim()
-  const response = await fetch(new URL("/__desktop/computer", process.env.CODEPLANE_DESKTOP_BRIDGE_ORIGIN!.trim()), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { "X-Codeplane-Bridge-Token": token } : {}),
-    },
-    body: JSON.stringify(params),
-  })
-  const payload = (await response.json().catch(() => undefined)) as
-    | {
-        ok?: boolean
-        error?: string
-        actions?: RuntimeAction[]
-        screenshot?: Partial<ToolScreenshot>
-        cursor?: Point
-      }
-    | undefined
-  if (!response.ok || payload?.ok !== true) {
-    throw new Error(payload?.error || `Desktop computer bridge failed with HTTP ${response.status}.`)
-  }
-  const screenshot = payload.screenshot
-  if (typeof screenshot?.dataUrl !== "string" || typeof screenshot.width !== "number" || typeof screenshot.height !== "number") {
-    throw new Error("Desktop computer bridge returned an invalid screenshot payload.")
-  }
-  return {
-    actions: Array.isArray(payload.actions) ? payload.actions : [],
-    screenshot: {
-      dataUrl: screenshot.dataUrl,
-      width: screenshot.width,
-      height: screenshot.height,
-    },
-    cursor: isPoint(payload.cursor) ? payload.cursor : undefined,
-  }
-}
-
-function coordinate(value: number[] | undefined, name: string): Point {
+function coordinate(value: number[] | undefined, name: string): DesktopComputerPoint {
   if (!value || value.length < 2) throw new Error(`${name} coordinate is required as [x, y].`)
   const x = Math.round(value[0])
   const y = Math.round(value[1])
@@ -262,7 +162,7 @@ function settle(ms: number | undefined) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Math.min(ms, 30_000))
 }
 
-function runMacActions(actions: RuntimeAction[]) {
+function runMacActions(actions: DesktopComputerAction[]) {
   const script = `
 ObjC.import('ApplicationServices')
 
@@ -403,17 +303,29 @@ function run(argv) {
   JSON.parse(argv[0]).forEach(runStep)
 }
 `.trim()
-  runCommand("osascript", ["-l", "JavaScript", "-e", script, JSON.stringify(actions.map((action) => ({
-    action: action.action,
-    x: action.point?.x,
-    y: action.point?.y,
-    toX: action.target?.x,
-    toY: action.target?.y,
-    amount: action.amount,
-    text: action.text,
-    key: action.key,
-    durationMs: action.durationMs,
-  })))], { timeout: 10_000 })
+  runCommand(
+    "osascript",
+    [
+      "-l",
+      "JavaScript",
+      "-e",
+      script,
+      JSON.stringify(
+        actions.map((action) => ({
+          action: action.action,
+          x: action.point?.x,
+          y: action.point?.y,
+          toX: action.target?.x,
+          toY: action.target?.y,
+          amount: action.amount,
+          text: action.text,
+          key: action.key,
+          durationMs: action.durationMs,
+        })),
+      ),
+    ],
+    { timeout: 10_000 },
+  )
 }
 
 function linuxXdotool() {
@@ -474,8 +386,8 @@ function windowsText(input: string) {
   })
 }
 
-function runWindowsActions(actions: RuntimeAction[]) {
-  const flags: Record<string, number> = {
+function runWindowsActions(actions: DesktopComputerAction[]) {
+  const flags = {
     leftDown: 0x0002,
     leftUp: 0x0004,
     rightDown: 0x0008,
@@ -531,7 +443,7 @@ foreach ($input in $actions) {
   })
 }
 
-function runLinuxActions(actions: RuntimeAction[]) {
+function runLinuxActions(actions: DesktopComputerAction[]) {
   linuxXdotool()
   let args: string[] = []
   const flush = () => {
@@ -581,7 +493,7 @@ function runLinuxActions(actions: RuntimeAction[]) {
   flush()
 }
 
-function normalizeAction(action: Schema.Schema.Type<typeof Action>) {
+function normalizeAction(action: string) {
   if (action === "move" || action === "mouse_move") return "move"
   if (action === "click" || action === "left_click") return "left_click"
   if (action === "drag" || action === "left_click_drag") return "drag"
@@ -589,13 +501,13 @@ function normalizeAction(action: Schema.Schema.Type<typeof Action>) {
   return action
 }
 
-function stepsFromParams(params: ParametersInput): StepInput[] {
-  if (params.action !== "batch") return [params as StepInput]
+function stepsFromParams(params: DesktopComputerInput) {
+  if (params.action !== "batch") return [params]
   if (!params.actions?.length) throw new Error("actions is required and must not be empty for batch action.")
   return params.actions
 }
 
-function runtimeAction(input: StepInput): RuntimeAction {
+function runtimeAction(input: DesktopComputerStep): DesktopComputerAction {
   const action = normalizeAction(input.action)
   const point = input.coordinate ? coordinate(input.coordinate, "coordinate") : undefined
   const target = input.to ? coordinate(input.to, "to") : undefined
@@ -620,176 +532,42 @@ function runtimeAction(input: StepInput): RuntimeAction {
   return result
 }
 
-function updateCursor(actions: RuntimeAction[]) {
+function updateCursor(actions: DesktopComputerAction[]) {
   for (const action of actions) {
     if (!action.point) continue
-    agentCursor = action.action === "drag" && action.target ? action.target : action.point
+    desktopCursor = action.action === "drag" && action.target ? action.target : action.point
   }
 }
 
-function performActions(params: ParametersInput) {
+function performActions(params: DesktopComputerInput) {
   const actions = stepsFromParams(params).map(runtimeAction)
   const executable = actions.filter((action) => action.action !== "screenshot")
   if (executable.every((action) => action.action === "wait")) {
     for (const action of executable) settle(action.durationMs ?? 1_000)
-  } else if (process.platform === "darwin") runMacActions(actions)
-  else if (process.platform === "win32") runWindowsActions(actions)
-  else runLinuxActions(actions)
+  } else if (process.platform === "darwin") {
+    runMacActions(actions)
+  } else if (process.platform === "win32") {
+    runWindowsActions(actions)
+  } else {
+    runLinuxActions(actions)
+  }
   updateCursor(actions)
   return actions
 }
 
-async function runLocalComputer(params: ParametersInput): Promise<{
-  actions: RuntimeAction[]
-  screenshot: ToolScreenshot
-  cursor?: Point
-}> {
+export function desktopComputerNeedsAccessibility(params: DesktopComputerInput) {
+  return stepsFromParams(params).some((step) => !["screenshot", "wait"].includes(normalizeAction(step.action)))
+}
+
+// Run native desktop control from Electron so OS permissions apply to the
+// desktop app process instead of the spawned local server binary.
+export async function performDesktopComputer(params: DesktopComputerInput): Promise<DesktopComputerResult> {
   const actions = performActions(params)
   settle(params.action === "wait" ? undefined : (params.durationMs ?? 120))
   const screenshot = await captureScreen()
   return {
     actions,
     screenshot,
-    cursor: agentCursor,
+    cursor: desktopCursor,
   }
 }
-
-function stepSummary(action: RuntimeAction) {
-  if (action.action === "screenshot") return "Captured desktop screenshot."
-  if (action.action === "wait") return `Waited ${action.durationMs ?? 1_000}ms.`
-  if (action.action === "type") return `Typed ${JSON.stringify((action.text ?? "").slice(0, 80))}.`
-  if (action.action === "key") return `Pressed ${action.key ?? action.text}.`
-  if (action.action === "open_app") return `Opened application ${action.text}.`
-  if (action.action === "drag") return `Dragged from ${JSON.stringify(action.point)} to ${JSON.stringify(action.target)}.`
-  if (action.action === "scroll") return `Scrolled ${action.amount} at ${JSON.stringify(action.point ?? agentCursor ?? null)}.`
-  return `${action.action} at ${JSON.stringify(action.point)}.`
-}
-
-function actionSummary(params: ParametersInput, actions: RuntimeAction[]) {
-  if (params.action !== "batch") return stepSummary(actions[0]!)
-  return [`Ran ${actions.length} fast desktop actions:`, ...actions.slice(0, 12).map((action, index) => `${index + 1}. ${stepSummary(action)}`), actions.length > 12 ? `...${actions.length - 12} more actions.` : undefined]
-    .filter(Boolean)
-    .join("\n")
-}
-
-function contextModel(ctx: Tool.Context) {
-  const model = ctx.extra?.model
-  if (!model || typeof model !== "object") return
-  if (!("capabilities" in model)) return
-  return model as Provider.Model
-}
-
-export const ComputerTool = Tool.define(
-  "computer",
-  Effect.gen(function* () {
-    return {
-      description: DESCRIPTION,
-      parameters: Parameters,
-      timeoutMs: 120_000,
-      execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
-        Effect.gen(function* () {
-          const client = Flag.CODEPLANE_CLIENT
-          const isDesktop = client === "app" || process.env.CODEPLANE_DESKTOP_MANAGED === "1"
-          if (!isDesktop) {
-            return {
-              output: "Computer use is only available in the Codeplane Desktop app.",
-              title: "computer",
-              metadata: {},
-            }
-          }
-
-          const config = yield* Config.Service
-          const cfg = yield* config.get()
-          if (cfg.tools?.computer !== true) {
-            return {
-              output: "Computer use is disabled. Enable Computer use in Desktop Settings → General first.",
-              title: "computer",
-              metadata: {},
-            }
-          }
-
-          const agents = yield* Agent.Service
-          const agentInfo = yield* agents.get(ctx.agent)
-          const activeModel = contextModel(ctx)
-          if (activeModel) {
-            if (!activeModel.capabilities?.input?.image) {
-              return {
-                output: "Computer use is only available with vision-capable models. Switch to a model that supports image input.",
-                title: "computer",
-                metadata: {},
-              }
-            }
-          } else if (!agentInfo.model?.providerID || !agentInfo.model?.modelID) {
-            return {
-              output: "Computer use requires a model that supports vision/image input.",
-              title: "computer",
-              metadata: {},
-            }
-          } else {
-            const providerSvc = yield* Provider.Service
-            const model = yield* providerSvc
-              .getModel(agentInfo.model.providerID, agentInfo.model.modelID)
-              .pipe(Effect.catch(() => Effect.succeed(undefined)), Effect.catchDefect(() => Effect.succeed(undefined)))
-            if (!model?.capabilities?.input?.image) {
-              return {
-                output: "Computer use is only available with vision-capable models. Switch to a model that supports image input.",
-                title: "computer",
-                metadata: {},
-              }
-            }
-          }
-
-          const steps = stepsFromParams(params)
-          const patterns = [...new Set(steps.map((step) => normalizeAction(step.action)))]
-          yield* ctx.ask({
-            permission: "computer",
-            patterns,
-            always: ["*"],
-            metadata: { action: params.action, actions: patterns, coordinate: params.coordinate, to: params.to },
-          })
-
-          const execution = yield* Effect.promise(() =>
-            process.env.CODEPLANE_DESKTOP_BRIDGE_ORIGIN?.trim() ? runDesktopBridge(params) : runLocalComputer(params),
-          )
-          const actions = execution.actions
-          const screenshot = execution.screenshot
-          agentCursor = execution.cursor
-          const output = [
-            `# Computer Use`,
-            "",
-            actionSummary(params, actions),
-            "",
-            `Screenshot: ${screenshot.width}x${screenshot.height}.`,
-            agentCursor ? `Agent cursor: (${agentCursor.x}, ${agentCursor.y}).` : undefined,
-            "",
-            "Security note: stop and ask the user before passwords, payments, account changes, destructive actions, or consent dialogs.",
-          ]
-            .filter(Boolean)
-            .join("\n")
-
-          return {
-            output,
-            title: `computer: ${params.action === "batch" ? `batch(${actions.length})` : normalizeAction(params.action)}`,
-            metadata: {
-              action: normalizeAction(params.action),
-              actions: actions.map((action) => action.action),
-              platform: process.platform,
-              width: screenshot.width,
-              height: screenshot.height,
-              screenshotMime: "image/png",
-              screenshotDataUrl: screenshot.dataUrl,
-              cursor: agentCursor,
-            },
-            attachments: [
-              {
-                type: "file",
-                mime: "image/png",
-                url: screenshot.dataUrl,
-                filename: `computer-${params.action === "batch" ? "batch" : normalizeAction(params.action)}-${Date.now()}.png`,
-              },
-            ],
-          }
-        }).pipe(Effect.orDie),
-    }
-  }) as any,
-)

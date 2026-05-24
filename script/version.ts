@@ -15,9 +15,23 @@ if (!Script.preview) {
   const body = await Bun.file(file)
     .text()
     .catch(() => "No notable changes")
+  const trimmed = body.trim()
+  const invalidReleaseNotes = [
+    trimmed.length === 0,
+    /^No notable changes\.?$/i.test(trimmed),
+    /^BLOCKED:/i.test(trimmed),
+    /rolls forward in-flight/i.test(trimmed),
+    /bumps version metadata/i.test(trimmed),
+    /<area>/i.test(trimmed),
+  ].some(Boolean)
+  if (invalidReleaseNotes) {
+    throw new Error(
+      `Refusing to create ${tag}: release notes must be a precise changelog, not placeholder or boilerplate text.`,
+    )
+  }
   const dir = process.env.RUNNER_TEMP ?? "/tmp"
   const notesFile = `${dir}/codeplane-release-notes.txt`
-  await Bun.write(notesFile, body)
+  await Bun.write(notesFile, `${trimmed}\n`)
   await $`gh release create ${tag} -d --target ${sha} --title "${tag}" --notes-file ${notesFile} --repo ${repo}`
   const release = await $`gh release view ${tag} --json tagName,databaseId --repo ${repo}`.json()
   output.push(`release=${release.databaseId}`)
