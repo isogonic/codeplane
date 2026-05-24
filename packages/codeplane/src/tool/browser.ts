@@ -168,8 +168,8 @@ async function createCDPSession(): Promise<CDPSession> {
   if (!target) {
     const newPage = (await (
       await fetch(`http://${CDP_HOST}:${CDP_PORT}/json/new?url=about:blank`, { method: "PUT" })
-    ).json()) as { id: string; webSocketDebuggerUrl: string }
-    target = newPage
+    ).json()) as { id: string; type: string; webSocketDebuggerUrl: string }
+    target = { ...newPage, type: "page" }
   }
   activeSession.pageTargetId = target.id
 
@@ -485,7 +485,7 @@ export const BrowserTool = Tool.define(
             if (!params.url) throw new Error("url is required for navigate action")
             const session = yield* Effect.promise(() => getOrCreateSession())
             yield* Effect.promise(() => sendCommand(session, "Page.navigate", { url: params.url }))
-            await new Promise((r) => setTimeout(r, 1500))
+            yield* Effect.sleep("1500 millis")
 
             const width = Math.min(2560, Math.max(320, params.width ?? 1280))
             const height = Math.min(2160, Math.max(240, params.height ?? 800))
@@ -635,7 +635,7 @@ export const BrowserTool = Tool.define(
               throw new Error("click requires either 'ref' (from snapshot) or 'selector' (CSS selector)")
             }
 
-            await new Promise((r) => setTimeout(r, 800))
+            yield* Effect.sleep("800 millis")
 
             const { data } = yield* Effect.promise(() =>
               sendCommand(session, "Page.captureScreenshot", {
@@ -709,7 +709,7 @@ export const BrowserTool = Tool.define(
               throw new Error("type requires either 'ref' or 'selector'")
             }
 
-            await new Promise((r) => setTimeout(r, 500))
+            yield* Effect.sleep("500 millis")
 
             const { data } = yield* Effect.promise(() =>
               sendCommand(session, "Page.captureScreenshot", {
