@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/package.json",
   "name": "@codeplane-ai/desktop",
   "private": true,
-  "version": "28.21.27",
+  "version": "28.21.28",
   "productName": "Codeplane",
   "description": "Codeplane Desktop connects to remote Codeplane servers and caches the matching UI locally for fast native use.",
   "license": "MIT",
