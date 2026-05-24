@@ -148,6 +148,21 @@ export const layer = Layer.effect(
             mode: "primary",
             native: true,
           },
+          goal: {
+            name: "goal",
+            description: `Goal mode. Works autonomously to achieve a concrete, measurable objective. Good for well-defined tasks with clear completion criteria — the agent drives the work independently, tracks progress, and self-verifies completion. Use when you want the agent to own the outcome end-to-end without hand-holding.`,
+            options: {},
+            permission: Permission.merge(
+              defaults,
+              Permission.fromConfig({
+                question: "allow",
+                plan_enter: "allow",
+              }),
+              user,
+            ),
+            mode: "primary",
+            native: true,
+          },
           general: {
             name: "general",
             description: `General-purpose agent for researching complex questions and executing multi-step tasks. Use this agent to execute multiple units of work in parallel.`,

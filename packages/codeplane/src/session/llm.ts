@@ -12,6 +12,7 @@ import type { Agent } from "@/agent/agent"
 import type { MessageV2 } from "./message-v2"
 import { Plugin } from "@/plugin"
 import { SystemPrompt } from "./system"
+import PROMPT_GOAL from "./prompt/goal.txt"
 import { Flag } from "@/flag/flag"
 import { Permission } from "@/permission"
 import { PermissionID } from "@/permission/schema"
@@ -122,6 +123,8 @@ const live: Layer.Layer<
         [
           // use agent prompt otherwise provider prompt
           ...(input.agent.prompt ? [input.agent.prompt] : SystemPrompt.provider(input.model)),
+          // goal-mode instructions prepended to the provider prompt
+          ...(input.agent.name === "goal" ? [PROMPT_GOAL] : []),
           // any custom prompt passed into this call
           ...input.system,
           // any custom prompt from last user message
