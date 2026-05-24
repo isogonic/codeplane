@@ -449,13 +449,18 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
       })
     })
 
-    const candidateTools = Effect.fn("ToolRegistry.candidateTools")(function* (input: ToolInput) {
+    const candidateTools = Effect.fn("ToolRegistry.candidateTools")(function* (
+      input: ToolInput,
+      toolConfig: Record<string, boolean> | undefined,
+    ) {
       const usePatch =
         input.modelID.includes("gpt-") && !input.modelID.includes("oss") && !input.modelID.includes("gpt-4")
 
       let modelSupportsVision = false
       if (input.providerID && input.modelID) {
-        const model = yield* provider.getModel(input.providerID, input.modelID)
+        const model = yield* provider
+          .getModel(input.providerID, input.modelID)
+          .pipe(Effect.catch(() => Effect.succeed(undefined)), Effect.catchDefect(() => Effect.succeed(undefined)))
         modelSupportsVision = model?.capabilities?.input?.image === true
       }
 
@@ -465,11 +470,13 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
         }
 
         if (tool.id === BrowserTool.id) {
+          if (toolConfig?.browser !== true) return false
           if (!(["app"].includes(Flag.CODEPLANE_CLIENT))) return false
           return modelSupportsVision
         }
 
         if (tool.id === ComputerTool.id) {
+          if (toolConfig?.computer !== true) return false
           if (!(["app"].includes(Flag.CODEPLANE_CLIENT))) return false
           return modelSupportsVision
         }
@@ -481,10 +488,17 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
       })
     })
 
-    const candidateBlockReason = (tool: Tool.Def, input: ToolInput) => {
+    const candidateBlockReason = (tool: Tool.Def, input: ToolInput, toolConfig: Record<string, boolean> | undefined) => {
       const usePatch =
         input.modelID.includes("gpt-") && !input.modelID.includes("oss") && !input.modelID.includes("gpt-4")
       if (tool.id === BrowserTool.id) {
+        if (toolConfig?.browser !== true) {
+          return {
+            id: tool.id,
+            reason: "Browser use is disabled in Settings.",
+            setup: "Enable Browser use in Desktop Settings → General.",
+          }
+        }
         if (!(["app"].includes(Flag.CODEPLANE_CLIENT))) {
           return {
             id: tool.id,
@@ -499,6 +513,13 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
         }
       }
       if (tool.id === ComputerTool.id) {
+        if (toolConfig?.computer !== true) {
+          return {
+            id: tool.id,
+            reason: "Computer use is disabled in Settings.",
+            setup: "Enable Computer use in Desktop Settings → General.",
+          }
+        }
         if (!(["app"].includes(Flag.CODEPLANE_CLIENT))) {
           return {
             id: tool.id,
@@ -591,12 +612,13 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
     })
 
     const splitAvailability = Effect.fn("ToolRegistry.splitAvailability")(function* (input: ToolInput) {
-      const [known, candidates] = yield* Effect.all([all(), candidateTools(input)], { concurrency: "unbounded" })
+      const cfg = yield* config.get()
+      const [known, candidates] = yield* Effect.all([all(), candidateTools(input, cfg.tools)], { concurrency: "unbounded" })
       const candidateIDs = new Set(candidates.map((tool) => tool.id))
       const checked = yield* Effect.forEach(
         known,
         Effect.fnUntraced(function* (tool) {
-          const unavailable = candidateIDs.has(tool.id) ? undefined : candidateBlockReason(tool, input)
+          const unavailable = candidateIDs.has(tool.id) ? undefined : candidateBlockReason(tool, input, cfg.tools)
           return { tool, blocked: unavailable ?? (yield* blockReason(tool, input)) }
         }),
         { concurrency: "unbounded" },

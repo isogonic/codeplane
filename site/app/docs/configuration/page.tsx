@@ -138,6 +138,19 @@ export default function Configuration() {
 }`}</code></pre>
         <p>Full grammar at <Link href="/docs/permissions/">Permissions</Link>.</p>
 
+        <h2>tools</h2>
+        <pre><code>{`"tools": {
+  "browser": true,
+  "computer": true
+}`}</code></pre>
+        <p>
+          Use <code>tools</code> for simple global on/off switches. Both <code>browser</code> and
+          <code>computer</code> are <strong>disabled by default</strong>. Set either to
+          <code>true</code> to enable it. <code>browser</code> controls the Desktop-only Chrome
+          automation tool. <code>computer</code> controls native desktop mouse, keyboard, and
+          screenshot access.
+        </p>
+
         <h2>agent</h2>
         <pre><code>{`"agent": {
   "build": {

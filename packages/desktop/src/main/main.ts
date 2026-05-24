@@ -9,6 +9,7 @@ import {
   session,
   shell,
   dialog,
+  systemPreferences,
   type MessageBoxOptions,
   type Session,
   type WebContents,
@@ -1738,6 +1739,18 @@ async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebConte
   }
 }
 
+async function checkMacOSAccessibility(): Promise<boolean> {
+  try {
+    return systemPreferences.isTrustedAccessibilityClient(false)
+  } catch {
+    return false
+  }
+}
+
+function checkMacOSScreenRecording(): boolean {
+  return systemPreferences.getMediaAccessStatus("screen") === "granted"
+}
+
 function showSetupWindow(editId?: string) {
   logger.log("main", "setup.open-window", { editId })
   const previous = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined
@@ -2109,6 +2122,80 @@ function setupIpc() {
       }
     },
   )
+  ipcMain.handle("system-permissions:check", async () => {
+    const permissions: { key: string; label: string; granted: boolean; preferencePane?: string }[] = []
+
+    if (process.platform === "darwin") {
+      const accessibilityGranted = await checkMacOSAccessibility()
+      permissions.push({
+        key: "accessibility",
+        label: "Accessibility",
+        granted: accessibilityGranted,
+        preferencePane: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+      })
+
+      const screenRecordingGranted = checkMacOSScreenRecording()
+      permissions.push({
+        key: "screen-recording",
+        label: "Screen Recording",
+        granted: screenRecordingGranted,
+        preferencePane: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
+      })
+    }
+
+    if (process.platform === "win32") {
+      permissions.push(
+        { key: "accessibility", label: "UI Automation / Accessibility", granted: true },
+        { key: "screen-recording", label: "Screen capture", granted: true },
+      )
+    }
+
+    if (process.platform === "linux") {
+      permissions.push(
+        { key: "accessibility", label: "X11 / input access", granted: true },
+        { key: "screen-recording", label: "Display access", granted: true },
+      )
+    }
+
+    return { platform: process.platform, permissions }
+  })
+
+  ipcMain.handle("system-permissions:request", async (_event, permissionKey: string) => {
+    if (process.platform === "darwin") {
+      if (permissionKey === "accessibility") {
+        try {
+          systemPreferences.isTrustedAccessibilityClient(true)
+        } catch {
+          // Fall through to opening the preference pane below.
+        }
+      }
+      if (permissionKey === "screen-recording") {
+        await desktopCapturer.getSources({ types: ["screen"] }).catch(() => undefined)
+      }
+      const url =
+        permissionKey === "accessibility"
+          ? "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+          : permissionKey === "screen-recording"
+            ? "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"
+            : "x-apple.systempreferences:com.apple.preference.security"
+      try {
+        await shell.openExternal(url)
+        return true
+      } catch {
+        return false
+      }
+    }
+    if (process.platform === "win32") {
+      try {
+        await shell.openExternal("ms-settings:privacy")
+        return true
+      } catch {
+        return false
+      }
+    }
+    return false
+  })
+
   ipcMain.handle("notifications:is-supported", () => Notification.isSupported())
   ipcMain.handle("notifications:notify", async (event, payload: DesktopNotificationPayload) => {
     const notified = await showDesktopNotification(event.sender, payload)

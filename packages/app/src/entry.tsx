@@ -41,6 +41,13 @@ declare global {
       storage?: DesktopStorageApi
       notifications?: DesktopNotificationApi
       window?: DesktopWindowApi
+      systemPermissions?: {
+        check: () => Promise<{
+          platform: string
+          permissions: { key: string; label: string; granted: boolean; preferencePane?: string }[]
+        }>
+        request: (permissionKey: string) => Promise<boolean>
+      }
       [key: string]: unknown
     }
   }
@@ -300,6 +307,7 @@ const platform: Platform = {
     }
     writeDefaultServerUrl(value)
   },
+  systemPermissions: window.codeplaneDesktop?.systemPermissions,
 }
 
 if (root instanceof HTMLElement) {

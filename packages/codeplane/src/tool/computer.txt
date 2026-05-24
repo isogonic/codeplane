@@ -2,16 +2,18 @@ Desktop computer-use tool for Codeplane Desktop.
 
 Use this tool to:
 - Capture the current desktop screenshot, including the visible pointer when the OS supports it
-- Move the agent cursor to screen coordinates
+- Move the real, visible desktop cursor to screen coordinates
 - Click, double-click, right-click, middle-click, drag, and scroll
 - Type text and press keyboard shortcuts
 - Open desktop applications by name
 - Wait between UI actions and verify the result with a fresh screenshot
+- Run action="batch" with actions[] when you need speed. A batch performs many cursor, click, scroll, keyboard, wait, and app-launch steps in one native control pass and captures one final screenshot.
 
 This tool controls the user's real desktop. Use it only when Browser Use is not enough or when the task explicitly requires native application interaction.
 
 Reliability guidance:
 - Prefer screenshots before and after each action.
+- For obvious multi-step UI interaction, prefer one small batch over many single tool calls so the cursor moves as fast as a human operator.
 - Use coordinates from the most recent screenshot.
 - Keep actions small and verifiable.
 - Ask for confirmation before irreversible, financial, privacy-sensitive, or account-affecting actions.

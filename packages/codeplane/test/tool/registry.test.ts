@@ -92,6 +92,21 @@ describe("tool.registry", () => {
     ),
   )
 
+  it.live("does not fail tool availability when model metadata is unavailable", () =>
+    provideTmpdirInstance(() =>
+      Effect.gen(function* () {
+        const registry = yield* ToolRegistry.Service
+        const availability = yield* registry.availability({
+          ...toolInput,
+          providerID: ProviderID.make("test"),
+          modelID: ModelID.make("test-model"),
+        })
+
+        expect(availability.known).toContain("task")
+      }),
+    ),
+  )
+
   it.live("loads tools from .codeplane/tool (singular)", () =>
     provideTmpdirInstance((dir) =>
       Effect.gen(function* () {

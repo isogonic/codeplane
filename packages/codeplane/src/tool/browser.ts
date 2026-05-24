@@ -7,6 +7,7 @@ import { tmpdir } from "node:os"
 import { Agent } from "@/agent/agent"
 import { Flag } from "@/flag/flag"
 import { Provider } from "@/provider"
+import { Config } from "@/config"
 
 const Action = Schema.Union([
   Schema.Literal("navigate"),
@@ -581,6 +582,17 @@ export const BrowserTool = Tool.define(
             }
           }
 
+          // Gate: explicit opt-in
+          const config = yield* Config.Service
+          const cfg = yield* config.get()
+          if (cfg.tools?.browser !== true) {
+            return {
+              output: "Browser use is disabled. Enable Browser use in Desktop Settings → General first.",
+              title: "browser",
+              metadata: {},
+            }
+          }
+
           // Gate: check vision capability
           const agents = yield* Agent.Service
           const agentInfo = yield* agents.get(ctx.agent)
@@ -592,7 +604,9 @@ export const BrowserTool = Tool.define(
               metadata: {},
             }
           }
-          const model = yield* providerSvc.getModel(agentInfo.model.providerID, agentInfo.model.modelID)
+          const model = yield* providerSvc
+            .getModel(agentInfo.model.providerID, agentInfo.model.modelID)
+            .pipe(Effect.catch(() => Effect.succeed(undefined)), Effect.catchDefect(() => Effect.succeed(undefined)))
           if (!model?.capabilities?.input?.image) {
             return {
               output: "Browser tool is only available with vision-capable models. Please switch to a model that supports image input.",

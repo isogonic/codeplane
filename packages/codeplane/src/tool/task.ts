@@ -1,4 +1,5 @@
 import * as Tool from "./tool"
+import type * as Truncate from "./truncate"
 import DESCRIPTION from "./task.txt"
 import { Session } from "../session"
 import { SessionID, MessageID } from "../session/schema"
@@ -358,4 +359,8 @@ export const TaskTool = Tool.define(
         run(params, ctx).pipe(Effect.orDie),
     }
   }) as any,
-)
+) as Effect.Effect<
+  Tool.Info<typeof Parameters, any>,
+  never,
+  Agent.Service | Config.Service | Session.Service | Truncate.Service
+> & { id: typeof id }

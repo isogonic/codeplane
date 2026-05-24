@@ -220,6 +220,15 @@ const api = {
     },
   },
   platform: process.platform,
+  systemPermissions: {
+    check: () =>
+      ipcRenderer.invoke("system-permissions:check") as Promise<{
+        platform: string
+        permissions: { key: string; label: string; granted: boolean; preferencePane?: string }[]
+      }>,
+    request: (permissionKey: string) =>
+      ipcRenderer.invoke("system-permissions:request", permissionKey) as Promise<boolean>,
+  },
 }
 
 contextBridge.exposeInMainWorld("codeplaneDesktop", api)

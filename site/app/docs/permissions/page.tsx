@@ -79,10 +79,15 @@ export default function Permissions() {
           The config schema includes <code>read</code>, <code>edit</code>, <code>glob</code>,
           <code>grep</code>, <code>list</code>, <code>project</code>, <code>tools</code>,
           <code>git</code>, <code>forge</code>, <code>bash</code>, <code>task</code>,
-          <code>external_directory</code>, <code>todowrite</code>, <code>question</code>,
+          <code>browser</code>, <code>computer</code>, <code>external_directory</code>, <code>todowrite</code>, <code>question</code>,
           <code>webfetch</code>, <code>websearch</code>, <code>codesearch</code>, <code>lsp</code>,
           <code>doom_loop</code>, and <code>skill</code>. Unknown keys are accepted so plugins can
           add new permission domains.
+        </p>
+        <p>
+          <code>computer</code> and <code>browser</code> are denied by default because they control
+          real desktop resources. Enable them in Desktop Settings → General → <em>Computer use</em> /
+          <em>Browser use</em> or set <code>{`"tools": { "computer": true, "browser": true }`}</code>.
         </p>
 
         <h2>Scopes</h2>

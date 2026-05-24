@@ -64,6 +64,30 @@ export default function Desktop() {
           <li>Notifications — system-level alerts when a long-running session finishes.</li>
         </ul>
 
+        <h2>Desktop-only agent tools</h2>
+        <p>
+          Settings → General exposes <em>Browser use</em> and <em>Computer use</em>.
+          Both are <strong>disabled by default</strong> — you must explicitly opt in.
+        </p>
+        <p>
+          <em>Browser use</em> gives the agent an isolated Chrome session with screenshots,
+          DOM snapshots, console logs, JS evaluation, refs, clicks, typing, scrolling, and
+          waits.
+        </p>
+        <p>
+          <em>Computer use</em> gives the agent a real, visible desktop cursor plus native
+          screenshot, mouse, keyboard, drag, scroll, and app-launch control. Fast action
+          batches let it move, click, type, and scroll through several UI steps from one
+          vision pass before returning a final screenshot. When you first enable it, Codeplane
+          checks whether the required system permissions (Accessibility and Screen Recording
+          on macOS) are granted and guides you to System Settings if they are not.
+        </p>
+        <p>
+          Both tools still go through the Codeplane permission system. Use desktop automation
+          inside a dedicated local desktop or VM for high-risk work; never give it access to
+          secrets, payments, or irreversible consent flows without explicit human confirmation.
+        </p>
+
         <h2>Logs and recovery</h2>
         <p>
           Desktop logs live under the Codeplane log directory, with <code>CODEPLANE_DESKTOP_LOG_DIR</code>

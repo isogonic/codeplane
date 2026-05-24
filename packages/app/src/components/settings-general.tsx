@@ -3,11 +3,14 @@ import { Button } from "@codeplane-ai/ui/button"
 import { Select } from "@codeplane-ai/ui/select"
 import { Switch } from "@codeplane-ai/ui/switch"
 import { TextField } from "@codeplane-ai/ui/text-field"
+import { useDialog } from "@codeplane-ai/ui/context/dialog"
+import { Dialog } from "@codeplane-ai/ui/dialog"
 import { useTheme, type ColorScheme } from "@codeplane-ai/ui/theme/context"
 import { useParams } from "@solidjs/router"
 import { useLanguage } from "@/context/language"
 import { useGlobalSync } from "@/context/global-sync"
 import { usePermission } from "@/context/permission"
+import { usePlatform, type SystemPermissionStatus } from "@/context/platform"
 import { useUpdates } from "@/context/updates"
 import {
   monoDefault,
@@ -66,6 +69,8 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
   const params = useParams()
   const settings = useSettings()
   const updates = useUpdates()
+  const platform = usePlatform()
+  const dialog = useDialog()
 
   type VersionInfo = { current: string; latest: string | null; hasUpdate: boolean; method: string }
   const [checkingVersion, setCheckingVersion] = createSignal(false)
@@ -81,8 +86,14 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
 
   onMount(() => {
     void refetchVersion()
-    if (globalSync.data.config.tools?.browser === undefined && settings.general.browserUse() === false) {
-      void globalSync.updateConfig({ tools: { browser: false } })
+    if (globalSync.data.config.tools?.browser === undefined || globalSync.data.config.tools?.computer === undefined) {
+      void globalSync.updateConfig({
+        tools: {
+          ...globalSync.data.config.tools,
+          browser: globalSync.data.config.tools?.browser ?? settings.general.browserUse(),
+          computer: globalSync.data.config.tools?.computer ?? settings.general.computerUse(),
+        },
+      })
     }
   })
 
@@ -109,7 +120,16 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
   const setDesktopTool = (tool: "browser" | "computer", checked: boolean) => {
     if (tool === "browser") settings.general.setBrowserUse(checked)
     if (tool === "computer") settings.general.setComputerUse(checked)
-    void globalSync.updateConfig({ tools: { [tool]: checked } })
+    void (async () => {
+      if (checked && platform.systemPermissions) {
+        const status = await platform.systemPermissions.check()
+        const missing = status.permissions.filter((p) => !p.granted)
+        if (missing.length > 0) {
+          void dialog.show(() => <DesktopPermissionsDialog tool={tool} missing={missing} />)
+        }
+      }
+      void globalSync.updateConfig({ tools: { [tool]: checked } })
+    })()
   }
 
   const colorSchemeOptions = createMemo((): { value: ColorScheme; label: string }[] => [
@@ -710,6 +730,75 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
         </Show>
       </div>
     </div>
+  )
+}
+
+function DesktopPermissionsDialog(props: { tool: "browser" | "computer"; missing: SystemPermissionStatus[] }) {
+  const language = useLanguage()
+  const platform = usePlatform()
+  const dialog = useDialog()
+  const [requesting, setRequesting] = createSignal<string | null>(null)
+
+  const request = async (key: string) => {
+    setRequesting(key)
+    try {
+      await platform.systemPermissions?.request(key)
+    } finally {
+      setRequesting(null)
+    }
+  }
+
+  const toolLabel = () =>
+    props.tool === "browser"
+      ? language.t("settings.general.row.browserUse.title")
+      : language.t("settings.general.row.computerUse.title")
+
+  return (
+    <Dialog
+      title={language.t("settings.general.row.computerUse.permissionsTitle", { tool: toolLabel() })}
+      transition
+    >
+      <div class="flex flex-col gap-4">
+        <p class="text-14-regular text-text-base">
+          {language.t("settings.general.row.computerUse.permissionsBody", {
+            tool: toolLabel(),
+            count: String(props.missing.length),
+          })}
+        </p>
+        <div class="flex flex-col gap-2">
+          {props.missing.map((p) => (
+            <div class="flex items-center justify-between gap-3 rounded-lg border border-border-weak-base px-4 py-3">
+              <div class="flex flex-col gap-0.5">
+                <span class="text-14-medium text-text-strong">{p.label}</span>
+                <span class="text-12-regular text-text-weak">
+                  {p.granted
+                    ? language.t("settings.general.row.computerUse.permissionGranted")
+                    : language.t("settings.general.row.computerUse.permissionMissing")}
+                </span>
+              </div>
+              <Button
+                size="small"
+                variant="secondary"
+                disabled={requesting() === p.key}
+                onClick={() => void request(p.key)}
+              >
+                {requesting() === p.key
+                  ? language.t("settings.general.row.computerUse.permissionOpening")
+                  : language.t("settings.general.row.computerUse.permissionOpenSettings")}
+              </Button>
+            </div>
+          ))}
+        </div>
+        <p class="text-12-regular text-text-weak">
+          {language.t("settings.general.row.computerUse.permissionsFooter")}
+        </p>
+        <div class="flex justify-end">
+          <Button variant="secondary" size="large" onClick={() => dialog.close()}>
+            {language.t("settings.general.row.computerUse.permissionDone")}
+          </Button>
+        </div>
+      </div>
+    </Dialog>
   )
 }
 

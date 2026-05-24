@@ -39,6 +39,19 @@ export type PlatformServerManager = {
   open(id: string): Promise<boolean>
   show(editId?: string): Promise<boolean>
 }
+
+export type SystemPermissionStatus = {
+  key: string
+  label: string
+  granted: boolean
+  preferencePane?: string
+}
+
+export type SystemPermissionsAPI = {
+  check: () => Promise<{ platform: string; permissions: SystemPermissionStatus[] }>
+  request: (permissionKey: string) => Promise<boolean>
+}
+
 export type Platform = {
   /** Platform discriminator */
   platform: "web"
@@ -115,6 +128,9 @@ export type Platform = {
 
   /** Read image from clipboard */
   readClipboardImage?(): Promise<File | null>
+
+  /** Check and request OS-level permissions needed by desktop-only tools */
+  systemPermissions?: SystemPermissionsAPI
 }
 
 export const { use: usePlatform, provider: PlatformProvider } = createSimpleContext({

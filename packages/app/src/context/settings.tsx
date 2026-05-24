@@ -136,7 +136,7 @@ const defaultSettings: Settings = {
     shellToolPartsExpanded: false,
     editToolPartsExpanded: false,
     showSessionProgressBar: true,
-    browserUse: true,
+    browserUse: false,
     computerUse: false,
   },
   appearance: {

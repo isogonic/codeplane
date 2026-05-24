@@ -707,10 +707,20 @@ export const dict = {
     "Die animierte Fortschrittsleiste oben in der Sitzung anzeigen, wenn der Agent arbeitet",
   "settings.general.row.browserUse.title": "Browser-Steuerung",
   "settings.general.row.browserUse.description":
-    "Ermöglicht dem Agenten die Steuerung des Chrome-Browsers für visuelle Inspektion, UI-Tests und interaktives Debugging. Umfasst vollständige Browser-Automatisierung: Navigation, Klicken, Tippen, Screenshots, Konsolenprotokolle und JavaScript-Ausführung. Nur verfügbar mit einem visuell fähigen Modell.",
+    "Ermöglicht dem Agenten die Steuerung eines Chrome-Browsers für visuelle Inspektion, UI-Tests und interaktives Debugging. Umfasst vollständige Browser-Automatisierung: Navigation, Klicken, Tippen, Screenshots, Konsolenprotokolle und JavaScript-Ausführung. Standardmäßig deaktiviert und nur in Codeplane Desktop mit einem visuell fähigen Modell verfügbar.",
   "settings.general.row.computerUse.title": "Computer-Steuerung",
   "settings.general.row.computerUse.description":
     "Ermöglicht dem Agenten, diesen Desktop mit eigenem sichtbarem Zeiger zu steuern: Screenshots, Mausbewegungen, Klicks, Ziehen, Scrollen, Tastatureingaben, Shortcuts und App-Start. Standardmäßig deaktiviert und nur in Codeplane Desktop mit einem visuell fähigen Modell verfügbar.",
+  "settings.general.row.computerUse.permissionsTitle": "Berechtigungen benötigt für {{ tool }}",
+  "settings.general.row.computerUse.permissionsBody":
+    "{{ tool }} benötigt {{count}} Systemberechtigungen, um den Desktop zu steuern. Codeplane braucht diese, um den Cursor zu bewegen, zu klicken, zu tippen, Screenshots zu machen und Apps für dich zu öffnen.",
+  "settings.general.row.computerUse.permissionGranted": "Erteilt",
+  "settings.general.row.computerUse.permissionMissing": "Nicht erteilt — klicke, um die Systemeinstellungen zu öffnen",
+  "settings.general.row.computerUse.permissionOpenSettings": "Einstellungen öffnen",
+  "settings.general.row.computerUse.permissionOpening": "Wird geöffnet…",
+  "settings.general.row.computerUse.permissionsFooter":
+    "Nach der Erteilung musst du Codeplane Desktop möglicherweise neu starten, damit die Berechtigungen wirksam werden.",
+  "settings.general.row.computerUse.permissionDone": "Fertig",
   "settings.general.row.releaseNotes.title": "Versionshinweise",
   "settings.general.row.releaseNotes.description": '"Neuigkeiten"-Pop-ups nach Updates anzeigen',
   "settings.general.section.updates": "Updates",

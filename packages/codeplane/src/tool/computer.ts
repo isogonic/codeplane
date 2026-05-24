@@ -6,10 +6,11 @@ import { existsSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { Agent } from "@/agent/agent"
+import { Config } from "@/config"
 import { Flag } from "@/flag/flag"
 import { Provider } from "@/provider"
 
-const Action = Schema.Union([
+const AtomicAction = Schema.Union([
   Schema.Literal("screenshot"),
   Schema.Literal("mouse_move"),
   Schema.Literal("move"),
@@ -28,11 +29,7 @@ const Action = Schema.Union([
   Schema.Literal("open_app"),
 ])
 
-export const Parameters = Schema.Struct({
-  action: Action.annotate({
-    description:
-      "Desktop action: screenshot, mouse_move/move, left_click/click, double_click, right_click, middle_click, left_click_drag/drag, scroll, type, key/keypress, wait, or open_app.",
-  }),
+const Fields = {
   coordinate: Schema.optional(Schema.mutable(Schema.Array(Schema.Number))).annotate({
     description: "Screen coordinate [x, y] for mouse actions, in pixels from the top-left of the primary/virtual desktop.",
   }),
@@ -51,10 +48,43 @@ export const Parameters = Schema.Struct({
   durationMs: Schema.optional(Schema.Number).annotate({
     description: "Delay for wait actions or post-action settling time in milliseconds.",
   }),
+}
+
+const Step = Schema.Struct({
+  action: AtomicAction.annotate({
+    description:
+      "Desktop action: screenshot, mouse_move/move, left_click/click, double_click, right_click, middle_click, left_click_drag/drag, scroll, type, key/keypress, wait, or open_app.",
+  }),
+  ...Fields,
+})
+
+const Action = Schema.Union([AtomicAction, Schema.Literal("batch")])
+
+export const Parameters = Schema.Struct({
+  action: Action.annotate({
+    description:
+      "Desktop action. Use batch with actions[] for fast multi-step cursor/keyboard control without reinitializing the native controller between steps.",
+  }),
+  ...Fields,
+  actions: Schema.optional(Schema.mutable(Schema.Array(Step))).annotate({
+    description:
+      "Fast action batch. Use with action='batch' to run multiple moves, clicks, drags, scrolls, keypresses, typing, waits, and app launches in one native control pass.",
+  }),
 })
 
 type Point = { x: number; y: number }
 type Screenshot = { dataUrl: string; width: number; height: number; path: string }
+type StepInput = Schema.Schema.Type<typeof Step>
+type ParametersInput = Schema.Schema.Type<typeof Parameters>
+type RuntimeAction = {
+  action: string
+  point?: Point
+  target?: Point
+  amount: number
+  text?: string
+  key?: string
+  durationMs?: number
+}
 
 const CLICK_DELAY_US = 60_000
 let agentCursor: Point | undefined
@@ -184,10 +214,11 @@ function settle(ms: number | undefined) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Math.min(ms, 30_000))
 }
 
-function runMacMouse(input: Record<string, unknown>) {
+function runMacActions(actions: RuntimeAction[]) {
   const script = `
 ObjC.import('ApplicationServices')
 
+const systemEvents = Application('System Events')
 const tap = $.kCGHIDEventTap
 const left = 0
 const right = 1
@@ -204,6 +235,29 @@ const event = {
   otherDown: 25,
   otherUp: 26,
   otherDragged: 27,
+}
+const keyCodes = {
+  enter: 36,
+  return: 36,
+  tab: 48,
+  escape: 53,
+  esc: 53,
+  space: 49,
+  backspace: 51,
+  delete: 117,
+  forwarddelete: 117,
+  home: 115,
+  end: 119,
+  pageup: 116,
+  pagedown: 121,
+  left: 123,
+  arrowleft: 123,
+  right: 124,
+  arrowright: 124,
+  down: 125,
+  arrowdown: 125,
+  up: 126,
+  arrowup: 126,
 }
 
 function point(x, y) {
@@ -228,8 +282,45 @@ function click(x, y, down, up, button) {
   post(up, x, y, button)
 }
 
-function run(argv) {
-  const input = JSON.parse(argv[0])
+function modifier(value) {
+  if (['cmd', 'command', 'meta', 'super'].indexOf(value) >= 0) return 'command down'
+  if (['ctrl', 'control'].indexOf(value) >= 0) return 'control down'
+  if (['alt', 'option'].indexOf(value) >= 0) return 'option down'
+  if (value === 'shift') return 'shift down'
+}
+
+function pressKey(input) {
+  const raw = String(input.key || input.text || '')
+  if (!raw) throw new Error('key is required for key action.')
+  const parts = raw.split('+').map((part) => part.trim().toLowerCase()).filter(Boolean)
+  const key = parts[parts.length - 1]
+  const using = parts.slice(0, -1).map(modifier).filter(Boolean)
+  const options = using.length ? { using } : {}
+  if (keyCodes[key] !== undefined) {
+    systemEvents.keyCode(keyCodes[key], options)
+    return
+  }
+  systemEvents.keystroke(key, options)
+}
+
+function runStep(input) {
+  if (input.action === 'screenshot') return
+  if (input.action === 'wait') {
+    $.usleep(Math.max(0, Math.min(Number(input.durationMs || 1000), 30000)) * 1000)
+    return
+  }
+  if (input.action === 'type') {
+    systemEvents.keystroke(String(input.text || ''))
+    return
+  }
+  if (input.action === 'key') {
+    pressKey(input)
+    return
+  }
+  if (input.action === 'open_app') {
+    Application(String(input.text || '')).activate()
+    return
+  }
   if (input.action === 'move') move(input.x, input.y)
   if (input.action === 'left_click') click(input.x, input.y, event.leftDown, event.leftUp, left)
   if (input.action === 'double_click') {
@@ -259,103 +350,27 @@ function run(argv) {
     $.CGEventPost(tap, ev)
   }
 }
+
+function run(argv) {
+  JSON.parse(argv[0]).forEach(runStep)
+}
 `.trim()
-  runCommand("osascript", ["-l", "JavaScript", "-e", script, JSON.stringify(input)], { timeout: 10_000 })
-}
-
-const MAC_KEY_CODES: Record<string, number> = {
-  enter: 36,
-  return: 36,
-  tab: 48,
-  escape: 53,
-  esc: 53,
-  space: 49,
-  backspace: 51,
-  delete: 117,
-  forwarddelete: 117,
-  home: 115,
-  end: 119,
-  pageup: 116,
-  pagedown: 121,
-  left: 123,
-  arrowleft: 123,
-  right: 124,
-  arrowright: 124,
-  down: 125,
-  arrowdown: 125,
-  up: 126,
-  arrowup: 126,
-}
-
-function macModifier(value: string) {
-  if (["cmd", "command", "meta", "super"].includes(value)) return "command down"
-  if (["ctrl", "control"].includes(value)) return "control down"
-  if (["alt", "option"].includes(value)) return "option down"
-  if (value === "shift") return "shift down"
-}
-
-function runAppleScript(script: string, args: string[] = []) {
-  runCommand("osascript", ["-e", script, ...args], { timeout: 10_000 })
-}
-
-function runMacType(text: string) {
-  runAppleScript('on run argv\ntell application "System Events" to keystroke (item 1 of argv)\nend run', [text])
-}
-
-function runMacKey(input: string) {
-  const parts = input.split("+").map((part) => part.trim().toLowerCase()).filter(Boolean)
-  const key = parts.at(-1)
-  if (!key) throw new Error("key is required for key action.")
-  const modifiers = parts.slice(0, -1).flatMap((part) => {
-    const modifier = macModifier(part)
-    return modifier ? [modifier] : []
-  })
-  const using = modifiers.length ? ` using {${modifiers.join(", ")}}` : ""
-  const code = MAC_KEY_CODES[key]
-  if (code !== undefined) {
-    runAppleScript(`tell application "System Events" to key code ${code}${using}`)
-    return
-  }
-  runAppleScript(`on run argv\ntell application "System Events" to keystroke (item 1 of argv)${using}\nend run`, [key])
+  runCommand("osascript", ["-l", "JavaScript", "-e", script, JSON.stringify(actions.map((action) => ({
+    action: action.action,
+    x: action.point?.x,
+    y: action.point?.y,
+    toX: action.target?.x,
+    toY: action.target?.y,
+    amount: action.amount,
+    text: action.text,
+    key: action.key,
+    durationMs: action.durationMs,
+  })))], { timeout: 10_000 })
 }
 
 function linuxXdotool() {
   if (!commandExists("xdotool")) {
     throw new Error("Linux desktop control requires xdotool. Install xdotool or run under an X11 desktop session.")
-  }
-}
-
-function runLinuxMouse(action: string, point: Point | undefined, to: Point | undefined, amount: number) {
-  linuxXdotool()
-  if (action === "scroll") {
-    if (point) runCommand("xdotool", ["mousemove", String(point.x), String(point.y)])
-    const button = amount >= 0 ? "5" : "4"
-    for (let i = 0; i < Math.min(50, Math.max(1, Math.abs(Math.round(amount)))); i++) {
-      runCommand("xdotool", ["click", button])
-    }
-    return
-  }
-  if (!point) throw new Error("coordinate is required for mouse action.")
-  if (action === "move") runCommand("xdotool", ["mousemove", String(point.x), String(point.y)])
-  if (action === "left_click") runCommand("xdotool", ["mousemove", String(point.x), String(point.y), "click", "1"])
-  if (action === "double_click") runCommand("xdotool", ["mousemove", String(point.x), String(point.y), "click", "--repeat", "2", "--delay", "80", "1"])
-  if (action === "right_click") runCommand("xdotool", ["mousemove", String(point.x), String(point.y), "click", "3"])
-  if (action === "middle_click") runCommand("xdotool", ["mousemove", String(point.x), String(point.y), "click", "2"])
-  if (action === "drag") {
-    if (!to) throw new Error("to coordinate is required for drag action.")
-    runCommand("xdotool", [
-      "mousemove",
-      String(point.x),
-      String(point.y),
-      "mousedown",
-      "1",
-      "mousemove",
-      "--sync",
-      String(to.x),
-      String(to.y),
-      "mouseup",
-      "1",
-    ])
   }
 }
 
@@ -401,9 +416,17 @@ function windowsShortcut(input: string) {
   return `${prefix}${key}`
 }
 
-function runWindowsMouse(action: string, point: Point | undefined, to: Point | undefined, amount: number) {
-  const p = point ?? { x: 0, y: 0 }
-  const target = to ?? p
+function windowsText(input: string) {
+  return input.replace(/[+^%~()[\]{}\n\t]/g, (char) => {
+    if (char === "\n") return "{ENTER}"
+    if (char === "\t") return "{TAB}"
+    if (char === "{") return "{{}"
+    if (char === "}") return "{}}"
+    return `{${char}}`
+  })
+}
+
+function runWindowsActions(actions: RuntimeAction[]) {
   const flags: Record<string, number> = {
     leftDown: 0x0002,
     leftUp: 0x0004,
@@ -413,38 +436,101 @@ function runWindowsMouse(action: string, point: Point | undefined, to: Point | u
     middleUp: 0x0040,
     wheel: 0x0800,
   }
+  const payload = actions.map((action) => ({
+    action: action.action,
+    x: action.point?.x ?? 0,
+    y: action.point?.y ?? 0,
+    toX: action.target?.x ?? action.point?.x ?? 0,
+    toY: action.target?.y ?? action.point?.y ?? 0,
+    amount: action.amount,
+    text: action.text,
+    sendKeys: action.action === "key" ? windowsShortcut(action.key ?? action.text ?? "") : windowsText(action.text ?? ""),
+    durationMs: action.durationMs,
+  }))
   const script = `
+Add-Type -AssemblyName System.Windows.Forms
 Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
 public class Mouse {
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int X, int Y);
-  [DllImport("user32.dll")] public static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, UIntPtr dwExtraInfo);
+  [DllImport("user32.dll")] public static extern void mouse_event(uint dwFlags, uint dx, uint dy, int dwData, UIntPtr dwExtraInfo);
 }
 '@
-function Click($down, $up) { [Mouse]::mouse_event($down, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 60; [Mouse]::mouse_event($up, 0, 0, 0, [UIntPtr]::Zero) }
-[Mouse]::SetCursorPos(${p.x}, ${p.y}) | Out-Null
-if (${psString(action)} -eq 'left_click') { Click ${flags.leftDown} ${flags.leftUp} }
-if (${psString(action)} -eq 'double_click') { Click ${flags.leftDown} ${flags.leftUp}; Start-Sleep -Milliseconds 60; Click ${flags.leftDown} ${flags.leftUp} }
-if (${psString(action)} -eq 'right_click') { Click ${flags.rightDown} ${flags.rightUp} }
-if (${psString(action)} -eq 'middle_click') { Click ${flags.middleDown} ${flags.middleUp} }
-if (${psString(action)} -eq 'drag') { [Mouse]::mouse_event(${flags.leftDown}, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 60; [Mouse]::SetCursorPos(${target.x}, ${target.y}) | Out-Null; Start-Sleep -Milliseconds 60; [Mouse]::mouse_event(${flags.leftUp}, 0, 0, 0, [UIntPtr]::Zero) }
-if (${psString(action)} -eq 'scroll') { [Mouse]::mouse_event(${flags.wheel}, 0, 0, [uint32](${Math.round(-amount * 120)}), [UIntPtr]::Zero) }
+function Click($down, $up) { [Mouse]::mouse_event($down, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 30; [Mouse]::mouse_event($up, 0, 0, 0, [UIntPtr]::Zero) }
+$actions = @(${psString(JSON.stringify(payload))} | ConvertFrom-Json)
+foreach ($input in $actions) {
+  if ($input.action -eq 'screenshot') { continue }
+  if ($input.action -eq 'wait') {
+    $duration = if ($null -eq $input.durationMs) { 1000 } else { [int]$input.durationMs }
+    Start-Sleep -Milliseconds ([Math]::Min([Math]::Max($duration, 0), 30000))
+    continue
+  }
+  if ($input.action -eq 'type' -or $input.action -eq 'key') { [System.Windows.Forms.SendKeys]::SendWait([string]$input.sendKeys); continue }
+  if ($input.action -eq 'open_app') { Start-Process ([string]$input.text); continue }
+  [Mouse]::SetCursorPos([int]$input.x, [int]$input.y) | Out-Null
+  if ($input.action -eq 'move') { continue }
+  if ($input.action -eq 'left_click') { Click ${flags.leftDown} ${flags.leftUp}; continue }
+  if ($input.action -eq 'double_click') { Click ${flags.leftDown} ${flags.leftUp}; Start-Sleep -Milliseconds 40; Click ${flags.leftDown} ${flags.leftUp}; continue }
+  if ($input.action -eq 'right_click') { Click ${flags.rightDown} ${flags.rightUp}; continue }
+  if ($input.action -eq 'middle_click') { Click ${flags.middleDown} ${flags.middleUp}; continue }
+  if ($input.action -eq 'drag') { [Mouse]::mouse_event(${flags.leftDown}, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 40; [Mouse]::SetCursorPos([int]$input.toX, [int]$input.toY) | Out-Null; Start-Sleep -Milliseconds 40; [Mouse]::mouse_event(${flags.leftUp}, 0, 0, 0, [UIntPtr]::Zero); continue }
+  if ($input.action -eq 'scroll') { [Mouse]::mouse_event(${flags.wheel}, 0, 0, [int](-[double]$input.amount * 120), [UIntPtr]::Zero); continue }
+}
 `.trim()
   runCommand("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script], {
     timeout: 10_000,
   })
 }
 
-function runWindowsType(text: string) {
-  const script = `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait(${psString(text)})`
-  runCommand("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script], {
-    timeout: 10_000,
-  })
-}
-
-function runWindowsKey(key: string) {
-  runWindowsType(windowsShortcut(key))
+function runLinuxActions(actions: RuntimeAction[]) {
+  linuxXdotool()
+  let args: string[] = []
+  const flush = () => {
+    if (args.length === 0) return
+    runCommand("xdotool", args)
+    args = []
+  }
+  for (const action of actions) {
+    if (action.action === "screenshot") continue
+    if (action.action === "wait") {
+      flush()
+      settle(action.durationMs ?? 1_000)
+      continue
+    }
+    if (action.action === "open_app") {
+      flush()
+      if (!action.text?.trim()) throw new Error("text must contain the app name for open_app.")
+      runCommand("sh", ["-lc", `gtk-launch ${JSON.stringify(action.text.trim())} >/dev/null 2>&1 || ${JSON.stringify(action.text.trim())} >/dev/null 2>&1 &`])
+      continue
+    }
+    if (action.action === "type") {
+      args.push("type", "--clearmodifiers", "--", action.text ?? "")
+      continue
+    }
+    if (action.action === "key") {
+      args.push("key", "--clearmodifiers", (action.key ?? action.text ?? "").replaceAll("Cmd", "Super").replaceAll("Command", "Super"))
+      continue
+    }
+    if (action.action === "scroll") {
+      if (action.point) args.push("mousemove", String(action.point.x), String(action.point.y))
+      const button = action.amount >= 0 ? "5" : "4"
+      for (let i = 0; i < Math.min(50, Math.max(1, Math.abs(Math.round(action.amount)))); i++) args.push("click", button)
+      continue
+    }
+    if (!action.point) throw new Error("coordinate is required for mouse action.")
+    args.push("mousemove", String(action.point.x), String(action.point.y))
+    if (action.action === "move") continue
+    if (action.action === "left_click") args.push("click", "1")
+    if (action.action === "double_click") args.push("click", "--repeat", "2", "--delay", "40", "1")
+    if (action.action === "right_click") args.push("click", "3")
+    if (action.action === "middle_click") args.push("click", "2")
+    if (action.action === "drag") {
+      if (!action.target) throw new Error("to coordinate is required for drag action.")
+      args.push("mousedown", "1", "mousemove", "--sync", String(action.target.x), String(action.target.y), "mouseup", "1")
+    }
+  }
+  flush()
 }
 
 function normalizeAction(action: Schema.Schema.Type<typeof Action>) {
@@ -455,71 +541,79 @@ function normalizeAction(action: Schema.Schema.Type<typeof Action>) {
   return action
 }
 
-function performAction(params: Schema.Schema.Type<typeof Parameters>) {
-  const action = normalizeAction(params.action)
-  const point = params.coordinate ? coordinate(params.coordinate, "coordinate") : undefined
-  const target = params.to ? coordinate(params.to, "to") : undefined
-  const amount = params.scrollAmount ?? 5
-
-  if (action === "screenshot") return
-  if (action === "wait") {
-    settle(params.durationMs ?? 1_000)
-    return
-  }
-  if (action === "open_app") {
-    if (!params.text?.trim()) throw new Error("text must contain the app name for open_app.")
-    if (process.platform === "darwin") runCommand("open", ["-a", params.text.trim()])
-    else if (process.platform === "win32") {
-      runCommand("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", `Start-Process ${psString(params.text.trim())}`])
-    } else {
-      runCommand("sh", ["-lc", `gtk-launch ${JSON.stringify(params.text.trim())} >/dev/null 2>&1 || ${JSON.stringify(params.text.trim())} >/dev/null 2>&1 &`])
-    }
-    return
-  }
-  if (action === "type") {
-    if (params.text === undefined) throw new Error("text is required for type action.")
-    if (process.platform === "darwin") runMacType(params.text)
-    else if (process.platform === "win32") runWindowsType(params.text)
-    else {
-      linuxXdotool()
-      runCommand("xdotool", ["type", "--clearmodifiers", "--", params.text])
-    }
-    return
-  }
-  if (action === "key") {
-    const key = params.key ?? params.text
-    if (!key) throw new Error("key is required for key action.")
-    if (process.platform === "darwin") runMacKey(key)
-    else if (process.platform === "win32") runWindowsKey(key)
-    else {
-      linuxXdotool()
-      runCommand("xdotool", ["key", "--clearmodifiers", key.replaceAll("Cmd", "Super").replaceAll("Command", "Super")])
-    }
-    return
-  }
-
-  if (process.platform === "darwin") {
-    if (action !== "scroll" && !point) throw new Error("coordinate is required for mouse action.")
-    runMacMouse({ action, x: point?.x, y: point?.y, toX: target?.x, toY: target?.y, amount })
-  } else if (process.platform === "win32") {
-    runWindowsMouse(action, point, target, amount)
-  } else {
-    runLinuxMouse(action, point, target, amount)
-  }
-
-  if (point) agentCursor = action === "drag" && target ? target : point
+function stepsFromParams(params: ParametersInput): StepInput[] {
+  if (params.action !== "batch") return [params as StepInput]
+  if (!params.actions?.length) throw new Error("actions is required and must not be empty for batch action.")
+  return params.actions
 }
 
-function actionSummary(params: Schema.Schema.Type<typeof Parameters>) {
-  const action = normalizeAction(params.action)
-  if (action === "screenshot") return "Captured desktop screenshot."
-  if (action === "wait") return `Waited ${params.durationMs ?? 1_000}ms.`
-  if (action === "type") return `Typed ${JSON.stringify((params.text ?? "").slice(0, 80))}.`
-  if (action === "key") return `Pressed ${params.key ?? params.text}.`
-  if (action === "open_app") return `Opened application ${params.text}.`
-  if (action === "drag") return `Dragged from ${JSON.stringify(params.coordinate)} to ${JSON.stringify(params.to)}.`
-  if (action === "scroll") return `Scrolled ${params.scrollAmount ?? 5} at ${JSON.stringify(params.coordinate ?? agentCursor ?? null)}.`
-  return `${action} at ${JSON.stringify(params.coordinate)}.`
+function runtimeAction(input: StepInput): RuntimeAction {
+  const action = normalizeAction(input.action)
+  const point = input.coordinate ? coordinate(input.coordinate, "coordinate") : undefined
+  const target = input.to ? coordinate(input.to, "to") : undefined
+  const result = {
+    action,
+    point,
+    target,
+    amount: input.scrollAmount ?? 5,
+    text: input.text,
+    key: input.key,
+    durationMs: input.durationMs,
+  }
+
+  if (["move", "left_click", "double_click", "right_click", "middle_click"].includes(action) && !point) {
+    throw new Error("coordinate is required for mouse action.")
+  }
+  if (action === "drag" && (!point || !target)) throw new Error("coordinate and to are required for drag action.")
+  if (action === "type" && result.text === undefined) throw new Error("text is required for type action.")
+  if (action === "key" && !result.key && !result.text) throw new Error("key is required for key action.")
+  if (action === "open_app" && !result.text?.trim()) throw new Error("text must contain the app name for open_app.")
+
+  return result
+}
+
+function updateCursor(actions: RuntimeAction[]) {
+  for (const action of actions) {
+    if (!action.point) continue
+    agentCursor = action.action === "drag" && action.target ? action.target : action.point
+  }
+}
+
+function performActions(params: ParametersInput) {
+  const actions = stepsFromParams(params).map(runtimeAction)
+  const executable = actions.filter((action) => action.action !== "screenshot")
+  if (executable.every((action) => action.action === "wait")) {
+    for (const action of executable) settle(action.durationMs ?? 1_000)
+  } else if (process.platform === "darwin") runMacActions(actions)
+  else if (process.platform === "win32") runWindowsActions(actions)
+  else runLinuxActions(actions)
+  updateCursor(actions)
+  return actions
+}
+
+function stepSummary(action: RuntimeAction) {
+  if (action.action === "screenshot") return "Captured desktop screenshot."
+  if (action.action === "wait") return `Waited ${action.durationMs ?? 1_000}ms.`
+  if (action.action === "type") return `Typed ${JSON.stringify((action.text ?? "").slice(0, 80))}.`
+  if (action.action === "key") return `Pressed ${action.key ?? action.text}.`
+  if (action.action === "open_app") return `Opened application ${action.text}.`
+  if (action.action === "drag") return `Dragged from ${JSON.stringify(action.point)} to ${JSON.stringify(action.target)}.`
+  if (action.action === "scroll") return `Scrolled ${action.amount} at ${JSON.stringify(action.point ?? agentCursor ?? null)}.`
+  return `${action.action} at ${JSON.stringify(action.point)}.`
+}
+
+function actionSummary(params: ParametersInput, actions: RuntimeAction[]) {
+  if (params.action !== "batch") return stepSummary(actions[0]!)
+  return [`Ran ${actions.length} fast desktop actions:`, ...actions.slice(0, 12).map((action, index) => `${index + 1}. ${stepSummary(action)}`), actions.length > 12 ? `...${actions.length - 12} more actions.` : undefined]
+    .filter(Boolean)
+    .join("\n")
+}
+
+function contextModel(ctx: Tool.Context) {
+  const model = ctx.extra?.model
+  if (!model || typeof model !== "object") return
+  if (!("capabilities" in model)) return
+  return model as Provider.Model
 }
 
 export const ComputerTool = Tool.define(
@@ -541,39 +635,63 @@ export const ComputerTool = Tool.define(
             }
           }
 
+          const config = yield* Config.Service
+          const cfg = yield* config.get()
+          if (cfg.tools?.computer !== true) {
+            return {
+              output: "Computer use is disabled. Enable Computer use in Desktop Settings → General first.",
+              title: "computer",
+              metadata: {},
+            }
+          }
+
           const agents = yield* Agent.Service
           const agentInfo = yield* agents.get(ctx.agent)
-          const providerSvc = yield* Provider.Service
-          if (!agentInfo.model?.providerID || !agentInfo.model?.modelID) {
+          const activeModel = contextModel(ctx)
+          if (activeModel) {
+            if (!activeModel.capabilities?.input?.image) {
+              return {
+                output: "Computer use is only available with vision-capable models. Switch to a model that supports image input.",
+                title: "computer",
+                metadata: {},
+              }
+            }
+          } else if (!agentInfo.model?.providerID || !agentInfo.model?.modelID) {
             return {
               output: "Computer use requires a model that supports vision/image input.",
               title: "computer",
               metadata: {},
             }
-          }
-          const model = yield* providerSvc.getModel(agentInfo.model.providerID, agentInfo.model.modelID)
-          if (!model?.capabilities?.input?.image) {
-            return {
-              output: "Computer use is only available with vision-capable models. Switch to a model that supports image input.",
-              title: "computer",
-              metadata: {},
+          } else {
+            const providerSvc = yield* Provider.Service
+            const model = yield* providerSvc
+              .getModel(agentInfo.model.providerID, agentInfo.model.modelID)
+              .pipe(Effect.catch(() => Effect.succeed(undefined)), Effect.catchDefect(() => Effect.succeed(undefined)))
+            if (!model?.capabilities?.input?.image) {
+              return {
+                output: "Computer use is only available with vision-capable models. Switch to a model that supports image input.",
+                title: "computer",
+                metadata: {},
+              }
             }
           }
 
+          const steps = stepsFromParams(params)
+          const patterns = [...new Set(steps.map((step) => normalizeAction(step.action)))]
           yield* ctx.ask({
             permission: "computer",
-            patterns: [normalizeAction(params.action)],
+            patterns,
             always: ["*"],
-            metadata: { action: params.action, coordinate: params.coordinate, to: params.to },
+            metadata: { action: params.action, actions: patterns, coordinate: params.coordinate, to: params.to },
           })
 
-          yield* Effect.promise(() => Promise.resolve(performAction(params)))
-          settle(params.action === "wait" ? undefined : (params.durationMs ?? 350))
+          const actions = yield* Effect.promise(() => Promise.resolve(performActions(params)))
+          settle(params.action === "wait" ? undefined : (params.durationMs ?? 120))
           const screenshot = yield* Effect.promise(() => captureScreen())
           const output = [
             `# Computer Use`,
             "",
-            actionSummary(params),
+            actionSummary(params, actions),
             "",
             `Screenshot: ${screenshot.width}x${screenshot.height}.`,
             agentCursor ? `Agent cursor: (${agentCursor.x}, ${agentCursor.y}).` : undefined,
@@ -585,9 +703,10 @@ export const ComputerTool = Tool.define(
 
           return {
             output,
-            title: `computer: ${normalizeAction(params.action)}`,
+            title: `computer: ${params.action === "batch" ? `batch(${actions.length})` : normalizeAction(params.action)}`,
             metadata: {
               action: normalizeAction(params.action),
+              actions: actions.map((action) => action.action),
               platform: process.platform,
               width: screenshot.width,
               height: screenshot.height,
@@ -600,7 +719,7 @@ export const ComputerTool = Tool.define(
                 type: "file",
                 mime: "image/png",
                 url: screenshot.dataUrl,
-                filename: `computer-${normalizeAction(params.action)}-${Date.now()}.png`,
+                filename: `computer-${params.action === "batch" ? "batch" : normalizeAction(params.action)}-${Date.now()}.png`,
               },
             ],
           }
