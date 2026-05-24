@@ -1475,8 +1475,12 @@ interface FileNode {
 function renderFileTree(payload: unknown): string {
   const root: FileNode[] = Array.isArray(payload)
     ? (payload as FileNode[])
-    : payload && typeof payload === "object" && Array.isArray((payload as { tree?: FileNode[] }).tree)
-      ? (payload as { tree: FileNode[] }).tree
+    : payload && typeof payload === "object"
+      ? (Array.isArray((payload as { nodes?: FileNode[] }).nodes)
+        ? (payload as { nodes: FileNode[] }).nodes
+        : Array.isArray((payload as { tree?: FileNode[] }).tree)
+          ? (payload as { tree: FileNode[] }).tree
+          : [])
       : []
   if (root.length === 0) throw new Error("file-tree needs nodes")
 

@@ -1223,8 +1223,12 @@ function FileTreeBlock(props: { code: string }) {
   const raw = tryParse<unknown>(props.code)
   const root: FileNode[] = Array.isArray(raw)
     ? (raw as FileNode[])
-    : raw && typeof raw === "object" && Array.isArray((raw as { tree?: FileNode[] }).tree)
-      ? (raw as { tree: FileNode[] }).tree
+    : raw && typeof raw === "object"
+      ? (Array.isArray((raw as { nodes?: FileNode[] }).nodes)
+        ? (raw as { nodes: FileNode[] }).nodes
+        : Array.isArray((raw as { tree?: FileNode[] }).tree)
+          ? (raw as { tree: FileNode[] }).tree
+          : [])
       : []
   if (root.length === 0) return <ErrorBlock kind="file-tree" message="no nodes" />
   const lines: Array<{ name: string; folder: boolean; hint?: string; status?: string; prefix: string }> = []
