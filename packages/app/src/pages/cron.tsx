@@ -31,6 +31,8 @@ import { decode64 } from "@/utils/base64"
 import { cronProjectForDirectory, cronProjectIDForRoute, cronTaskInScope, type CronProjectScope } from "./cron-scope"
 
 const CRON_QUERY_KEY = ["cron", "tasks"] as const
+const CRON_TASKS_STALE_MS = 5_000
+const CRON_TASKS_GC_MS = 60_000
 
 type CronProject = CronProjectScope & { name?: string }
 
@@ -116,10 +118,10 @@ export default function CronPage() {
     },
     enabled: !!httpServer() && (!!selectedProjectID() || !!selectedDirectory()),
     refetchInterval: 5_000,
-    refetchOnMount: "always",
+    refetchOnMount: true,
     refetchOnWindowFocus: true,
-    staleTime: 0,
-    gcTime: 0,
+    staleTime: CRON_TASKS_STALE_MS,
+    gcTime: CRON_TASKS_GC_MS,
     retry: 1,
   }))
 

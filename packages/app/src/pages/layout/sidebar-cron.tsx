@@ -18,6 +18,10 @@ import {
   type CronProjectScope,
 } from "../cron-scope"
 
+const CRON_TASKS_STALE_MS = 5_000
+const CRON_RUNS_STALE_MS = 3_000
+const CRON_SIDEBAR_GC_MS = 60_000
+
 function formatTimestamp(ms: number): string {
   return new Date(ms).toLocaleTimeString([], {
     hour: "2-digit",
@@ -103,10 +107,10 @@ export const CronSidebarPanel = (props: {
     },
     enabled: !!httpServer() && (!!projectID() || !!projectWorktree()),
     refetchInterval: 5_000,
-    refetchOnMount: "always",
+    refetchOnMount: true,
     refetchOnWindowFocus: true,
-    staleTime: 0,
-    gcTime: 0,
+    staleTime: CRON_TASKS_STALE_MS,
+    gcTime: CRON_SIDEBAR_GC_MS,
     retry: 1,
   }))
   const tasks = createMemo(() =>
@@ -145,10 +149,10 @@ export const CronSidebarPanel = (props: {
     },
     enabled: !!httpServer() && (!!projectID() || !!projectWorktree()) && !tasksQuery.isLoading,
     refetchInterval: 3_000,
-    refetchOnMount: "always",
+    refetchOnMount: true,
     refetchOnWindowFocus: true,
-    staleTime: 0,
-    gcTime: 0,
+    staleTime: CRON_RUNS_STALE_MS,
+    gcTime: CRON_SIDEBAR_GC_MS,
     retry: 1,
   }))
 
@@ -174,7 +178,7 @@ export const CronSidebarPanel = (props: {
         {(worktree) => (
           <div class="shrink-0 px-1">
             <A
-              href={`/${base64Encode(worktree)}`}
+              href={`/${base64Encode(worktree)}/session`}
               class="block w-full rounded-md transition-colors hover:bg-surface-raised-base-hover"
             >
               <div class="flex items-center gap-2 px-2 py-2 min-w-0">
