@@ -1,8 +1,8 @@
-import type { AssistantMessage, Message } from "@codeplane-ai/sdk/v2/client"
+import type { AssistantMessage, Message, Part, ToolPart } from "@codeplane-ai/sdk/v2/client"
 import { DAY_MS, startOfDay, type DayBucket, type ModelStat, type Range, type Totals } from "./stats"
 
 /** Bump whenever the cached aggregate shape changes. */
-export const SESSION_AGGREGATE_VERSION = 3
+export const SESSION_AGGREGATE_VERSION = 4
 
 export type DailyMetrics = {
   /** Total messages on this day. */
@@ -13,7 +13,13 @@ export type DailyMetrics = {
   hours: number[]
   /** Per-model breakdown of messages and tokens on this day. */
   models: Record<string, { count: number; tokens: number; providerID?: string }>
+  /** Git activity detected from completed tool calls on this day. */
+  git: {
+    commits: number
+  }
 }
+
+export type SessionStatsEntry = Message | { info: Message; parts?: Part[] }
 
 export type SessionAggregate = {
   sessionID: string
@@ -35,8 +41,43 @@ const messageTokens = (message: AssistantMessage) => {
 }
 
 function blankDay(): DailyMetrics {
-  return { count: 0, tokens: 0, hours: new Array<number>(24).fill(0), models: {} }
+  return { count: 0, tokens: 0, hours: new Array<number>(24).fill(0), models: {}, git: { commits: 0 } }
 }
+
+const asEntry = (entry: SessionStatsEntry) => ("info" in entry ? entry : { info: entry, parts: [] })
+
+const isCompletedTool = (part: Part): part is ToolPart & { state: Extract<ToolPart["state"], { status: "completed" }> } =>
+  part.type === "tool" && part.state.status === "completed"
+
+const stringInput = (input: Record<string, unknown>, key: string) => {
+  const value = input[key]
+  if (typeof value !== "string") return ""
+  return value
+}
+
+const gitToolCommitCount = (part: ToolPart & { state: Extract<ToolPart["state"], { status: "completed" }> }) => {
+  if (part.tool !== "git") return 0
+  const input = part.state.input
+  const operation = stringInput(input, "operation")
+  if (operation === "commit") return 1
+  if (operation !== "run") return 0
+  const args = input.args
+  if (!Array.isArray(args)) return 0
+  return args[0] === "commit" ? 1 : 0
+}
+
+const bashCommitCount = (part: ToolPart & { state: Extract<ToolPart["state"], { status: "completed" }> }) => {
+  if (part.tool !== "bash") return 0
+  const command = stringInput(part.state.input, "command")
+  return command.match(/(?:^|[;&|]\s*)git\s+commit(?:\s|$)/g)?.length ?? 0
+}
+
+const gitStats = (parts: Part[] | undefined) => ({
+  commits: (parts ?? []).reduce((total, part) => {
+    if (!isCompletedTool(part)) return total
+    return total + gitToolCommitCount(part) + bashCommitCount(part)
+  }, 0),
+})
 
 /**
  * Roll a session's full message list into a compact per-day aggregate that
@@ -46,11 +87,13 @@ function blankDay(): DailyMetrics {
 export function aggregateSessionMessages(
   sessionID: string,
   sessionUpdatedAt: number,
-  messages: Message[],
+  entries: SessionStatsEntry[],
 ): SessionAggregate {
   const days: Record<number, DailyMetrics> = {}
   let newestMessageAt = 0
-  for (const message of messages) {
+  for (const raw of entries) {
+    const entry = asEntry(raw)
+    const message = entry.info
     const created = message.time.created
     if (created > newestMessageAt) newestMessageAt = created
     const dayKey = startOfDay(created)
@@ -60,6 +103,8 @@ export function aggregateSessionMessages(
       days[dayKey] = day
     }
     day.count += 1
+    const git = gitStats(entry.parts)
+    day.git.commits += git.commits
     const hour = new Date(created).getHours()
     day.hours[hour] = (day.hours[hour] ?? 0) + 1
     if (!isAssistant(message)) continue
@@ -67,10 +112,10 @@ export function aggregateSessionMessages(
     day.tokens += t
     const modelID = message.modelID
     if (!modelID) continue
-    const entry = day.models[modelID] ?? { count: 0, tokens: 0, providerID: message.providerID }
-    entry.count += 1
-    entry.tokens += t
-    day.models[modelID] = entry
+    const modelEntry = day.models[modelID] ?? { count: 0, tokens: 0, providerID: message.providerID }
+    modelEntry.count += 1
+    modelEntry.tokens += t
+    day.models[modelID] = modelEntry
   }
   return { sessionID, updatedAt: sessionUpdatedAt, newestMessageAt, days }
 }
@@ -119,6 +164,7 @@ export type CombinedTotals = {
   currentStreak: number
   longestStreak: number
   peakHour?: number
+  gitCommits: number
 }
 
 /**
@@ -131,6 +177,7 @@ export function combineAggregates(aggregates: SessionAggregate[], now: number, r
   const activeDaySet = new Set<number>()
   let messages = 0
   let tokens = 0
+  let gitCommits = 0
 
   for (const aggregate of aggregates) {
     if (!aggregate || !aggregate.days) continue
@@ -140,6 +187,7 @@ export function combineAggregates(aggregates: SessionAggregate[], now: number, r
       if (!inRange(dayKey, start)) continue
       messages += daily.count ?? 0
       tokens += daily.tokens ?? 0
+      gitCommits += daily.git?.commits ?? 0
       if ((daily.count ?? 0) > 0) activeDaySet.add(dayKey)
       const hours = daily.hours ?? []
       for (let h = 0; h < 24; h++) hourCounts[h] += hours[h] ?? 0
@@ -160,6 +208,7 @@ export function combineAggregates(aggregates: SessionAggregate[], now: number, r
     currentStreak: current,
     longestStreak: longest,
     peakHour: peak.count > 0 ? peak.hour : undefined,
+    gitCommits,
   }
 }
 

@@ -11,8 +11,12 @@ import { useProviders } from "@/hooks/use-providers"
 import { sessionTitle } from "@/utils/session-title"
 import {
   aggregateProjects,
+  DAY_MS,
+  RANGE_DAYS,
   recentSessions,
+  sessionChangeStats,
   type DayBucket,
+  type GitTotals,
   type ModelStat,
   type ProjectAggregate,
   type Range,
@@ -82,6 +86,7 @@ export default function Home() {
         worktree: project.worktree,
         name: displayName(project),
         iconColor: project.icon?.color,
+        vcs: project.vcs,
         sessions: child.session ?? [],
         sessionDiffs: child.session_diff,
       }
@@ -175,6 +180,7 @@ export default function Home() {
         worktree: project.worktree,
         name: project.name,
         iconColor: project.iconColor,
+        vcs: project.vcs,
         sessions: project.sessions,
         sessionDiffs: project.sessionDiffs,
       })),
@@ -192,6 +198,40 @@ export default function Home() {
       session.time.updated ?? session.time.created
 
     const combined = combineAggregates(aggregates, now, r)
+    const rangeDays = RANGE_DAYS[r]
+    const rangeStart = rangeDays === undefined ? undefined : dayStart - (rangeDays - 1) * DAY_MS
+    const inSelectedRange = (time: number) => rangeStart === undefined || time >= rangeStart
+    const gitChanges = projects.reduce<Omit<GitTotals, "commits">>(
+      (total, project) => {
+        if (project.vcs !== "git") return total
+        const sessions = project.sessions
+          .filter((session) => !session.parentID && !session.time?.archived)
+          .filter((session) => inSelectedRange(sessionTime(session)))
+        if (sessions.length === 0) return total
+        const changes = sessions.reduce(
+          (sum, session) => {
+            const stats = sessionChangeStats(session, project.sessionDiffs)
+            return {
+              files: sum.files + stats.files,
+              additions: sum.additions + stats.additions,
+              deletions: sum.deletions + stats.deletions,
+            }
+          },
+          { files: 0, additions: 0, deletions: 0 },
+        )
+        return {
+          repos: total.repos + 1,
+          files: total.files + changes.files,
+          additions: total.additions + changes.additions,
+          deletions: total.deletions + changes.deletions,
+        }
+      },
+      { repos: 0, files: 0, additions: 0, deletions: 0 },
+    )
+    const git: GitTotals = {
+      ...gitChanges,
+      commits: combined.gitCommits,
+    }
     const totals: Totals = {
       projects: projectAggregates.length,
       sessions: visibleSessions.length,
@@ -216,6 +256,7 @@ export default function Home() {
         worktree: project.worktree,
         name: project.name,
         iconColor: project.iconColor,
+        vcs: project.vcs,
         sessions: project.sessions,
         sessionDiffs: project.sessionDiffs,
       })),
@@ -223,6 +264,7 @@ export default function Home() {
 
     return {
       totals,
+      git,
       projects: projectAggregates,
       recent,
       buckets: heatmapBuckets(aggregates, now),
@@ -284,6 +326,7 @@ export default function Home() {
           range={range}
           setRange={setRange}
           totals={() => stats().totals}
+          git={() => stats().git}
           buckets={() => stats().buckets}
           models={() => stats().models}
           formatNumber={formatNumber}
@@ -345,6 +388,7 @@ function StatsPanel(props: {
   range: () => Range
   setRange: (value: Range) => void
   totals: () => Totals
+  git: () => GitTotals
   buckets: () => DayBucket[]
   models: () => ModelStat[]
   formatNumber: () => Intl.NumberFormat
@@ -372,6 +416,7 @@ function StatsPanel(props: {
       <Show when={props.tab() === "overview"}>
         <OverviewTab
           totals={props.totals}
+          git={props.git}
           buckets={props.buckets}
           formatNumber={props.formatNumber}
           formatHour={props.formatHour}
@@ -413,6 +458,7 @@ function PillGroup<T extends string>(props: {
 
 function OverviewTab(props: {
   totals: () => Totals
+  git: () => GitTotals
   buckets: () => DayBucket[]
   formatNumber: () => Intl.NumberFormat
   formatHour: (hour: number) => string
@@ -471,6 +517,34 @@ function OverviewTab(props: {
                 )
               : "—"
           }
+        />
+      </div>
+
+      <div class="grid grid-cols-2 gap-px border-t border-border-weaker-base bg-border-weaker-base sm:grid-cols-5">
+        <NumericStat
+          label={language.t("home.stat.git.repos")}
+          value={safeStat(props.git().repos)}
+          format={(v) => props.formatNumber().format(Math.round(safeStat(v)))}
+        />
+        <NumericStat
+          label={language.t("home.stat.git.commits")}
+          value={safeStat(props.git().commits)}
+          format={(v) => props.formatNumber().format(Math.round(safeStat(v)))}
+        />
+        <NumericStat
+          label={language.t("home.stat.git.files")}
+          value={safeStat(props.git().files)}
+          format={(v) => props.formatNumber().format(Math.round(safeStat(v)))}
+        />
+        <NumericStat
+          label={language.t("home.stat.git.additions")}
+          value={safeStat(props.git().additions)}
+          format={(v) => props.formatNumber().format(Math.round(safeStat(v)))}
+        />
+        <NumericStat
+          label={language.t("home.stat.git.deletions")}
+          value={safeStat(props.git().deletions)}
+          format={(v) => props.formatNumber().format(Math.round(safeStat(v)))}
         />
       </div>
 
@@ -746,4 +820,3 @@ function RecentSection(props: {
     </section>
   )
 }
-

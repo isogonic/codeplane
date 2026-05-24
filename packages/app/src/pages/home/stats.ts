@@ -18,6 +18,7 @@ export type ProjectInput = {
   name: string
   iconColor?: string
   worktree: string
+  vcs?: "git"
   sessions: Session[]
   sessionDiffs?: Record<string, SnapshotFileDiff[] | undefined>
   sessionMessages?: Record<string, Message[] | undefined>
@@ -28,6 +29,7 @@ export type ProjectAggregate = {
   worktree: string
   name: string
   iconColor?: string
+  vcs?: "git"
   sessions: number
   archived: number
   files: number
@@ -40,6 +42,14 @@ export type PreferredModel = {
   modelID: string
   providerID?: string
   messages: number
+}
+
+export type GitTotals = {
+  repos: number
+  commits: number
+  files: number
+  additions: number
+  deletions: number
 }
 
 export type Totals = {
@@ -89,6 +99,7 @@ export type RecentSession = {
 
 export type HomeStats = {
   totals: Totals
+  git: GitTotals
   projects: ProjectAggregate[]
   recent: RecentSession[]
   buckets: DayBucket[]
@@ -143,7 +154,7 @@ const diffStats = (diffs: unknown) =>
     { files: new Set<string>(), additions: 0, deletions: 0 },
   )
 
-const sessionChangeStats = (session: Session, sessionDiffs?: ProjectInput["sessionDiffs"]) => {
+export const sessionChangeStats = (session: Session, sessionDiffs?: ProjectInput["sessionDiffs"]) => {
   const cached = listDiffs(sessionDiffs?.[session.id])
   const diff = diffStats(cached.length > 0 ? cached : session.summary?.diffs)
   const summaryLines = (session.summary?.additions ?? 0) + (session.summary?.deletions ?? 0)
@@ -203,6 +214,7 @@ export function aggregateProjects(input: ProjectInput[]): ProjectAggregate[] {
         worktree: project.worktree,
         name: project.name,
         iconColor: project.iconColor,
+        vcs: project.vcs,
         sessions: visible.length,
         archived,
         files: changes.files,
@@ -411,8 +423,15 @@ export function buildHomeStats(input: ProjectInput[], now: number, range: Range 
   const allSessions = input.flatMap((project) => project.sessions)
   const allMessages = collectMessages(input)
   const totals = aggregateTotals(projects, allSessions, allMessages, now, range)
+  const git: GitTotals = {
+    repos: projects.filter((project) => project.vcs === "git" && project.sessions > 0).length,
+    commits: 0,
+    files: projects.filter((project) => project.vcs === "git").reduce((sum, project) => sum + project.files, 0),
+    additions: projects.filter((project) => project.vcs === "git").reduce((sum, project) => sum + project.additions, 0),
+    deletions: projects.filter((project) => project.vcs === "git").reduce((sum, project) => sum + project.deletions, 0),
+  }
   const buckets = dailyBuckets(allMessages, now)
   const recent = recentSessions(input)
   const models = aggregateModels(allMessages, now, range)
-  return { projects, totals, buckets, recent, models }
+  return { projects, totals, git, buckets, recent, models }
 }

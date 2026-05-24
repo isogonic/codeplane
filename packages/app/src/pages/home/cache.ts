@@ -1,8 +1,12 @@
 import { createEffect, createSignal } from "solid-js"
 import { useServer } from "@/context/server"
 import { checksum } from "@codeplane-ai/shared/util/encode"
-import { aggregateSessionMessages, SESSION_AGGREGATE_VERSION, type SessionAggregate } from "./aggregate"
-import type { Message } from "@codeplane-ai/sdk/v2/client"
+import {
+  aggregateSessionMessages,
+  SESSION_AGGREGATE_VERSION,
+  type SessionAggregate,
+  type SessionStatsEntry,
+} from "./aggregate"
 
 export type HomeCacheStore = {
   version: number
@@ -75,8 +79,8 @@ export function createHomeCache() {
     return cached.updatedAt < sessionUpdatedAt
   }
 
-  function applyMessages(sessionID: string, sessionUpdatedAt: number, messages: Message[]) {
-    const next = aggregateSessionMessages(sessionID, sessionUpdatedAt, messages)
+  function applyMessages(sessionID: string, sessionUpdatedAt: number, entries: SessionStatsEntry[]) {
+    const next = aggregateSessionMessages(sessionID, sessionUpdatedAt, entries)
     setState((prev) => ({
       version: SESSION_AGGREGATE_VERSION,
       aggregates: { ...prev.aggregates, [sessionID]: next },

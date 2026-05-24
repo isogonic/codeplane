@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { AssistantMessage, Message } from "@codeplane-ai/sdk/v2/client"
+import type { AssistantMessage, Message, Part } from "@codeplane-ai/sdk/v2/client"
 import {
   aggregateSessionMessages,
   combineAggregates,
@@ -47,6 +47,42 @@ const user = (overrides: { id: string; sessionID: string; created: number }): Me
     model: { providerID: "anthropic", modelID: "opus" },
   }) as Message
 
+const gitTool = (input: Record<string, unknown>): Part =>
+  ({
+    id: `tool-${JSON.stringify(input)}`,
+    sessionID: "s",
+    messageID: "m",
+    type: "tool",
+    callID: "call",
+    tool: "git",
+    state: {
+      status: "completed",
+      input,
+      output: "",
+      title: "git commit",
+      metadata: {},
+      time: { start: now, end: now + 1 },
+    },
+  }) as Part
+
+const bashTool = (command: string): Part =>
+  ({
+    id: `bash-${command}`,
+    sessionID: "s",
+    messageID: "m",
+    type: "tool",
+    callID: "call",
+    tool: "bash",
+    state: {
+      status: "completed",
+      input: { command },
+      output: "",
+      title: command,
+      metadata: {},
+      time: { start: now, end: now + 1 },
+    },
+  }) as Part
+
 describe("aggregateSessionMessages", () => {
   test("buckets messages into per-day metrics", () => {
     const agg = aggregateSessionMessages("s", now, [
@@ -63,6 +99,23 @@ describe("aggregateSessionMessages", () => {
     expect(agg.days[yesterday]?.count).toBe(1)
     expect(agg.days[yesterday]?.tokens).toBe(50)
     expect(agg.days[yesterday]?.models.sonnet?.count).toBe(1)
+  })
+
+  test("counts completed git commits from tool history", () => {
+    const agg = aggregateSessionMessages("s", now, [
+      {
+        info: assistant({ id: "1", sessionID: "s", created: now, tokens: 100 }),
+        parts: [
+          gitTool({ operation: "commit", message: "ship" }),
+          gitTool({ operation: "run", args: ["commit", "-m", "ship"] }),
+          bashTool("git add . && git commit -m ship"),
+          gitTool({ operation: "status" }),
+        ],
+      },
+    ])
+    const today = startOfDay(now)
+    expect(agg.days[today]?.git.commits).toBe(3)
+    expect(combineAggregates([agg], now, "all").gitCommits).toBe(3)
   })
 })
 

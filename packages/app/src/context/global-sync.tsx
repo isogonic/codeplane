@@ -5,6 +5,8 @@ import type {
   Project,
   ProviderAuthResponse,
   ProviderListResponse,
+  Message,
+  Part,
   Session,
   Todo,
 } from "@codeplane-ai/sdk/v2/client"
@@ -331,15 +333,16 @@ function createGlobalSync() {
    */
   async function fetchSessionMessagesForStats(directory: string, sessionID: string) {
     const sdk = sdkFor(directory)
-    const all: Array<{ info: { id: string; time: { created: number } } & Record<string, unknown> }> = []
+    const all: Array<{ info: Message; parts: Part[] }> = []
     let before: string | undefined
     for (let page = 0; page < 200; page++) {
       const response = await retry(() => sdk.session.messages({ sessionID, limit: 1_000, before }))
-      const items = (response.data ?? []).filter((entry: unknown): entry is { info: { id: string } } & Record<string, unknown> =>
-        !!(entry as { info?: { id?: string } } | null)?.info?.id,
+      const items = (response.data ?? []).filter((entry: unknown): entry is { info: Message; parts: Part[] } =>
+        !!(entry as { info?: { id?: string } } | null)?.info?.id &&
+        Array.isArray((entry as { parts?: unknown } | null)?.parts),
       )
       if (items.length === 0) break
-      all.push(...(items as typeof all))
+      all.push(...items)
       const cursor = response.response?.headers?.get?.("x-next-cursor") ?? undefined
       if (!cursor) break
       before = cursor
@@ -347,9 +350,7 @@ function createGlobalSync() {
     // dedupe + chronological
     const byId = new Map<string, (typeof all)[number]>()
     for (const item of all) byId.set(item.info.id, item)
-    return [...byId.values()]
-      .map((entry) => entry.info)
-      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    return [...byId.values()].sort((a, b) => (a.info.id < b.info.id ? -1 : a.info.id > b.info.id ? 1 : 0))
   }
 
   async function loadSessionDiff(directory: string, sessionID: string, options?: { force?: boolean }) {
