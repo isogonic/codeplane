@@ -4,7 +4,7 @@ import DESCRIPTION from "./browser.txt"
 import { spawn, spawnSync, type ChildProcess } from "node:child_process"
 import { existsSync } from "node:fs"
 import { tmpdir } from "node:os"
-import type { Agent } from "@/agent/agent"
+import { Agent } from "@/agent/agent"
 import { Flag } from "@/flag/flag"
 import { Provider } from "@/provider"
 

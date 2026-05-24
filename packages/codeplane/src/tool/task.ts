@@ -67,9 +67,7 @@ export const Parameters = Schema.Struct({
   description: Schema.String.annotate({ description: "A short (3-5 words) description of the task" }),
   prompt: Schema.String.annotate({ description: "The task for the agent to perform" }),
   subagent_type: Schema.String.annotate({ description: "The type of specialized agent to use for this task" }),
-  action: Schema.optional(
-    Schema.Literal("run", "spawn", "check"),
-  ).annotate({
+  action: Schema.optional(Schema.String).annotate({
     description:
       "How to execute: 'run' blocks until complete (default), 'spawn' starts in background and returns task_id immediately so you can continue working, 'check' polls a spawned task by task_id and returns status or final result",
   }),
@@ -147,7 +145,8 @@ export const TaskTool = Tool.define(
         }
       }
 
-      if (lastAssistant.info.finish || lastAssistant.info.error) {
+      const assistantInfo = lastAssistant.info as MessageV2.Assistant
+      if (assistantInfo.finish || assistantInfo.error) {
         const text = resultText(lastAssistant)
         return {
           output: [
