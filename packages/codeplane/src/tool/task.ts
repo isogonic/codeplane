@@ -68,7 +68,7 @@ export const Parameters = Schema.Struct({
   prompt: Schema.String.annotate({ description: "The task for the agent to perform" }),
   subagent_type: Schema.String.annotate({ description: "The type of specialized agent to use for this task" }),
   action: Schema.optional(
-    Schema.Literal("run", "spawn", "check"),
+    Schema.Union(Schema.Literal("run"), Schema.Literal("spawn"), Schema.Literal("check")),
   ).annotate({
     description:
       "How to execute: 'run' blocks until complete (default), 'spawn' starts in background and returns task_id immediately so you can continue working, 'check' polls a spawned task by task_id and returns status or final result",
@@ -129,12 +129,13 @@ export const TaskTool = Tool.define(
       ...(completedAt !== undefined ? { completedAt } : {}),
     })
 
-    const checkTask = Effect.fn("TaskTool.checkTask")(function* (
-      taskSessionID: SessionID,
-      parentSessionID: SessionID,
-      params: Schema.Schema.Type<typeof Parameters>,
-      ctx: Tool.Context,
-    ) {
+    const checkTask = Effect.fn("TaskTool.checkTask")(function* (input: {
+      taskSessionID: SessionID
+      parentSessionID: SessionID
+      params: Schema.Schema.Type<typeof Parameters>
+      ctx: Tool.Context
+    }) {
+      const { taskSessionID, parentSessionID, params, ctx } = input
       const childSession = yield* sessions.get(taskSessionID)
       const msgs = yield* sessions.messages({ sessionID: taskSessionID })
 
@@ -188,7 +189,7 @@ export const TaskTool = Tool.define(
       ctx: Tool.Context,
     ) {
       const cfg = yield* config.get()
-      const action = params.action ?? "run"
+      const action = (params.action ?? "run") as string
 
       const next = yield* agent.get(params.subagent_type)
       if (!next || (next.mode !== "subagent" && next.mode !== "all")) {
@@ -241,7 +242,7 @@ export const TaskTool = Tool.define(
       if (action === "check") {
         if (!taskID) return yield* Effect.fail(new Error("check action requires task_id"))
         const sid = SessionID.make(taskID)
-        return yield* checkTask(sid, SessionID.make(ctx.sessionID), params, ctx)
+        return yield* checkTask({ taskSessionID: sid, parentSessionID: SessionID.make(ctx.sessionID), params, ctx })
       }
 
       const taskSession = existingSession?.parentID === ctx.sessionID ? existingSession : undefined
@@ -268,7 +269,7 @@ export const TaskTool = Tool.define(
 
       const messageID = MessageID.ascending()
 
-      const promptInput: SessionPrompt.PromptInput = {
+      const promptBase = {
         messageID,
         sessionID: nextSession.id,
         model: {
@@ -281,12 +282,14 @@ export const TaskTool = Tool.define(
           ...(canTask ? {} : { task: false }),
           ...Object.fromEntries((cfg.experimental?.primary_tools ?? []).map((item) => [item, false])),
         },
-      } satisfies SessionPrompt.PromptInput
+      } as const
+
+      const parts = yield* ops.resolvePromptParts(params.prompt)
+      const promptInput: SessionPrompt.PromptInput = { ...promptBase, parts } as SessionPrompt.PromptInput
 
       // --- SPAWN action: fire-and-forget, return task_id immediately ---
-      if (actionStr === "spawn") {
-        const parts = yield* ops.resolvePromptParts(params.prompt)
-        yield* ops.forkPrompt({ ...promptInput, parts })
+      if (action === "spawn") {
+        yield* ops.forkPrompt(promptInput)
 
         return {
           title: params.description,
@@ -312,9 +315,8 @@ export const TaskTool = Tool.define(
         }),
         () =>
           Effect.gen(function* () {
-            const parts = yield* ops.resolvePromptParts(params.prompt)
             const result = yield* ops
-              .prompt({ ...promptInput, parts })
+              .prompt(promptInput)
               .pipe(
                 Effect.catchCause((cause) =>
                   Effect.gen(function* () {
