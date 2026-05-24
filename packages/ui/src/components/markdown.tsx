@@ -9,6 +9,7 @@ import { ComponentProps, createEffect, createMemo, createResource, createSignal,
 import { isServer } from "solid-js/web"
 import { stream } from "./markdown-stream"
 import { showToast } from "./toast"
+import { writeClipboardText } from "./clipboard"
 
 type Entry = {
   hash: string
@@ -1166,9 +1167,7 @@ function setupCodeCopy(root: HTMLDivElement, getLabels: () => CopyLabels) {
     const code = button.closest('[data-component="markdown-code"]')?.querySelector("code")
     const content = code?.textContent ?? ""
     if (!content) return
-    const clipboard = navigator?.clipboard
-    if (!clipboard) return
-    await clipboard.writeText(content)
+    if (!(await writeClipboardText(content))) return
     const labels = getLabels()
     showToast({
       variant: "success",
@@ -1214,9 +1213,7 @@ function setupFileReferences(
       event.preventDefault()
       event.stopPropagation()
 
-      const clipboard = navigator?.clipboard
-      if (!clipboard) return
-      await clipboard.writeText(path)
+      if (!(await writeClipboardText(path))) return
 
       const labels = getLabels()
       showToast({

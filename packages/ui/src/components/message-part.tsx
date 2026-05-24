@@ -50,6 +50,7 @@ import { checksum } from "@codeplane-ai/shared/util/encode"
 import { Tooltip } from "./tooltip"
 import { IconButton } from "./icon-button"
 import { showToast } from "./toast"
+import { writeClipboardText } from "./clipboard"
 import { Spinner } from "./spinner"
 import { TextShimmer } from "./text-shimmer"
 import { AnimatedCountList } from "./tool-count-summary"
@@ -178,7 +179,7 @@ function copiedToast(i18n: ReturnType<typeof useI18n>, description: string) {
 
 async function copyText(i18n: ReturnType<typeof useI18n>, text: string, description: string) {
   if (!text) return
-  await navigator.clipboard.writeText(text)
+  if (!(await writeClipboardText(text))) return
   copiedToast(i18n, description)
 }
 

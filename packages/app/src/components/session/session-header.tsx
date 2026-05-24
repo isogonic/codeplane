@@ -20,6 +20,7 @@ import { useTerminal } from "@/context/terminal"
 import { focusTerminalById } from "@/pages/session/helpers"
 import { useSessionLayout } from "@/pages/session/session-layout"
 import { messageAgentColor } from "@/utils/agent"
+import { writeClipboardText } from "@/utils/clipboard"
 import { decode64 } from "@/utils/base64"
 import { Persist, persisted } from "@/utils/persist"
 import { StatusPopover } from "../status-popover"
@@ -242,9 +243,9 @@ export function SessionHeader() {
   const copyPath = () => {
     const directory = projectDirectory()
     if (!directory) return
-    navigator.clipboard
-      .writeText(directory)
-      .then(() => {
+    writeClipboardText(directory)
+      .then((copied) => {
+        if (!copied) throw new Error("Clipboard copy is not available")
         showToast({
           variant: "success",
           icon: "circle-check",

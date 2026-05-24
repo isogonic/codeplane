@@ -32,6 +32,7 @@ import { useSync } from "@/context/sync"
 import { messageAgentColor } from "@/utils/agent"
 import { sessionTitle } from "@/utils/session-title"
 import { parseCommentNote, readCommentMetadata } from "@/utils/comment-note"
+import { writeClipboardText } from "@/utils/clipboard"
 import { makeTimer } from "@solid-primitives/timer"
 
 type MessageComment = {
@@ -436,9 +437,9 @@ export function MessageTimeline(props: {
   }))
 
   const copySessionID = (id: string) => {
-    navigator.clipboard
-      .writeText(id)
-      .then(() => {
+    writeClipboardText(id)
+      .then((copied) => {
+        if (!copied) throw new Error("Clipboard copy is not available")
         showToast({
           variant: "success",
           icon: "circle-check",

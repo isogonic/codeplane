@@ -5,6 +5,7 @@ import { useI18n } from "../context/i18n"
 import { IconButton } from "./icon-button"
 import { Tooltip } from "./tooltip"
 import { showToast } from "./toast"
+import { writeClipboardText } from "./clipboard"
 
 export interface TextFieldProps
   extends ComponentProps<typeof Kobalte.Input>,
@@ -70,7 +71,7 @@ export function TextField(props: TextFieldProps) {
 
   async function handleCopy() {
     const value = local.value ?? local.defaultValue ?? ""
-    await navigator.clipboard.writeText(value)
+    if (!(await writeClipboardText(value))) return
     showToast({
       variant: "success",
       icon: "circle-check",

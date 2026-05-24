@@ -7,6 +7,7 @@ import { IconButton } from "./icon-button"
 import { Tooltip } from "./tooltip"
 import { useI18n } from "../context/i18n"
 import { showToast } from "./toast"
+import { writeClipboardText } from "./clipboard"
 
 export interface ToolErrorCardProps extends Omit<ComponentProps<"div">, "children"> {
   tool: string
@@ -73,7 +74,7 @@ export function ToolErrorCard(props: ToolErrorCardProps) {
   const copy = async () => {
     const text = cleaned()
     if (!text) return
-    await navigator.clipboard.writeText(text)
+    if (!(await writeClipboardText(text))) return
     showToast({
       variant: "success",
       icon: "circle-check",
