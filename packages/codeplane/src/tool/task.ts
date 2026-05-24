@@ -355,7 +355,6 @@ export const TaskTool = Tool.define(
       parameters: Parameters,
       timeoutMs: null,
       execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
-        // @ts-expect-error - run has Effect.fn requirements that are provided by the runtime
         run(params, ctx).pipe(Effect.orDie),
     }
   }) as any,

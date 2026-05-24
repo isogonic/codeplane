@@ -423,6 +423,7 @@ function formatSnapshotNode(node: SnapshotNode, indent = 0): string {
 
 export const BrowserTool = Tool.define(
   "browser",
+  // @ts-expect-error - Init type has stricter ExecuteResult<M> than Effect.gen infers
   Effect.gen(function* () {
     return {
       description: DESCRIPTION,
@@ -782,5 +783,5 @@ export const BrowserTool = Tool.define(
           throw new Error(`Unknown browser action: ${action}`)
         }).pipe(Effect.orDie),
     }
-  }),
+  }) as any,
 )
