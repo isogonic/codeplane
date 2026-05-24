@@ -485,6 +485,7 @@ const live: Layer.Layer<
             let idleTimer: ReturnType<typeof setTimeout> | undefined
             const armIdle = () => {
               if (idleTimer) clearTimeout(idleTimer)
+              if (STREAM_IDLE_TIMEOUT_MS <= 0) return
               idleTimer = setTimeout(() => {
                 log.warn("stream idle timeout — aborting", {
                   ms: STREAM_IDLE_TIMEOUT_MS,
