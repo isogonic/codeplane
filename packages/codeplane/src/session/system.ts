@@ -74,12 +74,12 @@ export const layer = Layer.effect(
           ...(hasVision && isDesktop
             ? [
                 [
-                  `<browser-use>`,
+                  `<desktop-visual-tools>`,
                   `You are running in the Codeplane Desktop app with a vision-capable model.`,
-                  `A full browser automation environment (Chrome) is available through the \`browser\` tool.`,
-                  `Use this for visual inspection, UI testing, debugging, and validating frontend work.`,
-                  `The browser tool supports: navigate, screenshot, snapshot (accessibility tree with refs), click, type, evaluate JavaScript, console logs, and HTML extraction.`,
-                  `</browser-use>`,
+                  `When enabled in Settings and present in your tool list, use \`browser\` for isolated Chrome automation and \`computer\` for native desktop control.`,
+                  `Prefer \`browser\` for websites and frontend validation because it provides DOM refs, console logs, JS evaluation, and page state.`,
+                  `Use \`computer\` only for native apps or desktop-level tasks; verify every step with screenshots and ask before sensitive or irreversible actions.`,
+                  `</desktop-visual-tools>`,
                 ].join("\n"),
               ]
             : []),

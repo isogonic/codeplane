@@ -30,7 +30,7 @@
     },
     "packages/app": {
       "name": "@codeplane-ai/app",
-      "version": "28.21.31",
+      "version": "28.21.32",
       "dependencies": {
         "@codeplane-ai/sdk": "file:../sdk/js",
         "@codeplane-ai/shared": "file:../shared",
@@ -84,7 +84,7 @@
     },
     "packages/codeplane": {
       "name": "codeplane",
-      "version": "28.21.31",
+      "version": "28.21.32",
       "bin": {
         "codeplane": "./bin/codeplane",
       },
@@ -184,7 +184,7 @@
         "react-devtools-core": "7.0.1",
         "remeda": "2.26.0",
         "semver": "^7.6.3",
-        "solid-js": "1.9.12",
+        "solid-js": "1.9.10",
         "strip-ansi": "7.1.2",
         "tree-sitter-bash": "0.25.0",
         "tree-sitter-powershell": "0.25.10",
@@ -230,7 +230,7 @@
     },
     "packages/desktop": {
       "name": "@codeplane-ai/desktop",
-      "version": "28.21.31",
+      "version": "28.21.32",
       "devDependencies": {
         "@codeplane-ai/shared": "file:../shared",
         "@codeplane-ai/ui": "file:../ui",
@@ -253,7 +253,7 @@
     },
     "packages/mobile": {
       "name": "@codeplane-ai/mobile",
-      "version": "28.21.31",
+      "version": "28.21.32",
       "dependencies": {
         "@capacitor/android": "7.4.4",
         "@capacitor/app": "7.1.0",
@@ -291,7 +291,7 @@
     },
     "packages/plugin": {
       "name": "@codeplane-ai/plugin",
-      "version": "28.21.31",
+      "version": "28.21.32",
       "dependencies": {
         "@codeplane-ai/sdk": "file:../sdk/js",
         "effect": "4.0.0-beta.48",
@@ -314,7 +314,7 @@
     },
     "packages/script": {
       "name": "@codeplane-ai/script",
-      "version": "28.21.31",
+      "version": "28.21.32",
       "dependencies": {
         "@codeplane-ai/shared": "file:../shared",
         "semver": "^7.6.3",
@@ -326,7 +326,7 @@
     },
     "packages/sdk/js": {
       "name": "@codeplane-ai/sdk",
-      "version": "28.21.31",
+      "version": "28.21.32",
       "dependencies": {
         "cross-spawn": "7.0.6",
       },
@@ -341,7 +341,7 @@
     },
     "packages/shared": {
       "name": "@codeplane-ai/shared",
-      "version": "28.21.31",
+      "version": "28.21.32",
       "bin": {
         "codeplane": "./bin/codeplane",
       },
@@ -365,7 +365,7 @@
     },
     "packages/ui": {
       "name": "@codeplane-ai/ui",
-      "version": "28.21.31",
+      "version": "28.21.32",
       "dependencies": {
         "@codeplane-ai/sdk": "file:../sdk/js",
         "@codeplane-ai/shared": "file:../shared",
@@ -3881,8 +3881,6 @@
     "cliui/wrap-ansi": ["wrap-ansi@9.0.2", "", { "dependencies": { "ansi-styles": "^6.2.1", "string-width": "^7.0.0", "strip-ansi": "^7.1.0" } }, "sha512-42AtmgqjV+X1VpdOfyTGOYRi0/zsoLqtXQckTmqTeybT+BDIbM/Guxo7x3pE2vtpr1ok6xRqM9OpBe+Jyoqyww=="],
 
     "clone-response/mimic-response": ["mimic-response@1.0.1", "", {}, "sha512-j5EctnkH7amfV/q5Hgmoal1g2QHFJRraOtmx0JpIqkxhBhI/lJSl1nMpQ45hVarwNETOoWEimndZ4QK0RHxuxQ=="],
-
-    "codeplane/solid-js": ["solid-js@1.9.12", "", { "dependencies": { "csstype": "^3.1.0", "seroval": "~1.5.0", "seroval-plugins": "~1.5.0" } }, "sha512-QzKaSJq2/iDrWR1As6MHZQ8fQkdOBf8GReYb7L5iKwMGceg7HxDcaOHk0at66tNgn9U2U7dXo8ZZpLIAmGMzgw=="],
 
     "compress-commons/is-stream": ["is-stream@2.0.1", "", {}, "sha512-hFoiJiTl63nn+kstHGBtewWSKnQLpyb155KHheA1l39uvtO9nWIop1p3udqPcUd/xbF1VLMO4n7OI6p7RbngDg=="],
 

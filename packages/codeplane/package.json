@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "28.21.32",
+  "version": "28.21.33",
   "name": "codeplane",
   "type": "module",
   "license": "MIT",
@@ -163,7 +163,7 @@
     "react-devtools-core": "7.0.1",
     "remeda": "2.26.0",
     "semver": "^7.6.3",
-    "solid-js": "1.9.12",
+    "solid-js": "1.9.10",
     "strip-ansi": "7.1.2",
     "tree-sitter-bash": "0.25.0",
     "tree-sitter-powershell": "0.25.10",

@@ -93,6 +93,7 @@ export const layer = Layer.effect(
             ...Object.fromEntries(whitelistedDirs.map((dir) => [dir, "allow"])),
           },
           question: "deny",
+          computer: "deny",
           plan_enter: "deny",
           plan_exit: "deny",
           // mirrors github.com/github/gitignore Node.gitignore pattern for .env files

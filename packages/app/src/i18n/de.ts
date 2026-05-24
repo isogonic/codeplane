@@ -708,6 +708,9 @@ export const dict = {
   "settings.general.row.browserUse.title": "Browser-Steuerung",
   "settings.general.row.browserUse.description":
     "Ermöglicht dem Agenten die Steuerung des Chrome-Browsers für visuelle Inspektion, UI-Tests und interaktives Debugging. Umfasst vollständige Browser-Automatisierung: Navigation, Klicken, Tippen, Screenshots, Konsolenprotokolle und JavaScript-Ausführung. Nur verfügbar mit einem visuell fähigen Modell.",
+  "settings.general.row.computerUse.title": "Computer-Steuerung",
+  "settings.general.row.computerUse.description":
+    "Ermöglicht dem Agenten, diesen Desktop mit eigenem sichtbarem Zeiger zu steuern: Screenshots, Mausbewegungen, Klicks, Ziehen, Scrollen, Tastatureingaben, Shortcuts und App-Start. Standardmäßig deaktiviert und nur in Codeplane Desktop mit einem visuell fähigen Modell verfügbar.",
   "settings.general.row.releaseNotes.title": "Versionshinweise",
   "settings.general.row.releaseNotes.description": '"Neuigkeiten"-Pop-ups nach Updates anzeigen',
   "settings.general.section.updates": "Updates",

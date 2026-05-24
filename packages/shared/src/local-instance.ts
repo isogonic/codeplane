@@ -71,16 +71,12 @@ function createKeyedLock() {
   return async function lock<T>(key: string, fn: () => Promise<T>): Promise<T> {
     const previous = tails.get(key) ?? Promise.resolve()
     const next = previous.catch(() => undefined).then(fn)
-    tails.set(
-      key,
-      next.catch(() => undefined),
-    )
+    const tail = next.catch(() => undefined)
+    tails.set(key, tail)
     try {
       return await next
     } finally {
-      // Clear only if no later caller already replaced us.
-      const current = tails.get(key)
-      if (current === next || (current as unknown) === next.catch(() => undefined)) tails.delete(key)
+      if (tails.get(key) === tail) tails.delete(key)
     }
   }
 }
@@ -233,6 +229,9 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
         // settings UI then shows the desktop-managed update message instead
         // of "automatic updates unavailable".
         env.CODEPLANE_DESKTOP_MANAGED = "1"
+        // Tell the spawned server it runs inside the desktop app so
+        // desktop-only tools (browser, etc.) are available.
+        env.CODEPLANE_CLIENT = "app"
       }
       // Tell the spawned server which manager (if any) owns its update
       // lifecycle. The /global/upgrade route reads this to short-circuit

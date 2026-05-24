@@ -14,6 +14,8 @@ const Action = Schema.Union([
   Schema.Literal("snapshot"),
   Schema.Literal("click"),
   Schema.Literal("type"),
+  Schema.Literal("scroll"),
+  Schema.Literal("wait"),
   Schema.Literal("evaluate"),
   Schema.Literal("console"),
   Schema.Literal("html"),
@@ -23,7 +25,7 @@ const Action = Schema.Union([
 export const Parameters = Schema.Struct({
   action: Action.annotate({
     description:
-      "The browser action: navigate (go to URL), screenshot (capture viewport), snapshot (get interactive elements with refs), click (click element by ref/selector/coords), type (enter text into element), evaluate (run JS in page), console (get console logs), html (get page source), close (close browser)",
+      "The browser action: navigate (go to URL), screenshot (capture viewport), snapshot (get interactive elements with refs), click (click element by ref/selector/coords), type (enter text into element), scroll, wait, evaluate (run JS in page), console (get console logs), html (get page source), close (close browser)",
   }),
   url: Schema.optional(Schema.String).annotate({
     description: "URL to navigate to (required for navigate action)",
@@ -36,6 +38,18 @@ export const Parameters = Schema.Struct({
   }),
   text: Schema.optional(Schema.String).annotate({
     description: "Text to type into the element (for type action)",
+  }),
+  x: Schema.optional(Schema.Number).annotate({
+    description: "X coordinate in viewport CSS pixels for coordinate-based click/type/scroll actions",
+  }),
+  y: Schema.optional(Schema.Number).annotate({
+    description: "Y coordinate in viewport CSS pixels for coordinate-based click/type/scroll actions",
+  }),
+  scrollAmount: Schema.optional(Schema.Number).annotate({
+    description: "Scroll amount in wheel notches. Positive scrolls down, negative scrolls up. Default 5.",
+  }),
+  waitMs: Schema.optional(Schema.Number).annotate({
+    description: "Milliseconds to wait for wait action or after a navigation/action before screenshot. Default varies by action.",
   }),
   script: Schema.optional(Schema.String).annotate({
     description: "JavaScript to execute in the page (for evaluate action)",
@@ -256,6 +270,123 @@ function sendCommand(session: CDPSession, method: string, params?: Record<string
   })
 }
 
+type BrowserScreenshot = { dataUrl: string; width: number; height: number }
+type ElementTarget = { x: number; y: number; tag?: string; text?: string; value?: string }
+
+async function waitForPageReady(session: CDPSession, timeoutMs = 5_000): Promise<void> {
+  const started = Date.now()
+  while (Date.now() - started < timeoutMs) {
+    try {
+      const result = await sendCommand(session, "Runtime.evaluate", {
+        expression: "document.readyState",
+        returnByValue: true,
+      })
+      const state = result.result?.value
+      if (state === "complete" || state === "interactive") return
+    } catch {}
+    await new Promise((resolve) => setTimeout(resolve, 150))
+  }
+}
+
+async function captureBrowserScreenshot(
+  session: CDPSession,
+  params: Pick<Schema.Schema.Type<typeof Parameters>, "width" | "height" | "fullPage">,
+): Promise<BrowserScreenshot> {
+  const width = Math.min(2560, Math.max(320, params.width ?? 1280))
+  const height = Math.min(2160, Math.max(240, params.height ?? 800))
+  await sendCommand(session, "Emulation.setDeviceMetricsOverride", {
+    width,
+    height,
+    deviceScaleFactor: 1,
+    mobile: false,
+  })
+  const { data } = await sendCommand(session, "Page.captureScreenshot", {
+    format: "png",
+    clip: params.fullPage ? undefined : { x: 0, y: 0, width, height, scale: 1 },
+    captureBeyondViewport: !!params.fullPage,
+  })
+  return { dataUrl: `data:image/png;base64,${data}`, width, height }
+}
+
+let refTargets = new Map<string, { backendNodeId: number }>()
+
+async function objectIDForRef(session: CDPSession, ref: string) {
+  const target = refTargets.get(ref)
+  if (!target) throw new Error(`Element ref ${ref} is stale or unknown. Run browser snapshot again.`)
+  const resolved = await sendCommand(session, "DOM.resolveNode", { backendNodeId: target.backendNodeId })
+  const objectID = resolved.object?.objectId
+  if (!objectID) throw new Error(`Element ref ${ref} could not be resolved. Run browser snapshot again.`)
+  return objectID
+}
+
+async function objectIDForSelector(session: CDPSession, selector: string) {
+  const escaped = JSON.stringify(selector)
+  const result = await sendCommand(session, "Runtime.evaluate", {
+    expression: `document.querySelector(${escaped})`,
+    objectGroup: "codeplane-browser",
+  })
+  const objectID = result.result?.objectId
+  if (!objectID) throw new Error(`Selector not found: ${selector}`)
+  return objectID
+}
+
+async function elementTarget(session: CDPSession, objectId: string): Promise<ElementTarget> {
+  const result = await sendCommand(session, "Runtime.callFunctionOn", {
+    objectId,
+    returnByValue: true,
+    functionDeclaration: `function() {
+      this.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+      const rect = this.getBoundingClientRect();
+      return {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+        tag: this.tagName,
+        text: (this.innerText || this.textContent || '').slice(0, 120),
+        value: typeof this.value === 'string' ? this.value.slice(0, 120) : undefined
+      };
+    }`,
+  })
+  const value = result.result?.value
+  if (!value || typeof value.x !== "number" || typeof value.y !== "number") {
+    throw new Error("Could not determine element coordinates.")
+  }
+  return value
+}
+
+async function clickViewport(session: CDPSession, x: number, y: number) {
+  await sendCommand(session, "Input.dispatchMouseEvent", { type: "mouseMoved", x, y, button: "none" })
+  await sendCommand(session, "Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 })
+  await sendCommand(session, "Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 })
+}
+
+async function typeIntoObject(session: CDPSession, objectId: string, text: string) {
+  await sendCommand(session, "Runtime.callFunctionOn", {
+    objectId,
+    arguments: [{ value: text }],
+    returnByValue: true,
+    functionDeclaration: `function(text) {
+      this.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+      this.focus();
+      if (this.isContentEditable) {
+        document.execCommand('selectAll', false, null);
+        document.execCommand('insertText', false, text);
+        return { tag: this.tagName, text: this.textContent };
+      }
+      if ('value' in this) {
+        this.value = '';
+        this.dispatchEvent(new Event('input', { bubbles: true }));
+        this.value = text;
+        this.dispatchEvent(new Event('input', { bubbles: true }));
+        this.dispatchEvent(new Event('change', { bubbles: true }));
+        return { tag: this.tagName, value: this.value };
+      }
+      this.textContent = text;
+      this.dispatchEvent(new Event('input', { bubbles: true }));
+      return { tag: this.tagName, text: this.textContent };
+    }`,
+  })
+}
+
 let consoleBuffer: Array<{ type: string; text: string; timestamp: number; url?: string; lineNumber?: number }> | null =
   null
 
@@ -290,7 +421,7 @@ interface SnapshotNode {
 async function generateSnapshot(session: CDPSession): Promise<{ nodes: SnapshotNode[]; refs: string[] }> {
   enableConsoleBuffer()
 
-  const { root } = await sendCommand(session, "DOM.getDocument", { depth: -1 })
+  await sendCommand(session, "DOM.getDocument", { depth: -1 })
 
   const { nodes: axNodes } = await sendCommand(session, "Accessibility.getFullAXTree", {
     depth: -1,
@@ -298,6 +429,7 @@ async function generateSnapshot(session: CDPSession): Promise<{ nodes: SnapshotN
 
   let refCounter = 0
   const refMap: string[] = []
+  const nextRefTargets = new Map<string, { backendNodeId: number }>()
 
   function resolveAXNode(axId: string): any {
     return axNodes.find((n: any) => n.nodeId === axId)
@@ -372,6 +504,9 @@ async function generateSnapshot(session: CDPSession): Promise<{ nodes: SnapshotN
       const ref = `@e${refCounter}`
       result.ref = ref
       refMap.push(ref)
+      if (typeof axNode.backendDOMNodeId === "number") {
+        nextRefTargets.set(ref, { backendNodeId: axNode.backendDOMNodeId })
+      }
     }
 
     const childIds = axNode.childIds ?? []
@@ -397,6 +532,7 @@ async function generateSnapshot(session: CDPSession): Promise<{ nodes: SnapshotN
 
   const rootAX = axNodes.find((n: any) => n.role?.value === "RootWebArea")
   const tree: SnapshotNode[] = rootAX ? [buildFromAX(rootAX)!] : []
+  refTargets = nextRefTargets
 
   return { nodes: tree, refs: refMap }
 }
@@ -485,29 +621,18 @@ export const BrowserTool = Tool.define(
             if (!params.url) throw new Error("url is required for navigate action")
             const session = yield* Effect.promise(() => getOrCreateSession())
             yield* Effect.promise(() => sendCommand(session, "Page.navigate", { url: params.url }))
-            yield* Effect.sleep("1500 millis")
-
-            const width = Math.min(2560, Math.max(320, params.width ?? 1280))
-            const height = Math.min(2160, Math.max(240, params.height ?? 800))
-
-            const { data } = yield* Effect.promise(() =>
-              sendCommand(session, "Page.captureScreenshot", {
-                format: "png",
-                clip: params.fullPage ? undefined : { x: 0, y: 0, width, height, scale: 1 },
-                captureBeyondViewport: !!params.fullPage,
-              }),
-            )
-
-            const screenshotUrl = `data:image/png;base64,${data}`
+            yield* Effect.promise(() => waitForPageReady(session, params.waitMs ?? 5_000))
+            if (params.waitMs) yield* Effect.sleep(`${Math.min(params.waitMs, 10_000)} millis`)
+            const screenshot = yield* Effect.promise(() => captureBrowserScreenshot(session, params))
             return {
               output: `# ${params.url}\n\nNavigated successfully. Screenshot captured.`,
               title: params.url,
-              metadata: { url: params.url, screenshotMime: "image/png", screenshotDataUrl: screenshotUrl },
+              metadata: { url: params.url, screenshotMime: "image/png", screenshotDataUrl: screenshot.dataUrl },
               attachments: [
                 {
                   type: "file",
                   mime: "image/png",
-                  url: screenshotUrl,
+                  url: screenshot.dataUrl,
                   filename: `browser-navigate-${Date.now()}.png`,
                 },
               ],
@@ -516,28 +641,16 @@ export const BrowserTool = Tool.define(
 
           if (action === "screenshot") {
             const session = yield* Effect.promise(() => getOrCreateSession())
-
-            const width = Math.min(2560, Math.max(320, params.width ?? 1280))
-            const height = Math.min(2160, Math.max(240, params.height ?? 800))
-
-            const { data } = yield* Effect.promise(() =>
-              sendCommand(session, "Page.captureScreenshot", {
-                format: "png",
-                clip: params.fullPage ? undefined : { x: 0, y: 0, width, height, scale: 1 },
-                captureBeyondViewport: !!params.fullPage,
-              }),
-            )
-
-            const screenshotUrl = `data:image/png;base64,${data}`
+            const screenshot = yield* Effect.promise(() => captureBrowserScreenshot(session, params))
             return {
-              output: `Screenshot captured (${width}x${height}${params.fullPage ? ", full page" : ""}).`,
+              output: `Screenshot captured (${screenshot.width}x${screenshot.height}${params.fullPage ? ", full page" : ""}).`,
               title: "Screenshot",
-              metadata: { screenshotMime: "image/png", screenshotDataUrl: screenshotUrl, width, height },
+              metadata: { screenshotMime: "image/png", screenshotDataUrl: screenshot.dataUrl, width: screenshot.width, height: screenshot.height },
               attachments: [
                 {
                   type: "file",
                   mime: "image/png",
-                  url: screenshotUrl,
+                  url: screenshot.dataUrl,
                   filename: `browser-screenshot-${Date.now()}.png`,
                 },
               ],
@@ -548,16 +661,9 @@ export const BrowserTool = Tool.define(
             const session = yield* Effect.promise(() => getOrCreateSession())
             const { nodes, refs } = yield* Effect.promise(() => generateSnapshot(session))
 
-            const { data } = yield* Effect.promise(() =>
-              sendCommand(session, "Page.captureScreenshot", {
-                format: "png",
-                clip: { x: 0, y: 0, width: 1280, height: 800, scale: 1 },
-              }),
-            )
-
             const treeStr = nodes.map((n) => formatSnapshotNode(n)).join("\n")
             const consoleText = drainConsole(30)
-            const screenshotUrl = `data:image/png;base64,${data}`
+            const screenshot = yield* Effect.promise(() => captureBrowserScreenshot(session, params))
 
             const output = [
               "## Page Snapshot",
@@ -581,14 +687,14 @@ export const BrowserTool = Tool.define(
               metadata: {
                 elementCount: refs.length,
                 screenshotMime: "image/png",
-                screenshotDataUrl: screenshotUrl,
+                screenshotDataUrl: screenshot.dataUrl,
                 refs: refs.slice(0, 100),
               },
               attachments: [
                 {
                   type: "file",
                   mime: "image/png",
-                  url: screenshotUrl,
+                  url: screenshot.dataUrl,
                   filename: `browser-snapshot-${Date.now()}.png`,
                 },
               ],
@@ -597,63 +703,30 @@ export const BrowserTool = Tool.define(
 
           if (action === "click") {
             const session = yield* Effect.promise(() => getOrCreateSession())
+            let target: ElementTarget | undefined
 
             if (params.selector) {
-              yield* Effect.promise(() =>
-                sendCommand(session, "Runtime.evaluate", {
-                  expression: `
-                    (() => {
-                      const el = document.querySelector('${params.selector!.replace(/'/g, "\\'")}');
-                      if (!el) return { error: 'Selector not found: ${params.selector}' };
-                      el.scrollIntoView({ behavior: 'instant', block: 'center' });
-                      el.click();
-                      return { success: true, tag: el.tagName, text: el.textContent?.slice(0, 100) };
-                    })()
-                  `,
-                }),
-              )
+              target = yield* Effect.promise(() => objectIDForSelector(session, params.selector!).then((id) => elementTarget(session, id)))
             } else if (params.ref) {
-              const refMatch = params.ref.match(/^@e(\d+)$/)
-              if (!refMatch) throw new Error(`Invalid ref format: ${params.ref}. Use refs from snapshot like @e1, @e2.`)
-              const refIndex = parseInt(refMatch[1]) - 1
-
-              yield* Effect.promise(() =>
-                sendCommand(session, "Runtime.evaluate", {
-                  expression: `
-                    (() => {
-                      const all = document.querySelectorAll('a, button, input, select, textarea, [role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="menuitem"], [role="tab"], [role="combobox"], [role="listbox"], [role="option"]');
-                      const el = all[${refIndex}];
-                      if (!el) return { error: 'Element ref @e${refIndex + 1} not found (only ' + all.length + ' interactive elements on page)' };
-                      el.scrollIntoView({ behavior: 'instant', block: 'center' });
-                      el.click();
-                      return { success: true, tag: el.tagName, text: el.textContent?.slice(0, 100) };
-                    })()
-                  `,
-                }),
-              )
+              target = yield* Effect.promise(() => objectIDForRef(session, params.ref!).then((id) => elementTarget(session, id)))
+            } else if (params.x !== undefined && params.y !== undefined) {
+              target = { x: params.x, y: params.y }
             } else {
-              throw new Error("click requires either 'ref' (from snapshot) or 'selector' (CSS selector)")
+              throw new Error("click requires 'ref', 'selector', or x/y coordinates")
             }
 
-            yield* Effect.sleep("800 millis")
-
-            const { data } = yield* Effect.promise(() =>
-              sendCommand(session, "Page.captureScreenshot", {
-                format: "png",
-                clip: { x: 0, y: 0, width: 1280, height: 800, scale: 1 },
-              }),
-            )
-
-            const screenshotUrl = `data:image/png;base64,${data}`
+            yield* Effect.promise(() => clickViewport(session, target!.x, target!.y))
+            yield* Effect.sleep(`${Math.min(params.waitMs ?? 800, 10_000)} millis`)
+            const screenshot = yield* Effect.promise(() => captureBrowserScreenshot(session, params))
             return {
-              output: `Clicked ${params.ref ? params.ref : `selector "${params.selector}"`}. Screenshot after click captured.`,
+              output: `Clicked ${params.ref ?? (params.selector ? `selector "${params.selector}"` : `(${target!.x}, ${target!.y})`)}. Screenshot after click captured.`,
               title: `Click: ${params.ref ?? params.selector}`,
-              metadata: { screenshotMime: "image/png", screenshotDataUrl: screenshotUrl },
+              metadata: { screenshotMime: "image/png", screenshotDataUrl: screenshot.dataUrl, target },
               attachments: [
                 {
                   type: "file",
                   mime: "image/png",
-                  url: screenshotUrl,
+                  url: screenshot.dataUrl,
                   filename: `browser-click-${Date.now()}.png`,
                 },
               ],
@@ -663,72 +736,88 @@ export const BrowserTool = Tool.define(
           if (action === "type") {
             const session = yield* Effect.promise(() => getOrCreateSession())
             if (!params.text) throw new Error("text is required for type action")
+            let target: ElementTarget | undefined
 
             if (params.ref) {
-              const refMatch = params.ref.match(/^@e(\d+)$/)
-              if (!refMatch) throw new Error(`Invalid ref format: ${params.ref}`)
-              const refIndex = parseInt(refMatch[1]) - 1
-
-              yield* Effect.promise(() =>
-                sendCommand(session, "Runtime.evaluate", {
-                  expression: `
-                    (() => {
-                      const all = document.querySelectorAll('a, button, input, select, textarea, [role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="menuitem"], [role="tab"], [role="combobox"], [role="listbox"], [role="option"]');
-                      const el = all[${refIndex}];
-                      if (!el) return { error: 'Element not found' };
-                      el.focus();
-                      el.value = '';
-                      el.dispatchEvent(new Event('input', { bubbles: true }));
-                      el.value = ${JSON.stringify(params.text)};
-                      el.dispatchEvent(new Event('input', { bubbles: true }));
-                      el.dispatchEvent(new Event('change', { bubbles: true }));
-                      return { success: true, tag: el.tagName };
-                    })()
-                  `,
-                }),
-              )
+              const objectId = yield* Effect.promise(() => objectIDForRef(session, params.ref!))
+              target = yield* Effect.promise(() => elementTarget(session, objectId))
+              yield* Effect.promise(() => typeIntoObject(session, objectId, params.text!))
             } else if (params.selector) {
-              yield* Effect.promise(() =>
-                sendCommand(session, "Runtime.evaluate", {
-                  expression: `
-                    (() => {
-                      const el = document.querySelector('${params.selector!.replace(/'/g, "\\'")}');
-                      if (!el) return { error: 'Selector not found' };
-                      el.focus();
-                      el.value = '';
-                      el.dispatchEvent(new Event('input', { bubbles: true }));
-                      el.value = ${JSON.stringify(params.text)};
-                      el.dispatchEvent(new Event('input', { bubbles: true }));
-                      el.dispatchEvent(new Event('change', { bubbles: true }));
-                      return { success: true, tag: el.tagName };
-                    })()
-                  `,
-                }),
-              )
+              const objectId = yield* Effect.promise(() => objectIDForSelector(session, params.selector!))
+              target = yield* Effect.promise(() => elementTarget(session, objectId))
+              yield* Effect.promise(() => typeIntoObject(session, objectId, params.text!))
+            } else if (params.x !== undefined && params.y !== undefined) {
+              target = { x: params.x, y: params.y }
+              yield* Effect.promise(() => clickViewport(session, params.x!, params.y!))
+              yield* Effect.promise(() => sendCommand(session, "Input.insertText", { text: params.text }))
             } else {
-              throw new Error("type requires either 'ref' or 'selector'")
+              throw new Error("type requires 'ref', 'selector', or x/y coordinates")
             }
 
-            yield* Effect.sleep("500 millis")
-
-            const { data } = yield* Effect.promise(() =>
-              sendCommand(session, "Page.captureScreenshot", {
-                format: "png",
-                clip: { x: 0, y: 0, width: 1280, height: 800, scale: 1 },
-              }),
-            )
-
-            const screenshotUrl = `data:image/png;base64,${data}`
+            yield* Effect.sleep(`${Math.min(params.waitMs ?? 500, 10_000)} millis`)
+            const screenshot = yield* Effect.promise(() => captureBrowserScreenshot(session, params))
+            const typedTarget = params.ref ?? (params.selector ? `selector "${params.selector}"` : `(${target!.x}, ${target!.y})`)
             return {
-              output: `Typed "${params.text}" into ${params.ref ?? `selector "${params.selector}"`}. Screenshot after typing captured.`,
+              output: `Typed "${params.text}" into ${typedTarget}. Screenshot after typing captured.`,
               title: `Type: "${params.text.slice(0, 30)}"`,
-              metadata: { screenshotMime: "image/png", screenshotDataUrl: screenshotUrl },
+              metadata: { screenshotMime: "image/png", screenshotDataUrl: screenshot.dataUrl, target },
               attachments: [
                 {
                   type: "file",
                   mime: "image/png",
-                  url: screenshotUrl,
+                  url: screenshot.dataUrl,
                   filename: `browser-type-${Date.now()}.png`,
+                },
+              ],
+            }
+          }
+
+          if (action === "scroll") {
+            const session = yield* Effect.promise(() => getOrCreateSession())
+            const x = params.x ?? 640
+            const y = params.y ?? 400
+            const amount = params.scrollAmount ?? 5
+            yield* Effect.promise(() =>
+              sendCommand(session, "Input.dispatchMouseEvent", {
+                type: "mouseWheel",
+                x,
+                y,
+                deltaX: 0,
+                deltaY: amount * 120,
+              }),
+            )
+            yield* Effect.sleep(`${Math.min(params.waitMs ?? 500, 10_000)} millis`)
+            const screenshot = yield* Effect.promise(() => captureBrowserScreenshot(session, params))
+            return {
+              output: `Scrolled ${amount} notches at (${x}, ${y}). Screenshot after scroll captured.`,
+              title: "Scroll",
+              metadata: { screenshotMime: "image/png", screenshotDataUrl: screenshot.dataUrl, x, y, amount },
+              attachments: [
+                {
+                  type: "file",
+                  mime: "image/png",
+                  url: screenshot.dataUrl,
+                  filename: `browser-scroll-${Date.now()}.png`,
+                },
+              ],
+            }
+          }
+
+          if (action === "wait") {
+            const session = yield* Effect.promise(() => getOrCreateSession())
+            const waitMs = Math.min(params.waitMs ?? 1_000, 30_000)
+            yield* Effect.sleep(`${waitMs} millis`)
+            const screenshot = yield* Effect.promise(() => captureBrowserScreenshot(session, params))
+            return {
+              output: `Waited ${waitMs}ms. Screenshot after wait captured.`,
+              title: "Wait",
+              metadata: { screenshotMime: "image/png", screenshotDataUrl: screenshot.dataUrl, waitMs },
+              attachments: [
+                {
+                  type: "file",
+                  mime: "image/png",
+                  url: screenshot.dataUrl,
+                  filename: `browser-wait-${Date.now()}.png`,
                 },
               ],
             }

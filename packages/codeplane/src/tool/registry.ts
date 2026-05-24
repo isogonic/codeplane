@@ -36,6 +36,7 @@ import { ToolsTool } from "./tools"
 import { WebFetchTool } from "./webfetch"
 import { BrowseTool } from "./browse"
 import { BrowserTool } from "./browser"
+import { ComputerTool } from "./computer"
 import { BashInteractiveTool } from "./bash_interactive"
 import { SshTool } from "./ssh"
 import { WriteTool } from "./write"
@@ -119,9 +120,7 @@ export interface Interface {
 
 export class Service extends Context.Service<Service, Interface>()("@codeplane/ToolRegistry") {}
 
-export const layer: Layer.Layer<
-  Service,
-  never,
+type Requirements =
   | Config.Service
   | Plugin.Service
   | Question.Service
@@ -142,7 +141,8 @@ export const layer: Layer.Layer<
   | Ripgrep.Service
   | Format.Service
   | Truncate.Service
-> = Layer.effect(
+
+export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
   Service,
   Effect.gen(function* () {
     const config = yield* Config.Service
@@ -187,6 +187,7 @@ export const layer: Layer.Layer<
     const websearch = yield* WebSearchTool
     const browse = yield* BrowseTool
     const browser_tool = yield* BrowserTool
+    const computer = yield* (ComputerTool as unknown as Effect.Effect<Tool.Info<any, any>, never, never>)
     const bashInteractive = yield* BashInteractiveTool
     const bash = yield* BashTool
     const ssh = yield* SshTool
@@ -303,6 +304,7 @@ export const layer: Layer.Layer<
           fetch: Tool.init(webfetch),
           browse: Tool.init(browse),
           browser: Tool.init(browser_tool),
+          computer: Tool.init(computer),
           bashInteractive: Tool.init(bashInteractive),
           ssh: Tool.init(ssh),
           todo: Tool.init(todo),
@@ -353,6 +355,7 @@ export const layer: Layer.Layer<
             tool.fetch,
             tool.browse,
             ...(["app"].includes(Flag.CODEPLANE_CLIENT) ? [tool.browser] : []),
+            ...(["app"].includes(Flag.CODEPLANE_CLIENT) ? [tool.computer] : []),
             tool.bashInteractive,
             tool.ssh,
             tool.todo,
@@ -466,6 +469,11 @@ export const layer: Layer.Layer<
           return modelSupportsVision
         }
 
+        if (tool.id === ComputerTool.id) {
+          if (!(["app"].includes(Flag.CODEPLANE_CLIENT))) return false
+          return modelSupportsVision
+        }
+
         if (tool.id === ApplyPatchTool.id) return usePatch
         if (tool.id === EditTool.id || tool.id === WriteTool.id) return !usePatch
 
@@ -488,6 +496,20 @@ export const layer: Layer.Layer<
           id: tool.id,
           reason: "The current model does not support vision/image input.",
           setup: "Use a model with vision capabilities (e.g. Claude with vision, GPT-4o) to enable browser control.",
+        }
+      }
+      if (tool.id === ComputerTool.id) {
+        if (!(["app"].includes(Flag.CODEPLANE_CLIENT))) {
+          return {
+            id: tool.id,
+            reason: "Computer use is only available in the desktop app.",
+            setup: "Launch Codeplane Desktop to use this feature.",
+          }
+        }
+        return {
+          id: tool.id,
+          reason: "The current model does not support vision/image input.",
+          setup: "Use a model with vision capabilities (e.g. Claude with vision, GPT-4o) to enable computer use.",
         }
       }
       if (tool.id === CodeSearchTool.id || tool.id === WebSearchTool.id) {
@@ -632,9 +654,9 @@ export const layer: Layer.Layer<
 
     return Service.of({ ids, all, named, availability, tools })
   }),
-)
+) as Layer.Layer<Service, never, Requirements>
 
-export const defaultLayer = Layer.suspend(() =>
+export const defaultLayer: Layer.Layer<Service, never, never> = Layer.suspend(() =>
   layer.pipe(
     Layer.provide(Config.defaultLayer),
     Layer.provide(Plugin.defaultLayer),
@@ -657,4 +679,4 @@ export const defaultLayer = Layer.suspend(() =>
     Layer.provide(Ripgrep.defaultLayer),
     Layer.provide(Truncate.defaultLayer),
   ),
-)
+) as Layer.Layer<Service, never, never>

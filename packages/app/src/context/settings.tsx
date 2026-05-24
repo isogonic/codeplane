@@ -34,6 +34,7 @@ export interface Settings {
     editToolPartsExpanded: boolean
     showSessionProgressBar: boolean
     browserUse: boolean
+    computerUse: boolean
   }
   appearance: {
     fontSize: number
@@ -136,6 +137,7 @@ const defaultSettings: Settings = {
     editToolPartsExpanded: false,
     showSessionProgressBar: true,
     browserUse: true,
+    computerUse: false,
   },
   appearance: {
     fontSize: 14,
@@ -272,6 +274,13 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         ),
         setBrowserUse(value: boolean) {
           setStore("general", "browserUse", value)
+        },
+        computerUse: withFallback(
+          () => store.general?.computerUse,
+          defaultSettings.general.computerUse,
+        ),
+        setComputerUse(value: boolean) {
+          setStore("general", "computerUse", value)
         },
       },
       appearance: {

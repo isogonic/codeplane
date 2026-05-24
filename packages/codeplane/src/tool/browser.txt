@@ -4,13 +4,15 @@ Use this tool to:
 - Navigate any URL
 - Take screenshots for visual inspection
 - Get a snapshot of interactive elements with refs (@e1, @e2) for clicking/typing
-- Click elements by ref, selector, or coordinates
-- Type text into input fields
+- Click elements by stable snapshot refs, CSS selector, or viewport coordinates
+- Type text into input fields, contenteditable elements, or focused coordinates
+- Scroll and wait with a verification screenshot after each action
 - Execute JavaScript in the page
 - Get console logs and network requests
 - Extract page HTML for analysis
 
 The browser session persists across calls - same tab, same cookies, same state.
+Run snapshot after major DOM changes to refresh refs, then use refs for safer actions than raw coordinates.
 
 Requires Chrome/Chromium running with remote debugging enabled.
 On desktop, Chrome is auto-detected and launched if needed.

@@ -81,6 +81,9 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
 
   onMount(() => {
     void refetchVersion()
+    if (globalSync.data.config.tools?.browser === undefined && settings.general.browserUse() === false) {
+      void globalSync.updateConfig({ tools: { browser: false } })
+    }
   })
 
   const dir = createMemo(() => decode64(params.dir))
@@ -101,6 +104,13 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
   const toggleAccept = (checked: boolean) => permission.setGlobalAutoAccept(checked)
   const coauthoring = createMemo(() => globalSync.data.config.commit?.coauthor === true)
   const toggleCoauthoring = (checked: boolean) => globalSync.updateConfig({ commit: { coauthor: checked } })
+  const browserUse = createMemo(() => globalSync.data.config.tools?.browser ?? settings.general.browserUse())
+  const computerUse = createMemo(() => globalSync.data.config.tools?.computer ?? settings.general.computerUse())
+  const setDesktopTool = (tool: "browser" | "computer", checked: boolean) => {
+    if (tool === "browser") settings.general.setBrowserUse(checked)
+    if (tool === "computer") settings.general.setComputerUse(checked)
+    void globalSync.updateConfig({ tools: { [tool]: checked } })
+  }
 
   const colorSchemeOptions = createMemo((): { value: ColorScheme; label: string }[] => [
     { value: "system", label: language.t("theme.scheme.system") },
@@ -277,8 +287,19 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
           >
             <div data-action="settings-browser-use">
               <Switch
-                checked={settings.general.browserUse()}
-                onChange={(checked) => settings.general.setBrowserUse(checked)}
+                checked={browserUse()}
+                onChange={(checked) => setDesktopTool("browser", checked)}
+              />
+            </div>
+          </SettingsRow>
+          <SettingsRow
+            title={language.t("settings.general.row.computerUse.title")}
+            description={language.t("settings.general.row.computerUse.description")}
+          >
+            <div data-action="settings-computer-use">
+              <Switch
+                checked={computerUse()}
+                onChange={(checked) => setDesktopTool("computer", checked)}
               />
             </div>
           </SettingsRow>

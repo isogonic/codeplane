@@ -992,6 +992,9 @@ export const dict = {
   "settings.general.row.browserUse.title": "Browser use",
   "settings.general.row.browserUse.description":
     "Allow the agent to control a Chrome browser for visual inspection, UI testing, and interactive debugging. Includes full browser automation: navigate, click, type, screenshot, console logs, and JavaScript evaluation. Only available when using a vision-capable model.",
+  "settings.general.row.computerUse.title": "Computer use",
+  "settings.general.row.computerUse.description":
+    "Allow the agent to control this desktop with its own visible pointer: screenshots, mouse movement, clicks, drags, scrolling, keyboard input, shortcuts, and app launching. Disabled by default and only available in Codeplane Desktop with a vision-capable model.",
 
   "settings.general.row.releaseNotes.title": "Release notes",
   "settings.general.row.releaseNotes.description": "Show What's New popups after updates",
