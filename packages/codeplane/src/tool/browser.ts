@@ -8,17 +8,17 @@ import { Agent } from "@/agent/agent"
 import { Flag } from "@/flag/flag"
 import { Provider } from "@/provider"
 
-const Action = Schema.Literal(
-  "navigate",
-  "screenshot",
-  "snapshot",
-  "click",
-  "type",
-  "evaluate",
-  "console",
-  "html",
-  "close",
-)
+const Action = Schema.Union([
+  Schema.Literal("navigate"),
+  Schema.Literal("screenshot"),
+  Schema.Literal("snapshot"),
+  Schema.Literal("click"),
+  Schema.Literal("type"),
+  Schema.Literal("evaluate"),
+  Schema.Literal("console"),
+  Schema.Literal("html"),
+  Schema.Literal("close"),
+])
 
 export const Parameters = Schema.Struct({
   action: Action.annotate({

@@ -8,7 +8,7 @@ import type { SessionPrompt } from "../session/prompt"
 import { Config } from "../config"
 import { NotFoundError } from "../storage"
 import { Permission } from "../permission"
-import { Cause, Effect, Schema } from "effect"
+import { Cause, Effect, Schema, Scope } from "effect"
 
 export interface TaskPromptOps {
   cancel(sessionID: SessionID): void
@@ -25,7 +25,7 @@ export interface TaskPromptOps {
    * while the parent continues working. Errors in the child are silently
    * caught (the parent checks status via the check action).
    */
-  forkPrompt(input: SessionPrompt.PromptInput): Effect.Effect<void>
+  forkPrompt(input: SessionPrompt.PromptInput): Effect.Effect<void, never, Scope.Scope>
 }
 
 const id = "task"
@@ -141,7 +141,7 @@ export const TaskTool = Tool.define(
         return {
           output: `task_id: ${taskSessionID}\n\nStatus: starting up — no messages yet. Check again soon.`,
           title: `Check: ${params.description}`,
-          metadata: { taskId: taskSessionID, status: "running" },
+          metadata: { sessionId: taskSessionID, status: "running", activeTools: [] as string[] },
         }
       }
 
@@ -157,7 +157,7 @@ export const TaskTool = Tool.define(
             "</task_result>",
           ].join("\n"),
           title: `Check: ${params.description}`,
-          metadata: { taskId: taskSessionID, status: "completed" },
+          metadata: { sessionId: taskSessionID, status: "completed" },
         }
       }
 
@@ -177,7 +177,7 @@ export const TaskTool = Tool.define(
           "The subagent is still working. Use this task_id to check again later.",
         ].join("\n"),
         title: `Check: ${params.description}`,
-        metadata: { taskId: taskSessionID, status: "running", activeTools: runningTools },
+        metadata: { sessionId: taskSessionID, status: "running", activeTools: runningTools },
       }
     })
 
@@ -266,7 +266,7 @@ export const TaskTool = Tool.define(
 
       const messageID = MessageID.ascending()
 
-      const promptInput: SessionPrompt.PromptInput = {
+      const promptInput = {
         messageID,
         sessionID: nextSession.id,
         model: {
@@ -279,7 +279,7 @@ export const TaskTool = Tool.define(
           ...(canTask ? {} : { task: false }),
           ...Object.fromEntries((cfg.experimental?.primary_tools ?? []).map((item) => [item, false])),
         },
-      } satisfies SessionPrompt.PromptInput
+      }
 
       // --- SPAWN action: fire-and-forget, return task_id immediately ---
       if (action === "spawn") {
