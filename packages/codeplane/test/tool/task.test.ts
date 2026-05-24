@@ -78,6 +78,7 @@ function stubOps(opts?: {
         if (opts?.reply) return opts.reply(input)
         return reply(input, opts?.text ?? "done")
       }),
+    forkPrompt: () => Effect.void,
   }
 }
 
@@ -224,7 +225,7 @@ describe("tool.task", () => {
         const kids = yield* sessions.children(chat.id)
         expect(kids).toHaveLength(1)
         expect(kids[0]?.id).toBe(child.id)
-        expect(result.metadata.sessionId).toBe(child.id)
+        expect((result.metadata as any).sessionId).toBe(child.id)
         expect(result.output).toContain(`task_id: ${child.id}`)
         expect(seen?.sessionID).toBe(child.id)
       }),
@@ -264,9 +265,9 @@ describe("tool.task", () => {
 
         const kids = yield* sessions.children(chat.id)
         expect(kids).toHaveLength(1)
-        expect(kids[0]?.id).toBe(result.metadata.sessionId)
-        expect(result.metadata.sessionId).not.toBe(otherChild.id)
-        expect(seen?.sessionID).toBe(result.metadata.sessionId)
+        expect(kids[0]?.id).toBe((result.metadata as any).sessionId)
+        expect((result.metadata as any).sessionId).not.toBe(otherChild.id)
+        expect(seen?.sessionID).toBe((result.metadata as any).sessionId)
         expect((yield* sessions.children(other.id)).map((child) => child.id)).toEqual([otherChild.id])
       }),
     ),
@@ -435,14 +436,15 @@ describe("tool.task", () => {
 
         const kids = yield* sessions.children(chat.id)
         expect(kids).toHaveLength(1)
-        expect(kids[0]?.id).toBe(result.metadata.sessionId)
-        expect(result.metadata.sessionId).not.toBe("ses_missing")
-        expect(result.metadata.agent).toBe("general")
-        expect(result.metadata.status).toBe("completed")
-        expect(typeof result.metadata.startedAt).toBe("number")
-        expect(typeof result.metadata.completedAt).toBe("number")
-        expect(result.output).toContain(`task_id: ${result.metadata.sessionId}`)
-        expect(seen?.sessionID).toBe(result.metadata.sessionId)
+        const meta = result.metadata as any
+        expect(kids[0]?.id).toBe(meta.sessionId)
+        expect(meta.sessionId).not.toBe("ses_missing")
+        expect(meta.agent).toBe("general")
+        expect(meta.status).toBe("completed")
+        expect(typeof meta.startedAt).toBe("number")
+        expect(typeof meta.completedAt).toBe("number")
+        expect(result.output).toContain(`task_id: ${meta.sessionId}`)
+        expect(seen?.sessionID).toBe(meta.sessionId)
       }),
     ),
   )
@@ -593,7 +595,7 @@ describe("tool.task", () => {
             },
           )
 
-          const child = yield* sessions.get(result.metadata.sessionId)
+          const child = yield* sessions.get((result.metadata as any).sessionId)
           expect(child.parentID).toBe(chat.id)
           expect(child.permission).toEqual([
             {
@@ -658,7 +660,7 @@ describe("tool.task", () => {
             },
           )
 
-          const child = yield* sessions.get(result.metadata.sessionId)
+          const child = yield* sessions.get((result.metadata as any).sessionId)
           expect(child.permission).toEqual([
             {
               permission: "todowrite",

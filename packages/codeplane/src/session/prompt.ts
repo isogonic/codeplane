@@ -142,8 +142,7 @@ export const layer = Layer.effect(
           Effect.gen(function* () {
             const scope = yield* Effect.scope
             yield* prompt(input).pipe(
-              Effect.uninterruptible,
-              Effect.catchAll(() => Effect.void),
+              Effect.catchCause(() => Effect.void),
               Effect.forkIn(scope),
             )
           }),

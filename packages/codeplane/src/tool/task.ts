@@ -143,11 +143,12 @@ export const TaskTool = Tool.define(
         return {
           output: `task_id: ${taskSessionID}\n\nStatus: starting up — no messages yet. Check again soon.`,
           title: `Check: ${params.description}`,
-          metadata: { taskId: taskSessionID, status: "running" },
+          metadata: { sessionId: taskSessionID, status: "running" },
         }
       }
 
-      if (lastAssistant.info.finish || lastAssistant.info.error) {
+      const assistantInfo = lastAssistant.info as MessageV2.Assistant
+      if (assistantInfo.finish || assistantInfo.error) {
         const text = resultText(lastAssistant)
         return {
           output: [
@@ -158,7 +159,7 @@ export const TaskTool = Tool.define(
             "</task_result>",
           ].join("\n"),
           title: `Check: ${params.description}`,
-          metadata: { taskId: taskSessionID, status: "completed" },
+          metadata: { sessionId: taskSessionID, status: "completed" },
         }
       }
 
@@ -178,7 +179,7 @@ export const TaskTool = Tool.define(
           "The subagent is still working. Use this task_id to check again later.",
         ].join("\n"),
         title: `Check: ${params.description}`,
-        metadata: { taskId: taskSessionID, status: "running", activeTools: runningTools },
+        metadata: { sessionId: taskSessionID, status: "running", activeTools: runningTools },
       }
     })
 
@@ -283,7 +284,7 @@ export const TaskTool = Tool.define(
       } satisfies SessionPrompt.PromptInput
 
       // --- SPAWN action: fire-and-forget, return task_id immediately ---
-      if (action === "spawn") {
+      if (actionStr === "spawn") {
         const parts = yield* ops.resolvePromptParts(params.prompt)
         yield* ops.forkPrompt({ ...promptInput, parts })
 
