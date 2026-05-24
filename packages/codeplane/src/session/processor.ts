@@ -638,22 +638,30 @@ export const layer: Layer.Layer<
         }
         ctx.reasoningMap = {}
 
-        yield* Effect.forEach(
-          Object.values(ctx.toolcalls),
-          (call) => Deferred.await(call.done).pipe(Effect.timeout("250 millis"), Effect.ignore),
-          { concurrency: "unbounded" },
-        )
+        // Let pending tool calls settle briefly. Task/subagent calls are
+        // skipped below (never aborted). Non-task calls complete synchronously
+        // so 250ms is a generous safety net.
+        for (const [, call] of Object.entries(ctx.toolcalls)) {
+          yield* Deferred.await(call.done).pipe(
+            Effect.timeoutOrElse({
+              duration: "250 millis",
+              orElse: () => Effect.void,
+            }),
+            Effect.ignore,
+          )
+        }
 
         for (const toolCallID of Object.keys(ctx.toolcalls)) {
           const match = yield* readToolCall(toolCallID)
           if (!match) continue
           const part = match.part
+          // Task/subagent tool calls are long-running and must never be
+          // aborted by cleanup — they complete on their own timeline.
+          // Only a user cancel or timeout on the subagent itself stops them.
+          if (part.tool === "task") continue
           const end = Date.now()
           const metadata = "metadata" in part.state && isRecord(part.state.metadata) ? part.state.metadata : {}
-          const nextMetadata =
-            part.tool === "task"
-              ? { ...metadata, status: "error", completedAt: end, interrupted: true }
-              : { ...metadata, interrupted: true }
+          const nextMetadata = { ...metadata, interrupted: true }
           yield* session.updatePart({
             ...part,
             state: {

@@ -33,6 +33,7 @@ export interface Settings {
     shellToolPartsExpanded: boolean
     editToolPartsExpanded: boolean
     showSessionProgressBar: boolean
+    browserUse: boolean
   }
   appearance: {
     fontSize: number
@@ -134,6 +135,7 @@ const defaultSettings: Settings = {
     shellToolPartsExpanded: false,
     editToolPartsExpanded: false,
     showSessionProgressBar: true,
+    browserUse: true,
   },
   appearance: {
     fontSize: 14,
@@ -263,6 +265,13 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         ),
         setShowSessionProgressBar(value: boolean) {
           setStore("general", "showSessionProgressBar", value)
+        },
+        browserUse: withFallback(
+          () => store.general?.browserUse,
+          defaultSettings.general.browserUse,
+        ),
+        setBrowserUse(value: boolean) {
+          setStore("general", "browserUse", value)
         },
       },
       appearance: {

@@ -269,6 +269,20 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
             />
           </div>
         </SettingsRow>
+
+        <Show when={updates.hasDesktopBridge()}>
+          <SettingsRow
+            title={language.t("settings.general.row.browserUse.title")}
+            description={language.t("settings.general.row.browserUse.description")}
+          >
+            <div data-action="settings-browser-use">
+              <Switch
+                checked={settings.general.browserUse()}
+                onChange={(checked) => settings.general.setBrowserUse(checked)}
+              />
+            </div>
+          </SettingsRow>
+        </Show>
       </SettingsList>
     </div>
   )

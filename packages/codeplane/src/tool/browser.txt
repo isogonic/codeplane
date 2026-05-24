@@ -1,0 +1,16 @@
+Browser automation tool providing full Chrome control via DevTools Protocol.
+
+Use this tool to:
+- Navigate any URL
+- Take screenshots for visual inspection
+- Get a snapshot of interactive elements with refs (@e1, @e2) for clicking/typing
+- Click elements by ref, selector, or coordinates
+- Type text into input fields
+- Execute JavaScript in the page
+- Get console logs and network requests
+- Extract page HTML for analysis
+
+The browser session persists across calls - same tab, same cookies, same state.
+
+Requires Chrome/Chromium running with remote debugging enabled.
+On desktop, Chrome is auto-detected and launched if needed.

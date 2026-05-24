@@ -41,16 +41,7 @@ function createDefaultTitle(isChild = false) {
 }
 
 function directoryCondition(directory: string) {
-  const root = directory.replace(/[\\/]+$/, "")
-  if (!root || root === "/" || /^[A-Za-z]:$/i.test(root)) return eq(SessionTable.directory, directory)
-  const escaped = root.replace(/[\\%_]/g, (char) => `\\${char}`)
-  return (
-    or(
-      eq(SessionTable.directory, root),
-      sql`${SessionTable.directory} like ${`${escaped}/%`} escape '\\'`,
-      sql`${SessionTable.directory} like ${`${escaped}\\%`} escape '\\'`,
-    ) ?? eq(SessionTable.directory, root)
-  )
+  return eq(SessionTable.directory, directory)
 }
 
 function projectDirectoryScore(

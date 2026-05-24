@@ -989,6 +989,10 @@ export const dict = {
   "settings.general.row.showSessionProgressBar.description":
     "Display the animated progress bar at the top of the session when the agent is working",
 
+  "settings.general.row.browserUse.title": "Browser use",
+  "settings.general.row.browserUse.description":
+    "Allow the agent to control a Chrome browser for visual inspection, UI testing, and interactive debugging. Includes full browser automation: navigate, click, type, screenshot, console logs, and JavaScript evaluation. Only available when using a vision-capable model.",
+
   "settings.general.row.releaseNotes.title": "Release notes",
   "settings.general.row.releaseNotes.description": "Show What's New popups after updates",
 

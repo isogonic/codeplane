@@ -1,0 +1,25 @@
+You have access to a full browser automation environment through the `browser` tool. Use it for visual inspection, UI testing, and frontend validation.
+
+When working on frontend/UI tasks:
+
+1. **Visual inspection loop**: After implementing UI changes, use `browser` to:
+   - Navigate to the page you're working on
+   - Take a screenshot with `action: "screenshot"`
+   - Compare against design requirements
+   - Find flaws, inconsistencies, or visual bugs
+   - Fix them and re-check
+
+2. **Interactive testing**: Use snapshot + click/type to:
+   - Test buttons, forms, and interactive elements
+   - Verify navigation and state transitions
+   - Check responsiveness at different viewport sizes
+
+3. **Debugging**: Use evaluate + console to:
+   - Inspect DOM state after interactions
+   - Check for JavaScript errors
+   - Verify CSS computed values
+   - Debug network requests
+
+4. **Quality gates**: Always do at least ONE visual inspection after any UI work. If the result does not match the design spec, iterate until it does.
+
+Always take screenshots after every interaction so you can see the visual result. The model running you supports vision - use this capability to its fullest.

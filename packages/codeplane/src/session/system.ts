@@ -1,6 +1,7 @@
 import { Context, Effect, Layer } from "effect"
 
 import { Instance } from "../project/instance"
+import { Flag } from "@/flag/flag"
 
 import PROMPT_ANTHROPIC from "./prompt/anthropic.txt"
 import PROMPT_DEFAULT from "./prompt/default.txt"
@@ -12,6 +13,7 @@ import PROMPT_KIMI from "./prompt/kimi.txt"
 import PROMPT_CODEX from "./prompt/codex.txt"
 import PROMPT_TRINITY from "./prompt/trinity.txt"
 import PROMPT_RICH_BLOCKS from "./prompt/rich-blocks.txt"
+import PROMPT_BROWSER_INSPECTION from "./prompt/browser-inspection.txt"
 import type { Provider } from "@/provider"
 import type { Agent } from "@/agent/agent"
 import { Permission } from "@/permission"
@@ -32,7 +34,12 @@ function pickBase(model: Provider.Model): string {
 }
 
 export function provider(model: Provider.Model) {
-  return [pickBase(model), PROMPT_RICH_BLOCKS]
+  const base = pickBase(model)
+  const prompts = [base, PROMPT_RICH_BLOCKS]
+  if (model.capabilities.input.image && Flag.CODEPLANE_CLIENT === "app") {
+    prompts.push(PROMPT_BROWSER_INSPECTION)
+  }
+  return prompts
 }
 
 export interface Interface {
@@ -50,6 +57,8 @@ export const layer = Layer.effect(
     return Service.of({
       environment(model) {
         const project = Instance.project
+        const hasVision = model.capabilities.input.image
+        const isDesktop = Flag.CODEPLANE_CLIENT === "app"
         return [
           [
             `You are powered by the model named ${model.api.id}. The exact model ID is ${model.providerID}/${model.api.id}`,
@@ -62,6 +71,18 @@ export const layer = Layer.effect(
             `  Today's date: ${new Date().toDateString()}`,
             `</env>`,
           ].join("\n"),
+          ...(hasVision && isDesktop
+            ? [
+                [
+                  `<browser-use>`,
+                  `You are running in the Codeplane Desktop app with a vision-capable model.`,
+                  `A full browser automation environment (Chrome) is available through the \`browser\` tool.`,
+                  `Use this for visual inspection, UI testing, debugging, and validating frontend work.`,
+                  `The browser tool supports: navigate, screenshot, snapshot (accessibility tree with refs), click, type, evaluate JavaScript, console logs, and HTML extraction.`,
+                  `</browser-use>`,
+                ].join("\n"),
+              ]
+            : []),
         ]
       },
 

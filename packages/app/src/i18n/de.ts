@@ -705,6 +705,9 @@ export const dict = {
   "settings.general.row.showSessionProgressBar.title": "Sitzungsfortschrittsleiste anzeigen",
   "settings.general.row.showSessionProgressBar.description":
     "Die animierte Fortschrittsleiste oben in der Sitzung anzeigen, wenn der Agent arbeitet",
+  "settings.general.row.browserUse.title": "Browser-Steuerung",
+  "settings.general.row.browserUse.description":
+    "Ermöglicht dem Agenten die Steuerung des Chrome-Browsers für visuelle Inspektion, UI-Tests und interaktives Debugging. Umfasst vollständige Browser-Automatisierung: Navigation, Klicken, Tippen, Screenshots, Konsolenprotokolle und JavaScript-Ausführung. Nur verfügbar mit einem visuell fähigen Modell.",
   "settings.general.row.releaseNotes.title": "Versionshinweise",
   "settings.general.row.releaseNotes.description": '"Neuigkeiten"-Pop-ups nach Updates anzeigen',
   "settings.general.section.updates": "Updates",

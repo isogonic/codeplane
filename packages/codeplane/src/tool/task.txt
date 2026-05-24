@@ -2,6 +2,18 @@ Launch a new agent to handle complex, multistep tasks autonomously.
 
 When using the Task tool, you must specify a subagent_type parameter to select which agent type to use.
 
+Actions:
+- "run" (default): Block until the subagent completes, return its full result. Use for sequential work.
+- "spawn": Start the subagent in the background, return task_id immediately. Use when you want to LAUNCH MULTIPLE subagents in parallel and continue working while they run. After spawning, use action="check" with the task_id to poll for completion.
+- "check": Poll a spawned task by task_id. Returns the subagent status or its final result when done.
+
+When to use spawn + check instead of run:
+- You have multiple independent subagent tasks to run in parallel
+- The subagent will take a long time and you want to keep working
+- You need to monitor progress and adjust based on partial results
+
+The subagent runs unstoppably — it will never be interrupted or killed. Only a user cancel or the subagent's own completion stops it.
+
 When to use the Task tool:
 - When you are instructed to execute custom slash commands. Use the Task tool with the slash command invocation as the entire prompt. The slash command can take arguments. For example: Task(description="Check the file", prompt="/check-file path/to/file.py")
 
@@ -19,6 +31,7 @@ Usage notes:
 4. The agent's outputs should generally be trusted
 5. Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.), since it is not aware of the user's intent. Tell it how to verify its work if possible (e.g., relevant test commands).
 6. If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.
+7. SPAWN PARALLELISM: Use action="spawn" to fire off multiple subagents at once. They all run independently. Poll them with action="check" using their task_ids. This maximizes throughput on multi-step work.
 
 Example usage (NOTE: The agents below are fictional examples for illustration only - use the actual agents listed above):
 

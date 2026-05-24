@@ -19,6 +19,13 @@ export interface TaskPromptOps {
    * either retry, surface the error to the model, or fail the parent.
    */
   prompt(input: SessionPrompt.PromptInput): Effect.Effect<MessageV2.WithParts, Session.BusyError>
+  /**
+   * Forks a subtask prompt in the background without blocking. Returns
+   * immediately. Used for spawn-action subagents that run independently
+   * while the parent continues working. Errors in the child are silently
+   * caught (the parent checks status via the check action).
+   */
+  forkPrompt(input: SessionPrompt.PromptInput): Effect.Effect<void>
 }
 
 const id = "task"
@@ -60,9 +67,15 @@ export const Parameters = Schema.Struct({
   description: Schema.String.annotate({ description: "A short (3-5 words) description of the task" }),
   prompt: Schema.String.annotate({ description: "The task for the agent to perform" }),
   subagent_type: Schema.String.annotate({ description: "The type of specialized agent to use for this task" }),
+  action: Schema.optional(
+    Schema.Literal("run", "spawn", "check"),
+  ).annotate({
+    description:
+      "How to execute: 'run' blocks until complete (default), 'spawn' starts in background and returns task_id immediately so you can continue working, 'check' polls a spawned task by task_id and returns status or final result",
+  }),
   task_id: Schema.optional(Schema.String).annotate({
     description:
-      "This should only be set if you mean to resume a previous task (you can pass a prior task_id and the task will continue the same subagent session as before instead of creating a fresh one)",
+      "For 'check' action: the task_id of a previously spawned task. For 'run' action: resume an existing task session instead of creating a new one.",
   }),
   command: Schema.optional(Schema.String).annotate({ description: "The command that triggered this task" }),
 })
@@ -74,11 +87,107 @@ export const TaskTool = Tool.define(
     const config = yield* Config.Service
     const sessions = yield* Session.Service
 
+    const buildPerms = (next: Agent.Info, canTask: boolean, canTodo: boolean, cfg: { experimental?: { primary_tools?: string[] } }) => [
+      ...(canTodo
+        ? []
+        : [
+            {
+              permission: "todowrite" as const,
+              pattern: "*" as const,
+              action: "deny" as const,
+            },
+          ]),
+      ...(canTask
+        ? []
+        : [
+            {
+              permission: id,
+              pattern: "*" as const,
+              action: "deny" as const,
+            },
+          ]),
+      ...(cfg.experimental?.primary_tools?.map((item) => ({
+        pattern: "*",
+        action: "allow" as const,
+        permission: item,
+      })) ?? []),
+    ]
+
+    const metadata = (
+      sessionId: string,
+      agentName: string,
+      model: { providerID: string; modelID: string },
+      status: "running" | "completed" | "error",
+      startedAt: number,
+      completedAt?: number,
+    ) => ({
+      sessionId,
+      agent: agentName,
+      model,
+      status,
+      startedAt,
+      ...(completedAt !== undefined ? { completedAt } : {}),
+    })
+
+    const checkTask = Effect.fn("TaskTool.checkTask")(function* (
+      taskSessionID: SessionID,
+      parentSessionID: SessionID,
+      params: Schema.Schema.Type<typeof Parameters>,
+      ctx: Tool.Context,
+    ) {
+      const childSession = yield* sessions.get(taskSessionID)
+      const msgs = yield* sessions.messages({ sessionID: taskSessionID })
+
+      const lastAssistant = [...msgs].reverse().find((m) => m.info.role === "assistant")
+      if (!lastAssistant) {
+        return {
+          output: `task_id: ${taskSessionID}\n\nStatus: starting up — no messages yet. Check again soon.`,
+          title: `Check: ${params.description}`,
+          metadata: { taskId: taskSessionID, status: "running" },
+        }
+      }
+
+      if (lastAssistant.info.finish || lastAssistant.info.error) {
+        const text = resultText(lastAssistant)
+        return {
+          output: [
+            `task_id: ${taskSessionID}`,
+            "",
+            "<task_result>",
+            text || "(subagent finished with no text output)",
+            "</task_result>",
+          ].join("\n"),
+          title: `Check: ${params.description}`,
+          metadata: { taskId: taskSessionID, status: "completed" },
+        }
+      }
+
+      const runningParts = lastAssistant.parts.filter(
+        (p) => p.type === "tool" && p.state.status === "running",
+      )
+      const runningTools = runningParts.map((p) =>
+        p.type === "tool" ? p.tool : "unknown",
+      )
+
+      return {
+        output: [
+          `task_id: ${taskSessionID}`,
+          "",
+          `Status: still running. ${runningTools.length > 0 ? `Active tools: ${runningTools.join(", ")}` : "Processing..."}`,
+          "",
+          "The subagent is still working. Use this task_id to check again later.",
+        ].join("\n"),
+        title: `Check: ${params.description}`,
+        metadata: { taskId: taskSessionID, status: "running", activeTools: runningTools },
+      }
+    })
+
     const run = Effect.fn("TaskTool.execute")(function* (
       params: Schema.Schema.Type<typeof Parameters>,
       ctx: Tool.Context,
     ) {
       const cfg = yield* config.get()
+      const action = params.action ?? "run"
 
       const next = yield* agent.get(params.subagent_type)
       if (!next || (next.mode !== "subagent" && next.mode !== "all")) {
@@ -112,7 +221,7 @@ export const TaskTool = Tool.define(
       if (!ops) return yield* Effect.fail(new Error("TaskTool requires promptOps in ctx.extra"))
 
       const taskID = params.task_id
-      const session = taskID
+      const existingSession = taskID
         ? yield* sessions
             .get(SessionID.make(taskID))
             .pipe(
@@ -123,40 +232,24 @@ export const TaskTool = Tool.define(
               }),
             )
         : undefined
-      if (session?.id === ctx.sessionID) {
+      if (existingSession?.id === ctx.sessionID) {
         return yield* Effect.fail(new Error(`Invalid task_id: ${taskID} is not a task session for ${ctx.sessionID}`))
       }
-      const taskSession = session?.parentID === ctx.sessionID ? session : undefined
+
+      // --- CHECK action: poll a spawned task without blocking ---
+      if (action === "check") {
+        if (!taskID) return yield* Effect.fail(new Error("check action requires task_id"))
+        const sid = SessionID.make(taskID)
+        return yield* checkTask(sid, SessionID.make(ctx.sessionID), params, ctx)
+      }
+
+      const taskSession = existingSession?.parentID === ctx.sessionID ? existingSession : undefined
       const nextSession =
         taskSession ??
         (yield* sessions.create({
           parentID: ctx.sessionID,
           title: params.description + ` (@${next.name} subagent)`,
-          permission: [
-            ...(canTodo
-              ? []
-              : [
-                  {
-                    permission: "todowrite" as const,
-                    pattern: "*" as const,
-                    action: "deny" as const,
-                  },
-                ]),
-            ...(canTask
-              ? []
-              : [
-                  {
-                    permission: id,
-                    pattern: "*" as const,
-                    action: "deny" as const,
-                  },
-                ]),
-            ...(cfg.experimental?.primary_tools?.map((item) => ({
-              pattern: "*",
-              action: "allow" as const,
-              permission: item,
-            })) ?? []),
-          ],
+          permission: buildPerms(next, canTask, canTodo, cfg),
         }))
 
       const model = next.model ?? {
@@ -164,22 +257,50 @@ export const TaskTool = Tool.define(
         providerID: msg.info.providerID,
       }
       const startedAt = Date.now()
-      const metadata = (status: "running" | "completed" | "error", completedAt?: number) => ({
-        sessionId: nextSession.id,
-        agent: next.name,
-        model,
-        status,
-        startedAt,
-        ...(completedAt !== undefined ? { completedAt } : {}),
-      })
+      const mkMeta = (status: "running" | "completed" | "error", completedAt?: number) =>
+        metadata(nextSession.id, next.name, model, status, startedAt, completedAt)
 
       yield* ctx.metadata({
         title: params.description,
-        metadata: metadata("running"),
+        metadata: mkMeta("running"),
       })
 
       const messageID = MessageID.ascending()
 
+      const promptInput: SessionPrompt.PromptInput = {
+        messageID,
+        sessionID: nextSession.id,
+        model: {
+          modelID: model.modelID,
+          providerID: model.providerID,
+        },
+        agent: next.name,
+        tools: {
+          ...(canTodo ? {} : { todowrite: false }),
+          ...(canTask ? {} : { task: false }),
+          ...Object.fromEntries((cfg.experimental?.primary_tools ?? []).map((item) => [item, false])),
+        },
+      } satisfies SessionPrompt.PromptInput
+
+      // --- SPAWN action: fire-and-forget, return task_id immediately ---
+      if (action === "spawn") {
+        const parts = yield* ops.resolvePromptParts(params.prompt)
+        yield* ops.forkPrompt({ ...promptInput, parts })
+
+        return {
+          title: params.description,
+          metadata: mkMeta("running"),
+          output: [
+            `task_id: ${nextSession.id}`,
+            "",
+            `Subagent "${params.subagent_type}" spawned in background. It is now running independently.`,
+            `Use \`task(action="check", task_id="${nextSession.id}")\` to poll its status later.`,
+            `You can continue working on other things while it runs. The subagent will never be interrupted.`,
+          ].join("\n"),
+        }
+      }
+
+      // --- RUN action (default): block until subagent completes ---
       function cancel() {
         ops.cancel(nextSession.id)
       }
@@ -192,27 +313,13 @@ export const TaskTool = Tool.define(
           Effect.gen(function* () {
             const parts = yield* ops.resolvePromptParts(params.prompt)
             const result = yield* ops
-              .prompt({
-                messageID,
-                sessionID: nextSession.id,
-                model: {
-                  modelID: model.modelID,
-                  providerID: model.providerID,
-                },
-                agent: next.name,
-                tools: {
-                  ...(canTodo ? {} : { todowrite: false }),
-                  ...(canTask ? {} : { task: false }),
-                  ...Object.fromEntries((cfg.experimental?.primary_tools ?? []).map((item) => [item, false])),
-                },
-                parts,
-              })
+              .prompt({ ...promptInput, parts })
               .pipe(
                 Effect.catchCause((cause) =>
                   Effect.gen(function* () {
                     yield* ctx.metadata({
                       title: params.description,
-                      metadata: metadata("error", Date.now()),
+                      metadata: mkMeta("error", Date.now()),
                     })
                     return yield* Effect.failCause(cause)
                   }),
@@ -222,12 +329,12 @@ export const TaskTool = Tool.define(
             const completedAt = Date.now()
             yield* ctx.metadata({
               title: params.description,
-              metadata: metadata("completed", completedAt),
+              metadata: mkMeta("completed", completedAt),
             })
 
             return {
               title: params.description,
-              metadata: metadata("completed", completedAt),
+              metadata: mkMeta("completed", completedAt),
               output: [
                 `task_id: ${nextSession.id} (for resuming to continue this task if needed)`,
                 "",
@@ -247,9 +354,6 @@ export const TaskTool = Tool.define(
     return {
       description: DESCRIPTION,
       parameters: Parameters,
-      // Subagent runs are full LLM loops with their own tool calls — they can
-      // legitimately take an hour on a real research task. Opt out of the
-      // default tool wrapper timeout; cancellation flows through ctx.abort.
       timeoutMs: null,
       execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
         run(params, ctx).pipe(Effect.orDie),

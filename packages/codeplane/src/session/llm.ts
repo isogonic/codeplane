@@ -34,10 +34,11 @@ export const OUTPUT_TOKEN_MAX = ProviderTransform.OUTPUT_TOKEN_MAX
 // can pick it up. The cause is most often a wedged proxy or a TCP zombie;
 // without this guard the only thing that ends the stream is a user cancel.
 //
-// Default 90s comfortably exceeds Anthropic's own per-chunk pacing during
-// extended thinking (~60s typical max). Override via
-// CODEPLANE_LLM_STREAM_IDLE_TIMEOUT_MS for ops who terminate elsewhere.
-const STREAM_IDLE_TIMEOUT_MS = Flag.CODEPLANE_LLM_STREAM_IDLE_TIMEOUT_MS ?? 90_000
+// Default 24h — the stream must never die from inactivity. Long-running
+// subagents (hours) and extended model thinking must not be interrupted.
+// Only an explicit user cancel terminates the stream. Override via
+// CODEPLANE_LLM_STREAM_IDLE_TIMEOUT_MS for ops who need a shorter leash.
+const STREAM_IDLE_TIMEOUT_MS = Flag.CODEPLANE_LLM_STREAM_IDLE_TIMEOUT_MS ?? 86_400_000
 
 // Optional global cap on concurrently active LLM streams. Disabled by default
 // (single-user CLI use case); enable in multi-tenant deployments to prevent a

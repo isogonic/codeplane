@@ -138,6 +138,15 @@ export const layer = Layer.effect(
         cancel: (sessionID: SessionID) => run.fork(cancel(sessionID)),
         resolvePromptParts: (template: string) => resolvePromptParts(template),
         prompt: (input: PromptInput) => prompt(input),
+        forkPrompt: (input: PromptInput) =>
+          Effect.gen(function* () {
+            const scope = yield* Effect.scope
+            yield* prompt(input).pipe(
+              Effect.uninterruptible,
+              Effect.catchAll(() => Effect.void),
+              Effect.forkIn(scope),
+            )
+          }),
       }) satisfies TaskPromptOps
     const ops = Effect.fn("SessionPrompt.ops")(function* () {
       return makeOps(yield* runner())
@@ -1622,11 +1631,11 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                 })
               }
               if (part.type === "tool" && (part.state.status === "pending" || part.state.status === "running")) {
+                // Task/subagent tool calls must never be aborted — they
+                // are long-running and complete on their own timeline.
+                if (part.tool === TaskTool.id) return Effect.void
                 const metadata = part.state.status === "running" ? (part.state.metadata ?? {}) : {}
-                const interruptedMetadata =
-                  part.tool === TaskTool.id
-                    ? { ...metadata, interrupted: true, status: "error", completedAt: completed }
-                    : { ...metadata, interrupted: true }
+                const interruptedMetadata = { ...metadata, interrupted: true }
                 return sessions.updatePart({
                   ...part,
                   state: {

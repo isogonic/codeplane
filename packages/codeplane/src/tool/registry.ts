@@ -35,6 +35,7 @@ import {
 import { ToolsTool } from "./tools"
 import { WebFetchTool } from "./webfetch"
 import { BrowseTool } from "./browse"
+import { BrowserTool } from "./browser"
 import { BashInteractiveTool } from "./bash_interactive"
 import { SshTool } from "./ssh"
 import { WriteTool } from "./write"
@@ -150,6 +151,7 @@ export const layer: Layer.Layer<
     const agents = yield* Agent.Service
     const skill = yield* Skill.Service
     const truncate = yield* Truncate.Service
+    const provider = yield* Provider.Service
 
     const invalid = yield* InvalidTool
     const task = yield* TaskTool
@@ -184,6 +186,7 @@ export const layer: Layer.Layer<
     const webfetch = yield* WebFetchTool
     const websearch = yield* WebSearchTool
     const browse = yield* BrowseTool
+    const browser_tool = yield* BrowserTool
     const bashInteractive = yield* BashInteractiveTool
     const bash = yield* BashTool
     const ssh = yield* SshTool
@@ -299,6 +302,7 @@ export const layer: Layer.Layer<
           task: Tool.init(task),
           fetch: Tool.init(webfetch),
           browse: Tool.init(browse),
+          browser: Tool.init(browser_tool),
           bashInteractive: Tool.init(bashInteractive),
           ssh: Tool.init(ssh),
           todo: Tool.init(todo),
@@ -348,6 +352,7 @@ export const layer: Layer.Layer<
             tool.task,
             tool.fetch,
             tool.browse,
+            ...(["app"].includes(Flag.CODEPLANE_CLIENT) ? [tool.browser] : []),
             tool.bashInteractive,
             tool.ssh,
             tool.todo,
@@ -444,9 +449,21 @@ export const layer: Layer.Layer<
     const candidateTools = Effect.fn("ToolRegistry.candidateTools")(function* (input: ToolInput) {
       const usePatch =
         input.modelID.includes("gpt-") && !input.modelID.includes("oss") && !input.modelID.includes("gpt-4")
+
+      let modelSupportsVision = false
+      if (input.providerID && input.modelID) {
+        const model = yield* provider.getModel(input.providerID, input.modelID)
+        modelSupportsVision = model?.capabilities?.input?.image === true
+      }
+
       return (yield* all()).filter((tool) => {
         if (tool.id === CodeSearchTool.id || tool.id === WebSearchTool.id) {
           return input.providerID === ProviderID.codeplane || Flag.CODEPLANE_ENABLE_EXA
+        }
+
+        if (tool.id === BrowserTool.id) {
+          if (!(["app"].includes(Flag.CODEPLANE_CLIENT))) return false
+          return modelSupportsVision
         }
 
         if (tool.id === ApplyPatchTool.id) return usePatch
@@ -459,6 +476,20 @@ export const layer: Layer.Layer<
     const candidateBlockReason = (tool: Tool.Def, input: ToolInput) => {
       const usePatch =
         input.modelID.includes("gpt-") && !input.modelID.includes("oss") && !input.modelID.includes("gpt-4")
+      if (tool.id === BrowserTool.id) {
+        if (!(["app"].includes(Flag.CODEPLANE_CLIENT))) {
+          return {
+            id: tool.id,
+            reason: "Browser control is only available in the desktop app.",
+            setup: "Launch Codeplane Desktop to use this feature.",
+          }
+        }
+        return {
+          id: tool.id,
+          reason: "The current model does not support vision/image input.",
+          setup: "Use a model with vision capabilities (e.g. Claude with vision, GPT-4o) to enable browser control.",
+        }
+      }
       if (tool.id === CodeSearchTool.id || tool.id === WebSearchTool.id) {
         if (input.providerID === ProviderID.codeplane || Flag.CODEPLANE_ENABLE_EXA) return
         return {
