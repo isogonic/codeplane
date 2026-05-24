@@ -43,7 +43,6 @@ const SURFACES: Entry[] = [
 
 const REFERENCE: Entry[] = [
   { href: "/docs/cli/",         title: "CLI",         body: "codeplane serve, web, tui, instance, upgrade, completion." },
-  { href: "/docs/configuration/", title: "Config schema", body: "Every key in codeplane.json — provider, model, MCP, permission rules, agents." },
   { href: "/docs/instances/",   title: "Instances",   body: "Every running Codeplane is an instance — manage many on one device, switch from any client." },
   { href: "/docs/sessions/",    title: "Sessions",    body: "Threads, branches, archives, sharing, queued follow-ups, revert." },
   { href: "/docs/permissions/", title: "Permissions", body: "Per-directory and per-session approval rules. Global auto-accept toggle." },

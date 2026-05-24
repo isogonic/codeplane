@@ -5,7 +5,7 @@ import { allReleases, type Release } from "@/lib/releases"
 
 /*
  * Changelog page — sourced straight from GitHub releases at build time
- * and grouped by base version (e.g. v28.4.2). Within each group the
+ * and grouped by base version (e.g. v28.21.22). Within each group the
  * CLI release body is shown by default; the platform-specific
  * `-desktop` and `-mobile` sub-records nest underneath as collapsible
  * <details> elements so the page reads as one entry per version
@@ -257,7 +257,7 @@ function groupReleases(releases: Release[]): Group[] {
     if ((r.published_at ?? "") > g.newestDate) g.newestDate = r.published_at ?? ""
   }
   // Sort by semver descending — published_at can lie when a workflow
-  // is re-triggered for an older version, putting v28.4.0 above v28.4.1.
+   // is re-triggered for an older version, putting v28.21.21 above v28.21.22.
   return Array.from(map.values()).sort((a, b) => {
     const va = parseSemver(a.base)
     const vb = parseSemver(b.base)

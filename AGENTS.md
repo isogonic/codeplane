@@ -16,7 +16,7 @@ bottom.
 - **Default branch**: `main` (not `dev` — older docs lie).
 - **Package manager**: Bun (`packageManager: bun@1.3.13` in root `package.json`).
 - **Lockfile**: `bun.lock`. Never commit `package-lock.json` (it's gitignored).
-- **Workspaces**: `packages/*`, `packages/sdk/js`, `packages/slack`.
+- **Workspaces**: `packages/*`, `packages/sdk/js`.
 - **Lint**: `bun lint` from repo root (oxlint, 0 errors required, warnings tolerated).
 - **Typecheck**: `bun turbo typecheck` from repo root (8 packages must all pass).
 - **Tests**: cannot run from repo root (guard `do-not-run-tests-from-root`); run from each package dir, e.g. `bun --cwd packages/codeplane test`.
@@ -73,7 +73,7 @@ The default branch is `main`. The fork upstream is
 Top-level layout (root):
 
 ```
-opencode/
+codeplane/
 ├── AGENTS.md                  ← you are here
 ├── README.md                  ← user-facing landing page
 ├── CONTRIBUTING.md
@@ -95,23 +95,14 @@ opencode/
 ├── packages/                  ← all workspace packages
 │   ├── app/                   ← SolidJS web app
 │   ├── codeplane/             ← server, CLI, TUI host
-│   ├── containers/            ← container build helpers
 │   ├── desktop/               ← Electron shell
-│   ├── docs/                  ← docs site
-│   ├── extensions/            ← editor extensions (Zed, etc.)
-│   ├── function/              ← serverless function entry
-│   ├── identity/
+│   ├── mobile/                ← Native mobile shell packaging
 │   ├── plugin/                ← @codeplane-ai/plugin SDK
 │   ├── script/                ← release/publish scripts
 │   ├── sdk/                   ← OpenAPI-generated SDK
 │   │   └── js/                ← @codeplane-ai/sdk
 │   ├── shared/                ← @codeplane-ai/shared (home, version, instance, …)
-│   ├── slack/                 ← Slack integration
-│   ├── storybook/
-│   ├── ui/                    ← @codeplane-ai/ui (shared SolidJS components)
-│   └── web/                   ← Astro marketing site (logo assets live here)
-├── sdks/
-│   └── vscode/                ← VSCode extension package
+│   └── ui/                    ← @codeplane-ai/ui (shared SolidJS components)
 └── script/
     ├── publish.ts             ← top-level release driver
     ├── bump-version.ts        ← bumps packages/shared/src/version.ts + syncs files
@@ -128,7 +119,7 @@ Each subpackage may have its own `AGENTS.md` with package-specific rules.
 
 ```jsonc
 "workspaces": {
-  "packages": ["packages/*", "packages/sdk/js", "packages/slack"],
+  "packages": ["packages/*", "packages/sdk/js"],
   "catalog": { ... }   // pinned versions for deps used across packages
 }
 ```
@@ -150,9 +141,7 @@ workaround. In practice, edit consumer `package.json` files directly.
 | `@codeplane-ai/plugin` (`packages/plugin`) | Plugin SDK consumed by external plugins. | `src/index.ts`, `src/tui.ts` |
 | `@codeplane-ai/ui` (`packages/ui`) | Shared SolidJS component library (Button, Dialog, Toast, …). | `src/components/`, `src/i18n/`, `src/theme/` |
 | `@codeplane-ai/script` (`packages/script`) | Release-script helpers. Reads env vars (`CODEPLANE_VERSION`, `CODEPLANE_BUMP`, `CODEPLANE_CHANNEL`, `CODEPLANE_RELEASE`). | `src/index.ts` (exports `Script.{version,channel,preview,release,team}`) |
-| `@codeplane-ai/web` (`packages/web`) | Astro-built marketing site. Hosts the **logo SVGs** referenced by the README (`src/assets/logo-ornate-{light,dark}.svg`). | `src/assets/`, `astro.config.mjs` |
-| `@codeplane-ai/extensions/zed` | Zed editor extension manifest (`extension.toml`). | `extension.toml` |
-| `sdks/vscode` | VS Code extension. Has its own `package.json`. | `sdks/vscode/package.json` |
+| `@codeplane-ai/mobile` (`packages/mobile`) | Native mobile shell packaging. | `src/` |
 | `site` | Top-level Next.js static website deployed to `codeplane.cc` through GitHub Pages. | `site/app/docs/`, `site/components/`, `site/package.json` |
 
 Per-platform npm packages **published from the build** (not in this repo as
@@ -629,8 +618,7 @@ being rebased = mine):
 
 ```bash
 git checkout --theirs README.md bun.lock packages/*/package.json \
-  packages/extensions/zed/extension.toml packages/shared/package.json \
-  packages/shared/src/version.ts sdks/vscode/package.json
+  packages/shared/package.json packages/shared/src/version.ts
 git add .
 git rebase --continue
 ```
@@ -2171,8 +2159,7 @@ git fetch origin main
 git pull --rebase origin main
 # On conflict: keep "theirs" for version files
 git checkout --theirs README.md bun.lock packages/*/package.json \
-  packages/extensions/zed/extension.toml packages/shared/package.json \
-  packages/shared/src/version.ts sdks/vscode/package.json
+  packages/shared/package.json packages/shared/src/version.ts
 git add .
 git rebase --continue
 git push origin main
@@ -2318,4 +2305,4 @@ without confirmation. But push back when:
 If you're an agent and you've actually read this whole file: thank you. You
 will avoid most of the failure modes I've personally hit if you do.
 
-Last updated: 2026-05-03 (v27.4.21).
+Last updated: 2026-05-24 (v28.21.22).

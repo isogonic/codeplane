@@ -44,7 +44,7 @@ export default function SelfHosting() {
 
         <h2>Install</h2>
         <pre><code>{`curl -fsSL https://codeplane.cc/install | bash`}</code></pre>
-        <p>Pin a version in production with the installer&apos;s version flag, or install a specific npm version such as <code>codeplane-ai@28.18.0</code>.</p>
+        <p>Pin a version in production with the installer&apos;s version flag, or install a specific npm version such as <code>codeplane-ai@28.21.22</code>.</p>
 
         <h2>systemd</h2>
         <pre><code>{`# /etc/systemd/system/codeplane.service

@@ -92,7 +92,7 @@ codeplane instance remove prod`}</code></pre>
 codeplane instance local target
 codeplane instance local versions --latest-only
 codeplane instance local status
-codeplane instance local install 28.18.0
+codeplane instance local install 28.21.22
 codeplane instance local update`}</code></pre>
         <p>
           The local runtime is downloaded from npm into <code>local_server/</code> under the global

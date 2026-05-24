@@ -5,7 +5,7 @@
  * the GitHub API at request time.
  *
  * The pattern we're working around: three different release tag shapes
- * exist (`v28.4.1`, `v28.4.1-desktop`, `v28.4.1-mobile`) and GitHub's
+ * exist (`v28.21.22`, `v28.21.22-desktop`, `v28.21.22-mobile`) and GitHub's
  * `/releases/latest` pointer can land on ANY of them depending on which
  * workflow finished last. Linking at `/releases/latest/download/<file>`
  * therefore 404s half the time. Resolving the latest tag *by shape* at
@@ -63,7 +63,7 @@ function pickLatestByShape(releases: Release[], re: RegExp): Release | undefined
  */
 export async function latestDesktopTag(): Promise<string> {
   const releases = await fetchReleases()
-  return pickLatestByShape(releases, /^v\d+\.\d+\.\d+-desktop$/)?.tag_name ?? "v28.4.1-desktop"
+  return pickLatestByShape(releases, /^v\d+\.\d+\.\d+-desktop$/)?.tag_name ?? "v28.21.22-desktop"
 }
 
 /**
@@ -72,7 +72,7 @@ export async function latestDesktopTag(): Promise<string> {
  */
 export async function latestMobileTag(): Promise<string> {
   const releases = await fetchReleases()
-  return pickLatestByShape(releases, /^v\d+\.\d+\.\d+-mobile$/)?.tag_name ?? "v28.4.1-mobile"
+  return pickLatestByShape(releases, /^v\d+\.\d+\.\d+-mobile$/)?.tag_name ?? "v28.21.22-mobile"
 }
 
 /**
@@ -90,7 +90,7 @@ export async function latestCliVersion(): Promise<string> {
   const releases = await fetchReleases()
   const tag = pickLatestByShape(releases, /^v\d+\.\d+\.\d+$/)?.tag_name
   if (tag) return tag.slice(1)
-  return "28.4.2"
+  return "28.21.22"
 }
 
 /**
