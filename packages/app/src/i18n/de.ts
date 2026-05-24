@@ -482,6 +482,7 @@ export const dict = {
   "home.stat.git.repos": "Repos bearbeitet",
   "home.stat.git.commits": "Commits erstellt",
   "home.stat.git.files": "Dateien geändert",
+  "home.stat.git.lines": "Zeilen geändert",
   "home.stat.git.additions": "Zeilen hinzugefügt",
   "home.stat.git.deletions": "Zeilen gelöscht",
   "home.fact.devin.match": "Du erreichst ~{{percent}}% von Devin Oldenburgs Referenz­wert (~200M Token/Tag).",

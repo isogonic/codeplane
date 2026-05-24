@@ -520,7 +520,11 @@ function OverviewTab(props: {
         />
       </div>
 
-      <div class="grid grid-cols-2 gap-px border-t border-border-weaker-base bg-border-weaker-base sm:grid-cols-5">
+      <div class="px-3 py-4 sm:px-4">
+        <Heatmap buckets={props.buckets} formatNumber={props.formatNumber} />
+      </div>
+
+      <div class="grid grid-cols-2 gap-px border-t border-border-weaker-base bg-border-weaker-base sm:grid-cols-4">
         <NumericStat
           label={language.t("home.stat.git.repos")}
           value={safeStat(props.git().repos)}
@@ -536,20 +540,13 @@ function OverviewTab(props: {
           value={safeStat(props.git().files)}
           format={(v) => props.formatNumber().format(Math.round(safeStat(v)))}
         />
-        <NumericStat
-          label={language.t("home.stat.git.additions")}
-          value={safeStat(props.git().additions)}
-          format={(v) => props.formatNumber().format(Math.round(safeStat(v)))}
+        <TextStat
+          label={language.t("home.stat.git.lines")}
+          value={language.t("home.projects.diff", {
+            additions: props.formatNumber().format(Math.round(safeStat(props.git().additions))),
+            deletions: props.formatNumber().format(Math.round(safeStat(props.git().deletions))),
+          })}
         />
-        <NumericStat
-          label={language.t("home.stat.git.deletions")}
-          value={safeStat(props.git().deletions)}
-          format={(v) => props.formatNumber().format(Math.round(safeStat(v)))}
-        />
-      </div>
-
-      <div class="px-3 py-4 sm:px-4">
-        <Heatmap buckets={props.buckets} formatNumber={props.formatNumber} />
       </div>
 
       <Show when={fact()} keyed>

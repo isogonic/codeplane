@@ -641,6 +641,7 @@ export const dict = {
   "home.stat.git.repos": "Repos worked",
   "home.stat.git.commits": "Commits made",
   "home.stat.git.files": "Files changed",
+  "home.stat.git.lines": "Lines changed",
   "home.stat.git.additions": "Lines added",
   "home.stat.git.deletions": "Lines deleted",
   "home.fact.devin.match": "You're hitting ~{{percent}}% of Devin Oldenburg's reference rate (~200M tokens/day).",
