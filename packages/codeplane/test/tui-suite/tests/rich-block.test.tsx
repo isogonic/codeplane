@@ -72,7 +72,6 @@ describe("tui rich-block splitter", () => {
       "progress",
       "badge",
       "quote",
-      "table",
       "file-tree",
       "tree",
       "image-grid",

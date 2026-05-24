@@ -1,11 +1,9 @@
 /*
- * shadcn / radix-nova design tokens — tuned for real contrast.
+ * shadcn / radix-nova design tokens — tuned for soft contrast.
  *
- * The first cut pinned background and card to pure white in light mode and
- * to very-close shades in dark mode; the result read as flat and washed
- * out. This revision separates the canvas from the elevated surface so
- * cards / popovers / dialogs visibly "lift" off the page, and pushes
- * borders one step toward visible without going harsh.
+ * The palette uses warm greys, quieter borders, and low-saturation focus
+ * tones so cards / popovers / dialogs still read as elevated without the
+ * stark black/white edges of the first monochrome pass.
  *
  * Dark mode flips off both `.dark` class on `<html>` (set by
  * `theme/context.tsx`) AND `[data-color-scheme="dark"]` (the data attribute
@@ -13,37 +11,34 @@
  */
 
 :root {
-  /* ─────────────────── canvas + surfaces (light) ───────────────────────
-     Canvas is a half-step off-white so the pure-white cards / popovers
-     pop. Muted / accent are darker than before so hover states actually
-     register. Borders are a clean greyscale step that reads at a glance. */
-  --background: oklch(0.985 0 0); /* off-white canvas */
-  --foreground: oklch(0.13 0 0);  /* near-black ink */
-  --card: oklch(1 0 0);           /* pure white — lifts off the canvas */
-  --card-foreground: oklch(0.13 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.13 0 0);
-  --primary: oklch(0.18 0 0);     /* filled neutral CTA */
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.955 0 0);
-  --secondary-foreground: oklch(0.18 0 0);
-  --muted: oklch(0.96 0 0);       /* hover wash */
-  --muted-foreground: oklch(0.48 0 0); /* readable secondary text */
-  --accent: oklch(0.93 0 0);      /* active wash, also nav highlight */
-  --accent-foreground: oklch(0.13 0 0);
-  --destructive: oklch(0.58 0.225 27);
-  --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.89 0 0);      /* visible-not-harsh border */
-  --input: oklch(0.89 0 0);
-  --ring: oklch(0.68 0 0);
+  /* ─────────────────── canvas + surfaces (light) ─────────────────────── */
+  --background: oklch(0.982 0.006 82);
+  --foreground: oklch(0.18 0.012 70);
+  --card: oklch(0.998 0.002 82);
+  --card-foreground: oklch(0.18 0.012 70);
+  --popover: oklch(0.998 0.002 82);
+  --popover-foreground: oklch(0.18 0.012 70);
+  --primary: oklch(0.23 0.012 70);
+  --primary-foreground: oklch(0.982 0.006 82);
+  --secondary: oklch(0.948 0.007 82);
+  --secondary-foreground: oklch(0.23 0.012 70);
+  --muted: oklch(0.954 0.007 82);
+  --muted-foreground: oklch(0.49 0.014 70);
+  --accent: oklch(0.925 0.01 82);
+  --accent-foreground: oklch(0.18 0.012 70);
+  --destructive: oklch(0.58 0.16 29);
+  --destructive-foreground: oklch(0.998 0.002 82);
+  --border: oklch(0.875 0.011 82);
+  --input: oklch(0.875 0.011 82);
+  --ring: oklch(0.59 0.032 76);
   --sidebar: var(--background);
-  --sidebar-foreground: oklch(0.13 0 0);
-  --sidebar-primary: oklch(0.18 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.93 0 0);
-  --sidebar-accent-foreground: oklch(0.13 0 0);
-  --sidebar-border: oklch(0.89 0 0);
-  --sidebar-ring: oklch(0.68 0 0);
+  --sidebar-foreground: oklch(0.18 0.012 70);
+  --sidebar-primary: oklch(0.23 0.012 70);
+  --sidebar-primary-foreground: oklch(0.982 0.006 82);
+  --sidebar-accent: oklch(0.925 0.01 82);
+  --sidebar-accent-foreground: oklch(0.18 0.012 70);
+  --sidebar-border: oklch(0.875 0.011 82);
+  --sidebar-ring: oklch(0.59 0.032 76);
 
   /* ─────── Legacy Codeplane tokens, re-routed (light) ──────────────────
      Every old `--surface-*` / `--text-*` / `--icon-*` / `--button-*` /
@@ -62,16 +57,16 @@
   --surface-raised-base-active: var(--accent);
   --surface-base: var(--muted);
   --surface-base-hover: var(--accent);
-  --surface-base-active: oklch(0.9 0 0);
+  --surface-base-active: oklch(0.9 0.011 82);
   --surface-base-interactive-active: color-mix(in oklab, var(--primary) 12%, transparent);
   --surface-weak: var(--muted);
   --surface-weaker: var(--accent);
   --surface-inset-base: var(--muted);
   --surface-inset-base-hover: var(--accent);
   --surface-inset-strong: var(--accent);
-  --surface-inset-strong-hover: oklch(0.9 0 0);
+  --surface-inset-strong-hover: oklch(0.9 0.011 82);
   --surface-float-base: var(--primary);
-  --surface-float-base-hover: oklch(0.27 0 0);
+  --surface-float-base-hover: oklch(0.3 0.014 70);
   --base: var(--muted);
   --base2: var(--muted);
   --base3: var(--accent);
@@ -145,28 +140,26 @@
 
   --radius: 0.625rem;
 
-  /* Shadows pitched a tad darker than v1 so cards / popovers / dialogs
-     read as elevated against the now-off-white canvas. */
-  --shadow-2xs: 0 1px 0 0 oklch(0 0 0 / 0.05);
+  --shadow-2xs: 0 1px 0 0 oklch(0.18 0.012 70 / 0.035);
   --shadow-xs:
-    0 1px 2px 0 oklch(0 0 0 / 0.07),
-    0 1px 1px -1px oklch(0 0 0 / 0.05);
+    0 1px 2px 0 oklch(0.18 0.012 70 / 0.055),
+    0 1px 1px -1px oklch(0.18 0.012 70 / 0.035);
   --shadow-sm:
-    0 2px 6px -1px oklch(0 0 0 / 0.08),
-    0 1px 2px -1px oklch(0 0 0 / 0.05);
+    0 2px 8px -2px oklch(0.18 0.012 70 / 0.06),
+    0 1px 2px -1px oklch(0.18 0.012 70 / 0.04);
   --shadow-md:
-    0 8px 20px -4px oklch(0 0 0 / 0.1),
-    0 2px 4px -2px oklch(0 0 0 / 0.05);
+    0 10px 28px -8px oklch(0.18 0.012 70 / 0.11),
+    0 2px 5px -2px oklch(0.18 0.012 70 / 0.045);
   --shadow-lg:
-    0 24px 48px -12px oklch(0 0 0 / 0.22),
-    0 10px 20px -8px oklch(0 0 0 / 0.1);
+    0 28px 64px -18px oklch(0.18 0.012 70 / 0.18),
+    0 10px 24px -12px oklch(0.18 0.012 70 / 0.08);
 
   --shadow-xs-border-base: inset 0 0 0 1px var(--border);
   --shadow-xs-border: inset 0 0 0 1px var(--border);
   --shadow-lg-border-base:
     inset 0 0 0 1px var(--border),
-    0 24px 48px -12px oklch(0 0 0 / 0.22),
-    0 10px 20px -8px oklch(0 0 0 / 0.1);
+    0 28px 64px -18px oklch(0.18 0.012 70 / 0.18),
+    0 10px 24px -12px oklch(0.18 0.012 70 / 0.08);
   --shadow-xs-border-focus:
     0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent),
     inset 0 0 0 1px var(--ring);
@@ -182,37 +175,34 @@
 
 .dark,
 :root[data-color-scheme="dark"] {
-  /* ─────────────────── canvas + surfaces (dark) ────────────────────────
-     A darker canvas with distinctly-lighter cards / popovers so the
-     elevation hierarchy reads at a glance. Foreground is bright enough
-     to be legible without glowing. */
-  --background: oklch(0.115 0 0); /* deeper canvas */
-  --foreground: oklch(0.97 0 0);
-  --card: oklch(0.185 0 0);       /* clearly lifted off canvas */
-  --card-foreground: oklch(0.97 0 0);
-  --popover: oklch(0.21 0 0);     /* slightly brighter still for menus */
-  --popover-foreground: oklch(0.97 0 0);
-  --primary: oklch(0.95 0 0);
-  --primary-foreground: oklch(0.18 0 0);
-  --secondary: oklch(0.235 0 0);
-  --secondary-foreground: oklch(0.97 0 0);
-  --muted: oklch(0.235 0 0);
-  --muted-foreground: oklch(0.72 0 0); /* readable secondary text */
-  --accent: oklch(0.275 0 0);
-  --accent-foreground: oklch(0.97 0 0);
-  --destructive: oklch(0.7 0.19 22);
-  --destructive-foreground: oklch(0.97 0 0);
-  --border: oklch(1 0 0 / 14%);   /* visible ring on dark cards */
-  --input: oklch(1 0 0 / 18%);
-  --ring: oklch(0.65 0 0);
+  /* ─────────────────── canvas + surfaces (dark) ──────────────────────── */
+  --background: oklch(0.14 0.006 75);
+  --foreground: oklch(0.93 0.008 82);
+  --card: oklch(0.2 0.007 75);
+  --card-foreground: oklch(0.93 0.008 82);
+  --popover: oklch(0.225 0.008 75);
+  --popover-foreground: oklch(0.93 0.008 82);
+  --primary: oklch(0.91 0.008 82);
+  --primary-foreground: oklch(0.22 0.01 75);
+  --secondary: oklch(0.24 0.008 75);
+  --secondary-foreground: oklch(0.93 0.008 82);
+  --muted: oklch(0.235 0.008 75);
+  --muted-foreground: oklch(0.71 0.01 82);
+  --accent: oklch(0.275 0.01 75);
+  --accent-foreground: oklch(0.93 0.008 82);
+  --destructive: oklch(0.67 0.145 25);
+  --destructive-foreground: oklch(0.96 0.006 82);
+  --border: oklch(0.94 0.008 82 / 12%);
+  --input: oklch(0.94 0.008 82 / 15%);
+  --ring: oklch(0.62 0.024 78);
   --sidebar: var(--background);
-  --sidebar-foreground: oklch(0.97 0 0);
-  --sidebar-primary: oklch(0.95 0 0);
-  --sidebar-primary-foreground: oklch(0.18 0 0);
-  --sidebar-accent: oklch(0.275 0 0);
-  --sidebar-accent-foreground: oklch(0.97 0 0);
-  --sidebar-border: oklch(1 0 0 / 14%);
-  --sidebar-ring: oklch(0.65 0 0);
+  --sidebar-foreground: oklch(0.93 0.008 82);
+  --sidebar-primary: oklch(0.91 0.008 82);
+  --sidebar-primary-foreground: oklch(0.22 0.01 75);
+  --sidebar-accent: oklch(0.275 0.01 75);
+  --sidebar-accent-foreground: oklch(0.93 0.008 82);
+  --sidebar-border: oklch(0.94 0.008 82 / 12%);
+  --sidebar-ring: oklch(0.62 0.024 78);
 
   --surface-raised-stronger-non-alpha: var(--popover);
   --surface-raised-stronger: var(--popover);
@@ -230,12 +220,12 @@
   --surface-base-interactive-active: color-mix(in oklab, var(--primary) 22%, transparent);
   --surface-weak: color-mix(in oklab, var(--foreground) 9%, transparent);
   --surface-weaker: color-mix(in oklab, var(--foreground) 14%, transparent);
-  --surface-inset-base: oklch(0 0 0 / 0.5);
-  --surface-inset-base-hover: oklch(0 0 0 / 0.6);
-  --surface-inset-strong: oklch(0 0 0 / 0.8);
-  --surface-inset-strong-hover: oklch(0 0 0 / 0.85);
-  --surface-float-base: oklch(0.21 0 0);
-  --surface-float-base-hover: oklch(0.275 0 0);
+  --surface-inset-base: oklch(0.08 0.004 75 / 0.52);
+  --surface-inset-base-hover: oklch(0.08 0.004 75 / 0.62);
+  --surface-inset-strong: oklch(0.08 0.004 75 / 0.78);
+  --surface-inset-strong-hover: oklch(0.08 0.004 75 / 0.84);
+  --surface-float-base: oklch(0.225 0.008 75);
+  --surface-float-base-hover: oklch(0.275 0.01 75);
   --base: var(--surface-base);
   --base2: var(--surface-base);
   --base3: var(--surface-base-hover);
@@ -307,25 +297,25 @@
   --icon-on-interactive-base: var(--primary-foreground);
   --icon-brand-base: var(--foreground);
 
-  --shadow-2xs: 0 1px 0 0 oklch(0 0 0 / 0.4);
+  --shadow-2xs: 0 1px 0 0 oklch(0 0 0 / 0.28);
   --shadow-xs:
-    0 1px 2px 0 oklch(0 0 0 / 0.5),
-    0 1px 1px -1px oklch(0 0 0 / 0.35);
+    0 1px 2px 0 oklch(0 0 0 / 0.34),
+    0 1px 1px -1px oklch(0 0 0 / 0.24);
   --shadow-sm:
-    0 2px 6px -1px oklch(0 0 0 / 0.55),
-    0 1px 2px -1px oklch(0 0 0 / 0.35);
+    0 2px 8px -2px oklch(0 0 0 / 0.38),
+    0 1px 2px -1px oklch(0 0 0 / 0.24);
   --shadow-md:
-    0 8px 20px -4px oklch(0 0 0 / 0.6),
-    0 2px 4px -2px oklch(0 0 0 / 0.4);
+    0 10px 28px -8px oklch(0 0 0 / 0.48),
+    0 2px 5px -2px oklch(0 0 0 / 0.3);
   --shadow-lg:
-    0 24px 48px -12px oklch(0 0 0 / 0.75),
-    0 10px 20px -8px oklch(0 0 0 / 0.5);
+    0 30px 72px -22px oklch(0 0 0 / 0.58),
+    0 10px 24px -12px oklch(0 0 0 / 0.34);
   --shadow-xs-border-base: inset 0 0 0 1px var(--border);
   --shadow-xs-border: inset 0 0 0 1px var(--border);
   --shadow-lg-border-base:
     inset 0 0 0 1px var(--border),
-    0 24px 48px -12px oklch(0 0 0 / 0.75),
-    0 10px 20px -8px oklch(0 0 0 / 0.5);
+    0 30px 72px -22px oklch(0 0 0 / 0.58),
+    0 10px 24px -12px oklch(0 0 0 / 0.34);
   --shadow-xs-border-focus:
     0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent),
     inset 0 0 0 1px var(--ring);
@@ -335,6 +325,6 @@
   --shadow-xs-border-hover: inset 0 0 0 1px var(--border-hover);
   --shadow-xs-border-critical-base: inset 0 0 0 1px var(--destructive);
   --shadow-xs-border-critical-focus:
-    0 0 0 3px color-mix(in oklab, var(--destructive) 35%, transparent),
+    0 0 0 3px color-mix(in oklab, var(--destructive) 28%, transparent),
     inset 0 0 0 1px var(--destructive);
 }

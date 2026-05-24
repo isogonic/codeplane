@@ -1629,7 +1629,6 @@ const RICH_BLOCK_TOOL_IDS = new Set([
   "tabs",
   "choice",
   "select",
-  "table",
   "file-tree",
   "image-grid",
   "comparison",

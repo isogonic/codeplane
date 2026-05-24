@@ -36,7 +36,7 @@ const GET_STARTED: Entry[] = [
 
 const SURFACES: Entry[] = [
   { href: "/docs/tui/",     title: "TUI",     body: "Full-screen terminal interface in any shell." },
-  { href: "/docs/desktop/", title: "Desktop", body: "Native macOS, Linux, and Windows app. Auto-updates via electron-updater." },
+  { href: "/docs/desktop/", title: "Desktop", body: "Native macOS, Linux, and Windows app. Self-updating from GitHub Releases without code-signing requirements." },
   { href: "/docs/web/",     title: "Web",     body: "Same UI in any browser. Nothing to install client-side." },
   { href: "/docs/mobile/",  title: "Mobile",  body: "Native iOS shell on TestFlight. Android in development." },
 ]
@@ -56,7 +56,7 @@ const EXTEND: Entry[] = [
   { href: "/docs/plugins/",      title: "Plugins",         body: "Custom tools, agents, prompts via @codeplane-ai/plugin." },
   { href: "/docs/sdk/",          title: "TypeScript SDK",  body: "Drive Codeplane from your own code — sessions, messages, streaming." },
   { href: "/docs/self-hosting/", title: "Self-hosting",    body: "Run a long-lived Codeplane instance on your VPS or homelab. systemd, Docker, reverse proxies, auth." },
-  { href: "/docs/themes/",       title: "Themes",          body: "Strict light + dark, and how the monochrome OKLCH palette is wired." },
+  { href: "/docs/themes/",       title: "Themes",          body: "Strict light + dark, and how the warm OKLCH palette is wired." },
   { href: "/docs/troubleshooting/", title: "Troubleshooting", body: "Install, server, auth, provider, MCP, desktop, mobile, and release failure playbooks." },
   { href: "/docs/release/",      title: "Release process", body: "Version sync, validation, GitHub release tags, npm, desktop, mobile, and Pages deploys." },
 ]

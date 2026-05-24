@@ -15,7 +15,6 @@ import {
   type WebContents,
 } from "electron"
 import Store from "electron-store"
-import { autoUpdater, type UpdateDownloadedEvent, type UpdateInfo, type ProgressInfo } from "electron-updater"
 import { CodeplaneHome } from "@codeplane-ai/shared/home"
 import {
   fetchCodeplaneVersions,
@@ -24,9 +23,10 @@ import {
 } from "@codeplane-ai/shared/local-runtime"
 import { createInstanceStore, type State as InstanceStoreState } from "@codeplane-ai/shared/instance-store"
 import { createServerVersionWatcher, type ServerVersionWatcher } from "@codeplane-ai/shared/server-version-watcher"
-import { existsSync } from "node:fs"
-import { execFile } from "node:child_process"
+import { createWriteStream, existsSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs"
+import { execFile, spawn } from "node:child_process"
 import { promisify } from "node:util"
+import os from "node:os"
 import path from "path"
 import { pathToFileURL } from "url"
 
@@ -158,6 +158,12 @@ type GitHubRelease = {
   body?: string | null
   html_url?: string | null
   published_at?: string | null
+  assets?: Array<{
+    name: string
+    browser_download_url: string
+    size: number
+    content_type: string
+  }>
 }
 
 const store = new Store<Schema>({
@@ -220,7 +226,7 @@ const localManager = createLocalInstanceManager({
   configDir: codeplaneHome.root,
   dataDir: codeplaneHome.local_server,
   log: (event, data) => logger.log("local-instance", event, data),
-  // electron-updater owns the lifecycle of the local runtime spawned by
+  // The desktop owns the lifecycle of the local runtime spawned by
   // the desktop. Tells the spawned server's Installation.method() to
   // return "desktop" so /global/upgrade short-circuits with the
   // "use the desktop's Updates panel" message instead of attempting
@@ -867,87 +873,221 @@ function broadcastUpdater(channel: string, payload?: unknown) {
   }
 }
 
-// macOS Squirrel.Mac validates the downloaded update's code signature against
-// the running app's designated requirement. Our CI builds with
-// CSC_IDENTITY_AUTO_DISCOVERY=false (no Developer ID), so each release is
-// ad-hoc signed and SecCodeCheckValidity rejects every in-place update with
-// "Code signature at URL ... did not pass validation". There's no Squirrel
-// flag to bypass this — it's a macOS security guarantee. Detect the error and
-// steer the user to download the new DMG manually instead.
-function isCodeSignatureValidationError(message: string) {
-  if (!message) return false
-  const lower = message.toLowerCase()
-  if (lower.includes("did not pass validation")) return true
-  if (lower.includes("code signature at url")) return true
-  // Localized trailer ("code requirements not met") seen on the German build.
-  if (lower.includes("code-anforderungen")) return true
-  if (lower.includes("code signing requirement")) return true
-  return false
+function getDesktopArch(): "arm64" | "x64" {
+  return process.arch === "arm64" ? "arm64" : "x64"
+}
+
+function getDesktopPlatformLabel(): "mac" | "win" | "linux" {
+  if (process.platform === "darwin") return "mac"
+  if (process.platform === "win32") return "win"
+  return "linux"
+}
+
+function getDesktopAssetExtension(): "zip" | "tar.gz" {
+  return process.platform === "linux" ? "tar.gz" : "zip"
 }
 
 function desktopReleaseDownloadUrl(version: string) {
   return `https://github.com/devinoldenburg/codeplane/releases/tag/${codeplaneDesktopReleaseTag(version)}`
 }
 
-// Latest desktop shell version reported by electron-updater. Cached so the
-// status IPC can answer instantly between checks, and so we know which
-// version is being downloaded when we eventually get update-downloaded.
+// Latest desktop shell version reported by the GitHub release check. Cached so
+// the status IPC can answer instantly between checks.
 let desktopShellLatestVersion: string | undefined
 let desktopShellUpdateInFlight: Promise<{ current: string; latest: string | null; hasUpdate: boolean }> | undefined
-// Once Squirrel.Mac rejects an update with a code-signature error in this
-// session, every subsequent install attempt will fail the same way (the
-// running app's signature doesn't change at runtime). Latch the state so we
-// route the user straight to manual download instead of re-triggering the
-// failing install path. Also set preemptively in setupAutoUpdater() when the
-// running mac bundle has no Developer ID signature (CI builds with
-// CSC_IDENTITY_AUTO_DISCOVERY=false) — we know in-place auto-update will
-// always be rejected, so don't bother trying.
-let desktopShellManualDownloadOnly = false
+let desktopShellDownloadInFlight: Promise<{ assetUrl: string; destDir: string; extractedAppPath: string }> | undefined
+let desktopShellStagedUpdate: { destDir: string; extractedAppPath: string } | undefined
 
-// Detect whether the running macOS bundle has a real Developer ID signature.
-// Without one, Squirrel.Mac's in-place update is always rejected by
-// SecCodeCheckValidity, so we preempt the failure and route to manual download.
-// Returns true on non-mac (the check is irrelevant) so callers don't have to
-// branch.
-async function macOsHasDeveloperIdSignature(): Promise<boolean> {
-  if (process.platform !== "darwin") return true
-  if (!app.isPackaged) return true
-  try {
-    const exe = app.getPath("exe")
-    return await new Promise<boolean>((resolve) => {
-      execFile(
-        "codesign",
-        ["-dvv", exe],
-        { timeout: 5_000, maxBuffer: 1024 * 64 },
-        (err, _stdout, stderr) => {
-          if (err) return resolve(false)
-          const text = String(stderr ?? "")
-          // Properly signed builds emit "Authority=Developer ID Application: …"
-          // (or "Authority=Apple Distribution: …" for App Store builds).
-          // Ad-hoc signed CI builds have "Signature=adhoc" and no Authority line.
-          if (/Authority=Developer ID Application/i.test(text)) return resolve(true)
-          if (/Authority=Apple Distribution/i.test(text)) return resolve(true)
-          resolve(false)
-        },
-      )
-    })
-  } catch {
-    return false
+async function fetchLatestDesktopRelease(): Promise<GitHubRelease | null> {
+  const response = await fetch(`${GITHUB_RELEASES_API_URL}?per_page=30`, {
+    headers: await githubApiHeaders(),
+  })
+  if (!response.ok) {
+    throw new Error(`GitHub releases lookup failed with HTTP ${response.status}`)
   }
+  const releases = (await response.json()) as GitHubRelease[]
+  for (const release of releases) {
+    if (release.draft || release.prerelease) continue
+    if (!release.tag_name?.endsWith("-desktop")) continue
+    return release
+  }
+  return null
+}
+
+function getDesktopAppInstallPath(): string {
+  if (process.platform === "darwin") {
+    const exe = app.getPath("exe")
+    // exe is at Codeplane.app/Contents/MacOS/Codeplane → walk up to .app bundle
+    return path.resolve(exe, "..", "..", "..")
+  }
+  // Windows: exe is at Codeplane/Codeplane.exe → use parent dir
+  // Linux: exe is at Codeplane/codeplane → use parent dir
+  return path.dirname(app.getPath("exe"))
+}
+
+function matchDesktopReleaseAsset(release: GitHubRelease): {
+  url: string
+  name: string
+  size: number
+} | null {
+  if (!release.assets) return null
+  const platform = getDesktopPlatformLabel()
+  const arch = getDesktopArch()
+  const ext = getDesktopAssetExtension()
+  const version = release.tag_name!.replace(/^v/, "").replace(/-desktop$/, "")
+  // macOS/Windows: codeplane-desktop-{version}-{platform}-{arch}.zip
+  // Linux: codeplane-desktop-{version}-{platform}-{arch}.tar.gz
+  const pattern = `codeplane-desktop-${version}-${platform}-${arch}.${ext}`
+  for (const asset of release.assets) {
+    if (asset.name === pattern) {
+      return { url: asset.browser_download_url, name: asset.name, size: asset.size }
+    }
+  }
+  // Try query matching for edge-cases (e.g. URL-encoded names)
+  for (const asset of release.assets) {
+    if (asset.name.includes(`-${platform}-${arch}`) && asset.name.endsWith(`.${ext}`)) {
+      return { url: asset.browser_download_url, name: asset.name, size: asset.size }
+    }
+  }
+  return null
+}
+
+async function downloadReleaseAsset(
+  assetUrl: string,
+  destPath: string,
+  onProgress?: (percent: number, transferred: number, total: number) => void,
+): Promise<void> {
+  const headers = await githubApiHeaders()
+  const response = await fetch(assetUrl, { headers, redirect: "follow" })
+  if (!response.ok) {
+    throw new Error(`Download failed with HTTP ${response.status}`)
+  }
+  const total = Number.parseInt(response.headers.get("content-length") ?? "0", 10)
+  if (!response.body) {
+    throw new Error("Response has no body")
+  }
+  const reader = response.body.getReader()
+  const file = createWriteStream(destPath)
+  let transferred = 0
+  let lastPercent = 0
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      transferred += value.byteLength
+      file.write(Buffer.from(value.buffer, value.byteOffset, value.byteLength))
+      if (total > 0) {
+        const percent = Math.round((transferred / total) * 100)
+        if (percent !== lastPercent) {
+          lastPercent = percent
+          onProgress?.(percent, transferred, total)
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock()
+    file.end()
+  }
+  await new Promise<void>((resolve, reject) => {
+    file.on("finish", resolve)
+    file.on("error", reject)
+  })
+  if (total > 0) onProgress?.(100, transferred, total)
+}
+
+async function extractAsset(
+  archivePath: string,
+  destDir: string,
+): Promise<void> {
+  if (process.platform === "linux") {
+    await execFileAsync("tar", ["-xzf", archivePath, "-C", destDir])
+    return
+  }
+  await execFileAsync("unzip", ["-o", archivePath, "-d", destDir])
+}
+
+function getExtractedAppPath(destDir: string): string | null {
+  if (process.platform === "darwin") {
+    // electron-builder puts Codeplane.app at the root of the zip
+    const direct = path.join(destDir, "Codeplane.app")
+    if (existsSync(direct)) return direct
+    // Fallback: search for .app bundle
+    const entries = readdirSync(destDir, { withFileTypes: true })
+    for (const entry of entries) {
+      if (entry.isDirectory() && entry.name.endsWith(".app")) return path.join(destDir, entry.name)
+    }
+    return null
+  }
+  // Windows: electron-builder zip contains a single subdirectory with the app
+  // Linux: tar.gz may also have a subdirectory
+  const entries = readdirSync(destDir, { withFileTypes: true })
+  const dirs = entries.filter((e) => e.isDirectory())
+  // If only one directory, use it (electron-builder wraps in e.g. win-unpacked/)
+  if (dirs.length === 1) return path.join(destDir, dirs[0].name)
+  // If the app exe is directly in destDir, use destDir
+  const exeName = process.platform === "win32" ? "Codeplane.exe" : "codeplane"
+  if (existsSync(path.join(destDir, exeName))) return destDir
+  return null
+}
+
+function createSwapScript(): string {
+  if (process.platform === "darwin") {
+    return `#!/bin/bash
+PID=$1
+OLD_APP="$2"
+NEW_APP="$3"
+while kill -0 $PID 2>/dev/null; do sleep 0.3; done
+sleep 0.5
+rm -rf "$OLD_APP"
+mv "$NEW_APP" "$OLD_APP"
+open "$OLD_APP" --args --updated
+`
+  }
+  if (process.platform === "win32") {
+    return `@echo off
+set PID=%1
+set "OLD_DIR=%~2"
+set "NEW_DIR=%~3"
+:wait
+timeout /t 1 /nobreak >nul
+tasklist /FI "PID eq %PID%" 2>nul | find /I "%PID%" >nul
+if %errorlevel%==0 goto wait
+timeout /t 1 /nobreak >nul
+rmdir /s /q "%OLD_DIR%" 2>nul
+move /Y "%NEW_DIR%" "%OLD_DIR%"
+start "" "%OLD_DIR%\\Codeplane.exe" --updated
+`
+  }
+  return `#!/bin/bash
+PID=$1
+OLD_DIR="$2"
+NEW_DIR="$3"
+while kill -0 $PID 2>/dev/null; do sleep 0.3; done
+sleep 0.5
+rm -rf "$OLD_DIR"
+mv "$NEW_DIR" "$OLD_DIR"
+chmod +x "$OLD_DIR/codeplane"
+"$OLD_DIR/codeplane" --updated &
+`
+}
+
+function stageSwapScript(): string {
+  const ext = process.platform === "win32" ? ".bat" : ".sh"
+  const stagedPath = path.join(os.tmpdir(), `codeplane-swap-${process.pid}${ext}`)
+  writeFileSync(stagedPath, createSwapScript(), { mode: process.platform !== "win32" ? 0o755 : undefined })
+  return stagedPath
 }
 
 async function shellUpdateStatus() {
   const current = app.getVersion()
-  // In dev (unpackaged) electron-updater throws — surface the current shell
-  // version and skip the network probe so the UI can render a clean idle state.
   if (!app.isPackaged) {
     return { current, latest: current, hasUpdate: false, method: "dev" as const }
   }
   if (!desktopShellUpdateInFlight) {
     desktopShellUpdateInFlight = (async () => {
       try {
-        const result = await autoUpdater.checkForUpdates()
-        const version = result?.updateInfo?.version ?? null
+        const release = await fetchLatestDesktopRelease()
+        const version = release?.tag_name ? release.tag_name.replace(/^v/, "").replace(/-desktop$/, "") : null
         if (version) desktopShellLatestVersion = version
         return {
           current,
@@ -1007,21 +1147,6 @@ async function runRuntimeUpdateCheck(input?: { announce?: boolean }) {
     const status = await shellUpdateStatus()
     if (status.hasUpdate && status.latest) {
       logger.log("main", "updater.update-available", status)
-      // When we already know in-place install is impossible (unsigned mac
-      // build), skip the "Install update" UI step and surface the manual
-      // download URL immediately so the user can act on the very first
-      // check without going through a guaranteed-to-fail download attempt.
-      if (desktopShellManualDownloadOnly) {
-        const url = desktopReleaseDownloadUrl(status.latest)
-        logger.log("main", "updater.preempted-manual-download", { version: status.latest, url })
-        broadcastUpdater("updater:requires-manual-download", {
-          version: status.latest,
-          url,
-          reason:
-            "This build of Codeplane Desktop is not code-signed with an Apple Developer ID, so macOS rejects in-place updates. Download the new version manually instead.",
-        })
-        return { ok: true as const, updateAvailable: true, version: status.latest, manualDownloadOnly: true as const }
-      }
       broadcastUpdater("updater:update-available", { version: status.latest })
       if (input?.announce) {
         const result = await showMessageBox({
@@ -1082,39 +1207,45 @@ async function installShellUpdate(version: string) {
     return { ok: false as const, error: message }
   }
 
-  if (desktopShellManualDownloadOnly) {
-    const url = desktopReleaseDownloadUrl(version)
-    logger.log("main", "updater.download.manual-required", { version, url })
-    broadcastUpdater("updater:requires-manual-download", {
-      version,
-      url,
-      reason: "Previous in-place update was rejected by macOS code-signature validation.",
-    })
-    return { ok: false as const, error: "Manual download required" }
-  }
-
   logger.log("main", "updater.download.start", { version })
   desktopShellLatestVersion = version
+
   try {
-    // electron-updater starts the download asynchronously and emits
-    // download-progress / update-downloaded events. We let those events
-    // drive the renderer; the eventual quitAndInstall lives in the
-    // update-downloaded handler so the UI gets a chance to render the
-    // "Restarting" state before the app exits.
-    await autoUpdater.downloadUpdate()
+    if (!desktopShellDownloadInFlight) {
+      desktopShellDownloadInFlight = (async () => {
+        const release = await fetchLatestDesktopRelease()
+        if (!release) throw new Error("No desktop release found")
+        const asset = matchDesktopReleaseAsset(release)
+        if (!asset) throw new Error(`No matching asset found for ${getDesktopPlatformLabel()}/${getDesktopArch()}`)
+        const updateDirPrefix = path.join(app.getPath("temp"), `codeplane-update-${version}-`)
+        const updateDir = mkdtempSync(updateDirPrefix)
+        const archiveExt = getDesktopAssetExtension()
+        const archivePath = path.join(updateDir, `update.${archiveExt}`)
+        logger.log("main", "updater.download.fetch", { url: asset.url, size: asset.size })
+        await downloadReleaseAsset(asset.url, archivePath, (percent, transferred, total) => {
+          broadcastUpdater("updater:download-progress", { percent, transferred, total })
+        })
+        logger.log("main", "updater.download.extracting", { archivePath, updateDir })
+        await extractAsset(archivePath, updateDir)
+        const extractedAppPath = getExtractedAppPath(updateDir)
+        if (!extractedAppPath || !existsSync(extractedAppPath)) {
+          throw new Error(`Extracted app not found in ${updateDir}`)
+        }
+        return { assetUrl: asset.url, destDir: updateDir, extractedAppPath }
+      })()
+    }
+    const { destDir, extractedAppPath } = await desktopShellDownloadInFlight
+    desktopShellDownloadInFlight = undefined
+    desktopShellStagedUpdate = { destDir, extractedAppPath }
+    broadcastUpdater("updater:update-downloaded", { version })
+    // Give the renderer a moment to show "Restarting" state, then swap+relaunch
+    setTimeout(() => quitAndInstallShellUpdate("download-complete"), 1_500)
     return { ok: true as const }
   } catch (error) {
+    desktopShellDownloadInFlight = undefined
+    desktopShellStagedUpdate = undefined
     const errorMessage = error instanceof Error ? error.message : String(error)
     logger.log("main", "updater.download.error", { error: errorMessage })
-    // Squirrel.Mac's code-signature failure surfaces both as an autoUpdater
-    // 'error' event (handled in setupAutoUpdater, which routes the user to
-    // manual download) AND a downloadUpdate() rejection. The event fires
-    // synchronously before this catch runs and latches manualDownloadOnly,
-    // so don't broadcast 'updater:error' here — it would clobber the
-    // 'manual-required' state the renderer just transitioned into.
-    if (desktopShellManualDownloadOnly || isCodeSignatureValidationError(errorMessage)) {
-      return { ok: false as const, error: errorMessage }
-    }
     broadcastUpdater("updater:error", errorMessage)
     return { ok: false as const, error: errorMessage }
   }
@@ -2255,16 +2386,32 @@ function quitAndInstallShellUpdate(reason: string) {
   if (shellQuitAndInstallScheduled) return
   shellQuitAndInstallScheduled = true
   logger.log("main", "updater.quit-and-install", { reason })
-  // isSilent=true skips the elevation dialog where applicable; the second
-  // arg forces a relaunch so the user lands back in the app on the new
-  // version. The before-quit handler still gets a chance to stop local
-  // instances cleanly.
-  try {
-    autoUpdater.quitAndInstall(false, true)
-  } catch (error) {
-    logger.log("main", "updater.quit-and-install.error", { error })
+
+  const staged = desktopShellStagedUpdate
+  if (!staged) {
+    logger.log("main", "updater.quit-and-install.no-staged-update", {})
     shellQuitAndInstallScheduled = false
+    return
   }
+
+  const oldAppPath = getDesktopAppInstallPath()
+  const swapScript = stageSwapScript()
+  logger.log("main", "updater.swap.spawn", { oldAppPath, newAppPath: staged.extractedAppPath, swapScript })
+  const args = [String(process.pid), oldAppPath, staged.extractedAppPath]
+  try {
+    spawn(swapScript, args, {
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+    }).unref()
+  } catch (error) {
+    logger.log("main", "updater.swap.error", { error })
+    shellQuitAndInstallScheduled = false
+    return
+  }
+
+  // Give the swap script process a moment to start, then quit.
+  setTimeout(() => app.quit(), 200)
 }
 
 function setupAutoUpdater() {
@@ -2278,74 +2425,6 @@ function setupAutoUpdater() {
   if (!app.isPackaged) {
     logger.log("main", "updater.disabled.unpacked", {})
     return
-  }
-
-  // Drive the install ourselves once the user clicks "Install update", and
-  // restart automatically when the download finishes so changes apply.
-  autoUpdater.autoDownload = false
-  autoUpdater.autoInstallOnAppQuit = true
-  autoUpdater.logger = {
-    info: (...args: unknown[]) => logger.log("main", "updater.info", { args }),
-    warn: (...args: unknown[]) => logger.log("main", "updater.warn", { args }),
-    error: (...args: unknown[]) => logger.log("main", "updater.error", { args }),
-    debug: (...args: unknown[]) => logger.log("main", "updater.debug", { args }),
-  }
-
-  autoUpdater.on("update-available", (info: UpdateInfo) => {
-    desktopShellLatestVersion = info.version
-    if (compareVersions(info.version, app.getVersion()) <= 0) {
-      logger.log("main", "updater.update-available.ignored-current", { current: app.getVersion(), latest: info.version })
-      broadcastUpdater("updater:update-not-available", { version: info.version })
-      return
-    }
-    broadcastUpdater("updater:update-available", { version: info.version })
-  })
-  autoUpdater.on("update-not-available", (info: UpdateInfo) => {
-    broadcastUpdater("updater:update-not-available", { version: info.version })
-  })
-  autoUpdater.on("download-progress", (progress: ProgressInfo) => {
-    broadcastUpdater("updater:download-progress", {
-      percent: progress.percent,
-      transferred: progress.transferred,
-      total: progress.total,
-    })
-  })
-  autoUpdater.on("update-downloaded", (info: UpdateDownloadedEvent) => {
-    desktopShellLatestVersion = info.version
-    logger.log("main", "updater.download.success", { version: info.version })
-    broadcastUpdater("updater:update-downloaded", { version: info.version })
-    // Give the renderer a moment to render the "Restarting" state before
-    // the app exits, then relaunch on the new shell so changes apply.
-    setTimeout(() => quitAndInstallShellUpdate("download-complete"), 1_500)
-  })
-  autoUpdater.on("error", (error: Error) => {
-    const message = error?.message ?? String(error)
-    logger.log("main", "updater.error", { error: message })
-    if (process.platform === "darwin" && isCodeSignatureValidationError(message)) {
-      desktopShellManualDownloadOnly = true
-      const version = desktopShellLatestVersion ?? null
-      const url = version ? desktopReleaseDownloadUrl(version) : "https://github.com/devinoldenburg/codeplane/releases/latest"
-      logger.log("main", "updater.requires-manual-download", { version, url, message })
-      broadcastUpdater("updater:requires-manual-download", { version, url, reason: message })
-      return
-    }
-    broadcastUpdater("updater:error", message)
-  })
-
-  // Preemptively flip the manual-download latch on unsigned mac builds so the
-  // very first check goes straight to the manual-download UI instead of a
-  // guaranteed-to-fail autoUpdater.downloadUpdate() attempt. The detection
-  // runs in the background — runRuntimeUpdateCheck below will pick up the
-  // updated flag on its own 5s-delayed first run.
-  if (process.platform === "darwin") {
-    void macOsHasDeveloperIdSignature().then((signed) => {
-      if (signed) {
-        logger.log("main", "updater.signature.developer-id", {})
-        return
-      }
-      desktopShellManualDownloadOnly = true
-      logger.log("main", "updater.signature.preempted-unsigned", {})
-    })
   }
 
   setTimeout(() => void runRuntimeUpdateCheck().catch(() => undefined), 5_000)

@@ -40,7 +40,6 @@ const blockLangs = new Set([
   "progress",
   "badge",
   "quote",
-  "table",
   "file-tree",
   "tree",
   "image-grid",
@@ -244,8 +243,6 @@ function RichBlock(props: { lang: string; code: string }) {
       return <TimelineBlock code={props.code} />
     case "quote":
       return <QuoteBlock code={props.code} />
-    case "table":
-      return <TableBlock code={props.code} />
     case "file-tree":
     case "tree":
       return <FileTreeBlock code={props.code} />
@@ -434,7 +431,7 @@ function BarChartBody(props: {
       <For each={data}>
         {(v, i) => {
           const fillCount = max > 0 ? Math.round((v / max) * barW) : 0
-          const fill = "█".repeat(fillCount)
+          const fill = "▌".repeat(fillCount)
           const empty = "░".repeat(barW - fillCount)
           const label = (props.labels[i()] ?? "").padEnd(labelW, " ")
           const color = props.colors[0] ?? theme.text
@@ -477,10 +474,7 @@ function PieChartBody(props: {
               <span style={{ fg: theme.textMuted }}>{label}  </span>
               <span style={{ fg: color }}>{fill}</span>
               <span style={{ fg: theme.borderSubtle }}>{empty}</span>
-              <span style={{ fg: theme.text }}>  {pct.toFixed(0)}%</span>
-              <Show when={!isPercent}>
-                <span style={{ fg: theme.textMuted }}>  ({props.fmt(v)})</span>
-              </Show>
+              <span style={{ fg: theme.text }}>  {pct.toFixed(0)}% {props.fmt(v)}</span>
             </text>
           )
         }}
@@ -593,9 +587,10 @@ function KpiBlock(props: { code: string }) {
                   : "flat"
               : "flat")
           const color = trend === "up" ? theme.success : trend === "down" ? theme.error : theme.textMuted
+          const trendArrow = trend === "up" ? "▲" : trend === "down" ? "▼" : "—"
           const valueText =
             typeof tile.value === "number" ? formatNumber(tile.value) : (tile.value ?? "—")
-          const deltaParts: string[] = []
+          const deltaParts: string[] = [`${trendArrow}`]
           if (typeof tile.delta === "number") deltaParts.push(`${tile.delta > 0 ? "+" : ""}${formatNumber(tile.delta)}`)
           if (typeof tile.deltaPercent === "number")
             deltaParts.push(`${tile.deltaPercent > 0 ? "+" : ""}${tile.deltaPercent.toFixed(1)}%`)
@@ -611,7 +606,7 @@ function KpiBlock(props: { code: string }) {
               paddingRight={2}
               paddingTop={1}
               paddingBottom={1}
-              border={["left"]}
+              border={["left", "bottom"]}
               customBorderChars={SplitBorder.customBorderChars}
               borderColor={color}
               backgroundColor={theme.backgroundPanel}
@@ -752,13 +747,13 @@ function ChoiceBlock(props: { code: string; multi: boolean }) {
 // ---------------------------------------------------------------------------
 
 const calloutAliases: Record<string, { variant: string; defaultTitle: string; icon: string }> = {
-  callout: { variant: "info", defaultTitle: "Info", icon: "ℹ" },
-  note: { variant: "info", defaultTitle: "Note", icon: "ℹ" },
-  info: { variant: "info", defaultTitle: "Info", icon: "ℹ" },
-  tip: { variant: "tip", defaultTitle: "Tip", icon: "✦" },
-  important: { variant: "info", defaultTitle: "Important", icon: "❗" },
-  warning: { variant: "warning", defaultTitle: "Warning", icon: "⚠" },
-  caution: { variant: "warning", defaultTitle: "Caution", icon: "⚠" },
+  callout: { variant: "info", defaultTitle: "Info", icon: "i" },
+  note: { variant: "info", defaultTitle: "Note", icon: "•" },
+  info: { variant: "info", defaultTitle: "Info", icon: "i" },
+  tip: { variant: "tip", defaultTitle: "Tip", icon: "*" },
+  important: { variant: "info", defaultTitle: "Important", icon: "•" },
+  warning: { variant: "warning", defaultTitle: "Warning", icon: "!" },
+  caution: { variant: "warning", defaultTitle: "Caution", icon: "!" },
   danger: { variant: "danger", defaultTitle: "Danger", icon: "✕" },
   error: { variant: "danger", defaultTitle: "Error", icon: "✕" },
   success: { variant: "success", defaultTitle: "Success", icon: "✓" },
@@ -937,7 +932,7 @@ function ProgressBlock(props: { code: string }) {
           const pct = max > 0 ? (value / max) * 100 : 0
           const w = 36
           const fillCount = Math.round((pct / 100) * w)
-          const fill = "█".repeat(fillCount)
+          const fill = "▓".repeat(fillCount)
           const empty = "░".repeat(w - fillCount)
           const color = colors[bar.variant ?? "default"] ?? theme.primary
           const valueLabel = max === 100 ? `${pct.toFixed(0)}%` : `${value} / ${max}`
@@ -1088,125 +1083,6 @@ function QuoteBlock(props: { code: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// table
-// ---------------------------------------------------------------------------
-
-interface TableConfig {
-  caption?: string
-  columns?: Array<{ key?: string; label?: string; align?: string; format?: string; currency?: string }>
-  rows?: Array<Record<string, unknown> | unknown[]>
-  total?: boolean
-}
-
-function TableBlock(props: { code: string }) {
-  const { theme } = useTheme()
-  const cfg = tryParse<TableConfig>(props.code)
-  if (!cfg) return <ErrorBlock kind="table" message="invalid JSON" />
-  const cols = cfg.columns ?? []
-  const rows = cfg.rows ?? []
-  if (cols.length === 0) return <ErrorBlock kind="table" message="no columns" />
-
-  const cellOf = (row: Record<string, unknown> | unknown[], col: NonNullable<TableConfig["columns"]>[number], idx: number): unknown => {
-    if (Array.isArray(row)) return row[idx]
-    if (col.key) return (row as Record<string, unknown>)[col.key]
-    return undefined
-  }
-
-  const fmt = (v: unknown, col: NonNullable<TableConfig["columns"]>[number]): string => {
-    if (v === undefined || v === null) return ""
-    if (typeof v === "number") {
-      if (col.format === "currency") return formatCurrency(v, col.currency)
-      if (col.format === "percent") return `${(v * 100).toFixed(0)}%`
-      if (col.format === "number") return v.toLocaleString()
-      return String(v)
-    }
-    return stripInline(String(v))
-  }
-
-  const dataRows = rows.map((row) => cols.map((col, i) => fmt(cellOf(row, col, i), col)))
-  const headerCells = cols.map((c) => c.label ?? c.key ?? "")
-
-  const totalsRow: string[] = cfg.total
-    ? cols.map((col, idx) => {
-        if (col.format === "number" || col.format === "currency") {
-          let sum = 0
-          for (const row of rows) {
-            const v = cellOf(row, col, idx)
-            if (typeof v === "number") sum += v
-          }
-          return fmt(sum, col)
-        }
-        return idx === 0 ? "Total" : ""
-      })
-    : []
-
-  const widths = cols.map((_, i) => {
-    let w = headerCells[i]!.length
-    for (const r of dataRows) w = Math.max(w, r[i]!.length)
-    if (cfg.total) w = Math.max(w, totalsRow[i]!.length)
-    return w
-  })
-
-  const align = (s: string, w: number, a: string) => {
-    if (a === "right") return s.padStart(w, " ")
-    if (a === "center") return s.padStart(Math.floor((w + s.length) / 2), " ").padEnd(w, " ")
-    return s.padEnd(w, " ")
-  }
-
-  return (
-    <BlockCard title={cfg.caption}>
-      <text>
-        <For each={headerCells}>
-          {(h, i) => {
-            const a = cols[i()]?.align ?? "left"
-            return (
-              <span style={{ fg: theme.textMuted }}>
-                {align(h.toUpperCase(), widths[i()]!, a)}
-                {i() < headerCells.length - 1 ? "  " : ""}
-              </span>
-            )
-          }}
-        </For>
-      </text>
-      <text fg={theme.borderSubtle}>{"─".repeat(widths.reduce((a, b) => a + b + 2, 0))}</text>
-      <For each={dataRows}>
-        {(row) => (
-          <text>
-            <For each={row}>
-              {(cell, i) => {
-                const a = cols[i()]?.align ?? "left"
-                return (
-                  <span style={{ fg: theme.text }}>
-                    {align(cell, widths[i()]!, a)}
-                    {i() < row.length - 1 ? "  " : ""}
-                  </span>
-                )
-              }}
-            </For>
-          </text>
-        )}
-      </For>
-      <Show when={cfg.total}>
-        <text fg={theme.borderSubtle}>{"─".repeat(widths.reduce((a, b) => a + b + 2, 0))}</text>
-        <text>
-          <For each={totalsRow}>
-            {(cell, i) => {
-              const a = cols[i()]?.align ?? "left"
-              return (
-                <span style={{ fg: theme.text, bold: true }}>
-                  {align(cell, widths[i()]!, a)}
-                  {i() < totalsRow.length - 1 ? "  " : ""}
-                </span>
-              )
-            }}
-          </For>
-        </text>
-      </Show>
-    </BlockCard>
-  )
-}
-
-// ---------------------------------------------------------------------------
 // file-tree
 // ---------------------------------------------------------------------------
 
@@ -1316,6 +1192,9 @@ function ComparisonBlock(props: { code: string }) {
         <box flexDirection="column" flexGrow={1} flexBasis={0}>
           <text fg={theme.textMuted}>{(left.label ?? "Before").toUpperCase()}</text>
           <text fg={theme.text}>{stripInline(left.content ?? "")}</text>
+        </box>
+        <box width={1} flexShrink={0}>
+          <text fg={theme.borderSubtle}>│</text>
         </box>
         <box flexDirection="column" flexGrow={1} flexBasis={0}>
           <text fg={theme.textMuted}>{(right.label ?? "After").toUpperCase()}</text>

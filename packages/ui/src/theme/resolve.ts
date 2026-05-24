@@ -43,11 +43,11 @@ export function resolveThemeVariant(variant: ThemeVariant, isDark: boolean): Res
     return shift(value, { l: isDark ? 0.034 : -0.024, c: isDark ? 1.3 : 1.18 })
   }
   const modified = () => {
-    if (!colors.compact) return isDark ? "#ffba92" : "#FF8C00"
+    if (!colors.compact) return isDark ? "#d49a73" : "#b86c3f"
     const warningHue = hexToOklch(colors.warning).h
     const deleteHue = hexToOklch(colors.diffDelete ?? colors.error).h
     const delta = Math.abs(((((deleteHue - warningHue) % 360) + 540) % 360) - 180)
-    if (delta < 48) return isDark ? "#ffba92" : "#FF8C00"
+    if (delta < 48) return isDark ? "#d49a73" : "#b86c3f"
     return content(colors.warning, warning)
   }
   const surface = (
@@ -379,38 +379,38 @@ export function resolveThemeVariant(variant: ThemeVariant, isDark: boolean): Res
   if (!colors.compact) {
     tokens["syntax-comment"] = "var(--text-weak)"
     tokens["syntax-regexp"] = "var(--text-base)"
-    tokens["syntax-string"] = isDark ? "#00ceb9" : "#006656"
+    tokens["syntax-string"] = isDark ? "#75b5a6" : "#367d6f"
     tokens["syntax-keyword"] = "var(--text-weak)"
-    tokens["syntax-primitive"] = isDark ? "#ffba92" : "#fb4804"
+    tokens["syntax-primitive"] = isDark ? "#d49a73" : "#9a623e"
     tokens["syntax-operator"] = isDark ? "var(--text-weak)" : "var(--text-base)"
     tokens["syntax-variable"] = "var(--text-strong)"
-    tokens["syntax-property"] = isDark ? "#ff9ae2" : "#ed6dc8"
-    tokens["syntax-type"] = isDark ? "#ecf58c" : "#596600"
-    tokens["syntax-constant"] = isDark ? "#93e9f6" : "#007b80"
+    tokens["syntax-property"] = isDark ? "#c9a3c2" : "#826996"
+    tokens["syntax-type"] = isDark ? "#d6bd78" : "#846d35"
+    tokens["syntax-constant"] = isDark ? "#88c6c9" : "#2f7a83"
     tokens["syntax-punctuation"] = isDark ? "var(--text-weak)" : "var(--text-base)"
     tokens["syntax-object"] = "var(--text-strong)"
     tokens["syntax-success"] = success[10]
     tokens["syntax-warning"] = amber[10]
     tokens["syntax-critical"] = error[10]
-    tokens["syntax-info"] = isDark ? "#93e9f6" : "#0092a8"
+    tokens["syntax-info"] = isDark ? "#88c6c9" : "#2f7a83"
     tokens["syntax-diff-add"] = diffAdd[10]
     tokens["syntax-diff-delete"] = diffDelete[10]
-    tokens["syntax-diff-unknown"] = "#ff0000"
+    tokens["syntax-diff-unknown"] = isDark ? "#b399cf" : "#8c77b5"
 
-    tokens["markdown-heading"] = isDark ? "#9d7cd8" : "#d68c27"
-    tokens["markdown-text"] = isDark ? "#eeeeee" : "#1a1a1a"
-    tokens["markdown-link"] = isDark ? "#fab283" : "#3b7dd8"
-    tokens["markdown-link-text"] = isDark ? "#56b6c2" : "#318795"
-    tokens["markdown-code"] = isDark ? "#7fd88f" : "#3d9a57"
-    tokens["markdown-block-quote"] = isDark ? "#e5c07b" : "#b0851f"
-    tokens["markdown-emph"] = isDark ? "#e5c07b" : "#b0851f"
-    tokens["markdown-strong"] = isDark ? "#f5a742" : "#d68c27"
-    tokens["markdown-horizontal-rule"] = isDark ? "#808080" : "#8a8a8a"
-    tokens["markdown-list-item"] = isDark ? "#fab283" : "#3b7dd8"
-    tokens["markdown-list-enumeration"] = isDark ? "#56b6c2" : "#318795"
-    tokens["markdown-image"] = isDark ? "#fab283" : "#3b7dd8"
-    tokens["markdown-image-text"] = isDark ? "#56b6c2" : "#318795"
-    tokens["markdown-code-block"] = isDark ? "#eeeeee" : "#1a1a1a"
+    tokens["markdown-heading"] = isDark ? "#b399cf" : "#8a6f3c"
+    tokens["markdown-text"] = isDark ? "#ebe7df" : "#241f1b"
+    tokens["markdown-link"] = isDark ? "#c9a37b" : "#4f7fbc"
+    tokens["markdown-link-text"] = isDark ? "#88c6c9" : "#2f7a83"
+    tokens["markdown-code"] = isDark ? "#75b584" : "#4f9560"
+    tokens["markdown-block-quote"] = isDark ? "#d6bd78" : "#846d35"
+    tokens["markdown-emph"] = isDark ? "#d6bd78" : "#846d35"
+    tokens["markdown-strong"] = isDark ? "#d49a73" : "#9a623e"
+    tokens["markdown-horizontal-rule"] = isDark ? "#867e74" : "#8b857e"
+    tokens["markdown-list-item"] = isDark ? "#c9a37b" : "#4f7fbc"
+    tokens["markdown-list-enumeration"] = isDark ? "#88c6c9" : "#2f7a83"
+    tokens["markdown-image"] = isDark ? "#c9a37b" : "#4f7fbc"
+    tokens["markdown-image-text"] = isDark ? "#88c6c9" : "#2f7a83"
+    tokens["markdown-code-block"] = isDark ? "#ebe7df" : "#241f1b"
   }
 
   tokens["avatar-background-pink"] = isDark ? "#501b3f" : "#feeef8"

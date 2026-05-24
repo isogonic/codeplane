@@ -153,31 +153,6 @@ function TimelineFx(p: { code: string }) {
   )
 }
 
-function TableFx(p: { code: string }) {
-  const cfg = tryParse<{ caption?: string; columns?: Array<{ label?: string; key?: string }>; rows?: Array<Record<string, unknown>> }>(p.code)
-  const cols = cfg?.columns ?? []
-  return (
-    <box flexDirection="column">
-      <Show when={cfg?.caption}>
-        <text>{cfg!.caption}</text>
-      </Show>
-      <text>
-        <For each={cols}>{(c) => <span>{(c.label ?? c.key ?? "").padEnd(14)}</span>}</For>
-      </text>
-      <text>{"─".repeat(14 * cols.length)}</text>
-      <For each={cfg?.rows ?? []}>
-        {(row) => (
-          <text>
-            <For each={cols}>
-              {(c) => <span>{String((row as Record<string, unknown>)[c.key ?? ""] ?? "").padEnd(14)}</span>}
-            </For>
-          </text>
-        )}
-      </For>
-    </box>
-  )
-}
-
 function FileTreeFx(p: { code: string }) {
   type Node = { name?: string; children?: Node[]; status?: string; hint?: string }
   const root = tryParse<Node[]>(p.code) ?? []
@@ -315,8 +290,6 @@ function StaticDispatch(props: { lang: string; code: string }) {
       return <ProgressFx code={props.code} />
     case "timeline":
       return <TimelineFx code={props.code} />
-    case "table":
-      return <TableFx code={props.code} />
     case "file-tree":
       return <FileTreeFx code={props.code} />
     case "badge":
@@ -416,22 +389,6 @@ const samples: Array<{ name: string; md: string }> = [
       { time: "09:00", title: "Canary", status: "pending" },
       { time: "08:42", title: "Migration check", status: "failed" },
     ]), "```"].join("\n"),
-  },
-  {
-    name: "table",
-    md: ['```table', JSON.stringify({
-      caption: "Q2 revenue by region",
-      columns: [
-        { key: "region", label: "Region" },
-        { key: "users", label: "Users" },
-        { key: "revenue", label: "Revenue" },
-      ],
-      rows: [
-        { region: "Americas", users: 12840, revenue: 184320 },
-        { region: "EMEA", users: 8214, revenue: 102450 },
-        { region: "APAC", users: 6920, revenue: 84120 },
-      ],
-    }), "```"].join("\n"),
   },
   {
     name: "file-tree",

@@ -13,10 +13,10 @@ import { Tooltip } from "@codeplane-ai/ui/tooltip"
 import { showToast } from "@codeplane-ai/ui/toast"
 import { useDialog } from "@codeplane-ai/ui/context/dialog"
 import { useGlobalSync } from "@/context/global-sync"
+import { useGlobalSDK } from "@/context/global-sdk"
 import { useLanguage } from "@/context/language"
 import { useServer } from "@/context/server"
 import { useProviders } from "@/hooks/use-providers"
-import type { AgentConfig } from "@codeplane-ai/sdk/v2/client"
 import {
   CronClient,
   type CronApiError,
@@ -28,6 +28,7 @@ import {
 } from "@/utils/cron-client"
 import { base64Encode } from "@codeplane-ai/shared/util/encode"
 import { decode64 } from "@/utils/base64"
+import { cronAgentOptions, type CronAgentOption } from "./cron-agents"
 import { cronProjectForDirectory, cronProjectIDForRoute, cronTaskInScope, type CronProjectScope } from "./cron-scope"
 
 const CRON_QUERY_KEY = ["cron", "tasks"] as const
@@ -410,7 +411,6 @@ function isValidCronExpression(input: string): { ok: true } | { ok: false; reaso
 }
 
 type ModelOption = { providerID: string; modelID: string; label: string; group: string }
-type AgentOption = { name: string; label: string }
 
 function CronEditorDialog(props: {
   project: CronProject
@@ -422,23 +422,28 @@ function CronEditorDialog(props: {
   const server = useServer()
   const providers = useProviders()
   const globalSync = useGlobalSync()
+  const globalSDK = useGlobalSDK()
   const httpServer = createMemo(() => server.current?.http)
 
-  const isAgentConfig = (value: unknown): value is AgentConfig =>
-    !!value && typeof value === "object" && !Array.isArray(value)
+  const agentsQuery = useQuery(() => ({
+    queryKey: ["cron", "agents", server.scope.key, props.project.worktree],
+    queryFn: async () => {
+      const response = await globalSDK
+        .createClient({ directory: props.project.worktree, throwOnError: true })
+        .app.agents()
+      return response.data ?? []
+    },
+    enabled: !!httpServer() && !!props.project.worktree,
+    staleTime: 5_000,
+  }))
 
-  const agentOptions = createMemo<AgentOption[]>(() => {
-    const fromMode = Object.entries(globalSync.data.config.mode ?? {})
-    const fromAgent = Object.entries(globalSync.data.config.agent ?? {})
-    const merged = new Map<string, AgentConfig>()
-    for (const [name, cfg] of fromMode) if (isAgentConfig(cfg)) merged.set(name, cfg)
-    for (const [name, cfg] of fromAgent) if (isAgentConfig(cfg)) merged.set(name, cfg)
-    const items = [...merged.entries()]
-      .filter(([, cfg]) => (cfg.mode ?? "primary") !== "subagent" && cfg.disable !== true)
-      .map(([name]) => ({ name, label: name }))
-      .sort((a, b) => a.label.localeCompare(b.label))
-    return [{ name: "", label: language.t("common.default") }, ...items]
-  })
+  const agentOptions = createMemo<CronAgentOption[]>(() =>
+    cronAgentOptions({
+      agents: agentsQuery.data,
+      config: globalSync.data.config,
+      defaultLabel: language.t("common.default"),
+    }),
+  )
 
   const modelOptions = createMemo<ModelOption[]>(() => {
     const result: ModelOption[] = []
@@ -693,7 +698,7 @@ function CronEditorDialog(props: {
             />
             <div class="flex flex-col gap-2">
               <label class="text-12-medium text-text-weak">{language.t("cron.field.agent")}</label>
-              <Select<AgentOption>
+              <Select<CronAgentOption>
                 variant="ghost"
                 size="large"
                 triggerVariant="form"

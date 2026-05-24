@@ -362,39 +362,6 @@ export const SelectTool = defineBlock<typeof ChoiceParameters>({
 })
 
 // ---------------------------------------------------------------------------
-// table — rich table with formatting / totals
-// ---------------------------------------------------------------------------
-
-const TableColumn = Schema.Struct({
-  key: Schema.String.annotate({ description: "Property key in each row object." }),
-  label: Schema.optional(Schema.String).annotate({ description: "Column header (defaults to key)." }),
-  align: Schema.optional(Schema.Literals(["left", "center", "right"])).annotate({
-    description: "Cell alignment (right is conventional for numbers).",
-  }),
-  format: Schema.optional(Schema.Literals(["number", "currency", "percent"])).annotate({
-    description: "Numeric formatting.",
-  }),
-  currency: Schema.optional(Schema.String).annotate({ description: "ISO 4217 code when format='currency'." }),
-})
-
-const TableParameters = Schema.Struct({
-  caption: Schema.optional(Schema.String).annotate({ description: "Table caption shown above the data." }),
-  columns: Schema.mutable(Schema.Array(TableColumn)).annotate({ description: "Column definitions." }),
-  rows: Schema.mutable(Schema.Array(Schema.Record(Schema.String, Schema.Unknown))).annotate({
-    description: "Row data — each object's keys match the column `key` fields.",
-  }),
-  total: Schema.optional(Schema.Boolean).annotate({ description: "Render a totals row at the bottom (sums numeric columns)." }),
-})
-
-export const TableTool = defineBlock<typeof TableParameters>({
-  id: "table",
-  parameters: TableParameters,
-  title: (p) => `table · ${p.rows.length}×${p.columns.length}`,
-  description:
-    "Render a rich table inline in the chat with column alignment, formatting, and optional totals row. Use for tabular numeric data where alignment and totals matter (financial summaries, perf stats, comparisons). For small qualitative tables, plain markdown table syntax (`|...|`) is fine.",
-})
-
-// ---------------------------------------------------------------------------
 // file-tree — directory tree with status
 // ---------------------------------------------------------------------------
 

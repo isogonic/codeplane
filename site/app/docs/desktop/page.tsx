@@ -5,17 +5,17 @@ import { DocsLayout } from "@/components/docs-sidebar"
 
 export const metadata = {
   title: "Desktop",
-  description: "Native macOS, Windows, and Linux desktop app for Codeplane. Auto-updates via electron-updater; deep links into the same self-hosted server.",
+  description: "Native macOS, Windows, and Linux desktop app for Codeplane. Self-updating from GitHub Releases without code-signing requirements.",
   alternates: { canonical: "/docs/desktop/" },
   openGraph: {
     title: "Desktop · Codeplane",
-    description: "Native macOS, Windows, and Linux desktop app for Codeplane. Auto-updates via electron-updater; deep links into the same self-hosted server.",
+    description: "Native macOS, Windows, and Linux desktop app for Codeplane. Self-updating from GitHub Releases without code-signing requirements.",
     url: "/docs/desktop/",
     type: "article",
   },
   twitter: {
     title: "Desktop · Codeplane",
-    description: "Native macOS, Windows, and Linux desktop app for Codeplane. Auto-updates via electron-updater; deep links into the same self-hosted server.",
+    description: "Native macOS, Windows, and Linux desktop app for Codeplane. Self-updating from GitHub Releases without code-signing requirements.",
     card: "summary_large_image",
   },
 }
@@ -54,7 +54,7 @@ export default function Desktop() {
         </p>
 
         <h2>Updates</h2>
-        <p>The desktop app updates itself silently via electron-updater. On launch it checks GitHub Releases for a newer <code>latest-mac.yml</code> / <code>latest.yml</code> / <code>latest-linux.yml</code>, downloads the delta, and applies it the next time you quit + reopen.</p>
+        <p>The desktop app checks GitHub Releases for newer <code>v*-desktop</code> tags on launch and every hour. When an update is available, it downloads the platform archive directly, extracts it, and swaps the old app with the new one on restart — no code signing or notarization needed.</p>
 
         <h2>Native integrations</h2>
         <ul>

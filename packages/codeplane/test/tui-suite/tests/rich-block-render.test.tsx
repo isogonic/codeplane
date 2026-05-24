@@ -39,8 +39,6 @@ function StaticBox(props: { lang: string; code: string }) {
       return <TimelineFixture code={props.code} />
     case "quote":
       return <QuoteFixture code={props.code} />
-    case "table":
-      return <TableFixture code={props.code} />
     case "file-tree":
     case "tree":
       return <FileTreeFixture code={props.code} />
@@ -218,30 +216,6 @@ function QuoteFixture(props: { code: string }) {
       <Show when={cfg.author}>
         <text>— {cfg.author}</text>
       </Show>
-    </box>
-  )
-}
-
-function TableFixture(props: { code: string }) {
-  const cfg = tryParse<{ caption?: string; columns?: Array<{ key?: string; label?: string }>; rows?: Array<Record<string, unknown>> }>(props.code)
-  if (!cfg) return <text>table parse error</text>
-  const cols = cfg.columns ?? []
-  const rows = cfg.rows ?? []
-  return (
-    <box flexDirection="column" marginTop={1}>
-      <Show when={cfg.caption}>
-        <text>{cfg.caption}</text>
-      </Show>
-      <text>
-        <For each={cols}>{(c) => <span>{(c.label ?? c.key ?? "").toUpperCase()}  </span>}</For>
-      </text>
-      <For each={rows}>
-        {(row) => (
-          <text>
-            <For each={cols}>{(c) => <span>{String((row as Record<string, unknown>)[c.key ?? ""] ?? "")}  </span>}</For>
-          </text>
-        )}
-      </For>
     </box>
   )
 }
@@ -450,31 +424,6 @@ describe("tui rich-block render fixtures", () => {
       expect(text).toMatch(/❝/)
       expect(text).toMatch(/Hello world/)
       expect(text).toMatch(/Author/)
-    })
-  })
-
-  test("table renders headers and rows", async () => {
-    const md = [
-      "```table",
-      JSON.stringify({
-        caption: "Sales",
-        columns: [
-          { key: "region", label: "Region" },
-          { key: "amount", label: "Amount" },
-        ],
-        rows: [
-          { region: "EMEA", amount: 100 },
-          { region: "APAC", amount: 200 },
-        ],
-      }),
-      "```",
-    ].join("\n")
-    await withHarness(() => <RenderFixture md={md} />, async (h) => {
-      const text = h.frame().text
-      expect(text).toMatch(/Sales/)
-      expect(text).toMatch(/REGION/)
-      expect(text).toMatch(/AMOUNT/)
-      expect(text).toMatch(/EMEA/)
     })
   })
 

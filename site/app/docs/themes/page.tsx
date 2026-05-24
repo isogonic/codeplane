@@ -4,17 +4,17 @@ import { DocsLayout } from "@/components/docs-sidebar"
 
 export const metadata = {
   title: "Themes",
-  description: "Strict light and dark themes for Codeplane — and how the monochrome OKLCH palette is wired through the shared UI.",
+  description: "Strict light and dark themes for Codeplane — and how the warm OKLCH palette is wired through the shared UI.",
   alternates: { canonical: "/docs/themes/" },
   openGraph: {
     title: "Themes · Codeplane",
-    description: "Strict light and dark themes for Codeplane — and how the monochrome OKLCH palette is wired through the shared UI.",
+    description: "Strict light and dark themes for Codeplane — and how the warm OKLCH palette is wired through the shared UI.",
     url: "/docs/themes/",
     type: "article",
   },
   twitter: {
     title: "Themes · Codeplane",
-    description: "Strict light and dark themes for Codeplane — and how the monochrome OKLCH palette is wired through the shared UI.",
+    description: "Strict light and dark themes for Codeplane — and how the warm OKLCH palette is wired through the shared UI.",
     card: "summary_large_image",
   },
 }
@@ -31,8 +31,8 @@ export default function Themes() {
         <p>Settings → Appearance → Color scheme.</p>
         <ul>
           <li><strong>System</strong> — follow the OS preference (<code>prefers-color-scheme</code>).</li>
-          <li><strong>Light</strong> — off-white canvas (oklch 0.985), pure-white elevated surfaces, near-black ink.</li>
-          <li><strong>Dark</strong> — deep canvas (oklch 0.115), clearly-lifted cards (oklch 0.185), near-white ink.</li>
+          <li><strong>Light</strong> — warm off-white canvas (oklch 0.982), softly lifted cards, warm near-black ink.</li>
+          <li><strong>Dark</strong> — warm charcoal canvas (oklch 0.14), lifted cards, soft near-white ink.</li>
         </ul>
         <p>Keyboard: <span className="kbd">Mod+Shift+S</span> cycles through the three.</p>
 

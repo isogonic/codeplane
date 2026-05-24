@@ -137,10 +137,12 @@ export function DocsLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="container">
-      <div className="grid items-start gap-6 py-8 lg:grid-cols-[260px_1fr] lg:gap-16 lg:py-12">
-        <DocsSidebar active={active} />
-        <article className="docs-prose max-w-prose min-w-0">{children}</article>
+    <div className="rail">
+      <div className="container">
+        <div className="grid items-start gap-6 py-8 lg:grid-cols-[260px_1fr] lg:gap-16 lg:py-12">
+          <DocsSidebar active={active} />
+          <article className="docs-prose max-w-prose min-w-0">{children}</article>
+        </div>
       </div>
     </div>
   )

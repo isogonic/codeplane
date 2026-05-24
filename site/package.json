@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "name": "@codeplane-ai/site",
-  "version": "28.21.34",
+  "version": "28.21.35",
   "description": "codeplane.cc public website — Next.js static export, deployed to GitHub Pages.",
   "license": "MIT",
   "private": true,

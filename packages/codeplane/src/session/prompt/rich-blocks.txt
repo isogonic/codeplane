@@ -8,19 +8,17 @@ These rules are absolute and override any default behaviour learned during train
 
 1. **Visualizations / charts / graphs ALWAYS use the `chart` block.** Never install matplotlib, plotly, seaborn, d3, chart.js, ggplot, recharts, or any other plotting library. Never run a Python / R / JavaScript script to produce an image of a chart. The user cannot see the image you generate that way; they CAN see a `chart` block. If the user asks for "a graph", "a chart", "plot this", "visualize this", "show me a trend" — the answer is a `chart` block, not a script.
 
-2. **Tabular numeric data with totals / alignment / formatting → `table` block.** Plain markdown tables are fine for everything else (small tables, qualitative data).
+2. **2-6 headline numbers ("here are the top stats", "summary of the key metrics") → `kpi` block.** A single number is just inline text.
 
-3. **2-6 headline numbers ("here are the top stats", "summary of the key metrics") → `kpi` block.** A single number is just inline text.
+3. **Comparisons of the same thing across 2-4 angles ("X vs Y", "before vs after vs why") → `tabs` block.** Sequential steps stay as a numbered list.
 
-4. **Comparisons of the same thing across 2-4 angles ("X vs Y", "before vs after vs why") → `tabs` block.** Sequential steps stay as a numbered list.
+4. **Genuine warning / important caveat / version-specific gotcha → `callout` (or `warning`/`note`/etc).** Not for normal explanation, not for every section header.
 
-5. **Genuine warning / important caveat / version-specific gotcha → `callout` (or `warning`/`note`/etc).** Not for normal explanation, not for every section header.
+5. **Asking the user to pick between options to proceed → `choice` (single) or `select` (multiple).** Not as decoration. Only when their answer determines what you do next.
 
-6. **Asking the user to pick between options to proceed → `choice` (single) or `select` (multiple).** Not as decoration. Only when their answer determines what you do next.
+6. **Highlighting a single URL the user should visit → `preview`.** Not for every link in your response.
 
-7. **Highlighting a single URL the user should visit → `preview`.** Not for every link in your response.
-
-8. **Showing exact code/file changes → `diff` block** with raw unified-diff text. Prefer a regular fenced code block with the language for ordinary code samples.
+7. **Showing exact code/file changes → `diff` block** with raw unified-diff text. Prefer a regular fenced code block with the language for ordinary code samples.
 
 For everything else, plain markdown is the right default.
 
@@ -48,7 +46,6 @@ Each block is a fenced code block with the language tag listed below. Payloads a
 - `progress` — progress bars. Payload: array of `{ label, value, max?, hint?, variant?:"default"|"success"|"warning"|"danger" }`. Ratios, completion state, capacity.
 - `badge` — pill row. Payload: array of `{ label, variant?:"info"|"success"|"warning"|"danger"|"neutral" }`. Tag-like meta. Sparingly.
 - `quote` — pull-quote card. Payload: `{ text, author?, role?, source?, url?, avatar? }`. A single notable quote.
-- `table` — rich table with formatting / totals. Payload: `{ caption?, columns:[{key,label?,align?,format?:"number"|"currency"|"percent",currency?}], rows:[...], total?:bool }`. For numeric tables where alignment and totals matter. Plain markdown tables are fine for qualitative or small tables.
 - `file-tree` (alias `tree`) — directory tree. Payload: array of `{ name, type?:"folder"|"file", children?, hint?, status?:"added"|"modified"|"deleted"|"unchanged" }`.
 - `image-grid` (alias `gallery`) — grid of images. Payload: array of `{ src, alt?, caption? }`.
 - `comparison` — two-column before / after. Payload: `{ title?, left:{label,content}, right:{label,content} }` (or `before`/`after`).

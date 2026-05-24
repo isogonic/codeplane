@@ -58,7 +58,6 @@ export type BlockLang =
   | "progress"
   | "badge"
   | "quote"
-  | "table"
   | "file-tree"
   | "tree"
   | "image-grid"
@@ -90,7 +89,6 @@ const blockLangs = new Set<string>([
   "progress",
   "badge",
   "quote",
-  "table",
   "file-tree",
   "tree",
   "image-grid",
@@ -157,9 +155,6 @@ export function renderMarkdownBlock(code: string, lang: string): string | null {
       break
     case "quote":
       html = safeRender("quote", () => renderQuote(parseJson(code)))
-      break
-    case "table":
-      html = safeRender("table", () => renderRichTable(parseJson(code)))
       break
     case "file-tree":
     case "tree":
@@ -1362,101 +1357,6 @@ function renderQuote(payload: unknown): string {
         ].join("")
       : "",
     `</figure>`,
-  ].join("")
-}
-
-// ---------------------------------------------------------------------------
-// rich table
-// ---------------------------------------------------------------------------
-
-interface TableConfig {
-  caption?: string
-  columns?: Array<{ key?: string; label?: string; align?: "left" | "right" | "center"; format?: "number" | "currency" | "percent"; currency?: string }>
-  rows?: Array<Record<string, unknown> | unknown[]>
-  total?: boolean
-  zebra?: boolean
-}
-
-function renderRichTable(payload: unknown): string {
-  if (!payload || typeof payload !== "object") throw new Error("table payload must be an object")
-  const cfg = payload as TableConfig
-  const cols = (cfg.columns ?? []).filter((c) => c)
-  if (cols.length === 0) throw new Error("table needs columns")
-  const rows = cfg.rows ?? []
-
-  const header = cols
-    .map(
-      (c) =>
-        `<th data-slot="table-th" style="text-align:${escape(c.align ?? "left")}">${escape(c.label ?? c.key ?? "")}</th>`,
-    )
-    .join("")
-
-  const cellValue = (row: Record<string, unknown> | unknown[], col: TableConfig["columns"] extends infer T ? T extends Array<infer U> ? U : never : never, index: number): unknown => {
-    if (Array.isArray(row)) return row[index]
-    if (col?.key) return (row as Record<string, unknown>)[col.key]
-    return undefined
-  }
-
-  const formatCell = (raw: unknown, col: NonNullable<TableConfig["columns"]>[number]): string => {
-    if (raw === undefined || raw === null) return ""
-    if (typeof raw === "number") {
-      if (col.format === "currency") {
-        try {
-          return new Intl.NumberFormat(undefined, { style: "currency", currency: col.currency ?? "USD" }).format(raw)
-        } catch {
-          return raw.toFixed(2)
-        }
-      }
-      if (col.format === "percent") return `${(raw * 100).toFixed(raw < 0.1 ? 1 : 0)}%`
-      if (col.format === "number") return raw.toLocaleString()
-      return String(raw)
-    }
-    return formatInline(String(raw))
-  }
-
-  const body = rows
-    .map((row) => {
-      const cells = cols
-        .map((col, idx) => {
-          const v = cellValue(row, col, idx)
-          const align = col.align ?? (typeof v === "number" ? "right" : "left")
-          return `<td data-slot="table-td" style="text-align:${escape(align)}">${formatCell(v, col)}</td>`
-        })
-        .join("")
-      return `<tr data-slot="table-tr">${cells}</tr>`
-    })
-    .join("")
-
-  let footer = ""
-  if (cfg.total) {
-    const totals = cols.map((col, idx) => {
-      if (col.format === "number" || col.format === "currency") {
-        let sum = 0
-        for (const row of rows) {
-          const v = cellValue(row, col, idx)
-          if (typeof v === "number") sum += v
-        }
-        const align = col.align ?? "right"
-        return `<td data-slot="table-td" style="text-align:${escape(align)};font-weight:500">${formatCell(sum, col)}</td>`
-      }
-      if (idx === 0)
-        return `<td data-slot="table-td" style="text-align:left;font-weight:500;color:var(--text-strong)">Total</td>`
-      return `<td data-slot="table-td"></td>`
-    })
-    footer = `<tr data-slot="table-tr" data-slot-row="total">${totals.join("")}</tr>`
-  }
-
-  return [
-    `<div data-component="markdown-block" data-block-type="table"${cfg.zebra ? ' data-zebra="true"' : ""}>`,
-    cfg.caption ? `<div data-slot="table-caption">${escape(cfg.caption)}</div>` : "",
-    `<div data-slot="table-scroll">`,
-    `<table data-slot="rich-table">`,
-    `<thead data-slot="table-thead"><tr>${header}</tr></thead>`,
-    `<tbody data-slot="table-tbody">${body}</tbody>`,
-    footer ? `<tfoot data-slot="table-tfoot">${footer}</tfoot>` : "",
-    `</table>`,
-    `</div>`,
-    `</div>`,
   ].join("")
 }
 

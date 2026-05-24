@@ -121,6 +121,47 @@ export const DEFAULT_THEMES: Record<string, ThemeJson> = {
   carbonfox,
 }
 
+const SOFTENED_THEME_COLOR_KEYS = [
+  "primary",
+  "secondary",
+  "accent",
+  "error",
+  "warning",
+  "success",
+  "info",
+  "borderActive",
+  "diffAdded",
+  "diffRemoved",
+  "diffContext",
+  "diffHunkHeader",
+  "diffHighlightAdded",
+  "diffHighlightRemoved",
+  "markdownHeading",
+  "markdownLink",
+  "markdownLinkText",
+  "markdownCode",
+  "markdownBlockQuote",
+  "markdownEmph",
+  "markdownStrong",
+  "markdownListItem",
+  "markdownListEnumeration",
+  "markdownImage",
+  "markdownImageText",
+  "syntaxKeyword",
+  "syntaxFunction",
+  "syntaxString",
+  "syntaxNumber",
+  "syntaxType",
+  "syntaxOperator",
+] as const satisfies readonly ThemeColor[]
+
+const SOFTENED_THEME_SURFACE_KEYS = [
+  "diffAddedBg",
+  "diffRemovedBg",
+  "diffAddedLineNumberBg",
+  "diffRemovedLineNumberBg",
+] as const satisfies readonly ThemeColor[]
+
 type State = {
   themes: Record<string, ThemeJson>
   mode: "dark" | "light"
@@ -195,7 +236,7 @@ export function upsertTheme(name: string, theme: unknown) {
   return true
 }
 
-export function resolveTheme(theme: ThemeJson, mode: "dark" | "light") {
+export function resolveTheme(theme: ThemeJson, mode: "dark" | "light", options?: { soften?: boolean }) {
   const defs = theme.defs ?? {}
   function resolveColor(c: ColorValue, chain: string[] = []): RGBA {
     if (c instanceof RGBA) return c
@@ -248,11 +289,102 @@ export function resolveTheme(theme: ThemeJson, mode: "dark" | "light") {
   // Handle thinkingOpacity - optional with default of 0.6
   const thinkingOpacity = theme.theme.thinkingOpacity ?? 0.6
 
-  return {
+  const result = {
     ...resolved,
     _hasSelectedListItemText: hasSelectedListItemText,
     thinkingOpacity,
   } as Theme
+
+  return options?.soften ? softenBuiltInTheme(result, mode) : result
+}
+
+type MutableTheme = { -readonly [Key in keyof Theme]: Theme[Key] }
+
+function isBuiltInTheme(theme: ThemeJson) {
+  return Object.values(DEFAULT_THEMES).some((item) => item === theme)
+}
+
+function softenBuiltInTheme(theme: Theme, mode: "dark" | "light"): Theme {
+  const softened = { ...theme } as MutableTheme
+  for (const key of SOFTENED_THEME_COLOR_KEYS) {
+    softened[key] = softenAccentColor(theme[key], mode)
+  }
+
+  const surface = theme.backgroundPanel.a > 0 ? theme.backgroundPanel : theme.backgroundElement
+  for (const key of SOFTENED_THEME_SURFACE_KEYS) {
+    softened[key] = softenSurfaceColor(theme[key], surface)
+  }
+
+  return softened
+}
+
+function softenAccentColor(color: RGBA, mode: "dark" | "light") {
+  if (color.a === 0) return color
+  const hsl = rgbToHsl(color.r, color.g, color.b)
+  if (hsl.s < 0.08) return color
+  const saturation = hsl.s * (mode === "dark" ? 0.68 : 0.62)
+  const targetLightness = mode === "dark" ? clamp(hsl.l, 0.55, 0.78) : clamp(hsl.l, 0.32, 0.58)
+  return hslToRgba({
+    h: hsl.h,
+    s: saturation,
+    l: hsl.l + (targetLightness - hsl.l) * 0.72,
+    a: color.a,
+  })
+}
+
+function softenSurfaceColor(color: RGBA, surface: RGBA) {
+  if (color.a === 0 || surface.a === 0) return color
+  return tint(color, surface, 0.38)
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value))
+}
+
+function rgbToHsl(r: number, g: number, b: number) {
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const l = (max + min) / 2
+
+  if (max === min) return { h: 0, s: 0, l }
+
+  const d = max - min
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+  const h =
+    max === r
+      ? (g - b) / d + (g < b ? 6 : 0)
+      : max === g
+        ? (b - r) / d + 2
+        : (r - g) / d + 4
+  return { h: h / 6, s, l }
+}
+
+function hslToRgba(input: { h: number; s: number; l: number; a: number }) {
+  if (input.s === 0) {
+    return RGBA.fromInts(
+      Math.round(input.l * 255),
+      Math.round(input.l * 255),
+      Math.round(input.l * 255),
+      Math.round(input.a * 255),
+    )
+  }
+
+  const hueToRgb = (p: number, q: number, t: number) => {
+    const hue = t < 0 ? t + 1 : t > 1 ? t - 1 : t
+    if (hue < 1 / 6) return p + (q - p) * 6 * hue
+    if (hue < 1 / 2) return q
+    if (hue < 2 / 3) return p + (q - p) * (2 / 3 - hue) * 6
+    return p
+  }
+
+  const q = input.l < 0.5 ? input.l * (1 + input.s) : input.l + input.s - input.l * input.s
+  const p = 2 * input.l - q
+  return RGBA.fromInts(
+    Math.round(hueToRgb(p, q, input.h + 1 / 3) * 255),
+    Math.round(hueToRgb(p, q, input.h) * 255),
+    Math.round(hueToRgb(p, q, input.h - 1 / 3) * 255),
+    Math.round(input.a * 255),
+  )
 }
 
 function ansiToRgba(code: number): RGBA {
@@ -417,18 +549,18 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
     const values = createMemo(() => {
       const active = store.themes[store.active]
       if (active) {
-        return resolveTheme(active, store.mode)
+        return resolveTheme(active, store.mode, { soften: isBuiltInTheme(active) })
       }
 
       const saved = kv.get("theme")
       if (typeof saved === "string") {
         const theme = store.themes[saved]
         if (theme) {
-          return resolveTheme(theme, store.mode)
+          return resolveTheme(theme, store.mode, { soften: isBuiltInTheme(theme) })
         }
       }
 
-      return resolveTheme(store.themes.opencode, store.mode)
+      return resolveTheme(store.themes.opencode, store.mode, { soften: isBuiltInTheme(store.themes.opencode) })
     })
 
     createEffect(() => {

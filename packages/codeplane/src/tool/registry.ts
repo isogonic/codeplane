@@ -25,7 +25,6 @@ import {
   TabsTool,
   ChoiceTool,
   SelectTool,
-  TableTool,
   FileTreeTool,
   ImageGridTool,
   ComparisonTool,
@@ -175,7 +174,6 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
     const tabs = yield* TabsTool
     const choice = yield* ChoiceTool
     const select = yield* SelectTool
-    const table = yield* TableTool
     const filetree = yield* FileTreeTool
     const imagegrid = yield* ImageGridTool
     const comparison = yield* ComparisonTool
@@ -320,7 +318,6 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
           tabs: Tool.init(tabs),
           choice: Tool.init(choice),
           select: Tool.init(select),
-          table: Tool.init(table),
           filetree: Tool.init(filetree),
           imagegrid: Tool.init(imagegrid),
           comparison: Tool.init(comparison),
@@ -371,7 +368,6 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
             tool.tabs,
             tool.choice,
             tool.select,
-            tool.table,
             tool.filetree,
             tool.imagegrid,
             tool.comparison,

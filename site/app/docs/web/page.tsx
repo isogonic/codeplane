@@ -62,7 +62,7 @@ codeplane serve --port 4096  # boot an instance only — visit http://localhost:
         </p>
 
         <h2>Themes</h2>
-        <p>Light, dark, system — via Settings → Appearance → Color scheme. Palette is the Logic <code>radix-nova</code> monochrome — see <Link href="/docs/themes/">Themes</Link>.</p>
+        <p>Light, dark, system — via Settings → Appearance → Color scheme. Palette is warm <code>radix-nova</code> — see <Link href="/docs/themes/">Themes</Link>.</p>
 
         <h2>Keybindings</h2>
         <p>All at <Link href="/docs/keybinds/">Keybinds</Link>. Most-useful: <span className="kbd">⌘K</span> quick switcher · <span className="kbd">⌘N</span> new session · <span className="kbd">⌘B</span> toggle sidebar · <span className="kbd">⌘/</span> search · <span className="kbd">⌘,</span> settings.</p>
