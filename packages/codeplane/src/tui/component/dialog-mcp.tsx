@@ -1,4 +1,4 @@
-import { createMemo, createSignal } from "solid-js"
+import { createMemo, createSignal, onMount } from "solid-js"
 import { useLocal } from "@/tui/context/local"
 import { useSync } from "@/tui/context/sync"
 import { map, pipe, entries, sortBy } from "remeda"
@@ -7,6 +7,8 @@ import { useTheme } from "../context/theme"
 import { Keybind } from "@/tui/_compat/keybind"
 import { TextAttributes } from "@opentui/core"
 import { useSDK } from "@/tui/context/sdk"
+import { useToast } from "@/tui/ui/toast"
+import { errorMessage } from "@/util/error"
 
 function Status(props: { enabled: boolean; loading: boolean }) {
   const { theme } = useTheme()
@@ -23,8 +25,33 @@ export function DialogMcp() {
   const local = useLocal()
   const sync = useSync()
   const sdk = useSDK()
+  const toast = useToast()
   const [, setRef] = createSignal<DialogSelectRef<unknown>>()
   const [loading, setLoading] = createSignal<string | null>(null)
+  const [refreshing, setRefreshing] = createSignal(false)
+
+  const refresh = () => {
+    if (refreshing()) return
+    setRefreshing(true)
+    void sdk.client.mcp
+      .status()
+      .then((status) => {
+        sync.set("mcp", status.data ?? {})
+        sync.set("mcp_ready", true)
+      })
+      .catch((error) => {
+        toast.show({
+          variant: "error",
+          message: `Failed to refresh MCP status: ${errorMessage(error)}`,
+          duration: 5000,
+        })
+      })
+      .finally(() => {
+        setRefreshing(false)
+      })
+  }
+
+  onMount(refresh)
 
   const options = createMemo(() => {
     // Track sync data and loading state to trigger re-render when they change
@@ -39,7 +66,7 @@ export function DialogMcp() {
         value: name,
         title: name,
         description: status.status === "failed" ? "failed" : status.status,
-        footer: <Status enabled={local.mcp.isEnabled(name)} loading={loadingMcp === name} />,
+        footer: <Status enabled={local.mcp.isEnabled(name)} loading={loadingMcp === name || refreshing()} />,
         category: undefined,
       })),
     )
@@ -58,13 +85,14 @@ export function DialogMcp() {
           await local.mcp.toggle(option.value)
           // Refresh MCP status from server
           const status = await sdk.client.mcp.status()
-          if (status.data) {
-            sync.set("mcp", status.data)
-          } else {
-            console.error("Failed to refresh MCP status: no data returned")
-          }
+          sync.set("mcp", status.data ?? {})
+          sync.set("mcp_ready", true)
         } catch (error) {
-          console.error("Failed to toggle MCP:", error)
+          toast.show({
+            variant: "error",
+            message: `Failed to toggle MCP: ${errorMessage(error)}`,
+            duration: 5000,
+          })
         } finally {
           setLoading(null)
         }

@@ -2,7 +2,7 @@ import type { AssistantMessage, Message, Part, ToolPart } from "@codeplane-ai/sd
 import { calendarDayStarts, DAY_MS, startOfDay, type DayBucket, type ModelStat, type Range, type Totals } from "./stats"
 
 /** Bump whenever the cached aggregate shape changes. */
-export const SESSION_AGGREGATE_VERSION = 4
+export const SESSION_AGGREGATE_VERSION = 5
 
 export type DailyMetrics = {
   /** Total messages on this day. */
@@ -17,6 +17,34 @@ export type DailyMetrics = {
   git: {
     commits: number
   }
+}
+
+export type MaterializedModelMetrics = {
+  count: number
+  tokens: number
+  providerID?: string
+  /** sessionID -> model-message count for this day. */
+  sessions: Record<string, number>
+}
+
+export type MaterializedDailyMetrics = {
+  /** Total messages on this day across every cached session. */
+  count: number
+  /** Sum of assistant-message tokens on this day across every cached session. */
+  tokens: number
+  /** 24-bucket histogram of hour-of-day for messages on this day. */
+  hours: number[]
+  /** Per-model breakdown with enough session presence data for range reads. */
+  models: Record<string, MaterializedModelMetrics>
+  /** Git activity detected from completed tool calls on this day. */
+  git: {
+    commits: number
+  }
+}
+
+export type MaterializedHomeStats = {
+  /** dayStartMs -> live accumulated metrics. */
+  days: Record<number, MaterializedDailyMetrics>
 }
 
 export type SessionStatsEntry = Message | { info: Message; parts?: Part[] }
@@ -41,7 +69,7 @@ const messageTokens = (message: AssistantMessage) => {
 }
 
 function blankDay(): DailyMetrics {
-  return { count: 0, tokens: 0, hours: new Array<number>(24).fill(0), models: {}, git: { commits: 0 } }
+  return { count: 0, tokens: 0, hours: Array.from({ length: 24 }, () => 0), models: {}, git: { commits: 0 } }
 }
 
 const asEntry = (entry: SessionStatsEntry) => ("info" in entry ? entry : { info: entry, parts: [] })
@@ -144,6 +172,149 @@ export function aggregateSessionMessages(
   return builder.finish()
 }
 
+export const emptyMaterializedHomeStats = (): MaterializedHomeStats => ({ days: {} })
+
+export const isMaterializedHomeStats = (value: unknown): value is MaterializedHomeStats => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  const days = (value as { days?: unknown }).days
+  return !!days && typeof days === "object" && !Array.isArray(days)
+}
+
+function blankMaterializedDay(): MaterializedDailyMetrics {
+  return { count: 0, tokens: 0, hours: Array.from({ length: 24 }, () => 0), models: {}, git: { commits: 0 } }
+}
+
+function cloneMaterializedStats(stats: MaterializedHomeStats): MaterializedHomeStats {
+  const days: Record<number, MaterializedDailyMetrics> = {}
+  for (const [dayKeyRaw, daily] of Object.entries(stats.days ?? {})) {
+    if (!daily) continue
+    const models: Record<string, MaterializedModelMetrics> = {}
+    for (const [modelID, info] of Object.entries(daily.models ?? {})) {
+      if (!info) continue
+      models[modelID] = {
+        count: info.count ?? 0,
+        tokens: info.tokens ?? 0,
+        providerID: info.providerID,
+        sessions: { ...info.sessions },
+      }
+    }
+    days[Number(dayKeyRaw)] = {
+      count: daily.count ?? 0,
+      tokens: daily.tokens ?? 0,
+      hours: Array.from({ length: 24 }, (_, h) => daily.hours?.[h] ?? 0),
+      models,
+      git: { commits: daily.git?.commits ?? 0 },
+    }
+  }
+  return { days }
+}
+
+const addMetric = (current: number | undefined, delta: number | undefined) => {
+  const next = (current ?? 0) + (delta ?? 0)
+  return next <= 0 ? 0 : next
+}
+
+const hasDailyActivity = (daily: MaterializedDailyMetrics) =>
+  daily.count > 0 ||
+  daily.tokens > 0 ||
+  daily.git.commits > 0 ||
+  daily.hours.some((count) => count > 0) ||
+  Object.keys(daily.models).length > 0
+
+function applyDailyMetrics(
+  target: MaterializedDailyMetrics,
+  sessionID: string,
+  source: DailyMetrics,
+  direction: 1 | -1,
+) {
+  target.count = addMetric(target.count, direction * (source.count ?? 0))
+  target.tokens = addMetric(target.tokens, direction * (source.tokens ?? 0))
+  target.git.commits = addMetric(target.git.commits, direction * (source.git?.commits ?? 0))
+
+  for (let h = 0; h < 24; h++) target.hours[h] = addMetric(target.hours[h], direction * (source.hours?.[h] ?? 0))
+
+  for (const [modelID, info] of Object.entries(source.models ?? {})) {
+    if (!info) continue
+    const model = target.models[modelID] ?? {
+      count: 0,
+      tokens: 0,
+      providerID: info.providerID,
+      sessions: {},
+    }
+    model.count = addMetric(model.count, direction * (info.count ?? 0))
+    model.tokens = addMetric(model.tokens, direction * (info.tokens ?? 0))
+    if (!model.providerID) model.providerID = info.providerID
+
+    if ((info.count ?? 0) > 0) {
+      const sessionCount = (model.sessions[sessionID] ?? 0) + direction * (info.count ?? 0)
+      if (sessionCount > 0) {
+        model.sessions[sessionID] = sessionCount
+      } else {
+        delete model.sessions[sessionID]
+      }
+    }
+
+    if (model.count > 0 || model.tokens > 0 || Object.keys(model.sessions).length > 0) {
+      target.models[modelID] = model
+    } else {
+      delete target.models[modelID]
+    }
+  }
+}
+
+function applyAggregateInto(stats: MaterializedHomeStats, aggregate: SessionAggregate, direction: 1 | -1) {
+  if (!aggregate || !aggregate.days) return
+  for (const [dayKeyRaw, daily] of Object.entries(aggregate.days)) {
+    if (!daily) continue
+    const dayKey = Number(dayKeyRaw)
+    const target = stats.days[dayKey] ?? blankMaterializedDay()
+    applyDailyMetrics(target, aggregate.sessionID, daily, direction)
+    if (hasDailyActivity(target)) {
+      stats.days[dayKey] = target
+    } else {
+      delete stats.days[dayKey]
+    }
+  }
+}
+
+export function materializeAggregates(aggregates: SessionAggregate[]): MaterializedHomeStats {
+  const stats = emptyMaterializedHomeStats()
+  for (const aggregate of aggregates) {
+    if (!aggregate) continue
+    applyAggregateInto(stats, aggregate, 1)
+  }
+  return stats
+}
+
+export function applySessionAggregateToMaterializedStats(
+  stats: MaterializedHomeStats,
+  previous: SessionAggregate | undefined,
+  next: SessionAggregate,
+): MaterializedHomeStats {
+  const materialized = cloneMaterializedStats(stats)
+  if (previous) applyAggregateInto(materialized, previous, -1)
+  applyAggregateInto(materialized, next, 1)
+  return materialized
+}
+
+export function removeSessionAggregateFromMaterializedStats(
+  stats: MaterializedHomeStats,
+  aggregate: SessionAggregate,
+): MaterializedHomeStats {
+  const materialized = cloneMaterializedStats(stats)
+  applyAggregateInto(materialized, aggregate, -1)
+  return materialized
+}
+
+export function removeSessionAggregatesFromMaterializedStats(
+  stats: MaterializedHomeStats,
+  aggregates: SessionAggregate[],
+): MaterializedHomeStats {
+  const materialized = cloneMaterializedStats(stats)
+  for (const aggregate of aggregates) applyAggregateInto(materialized, aggregate, -1)
+  return materialized
+}
+
 const RANGE_DAYS: Record<Range, number | undefined> = {
   all: undefined,
   "30d": 30,
@@ -192,30 +363,27 @@ export type CombinedTotals = {
 }
 
 /**
- * Sum every aggregate's per-day metrics within the range. Exact — no scaling,
- * no approximation — because each per-day record is self-contained.
+ * Read the live materialized per-day metrics within the range. Exact — no
+ * scaling, no approximation — because each per-day record is self-contained.
  */
-export function combineAggregates(aggregates: SessionAggregate[], now: number, range: Range): CombinedTotals {
+export function combineMaterializedStats(stats: MaterializedHomeStats, now: number, range: Range): CombinedTotals {
   const start = rangeStart(now, range)
-  const hourCounts = new Array<number>(24).fill(0)
+  const hourCounts = Array.from({ length: 24 }, () => 0)
   const activeDaySet = new Set<number>()
   let messages = 0
   let tokens = 0
   let gitCommits = 0
 
-  for (const aggregate of aggregates) {
-    if (!aggregate || !aggregate.days) continue
-    for (const [dayKeyRaw, daily] of Object.entries(aggregate.days)) {
-      if (!daily) continue
-      const dayKey = Number(dayKeyRaw)
-      if (!inRange(dayKey, start)) continue
-      messages += daily.count ?? 0
-      tokens += daily.tokens ?? 0
-      gitCommits += daily.git?.commits ?? 0
-      if ((daily.count ?? 0) > 0) activeDaySet.add(dayKey)
-      const hours = daily.hours ?? []
-      for (let h = 0; h < 24; h++) hourCounts[h] += hours[h] ?? 0
-    }
+  for (const [dayKeyRaw, daily] of Object.entries(stats.days ?? {})) {
+    if (!daily) continue
+    const dayKey = Number(dayKeyRaw)
+    if (!inRange(dayKey, start)) continue
+    messages += daily.count ?? 0
+    tokens += daily.tokens ?? 0
+    gitCommits += daily.git?.commits ?? 0
+    if ((daily.count ?? 0) > 0) activeDaySet.add(dayKey)
+    const hours = daily.hours ?? []
+    for (let h = 0; h < 24; h++) hourCounts[h] += hours[h] ?? 0
   }
 
   const peak = hourCounts.reduce<{ hour: number; count: number }>(
@@ -236,28 +404,33 @@ export function combineAggregates(aggregates: SessionAggregate[], now: number, r
   }
 }
 
-export function preferredModel(
-  aggregates: SessionAggregate[],
+/**
+ * Back-compat wrapper for tests and one-off callers. Home reads the
+ * materialized store directly.
+ */
+export function combineAggregates(aggregates: SessionAggregate[], now: number, range: Range): CombinedTotals {
+  return combineMaterializedStats(materializeAggregates(aggregates), now, range)
+}
+
+export function preferredModelFromMaterializedStats(
+  stats: MaterializedHomeStats,
   range: Range,
   now: number,
 ): Totals["preferredModel"] | undefined {
   const start = rangeStart(now, range)
   const totals = new Map<string, { count: number; providerID?: string }>()
-  for (const aggregate of aggregates) {
-    if (!aggregate || !aggregate.days) continue
-    for (const [dayKeyRaw, daily] of Object.entries(aggregate.days)) {
-      if (!daily) continue
-      const dayKey = Number(dayKeyRaw)
-      if (!inRange(dayKey, start)) continue
-      const models = daily.models ?? {}
-      for (const [modelID, info] of Object.entries(models)) {
-        if (!info) continue
-        const existing = totals.get(modelID)
-        totals.set(modelID, {
-          count: (existing?.count ?? 0) + (info.count ?? 0),
-          providerID: existing?.providerID ?? info.providerID,
-        })
-      }
+  for (const [dayKeyRaw, daily] of Object.entries(stats.days ?? {})) {
+    if (!daily) continue
+    const dayKey = Number(dayKeyRaw)
+    if (!inRange(dayKey, start)) continue
+    const models = daily.models ?? {}
+    for (const [modelID, info] of Object.entries(models)) {
+      if (!info) continue
+      const existing = totals.get(modelID)
+      totals.set(modelID, {
+        count: (existing?.count ?? 0) + (info.count ?? 0),
+        providerID: existing?.providerID ?? info.providerID,
+      })
     }
   }
   let preferred: Totals["preferredModel"] | undefined
@@ -269,26 +442,37 @@ export function preferredModel(
   return preferred
 }
 
-export function modelBreakdown(aggregates: SessionAggregate[], range: Range, now: number): ModelStat[] {
+export function preferredModel(
+  aggregates: SessionAggregate[],
+  range: Range,
+  now: number,
+): Totals["preferredModel"] | undefined {
+  return preferredModelFromMaterializedStats(materializeAggregates(aggregates), range, now)
+}
+
+export function modelBreakdownFromMaterializedStats(
+  stats: MaterializedHomeStats,
+  range: Range,
+  now: number,
+): ModelStat[] {
   const start = rangeStart(now, range)
   const byModel = new Map<string, { providerID?: string; messages: number; tokens: number; sessions: Set<string> }>()
-  for (const aggregate of aggregates) {
-    if (!aggregate || !aggregate.days) continue
-    for (const [dayKeyRaw, daily] of Object.entries(aggregate.days)) {
-      if (!daily) continue
-      const dayKey = Number(dayKeyRaw)
-      if (!inRange(dayKey, start)) continue
-      const models = daily.models ?? {}
-      for (const [modelID, info] of Object.entries(models)) {
-        if (!info) continue
-        let entry = byModel.get(modelID)
-        if (!entry) {
-          entry = { providerID: info.providerID, messages: 0, tokens: 0, sessions: new Set() }
-          byModel.set(modelID, entry)
-        }
-        entry.messages += info.count ?? 0
-        entry.tokens += info.tokens ?? 0
-        if ((info.count ?? 0) > 0) entry.sessions.add(aggregate.sessionID)
+  for (const [dayKeyRaw, daily] of Object.entries(stats.days ?? {})) {
+    if (!daily) continue
+    const dayKey = Number(dayKeyRaw)
+    if (!inRange(dayKey, start)) continue
+    const models = daily.models ?? {}
+    for (const [modelID, info] of Object.entries(models)) {
+      if (!info) continue
+      let entry = byModel.get(modelID)
+      if (!entry) {
+        entry = { providerID: info.providerID, messages: 0, tokens: 0, sessions: new Set() }
+        byModel.set(modelID, entry)
+      }
+      entry.messages += info.count ?? 0
+      entry.tokens += info.tokens ?? 0
+      for (const [sessionID, count] of Object.entries(info.sessions ?? {})) {
+        if (count > 0) entry.sessions.add(sessionID)
       }
     }
   }
@@ -303,24 +487,20 @@ export function modelBreakdown(aggregates: SessionAggregate[], range: Range, now
     .sort((a, b) => b.messages - a.messages)
 }
 
+export function modelBreakdown(aggregates: SessionAggregate[], range: Range, now: number): ModelStat[] {
+  return modelBreakdownFromMaterializedStats(materializeAggregates(aggregates), range, now)
+}
+
 export const HEATMAP_DAYS_REFERENCE = 364
 
-export function heatmapBuckets(aggregates: SessionAggregate[], now: number): DayBucket[] {
+export function heatmapBucketsFromMaterializedStats(stats: MaterializedHomeStats, now: number): DayBucket[] {
   const today = startOfDay(now)
-  const buckets: DayBucket[] = calendarDayStarts(today, HEATMAP_DAYS_REFERENCE).map((start) => ({ start, count: 0 }))
-  if (buckets.length === 0) return buckets
-  const start = buckets[0]!.start
-  for (const aggregate of aggregates) {
-    if (!aggregate || !aggregate.days) continue
-    for (const [dayKeyRaw, daily] of Object.entries(aggregate.days)) {
-      if (!daily) continue
-      const dayKey = Number(dayKeyRaw)
-      if (dayKey < start) continue
-      const index = Math.round((dayKey - start) / DAY_MS)
-      const bucket = buckets[index]
-      if (!bucket) continue
-      bucket.count += daily.count ?? 0
-    }
-  }
-  return buckets
+  return calendarDayStarts(today, HEATMAP_DAYS_REFERENCE).map((start) => ({
+    start,
+    count: stats.days[start]?.count ?? 0,
+  }))
+}
+
+export function heatmapBuckets(aggregates: SessionAggregate[], now: number): DayBucket[] {
+  return heatmapBucketsFromMaterializedStats(materializeAggregates(aggregates), now)
 }

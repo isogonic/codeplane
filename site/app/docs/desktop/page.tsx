@@ -61,7 +61,7 @@ export default function Desktop() {
           <li>System tray / menu bar — running sessions show a status dot.</li>
           <li>Global shortcut — <span className="kbd">⌥⌘C</span> on macOS toggles the window.</li>
           <li>File-open intent — drop a folder onto the dock icon to open it as a project.</li>
-          <li>Notifications — system-level alerts when a long-running session finishes.</li>
+          <li>Notifications — system-level alerts for agent, permission, and error alerts; when enabled, desktop notifications replace duplicate in-app toasts.</li>
         </ul>
 
         <h2>Desktop-only agent tools</h2>
@@ -71,11 +71,13 @@ export default function Desktop() {
         </p>
         <p>
           <em>Browser use</em> gives the agent an isolated Chrome session with screenshots,
-          DOM snapshots, console logs, JS evaluation, refs, clicks, typing, scrolling, and
-          waits.
+          DOM snapshots, console logs, JS evaluation, refs, virtual mouse events, clicks,
+          hover, drag, typing, shortcuts, scrolling, navigation history, reloads, and waits.
+          It runs through Chrome DevTools on a private local port, so browser automation does
+          not move the user&apos;s real desktop cursor.
         </p>
         <p>
-          <em>Computer use</em> gives the agent a real, visible desktop cursor plus native
+          <em>Computer use</em> gives the agent native access to the real, visible desktop cursor plus
           screenshot, mouse, keyboard, drag, scroll, and app-launch control. Fast action
           batches let it move, click, type, and scroll through several UI steps from one
           vision pass before returning a final screenshot. When you first enable it, Codeplane
@@ -88,9 +90,12 @@ export default function Desktop() {
           rather than a helper process.
         </p>
         <p>
-          Both tools still go through the Codeplane permission system. Use desktop automation
-          inside a dedicated local desktop or VM for high-risk work; never give it access to
-          secrets, payments, or irreversible consent flows without explicit human confirmation.
+          Both tools still go through the Codeplane permission system and can be exposed to any
+          desktop model once enabled. Browser use remains useful without image input because it
+          returns DOM refs, HTML, console logs, and JavaScript results; computer screenshots are
+          most useful with image-capable models. Use desktop automation inside a dedicated local
+          desktop or VM for high-risk work; never give it access to secrets, payments, or
+          irreversible consent flows without explicit human confirmation.
         </p>
 
         <h2>Logs and recovery</h2>

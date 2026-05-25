@@ -100,7 +100,6 @@ export type Status = Schema.Schema.Type<typeof Status>
 
 // Store transports for OAuth servers to allow finishing auth
 type TransportWithAuth = StreamableHTTPClientTransport | SSEClientTransport
-const pendingOAuthTransports = new Map<string, TransportWithAuth>()
 
 // Prompt cache types
 type PromptInfo = Awaited<ReturnType<MCPClient["listPrompts"]>>["prompts"][number]
@@ -200,6 +199,7 @@ interface State {
   status: Record<string, Status>
   clients: Record<string, MCPClient>
   defs: Record<string, MCPToolDef[]>
+  pendingOAuthTransports: Map<string, TransportWithAuth>
   toolCache: Record<string, { defs: MCPToolDef[]; timeout: number | undefined; tools: Record<string, Tool> }>
   toolsCache?: { version: number; timeoutKey: string; tools: Record<string, Tool> }
   toolVersion: number
@@ -266,6 +266,7 @@ export const layer = Layer.effect(
     const connectRemote = Effect.fn("MCP.connectRemote")(function* (
       key: string,
       mcp: ConfigMCP.Info & { type: "remote" },
+      pendingOAuthTransports: Map<string, TransportWithAuth>,
     ) {
       const oauthDisabled = mcp.oauth === false
       const oauthConfig = typeof mcp.oauth === "object" ? mcp.oauth : undefined
@@ -396,7 +397,11 @@ export const layer = Layer.effect(
       )
     })
 
-    const create = Effect.fn("MCP.create")(function* (key: string, mcp: ConfigMCP.Info) {
+    const create = Effect.fn("MCP.create")(function* (
+      key: string,
+      mcp: ConfigMCP.Info,
+      pendingOAuthTransports: Map<string, TransportWithAuth>,
+    ) {
       if (mcp.enabled === false) {
         log.info("mcp server disabled", { key })
         return DISABLED_RESULT
@@ -406,7 +411,7 @@ export const layer = Layer.effect(
 
       const { client: mcpClient, status } =
         mcp.type === "remote"
-          ? yield* connectRemote(key, mcp as ConfigMCP.Info & { type: "remote" })
+          ? yield* connectRemote(key, mcp as ConfigMCP.Info & { type: "remote" }, pendingOAuthTransports)
           : yield* connectLocal(key, mcp as ConfigMCP.Info & { type: "local" })
 
       if (!mcpClient) {
@@ -478,6 +483,7 @@ export const layer = Layer.effect(
           status: {},
           clients: {},
           defs: {},
+          pendingOAuthTransports: new Map(),
           toolCache: {},
           toolVersion: 0,
         }
@@ -496,7 +502,7 @@ export const layer = Layer.effect(
                 return
               }
 
-              const result = yield* create(key, mcp).pipe(Effect.catch(() => Effect.void))
+              const result = yield* create(key, mcp, s.pendingOAuthTransports).pipe(Effect.catch(() => Effect.void))
               if (!result) return
 
               s.status[key] = result.status
@@ -528,7 +534,7 @@ export const layer = Layer.effect(
                 }),
               { concurrency: "unbounded" },
             )
-            pendingOAuthTransports.clear()
+            s.pendingOAuthTransports.clear()
           }),
         )
 
@@ -583,7 +589,7 @@ export const layer = Layer.effect(
 
     const createAndStore = Effect.fn("MCP.createAndStore")(function* (name: string, mcp: ConfigMCP.Info) {
       const s = yield* InstanceState.get(state)
-      const result = yield* create(name, mcp)
+      const result = yield* create(name, mcp, s.pendingOAuthTransports)
 
       s.status[name] = result.status
       if (!result.mcpClient) {
@@ -738,6 +744,10 @@ export const layer = Layer.effect(
       return mcpConfig
     })
 
+    const oauthCallbackKey = Effect.fnUntraced(function* (mcpName: string) {
+      return `${yield* InstanceState.directory}\x00${mcpName}`
+    })
+
     const startAuth = Effect.fn("MCP.startAuth")(function* (mcpName: string) {
       const mcpConfig = yield* getMcpConfig(mcpName)
       if (!mcpConfig) throw new Error(`MCP server ${mcpName} not found or disabled`)
@@ -746,6 +756,7 @@ export const layer = Layer.effect(
 
       // OAuth config is optional - if not provided, we'll use auto-discovery
       const oauthConfig = typeof mcpConfig.oauth === "object" ? mcpConfig.oauth : undefined
+      const s = yield* InstanceState.get(state)
 
       // Start the callback server with custom redirectUri if configured
       yield* Effect.promise(() => McpOAuthCallback.ensureRunning(oauthConfig?.redirectUri))
@@ -785,7 +796,7 @@ export const layer = Layer.effect(
       }).pipe(
         Effect.catch((error) => {
           if (error instanceof UnauthorizedError && capturedUrl) {
-            pendingOAuthTransports.set(mcpName, transport)
+            s.pendingOAuthTransports.set(mcpName, transport)
             return Effect.succeed({ authorizationUrl: capturedUrl.toString(), oauthState } satisfies AuthResult)
           }
           return Effect.die(error)
@@ -816,7 +827,8 @@ export const layer = Layer.effect(
 
       log.info("opening browser for oauth", { mcpName, url: result.authorizationUrl, state: result.oauthState })
 
-      const callbackPromise = McpOAuthCallback.waitForCallback(result.oauthState, mcpName)
+      const callbackKey = yield* oauthCallbackKey(mcpName)
+      const callbackPromise = McpOAuthCallback.waitForCallback(result.oauthState, callbackKey)
 
       yield* Effect.tryPromise(() => open(result.authorizationUrl)).pipe(
         Effect.flatMap((subprocess) =>
@@ -852,7 +864,8 @@ export const layer = Layer.effect(
     })
 
     const finishAuth = Effect.fn("MCP.finishAuth")(function* (mcpName: string, authorizationCode: string) {
-      const transport = pendingOAuthTransports.get(mcpName)
+      const s = yield* InstanceState.get(state)
+      const transport = s.pendingOAuthTransports.get(mcpName)
       if (!transport) throw new Error(`No pending OAuth flow for MCP server: ${mcpName}`)
 
       const result = yield* Effect.tryPromise({
@@ -868,7 +881,7 @@ export const layer = Layer.effect(
       }
 
       yield* auth.clearCodeVerifier(mcpName)
-      pendingOAuthTransports.delete(mcpName)
+      s.pendingOAuthTransports.delete(mcpName)
 
       const mcpConfig = yield* getMcpConfig(mcpName)
       if (!mcpConfig) return { status: "failed", error: "MCP config not found after auth" } as Status
@@ -877,9 +890,10 @@ export const layer = Layer.effect(
     })
 
     const removeAuth = Effect.fn("MCP.removeAuth")(function* (mcpName: string) {
+      const s = yield* InstanceState.get(state)
       yield* auth.remove(mcpName)
-      McpOAuthCallback.cancelPending(mcpName)
-      pendingOAuthTransports.delete(mcpName)
+      McpOAuthCallback.cancelPending(yield* oauthCallbackKey(mcpName))
+      s.pendingOAuthTransports.delete(mcpName)
       log.info("removed oauth credentials", { mcpName })
     })
 

@@ -1,5 +1,6 @@
 export * as ConfigCommand from "./command"
 
+import path from "path"
 import { Log } from "../util"
 import { Schema } from "effect"
 import { NamedError } from "@codeplane-ai/shared/util/error"
@@ -13,6 +14,7 @@ import * as ConfigMarkdown from "./markdown"
 import { ConfigModelID } from "./model-id"
 
 const log = Log.create({ service: "config" })
+const DOC_FILENAMES = new Set(["AGENTS.md", "README.md", "CLAUDE.md", "CONTEXT.md"])
 
 export const Info = Schema.Struct({
   template: Schema.String,
@@ -32,6 +34,7 @@ export async function load(dir: string) {
     dot: true,
     symlink: true,
   })) {
+    if (DOC_FILENAMES.has(path.basename(item))) continue
     const md = await ConfigMarkdown.parse(item).catch(async (err) => {
       const message = ConfigMarkdown.FrontmatterError.isInstance(err)
         ? err.data.message

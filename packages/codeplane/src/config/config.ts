@@ -3,7 +3,7 @@ import path from "path"
 import { pathToFileURL } from "url"
 import os from "os"
 import z from "zod"
-import { mergeDeep, pipe } from "remeda"
+import { mergeDeep } from "remeda"
 import { Global } from "../global"
 import fsNode from "fs/promises"
 import { NamedError } from "@codeplane-ai/shared/util/error"
@@ -46,6 +46,7 @@ import { ConfigServer } from "./server"
 import { ConfigSkills } from "./skills"
 import { ConfigVariable } from "./variable"
 import { Npm } from "@/npm"
+import { ensureOpenCodeCompatModules } from "@/plugin/shared"
 
 const log = Log.create({ service: "config" })
 
@@ -292,6 +293,12 @@ export interface Interface {
 export class Service extends Context.Service<Service, Interface>()("@codeplane/Config") {}
 
 const GLOBAL_CONFIG_FILES = ["codeplane.jsonc", "codeplane.json", "config.json"]
+const codeplanePluginRuntimePackages: Npm.InstallPackage[] = [
+  {
+    name: "@codeplane-ai/plugin",
+    version: InstallationLocal ? undefined : InstallationVersion,
+  },
+]
 
 function globalConfigCandidates(dir: string) {
   return GLOBAL_CONFIG_FILES.map((file) => path.join(dir, file))
@@ -321,6 +328,19 @@ function patchJsonc(input: string, patch: unknown, path: string[] = []): string 
 function writable(info: Info) {
   const { plugin_origins: _plugin_origins, ...next } = info
   return next
+}
+
+function withDiscoveredPlugins(info: Info, source: string, list: ConfigPlugin.Spec[], scope: ConfigPlugin.Scope): Info {
+  if (!list.length) return info
+  const plugins = ConfigPlugin.deduplicatePluginOrigins([
+    ...(info.plugin_origins ?? []),
+    ...list.map((spec) => ({ spec, source, scope })),
+  ])
+  return {
+    ...info,
+    plugin: plugins.map((item) => item.spec),
+    plugin_origins: plugins,
+  }
 }
 
 export const ConfigDirectoryTypoError = NamedError.create(
@@ -421,6 +441,13 @@ export const layer = Layer.effect(
         )
       }
 
+      result = withDiscoveredPlugins(
+        result,
+        Global.Path.config,
+        yield* Effect.promise(() => ConfigPlugin.load(Global.Path.config)),
+        "global",
+      )
+
       return result
     })
 
@@ -438,15 +465,18 @@ export const layer = Layer.effect(
       return yield* cachedGlobal
     })
 
-    const ensureGitignore = Effect.fn("Config.ensureGitignore")(function* (dir: string) {
+    const ensureGitignore = Effect.fn("Config.ensureGitignore")(function* (
+      dir: string,
+      options?: { preservePackageJson?: boolean },
+    ) {
       const gitignore = path.join(dir, ".gitignore")
       const hasIgnore = yield* fs.existsSafe(gitignore)
       if (!hasIgnore) {
+        const entries = options?.preservePackageJson
+          ? ["node_modules", "package-lock.json", "bun.lock", ".gitignore"]
+          : ["node_modules", "package.json", "package-lock.json", "bun.lock", ".gitignore"]
         yield* fs
-          .writeFileString(
-            gitignore,
-            ["node_modules", "package.json", "package-lock.json", "bun.lock", ".gitignore"].join("\n"),
-          )
+          .writeFileString(gitignore, entries.join("\n"))
           .pipe(
             Effect.catchIf(
               (e) => e.reason._tag === "PermissionDenied",
@@ -546,7 +576,9 @@ export const layer = Layer.effect(
         const deps: Fiber.Fiber<void, never>[] = []
 
         for (const dir of directories) {
-          if (dir.endsWith(".codeplane") || dir === Flag.CODEPLANE_CONFIG_DIR) {
+          const isCodeplaneDir = dir.endsWith(".codeplane") || dir === Flag.CODEPLANE_CONFIG_DIR
+
+          if (isCodeplaneDir) {
             for (const file of ["codeplane.json", "codeplane.jsonc"]) {
               const source = path.join(dir, file)
               log.debug(`loading config from ${source}`)
@@ -558,15 +590,11 @@ export const layer = Layer.effect(
           }
 
           yield* ensureGitignore(dir).pipe(Effect.orDie)
+          yield* Effect.promise(() => ensureOpenCodeCompatModules(dir))
 
           const dep = yield* npmSvc
             .install(dir, {
-              add: [
-                {
-                  name: "@codeplane-ai/plugin",
-                  version: InstallationLocal ? undefined : InstallationVersion,
-                },
-              ],
+              add: codeplanePluginRuntimePackages,
             })
             .pipe(
               Effect.exit,

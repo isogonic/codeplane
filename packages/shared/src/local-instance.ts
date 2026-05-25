@@ -193,12 +193,19 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
     })
   }
 
+  function activeManaged(id: string) {
+    const managed = running.get(id)
+    if (!managed) return undefined
+    if (managed.child.exitCode === null && !managed.child.killed) return managed
+    running.delete(id)
+  }
+
   async function start(
     input: { id: string; binaryVersion: string },
     progress?: (info: LocalInstanceProgress) => void,
   ): Promise<RunningLocalInstance> {
     return lock(`start:${input.id}`, async () => {
-      const existing = running.get(input.id)
+      const existing = activeManaged(input.id)
       if (existing) {
         return {
           id: input.id,
@@ -444,7 +451,7 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
   }
 
   async function stop(id: string) {
-    const managed = running.get(id)
+    const managed = activeManaged(id)
     if (!managed) return
     log("local.stop", { id })
     await managed.stop()
@@ -456,22 +463,21 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
   }
 
   function isRunning(id: string) {
-    return running.has(id)
+    return !!activeManaged(id)
   }
 
   function getRunning(id: string): RunningLocalInstance | undefined {
-    const managed = running.get(id)
+    const managed = activeManaged(id)
     if (!managed) return undefined
     return { id, binaryVersion: managed.binaryVersion, port: managed.port, url: managed.url }
   }
 
   function listRunning(): RunningLocalInstance[] {
-    return [...running.entries()].map(([id, managed]) => ({
-      id,
-      binaryVersion: managed.binaryVersion,
-      port: managed.port,
-      url: managed.url,
-    }))
+    return [...running.entries()].flatMap(([id]) => {
+      const managed = activeManaged(id)
+      if (!managed) return []
+      return [{ id, binaryVersion: managed.binaryVersion, port: managed.port, url: managed.url }]
+    })
   }
 
   function logDir(id: string) {

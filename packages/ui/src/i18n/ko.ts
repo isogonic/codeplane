@@ -1,4 +1,8 @@
-export const dict = {
+import { dict as en } from "./en"
+
+type Keys = keyof typeof en
+
+const translated = {
   "ui.sessionReview.title": "세션 변경 사항",
   "ui.sessionReview.title.lastTurn": "마지막 턴 변경 사항",
   "ui.sessionReview.diffStyle.unified": "통합 보기",
@@ -25,19 +29,16 @@ export const dict = {
   "ui.fileMedia.binary.title": "바이너리 파일",
   "ui.fileMedia.binary.description.path": "{{path}}은(는) 바이너리 파일이므로 표시할 수 없습니다.",
   "ui.fileMedia.binary.description.default": "바이너리 파일이므로 표시할 수 없습니다.",
-
   "ui.lineComment.label.prefix": "",
   "ui.lineComment.label.suffix": "에 댓글 달기",
   "ui.lineComment.editorLabel.prefix": "",
   "ui.lineComment.editorLabel.suffix": "에 댓글 작성 중",
   "ui.lineComment.placeholder": "댓글 추가",
   "ui.lineComment.submit": "댓글",
-
   "ui.sessionTurn.steps.show": "단계 표시",
   "ui.sessionTurn.steps.hide": "단계 숨기기",
   "ui.sessionTurn.summary.response": "응답",
   "ui.sessionTurn.diff.showMore": "변경 사항 더 보기 ({{count}})",
-
   "ui.sessionTurn.retry.retrying": "재시도 중",
   "ui.sessionTurn.retry.inSeconds": "{{seconds}}초 후",
   "ui.sessionTurn.retry.attempt": "{{attempt}}번째",
@@ -45,7 +46,6 @@ export const dict = {
   "ui.sessionTurn.retry.geminiHot": "gemini가 현재 과부하 상태입니다",
   "ui.sessionTurn.error.freeUsageExceeded": "무료 사용량 초과",
   "ui.sessionTurn.error.addCredits": "크레딧 추가",
-
   "ui.sessionTurn.status.delegating": "작업 위임 중",
   "ui.sessionTurn.status.planning": "다음 단계 계획 중",
   "ui.sessionTurn.status.gatheringContext": "탐색 중",
@@ -58,7 +58,6 @@ export const dict = {
   "ui.sessionTurn.status.thinkingWithTopic": "생각 중 - {{topic}}",
   "ui.sessionTurn.status.gatheringThoughts": "생각 정리 중",
   "ui.sessionTurn.status.consideringNextSteps": "다음 단계 고려 중",
-
   "ui.messagePart.questions.dismissed": "질문 무시됨",
   "ui.messagePart.compaction": "세션 압축됨",
   "ui.messagePart.context.read.one": "{{count}}개 읽음",
@@ -72,27 +71,19 @@ export const dict = {
   "ui.messagePart.title.write": "작성",
   "ui.messagePart.option.typeOwnAnswer": "직접 답변 입력",
   "ui.messagePart.review.title": "답변 검토",
-
   "ui.list.loading": "로딩 중",
   "ui.list.empty": "결과 없음",
   "ui.list.clearFilter": "필터 지우기",
   "ui.list.emptyWithFilter.prefix": "다음에 대한 결과 없음: ",
-  "ui.list.emptyWithFilter.suffix": "",
-
   "ui.messageNav.newMessage": "새 메시지",
-
   "ui.textField.copyToClipboard": "클립보드에 복사",
   "ui.textField.copyLink": "링크 복사",
   "ui.textField.copied": "복사됨",
-
   "ui.imagePreview.alt": "이미지 미리보기",
   "ui.scrollView.ariaLabel": "스크롤 가능한 콘텐츠",
-
   "ui.tool.read": "읽기",
   "ui.tool.loaded": "로드됨",
   "ui.tool.list": "목록",
-  "ui.tool.glob": "Glob",
-  "ui.tool.grep": "Grep",
   "ui.tool.webfetch": "웹 가져오기",
   "ui.tool.websearch": "웹 검색",
   "ui.tool.codesearch": "코드 검색",
@@ -103,12 +94,10 @@ export const dict = {
   "ui.tool.questions": "질문",
   "ui.tool.agent": "{{type}} 에이전트",
   "ui.tool.agent.default": "에이전트",
-
   "ui.common.file.one": "파일",
   "ui.common.file.other": "파일",
   "ui.common.question.one": "질문",
   "ui.common.question.other": "질문",
-
   "ui.common.add": "추가",
   "ui.common.back": "뒤로",
   "ui.common.cancel": "취소",
@@ -117,11 +106,9 @@ export const dict = {
   "ui.common.close": "닫기",
   "ui.common.next": "다음",
   "ui.common.submit": "제출",
-
   "ui.permission.deny": "거부",
   "ui.permission.allowAlways": "항상 허용",
   "ui.permission.allowOnce": "한 번만 허용",
-
   "ui.message.expand": "메시지 펼치기",
   "ui.message.collapse": "메시지 접기",
   "ui.message.copy": "복사",
@@ -133,19 +120,16 @@ export const dict = {
   "ui.message.interrupted": "중단됨",
   "ui.message.queued": "대기 중",
   "ui.message.attachment.alt": "첨부 파일",
-
   "ui.patch.action.deleted": "삭제됨",
   "ui.patch.action.created": "생성됨",
   "ui.patch.action.moved": "이동됨",
   "ui.patch.action.patched": "패치됨",
-
   "ui.question.subtitle.answered": "{{count}}개 답변됨",
   "ui.question.answer.none": "(답변 없음)",
   "ui.question.review.notAnswered": "(답변되지 않음)",
   "ui.question.multiHint": "해당하는 항목 모두 선택",
   "ui.question.singleHint": "하나의 답변을 선택",
   "ui.question.custom.placeholder": "답변 입력...",
-
   "ui.fileSearch.placeholder": "찾기",
   "ui.fileSearch.previousMatch": "이전 항목",
   "ui.fileSearch.nextMatch": "다음 항목",
@@ -157,4 +141,9 @@ export const dict = {
   "ui.toolErrorCard.copyError": "오류 복사",
   "ui.message.duration.seconds": "{{count}}초",
   "ui.message.duration.minutesSeconds": "{{minutes}}분 {{seconds}}초",
-}
+} satisfies Partial<Record<Keys, string>>
+
+export const dict = {
+  ...en,
+  ...translated,
+} satisfies Record<Keys, string>

@@ -10,6 +10,7 @@ import { useDialog, type DialogContext } from "@/tui/ui/dialog"
 import { useKeybind } from "@/tui/context/keybind"
 import { Keybind } from "@/tui/_compat/keybind"
 import { Locale } from "@/tui/_compat/locale"
+import { tuiT } from "@/tui/i18n"
 import { getScrollAcceleration } from "../util/scroll"
 import { useTuiConfig } from "../context/tui-config"
 
@@ -270,16 +271,16 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
                 input.focus()
               }, 1)
             }}
-            placeholder={props.placeholder ?? "Search"}
+            placeholder={props.placeholder ?? tuiT("common.search")}
             placeholderColor={theme.textMuted}
           />
         </box>
       </box>
       <Show
         when={grouped().length > 0}
-        fallback={
+          fallback={
           <box paddingLeft={4} paddingRight={4} paddingTop={1}>
-            <text fg={theme.textMuted}>No results found</text>
+            <text fg={theme.textMuted}>{tuiT("common.noResults")}</text>
           </box>
         }
       >

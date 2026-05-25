@@ -3,7 +3,11 @@ import { fileURLToPath } from "node:url"
 import { useTheme } from "../context/theme"
 import { useDialog } from "@/tui/ui/dialog"
 import { useSync } from "@/tui/context/sync"
-import { For, Match, Switch, Show, createMemo } from "solid-js"
+import { For, Match, Switch, Show, createMemo, createSignal, onMount } from "solid-js"
+import { useSDK } from "@/tui/context/sdk"
+import { useProject } from "@/tui/context/project"
+import { useToast } from "@/tui/ui/toast"
+import { errorMessage } from "@/util/error"
 
 export type DialogStatusProps = {}
 
@@ -11,8 +15,54 @@ export function DialogStatus() {
   const sync = useSync()
   const { theme } = useTheme()
   const dialog = useDialog()
+  const sdk = useSDK()
+  const project = useProject()
+  const toast = useToast()
+  const [refreshing, setRefreshing] = createSignal(false)
 
   const enabledFormatters = createMemo(() => sync.data.formatter.filter((f) => f.enabled))
+  const refreshStatus = () => {
+    if (refreshing()) return
+    const workspace = project.workspace.current()
+    setRefreshing(true)
+    void Promise.allSettled([
+      sdk.client.mcp
+        .status({ workspace })
+        .then((x) => {
+          sync.set("mcp", x.data ?? {})
+          sync.set("mcp_ready", true)
+        })
+        .catch((error) => {
+          sync.set("mcp_ready", true)
+          throw error
+        }),
+      sdk.client.lsp
+        .status({ workspace })
+        .then((x) => {
+          sync.set("lsp", x.data ?? [])
+          sync.set("lsp_ready", true)
+        })
+        .catch((error) => {
+          sync.set("lsp_ready", true)
+          throw error
+        }),
+      sdk.client.formatter.status({ workspace }).then((x) => sync.set("formatter", x.data ?? [])),
+    ])
+      .then((results) => {
+        const failures = results.filter((result): result is PromiseRejectedResult => result.status === "rejected")
+        if (!failures.length) return
+        toast.show({
+          variant: "error",
+          message: `Failed to refresh status: ${errorMessage(failures[0].reason)}`,
+          duration: 5000,
+        })
+      })
+      .finally(() => {
+        setRefreshing(false)
+      })
+  }
+
+  onMount(refreshStatus)
 
   const plugins = createMemo(() => {
     const list = sync.data.config.plugin ?? []
@@ -46,9 +96,14 @@ export function DialogStatus() {
         <text fg={theme.text} attributes={TextAttributes.BOLD}>
           Status
         </text>
-        <text fg={theme.textMuted} onMouseUp={() => dialog.clear()}>
-          esc
-        </text>
+        <box flexDirection="row" gap={1}>
+          <Show when={refreshing()}>
+            <text fg={theme.textMuted}>refreshing...</text>
+          </Show>
+          <text fg={theme.textMuted} onMouseUp={() => dialog.clear()}>
+            esc
+          </text>
+        </box>
       </box>
       <Show when={Object.keys(sync.data.mcp).length > 0} fallback={<text fg={theme.text}>No MCP Servers</text>}>
         <box>

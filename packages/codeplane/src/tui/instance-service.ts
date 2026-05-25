@@ -10,6 +10,7 @@ import type {
   SavedInstance,
 } from "@codeplane-ai/shared/instance"
 import { createInstanceStore } from "@codeplane-ai/shared/instance-store"
+import { clearInstanceCache, getInstanceCacheInfo } from "@codeplane-ai/shared/instance-cache"
 import {
   fetchCodeplaneLatestVersion,
   readPreferredLocalVersion,
@@ -197,6 +198,17 @@ export function createInstanceService() {
     await ensureMigrated()
     await local.stop(id).catch(() => undefined)
     return store.remove(id)
+  }
+
+  async function cacheInfo(id: string) {
+    await ensureMigrated()
+    return getInstanceCacheInfo(id)
+  }
+
+  async function clearCache(id: string) {
+    await ensureMigrated()
+    await local.stop(id).catch(() => undefined)
+    return clearInstanceCache(id)
   }
 
   async function probe(input: string | SavedInstance): Promise<ProbeResult> {
@@ -492,6 +504,8 @@ export function createInstanceService() {
   }
 
   return {
+    cacheInfo,
+    clearCache,
     installLocal,
     list,
     localStatus,

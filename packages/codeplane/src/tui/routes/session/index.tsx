@@ -13,6 +13,7 @@ import {
   Switch,
   useContext,
 } from "solid-js"
+import { produce } from "solid-js/store"
 import { Dynamic } from "solid-js/web"
 import path from "path"
 import { useRoute, useRouteData } from "@/tui/context/route"
@@ -23,7 +24,7 @@ import { SplitBorder, ThinBorder } from "@/tui/component/border"
 import { Spinner } from "@/tui/component/spinner"
 import { RichBlockText } from "@/tui/component/rich-block"
 import { selectedForeground, useTheme } from "@/tui/context/theme"
-import { BoxRenderable, ScrollBoxRenderable, addDefaultParsers, TextAttributes, RGBA } from "@opentui/core"
+import { ScrollBoxRenderable, addDefaultParsers, TextAttributes, RGBA } from "@opentui/core"
 import { Prompt, type PromptRef } from "@/tui/component/prompt"
 import type {
   AssistantMessage,
@@ -33,6 +34,7 @@ import type {
   UserMessage,
   TextPart,
   ReasoningPart,
+  PermissionRequest,
 } from "@/tui/_compat/sdk-v2"
 import { useLocal } from "@/tui/context/local"
 import { Locale } from "@/tui/_compat/locale"
@@ -91,6 +93,16 @@ import { useTuiConfig } from "../../context/tui-config"
 import { getScrollAcceleration } from "../../util/scroll"
 import { TuiPluginRuntime } from "@/tui/plugin/runtime"
 import { getRevertDiffFiles } from "../../util/revert-diff"
+import {
+  ACTIVE_SESSION_POLL_INTERVAL_MS,
+  eventSessionID,
+  shouldPollActiveSession,
+} from "@/tui/util/stream-backpressure"
+import {
+  acceptKey as permissionAcceptKey,
+  autoRespondsPermission,
+  TUI_PERMISSION_AUTO_ACCEPT_KEY,
+} from "@/tui/util/permission-auto-respond"
 
 addDefaultParsers(parsers.parsers)
 
@@ -174,6 +186,7 @@ export function Session() {
   const showTimestamps = createMemo(() => timestamps() === "show")
   const contentWidth = createMemo(() => dimensions().width - (sidebarVisible() ? 42 : 0) - 4)
   const providers = createMemo(() => Model.index(sync.data.provider))
+  const permissionAutoAccept = createMemo<Record<string, boolean>>(() => kv.get(TUI_PERMISSION_AUTO_ACCEPT_KEY, {}))
 
   const scrollAcceleration = createMemo(() => getScrollAcceleration(tuiConfig))
   const toast = useToast()
@@ -223,6 +236,7 @@ export function Session() {
 
   let activeRefreshTimer: Timer | undefined
   let activeRefreshInFlight = false
+  let lastLiveSessionEventAt = 0
   const clearActiveRefreshTimer = () => {
     if (!activeRefreshTimer) return
     clearInterval(activeRefreshTimer)
@@ -230,6 +244,7 @@ export function Session() {
   }
   const refreshActiveSession = (sessionID: string) => {
     if (activeRefreshInFlight) return
+    if (!shouldPollActiveSession({ now: Date.now(), lastLiveEventAt: lastLiveSessionEventAt })) return
     activeRefreshInFlight = true
     void sync.session
       .sync(sessionID, { force: true })
@@ -244,14 +259,20 @@ export function Session() {
       () => [route.sessionID, sync.data.session_status?.[route.sessionID]?.type, pending()] as const,
       ([sessionID, status, pendingMessage]) => {
         clearActiveRefreshTimer()
+        lastLiveSessionEventAt = Date.now()
         if (status !== "busy" && status !== "retry" && !pendingMessage) return
-        refreshActiveSession(sessionID)
-        activeRefreshTimer = setInterval(() => refreshActiveSession(sessionID), 2500)
+        activeRefreshTimer = setInterval(() => refreshActiveSession(sessionID), ACTIVE_SESSION_POLL_INTERVAL_MS)
       },
     ),
   )
 
   onCleanup(clearActiveRefreshTimer)
+
+  const unsubscribeLiveSessionEvents = event.subscribe((evt) => {
+    if (eventSessionID(evt) !== route.sessionID) return
+    lastLiveSessionEventAt = Date.now()
+  })
+  onCleanup(unsubscribeLiveSessionEvents)
 
   let lastSwitch: string | undefined = undefined
   const unsubscribePlanSwitch = event.on("message.part.updated", (evt) => {
@@ -395,6 +416,196 @@ export function Session() {
     }
   }
 
+  function nextRootSession(sessionID: string) {
+    const sessions = sync.data.session.filter((item) => !item.parentID && !item.time.archived)
+    const index = sessions.findIndex((item) => item.id === sessionID)
+    if (index === -1) return
+    return sessions[index + 1] ?? sessions[index - 1]
+  }
+
+  function navigateAfterSessionRemoval(sessionID: string, parentID?: string, nextSessionID?: string) {
+    if (route.sessionID !== sessionID) return
+    if (parentID) {
+      navigate({
+        type: "session",
+        sessionID: parentID,
+      })
+      return
+    }
+    if (nextSessionID) {
+      navigate({
+        type: "session",
+        sessionID: nextSessionID,
+      })
+      return
+    }
+    navigate({ type: "home" })
+  }
+
+  function sessionTreeIDs(sessionID: string) {
+    const byParent = sync.data.session.reduce((acc, item) => {
+      if (!item.parentID) return acc
+      const list = acc.get(item.parentID) ?? []
+      acc.set(item.parentID, [...list, item.id])
+      return acc
+    }, new Map<string, string[]>())
+    const collect = (id: string): string[] => [id, ...(byParent.get(id) ?? []).flatMap(collect)]
+    return new Set(collect(sessionID))
+  }
+
+  function removeSessionTree(sessionID: string) {
+    const removed = sessionTreeIDs(sessionID)
+    sync.set(
+      produce((draft) => {
+        draft.session = draft.session.filter((item) => !removed.has(item.id))
+        removed.forEach((id) => {
+          delete draft.permission[id]
+          delete draft.question[id]
+          delete draft.session_status[id]
+          delete draft.session_diff[id]
+          delete draft.todo[id]
+          delete draft.message[id]
+        })
+      }),
+    )
+  }
+
+  function permissionDirectory(sessionID: string) {
+    return sync.session.get(sessionID)?.directory ?? session()?.directory
+  }
+
+  function permissionAutoAcceptActive(sessionID: string) {
+    return autoRespondsPermission(
+      permissionAutoAccept(),
+      sync.data.session,
+      { sessionID },
+      permissionDirectory(sessionID),
+    )
+  }
+
+  const currentPermissionAutoAccept = createMemo(() => {
+    const current = session()
+    if (!current) return false
+    return permissionAutoAcceptActive(current.id)
+  })
+
+  function removePermissionRequest(request: PermissionRequest) {
+    const requests = sync.data.permission[request.sessionID]
+    if (!requests) return
+    const index = requests.findIndex((item) => item.id === request.id)
+    if (index === -1) return
+    sync.set(
+      "permission",
+      request.sessionID,
+      produce((draft) => {
+        draft.splice(index, 1)
+      }),
+    )
+  }
+
+  const autoReplyingPermissions = new Set<string>()
+  function autoReplyPermission(request: PermissionRequest) {
+    if (autoReplyingPermissions.has(request.id)) return
+    autoReplyingPermissions.add(request.id)
+    void sdk.client.permission
+      .reply({
+        requestID: request.id,
+        workspace: project.workspace.current(),
+        reply: "once",
+      })
+      .then((result) => {
+        if (result.error) throw result.error
+        removePermissionRequest(request)
+      })
+      .catch((error) => {
+        autoReplyingPermissions.delete(request.id)
+        toast.show({
+          variant: "error",
+          message: `Failed to auto-accept permission: ${errorMessage(error)}`,
+          duration: 5000,
+        })
+      })
+  }
+
+  function approveAutoAcceptedPermissions() {
+    permissions()
+      .filter((request) => permissionAutoAcceptActive(request.sessionID))
+      .forEach(autoReplyPermission)
+  }
+
+  createEffect(approveAutoAcceptedPermissions)
+
+  function archiveCurrentSession() {
+    const current = session()
+    if (!current) return Promise.resolve(false)
+    if (current.parentID || current.time.archived) return Promise.resolve(false)
+    const next = nextRootSession(current.id)
+    return sdk.client.session
+      .update({
+        sessionID: current.id,
+        time: { archived: Date.now() },
+      })
+      .then((result) => {
+        if (result.error) {
+          toast.show({
+            variant: "error",
+            message: `Failed to archive session: ${errorMessage(result.error)}`,
+            duration: 5000,
+          })
+          return false
+        }
+        sync.set(
+          "session",
+          produce((draft) => {
+            const index = draft.findIndex((item) => item.id === current.id)
+            if (index !== -1) draft.splice(index, 1)
+          }),
+        )
+        navigateAfterSessionRemoval(current.id, current.parentID, next?.id)
+        toast.show({ message: "Session archived", variant: "success" })
+        return true
+      })
+      .catch((err) => {
+        toast.show({
+          variant: "error",
+          message: `Failed to archive session: ${errorMessage(err)}`,
+          duration: 5000,
+        })
+        return false
+      })
+  }
+
+  function deleteCurrentSession() {
+    const current = session()
+    if (!current) return Promise.resolve(false)
+    if (current.parentID || current.time.archived) return Promise.resolve(false)
+    const next = nextRootSession(current.id)
+    return sdk.client.session
+      .delete({ sessionID: current.id })
+      .then((result) => {
+        if (result.error) {
+          toast.show({
+            variant: "error",
+            message: `Failed to delete session: ${errorMessage(result.error)}`,
+            duration: 5000,
+          })
+          return false
+        }
+        removeSessionTree(current.id)
+        navigateAfterSessionRemoval(current.id, current.parentID, next?.id)
+        toast.show({ message: "Session deleted", variant: "success" })
+        return true
+      })
+      .catch((err) => {
+        toast.show({
+          variant: "error",
+          message: `Failed to delete session: ${errorMessage(err)}`,
+          duration: 5000,
+        })
+        return false
+      })
+  }
+
   function childSessionHandler(func: (dialog: DialogContext) => void) {
     return (dialog: DialogContext) => {
       if (!session()?.parentID || dialog.stack.length > 0) return
@@ -454,6 +665,65 @@ export function Session() {
       },
       onSelect: (dialog) => {
         dialog.replace(() => <DialogSessionRename session={route.sessionID} />)
+      },
+    },
+    {
+      title: "Archive session",
+      value: "session.archive",
+      category: "Session",
+      enabled: !!session() && !session()?.parentID && !session()?.time.archived,
+      slash: {
+        name: "archive",
+      },
+      onSelect: async (dialog) => {
+        await archiveCurrentSession()
+        dialog.clear()
+      },
+    },
+    {
+      title: "Delete session",
+      value: "session.delete.current",
+      category: "Session",
+      enabled: !!session() && !session()?.parentID && !session()?.time.archived,
+      slash: {
+        name: "delete",
+      },
+      onSelect: async (dialog) => {
+        const current = session()
+        if (!current) return
+        const ok = await DialogConfirm.show(dialog, "Delete Session", `Delete "${current.title}"?`)
+        if (ok !== true) return
+        await deleteCurrentSession()
+        dialog.clear()
+      },
+    },
+    {
+      title: currentPermissionAutoAccept() ? "Stop auto-accepting permissions" : "Auto-accept permissions",
+      value: "permissions.autoaccept",
+      keybind: "permissions_autoaccept",
+      category: "Permissions",
+      enabled: !!session() && !session()?.parentID && !session()?.time.archived,
+      slash: {
+        name: "autoaccept",
+        aliases: ["auto-accept", "permissions-autoaccept"],
+      },
+      onSelect: (dialog) => {
+        const current = session()
+        if (!current) return
+        const next = !currentPermissionAutoAccept()
+        kv.set(TUI_PERMISSION_AUTO_ACCEPT_KEY, {
+          ...permissionAutoAccept(),
+          [permissionAcceptKey(current.id, current.directory)]: next,
+        })
+        if (next) approveAutoAcceptedPermissions()
+        toast.show({
+          variant: next ? "success" : "info",
+          message: next
+            ? "Permission requests will be automatically approved for this session"
+            : "Permission requests will require approval for this session",
+          duration: 3000,
+        })
+        dialog.clear()
       },
     },
     {
@@ -1764,7 +2034,6 @@ function InlineTool(props: {
   part: ToolPart
   onClick?: () => void
 }) {
-  const [margin, setMargin] = createSignal(0)
   const { theme } = useTheme()
   const ctx = use()
   const sync = useSync()
@@ -1796,35 +2065,14 @@ function InlineTool(props: {
 
   return (
     <box
-      marginTop={margin()}
+      marginTop={1}
       paddingLeft={3}
+      flexShrink={0}
       onMouseOver={() => props.onClick && setHover(true)}
       onMouseOut={() => setHover(false)}
       onMouseUp={() => {
         if (renderer.getSelection()?.getSelectedText()) return
         props.onClick?.()
-      }}
-      renderBefore={function () {
-        const el = this as BoxRenderable
-        const parent = el.parent
-        if (!parent) {
-          return
-        }
-        if (el.height > 1) {
-          setMargin(1)
-          return
-        }
-        const children = parent.getChildren()
-        const index = children.indexOf(el)
-        const previous = children[index - 1]
-        if (!previous) {
-          setMargin(0)
-          return
-        }
-        if (previous.height > 1 || previous.id.startsWith("text-")) {
-          setMargin(1)
-          return
-        }
       }}
     >
       <Switch>
@@ -1874,6 +2122,7 @@ function BlockTool(props: {
         if (renderer.getSelection()?.getSelectedText()) return
         props.onClick?.()
       }}
+      flexShrink={0}
     >
       <Show
         when={props.spinner}

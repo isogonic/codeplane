@@ -13,6 +13,7 @@ const { Plugin } = await import("../../src/plugin/index")
 const { PluginLoader } = await import("../../src/plugin/loader")
 const { Instance } = await import("../../src/project/instance")
 const { Npm } = await import("../../src/npm")
+const { ensureOpenCodeCompatModules } = await import("../../src/plugin/shared")
 
 afterAll(() => {
   if (disableDefault === undefined) {
@@ -211,8 +212,12 @@ describe("plugin.loader.shared", () => {
     try {
       await load(tmp.path)
 
-      expect(add.mock.calls).toContainEqual(["acme-plugin@latest"])
-      expect(add.mock.calls).toContainEqual(["scope-plugin@2.3.4"])
+      expect(add.mock.calls.map((call) => call[0])).toContain("acme-plugin@latest")
+      expect(add.mock.calls.map((call) => call[0])).toContain("scope-plugin@2.3.4")
+      for (const call of add.mock.calls) {
+        expect(call[1]).toBe(tmp.path)
+        expect(call[2]).toBeUndefined()
+      }
     } finally {
       add.mockRestore()
     }
@@ -383,7 +388,7 @@ describe("plugin.loader.shared", () => {
     }
   })
 
-  test("does not use npm package exports dot for server entry", async () => {
+  test("loads npm server plugin from package root export", async () => {
     await using tmp = await tmpdir({
       init: async (dir) => {
         const mod = path.join(dir, "mods", "acme-plugin")
@@ -422,12 +427,8 @@ describe("plugin.loader.shared", () => {
 
     try {
       await load(tmp.path)
-      const called = await Bun.file(tmp.extra.mark)
-        .text()
-        .then(() => true)
-        .catch(() => false)
 
-      expect(called).toBe(false)
+      expect(await Bun.file(tmp.extra.mark).text()).toBe("called")
     } finally {
       install.mockRestore()
     }
@@ -502,7 +503,13 @@ describe("plugin.loader.shared", () => {
           path.join(dir, "codeplane.json"),
           JSON.stringify(
             {
-              plugin: ["codeplane-openai-codex-auth@1.0.0", "codeplane-copilot-auth@1.0.0", "regular-plugin@1.0.0"],
+              plugin: [
+                "codeplane-openai-codex-auth@1.0.0",
+                "codeplane-copilot-auth@1.0.0",
+                "opencode-openai-codex-auth@1.0.0",
+                "opencode-copilot-auth@1.0.0",
+                "regular-plugin@1.0.0",
+              ],
             },
             null,
             2,
@@ -520,6 +527,8 @@ describe("plugin.loader.shared", () => {
       expect(pkgs).toContain("regular-plugin@1.0.0")
       expect(pkgs).not.toContain("codeplane-openai-codex-auth@1.0.0")
       expect(pkgs).not.toContain("codeplane-copilot-auth@1.0.0")
+      expect(pkgs).not.toContain("opencode-openai-codex-auth@1.0.0")
+      expect(pkgs).not.toContain("opencode-copilot-auth@1.0.0")
     } finally {
       install.mockRestore()
     }
@@ -555,7 +564,7 @@ describe("plugin.loader.shared", () => {
 
     try {
       await load(tmp.path)
-      expect(install).toHaveBeenCalledWith("broken-plugin@9.9.9", undefined)
+      expect(install).toHaveBeenCalledWith("broken-plugin@9.9.9", tmp.path)
       expect(await Bun.file(tmp.extra.mark).text()).toBe("ok")
     } finally {
       install.mockRestore()
@@ -875,6 +884,72 @@ export default {
       [tmp.extra.bSpec, true],
     ])
     expect(loaded.map((item) => item.spec)).toEqual([tmp.extra.aSpec, tmp.extra.bSpec])
+  })
+
+  test("loads a Codeplane instance plugin that imports the OpenCode plugin helper", async () => {
+    await using tmp = await tmpdir({
+      init: async (dir) => {
+        const pluginDir = path.join(dir, "plugins")
+        const plugin = path.join(pluginDir, "opencode-drop-in.js")
+        const compat = path.join(dir, "node_modules", "@codeplane-ai", "plugin")
+        await fs.mkdir(pluginDir, { recursive: true })
+        await fs.mkdir(compat, { recursive: true })
+        await Bun.write(
+          plugin,
+          [
+            'import { tool } from "@opencode-ai/plugin"',
+            "",
+            "export const OpenCodeDropIn = async () => ({",
+            "  tool: {",
+            "    proof: tool({",
+            '      description: "proof",',
+            "      args: { foo: tool.schema.string() },",
+            "      execute: async (args) => args.foo,",
+            "    }),",
+            "  },",
+            "})",
+            "",
+          ].join("\n"),
+        )
+        await Bun.write(
+          path.join(compat, "package.json"),
+          JSON.stringify({ name: "@codeplane-ai/plugin", type: "module", exports: "./index.js" }, null, 2),
+        )
+        await Bun.write(
+          path.join(compat, "index.js"),
+          [
+            "export function tool(input) {",
+            "  return input",
+            "}",
+            "tool.schema = {",
+            "  string() { return { type: 'string' } },",
+            "}",
+            "",
+          ].join("\n"),
+        )
+        await ensureOpenCodeCompatModules(dir)
+        return {
+          spec: pathToFileURL(plugin).href,
+        }
+      },
+    })
+
+    const loaded = await PluginLoader.loadExternal({
+      items: [
+        {
+          spec: tmp.extra.spec,
+          source: tmp.path,
+          scope: "global" as const,
+        },
+      ],
+      kind: "server",
+    })
+
+    expect(loaded).toHaveLength(1)
+    const plugin = loaded[0]?.mod.OpenCodeDropIn
+    expect(typeof plugin).toBe("function")
+    const hooks = await (plugin as () => Promise<{ tool: Record<string, { execute: (args: any) => Promise<string> }> }>)()
+    expect(await hooks.tool.proof.execute({ foo: "ok" })).toBe("ok")
   })
 
   test("retries file plugins when finish returns undefined", async () => {

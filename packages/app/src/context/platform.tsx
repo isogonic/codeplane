@@ -98,7 +98,7 @@ export type Platform = {
   forward(): void
 
   /** Send a system notification (optional deep link) */
-  notify(title: string, description?: string, href?: string): Promise<void>
+  notify(title: string, description?: string, href?: string): Promise<boolean>
 
   /** Open directory picker dialog */
   openDirectoryPickerDialog?(opts?: OpenDirectoryPickerOptions): Promise<PickerPaths>

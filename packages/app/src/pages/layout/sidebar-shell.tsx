@@ -9,7 +9,6 @@ import {
 } from "@thisbeyond/solid-dnd"
 import { ConstrainDragXAxis } from "@/utils/solid-dnd"
 import { Icon, type IconProps } from "@codeplane-ai/ui/icon"
-import { IconButton } from "@codeplane-ai/ui/icon-button"
 import { Tooltip } from "@codeplane-ai/ui/tooltip"
 import { type LocalProject } from "@/context/layout"
 import { useLayout } from "@/context/layout"
@@ -79,9 +78,10 @@ export const SidebarContent = (props: {
       <button
         type="button"
         classList={{
-          "relative flex items-center justify-center size-10 p-1 rounded-lg overflow-hidden transition-colors cursor-default focus:outline-none": true,
-          "bg-transparent border-2 border-icon-strong-base hover:bg-surface-base-hover": itemProps.selected(),
-          "bg-transparent border border-transparent hover:bg-surface-base-hover hover:border-border-weak-base":
+          "relative flex items-center justify-center size-10 p-1 rounded-lg overflow-hidden border transition-colors cursor-default focus:outline-none": true,
+          "bg-surface-base-active border-border-weak-base text-text-strong shadow-[var(--shadow-xs)] hover:bg-surface-base-hover":
+            itemProps.selected(),
+          "bg-transparent border-transparent text-text-weak hover:bg-surface-base-hover hover:border-border-weak-base hover:text-text-strong":
             !itemProps.selected(),
         }}
         aria-label={itemProps.label()}
@@ -117,7 +117,7 @@ export const SidebarContent = (props: {
     <div class="flex h-full w-full min-w-0 overflow-hidden">
       <div
         data-component="sidebar-rail"
-        class="w-16 shrink-0 bg-background-base flex flex-col items-center overflow-hidden"
+        class="w-16 shrink-0 bg-background-base border-r border-border-weak-base flex flex-col items-center overflow-hidden"
         onMouseMove={props.aimMove}
       >
         <div class="flex-1 min-h-0 w-full">
@@ -129,7 +129,7 @@ export const SidebarContent = (props: {
           >
             <DragDropSensors />
             <ConstrainDragXAxis />
-            <div class="h-full w-full flex flex-col items-center gap-3 px-3 py-3 overflow-y-auto no-scrollbar">
+            <div class="h-full w-full flex flex-col items-center gap-2 px-3 pt-2 pb-3 overflow-y-auto no-scrollbar">
               <RailAction
                 icon="home"
                 label={() => language.t("sidebar.home")}
@@ -158,19 +158,20 @@ export const SidebarContent = (props: {
                   </div>
                 }
               >
-                <IconButton
-                  icon="plus"
-                  variant="ghost"
-                  size="large"
+                <button
+                  type="button"
+                  class="flex size-10 shrink-0 cursor-default items-center justify-center rounded-lg border border-transparent text-text-weak transition-colors hover:border-border-weak-base hover:bg-surface-base-hover hover:text-text-strong focus:outline-none"
                   onClick={props.onOpenProject}
                   aria-label={typeof props.openProjectLabel === "string" ? props.openProjectLabel : undefined}
-                />
+                >
+                  <Icon name="plus" />
+                </button>
               </Tooltip>
             </div>
             <DragOverlay>{props.renderProjectOverlay()}</DragOverlay>
           </DragDropProvider>
         </div>
-        <div class="shrink-0 w-full pt-3 pb-6 flex flex-col items-center gap-2">
+        <div class="shrink-0 w-full px-3 pt-2 pb-4 flex flex-col items-center gap-2">
           <RailAction
             icon="settings-gear"
             label={props.settingsLabel}
@@ -180,16 +181,17 @@ export const SidebarContent = (props: {
           />
           <Show when={!platform.desktop}>
             <Tooltip placement={placement()} value={props.restartLabel()}>
-              <IconButton
-                icon="reset"
-                variant="ghost"
-                size="large"
+              <button
+                type="button"
+                class="flex size-10 shrink-0 cursor-default items-center justify-center rounded-lg border border-transparent text-text-weak transition-colors hover:border-border-weak-base hover:bg-surface-base-hover hover:text-text-strong focus:outline-none"
                 onClick={() => {
                   if (!window.confirm(props.restartConfirm())) return
                   props.onRestart()
                 }}
                 aria-label={props.restartLabel()}
-              />
+              >
+                <Icon name="reset" />
+              </button>
             </Tooltip>
           </Show>
         </div>

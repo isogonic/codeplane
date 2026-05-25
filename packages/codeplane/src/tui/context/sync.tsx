@@ -68,7 +68,9 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       part: {
         [messageID: string]: Part[]
       }
+      lsp_ready: boolean
       lsp: LspStatus[]
+      mcp_ready: boolean
       mcp: {
         [key: string]: McpStatus
       }
@@ -100,7 +102,9 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       todo: {},
       message: {},
       part: {},
+      lsp_ready: false,
       lsp: [],
+      mcp_ready: false,
       mcp: {},
       mcp_resource: {},
       formatter: [],
@@ -417,7 +421,19 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
 
         case "lsp.updated": {
           const workspace = project.workspace.current()
-          void sdk.client.lsp.status({ workspace }).then((x) => setStore("lsp", x.data ?? []))
+          void sdk.client.lsp
+            .status({ workspace })
+            .then((x) => {
+              setStore("lsp", x.data ?? [])
+              setStore("lsp_ready", true)
+            })
+            .catch((e) => {
+              Log.Default.error("tui lsp event refresh failed", {
+                error: e instanceof Error ? e.message : String(e),
+                name: e instanceof Error ? e.name : undefined,
+                stack: e instanceof Error ? e.stack : undefined,
+              })
+            })
           break
         }
 
@@ -438,6 +454,10 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         fullSyncedSessions.clear()
         syncedWorkspace = workspace
       }
+      batch(() => {
+        setStore("lsp_ready", false)
+        setStore("mcp_ready", false)
+      })
       const projectPromise = project.sync()
       const sessionListPromise = projectPromise.then(() => listSessions())
 
@@ -496,23 +516,88 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         })
         .then(() => {
           if (store.status !== "complete") setStore("status", "partial")
+
+          const optional = (label: string, task: Promise<unknown>) =>
+            task.catch((e) => {
+              Log.Default.error("tui optional bootstrap task failed", {
+                label,
+                error: e instanceof Error ? e.message : String(e),
+                name: e instanceof Error ? e.name : undefined,
+                stack: e instanceof Error ? e.stack : undefined,
+              })
+            })
+
           // non-blocking
           void Promise.all([
-            ...(args.continue ? [] : [sessionListPromise.then((sessions) => setStore("session", reconcile(sessions)))]),
-            consoleStatePromise.then((consoleState) => setStore("console_state", reconcile(consoleState))),
-            sdk.client.command.list({ workspace }).then((x) => setStore("command", reconcile(x.data ?? []))),
-            sdk.client.lsp.status({ workspace }).then((x) => setStore("lsp", reconcile(x.data ?? []))),
-            sdk.client.mcp.status({ workspace }).then((x) => setStore("mcp", reconcile(x.data ?? {}))),
-            sdk.client.experimental.resource
-              .list({ workspace })
-              .then((x) => setStore("mcp_resource", reconcile(x.data ?? {}))),
-            sdk.client.formatter.status({ workspace }).then((x) => setStore("formatter", reconcile(x.data ?? []))),
-            sdk.client.session.status({ workspace }).then((x) => {
-              setStore("session_status", reconcile(x.data ?? {}))
-            }),
-            sdk.client.provider.auth({ workspace }).then((x) => setStore("provider_auth", reconcile(x.data ?? {}))),
-            sdk.client.vcs.get({ workspace }).then((x) => setStore("vcs", reconcile(x.data))),
-            project.workspace.sync(),
+            ...(args.continue
+              ? []
+              : [
+                  optional(
+                    "session.list",
+                    sessionListPromise.then((sessions) => setStore("session", reconcile(sessions))),
+                  ),
+                ]),
+            optional(
+              "console_state",
+              consoleStatePromise.then((consoleState) => setStore("console_state", reconcile(consoleState))),
+            ),
+            optional(
+              "command.list",
+              sdk.client.command.list({ workspace }).then((x) => setStore("command", reconcile(x.data ?? []))),
+            ),
+            optional(
+              "lsp.status",
+              sdk.client.lsp
+                .status({ workspace })
+                .then((x) => {
+                  setStore("lsp", reconcile(x.data ?? []))
+                  setStore("lsp_ready", true)
+                })
+                .catch((e) => {
+                  setStore("lsp", [])
+                  setStore("lsp_ready", true)
+                  throw e
+                }),
+            ),
+            optional(
+              "mcp.status",
+              sdk.client.mcp
+                .status({ workspace })
+                .then((x) => {
+                  setStore("mcp", reconcile(x.data ?? {}))
+                  setStore("mcp_ready", true)
+                })
+                .catch((e) => {
+                  setStore("mcp", {})
+                  setStore("mcp_ready", true)
+                  throw e
+                }),
+            ),
+            optional(
+              "mcp_resource.list",
+              sdk.client.experimental.resource
+                .list({ workspace })
+                .then((x) => setStore("mcp_resource", reconcile(x.data ?? {}))),
+            ),
+            optional(
+              "formatter.status",
+              sdk.client.formatter.status({ workspace }).then((x) => setStore("formatter", reconcile(x.data ?? []))),
+            ),
+            optional(
+              "session.status",
+              sdk.client.session.status({ workspace }).then((x) => {
+                setStore("session_status", reconcile(x.data ?? {}))
+              }),
+            ),
+            optional(
+              "provider.auth",
+              sdk.client.provider.auth({ workspace }).then((x) => setStore("provider_auth", reconcile(x.data ?? {}))),
+            ),
+            optional(
+              "vcs.get",
+              sdk.client.vcs.get({ workspace }).then((x) => setStore("vcs", reconcile(x.data))),
+            ),
+            optional("workspace.sync", project.workspace.sync()),
           ]).then(() => {
             setStore("status", "complete")
           })
@@ -539,19 +624,31 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         sdk.client.session.todo({ sessionID }),
         sdk.client.session.diff({ sessionID }),
       ])
-      setStore(
-        produce((draft) => {
-          const match = Binary.search(draft.session, sessionID, (s) => s.id)
-          if (match.found) draft.session[match.index] = session.data!
-          if (!match.found) draft.session.splice(match.index, 0, session.data!)
-          draft.todo[sessionID] = todo.data ?? []
-          draft.message[sessionID] = messages.data!.map((x) => x.info)
-          for (const message of messages.data!) {
-            draft.part[message.info.id] = message.parts
-          }
-          draft.session_diff[sessionID] = diff.data ?? []
-        }),
-      )
+      const sessionInfo = session.data!
+      const sessionMessages = messages.data ?? []
+      batch(() => {
+        setStore(
+          "session",
+          produce((draft) => {
+            const match = Binary.search(draft, sessionID, (s) => s.id)
+            if (match.found) draft[match.index] = sessionInfo
+            if (!match.found) draft.splice(match.index, 0, sessionInfo)
+          }),
+        )
+        setStore("todo", sessionID, reconcile(todo.data ?? [], { key: "id" }))
+        setStore(
+          "message",
+          sessionID,
+          reconcile(
+            sessionMessages.map((x) => x.info),
+            { key: "id" },
+          ),
+        )
+        for (const message of sessionMessages) {
+          setStore("part", message.info.id, reconcile(message.parts, { key: "id" }))
+        }
+        setStore("session_diff", sessionID, reconcile(diff.data ?? []))
+      })
       fullSyncedSessions.add(sessionID)
     }
 

@@ -58,16 +58,16 @@ interface PendingAuth {
 
 let server: ReturnType<typeof createServer> | undefined
 const pendingAuths = new Map<string, PendingAuth>()
-// Reverse index: mcpName → oauthState, so cancelPending(mcpName) can
-// find the right entry in pendingAuths (which is keyed by oauthState).
-const mcpNameToState = new Map<string, string>()
+// Reverse index: caller-provided cancel key -> oauthState, so cancelPending()
+// can find the right entry in pendingAuths (which is keyed by oauthState).
+const cancelKeyToState = new Map<string, string>()
 
 const CALLBACK_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
 
 function cleanupStateIndex(oauthState: string) {
-  for (const [name, state] of mcpNameToState) {
+  for (const [name, state] of cancelKeyToState) {
     if (state === oauthState) {
-      mcpNameToState.delete(name)
+      cancelKeyToState.delete(name)
       break
     }
   }
@@ -169,13 +169,13 @@ export async function ensureRunning(redirectUri?: string): Promise<void> {
   })
 }
 
-export function waitForCallback(oauthState: string, mcpName?: string): Promise<string> {
-  if (mcpName) mcpNameToState.set(mcpName, oauthState)
+export function waitForCallback(oauthState: string, cancelKey?: string): Promise<string> {
+  if (cancelKey) cancelKeyToState.set(cancelKey, oauthState)
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       if (pendingAuths.has(oauthState)) {
         pendingAuths.delete(oauthState)
-        if (mcpName) mcpNameToState.delete(mcpName)
+        if (cancelKey) cancelKeyToState.delete(cancelKey)
         reject(new Error("OAuth callback timeout - authorization took too long"))
       }
     }, CALLBACK_TIMEOUT_MS)
@@ -184,15 +184,15 @@ export function waitForCallback(oauthState: string, mcpName?: string): Promise<s
   })
 }
 
-export function cancelPending(mcpName: string): void {
-  // Look up the oauthState for this mcpName via the reverse index
-  const oauthState = mcpNameToState.get(mcpName)
-  const key = oauthState ?? mcpName
+export function cancelPending(cancelKey: string): void {
+  // Look up the oauthState for this caller-specific key via the reverse index.
+  const oauthState = cancelKeyToState.get(cancelKey)
+  const key = oauthState ?? cancelKey
   const pending = pendingAuths.get(key)
   if (pending) {
     clearTimeout(pending.timeout)
     pendingAuths.delete(key)
-    mcpNameToState.delete(mcpName)
+    cancelKeyToState.delete(cancelKey)
     pending.reject(new Error("Authorization cancelled"))
   }
 }
@@ -222,7 +222,7 @@ export async function stop(): Promise<void> {
     pending.reject(new Error("OAuth callback server stopped"))
   }
   pendingAuths.clear()
-  mcpNameToState.clear()
+  cancelKeyToState.clear()
 }
 
 export function isRunning(): boolean {

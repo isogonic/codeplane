@@ -413,18 +413,18 @@ export function resolveThemeVariant(variant: ThemeVariant, isDark: boolean): Res
     tokens["markdown-code-block"] = isDark ? "#ebe7df" : "#241f1b"
   }
 
-  tokens["avatar-background-pink"] = isDark ? "#501b3f" : "#feeef8"
-  tokens["avatar-background-mint"] = isDark ? "#033a34" : "#e1fbf4"
-  tokens["avatar-background-orange"] = isDark ? "#5f2a06" : "#fff1e7"
-  tokens["avatar-background-purple"] = isDark ? "#432155" : "#f9f1fe"
-  tokens["avatar-background-cyan"] = isDark ? "#0f3058" : "#e7f9fb"
-  tokens["avatar-background-lime"] = isDark ? "#2b3711" : "#eefadc"
-  tokens["avatar-text-pink"] = isDark ? "#e34ba9" : "#cd1d8d"
-  tokens["avatar-text-mint"] = isDark ? "#95f3d9" : "#147d6f"
-  tokens["avatar-text-orange"] = isDark ? "#ff802b" : "#ed5f00"
-  tokens["avatar-text-purple"] = isDark ? "#9d5bd2" : "#8445bc"
-  tokens["avatar-text-cyan"] = isDark ? "#369eff" : "#0894b3"
-  tokens["avatar-text-lime"] = isDark ? "#c4f042" : "#5d770d"
+  tokens["avatar-background-pink"] = isDark ? "#382232" : "#feeef8"
+  tokens["avatar-background-mint"] = isDark ? "#1d3430" : "#e1fbf4"
+  tokens["avatar-background-orange"] = isDark ? "#3e2a1d" : "#fff1e7"
+  tokens["avatar-background-purple"] = isDark ? "#302943" : "#f9f1fe"
+  tokens["avatar-background-cyan"] = isDark ? "#203244" : "#e7f9fb"
+  tokens["avatar-background-lime"] = isDark ? "#2e3321" : "#eefadc"
+  tokens["avatar-text-pink"] = isDark ? "#d890b6" : "#cd1d8d"
+  tokens["avatar-text-mint"] = isDark ? "#8fcdbc" : "#147d6f"
+  tokens["avatar-text-orange"] = isDark ? "#d7a178" : "#ed5f00"
+  tokens["avatar-text-purple"] = isDark ? "#b8a2dc" : "#8445bc"
+  tokens["avatar-text-cyan"] = isDark ? "#91b8d4" : "#0894b3"
+  tokens["avatar-text-lime"] = isDark ? "#bacb84" : "#5d770d"
 
   for (const [key, value] of Object.entries(overrides)) {
     tokens[key] = value

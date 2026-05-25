@@ -69,6 +69,35 @@ describe("Npm.sanitize", () => {
 })
 
 describe("Npm.install", () => {
+  test("skips writable config dirs without package.json or injected packages", async () => {
+    await using tmp = await tmpdir()
+
+    await Npm.install(tmp.path)
+
+    await expect(fs.stat(path.join(tmp.path, "package.json"))).rejects.toThrow()
+    await expect(fs.stat(path.join(tmp.path, "package-lock.json"))).rejects.toThrow()
+    await expect(fs.stat(path.join(tmp.path, "node_modules"))).rejects.toThrow()
+  })
+
+  test("does not reify ignored config dirs when declared packages are already installed without a lockfile", async () => {
+    await using tmp = await tmpdir()
+
+    await writePackage(tmp.path, {
+      name: "fixture",
+      dependencies: {
+        "prod-pkg": "file:./prod-pkg",
+      },
+    })
+    await fs.mkdir(path.join(tmp.path, "prod-pkg"), { recursive: true })
+    await fs.mkdir(path.join(tmp.path, "node_modules", "prod-pkg"), { recursive: true })
+    await writePackage(path.join(tmp.path, "prod-pkg"), { name: "prod-pkg" })
+    await writePackage(path.join(tmp.path, "node_modules", "prod-pkg"), { name: "prod-pkg" })
+
+    await Npm.install(tmp.path)
+
+    await expect(fs.stat(path.join(tmp.path, "package-lock.json"))).rejects.toThrow()
+  })
+
   test("respects omit from project .npmrc", async () => {
     await using tmp = await tmpdir()
 

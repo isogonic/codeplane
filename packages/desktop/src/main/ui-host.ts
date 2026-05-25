@@ -1,11 +1,14 @@
 import type { Session } from "electron"
 import fs from "node:fs/promises"
 import http from "node:http"
+import net from "node:net"
 import path from "node:path"
 import { pipeline } from "node:stream/promises"
 import { Readable } from "node:stream"
+import type { Duplex } from "node:stream"
+import tls from "node:tls"
 import type { ReadableStream as NodeReadableStream } from "node:stream/web"
-import { DEFAULT_THEMES } from "../../../ui/src/theme/default-themes"
+import { LEGACY_THEME_ASSETS } from "../../../ui/src/theme/default-themes"
 
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000
 const STATIC_REF_PATTERN =
@@ -71,6 +74,7 @@ export type DesktopHostInstance = {
 
 type CacheMetadata = {
   fetchedAt: number
+  instances?: Record<string, { lastUsedAt: number; origin: string }>
   lastUsedAt: number
   origin: string
   version: string
@@ -100,6 +104,13 @@ export type DesktopUIPrepareProgress = {
   completed?: number
   total?: number
   cacheHit?: boolean
+}
+
+export type DesktopUICacheInfo = {
+  exists: boolean
+  bytes: number
+  origins: string[]
+  versions: string[]
 }
 
 export class DesktopVersionAuthRequiredError extends Error {
@@ -234,6 +245,86 @@ async function readRequestBody(request: http.IncomingMessage) {
   return chunks.length > 0 ? Buffer.concat(chunks) : undefined
 }
 
+function upgradeRemotePath(remote: URL) {
+  return `${remote.pathname || "/"}${remote.search}`
+}
+
+function upgradeHeaders(
+  request: http.IncomingMessage,
+  remote: URL,
+  instance: DesktopHostInstance,
+) {
+  const headers = new Map<string, string[]>()
+  const set = (name: string, value: string) => headers.set(name.toLowerCase(), [value])
+  const append = (name: string, value: string) => {
+    const key = name.toLowerCase()
+    headers.set(key, [...(headers.get(key) ?? []), value])
+  }
+  for (const [name, value] of Object.entries(request.headers)) {
+    const key = name.toLowerCase()
+    if (key === "host" || key === "connection" || key === "upgrade") continue
+    if (UPSTREAM_REQUEST_HEADERS_BLOCKED.has(key) && !key.startsWith("sec-websocket-")) continue
+    if (value === undefined) continue
+    if (Array.isArray(value)) {
+      for (const item of value) append(name, item)
+      continue
+    }
+    set(name, value)
+  }
+  for (const [name, value] of Object.entries(instance.headers ?? {})) {
+    if (!value) continue
+    set(name, value)
+  }
+  set("host", remote.host)
+  set("connection", "Upgrade")
+  set("upgrade", "websocket")
+  return [...headers.entries()].flatMap(([name, values]) => values.map((value) => `${name}: ${value}`))
+}
+
+function openUpgradeSocket(remote: URL, instance: DesktopHostInstance, onConnect: () => void) {
+  const secure = remote.protocol === "https:"
+  const port = Number(remote.port || (secure ? 443 : 80))
+  if (secure) {
+    return tls.connect(
+      {
+        host: remote.hostname,
+        port,
+        servername: remote.hostname,
+        rejectUnauthorized: !instance.ignoreCertificateErrors,
+      },
+      onConnect,
+    )
+  }
+  if (remote.protocol === "http:") {
+    return net.connect({ host: remote.hostname, port }, onConnect)
+  }
+  throw new Error(`Unsupported WebSocket proxy target protocol: ${remote.protocol}`)
+}
+
+function responseOpen(response: http.ServerResponse<http.IncomingMessage>) {
+  return !response.destroyed && !response.writableEnded
+}
+
+function isClientClosedError(error: unknown) {
+  if (!error || typeof error !== "object") return false
+  const candidate = error as { code?: unknown; message?: unknown; name?: unknown }
+  const code = typeof candidate.code === "string" ? candidate.code : ""
+  if (
+    code === "ERR_STREAM_PREMATURE_CLOSE" ||
+    code === "ERR_STREAM_UNABLE_TO_PIPE" ||
+    code === "ERR_STREAM_WRITE_AFTER_END" ||
+    code === "ERR_HTTP_HEADERS_SENT"
+  ) {
+    return true
+  }
+  const message = typeof candidate.message === "string" ? candidate.message : ""
+  return (
+    message.includes("Premature close") ||
+    message.includes("closed or destroyed stream") ||
+    message.includes("Cannot write headers after they are sent")
+  )
+}
+
 async function readMetadata(root: string) {
   const file = path.join(root, "meta.json")
   if (!(await exists(file))) return
@@ -243,6 +334,20 @@ async function readMetadata(root: string) {
 async function writeMetadata(root: string, value: CacheMetadata) {
   await fs.mkdir(root, { recursive: true })
   await fs.writeFile(path.join(root, "meta.json"), `${JSON.stringify(value, null, 2)}\n`)
+}
+
+async function directoryBytes(target: string): Promise<number> {
+  const entries = await fs.readdir(target, { withFileTypes: true }).catch(() => undefined)
+  if (!entries) return 0
+  const sizes = await Promise.all(
+    entries.map(async (entry) => {
+      const child = path.join(target, entry.name)
+      if (entry.isDirectory()) return directoryBytes(child)
+      const stat = await fs.lstat(child).catch(() => undefined)
+      return stat?.size ?? 0
+    }),
+  )
+  return sizes.reduce((sum, value) => sum + value, 0)
 }
 
 function cacheRoot(base: string) {
@@ -299,17 +404,24 @@ async function ensureLegacyThemeAssets(root: string) {
   const target = path.join(root, "assets", "themes")
   await fs.mkdir(target, { recursive: true })
   await Promise.all(
-    Object.entries(DEFAULT_THEMES).map(([id, theme]) =>
+    Object.entries(LEGACY_THEME_ASSETS).map(([id, theme]) =>
       fs.writeFile(path.join(target, `${id}.json`), `${JSON.stringify(theme, null, 2)}\n`),
     ),
   )
 }
 
-async function touchVersion(base: string, version: string, origin: string) {
+async function touchVersion(base: string, version: string, origin: string, instanceID: string) {
   const root = versionRoot(base, version)
   const current = await readMetadata(root)
   await writeMetadata(root, {
     fetchedAt: current?.fetchedAt ?? Date.now(),
+    instances: {
+      ...(current?.instances ?? {}),
+      [instanceID]: {
+        lastUsedAt: Date.now(),
+        origin,
+      },
+    },
     lastUsedAt: Date.now(),
     origin,
     version,
@@ -499,7 +611,7 @@ async function ensureCachedVersion(
       total: 1,
       cacheHit: true,
     })
-    await touchVersion(base, version, instanceOrigin(instance.url))
+    await touchVersion(base, version, instanceOrigin(instance.url), instance.id)
     return root
   }
 
@@ -517,7 +629,7 @@ async function ensureCachedVersion(
   await fs.mkdir(temp, { recursive: true })
   await crawlUI(session, instance, temp, log, progress)
   await ensureLegacyThemeAssets(temp)
-  log?.("legacy-themes.ready", { root: temp, themeCount: Object.keys(DEFAULT_THEMES).length })
+  log?.("legacy-themes.ready", { root: temp, themeCount: Object.keys(LEGACY_THEME_ASSETS).length })
   progress?.({
     phase: "finalize",
     message: "Finalizing local UI cache…",
@@ -526,6 +638,12 @@ async function ensureCachedVersion(
   })
   await writeMetadata(temp, {
     fetchedAt: Date.now(),
+    instances: {
+      [instance.id]: {
+        lastUsedAt: Date.now(),
+        origin: instanceOrigin(instance.url),
+      },
+    },
     lastUsedAt: Date.now(),
     origin: instanceOrigin(instance.url),
     version,
@@ -552,6 +670,11 @@ export function createDesktopUIHost(input: {
   let server: http.Server | undefined
   const inflight = new Map<string, Promise<string>>()
   const log = (event: string, data?: unknown) => input.log?.(event, data)
+  const httpOrigin = (instance: DesktopHostInstance) => {
+    const target = asUrl(instance.url)
+    if (target?.protocol !== "http:" && target?.protocol !== "https:") return
+    return target.origin
+  }
 
   const inferInstance = (request: http.IncomingMessage, reqUrl: URL) => {
     const id =
@@ -606,12 +729,127 @@ export function createDesktopUIHost(input: {
       if (RESPONSE_HEADERS_BLOCKED.has(name.toLowerCase())) continue
       upstreamHeaders[name] = value
     }
+    if (!responseOpen(response)) {
+      await upstream.body?.cancel().catch(() => undefined)
+      log("proxy.client-closed", {
+        id: instance.id,
+        method: request.method,
+        pathname,
+        phase: "before-headers",
+        remote: remote.toString(),
+      })
+      return
+    }
     response.writeHead(upstream.status, upstreamHeaders)
     if (!upstream.body) {
       response.end()
       return
     }
-    await pipeline(Readable.fromWeb(upstream.body as unknown as NodeReadableStream), response)
+    let completed = false
+    const cancelUpstream = () => {
+      if (completed) return
+      void upstream.body?.cancel().catch(() => undefined)
+    }
+    response.once("close", cancelUpstream)
+    try {
+      await pipeline(Readable.fromWeb(upstream.body as unknown as NodeReadableStream), response)
+    } catch (error) {
+      if (isClientClosedError(error) || !responseOpen(response)) {
+        await upstream.body.cancel().catch(() => undefined)
+        log("proxy.client-closed", {
+          id: instance.id,
+          method: request.method,
+          pathname,
+          phase: "body",
+          remote: remote.toString(),
+        })
+        return
+      }
+      throw error
+    } finally {
+      completed = true
+      response.removeListener("close", cancelUpstream)
+    }
+  }
+
+  const proxyUpgrade = async (
+    request: http.IncomingMessage,
+    socket: Duplex,
+    head: Buffer,
+  ) => {
+    const reqUrl = new URL(request.url ?? "/", origin || "http://127.0.0.1")
+    const routed = (() => {
+      if (reqUrl.pathname.startsWith("/instance/")) {
+        const [, , id, ...rest] = reqUrl.pathname.split("/")
+        const instance = id ? input.getInstance(decodePath(id)) : undefined
+        if (!instance) return
+        return { instance, pathname: `/${rest.join("/")}` }
+      }
+      const instance = inferInstance(request, reqUrl)
+      if (!instance) return
+      return { instance, pathname: reqUrl.pathname }
+    })()
+    if (!routed) {
+      log("proxy.upgrade.instance.unknown", { pathname: reqUrl.pathname })
+      socket.end("HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n")
+      return
+    }
+    const instance = input.ensureReady ? await input.ensureReady(routed.instance) : routed.instance
+    const remote = new URL(routed.pathname.replace(/^\/+/, ""), baseUrl(instance.url))
+    remote.search = reqUrl.search
+    log("proxy.upgrade", {
+      id: instance.id,
+      method: request.method,
+      pathname: routed.pathname,
+      remote: remote.toString(),
+    })
+    await new Promise<void>((resolve, reject) => {
+      let connected = false
+      const upstream = openUpgradeSocket(remote, instance, () => {
+        connected = true
+        upstream.write(
+          [
+            `${request.method ?? "GET"} ${upgradeRemotePath(remote)} HTTP/1.1`,
+            ...upgradeHeaders(request, remote, instance),
+            "",
+            "",
+          ].join("\r\n"),
+        )
+        if (head.length > 0) upstream.write(head)
+        upstream.on("data", (chunk) => {
+          if (!socket.destroyed) socket.write(chunk)
+        })
+        socket.on("data", (chunk) => {
+          if (!upstream.destroyed) upstream.write(chunk)
+        })
+        upstream.once("end", () => {
+          if (!socket.destroyed) socket.end()
+        })
+        socket.once("end", () => {
+          if (!upstream.destroyed) upstream.end()
+        })
+        log("proxy.upgrade.connected", {
+          id: instance.id,
+          pathname: routed.pathname,
+          remote: remote.toString(),
+        })
+        resolve()
+      })
+      const fail = (error: Error) => {
+        log("proxy.upgrade.error", {
+          error,
+          id: instance.id,
+          pathname: routed.pathname,
+          remote: remote.toString(),
+        })
+        socket.destroy()
+        upstream.destroy()
+        if (!connected) reject(error)
+      }
+      upstream.once("error", fail)
+      socket.once("error", () => upstream.destroy())
+      socket.once("close", () => upstream.destroy())
+    })
   }
 
   const ensureServer = async () => {
@@ -681,9 +919,21 @@ export function createDesktopUIHost(input: {
         log("server.asset-hit", { file, pathname: reqUrl.pathname })
         response.end(body)
       })().catch((error) => {
+        if (isClientClosedError(error) || !responseOpen(response)) {
+          log("server.client-closed", { pathname: request.url ?? "/" })
+          if (responseOpen(response)) response.destroy()
+          return
+        }
         log("server.error", { error, pathname: request.url ?? "/" })
+        if (response.headersSent || !responseOpen(response)) return
         response.writeHead(502)
         response.end(error instanceof Error ? error.message : String(error))
+      })
+    })
+    server.on("upgrade", (request, socket, head) => {
+      void proxyUpgrade(request, socket, head).catch((error) => {
+        log("server.upgrade.error", { error, pathname: request.url ?? "/" })
+        socket.destroy()
       })
     })
     await new Promise<void>((resolve, reject) => {
@@ -730,7 +980,7 @@ export function createDesktopUIHost(input: {
         activeID = instance.id
         const cachedRoot = versionRoot(input.cacheDir, fresh.version)
         await ensureLegacyThemeAssets(cachedRoot)
-        await touchVersion(input.cacheDir, fresh.version, originValue)
+        await touchVersion(input.cacheDir, fresh.version, originValue, instance.id)
         root = cachedRoot
         const url = `${await ensureServer()}/?server=${encodeURIComponent(instance.id)}&ui=${encodeURIComponent(fresh.version)}`
         progress?.({
@@ -787,7 +1037,7 @@ export function createDesktopUIHost(input: {
       version,
     })
     await cleanupUnused(input.cacheDir)
-    await touchVersion(input.cacheDir, version, originValue)
+    await touchVersion(input.cacheDir, version, originValue, instance.id)
     await markOriginChecked(input.cacheDir, originValue, version)
     log("prepare.success", { id: instance.id, root, version })
     const url = `${await ensureServer()}/?server=${encodeURIComponent(instance.id)}&ui=${encodeURIComponent(version)}`
@@ -801,6 +1051,85 @@ export function createDesktopUIHost(input: {
       url,
       version,
     }
+  }
+
+  const cacheInfo = async (instance: DesktopHostInstance): Promise<DesktopUICacheInfo> => {
+    const originValue = httpOrigin(instance)
+    const index = await readOriginIndex(input.cacheDir)
+    const root = cacheRoot(input.cacheDir)
+    const entries = await fs.readdir(root, { withFileTypes: true }).catch(() => [])
+    const versions = new Set<string>()
+    const origins = new Set<string>()
+    if (originValue) {
+      origins.add(originValue)
+      const indexed = index[originValue]
+      if (indexed) versions.add(indexed.version)
+    }
+    if (instance.local?.binaryVersion) versions.add(instance.local.binaryVersion)
+
+    await Promise.all(
+      entries
+        .filter((entry) => entry.isDirectory())
+        .map(async (entry) => {
+          const meta = await readMetadata(path.join(root, entry.name))
+          const recorded = meta?.instances?.[instance.id]
+          if (recorded) {
+            versions.add(entry.name)
+            origins.add(recorded.origin)
+            return
+          }
+          if (originValue && meta?.origin === originValue) versions.add(entry.name)
+        }),
+    )
+
+    const resolved = (
+      await Promise.all(
+        [...versions].map(async (version) => {
+          const bytes = await directoryBytes(versionRoot(input.cacheDir, version))
+          if (bytes === 0) return
+          return { bytes, version }
+        }),
+      )
+    ).filter((entry): entry is { bytes: number; version: string } => entry !== undefined)
+
+    return {
+      bytes: resolved.reduce((sum, entry) => sum + entry.bytes, 0),
+      exists: resolved.length > 0,
+      origins: [...origins].filter(Boolean).sort(),
+      versions: resolved.map((entry) => entry.version).sort(),
+    }
+  }
+
+  const clearCache = async (instance: DesktopHostInstance): Promise<DesktopUICacheInfo> => {
+    const before = await cacheInfo(instance)
+    if (!before.exists) return before
+
+    const index = await readOriginIndex(input.cacheDir)
+    const nextIndex: OriginIndex = { ...index }
+    for (const originValue of before.origins) delete nextIndex[originValue]
+    await writeOriginIndex(input.cacheDir, nextIndex)
+
+    await Promise.all(
+      before.versions.map(async (version) => {
+        const target = versionRoot(input.cacheDir, version)
+        const meta = await readMetadata(target)
+        const nextInstances = { ...(meta?.instances ?? {}) }
+        delete nextInstances[instance.id]
+        const usedByOrigin = Object.values(nextIndex).some((entry) => entry.version === version)
+        const usedByInstance = Object.keys(nextInstances).length > 0
+        if (usedByOrigin || usedByInstance) {
+          if (meta) {
+            await writeMetadata(target, {
+              ...meta,
+              instances: usedByInstance ? nextInstances : undefined,
+            })
+          }
+          return
+        }
+        await fs.rm(target, { force: true, recursive: true })
+      }),
+    )
+    return before
   }
 
   return {
@@ -827,6 +1156,8 @@ export function createDesktopUIHost(input: {
       await cleanupUnused(input.cacheDir)
       log("cleanup.success", { cacheDir: input.cacheDir })
     },
+    cacheInfo,
+    clearCache,
     prepare,
     proxyKey,
   }

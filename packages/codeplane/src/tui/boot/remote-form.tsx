@@ -13,16 +13,17 @@
 //
 // Editing: pass `existing` to pre-fill all fields and update in place
 // instead of allocating a new id.
-import { createMemo, createSignal, For, Show } from "solid-js"
+import { createMemo, createSignal, For, onMount, Show } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
 import open from "open"
 import type { SavedInstance } from "@codeplane-ai/shared/instance"
+import { tuiT } from "@/tui/i18n"
 import type { InstanceService } from "../instance-service"
-import { Banner, Header, palette, SectionHeading, StatusBar, TextField, ToggleField } from "./primitives"
+import { Banner, Header, SectionHeading, StatusBar, TextField, ToggleField, useBootPalette } from "./primitives"
 
 export type RemoteFormResult = { instance: SavedInstance } | { cancel: true }
 
-type Field = "label" | "url" | "username" | "password" | "headers" | "ignoreCert" | "signin"
+type Field = "label" | "url" | "username" | "password" | "headers" | "ignoreCert" | "clearCache" | "signin"
 const FIELD_ORDER: Field[] = ["label", "url", "username", "password", "headers", "ignoreCert", "signin"]
 
 type ProbeState =
@@ -96,7 +97,7 @@ function decomposeExisting(existing?: SavedInstance) {
     ignoreCert: false,
   }
   if (!existing) return empty
-  const headers = { ...(existing.headers ?? {}) }
+  const headers = { ...existing.headers }
   let username = ""
   let password = ""
   const authKey = Object.keys(headers).find((k) => k.toLowerCase() === "authorization")
@@ -133,6 +134,7 @@ export function RemoteInstanceForm(props: {
   existing?: SavedInstance
   onDone: (result: RemoteFormResult) => void
 }) {
+  const palette = useBootPalette()
   const initial = decomposeExisting(props.existing)
   const [label, setLabel] = createSignal(initial.label)
   const [url, setUrl] = createSignal(initial.url)
@@ -145,11 +147,37 @@ export function RemoteInstanceForm(props: {
   const [saving, setSaving] = createSignal(false)
   const [probe, setProbe] = createSignal<ProbeState>({ status: "idle" })
   const [signin, setSignin] = createSignal<SigninPhase>({ kind: "idle" })
-  const busy = createMemo(() => saving() || probe().status === "checking" || signin().kind === "verifying")
+  const [cacheInfo, setCacheInfo] = createSignal<Awaited<ReturnType<InstanceService["cacheInfo"]>>>()
+  const [cacheNotice, setCacheNotice] = createSignal<{ ok: boolean; message: string }>()
+  const [clearingCache, setClearingCache] = createSignal(false)
+  const cacheAvailable = createMemo(() => !!props.existing && !!cacheInfo()?.exists)
+  const fields = createMemo(() => {
+    if (!cacheAvailable()) return FIELD_ORDER
+    const next = FIELD_ORDER.slice()
+    next.splice(next.indexOf("signin"), 0, "clearCache")
+    return next
+  })
+  const busy = createMemo(() => saving() || probe().status === "checking" || signin().kind === "verifying" || clearingCache())
   const inSignin = createMemo(() => {
     const s = signin().kind
     return s === "browser-open" || s === "paste"
   })
+  const editingLocalManaged = createMemo(() => !!props.existing?.local)
+
+  const refreshCacheInfo = async () => {
+    if (!props.existing) return
+    try {
+      setCacheInfo(await props.service.cacheInfo(props.existing.id))
+    } catch (err) {
+      setCacheInfo({ exists: false, bytes: 0, areas: [] })
+      setCacheNotice({
+        ok: false,
+        message: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
+
+  onMount(() => void refreshCacheInfo())
 
   const valueFor = (f: Field) =>
     f === "label"
@@ -197,18 +225,18 @@ export function RemoteInstanceForm(props: {
   const buildInstance = (): SavedInstance | undefined => {
     const trimmedLabel = label().trim()
     if (!trimmedLabel) {
-      setError("Label is required")
+      setError(tuiT("boot.remote.labelRequired"))
       setFocused("label")
       return undefined
     }
     const trimmedUrl = url().trim()
     if (!trimmedUrl) {
-      setError("URL is required")
+      setError(tuiT("boot.remote.urlRequired"))
       setFocused("url")
       return undefined
     }
     if (!/^https?:\/\//i.test(trimmedUrl)) {
-      setError("URL must start with http:// or https://")
+      setError(tuiT("boot.remote.urlMustStart"))
       setFocused("url")
       return undefined
     }
@@ -223,7 +251,7 @@ export function RemoteInstanceForm(props: {
       }
     }
     return {
-      ...(props.existing ?? {}),
+      ...props.existing,
       id,
       url: trimmedUrl,
       label: trimmedLabel,
@@ -289,12 +317,12 @@ export function RemoteInstanceForm(props: {
     if (busy()) return
     const trimmedUrl = url().trim()
     if (!trimmedUrl) {
-      setError("URL required to sign in")
+      setError(tuiT("boot.remote.urlRequiredToSignIn"))
       setFocused("url")
       return
     }
     if (!/^https?:\/\//i.test(trimmedUrl)) {
-      setError("URL must start with http:// or https://")
+      setError(tuiT("boot.remote.urlMustStart"))
       setFocused("url")
       return
     }
@@ -306,6 +334,28 @@ export function RemoteInstanceForm(props: {
 
   const cancelSignin = () => {
     setSignin({ kind: "idle" })
+  }
+
+  const clearCache = async () => {
+    if (!props.existing || busy()) return
+    setClearingCache(true)
+    setCacheNotice(undefined)
+    try {
+      const cleared = await props.service.clearCache(props.existing.id)
+      setCacheNotice({
+        ok: true,
+        message: tuiT("boot.remote.clearCacheNotice", { size: (cleared.bytes / 1024 / 1024).toFixed(1) }),
+      })
+      await refreshCacheInfo()
+      if (focused() === "clearCache") setFocused("signin")
+    } catch (err) {
+      setCacheNotice({
+        ok: false,
+        message: err instanceof Error ? err.message : String(err),
+      })
+    } finally {
+      setClearingCache(false)
+    }
   }
 
   const submitSigninPaste = async () => {
@@ -321,7 +371,7 @@ export function RemoteInstanceForm(props: {
       setSignin({
         kind: "result",
         ok: false,
-        message: `Invalid header "${line.slice(0, 40)}…". Use NAME: VALUE.`,
+        message: tuiT("boot.remote.invalidHeader", { header: line.slice(0, 40) }),
       })
       return
     }
@@ -331,7 +381,7 @@ export function RemoteInstanceForm(props: {
       setSignin({
         kind: "result",
         ok: false,
-        message: "Both NAME and VALUE must be non-empty.",
+        message: tuiT("boot.remote.headerNameValueRequired"),
       })
       return
     }
@@ -345,35 +395,36 @@ export function RemoteInstanceForm(props: {
     setSignin({ kind: "verifying" })
     const candidate = buildInstance()
     if (!candidate) {
-      setSignin({ kind: "result", ok: false, message: "Save failed: invalid form state." })
+      setSignin({ kind: "result", ok: false, message: tuiT("boot.remote.saveFailedInvalidForm") })
       return
     }
     const result = await props.service.probe(candidate)
     if (result.ok && result.version) {
-      setSignin({ kind: "result", ok: true, message: `Authenticated. Server reports v${result.version}.` })
+      setSignin({ kind: "result", ok: true, message: tuiT("boot.remote.authenticated", { version: result.version }) })
       return
     }
     if (result.ok && !result.version) {
       setSignin({
         kind: "result",
         ok: false,
-        message: "Header saved but server still didn't return a version (auth proxy may need more headers).",
+        message: tuiT("boot.remote.headerSavedButNoVersion"),
       })
       return
     }
     setSignin({
       kind: "result",
       ok: false,
-      message: `Header saved but probe still failed: ${
-        !result.ok && result.status ? `HTTP ${result.status}` : !result.ok ? result.error : "(unknown)"
-      }`,
+      message: tuiT("boot.remote.headerSavedButProbeFailed", {
+        message: !result.ok && result.status ? `HTTP ${result.status}` : !result.ok ? result.error : "(unknown)",
+      }),
     })
   }
 
   const moveFocus = (delta: 1 | -1) => {
-    const idx = FIELD_ORDER.indexOf(focused())
-    const next = (idx + delta + FIELD_ORDER.length) % FIELD_ORDER.length
-    setFocused(FIELD_ORDER[next])
+    const order = fields()
+    const idx = Math.max(0, order.indexOf(focused()))
+    const next = (idx + delta + order.length) % order.length
+    setFocused(order[next])
   }
 
   // Single-source keyboard handler for the form. Action keys (Ctrl+S,
@@ -431,6 +482,7 @@ export function RemoteInstanceForm(props: {
     if (evt.name === "down") return moveFocus(1)
     if (evt.ctrl && evt.name === "s") return void save()
     if (evt.ctrl && evt.name === "p") return void probeNow()
+    if (evt.ctrl && evt.name === "k" && cacheAvailable()) return void clearCache()
     if (evt.ctrl && evt.name === "g") return void startSignin()
 
     const f = focused()
@@ -446,6 +498,12 @@ export function RemoteInstanceForm(props: {
         setIgnoreCert(!ignoreCert())
         if (probe().status !== "idle") setProbe({ status: "idle" })
         return
+      }
+      return
+    }
+    if (f === "clearCache") {
+      if (evt.name === "return" || evt.name === "space" || evt.sequence === " ") {
+        return void clearCache()
       }
       return
     }
@@ -545,56 +603,80 @@ export function RemoteInstanceForm(props: {
     const blob = headersText()
     const lines = blob ? blob.split("\n") : []
     const nonEmpty = lines.filter((l) => l.trim()).length
-    if (nonEmpty === 0) return "one Name: Value per line — Enter for newline"
-    return `${nonEmpty} header${nonEmpty === 1 ? "" : "s"} — Enter newline, Ctrl+U clear`
+    if (nonEmpty === 0) return tuiT("boot.remote.headersHintEmpty")
+    return tuiT(nonEmpty === 1 ? "boot.remote.headersHintCount.one" : "boot.remote.headersHintCount.other", { count: nonEmpty })
   })
 
   const probeBanner = createMemo(() => {
     const p = probe()
-    if (p.status === "checking") return { variant: "info" as const, text: "Probing /global/version…" }
+    if (p.status === "checking") return { variant: "info" as const, text: tuiT("boot.remote.probing") }
     if (p.status === "ok")
       return {
         variant: "success" as const,
         text: p.version
-          ? `Server reachable. Reports v${p.version}.`
-          : "Server reachable but did not return a version (auth proxy?). Use Ctrl+G to sign in via browser.",
+          ? tuiT("boot.remote.probeOk", { version: p.version })
+          : tuiT("boot.remote.probeOkNoVersion"),
       }
-    if (p.status === "error") return { variant: "error" as const, text: `Probe failed: ${p.message}` }
+    if (p.status === "error") return { variant: "error" as const, text: tuiT("boot.remote.probeFailed", { message: p.message }) }
     return undefined
+  })
+  const signinBrowserUrl = createMemo(() => {
+    const current = signin()
+    return current.kind === "browser-open" ? current.url : undefined
+  })
+  const signinPaste = createMemo(() => {
+    const current = signin()
+    return current.kind === "paste" ? current.pasted : undefined
+  })
+  const signinResult = createMemo(() => {
+    const current = signin()
+    return current.kind === "result" ? current : undefined
   })
 
   return (
-    <box flexDirection="column" flexGrow={1} backgroundColor={palette.bg}>
+    <box flexDirection="column" flexGrow={1} backgroundColor={palette().bg}>
       <Header
         instance="setup"
         cwd={props.existing ? `edit ${props.existing.id}` : "new remote instance"}
-        status={props.existing ? "edit" : "form"}
-        statusColor={palette.info}
+        status={props.existing ? "Edit" : "Form"}
+        statusColor={palette().info}
       />
-      <SectionHeading>{props.existing ? "EDIT REMOTE INSTANCE" : "NEW REMOTE INSTANCE"}</SectionHeading>
+      <SectionHeading>
+        {props.existing
+          ? editingLocalManaged()
+            ? tuiT("boot.remote.heading.editAccess")
+            : tuiT("boot.remote.heading.edit")
+          : tuiT("boot.remote.heading.new")}
+      </SectionHeading>
+
+      <Show when={editingLocalManaged()}>
+        <box marginTop={1}>
+          <Banner variant="info">{tuiT("boot.remote.localManagedHint")}</Banner>
+        </box>
+      </Show>
 
       <box marginTop={1}>
         <TextField
-          label="Label"
+          label={tuiT("boot.remote.label")}
           value={label()}
           focused={focused() === "label"}
           placeholder="My Codeplane Server"
-          hint="shown in the picker"
-          validate={() => ({ ok: !!label().trim(), message: label().trim() ? undefined : "required" })}
+          hint={tuiT("boot.local.labelHint")}
+          validate={() => ({ ok: !!label().trim(), message: label().trim() ? undefined : tuiT("common.required") })}
         />
       </box>
 
       <box marginTop={1}>
         <TextField
-          label="URL"
+          label={tuiT("boot.remote.url")}
           value={url()}
           focused={focused() === "url"}
-          placeholder="https://codeplane.example.com"
-          hint="https:// or http://"
+          placeholder={tuiT("boot.remote.urlPlaceholder")}
+          hint={tuiT("boot.remote.urlHint")}
           validate={() => {
             const v = url().trim()
-            if (!v) return { ok: false, message: "required" }
-            if (!/^https?:\/\//i.test(v)) return { ok: false, message: "must start with http:// or https://" }
+            if (!v) return { ok: false, message: tuiT("common.required") }
+            if (!/^https?:\/\//i.test(v)) return { ok: false, message: tuiT("boot.remote.urlMustStart") }
             return { ok: true }
           }}
         />
@@ -602,37 +684,37 @@ export function RemoteInstanceForm(props: {
 
       <box marginTop={1}>
         <TextField
-          label="Basic Auth username"
+          label={tuiT("boot.remote.username")}
           value={username()}
           focused={focused() === "username"}
-          placeholder="(optional)"
-          hint="leave empty if the server doesn't use Basic Auth"
+          placeholder={tuiT("boot.remote.optional")}
+          hint={tuiT("boot.remote.usernameHint")}
         />
       </box>
 
       <box marginTop={1}>
         <TextField
-          label="Basic Auth password"
+          label={tuiT("boot.remote.password")}
           value={passwordDisplay()}
           focused={focused() === "password"}
-          placeholder="(optional)"
-          hint={password() ? "masked — Ctrl+U to clear" : "leave empty if the server doesn't use Basic Auth"}
+          placeholder={tuiT("boot.remote.optional")}
+          hint={password() ? tuiT("boot.remote.passwordMaskedHint") : tuiT("boot.remote.passwordHint")}
         />
       </box>
 
       <box marginTop={1}>
         <TextField
-          label="Custom request headers"
+          label={tuiT("boot.remote.headers")}
           value={headersDisplay()}
           focused={focused() === "headers"}
-          placeholder="Cookie: CF_Authorization=…"
+          placeholder={tuiT("boot.remote.headersPlaceholder")}
           hint={headersHint()}
         />
         <Show when={headersText().split("\n").filter((l) => l.trim()).length > 1 || (headersText().includes("\n") && focused() === "headers")}>
           <box flexDirection="column" paddingX={4}>
             <For each={headersText().split("\n").slice(0, -1)}>
               {(line) => (
-                <text fg={palette.fgDim}>{line || " "}</text>
+                <text fg={palette().fgDim}>{line || " "}</text>
               )}
             </For>
           </box>
@@ -641,59 +723,79 @@ export function RemoteInstanceForm(props: {
 
       <box marginTop={1}>
         <ToggleField
-          label="Trust self-signed TLS certificates"
+          label={tuiT("boot.remote.ignoreCert")}
           value={ignoreCert()}
           focused={focused() === "ignoreCert"}
-          hint="only enable for trusted internal / dev instances"
+          hint={tuiT("boot.remote.ignoreCertHint")}
         />
       </box>
 
+      <Show when={cacheAvailable()}>
+        <box marginTop={1} paddingX={2} flexDirection="row">
+          <text fg={focused() === "clearCache" ? palette().accent : palette().fgDim}>
+            {focused() === "clearCache" ? "▍ " : "  "}
+          </text>
+          <text fg={focused() === "clearCache" ? palette().fg : palette().fgMuted}>
+            [ {tuiT("boot.remote.clearCache")} ]
+          </text>
+          <text fg={palette().fgDim}>
+            {`  ${tuiT("boot.remote.clearCacheSummary", {
+              size: (cacheInfo()!.bytes / 1024 / 1024).toFixed(1),
+            })}`}
+          </text>
+        </box>
+      </Show>
+
       <box marginTop={1} paddingX={2} flexDirection="row">
-        <text fg={focused() === "signin" ? palette.accent : palette.fgDim}>
+        <text fg={focused() === "signin" ? palette().accent : palette().fgDim}>
           {focused() === "signin" ? "▍ " : "  "}
         </text>
-        <text fg={focused() === "signin" ? palette.accent : palette.fgMuted}>
-          [ Sign in via browser ]
+        <text fg={focused() === "signin" ? palette().fg : palette().fgMuted}>
+          [ {tuiT("boot.remote.signInBrowser")} ]
         </text>
-        <text fg={palette.fgDim}>  Cloudflare Access / SSO — opens URL, captures pasted header</text>
+        <text fg={palette().fgDim}>  {tuiT("boot.remote.signInHint")}</text>
       </box>
 
       <Show when={signin().kind === "browser-open"}>
         <box marginTop={1}>
-          <Banner variant="info">{`Opened ${(signin() as { url: string }).url} in your default browser. Sign in there, copy the auth header (Cookie, Authorization, …) from DevTools, then paste below.`}</Banner>
+          <Banner variant="info">{tuiT("boot.remote.signInOpened", { url: signinBrowserUrl() ?? url().trim() })}</Banner>
         </box>
       </Show>
 
       <Show when={signin().kind === "paste"}>
         <box marginTop={1} paddingX={2} flexDirection="column">
           <box flexDirection="row">
-            <text fg={palette.accent}>paste header </text>
-            <text fg={palette.divider}>›</text>
-            <text fg={palette.fg}> {(signin() as { pasted: string }).pasted || " "}</text>
-            <text fg={palette.accent}>▎</text>
+            <text fg={palette().accent}>{tuiT("boot.remote.signInPaste")} </text>
+            <text fg={palette().divider}>›</text>
+            <text fg={palette().fg}> {signinPaste() || " "}</text>
+            <text fg={palette().accent}>▎</text>
           </box>
-          <text fg={palette.fgDim}>  Format: Name: value  ·  Enter to verify  ·  Esc to cancel  ·  Ctrl+U clear</text>
-          <text fg={palette.fgDim}>  e.g. Cookie: CF_Authorization=eyJ…  or  Authorization: Bearer eyJ…</text>
+          <text fg={palette().fgDim}>  {tuiT("boot.remote.signInPasteHint")}</text>
+          <text fg={palette().fgDim}>  {tuiT("boot.remote.signInPasteExample")}</text>
         </box>
       </Show>
 
       <Show when={signin().kind === "verifying"}>
         <box marginTop={1}>
-          <Banner variant="info">Verifying captured header against /global/version…</Banner>
+          <Banner variant="info">{tuiT("boot.remote.signInVerifying")}</Banner>
         </box>
       </Show>
 
       <Show when={signin().kind === "result"}>
         <box marginTop={1}>
-          <Banner
-            variant={(signin() as { ok: boolean }).ok ? "success" : "error"}
-          >{(signin() as { message: string }).message}</Banner>
+          <Banner variant={signinResult()?.ok ? "success" : "error"}>{signinResult()?.message ?? ""}</Banner>
         </box>
       </Show>
 
       <Show when={probeBanner() && signin().kind === "idle"}>
         <box marginTop={1}>
           <Banner variant={probeBanner()!.variant}>{probeBanner()!.text}</Banner>
+        </box>
+      </Show>
+
+      <Show when={cacheNotice()}>
+        <box marginTop={1}>
+          <Banner variant={cacheNotice()!.ok ? "success" : "error"}>{cacheNotice()!.message}</Banner>
         </box>
       </Show>
 
@@ -706,12 +808,13 @@ export function RemoteInstanceForm(props: {
       <box flexGrow={1} />
       <StatusBar
         hints={[
-          { keys: "ctrl+s", label: props.existing ? "save changes" : "save" },
-          { keys: "ctrl+p", label: "probe" },
-          { keys: "ctrl+g", label: "sign-in" },
-          { keys: "tab/↑↓", label: "navigate" },
-          { keys: "esc", label: "cancel" },
-          { keys: "ctrl+c", label: "quit" },
+          { keys: "ctrl+s", label: tuiT("common.save") },
+          { keys: "ctrl+p", label: tuiT("common.probe") },
+          ...(cacheAvailable() ? [{ keys: "ctrl+k", label: tuiT("boot.remote.clearCache") }] : []),
+          { keys: "ctrl+g", label: tuiT("common.signIn") },
+          { keys: "tab/↑↓", label: tuiT("common.navigate") },
+          { keys: "esc", label: tuiT("common.cancel") },
+          { keys: "ctrl+c", label: tuiT("common.quit") },
         ]}
       />
     </box>

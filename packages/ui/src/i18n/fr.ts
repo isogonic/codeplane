@@ -1,4 +1,8 @@
-export const dict = {
+import { dict as en } from "./en"
+
+type Keys = keyof typeof en
+
+const translated = {
   "ui.sessionReview.title": "Modifications de la session",
   "ui.sessionReview.title.lastTurn": "Modifications du dernier tour",
   "ui.sessionReview.diffStyle.unified": "Unifié",
@@ -12,12 +16,9 @@ export const dict = {
   "ui.sessionReview.change.removed": "Supprimé",
   "ui.sessionReview.change.modified": "Modifié",
   "ui.sessionReview.image.loading": "Chargement...",
-  "ui.sessionReview.image.placeholder": "Image",
   "ui.sessionReview.largeDiff.title": "Diff trop volumineux pour être affiché",
   "ui.sessionReview.largeDiff.meta": "Limite : {{limit}} lignes modifiées. Actuel : {{current}} lignes modifiées.",
   "ui.sessionReview.largeDiff.renderAnyway": "Afficher quand même",
-  "ui.fileMedia.kind.image": "image",
-  "ui.fileMedia.kind.audio": "audio",
   "ui.fileMedia.state.removed": "Fichier {{kind}} supprimé",
   "ui.fileMedia.state.loading": "Chargement du fichier {{kind}}",
   "ui.fileMedia.state.error": "Erreur avec le fichier {{kind}}",
@@ -25,19 +26,14 @@ export const dict = {
   "ui.fileMedia.binary.title": "Fichier binaire",
   "ui.fileMedia.binary.description.path": "Impossible d'afficher {{path}} car il s'agit d'un fichier binaire.",
   "ui.fileMedia.binary.description.default": "Impossible d'afficher ce fichier car il s'agit d'un fichier binaire.",
-
   "ui.lineComment.label.prefix": "Commenter sur ",
-  "ui.lineComment.label.suffix": "",
   "ui.lineComment.editorLabel.prefix": "Commentaire sur ",
-  "ui.lineComment.editorLabel.suffix": "",
   "ui.lineComment.placeholder": "Ajouter un commentaire",
   "ui.lineComment.submit": "Commenter",
-
   "ui.sessionTurn.steps.show": "Afficher les étapes",
   "ui.sessionTurn.steps.hide": "Masquer les étapes",
   "ui.sessionTurn.summary.response": "Réponse",
   "ui.sessionTurn.diff.showMore": "Afficher plus de modifications ({{count}})",
-
   "ui.sessionTurn.retry.retrying": "nouvelle tentative",
   "ui.sessionTurn.retry.inSeconds": "dans {{seconds}}s",
   "ui.sessionTurn.retry.attempt": "tentative n°{{attempt}}",
@@ -45,7 +41,6 @@ export const dict = {
   "ui.sessionTurn.retry.geminiHot": "gemini est en surchauffe",
   "ui.sessionTurn.error.freeUsageExceeded": "Limite d'utilisation gratuite dépassée",
   "ui.sessionTurn.error.addCredits": "Ajouter des crédits",
-
   "ui.sessionTurn.status.delegating": "Délégation du travail",
   "ui.sessionTurn.status.planning": "Planification des prochaines étapes",
   "ui.sessionTurn.status.gatheringContext": "Exploration",
@@ -58,7 +53,6 @@ export const dict = {
   "ui.sessionTurn.status.thinkingWithTopic": "Réflexion - {{topic}}",
   "ui.sessionTurn.status.gatheringThoughts": "Rassemblement des idées",
   "ui.sessionTurn.status.consideringNextSteps": "Examen des prochaines étapes",
-
   "ui.messagePart.questions.dismissed": "Questions ignorées",
   "ui.messagePart.compaction": "Session compactée",
   "ui.messagePart.context.read.one": "{{count}} lecture",
@@ -72,43 +66,26 @@ export const dict = {
   "ui.messagePart.title.write": "Écrire",
   "ui.messagePart.option.typeOwnAnswer": "Tapez votre propre réponse",
   "ui.messagePart.review.title": "Passez en revue vos réponses",
-
   "ui.list.loading": "Chargement",
   "ui.list.empty": "Aucun résultat",
   "ui.list.clearFilter": "Effacer le filtre",
   "ui.list.emptyWithFilter.prefix": "Aucun résultat pour",
-  "ui.list.emptyWithFilter.suffix": "",
-
   "ui.messageNav.newMessage": "Nouveau message",
-
   "ui.textField.copyToClipboard": "Copier dans le presse-papiers",
   "ui.textField.copyLink": "Copier le lien",
   "ui.textField.copied": "Copié",
-
   "ui.imagePreview.alt": "Aperçu de l'image",
   "ui.scrollView.ariaLabel": "contenu défilable",
-
   "ui.tool.read": "Lire",
   "ui.tool.loaded": "Chargé",
   "ui.tool.list": "Lister",
-  "ui.tool.glob": "Glob",
-  "ui.tool.grep": "Grep",
-  "ui.tool.webfetch": "Webfetch",
   "ui.tool.websearch": "Recherche Web",
   "ui.tool.codesearch": "Recherche de code",
-  "ui.tool.shell": "Shell",
-  "ui.tool.patch": "Patch",
   "ui.tool.todos": "Tâches",
   "ui.tool.todos.read": "Lire les tâches",
-  "ui.tool.questions": "Questions",
   "ui.tool.agent": "Agent {{type}}",
-  "ui.tool.agent.default": "Agent",
-
   "ui.common.file.one": "fichier",
   "ui.common.file.other": "fichiers",
-  "ui.common.question.one": "question",
-  "ui.common.question.other": "questions",
-
   "ui.common.add": "Ajouter",
   "ui.common.back": "Retour",
   "ui.common.cancel": "Annuler",
@@ -117,11 +94,9 @@ export const dict = {
   "ui.common.close": "Fermer",
   "ui.common.next": "Suivant",
   "ui.common.submit": "Soumettre",
-
   "ui.permission.deny": "Refuser",
   "ui.permission.allowAlways": "Toujours autoriser",
   "ui.permission.allowOnce": "Autoriser une fois",
-
   "ui.message.expand": "Développer le message",
   "ui.message.collapse": "Réduire le message",
   "ui.message.copy": "Copier",
@@ -133,19 +108,16 @@ export const dict = {
   "ui.message.interrupted": "Interrompu",
   "ui.message.queued": "En file",
   "ui.message.attachment.alt": "pièce jointe",
-
   "ui.patch.action.deleted": "Supprimé",
   "ui.patch.action.created": "Créé",
   "ui.patch.action.moved": "Déplacé",
   "ui.patch.action.patched": "Corrigé",
-
   "ui.question.subtitle.answered": "{{count}} répondu(s)",
   "ui.question.answer.none": "(pas de réponse)",
   "ui.question.review.notAnswered": "(non répondu)",
   "ui.question.multiHint": "Sélectionnez tout ce qui s'applique",
   "ui.question.singleHint": "Sélectionnez une réponse",
   "ui.question.custom.placeholder": "Tapez votre réponse...",
-
   "ui.fileSearch.placeholder": "Rechercher",
   "ui.fileSearch.previousMatch": "Précédent",
   "ui.fileSearch.nextMatch": "Suivant",
@@ -155,6 +127,9 @@ export const dict = {
   "ui.basicTool.called": "Appelé `{{tool}}`",
   "ui.toolErrorCard.failed": "Échoué",
   "ui.toolErrorCard.copyError": "Copier l'erreur",
-  "ui.message.duration.seconds": "{{count}}s",
-  "ui.message.duration.minutesSeconds": "{{minutes}}m {{seconds}}s",
-}
+} satisfies Partial<Record<Keys, string>>
+
+export const dict = {
+  ...en,
+  ...translated,
+} satisfies Record<Keys, string>

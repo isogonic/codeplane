@@ -2,12 +2,20 @@ import { describe, expect, test } from "bun:test"
 import type { AssistantMessage, Message, Part } from "@codeplane-ai/sdk/v2/client"
 import {
   aggregateSessionMessages,
+  applySessionAggregateToMaterializedStats,
   combineAggregates,
+  combineMaterializedStats,
   createSessionAggregateBuilder,
+  emptyMaterializedHomeStats,
   heatmapBuckets,
+  heatmapBucketsFromMaterializedStats,
   HEATMAP_DAYS_REFERENCE,
+  materializeAggregates,
   modelBreakdown,
+  modelBreakdownFromMaterializedStats,
   preferredModel,
+  preferredModelFromMaterializedStats,
+  removeSessionAggregatesFromMaterializedStats,
   streaks,
 } from "./aggregate"
 import { DAY_MS, startOfDay } from "./stats"
@@ -207,6 +215,72 @@ describe("combineAggregates (precision)", () => {
     expect(result.currentStreak).toBe(3) // today, yesterday, 2 days ago
     expect(result.longestStreak).toBe(3)
     expect(result.activeDays).toBe(5)
+  })
+})
+
+describe("materialized home stats", () => {
+  test("reads the same totals, models, preferred model, and heatmap as aggregate wrappers", () => {
+    const a = aggregateSessionMessages("a", now, [
+      assistant({ id: "1", sessionID: "a", created: now, tokens: 100, modelID: "opus" }),
+      assistant({ id: "2", sessionID: "a", created: dayAgo(1), tokens: 50, modelID: "sonnet" }),
+    ])
+    const b = aggregateSessionMessages("b", now, [
+      assistant({ id: "3", sessionID: "b", created: now, tokens: 200, modelID: "opus" }),
+    ])
+    const aggregates = [a, b]
+    const stats = materializeAggregates(aggregates)
+
+    expect(combineMaterializedStats(stats, now, "all")).toEqual(combineAggregates(aggregates, now, "all"))
+    expect(modelBreakdownFromMaterializedStats(stats, "all", now)).toEqual(modelBreakdown(aggregates, "all", now))
+    expect(preferredModelFromMaterializedStats(stats, "all", now)).toEqual(preferredModel(aggregates, "all", now))
+    expect(heatmapBucketsFromMaterializedStats(stats, now)).toEqual(heatmapBuckets(aggregates, now))
+  })
+
+  test("replacing a session subtracts the previous contribution before adding the new one", () => {
+    const previous = aggregateSessionMessages("s", now, [
+      assistant({ id: "old-1", sessionID: "s", created: now, tokens: 100, modelID: "opus" }),
+      assistant({ id: "old-2", sessionID: "s", created: now, tokens: 200, modelID: "opus" }),
+    ])
+    const next = aggregateSessionMessages("s", now + 1, [
+      assistant({ id: "new-1", sessionID: "s", created: now, tokens: 25, modelID: "sonnet" }),
+    ])
+
+    let stats = emptyMaterializedHomeStats()
+    stats = applySessionAggregateToMaterializedStats(stats, undefined, previous)
+    stats = applySessionAggregateToMaterializedStats(stats, previous, next)
+
+    expect(combineMaterializedStats(stats, now, "all")).toMatchObject({ messages: 1, tokens: 25 })
+    expect(modelBreakdownFromMaterializedStats(stats, "all", now)).toEqual([
+      { modelID: "sonnet", providerID: "anthropic", messages: 1, tokens: 25, sessions: 1 },
+    ])
+  })
+
+  test("dropping sessions removes their accumulated totals", () => {
+    const a = aggregateSessionMessages("a", now, [
+      assistant({ id: "a1", sessionID: "a", created: now, tokens: 100, modelID: "opus" }),
+    ])
+    const b = aggregateSessionMessages("b", now, [
+      assistant({ id: "b1", sessionID: "b", created: now, tokens: 300, modelID: "opus" }),
+    ])
+
+    const stats = removeSessionAggregatesFromMaterializedStats(materializeAggregates([a, b]), [a])
+
+    expect(combineMaterializedStats(stats, now, "all")).toMatchObject({ messages: 1, tokens: 300 })
+    expect(modelBreakdownFromMaterializedStats(stats, "all", now)[0]).toMatchObject({ sessions: 1 })
+  })
+
+  test("model sessions are deduplicated across days in the materialized store", () => {
+    const a = aggregateSessionMessages("a", now, [
+      assistant({ id: "a1", sessionID: "a", created: now, tokens: 100, modelID: "opus" }),
+      assistant({ id: "a2", sessionID: "a", created: dayAgo(1), tokens: 50, modelID: "opus" }),
+    ])
+    const b = aggregateSessionMessages("b", now, [
+      assistant({ id: "b1", sessionID: "b", created: now, tokens: 25, modelID: "opus" }),
+    ])
+
+    const breakdown = modelBreakdownFromMaterializedStats(materializeAggregates([a, b]), "all", now)
+
+    expect(breakdown[0]).toMatchObject({ modelID: "opus", messages: 3, tokens: 175, sessions: 2 })
   })
 })
 

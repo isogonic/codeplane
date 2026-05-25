@@ -3,7 +3,13 @@ import { useServer } from "@/context/server"
 import { checksum } from "@codeplane-ai/shared/util/encode"
 import {
   aggregateSessionMessages,
+  applySessionAggregateToMaterializedStats,
+  emptyMaterializedHomeStats,
+  isMaterializedHomeStats,
+  materializeAggregates,
+  removeSessionAggregatesFromMaterializedStats,
   SESSION_AGGREGATE_VERSION,
+  type MaterializedHomeStats,
   type SessionAggregate,
   type SessionStatsEntry,
 } from "./aggregate"
@@ -12,6 +18,32 @@ export type HomeCacheStore = {
   version: number
   /** sessionID → aggregate. */
   aggregates: Record<string, SessionAggregate>
+  /** Live accumulated stats, updated by aggregate deltas and read directly by Home. */
+  materialized: MaterializedHomeStats
+}
+
+export const emptyHomeCacheStore = (): HomeCacheStore => ({
+  version: SESSION_AGGREGATE_VERSION,
+  aggregates: {},
+  materialized: emptyMaterializedHomeStats(),
+})
+
+export function normalizeHomeCacheStore(value: unknown): HomeCacheStore {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return emptyHomeCacheStore()
+  const parsed = value as Partial<HomeCacheStore>
+  if (parsed.version !== SESSION_AGGREGATE_VERSION && parsed.version !== 4) return emptyHomeCacheStore()
+  const aggregates =
+    parsed.aggregates && typeof parsed.aggregates === "object" && !Array.isArray(parsed.aggregates)
+      ? parsed.aggregates
+      : {}
+  return {
+    version: SESSION_AGGREGATE_VERSION,
+    aggregates,
+    materialized:
+      parsed.version === SESSION_AGGREGATE_VERSION && isMaterializedHomeStats(parsed.materialized)
+        ? parsed.materialized
+        : materializeAggregates(Object.values(aggregates)),
+  }
 }
 
 /**
@@ -37,21 +69,13 @@ export function createHomeCache() {
   })()
 
   const initial = ((): HomeCacheStore => {
-    if (typeof localStorage === "undefined") return { version: SESSION_AGGREGATE_VERSION, aggregates: {} }
+    if (typeof localStorage === "undefined") return emptyHomeCacheStore()
     try {
       const raw = localStorage.getItem(storageKey)
-      if (!raw) return { version: SESSION_AGGREGATE_VERSION, aggregates: {} }
-      const parsed = JSON.parse(raw) as Partial<HomeCacheStore>
-      if (parsed?.version !== SESSION_AGGREGATE_VERSION) {
-        return { version: SESSION_AGGREGATE_VERSION, aggregates: {} }
-      }
-      const aggregates =
-        parsed.aggregates && typeof parsed.aggregates === "object" && !Array.isArray(parsed.aggregates)
-          ? parsed.aggregates
-          : {}
-      return { version: SESSION_AGGREGATE_VERSION, aggregates }
+      if (!raw) return emptyHomeCacheStore()
+      return normalizeHomeCacheStore(JSON.parse(raw))
     } catch {
-      return { version: SESSION_AGGREGATE_VERSION, aggregates: {} }
+      return emptyHomeCacheStore()
     }
   })()
 
@@ -83,6 +107,7 @@ export function createHomeCache() {
     setState((prev) => ({
       version: SESSION_AGGREGATE_VERSION,
       aggregates: { ...prev.aggregates, [next.sessionID]: next },
+      materialized: applySessionAggregateToMaterializedStats(prev.materialized, prev.aggregates[next.sessionID], next),
     }))
   }
 
@@ -94,8 +119,17 @@ export function createHomeCache() {
     if (sessionIDs.length === 0) return
     setState((prev) => {
       const aggregates = { ...prev.aggregates }
-      for (const id of sessionIDs) delete aggregates[id]
-      return { version: SESSION_AGGREGATE_VERSION, aggregates }
+      const ids = [...new Set(sessionIDs)]
+      const removed = ids.flatMap((id) => (aggregates[id] ? [aggregates[id]] : []))
+      for (const id of ids) delete aggregates[id]
+      return {
+        version: SESSION_AGGREGATE_VERSION,
+        aggregates,
+        materialized:
+          removed.length > 0
+            ? removeSessionAggregatesFromMaterializedStats(prev.materialized, removed)
+            : prev.materialized,
+      }
     })
   }
 

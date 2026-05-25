@@ -1,5 +1,6 @@
 export * as ConfigAgent from "./agent"
 
+import path from "path"
 import { Schema } from "effect"
 import z from "zod"
 import { Bus } from "@/bus"
@@ -15,6 +16,7 @@ import { ConfigModelID } from "./model-id"
 import { ConfigPermission } from "./permission"
 
 const log = Log.create({ service: "config" })
+const DOC_FILENAMES = new Set(["AGENTS.md", "README.md", "CLAUDE.md", "CONTEXT.md"])
 
 const Color = Schema.Union([
   Schema.String.check(Schema.isPattern(/^#[0-9a-fA-F]{6}$/)),
@@ -115,6 +117,7 @@ export async function load(dir: string) {
     dot: true,
     symlink: true,
   })) {
+    if (DOC_FILENAMES.has(path.basename(item))) continue
     const md = await ConfigMarkdown.parse(item).catch(async (err) => {
       const message = ConfigMarkdown.FrontmatterError.isInstance(err)
         ? err.data.message
@@ -152,6 +155,7 @@ export async function loadMode(dir: string) {
     dot: true,
     symlink: true,
   })) {
+    if (DOC_FILENAMES.has(path.basename(item))) continue
     const md = await ConfigMarkdown.parse(item).catch(async (err) => {
       const message = ConfigMarkdown.FrontmatterError.isInstance(err)
         ? err.data.message

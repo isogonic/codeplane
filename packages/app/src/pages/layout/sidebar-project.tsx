@@ -101,7 +101,8 @@ const ProjectTile = (props: {
         data-project={base64Encode(props.project.worktree)}
         classList={{
           "flex items-center justify-center size-10 p-1 rounded-lg overflow-hidden transition-colors cursor-default": true,
-          "bg-transparent border-2 border-icon-strong-base hover:bg-surface-base-hover": props.selected(),
+          "bg-surface-base-active border border-border-weak-base shadow-[var(--shadow-xs)]":
+            props.selected(),
           "bg-transparent border border-transparent hover:bg-surface-base-hover hover:border-border-weak-base":
             !props.selected() && !props.active(),
           "bg-surface-base-hover border border-border-weak-base": !props.selected() && props.active(),
@@ -135,10 +136,7 @@ const ProjectTile = (props: {
         }}
         onClick={() => {
           props.setOpen(false)
-          if (props.selected()) {
-            layout.sidebar.toggle()
-            return
-          }
+          if (props.selected()) layout.sidebar.open()
           props.navigateToProject(props.project.worktree)
         }}
         onBlur={() => props.setOpen(false)}
@@ -257,7 +255,6 @@ const ProjectPreviewPanel = (props: {
         onClick={() => {
           props.ctx.openSidebar()
           props.ctx.onHoverOpenChanged(props.project.worktree, false)
-          if (props.selected()) return
           props.ctx.navigateToProject(props.project.worktree)
         }}
       >

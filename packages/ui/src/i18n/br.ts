@@ -1,4 +1,8 @@
-export const dict = {
+import { dict as en } from "./en"
+
+type Keys = keyof typeof en
+
+const translated = {
   "ui.sessionReview.title": "Alterações da sessão",
   "ui.sessionReview.title.lastTurn": "Alterações do último turno",
   "ui.sessionReview.diffStyle.unified": "Unificado",
@@ -25,19 +29,14 @@ export const dict = {
   "ui.fileMedia.binary.title": "Arquivo binário",
   "ui.fileMedia.binary.description.path": "Não é possível exibir {{path}} porque é um arquivo binário.",
   "ui.fileMedia.binary.description.default": "Não é possível exibir o arquivo porque ele é binário.",
-
   "ui.lineComment.label.prefix": "Comentar em ",
-  "ui.lineComment.label.suffix": "",
   "ui.lineComment.editorLabel.prefix": "Comentando em ",
-  "ui.lineComment.editorLabel.suffix": "",
   "ui.lineComment.placeholder": "Adicionar comentário",
   "ui.lineComment.submit": "Comentar",
-
   "ui.sessionTurn.steps.show": "Mostrar passos",
   "ui.sessionTurn.steps.hide": "Ocultar passos",
   "ui.sessionTurn.summary.response": "Resposta",
   "ui.sessionTurn.diff.showMore": "Mostrar mais alterações ({{count}})",
-
   "ui.sessionTurn.retry.retrying": "tentando novamente",
   "ui.sessionTurn.retry.inSeconds": "em {{seconds}}s",
   "ui.sessionTurn.retry.attempt": "tentativa #{{attempt}}",
@@ -45,7 +44,6 @@ export const dict = {
   "ui.sessionTurn.retry.geminiHot": "gemini está muito sobrecarregado agora",
   "ui.sessionTurn.error.freeUsageExceeded": "Limite de uso gratuito excedido",
   "ui.sessionTurn.error.addCredits": "Adicionar créditos",
-
   "ui.sessionTurn.status.delegating": "Delegando trabalho",
   "ui.sessionTurn.status.planning": "Planejando próximos passos",
   "ui.sessionTurn.status.gatheringContext": "Explorando",
@@ -58,7 +56,6 @@ export const dict = {
   "ui.sessionTurn.status.thinkingWithTopic": "Pensando - {{topic}}",
   "ui.sessionTurn.status.gatheringThoughts": "Organizando pensamentos",
   "ui.sessionTurn.status.consideringNextSteps": "Considerando próximos passos",
-
   "ui.messagePart.questions.dismissed": "Perguntas descartadas",
   "ui.messagePart.compaction": "Sessão compactada",
   "ui.messagePart.context.read.one": "{{count}} leitura",
@@ -72,43 +69,31 @@ export const dict = {
   "ui.messagePart.title.write": "Escrever",
   "ui.messagePart.option.typeOwnAnswer": "Digite sua própria resposta",
   "ui.messagePart.review.title": "Revise suas respostas",
-
   "ui.list.loading": "Carregando",
   "ui.list.empty": "Nenhum resultado",
   "ui.list.clearFilter": "Limpar filtro",
   "ui.list.emptyWithFilter.prefix": "Nenhum resultado para",
-  "ui.list.emptyWithFilter.suffix": "",
-
   "ui.messageNav.newMessage": "Nova mensagem",
-
   "ui.textField.copyToClipboard": "Copiar para área de transferência",
   "ui.textField.copyLink": "Copiar link",
   "ui.textField.copied": "Copiado",
-
   "ui.imagePreview.alt": "Visualização de imagem",
   "ui.scrollView.ariaLabel": "conteúdo rolável",
-
   "ui.tool.read": "Ler",
   "ui.tool.loaded": "Carregado",
   "ui.tool.list": "Listar",
-  "ui.tool.glob": "Glob",
-  "ui.tool.grep": "Grep",
   "ui.tool.webfetch": "Buscar Web",
   "ui.tool.websearch": "Pesquisa na Web",
   "ui.tool.codesearch": "Pesquisa de Código",
-  "ui.tool.shell": "Shell",
-  "ui.tool.patch": "Patch",
   "ui.tool.todos": "Tarefas",
   "ui.tool.todos.read": "Ler tarefas",
   "ui.tool.questions": "Perguntas",
   "ui.tool.agent": "Agente {{type}}",
   "ui.tool.agent.default": "Agente",
-
   "ui.common.file.one": "arquivo",
   "ui.common.file.other": "arquivos",
   "ui.common.question.one": "pergunta",
   "ui.common.question.other": "perguntas",
-
   "ui.common.add": "Adicionar",
   "ui.common.back": "Voltar",
   "ui.common.cancel": "Cancelar",
@@ -117,11 +102,9 @@ export const dict = {
   "ui.common.close": "Fechar",
   "ui.common.next": "Próximo",
   "ui.common.submit": "Enviar",
-
   "ui.permission.deny": "Negar",
   "ui.permission.allowAlways": "Permitir sempre",
   "ui.permission.allowOnce": "Permitir uma vez",
-
   "ui.message.expand": "Expandir mensagem",
   "ui.message.collapse": "Recolher mensagem",
   "ui.message.copy": "Copiar",
@@ -133,19 +116,16 @@ export const dict = {
   "ui.message.interrupted": "Interrompido",
   "ui.message.queued": "Na fila",
   "ui.message.attachment.alt": "anexo",
-
   "ui.patch.action.deleted": "Excluído",
   "ui.patch.action.created": "Criado",
   "ui.patch.action.moved": "Movido",
   "ui.patch.action.patched": "Patch aplicado",
-
   "ui.question.subtitle.answered": "{{count}} respondidas",
   "ui.question.answer.none": "(sem resposta)",
   "ui.question.review.notAnswered": "(não respondida)",
   "ui.question.multiHint": "Selecione todas que se aplicam",
   "ui.question.singleHint": "Selecione uma resposta",
   "ui.question.custom.placeholder": "Digite sua resposta...",
-
   "ui.fileSearch.placeholder": "Localizar",
   "ui.fileSearch.previousMatch": "Ocorrência anterior",
   "ui.fileSearch.nextMatch": "Próxima ocorrência",
@@ -155,6 +135,9 @@ export const dict = {
   "ui.basicTool.called": "Chamou `{{tool}}`",
   "ui.toolErrorCard.failed": "Falhou",
   "ui.toolErrorCard.copyError": "Copiar erro",
-  "ui.message.duration.seconds": "{{count}}s",
-  "ui.message.duration.minutesSeconds": "{{minutes}}m {{seconds}}s",
-}
+} satisfies Partial<Record<Keys, string>>
+
+export const dict = {
+  ...en,
+  ...translated,
+} satisfies Record<Keys, string>

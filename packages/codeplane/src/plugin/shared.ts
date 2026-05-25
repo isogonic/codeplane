@@ -5,9 +5,101 @@ import semver from "semver"
 import { Filesystem } from "@/util"
 import { isRecord } from "@/util/record"
 import { Npm } from "@/npm"
+import { InstallationLocal, InstallationVersion } from "@/installation/version"
 
 // Old npm package names for plugins that are now built-in
-export const DEPRECATED_PLUGIN_PACKAGES = ["codeplane-openai-codex-auth", "codeplane-copilot-auth"]
+export const DEPRECATED_PLUGIN_PACKAGES = [
+  "codeplane-openai-codex-auth",
+  "codeplane-copilot-auth",
+  "opencode-openai-codex-auth",
+  "opencode-copilot-auth",
+]
+
+const codeplaneAliasVersion = InstallationLocal ? "" : `@${InstallationVersion}`
+
+export const OPENCODE_COMPAT_PACKAGES: Npm.InstallPackage[] = [
+  {
+    name: "@opencode-ai/plugin",
+    version: `npm:@codeplane-ai/plugin${codeplaneAliasVersion}`,
+  },
+  {
+    name: "@opencode-ai/sdk",
+    version: `npm:@codeplane-ai/sdk${codeplaneAliasVersion}`,
+  },
+]
+
+const OPENCODE_COMPAT_MODULES = [
+  {
+    name: "@opencode-ai/plugin",
+    target: "@codeplane-ai/plugin",
+    exports: ["", "tool", "tui"],
+  },
+  {
+    name: "@opencode-ai/sdk",
+    target: "@codeplane-ai/sdk",
+    exports: ["", "client", "server", "v2", "v2/client", "v2/gen/client", "v2/server"],
+  },
+]
+
+function exportFile(subpath: string) {
+  return subpath ? `${subpath}.js` : "index.js"
+}
+
+function packageDir(root: string, name: string) {
+  return path.join(root, "node_modules", ...name.split("/"))
+}
+
+function packageImport(target: string, subpath: string) {
+  return subpath ? `${target}/${subpath}` : target
+}
+
+function isPermissionError(error: unknown) {
+  if (!error || typeof error !== "object" || !("code" in error)) return false
+  return error.code === "EACCES" || error.code === "EPERM" || error.code === "EROFS"
+}
+
+export function installRootForPackageDir(dir: string) {
+  const parts = Filesystem.resolve(dir).split(path.sep)
+  const index = parts.lastIndexOf("node_modules")
+  if (index === -1) return path.dirname(dir)
+  const root = parts.slice(0, index).join(path.sep)
+  return root || path.sep
+}
+
+export async function ensureOpenCodeCompatModules(root: string) {
+  await Promise.all(
+    OPENCODE_COMPAT_MODULES.map(async (item) => {
+      try {
+        const dir = packageDir(root, item.name)
+        const pkg = path.join(dir, "package.json")
+        const existing = await Filesystem.readJson<Record<string, unknown>>(pkg).catch(() => undefined)
+        if (existing && existing.codeplaneCompatShim !== true) return
+
+        await Filesystem.writeJson(pkg, {
+          name: item.name,
+          version: InstallationVersion,
+          type: "module",
+          codeplaneCompatShim: true,
+          exports: Object.fromEntries(
+            item.exports.map((subpath) => [subpath ? `./${subpath}` : ".", `./${exportFile(subpath)}`]),
+          ),
+        })
+
+        await Promise.all(
+          item.exports.map((subpath) =>
+            Filesystem.write(
+              path.join(dir, exportFile(subpath)),
+              `export * from ${JSON.stringify(packageImport(item.target, subpath))}\n`,
+            ),
+          ),
+        )
+      } catch (error) {
+        if (isPermissionError(error)) return
+        throw error
+      }
+    }),
+  )
+}
 
 export function isDeprecatedPlugin(spec: string) {
   return DEPRECATED_PLUGIN_PACKAGES.some((pkg) => spec.includes(pkg))
@@ -102,9 +194,13 @@ function resolvePackagePath(spec: string, raw: string, kind: PluginKind, pkg: Pl
 
 function resolvePackageEntrypoint(spec: string, kind: PluginKind, pkg: PluginPackage) {
   const exports = pkg.json.exports
+  if (typeof exports === "string") return resolvePackagePath(spec, exports, kind, pkg)
   if (isRecord(exports)) {
     const raw = extractExportValue(exports[`./${kind}`])
     if (raw) return resolvePackagePath(spec, raw, kind, pkg)
+
+    const root = extractExportValue(exports["."])
+    if (root) return resolvePackagePath(spec, root, kind, pkg)
   }
 
   const main = packageMain(pkg)
@@ -196,6 +292,7 @@ export async function resolvePluginTarget(spec: string, dir?: string) {
   const hit = parse(spec)
   const pkg = hit?.name && hit.raw === hit.name ? `${hit.name}@latest` : spec
   const result = await Npm.add(pkg, dir)
+  await ensureOpenCodeCompatModules(installRootForPackageDir(result.directory))
   return result.directory
 }
 

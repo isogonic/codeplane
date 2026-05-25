@@ -1,20 +1,14 @@
-import { Component, For, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js"
+import { Component, For, Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js"
 import { marked } from "marked"
 import DOMPurify from "dompurify"
 import { Button } from "@codeplane-ai/ui/button"
-import { TextField } from "@codeplane-ai/ui/text-field"
 import { Icon } from "@codeplane-ai/ui/icon"
 import { IconButton } from "@codeplane-ai/ui/icon-button"
 import { Progress } from "@codeplane-ai/ui/progress"
 import { Switch } from "@codeplane-ai/ui/switch"
 import { Mark } from "@codeplane-ai/ui/logo"
 import { showToast } from "@codeplane-ai/ui/toast"
-import type {
-  LocalTarget,
-  OpenProgress,
-  PrepareProgress as PrepareState,
-  SavedInstance,
-} from "@codeplane-ai/shared/instance"
+import { instanceEditorKind, type LocalTarget, type OpenProgress, type PrepareProgress as PrepareState, type SavedInstance } from "@codeplane-ai/shared/instance"
 import { formatHeaders as serializeHeaders, parseHeaders as parseHeaderInput } from "@codeplane-ai/shared/headers"
 import type { CodeplaneDesktopAPI } from "../main/preload"
 
@@ -34,6 +28,7 @@ declare global {
 }
 
 const api = window.codeplaneDesktop
+type DesktopInstanceCacheInfo = Awaited<ReturnType<typeof api.instances.cacheInfo>>
 
 const logSetup = (event: string, data?: unknown) => api.debug.log(event, data, "setup")
 
@@ -58,6 +53,89 @@ function formatBytes(bytes: number) {
 
 function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
+}
+
+const InstanceCacheSection: Component<{
+  busy: boolean
+  instance?: SavedInstance
+}> = (props) => {
+  const [info, setInfo] = createSignal<DesktopInstanceCacheInfo>()
+  const [clearing, setClearing] = createSignal(false)
+  const visible = createMemo(() => !!props.instance && !!info()?.exists)
+
+  const refresh = async (instance: SavedInstance) => {
+    try {
+      setInfo(await api.instances.cacheInfo(instance.id))
+    } catch (error) {
+      logSetup("instance.cache-info.error", { error, id: instance.id })
+    }
+  }
+
+  createEffect(() => {
+    const instance = props.instance
+    if (!instance) {
+      setInfo(undefined)
+      return
+    }
+    void refresh(instance)
+  })
+
+  const clear = async () => {
+    const instance = props.instance
+    if (!instance || props.busy || clearing()) return
+    setClearing(true)
+    try {
+      const result = await api.instances.clearCache(instance.id)
+      if (!result.ok) {
+        showToast({ variant: "error", icon: "warning", title: "Cache was not cleared", description: result.error })
+        return
+      }
+      showToast({
+        variant: "success",
+        icon: "check",
+        title: "Instance cache cleared",
+        description: `Removed ${formatBytes(result.cleared.bytes)} of cached data for this instance.`,
+      })
+      await refresh(instance)
+    } catch (error) {
+      logSetup("instance.clear-cache.error", { error, id: instance.id })
+      showToast({
+        variant: "error",
+        icon: "warning",
+        title: "Cache was not cleared",
+        description: error instanceof Error ? error.message : String(error),
+      })
+    } finally {
+      setClearing(false)
+    }
+  }
+
+  return (
+    <Show when={visible()}>
+      <div class="mt-5 flex items-start justify-between gap-4 border-t border-border-weak-base pt-4" data-desktop-section="instance-cache">
+        <div class="flex min-w-0 flex-1 flex-col gap-1">
+          <span class="text-[13px] font-medium text-text-strong">Cache</span>
+          <span class="text-[12px] leading-relaxed text-text-weak">
+            {formatBytes(info()?.bytes ?? 0)} cached locally for this instance.
+            <Show when={(info()?.desktopUI.versions.length ?? 0) > 0}>
+              {" "}UI {info()?.desktopUI.versions.join(", ")} will be downloaded again on next open.
+            </Show>
+          </span>
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          size="small"
+          icon="reset"
+          data-desktop-action="instance-clear-cache"
+          disabled={props.busy || clearing()}
+          onClick={() => void clear()}
+        >
+          {clearing() ? "Clearing…" : "Clear cache"}
+        </Button>
+      </div>
+    </Show>
+  )
 }
 
 const parseHeaders = parseHeaderInput
@@ -153,13 +231,15 @@ const InstanceIcon: Component<{ instance: SavedInstance; size?: "tile" | "row" }
       when={props.instance.iconDataUrl}
       fallback={
         <div
-          class={`flex shrink-0 items-center justify-center rounded-md ${size()}`}
+          class={`flex shrink-0 items-center justify-center rounded-md border ${size()}`}
           classList={{
-            "bg-surface-success-weak text-icon-success-active": !!props.instance.local,
-            "bg-surface-interactive-weak text-text-interactive-base": !props.instance.local,
+            "border-border-weak-base bg-surface-raised-base text-text-strong shadow-[inset_0_1px_0_rgba(255,255,255,0.42)]": !!props.instance.local,
+            "border-border-weak-base bg-surface-interactive-weak text-text-interactive-base": !props.instance.local,
           }}
         >
-          <Icon name={props.instance.local ? "server" : "globe"} size="small" />
+          <Show when={props.instance.local} fallback={<Icon name="globe" size="small" />}>
+            <Mark class="size-3.5 opacity-95" />
+          </Show>
         </div>
       }
     >
@@ -650,15 +730,7 @@ const NotificationSettingsCard: Component = () => {
         description: "Desktop notifications are active. Agent, permission, and error alerts will appear here.",
       })
       .catch(() => false)
-    if (shown) {
-      showToast({
-        variant: "success",
-        icon: "check",
-        title: "Test notification sent",
-        description: "If Codeplane is allowed in your OS notification center, you should see it now.",
-      })
-      return
-    }
+    if (shown) return
     showToast({
       variant: "error",
       icon: "warning",
@@ -954,14 +1026,14 @@ const WelcomePanel: Component<{
           <For each={props.instances}>
             {(instance, index) => (
               <li
-                class="group relative flex items-center transition-colors hover:bg-surface-base"
+                class="group relative flex items-center rounded-lg transition-colors hover:bg-surface-base focus-within:bg-surface-base"
                 classList={{ "border-t border-border-weak-base": index() > 0 }}
               >
                 <button
                   type="button"
                   data-desktop-action="instance-open"
                   data-instance-id={instance.id}
-                  class="flex flex-1 items-center gap-3 px-2 py-2.5 text-left outline-none focus-visible:bg-surface-base"
+                  class="flex flex-1 items-center gap-3 px-2 py-2.5 text-left outline-none"
                   onClick={() => props.onOpen(instance.id)}
                 >
                   <InstanceIcon instance={instance} size="row" />
@@ -1427,13 +1499,12 @@ const InstanceForm: Component<{
           </div>
 
           <div class="flex flex-col gap-2 border-t border-border-weak-base pt-4">
-            <span class="text-[13px] font-medium text-text-strong">Sign in with browser (Cloudflare Access / SSO)</span>
+            <span class="text-[13px] font-medium text-text-strong">Sign in with browser (Access / SSO)</span>
             <span class="text-[12px] leading-relaxed text-text-weak">
-              For instances behind Cloudflare Access, an identity-aware proxy, or any SSO redirect.
-              Opens a browser window at the instance URL, you sign in, and the resulting cookies (e.g.
-              <code class="rounded bg-surface-base px-1 py-0.5 text-text-base">CF_Authorization</code>) are
-              saved into the headers below. Re-run when the cookie expires — the desktop will also
-              bounce back here automatically with an "Sign-in required" toast when the server
+              For instances behind an access gateway, identity-aware proxy, or SSO redirect.
+              Opens a browser window at the instance URL, you sign in, and the resulting session cookies
+              are saved into the headers below. Re-run when the cookie expires — the desktop will also
+              bounce back here automatically with a "Sign-in required" toast when the server
               starts returning 401/403.
             </span>
             <Button
@@ -1499,7 +1570,7 @@ const InstanceForm: Component<{
             <textarea
               data-desktop-field="instance-headers"
               class="min-h-[88px] rounded-md border border-border-base bg-surface-raised-base px-3 py-2 font-mono text-[12px] text-text-strong outline-none focus:border-border-interactive-base"
-              placeholder="CF-Access-Client-Id: 1234.access&#10;CF-Access-Client-Secret: ..."
+              placeholder="Authorization: Bearer ...&#10;Cookie: session=..."
               value={headers()}
               disabled={busy()}
               onInput={(event) => setHeaders(event.currentTarget.value)}
@@ -1530,6 +1601,8 @@ const InstanceForm: Component<{
           </label>
         </div>
       </Show>
+
+      <InstanceCacheSection instance={props.editing} busy={busy()} />
 
       <Show when={preparing()}>
         {(state) => (
@@ -1627,51 +1700,45 @@ const InstanceTypePicker: Component<{
         Connect to a Codeplane server you run elsewhere, or set up a fresh one that runs entirely on this machine.
       </p>
 
-      <div class="mt-6 flex flex-col">
+      <div class="mt-6 grid gap-3">
         <button
           type="button"
           data-desktop-action="pick-remote"
-          class="group flex w-full items-start gap-3 border-t border-border-weak-base px-1 py-4 text-left outline-none transition-colors hover:bg-surface-base focus-visible:bg-surface-base"
+          class="group flex w-full items-center gap-3 rounded-lg border border-border-weak-base bg-surface-raised-base px-3.5 py-3.5 text-left outline-none transition-colors hover:border-border-base hover:bg-surface-raised-base-hover focus-visible:border-border-interactive-base"
           onClick={() => props.onPickRemote()}
         >
-          <div class="flex size-9 shrink-0 items-center justify-center rounded-md bg-surface-interactive-weak text-text-interactive-base">
+          <div class="flex size-10 shrink-0 items-center justify-center rounded-md border border-border-weak-base bg-surface-interactive-weak text-text-interactive-base transition-colors group-hover:border-border-interactive-base">
             <Icon name="globe" size="small" />
           </div>
-          <div class="flex flex-1 flex-col gap-1 pt-0.5">
-            <span class="text-[13px] font-medium text-text-strong">Connect to a remote server</span>
-            <span class="text-[12px] leading-relaxed text-text-weak">
-              Point at any URL serving Codeplane — your team's deployment, a self-hosted box, an internal staging
-              instance.
+          <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span class="truncate text-[13px] font-semibold text-text-strong">Connect to a remote server</span>
+            <span class="text-[12px] leading-snug text-text-weak">
+              Use a hosted, self-hosted, or internal Codeplane URL.
             </span>
           </div>
-          <Icon
-            name="chevron-right"
-            size="small"
-            class="mt-1 text-text-weaker transition-transform group-hover:translate-x-0.5 group-hover:text-text-strong"
-          />
+          <div class="flex size-7 shrink-0 items-center justify-center rounded-md text-text-weaker transition-colors group-hover:bg-surface-base-hover group-hover:text-text-strong">
+            <Icon name="chevron-right" size="small" />
+          </div>
         </button>
 
         <button
           type="button"
           data-desktop-action="pick-local"
-          class="group flex w-full items-start gap-3 border-t border-b border-border-weak-base px-1 py-4 text-left outline-none transition-colors hover:bg-surface-base focus-visible:bg-surface-base"
+          class="group flex w-full items-center gap-3 rounded-lg border border-border-weak-base bg-surface-raised-base px-3.5 py-3.5 text-left outline-none transition-colors hover:border-border-base hover:bg-surface-raised-base-hover focus-visible:border-border-interactive-base"
           onClick={() => props.onPickLocal()}
         >
-          <div class="flex size-9 shrink-0 items-center justify-center rounded-md bg-surface-success-weak text-icon-success-active">
-            <Icon name="server" size="small" />
+          <div class="flex size-10 shrink-0 items-center justify-center rounded-md border border-border-weak-base bg-surface-raised-base text-text-strong shadow-[inset_0_1px_0_rgba(255,255,255,0.42)] transition-colors group-hover:border-border-base">
+            <Mark class="size-5 opacity-95" />
           </div>
-          <div class="flex flex-1 flex-col gap-1 pt-0.5">
-            <span class="text-[13px] font-medium text-text-strong">Run a local instance</span>
-            <span class="text-[12px] leading-relaxed text-text-weak">
-              Download the matching Codeplane binary, run it as a private localhost server, and connect the UI to it.
-              No remote server required.
+          <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span class="truncate text-[13px] font-semibold text-text-strong">Run a local instance</span>
+            <span class="text-[12px] leading-snug text-text-weak">
+              Download the matching binary and run Codeplane privately on localhost.
             </span>
           </div>
-          <Icon
-            name="chevron-right"
-            size="small"
-            class="mt-1 text-text-weaker transition-transform group-hover:translate-x-0.5 group-hover:text-text-strong"
-          />
+          <div class="flex size-7 shrink-0 items-center justify-center rounded-md text-text-weaker transition-colors group-hover:bg-surface-base-hover group-hover:text-text-strong">
+            <Icon name="chevron-right" size="small" />
+          </div>
         </button>
       </div>
     </div>
@@ -1845,8 +1912,9 @@ const LocalInstanceForm: Component<{
       // Step 2: start the server, prepare the UI cache, then persist the instance.
       const id = props.editing?.id ?? uid()
       const instance: SavedInstance = {
+        ...props.editing,
         id,
-        url: `local://${id}`,
+        url: props.editing?.url ?? `local://${id}`,
         label: label().trim() || `Local · v${desiredVersion}`,
         iconDataUrl: iconDataUrl() || undefined,
         local: { binaryVersion: desiredVersion },
@@ -2072,6 +2140,8 @@ const LocalInstanceForm: Component<{
         )}
       </Show>
 
+      <InstanceCacheSection instance={props.editing} busy={busy()} />
+
       <Show when={preparing()}>
         {(state) => (
           <div class="mt-5 flex flex-col gap-3 border-t border-border-weak-base pt-4" data-desktop-state="prepare">
@@ -2194,12 +2264,13 @@ export const App: Component = () => {
   const onEdit = async (id: string) => {
     const list = await api.instances.list()
     const editing = list.find((entry) => entry.id === id)
+    const next: "local-form" | "remote-form" = editing ? `${instanceEditorKind(editing)}-form` : "remote-form"
     logSetup("view.change", {
       id,
-      next: editing?.local ? "local-form" : "remote-form",
+      next,
       reason: "edit",
     })
-    setView({ kind: editing?.local ? "local-form" : "remote-form", editing })
+    setView({ kind: next, editing })
   }
 
   // Per-instance "Update" action surfaced from the WelcomePanel row icon
@@ -2478,7 +2549,10 @@ export const App: Component = () => {
             ? [
                 {
                   label: "Edit instance",
-                  onClick: () => setView({ kind: "remote-form", editing: instances().find((i) => i.id === instanceID) }),
+                  onClick: () => {
+                    const editing = instances().find((i) => i.id === instanceID)
+                    setView({ kind: editing ? `${instanceEditorKind(editing)}-form` : "remote-form", editing })
+                  },
                 },
                 { label: "Dismiss", onClick: "dismiss" },
               ]
@@ -2496,8 +2570,12 @@ export const App: Component = () => {
     if (editId) {
       const list = await api.instances.list()
       const match = list.find((entry) => entry.id === editId)
-      logSetup("setup.edit-load", { editId, found: !!match, kind: match?.local ? "local" : "remote" })
-      if (match) setView({ kind: match.local ? "local-form" : "remote-form", editing: match })
+      logSetup("setup.edit-load", {
+        editId,
+        found: !!match,
+        kind: match ? instanceEditorKind(match) : undefined,
+      })
+      if (match) setView({ kind: `${instanceEditorKind(match)}-form`, editing: match })
       return
     }
     const dev = params.get("view")

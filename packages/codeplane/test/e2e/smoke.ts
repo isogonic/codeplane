@@ -167,22 +167,9 @@ setTimeout(() => server.close(() => process.exit(0)), 1500).unref()
 }
 
 describe("codeplane smoke", () => {
-  test("config and instance commands round-trip against an isolated Codeplane home", async () => {
+  test("instance commands round-trip against an isolated Codeplane home", async () => {
     await using tmp = await tmpdir()
     await prepare(tmp.path)
-
-    const setClient = await runCli(tmp.path, ["config", "set", "npm.client", "pnpm"])
-    expect(setClient.code).toBe(0)
-    expect(setClient.stderr).not.toContain("reserved word")
-
-    const setMcp = await runCli(tmp.path, [
-      "config",
-      "set",
-      "mcp.test_server",
-      '{"type":"local","command":["echo","hello"],"enabled":true}',
-      "--json",
-    ])
-    expect(setMcp.code).toBe(0)
 
     const addRemote = await runCli(tmp.path, ["instance", "add", "https://example.com", "--label", "Example", "--id", "remote-1"])
     expect(addRemote.code).toBe(0)
@@ -204,13 +191,30 @@ describe("codeplane smoke", () => {
     const selectLocal = await runCli(tmp.path, ["instance", "use", "local-1"])
     expect(selectLocal.code).toBe(0)
 
-    const pathsResult = await runCli(tmp.path, ["config", "paths"])
-    const pathInfo = JSON.parse(pathsResult.stdout)
-    expect(pathInfo.root).toBe(paths(tmp.path).codeplaneHome)
-    expect(pathInfo.canonicalGlobalConfigFile).toBe(path.join(paths(tmp.path).codeplaneHome, "codeplane.jsonc"))
+    const defaultOnly = await runCli(tmp.path, ["instance", "list", "--default-only", "--id-only"])
+    expect(defaultOnly.code).toBe(0)
+    expect(defaultOnly.stdout.trim()).toBe("local-1")
 
-    const getClient = await runCli(tmp.path, ["config", "get", "npm.client"])
-    expect(JSON.parse(getClient.stdout)).toBe("pnpm")
+    const localTarget = await runCli(tmp.path, ["instance", "local", "target", "--name-only"])
+    expect(localTarget.code).toBe(0)
+    expect(localTarget.stdout.trim()).toMatch(/^codeplane-/)
+
+    const showLocal = await runCli(tmp.path, ["instance", "show", "local-1"])
+    const localRecord = JSON.parse(showLocal.stdout) as {
+      id: string
+      local?: { binaryVersion?: string }
+      url: string
+    }
+    expect(showLocal.code).toBe(0)
+    expect(localRecord).toEqual(
+      expect.objectContaining({
+        id: "local-1",
+        url: "local://local-1",
+        local: expect.objectContaining({
+          binaryVersion: "27.3.1",
+        }),
+      }),
+    )
 
     const listInstances = await runCli(tmp.path, ["instance", "list", "--json"])
     const instances = JSON.parse(listInstances.stdout) as Array<{ id: string; type: string; default: boolean; url: string; version?: string }>
@@ -263,8 +267,9 @@ describe("codeplane smoke", () => {
       savedUrl: string
       liveUrl: string
       version: string
-      path: { directory: string }
+      path: { directory: string; home: string; state: string; worktree: string }
     }
+    const expectedHome = process.env.HOME?.trim() || process.env.USERPROFILE?.trim() || ""
 
     expect(openLocal.code).toBe(0)
     expect(openLocal.stderr).not.toContain("reserved word")
@@ -272,7 +277,10 @@ describe("codeplane smoke", () => {
     expect(result.savedUrl).toBe("local://local-1")
     expect(result.liveUrl).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/)
     expect(result.version).toBe("27.3.1-test")
-    expect(result.path.directory).toBe(path.join(paths(tmp.path).codeplaneHome, "local_server", "local-1"))
+    expect(result.path.home).toBe(path.join(paths(tmp.path).codeplaneHome, "local_server", "local-1", "config"))
+    expect(result.path.state).toBe(path.join(paths(tmp.path).codeplaneHome, "local_server", "local-1", "state"))
+    expect(result.path.directory).toBe(expectedHome)
+    expect(result.path.worktree).toBe(expectedHome)
     expect(await fs.access(path.join(paths(tmp.path).codeplaneHome, "local_server", "local-1", "data")).then(() => true).catch(() => false)).toBe(true)
     expect(await fs.access(path.join(paths(tmp.path).codeplaneHome, "bin", ".codeplane-version")).then(() => true).catch(() => false)).toBe(true)
   })
@@ -300,9 +308,9 @@ describe("codeplane smoke", () => {
       output += chunk
     })
 
-    await waitFor(() => output, /route:setup\.list/)
-    expect(output).toContain("codeplane tui")
-    expect(output).toContain("No saved instances")
+    await waitFor(() => output, /Choose a Server/)
+    expect(output).toContain("Codeplane")
+    expect(output).toContain("Choose a Server")
 
     const exited = new Promise<{ exitCode: number | null }>((resolve) => {
       proc.onExit(({ exitCode }) => resolve({ exitCode: exitCode ?? null }))

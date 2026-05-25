@@ -23,10 +23,19 @@ const sentShell: string[] = []
 const sentPromptAsync: string[] = []
 const syncedDirectories: string[] = []
 const abortedSessions: string[] = []
+const globalTodoUpdates: Array<{ sessionID: string; todos: unknown[] }> = []
+const childTodoUpdates: Array<{ directory: string; sessionID: string; todos: unknown[] }> = []
+const statusUpdates: Array<{ directory: string; sessionID: string; status: unknown }> = []
 
 let params: { id?: string } = {}
 let selected = "/repo/worktree-a"
 let variant: string | undefined
+let abortHold:
+  | {
+      promise: Promise<{ data: undefined }>
+      resolve: (value: { data: undefined }) => void
+    }
+  | undefined
 
 let promptValue: Prompt = [{ type: "text", content: "ls", start: 0, end: 2 }]
 
@@ -55,6 +64,7 @@ const clientFor = (directory: string) => {
       command: async () => ({ data: undefined }),
       abort: async (input: { sessionID: string }) => {
         abortedSessions.push(input.sessionID)
+        if (abortHold) return abortHold.promise
         return { data: undefined }
       },
     },
@@ -174,6 +184,11 @@ beforeAll(async () => {
 
   mock.module("@/context/global-sync", () => ({
     useGlobalSync: () => ({
+      todo: {
+        set: (sessionID: string, todos: unknown[]) => {
+          globalTodoUpdates.push({ sessionID, todos })
+        },
+      },
       project: {
         loadSessions: (directory: string) => {
           syncedDirectories.push(directory)
@@ -185,6 +200,22 @@ beforeAll(async () => {
         return [
           { session: storedSessions[directory] },
           (...args: unknown[]) => {
+            if (args[0] === "todo") {
+              childTodoUpdates.push({
+                directory,
+                sessionID: args[1] as string,
+                todos: args[2] as unknown[],
+              })
+              return
+            }
+            if (args[0] === "session_status") {
+              statusUpdates.push({
+                directory,
+                sessionID: args[1] as string,
+                status: args[2],
+              })
+              return
+            }
             if (args[0] !== "session") return
             const next = args[1]
             if (typeof next === "function") {
@@ -228,8 +259,12 @@ beforeEach(() => {
   sentPromptAsync.length = 0
   syncedDirectories.length = 0
   abortedSessions.length = 0
+  globalTodoUpdates.length = 0
+  childTodoUpdates.length = 0
+  statusUpdates.length = 0
   selected = "/repo/worktree-a"
   variant = undefined
+  abortHold = undefined
   promptValue = [{ type: "text", content: "ls", start: 0, end: 2 }]
   for (const key of Object.keys(storedSessions)) delete storedSessions[key]
 })
@@ -468,5 +503,49 @@ describe("prompt submit worktree selection", () => {
 
     expect(abortedSessions).toEqual([])
     expect(sentPromptAsync).toEqual([])
+  })
+
+  test("abort clears busy state and todos before the server responds", async () => {
+    params = { id: "session-1" }
+    abortHold = (() => {
+      let resolve!: (value: { data: undefined }) => void
+      const promise = new Promise<{ data: undefined }>((done) => {
+        resolve = done
+      })
+      return { promise, resolve }
+    })()
+    let abortCalls = 0
+
+    const submit = createPromptSubmit({
+      info: () => ({ id: "session-1" }),
+      imageAttachments: () => [],
+      commentCount: () => 0,
+      autoAccept: () => false,
+      mode: () => "normal",
+      working: () => true,
+      editor: () => undefined,
+      queueScroll: () => undefined,
+      promptLength: (value) => value.reduce((sum, part) => sum + ("content" in part ? part.content.length : 0), 0),
+      addToHistory: () => undefined,
+      resetHistoryNavigation: () => undefined,
+      setMode: () => undefined,
+      setPopover: () => undefined,
+      onAbort: () => {
+        abortCalls += 1
+      },
+      onSubmit: () => undefined,
+    })
+
+    const pendingAbort = submit.abort()
+    await Promise.resolve()
+
+    expect(abortCalls).toBe(1)
+    expect(abortedSessions).toEqual(["session-1"])
+    expect(globalTodoUpdates).toEqual([{ sessionID: "session-1", todos: [] }])
+    expect(childTodoUpdates).toEqual([{ directory: "/repo/main", sessionID: "session-1", todos: [] }])
+    expect(statusUpdates).toEqual([{ directory: "/repo/main", sessionID: "session-1", status: { type: "idle" } }])
+
+    abortHold.resolve({ data: undefined })
+    await pendingAbort
   })
 })

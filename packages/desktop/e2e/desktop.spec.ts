@@ -737,6 +737,7 @@ async function launchDesktop(
   options?: {
     freshVersions?: string[]
     instances?: SavedInstance[]
+    lastInstanceId?: string
     localVersions?: string[]
     brokenLocalVersions?: string[]
     staleVersions?: string[]
@@ -748,7 +749,7 @@ async function launchDesktop(
 
   await fs.mkdir(root, { recursive: true })
   if (options?.instances) {
-    await seedStore(userDataDir, options.instances, options.instances[0]?.id)
+    await seedStore(userDataDir, options.instances, options.lastInstanceId)
   }
   for (const version of options?.staleVersions ?? []) {
     await seedStaleCache(userDataDir, version, 31)

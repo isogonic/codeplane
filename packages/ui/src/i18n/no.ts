@@ -1,7 +1,8 @@
 import { dict as en } from "./en"
+
 type Keys = keyof typeof en
 
-export const dict: Record<Keys, string> = {
+const translated = {
   "ui.sessionReview.title": "Sesjonsendringer",
   "ui.sessionReview.title.lastTurn": "Endringer i siste tur",
   "ui.sessionReview.diffStyle.unified": "Samlet",
@@ -28,19 +29,14 @@ export const dict: Record<Keys, string> = {
   "ui.fileMedia.binary.title": "Binærfil",
   "ui.fileMedia.binary.description.path": "{{path}} kan ikke vises fordi det er en binærfil.",
   "ui.fileMedia.binary.description.default": "Denne filen kan ikke vises fordi det er en binærfil.",
-
   "ui.lineComment.label.prefix": "Kommenter på ",
-  "ui.lineComment.label.suffix": "",
   "ui.lineComment.editorLabel.prefix": "Kommenterer på ",
-  "ui.lineComment.editorLabel.suffix": "",
   "ui.lineComment.placeholder": "Legg til kommentar",
   "ui.lineComment.submit": "Kommenter",
-
   "ui.sessionTurn.steps.show": "Vis trinn",
   "ui.sessionTurn.steps.hide": "Skjul trinn",
   "ui.sessionTurn.summary.response": "Svar",
   "ui.sessionTurn.diff.showMore": "Vis flere endringer ({{count}})",
-
   "ui.sessionTurn.retry.retrying": "Prøver igjen",
   "ui.sessionTurn.retry.inSeconds": "om {{seconds}}s",
   "ui.sessionTurn.retry.attempt": "forsøk #{{attempt}}",
@@ -48,7 +44,6 @@ export const dict: Record<Keys, string> = {
   "ui.sessionTurn.retry.geminiHot": "gemini er veldig overbelastet nå",
   "ui.sessionTurn.error.freeUsageExceeded": "Gratis bruk overskredet",
   "ui.sessionTurn.error.addCredits": "Legg til kreditt",
-
   "ui.sessionTurn.status.delegating": "Delegerer arbeid",
   "ui.sessionTurn.status.planning": "Planlegger neste trinn",
   "ui.sessionTurn.status.gatheringContext": "Utforsker",
@@ -61,7 +56,6 @@ export const dict: Record<Keys, string> = {
   "ui.sessionTurn.status.thinkingWithTopic": "Tenker - {{topic}}",
   "ui.sessionTurn.status.gatheringThoughts": "Samler tanker",
   "ui.sessionTurn.status.consideringNextSteps": "Vurderer neste trinn",
-
   "ui.messagePart.questions.dismissed": "Spørsmål avvist",
   "ui.messagePart.compaction": "Økt komprimert",
   "ui.messagePart.context.read.one": "{{count}} lest",
@@ -75,43 +69,30 @@ export const dict: Record<Keys, string> = {
   "ui.messagePart.title.write": "Skriv",
   "ui.messagePart.option.typeOwnAnswer": "Skriv ditt eget svar",
   "ui.messagePart.review.title": "Gjennomgå svarene dine",
-
   "ui.list.loading": "Laster",
   "ui.list.empty": "Ingen resultater",
   "ui.list.clearFilter": "Tøm filter",
   "ui.list.emptyWithFilter.prefix": "Ingen resultater for",
-  "ui.list.emptyWithFilter.suffix": "",
-
   "ui.messageNav.newMessage": "Ny melding",
-
   "ui.textField.copyToClipboard": "Kopier til utklippstavlen",
   "ui.textField.copyLink": "Kopier lenke",
   "ui.textField.copied": "Kopiert",
-
   "ui.imagePreview.alt": "Bildeforhåndsvisning",
   "ui.scrollView.ariaLabel": "rullbart innhold",
-
   "ui.tool.read": "Les",
   "ui.tool.loaded": "Lastet",
   "ui.tool.list": "Liste",
-  "ui.tool.glob": "Glob",
-  "ui.tool.grep": "Grep",
   "ui.tool.webfetch": "Webhenting",
   "ui.tool.websearch": "Nettsøk",
   "ui.tool.codesearch": "Kodesøk",
-  "ui.tool.shell": "Shell",
-  "ui.tool.patch": "Patch",
   "ui.tool.todos": "Gjøremål",
   "ui.tool.todos.read": "Les gjøremål",
   "ui.tool.questions": "Spørsmål",
   "ui.tool.agent": "{{type}}-agent",
-  "ui.tool.agent.default": "Agent",
-
   "ui.common.file.one": "fil",
   "ui.common.file.other": "filer",
   "ui.common.question.one": "spørsmål",
   "ui.common.question.other": "spørsmål",
-
   "ui.common.add": "Legg til",
   "ui.common.back": "Tilbake",
   "ui.common.cancel": "Avbryt",
@@ -120,11 +101,9 @@ export const dict: Record<Keys, string> = {
   "ui.common.close": "Lukk",
   "ui.common.next": "Neste",
   "ui.common.submit": "Send inn",
-
   "ui.permission.deny": "Avslå",
   "ui.permission.allowAlways": "Tillat alltid",
   "ui.permission.allowOnce": "Tillat én gang",
-
   "ui.message.expand": "Utvid melding",
   "ui.message.collapse": "Skjul melding",
   "ui.message.copy": "Kopier",
@@ -136,19 +115,16 @@ export const dict: Record<Keys, string> = {
   "ui.message.interrupted": "Avbrutt",
   "ui.message.queued": "I kø",
   "ui.message.attachment.alt": "vedlegg",
-
   "ui.patch.action.deleted": "Slettet",
   "ui.patch.action.created": "Opprettet",
   "ui.patch.action.moved": "Flyttet",
   "ui.patch.action.patched": "Oppdatert",
-
   "ui.question.subtitle.answered": "{{count}} besvart",
   "ui.question.answer.none": "(ingen svar)",
   "ui.question.review.notAnswered": "(ikke besvart)",
   "ui.question.multiHint": "Velg alle som gjelder",
   "ui.question.singleHint": "Velg ett svar",
   "ui.question.custom.placeholder": "Skriv svaret ditt...",
-
   "ui.fileSearch.placeholder": "Finn",
   "ui.fileSearch.previousMatch": "Forrige treff",
   "ui.fileSearch.nextMatch": "Neste treff",
@@ -158,6 +134,9 @@ export const dict: Record<Keys, string> = {
   "ui.basicTool.called": "Kalte `{{tool}}`",
   "ui.toolErrorCard.failed": "Mislyktes",
   "ui.toolErrorCard.copyError": "Kopier feil",
-  "ui.message.duration.seconds": "{{count}}s",
-  "ui.message.duration.minutesSeconds": "{{minutes}}m {{seconds}}s",
-}
+} satisfies Partial<Record<Keys, string>>
+
+export const dict = {
+  ...en,
+  ...translated,
+} satisfies Record<Keys, string>

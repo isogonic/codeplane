@@ -10,6 +10,7 @@ Use this tool to:
 - Run action="batch" with actions[] when you need speed. A batch performs many cursor, click, scroll, keyboard, wait, and app-launch steps in one native control pass and captures one final screenshot.
 
 This tool controls the user's real desktop. Use it only when Browser Use is not enough or when the task explicitly requires native application interaction.
+Unlike Browser Use, native desktop operating systems expose one real pointer. Codeplane tracks the agent's last cursor position and can run fast batches, but the visible desktop cursor is still the OS cursor.
 
 Reliability guidance:
 - Prefer screenshots before and after each action.
@@ -18,4 +19,4 @@ Reliability guidance:
 - Keep actions small and verifiable.
 - Ask for confirmation before irreversible, financial, privacy-sensitive, or account-affecting actions.
 
-Desktop-only: unavailable in CLI, TUI, web-only, and remote browser clients.
+Desktop-only: unavailable in CLI, TUI, web-only, and remote browser clients. It can be called by any desktop model, but visual reasoning over returned screenshots is best with an image-capable model.

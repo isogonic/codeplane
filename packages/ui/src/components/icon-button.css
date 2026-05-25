@@ -150,11 +150,11 @@
 }
 
 [data-component="icon-button"].titlebar-icon[data-variant="ghost"][aria-expanded="true"] {
-  background-color: var(--accent);
+  background-color: var(--surface-base-active);
 }
 [data-component="icon-button"].titlebar-icon[data-variant="ghost"][aria-expanded="true"] [data-slot="icon-svg"] {
-  color: var(--accent-foreground);
+  color: var(--foreground);
 }
 [data-component="icon-button"].titlebar-icon[data-variant="ghost"][aria-expanded="true"]:hover:not(:disabled) {
-  background-color: var(--accent);
+  background-color: var(--surface-base-hover);
 }

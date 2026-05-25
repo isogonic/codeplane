@@ -132,19 +132,13 @@ describe("tool.computer", () => {
             expect(notDesktop.output).toContain("only available in the Codeplane Desktop app")
 
             yield* setDesktopEnv("app", "1")
-            const notVision = yield* def.execute(
-              { action: "batch", actions: [{ action: "move", coordinate: [1, 1] }] },
-              { ...ctx, extra: { model: model(false) } },
-            )
-            expect(notVision.output).toContain("vision-capable models")
-
             let asked = false
             const exit = yield* def
               .execute(
                 { action: "batch", actions: [{ action: "move", coordinate: [1, 1] }] },
                 {
                   ...ctx,
-                  extra: { model: model(true) },
+                  extra: { model: model(false) },
                   ask: () =>
                     Effect.sync(() => {
                       asked = true

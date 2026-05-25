@@ -37,6 +37,7 @@ const transportCalls: Array<{
   url: string
   options: { authProvider?: unknown }
 }> = []
+const finishedAuth: Array<{ url: string; code: string }> = []
 
 // Mock the transport constructors
 void mock.module("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
@@ -59,8 +60,8 @@ void mock.module("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
       }
       throw new MockUnauthorizedError()
     }
-    async finishAuth(_code: string) {
-      // Mock successful auth completion
+    async finishAuth(code: string) {
+      finishedAuth.push({ url: this.url, code })
     }
   },
 }))
@@ -98,6 +99,7 @@ beforeEach(() => {
   openShouldFail = false
   openCalledWith = undefined
   transportCalls.length = 0
+  finishedAuth.length = 0
 })
 
 // Import modules after mocking
@@ -265,4 +267,66 @@ test("open() is called with the authorization URL", async () => {
       expect(openCalledWith!).toContain("https://")
     },
   })
+})
+
+test("pending OAuth transports are isolated per instance directory", async () => {
+  const writeProject = async (dir: string, url: string) =>
+    Bun.write(
+      `${dir}/codeplane.json`,
+      JSON.stringify({
+        $schema: "https://example.invalid/config.json",
+        mcp: {
+          shared: {
+            type: "remote",
+            url,
+          },
+        },
+      }),
+    )
+
+  await using first = await tmpdir({
+    init: (dir) => writeProject(dir, "https://first.example.com/mcp"),
+  })
+  await using second = await tmpdir({
+    init: (dir) => writeProject(dir, "https://second.example.com/mcp"),
+  })
+
+  const start = (directory: string) =>
+    Instance.provide({
+      directory,
+      fn: () =>
+        AppRuntime.runPromise(
+          Effect.gen(function* () {
+            const mcp = yield* service
+            return yield* mcp.startAuth("shared")
+          }),
+        ),
+    })
+
+  const finish = (directory: string, code: string) =>
+    Instance.provide({
+      directory,
+      fn: () =>
+        AppRuntime.runPromise(
+          Effect.gen(function* () {
+            const mcp = yield* service
+            return yield* mcp.finishAuth("shared", code)
+          }),
+        ).catch(() => undefined),
+    })
+
+  try {
+    await start(first.path)
+    await start(second.path)
+
+    await finish(first.path, "first-code")
+    expect(finishedAuth[0]).toEqual({ url: "https://first.example.com/mcp", code: "first-code" })
+
+    await finish(second.path, "second-code")
+    expect(finishedAuth[1]).toEqual({ url: "https://second.example.com/mcp", code: "second-code" })
+  } finally {
+    await McpOAuthCallback.stop()
+    await Instance.provide({ directory: first.path, fn: () => Instance.dispose() })
+    await Instance.provide({ directory: second.path, fn: () => Instance.dispose() })
+  }
 })

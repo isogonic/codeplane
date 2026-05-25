@@ -8,6 +8,8 @@ import {
   type PluginPackage,
   type PluginSource,
 } from "./shared"
+import path from "path"
+import { fileURLToPath } from "url"
 import { ConfigPlugin } from "@/config/plugin"
 import { InstallationVersion } from "@/installation/version"
 
@@ -62,6 +64,13 @@ export namespace PluginLoader {
     return { spec, options: ConfigPlugin.pluginOptions(item), deprecated: isDeprecatedPlugin(spec) }
   }
 
+  function originContextDir(source: string) {
+    if (source === "CODEPLANE_CONFIG_CONTENT") return
+    if (source.startsWith("http://") || source.startsWith("https://")) return
+    const file = source.startsWith("file://") ? fileURLToPath(source) : source
+    return path.extname(file) ? path.dirname(file) : file
+  }
+
   // Resolve a configured plugin into a concrete entrypoint that can later be imported.
   //
   // The stages here intentionally separate install/target resolution, entrypoint detection,
@@ -69,6 +78,7 @@ export namespace PluginLoader {
   export async function resolve(
     plan: Plan,
     kind: PluginKind,
+    contextDir?: string,
   ): Promise<
     | { ok: true; value: Resolved }
     | { ok: false; stage: "missing"; value: Missing }
@@ -77,7 +87,7 @@ export namespace PluginLoader {
     // First make sure the plugin exists locally, installing npm plugins on demand.
     let target = ""
     try {
-      target = await resolvePluginTarget(plan.spec)
+      target = await resolvePluginTarget(plan.spec, contextDir)
     } catch (error) {
       return { ok: false, stage: "install", error }
     }
@@ -144,7 +154,7 @@ export namespace PluginLoader {
 
     report?.start?.(candidate, retry)
 
-    const resolved = await resolve(plan, kind)
+    const resolved = await resolve(plan, kind, originContextDir(candidate.origin.source))
     if (!resolved.ok) {
       if (resolved.stage === "missing") {
         // Missing entrypoints are handled separately so callers can still inspect package metadata.

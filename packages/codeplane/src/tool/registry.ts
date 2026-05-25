@@ -154,7 +154,6 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
     const agents = yield* Agent.Service
     const skill = yield* Skill.Service
     const truncate = yield* Truncate.Service
-    const provider = yield* Provider.Service
 
     const invalid = yield* InvalidTool
     const task = yield* TaskTool
@@ -463,14 +462,6 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
       const usePatch =
         input.modelID.includes("gpt-") && !input.modelID.includes("oss") && !input.modelID.includes("gpt-4")
 
-      let modelSupportsVision = false
-      if (input.providerID && input.modelID) {
-        const model = yield* provider
-          .getModel(input.providerID, input.modelID)
-          .pipe(Effect.catch(() => Effect.succeed(undefined)), Effect.catchDefect(() => Effect.succeed(undefined)))
-        modelSupportsVision = model?.capabilities?.input?.image === true
-      }
-
       return (yield* all()).filter((tool) => {
         if (tool.id === CodeSearchTool.id || tool.id === WebSearchTool.id) {
           return input.providerID === ProviderID.codeplane || Flag.CODEPLANE_ENABLE_EXA
@@ -479,13 +470,13 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
         if (tool.id === BrowserTool.id) {
           if (toolConfig?.browser !== true) return false
           if (!isDesktopClient()) return false
-          return modelSupportsVision
+          return true
         }
 
         if (tool.id === ComputerTool.id) {
           if (toolConfig?.computer !== true) return false
           if (!isDesktopClient()) return false
-          return modelSupportsVision
+          return true
         }
 
         if (tool.id === ApplyPatchTool.id) return usePatch
@@ -513,11 +504,6 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
             setup: "Launch Codeplane Desktop to use this feature.",
           }
         }
-        return {
-          id: tool.id,
-          reason: "The current model does not support vision/image input.",
-          setup: "Use a model with vision capabilities (e.g. Claude with vision, GPT-4o) to enable browser control.",
-        }
       }
       if (tool.id === ComputerTool.id) {
         if (toolConfig?.computer !== true) {
@@ -533,11 +519,6 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
             reason: "Computer use is only available in the desktop app.",
             setup: "Launch Codeplane Desktop to use this feature.",
           }
-        }
-        return {
-          id: tool.id,
-          reason: "The current model does not support vision/image input.",
-          setup: "Use a model with vision capabilities (e.g. Claude with vision, GPT-4o) to enable computer use.",
         }
       }
       if (tool.id === CodeSearchTool.id || tool.id === WebSearchTool.id) {

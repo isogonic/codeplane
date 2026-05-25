@@ -4,7 +4,7 @@
  * Variants:
  *   normal   → file-tab style with `rounded-md` pills and a soft
  *              `bg-muted` selected state.
- *   alt      → underline tabs (top-level section navigator).
+ *   alt      → compact section tabs with a soft selected background.
  *   pill     → free-standing pill row with `bg-background` selected state
  *              over a `bg-muted` container.
  *   vertical → sidebar-style list with `rounded-md` rows.
@@ -16,6 +16,8 @@
   --tabs-compact-pill-height: 26px;
   --tabs-compact-pill-radius: var(--radius-md);
   --tabs-compact-pill-padding-x: 6px;
+  --tabs-selected-background: var(--surface-base-active);
+  --tabs-hover-background: color-mix(in oklab, var(--surface-base-active) 58%, transparent);
 
   width: 100%;
   height: 100%;
@@ -112,13 +114,13 @@
     }
     &:has([data-selected]) {
       color: var(--foreground);
-      background-color: var(--muted);
+      background-color: var(--tabs-selected-background);
       [data-slot="tabs-trigger-close-button"] { opacity: 1; }
     }
 
-    &:hover:not(:disabled):not([data-selected]) {
+    &:hover:not(:disabled):not(:has([data-selected])) {
       color: var(--foreground);
-      background-color: color-mix(in oklab, var(--muted) 50%, transparent);
+      background-color: var(--tabs-hover-background);
     }
     &:has([data-slot="tabs-trigger-close-button"]) {
       padding-right: var(--tabs-compact-pill-padding-x);
@@ -179,12 +181,12 @@
 
       &:has([data-selected]) {
         color: var(--foreground);
-        background-color: var(--muted);
+        background-color: var(--tabs-selected-background);
       }
 
       &:hover:not(:disabled):not(:has([data-selected])) {
         color: var(--foreground);
-        background-color: color-mix(in oklab, var(--muted) 60%, transparent);
+        background-color: var(--tabs-hover-background);
       }
 
       [data-slot="tabs-trigger"] {
@@ -218,13 +220,13 @@
     }
 
     [data-slot="tabs-trigger-wrapper"] {
-      border: none;
-      border-radius: 0;
+      border: 1px solid transparent;
+      border-radius: var(--tabs-compact-pill-radius);
       color: var(--muted-foreground);
       background-color: transparent;
       gap: 6px;
-      padding-inline: 0;
-      height: 100%;
+      padding-inline: 10px;
+      height: var(--tabs-compact-pill-height);
 
       font-family: var(--font-family-sans);
       font-size: 14px;
@@ -232,25 +234,9 @@
       line-height: 1;
       letter-spacing: var(--letter-spacing-normal);
 
-      &::after {
-        content: "";
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: -1px;
-        height: 2px;
-        background-color: var(--foreground);
-        opacity: 0;
-        transform: scaleX(0.6);
-        transform-origin: center;
-        transition:
-          opacity 120ms ease,
-          transform 120ms ease;
-      }
-
       [data-slot="tabs-trigger"] {
         height: 100%;
-        padding: 4px 0;
+        padding: 0;
         background-color: transparent;
       }
 
@@ -268,17 +254,16 @@
 
       &:has([data-selected]) {
         color: var(--foreground);
-        background-color: transparent;
-        &::after {
-          opacity: 1;
-          transform: scaleX(1);
-        }
+        background-color: var(--tabs-selected-background);
       }
 
-      &:hover:not(:disabled):not([data-selected]) { color: var(--foreground); }
+      &:hover:not(:disabled):not(:has([data-selected])) {
+        color: var(--foreground);
+        background-color: var(--tabs-hover-background);
+      }
 
       &:has([data-slot="tabs-trigger-close-button"]) {
-        padding-right: 0;
+        padding-right: 6px;
         [data-slot="tabs-trigger"] { padding-right: 0; }
       }
     }
@@ -321,20 +306,20 @@
       }
 
       &:hover:not(:disabled) {
-        background-color: color-mix(in oklab, var(--background) 50%, transparent);
+        background-color: var(--tabs-hover-background);
         color: var(--foreground);
       }
 
-      &:active:not(:disabled) { background-color: var(--background); }
+      &:active:not(:disabled) { background-color: var(--tabs-selected-background); }
 
       &:has([data-selected]) {
-        background-color: var(--background);
+        background-color: var(--tabs-selected-background);
         color: var(--foreground);
         box-shadow:
           inset 0 0 0 1px var(--border),
           0 1px 2px 0 oklch(0 0 0 / 0.04);
 
-        &:hover:not(:disabled) { background-color: var(--background); }
+        &:hover:not(:disabled) { background-color: var(--tabs-selected-background); }
       }
     }
   }
@@ -368,12 +353,12 @@
 
       &:not(:has([data-selected])):hover:not(:disabled) {
         color: var(--foreground);
-        background-color: color-mix(in oklab, var(--muted) 50%, transparent);
+        background-color: var(--tabs-hover-background);
       }
 
       &:has([data-selected]) {
         color: var(--foreground);
-        background-color: var(--muted);
+        background-color: var(--tabs-selected-background);
       }
     }
   }
@@ -413,13 +398,13 @@
       }
 
       &:hover:not(:disabled) {
-        background-color: var(--muted);
+        background-color: var(--tabs-hover-background);
         color: var(--foreground);
       }
 
       &:has([data-selected]) {
-        background-color: var(--accent);
-        color: var(--accent-foreground);
+        background-color: var(--tabs-selected-background);
+        color: var(--foreground);
       }
     }
 
@@ -449,10 +434,10 @@
           justify-content: flex-start;
         }
 
-        &:hover:not(:disabled) { background-color: var(--muted); }
+        &:hover:not(:disabled) { background-color: var(--tabs-hover-background); }
 
         &:has([data-selected]) {
-          background-color: var(--muted);
+          background-color: var(--tabs-selected-background);
           color: var(--foreground);
         }
       }
@@ -504,7 +489,7 @@
 
         [data-component="icon"] { color: var(--muted-foreground); }
 
-        &:hover:not(:disabled) { background-color: var(--muted); }
+        &:hover:not(:disabled) { background-color: var(--tabs-hover-background); }
 
         &:has([data-slot="tabs-trigger"]:focus-visible) {
           background-color: var(--muted);
@@ -514,12 +499,12 @@
         }
 
         &:has([data-selected]) {
-          background-color: var(--accent);
-          color: var(--accent-foreground);
+          background-color: var(--tabs-selected-background);
+          color: var(--foreground);
 
-          [data-component="icon"] { color: var(--accent-foreground); }
+          [data-component="icon"] { color: var(--foreground); }
 
-          &:hover:not(:disabled) { background-color: var(--accent); }
+          &:hover:not(:disabled) { background-color: var(--tabs-selected-background); }
         }
       }
 
@@ -548,7 +533,7 @@
   top: calc((var(--tabs-bar-height, 44px) - var(--tabs-compact-pill-height, 26px)) / 2);
   height: var(--tabs-compact-pill-height, 26px);
   border-radius: var(--tabs-compact-pill-radius, var(--radius-md));
-  background-color: var(--muted);
+  background-color: var(--tabs-selected-background, var(--surface-base-active));
   box-shadow: inset 0 0 0 1px var(--border);
 }
 

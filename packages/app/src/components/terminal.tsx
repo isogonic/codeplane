@@ -14,6 +14,7 @@ import { useServer } from "@/context/server"
 import { terminalFontFamily, useSettings } from "@/context/settings"
 import type { LocalPTY } from "@/context/terminal"
 import { disposeIfDisposable, getHoveredLinkText, setOptionIfSupported } from "@/utils/runtime-adapters"
+import { patchGhosttyRetinaCanvas } from "@/utils/ghostty-retina"
 import { terminalWriter } from "@/utils/terminal-writer"
 
 const TOGGLE_TERMINAL_ID = "terminal.toggle"
@@ -32,7 +33,10 @@ let shared: Promise<{ mod: typeof import("ghostty-web"); ghostty: Ghostty }> | u
 const loadGhostty = () => {
   if (shared) return shared
   shared = import("ghostty-web")
-    .then(async (mod) => ({ mod, ghostty: await mod.Ghostty.load() }))
+    .then(async (mod) => {
+      patchGhosttyRetinaCanvas(mod)
+      return { mod, ghostty: await mod.Ghostty.load() }
+    })
     .catch((err) => {
       shared = undefined
       throw err

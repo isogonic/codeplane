@@ -56,6 +56,10 @@ import { retry } from "@codeplane-ai/shared/util/retry"
 import { playSoundById } from "@/utils/sound"
 import { createAim } from "@/utils/aim"
 import { setNavigate } from "@/utils/notification-click"
+import {
+  desktopNativeNotificationEnabled,
+  shouldShowInAppNotificationToast,
+} from "@/utils/native-notifications"
 import { Worktree as WorktreeState } from "@/utils/worktree"
 import { setSessionHandoff } from "@/pages/session/handoff"
 
@@ -606,8 +610,27 @@ export default function Layout(props: ParentProps) {
         }
 
         const currentSession = params.id
-        if (workspaceKey(directory) === workspaceKey(currentDir()) && props.sessionID === currentSession) return
-        if (workspaceKey(directory) === workspaceKey(currentDir()) && session?.parentID === currentSession) return
+        const currentWorkspaceTarget = workspaceKey(directory) === workspaceKey(currentDir())
+        const currentSessionTarget = currentWorkspaceTarget && props.sessionID === currentSession
+        const childSessionTarget = currentWorkspaceTarget && session?.parentID === currentSession
+        const nativeNotificationEnabled = desktopNativeNotificationEnabled({
+          desktop: platform.desktop,
+          enabled:
+            e.details.type === "permission.asked"
+              ? settings.notifications.permissions()
+              : settings.notifications.agent(),
+        })
+
+        if (
+          !shouldShowInAppNotificationToast({
+            desktopNativeNotificationEnabled: nativeNotificationEnabled,
+            currentSessionTarget,
+            childSessionTarget,
+          })
+        ) {
+          dismissSessionAlert(sessionKey)
+          return
+        }
 
         dismissSessionAlert(sessionKey)
 
@@ -1413,7 +1436,11 @@ export default function Layout(props: ParentProps) {
   async function navigateToProject(directory: string | undefined) {
     if (!directory) return
     const root = projectRoot(directory)
+    const fallback = `/${base64Encode(root)}/session`
+
     server.projects.touch(root)
+    navigateWithSidebarReset(fallback)
+
     const project = layout.projects.list().find((item) => item.worktree === root)
     let dirs = project
       ? effectiveWorkspaceOrder(root, [root, ...(project.sandboxes ?? [])], store.workspaceOrder[root])
@@ -1481,8 +1508,6 @@ export default function Layout(props: ParentProps) {
     if (fetched && (await openSession(fetched))) {
       return
     }
-
-    navigateWithSidebarReset(`/${base64Encode(root)}/session`)
   }
 
   function navigateToSession(session: Session | undefined) {
@@ -2195,7 +2220,6 @@ export default function Layout(props: ParentProps) {
   }) => {
     const project = panelProps.project
     const merged = createMemo(() => panelProps.mobile || (panelProps.merged ?? layout.sidebar.opened()))
-    const hover = createMemo(() => !panelProps.mobile && panelProps.merged === false && !layout.sidebar.opened())
     const empty = createMemo(() => !params.dir && layout.projects.list().length === 0)
     const projectName = createMemo(() => {
       const item = project()
@@ -2238,11 +2262,8 @@ export default function Layout(props: ParentProps) {
     return (
       <div
         classList={{
-          "flex flex-col min-h-0 min-w-0 box-border rounded-tl-[12px] px-3": true,
-          "border border-b-0 border-border-weak-base": !merged(),
-          "border-l border-t border-border-weaker-base": merged(),
-          "bg-background-base": merged() || hover(),
-          "bg-background-stronger": !merged() && !hover(),
+          "flex flex-col min-h-0 min-w-0 box-border px-3 border-r border-border-weak-base bg-background-base": true,
+          "shadow-[var(--shadow-lg)]": !merged(),
           "flex-1 min-w-0": panelProps.mobile,
           "max-w-full overflow-hidden": panelProps.mobile,
         }}
@@ -2615,7 +2636,7 @@ export default function Layout(props: ParentProps) {
 
             <div
               class="hidden xl:block pointer-events-none absolute top-0 right-0 z-0 border-t border-border-weaker-base"
-              style={{ left: "calc(4rem + 12px)" }}
+              style={{ left: "4rem" }}
             />
 
             <div class="xl:hidden">
@@ -2659,7 +2680,7 @@ export default function Layout(props: ParentProps) {
             >
               <main
                 classList={{
-                  "size-full overflow-hidden flex flex-col items-start contain-strict border-t border-border-weak-base bg-background-base xl:border-l xl:rounded-tl-[12px]": true,
+                  "size-full overflow-hidden flex flex-col items-start contain-strict bg-background-base": true,
                 }}
               >
                 <Show when={!autoselecting.loading} fallback={<div class="size-full" />}>

@@ -3,8 +3,24 @@
 import { render } from "solid-js/web"
 import { AppBaseProviders, AppInterface } from "@/app"
 import { type Platform, type PlatformServerManager, PlatformProvider } from "@/context/platform"
+import { normalizeSupportedLocale, type SupportedLocale } from "@codeplane-ai/shared/locale"
+import { dict as ar } from "@/i18n/ar"
+import { dict as br } from "@/i18n/br"
+import { dict as bs } from "@/i18n/bs"
+import { dict as da } from "@/i18n/da"
+import { dict as de } from "@/i18n/de"
 import { dict as en } from "@/i18n/en"
+import { dict as es } from "@/i18n/es"
+import { dict as fr } from "@/i18n/fr"
+import { dict as ja } from "@/i18n/ja"
+import { dict as ko } from "@/i18n/ko"
+import { dict as no } from "@/i18n/no"
+import { dict as pl } from "@/i18n/pl"
+import { dict as ru } from "@/i18n/ru"
+import { dict as th } from "@/i18n/th"
+import { dict as tr } from "@/i18n/tr"
 import { dict as zh } from "@/i18n/zh"
+import { dict as zht } from "@/i18n/zht"
 import { handleNotificationClick } from "@/utils/notification-click"
 import { silenceResizeObserverNoise } from "@/utils/silence-resize-observer"
 import { CodeplaneVersion } from "@codeplane-ai/shared/version"
@@ -64,20 +80,35 @@ declare global {
 const desktopStorage = window.codeplaneDesktop?.storage
 const desktopNotifications = window.codeplaneDesktop?.notifications
 
+const localeDictionaries: Record<SupportedLocale, typeof en> = {
+  en,
+  zh,
+  zht,
+  ko,
+  de,
+  es,
+  fr,
+  da,
+  ja,
+  pl,
+  ru,
+  ar,
+  no,
+  br,
+  th,
+  bs,
+  tr,
+}
+
 const getLocale = () => {
   if (typeof navigator !== "object") return "en" as const
   const languages = navigator.languages?.length ? navigator.languages : [navigator.language]
-  for (const language of languages) {
-    if (!language) continue
-    if (language.toLowerCase().startsWith("zh")) return "zh" as const
-  }
-  return "en" as const
+  return normalizeSupportedLocale(languages.find(Boolean))
 }
 
 const getRootNotFoundError = () => {
   const key = "error.dev.rootNotFound" as const
-  const locale = getLocale()
-  return locale === "zh" ? (zh[key] ?? en[key]) : en[key]
+  return localeDictionaries[getLocale()][key] ?? en[key]
 }
 
 const getStorage = (key: string) => {
@@ -129,22 +160,22 @@ desktopNotifications?.onClick?.((href) => {
 })
 
 const notify: Platform["notify"] = async (title, description, href) => {
-  const inView = document.visibilityState === "visible" && document.hasFocus()
-  if (inView) return
-
   if (desktopNotifications?.notify) {
     const shown = await desktopNotifications.notify({ title, description, href }).catch(() => false)
-    if (shown) return
+    if (shown) return true
   }
 
-  if (!("Notification" in window)) return
+  const inView = document.visibilityState === "visible" && document.hasFocus()
+  if (inView) return false
+
+  if (!("Notification" in window)) return false
 
   const permission =
     Notification.permission === "default"
       ? await Notification.requestPermission().catch(() => "denied")
       : Notification.permission
 
-  if (permission !== "granted") return
+  if (permission !== "granted") return false
 
   const notification = new Notification(title, {
     body: description ?? "",
@@ -155,6 +186,7 @@ const notify: Platform["notify"] = async (title, description, href) => {
     handleNotificationClick(href)
     notification.close()
   }
+  return true
 }
 
 const openLink: Platform["openLink"] = (url) => {

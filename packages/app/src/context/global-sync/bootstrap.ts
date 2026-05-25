@@ -1,6 +1,8 @@
 import type {
   Config,
   CodeplaneClient,
+  LspStatus,
+  McpStatus,
   Path,
   PermissionRequest,
   Project,
@@ -30,6 +32,12 @@ type GlobalStore = {
   provider: ProviderListResponse
   provider_auth: ProviderAuthResponse
   config: Config
+  mcp_ready: boolean
+  mcp: {
+    [name: string]: McpStatus
+  }
+  lsp_ready: boolean
+  lsp: LspStatus[]
   reload: undefined | "pending" | "complete"
 }
 
@@ -84,6 +92,13 @@ export async function bootstrapGlobal(input: {
           input.setGlobalStore("config", x.data!)
         }),
       ),
+    () =>
+      retry(() =>
+        input.globalSDK.mcp.status().then((x) => {
+          input.setGlobalStore("mcp", x.data ?? {})
+          input.setGlobalStore("mcp_ready", true)
+        }),
+      ),
   ]
 
   const slow = [
@@ -116,6 +131,16 @@ export async function bootstrapGlobal(input: {
           input.setGlobalStore("project", projects)
         }),
       ),
+    () =>
+      retry(() =>
+        input.globalSDK.lsp.status().then((x) => {
+          input.setGlobalStore("lsp", x.data ?? [])
+          input.setGlobalStore("lsp_ready", true)
+        }),
+      ).catch(() => {
+        input.setGlobalStore("lsp", [])
+        input.setGlobalStore("lsp_ready", true)
+      }),
   ]
   await runAll(fast)
   // showErrors({

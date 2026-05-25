@@ -20,6 +20,7 @@ import { Filesystem } from "@/tui/_compat/filesystem"
 import * as Log from "@/util/log"
 import { ConfigVariable } from "@/config/variable"
 import { Npm } from "@/npm"
+import { ensureOpenCodeCompatModules } from "@/plugin/shared"
 
 const log = Log.create({ service: "tui.config" })
 
@@ -91,7 +92,7 @@ async function mergeFile(acc: Acc, file: string, ctx: { directory: string }) {
 }
 
 const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: string }) {
-  // Every config dir we may read from: global config dir, any `.opencode`
+  // Every config dir we may read from: global config dir, project `.codeplane`
   // folders between cwd and home, and CODEPLANE_CONFIG_DIR.
   const directories = yield* ConfigPaths.directories(ctx.directory)
   yield* Effect.promise(() => migrateTuiConfig({ directories, cwd: ctx.directory }))
@@ -120,13 +121,12 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
     yield* Effect.promise(() => mergeFile(acc, file, ctx)).pipe(Effect.orDie)
   }
 
-  // 4. `.opencode` directories (and CODEPLANE_CONFIG_DIR) discovered while
-  // walking up the tree. Also returned below so callers can install plugin
-  // dependencies from each location.
-  const dirs = unique(directories).filter((dir) => dir.endsWith(".opencode") || dir === Flag.CODEPLANE_CONFIG_DIR)
-
+  // 4. Codeplane config directories discovered while walking up the tree.
+  // These are returned below so callers can install plugin dependencies from
+  // each location.
+  const dirs = unique(directories)
   for (const dir of dirs) {
-    if (!dir.endsWith(".opencode") && dir !== Flag.CODEPLANE_CONFIG_DIR) continue
+    if (dir === Global.Path.config) continue
     for (const file of ConfigPaths.fileInDirectory(dir, "tui")) {
       yield* Effect.promise(() => mergeFile(acc, file, ctx)).pipe(Effect.orDie)
     }
@@ -158,8 +158,9 @@ export const layer = Layer.effect(
     const deps = yield* Effect.forEach(
       data.dirs,
       (dir) =>
-        npm
-          .install(dir, {
+        Effect.gen(function* () {
+          yield* Effect.promise(() => ensureOpenCodeCompatModules(dir))
+          yield* npm.install(dir, {
             add: [
               {
                 name: "@codeplane-ai/plugin",
@@ -167,7 +168,7 @@ export const layer = Layer.effect(
               },
             ],
           })
-          .pipe(Effect.forkScoped),
+        }).pipe(Effect.forkScoped),
       {
         concurrency: "unbounded",
       },

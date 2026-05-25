@@ -41,6 +41,11 @@ export interface PackageView {
   readonly sources: ReadonlyArray<string>
 }
 
+export type InstallPackage = {
+  readonly name: string
+  readonly version?: string
+}
+
 export interface ResolvedEntryPoint {
   readonly client?: NpmConfig.PackageManager
   readonly directory: string
@@ -53,14 +58,18 @@ export interface ResolvedEntryPoint {
 }
 
 export interface Interface {
-  readonly add: (pkg: string, dir?: string) => Effect.Effect<EntryPoint, InstallFailedError | EffectFlock.LockError>
+  readonly add: (
+    pkg: string,
+    dir?: string,
+    input?: {
+      add?: InstallPackage[]
+    },
+  ) => Effect.Effect<EntryPoint, InstallFailedError | EffectFlock.LockError>
   readonly install: (
     dir: string,
     input?: {
-      add: {
-        name: string
-        version?: string
-      }[]
+      add: InstallPackage[]
+      save?: boolean
     },
   ) => Effect.Effect<void, EffectFlock.LockError | InstallFailedError>
   readonly manager: (dir?: string) => Effect.Effect<NpmConfig.PackageManager>
@@ -82,6 +91,18 @@ export function sanitize(pkg: string) {
 function option<T>(value: T | null | undefined) {
   if (value === null || value === undefined) return Option.none<NonNullable<T>>()
   return Option.some(value as NonNullable<T>)
+}
+
+function packageSpec(pkg: InstallPackage) {
+  return [pkg.name, pkg.version].filter(Boolean).join("@")
+}
+
+function packageName(spec: string) {
+  try {
+    return npa(spec).name ?? spec
+  } catch {
+    return spec
+  }
 }
 
 const loadOptions = (dir: string, env?: Record<string, string>) =>
@@ -235,7 +256,7 @@ export const layer = Layer.effect(
           }
         }).pipe(Effect.withSpan("Npm.view", { attributes: { pkg, dir } })),
       )
-    const reify = (input: { dir: string; add?: string[]; contextDir?: string }) =>
+    const reify = (input: { dir: string; add?: string[]; contextDir?: string; save?: boolean }) =>
       Effect.gen(function* () {
         yield* flock.acquire(`npm-install:${input.dir}`)
         const { Arborist } = yield* Effect.promise(() => import("@npmcli/arborist"))
@@ -258,7 +279,7 @@ export const layer = Layer.effect(
               ...npmOptions,
               ...resolved.options,
               add,
-              save: true,
+              save: input.save ?? true,
               saveType: "prod",
             }),
           catch: (cause) =>
@@ -290,19 +311,26 @@ export const layer = Layer.effect(
       return semver.lt(cachedVersion, latestVersion.latest.value)
     })
 
-    const add = Effect.fn("Npm.add")(function* (pkg: string, contextDir?: string) {
+    const add = Effect.fn("Npm.add")(function* (pkg: string, contextDir?: string, input?: { add?: InstallPackage[] }) {
       const resolved = yield* resolveConfig(pkg, contextDir)
       const cacheDir = directory(pkg)
-      const name = (() => {
-        try {
-          return npa(pkg).name ?? pkg
-        } catch {
-          return pkg
-        }
-      })()
+      const name = packageName(pkg)
+      const extra = input?.add?.map(packageSpec) ?? []
+      const add = [pkg, ...extra]
       const cachedPackageDir = path.join(cacheDir, "node_modules", name)
 
       if (yield* afs.existsSafe(cachedPackageDir)) {
+        if (extra.length) {
+          const installed = yield* Effect.forEach(
+            extra,
+            (spec) => afs.existsSafe(path.join(cacheDir, "node_modules", packageName(spec))),
+            { concurrency: 8 },
+          )
+          if (!installed.every(Boolean)) {
+            yield* reify({ dir: cacheDir, add, contextDir })
+          }
+        }
+
         const entry = resolveEntryPoint(name, cachedPackageDir)
         const metadata = yield* readMetadata(cacheDir)
         const version = yield* packageVersion(cachedPackageDir)
@@ -318,9 +346,9 @@ export const layer = Layer.effect(
         }
       }
 
-      const tree = yield* reify({ dir: cacheDir, add: [pkg], contextDir })
-      const first = tree.edgesOut.values().next().value?.to
-      if (!first) return yield* new InstallFailedError({ add: [pkg], dir: cacheDir })
+      const tree = yield* reify({ dir: cacheDir, add, contextDir })
+      const first = tree.edgesOut.get(name)?.to ?? tree.edgesOut.values().next().value?.to
+      if (!first) return yield* new InstallFailedError({ add, dir: cacheDir })
       const entry = resolveEntryPoint(first.name, first.path)
       const version = yield* packageVersion(first.path)
       yield* writeMetadata(cacheDir, {
@@ -349,33 +377,46 @@ export const layer = Layer.effect(
       )
       if (!canWrite) return
 
-      const add = input?.add.map((pkg) => [pkg.name, pkg.version].filter(Boolean).join("@")) ?? []
-      if (
-        yield* Effect.gen(function* () {
-          const nodeModulesExists = yield* afs.existsSafe(path.join(dir, "node_modules"))
-          if (!nodeModulesExists) {
-            yield* reify({ add, dir, contextDir: dir })
-            return true
-          }
-          return false
-        }).pipe(Effect.withSpan("Npm.checkNodeModules"))
-      )
-        return
+      const add = input?.add.map(packageSpec) ?? []
+      const packageJson = path.join(dir, "package.json")
+      const hasPackageJson = yield* afs.existsSafe(packageJson)
+      if (!hasPackageJson && add.length === 0) return
 
-      yield* Effect.gen(function* () {
-        const pkg = yield* afs.readJson(path.join(dir, "package.json")).pipe(Effect.orElseSucceed(() => ({})))
-        const lock = yield* afs.readJson(path.join(dir, "package-lock.json")).pipe(Effect.orElseSucceed(() => ({})))
-
+      const declared = yield* Effect.gen(function* () {
+        const pkg = yield* afs.readJson(packageJson).pipe(Effect.orElseSucceed(() => ({})))
         const pkgAny = pkg as any
-        const lockAny = lock as any
-        const declared = new Set([
+        return new Set([
           ...Object.keys(pkgAny?.dependencies || {}),
           ...Object.keys(pkgAny?.devDependencies || {}),
           ...Object.keys(pkgAny?.peerDependencies || {}),
           ...Object.keys(pkgAny?.optionalDependencies || {}),
           ...(input?.add || []).map((pkg) => pkg.name),
         ])
+      })
+      if (declared.size === 0) return
 
+      const nodeModulesExists = yield* afs.existsSafe(path.join(dir, "node_modules")).pipe(
+        Effect.withSpan("Npm.checkNodeModules"),
+      )
+      if (!nodeModulesExists) {
+        yield* reify({ add, dir, contextDir: dir, save: input?.save })
+        return
+      }
+
+      const lockfileExists = yield* afs.existsSafe(path.join(dir, "package-lock.json"))
+      if (!lockfileExists) {
+        const installed = yield* Effect.forEach(
+          declared,
+          (name) => afs.existsSafe(path.join(dir, "node_modules", name)),
+          { concurrency: 8 },
+        )
+        if (installed.every(Boolean)) return
+      }
+
+      yield* Effect.gen(function* () {
+        const lock = yield* afs.readJson(path.join(dir, "package-lock.json")).pipe(Effect.orElseSucceed(() => ({})))
+
+        const lockAny = lock as any
         const root = lockAny?.packages?.[""] || {}
         const locked = new Set([
           ...Object.keys(root?.dependencies || {}),
@@ -386,7 +427,7 @@ export const layer = Layer.effect(
 
         for (const name of declared) {
           if (!locked.has(name)) {
-            yield* reify({ dir, add, contextDir: dir })
+            yield* reify({ dir, add, contextDir: dir, save: input?.save })
             return
           }
         }

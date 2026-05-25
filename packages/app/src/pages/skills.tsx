@@ -60,7 +60,8 @@ const permissionRules = (permission: Config["permission"]) =>
 
 const skillAction = (permission: Config["permission"], name: string) =>
   permissionRules(permission)
-    .toReversed()
+    .slice()
+    .reverse()
     .find((rule) => wildcardMatch(rule.permission, "skill") && wildcardMatch(rule.pattern, name))?.action ?? "allow"
 
 const skillRules = (permission: Config["permission"]): PermissionObject => {
@@ -91,7 +92,11 @@ export function SkillsSettings(props: { layout?: "dialog" | "page" } = {}) {
       .catch(() => [] as AppSkillsResponse),
   )
 
-  const loadedSkills = createMemo(() => (skills() ?? []).toSorted((a, b) => a.name.localeCompare(b.name)))
+  const loadedSkills = createMemo(() => {
+    const current = skills()
+    if (!Array.isArray(current)) return []
+    return current.slice().sort((a, b) => a.name.localeCompare(b.name))
+  })
   const sources = createMemo<SkillSourceEntry[]>(() => [
     ...(globalSync.data.config.skills?.paths ?? []).map((value, index) => ({ kind: "path" as const, index, value })),
     ...(globalSync.data.config.skills?.urls ?? []).map((value, index) => ({ kind: "url" as const, index, value })),

@@ -20,6 +20,22 @@ type DesktopNotificationApi = {
   onClick: (cb: (href?: string) => void) => () => void
 }
 
+type DesktopInstanceCacheInfo = {
+  exists: boolean
+  bytes: number
+  areas: Array<{
+    key: string
+    label: string
+    path: string
+    bytes: number
+  }>
+  desktopUI: {
+    exists: boolean
+    bytes: number
+    versions: string[]
+  }
+}
+
 const bootstrap = ipcRenderer.sendSync("desktop:bootstrap") as {
   currentKey: string | null
   defaultKey: string | null
@@ -74,6 +90,11 @@ const api = {
         | { ok: false; error: string; authUrl?: string }
       >,
     remove: (id: string) => ipcRenderer.invoke("instances:remove", id) as Promise<SavedInstance[]>,
+    cacheInfo: (id: string) => ipcRenderer.invoke("instances:cache-info", id) as Promise<DesktopInstanceCacheInfo>,
+    clearCache: (id: string) =>
+      ipcRenderer.invoke("instances:clear-cache", id) as Promise<
+        { ok: true; cleared: DesktopInstanceCacheInfo } | { ok: false; error: string }
+      >,
     open: (id: string) => ipcRenderer.invoke("instances:open", id) as Promise<boolean>,
     showSetup: (editId?: string) => ipcRenderer.invoke("instances:show-setup", editId) as Promise<boolean>,
     onPrepareProgress: (cb: (info: PrepareProgress) => void) => {

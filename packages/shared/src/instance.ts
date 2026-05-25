@@ -11,6 +11,24 @@ export type SavedInstance = {
   }
 }
 
+function hasConfiguredHeaders(headers: Record<string, string> | undefined) {
+  return Object.values(headers ?? {}).some((value) => value.trim().length > 0)
+}
+
+export function hasRemoteAccessSettings(instance: SavedInstance) {
+  return (
+    !instance.url.startsWith("local://") ||
+    hasConfiguredHeaders(instance.headers) ||
+    Boolean(instance.ignoreCertificateErrors) ||
+    Boolean(instance.clientCertSubject)
+  )
+}
+
+export function instanceEditorKind(instance: SavedInstance): "local" | "remote" {
+  if (!instance.local) return "remote"
+  return hasRemoteAccessSettings(instance) ? "remote" : "local"
+}
+
 export type PrepareProgress = {
   instanceID: string
   phase: "probe" | "download" | "finalize" | "done"

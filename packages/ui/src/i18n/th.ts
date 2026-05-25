@@ -1,4 +1,8 @@
-export const dict = {
+import { dict as en } from "./en"
+
+type Keys = keyof typeof en
+
+const translated = {
   "ui.sessionReview.title": "การเปลี่ยนแปลงเซสชัน",
   "ui.sessionReview.title.lastTurn": "การเปลี่ยนแปลงของเทิร์นล่าสุด",
   "ui.sessionReview.diffStyle.unified": "แบบรวม",
@@ -14,8 +18,7 @@ export const dict = {
   "ui.sessionReview.image.loading": "กำลังโหลด...",
   "ui.sessionReview.image.placeholder": "รูปภาพ",
   "ui.sessionReview.largeDiff.title": "Diff มีขนาดใหญ่เกินไปจนไม่สามารถแสดงผลได้",
-  "ui.sessionReview.largeDiff.meta":
-    "ขีดจำกัด: {{limit}} บรรทัดที่เปลี่ยนแปลง. ปัจจุบัน: {{current}} บรรทัดที่เปลี่ยนแปลง.",
+  "ui.sessionReview.largeDiff.meta": "ขีดจำกัด: {{limit}} บรรทัดที่เปลี่ยนแปลง. ปัจจุบัน: {{current}} บรรทัดที่เปลี่ยนแปลง.",
   "ui.sessionReview.largeDiff.renderAnyway": "แสดงผลต่อไป",
   "ui.fileMedia.kind.image": "รูปภาพ",
   "ui.fileMedia.kind.audio": "เสียง",
@@ -26,19 +29,14 @@ export const dict = {
   "ui.fileMedia.binary.title": "ไฟล์ไบนารี",
   "ui.fileMedia.binary.description.path": "{{path}} เป็นไฟล์ไบนารีและไม่สามารถแสดงผลได้",
   "ui.fileMedia.binary.description.default": "ไฟล์ไบนารีไม่สามารถแสดงผลได้",
-
   "ui.lineComment.label.prefix": "แสดงความคิดเห็นบน ",
-  "ui.lineComment.label.suffix": "",
   "ui.lineComment.editorLabel.prefix": "กำลังแสดงความคิดเห็นบน ",
-  "ui.lineComment.editorLabel.suffix": "",
   "ui.lineComment.placeholder": "เพิ่มความคิดเห็น",
   "ui.lineComment.submit": "แสดงความคิดเห็น",
-
   "ui.sessionTurn.steps.show": "แสดงขั้นตอน",
   "ui.sessionTurn.steps.hide": "ซ่อนขั้นตอน",
   "ui.sessionTurn.summary.response": "การตอบสนอง",
   "ui.sessionTurn.diff.showMore": "แสดงการเปลี่ยนแปลงเพิ่มเติม ({{count}})",
-
   "ui.sessionTurn.retry.retrying": "กำลังลองใหม่",
   "ui.sessionTurn.retry.inSeconds": "ใน {{seconds}}วิ",
   "ui.sessionTurn.retry.attempt": "ครั้งที่ {{attempt}}",
@@ -46,7 +44,6 @@ export const dict = {
   "ui.sessionTurn.retry.geminiHot": "gemini กำลังใช้งานหนาแน่นมาก",
   "ui.sessionTurn.error.freeUsageExceeded": "เกินขีดจำกัดการใช้งานฟรี",
   "ui.sessionTurn.error.addCredits": "เพิ่มเครดิต",
-
   "ui.sessionTurn.status.delegating": "มอบหมายงาน",
   "ui.sessionTurn.status.planning": "วางแผนขั้นตอนถัดไป",
   "ui.sessionTurn.status.gatheringContext": "กำลังสำรวจ",
@@ -59,7 +56,6 @@ export const dict = {
   "ui.sessionTurn.status.thinkingWithTopic": "กำลังคิด - {{topic}}",
   "ui.sessionTurn.status.gatheringThoughts": "รวบรวมความคิด",
   "ui.sessionTurn.status.consideringNextSteps": "พิจารณาขั้นตอนถัดไป",
-
   "ui.messagePart.questions.dismissed": "ละทิ้งคำถามแล้ว",
   "ui.messagePart.compaction": "บีบอัดเซสชันแล้ว",
   "ui.messagePart.context.read.one": "อ่าน {{count}} รายการ",
@@ -73,27 +69,19 @@ export const dict = {
   "ui.messagePart.title.write": "เขียน",
   "ui.messagePart.option.typeOwnAnswer": "พิมพ์คำตอบของคุณเอง",
   "ui.messagePart.review.title": "ตรวจสอบคำตอบของคุณ",
-
   "ui.list.loading": "กำลังโหลด",
   "ui.list.empty": "ไม่มีผลลัพธ์",
   "ui.list.clearFilter": "ล้างตัวกรอง",
   "ui.list.emptyWithFilter.prefix": "ไม่มีผลลัพธ์สำหรับ",
-  "ui.list.emptyWithFilter.suffix": "",
-
   "ui.messageNav.newMessage": "ข้อความใหม่",
-
   "ui.textField.copyToClipboard": "คัดลอกไปยังคลิปบอร์ด",
   "ui.textField.copyLink": "คัดลอกลิงก์",
   "ui.textField.copied": "คัดลอกแล้ว",
-
   "ui.imagePreview.alt": "ตัวอย่างรูปภาพ",
   "ui.scrollView.ariaLabel": "เนื้อหาที่เลื่อนได้",
-
   "ui.tool.read": "อ่าน",
   "ui.tool.loaded": "โหลดแล้ว",
   "ui.tool.list": "รายการ",
-  "ui.tool.glob": "Glob",
-  "ui.tool.grep": "Grep",
   "ui.tool.webfetch": "ดึงจากเว็บ",
   "ui.tool.websearch": "ค้นหาเว็บ",
   "ui.tool.codesearch": "ค้นหาโค้ด",
@@ -104,12 +92,10 @@ export const dict = {
   "ui.tool.questions": "คำถาม",
   "ui.tool.agent": "เอเจนต์ {{type}}",
   "ui.tool.agent.default": "เอเจนต์",
-
   "ui.common.file.one": "ไฟล์",
   "ui.common.file.other": "ไฟล์",
   "ui.common.question.one": "คำถาม",
   "ui.common.question.other": "คำถาม",
-
   "ui.common.add": "เพิ่ม",
   "ui.common.back": "ย้อนกลับ",
   "ui.common.cancel": "ยกเลิก",
@@ -118,11 +104,9 @@ export const dict = {
   "ui.common.close": "ปิด",
   "ui.common.next": "ถัดไป",
   "ui.common.submit": "ส่ง",
-
   "ui.permission.deny": "ปฏิเสธ",
   "ui.permission.allowAlways": "อนุญาตเสมอ",
   "ui.permission.allowOnce": "อนุญาตครั้งเดียว",
-
   "ui.message.expand": "ขยายข้อความ",
   "ui.message.collapse": "ย่อข้อความ",
   "ui.message.copy": "คัดลอก",
@@ -134,19 +118,16 @@ export const dict = {
   "ui.message.interrupted": "ถูกขัดจังหวะ",
   "ui.message.queued": "อยู่ในคิว",
   "ui.message.attachment.alt": "ไฟล์แนบ",
-
   "ui.patch.action.deleted": "ลบ",
   "ui.patch.action.created": "สร้าง",
   "ui.patch.action.moved": "ย้าย",
   "ui.patch.action.patched": "แพตช์",
-
   "ui.question.subtitle.answered": "{{count}} ตอบแล้ว",
   "ui.question.answer.none": "(ไม่มีคำตอบ)",
   "ui.question.review.notAnswered": "(ไม่ได้ตอบ)",
   "ui.question.multiHint": "เลือกทั้งหมดที่ใช้",
   "ui.question.singleHint": "เลือกหนึ่งคำตอบ",
   "ui.question.custom.placeholder": "พิมพ์คำตอบของคุณ...",
-
   "ui.fileSearch.placeholder": "ค้นหา",
   "ui.fileSearch.previousMatch": "ก่อนหน้า",
   "ui.fileSearch.nextMatch": "ถัดไป",
@@ -158,4 +139,9 @@ export const dict = {
   "ui.toolErrorCard.copyError": "คัดลอกข้อผิดพลาด",
   "ui.message.duration.seconds": "{{count}}วิ",
   "ui.message.duration.minutesSeconds": "{{minutes}}นาที {{seconds}}วิ",
-}
+} satisfies Partial<Record<Keys, string>>
+
+export const dict = {
+  ...en,
+  ...translated,
+} satisfies Record<Keys, string>

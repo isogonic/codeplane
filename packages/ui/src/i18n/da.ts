@@ -1,4 +1,8 @@
-export const dict = {
+import { dict as en } from "./en"
+
+type Keys = keyof typeof en
+
+const translated = {
   "ui.sessionReview.title": "Sessionsændringer",
   "ui.sessionReview.title.lastTurn": "Ændringer fra sidste tur",
   "ui.sessionReview.diffStyle.unified": "Samlet",
@@ -8,7 +12,6 @@ export const dict = {
   "ui.sessionReview.selection.lines": "linjer {{start}}-{{end}}",
   "ui.sessionReview.expandAll": "Udvid alle",
   "ui.sessionReview.collapseAll": "Skjul alle",
-
   "ui.sessionReview.change.added": "Tilføjet",
   "ui.sessionReview.change.removed": "Fjernet",
   "ui.sessionReview.change.modified": "Ændret",
@@ -27,16 +30,13 @@ export const dict = {
   "ui.fileMedia.binary.description.path": "{{path}} kan ikke vises, fordi det er en binær fil.",
   "ui.fileMedia.binary.description.default": "Denne fil kan ikke vises, fordi det er en binær fil.",
   "ui.lineComment.label.prefix": "Kommenter på ",
-  "ui.lineComment.label.suffix": "",
   "ui.lineComment.editorLabel.prefix": "Kommenterer på ",
-  "ui.lineComment.editorLabel.suffix": "",
   "ui.lineComment.placeholder": "Tilføj kommentar",
   "ui.lineComment.submit": "Kommenter",
   "ui.sessionTurn.steps.show": "Vis trin",
   "ui.sessionTurn.steps.hide": "Skjul trin",
   "ui.sessionTurn.summary.response": "Svar",
   "ui.sessionTurn.diff.showMore": "Vis flere ændringer ({{count}})",
-
   "ui.sessionTurn.retry.retrying": "prøver igen",
   "ui.sessionTurn.retry.inSeconds": "om {{seconds}}s",
   "ui.sessionTurn.retry.attempt": "forsøg #{{attempt}}",
@@ -44,7 +44,6 @@ export const dict = {
   "ui.sessionTurn.retry.geminiHot": "gemini er meget overbelastet lige nu",
   "ui.sessionTurn.error.freeUsageExceeded": "Gratis forbrug overskredet",
   "ui.sessionTurn.error.addCredits": "Tilføj kreditter",
-
   "ui.sessionTurn.status.delegating": "Delegerer arbejde",
   "ui.sessionTurn.status.planning": "Planlægger næste trin",
   "ui.sessionTurn.status.gatheringContext": "Udforsker",
@@ -57,7 +56,6 @@ export const dict = {
   "ui.sessionTurn.status.thinkingWithTopic": "Tænker - {{topic}}",
   "ui.sessionTurn.status.gatheringThoughts": "Samler tanker",
   "ui.sessionTurn.status.consideringNextSteps": "Overvejer næste skridt",
-
   "ui.messagePart.questions.dismissed": "Spørgsmål afvist",
   "ui.messagePart.compaction": "Session komprimeret",
   "ui.messagePart.context.read.one": "{{count}} læsning",
@@ -71,43 +69,29 @@ export const dict = {
   "ui.messagePart.title.write": "Skriv",
   "ui.messagePart.option.typeOwnAnswer": "Skriv dit eget svar",
   "ui.messagePart.review.title": "Gennemgå dine svar",
-
   "ui.list.loading": "Indlæser",
   "ui.list.empty": "Ingen resultater",
   "ui.list.clearFilter": "Ryd filter",
   "ui.list.emptyWithFilter.prefix": "Ingen resultater for",
-  "ui.list.emptyWithFilter.suffix": "",
-
   "ui.messageNav.newMessage": "Ny besked",
-
   "ui.textField.copyToClipboard": "Kopier til udklipsholder",
   "ui.textField.copyLink": "Kopier link",
   "ui.textField.copied": "Kopieret",
-
   "ui.imagePreview.alt": "Billedforhåndsvisning",
   "ui.scrollView.ariaLabel": "rulbart indhold",
-
   "ui.tool.read": "Læs",
   "ui.tool.loaded": "Indlæst",
   "ui.tool.list": "Liste",
-  "ui.tool.glob": "Glob",
-  "ui.tool.grep": "Grep",
   "ui.tool.webfetch": "Webhentning",
   "ui.tool.websearch": "Websøgning",
   "ui.tool.codesearch": "Kodesøgning",
-  "ui.tool.shell": "Shell",
-  "ui.tool.patch": "Patch",
   "ui.tool.todos": "Opgaver",
   "ui.tool.todos.read": "Læs opgaver",
   "ui.tool.questions": "Spørgsmål",
-  "ui.tool.agent": "{{type}} Agent",
-  "ui.tool.agent.default": "Agent",
-
   "ui.common.file.one": "fil",
   "ui.common.file.other": "filer",
   "ui.common.question.one": "spørgsmål",
   "ui.common.question.other": "spørgsmål",
-
   "ui.common.add": "Tilføj",
   "ui.common.back": "Tilbage",
   "ui.common.cancel": "Annuller",
@@ -116,11 +100,9 @@ export const dict = {
   "ui.common.close": "Luk",
   "ui.common.next": "Næste",
   "ui.common.submit": "Indsend",
-
   "ui.permission.deny": "Afvis",
   "ui.permission.allowAlways": "Tillad altid",
   "ui.permission.allowOnce": "Tillad én gang",
-
   "ui.message.expand": "Udvid besked",
   "ui.message.collapse": "Skjul besked",
   "ui.message.copy": "Kopier",
@@ -132,20 +114,16 @@ export const dict = {
   "ui.message.interrupted": "Afbrudt",
   "ui.message.queued": "I kø",
   "ui.message.attachment.alt": "vedhæftning",
-
   "ui.patch.action.deleted": "Slettet",
   "ui.patch.action.created": "Oprettet",
   "ui.patch.action.moved": "Flyttet",
   "ui.patch.action.patched": "Patchet",
-
   "ui.question.subtitle.answered": "{{count}} besvaret",
   "ui.question.answer.none": "(intet svar)",
   "ui.question.review.notAnswered": "(ikke besvaret)",
   "ui.question.multiHint": "Vælg alle der gælder",
   "ui.question.singleHint": "Vælg ét svar",
   "ui.question.custom.placeholder": "Skriv dit svar...",
-
-  "ui.fileSearch.placeholder": "Find",
   "ui.fileSearch.previousMatch": "Forrige match",
   "ui.fileSearch.nextMatch": "Næste match",
   "ui.fileSearch.close": "Luk søgning",
@@ -154,6 +132,9 @@ export const dict = {
   "ui.basicTool.called": "Kaldte `{{tool}}`",
   "ui.toolErrorCard.failed": "Fejlede",
   "ui.toolErrorCard.copyError": "Kopier fejl",
-  "ui.message.duration.seconds": "{{count}}s",
-  "ui.message.duration.minutesSeconds": "{{minutes}}m {{seconds}}s",
-}
+} satisfies Partial<Record<Keys, string>>
+
+export const dict = {
+  ...en,
+  ...translated,
+} satisfies Record<Keys, string>

@@ -1,4 +1,8 @@
-export const dict = {
+import { dict as en } from "./en"
+
+type Keys = keyof typeof en
+
+const translated = {
   "ui.sessionReview.title": "Изменения сессии",
   "ui.sessionReview.title.lastTurn": "Изменения последнего хода",
   "ui.sessionReview.diffStyle.unified": "Объединённый",
@@ -8,7 +12,6 @@ export const dict = {
   "ui.sessionReview.selection.lines": "строки {{start}}-{{end}}",
   "ui.sessionReview.expandAll": "Развернуть всё",
   "ui.sessionReview.collapseAll": "Свернуть всё",
-
   "ui.sessionReview.change.added": "Добавлено",
   "ui.sessionReview.change.removed": "Удалено",
   "ui.sessionReview.change.modified": "Изменено",
@@ -27,16 +30,13 @@ export const dict = {
   "ui.fileMedia.binary.description.path": "Невозможно отобразить {{path}}, так как это бинарный файл.",
   "ui.fileMedia.binary.description.default": "Невозможно отобразить этот файл, так как он бинарный.",
   "ui.lineComment.label.prefix": "Комментарий к ",
-  "ui.lineComment.label.suffix": "",
   "ui.lineComment.editorLabel.prefix": "Комментирование: ",
-  "ui.lineComment.editorLabel.suffix": "",
   "ui.lineComment.placeholder": "Добавить комментарий",
   "ui.lineComment.submit": "Комментировать",
   "ui.sessionTurn.steps.show": "Показать шаги",
   "ui.sessionTurn.steps.hide": "Скрыть шаги",
   "ui.sessionTurn.summary.response": "Ответ",
   "ui.sessionTurn.diff.showMore": "Показать ещё изменений ({{count}})",
-
   "ui.sessionTurn.retry.retrying": "повтор",
   "ui.sessionTurn.retry.inSeconds": "через {{seconds}}с",
   "ui.sessionTurn.retry.attempt": "попытка №{{attempt}}",
@@ -44,7 +44,6 @@ export const dict = {
   "ui.sessionTurn.retry.geminiHot": "gemini сейчас перегружен",
   "ui.sessionTurn.error.freeUsageExceeded": "Лимит бесплатного использования превышен",
   "ui.sessionTurn.error.addCredits": "Добавить кредиты",
-
   "ui.sessionTurn.status.delegating": "Делегирование работы",
   "ui.sessionTurn.status.planning": "Планирование следующих шагов",
   "ui.sessionTurn.status.gatheringContext": "Исследование",
@@ -57,7 +56,6 @@ export const dict = {
   "ui.sessionTurn.status.thinkingWithTopic": "Размышление - {{topic}}",
   "ui.sessionTurn.status.gatheringThoughts": "Сбор мыслей",
   "ui.sessionTurn.status.consideringNextSteps": "Рассмотрение следующих шагов",
-
   "ui.messagePart.questions.dismissed": "Вопросы отклонены",
   "ui.messagePart.compaction": "Сессия сжата",
   "ui.messagePart.context.read.one": "{{count}} чтение",
@@ -71,28 +69,19 @@ export const dict = {
   "ui.messagePart.title.write": "Написать",
   "ui.messagePart.option.typeOwnAnswer": "Введите свой ответ",
   "ui.messagePart.review.title": "Проверьте ваши ответы",
-
   "ui.list.loading": "Загрузка",
   "ui.list.empty": "Нет результатов",
   "ui.list.clearFilter": "Очистить фильтр",
   "ui.list.emptyWithFilter.prefix": "Нет результатов для",
-  "ui.list.emptyWithFilter.suffix": "",
-
   "ui.messageNav.newMessage": "Новое сообщение",
-
   "ui.textField.copyToClipboard": "Копировать в буфер обмена",
   "ui.textField.copyLink": "Копировать ссылку",
   "ui.textField.copied": "Скопировано",
-
   "ui.imagePreview.alt": "Предпросмотр изображения",
   "ui.scrollView.ariaLabel": "прокручиваемый контент",
-
   "ui.tool.read": "Чтение",
   "ui.tool.loaded": "Загружено",
   "ui.tool.list": "Список",
-  "ui.tool.glob": "Glob",
-  "ui.tool.grep": "Grep",
-  "ui.tool.webfetch": "Webfetch",
   "ui.tool.websearch": "Веб-поиск",
   "ui.tool.codesearch": "Поиск кода",
   "ui.tool.shell": "Оболочка",
@@ -102,12 +91,10 @@ export const dict = {
   "ui.tool.questions": "Вопросы",
   "ui.tool.agent": "Агент {{type}}",
   "ui.tool.agent.default": "Агент",
-
   "ui.common.file.one": "файл",
   "ui.common.file.other": "файлов",
   "ui.common.question.one": "вопрос",
   "ui.common.question.other": "вопросов",
-
   "ui.common.add": "Добавить",
   "ui.common.back": "Назад",
   "ui.common.cancel": "Отмена",
@@ -116,11 +103,9 @@ export const dict = {
   "ui.common.close": "Закрыть",
   "ui.common.next": "Далее",
   "ui.common.submit": "Отправить",
-
   "ui.permission.deny": "Запретить",
   "ui.permission.allowAlways": "Разрешить всегда",
   "ui.permission.allowOnce": "Разрешить один раз",
-
   "ui.message.expand": "Развернуть сообщение",
   "ui.message.collapse": "Свернуть сообщение",
   "ui.message.copy": "Копировать",
@@ -132,19 +117,16 @@ export const dict = {
   "ui.message.interrupted": "Прервано",
   "ui.message.queued": "В очереди",
   "ui.message.attachment.alt": "вложение",
-
   "ui.patch.action.deleted": "Удалено",
   "ui.patch.action.created": "Создано",
   "ui.patch.action.moved": "Перемещено",
   "ui.patch.action.patched": "Изменено",
-
   "ui.question.subtitle.answered": "{{count}} отвечено",
   "ui.question.answer.none": "(нет ответа)",
   "ui.question.review.notAnswered": "(не отвечено)",
   "ui.question.multiHint": "Выберите все подходящие",
   "ui.question.singleHint": "Выберите один ответ",
   "ui.question.custom.placeholder": "Введите ваш ответ...",
-
   "ui.fileSearch.placeholder": "Найти",
   "ui.fileSearch.previousMatch": "Предыдущее",
   "ui.fileSearch.nextMatch": "Следующее",
@@ -156,4 +138,9 @@ export const dict = {
   "ui.toolErrorCard.copyError": "Скопировать ошибку",
   "ui.message.duration.seconds": "{{count}}с",
   "ui.message.duration.minutesSeconds": "{{minutes}}м {{seconds}}с",
-}
+} satisfies Partial<Record<Keys, string>>
+
+export const dict = {
+  ...en,
+  ...translated,
+} satisfies Record<Keys, string>

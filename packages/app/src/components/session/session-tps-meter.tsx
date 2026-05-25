@@ -5,7 +5,7 @@ import { createSessionContextFormatter } from "./session-context-format"
 
 const SPARK_WIDTH = 160
 const SPARK_HEIGHT = 36
-const SPARK_PADDING = 2
+const SPARK_PADDING = 4
 
 function buildSparkPath(turns: TurnSpeed[], peak: number) {
   if (turns.length === 0) return { line: "", area: "", points: [] as { x: number; y: number; turn: TurnSpeed }[] }
@@ -19,7 +19,10 @@ function buildSparkPath(turns: TurnSpeed[], peak: number) {
     return { x, y, turn }
   })
   const line = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(" ")
-  const area = `${line} L${points.at(-1)!.x.toFixed(2)} ${(SPARK_HEIGHT - SPARK_PADDING).toFixed(2)} L${points[0]!.x.toFixed(2)} ${(SPARK_HEIGHT - SPARK_PADDING).toFixed(2)} Z`
+  const first = points[0]
+  const last = points.at(-1)
+  if (!first || !last) return { line: "", area: "", points }
+  const area = `${line} L${last.x.toFixed(2)} ${(SPARK_HEIGHT - SPARK_PADDING).toFixed(2)} L${first.x.toFixed(2)} ${(SPARK_HEIGHT - SPARK_PADDING).toFixed(2)} Z`
   return { line, area, points }
 }
 
@@ -36,7 +39,7 @@ export function SessionTpsMeter(props: { speed: SpeedMetrics; label: string }) {
     `#${index + 1} · ${formatter().tokensPerSecond(turn.tps)} · ${turn.tokens.toLocaleString(language.intl())} tok / ${(turn.ms / 1000).toFixed(1)}s`
 
   return (
-    <div class="flex flex-col gap-2 rounded-md border border-border-base bg-surface-base px-3 py-2.5">
+    <div class="flex flex-col gap-2 overflow-hidden rounded-md border border-border-base bg-surface-base px-3 py-2.5">
       <div class="flex items-center justify-between gap-3">
         <div class="text-12-regular text-text-weak">{props.label}</div>
         <Show when={props.speed.turns.length > 0}>
@@ -45,8 +48,8 @@ export function SessionTpsMeter(props: { speed: SpeedMetrics; label: string }) {
           </div>
         </Show>
       </div>
-      <div class="flex items-end justify-between gap-3">
-        <div class="flex items-baseline gap-1.5">
+      <div class="flex min-w-0 items-end gap-3">
+        <div class="flex shrink-0 items-baseline gap-1.5">
           <div class="text-20-medium text-text-strong tabular-nums">
             {headline() === null
               ? "—"
@@ -58,10 +61,9 @@ export function SessionTpsMeter(props: { speed: SpeedMetrics; label: string }) {
         </div>
         <Show when={props.speed.turns.length > 1}>
           <svg
-            width={SPARK_WIDTH}
-            height={SPARK_HEIGHT}
             viewBox={`0 0 ${SPARK_WIDTH} ${SPARK_HEIGHT}`}
-            class="shrink-0 overflow-visible"
+            preserveAspectRatio="none"
+            class="h-9 min-w-0 flex-1 overflow-hidden"
             aria-hidden="true"
           >
             <path d={spark().area} fill="var(--syntax-property)" fill-opacity="0.12" />
@@ -125,8 +127,9 @@ function bestTurnIndex(turns: TurnSpeed[]): number {
   let bestIdx = 0
   let bestTps = -Infinity
   for (let i = 0; i < turns.length; i++) {
-    if (turns[i]!.tps > bestTps) {
-      bestTps = turns[i]!.tps
+    const turn = turns[i]
+    if (turn && turn.tps > bestTps) {
+      bestTps = turn.tps
       bestIdx = i
     }
   }

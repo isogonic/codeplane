@@ -161,10 +161,13 @@ export const make = <A, E = never>(
       }),
     ).pipe(Effect.flatten)
 
+  const interruptInBackground = <E>(fiber: Fiber.Fiber<A, E>) =>
+    Fiber.interrupt(fiber).pipe(Effect.forkIn(scope), Effect.asVoid)
+
   const stopShell = (shell: ShellHandle<A, E>) =>
     Effect.gen(function* () {
       cancelledShells.add(shell.id)
-      yield* Fiber.interrupt(shell.fiber)
+      yield* interruptInBackground(shell.fiber)
     })
 
   const ensureRunning = (work: Effect.Effect<A, E>, options?: { queue?: boolean }) =>
@@ -294,8 +297,8 @@ export const make = <A, E = never>(
       return [
         Effect.gen(function* () {
           yield* drainQueue
-          yield* Fiber.interrupt(st.run.fiber)
-          yield* Deferred.await(st.run.done).pipe(Effect.exit, Effect.asVoid)
+          yield* Deferred.fail(st.run.done, new Cancelled()).pipe(Effect.asVoid)
+          yield* interruptInBackground(st.run.fiber)
           yield* onQueueChange(0)
           yield* idleIfCurrent()
         }),

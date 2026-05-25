@@ -34,6 +34,8 @@ describe("createInstanceService - exposed surface", () => {
     expect(typeof service.localTarget).toBe("function")
     expect(typeof service.localStatus).toBe("function")
     expect(typeof service.installLocal).toBe("function")
+    expect(typeof service.cacheInfo).toBe("function")
+    expect(typeof service.clearCache).toBe("function")
     expect(typeof service.setLast).toBe("function")
     expect(service.store).toBeDefined()
   })
@@ -128,6 +130,22 @@ describe("createInstanceService.remove", () => {
     await service.save({ id: "a", url: "http://a" })
     const result = await service.remove("a")
     expect(result).toEqual([])
+  })
+})
+
+describe("createInstanceService cache helpers", () => {
+  test("reports and clears local cache for an instance", async () => {
+    const service = createInstanceService()
+    await fs.mkdir(path.join(home, "instances", "remote-a", "cache"), { recursive: true })
+    await fs.writeFile(path.join(home, "instances", "remote-a", "cache", "models.json"), "abc")
+
+    const before = await service.cacheInfo("remote-a")
+    expect(before.exists).toBe(true)
+    expect(before.bytes).toBe(3)
+
+    const cleared = await service.clearCache("remote-a")
+    expect(cleared.bytes).toBe(3)
+    expect(await service.cacheInfo("remote-a")).toEqual({ exists: false, bytes: 0, areas: [] })
   })
 })
 

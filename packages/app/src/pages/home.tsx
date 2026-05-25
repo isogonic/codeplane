@@ -26,11 +26,11 @@ import {
 import { pickFunFact } from "./home/fun-facts"
 import { createHomeCache } from "./home/cache"
 import {
-  combineAggregates,
+  combineMaterializedStats,
   createSessionAggregateBuilder,
-  heatmapBuckets,
-  modelBreakdown,
-  preferredModel,
+  heatmapBucketsFromMaterializedStats,
+  modelBreakdownFromMaterializedStats,
+  preferredModelFromMaterializedStats,
 } from "./home/aggregate"
 import { AnimatedNumber } from "./home/animated-number"
 
@@ -239,12 +239,14 @@ export default function Home() {
     })
   })
 
-  // Build stats from the cache. Recomputes whenever the cache store changes
-  // (which happens after each aggregate.applyMessages call).
+  // Build visible home data from session metadata plus the persisted
+  // materialized message stats. The expensive message/model/token counters are
+  // updated by cache deltas, not recomputed from every session aggregate here.
   const stats = createMemo(() => {
     tick()
-    // Force dependency on the aggregate store so we re-run when it updates.
-    const aggregates = Object.values(cache.store.aggregates)
+    // Reactive dependency: this changes only when aggregate deltas update the
+    // persisted materialized stats.
+    const materialized = cache.store.materialized
     const now = Date.now()
     const r = range()
 
@@ -272,11 +274,12 @@ export default function Home() {
     const sessionTime = (session: { time: { created: number; updated?: number } }) =>
       session.time.updated ?? session.time.created
 
-    const combined = combineAggregates(aggregates, now, r)
+    const combined = combineMaterializedStats(materialized, now, r)
     const rangeDays = RANGE_DAYS[r]
     const rangeStart = rangeDays === undefined ? undefined : dayStart - (rangeDays - 1) * DAY_MS
     const inSelectedRange = (time: number) => rangeStart === undefined || time >= rangeStart
-    const gitChanges = projects.reduce<Omit<GitTotals, "commits">>(
+    const emptyGitChanges: Omit<GitTotals, "commits"> = { repos: 0, files: 0, additions: 0, deletions: 0 }
+    const gitChanges = projects.reduce(
       (total, project) => {
         if (project.vcs !== "git") return total
         const sessions = project.sessions
@@ -301,7 +304,7 @@ export default function Home() {
           deletions: total.deletions + changes.deletions,
         }
       },
-      { repos: 0, files: 0, additions: 0, deletions: 0 },
+      emptyGitChanges,
     )
     const git: GitTotals = {
       ...gitChanges,
@@ -323,7 +326,7 @@ export default function Home() {
         return value > max ? value : max
       }, undefined),
       ...combined,
-      preferredModel: preferredModel(aggregates, r, now),
+      preferredModel: preferredModelFromMaterializedStats(materialized, r, now),
     }
     const recent = recentSessions(
       projects.map((project) => ({
@@ -342,8 +345,8 @@ export default function Home() {
       git,
       projects: projectAggregates,
       recent,
-      buckets: heatmapBuckets(aggregates, now),
-      models: modelBreakdown(aggregates, r, now),
+      buckets: heatmapBucketsFromMaterializedStats(materialized, now),
+      models: modelBreakdownFromMaterializedStats(materialized, r, now),
     }
   })
 
@@ -471,11 +474,11 @@ function StatsPanel(props: {
 }) {
   const language = useLanguage()
   return (
-    <section class="overflow-hidden rounded-lg border border-border-weaker-base bg-background-base shadow-[var(--shadow-xs)]">
+    <section class="overflow-hidden rounded-xl border border-border-weaker-base bg-background-base shadow-[var(--shadow-xs)]">
       <div class="flex items-center justify-between gap-3 border-b border-border-weaker-base px-3 py-2 sm:px-4">
         <PillGroup
           value={props.tab()}
-          onChange={(value) => props.setTab(value as "overview" | "models")}
+          onChange={(value) => props.setTab(value)}
           options={[
             { value: "overview", label: language.t("home.tab.overview") },
             { value: "models", label: language.t("home.tab.models") },
@@ -483,7 +486,7 @@ function StatsPanel(props: {
         />
         <PillGroup
           value={props.range()}
-          onChange={(value) => props.setRange(value as Range)}
+          onChange={(value) => props.setRange(value)}
           options={RANGES.map((r) => ({ value: r, label: language.t(RANGE_LABEL_KEY[r]) }))}
         />
       </div>
@@ -510,12 +513,12 @@ function PillGroup<T extends string>(props: {
   options: Array<{ value: T; label: string }>
 }) {
   return (
-    <div class="inline-flex items-center gap-0.5 rounded-md bg-surface-base p-0.5">
+    <div class="inline-flex items-center gap-0.5 rounded-lg bg-surface-base p-0.5">
       <For each={props.options}>
         {(option) => (
           <button
             type="button"
-            class="rounded px-2.5 py-1 text-12-medium tabular-nums transition-colors"
+            class="rounded-md px-2.5 py-1 text-12-medium tabular-nums transition-colors"
             classList={{
               "bg-background-base text-text-strong shadow-[var(--shadow-xs)]": props.value === option.value,
               "text-text-weak hover:text-text-base": props.value !== option.value,
@@ -715,6 +718,12 @@ const HEATMAP_INTENSITY_CLASSES = [
   "bg-text-interactive-base",
 ] as const
 
+const HEATMAP_TOOLTIP_POSITION_CLASSES = {
+  left: "left-0",
+  center: "left-1/2 -translate-x-1/2",
+  right: "right-0",
+} as const
+
 function Heatmap(props: { buckets: () => DayBucket[]; formatNumber: () => Intl.NumberFormat }) {
   const language = useLanguage()
   // Precompute every cell's class + title once per buckets change instead of
@@ -725,16 +734,24 @@ function Heatmap(props: { buckets: () => DayBucket[]; formatNumber: () => Intl.N
     const buckets = props.buckets()
     if (buckets.length === 0) return []
     const formatDay = new Intl.DateTimeFormat(language.intl(), { day: "numeric", month: "short", year: "numeric" })
+    const numberFormat = props.formatNumber()
     let peak = 1
     for (const bucket of buckets) if (bucket.count > peak) peak = bucket.count
     const tmp = new Date()
-    return buckets.map((bucket) => {
+    return buckets.map((bucket, index) => {
       const ratio = bucket.count / peak
       const level = bucket.count <= 0 ? 0 : ratio < 0.25 ? 1 : ratio < 0.5 ? 2 : ratio < 0.75 ? 3 : 4
+      const column = Math.floor(index / HEATMAP_ROWS)
       tmp.setTime(bucket.start)
+      const date = formatDay.format(tmp)
       return {
         cls: HEATMAP_INTENSITY_CLASSES[level],
-        title: language.t("home.activity.dayLabel", { count: bucket.count, date: formatDay.format(tmp) }),
+        count: bucket.count,
+        title: language.t("home.activity.dayLabel", { count: numberFormat.format(bucket.count), date }),
+        tooltipPosition:
+          column < 6 ? HEATMAP_TOOLTIP_POSITION_CLASSES.left
+          : column > HEATMAP_COLS - 7 ? HEATMAP_TOOLTIP_POSITION_CLASSES.right
+          : HEATMAP_TOOLTIP_POSITION_CLASSES.center,
       }
     })
   })
@@ -761,11 +778,29 @@ function Heatmap(props: { buckets: () => DayBucket[]; formatNumber: () => Intl.N
         >
           <For each={cells()}>
             {(cell) => (
-              <div
-                class={`rounded-[2px] ${cell.cls}`}
-                style={{ width: "var(--heatmap-cell)", height: "var(--heatmap-cell)" }}
-                title={cell.title}
-              />
+              <Show
+                when={cell.count > 0}
+                fallback={
+                  <div
+                    class={`rounded-xs ${cell.cls}`}
+                    style={{ width: "var(--heatmap-cell)", height: "var(--heatmap-cell)" }}
+                    aria-label={cell.title}
+                  />
+                }
+              >
+                <button
+                  type="button"
+                  class={`group relative block cursor-default rounded-xs ${cell.cls} p-0 hover:z-10 focus:outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-text-interactive-base`}
+                  style={{ width: "var(--heatmap-cell)", height: "var(--heatmap-cell)" }}
+                  aria-label={cell.title}
+                >
+                  <span
+                    class={`pointer-events-none absolute bottom-[calc(100%+7px)] z-20 hidden whitespace-nowrap rounded-md border border-border-weaker-base bg-background-stronger px-2 py-1 text-12-medium text-text-strong shadow-[var(--shadow-md)] group-hover:block group-focus-visible:block ${cell.tooltipPosition}`}
+                  >
+                    {cell.title}
+                  </span>
+                </button>
+              </Show>
             )}
           </For>
         </div>

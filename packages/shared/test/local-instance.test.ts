@@ -35,6 +35,11 @@ async function writeFakeBinary(
     ? `
 {
   echo "CODEPLANE_CLIENT=\${CODEPLANE_CLIENT:-}"
+  echo "CODEPLANE_HOME_DIR=\${CODEPLANE_HOME_DIR:-}"
+  echo "CODEPLANE_DATA_DIR=\${CODEPLANE_DATA_DIR:-}"
+  echo "CODEPLANE_CACHE_DIR=\${CODEPLANE_CACHE_DIR:-}"
+  echo "CODEPLANE_STATE_DIR=\${CODEPLANE_STATE_DIR:-}"
+  echo "CODEPLANE_BIN_DIR=\${CODEPLANE_BIN_DIR:-}"
   echo "CODEPLANE_DESKTOP_MANAGED=\${CODEPLANE_DESKTOP_MANAGED:-}"
   echo "CODEPLANE_DESKTOP_BRIDGE_ORIGIN=\${CODEPLANE_DESKTOP_BRIDGE_ORIGIN:-}"
   echo "CODEPLANE_DESKTOP_BRIDGE_TOKEN=\${CODEPLANE_DESKTOP_BRIDGE_TOKEN:-}"
@@ -169,6 +174,39 @@ if (process.platform !== "win32") {
         expect(text).toContain("CODEPLANE_DESKTOP_MANAGED=1")
         expect(text).toContain("CODEPLANE_DESKTOP_BRIDGE_ORIGIN=http://127.0.0.1:43210")
         expect(text).toContain("CODEPLANE_DESKTOP_BRIDGE_TOKEN=bridge-token")
+      } finally {
+        await manager.stopAll()
+      }
+    })
+
+    test("start() gives each local instance an isolated runtime home", async () => {
+      const alphaEnvPath = path.join(home, "alpha-env.txt")
+      const betaEnvPath = path.join(home, "beta-env.txt")
+      await writeFakeBinary(home, "27.3.4", { envPath: alphaEnvPath })
+      await writeFakeBinary(home, "27.3.5", { envPath: betaEnvPath })
+      const manager = createLocalInstanceManager({
+        binariesDir: path.join(home, "local_server", "binaries"),
+        configDir: home,
+        dataDir: path.join(home, "local_server"),
+      })
+      try {
+        await manager.start({ id: "alpha", binaryVersion: "27.3.4" })
+        await manager.start({ id: "beta", binaryVersion: "27.3.5" })
+
+        const alphaText = await fs.readFile(alphaEnvPath, "utf8")
+        const betaText = await fs.readFile(betaEnvPath, "utf8")
+        expect(alphaText).toContain(`CODEPLANE_HOME_DIR=${path.join(home, "local_server", "alpha", "config")}`)
+        expect(alphaText).toContain(`CODEPLANE_DATA_DIR=${path.join(home, "local_server", "alpha", "data")}`)
+        expect(alphaText).toContain(`CODEPLANE_CACHE_DIR=${path.join(home, "local_server", "alpha", "cache")}`)
+        expect(alphaText).toContain(`CODEPLANE_STATE_DIR=${path.join(home, "local_server", "alpha", "state")}`)
+        expect(alphaText).toContain(`CODEPLANE_BIN_DIR=${path.join(home, "local_server", "alpha", "bin")}`)
+        expect(alphaText).toContain(`CODEPLANE_LOG_DIR=${path.join(home, "local_server", "alpha", "log")}`)
+        expect(betaText).toContain(`CODEPLANE_HOME_DIR=${path.join(home, "local_server", "beta", "config")}`)
+        expect(betaText).toContain(`CODEPLANE_DATA_DIR=${path.join(home, "local_server", "beta", "data")}`)
+        expect(betaText).toContain(`CODEPLANE_CACHE_DIR=${path.join(home, "local_server", "beta", "cache")}`)
+        expect(betaText).toContain(`CODEPLANE_STATE_DIR=${path.join(home, "local_server", "beta", "state")}`)
+        expect(betaText).toContain(`CODEPLANE_BIN_DIR=${path.join(home, "local_server", "beta", "bin")}`)
+        expect(betaText).toContain(`CODEPLANE_LOG_DIR=${path.join(home, "local_server", "beta", "log")}`)
       } finally {
         await manager.stopAll()
       }

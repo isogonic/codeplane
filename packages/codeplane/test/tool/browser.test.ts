@@ -32,6 +32,8 @@ const ctx = {
   ask: () => Effect.void,
 }
 
+const liveBrowserSmoke = process.env.CODEPLANE_BROWSER_LIVE_SMOKE === "1" ? it.live : it.live.skip
+
 afterEach(async () => {
   await Instance.disposeAll()
   delete process.env.CODEPLANE_CLIENT
@@ -64,19 +66,17 @@ function setDesktopEnv() {
   })
 }
 
+function screenshotDataUrl(result: { metadata: Record<string, unknown> }) {
+  return String(result.metadata.screenshotDataUrl ?? "")
+}
+
 describe("tool.browser", () => {
-  it.live("uses the active context model for the vision gate", () =>
+  it.live("does not require a vision model before browser automation", () =>
     provideTmpdirInstance(
       () =>
         Effect.gen(function* () {
           yield* setDesktopEnv()
           const def = yield* init()
-
-          const blocked = yield* def.execute(
-            { action: "navigate", url: "https://example.com" },
-            { ...ctx, extra: { model: model(false) } },
-          )
-          expect(blocked.output).toContain("vision-capable models")
 
           let asked = false
           const exit = yield* def
@@ -84,7 +84,7 @@ describe("tool.browser", () => {
               { action: "navigate", url: "https://example.com" },
               {
                 ...ctx,
-                extra: { model: model(true) },
+                extra: { model: model(false) },
                 ask: () =>
                   Effect.sync(() => {
                     asked = true
@@ -95,6 +95,53 @@ describe("tool.browser", () => {
 
           expect(asked).toBe(true)
           expect(Exit.isFailure(exit)).toBe(true)
+        }),
+      { config: { tools: { browser: true } } },
+    ),
+  )
+
+  liveBrowserSmoke("drives a real isolated Chrome page end-to-end", () =>
+    provideTmpdirInstance(
+      () =>
+        Effect.gen(function* () {
+          yield* setDesktopEnv()
+          const def = yield* init()
+          const toolCtx = { ...ctx, extra: { model: model(false) } }
+          try {
+            const url = `data:text/html;charset=utf-8,${encodeURIComponent(
+              [
+                "<!doctype html>",
+                "<title>Codeplane Browser Smoke</title>",
+                "<button id=\"target\" onclick=\"document.body.dataset.clicked='yes'\">Run proof</button>",
+                "<input id=\"field\" aria-label=\"Proof field\" />",
+                "<script>console.log('browser-smoke-ready')</script>",
+              ].join(""),
+            )}`
+            const navigated = yield* def.execute({ action: "navigate", url, width: 640, height: 480, waitMs: 250 }, toolCtx)
+            expect(screenshotDataUrl(navigated)).toStartWith("data:image/png;base64,")
+
+            const snapshot = yield* def.execute({ action: "snapshot", width: 640, height: 480 }, toolCtx)
+            expect(snapshot.output).toContain("Proof field")
+            expect(screenshotDataUrl(snapshot)).toStartWith("data:image/png;base64,")
+
+            const hovered = yield* def.execute({ action: "hover", selector: "#target", width: 640, height: 480 }, toolCtx)
+            expect(screenshotDataUrl(hovered)).toStartWith("data:image/png;base64,")
+
+            yield* def.execute({ action: "click", selector: "#target", width: 640, height: 480 }, toolCtx)
+            const clicked = yield* def.execute({ action: "evaluate", script: "document.body.dataset.clicked" }, toolCtx)
+            expect(clicked.output).toContain("yes")
+
+            yield* def.execute({ action: "type", selector: "#field", text: "codeplane-browser-proof", width: 640, height: 480 }, toolCtx)
+            const typed = yield* def.execute({ action: "evaluate", script: "document.querySelector('#field').value" }, toolCtx)
+            expect(typed.output).toContain("codeplane-browser-proof")
+
+            const keypress = yield* def.execute({ action: "key", key: "Ctrl+A", width: 640, height: 480 }, toolCtx)
+            expect(screenshotDataUrl(keypress)).toStartWith("data:image/png;base64,")
+          } finally {
+            yield* def
+              .execute({ action: "close" }, toolCtx)
+              .pipe(Effect.catch(() => Effect.void), Effect.catchDefect(() => Effect.void))
+          }
         }),
       { config: { tools: { browser: true } } },
     ),

@@ -88,6 +88,9 @@ export default function Permissions() {
           <code>computer</code> and <code>browser</code> are denied by default because they control
           real desktop resources. Enable them in Desktop Settings → General → <em>Computer use</em> /
           <em>Browser use</em> or set <code>{`"tools": { "computer": true, "browser": true }`}</code>.
+          Once enabled in Codeplane Desktop, browser control is exposed through an isolated Chrome
+          DevTools session with a virtual pointer, and computer control is exposed through the
+          desktop bridge with a native screenshot after each action or batch.
         </p>
 
         <h2>Scopes</h2>

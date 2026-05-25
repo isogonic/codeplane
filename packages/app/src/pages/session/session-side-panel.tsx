@@ -298,17 +298,20 @@ export function SessionSidePanel(props: {
                       <SortableProvider ids={openedTabs()}>
                         <For each={openedTabs()}>{(tab) => <SortableTab tab={tab} onTabClose={tabs().close} />}</For>
                       </SortableProvider>
-                      <div class="bg-background-stronger h-full shrink-0 sticky right-0 z-10 flex items-center justify-center pr-3">
+                      <div data-slot="file-tabs-open-action">
                         <TooltipKeybind
                           title={language.t("command.file.open")}
                           keybind={command.keybind("file.open")}
-                          class="flex items-center"
+                          placement="bottom"
+                          gutter={8}
+                          class="file-tabs-open-tooltip"
+                          contentClass="whitespace-nowrap"
                         >
                           <IconButton
                             icon="plus-small"
                             variant="ghost"
                             iconSize="large"
-                            class="!rounded-md"
+                            class="file-tabs-open-button"
                             onClick={() => {
                               void import("@/components/dialog-select-file").then((x) => {
                                 dialog.show(() => <x.DialogSelectFile mode="files" onOpenFile={showAllFiles} />)

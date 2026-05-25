@@ -126,11 +126,8 @@ export function SettingsSidebarPanel(props: {
   return (
     <div
       classList={{
-        "flex flex-col min-h-0 min-w-0 box-border rounded-tl-[12px] px-3": true,
-        "border border-b-0 border-border-weak-base": !merged(),
-        "border-l border-t border-border-weaker-base": merged(),
-        "bg-background-base": merged(),
-        "bg-background-stronger": !merged(),
+        "flex flex-col min-h-0 min-w-0 box-border px-3 border-r border-border-weak-base bg-background-base": true,
+        "shadow-[var(--shadow-lg)]": !merged(),
         "flex-1 min-w-0 max-w-full overflow-hidden": props.mobile,
       }}
       style={{

@@ -433,13 +433,19 @@ export const SessionRoutes = lazy(() =>
         jsonRequest("SessionRoutes.abort", c, function* () {
           const sessionID = c.req.valid("param").sessionID
           const svc = yield* SessionPrompt.Service
-          yield* svc.cancel(sessionID)
+          const aborted = new DOMException("Aborted", "AbortError")
+          yield* svc.cancel(sessionID).pipe(Effect.catch(() => Effect.void))
           // Also drain any pending prompt-jobs for this session so they
           // don't fire after the user thinks they've stopped the session.
           // Errors here are non-fatal — the cancel above already did the
           // critical part (interrupting the in-process Runner).
           const queue = yield* PromptQueue.Service
           yield* queue.cancelSession(sessionID).pipe(Effect.catch(() => Effect.succeed(0)))
+          const todo = yield* Todo.Service
+          yield* todo.update({ sessionID, todos: [] }).pipe(Effect.catch(() => Effect.void))
+          yield* svc.recordError({ sessionID, error: aborted }).pipe(Effect.catch(() => Effect.void))
+          const status = yield* SessionStatus.Service
+          yield* status.set(sessionID, { type: "idle" }).pipe(Effect.catch(() => Effect.void))
           return true
         }),
     )

@@ -1,14 +1,15 @@
-export const dict = {
+import { dict as en } from "./en"
+
+type Keys = keyof typeof en
+
+const translated = {
   "ui.sessionReview.title": "セッションの変更",
   "ui.sessionReview.title.lastTurn": "前回ターンの変更",
-  "ui.sessionReview.diffStyle.unified": "Unified",
-  "ui.sessionReview.diffStyle.split": "Split",
   "ui.sessionReview.openFile": "ファイルを開く",
   "ui.sessionReview.selection.line": "{{line}} 行目",
   "ui.sessionReview.selection.lines": "{{start}}-{{end}} 行目",
   "ui.sessionReview.expandAll": "すべて展開",
   "ui.sessionReview.collapseAll": "すべて折りたたむ",
-
   "ui.sessionReview.change.added": "追加",
   "ui.sessionReview.change.removed": "削除",
   "ui.sessionReview.change.modified": "変更",
@@ -36,7 +37,6 @@ export const dict = {
   "ui.sessionTurn.steps.hide": "ステップを隠す",
   "ui.sessionTurn.summary.response": "応答",
   "ui.sessionTurn.diff.showMore": "さらに変更を表示 ({{count}})",
-
   "ui.sessionTurn.retry.retrying": "再試行中",
   "ui.sessionTurn.retry.inSeconds": "{{seconds}}秒後",
   "ui.sessionTurn.retry.attempt": "{{attempt}}回目",
@@ -44,7 +44,6 @@ export const dict = {
   "ui.sessionTurn.retry.geminiHot": "gemini が混雑しています",
   "ui.sessionTurn.error.freeUsageExceeded": "無料使用制限に達しました",
   "ui.sessionTurn.error.addCredits": "クレジットを追加",
-
   "ui.sessionTurn.status.delegating": "作業を委任中",
   "ui.sessionTurn.status.planning": "次のステップを計画中",
   "ui.sessionTurn.status.gatheringContext": "探索中",
@@ -57,7 +56,6 @@ export const dict = {
   "ui.sessionTurn.status.thinkingWithTopic": "思考中 - {{topic}}",
   "ui.sessionTurn.status.gatheringThoughts": "考えをまとめています",
   "ui.sessionTurn.status.consideringNextSteps": "次のステップを検討中",
-
   "ui.messagePart.questions.dismissed": "質問をスキップしました",
   "ui.messagePart.compaction": "セッションを圧縮しました",
   "ui.messagePart.context.read.one": "{{count}} 件の読み取り",
@@ -71,43 +69,30 @@ export const dict = {
   "ui.messagePart.title.write": "作成",
   "ui.messagePart.option.typeOwnAnswer": "自分の回答を入力",
   "ui.messagePart.review.title": "回答を確認",
-
   "ui.list.loading": "読み込み中",
   "ui.list.empty": "結果なし",
   "ui.list.clearFilter": "フィルターをクリア",
   "ui.list.emptyWithFilter.prefix": "次の検索結果はありません: ",
-  "ui.list.emptyWithFilter.suffix": "",
-
   "ui.messageNav.newMessage": "新しいメッセージ",
-
   "ui.textField.copyToClipboard": "クリップボードにコピー",
   "ui.textField.copyLink": "リンクをコピー",
   "ui.textField.copied": "コピーしました",
-
   "ui.imagePreview.alt": "画像プレビュー",
   "ui.scrollView.ariaLabel": "スクロール可能なコンテンツ",
-
   "ui.tool.read": "読み込み",
   "ui.tool.loaded": "読み込み済み",
   "ui.tool.list": "リスト",
-  "ui.tool.glob": "Glob",
-  "ui.tool.grep": "Grep",
-  "ui.tool.webfetch": "Webfetch",
   "ui.tool.websearch": "Web検索",
   "ui.tool.codesearch": "コード検索",
-  "ui.tool.shell": "Shell",
-  "ui.tool.patch": "Patch",
   "ui.tool.todos": "Todo",
   "ui.tool.todos.read": "Todo読み込み",
   "ui.tool.questions": "質問",
   "ui.tool.agent": "{{type}}エージェント",
   "ui.tool.agent.default": "エージェント",
-
   "ui.common.file.one": "ファイル",
   "ui.common.file.other": "ファイル",
   "ui.common.question.one": "質問",
   "ui.common.question.other": "質問",
-
   "ui.common.add": "追加",
   "ui.common.back": "戻る",
   "ui.common.cancel": "キャンセル",
@@ -116,11 +101,9 @@ export const dict = {
   "ui.common.close": "閉じる",
   "ui.common.next": "次へ",
   "ui.common.submit": "送信",
-
   "ui.permission.deny": "拒否",
   "ui.permission.allowAlways": "常に許可",
   "ui.permission.allowOnce": "今回のみ許可",
-
   "ui.message.expand": "メッセージを展開",
   "ui.message.collapse": "メッセージを折りたたむ",
   "ui.message.copy": "コピー",
@@ -132,19 +115,16 @@ export const dict = {
   "ui.message.interrupted": "中断",
   "ui.message.queued": "待機中",
   "ui.message.attachment.alt": "添付ファイル",
-
   "ui.patch.action.deleted": "削除済み",
   "ui.patch.action.created": "作成済み",
   "ui.patch.action.moved": "移動済み",
   "ui.patch.action.patched": "パッチ適用済み",
-
   "ui.question.subtitle.answered": "{{count}}件回答済み",
   "ui.question.answer.none": "(回答なし)",
   "ui.question.review.notAnswered": "(未回答)",
   "ui.question.multiHint": "該当するものをすべて選択",
   "ui.question.singleHint": "1 つ選択",
   "ui.question.custom.placeholder": "回答を入力...",
-
   "ui.fileSearch.placeholder": "検索",
   "ui.fileSearch.previousMatch": "前の一致",
   "ui.fileSearch.nextMatch": "次の一致",
@@ -156,4 +136,9 @@ export const dict = {
   "ui.toolErrorCard.copyError": "エラーをコピー",
   "ui.message.duration.seconds": "{{count}}秒",
   "ui.message.duration.minutesSeconds": "{{minutes}}分 {{seconds}}秒",
-}
+} satisfies Partial<Record<Keys, string>>
+
+export const dict = {
+  ...en,
+  ...translated,
+} satisfies Record<Keys, string>

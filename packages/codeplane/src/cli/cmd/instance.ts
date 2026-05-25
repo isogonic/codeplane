@@ -913,7 +913,7 @@ export const InstanceProbeCommand = cmd({
 })
 
 // Browser-assisted sign-in for instances behind an interactive auth proxy
-// (Cloudflare Access, identity-aware proxy, custom SSO). The Desktop app
+// (access gateways, identity-aware proxies, custom SSO). The Desktop app
 // already has a fully-automated equivalent that uses Electron's
 // BrowserWindow + session.cookies to capture the auth token without the
 // user copy-pasting anything. The TUI has no Electron, so we settle for
@@ -967,7 +967,7 @@ export const InstanceSignInCommand = cmd({
     if (saved!.local) {
       fail(
         `Instance "${id}" is a local managed runtime — there's no auth proxy to sign into. ` +
-          `Browser sign-in only applies to remote instances behind Cloudflare Access / SSO / similar.`,
+          `Browser sign-in only applies to remote instances behind an access gateway, SSO redirect, or similar auth proxy.`,
       )
     }
     if (!saved!.url) {
@@ -976,11 +976,11 @@ export const InstanceSignInCommand = cmd({
 
     UI.println(UI.Style.TEXT_INFO_BOLD + `\nOpening ${saved!.url} in your default browser…`)
     UI.println(UI.Style.TEXT_NORMAL + "After signing in, capture the auth value from your browser DevTools:")
-    UI.println(UI.Style.TEXT_NORMAL + "  • Cloudflare Access:  Application → Cookies → CF_Authorization → copy value")
-    UI.println(UI.Style.TEXT_NORMAL + "                        Paste as:  Cookie: CF_Authorization=<value>")
-    UI.println(UI.Style.TEXT_NORMAL + "  • Bearer token (SSO): Network tab → Authorization request header → copy")
-    UI.println(UI.Style.TEXT_NORMAL + "                        Paste as:  Authorization: Bearer <token>")
-    UI.println(UI.Style.TEXT_NORMAL + "  • Service token:      Paste as:  Authorization: <provider-specific>")
+    UI.println(UI.Style.TEXT_NORMAL + "  • Cookie-based SSO: Application -> Cookies -> copy the session cookie value")
+    UI.println(UI.Style.TEXT_NORMAL + "                      Paste as:  Cookie: <name>=<value>")
+    UI.println(UI.Style.TEXT_NORMAL + "  • Bearer token:     Network tab -> Authorization request header -> copy")
+    UI.println(UI.Style.TEXT_NORMAL + "                      Paste as:  Authorization: Bearer <token>")
+    UI.println(UI.Style.TEXT_NORMAL + "  • Service token:    Paste as:  Authorization: <provider-specific>")
     UI.println(UI.Style.TEXT_NORMAL + "")
     UI.println(UI.Style.TEXT_INFO_BOLD + "Paste the full header line (NAME: VALUE) below, then press Enter.")
     UI.println(UI.Style.TEXT_DIM + "(Empty line cancels.)")
@@ -1003,7 +1003,7 @@ export const InstanceSignInCommand = cmd({
     // Replace any existing header with the same name (case-insensitive)
     // so re-running sign-in cleanly overwrites a stale cookie. Other
     // headers stay (e.g. an X-API-Key the user might have configured
-    // alongside CF Access).
+    // alongside the auth gateway).
     const headers = (() => {
       try {
         return mergeSignedInHeader(saved!.headers, headerLine)

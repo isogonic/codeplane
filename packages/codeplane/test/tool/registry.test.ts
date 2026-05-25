@@ -257,8 +257,12 @@ describe("tool.registry", () => {
 
             expect(availability.known).toContain("computer")
             expect(availability.known).toContain("browser")
+            expect(availability.available).toContain("computer")
+            expect(availability.available).toContain("browser")
             expect(computerBlock?.reason ?? "").not.toContain("only available in the desktop app")
             expect(browserBlock?.reason ?? "").not.toContain("only available in the desktop app")
+            expect(computerBlock?.reason ?? "").not.toContain("vision")
+            expect(browserBlock?.reason ?? "").not.toContain("vision")
           } finally {
             if (previousClient === undefined) delete process.env.CODEPLANE_CLIENT
             else process.env.CODEPLANE_CLIENT = previousClient

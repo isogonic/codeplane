@@ -434,6 +434,48 @@ describe("Runner", () => {
     }
   })
 
+  test("cancel returns before interrupted work finishes cleanup", async () => {
+    function defer() {
+      let resolve!: () => void
+      const promise = new Promise<void>((done) => {
+        resolve = done
+      })
+      return { promise, resolve }
+    }
+
+    function fail(ms: number, msg: string) {
+      return new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(msg)), ms)
+      })
+    }
+
+    const s = await Effect.runPromise(Scope.make())
+    const hit = defer()
+    const hold = defer()
+    try {
+      const runner = Runner.make<string>(s)
+      const work = Effect.never.pipe(
+        Effect.onInterrupt(() => Effect.sync(() => hit.resolve())),
+        Effect.ensuring(Effect.promise(() => hold.promise)),
+        Effect.as("work"),
+      )
+
+      const active = Effect.runPromiseExit(runner.ensureRunning(work))
+      await Bun.sleep(10)
+
+      const stop = Effect.runPromise(runner.cancel)
+      await Promise.race([hit.promise, fail(250, "cancel did not interrupt running work")])
+      await Promise.race([stop, fail(250, "cancel waited for interrupted work cleanup")])
+
+      expect(runner.busy).toBe(false)
+      const exit = await active
+      expect(Exit.isFailure(exit)).toBe(true)
+    } finally {
+      hold.resolve()
+      await Promise.race([Effect.runPromise(Scope.close(s, Exit.void)), fail(1000, "runner scope did not close")])
+    }
+  })
+
   // --- shell semantics ---
 
   it.live(

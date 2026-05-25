@@ -37,6 +37,21 @@ const emptyAuth = Layer.mock(Auth.Service)({
   all: () => Effect.succeed({}),
 })
 
+const noopNpm = Layer.mock(Npm.Service)({
+  install: () => Effect.void,
+  add: () => Effect.die("not implemented"),
+  manager: () => Effect.succeed("npm" as const),
+  outdated: () => Effect.succeed(false),
+  view: () =>
+    Effect.succeed({
+      client: "npm" as const,
+      latest: Option.none(),
+      registry: Option.none(),
+      sources: [],
+    }),
+  which: () => Effect.succeed(Option.none()),
+})
+
 const testFlock = EffectFlock.defaultLayer
 
 const layer = Config.layer.pipe(
@@ -49,7 +64,21 @@ const layer = Config.layer.pipe(
   Layer.provide(Npm.defaultLayer),
 )
 
+const layerNoNpm = Config.layer.pipe(
+  Layer.provide(testFlock),
+  Layer.provide(AppFileSystem.defaultLayer),
+  Layer.provide(Env.defaultLayer),
+  Layer.provide(emptyAuth),
+  Layer.provide(emptyAccount),
+  Layer.provideMerge(infra),
+  Layer.provide(noopNpm),
+)
+
 const load = () => Effect.runPromise(Config.Service.use((svc) => svc.get()).pipe(Effect.scoped, Effect.provide(layer)))
+const loadNoNpm = () =>
+  Effect.runPromise(Config.Service.use((svc) => svc.get()).pipe(Effect.scoped, Effect.provide(layerNoNpm)))
+const loadGlobal = () =>
+  Effect.runPromise(Config.Service.use((svc) => svc.getGlobal()).pipe(Effect.scoped, Effect.provide(layer)))
 const save = (config: Config.Info) =>
   Effect.runPromise(Config.Service.use((svc) => svc.update(config)).pipe(Effect.scoped, Effect.provide(layer)))
 const clear = (wait = false) =>
@@ -705,6 +734,178 @@ Test agent prompt`,
   })
 })
 
+test("ignores OpenCode config files and .opencode plugin directories", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      const project = path.join(dir, "project")
+      const opencodeDir = path.join(project, ".opencode")
+      const opencodePluginsDir = path.join(opencodeDir, "plugins")
+      const codeplanePluginsDir = path.join(project, ".codeplane", "plugins")
+      await fs.mkdir(opencodePluginsDir, { recursive: true })
+      await fs.mkdir(codeplanePluginsDir, { recursive: true })
+
+      const ignoredProjectPlugin = path.join(project, "opencode-project-plugin.js")
+      const ignoredLocalPlugin = path.join(opencodeDir, "local-plugin.js")
+      const ignoredDiscoveredPlugin = path.join(opencodePluginsDir, "discovered.js")
+      const codeplanePlugin = path.join(codeplanePluginsDir, "codeplane.js")
+      await Filesystem.write(ignoredProjectPlugin, "export default { server: async () => ({}) }\n")
+      await Filesystem.write(ignoredLocalPlugin, "export default { server: async () => ({}) }\n")
+      await Filesystem.write(ignoredDiscoveredPlugin, "export default { server: async () => ({}) }\n")
+      await Filesystem.write(codeplanePlugin, "export default { server: async () => ({}) }\n")
+
+      await Filesystem.write(
+        path.join(project, "opencode.jsonc"),
+        [
+          "{",
+          '  "$schema": "https://opencode.ai/config.json",',
+          '  "theme": "ignored-by-codeplane-server-config",',
+          '  "plugin": [',
+          `    ${JSON.stringify(pathToFileURL(ignoredProjectPlugin).href)},`,
+          '    "opencode-npm-plugin@1.2.3"',
+          "  ]",
+          "}",
+        ].join("\n"),
+      )
+
+      await Filesystem.write(
+        path.join(opencodeDir, "opencode.json"),
+        JSON.stringify({
+          plugin: ["./local-plugin.js"],
+        }),
+      )
+
+      return {
+        project,
+        ignoredProjectPlugin,
+        ignoredLocalPlugin,
+        ignoredDiscoveredPlugin,
+        codeplanePlugin,
+      }
+    },
+  })
+
+  await Instance.provide({
+    directory: tmp.extra.project,
+    fn: async () => {
+      const config = await loadNoNpm()
+      const plugins = config.plugin ?? []
+
+      expect(plugins).toContain(pathToFileURL(tmp.extra.codeplanePlugin).href)
+      expect(plugins).not.toContain(pathToFileURL(tmp.extra.ignoredProjectPlugin).href)
+      expect(plugins).not.toContain("opencode-npm-plugin@1.2.3")
+      expect(plugins).not.toContain(pathToFileURL(tmp.extra.ignoredLocalPlugin).href)
+      expect(plugins).not.toContain(pathToFileURL(tmp.extra.ignoredDiscoveredPlugin).href)
+    },
+  })
+})
+
+test("does not install dependencies into .opencode directories", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      const project = path.join(dir, "project")
+      const codeplanePlugin = path.join(project, ".codeplane", "plugins", "proof.js")
+      const plugin = path.join(project, ".opencode", "plugins", "proof.js")
+      await fs.mkdir(path.dirname(codeplanePlugin), { recursive: true })
+      await fs.mkdir(path.dirname(plugin), { recursive: true })
+      await Filesystem.write(codeplanePlugin, "export const Proof = async () => ({})\n")
+      await Filesystem.write(plugin, "export const Proof = async () => ({})\n")
+      return {
+        project,
+        codeplaneDir: path.dirname(path.dirname(codeplanePlugin)),
+        opencodeDir: path.dirname(path.dirname(plugin)),
+      }
+    },
+  })
+
+  const install = mock((_dir: string, _input?: Parameters<Npm.Interface["install"]>[1]) => Effect.void)
+  const testLayer = Config.layer.pipe(
+    Layer.provide(testFlock),
+    Layer.provide(AppFileSystem.defaultLayer),
+    Layer.provide(Env.defaultLayer),
+    Layer.provide(emptyAuth),
+    Layer.provide(emptyAccount),
+    Layer.provideMerge(infra),
+    Layer.provide(
+      Layer.mock(Npm.Service)({
+        install,
+        add: () => Effect.die("not implemented"),
+        manager: () => Effect.succeed("npm" as const),
+        outdated: () => Effect.succeed(false),
+        view: () =>
+          Effect.succeed({
+            client: "npm" as const,
+            latest: Option.none(),
+            registry: Option.none(),
+            sources: [],
+          }),
+        which: () => Effect.succeed(Option.none()),
+      }),
+    ),
+  )
+
+  await Instance.provide({
+    directory: tmp.extra.project,
+    fn: async () => {
+      await Effect.runPromise(Config.Service.use((svc) => svc.get()).pipe(Effect.scoped, Effect.provide(testLayer)))
+      await Effect.runPromise(
+        Config.Service.use((svc) => svc.waitForDependencies()).pipe(Effect.scoped, Effect.provide(testLayer)),
+      )
+    },
+  })
+
+  const call = install.mock.calls.find((item) => item[0] === tmp.extra.opencodeDir)
+  const codeplaneCall = install.mock.calls.find((item) => item[0] === tmp.extra.codeplaneDir)
+  expect(call).toBeUndefined()
+  expect(codeplaneCall?.[1]?.add?.map((item) => item.name)).toEqual(["@codeplane-ai/plugin"])
+})
+
+test("does not treat home .opencode as a global plugin directory", async () => {
+  const homeOpencode = path.join(Global.Path.home, ".opencode")
+  const homePlugin = path.join(homeOpencode, "plugins", "home-plugin.js")
+
+  try {
+    await fs.rm(homeOpencode, { force: true, recursive: true })
+    await fs.mkdir(path.dirname(homePlugin), { recursive: true })
+    await Filesystem.write(homePlugin, "export default async () => ({})\n")
+
+    await using tmp = await tmpdir()
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const config = await loadNoNpm()
+        expect(config.plugin ?? []).not.toContain(pathToFileURL(homePlugin).href)
+      },
+    })
+  } finally {
+    await fs.rm(homeOpencode, { force: true, recursive: true })
+  }
+})
+
+test("does not treat home .codeplane as a global plugin directory", async () => {
+  const homeCodeplane = path.join(Global.Path.home, ".codeplane")
+  const homePlugin = path.join(homeCodeplane, "plugins", "home-plugin.js")
+
+  try {
+    await fs.rm(homeCodeplane, { force: true, recursive: true })
+    await fs.mkdir(path.dirname(homePlugin), { recursive: true })
+    await Filesystem.write(homePlugin, "export default async () => ({})\n")
+
+    await using tmp = await tmpdir()
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const config = await loadNoNpm()
+        const dirs = await listDirs()
+
+        expect(config.plugin ?? []).not.toContain(pathToFileURL(homePlugin).href)
+        expect(dirs).not.toContain(homeCodeplane)
+      },
+    })
+  } finally {
+    await fs.rm(homeCodeplane, { force: true, recursive: true })
+  }
+})
+
 test("loads agents from .codeplane/agents (plural)", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
@@ -916,10 +1117,19 @@ test("installs dependencies in writable CODEPLANE_CONFIG_DIR", async () => {
   const prev = process.env.CODEPLANE_CONFIG_DIR
   process.env.CODEPLANE_CONFIG_DIR = tmp.extra
 
+  const install = mock((_dir: string, _input?: Parameters<Npm.Interface["install"]>[1]) => Effect.void)
   const noopNpm = Layer.mock(Npm.Service)({
-    install: () => Effect.void,
+    install,
     add: () => Effect.die("not implemented"),
+    manager: () => Effect.succeed("npm" as const),
     outdated: () => Effect.succeed(false),
+    view: () =>
+      Effect.succeed({
+        client: "npm" as const,
+        latest: Option.none(),
+        registry: Option.none(),
+        sources: [],
+      }),
     which: () => Effect.succeed(Option.none()),
   })
   const testLayer = Config.layer.pipe(
@@ -948,6 +1158,14 @@ test("installs dependencies in writable CODEPLANE_CONFIG_DIR", async () => {
 
     expect(await Filesystem.exists(path.join(tmp.extra, ".gitignore"))).toBe(true)
     expect(await Filesystem.readText(path.join(tmp.extra, ".gitignore"))).toContain("package-lock.json")
+    const call = install.mock.calls.find((item) => item[0] === tmp.extra)
+    expect(call?.[1]?.add.map((item) => item.name)).toEqual(["@codeplane-ai/plugin"])
+    expect(await Filesystem.exists(path.join(tmp.extra, "node_modules", "@opencode-ai", "plugin", "index.js"))).toBe(
+      true,
+    )
+    expect(await Filesystem.exists(path.join(tmp.extra, "node_modules", "@opencode-ai", "sdk", "v2", "client.js"))).toBe(
+      true,
+    )
   } finally {
     if (prev === undefined) delete process.env.CODEPLANE_CONFIG_DIR
     else process.env.CODEPLANE_CONFIG_DIR = prev
@@ -1256,6 +1474,49 @@ test("keeps plugin origins aligned with merged plugin list", async () => {
       expect(hit?.scope).toBe("local")
     },
   })
+})
+
+test("discovers plugins from global config plugin directory", async () => {
+  await using globalTmp = await tmpdir()
+  await using projectTmp = await tmpdir()
+  const prev = Global.Path.config
+  ;(Global.Path as { config: string }).config = globalTmp.path
+  await clear(true)
+
+  try {
+    const target = path.join(globalTmp.path, "linked", "index.js")
+    const plugin = path.join(globalTmp.path, "plugins", "anthropic-auth.js")
+    await fs.mkdir(path.dirname(target), { recursive: true })
+    await fs.mkdir(path.dirname(plugin), { recursive: true })
+    await Filesystem.write(target, "export default () => {}\n")
+    await fs.symlink(target, plugin)
+
+    const expected = pathToFileURL(plugin).href
+    const globalConfig = await loadGlobal()
+    expect(globalConfig.plugin).toContain(expected)
+    expect(globalConfig.plugin_origins).toContainEqual({
+      spec: expected,
+      source: globalTmp.path,
+      scope: "global",
+    })
+
+    await Instance.provide({
+      directory: projectTmp.path,
+      fn: async () => {
+        const cfg = await load()
+        expect(cfg.plugin).toContain(expected)
+        expect(cfg.plugin_origins).toContainEqual({
+          spec: expected,
+          source: globalTmp.path,
+          scope: "global",
+        })
+      },
+    })
+  } finally {
+    await Instance.disposeAll()
+    ;(Global.Path as { config: string }).config = prev
+    await clear(true)
+  }
 })
 
 // Legacy tools migration tests

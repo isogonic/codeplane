@@ -4,6 +4,12 @@ import { createSimpleContext } from "./helper"
 import { createGlobalEmitter } from "@solid-primitives/event-bus"
 import { Flag } from "@/flag/flag"
 import { batch, onCleanup, onMount } from "solid-js"
+import {
+  compactTuiEventsForFlush,
+  isHeartbeatEvent,
+  isTuiStreamDeltaEvent,
+  tuiEventFlushDelay,
+} from "@/tui/util/stream-backpressure"
 
 export type EventSource = {
   subscribe: (handler: (event: GlobalEvent) => void) => Promise<() => void>
@@ -47,7 +53,7 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
 
     const flush = () => {
       if (queue.length === 0) return
-      const events = queue
+      const events = compactTuiEventsForFlush(queue)
       queue = []
       timer = undefined
       last = Date.now()
@@ -60,14 +66,21 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
     }
 
     const handleEvent = (event: GlobalEvent) => {
+      if (isHeartbeatEvent(event)) return
       queue.push(event)
       const elapsed = Date.now() - last
 
-      if (timer) return
-      // If we just flushed recently (within 16ms), batch this with future events
-      // Otherwise, process immediately to avoid latency
-      if (elapsed < 16) {
-        timer = setTimeout(flush, 16)
+      if (timer) {
+        if (!isTuiStreamDeltaEvent(event)) {
+          clearTimeout(timer)
+          flush()
+        }
+        return
+      }
+
+      const delay = tuiEventFlushDelay(event, elapsed)
+      if (delay > 0) {
+        timer = setTimeout(flush, delay)
         return
       }
       flush()

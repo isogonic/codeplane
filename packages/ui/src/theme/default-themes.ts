@@ -54,3 +54,47 @@ export const zenburnTheme = oc2Theme
 export const DEFAULT_THEMES: Record<string, WebTheme> = {
   "oc-2": oc2Theme,
 }
+
+export const LEGACY_THEME_ASSET_IDS = [
+  "oc-2",
+  "amoled",
+  "aura",
+  "ayu",
+  "carbonfox",
+  "catppuccin",
+  "catppuccin-frappe",
+  "catppuccin-macchiato",
+  "cobalt2",
+  "cursor",
+  "dracula",
+  "everforest",
+  "flexoki",
+  "github",
+  "gruvbox",
+  "kanagawa",
+  "lucent-orng",
+  "material",
+  "matrix",
+  "mercury",
+  "monokai",
+  "nightowl",
+  "nord",
+  "one-dark",
+  "one-dark-pro",
+  "codeplane",
+  "orng",
+  "osaka-jade",
+  "palenight",
+  "rosepine",
+  "shades-of-purple",
+  "solarized",
+  "synthwave84",
+  "tokyonight",
+  "vercel",
+  "vesper",
+  "zenburn",
+] as const
+
+export const LEGACY_THEME_ASSETS: Record<(typeof LEGACY_THEME_ASSET_IDS)[number], WebTheme> = Object.fromEntries(
+  LEGACY_THEME_ASSET_IDS.map((id) => [id, oc2Theme]),
+) as Record<(typeof LEGACY_THEME_ASSET_IDS)[number], WebTheme>

@@ -374,7 +374,7 @@ export const dict = {
   "dialog.mcp.empty": "No MCPs configured",
 
   "dialog.lsp.empty": "LSPs auto-detected from file types",
-  "dialog.plugins.empty": "Plugins configured in codeplane.json",
+  "dialog.plugins.empty": "No plugins loaded from codeplane.jsonc or config/plugins",
 
   "mcp.status.connected": "connected",
   "mcp.status.failed": "failed",
@@ -992,10 +992,10 @@ export const dict = {
 
   "settings.general.row.browserUse.title": "Browser use",
   "settings.general.row.browserUse.description":
-    "Allow the agent to control a Chrome browser for visual inspection, UI testing, and interactive debugging. Includes full browser automation: navigate, click, type, screenshot, console logs, and JavaScript evaluation. Disabled by default and only available in Codeplane Desktop with a vision-capable model.",
+    "Allow the agent to control an isolated Chrome browser with its own virtual mouse and keyboard for UI testing and debugging. Includes navigation, refs, click, hover, drag, type, shortcuts, screenshots, console logs, and JavaScript evaluation. Disabled by default and only available in Codeplane Desktop.",
   "settings.general.row.computerUse.title": "Computer use",
   "settings.general.row.computerUse.description":
-    "Allow the agent to control this desktop with its own visible pointer: screenshots, mouse movement, clicks, drags, scrolling, keyboard input, shortcuts, and app launching. Disabled by default and only available in Codeplane Desktop with a vision-capable model.",
+    "Allow the agent to control this desktop through the real OS pointer: screenshots, mouse movement, clicks, drags, scrolling, keyboard input, shortcuts, and app launching. Disabled by default and only available in Codeplane Desktop.",
   "settings.general.row.debugLogging.title": "Debug logging",
   "settings.general.row.debugLogging.description":
     "Write verbose runtime logs for desktop-managed local instances. Restart a running local instance to apply the new level.",

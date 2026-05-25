@@ -29,7 +29,9 @@ export const Entry = z.object({
 })
 export type Entry = z.infer<typeof Entry>
 
-const filepath = path.join(Global.Path.data, "mcp-auth.json")
+function filepath() {
+  return path.join(Global.Path.data, "mcp-auth.json")
+}
 
 export interface Interface {
   readonly all: () => Effect.Effect<Record<string, Entry>>
@@ -55,7 +57,7 @@ export const layer = Layer.effect(
     const fs = yield* AppFileSystem.Service
 
     const all = Effect.fn("McpAuth.all")(function* () {
-      return yield* fs.readJson(filepath).pipe(
+      return yield* fs.readJson(filepath()).pipe(
         Effect.map((data) => data as Record<string, Entry>),
         Effect.catch(() => Effect.succeed({} as Record<string, Entry>)),
       )
@@ -77,13 +79,13 @@ export const layer = Layer.effect(
     const set = Effect.fn("McpAuth.set")(function* (mcpName: string, entry: Entry, serverUrl?: string) {
       const data = yield* all()
       if (serverUrl) entry.serverUrl = serverUrl
-      yield* fs.writeJson(filepath, { ...data, [mcpName]: entry }, 0o600).pipe(Effect.orDie)
+      yield* fs.writeJson(filepath(), { ...data, [mcpName]: entry }, 0o600).pipe(Effect.orDie)
     })
 
     const remove = Effect.fn("McpAuth.remove")(function* (mcpName: string) {
       const data = yield* all()
       delete data[mcpName]
-      yield* fs.writeJson(filepath, data, 0o600).pipe(Effect.orDie)
+      yield* fs.writeJson(filepath(), data, 0o600).pipe(Effect.orDie)
     })
 
     const updateField = <K extends keyof Entry>(field: K, spanName: string) =>

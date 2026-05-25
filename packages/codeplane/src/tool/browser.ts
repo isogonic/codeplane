@@ -3,10 +3,9 @@ import * as Tool from "./tool"
 import DESCRIPTION from "./browser.txt"
 import { spawn, spawnSync, type ChildProcess } from "node:child_process"
 import { existsSync } from "node:fs"
+import { createServer } from "node:net"
 import { tmpdir } from "node:os"
-import { Agent } from "@/agent/agent"
 import { Flag } from "@/flag/flag"
-import { Provider } from "@/provider"
 import { Config } from "@/config"
 
 const Action = Schema.Union([
@@ -14,19 +13,26 @@ const Action = Schema.Union([
   Schema.Literal("screenshot"),
   Schema.Literal("snapshot"),
   Schema.Literal("click"),
+  Schema.Literal("hover"),
+  Schema.Literal("drag"),
   Schema.Literal("type"),
+  Schema.Literal("key"),
+  Schema.Literal("press"),
   Schema.Literal("scroll"),
   Schema.Literal("wait"),
   Schema.Literal("evaluate"),
   Schema.Literal("console"),
   Schema.Literal("html"),
+  Schema.Literal("back"),
+  Schema.Literal("forward"),
+  Schema.Literal("reload"),
   Schema.Literal("close"),
 ])
 
 export const Parameters = Schema.Struct({
   action: Action.annotate({
     description:
-      "The browser action: navigate (go to URL), screenshot (capture viewport), snapshot (get interactive elements with refs), click (click element by ref/selector/coords), type (enter text into element), scroll, wait, evaluate (run JS in page), console (get console logs), html (get page source), close (close browser)",
+      "The browser action: navigate, screenshot, snapshot, click, hover, drag, type, key/press, scroll, wait, evaluate, console, html, back, forward, reload, or close.",
   }),
   url: Schema.optional(Schema.String).annotate({
     description: "URL to navigate to (required for navigate action)",
@@ -38,13 +44,22 @@ export const Parameters = Schema.Struct({
     description: "CSS selector for click action when ref is not available",
   }),
   text: Schema.optional(Schema.String).annotate({
-    description: "Text to type into the element (for type action)",
+    description: "Text to type into the element, or a key/shortcut for key/press actions.",
+  }),
+  key: Schema.optional(Schema.String).annotate({
+    description: "Key or shortcut to press, such as Enter, Escape, Tab, Cmd+L, Ctrl+R, ArrowDown, or Shift+Tab.",
   }),
   x: Schema.optional(Schema.Number).annotate({
-    description: "X coordinate in viewport CSS pixels for coordinate-based click/type/scroll actions",
+    description: "X coordinate in viewport CSS pixels for coordinate-based click/hover/drag/type/scroll actions.",
   }),
   y: Schema.optional(Schema.Number).annotate({
-    description: "Y coordinate in viewport CSS pixels for coordinate-based click/type/scroll actions",
+    description: "Y coordinate in viewport CSS pixels for coordinate-based click/hover/drag/type/scroll actions.",
+  }),
+  to: Schema.optional(Schema.mutable(Schema.Array(Schema.Number))).annotate({
+    description: "Destination viewport coordinate [x, y] for drag actions.",
+  }),
+  button: Schema.optional(Schema.Literals(["left", "right", "middle"])).annotate({
+    description: "Mouse button for click or drag actions. Defaults to left.",
   }),
   scrollAmount: Schema.optional(Schema.Number).annotate({
     description: "Scroll amount in wheel notches. Positive scrolls down, negative scrolls up. Default 5.",
@@ -101,10 +116,10 @@ function findChrome(): string | null {
   return null
 }
 
-const CDP_PORT = 9223
 const CDP_HOST = "127.0.0.1"
 
 let chromeProcess: ChildProcess | null = null
+let cdpPort = Number(process.env.CODEPLANE_BROWSER_CDP_PORT?.trim() || "") || undefined
 
 async function fetchJSON(url: string): Promise<any> {
   const resp = await fetch(url)
@@ -112,9 +127,45 @@ async function fetchJSON(url: string): Promise<any> {
   return resp.json()
 }
 
+function cdpBase(port = cdpPort) {
+  if (!port) throw new Error("Browser DevTools endpoint is not initialized.")
+  return `http://${CDP_HOST}:${port}`
+}
+
+function configuredCDPPort() {
+  return Number(process.env.CODEPLANE_BROWSER_CDP_PORT?.trim() || "") || undefined
+}
+
+async function freePort() {
+  return new Promise<number>((resolve, reject) => {
+    const server = createServer()
+    server.unref()
+    server.on("error", reject)
+    server.listen(0, CDP_HOST, () => {
+      const address = server.address()
+      server.close(() => {
+        if (typeof address === "object" && address?.port) resolve(address.port)
+        else reject(new Error("Could not allocate a browser DevTools port."))
+      })
+    })
+  })
+}
+
 async function ensureChrome(): Promise<void> {
+  cdpPort = configuredCDPPort() ?? cdpPort
+  if (cdpPort) {
+    try {
+      await fetchJSON(`${cdpBase()}/json/version`)
+      return
+    } catch {
+      if (chromeProcess) chromeProcess = null
+    }
+  }
+
+  cdpPort = configuredCDPPort() ?? (await freePort())
+
   try {
-    await fetchJSON(`http://${CDP_HOST}:${CDP_PORT}/json/version`)
+    await fetchJSON(`${cdpBase()}/json/version`)
     return
   } catch {}
 
@@ -124,7 +175,8 @@ async function ensureChrome(): Promise<void> {
   const userDataDir = `${tmpdir()}/codeplane-chrome-${process.pid}`
 
   chromeProcess = spawn(bin, [
-    `--remote-debugging-port=${CDP_PORT}`,
+    `--remote-debugging-port=${cdpPort}`,
+    "--remote-allow-origins=*",
     `--user-data-dir=${userDataDir}`,
     "--no-first-run",
     "--no-default-browser-check",
@@ -142,7 +194,7 @@ async function ensureChrome(): Promise<void> {
 
   for (let i = 0; i < 30; i++) {
     try {
-      await fetchJSON(`http://${CDP_HOST}:${CDP_PORT}/json/version`)
+      await fetchJSON(`${cdpBase()}/json/version`)
       return
     } catch {
       await new Promise((r) => setTimeout(r, 200))
@@ -152,10 +204,15 @@ async function ensureChrome(): Promise<void> {
 }
 
 function killChrome() {
+  activeSession.current?.ws.close()
+  activeSession.current = null
+  activeSession.pageTargetId = null
+  refTargets = new Map()
   if (chromeProcess) {
     chromeProcess.kill("SIGTERM")
     chromeProcess = null
   }
+  if (!configuredCDPPort()) cdpPort = undefined
 }
 
 // --- CDP WebSocket session ---
@@ -174,7 +231,8 @@ const activeSession: { current: CDPSession | null; pageTargetId: string | null }
 }
 
 async function createCDPSession(): Promise<CDPSession> {
-  const pages = (await fetchJSON(`http://${CDP_HOST}:${CDP_PORT}/json`)) as Array<{
+  if (!cdpPort) await ensureChrome()
+  const pages = (await fetchJSON(`${cdpBase()}/json`)) as Array<{
     id: string
     type: string
     webSocketDebuggerUrl: string
@@ -182,7 +240,7 @@ async function createCDPSession(): Promise<CDPSession> {
   let target = pages.find((p) => p.type === "page")
   if (!target) {
     const newPage = (await (
-      await fetch(`http://${CDP_HOST}:${CDP_PORT}/json/new?url=about:blank`, { method: "PUT" })
+      await fetch(`${cdpBase()}/json/new?url=about:blank`, { method: "PUT" })
     ).json()) as { id: string; type: string; webSocketDebuggerUrl: string }
     target = { ...newPage, type: "page" }
   }
@@ -301,10 +359,22 @@ async function captureBrowserScreenshot(
     deviceScaleFactor: 1,
     mobile: false,
   })
+  if (params.fullPage) {
+    const metrics = await sendCommand(session, "Page.getLayoutMetrics")
+    const content = metrics.cssContentSize ?? metrics.contentSize
+    const fullWidth = Math.ceil(Math.max(width, content?.width ?? width))
+    const fullHeight = Math.ceil(Math.max(height, content?.height ?? height))
+    const { data } = await sendCommand(session, "Page.captureScreenshot", {
+      format: "png",
+      clip: { x: 0, y: 0, width: fullWidth, height: fullHeight, scale: 1 },
+      captureBeyondViewport: true,
+    })
+    return { dataUrl: `data:image/png;base64,${data}`, width: fullWidth, height: fullHeight }
+  }
   const { data } = await sendCommand(session, "Page.captureScreenshot", {
     format: "png",
-    clip: params.fullPage ? undefined : { x: 0, y: 0, width, height, scale: 1 },
-    captureBeyondViewport: !!params.fullPage,
+    clip: { x: 0, y: 0, width, height, scale: 1 },
+    captureBeyondViewport: false,
   })
   return { dataUrl: `data:image/png;base64,${data}`, width, height }
 }
@@ -354,10 +424,157 @@ async function elementTarget(session: CDPSession, objectId: string): Promise<Ele
   return value
 }
 
-async function clickViewport(session: CDPSession, x: number, y: number) {
+function viewportCoordinate(value: number[] | undefined, name: string) {
+  if (!value || value.length < 2) throw new Error(`${name} coordinate is required as [x, y].`)
+  const x = Math.round(value[0])
+  const y = Math.round(value[1])
+  if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error(`${name} coordinate must contain finite numbers.`)
+  return { x, y }
+}
+
+function viewportXY(x: number | undefined, y: number | undefined, name: string) {
+  if (x === undefined || y === undefined) throw new Error(`${name} coordinate is required as [x, y].`)
+  return viewportCoordinate([x, y], name)
+}
+
+function mouseButton(button: Schema.Schema.Type<typeof Parameters>["button"]) {
+  return button ?? "left"
+}
+
+async function clickViewport(session: CDPSession, x: number, y: number, button: Schema.Schema.Type<typeof Parameters>["button"]) {
+  const resolved = mouseButton(button)
+  const buttons = resolved === "left" ? 1 : resolved === "right" ? 2 : 4
   await sendCommand(session, "Input.dispatchMouseEvent", { type: "mouseMoved", x, y, button: "none" })
-  await sendCommand(session, "Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 })
-  await sendCommand(session, "Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 })
+  await sendCommand(session, "Input.dispatchMouseEvent", {
+    type: "mousePressed",
+    x,
+    y,
+    button: resolved,
+    buttons,
+    clickCount: 1,
+  })
+  await sendCommand(session, "Input.dispatchMouseEvent", {
+    type: "mouseReleased",
+    x,
+    y,
+    button: resolved,
+    buttons: 0,
+    clickCount: 1,
+  })
+}
+
+async function hoverViewport(session: CDPSession, x: number, y: number) {
+  await sendCommand(session, "Input.dispatchMouseEvent", { type: "mouseMoved", x, y, button: "none" })
+}
+
+async function dragViewport(session: CDPSession, from: ElementTarget, to: ElementTarget, button: Schema.Schema.Type<typeof Parameters>["button"]) {
+  const resolved = mouseButton(button)
+  await sendCommand(session, "Input.dispatchMouseEvent", { type: "mouseMoved", x: from.x, y: from.y, button: "none" })
+  await sendCommand(session, "Input.dispatchMouseEvent", {
+    type: "mousePressed",
+    x: from.x,
+    y: from.y,
+    button: resolved,
+    buttons: resolved === "left" ? 1 : resolved === "right" ? 2 : 4,
+    clickCount: 1,
+  })
+  for (let i = 1; i <= 12; i++) {
+    const x = from.x + ((to.x - from.x) * i) / 12
+    const y = from.y + ((to.y - from.y) * i) / 12
+    await sendCommand(session, "Input.dispatchMouseEvent", {
+      type: "mouseMoved",
+      x,
+      y,
+      button: resolved,
+      buttons: resolved === "left" ? 1 : resolved === "right" ? 2 : 4,
+    })
+  }
+  await sendCommand(session, "Input.dispatchMouseEvent", {
+    type: "mouseReleased",
+    x: to.x,
+    y: to.y,
+    button: resolved,
+    buttons: 0,
+    clickCount: 1,
+  })
+}
+
+const KEY_ALIASES: Record<string, { key: string; code: string; windowsVirtualKeyCode: number }> = {
+  enter: { key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 },
+  return: { key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 },
+  tab: { key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 },
+  escape: { key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 },
+  esc: { key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 },
+  backspace: { key: "Backspace", code: "Backspace", windowsVirtualKeyCode: 8 },
+  delete: { key: "Delete", code: "Delete", windowsVirtualKeyCode: 46 },
+  space: { key: " ", code: "Space", windowsVirtualKeyCode: 32 },
+  arrowleft: { key: "ArrowLeft", code: "ArrowLeft", windowsVirtualKeyCode: 37 },
+  left: { key: "ArrowLeft", code: "ArrowLeft", windowsVirtualKeyCode: 37 },
+  arrowup: { key: "ArrowUp", code: "ArrowUp", windowsVirtualKeyCode: 38 },
+  up: { key: "ArrowUp", code: "ArrowUp", windowsVirtualKeyCode: 38 },
+  arrowright: { key: "ArrowRight", code: "ArrowRight", windowsVirtualKeyCode: 39 },
+  right: { key: "ArrowRight", code: "ArrowRight", windowsVirtualKeyCode: 39 },
+  arrowdown: { key: "ArrowDown", code: "ArrowDown", windowsVirtualKeyCode: 40 },
+  down: { key: "ArrowDown", code: "ArrowDown", windowsVirtualKeyCode: 40 },
+  home: { key: "Home", code: "Home", windowsVirtualKeyCode: 36 },
+  end: { key: "End", code: "End", windowsVirtualKeyCode: 35 },
+  pageup: { key: "PageUp", code: "PageUp", windowsVirtualKeyCode: 33 },
+  pagedown: { key: "PageDown", code: "PageDown", windowsVirtualKeyCode: 34 },
+}
+
+function keyDescriptor(input: string) {
+  const parts = input.split("+").map((part) => part.trim()).filter(Boolean)
+  const rawKey = parts.pop() ?? ""
+  const modifiers = parts.reduce((mask, part) => {
+    const item = part.toLowerCase()
+    if (item === "alt" || item === "option") return mask | 1
+    if (item === "ctrl" || item === "control") return mask | 2
+    if (item === "cmd" || item === "command" || item === "meta" || item === "super") return mask | 4
+    if (item === "shift") return mask | 8
+    return mask
+  }, 0)
+  const key = rawKey.length === 1 ? rawKey : rawKey.toLowerCase()
+  const alias = KEY_ALIASES[key]
+  if (alias) return { ...alias, modifiers, text: modifiers === 0 && alias.key.length === 1 ? alias.key : undefined }
+  if (rawKey.length === 1) {
+    const upper = rawKey.toUpperCase()
+    return {
+      key: rawKey,
+      code: /[a-z]/i.test(rawKey) ? `Key${upper}` : /[0-9]/.test(rawKey) ? `Digit${rawKey}` : rawKey,
+      windowsVirtualKeyCode: upper.charCodeAt(0),
+      modifiers,
+      text: modifiers === 0 ? rawKey : undefined,
+    }
+  }
+  return {
+    key: rawKey,
+    code: rawKey,
+    windowsVirtualKeyCode: rawKey.toUpperCase().charCodeAt(0),
+    modifiers,
+    text: undefined,
+  }
+}
+
+async function pressBrowserKey(session: CDPSession, input: string) {
+  const key = keyDescriptor(input)
+  await sendCommand(session, "Input.dispatchKeyEvent", {
+    type: "rawKeyDown",
+    key: key.key,
+    code: key.code,
+    windowsVirtualKeyCode: key.windowsVirtualKeyCode,
+    nativeVirtualKeyCode: key.windowsVirtualKeyCode,
+    modifiers: key.modifiers,
+    text: key.text,
+    unmodifiedText: key.text,
+  })
+  await sendCommand(session, "Input.dispatchKeyEvent", {
+    type: "keyUp",
+    key: key.key,
+    code: key.code,
+    windowsVirtualKeyCode: key.windowsVirtualKeyCode,
+    nativeVirtualKeyCode: key.windowsVirtualKeyCode,
+    modifiers: key.modifiers,
+  })
 }
 
 async function typeIntoObject(session: CDPSession, objectId: string, text: string) {
@@ -556,14 +773,27 @@ function formatSnapshotNode(node: SnapshotNode, indent = 0): string {
   return line
 }
 
-// --- Main tool ---
-
-function contextModel(ctx: Tool.Context) {
-  const model = ctx.extra?.model
-  if (!model || typeof model !== "object") return
-  if (!("capabilities" in model)) return
-  return model as Provider.Model
+async function targetFromParams(
+  session: CDPSession,
+  params: Pick<Schema.Schema.Type<typeof Parameters>, "ref" | "selector" | "x" | "y">,
+) {
+  if (params.selector) return objectIDForSelector(session, params.selector).then((id) => elementTarget(session, id))
+  if (params.ref) return objectIDForRef(session, params.ref).then((id) => elementTarget(session, id))
+  if (params.x !== undefined || params.y !== undefined) return viewportXY(params.x, params.y, "coordinate")
+  throw new Error("action requires 'ref', 'selector', or x/y coordinates")
 }
+
+async function navigateHistory(session: CDPSession, direction: "back" | "forward") {
+  const history = await sendCommand(session, "Page.getNavigationHistory")
+  const entries = history.entries as Array<{ id: number }> | undefined
+  const currentIndex = Number(history.currentIndex)
+  const nextIndex = direction === "back" ? currentIndex - 1 : currentIndex + 1
+  const entry = entries?.[nextIndex]
+  if (!entry) throw new Error(`Cannot navigate ${direction}; no history entry is available.`)
+  await sendCommand(session, "Page.navigateToHistoryEntry", { entryId: entry.id })
+}
+
+// --- Main tool ---
 
 export const BrowserTool = Tool.define(
   "browser",
@@ -597,40 +827,6 @@ export const BrowserTool = Tool.define(
               output: "Browser use is disabled. Enable Browser use in Desktop Settings → General first.",
               title: "browser",
               metadata: {},
-            }
-          }
-
-          // Gate: check vision capability
-          const agents = yield* Agent.Service
-          const agentInfo = yield* agents.get(ctx.agent)
-          const activeModel = contextModel(ctx)
-          if (activeModel) {
-            if (!activeModel.capabilities?.input?.image) {
-              return {
-                output:
-                  "Browser tool is only available with vision-capable models. Please switch to a model that supports image input.",
-                title: "browser",
-                metadata: {},
-              }
-            }
-          } else if (!agentInfo.model?.providerID || !agentInfo.model?.modelID) {
-            return {
-              output: "Browser tool requires a model that supports vision/image input.",
-              title: "browser",
-              metadata: {},
-            }
-          } else {
-            const providerSvc = yield* Provider.Service
-            const model = yield* providerSvc
-              .getModel(agentInfo.model.providerID, agentInfo.model.modelID)
-              .pipe(Effect.catch(() => Effect.succeed(undefined)), Effect.catchDefect(() => Effect.succeed(undefined)))
-            if (!model?.capabilities?.input?.image) {
-              return {
-                output:
-                  "Browser tool is only available with vision-capable models. Please switch to a model that supports image input.",
-                title: "browser",
-                metadata: {},
-              }
             }
           }
 
@@ -736,23 +932,13 @@ export const BrowserTool = Tool.define(
 
           if (action === "click") {
             const session = yield* Effect.promise(() => getOrCreateSession())
-            let target: ElementTarget | undefined
+            const target = yield* Effect.promise(() => targetFromParams(session, params))
 
-            if (params.selector) {
-              target = yield* Effect.promise(() => objectIDForSelector(session, params.selector!).then((id) => elementTarget(session, id)))
-            } else if (params.ref) {
-              target = yield* Effect.promise(() => objectIDForRef(session, params.ref!).then((id) => elementTarget(session, id)))
-            } else if (params.x !== undefined && params.y !== undefined) {
-              target = { x: params.x, y: params.y }
-            } else {
-              throw new Error("click requires 'ref', 'selector', or x/y coordinates")
-            }
-
-            yield* Effect.promise(() => clickViewport(session, target!.x, target!.y))
+            yield* Effect.promise(() => clickViewport(session, target.x, target.y, params.button))
             yield* Effect.sleep(`${Math.min(params.waitMs ?? 800, 10_000)} millis`)
             const screenshot = yield* Effect.promise(() => captureBrowserScreenshot(session, params))
             return {
-              output: `Clicked ${params.ref ?? (params.selector ? `selector "${params.selector}"` : `(${target!.x}, ${target!.y})`)}. Screenshot after click captured.`,
+              output: `Clicked ${params.ref ?? (params.selector ? `selector "${params.selector}"` : `(${target.x}, ${target.y})`)}. Screenshot after click captured.`,
               title: `Click: ${params.ref ?? params.selector}`,
               metadata: { screenshotMime: "image/png", screenshotDataUrl: screenshot.dataUrl, target },
               attachments: [
@@ -761,6 +947,51 @@ export const BrowserTool = Tool.define(
                   mime: "image/png",
                   url: screenshot.dataUrl,
                   filename: `browser-click-${Date.now()}.png`,
+                },
+              ],
+            }
+          }
+
+          if (action === "hover") {
+            const session = yield* Effect.promise(() => getOrCreateSession())
+            const target = yield* Effect.promise(() => targetFromParams(session, params))
+
+            yield* Effect.promise(() => hoverViewport(session, target.x, target.y))
+            yield* Effect.sleep(`${Math.min(params.waitMs ?? 400, 10_000)} millis`)
+            const screenshot = yield* Effect.promise(() => captureBrowserScreenshot(session, params))
+            return {
+              output: `Hovered ${params.ref ?? (params.selector ? `selector "${params.selector}"` : `(${target.x}, ${target.y})`)}. Screenshot after hover captured.`,
+              title: `Hover: ${params.ref ?? params.selector}`,
+              metadata: { screenshotMime: "image/png", screenshotDataUrl: screenshot.dataUrl, target },
+              attachments: [
+                {
+                  type: "file",
+                  mime: "image/png",
+                  url: screenshot.dataUrl,
+                  filename: `browser-hover-${Date.now()}.png`,
+                },
+              ],
+            }
+          }
+
+          if (action === "drag") {
+            const session = yield* Effect.promise(() => getOrCreateSession())
+            const target = yield* Effect.promise(() => targetFromParams(session, params))
+            const destination = viewportCoordinate(params.to, "to")
+
+            yield* Effect.promise(() => dragViewport(session, target, destination, params.button))
+            yield* Effect.sleep(`${Math.min(params.waitMs ?? 800, 10_000)} millis`)
+            const screenshot = yield* Effect.promise(() => captureBrowserScreenshot(session, params))
+            return {
+              output: `Dragged from ${params.ref ?? (params.selector ? `selector "${params.selector}"` : `(${target.x}, ${target.y})`)} to (${destination.x}, ${destination.y}). Screenshot after drag captured.`,
+              title: "Drag",
+              metadata: { screenshotMime: "image/png", screenshotDataUrl: screenshot.dataUrl, target, destination },
+              attachments: [
+                {
+                  type: "file",
+                  mime: "image/png",
+                  url: screenshot.dataUrl,
+                  filename: `browser-drag-${Date.now()}.png`,
                 },
               ],
             }
@@ -780,8 +1011,9 @@ export const BrowserTool = Tool.define(
               target = yield* Effect.promise(() => elementTarget(session, objectId))
               yield* Effect.promise(() => typeIntoObject(session, objectId, params.text!))
             } else if (params.x !== undefined && params.y !== undefined) {
-              target = { x: params.x, y: params.y }
-              yield* Effect.promise(() => clickViewport(session, params.x!, params.y!))
+              const point = viewportXY(params.x, params.y, "coordinate")
+              target = point
+              yield* Effect.promise(() => clickViewport(session, point.x, point.y, params.button))
               yield* Effect.promise(() => sendCommand(session, "Input.insertText", { text: params.text }))
             } else {
               throw new Error("type requires 'ref', 'selector', or x/y coordinates")
@@ -805,10 +1037,31 @@ export const BrowserTool = Tool.define(
             }
           }
 
+          if (action === "key" || action === "press") {
+            const session = yield* Effect.promise(() => getOrCreateSession())
+            const key = params.key ?? params.text
+            if (!key) throw new Error("key or text is required for key/press action")
+            yield* Effect.promise(() => pressBrowserKey(session, key))
+            yield* Effect.sleep(`${Math.min(params.waitMs ?? 300, 10_000)} millis`)
+            const screenshot = yield* Effect.promise(() => captureBrowserScreenshot(session, params))
+            return {
+              output: `Pressed ${key}. Screenshot after keypress captured.`,
+              title: `Key: ${key}`,
+              metadata: { screenshotMime: "image/png", screenshotDataUrl: screenshot.dataUrl, key },
+              attachments: [
+                {
+                  type: "file",
+                  mime: "image/png",
+                  url: screenshot.dataUrl,
+                  filename: `browser-key-${Date.now()}.png`,
+                },
+              ],
+            }
+          }
+
           if (action === "scroll") {
             const session = yield* Effect.promise(() => getOrCreateSession())
-            const x = params.x ?? 640
-            const y = params.y ?? 400
+            const { x, y } = viewportXY(params.x ?? 640, params.y ?? 400, "coordinate")
             const amount = params.scrollAmount ?? 5
             yield* Effect.promise(() =>
               sendCommand(session, "Input.dispatchMouseEvent", {
@@ -898,6 +1151,27 @@ export const BrowserTool = Tool.define(
               output: `## Page HTML\n\n\`\`\`html\n${html.slice(0, 20000)}${html.length > 20000 ? "\n\n... (truncated)" : ""}\n\`\`\``,
               title: "Page HTML",
               metadata: { htmlLength: html.length },
+            }
+          }
+
+          if (action === "back" || action === "forward" || action === "reload") {
+            const session = yield* Effect.promise(() => getOrCreateSession())
+            if (action === "reload") yield* Effect.promise(() => sendCommand(session, "Page.reload", { ignoreCache: true }))
+            else yield* Effect.promise(() => navigateHistory(session, action))
+            yield* Effect.promise(() => waitForPageReady(session, params.waitMs ?? 5_000))
+            const screenshot = yield* Effect.promise(() => captureBrowserScreenshot(session, params))
+            return {
+              output: `${action} completed. Screenshot captured.`,
+              title: action,
+              metadata: { screenshotMime: "image/png", screenshotDataUrl: screenshot.dataUrl },
+              attachments: [
+                {
+                  type: "file",
+                  mime: "image/png",
+                  url: screenshot.dataUrl,
+                  filename: `browser-${action}-${Date.now()}.png`,
+                },
+              ],
             }
           }
 

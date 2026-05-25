@@ -5,18 +5,20 @@ import { createMemo, createSignal, Show } from "solid-js"
 import { useLanguage } from "@/context/language"
 import { useServer } from "@/context/server"
 import { useSyncOptional } from "@/context/sync"
+import { useGlobalSync } from "@/context/global-sync"
 import { StatusPopoverBody } from "./status-popover-body"
 
 export function StatusPopover() {
   const language = useLanguage()
   const server = useServer()
   const sync = useSyncOptional()
+  const globalSync = useGlobalSync()
   const [shown, setShown] = createSignal(false)
-  const ready = createMemo(() => server.healthy() === false || (sync ? sync.data.mcp_ready : true))
+  const status = createMemo(() => sync?.data ?? globalSync.data)
+  const ready = createMemo(() => server.healthy() === false || status().mcp_ready)
   const healthy = createMemo(() => {
     const serverHealthy = server.healthy() === true
-    if (!sync) return serverHealthy
-    const mcp = Object.values(sync.data.mcp ?? {})
+    const mcp = Object.values(status().mcp ?? {})
     const issue = mcp.some((item) => item.status !== "connected" && item.status !== "disabled")
     return serverHealthy && !issue
   })

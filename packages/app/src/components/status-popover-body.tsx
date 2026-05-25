@@ -12,22 +12,45 @@ import { ServerHealthIndicator, ServerRow } from "@/components/server/server-row
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { useSDKOptional } from "@/context/sdk"
+import { useGlobalSDK } from "@/context/global-sdk"
+import { useGlobalSync } from "@/context/global-sync"
 import { normalizeServerUrl, ServerConnection, useServer } from "@/context/server"
 import { useSyncOptional } from "@/context/sync"
 import { useCheckServerHealth, type ServerHealth } from "@/utils/server-health"
+import type { LspStatus, McpStatus } from "@codeplane-ai/sdk/v2/client"
 
 const pollMs = 10_000
 
-const pluginEmptyMessage = (value: string, file: string): JSXElement => {
-  const parts = value.split(file)
+const highlightConfigRefs = (value: string, refs: string[]): JSXElement => {
+  const parts = refs.reduce(
+    (acc, ref) =>
+      acc.flatMap((part) =>
+        refs.includes(part)
+          ? [part]
+          : part
+              .split(ref)
+              .flatMap((piece, index, list) => (index === list.length - 1 ? [piece] : [piece, ref])),
+      ),
+    [value],
+  )
   if (parts.length === 1) return value
   return (
     <>
-      {parts[0]}
-      <code class="bg-surface-raised-base px-1.5 py-0.5 rounded-sm text-text-base">{file}</code>
-      {parts.slice(1).join(file)}
+      {parts.map((part) =>
+        refs.includes(part) ? (
+          <code class="bg-surface-raised-base px-1.5 py-0.5 rounded-sm text-text-base">{part}</code>
+        ) : (
+          part
+        ),
+      )}
     </>
   )
+}
+
+const pluginLabel = (value: string) => {
+  if (!value.startsWith("file://")) return value
+  const last = value.split("/").at(-1)
+  return last ? decodeURIComponent(last) : value
 }
 
 const listServersByHealth = (
@@ -127,7 +150,7 @@ const useDefaultServerKey = (
   return {
     key: () => {
       const u = state.url
-      if (!u) return
+      if (!u) return undefined
       return ServerConnection.key({ type: "http", http: { url: u } })
     },
     refresh: () => setState("tick", (value) => value + 1),
@@ -135,17 +158,25 @@ const useDefaultServerKey = (
 }
 
 const useMcpToggleMutation = () => {
-  const sync = useSyncOptional()
-  const sdk = useSDKOptional()
+  const projectSync = useSyncOptional()
+  const projectSDK = useSDKOptional()
+  const globalSync = useGlobalSync()
+  const globalSDK = useGlobalSDK()
   const language = useLanguage()
+  const status = () => projectSync?.data ?? globalSync.data
+  const setMcp = (value: Record<string, McpStatus>) =>
+    projectSync ? projectSync.set("mcp", value) : globalSync.set("mcp", value)
+  const setMcpReady = (value: boolean) =>
+    projectSync ? projectSync.set("mcp_ready", value) : globalSync.set("mcp_ready", value)
+  const client = () => projectSDK?.client ?? globalSDK.client
 
   return useMutation(() => ({
     mutationFn: async (name: string) => {
-      if (!sync || !sdk) return
-      const status = sync.data.mcp[name]
-      await (status?.status === "connected" ? sdk.client.mcp.disconnect({ name }) : sdk.client.mcp.connect({ name }))
-      const result = await sdk.client.mcp.status()
-      if (result.data) sync.set("mcp", result.data)
+      const current = status().mcp[name]
+      await (current?.status === "connected" ? client().mcp.disconnect({ name }) : client().mcp.connect({ name }))
+      const result = await client().mcp.status()
+      if (result.data) setMcp(result.data)
+      setMcpReady(true)
     },
     onError: (err) => {
       showToast({
@@ -158,13 +189,24 @@ const useMcpToggleMutation = () => {
 }
 
 export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
-  const sync = useSyncOptional()
+  const projectSync = useSyncOptional()
+  const globalSync = useGlobalSync()
   const server = useServer()
   const platform = usePlatform()
   const dialog = useDialog()
   const language = useLanguage()
   const navigate = useNavigate()
-  const sdk = useSDKOptional()
+  const projectSDK = useSDKOptional()
+  const globalSDK = useGlobalSDK()
+  const status = createMemo(() => projectSync?.data ?? globalSync.data)
+  const setMcp = (value: Record<string, McpStatus>) =>
+    projectSync ? projectSync.set("mcp", value) : globalSync.set("mcp", value)
+  const setMcpReady = (value: boolean) =>
+    projectSync ? projectSync.set("mcp_ready", value) : globalSync.set("mcp_ready", value)
+  const setLsp = (value: LspStatus[]) => (projectSync ? projectSync.set("lsp", value) : globalSync.set("lsp", value))
+  const setLspReady = (value: boolean) =>
+    projectSync ? projectSync.set("lsp_ready", value) : globalSync.set("lsp_ready", value)
+  const client = () => projectSDK?.client ?? globalSDK.client
 
   const [load, setLoad] = createStore({
     lspDone: false,
@@ -182,16 +224,16 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
   }
 
   createEffect(() => {
-    if (!sync || !sdk) return
     if (!props.shown()) return
+    const data = status()
 
-    if (!sync.data.mcp_ready && !load.mcpDone && !load.mcpLoading) {
+    if (!data.mcp_ready && !load.mcpDone && !load.mcpLoading) {
       setLoad("mcpLoading", true)
-      void sdk.client.mcp
+      void client().mcp
         .status()
         .then((result) => {
-          sync.set("mcp", result.data ?? {})
-          sync.set("mcp_ready", true)
+          setMcp(result.data ?? {})
+          setMcpReady(true)
         })
         .catch((err) => {
           setLoad("mcpDone", true)
@@ -202,13 +244,13 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
         })
     }
 
-    if (!sync.data.lsp_ready && !load.lspDone && !load.lspLoading) {
+    if (!data.lsp_ready && !load.lspDone && !load.lspLoading) {
       setLoad("lspLoading", true)
-      void sdk.client.lsp
+      void client().lsp
         .status()
         .then((result) => {
-          sync.set("lsp", result.data ?? [])
-          sync.set("lsp_ready", true)
+          setLsp(result.data ?? [])
+          setLspReady(true)
         })
         .catch((err) => {
           setLoad("lspDone", true)
@@ -234,27 +276,26 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
     return [current, ...list.filter((item) => ServerConnection.key(item) !== ServerConnection.key(current))]
   })
   const canSwitchServers = createMemo(() => !!platform.desktop)
-  const showServerTab = createMemo(() => canSwitchServers() || !sync)
+  const showServerTab = createMemo(() => canSwitchServers() || !projectSync)
   const health = useServerHealth(servers, () => props.shown() && canSwitchServers())
   const sortedServers = createMemo(() => listServersByHealth(servers(), server.key, health))
   const toggleMcp = useMcpToggleMutation()
-  const defaultServer = useDefaultServerKey(platform.getDefaultServer)
+  const getDefaultServer = () => platform.getDefaultServer?.()
+  const defaultServer = useDefaultServerKey(getDefaultServer)
   const desktopInstanceForKey = (key: ServerConnection.Key) =>
     platform.serverManager?.instances.find((instance) => instance.key === key)
-  const mcpNames = createMemo(() => Object.keys(sync?.data.mcp ?? {}).sort((a, b) => a.localeCompare(b)))
-  const mcpStatus = (name: string) => sync?.data.mcp?.[name]?.status
-  const mcpConnected = createMemo(() => mcpNames().filter((name) => mcpStatus(name) === "connected").length)
-  const lspItems = createMemo(() => sync?.data.lsp ?? [])
-  const lspCount = createMemo(() => lspItems().length)
+  const mcpNames = createMemo(() => Object.keys(status().mcp ?? {}).sort((a, b) => a.localeCompare(b)))
+  const mcpStatus = (name: string) => status().mcp?.[name]?.status
+  const lspItems = createMemo(() => status().lsp ?? [])
   const plugins = createMemo(() =>
-    (sync?.data.config.plugin ?? []).map((item) => (typeof item === "string" ? item : item[0])),
+    (status().config.plugin ?? []).map((item) => (typeof item === "string" ? item : item[0])),
   )
-  const pluginCount = createMemo(() => plugins().length)
-  const pluginEmpty = createMemo(() => pluginEmptyMessage(language.t("dialog.plugins.empty"), "codeplane.json"))
+  const pluginEmpty = createMemo(() =>
+    highlightConfigRefs(language.t("dialog.plugins.empty"), ["codeplane.jsonc", "config/plugins"]),
+  )
   const defaultTab = createMemo(() => {
     if (showServerTab()) return "servers"
-    if (sync) return "mcp"
-    return "servers"
+    return "mcp"
   })
 
   return (
@@ -270,21 +311,17 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
         <Tabs.List data-slot="tablist" class="bg-transparent border-b-0 px-4 pt-2 pb-0 gap-4 h-10">
           <Show when={showServerTab()}>
             <Tabs.Trigger value="servers" data-slot="tab" class="text-12-regular">
-              {sortedServers().length > 0 ? `${sortedServers().length} ` : ""}
               {language.t("status.popover.tab.servers")}
             </Tabs.Trigger>
           </Show>
-          <Show when={sync}>
+          <Show when={status()}>
             <Tabs.Trigger value="mcp" data-slot="tab" class="text-12-regular">
-              {mcpConnected() > 0 ? `${mcpConnected()} ` : ""}
               {language.t("status.popover.tab.mcp")}
             </Tabs.Trigger>
             <Tabs.Trigger value="lsp" data-slot="tab" class="text-12-regular">
-              {lspCount() > 0 ? `${lspCount()} ` : ""}
               {language.t("status.popover.tab.lsp")}
             </Tabs.Trigger>
             <Tabs.Trigger value="plugins" data-slot="tab" class="text-12-regular">
-              {pluginCount() > 0 ? `${pluginCount()} ` : ""}
               {language.t("status.popover.tab.plugins")}
             </Tabs.Trigger>
           </Show>
@@ -293,7 +330,7 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
         <Show when={showServerTab()}>
           <Tabs.Content value="servers">
             <div class="flex flex-col px-2 pb-2">
-              <div class="flex flex-col p-3 bg-background-base rounded-sm min-h-14">
+              <div class="flex flex-col p-3 bg-background-base rounded-lg min-h-14">
                 <For each={sortedServers()}>
                   {(s) => {
                     const key = ServerConnection.key(s)
@@ -328,7 +365,7 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
                           versionClass="text-12-regular text-text-weak truncate"
                           badge={
                             <Show when={key === defaultServer.key()}>
-                              <span class="text-11-regular text-text-base bg-surface-base px-1.5 py-0.5 rounded-md">
+                              <span class="text-11-regular text-text-base bg-surface-base px-1.5 py-0.5 rounded-sm">
                                 {language.t("common.default")}
                               </span>
                             </Show>
@@ -366,10 +403,10 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
           </Tabs.Content>
         </Show>
 
-        <Show when={sync}>
+        <Show when={status()}>
           <Tabs.Content value="mcp">
             <div class="flex flex-col px-2 pb-2">
-              <div class="flex flex-col p-3 bg-background-base rounded-sm min-h-14">
+              <div class="flex flex-col p-3 bg-background-base rounded-lg min-h-14">
                 <Show
                   when={mcpNames().length > 0}
                   fallback={
@@ -422,7 +459,7 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
 
           <Tabs.Content value="lsp">
             <div class="flex flex-col px-2 pb-2">
-              <div class="flex flex-col p-3 bg-background-base rounded-sm min-h-14">
+              <div class="flex flex-col p-3 bg-background-base rounded-lg min-h-14">
                 <Show
                   when={lspItems().length > 0}
                   fallback={
@@ -450,7 +487,7 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
 
           <Tabs.Content value="plugins">
             <div class="flex flex-col px-2 pb-2">
-              <div class="flex flex-col p-3 bg-background-base rounded-sm min-h-14">
+              <div class="flex flex-col p-3 bg-background-base rounded-lg min-h-14">
                 <Show
                   when={plugins().length > 0}
                   fallback={<div class="text-14-regular text-text-base text-center my-auto">{pluginEmpty()}</div>}
@@ -459,7 +496,9 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
                     {(plugin) => (
                       <div class="flex items-center gap-2 w-full px-2 py-1">
                         <div class="size-1.5 rounded-full shrink-0 bg-icon-success-base" />
-                        <span class="text-14-regular text-text-base truncate">{plugin}</span>
+                        <span class="text-14-regular text-text-base truncate" title={plugin}>
+                          {pluginLabel(plugin)}
+                        </span>
                       </div>
                     )}
                   </For>

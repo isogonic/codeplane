@@ -178,8 +178,8 @@
 
 [data-component="button"].titlebar-icon[data-variant="ghost"][aria-expanded="true"],
 [data-component="button"].titlebar-icon[data-variant="ghost"][aria-current="page"] {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
+  background-color: var(--surface-base-active);
+  color: var(--foreground);
 }
 
 [data-component="button"].titlebar-icon[data-variant="ghost"][aria-expanded="true"] [data-slot="icon-svg"],
@@ -189,5 +189,5 @@
 
 [data-component="button"].titlebar-icon[data-variant="ghost"][aria-expanded="true"]:hover:not(:disabled),
 [data-component="button"].titlebar-icon[data-variant="ghost"][aria-current="page"]:hover:not(:disabled) {
-  background-color: var(--accent);
+  background-color: var(--surface-base-hover);
 }

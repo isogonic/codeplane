@@ -1,4 +1,8 @@
-export const dict = {
+import { dict as en } from "./en"
+
+type Keys = keyof typeof en
+
+const translated = {
   "ui.sessionReview.title": "تغييرات الجلسة",
   "ui.sessionReview.title.lastTurn": "تغييرات آخر دور",
   "ui.sessionReview.diffStyle.unified": "موحد",
@@ -25,19 +29,14 @@ export const dict = {
   "ui.fileMedia.binary.title": "ملف ثنائي",
   "ui.fileMedia.binary.description.path": "{{path}} عبارة عن ملف ثنائي ولا يمكن عرضه.",
   "ui.fileMedia.binary.description.default": "هذا ملف ثنائي ولا يمكن عرضه.",
-
   "ui.lineComment.label.prefix": "تعليق على ",
-  "ui.lineComment.label.suffix": "",
   "ui.lineComment.editorLabel.prefix": "جارٍ التعليق على ",
-  "ui.lineComment.editorLabel.suffix": "",
   "ui.lineComment.placeholder": "أضف تعليقًا",
   "ui.lineComment.submit": "تعليق",
-
   "ui.sessionTurn.steps.show": "إظهار الخطوات",
   "ui.sessionTurn.steps.hide": "إخفاء الخطوات",
   "ui.sessionTurn.summary.response": "استجابة",
   "ui.sessionTurn.diff.showMore": "إظهار المزيد من التغييرات ({{count}})",
-
   "ui.sessionTurn.retry.retrying": "إعادة المحاولة",
   "ui.sessionTurn.retry.inSeconds": "خلال {{seconds}} ثواني",
   "ui.sessionTurn.retry.attempt": "المحاولة رقم {{attempt}}",
@@ -45,7 +44,6 @@ export const dict = {
   "ui.sessionTurn.retry.geminiHot": "gemini مزدحم حاليا",
   "ui.sessionTurn.error.freeUsageExceeded": "تم تجاوز حد الاستخدام المجاني",
   "ui.sessionTurn.error.addCredits": "إضافة رصيد",
-
   "ui.sessionTurn.status.delegating": "تفويض العمل",
   "ui.sessionTurn.status.planning": "تخطيط الخطوات التالية",
   "ui.sessionTurn.status.gatheringContext": "استكشاف",
@@ -58,7 +56,6 @@ export const dict = {
   "ui.sessionTurn.status.thinkingWithTopic": "تفكير - {{topic}}",
   "ui.sessionTurn.status.gatheringThoughts": "جمع الأفكار",
   "ui.sessionTurn.status.consideringNextSteps": "النظر في الخطوات التالية",
-
   "ui.messagePart.questions.dismissed": "تم رفض الأسئلة",
   "ui.messagePart.compaction": "تم ضغط الجلسة",
   "ui.messagePart.context.read.one": "{{count}} قراءة",
@@ -72,43 +69,32 @@ export const dict = {
   "ui.messagePart.title.write": "كتابة",
   "ui.messagePart.option.typeOwnAnswer": "اكتب إجابتك الخاصة",
   "ui.messagePart.review.title": "مراجعة إجاباتك",
-
   "ui.list.loading": "جارٍ التحميل",
   "ui.list.empty": "لا توجد نتائج",
   "ui.list.clearFilter": "مسح عامل التصفية",
   "ui.list.emptyWithFilter.prefix": "لا توجد نتائج لـ",
-  "ui.list.emptyWithFilter.suffix": "",
-
   "ui.messageNav.newMessage": "رسالة جديدة",
-
   "ui.textField.copyToClipboard": "نسخ إلى الحافظة",
   "ui.textField.copyLink": "نسخ الرابط",
   "ui.textField.copied": "تم النسخ",
-
   "ui.imagePreview.alt": "معاينة الصورة",
   "ui.scrollView.ariaLabel": "محتوى قابل للتمرير",
-
   "ui.tool.read": "قراءة",
   "ui.tool.loaded": "تم التحميل",
   "ui.tool.list": "قائمة",
-  "ui.tool.glob": "Glob",
-  "ui.tool.grep": "Grep",
   "ui.tool.webfetch": "جلب الويب",
   "ui.tool.websearch": "بحث الويب",
   "ui.tool.codesearch": "بحث الكود",
-  "ui.tool.shell": "Shell",
   "ui.tool.patch": "تصحيح",
   "ui.tool.todos": "المهام",
   "ui.tool.todos.read": "قراءة المهام",
   "ui.tool.questions": "أسئلة",
   "ui.tool.agent": "وكيل {{type}}",
   "ui.tool.agent.default": "وكيل",
-
   "ui.common.file.one": "ملف",
   "ui.common.file.other": "ملفات",
   "ui.common.question.one": "سؤال",
   "ui.common.question.other": "أسئلة",
-
   "ui.common.add": "إضافة",
   "ui.common.back": "رجوع",
   "ui.common.cancel": "إلغاء",
@@ -117,11 +103,9 @@ export const dict = {
   "ui.common.close": "إغلاق",
   "ui.common.next": "التالي",
   "ui.common.submit": "إرسال",
-
   "ui.permission.deny": "رفض",
   "ui.permission.allowAlways": "السماح دائمًا",
   "ui.permission.allowOnce": "السماح مرة واحدة",
-
   "ui.message.expand": "توسيع الرسالة",
   "ui.message.collapse": "طي الرسالة",
   "ui.message.copy": "نسخ",
@@ -133,19 +117,16 @@ export const dict = {
   "ui.message.interrupted": "تمت المقاطعة",
   "ui.message.queued": "في الانتظار",
   "ui.message.attachment.alt": "مرفق",
-
   "ui.patch.action.deleted": "محذوف",
   "ui.patch.action.created": "تم الإنشاء",
   "ui.patch.action.moved": "منقول",
   "ui.patch.action.patched": "مصحح",
-
   "ui.question.subtitle.answered": "{{count}} أجيب",
   "ui.question.answer.none": "(لا توجد إجابة)",
   "ui.question.review.notAnswered": "(لم يتم الرد)",
   "ui.question.multiHint": "حدد كل ما ينطبق",
   "ui.question.singleHint": "حدد إجابة واحدة",
   "ui.question.custom.placeholder": "اكتب إجابتك...",
-
   "ui.fileSearch.placeholder": "بحث",
   "ui.fileSearch.previousMatch": "المطابقة السابقة",
   "ui.fileSearch.nextMatch": "المطابقة التالية",
@@ -157,4 +138,9 @@ export const dict = {
   "ui.toolErrorCard.copyError": "نسخ الخطأ",
   "ui.message.duration.seconds": "{{count}}ث",
   "ui.message.duration.minutesSeconds": "{{minutes}}د {{seconds}}ث",
-}
+} satisfies Partial<Record<Keys, string>>
+
+export const dict = {
+  ...en,
+  ...translated,
+} satisfies Record<Keys, string>

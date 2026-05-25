@@ -44,4 +44,28 @@ describe("desktop computer bridge", () => {
     expect(result.screenshot.height).toBe(3)
     expect(result.actions.map((action) => action.action)).toEqual(["screenshot"])
   })
+
+  test("runs safe batches through the Electron bridge and captures once at the end", async () => {
+    let captures = 0
+    const captureScreen: DesktopComputerCapture = async () => {
+      captures++
+      return {
+        dataUrl: "data:image/png;base64,BBBB",
+        width: 8,
+        height: 6,
+      }
+    }
+
+    const result = await performDesktopComputer(
+      {
+        action: "batch",
+        actions: [{ action: "wait", durationMs: 1 }, { action: "screenshot" }],
+      },
+      { captureScreen },
+    )
+
+    expect(captures).toBe(1)
+    expect(result.actions.map((action) => action.action)).toEqual(["wait", "screenshot"])
+    expect(result.screenshot.dataUrl).toBe("data:image/png;base64,BBBB")
+  })
 })

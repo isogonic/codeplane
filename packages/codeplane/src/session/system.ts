@@ -72,14 +72,16 @@ export const layer = Layer.effect(
             `  Today's date: ${new Date().toDateString()}`,
             `</env>`,
           ].join("\n"),
-          ...(hasVision && isDesktop
+          ...(isDesktop
             ? [
                 [
                   `<desktop-visual-tools>`,
-                  `You are running in the Codeplane Desktop app with a vision-capable model.`,
+                  `You are running in the Codeplane Desktop app.`,
                   `When enabled in Settings and present in your tool list, use \`browser\` for isolated Chrome automation and \`computer\` for native desktop control.`,
-                  `Prefer \`browser\` for websites and frontend validation because it provides DOM refs, console logs, JS evaluation, and page state.`,
-                  `Use \`computer\` only for native apps or desktop-level tasks; verify every step with screenshots and ask before sensitive or irreversible actions.`,
+                  `Prefer \`browser\` for websites and frontend validation because it provides DOM refs, console logs, JS evaluation, page state, virtual mouse events, and screenshots without moving the user's desktop cursor.`,
+                  hasVision
+                    ? `Use \`computer\` only for native apps or desktop-level tasks; verify every step with screenshots and ask before sensitive or irreversible actions.`
+                    : `Use \`computer\` only when explicit coordinates or a user-provided target make the action safe; this model may not be able to inspect screenshot attachments visually.`,
                   `</desktop-visual-tools>`,
                 ].join("\n"),
               ]

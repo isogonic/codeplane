@@ -5,10 +5,8 @@ import { spawnSync } from "node:child_process"
 import { existsSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { Agent } from "@/agent/agent"
 import { Config } from "@/config"
 import { Flag } from "@/flag/flag"
-import { Provider } from "@/provider"
 
 const AtomicAction = Schema.Union([
   Schema.Literal("screenshot"),
@@ -498,17 +496,41 @@ function run(argv) {
   JSON.parse(argv[0]).forEach(runStep)
 }
 `.trim()
-  runCommand("osascript", ["-l", "JavaScript", "-e", script, JSON.stringify(actions.map((action) => ({
-    action: action.action,
-    x: action.point?.x,
-    y: action.point?.y,
-    toX: action.target?.x,
-    toY: action.target?.y,
-    amount: action.amount,
-    text: action.text,
-    key: action.key,
-    durationMs: action.durationMs,
-  })))], { timeout: 10_000 })
+  try {
+    runCommand(
+      "osascript",
+      [
+        "-l",
+        "JavaScript",
+        "-e",
+        script,
+        JSON.stringify(
+          actions.map((action) => ({
+            action: action.action,
+            x: action.point?.x,
+            y: action.point?.y,
+            toX: action.target?.x,
+            toY: action.target?.y,
+            amount: action.amount,
+            text: action.text,
+            key: action.key,
+            durationMs: action.durationMs,
+          })),
+        ),
+      ],
+      { timeout: 10_000 },
+    )
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (/not allowed assistive access|-1719|-25211/i.test(message)) {
+      throw new Error(
+        "Accessibility permission is required for clicks, typing, and shortcuts. " +
+          "Open System Settings -> Privacy & Security -> Accessibility, enable Codeplane, then quit and reopen Codeplane Desktop for the change to take effect.",
+        { cause: error },
+      )
+    }
+    throw error
+  }
 }
 
 function linuxXdotool() {
@@ -767,13 +789,6 @@ function actionSummary(params: ParametersInput, actions: RuntimeAction[]) {
     .join("\n")
 }
 
-function contextModel(ctx: Tool.Context) {
-  const model = ctx.extra?.model
-  if (!model || typeof model !== "object") return
-  if (!("capabilities" in model)) return
-  return model as Provider.Model
-}
-
 export const ComputerTool = Tool.define(
   "computer",
   Effect.gen(function* () {
@@ -800,37 +815,6 @@ export const ComputerTool = Tool.define(
               output: "Computer use is disabled. Enable Computer use in Desktop Settings → General first.",
               title: "computer",
               metadata: {},
-            }
-          }
-
-          const agents = yield* Agent.Service
-          const agentInfo = yield* agents.get(ctx.agent)
-          const activeModel = contextModel(ctx)
-          if (activeModel) {
-            if (!activeModel.capabilities?.input?.image) {
-              return {
-                output: "Computer use is only available with vision-capable models. Switch to a model that supports image input.",
-                title: "computer",
-                metadata: {},
-              }
-            }
-          } else if (!agentInfo.model?.providerID || !agentInfo.model?.modelID) {
-            return {
-              output: "Computer use requires a model that supports vision/image input.",
-              title: "computer",
-              metadata: {},
-            }
-          } else {
-            const providerSvc = yield* Provider.Service
-            const model = yield* providerSvc
-              .getModel(agentInfo.model.providerID, agentInfo.model.modelID)
-              .pipe(Effect.catch(() => Effect.succeed(undefined)), Effect.catchDefect(() => Effect.succeed(undefined)))
-            if (!model?.capabilities?.input?.image) {
-              return {
-                output: "Computer use is only available with vision-capable models. Switch to a model that supports image input.",
-                title: "computer",
-                metadata: {},
-              }
             }
           }
 

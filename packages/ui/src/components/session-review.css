@@ -3,6 +3,7 @@
   flex-direction: column;
   gap: 0px;
   height: 100%;
+  container-type: inline-size;
 
   [data-slot="session-review-scroll"] {
     flex: 1 1 auto;
@@ -244,6 +245,72 @@
 
   [data-slot="session-review-change"][data-type="modified"] {
     color: var(--icon-diff-modified-base);
+  }
+
+  @container (max-width: 280px) {
+    [data-slot="session-review-header"] {
+      height: auto;
+      min-height: 64px;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      row-gap: 6px;
+    }
+
+    [data-slot="session-review-title"] {
+      flex: 0 0 100%;
+    }
+
+    [data-slot="session-review-actions"] {
+      width: 100%;
+      justify-content: space-between;
+      column-gap: 6px;
+    }
+
+    [data-slot="session-review-actions"] [data-component="radio-group"] {
+      flex-basis: 0;
+    }
+
+    [data-slot="session-review-expand-button"] {
+      flex: 0 0 28px;
+      width: 28px;
+      max-width: 28px;
+      justify-content: center;
+      padding-inline: 0;
+    }
+
+    [data-slot="session-review-expand-label"] {
+      display: none;
+    }
+
+    [data-slot="session-review-trigger-content"] {
+      gap: 8px;
+    }
+
+    [data-slot="session-review-file-info"] {
+      gap: 8px;
+    }
+
+    [data-slot="session-review-directory"] {
+      flex: 0 1 44px;
+      max-width: 44px;
+      min-width: 0;
+    }
+
+    [data-slot="session-review-filename"] {
+      flex: 1 1 auto;
+    }
+
+    [data-slot="session-review-view-button"] {
+      display: none;
+    }
+
+    [data-slot="session-review-trigger-actions"] {
+      gap: 8px;
+    }
+
+    [data-slot="session-review-change-group"] {
+      gap: 6px;
+    }
   }
 
   [data-slot="session-review-diff-wrapper"] {

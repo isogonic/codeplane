@@ -2,7 +2,7 @@ import { dict as en } from "./en"
 
 type Keys = keyof typeof en
 
-export const dict = {
+const translated = {
   "ui.sessionReview.title": "Sitzungsänderungen",
   "ui.sessionReview.title.lastTurn": "Änderungen der letzten Runde",
   "ui.sessionReview.diffStyle.unified": "Vereinheitlicht",
@@ -12,7 +12,6 @@ export const dict = {
   "ui.sessionReview.selection.lines": "Zeilen {{start}}-{{end}}",
   "ui.sessionReview.expandAll": "Alle erweitern",
   "ui.sessionReview.collapseAll": "Alle reduzieren",
-
   "ui.sessionReview.change.added": "Hinzugefügt",
   "ui.sessionReview.change.removed": "Entfernt",
   "ui.sessionReview.change.modified": "Geändert",
@@ -22,35 +21,27 @@ export const dict = {
   "ui.sessionReview.largeDiff.meta": "Limit: {{limit}} geänderte Zeilen. Aktuell: {{current}} geänderte Zeilen.",
   "ui.sessionReview.largeDiff.renderAnyway": "Trotzdem rendern",
   "ui.fileMedia.kind.image": "bild",
-  "ui.fileMedia.kind.audio": "audio",
   "ui.fileMedia.state.removed": "{{kind}} entfernt",
   "ui.fileMedia.state.loading": "{{kind}} wird geladen",
   "ui.fileMedia.state.error": "Fehler bei {{kind}}",
   "ui.fileMedia.state.unavailable": "{{kind}} nicht verfügbar",
   "ui.fileMedia.binary.title": "Binärdatei",
-  "ui.fileMedia.binary.description.path":
-    "{{path}} kann nicht angezeigt werden, da es sich um eine Binärdatei handelt.",
-  "ui.fileMedia.binary.description.default":
-    "Diese Datei kann nicht angezeigt werden, da es sich um eine Binärdatei handelt.",
+  "ui.fileMedia.binary.description.path": "{{path}} kann nicht angezeigt werden, da es sich um eine Binärdatei handelt.",
+  "ui.fileMedia.binary.description.default": "Diese Datei kann nicht angezeigt werden, da es sich um eine Binärdatei handelt.",
   "ui.lineComment.label.prefix": "Kommentar zu ",
-  "ui.lineComment.label.suffix": "",
   "ui.lineComment.editorLabel.prefix": "Kommentiere ",
-  "ui.lineComment.editorLabel.suffix": "",
   "ui.lineComment.placeholder": "Kommentar hinzufügen",
   "ui.lineComment.submit": "Kommentieren",
   "ui.sessionTurn.steps.show": "Schritte anzeigen",
   "ui.sessionTurn.steps.hide": "Schritte ausblenden",
   "ui.sessionTurn.summary.response": "Antwort",
   "ui.sessionTurn.diff.showMore": "Weitere Änderungen anzeigen ({{count}})",
-
   "ui.sessionTurn.retry.retrying": "erneuter Versuch",
-  "ui.sessionTurn.retry.inSeconds": "in {{seconds}}s",
   "ui.sessionTurn.retry.attempt": "Versuch #{{attempt}}",
   "ui.sessionTurn.retry.attemptLine": "{{line}} - Versuch #{{attempt}}",
   "ui.sessionTurn.retry.geminiHot": "gemini ist gerade sehr überlastet",
   "ui.sessionTurn.error.freeUsageExceeded": "Kostenloses Nutzungslimit überschritten",
   "ui.sessionTurn.error.addCredits": "Guthaben aufladen",
-
   "ui.sessionTurn.status.delegating": "Arbeit delegieren",
   "ui.sessionTurn.status.planning": "Nächste Schritte planen",
   "ui.sessionTurn.status.gatheringContext": "Erkunden",
@@ -63,7 +54,6 @@ export const dict = {
   "ui.sessionTurn.status.thinkingWithTopic": "Denken - {{topic}}",
   "ui.sessionTurn.status.gatheringThoughts": "Gedanken sammeln",
   "ui.sessionTurn.status.consideringNextSteps": "Nächste Schritte erwägen",
-
   "ui.messagePart.questions.dismissed": "Fragen verworfen",
   "ui.messagePart.compaction": "Sitzung komprimiert",
   "ui.messagePart.context.read.one": "{{count}} Lesevorgang",
@@ -77,43 +67,29 @@ export const dict = {
   "ui.messagePart.title.write": "Schreiben",
   "ui.messagePart.option.typeOwnAnswer": "Eigene Antwort eingeben",
   "ui.messagePart.review.title": "Antworten überprüfen",
-
   "ui.list.loading": "Laden",
   "ui.list.empty": "Keine Ergebnisse",
   "ui.list.clearFilter": "Filter löschen",
   "ui.list.emptyWithFilter.prefix": "Keine Ergebnisse für",
-  "ui.list.emptyWithFilter.suffix": "",
-
   "ui.messageNav.newMessage": "Neue Nachricht",
-
   "ui.textField.copyToClipboard": "In die Zwischenablage kopieren",
   "ui.textField.copyLink": "Link kopieren",
   "ui.textField.copied": "Kopiert",
-
   "ui.imagePreview.alt": "Bildvorschau",
   "ui.scrollView.ariaLabel": "scrollbarer Inhalt",
-
   "ui.tool.read": "Lesen",
   "ui.tool.loaded": "Geladen",
   "ui.tool.list": "Auflisten",
-  "ui.tool.glob": "Glob",
-  "ui.tool.grep": "Grep",
   "ui.tool.webfetch": "Webabruf",
   "ui.tool.websearch": "Websuche",
   "ui.tool.codesearch": "Codesuche",
-  "ui.tool.shell": "Shell",
-  "ui.tool.patch": "Patch",
   "ui.tool.todos": "Aufgaben",
   "ui.tool.todos.read": "Aufgaben lesen",
   "ui.tool.questions": "Fragen",
-  "ui.tool.agent": "{{type}} Agent",
-  "ui.tool.agent.default": "Agent",
-
   "ui.common.file.one": "Datei",
   "ui.common.file.other": "Dateien",
   "ui.common.question.one": "Frage",
   "ui.common.question.other": "Fragen",
-
   "ui.common.add": "Hinzufügen",
   "ui.common.back": "Zurück",
   "ui.common.cancel": "Abbrechen",
@@ -122,11 +98,9 @@ export const dict = {
   "ui.common.close": "Schließen",
   "ui.common.next": "Weiter",
   "ui.common.submit": "Absenden",
-
   "ui.permission.deny": "Verweigern",
   "ui.permission.allowAlways": "Immer erlauben",
   "ui.permission.allowOnce": "Einmal erlauben",
-
   "ui.message.expand": "Nachricht erweitern",
   "ui.message.collapse": "Nachricht reduzieren",
   "ui.message.copy": "Kopieren",
@@ -138,29 +112,28 @@ export const dict = {
   "ui.message.interrupted": "Unterbrochen",
   "ui.message.queued": "In Warteschlange",
   "ui.message.attachment.alt": "Anhang",
-
   "ui.patch.action.deleted": "Gelöscht",
   "ui.patch.action.created": "Erstellt",
   "ui.patch.action.moved": "Verschoben",
   "ui.patch.action.patched": "Gepatched",
-
   "ui.question.subtitle.answered": "{{count}} beantwortet",
   "ui.question.answer.none": "(keine Antwort)",
   "ui.question.review.notAnswered": "(nicht beantwortet)",
   "ui.question.multiHint": "Alle zutreffenden auswählen",
   "ui.question.singleHint": "Eine Antwort auswählen",
   "ui.question.custom.placeholder": "Geben Sie Ihre Antwort ein...",
-
   "ui.fileSearch.placeholder": "Suchen",
   "ui.fileSearch.previousMatch": "Vorheriges Ergebnis",
   "ui.fileSearch.nextMatch": "Nächstes Ergebnis",
   "ui.fileSearch.close": "Suche schließen",
   "ui.tool.task": "Aufgabe",
   "ui.tool.skill": "Fähigkeit",
-  "ui.tool.git": "Git",
   "ui.basicTool.called": "`{{tool}}` aufgerufen",
   "ui.toolErrorCard.failed": "Fehlgeschlagen",
   "ui.toolErrorCard.copyError": "Fehler kopieren",
-  "ui.message.duration.seconds": "{{count}}s",
-  "ui.message.duration.minutesSeconds": "{{minutes}}m {{seconds}}s",
 } satisfies Partial<Record<Keys, string>>
+
+export const dict = {
+  ...en,
+  ...translated,
+} satisfies Record<Keys, string>

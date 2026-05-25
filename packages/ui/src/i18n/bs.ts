@@ -2,7 +2,7 @@ import { dict as en } from "./en"
 
 type Keys = keyof typeof en
 
-export const dict = {
+const translated = {
   "ui.sessionReview.title": "Promjene sesije",
   "ui.sessionReview.title.lastTurn": "Promjene u posljednjem potezu",
   "ui.sessionReview.diffStyle.unified": "Ujedinjeno",
@@ -21,7 +21,6 @@ export const dict = {
   "ui.sessionReview.largeDiff.meta": "Limit: {{limit}} izmijenjenih linija. Trenutno: {{current}} izmijenjenih linija.",
   "ui.sessionReview.largeDiff.renderAnyway": "Prikaži svejedno",
   "ui.fileMedia.kind.image": "slika",
-  "ui.fileMedia.kind.audio": "audio",
   "ui.fileMedia.state.removed": "Uklonjeno: {{kind}}",
   "ui.fileMedia.state.loading": "Učitavanje: {{kind}}...",
   "ui.fileMedia.state.error": "Greška pri učitavanju: {{kind}}",
@@ -29,19 +28,14 @@ export const dict = {
   "ui.fileMedia.binary.title": "Binarni fajl",
   "ui.fileMedia.binary.description.path": "{{path}} se ne može prikazati jer je binarni fajl.",
   "ui.fileMedia.binary.description.default": "Ovaj fajl se ne može prikazati jer je binarni.",
-
   "ui.lineComment.label.prefix": "Komentar na ",
-  "ui.lineComment.label.suffix": "",
   "ui.lineComment.editorLabel.prefix": "Komentarišeš ",
-  "ui.lineComment.editorLabel.suffix": "",
   "ui.lineComment.placeholder": "Dodaj komentar",
   "ui.lineComment.submit": "Komentariši",
-
   "ui.sessionTurn.steps.show": "Prikaži korake",
   "ui.sessionTurn.steps.hide": "Sakrij korake",
   "ui.sessionTurn.summary.response": "Odgovor",
   "ui.sessionTurn.diff.showMore": "Prikaži još izmjena ({{count}})",
-
   "ui.sessionTurn.retry.retrying": "ponovni pokušaj",
   "ui.sessionTurn.retry.inSeconds": "za {{seconds}}s",
   "ui.sessionTurn.retry.attempt": "pokušaj #{{attempt}}",
@@ -49,7 +43,6 @@ export const dict = {
   "ui.sessionTurn.retry.geminiHot": "gemini je trenutno preopterećen",
   "ui.sessionTurn.error.freeUsageExceeded": "Besplatna upotreba premašena",
   "ui.sessionTurn.error.addCredits": "Dodaj kredite",
-
   "ui.sessionTurn.status.delegating": "Delegiranje posla",
   "ui.sessionTurn.status.planning": "Planiranje sljedećih koraka",
   "ui.sessionTurn.status.gatheringContext": "Istraživanje",
@@ -62,7 +55,6 @@ export const dict = {
   "ui.sessionTurn.status.thinkingWithTopic": "Razmišljanje - {{topic}}",
   "ui.sessionTurn.status.gatheringThoughts": "Sređivanje misli",
   "ui.sessionTurn.status.consideringNextSteps": "Razmatranje sljedećih koraka",
-
   "ui.messagePart.questions.dismissed": "Pitanja odbačena",
   "ui.messagePart.compaction": "Sesija sažeta",
   "ui.messagePart.context.read.one": "{{count}} čitanje",
@@ -76,43 +68,31 @@ export const dict = {
   "ui.messagePart.title.write": "Napiši",
   "ui.messagePart.option.typeOwnAnswer": "Unesi svoj odgovor",
   "ui.messagePart.review.title": "Pregledaj svoje odgovore",
-
   "ui.list.loading": "Učitavanje",
   "ui.list.empty": "Nema rezultata",
   "ui.list.clearFilter": "Očisti filter",
   "ui.list.emptyWithFilter.prefix": "Nema rezultata za",
-  "ui.list.emptyWithFilter.suffix": "",
-
   "ui.messageNav.newMessage": "Nova poruka",
-
   "ui.textField.copyToClipboard": "Kopiraj u međuspremnik",
   "ui.textField.copyLink": "Kopiraj link",
   "ui.textField.copied": "Kopirano",
-
   "ui.imagePreview.alt": "Pregled slike",
   "ui.scrollView.ariaLabel": "sadržaj za pomjeranje",
-
   "ui.tool.read": "Čitanje",
   "ui.tool.loaded": "Učitano",
   "ui.tool.list": "Listanje",
-  "ui.tool.glob": "Glob",
-  "ui.tool.grep": "Grep",
   "ui.tool.webfetch": "Web preuzimanje",
   "ui.tool.websearch": "Pretraga weba",
   "ui.tool.codesearch": "Pretraga koda",
-  "ui.tool.shell": "Shell",
-  "ui.tool.patch": "Patch",
   "ui.tool.todos": "Lista zadataka",
   "ui.tool.todos.read": "Čitanje liste zadataka",
   "ui.tool.questions": "Pitanja",
   "ui.tool.agent": "{{type}} agent",
   "ui.tool.agent.default": "agent",
-
   "ui.common.file.one": "datoteka",
   "ui.common.file.other": "datoteke",
   "ui.common.question.one": "pitanje",
   "ui.common.question.other": "pitanja",
-
   "ui.common.add": "Dodaj",
   "ui.common.back": "Nazad",
   "ui.common.cancel": "Otkaži",
@@ -121,11 +101,9 @@ export const dict = {
   "ui.common.close": "Zatvori",
   "ui.common.next": "Dalje",
   "ui.common.submit": "Pošalji",
-
   "ui.permission.deny": "Zabrani",
   "ui.permission.allowAlways": "Uvijek dozvoli",
   "ui.permission.allowOnce": "Dozvoli jednom",
-
   "ui.message.expand": "Proširi poruku",
   "ui.message.collapse": "Sažmi poruku",
   "ui.message.copy": "Kopiraj",
@@ -137,19 +115,16 @@ export const dict = {
   "ui.message.interrupted": "Prekinuto",
   "ui.message.queued": "U redu",
   "ui.message.attachment.alt": "prilog",
-
   "ui.patch.action.deleted": "Obrisano",
   "ui.patch.action.created": "Kreirano",
   "ui.patch.action.moved": "Premješteno",
   "ui.patch.action.patched": "Primijenjeno",
-
   "ui.question.subtitle.answered": "{{count}} odgovoreno",
   "ui.question.answer.none": "(nema odgovora)",
   "ui.question.review.notAnswered": "(nije odgovoreno)",
   "ui.question.multiHint": "Odaberi sve što važi",
   "ui.question.singleHint": "Odaberi jedan odgovor",
   "ui.question.custom.placeholder": "Unesi svoj odgovor...",
-
   "ui.fileSearch.placeholder": "Pronađi",
   "ui.fileSearch.previousMatch": "Prethodno",
   "ui.fileSearch.nextMatch": "Sljedeće",
@@ -159,6 +134,9 @@ export const dict = {
   "ui.basicTool.called": "Pozvan `{{tool}}`",
   "ui.toolErrorCard.failed": "Neuspješno",
   "ui.toolErrorCard.copyError": "Kopiraj grešku",
-  "ui.message.duration.seconds": "{{count}}s",
-  "ui.message.duration.minutesSeconds": "{{minutes}}m {{seconds}}s",
 } satisfies Partial<Record<Keys, string>>
+
+export const dict = {
+  ...en,
+  ...translated,
+} satisfies Record<Keys, string>

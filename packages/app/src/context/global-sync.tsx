@@ -1,6 +1,8 @@
 import type {
   Config,
   CodeplaneClient,
+  LspStatus,
+  McpStatus,
   Path,
   Project,
   ProviderAuthResponse,
@@ -45,6 +47,12 @@ type GlobalStore = {
   provider: ProviderListResponse
   provider_auth: ProviderAuthResponse
   config: Config
+  mcp_ready: boolean
+  mcp: {
+    [name: string]: McpStatus
+  }
+  lsp_ready: boolean
+  lsp: LspStatus[]
   reload: undefined | "pending" | "complete"
 }
 
@@ -79,6 +87,10 @@ function createGlobalSync() {
     provider: { all: [], catalog: [], connected: [], default: {} },
     provider_auth: {},
     config: {},
+    mcp_ready: false,
+    mcp: {},
+    lsp_ready: false,
+    lsp: [],
     reload: undefined,
   })
   const queryClient = useQueryClient()

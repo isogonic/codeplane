@@ -2,7 +2,7 @@ import { dict as en } from "./en"
 
 type Keys = keyof typeof en
 
-export const dict = {
+const translated = {
   "ui.sessionReview.title": "工作階段變更",
   "ui.sessionReview.title.lastTurn": "上一輪變更",
   "ui.sessionReview.diffStyle.unified": "整合",
@@ -29,19 +29,14 @@ export const dict = {
   "ui.fileMedia.binary.title": "二進位檔案",
   "ui.fileMedia.binary.description.path": "無法顯示 {{path}}，因為它是二進位檔案。",
   "ui.fileMedia.binary.description.default": "無法顯示此檔案，因為它是二進位檔案。",
-
   "ui.lineComment.label.prefix": "評論 ",
-  "ui.lineComment.label.suffix": "",
   "ui.lineComment.editorLabel.prefix": "正在評論 ",
-  "ui.lineComment.editorLabel.suffix": "",
   "ui.lineComment.placeholder": "新增評論",
   "ui.lineComment.submit": "評論",
-
   "ui.sessionTurn.steps.show": "顯示步驟",
   "ui.sessionTurn.steps.hide": "隱藏步驟",
   "ui.sessionTurn.summary.response": "回覆",
   "ui.sessionTurn.diff.showMore": "顯示更多變更 ({{count}})",
-
   "ui.sessionTurn.retry.retrying": "重試中",
   "ui.sessionTurn.retry.inSeconds": "{{seconds}} 秒後",
   "ui.sessionTurn.retry.attempt": "第 {{attempt}} 次",
@@ -49,7 +44,6 @@ export const dict = {
   "ui.sessionTurn.retry.geminiHot": "gemini 目前過載",
   "ui.sessionTurn.error.freeUsageExceeded": "免費使用額度已用完",
   "ui.sessionTurn.error.addCredits": "新增點數",
-
   "ui.sessionTurn.status.delegating": "正在委派工作",
   "ui.sessionTurn.status.planning": "正在規劃下一步",
   "ui.sessionTurn.status.gatheringContext": "正在探索",
@@ -62,7 +56,6 @@ export const dict = {
   "ui.sessionTurn.status.thinkingWithTopic": "思考 - {{topic}}",
   "ui.sessionTurn.status.gatheringThoughts": "正在整理思緒",
   "ui.sessionTurn.status.consideringNextSteps": "正在考慮下一步",
-
   "ui.messagePart.questions.dismissed": "問題已略過",
   "ui.messagePart.compaction": "工作階段已壓縮",
   "ui.messagePart.context.read.one": "{{count}} 次讀取",
@@ -76,43 +69,32 @@ export const dict = {
   "ui.messagePart.title.write": "寫入",
   "ui.messagePart.option.typeOwnAnswer": "輸入自己的答案",
   "ui.messagePart.review.title": "檢查你的答案",
-
   "ui.list.loading": "載入中",
   "ui.list.empty": "無結果",
   "ui.list.clearFilter": "清除篩選",
   "ui.list.emptyWithFilter.prefix": "沒有關於",
   "ui.list.emptyWithFilter.suffix": "的結果",
-
   "ui.messageNav.newMessage": "新訊息",
-
   "ui.textField.copyToClipboard": "複製到剪貼簿",
   "ui.textField.copyLink": "複製連結",
   "ui.textField.copied": "已複製",
-
   "ui.imagePreview.alt": "圖片預覽",
   "ui.scrollView.ariaLabel": "可捲動內容",
-
   "ui.tool.read": "讀取",
   "ui.tool.loaded": "已載入",
   "ui.tool.list": "清單",
-  "ui.tool.glob": "Glob",
-  "ui.tool.grep": "Grep",
-  "ui.tool.webfetch": "Webfetch",
   "ui.tool.websearch": "網頁搜尋",
   "ui.tool.codesearch": "程式碼搜尋",
-  "ui.tool.shell": "Shell",
   "ui.tool.patch": "修補",
   "ui.tool.todos": "待辦",
   "ui.tool.todos.read": "讀取待辦",
   "ui.tool.questions": "問題",
   "ui.tool.agent": "{{type}} 代理程式",
   "ui.tool.agent.default": "代理程式",
-
   "ui.common.file.one": "個檔案",
   "ui.common.file.other": "個檔案",
   "ui.common.question.one": "個問題",
   "ui.common.question.other": "個問題",
-
   "ui.common.add": "新增",
   "ui.common.back": "返回",
   "ui.common.cancel": "取消",
@@ -121,11 +103,9 @@ export const dict = {
   "ui.common.close": "關閉",
   "ui.common.next": "下一步",
   "ui.common.submit": "提交",
-
   "ui.permission.deny": "拒絕",
   "ui.permission.allowAlways": "永遠允許",
   "ui.permission.allowOnce": "允許一次",
-
   "ui.message.expand": "展開訊息",
   "ui.message.collapse": "收合訊息",
   "ui.message.copy": "複製",
@@ -137,19 +117,16 @@ export const dict = {
   "ui.message.interrupted": "已中斷",
   "ui.message.queued": "排隊中",
   "ui.message.attachment.alt": "附件",
-
   "ui.patch.action.deleted": "已刪除",
   "ui.patch.action.created": "已建立",
   "ui.patch.action.moved": "已移動",
   "ui.patch.action.patched": "已套用修補",
-
   "ui.question.subtitle.answered": "{{count}} 已回答",
   "ui.question.answer.none": "(無答案)",
   "ui.question.review.notAnswered": "(未回答)",
   "ui.question.multiHint": "可多選",
   "ui.question.singleHint": "選擇一個答案",
   "ui.question.custom.placeholder": "輸入你的答案...",
-
   "ui.fileSearch.placeholder": "搜尋",
   "ui.fileSearch.previousMatch": "上一個",
   "ui.fileSearch.nextMatch": "下一個",
@@ -162,3 +139,8 @@ export const dict = {
   "ui.message.duration.seconds": "{{count}}秒",
   "ui.message.duration.minutesSeconds": "{{minutes}}分 {{seconds}}秒",
 } satisfies Partial<Record<Keys, string>>
+
+export const dict = {
+  ...en,
+  ...translated,
+} satisfies Record<Keys, string>

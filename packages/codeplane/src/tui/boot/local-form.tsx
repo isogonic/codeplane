@@ -8,7 +8,8 @@ import type { LocalInstallProgress, LocalStatus, LocalTarget, SavedInstance } fr
 import { localInstanceUrl } from "@codeplane-ai/shared/instance"
 import { fetchCodeplaneLatestVersion } from "@codeplane-ai/shared/local-runtime"
 import type { InstanceService } from "../instance-service"
-import { Banner, Header, palette, ProgressBar, SectionHeading, StatusBar, TextField } from "./primitives"
+import { tuiT } from "@/tui/i18n"
+import { Banner, Header, ProgressBar, SectionHeading, StatusBar, TextField, useBootPalette } from "./primitives"
 
 export type LocalFormResult = { instance: SavedInstance } | { cancel: true }
 
@@ -17,9 +18,11 @@ type Field = "label" | "version"
 export function LocalInstanceForm(props: {
   service: InstanceService
   takenIds: Set<string>
+  existing?: SavedInstance
   onDone: (result: LocalFormResult) => void
 }) {
-  const [label, setLabel] = createSignal("Local Codeplane")
+  const palette = useBootPalette()
+  const [label, setLabel] = createSignal(props.existing?.label ?? "Local Codeplane")
   const [version, setVersion] = createSignal("")
   const [target, setTarget] = createSignal<LocalTarget | undefined>(undefined)
   const [status, setStatus] = createSignal<LocalStatus | undefined>(undefined)
@@ -40,7 +43,7 @@ export function LocalInstanceForm(props: {
         fetchCodeplaneLatestVersion().catch(() => undefined),
       ])
       setTarget(t)
-      const initial = latest ?? t.defaultVersion ?? ""
+      const initial = props.existing?.local?.binaryVersion || latest || t.defaultVersion || ""
       setVersion(initial)
       if (initial) {
         const s = await props.service.localStatus(initial)
@@ -77,23 +80,26 @@ export function LocalInstanceForm(props: {
   const save = async () => {
     if (busy()) return
     if (!label().trim()) {
-      setError("Label is required")
+      setError(tuiT("boot.remote.labelRequired"))
       setFocused("label")
       return
     }
     setSaving(true)
     try {
-      // Allocate a unique id from the label.
-      const slug = (label().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "local").slice(0, 32)
-      let id = slug
-      let n = 1
-      while (props.takenIds.has(id)) {
-        n += 1
-        id = `${slug}-${n}`
+      let id = props.existing?.id
+      if (!id) {
+        const slug = (label().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "local").slice(0, 32)
+        id = slug
+        let n = 1
+        while (props.takenIds.has(id)) {
+          n += 1
+          id = `${slug}-${n}`
+        }
       }
       const created: SavedInstance = {
+        ...props.existing,
         id,
-        url: localInstanceUrl(id),
+        url: props.existing?.url ?? localInstanceUrl(id),
         label: label().trim(),
         local: { binaryVersion: version() || "" },
       }
@@ -171,32 +177,37 @@ export function LocalInstanceForm(props: {
 
   const installedHint = createMemo(() => {
     const s = status()
-    if (!version()) return "(uses saved preferred version)"
-    if (!s) return "checking…"
-    if (s.installed) return `✓ installed at ${s.binaryPath ? path.basename(s.binaryPath) : "known path"}`
-    return "not installed — Ctrl+I to install now or Ctrl+S to save & install on first use"
+    if (!version()) return tuiT("boot.local.usesSavedPreferredVersion")
+    if (!s) return tuiT("boot.local.checking")
+    if (s.installed) return tuiT("boot.local.installedAt", { path: s.binaryPath ? path.basename(s.binaryPath) : tuiT("boot.local.knownPath") })
+    return tuiT("boot.local.notInstalledHint")
   })
 
   return (
-    <box flexDirection="column" flexGrow={1} backgroundColor={palette.bg}>
-      <Header instance="setup" cwd="new local instance" status="form" statusColor={palette.info} />
+    <box flexDirection="column" flexGrow={1} backgroundColor={palette().bg}>
+      <Header
+        instance="setup"
+        cwd={props.existing ? `edit ${props.existing.id}` : "new local instance"}
+        status={props.existing ? "Edit" : "Form"}
+        statusColor={palette().info}
+      />
 
-      <SectionHeading>NEW LOCAL INSTANCE</SectionHeading>
+      <SectionHeading>{props.existing ? tuiT("boot.local.heading.edit") : tuiT("boot.local.heading")}</SectionHeading>
 
       <box marginTop={1}>
         <TextField
-          label="Label"
+          label={tuiT("boot.local.label")}
           value={label()}
           focused={focused() === "label"}
-          placeholder="Local Codeplane"
-          hint="shown in the picker"
-          validate={() => ({ ok: !!label().trim(), message: label().trim() ? undefined : "required" })}
+          placeholder={tuiT("boot.local.labelPlaceholder")}
+          hint={tuiT("boot.local.labelHint")}
+          validate={() => ({ ok: !!label().trim(), message: label().trim() ? undefined : tuiT("common.required") })}
         />
       </box>
 
       <box marginTop={1}>
         <TextField
-          label="Binary version"
+          label={tuiT("boot.local.binaryVersion")}
           value={version()}
           focused={focused() === "version"}
           placeholder={target()?.defaultVersion ?? "latest"}
@@ -206,8 +217,13 @@ export function LocalInstanceForm(props: {
 
       <Show when={target()}>
         <box marginTop={1} paddingX={2}>
-          <text fg={palette.fgDim}>
-            target: {target()!.os}/{target()!.arch}  ·  binary {target()!.binaryName}  ·  {target()!.archiveName}
+          <text fg={palette().fgDim}>
+            {tuiT("boot.local.target", {
+              os: target()!.os,
+              arch: target()!.arch,
+              binary: target()!.binaryName,
+              archive: target()!.archiveName,
+            })}
           </text>
         </box>
       </Show>
@@ -215,10 +231,10 @@ export function LocalInstanceForm(props: {
       <Show when={installing()}>
         <box marginTop={1} flexDirection="column">
           <box paddingX={2}>
-            <text fg={palette.accent}>installing… </text>
-            <text fg={palette.fgMuted}>{installing()!.phase}</text>
+            <text fg={palette().accent}>{tuiT("boot.local.installing")} </text>
+            <text fg={palette().fgMuted}>{installing()!.phase}</text>
             <Show when={installing()!.binaryVersion}>
-              <text fg={palette.fgDim}>  v{installing()!.binaryVersion}</text>
+              <text fg={palette().fgDim}>  v{installing()!.binaryVersion}</text>
             </Show>
           </box>
           <box marginTop={0}>
@@ -230,14 +246,14 @@ export function LocalInstanceForm(props: {
       <Show when={!installing() && status() && !status()!.installed && version()}>
         <box marginTop={1}>
           <Banner variant="warn">
-            Binary not yet installed. Press Ctrl+I to install now, or Ctrl+S to save (it will install on first use).
+            {tuiT("boot.local.notInstalledBanner")}
           </Banner>
         </box>
       </Show>
 
       <Show when={!installing() && status()?.installed}>
         <box marginTop={1}>
-          <Banner variant="success">Binary installed and ready.</Banner>
+          <Banner variant="success">{tuiT("boot.local.installedBanner")}</Banner>
         </box>
       </Show>
 
@@ -250,11 +266,11 @@ export function LocalInstanceForm(props: {
       <box flexGrow={1} />
       <StatusBar
         hints={[
-          { keys: "ctrl+s", label: "save" },
-          { keys: "ctrl+i", label: "install now" },
-          { keys: "tab", label: "next field" },
-          { keys: "esc", label: "cancel" },
-          { keys: "ctrl+c", label: "quit" },
+          { keys: "ctrl+s", label: tuiT("common.save") },
+          { keys: "ctrl+i", label: tuiT("common.installNow") },
+          { keys: "tab", label: tuiT("common.nextField") },
+          { keys: "esc", label: tuiT("common.cancel") },
+          { keys: "ctrl+c", label: tuiT("common.quit") },
         ]}
       />
     </box>

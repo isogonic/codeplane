@@ -12,6 +12,7 @@ import {
   dialog,
   systemPreferences,
   type MessageBoxOptions,
+  type NativeImage,
   type Session,
   type WebContents,
 } from "electron"
@@ -23,6 +24,11 @@ import {
   writePreferredLocalVersion,
 } from "@codeplane-ai/shared/local-runtime"
 import { createInstanceStore, type State as InstanceStoreState } from "@codeplane-ai/shared/instance-store"
+import {
+  clearInstanceCache as clearRuntimeInstanceCache,
+  getInstanceCacheInfo as getRuntimeInstanceCacheInfo,
+  type InstanceCacheInfo,
+} from "@codeplane-ai/shared/instance-cache"
 import { createServerVersionWatcher, type ServerVersionWatcher } from "@codeplane-ai/shared/server-version-watcher"
 import { createWriteStream, existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs"
 import { execFile, spawn } from "node:child_process"
@@ -40,6 +46,15 @@ import {
   type DesktopHostInstance,
   type DesktopUIPrepareProgress,
 } from "./ui-host"
+import {
+  showDesktopNotification as showDesktopNotificationBridge,
+  type DesktopNotificationPayload,
+} from "./notification-bridge"
+import {
+  hasWindowPosition,
+  normalizeWindowBoundsForRestore,
+  type DesktopWindowBounds,
+} from "./window-bounds"
 import { createLocalInstanceManager, type LocalInstanceProgress } from "./local-instance"
 import {
   type DesktopComputerCapture,
@@ -168,13 +183,7 @@ type Schema = {
   instances?: SavedInstance[]
   lastInstanceId?: string
   persist?: DesktopPersist
-  windowBounds?: { x?: number; y?: number; width: number; height: number; maximized?: boolean }
-}
-
-type DesktopNotificationPayload = {
-  title: string
-  description?: string
-  href?: string
+  windowBounds?: DesktopWindowBounds
 }
 
 type GitHubRelease = {
@@ -345,6 +354,73 @@ const localManager = createLocalInstanceManager({
   // an npm install.
   desktopManaged: true,
 })
+
+type DesktopCombinedCacheArea = InstanceCacheInfo["areas"][number] | {
+  key: "desktop-ui"
+  label: string
+  path: string
+  bytes: number
+}
+
+type DesktopCombinedCacheInfo = Omit<InstanceCacheInfo, "areas"> & {
+  areas: DesktopCombinedCacheArea[]
+  desktopUI: {
+    bytes: number
+    exists: boolean
+    versions: string[]
+  }
+}
+
+function combineCacheInfo(runtime: InstanceCacheInfo, desktopUI: Awaited<ReturnType<typeof uiHost.cacheInfo>>): DesktopCombinedCacheInfo {
+  const desktopArea =
+    desktopUI.exists && desktopUI.bytes > 0
+      ? [
+          {
+            key: "desktop-ui" as const,
+            label: "Desktop UI cache",
+            path: path.join(app.getPath("userData"), "ui-cache"),
+            bytes: desktopUI.bytes,
+          },
+        ]
+      : []
+  const areas = [...runtime.areas, ...desktopArea]
+  return {
+    areas,
+    bytes: areas.reduce((sum, area) => sum + area.bytes, 0),
+    desktopUI: {
+      bytes: desktopUI.bytes,
+      exists: desktopUI.exists,
+      versions: desktopUI.versions,
+    },
+    exists: areas.length > 0,
+  }
+}
+
+async function getDesktopInstanceCacheInfo(instance: SavedInstance): Promise<DesktopCombinedCacheInfo> {
+  const [runtime, desktopUI] = await Promise.all([
+    getRuntimeInstanceCacheInfo(instance.id),
+    uiHost.cacheInfo(instance),
+  ])
+  return combineCacheInfo(runtime, desktopUI)
+}
+
+async function clearDesktopInstanceCache(instance: SavedInstance): Promise<DesktopCombinedCacheInfo> {
+  const before = await getDesktopInstanceCacheInfo(instance)
+  if (instance.local) await localManager.stop(instance.id).catch((error) => logger.log("main", "instances.cache.stop-error", { error, id: instance.id }))
+  const ses = ensureSession(instance)
+  await Promise.all([
+    clearRuntimeInstanceCache(instance.id).catch((error) => {
+      logger.log("main", "instances.cache.runtime-error", { error, id: instance.id })
+      throw error
+    }),
+    uiHost.clearCache(instance).catch((error) => {
+      logger.log("main", "instances.cache.ui-error", { error, id: instance.id })
+      throw error
+    }),
+    ses.clearCache().catch((error) => logger.log("main", "instances.cache.browser-error", { error, id: instance.id })),
+  ])
+  return before
+}
 
 app.setName(APP_NAME)
 app.setAppUserModelId(APP_ID)
@@ -567,6 +643,10 @@ function activeWindow() {
   return mainWindow
 }
 
+function currentWindowBounds(window: BrowserWindow): DesktopWindowBounds {
+  return { ...window.getBounds(), maximized: window.isMaximized() }
+}
+
 function focusWindow(window?: BrowserWindow) {
   if (!window || window.isDestroyed()) return
   if (window.isMinimized()) window.restore()
@@ -606,79 +686,20 @@ function desktopNotificationIcon() {
 }
 
 async function showDesktopNotification(sender: WebContents, payload: DesktopNotificationPayload) {
-  const title = payload.title.trim()
-  if (!title) return false
-  if (process.env.CODEPLANE_DESKTOP_TEST_NOTIFICATIONS === "1") {
-    logger.log("main", "notifications.notify.mock", {
-      href: payload.href,
-      title,
-    })
-    return true
-  }
-  const supported = Notification.isSupported()
-  logger.log("main", "notifications.notify.request", {
-    href: payload.href,
-    supported,
-    title,
+  const result = await showDesktopNotificationBridge<NativeImage>(payload, {
+    create: (options) =>
+      new Notification({
+        title: options.title,
+        body: options.body,
+        icon: options.icon,
+      }),
+    icon: desktopNotificationIcon,
+    isSupported: () => Notification.isSupported(),
+    log: (event, data) => logger.log("main", event, data),
+    routeClick: (href) => routeNotificationClick(sender, href),
+    testMode: process.env.CODEPLANE_DESKTOP_TEST_NOTIFICATIONS === "1",
   })
-  if (!supported) return false
-  // macOS requires a non-empty body for the notification banner to render
-  // reliably. An empty body is sometimes coalesced away by Notification
-  // Center even when permission is granted, leaving no visible alert.
-  const body = payload.description?.trim() || title
-  const notification = new Notification({
-    title,
-    body,
-    icon: desktopNotificationIcon(),
-  })
-  notification.on("click", () => {
-    logger.log("main", "notifications.notify.click", {
-      href: payload.href,
-      title,
-    })
-    void routeNotificationClick(sender, payload.href)
-  })
-  notification.on("close", () => {
-    logger.log("main", "notifications.notify.close", {
-      href: payload.href,
-      title,
-    })
-  })
-  // `notification.show()` is fire-and-forget, but the "show" event only
-  // fires when the OS actually surfaces the banner. If permission is
-  // denied, Focus is on, or the app isn't registered with Notification
-  // Center, none of those events fire — silently dropping the alert.
-  // Wait for the show callback (or timeout) so the renderer can surface
-  // a meaningful "notifications unavailable" toast instead of falsely
-  // reporting success.
-  return await new Promise<boolean>((resolve) => {
-    let settled = false
-    const settle = (shown: boolean, reason: string) => {
-      if (settled) return
-      settled = true
-      logger.log("main", "notifications.notify.settle", {
-        href: payload.href,
-        reason,
-        shown,
-        title,
-      })
-      resolve(shown)
-    }
-    notification.once("show", () => settle(true, "show"))
-    notification.once("failed" as Parameters<typeof notification.on>[0], () => settle(false, "failed"))
-    try {
-      notification.show()
-    } catch (error) {
-      logger.log("main", "notifications.notify.throw", {
-        error: error instanceof Error ? error.message : String(error),
-        href: payload.href,
-        title,
-      })
-      settle(false, "throw")
-      return
-    }
-    setTimeout(() => settle(false, "timeout"), 1500)
-  })
+  return result.shown
 }
 
 function showMessageBox(options: MessageBoxOptions) {
@@ -1411,9 +1432,8 @@ function attachWindowHandlers(window: BrowserWindow) {
     void shell.openExternal(urlString)
   })
 
-  // Restore window bounds.
-  const bounds = store.get("windowBounds")
-  if (bounds?.maximized) window.maximize()
+  // Persist raw Electron bounds. Do not clamp to a display; macOS secondary
+  // monitors can legitimately use negative or far-out coordinates.
   window.on("resize", saveBounds)
   window.on("move", saveBounds)
   window.on("maximize", saveBounds)
@@ -1441,8 +1461,7 @@ function attachWindowHandlers(window: BrowserWindow) {
   function saveBounds() {
     if (!window || window.isDestroyed()) return
     if (window.isFullScreen()) return
-    const next = window.getBounds()
-    store.set("windowBounds", { ...next, maximized: window.isMaximized() })
+    store.set("windowBounds", currentWindowBounds(window))
   }
 }
 
@@ -1551,14 +1570,13 @@ function buildMenu(reload: () => void, openSetup: () => void, openInstanceSwitch
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
-function createWindowOptions(ses?: Session) {
-  const bounds = store.get("windowBounds")
+function createWindowOptions(ses?: Session, savedBounds?: DesktopWindowBounds) {
+  const bounds = normalizeWindowBoundsForRestore(savedBounds ?? store.get("windowBounds"))
   const isMac = process.platform === "darwin"
   return {
-    x: bounds?.x,
-    y: bounds?.y,
-    width: bounds?.width ?? 1280,
-    height: bounds?.height ?? 800,
+    ...(hasWindowPosition(bounds) ? { x: bounds.x, y: bounds.y } : {}),
+    width: bounds.width,
+    height: bounds.height,
     minWidth: 800,
     minHeight: 480,
     // On macOS we let the native NSVisualEffectView material show through —
@@ -1594,12 +1612,13 @@ function createWindowOptions(ses?: Session) {
   } satisfies ConstructorParameters<typeof BrowserWindow>[0]
 }
 
-function createWindow(editId?: string) {
+function createWindow(editId?: string, savedBounds = store.get("windowBounds")) {
   currentInstanceID = undefined
-  const window = new BrowserWindow(createWindowOptions())
+  const window = new BrowserWindow(createWindowOptions(undefined, savedBounds))
   attachWindowDebugLogging(window, "setup")
-  window.once("ready-to-show", () => window.show())
+  window.once("ready-to-show", () => focusWindow(window))
   attachWindowHandlers(window)
+  if (savedBounds?.maximized) window.maximize()
   showSetup(window, editId ? { editId } : undefined)
   mainWindow = window
   return window
@@ -1918,17 +1937,13 @@ async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebConte
     // this hides the fact that we recreate the window for the per-instance
     // session — the user perceives a single seamless transition.
     const previous = mainWindow
-    const previousBounds = previous && !previous.isDestroyed() ? previous.getBounds() : undefined
+    const previousBounds = previous && !previous.isDestroyed() ? currentWindowBounds(previous) : undefined
     const previousFullscreen = previous && !previous.isDestroyed() ? previous.isFullScreen() : false
-    const previousMaximized = previous && !previous.isDestroyed() ? previous.isMaximized() : false
+    const storedBounds = store.get("windowBounds")
+    const restoreBounds = previousBounds ?? storedBounds
+    const restoreMaximized = previousBounds ? previousBounds.maximized : storedBounds?.maximized
 
-    const winOpts = createWindowOptions(ses)
-    if (previousBounds) {
-      winOpts.x = previousBounds.x
-      winOpts.y = previousBounds.y
-      winOpts.width = previousBounds.width
-      winOpts.height = previousBounds.height
-    }
+    const winOpts = createWindowOptions(ses, restoreBounds)
     const window = new BrowserWindow(winOpts)
     attachWindowDebugLogging(window, "instance")
     // We deliberately do NOT auto-show on ready-to-show. The setup window
@@ -1936,7 +1951,7 @@ async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebConte
     // is fully loaded, then we swap atomically below.
     attachWindowHandlers(window)
     if (previousFullscreen) window.setFullScreen(true)
-    else if (previousMaximized) window.maximize()
+    else if (restoreMaximized) window.maximize()
     mainWindow = window
     currentInstanceID = instance.id
     await setLastInstanceID(instance.id)
@@ -1966,8 +1981,7 @@ async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebConte
     // so the OS doesn't draw a frame before our crossfade begins.
     if (!window.isDestroyed()) {
       window.setOpacity(0)
-      window.show()
-      window.focus()
+      focusWindow(window)
       const fadeMs = 220
       const fadeStart = Date.now()
       const fadeStep = () => {
@@ -2116,8 +2130,23 @@ function invalidateMacOSPermissionCache() {
 function showSetupWindow(editId?: string) {
   logger.log("main", "setup.open-window", { editId })
   const previous = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined
-  const next = createWindow(editId)
+  const next = createWindow(editId, previous ? currentWindowBounds(previous) : undefined)
   if (previous && previous !== next && !previous.isDestroyed()) previous.close()
+}
+
+async function openLastInstanceOrSetup() {
+  const id = lastInstanceID()
+  const instance = id ? getInstance(id) : undefined
+  if (!instance) {
+    createWindow()
+    return
+  }
+  logger.log("main", "startup.open-last", instanceSummary(instance))
+  const opened = await openInstance(instance).catch((error) => {
+    logger.log("main", "startup.open-last.error", { error, ...instanceSummary(instance) })
+    return false
+  })
+  if (!opened) createWindow()
 }
 
 function setupIpc() {
@@ -2241,6 +2270,19 @@ function setupIpc() {
         .catch((error) => logger.log("main", "instances.remove.data-error", { error, id }))
     }
     return next
+  })
+  ipcMain.handle("instances:cache-info", async (_event, id: string) => {
+    logger.log("main", "instances.cache-info", { id })
+    const target = getInstance(id)
+    if (!target) return { exists: false, bytes: 0, areas: [], desktopUI: { exists: false, bytes: 0, versions: [] } }
+    return getDesktopInstanceCacheInfo(target)
+  })
+  ipcMain.handle("instances:clear-cache", async (_event, id: string) => {
+    logger.log("main", "instances.clear-cache", { id })
+    const target = getInstance(id)
+    if (!target) return { ok: false as const, error: "Instance not found." }
+    const cleared = await clearDesktopInstanceCache(target)
+    return { ok: true as const, cleared }
   })
   ipcMain.handle("instances:set-default-key", async (_event, key: string | null) => {
     logger.log("main", "instances.set-default-key", { key })
@@ -2707,10 +2749,7 @@ if (!gotLock) {
 } else {
   app.on("second-instance", () => {
     logger.log("main", "single-instance-lock.second-instance")
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.focus()
-    }
+    focusWindow(mainWindow)
   })
 
   // mTLS / client cert prompt — defer to the OS picker rather than baking a
@@ -2746,7 +2785,7 @@ if (!gotLock) {
       setupIpc()
       setupAutoUpdater()
       void uiHost.cleanup()
-      createWindow()
+      await openLastInstanceOrSetup()
 
       buildMenu(
         () => mainWindow?.webContents.reload(),
@@ -2757,6 +2796,7 @@ if (!gotLock) {
       app.on("activate", () => {
         logger.log("main", "activate")
         if (BrowserWindow.getAllWindows().length === 0) createWindow()
+        else focusWindow(mainWindow)
       })
     })
     // Without this, a rejection from loadInstanceState/setupIpc/setupAutoUpdater

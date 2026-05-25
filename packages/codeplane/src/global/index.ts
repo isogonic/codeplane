@@ -4,6 +4,7 @@ import os from "os"
 import path from "path"
 import { Filesystem } from "../util"
 import { Flock } from "@codeplane-ai/shared/util/flock"
+import { HomeDocs } from "./home-docs"
 
 const resolved = CodeplaneHome.paths()
 
@@ -51,5 +52,7 @@ if (version !== CACHE_VERSION) {
   } catch {}
   await Filesystem.write(path.join(Path.cache, "version"), CACHE_VERSION)
 }
+
+await HomeDocs.ensure(Path)
 
 export * as Global from "."

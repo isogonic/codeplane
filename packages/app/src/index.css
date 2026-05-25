@@ -19,14 +19,11 @@
 
   .titlebar-shell {
     background: var(--background-base);
+    box-shadow: inset 0 -1px 0 0 var(--border-weak-base);
   }
 
   .titlebar-shell[data-platform-desktop="true"] {
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--background-base) 96%, var(--background-strong)) 0%,
-      var(--background-base) 100%
-    );
+    background: var(--background-base);
     box-shadow: inset 0 -1px 0 0 var(--border-weak-base);
   }
 
@@ -60,17 +57,17 @@
   }
 
   .titlebar-cluster {
-    background: color-mix(in srgb, var(--surface-panel) 60%, transparent);
-    border: 1px solid var(--border-weak-base);
-    box-shadow: 0 1px 0 0 color-mix(in srgb, var(--background-base) 60%, transparent);
+    background: transparent;
+    border: 1px solid transparent;
+    box-shadow: none;
     transition:
       background-color 140ms ease-out,
       border-color 140ms ease-out;
   }
 
   .titlebar-cluster:hover {
-    background: var(--surface-panel);
-    border-color: var(--border-base);
+    background: var(--surface-base);
+    border-color: var(--border-weak-base);
   }
 
   .titlebar-cluster [data-component="button"].titlebar-icon {
@@ -152,7 +149,7 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    letter-spacing: -0.005em;
+    letter-spacing: 0;
   }
 
   /* Translucent overlay scrollbars — the native macOS "shrink to a
@@ -218,6 +215,53 @@
     clip-path: inset(0 100% 0 0 round 999px);
     animation: session-progress-whip var(--session-progress-ms, 1800ms) infinite;
     will-change: clip-path;
+  }
+
+  [data-slot="file-tabs-open-action"] {
+    position: sticky;
+    right: 0;
+    z-index: 20;
+    display: flex;
+    flex: 0 0 3rem;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 0 0.75rem 0 0.5rem;
+    border-left: 1px solid var(--border-weaker-base);
+    background: var(--background-stronger);
+  }
+
+  [data-slot="file-tabs-open-action"]::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -1rem;
+    width: 1rem;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, var(--background-stronger));
+  }
+
+  [data-slot="file-tabs-open-action"] [data-component="tooltip-trigger"] {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  [data-slot="file-tabs-open-action"] .file-tabs-open-button {
+    width: 1.625rem;
+    height: 1.625rem;
+    border-radius: var(--radius-md);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  [data-slot="file-tabs-open-action"] .file-tabs-open-button:hover:not(:disabled),
+  [data-slot="file-tabs-open-action"] .file-tabs-open-button:focus-visible:not(:disabled),
+  [data-slot="file-tabs-open-action"] .file-tabs-open-button:active:not(:disabled) {
+    background: var(--surface-raised-base-hover);
   }
 
   [data-component="getting-started"] {

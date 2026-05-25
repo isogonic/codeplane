@@ -166,7 +166,7 @@ export const InstanceForm: Component<{
           autocapitalize="none"
           autocorrect="off"
           spellcheck={false}
-          placeholder={"CF-Access-Client-Id: …\nCF-Access-Client-Secret: …"}
+          placeholder={"Authorization: Bearer ...\nCookie: session=..."}
           value={draft().headersText}
           onInput={(e) => setDraft({ ...draft(), headersText: e.currentTarget.value })}
         />

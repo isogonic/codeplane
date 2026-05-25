@@ -5,6 +5,7 @@ import { createStore } from "solid-js/store"
 import { For } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
 import { Locale } from "@/tui/_compat/locale"
+import { tuiT } from "@/tui/i18n"
 
 export type DialogConfirmProps = {
   title: string
@@ -63,7 +64,7 @@ export function DialogConfirm(props: DialogConfirmProps) {
               }}
             >
               <text fg={key === store.active ? theme.selectedListItemText : theme.textMuted}>
-                {Locale.titlecase(key === "cancel" ? (props.label ?? key) : key)}
+                {Locale.titlecase(key === "cancel" ? (props.label ?? tuiT("common.cancel")) : tuiT("common.confirm"))}
               </text>
             </box>
           )}

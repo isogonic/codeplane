@@ -83,6 +83,35 @@ export const server = async () => ({
           <code>codeplane --pure</code> to debug with external plugins disabled.
         </p>
 
+        <h2>OpenCode plugin compatibility</h2>
+        <p>
+          Codeplane can load OpenCode-style plugins from Codeplane plugin folders. Drop the file
+          into the instance <code>plugins/</code> directory or a project <code>.codeplane/plugins/</code>
+          directory, and imports from <code>@opencode-ai/plugin</code> resolve to Codeplane's
+          compatible plugin SDK.
+        </p>
+        <pre><code>{`import { tool } from "@opencode-ai/plugin"
+
+export const OpenCodeToolPlugin = async () => ({
+  tool: {
+    hello: tool({
+      description: "Say hello from an OpenCode-style plugin.",
+      args: {
+        name: tool.schema.string(),
+      },
+      async execute(args) {
+        return \`Hello \${args.name}\`
+      },
+    }),
+  },
+})`}</code></pre>
+        <p>
+          Drop OpenCode-style plugins into Codeplane plugin locations such as
+          <code>config/plugins/</code> or <code>.codeplane/plugins/</code>. Codeplane provides
+          compatibility shims for <code>@opencode-ai/plugin</code> and <code>@opencode-ai/sdk</code>
+          imports without reading OpenCode config folders.
+        </p>
+
         <h2>Tool context</h2>
         <table>
           <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
