@@ -76,6 +76,12 @@ const cli = yargs(args)
     describe: "run without external plugins",
     type: "boolean",
   })
+  .option("instance", {
+    alias: "i",
+    describe:
+      "use a per-instance Codeplane home folder (providers, models, MCP, plugins, agents, commands, skills, codeplane.jsonc all isolated)",
+    type: "string",
+  })
   .middleware(async (opts) => {
     if (opts.pure) {
       process.env.CODEPLANE_PURE = "1"

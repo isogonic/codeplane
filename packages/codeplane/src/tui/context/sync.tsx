@@ -27,7 +27,7 @@ import { createSimpleContext } from "./helper"
 import type { Snapshot } from "@/snapshot"
 import { useExit } from "./exit"
 import { useArgs } from "./args"
-import { batch, onMount } from "solid-js"
+import { batch, onCleanup, onMount } from "solid-js"
 import * as Log from "@/util/log"
 import { emptyConsoleState, type ConsoleState } from "@/config/console-state"
 import path from "path"
@@ -114,6 +114,9 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
 
     const fullSyncedSessions = new Set<string>()
     let syncedWorkspace = project.workspace.current()
+    let eventGapBootstrap: Promise<void> | undefined
+    let eventGapBootstrapQueued = false
+    let eventGapTimer: Timer | undefined
 
     function sessionListQuery(): { scope?: "project"; path?: string } {
       if (!kv.get("session_directory_filter_enabled", true)) return { scope: "project" }
@@ -131,8 +134,63 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         .then((x) => (x.data ?? []).toSorted((a, b) => a.id.localeCompare(b.id)))
     }
 
+    function runEventGapBootstrap(reason: string) {
+      if (store.status === "loading") return
+      if (eventGapBootstrap) {
+        eventGapBootstrapQueued = true
+        return
+      }
+      const sessionsToRefresh = [...fullSyncedSessions]
+      fullSyncedSessions.clear()
+      eventGapBootstrap = bootstrap({ fatal: false })
+        .then(async () => {
+          await Promise.all(
+            sessionsToRefresh.map((sessionID) =>
+              syncSessionData(sessionID, { force: true }).catch((e) => {
+                Log.Default.error("tui session resync after event gap failed", {
+                  reason,
+                  sessionID,
+                  error: e instanceof Error ? e.message : String(e),
+                  name: e instanceof Error ? e.name : undefined,
+                  stack: e instanceof Error ? e.stack : undefined,
+                })
+              }),
+            ),
+          )
+        })
+        .catch((e) => {
+          Log.Default.error("tui event gap resync failed", {
+            reason,
+            error: e instanceof Error ? e.message : String(e),
+            name: e instanceof Error ? e.name : undefined,
+            stack: e instanceof Error ? e.stack : undefined,
+          })
+        })
+        .finally(() => {
+          eventGapBootstrap = undefined
+          if (!eventGapBootstrapQueued) return
+          eventGapBootstrapQueued = false
+          runEventGapBootstrap(reason)
+        })
+    }
+
+    function resyncAfterEventGap(reason: string) {
+      if (eventGapTimer) clearTimeout(eventGapTimer)
+      eventGapTimer = setTimeout(() => {
+        eventGapTimer = undefined
+        runEventGapBootstrap(reason)
+      }, 100)
+    }
+
     event.subscribe((event) => {
       switch (event.type) {
+        case "server.connected":
+          if (store.status === "complete") resyncAfterEventGap(event.type)
+          break
+        case "server.dropped":
+        case "server.resume_failed":
+          resyncAfterEventGap(event.type)
+          break
         case "server.instance.disposed":
           void bootstrap()
           break
@@ -473,8 +531,36 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         })
     }
 
+    async function syncSessionData(sessionID: string, input: { force?: boolean } = {}) {
+      if (!input.force && fullSyncedSessions.has(sessionID)) return
+      const [session, messages, todo, diff] = await Promise.all([
+        sdk.client.session.get({ sessionID }, { throwOnError: true }),
+        sdk.client.session.messages({ sessionID, limit: 100 }),
+        sdk.client.session.todo({ sessionID }),
+        sdk.client.session.diff({ sessionID }),
+      ])
+      setStore(
+        produce((draft) => {
+          const match = Binary.search(draft.session, sessionID, (s) => s.id)
+          if (match.found) draft.session[match.index] = session.data!
+          if (!match.found) draft.session.splice(match.index, 0, session.data!)
+          draft.todo[sessionID] = todo.data ?? []
+          draft.message[sessionID] = messages.data!.map((x) => x.info)
+          for (const message of messages.data!) {
+            draft.part[message.info.id] = message.parts
+          }
+          draft.session_diff[sessionID] = diff.data ?? []
+        }),
+      )
+      fullSyncedSessions.add(sessionID)
+    }
+
     onMount(() => {
       void bootstrap()
+    })
+
+    onCleanup(() => {
+      if (eventGapTimer) clearTimeout(eventGapTimer)
     })
 
     const result = {
@@ -513,28 +599,8 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           if (last.role === "user") return "working"
           return last.time.completed ? "idle" : "working"
         },
-        async sync(sessionID: string) {
-          if (fullSyncedSessions.has(sessionID)) return
-          const [session, messages, todo, diff] = await Promise.all([
-            sdk.client.session.get({ sessionID }, { throwOnError: true }),
-            sdk.client.session.messages({ sessionID, limit: 100 }),
-            sdk.client.session.todo({ sessionID }),
-            sdk.client.session.diff({ sessionID }),
-          ])
-          setStore(
-            produce((draft) => {
-              const match = Binary.search(draft.session, sessionID, (s) => s.id)
-              if (match.found) draft.session[match.index] = session.data!
-              if (!match.found) draft.session.splice(match.index, 0, session.data!)
-              draft.todo[sessionID] = todo.data ?? []
-              draft.message[sessionID] = messages.data!.map((x) => x.info)
-              for (const message of messages.data!) {
-                draft.part[message.info.id] = message.parts
-              }
-              draft.session_diff[sessionID] = diff.data ?? []
-            }),
-          )
-          fullSyncedSessions.add(sessionID)
+        async sync(sessionID: string, input: { force?: boolean } = {}) {
+          await syncSessionData(sessionID, input)
         },
       },
       bootstrap,

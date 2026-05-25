@@ -46,7 +46,9 @@ function blankDay(): DailyMetrics {
 
 const asEntry = (entry: SessionStatsEntry) => ("info" in entry ? entry : { info: entry, parts: [] })
 
-const isCompletedTool = (part: Part): part is ToolPart & { state: Extract<ToolPart["state"], { status: "completed" }> } =>
+const isCompletedTool = (
+  part: Part,
+): part is ToolPart & { state: Extract<ToolPart["state"], { status: "completed" }> } =>
   part.type === "tool" && part.state.status === "completed"
 
 const stringInput = (input: Record<string, unknown>, key: string) => {
@@ -79,23 +81,13 @@ const gitStats = (parts: Part[] | undefined) => ({
   }, 0),
 })
 
-/**
- * Roll a session's full message list into a compact per-day aggregate that
- * preserves enough information to recompute every home-page metric for any
- * range filter without re-reading the original messages.
- */
-export function aggregateSessionMessages(
-  sessionID: string,
-  sessionUpdatedAt: number,
-  entries: SessionStatsEntry[],
-): SessionAggregate {
-  const days: Record<number, DailyMetrics> = {}
-  let newestMessageAt = 0
+function applyEntries(aggregate: SessionAggregate, entries: Iterable<SessionStatsEntry>) {
+  const days = aggregate.days
   for (const raw of entries) {
     const entry = asEntry(raw)
     const message = entry.info
     const created = message.time.created
-    if (created > newestMessageAt) newestMessageAt = created
+    if (created > aggregate.newestMessageAt) aggregate.newestMessageAt = created
     const dayKey = startOfDay(created)
     let day = days[dayKey]
     if (!day) {
@@ -117,7 +109,39 @@ export function aggregateSessionMessages(
     modelEntry.tokens += t
     day.models[modelID] = modelEntry
   }
-  return { sessionID, updatedAt: sessionUpdatedAt, newestMessageAt, days }
+}
+
+export function createSessionAggregateBuilder(sessionID: string, sessionUpdatedAt: number) {
+  const aggregate: SessionAggregate = {
+    sessionID,
+    updatedAt: sessionUpdatedAt,
+    newestMessageAt: 0,
+    days: {},
+  }
+
+  return {
+    add(entries: Iterable<SessionStatsEntry>) {
+      applyEntries(aggregate, entries)
+    },
+    finish() {
+      return aggregate
+    },
+  }
+}
+
+/**
+ * Roll a session's full message list into a compact per-day aggregate that
+ * preserves enough information to recompute every home-page metric for any
+ * range filter without re-reading the original messages.
+ */
+export function aggregateSessionMessages(
+  sessionID: string,
+  sessionUpdatedAt: number,
+  entries: SessionStatsEntry[],
+): SessionAggregate {
+  const builder = createSessionAggregateBuilder(sessionID, sessionUpdatedAt)
+  builder.add(entries)
+  return builder.finish()
 }
 
 const RANGE_DAYS: Record<Range, number | undefined> = {
@@ -247,10 +271,7 @@ export function preferredModel(
 
 export function modelBreakdown(aggregates: SessionAggregate[], range: Range, now: number): ModelStat[] {
   const start = rangeStart(now, range)
-  const byModel = new Map<
-    string,
-    { providerID?: string; messages: number; tokens: number; sessions: Set<string> }
-  >()
+  const byModel = new Map<string, { providerID?: string; messages: number; tokens: number; sessions: Set<string> }>()
   for (const aggregate of aggregates) {
     if (!aggregate || !aggregate.days) continue
     for (const [dayKeyRaw, daily] of Object.entries(aggregate.days)) {

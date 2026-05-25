@@ -61,11 +61,13 @@ export const GlobalDisposedEvent = BusEvent.define("global.disposed", Schema.Str
  */
 const GLOBAL_SSE_OUTBOUND_MAX = 4096
 
-async function streamEvents(c: Context, subscribe: (q: AsyncQueue<string>) => () => void) {
+type GlobalOutboundItem = { kind: "event"; data: string } | { kind: "heartbeat" } | { kind: "close" }
+
+async function streamEvents(c: Context, subscribe: (q: AsyncQueue<GlobalOutboundItem>) => () => void) {
   return streamSSE(c, async (stream) => {
     let droppedSinceLastFlush = false
     let totalDropped = 0
-    const q = new AsyncQueue<string>({
+    const q = new AsyncQueue<GlobalOutboundItem>({
       maxSize: GLOBAL_SSE_OUTBOUND_MAX,
       onDrop: () => {
         droppedSinceLastFlush = true
@@ -75,32 +77,33 @@ async function streamEvents(c: Context, subscribe: (q: AsyncQueue<string>) => ()
     let done = false
 
     q.push(
-      JSON.stringify({
-        payload: {
-          type: "server.connected",
-          properties: {},
-        },
-      }),
+      {
+        kind: "event",
+        data: JSON.stringify({
+          directory: "global",
+          payload: {
+            type: "server.connected",
+            properties: {},
+          },
+        }),
+      },
     )
 
     // Send heartbeats frequently so browsers and access proxies do not treat
     // quiet sessions as stalled while a task is still running.
     const heartbeat = setInterval(() => {
-      q.push(
-        JSON.stringify({
-          payload: {
-            type: "server.heartbeat",
-            properties: {},
-          },
-        }),
-      )
+      q.push({
+        kind: "heartbeat",
+      })
     }, eventHeartbeatMs)
 
+    let unsub = () => {}
     const stop = () => {
       if (done) return
       done = true
       clearInterval(heartbeat)
       unsub()
+      q.push({ kind: "close" })
       q.close()
       if (totalDropped > 0) {
         log.warn("global event disconnected with drops", { totalDropped })
@@ -109,20 +112,36 @@ async function streamEvents(c: Context, subscribe: (q: AsyncQueue<string>) => ()
       }
     }
 
-    const unsub = subscribe(q)
+    unsub = subscribe(q)
 
     stream.onAbort(stop)
 
     try {
-      for await (const data of q) {
+      for await (const item of q) {
+        if (item.kind === "close") return
         // Surface backlog overflow once per flush so the client can refetch.
         if (droppedSinceLastFlush) {
           droppedSinceLastFlush = false
           await stream.writeSSE({
-            data: JSON.stringify({ payload: { type: "server.dropped", properties: {} } }),
+            data: JSON.stringify({
+              directory: "global",
+              payload: { type: "server.dropped", properties: {} },
+            }),
           })
         }
-        await stream.writeSSE({ data })
+        if (item.kind === "heartbeat") {
+          await stream.writeSSE({
+            data: JSON.stringify({
+              directory: "global",
+              payload: {
+                type: "server.heartbeat",
+                properties: {},
+              },
+            }),
+          })
+          continue
+        }
+        await stream.writeSSE({ data: item.data })
       }
     } finally {
       stop()
@@ -266,8 +285,8 @@ export const GlobalRoutes = lazy(() =>
         c.header("X-Content-Type-Options", "nosniff")
 
         return streamEvents(c, (q) => {
-          async function handler(event: any) {
-            q.push(JSON.stringify(event))
+          function handler(event: any) {
+            q.push({ kind: "event", data: JSON.stringify(event) })
           }
           GlobalBus.on("event", handler)
           return () => GlobalBus.off("event", handler)

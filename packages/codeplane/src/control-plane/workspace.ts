@@ -122,7 +122,15 @@ export const create = fn(CreateInput.zod, async (input) => {
   }
   await adaptor.create(config, env)
 
-  startSync(info)
+  // startSync runs the sync loop in the background. Wrap so a thrown error
+  // inside the adaptor lookup or initial state probe doesn't surface as a
+  // process-level unhandledRejection.
+  void startSync(info).catch((err: unknown) => {
+    Log.Default.error("workspace.startSync.failed", {
+      workspaceID: info.id,
+      error: err instanceof Error ? err.message : String(err),
+    })
+  })
 
   await waitEvent({
     timeout: TIMEOUT,

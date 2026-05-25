@@ -3,6 +3,7 @@ import type { AssistantMessage, Message, Part } from "@codeplane-ai/sdk/v2/clien
 import {
   aggregateSessionMessages,
   combineAggregates,
+  createSessionAggregateBuilder,
   heatmapBuckets,
   HEATMAP_DAYS_REFERENCE,
   modelBreakdown,
@@ -117,6 +118,21 @@ describe("aggregateSessionMessages", () => {
     expect(agg.days[today]?.git.commits).toBe(3)
     expect(combineAggregates([agg], now, "all").gitCommits).toBe(3)
   })
+
+  test("builds the same aggregate incrementally across pages", () => {
+    const entries = [
+      assistant({ id: "1", sessionID: "s", created: now, tokens: 100 }),
+      {
+        info: assistant({ id: "2", sessionID: "s", created: dayAgo(1), tokens: 50, modelID: "sonnet" }),
+        parts: [gitTool({ operation: "commit", message: "ship" })],
+      },
+      user({ id: "3", sessionID: "s", created: dayAgo(2) }),
+    ]
+    const builder = createSessionAggregateBuilder("s", now)
+    builder.add(entries.slice(0, 1))
+    builder.add(entries.slice(1))
+    expect(builder.finish()).toEqual(aggregateSessionMessages("s", now, entries))
+  })
 })
 
 describe("combineAggregates (precision)", () => {
@@ -185,9 +201,7 @@ describe("combineAggregates (precision)", () => {
 
   test("computes streaks correctly", () => {
     const days = [0, 1, 2, 5, 6].map((d) => dayAgo(d))
-    const messages = days.map((created, i) =>
-      assistant({ id: String(i), sessionID: "s", created, tokens: 1 }),
-    )
+    const messages = days.map((created, i) => assistant({ id: String(i), sessionID: "s", created, tokens: 1 }))
     const agg = aggregateSessionMessages("s", now, messages)
     const result = combineAggregates([agg], now, "all")
     expect(result.currentStreak).toBe(3) // today, yesterday, 2 days ago

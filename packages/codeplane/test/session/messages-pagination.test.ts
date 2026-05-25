@@ -199,7 +199,10 @@ describe("MessageV2.page", () => {
       directory: root,
       fn: async () => {
         const fake = "non-existent-session" as SessionID
-        expect(() => MessageV2.page({ sessionID: fake, limit: 10 })).toThrow("NotFoundError")
+        // Server-thrown NotFoundError surfaces with the message "Session not found: <id>".
+        // We assert on the message, not the class name (class identity isn't preserved
+        // across module reloads in tests).
+        expect(() => MessageV2.page({ sessionID: fake, limit: 10 })).toThrow(/Session not found/)
       },
     })
   })

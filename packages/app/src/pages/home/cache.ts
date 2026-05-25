@@ -79,12 +79,15 @@ export function createHomeCache() {
     return cached.updatedAt < sessionUpdatedAt
   }
 
-  function applyMessages(sessionID: string, sessionUpdatedAt: number, entries: SessionStatsEntry[]) {
-    const next = aggregateSessionMessages(sessionID, sessionUpdatedAt, entries)
+  function applyAggregate(next: SessionAggregate) {
     setState((prev) => ({
       version: SESSION_AGGREGATE_VERSION,
-      aggregates: { ...prev.aggregates, [sessionID]: next },
+      aggregates: { ...prev.aggregates, [next.sessionID]: next },
     }))
+  }
+
+  function applyMessages(sessionID: string, sessionUpdatedAt: number, entries: SessionStatsEntry[]) {
+    applyAggregate(aggregateSessionMessages(sessionID, sessionUpdatedAt, entries))
   }
 
   function drop(sessionIDs: string[]) {
@@ -117,6 +120,7 @@ export function createHomeCache() {
     },
     get,
     isStale,
+    applyAggregate,
     applyMessages,
     syncWithSessionList,
     all,

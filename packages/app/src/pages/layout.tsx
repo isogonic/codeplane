@@ -143,6 +143,17 @@ export default function Layout(props: ParentProps) {
   const language = useLanguage()
   const initialDirectory = decode64(params.dir)
   const location = useLocation()
+  // Bounce malformed directory slugs (anything that isn't valid base64) back
+  // to the home screen instead of rendering an empty layout. Without this,
+  // URLs like `/!!!garbage!!!/session` show a completely blank page because
+  // every downstream consumer of `params.dir` falls through to an `undefined`
+  // directory and nothing renders.
+  createEffect(() => {
+    const slug = params.dir
+    if (!slug) return
+    if (decode64(slug) !== undefined) return
+    navigate("/", { replace: true })
+  })
   const route = createMemo(() => {
     const slug = params.dir
     if (!slug) return { slug, dir: "" }

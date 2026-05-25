@@ -25,7 +25,13 @@ import {
 } from "./home/stats"
 import { pickFunFact } from "./home/fun-facts"
 import { createHomeCache } from "./home/cache"
-import { combineAggregates, heatmapBuckets, modelBreakdown, preferredModel } from "./home/aggregate"
+import {
+  combineAggregates,
+  createSessionAggregateBuilder,
+  heatmapBuckets,
+  modelBreakdown,
+  preferredModel,
+} from "./home/aggregate"
 import { AnimatedNumber } from "./home/animated-number"
 
 const RANGES: Range[] = ["all", "30d", "7d"]
@@ -65,15 +71,62 @@ export default function Home() {
   onCleanup(() => clearInterval(interval))
 
   const formatNumber = createMemo(() => new Intl.NumberFormat(language.intl()))
-  const formatRelative = (time: number) =>
-    DateTime.fromMillis(time).setLocale(language.intl()).toRelative() ?? ""
+  const formatRelative = (time: number) => DateTime.fromMillis(time).setLocale(language.intl()).toRelative() ?? ""
   const formatHour = (hour: number) =>
     new Intl.DateTimeFormat(language.intl(), { hour: "numeric" }).format(new Date(2000, 0, 1, hour))
 
   const emptyDiffRefresh = new Set<string>()
   const diffRefreshKey = (worktree: string, session: { id: string; time: { created: number; updated?: number } }) =>
     `${worktree}\n${session.id}\n${session.time.updated ?? session.time.created}`
-  const inflightMessageFetch = new Set<string>()
+  const scheduledMessageFetch = new Set<string>()
+  const latestMessageFetchKey = new Map<string, string>()
+  const statsAbort = new AbortController()
+  // Bound stats backfill so opening Home with many stale sessions doesn't fire
+  // hundreds of /session/{id}/message requests or keep draining after Home
+  // unmounts. Dropped pending work is retried by the next reactive pass.
+  const STATS_FETCH_CONCURRENCY = 2
+  const STATS_FETCH_PENDING_LIMIT = 200
+  type StatsFetchTask = {
+    key: string
+    sessionKey: string
+    run: () => Promise<void>
+  }
+  const statsFetchQueue: StatsFetchTask[] = []
+  let statsFetchActive = 0
+  const drainStatsFetchQueue = () => {
+    if (statsAbort.signal.aborted) return
+    while (statsFetchActive < STATS_FETCH_CONCURRENCY) {
+      const next = statsFetchQueue.shift()
+      if (!next) return
+      statsFetchActive++
+      void next.run().finally(() => {
+        statsFetchActive--
+        scheduledMessageFetch.delete(next.key)
+        if (latestMessageFetchKey.get(next.sessionKey) === next.key) latestMessageFetchKey.delete(next.sessionKey)
+        drainStatsFetchQueue()
+      })
+    }
+  }
+  const enqueueStatsFetch = (task: StatsFetchTask) => {
+    if (statsAbort.signal.aborted) return
+    if (scheduledMessageFetch.has(task.key)) return
+    scheduledMessageFetch.add(task.key)
+    statsFetchQueue.push(task)
+    while (statsFetchQueue.length > STATS_FETCH_PENDING_LIMIT) {
+      const dropped = statsFetchQueue.pop()
+      if (!dropped) continue
+      scheduledMessageFetch.delete(dropped.key)
+      if (latestMessageFetchKey.get(dropped.sessionKey) === dropped.key)
+        latestMessageFetchKey.delete(dropped.sessionKey)
+    }
+    drainStatsFetchQueue()
+  }
+  onCleanup(() => {
+    statsAbort.abort()
+    statsFetchQueue.length = 0
+    scheduledMessageFetch.clear()
+    latestMessageFetchKey.clear()
+  })
 
   // Sessions with their containing project, refreshed whenever the project list
   // or any project's session store changes.
@@ -111,28 +164,50 @@ export default function Home() {
   // session-detail page's paginated message store can never clobber the
   // home aggregates (and vice versa).
   createEffect(() => {
-    for (const project of projectInputs()) {
-      for (const session of project.sessions) {
-        if (session.parentID || session.time?.archived) continue
-        const updatedAt = session.time.updated ?? session.time.created
-        const inflightKey = `${project.worktree}\n${session.id}\n${updatedAt}`
-        if (inflightMessageFetch.has(inflightKey)) continue
-        if (!cache.isStale(session.id, updatedAt)) continue
-        inflightMessageFetch.add(inflightKey)
-        const worktree = project.worktree
-        const sessionID = session.id
-        void (async () => {
+    const candidates = projectInputs()
+      .flatMap((project) =>
+        project.sessions
+          .filter((session) => !session.parentID && !session.time?.archived)
+          .map((session) => ({
+            worktree: project.worktree,
+            sessionID: session.id,
+            updatedAt: session.time.updated ?? session.time.created,
+          })),
+      )
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+
+    for (const candidate of candidates) {
+      const sessionKey = `${candidate.worktree}\n${candidate.sessionID}`
+      const fetchKey = `${sessionKey}\n${candidate.updatedAt}`
+      if (scheduledMessageFetch.has(fetchKey)) continue
+      if (!cache.isStale(candidate.sessionID, candidate.updatedAt)) continue
+      latestMessageFetchKey.set(sessionKey, fetchKey)
+      enqueueStatsFetch({
+        key: fetchKey,
+        sessionKey,
+        run: async () => {
+          if (statsAbort.signal.aborted) return
+          if (latestMessageFetchKey.get(sessionKey) !== fetchKey) return
+          if (!cache.isStale(candidate.sessionID, candidate.updatedAt)) return
+
+          const builder = createSessionAggregateBuilder(candidate.sessionID, candidate.updatedAt)
           try {
-            const messages = (await globalSync.project.fetchSessionMessagesForStats(worktree, sessionID)) as never
-            cache.applyMessages(sessionID, updatedAt, messages)
+            await globalSync.project.streamSessionMessagesForStats(
+              candidate.worktree,
+              candidate.sessionID,
+              (messages) => builder.add(messages),
+              { signal: statsAbort.signal },
+            )
+            if (statsAbort.signal.aborted) return
+            if (latestMessageFetchKey.get(sessionKey) !== fetchKey) return
+            if (!cache.isStale(candidate.sessionID, candidate.updatedAt)) return
+            cache.applyAggregate(builder.finish())
           } catch {
             // Best-effort — leave the previous cached aggregate untouched and
             // retry on the next session.updated event tick.
-          } finally {
-            inflightMessageFetch.delete(inflightKey)
           }
-        })()
-      }
+        },
+      })
     }
   })
 
@@ -271,7 +346,6 @@ export default function Home() {
       models: modelBreakdown(aggregates, r, now),
     }
   })
-
 
   const openProject = (worktree: string) => {
     navigate(`/${base64Encode(worktree)}`)
@@ -633,25 +707,42 @@ function NumericStat(props: { label: string; value: number; format: (value: numb
   )
 }
 
+const HEATMAP_INTENSITY_CLASSES = [
+  "bg-[color-mix(in_srgb,var(--text-weak)_15%,transparent)]",
+  "bg-[color-mix(in_srgb,var(--text-interactive-base)_25%,transparent)]",
+  "bg-[color-mix(in_srgb,var(--text-interactive-base)_45%,transparent)]",
+  "bg-[color-mix(in_srgb,var(--text-interactive-base)_70%,transparent)]",
+  "bg-text-interactive-base",
+] as const
+
 function Heatmap(props: { buckets: () => DayBucket[]; formatNumber: () => Intl.NumberFormat }) {
   const language = useLanguage()
-  const formatDay = createMemo(
-    () => new Intl.DateTimeFormat(language.intl(), { day: "numeric", month: "short", year: "numeric" }),
-  )
-  const peak = createMemo(() => Math.max(1, ...props.buckets().map((bucket) => bucket.count)))
-  const intensity = (count: number) => {
-    if (count <= 0) return 0
-    const ratio = count / peak()
-    if (ratio < 0.25) return 1
-    if (ratio < 0.5) return 2
-    if (ratio < 0.75) return 3
-    return 4
-  }
+  // Precompute every cell's class + title once per buckets change instead of
+  // 364× per render. With 6k+ messages aggregated nightly the previous
+  // per-cell `formatDay().format(new Date(...))` + 5× intensity comparisons
+  // showed up as a hot spot in the home-page render path.
+  const cells = createMemo(() => {
+    const buckets = props.buckets()
+    if (buckets.length === 0) return []
+    const formatDay = new Intl.DateTimeFormat(language.intl(), { day: "numeric", month: "short", year: "numeric" })
+    let peak = 1
+    for (const bucket of buckets) if (bucket.count > peak) peak = bucket.count
+    const tmp = new Date()
+    return buckets.map((bucket) => {
+      const ratio = bucket.count / peak
+      const level = bucket.count <= 0 ? 0 : ratio < 0.25 ? 1 : ratio < 0.5 ? 2 : ratio < 0.75 ? 3 : 4
+      tmp.setTime(bucket.start)
+      return {
+        cls: HEATMAP_INTENSITY_CLASSES[level],
+        title: language.t("home.activity.dayLabel", { count: bucket.count, date: formatDay.format(tmp) }),
+      }
+    })
+  })
   const cellSize = `calc((100cqi - ${(HEATMAP_COLS - 1) * HEATMAP_GAP_PX}px) / ${HEATMAP_COLS})`
 
   return (
     <Show
-      when={props.buckets().length > 0}
+      when={cells().length > 0}
       fallback={
         <div class="rounded-md border border-dashed border-border-weaker-base px-4 py-6 text-center text-12-regular text-text-weak">
           {language.t("home.activity.empty")}
@@ -668,25 +759,12 @@ function Heatmap(props: { buckets: () => DayBucket[]; formatNumber: () => Intl.N
             gap: `${HEATMAP_GAP_PX}px`,
           }}
         >
-          <For each={props.buckets()}>
-            {(bucket) => (
+          <For each={cells()}>
+            {(cell) => (
               <div
-                class="rounded-[2px]"
+                class={`rounded-[2px] ${cell.cls}`}
                 style={{ width: "var(--heatmap-cell)", height: "var(--heatmap-cell)" }}
-                classList={{
-                  "bg-[color-mix(in_srgb,var(--text-weak)_15%,transparent)]": intensity(bucket.count) === 0,
-                  "bg-[color-mix(in_srgb,var(--text-interactive-base)_25%,transparent)]":
-                    intensity(bucket.count) === 1,
-                  "bg-[color-mix(in_srgb,var(--text-interactive-base)_45%,transparent)]":
-                    intensity(bucket.count) === 2,
-                  "bg-[color-mix(in_srgb,var(--text-interactive-base)_70%,transparent)]":
-                    intensity(bucket.count) === 3,
-                  "bg-text-interactive-base": intensity(bucket.count) === 4,
-                }}
-                title={language.t("home.activity.dayLabel", {
-                  count: bucket.count,
-                  date: formatDay().format(new Date(bucket.start)),
-                })}
+                title={cell.title}
               />
             )}
           </For>

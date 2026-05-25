@@ -360,7 +360,7 @@ function DirectoryPicker(props: {
                   {isSelected() ? "▍" : " "}
                 </text>
                 <text fg={entry.isDir ? palette.accent : palette.fgDim}>
-                  {`  ${entry.isDir ? "📁" : "📄"}  `}
+                  {`  ${entry.isDir ? "[D]" : "[F]"} `}
                 </text>
                 <text
                   fg={isSelected() ? palette.accent : entry.isDir ? palette.fg : palette.fgMuted}

@@ -2736,27 +2736,39 @@ if (!gotLock) {
     event.preventDefault()
   })
 
-  app.whenReady().then(async () => {
-    logger.log("main", "ready")
-    applyRuntimeIcon()
-    applyRuntimeMetadata()
-    await loadInstanceState()
-    setupIpc()
-    setupAutoUpdater()
-    void uiHost.cleanup()
-    createWindow()
+  app
+    .whenReady()
+    .then(async () => {
+      logger.log("main", "ready")
+      applyRuntimeIcon()
+      applyRuntimeMetadata()
+      await loadInstanceState()
+      setupIpc()
+      setupAutoUpdater()
+      void uiHost.cleanup()
+      createWindow()
 
-    buildMenu(
-      () => mainWindow?.webContents.reload(),
-      () => showSetupWindow(),
-      () => showSetupWindow(),
-    )
+      buildMenu(
+        () => mainWindow?.webContents.reload(),
+        () => showSetupWindow(),
+        () => showSetupWindow(),
+      )
 
-    app.on("activate", () => {
-      logger.log("main", "activate")
-      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+      app.on("activate", () => {
+        logger.log("main", "activate")
+        if (BrowserWindow.getAllWindows().length === 0) createWindow()
+      })
     })
-  })
+    // Without this, a rejection from loadInstanceState/setupIpc/setupAutoUpdater
+    // would be swallowed silently and the user would see a frozen splash
+    // window. Surface it both in the log and as a fatal dialog so the boot
+    // failure is visible.
+    .catch((err: unknown) => {
+      const message = err instanceof Error ? (err.stack ?? err.message) : String(err)
+      logger.error("main", "ready.failed", { error: message })
+      dialog.showErrorBox("Codeplane failed to start", message)
+      app.exit(1)
+    })
 
   app.on("window-all-closed", () => {
     logger.log("main", "window-all-closed", { platform: process.platform })

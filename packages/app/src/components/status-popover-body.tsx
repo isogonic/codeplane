@@ -274,7 +274,7 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
               {language.t("status.popover.tab.servers")}
             </Tabs.Trigger>
           </Show>
-          <Show when={sync && !canSwitchServers()}>
+          <Show when={sync}>
             <Tabs.Trigger value="mcp" data-slot="tab" class="text-12-regular">
               {mcpConnected() > 0 ? `${mcpConnected()} ` : ""}
               {language.t("status.popover.tab.mcp")}
@@ -366,7 +366,7 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
           </Tabs.Content>
         </Show>
 
-        <Show when={sync && !canSwitchServers()}>
+        <Show when={sync}>
           <Tabs.Content value="mcp">
             <div class="flex flex-col px-2 pb-2">
               <div class="flex flex-col p-3 bg-background-base rounded-sm min-h-14">

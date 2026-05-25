@@ -43,6 +43,9 @@ function parseArgs(argv: string[]) {
     sessionID?: string
     continueSession?: boolean
     fork?: boolean
+    model?: string
+    agent?: string
+    prompt?: string
   } = {}
 
   for (let index = 0; index < argv.length; index++) {
@@ -54,6 +57,9 @@ function parseArgs(argv: string[]) {
     if (arg === "--session" || arg === "-s") result.sessionID = next
     if (arg === "--continue" || arg === "-c") result.continueSession = true
     if (arg === "--fork") result.fork = true
+    if (arg === "--model" || arg === "-m") result.model = next
+    if (arg === "--agent") result.agent = next
+    if (arg === "--prompt") result.prompt = next
   }
 
   return result
@@ -112,6 +118,7 @@ async function resolveTarget(
   service: InstanceService,
   args: ReturnType<typeof parseArgs>,
 ): Promise<{
+  instance: SavedInstance
   url: string
   headers: Record<string, string>
   directory?: string
@@ -147,6 +154,7 @@ async function resolveTarget(
   const directory = sel.directory ?? opened.path.directory ?? undefined
 
   return {
+    instance: sel.instance,
     url,
     headers: headersForInstance(opened.live) ?? {},
     directory,
@@ -177,6 +185,9 @@ async function main() {
 
   try {
     const args = parseArgs(process.argv.slice(2))
+    if (args.fork && !args.continueSession && !args.sessionID) {
+      throw new Error("--fork requires --continue or --session")
+    }
     const target = await resolveTarget(service, args)
     if (!target) {
       // User quit out of the wizard — exit cleanly.
@@ -186,9 +197,13 @@ async function main() {
 
     const config = await TuiConfig.get()
     const tuiArgs: Args = {
+      instanceID: target.instance.id,
       continue: args.continueSession,
       sessionID: args.sessionID,
       fork: args.fork,
+      model: args.model,
+      agent: args.agent,
+      prompt: args.prompt,
     }
     await tui({
       url: target.url,

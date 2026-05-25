@@ -18,6 +18,23 @@ import { diffs as list, message as clean } from "@/utils/diffs"
 
 const SKIP_PARTS = new Set(["patch", "step-start", "step-finish"])
 export const INITIAL_MESSAGE_PAGE_SIZE = 80
+
+// The SDK throws the raw error body (no status code), so detect "session not
+// found" by inspecting the body shape. The server returns
+// `{ name: "NotFoundError", data: { message: "Session not found: ..." } }`
+// for stale session URLs.
+const sessionMissing = (err: unknown) => {
+  if (!err) return false
+  if (typeof err === "object") {
+    const e = err as { name?: unknown; detail?: unknown; data?: { message?: unknown } }
+    if (e.name === "NotFoundError") return true
+    if (typeof e.data?.message === "string" && /session.*not\s*found|no\s*such\s*session/i.test(e.data.message))
+      return true
+    if (typeof e.detail === "string" && /session.*not\s*found|no\s*such\s*session/i.test(e.detail)) return true
+  }
+  const text = typeof err === "string" ? err : err instanceof Error ? err.message : ""
+  return /session.*not\s*found|no\s*such\s*session/i.test(text)
+}
 export const HISTORY_MESSAGE_PAGE_SIZE = 200
 
 function sortParts(parts: Part[]) {
@@ -365,6 +382,10 @@ export const { use: useSync, useOptional: useSyncOptional, provider: SyncProvide
               delete draft.loading[key]
             }),
           )
+          // Stale session URL → 404 from /session/{id}/message. Swallow so
+          // the page doesn't crash into a generic "Unknown error" overlay;
+          // the empty message store renders as an empty session view.
+          if (sessionMissing(err)) return
           throw err
         })
         .finally(() => {
@@ -517,22 +538,31 @@ export const { use: useSync, useOptional: useSyncOptional, provider: SyncProvide
             const sessionReq =
               hasSession && !opts?.force
                 ? Promise.resolve()
-                : retry(() => client.session.get({ sessionID })).then((session) => {
-                    if (!tracked(directory, sessionID)) return
-                    const data = session.data
-                    if (!data) return
-                    setStore(
-                      "session",
-                      produce((draft) => {
-                        const match = Binary.search(draft, sessionID, (s) => s.id)
-                        if (match.found) {
-                          draft[match.index] = data
-                          return
-                        }
-                        draft.splice(match.index, 0, data)
-                      }),
-                    )
-                  })
+                : retry(() => client.session.get({ sessionID }))
+                    .then((session) => {
+                      if (!tracked(directory, sessionID)) return
+                      const data = session.data
+                      if (!data) return
+                      setStore(
+                        "session",
+                        produce((draft) => {
+                          const match = Binary.search(draft, sessionID, (s) => s.id)
+                          if (match.found) {
+                            draft[match.index] = data
+                            return
+                          }
+                          draft.splice(match.index, 0, data)
+                        }),
+                      )
+                    })
+                    // Swallow "session not found" errors so a stale URL
+                    // doesn't crash the page into a generic "Unknown error"
+                    // overlay. The session view already handles an absent
+                    // session in `info()` and shows an empty state.
+                    .catch((err) => {
+                      if (sessionMissing(err)) return
+                      throw err
+                    })
 
             const messagesReq =
               cached && !opts?.force

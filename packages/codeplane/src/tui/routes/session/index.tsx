@@ -7,6 +7,7 @@ import {
   For,
   Match,
   on,
+  onCleanup,
   onMount,
   Show,
   Switch,
@@ -77,6 +78,7 @@ import * as Editor from "../../util/editor"
 import stripAnsi from "strip-ansi"
 import { usePromptRef } from "../../context/prompt"
 import { useExit } from "../../context/exit"
+import { useArgs } from "../../context/args"
 import { Filesystem } from "@/tui/_compat/filesystem"
 import { Global } from "@/global"
 import { PermissionPrompt } from "./permission"
@@ -177,6 +179,7 @@ export function Session() {
   const toast = useToast()
   const sdk = useSDK()
   const editor = useEditorContext()
+  const args = useArgs()
 
   createEffect(() => {
     const sessionID = route.sessionID
@@ -218,8 +221,40 @@ export function Session() {
     })
   })
 
+  let activeRefreshTimer: Timer | undefined
+  let activeRefreshInFlight = false
+  const clearActiveRefreshTimer = () => {
+    if (!activeRefreshTimer) return
+    clearInterval(activeRefreshTimer)
+    activeRefreshTimer = undefined
+  }
+  const refreshActiveSession = (sessionID: string) => {
+    if (activeRefreshInFlight) return
+    activeRefreshInFlight = true
+    void sync.session
+      .sync(sessionID, { force: true })
+      .catch(() => undefined)
+      .finally(() => {
+        activeRefreshInFlight = false
+      })
+  }
+
+  createEffect(
+    on(
+      () => [route.sessionID, sync.data.session_status?.[route.sessionID]?.type, pending()] as const,
+      ([sessionID, status, pendingMessage]) => {
+        clearActiveRefreshTimer()
+        if (status !== "busy" && status !== "retry" && !pendingMessage) return
+        refreshActiveSession(sessionID)
+        activeRefreshTimer = setInterval(() => refreshActiveSession(sessionID), 2500)
+      },
+    ),
+  )
+
+  onCleanup(clearActiveRefreshTimer)
+
   let lastSwitch: string | undefined = undefined
-  event.on("message.part.updated", (evt) => {
+  const unsubscribePlanSwitch = event.on("message.part.updated", (evt) => {
     const part = evt.properties.part
     if (part.type !== "tool") return
     if (part.sessionID !== route.sessionID) return
@@ -234,6 +269,7 @@ export function Session() {
       lastSwitch = part.id
     }
   })
+  onCleanup(unsubscribePlanSwitch)
 
   let seeded = false
   let scroll: ScrollBoxRenderable
@@ -256,16 +292,15 @@ export function Session() {
     const title = Locale.truncate(session()?.title ?? "", 50)
     const pad = (text: string) => text.padEnd(10, " ")
     const weak = (text: string) => UI.Style.TEXT_DIM + pad(text) + UI.Style.TEXT_NORMAL
-    const logo = UI.logo("  ").split(/\r?\n/)
+    const shellArg = (value: string) => (/^[A-Za-z0-9._:/@+-]+$/.test(value) ? value : `'${value.replaceAll("'", "'\\''")}'`)
+    const instance = args.instanceID ? ` --instance ${shellArg(args.instanceID)}` : ""
+    const resume = `codeplane${instance} -s ${shellArg(route.sessionID)}`
     return exit.message.set(
       [
-        `${logo[0] ?? ""}`,
-        `${logo[1] ?? ""}`,
-        `${logo[2] ?? ""}`,
-        `${logo[3] ?? ""}`,
+        ...UI.logo("  ").split(/\r?\n/),
         ``,
         `  ${weak("Session")}${UI.Style.TEXT_NORMAL_BOLD}${title}${UI.Style.TEXT_NORMAL}`,
-        `  ${weak("Continue")}${UI.Style.TEXT_NORMAL_BOLD}codeplane -s ${session()?.id}${UI.Style.TEXT_NORMAL}`,
+        `  ${weak("Continue")}${UI.Style.TEXT_NORMAL_BOLD}${resume}${UI.Style.TEXT_NORMAL}`,
         ``,
       ].join("\n"),
     )

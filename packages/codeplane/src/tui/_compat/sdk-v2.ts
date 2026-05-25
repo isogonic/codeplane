@@ -14,6 +14,7 @@ export { createCodeplaneClient as createOpencodeClient } from "@codeplane-ai/sdk
 // ---- Augmented event types (additive over @codeplane-ai/sdk/v2's Event) ----
 import type {
   Event as SdkEvent,
+  GlobalEvent as SdkGlobalEvent,
   EventSessionNextStepStarted as SdkStepStarted,
   EventSessionNextStepEnded as SdkStepEnded,
   EventSessionNextToolSuccess as SdkToolSuccess,
@@ -100,6 +101,24 @@ export type EventSessionNextCompactionEnded = {
   properties: { timestamp: number; sessionID: string; text: string; include?: string }
 }
 
+export type EventServerDropped = {
+  id?: string
+  type: "server.dropped"
+  properties: Record<string, unknown>
+}
+
+export type EventServerHeartbeat = {
+  id?: string
+  type: "server.heartbeat"
+  properties: Record<string, unknown>
+}
+
+export type EventServerResumeFailed = {
+  id?: string
+  type: "server.resume_failed"
+  properties: { lastEventID?: number }
+}
+
 // Members of the SDK Event union we're shadowing — exclude their original
 // shape from the augmented union so the `type`-discriminated cases pick up
 // the augmented shape instead of the SDK shape.
@@ -126,6 +145,13 @@ export type EventAugmented =
   | EventSessionNextCompactionStarted
   | EventSessionNextCompactionDelta
   | EventSessionNextCompactionEnded
+  | EventServerDropped
+  | EventServerHeartbeat
+  | EventServerResumeFailed
+
+export type GlobalEvent = Omit<SdkGlobalEvent, "payload"> & {
+  payload: SdkGlobalEvent["payload"] | EventServerDropped | EventServerHeartbeat | EventServerResumeFailed
+}
 
 // --- Compat type aliases (richer Session message types from their SDK) ---
 // These are needed by sync-v2.tsx and session-v2.tsx. They mirror the shape

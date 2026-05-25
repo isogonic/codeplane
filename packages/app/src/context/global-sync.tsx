@@ -48,6 +48,11 @@ type GlobalStore = {
   reload: undefined | "pending" | "complete"
 }
 
+type SessionStatsEntry = { info: Message; parts: Part[] }
+
+const STATS_MESSAGE_PAGE_SIZE = 100
+const STATS_MAX_MESSAGE_PAGES = 2_000
+
 export const loadSessionsQuery = (directory: string, scope = "default") =>
   queryOptions<null>({ queryKey: [scope, directory, "loadSessions"], queryFn: skipToken })
 
@@ -215,11 +220,10 @@ function createGlobalSync() {
               }).then((result) => ({
                 ...result,
                 includesChildren: false as const,
-              })))
+              }))
+          )
             .then(async (x) => {
-              const listed = (x.data ?? []).filter(
-                (s): s is Session => !!s?.id && !s.time?.archived,
-              )
+              const listed = (x.data ?? []).filter((s): s is Session => !!s?.id && !s.time?.archived)
               const nonArchived = x.includesChildren ? listed.filter((s) => !s.parentID) : listed
               const existingRoots =
                 !options?.all && x.limit !== undefined && nonArchived.length >= x.limit
@@ -325,28 +329,60 @@ function createGlobalSync() {
     return promise
   }
 
+  const throwIfAborted = (signal?: AbortSignal) => {
+    if (!signal?.aborted) return
+    throw signal.reason ?? new Error("aborted")
+  }
+
   /**
-   * Stats-only fetch — paginates through every message in a session and
-   * returns the full list without touching the shared `child.message` store.
-   * The session-detail view's own paginated cache stays independent so it
-   * can't be clobbered by, and can't clobber, the home stats aggregate.
+   * Stats-only fetch — paginates through every message in a session and emits
+   * one compact page at a time without touching the shared `child.message`
+   * store. The Home page aggregates each page immediately, so it never retains
+   * a whole long-running session's raw messages/parts in renderer memory.
    */
-  async function fetchSessionMessagesForStats(directory: string, sessionID: string) {
+  async function streamSessionMessagesForStats(
+    directory: string,
+    sessionID: string,
+    visit: (entries: SessionStatsEntry[]) => void,
+    options?: { signal?: AbortSignal },
+  ) {
     const sdk = sdkFor(directory)
-    const all: Array<{ info: Message; parts: Part[] }> = []
     let before: string | undefined
-    for (let page = 0; page < 200; page++) {
-      const response = await retry(() => sdk.session.messages({ sessionID, limit: 1_000, before }))
-      const items = (response.data ?? []).filter((entry: unknown): entry is { info: Message; parts: Part[] } =>
-        !!(entry as { info?: { id?: string } } | null)?.info?.id &&
-        Array.isArray((entry as { parts?: unknown } | null)?.parts),
+    for (let page = 0; page < STATS_MAX_MESSAGE_PAGES; page++) {
+      throwIfAborted(options?.signal)
+      const response = await retry(() =>
+        sdk.session.messages(
+          { sessionID, limit: STATS_MESSAGE_PAGE_SIZE, before },
+          {
+            signal: options?.signal,
+          },
+        ),
+      )
+      throwIfAborted(options?.signal)
+      const items = (response.data ?? []).filter(
+        (entry: unknown): entry is SessionStatsEntry =>
+          !!(entry as { info?: { id?: string } } | null)?.info?.id &&
+          Array.isArray((entry as { parts?: unknown } | null)?.parts),
       )
       if (items.length === 0) break
-      all.push(...items)
+      visit(items)
       const cursor = response.response?.headers?.get?.("x-next-cursor") ?? undefined
       if (!cursor) break
       before = cursor
     }
+  }
+
+  /**
+   * Compatibility wrapper for callers that still need raw stats entries.
+   * Prefer `streamSessionMessagesForStats` for renderer-facing work.
+   */
+  async function fetchSessionMessagesForStats(
+    directory: string,
+    sessionID: string,
+    options?: { signal?: AbortSignal },
+  ) {
+    const all: SessionStatsEntry[] = []
+    await streamSessionMessagesForStats(directory, sessionID, (items) => all.push(...items), options)
     // dedupe + chronological
     const byId = new Map<string, (typeof all)[number]>()
     for (const item of all) byId.set(item.info.id, item)
@@ -422,7 +458,10 @@ function createGlobalSync() {
 
     if (event.type === "session.error") {
       const error = event.properties.error
-      if (!isIgnorableSessionError(error) && shouldReportSessionError({ directory, sessionID: event.properties.sessionID, error })) {
+      if (
+        !isIgnorableSessionError(error) &&
+        shouldReportSessionError({ directory, sessionID: event.properties.sessionID, error })
+      ) {
         console.warn(`[global-sync] session error: ${describeSessionError(error)}`, {
           scope: directory === "global" ? "global" : "workspace",
           directory: directory === "global" ? undefined : directory,
@@ -540,6 +579,14 @@ function createGlobalSync() {
      */
     fetchSessionMessagesForStats(directory: string, sessionID: string) {
       return fetchSessionMessagesForStats(directory, sessionID)
+    },
+    streamSessionMessagesForStats(
+      directory: string,
+      sessionID: string,
+      visit: (entries: SessionStatsEntry[]) => void,
+      options?: { signal?: AbortSignal },
+    ) {
+      return streamSessionMessagesForStats(directory, sessionID, visit, options)
     },
     meta(directory: string, patch: ProjectMeta) {
       children.projectMeta(directory, patch)

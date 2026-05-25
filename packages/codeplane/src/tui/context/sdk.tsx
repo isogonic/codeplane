@@ -37,11 +37,13 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
       event: GlobalEvent
     }>()
 
+    let externalUnsub: (() => void) | undefined
     let queue: GlobalEvent[] = []
     let timer: Timer | undefined
     let last = 0
     const retryDelay = 1000
-    const maxRetryDelay = 30000
+    const maxRetryDelay = 5000
+    const healthyConnectionMs = 10_000
 
     const flush = () => {
       if (queue.length === 0) return
@@ -71,6 +73,30 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
       flush()
     }
 
+    const droppedEvent = (): GlobalEvent =>
+      ({
+        directory: "global",
+        payload: { type: "server.dropped", properties: {} },
+      }) as GlobalEvent
+
+    const waitForReconnect = (ms: number, ctrl: AbortController) =>
+      new Promise<void>((resolve) => {
+        if (abort.signal.aborted || ctrl.signal.aborted) {
+          resolve()
+          return
+        }
+        let timeout: Timer | undefined
+        const done = () => {
+          if (timeout) clearTimeout(timeout)
+          abort.signal.removeEventListener("abort", done)
+          ctrl.signal.removeEventListener("abort", done)
+          resolve()
+        }
+        timeout = setTimeout(done, ms)
+        abort.signal.addEventListener("abort", done, { once: true })
+        ctrl.signal.addEventListener("abort", done, { once: true })
+      })
+
     function startSSE() {
       sse?.abort()
       const ctrl = new AbortController()
@@ -80,43 +106,72 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
         while (true) {
           if (abort.signal.aborted || ctrl.signal.aborted) break
 
-          const events = await sdk.global.event({
-            signal: ctrl.signal,
-            sseMaxRetryAttempts: 0,
-          })
+          const connectedAt = Date.now()
+          let sawUsefulEvent = false
+          let reportedGap = false
 
-          if (Flag.CODEPLANE_EXPERIMENTAL_WORKSPACES) {
-            // Start syncing workspaces, it's important to do this after
-            // we've started listening to events
-            await sdk.sync.start().catch(() => {})
-          }
+          try {
+            const events = await sdk.global.event({
+              signal: ctrl.signal,
+              sseMaxRetryAttempts: 0,
+            })
 
-          for await (const event of events.stream) {
-            if (ctrl.signal.aborted) break
-            handleEvent(event)
+            if (Flag.CODEPLANE_EXPERIMENTAL_WORKSPACES) {
+              // Start syncing workspaces, it's important to do this after
+              // we've started listening to events
+              await sdk.sync.start().catch(() => {})
+            }
+
+            for await (const event of events.stream) {
+              if (ctrl.signal.aborted) break
+              const type = event.payload.type as string
+              if (type !== "server.connected" && type !== "server.heartbeat") {
+                sawUsefulEvent = true
+              }
+              handleEvent(event)
+            }
+          } catch {
+            if (abort.signal.aborted || ctrl.signal.aborted) break
+            reportedGap = true
+            handleEvent(droppedEvent())
           }
 
           if (timer) clearTimeout(timer)
           if (queue.length > 0) flush()
-          attempt += 1
           if (abort.signal.aborted || ctrl.signal.aborted) break
 
-          // Exponential backoff
-          const backoff = Math.min(retryDelay * 2 ** (attempt - 1), maxRetryDelay)
-          await new Promise((resolve) => setTimeout(resolve, backoff))
+          if (!reportedGap) handleEvent(droppedEvent())
+          if (sawUsefulEvent || Date.now() - connectedAt >= healthyConnectionMs) {
+            attempt = 0
+          } else {
+            attempt += 1
+          }
+
+          const backoff = Math.min(retryDelay * 2 ** Math.max(attempt - 1, 0), maxRetryDelay)
+          await waitForReconnect(backoff, ctrl)
         }
       })().catch(() => {})
     }
 
-    onMount(async () => {
+    onMount(() => {
       if (props.events) {
-        const unsub = await props.events.subscribe(handleEvent)
-        onCleanup(unsub)
+        void props.events
+          .subscribe(handleEvent)
+          .then((unsub) => {
+            if (abort.signal.aborted) {
+              unsub()
+              return
+            }
+            externalUnsub = unsub
+          })
+          .catch(() => {
+            if (!abort.signal.aborted) handleEvent(droppedEvent())
+          })
 
         if (Flag.CODEPLANE_EXPERIMENTAL_WORKSPACES) {
           // Start syncing workspaces, it's important to do this after
           // we've started listening to events
-          await sdk.sync.start().catch(() => {})
+          void sdk.sync.start().catch(() => {})
         }
       } else {
         startSSE()
@@ -126,6 +181,7 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
     onCleanup(() => {
       abort.abort()
       sse?.abort()
+      externalUnsub?.()
       if (timer) clearTimeout(timer)
     })
 

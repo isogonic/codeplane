@@ -44,6 +44,22 @@ describe("resolveCliArgs basic behavior", () => {
     expect(resolveCliArgs(["--unknown-flag"], true)).toEqual(["tui", "--unknown-flag"])
   })
 
+  test("bare session id shortcut is not mistaken for a subcommand", () => {
+    expect(resolveCliArgs(["-s", "ses_1a1ae406dfferJEpBImISmbGrg"], true)).toEqual([
+      "tui",
+      "-s",
+      "ses_1a1ae406dfferJEpBImISmbGrg",
+    ])
+  })
+
+  test("bare instance shortcut pins the TUI instance", () => {
+    expect(resolveCliArgs(["--instance=local", "--session=ses_abc"], false)).toEqual([
+      "tui",
+      "--instance=local",
+      "--session=ses_abc",
+    ])
+  })
+
   test("multiple global flags before subcommand", () => {
     expect(resolveCliArgs(["--pure", "--print-logs", "serve"])).toEqual([
       "--pure",

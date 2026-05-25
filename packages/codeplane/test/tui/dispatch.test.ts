@@ -24,4 +24,19 @@ describe("tui.dispatch", () => {
     expect(resolveCliArgs(["--print-logs"], true)).toEqual(["tui", "--print-logs"])
     expect(resolveCliArgs(["--log-level", "DEBUG"], false)).toEqual(["web", "--log-level", "DEBUG"])
   })
+
+  test("routes bare session shortcut to the TUI", () => {
+    expect(resolveCliArgs(["-s", "ses_abc"], true)).toEqual(["tui", "-s", "ses_abc"])
+    expect(resolveCliArgs(["--session", "ses_abc"], false)).toEqual(["tui", "--session", "ses_abc"])
+  })
+
+  test("routes bare instance session shortcut to the TUI", () => {
+    expect(resolveCliArgs(["--instance", "local", "-s", "ses_abc"], false)).toEqual([
+      "tui",
+      "--instance",
+      "local",
+      "-s",
+      "ses_abc",
+    ])
+  })
 })
