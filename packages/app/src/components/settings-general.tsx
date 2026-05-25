@@ -8,7 +8,6 @@ import { useDialog } from "@codeplane-ai/ui/context/dialog"
 import { Dialog } from "@codeplane-ai/ui/dialog"
 import { showToast } from "@codeplane-ai/ui/toast"
 import { useTheme, type ColorScheme } from "@codeplane-ai/ui/theme/context"
-import { useParams } from "@solidjs/router"
 import { useLanguage } from "@/context/language"
 import { useGlobalSync } from "@/context/global-sync"
 import { usePermission } from "@/context/permission"
@@ -26,7 +25,6 @@ import {
   terminalInput,
   useSettings,
 } from "@/context/settings"
-import { decode64 } from "@/utils/base64"
 import { playSoundById, SOUND_OPTIONS } from "@/utils/sound"
 import {
   systemPermissionGranted,
@@ -73,7 +71,6 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
   const language = useLanguage()
   const permission = usePermission()
   const globalSync = useGlobalSync()
-  const params = useParams()
   const settings = useSettings()
   const updates = useUpdates()
   const platform = usePlatform()
@@ -104,7 +101,6 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
     }
   })
 
-  const dir = createMemo(() => decode64(params.dir))
   /*
    * Settings → General is a global page (no `dir` / `params.id` in the
    * route) so the auto-accept toggle here controls the GLOBAL flag, not
@@ -131,31 +127,10 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
     return manager.instances.find((instance) => instance.key === key)
   })
   const [openingLogDir, setOpeningLogDir] = createSignal(false)
-  // Track real-time permission status so the Computer Use row can show
-  // "1 of 2 granted" / "All granted" inline without users having to enable
-  // the toggle to find out. Re-checked on focus and after the dialog closes.
-  const [computerPermissions, setComputerPermissions] = createSignal<SystemPermissionStatus[] | undefined>(undefined)
-  const refreshComputerPermissions = async () => {
-    if (!platform.systemPermissions) return
-    const status = await platform.systemPermissions.check()
-    setComputerPermissions(status.permissions)
-  }
-  onMount(() => {
-    void refreshComputerPermissions()
-    const onFocus = () => void refreshComputerPermissions()
-    window.addEventListener("focus", onFocus)
-    return () => window.removeEventListener("focus", onFocus)
-  })
 
-  const openPermissionsDialog = (tool: "computer", afterGrant?: () => void) => {
-    void dialog.show(() => (
-      <DesktopPermissionsDialog
-        tool={tool}
-        onClose={() => {
-          void refreshComputerPermissions()
-          afterGrant?.()
-        }}
-      />
+  const openPermissionsDialog = (tool: "computer") => {
+    dialog.show(() => (
+      <DesktopPermissionsDialog tool={tool} />
     ))
   }
 
@@ -184,7 +159,6 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
         return
       }
       const status = await platform.systemPermissions.check()
-      setComputerPermissions(status.permissions)
       const missing = status.permissions.filter((p) => !systemPermissionReady(p))
       if (missing.length === 0) {
         settings.general.setComputerUse(true)
@@ -193,12 +167,9 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
       }
       // Show the dialog; only commit the toggle if the user explicitly
       // confirms via "Enable anyway" inside the dialog.
-      void dialog.show(() => (
+      dialog.show(() => (
         <DesktopPermissionsDialog
           tool="computer"
-          onClose={() => {
-            void refreshComputerPermissions()
-          }}
           onConfirmEnable={() => {
             settings.general.setComputerUse(true)
             void globalSync.updateConfig({ tools: { computer: true } })
@@ -411,49 +382,20 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
             description={
               <>
                 {language.t("settings.general.row.computerUse.description")}
-                <Show when={platform.systemPermissions && computerPermissions()}>
-                  {(perms) => {
-                    const total = perms().length
-                    const active = perms().filter(systemPermissionReady).length
-                    const allReady = active === total && total > 0
-                    const needsRelaunch = perms().some(systemPermissionNeedsRelaunch)
-                    return (
-                      <span class="mt-1.5 inline-flex items-center gap-2 align-middle">
-                        <span
-                          classList={{
-                            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-11-medium": true,
-                            "bg-surface-success-weak text-text-on-success-strong": allReady,
-                            "bg-surface-warning-weak text-text-on-warning-strong": !allReady && (computerUse() || needsRelaunch),
-                            "bg-surface-weak text-text-weak": !allReady && !computerUse() && !needsRelaunch,
-                          }}
-                        >
-                          <Icon
-                            name={allReady ? "circle-check" : needsRelaunch ? "reset" : "circle-ban-sign"}
-                            class="h-3 w-3"
-                          />
-                          {allReady
-                            ? language.t("settings.general.row.computerUse.statusAllGranted")
-                            : needsRelaunch
-                              ? language.t("settings.general.row.computerUse.statusRelaunchRequired")
-                              : language.t("settings.general.row.computerUse.statusActivePartial", {
-                                active: String(active),
-                                total: String(total),
-                              })}
-                        </span>
-                        <button
-                          type="button"
-                          class="text-11-medium text-text-weak hover:text-text-strong underline-offset-2 hover:underline cursor-pointer"
-                          data-action="settings-computer-use-manage"
-                          onClick={(e: MouseEvent) => {
-                            e.preventDefault()
-                            openPermissionsDialog("computer")
-                          }}
-                        >
-                          {language.t("settings.general.row.computerUse.manage")}
-                        </button>
-                      </span>
-                    )
-                  }}
+                <Show when={platform.systemPermissions}>
+                  <span class="mt-1.5 inline-flex items-center gap-2 align-middle">
+                    <button
+                      type="button"
+                      class="text-11-medium text-text-weak hover:text-text-strong underline-offset-2 hover:underline cursor-pointer"
+                      data-action="settings-computer-use-manage"
+                      onClick={(e: MouseEvent) => {
+                        e.preventDefault()
+                        openPermissionsDialog("computer")
+                      }}
+                    >
+                      {language.t("settings.general.row.computerUse.manage")}
+                    </button>
+                  </span>
                 </Show>
               </>
             }

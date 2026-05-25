@@ -5,6 +5,7 @@ import { which } from "@/util/which"
 import path from "path"
 import { spawn, type ChildProcess } from "child_process"
 import { setTimeout as sleep } from "node:timers/promises"
+import * as Environment from "./environment"
 
 const SIGKILL_TIMEOUT_MS = 200
 
@@ -106,5 +107,13 @@ export function posix(file: string) {
 export const preferred = lazy(() => select(process.env.SHELL))
 
 export const acceptable = lazy(() => select(process.env.SHELL, { acceptable: true }))
+
+export function environment(extra?: NodeJS.ProcessEnv) {
+  return Environment.environment(process.env, extra, process.env.SHELL || acceptable())
+}
+
+export function resetEnvironment() {
+  Environment.reset()
+}
 
 export * as Shell from "./shell"

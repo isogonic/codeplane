@@ -213,9 +213,10 @@ export const ToolsTool = Tool.define<
     })
 
     const binaryDiagnostics = Effect.fn("ToolsTool.binaryDiagnostics")(function* (dir: string) {
-      const gitPath = which("git")
+      const env = Shell.environment()
+      const gitPath = which("git", env)
       const gitVersion = gitPath ? yield* git.run(["--version"], { cwd: dir }) : undefined
-      const rgPath = which(process.platform === "win32" ? "rg.exe" : "rg")
+      const rgPath = which(process.platform === "win32" ? "rg.exe" : "rg", env)
       const shell = Shell.acceptable()
 
       return [
@@ -242,6 +243,7 @@ export const ToolsTool = Tool.define<
     })
 
     const credentialDiagnostics = Effect.fn("ToolsTool.credentialDiagnostics")(function* (instance?: string) {
+      const env = Shell.environment()
       const entries = Object.entries((yield* config.get()).git ?? {}).filter(([name]) => !instance || name === instance)
       if (entries.length === 0) {
         return [
@@ -263,7 +265,7 @@ export const ToolsTool = Tool.define<
           const credential = item.credential
           const token =
             credential?.type === "env" && credential.env
-              ? process.env[credential.env]
+              ? env[credential.env]
               : credential?.type === "stored" && credential.key
                 ? yield* auth
                     .get(credential.key)

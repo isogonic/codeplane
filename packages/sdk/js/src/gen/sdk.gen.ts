@@ -114,6 +114,8 @@ import type {
   ProjectUpdateErrors,
   ProjectUpdateResponses,
   ProviderAuthResponses,
+  ProviderCustomModelsErrors,
+  ProviderCustomModelsResponses,
   ProviderListResponses,
   ProviderOauthAuthorizeErrors,
   ProviderOauthAuthorizeResponses,
@@ -3426,6 +3428,53 @@ export class Provider extends HeyApiClient {
       url: "/provider/auth",
       ...options,
       ...params,
+    })
+  }
+
+  /**
+   * Fetch custom provider models
+   *
+   * Fetch models from an OpenAI-compatible custom provider endpoint.
+   */
+  public customModels<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      baseURL?: string
+      apiKey?: string
+      headers?: {
+        [key: string]: string
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "baseURL" },
+            { in: "body", key: "apiKey" },
+            { in: "body", key: "headers" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      ProviderCustomModelsResponses,
+      ProviderCustomModelsErrors,
+      ThrowOnError
+    >({
+      url: "/provider/custom-models",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
     })
   }
 

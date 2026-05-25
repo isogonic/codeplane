@@ -1,10 +1,12 @@
 import { afterEach, describe, expect } from "bun:test"
+import { chmod, mkdir } from "fs/promises"
 import path from "path"
 import { Effect, Layer } from "effect"
 import { Agent } from "../../src/agent/agent"
 import * as CrossSpawnSpawner from "../../src/effect/cross-spawn-spawner"
 import { Project } from "../../src/project"
 import { Instance } from "../../src/project/instance"
+import { Shell } from "../../src/shell/shell"
 import { MessageID, SessionID } from "../../src/session/schema"
 import { ProjectTool } from "../../src/tool/project"
 import { Tool, Truncate } from "../../src/tool"
@@ -14,6 +16,7 @@ import { testEffect } from "../lib/effect"
 
 afterEach(async () => {
   await Instance.disposeAll()
+  Shell.resetEnvironment()
 })
 
 const ctx = {
@@ -50,6 +53,63 @@ const run = Effect.fn("ProjectToolTest.run")(function* (
   return yield* tool.execute(args, next)
 })
 
+const withEnv = <A, E, R>(env: NodeJS.ProcessEnv, effect: Effect.Effect<A, E, R>) =>
+  Effect.acquireUseRelease(
+    Effect.sync(() => {
+      const prev = Object.fromEntries(Object.keys(env).map((key) => [key, process.env[key]])) as NodeJS.ProcessEnv
+      for (const [key, value] of Object.entries(env)) {
+        if (value === undefined) delete process.env[key]
+        else process.env[key] = value
+      }
+      Shell.acceptable.reset()
+      Shell.preferred.reset()
+      Shell.resetEnvironment()
+      return prev
+    }),
+    () => effect,
+    (prev) =>
+      Effect.sync(() => {
+        for (const [key, value] of Object.entries(prev)) {
+          if (value === undefined) delete process.env[key]
+          else process.env[key] = value
+        }
+        Shell.acceptable.reset()
+        Shell.preferred.reset()
+        Shell.resetEnvironment()
+      }),
+  )
+
+const loginShellFixture = async (dir: string) => {
+  const bin = path.join(dir, "login-bin")
+  const shell = path.join(dir, "zsh")
+  await mkdir(bin, { recursive: true })
+  await Bun.write(path.join(bin, "login-only-tool"), "#!/bin/sh\nprintf 'project-login-path-ok\\n'\n")
+  await chmod(path.join(bin, "login-only-tool"), 0o755)
+  await Bun.write(
+    shell,
+    [
+      "#!/bin/sh",
+      "login=0",
+      "if [ \"$1\" = \"-l\" ]; then",
+      "  login=1",
+      "  shift",
+      "fi",
+      "if [ \"$1\" = \"-c\" ]; then",
+      "  shift",
+      "  if [ \"$login\" = \"1\" ]; then",
+      `    PATH=${JSON.stringify(bin)}:$PATH`,
+      "    export PATH",
+      "  fi",
+      "  exec /bin/sh -c \"$1\"",
+      "fi",
+      "exec /bin/sh \"$@\"",
+      "",
+    ].join("\n"),
+  )
+  await chmod(shell, 0o755)
+  return { shell, bin }
+}
+
 describe("tool.project", () => {
   it.live("detects package scripts as project commands", () =>
     provideTmpdirInstance((dir) =>
@@ -77,7 +137,7 @@ describe("tool.project", () => {
 
   it.live("configures editable project commands and includes them in context", () =>
     provideTmpdirInstance(
-      (dir) =>
+      () =>
         Effect.gen(function* () {
           yield* run({
             operation: "config_set",
@@ -121,4 +181,33 @@ describe("tool.project", () => {
       }),
     ),
   )
+
+  if (process.platform !== "win32") {
+    it.live("checks and runs commands using login shell PATH from a sanitized app environment", () =>
+      provideTmpdirInstance((dir) =>
+        Effect.gen(function* () {
+          const fixture = yield* Effect.promise(() => loginShellFixture(dir))
+
+          yield* withEnv(
+            { SHELL: fixture.shell, PATH: "/usr/bin:/bin:/usr/sbin:/sbin" },
+            Effect.gen(function* () {
+              yield* run({
+                operation: "config_set",
+                name: "login-path",
+                command: "login-only-tool",
+                cwd: ".",
+                context: false,
+              })
+
+              const check = yield* run({ operation: "check", name: "login-path" })
+              expect(check.output).toContain("- login-path: callable")
+
+              const result = yield* run({ operation: "run", name: "login-path" })
+              expect(result.output).toBe("project-login-path-ok")
+            }),
+          )
+        }),
+      ),
+    )
+  }
 })

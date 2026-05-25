@@ -50,11 +50,8 @@ export type CronTask = {
 }
 
 export type BadRequestError = {
+  name: string
   data: unknown
-  errors: Array<{
-    [key: string]: unknown
-  }>
-  success: false
 }
 
 export type NotFoundError = {
@@ -1926,6 +1923,8 @@ export type PermissionConfig =
       forge?: PermissionRuleConfig
       bash?: PermissionRuleConfig
       task?: PermissionRuleConfig
+      browser?: PermissionRuleConfig
+      computer?: PermissionRuleConfig
       external_directory?: PermissionRuleConfig
       todowrite?: PermissionActionConfig
       question?: PermissionActionConfig
@@ -2137,6 +2136,10 @@ export type McpOAuthConfig = {
    * OAuth scopes to request during authorization
    */
   scope?: string
+  /**
+   * Local OAuth callback port used when redirectUri is omitted. Defaults to 19876.
+   */
+  callbackPort?: number
   /**
    * OAuth redirect URI (default: http://127.0.0.1:19876/mcp/oauth/callback).
    */
@@ -2466,6 +2469,13 @@ export type Config = {
      * Timeout in milliseconds for model context protocol (MCP) requests
      */
     mcp_timeout?: number
+  }
+}
+
+export type InternalServerError = {
+  name: "UnknownError"
+  data: {
+    message: string
   }
 }
 
@@ -3459,6 +3469,10 @@ export type GlobalUpgradeErrors = {
    * Bad request
    */
   400: BadRequestError
+  /**
+   * Internal server error
+   */
+  500: InternalServerError
 }
 
 export type GlobalUpgradeError = GlobalUpgradeErrors[keyof GlobalUpgradeErrors]
@@ -5679,6 +5693,45 @@ export type ProviderAuthResponses = {
 }
 
 export type ProviderAuthResponse = ProviderAuthResponses[keyof ProviderAuthResponses]
+
+export type ProviderCustomModelsData = {
+  body?: {
+    baseURL: string
+    apiKey?: string
+    headers?: {
+      [key: string]: string
+    }
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/provider/custom-models"
+}
+
+export type ProviderCustomModelsErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type ProviderCustomModelsError = ProviderCustomModelsErrors[keyof ProviderCustomModelsErrors]
+
+export type ProviderCustomModelsResponses = {
+  /**
+   * Custom provider models
+   */
+  200: {
+    models: Array<{
+      id: string
+      name: string
+    }>
+  }
+}
+
+export type ProviderCustomModelsResponse = ProviderCustomModelsResponses[keyof ProviderCustomModelsResponses]
 
 export type ProviderOauthAuthorizeData = {
   body?: {

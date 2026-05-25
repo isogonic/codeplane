@@ -3,6 +3,7 @@ import { spawn as ptySpawn } from "#pty"
 import * as Tool from "./tool"
 import { EffectBridge } from "@/effect"
 import { Question } from "../question"
+import { Shell } from "@/shell/shell"
 import { appendOutput, register as registerProc, unregister as unregisterProc } from "./bash_interactive_runtime"
 import DESCRIPTION from "./bash_interactive.txt"
 
@@ -159,7 +160,7 @@ export const BashInteractiveTool = Tool.define(
 
           const timeoutMs = Math.min(MAX_TIMEOUT_MS, Math.max(1_000, Math.floor(params.timeout ?? DEFAULT_TIMEOUT_MS)))
           const cwd = params.cwd && params.cwd.length > 0 ? params.cwd : process.cwd()
-          const env = sanitizeEnv(process.env)
+          const env = sanitizeEnv(Shell.environment())
           const prompts = params.prompts ?? []
 
           yield* ctx.ask({
@@ -186,8 +187,16 @@ export const BashInteractiveTool = Tool.define(
           const bridge = yield* EffectBridge.make()
 
           const isWindows = process.platform === "win32"
-          const file = isWindows ? "powershell.exe" : "/bin/sh"
-          const args = isWindows ? ["-NoLogo", "-NoProfile", "-Command", command] : ["-c", command]
+          const file = Shell.acceptable()
+          const name = Shell.name(file)
+          const args =
+            isWindows && (name === "powershell" || name === "pwsh")
+              ? ["-NoLogo", "-NoProfile", "-Command", command]
+              : isWindows
+                ? ["/d", "/s", "/c", command]
+              : !isWindows && Shell.login(file)
+                ? ["-l", "-c", command]
+                : ["-c", command]
 
           const proc = ptySpawn(file, args, {
             name: "xterm-256color",

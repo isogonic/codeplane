@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { Effect, Layer, ManagedRuntime } from "effect"
+import { chmod, mkdir } from "fs/promises"
 import os from "os"
 import path from "path"
 import { Shell } from "../../src/shell/shell"
@@ -95,6 +96,7 @@ const withShell = (item: { label: string; shell: string }, fn: () => Promise<voi
   process.env.SHELL = item.shell
   Shell.acceptable.reset()
   Shell.preferred.reset()
+  Shell.resetEnvironment()
   try {
     await fn()
   } finally {
@@ -102,7 +104,60 @@ const withShell = (item: { label: string; shell: string }, fn: () => Promise<voi
     else process.env.SHELL = prev
     Shell.acceptable.reset()
     Shell.preferred.reset()
+    Shell.resetEnvironment()
   }
+}
+
+const withEnv = async (env: NodeJS.ProcessEnv, fn: () => Promise<void>) => {
+  const prev = Object.fromEntries(Object.keys(env).map((key) => [key, process.env[key]])) as NodeJS.ProcessEnv
+  for (const [key, value] of Object.entries(env)) {
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+  Shell.resetEnvironment()
+  try {
+    await fn()
+  } finally {
+    for (const [key, value] of Object.entries(prev)) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+    Shell.resetEnvironment()
+  }
+}
+
+const loginShellFixture = async (dir: string) => {
+  const bin = path.join(dir, "login-bin")
+  const shell = path.join(dir, "zsh")
+  await mkdir(bin, { recursive: true })
+  await Bun.write(
+    path.join(bin, "login-only-tool"),
+    "#!/bin/sh\nprintf 'login-path-ok\\n'\n",
+  )
+  await chmod(path.join(bin, "login-only-tool"), 0o755)
+  await Bun.write(
+    shell,
+    [
+      "#!/bin/sh",
+      "login=0",
+      "if [ \"$1\" = \"-l\" ]; then",
+      "  login=1",
+      "  shift",
+      "fi",
+      "if [ \"$1\" = \"-c\" ]; then",
+      "  shift",
+      "  if [ \"$login\" = \"1\" ]; then",
+      `    PATH=${JSON.stringify(bin)}:$PATH`,
+      "    export PATH",
+      "  fi",
+      "  exec /bin/sh -c \"$1\"",
+      "fi",
+      "exec /bin/sh \"$@\"",
+      "",
+    ].join("\n"),
+  )
+  await chmod(shell, 0o755)
+  return { shell, bin }
 }
 
 const each = (name: string, fn: (item: { label: string; shell: string }) => Promise<void>) => {
@@ -153,6 +208,36 @@ describe("tool.bash", () => {
       },
     })
   })
+
+  if (process.platform !== "win32") {
+    test("uses login shell PATH for commands launched from a sanitized app environment", async () => {
+      await using tmp = await tmpdir()
+      const fixture = await loginShellFixture(tmp.path)
+      await withEnv({ SHELL: fixture.shell, PATH: "/usr/bin:/bin:/usr/sbin:/sbin" }, async () => {
+        Shell.acceptable.reset()
+        Shell.preferred.reset()
+
+        await Instance.provide({
+          directory: tmp.path,
+          fn: async () => {
+            const bash = await initBash()
+            const result = await Effect.runPromise(
+              bash.execute(
+                {
+                  command: "login-only-tool",
+                  description: "Run login path command",
+                },
+                ctx,
+              ),
+            )
+
+            expect(result.metadata.exit).toBe(0)
+            expect(result.output).toContain("login-path-ok")
+          },
+        })
+      })
+    })
+  }
 })
 
 describe("tool.bash permissions", () => {

@@ -115,6 +115,7 @@ export default function Layout(props: ParentProps) {
       workspaceName: {} as Record<string, string>,
       workspaceBranchName: {} as Record<string, Record<string, string>>,
       workspaceExpanded: {} as Record<string, boolean>,
+      sessionExpanded: {} as Record<string, boolean>,
     }),
   )
 
@@ -2127,6 +2128,8 @@ export default function Layout(props: ParentProps) {
     isBusy,
     workspaceExpanded: (directory, local) => store.workspaceExpanded[directory] ?? local,
     setWorkspaceExpanded: (directory, value) => setStore("workspaceExpanded", directory, value),
+    sessionExpanded: (sessionID) => store.sessionExpanded[sessionID] ?? true,
+    setSessionExpanded: (sessionID, value) => setStore("sessionExpanded", sessionID, value),
     showResetWorkspaceDialog: (root, directory) =>
       dialog.show(() => <DialogResetWorkspace root={root} directory={directory} />),
     showDeleteWorkspaceDialog: (root, directory) =>
@@ -2168,6 +2171,9 @@ export default function Layout(props: ParentProps) {
       clearHoverProjectSoon,
       prefetchSession,
       archiveSession,
+      sessionExpanded: (sessionID: string) => store.sessionExpanded[sessionID] ?? true,
+      setSessionExpanded: (sessionID: string, value: boolean) =>
+        setStore("sessionExpanded", sessionID, value),
     },
   }
 

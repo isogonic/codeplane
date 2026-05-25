@@ -34,6 +34,7 @@ import { sessionTitle } from "@/utils/session-title"
 import { parseCommentNote, readCommentMetadata } from "@/utils/comment-note"
 import { writeClipboardText } from "@/utils/clipboard"
 import { makeTimer } from "@solid-primitives/timer"
+import { visibleTurnSlices } from "./message-timeline-slices"
 
 type MessageComment = {
   path: string
@@ -255,25 +256,10 @@ export function MessageTimeline(props: {
     return sync.data.message[id] ?? emptyMessages
   })
   const turnSlices = createMemo(() => {
-    const all = sessionMessages()
-    const map = new Map<string, MessageType[]>()
-    for (let i = 0; i < all.length; i++) {
-      const msg = all[i]
-      if (!msg) continue
-      if (msg.role === "user") {
-        const slice: MessageType[] = [msg]
-        for (let j = i + 1; j < all.length; j++) {
-          const next = all[j]
-          if (!next) continue
-          if (next.role === "user") break
-          if (next.role === "assistant" && (next as AssistantMessage).parentID === msg.id) {
-            slice.push(next)
-          }
-        }
-        map.set(msg.id, slice)
-      }
-    }
-    return map
+    return visibleTurnSlices({
+      messages: sessionMessages(),
+      renderedUserMessageIDs: rendered(),
+    })
   })
   const sessionStatus = createMemo(() => {
     const id = sessionID()

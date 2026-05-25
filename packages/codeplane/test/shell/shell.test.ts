@@ -9,6 +9,7 @@ const withShell = async (shell: string | undefined, fn: () => void | Promise<voi
   else process.env.SHELL = shell
   Shell.acceptable.reset()
   Shell.preferred.reset()
+  Shell.resetEnvironment()
   try {
     await fn()
   } finally {
@@ -16,6 +17,7 @@ const withShell = async (shell: string | undefined, fn: () => void | Promise<voi
     else process.env.SHELL = prev
     Shell.acceptable.reset()
     Shell.preferred.reset()
+    Shell.resetEnvironment()
   }
 }
 

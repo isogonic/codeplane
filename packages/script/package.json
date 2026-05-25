@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package",
   "name": "@codeplane-ai/script",
-  "version": "28.21.40",
+  "version": "28.21.41",
   "license": "MIT",
   "dependencies": {
     "@codeplane-ai/shared": "file:../shared",

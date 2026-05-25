@@ -138,6 +138,25 @@ describe("getSessionPreview", () => {
   test("marks unloaded message caches as loading", () => {
     expect(getSessionPreview({ messages: undefined, parts: {} })).toEqual({ loading: true })
   })
+
+  test("marks a running unloaded session as thinking", () => {
+    expect(getSessionPreview({ messages: undefined, parts: {}, working: true })).toEqual({
+      loading: false,
+      thinking: true,
+    })
+  })
+
+  test("marks a running empty session as thinking", () => {
+    expect(getSessionPreview({ messages: [], parts: {}, working: true })).toEqual({
+      loading: false,
+      thinking: true,
+      prompt: undefined,
+      providerID: undefined,
+      modelID: undefined,
+      cost: undefined,
+      duration: undefined,
+    })
+  })
 })
 
 describe("session preview formatters", () => {

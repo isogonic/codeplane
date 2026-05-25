@@ -3,7 +3,7 @@
   "info": {
     "title": "codeplane",
     "description": "codeplane api",
-    "version": "28.21.10"
+    "version": "28.21.41"
   },
   "paths": {
     "/global/cron": {
@@ -1036,6 +1036,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
                 }
               }
             }
@@ -5999,6 +6009,102 @@
         ]
       }
     },
+    "/provider/custom-models": {
+      "post": {
+        "operationId": "provider.customModels",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Fetch custom provider models",
+        "description": "Fetch models from an OpenAI-compatible custom provider endpoint.",
+        "responses": {
+          "200": {
+            "description": "Custom provider models",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "models": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["id", "name"]
+                      }
+                    }
+                  },
+                  "required": ["models"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "baseURL": {
+                    "type": "string"
+                  },
+                  "apiKey": {
+                    "type": "string"
+                  },
+                  "headers": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": ["baseURL"]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.provider.customModels({\n  ...\n})"
+          }
+        ]
+      }
+    },
     "/provider/{providerID}/oauth/authorize": {
       "post": {
         "operationId": "provider.oauth.authorize",
@@ -7868,23 +7974,12 @@
       "BadRequestError": {
         "type": "object",
         "properties": {
-          "data": {},
-          "errors": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "propertyNames": {
-                "type": "string"
-              },
-              "additionalProperties": {}
-            }
+          "name": {
+            "type": "string"
           },
-          "success": {
-            "type": "boolean",
-            "const": false
-          }
+          "data": {}
         },
-        "required": ["data", "errors", "success"]
+        "required": ["name", "data"]
       },
       "NotFoundError": {
         "type": "object",
@@ -13296,6 +13391,12 @@
                   "task": {
                     "$ref": "#/components/schemas/PermissionRuleConfig"
                   },
+                  "browser": {
+                    "$ref": "#/components/schemas/PermissionRuleConfig"
+                  },
+                  "computer": {
+                    "$ref": "#/components/schemas/PermissionRuleConfig"
+                  },
                   "external_directory": {
                     "$ref": "#/components/schemas/PermissionRuleConfig"
                   },
@@ -13714,6 +13815,10 @@
           "scope": {
             "description": "OAuth scopes to request during authorization",
             "type": "string"
+          },
+          "callbackPort": {
+            "description": "Local OAuth callback port used when redirectUri is omitted. Defaults to 19876.",
+            "type": "number"
           },
           "redirectUri": {
             "description": "OAuth redirect URI (default: http://127.0.0.1:19876/mcp/oauth/callback).",
@@ -14341,6 +14446,25 @@
           }
         },
         "additionalProperties": false
+      },
+      "InternalServerError": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "const": "UnknownError"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": ["message"]
+          }
+        },
+        "required": ["name", "data"]
       },
       "OAuth": {
         "type": "object",

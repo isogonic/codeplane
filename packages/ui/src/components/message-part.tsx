@@ -56,6 +56,8 @@ import { TextShimmer } from "./text-shimmer"
 import { AnimatedCountList } from "./tool-count-summary"
 import { ToolStatusTitle } from "./tool-status-title"
 import { patchFiles } from "./apply-patch-file"
+import { projectToolCommand, projectToolSubtitle, projectToolTitle } from "./message-part-project"
+import { readToolDirectoryLabel, readToolFilePath, readToolLineRange } from "./message-part-read"
 import { animate } from "motion"
 import { useLocation } from "@solidjs/router"
 import { attached, inline, kind } from "./message-file"
@@ -395,6 +397,12 @@ export function getToolInfo(tool: string, input: any = {}): ToolInfo {
         title: i18n.t("ui.tool.git"),
         subtitle: input.operation,
       }
+    case "project":
+      return {
+        icon: "folder",
+        title: projectToolTitle(input, {}),
+        subtitle: projectToolSubtitle(input, {}),
+      }
     case "computer":
       return {
         icon: "keyboard",
@@ -724,24 +732,46 @@ function contextToolDetail(part: ToolPart): string | undefined {
   return undefined
 }
 
-function contextToolTrigger(part: ToolPart, i18n: ReturnType<typeof useI18n>) {
+function ReadToolFile(props: { path: string; range?: string }) {
+  const directory = createMemo(() => readToolDirectoryLabel(getDirectory(props.path)))
+  const filename = createMemo(() => getFilename(props.path) || props.path)
+
+  return (
+    <span data-component="read-tool-file" title={props.path || undefined}>
+      <Show when={props.path}>
+        <FileIcon node={{ path: props.path, type: "file" }} class="size-4" />
+      </Show>
+      <span data-slot="read-tool-path">
+        <Show when={directory()}>
+          {(value) => <span data-slot="read-tool-directory">{`\u202A${value()}/\u202C`}</span>}
+        </Show>
+        <span data-slot="read-tool-filename">{filename()}</span>
+      </span>
+      <Show when={props.range}>{(range) => <span data-slot="read-tool-range">{range()}</span>}</Show>
+    </span>
+  )
+}
+
+type ContextToolTrigger = {
+  title: string
+  subtitle?: string
+  args?: string[]
+  filePath?: string
+  range?: string
+}
+
+function contextToolTrigger(part: ToolPart, i18n: ReturnType<typeof useI18n>): ContextToolTrigger {
   const input = (part.state.input ?? {}) as Record<string, unknown>
   const path = typeof input.path === "string" ? input.path : "/"
-  const filePath = typeof input.filePath === "string" ? input.filePath : undefined
   const pattern = typeof input.pattern === "string" ? input.pattern : undefined
   const include = typeof input.include === "string" ? input.include : undefined
-  const offset = typeof input.offset === "number" ? input.offset : undefined
-  const limit = typeof input.limit === "number" ? input.limit : undefined
 
   switch (part.tool) {
     case "read": {
-      const args: string[] = []
-      if (offset !== undefined) args.push("offset=" + offset)
-      if (limit !== undefined) args.push("limit=" + limit)
       return {
         title: i18n.t("ui.tool.read"),
-        subtitle: filePath ? getFilename(filePath) : "",
-        args,
+        filePath: readToolFilePath(input),
+        range: readToolLineRange(input),
       }
     }
     case "list":
@@ -994,13 +1024,22 @@ function ContextToolGroup(props: { parts: ToolPart[]; busy?: boolean }) {
                             <span data-slot="basic-tool-tool-title">
                               <TextShimmer text={trigger().title} active={running()} />
                             </span>
-                            <Show when={!running() && trigger().subtitle}>
-                              <span data-slot="basic-tool-tool-subtitle">{trigger().subtitle}</span>
-                            </Show>
-                            <Show when={!running() && trigger().args?.length}>
-                              <For each={trigger().args}>
-                                {(arg) => <span data-slot="basic-tool-tool-arg">{arg}</span>}
-                              </For>
+                            <Show
+                              when={!running() && partAccessor().tool === "read"}
+                              fallback={
+                                <>
+                                  <Show when={!running() && trigger().subtitle}>
+                                    <span data-slot="basic-tool-tool-subtitle">{trigger().subtitle}</span>
+                                  </Show>
+                                  <Show when={!running() && trigger().args?.length}>
+                                    <For each={trigger().args}>
+                                      {(arg) => <span data-slot="basic-tool-tool-arg">{arg}</span>}
+                                    </For>
+                                  </Show>
+                                </>
+                              }
+                            >
+                              <ReadToolFile path={trigger().filePath ?? ""} range={trigger().range} />
                             </Show>
                           </div>
                         </div>
@@ -1764,9 +1803,9 @@ ToolRegistry.register({
   render(props) {
     const data = useData()
     const i18n = useI18n()
-    const args: string[] = []
-    if (props.input.offset) args.push("offset=" + props.input.offset)
-    if (props.input.limit) args.push("limit=" + props.input.limit)
+    const pending = createMemo(() => props.status === "pending" || props.status === "running")
+    const filePath = createMemo(() => readToolFilePath(props.input))
+    const range = createMemo(() => readToolLineRange(props.input))
     const loaded = createMemo(() => {
       if (props.status !== "completed") return []
       const value = props.metadata.loaded
@@ -1778,16 +1817,25 @@ ToolRegistry.register({
         <BasicTool
           {...props}
           icon="glasses"
-          trigger={{
-            title: i18n.t("ui.tool.read"),
-            subtitle: props.input.filePath ? getFilename(props.input.filePath) : "",
-            args,
-          }}
+          trigger={
+            <div data-component="read-tool-trigger">
+              <div data-slot="basic-tool-tool-info-structured">
+                <div data-slot="basic-tool-tool-info-main">
+                  <span data-slot="basic-tool-tool-title">
+                    <TextShimmer text={i18n.t("ui.tool.read")} active={pending()} />
+                  </span>
+                  <Show when={!pending()}>
+                    <ReadToolFile path={filePath()} range={range()} />
+                  </Show>
+                </div>
+              </div>
+            </div>
+          }
         />
         <For each={loaded()}>
           {(filepath) => (
             <div data-component="tool-loaded-file">
-              <Icon name="enter" size="small" />
+              <FileIcon node={{ path: filepath, type: "file" }} class="size-4" />
               <span>
                 {i18n.t("ui.tool.loaded")} {relativizeProjectPath(filepath, data.directory)}
               </span>
@@ -2623,6 +2671,57 @@ ToolRegistry.register({
             </pre>
           </div>
         </div>
+      </BasicTool>
+    )
+  },
+})
+
+ToolRegistry.register({
+  name: "project",
+  render(props) {
+    const pending = () => props.status === "pending" || props.status === "running"
+    const sawPending = pending()
+    const title = createMemo(() => projectToolTitle(props.input, props.metadata))
+    const subtitle = createMemo(() => projectToolSubtitle(props.input, props.metadata))
+    const command = createMemo(() => projectToolCommand(props.input, props.metadata))
+    const output = createMemo(() => stripAnsi(props.output || ""))
+
+    return (
+      <BasicTool
+        {...props}
+        icon="folder"
+        animated
+        trigger={
+          <div data-slot="basic-tool-tool-info-structured">
+            <div data-slot="basic-tool-tool-info-main">
+              <span data-slot="basic-tool-tool-title">
+                <TextShimmer text={title()} active={pending()} />
+              </span>
+              <Show when={subtitle()} keyed>
+                {(value) => (
+                  <Show when={pending()} fallback={<ShellSubmessage text={value} animate={sawPending} />}>
+                    <span data-slot="basic-tool-tool-subtitle">{value}</span>
+                  </Show>
+                )}
+              </Show>
+            </div>
+          </div>
+        }
+      >
+        <Show when={output() || command()}>
+          <div data-component="tool-output" data-scrollable>
+            <Show when={command()}>
+              {(value) => (
+                <pre>
+                  <code>$ {value()}</code>
+                </pre>
+              )}
+            </Show>
+            <Show when={output()}>
+              {(value) => <Markdown text={value()} />}
+            </Show>
+          </div>
+        </Show>
       </BasicTool>
     )
   },

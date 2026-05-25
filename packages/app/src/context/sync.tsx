@@ -13,9 +13,12 @@ import { useGlobalSync } from "./global-sync"
 import { useSDK } from "./sdk"
 import type { Message, Part } from "@codeplane-ai/sdk/v2/client"
 import { SESSION_CACHE_LIMIT, dropSessionCaches, pickSessionCacheEvictions } from "./global-sync/session-cache"
+import { trimSessionMessages } from "./session-page"
 import { diffs as list, message as clean } from "@/utils/diffs"
 
 const SKIP_PARTS = new Set(["patch", "step-start", "step-finish"])
+export const INITIAL_MESSAGE_PAGE_SIZE = 80
+export const HISTORY_MESSAGE_PAGE_SIZE = 200
 
 function sortParts(parts: Part[]) {
   return parts.filter((part) => !!part?.id).sort((a, b) => cmp(a.id, b.id))
@@ -181,8 +184,8 @@ export const { use: useSync, useOptional: useSyncOptional, provider: SyncProvide
       return globalSync.child(directory)
     }
     const absolute = (path: string) => (current()[0].path.directory + "/" + path).replace("//", "/")
-    const initialMessagePageSize = 80
-    const historyMessagePageSize = 200
+    const initialMessagePageSize = INITIAL_MESSAGE_PAGE_SIZE
+    const historyMessagePageSize = HISTORY_MESSAGE_PAGE_SIZE
     const inflight = new Map<string, Promise<void>>()
     const inflightDiff = new Map<string, Promise<void>>()
     const inflightTodo = new Map<string, Promise<void>>()
@@ -440,13 +443,46 @@ export const { use: useSync, useOptional: useSyncOptional, provider: SyncProvide
             parts: input.parts,
           })
         },
-        async sync(sessionID: string, opts?: { force?: boolean }) {
+        async sync(sessionID: string, opts?: { force?: boolean; messageLimit?: number }) {
           const directory = sdk.directory
           const client = sdk.client
           const [store, setStore] = globalSync.child(directory)
           const key = keyFor(directory, sessionID)
 
           touch(directory, setStore, sessionID)
+
+          const trimmed =
+            opts?.messageLimit === undefined
+              ? undefined
+              : trimSessionMessages({
+                  messages: store.message[sessionID],
+                  limit: opts.messageLimit,
+                })
+          if (trimmed) {
+            batch(() => {
+              setStore(
+                produce((draft) => {
+                  const previous = draft.message[sessionID] ?? []
+                  const keep = new Set(trimmed.items.map((message) => message.id))
+                  draft.message[sessionID] = trimmed.items
+                  for (const message of previous) {
+                    if (!keep.has(message.id)) delete draft.part[message.id]
+                  }
+                }),
+              )
+              setMeta("limit", key, trimmed.items.length)
+              setMeta("cursor", key, trimmed.cursor)
+              setMeta("complete", key, trimmed.complete)
+              setSessionPrefetch({
+                scope: sdk.scope.key,
+                directory,
+                sessionID,
+                limit: trimmed.items.length,
+                cursor: trimmed.cursor,
+                complete: trimmed.complete,
+              })
+            })
+          }
 
           const seeded = getSessionPrefetch(sdk.scope.key, directory, sessionID)
           if (seeded && store.message[sessionID] !== undefined && meta.limit[key] === undefined) {
@@ -477,7 +513,7 @@ export const { use: useSync, useOptional: useSyncOptional, provider: SyncProvide
             const cached = store.message[sessionID] !== undefined && meta.limit[key] !== undefined
             if (cached && hasSession && !opts?.force) return
 
-            const limit = meta.limit[key] ?? initialMessagePageSize
+            const limit = opts?.messageLimit ?? meta.limit[key] ?? initialMessagePageSize
             const sessionReq =
               hasSession && !opts?.force
                 ? Promise.resolve()

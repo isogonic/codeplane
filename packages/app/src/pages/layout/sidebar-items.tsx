@@ -78,6 +78,8 @@ export type SessionItemProps = {
   clearHoverProjectSoon: () => void
   prefetchSession: (session: Session, priority?: "high" | "low") => void
   archiveSession: (session: Session) => Promise<void>
+  sessionExpanded?: (sessionID: string) => boolean
+  setSessionExpanded?: (sessionID: string, value: boolean) => void
 }
 
 const SessionRow = (props: {
@@ -85,6 +87,7 @@ const SessionRow = (props: {
   slug: string
   mobile?: boolean
   dense?: boolean
+  title: Accessor<string>
   tint: Accessor<string | undefined>
   isWorking: Accessor<boolean>
   hasPermissions: Accessor<boolean>
@@ -95,7 +98,6 @@ const SessionRow = (props: {
   warmPress: () => void
   warmFocus: () => void
 }): JSX.Element => {
-  const title = () => sessionTitle(props.session.title)
   const indicatorActive = createMemo(
     () => props.isWorking() || props.hasPermissions() || props.hasError() || props.unseenCount() > 0,
   )
@@ -141,7 +143,7 @@ const SessionRow = (props: {
           </div>
         </Show>
       </div>
-      <span class="text-14-regular text-text-strong min-w-0 flex-1 truncate">{title()}</span>
+      <span class="text-14-medium text-text-strong min-w-0 flex-1 truncate">{props.title()}</span>
     </A>
   )
 }
@@ -153,15 +155,10 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
   const permission = usePermission()
   const globalSync = useGlobalSync()
   const providers = useProviders()
+  const rowTitle = createMemo(() => sessionTitle(props.session.title) ?? language.t("command.session.new"))
   const unseenCount = createMemo(() => notification.session.unseenCount(props.session.id))
   const hasError = createMemo(() => notification.session.unseenHasError(props.session.id))
   const [sessionStore] = globalSync.peek(props.session.directory, { bootstrap: false })
-  const preview = createMemo(() =>
-    getSessionPreview({
-      messages: sessionStore.message[props.session.id],
-      parts: sessionStore.part,
-    }),
-  )
   const hasPermissions = createMemo(() => {
     return !!sessionPermissionRequest(sessionStore.session, sessionStore.permission, props.session.id, (item) => {
       return !permission.autoResponds(item, props.session.directory)
@@ -182,6 +179,13 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
       (status !== undefined && status.type !== "idle")
     )
   })
+  const preview = createMemo(() =>
+    getSessionPreview({
+      messages: sessionStore.message[props.session.id],
+      parts: sessionStore.part,
+      working: isWorking(),
+    }),
+  )
 
   const tint = createMemo(() => messageAgentColor(sessionStore.message[props.session.id], sessionStore.agent))
   const tooltip = createMemo(() => props.showTooltip ?? (props.mobile || !props.sidebarExpanded()))
@@ -206,18 +210,22 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
   })
   const previewValue = () => (
     <div class="w-72 flex flex-col gap-1.5">
-      <div class="text-12-medium text-text-invert-strong truncate">{sessionTitle(props.session.title)}</div>
+      <div class="text-12-medium text-text-invert-strong truncate">{rowTitle()}</div>
       <Show
         when={!preview().loading}
         fallback={
-          <div class="text-12-regular text-text-invert-base">{language.t("sidebar.sessionPreview.loading")}</div>
+          <div class="text-12-regular text-text-invert-base">
+            {language.t(preview().thinking ? "sidebar.sessionPreview.thinking" : "sidebar.sessionPreview.loading")}
+          </div>
         }
       >
         <Show
           when={preview().prompt}
           keyed
           fallback={
-            <div class="text-12-regular text-text-invert-base">{language.t("sidebar.sessionPreview.empty")}</div>
+            <div class="text-12-regular text-text-invert-base">
+              {language.t(preview().thinking ? "sidebar.sessionPreview.thinking" : "sidebar.sessionPreview.empty")}
+            </div>
           }
         >
           {(prompt) => (
@@ -254,6 +262,12 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
     if (!props.showChild) return
     return props.childSessions?.(props.session.id) ?? childSessions(sessionStore.session, props.session.id, Date.now())
   })
+  const hasChildren = createMemo(() => (children()?.length ?? 0) > 0)
+  const expanded = createMemo(() => props.sessionExpanded?.(props.session.id) ?? true)
+  const toggleExpanded = () => {
+    if (!props.setSessionExpanded) return
+    props.setSessionExpanded(props.session.id, !expanded())
+  }
 
   const warm = (span: number, priority: "high" | "low") => {
     const nav = props.navList?.()
@@ -281,6 +295,7 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
       slug={props.slug}
       mobile={props.mobile}
       dense={props.dense}
+      title={rowTitle}
       tint={tint}
       isWorking={isWorking}
       hasPermissions={hasPermissions}
@@ -301,12 +316,29 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
         style={{ "padding-left": `${8 + (props.level ?? 0) * 16}px` }}
         onPointerEnter={() => warm(1, "high")}
       >
-        <div class="flex min-w-0 items-center gap-1">
-          <div class="min-w-0 flex-1">
+        <div class="flex min-w-0 items-center gap-0.5">
+          <Show when={props.showChild}>
             <Show
-              when={!props.mobile || tooltip()}
-              fallback={item}
+              when={hasChildren() && props.setSessionExpanded}
+              fallback={<div class="shrink-0 w-4" aria-hidden="true" />}
             >
+              <button
+                type="button"
+                class="shrink-0 size-4 flex items-center justify-center rounded text-icon-base hover:text-icon-strong hover:bg-surface-base-hover focus:outline-none focus-visible:ring-1 focus-visible:ring-border-interactive-base"
+                aria-expanded={expanded()}
+                aria-label={expanded() ? "Collapse subsessions" : "Expand subsessions"}
+                onClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  toggleExpanded()
+                }}
+              >
+                <Icon name={expanded() ? "chevron-down" : "chevron-right"} size="small" />
+              </button>
+            </Show>
+          </Show>
+          <div class="min-w-0 flex-1">
+            <Show when={!props.mobile || tooltip()} fallback={item}>
               <Tooltip
                 placement={props.mobile ? "bottom" : "right"}
                 value={previewValue()}
@@ -346,15 +378,17 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
           </Show>
         </div>
       </div>
-      <For each={children() ?? []}>
-        {(child) => (
-          <Show when={child.id !== props.session.id}>
-            <div class="w-full">
-              <SessionItem {...props} session={child} level={(props.level ?? 0) + 1} />
-            </div>
-          </Show>
-        )}
-      </For>
+      <Show when={expanded()}>
+        <For each={children() ?? []}>
+          {(child) => (
+            <Show when={child.id !== props.session.id}>
+              <div class="w-full">
+                <SessionItem {...props} session={child} level={(props.level ?? 0) + 1} />
+              </div>
+            </Show>
+          )}
+        </For>
+      </Show>
     </>
   )
 }

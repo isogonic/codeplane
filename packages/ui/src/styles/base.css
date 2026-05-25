@@ -34,6 +34,14 @@ html,
   font-feature-settings: var(--font-family-sans--font-feature-settings, normal); /* 5 */
   font-variation-settings: var(--font-family-sans--font-variation-settings, normal); /* 6 */
   -webkit-tap-highlight-color: transparent; /* 7 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.005em;
+  font-kerning: normal;
+  font-synthesis-weight: none;
+  font-synthesis-style: none;
+  font-variant-ligatures: common-ligatures contextual;
 }
 
 /*

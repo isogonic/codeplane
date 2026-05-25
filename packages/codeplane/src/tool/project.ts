@@ -256,14 +256,15 @@ export const ProjectTool = Tool.define<
     const check = Effect.fn("ProjectTool.check")(function* (items: CommandEntry[]) {
       const ctx = yield* InstanceState.context
       const root = projectRoot(ctx)
+      const env = Shell.environment()
       return yield* Effect.forEach(
         items,
         Effect.fnUntraced(function* (item) {
           const cwd = resolveCwd(root, item.cwd)
           const exists = yield* fs.isDir(cwd).pipe(Effect.orElseSucceed(() => false))
-          const missingEnv = (item.env ?? []).filter((name: string) => !process.env[name])
+          const missingEnv = (item.env ?? []).filter((name: string) => !env[name])
           const binary = commandBinary(item.command)
-          const missingBinary = binary && !/^\$|\//.test(binary) && !which(binary) ? binary : undefined
+          const missingBinary = binary && !/^\$|\//.test(binary) && !which(binary, env) ? binary : undefined
 
           if (!exists) {
             return {
@@ -336,13 +337,14 @@ export const ProjectTool = Tool.define<
       const command = appendArgs(item.command, params.args)
       const timeout = params.timeout ?? item.timeout ?? (item.interactive ? 10_000 : 120_000)
       const shell = Shell.acceptable()
+      const env = Shell.environment()
       const run = Effect.scoped(
         Effect.gen(function* () {
           const handle = yield* spawner.spawn(
             ChildProcess.make(command, [], {
               shell,
               cwd,
-              extendEnv: true,
+              env,
               stdin: "ignore",
               detached: process.platform !== "win32",
             }),

@@ -2,6 +2,7 @@ import type { AssistantMessage, Message, Part, UserMessage } from "@codeplane-ai
 
 export type SessionPreview = {
   loading: boolean
+  thinking?: boolean
   prompt?: string
   providerID?: string
   modelID?: string
@@ -26,8 +27,9 @@ export function getSessionPreview(input: {
   messages: Message[] | undefined
   parts: Record<string, Part[] | undefined>
   now?: number
+  working?: boolean
 }): SessionPreview {
-  if (!input.messages) return { loading: true }
+  if (!input.messages) return input.working ? { loading: false, thinking: true } : { loading: true }
 
   let user: UserMessage | undefined
   let assistant: AssistantMessage | undefined
@@ -61,6 +63,7 @@ export function getSessionPreview(input: {
 
   return {
     loading: false,
+    thinking: (input.working && !prompt) || undefined,
     prompt: prompt || undefined,
     providerID: assistant?.providerID ?? user?.model.providerID,
     modelID: assistant?.modelID ?? user?.model.modelID,

@@ -650,6 +650,7 @@ export const dict = {
   "sidebar.project.clearNotifications": "Benachrichtigungen löschen",
   "sidebar.sessionPreview.loading": "Lade Vorschau...",
   "sidebar.sessionPreview.empty": "Noch kein Prompt",
+  "sidebar.sessionPreview.thinking": "Denkt nach...",
   "sidebar.sessionPreview.duration": "Dauer",
   "app.name.web": "Codeplane",
   "settings.section.app": "App",

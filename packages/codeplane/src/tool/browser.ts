@@ -558,6 +558,13 @@ function formatSnapshotNode(node: SnapshotNode, indent = 0): string {
 
 // --- Main tool ---
 
+function contextModel(ctx: Tool.Context) {
+  const model = ctx.extra?.model
+  if (!model || typeof model !== "object") return
+  if (!("capabilities" in model)) return
+  return model as Provider.Model
+}
+
 export const BrowserTool = Tool.define(
   "browser",
   Effect.gen(function* () {
@@ -596,22 +603,34 @@ export const BrowserTool = Tool.define(
           // Gate: check vision capability
           const agents = yield* Agent.Service
           const agentInfo = yield* agents.get(ctx.agent)
-          const providerSvc = yield* Provider.Service
-          if (!agentInfo.model?.providerID || !agentInfo.model?.modelID) {
+          const activeModel = contextModel(ctx)
+          if (activeModel) {
+            if (!activeModel.capabilities?.input?.image) {
+              return {
+                output:
+                  "Browser tool is only available with vision-capable models. Please switch to a model that supports image input.",
+                title: "browser",
+                metadata: {},
+              }
+            }
+          } else if (!agentInfo.model?.providerID || !agentInfo.model?.modelID) {
             return {
               output: "Browser tool requires a model that supports vision/image input.",
               title: "browser",
               metadata: {},
             }
-          }
-          const model = yield* providerSvc
-            .getModel(agentInfo.model.providerID, agentInfo.model.modelID)
-            .pipe(Effect.catch(() => Effect.succeed(undefined)), Effect.catchDefect(() => Effect.succeed(undefined)))
-          if (!model?.capabilities?.input?.image) {
-            return {
-              output: "Browser tool is only available with vision-capable models. Please switch to a model that supports image input.",
-              title: "browser",
-              metadata: {},
+          } else {
+            const providerSvc = yield* Provider.Service
+            const model = yield* providerSvc
+              .getModel(agentInfo.model.providerID, agentInfo.model.modelID)
+              .pipe(Effect.catch(() => Effect.succeed(undefined)), Effect.catchDefect(() => Effect.succeed(undefined)))
+            if (!model?.capabilities?.input?.image) {
+              return {
+                output:
+                  "Browser tool is only available with vision-capable models. Please switch to a model that supports image input.",
+                title: "browser",
+                metadata: {},
+              }
             }
           }
 

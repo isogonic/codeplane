@@ -56,6 +56,8 @@ export type WorkspaceSidebarContext = {
   isBusy: (directory: string) => boolean
   workspaceExpanded: (directory: string, local: boolean) => boolean
   setWorkspaceExpanded: (directory: string, value: boolean) => void
+  sessionExpanded: (sessionID: string) => boolean
+  setSessionExpanded: (sessionID: string, value: boolean) => void
   showResetWorkspaceDialog: (root: string, directory: string) => void
   showDeleteWorkspaceDialog: (root: string, directory: string) => void
   showArchivedSessionsDialog: (directory: string) => void
@@ -287,6 +289,8 @@ const WorkspaceSessionList = (props: {
           clearHoverProjectSoon={props.ctx.clearHoverProjectSoon}
           prefetchSession={props.ctx.prefetchSession}
           archiveSession={props.ctx.archiveSession}
+          sessionExpanded={props.ctx.sessionExpanded}
+          setSessionExpanded={props.ctx.setSessionExpanded}
         />
       )}
     </For>

@@ -42,7 +42,7 @@ import { usePermission } from "@/context/permission"
 import { usePrompt } from "@/context/prompt"
 import { useSDK } from "@/context/sdk"
 import { useSettings } from "@/context/settings"
-import { useSync } from "@/context/sync"
+import { INITIAL_MESSAGE_PAGE_SIZE, useSync } from "@/context/sync"
 import { useTerminal } from "@/context/terminal"
 import { type FollowupDraft, sendFollowupDraft } from "@/components/prompt-input/submit"
 import { createSessionComposerState, SessionComposerRegion } from "@/pages/session/composer"
@@ -794,12 +794,12 @@ export default function Page() {
           refreshTimer = undefined
           if (params.id !== id) return
           untrack(() => {
-            if (stale) void sync.session.sync(id, { force: true })
+            if (stale) void sync.session.sync(id, { force: true, messageLimit: INITIAL_MESSAGE_PAGE_SIZE })
           })
         }, 0)
       })
 
-      return sync.session.sync(id)
+      return sync.session.sync(id, { messageLimit: INITIAL_MESSAGE_PAGE_SIZE })
     },
   )
 

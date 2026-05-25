@@ -861,6 +861,69 @@
   }
 }
 
+[data-component="read-tool-trigger"] {
+  width: 100%;
+  min-width: 0;
+}
+
+[data-component="read-tool-file"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-family-sans);
+  font-size: 14px;
+  font-weight: var(--font-weight-regular);
+  line-height: 20px;
+  color: var(--text-weak);
+
+  [data-component="file-icon"] {
+    flex: 0 0 auto;
+  }
+
+  [data-slot="read-tool-path"] {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: inline-flex;
+    align-items: baseline;
+    overflow: hidden;
+  }
+
+  [data-slot="read-tool-directory"] {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    direction: rtl;
+    text-align: left;
+    color: var(--text-weaker);
+  }
+
+  [data-slot="read-tool-filename"] {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-base);
+  }
+
+  [data-slot="read-tool-range"] {
+    flex: 0 0 auto;
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid var(--border-weak-base);
+    background: var(--surface-base);
+    color: var(--text-weaker);
+    font-family: var(--font-family-mono);
+    font-size: 11px;
+    font-weight: var(--font-weight-regular);
+    line-height: 16px;
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
 [data-component="diagnostics"] {
   display: flex;
   flex-direction: column;

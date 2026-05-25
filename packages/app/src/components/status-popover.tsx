@@ -1,12 +1,11 @@
 import { Popover as Kobalte } from "@kobalte/core/popover"
 import { Button } from "@codeplane-ai/ui/button"
 import { Icon } from "@codeplane-ai/ui/icon"
-import { Suspense, createMemo, createSignal, lazy, Show } from "solid-js"
+import { createMemo, createSignal, Show } from "solid-js"
 import { useLanguage } from "@/context/language"
 import { useServer } from "@/context/server"
 import { useSyncOptional } from "@/context/sync"
-
-const Body = lazy(() => import("./status-popover-body").then((x) => ({ default: x.StatusPopoverBody })))
+import { StatusPopoverBody } from "./status-popover-body"
 
 export function StatusPopover() {
   const language = useLanguage()
@@ -49,13 +48,7 @@ export function StatusPopover() {
         <Kobalte.Content class="[&_[data-slot=popover-body]]:p-0 w-[360px] max-w-[calc(100vw-40px)] bg-transparent border-0 shadow-none rounded-xl z-50 outline-none">
           <div data-slot="popover-body">
             <Show when={shown()}>
-              <Suspense
-                fallback={
-                  <div class="w-[360px] h-14 rounded-xl bg-background-strong shadow-[var(--shadow-lg-border-base)]" />
-                }
-              >
-                <Body shown={shown} />
-              </Suspense>
+              <StatusPopoverBody shown={shown} />
             </Show>
           </div>
         </Kobalte.Content>

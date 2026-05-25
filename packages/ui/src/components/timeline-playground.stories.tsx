@@ -351,6 +351,14 @@ const TOOL_SAMPLES = {
       exitCode: 0,
     },
   },
+  project: {
+    tool: "project",
+    input: { operation: "detect", command: "", label: "" },
+    output:
+      "Detected project commands:\n- typecheck: callable [detected]\n  command: bun run typecheck\n  cwd: .\n- test: callable [detected]\n  command: bun run test\n  cwd: .",
+    title: "project detect",
+    metadata: { operation: "detect", count: 2 },
+  },
   edit: {
     tool: "edit",
     input: {

@@ -1,4 +1,5 @@
 import * as CrossSpawnSpawner from "@/effect/cross-spawn-spawner"
+import { Shell } from "@/shell/shell"
 import { Effect, Layer, Context, Stream } from "effect"
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 
@@ -89,8 +90,7 @@ export const layer = Layer.effect(
       function* (args: string[], opts: Options) {
         const proc = ChildProcess.make("git", [...cfg, ...args], {
           cwd: opts.cwd,
-          env: opts.env,
-          extendEnv: true,
+          env: Shell.environment(opts.env),
           stdin: "ignore",
           stdout: "pipe",
           stderr: "pipe",

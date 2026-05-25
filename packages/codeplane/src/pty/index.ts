@@ -184,9 +184,10 @@ export const layer = Layer.effect(
       const cwd = input.cwd || s.dir
       const shell = yield* plugin.trigger("shell.env", { cwd }, { env: {} })
       const env = {
-        ...process.env,
-        ...input.env,
-        ...shell.env,
+        ...Shell.environment({
+          ...input.env,
+          ...shell.env,
+        }),
         TERM: "xterm-256color",
         CODEPLANE_TERMINAL: "1",
       } as Record<string, string>

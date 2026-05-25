@@ -398,10 +398,7 @@ export const BashTool = Tool.define(
         { cwd, sessionID: ctx.sessionID, callID: ctx.callID },
         { env: {} },
       )
-      return {
-        ...process.env,
-        ...extra.env,
-      }
+      return Shell.environment(extra.env)
     })
 
     const run = Effect.fn("BashTool.run")(function* (
