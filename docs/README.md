@@ -13,13 +13,17 @@ using the `/docs` source. It contains the files needed for the public
 
 ## GitHub Pages setup
 
+The site is deployed via the `.github/workflows/pages.yml` GitHub Actions
+workflow, which builds the Next.js site from `site/`, copies compatibility
+files from `docs/`, and deploys the output via the `actions/deploy-pages`
+action.
+
 In the repository settings:
 
 1. Open **Settings -> Pages**.
-2. Set **Build and deployment** to **Deploy from a branch**.
-3. Select branch `main` and folder `/docs`.
-4. Set the custom domain to `codeplane.cc`.
-5. Enable **Enforce HTTPS** after DNS checks pass.
+2. Set **Build and deployment** to **GitHub Actions**.
+3. Set the custom domain to `codeplane.cc`.
+4. Enable **Enforce HTTPS** after DNS checks pass.
 
 ## DNS
 

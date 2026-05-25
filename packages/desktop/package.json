@@ -83,7 +83,7 @@
         "provider": "github",
         "owner": "devinoldenburg",
         "repo": "codeplane",
-        "releaseType": "draft"
+        "releaseType": "release"
       }
     ],
     "mac": {

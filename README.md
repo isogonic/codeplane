@@ -95,7 +95,7 @@ packages/sdk/js      Generated TypeScript SDK
 packages/plugin      Plugin authoring SDK
 packages/ui          Shared UI components and theme system
 site                 Next.js source for codeplane.cc
-docs                 Static Pages output and schema/install compatibility files
+docs                 Public site compatibility files (CNAME, install script, schemas, legacy home)
 ```
 
 ## Development

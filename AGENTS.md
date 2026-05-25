@@ -18,7 +18,7 @@ bottom.
 - **Lockfile**: `bun.lock`. Never commit `package-lock.json` (it's gitignored).
 - **Workspaces**: `packages/*`, `packages/sdk/js`.
 - **Lint**: `bun lint` from repo root (oxlint, 0 errors required, warnings tolerated).
-- **Typecheck**: `bun turbo typecheck` from repo root (8 packages must all pass).
+- **Typecheck**: `bun turbo typecheck` from repo root (all 8 packages with typecheck scripts must pass).
 - **Tests**: cannot run from repo root (guard `do-not-run-tests-from-root`); run from each package dir, e.g. `bun --cwd packages/codeplane test`.
 - **Version bump**: `bun run version:bump` for a patch, or `bun run version:bump minor|major|X.Y.Z`. It edits `packages/shared/src/version.ts` and syncs every versioned file.
 - **Release**: tag a `vX.Y.Z` GitHub release on `main`; the `npm-release` and `desktop-release` workflows trigger automatically and publish to npm + GitHub releases.
@@ -162,7 +162,7 @@ entry — see [TUI native dependency](#tui-native-dependency-opentuicore-platfor
 
 Before any commit / push:
 
-- [ ] `bun turbo typecheck` — all 8 packages must pass
+- [ ] `bun turbo typecheck` — all 8 typecheck'd packages must pass
 - [ ] `bun lint` — must report `0 errors` (warnings are tolerated)
 - [ ] `bun --cwd packages/codeplane test` — for changes touching `codeplane/`
   (also `app/`, `shared/`, `ui/` as appropriate). Tests cannot run from repo
@@ -514,10 +514,10 @@ input.
   ```
 - The repo uses `tsgo` (TypeScript Go) for speed. Each package's
   `tsconfig.json` extends `@tsconfig/bun`.
-- **Eight packages** participate in typecheck currently: `app`, `codeplane`,
-  `console-app`, `console-core`, `console-function`, `desktop`, `enterprise`,
-  `function`, `plugin`, `sdk`, `shared`, `slack`, `ui` (some retired in
-  v27.4.7). Always check the count after running — if it dropped, investigate.
+- **Eight workspace packages** participate in typecheck: `app`, `codeplane`,
+  `desktop`, `mobile`, `plugin`, `sdk`, `shared`, `ui`. The `site/`
+  directory also runs its own typecheck via `bun --cwd site typecheck`.
+  Always check the count after running — if it dropped, investigate.
 - **Common typecheck errors and fixes**:
   - `Object literal may only specify known properties, and 'X' does not exist
     in type Y` in a test file: usually a strict-parsed zod type vs loose input
@@ -650,7 +650,7 @@ This is the most failure-prone workflow in the repo. Read it carefully.
    # or: bun run version:bump X.Y.Z      — exact version, v-prefix accepted
 4. Confirm version:bump output           — packageJsons should match the expected
                                             release bump count, README updates if needed
-5. bun turbo typecheck                   — all 8 packages must be green
+5. bun turbo typecheck                   — all 8 typecheck'd packages must be green
 6. bun lint                              — 0 errors (warnings ok)
 7. (optional but recommended) build smoke test:
      cd packages/codeplane
@@ -1218,7 +1218,7 @@ model and shared state.
         │                          │                          │
    ┌────┴─────┐               ┌────┴─────┐               ┌────┴─────┐
    │   CLI    │               │  Desktop │               │   Web    │
-   │ (yargs)  │               │ (Electron)               │ (Astro)  │
+   │ (yargs)  │               │ (Electron)             │ (SolidJS) │
    └────┬─────┘               └────┬─────┘               └────────  ┘
         │                          │ spawns
         │ in-process               │
@@ -2266,7 +2266,7 @@ without confirmation. But push back when:
   the CLI release by the workflow.
 - **TUI bundle**: `runtime/tui/node-main.js` — the SolidJS TUI entry,
   bundled with `target: "bun"` and the Solid Babel plugin.
-- **Embedded web UI**: the Astro-built web app at `packages/app/dist/`,
+- **Embedded web UI**: the SolidJS web app at `packages/app/dist/`,
   embedded into the CLI binary as `with { type: "file" }` blobs at build
   time. Disabled by `--skip-embed-web-ui`.
 - **Installation method**: how the user got codeplane onto their machine

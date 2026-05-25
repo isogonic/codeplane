@@ -9,9 +9,6 @@
     "test": "bun test",
     "typecheck": "tsgo --noEmit"
   },
-  "bin": {
-    "codeplane": "./bin/codeplane"
-  },
   "exports": {
     "./*": "./src/*.ts"
   },
