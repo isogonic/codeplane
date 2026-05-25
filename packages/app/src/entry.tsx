@@ -44,7 +44,14 @@ declare global {
       systemPermissions?: {
         check: () => Promise<{
           platform: string
-          permissions: { key: string; label: string; granted: boolean; preferencePane?: string }[]
+          permissions: {
+            key: string
+            label: string
+            granted: boolean
+            active?: boolean
+            restartRequired?: boolean
+            preferencePane?: string
+          }[]
         }>
         request: (permissionKey: string) => Promise<boolean>
       }

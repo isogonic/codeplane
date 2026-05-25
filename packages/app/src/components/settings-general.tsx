@@ -28,6 +28,11 @@ import {
 } from "@/context/settings"
 import { decode64 } from "@/utils/base64"
 import { playSoundById, SOUND_OPTIONS } from "@/utils/sound"
+import {
+  systemPermissionGranted,
+  systemPermissionNeedsRelaunch,
+  systemPermissionReady,
+} from "./desktop-permissions"
 import { SettingsList } from "./settings-list"
 
 let demoSoundState = {
@@ -180,7 +185,7 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
       }
       const status = await platform.systemPermissions.check()
       setComputerPermissions(status.permissions)
-      const missing = status.permissions.filter((p) => !p.granted)
+      const missing = status.permissions.filter((p) => !systemPermissionReady(p))
       if (missing.length === 0) {
         settings.general.setComputerUse(true)
         void globalSync.updateConfig({ tools: { computer: true } })
@@ -409,26 +414,29 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
                 <Show when={platform.systemPermissions && computerPermissions()}>
                   {(perms) => {
                     const total = perms().length
-                    const granted = perms().filter((p) => p.granted).length
-                    const allGranted = granted === total && total > 0
+                    const active = perms().filter(systemPermissionReady).length
+                    const allReady = active === total && total > 0
+                    const needsRelaunch = perms().some(systemPermissionNeedsRelaunch)
                     return (
                       <span class="mt-1.5 inline-flex items-center gap-2 align-middle">
                         <span
                           classList={{
                             "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-11-medium": true,
-                            "bg-surface-success-weak text-text-on-success-strong": allGranted,
-                            "bg-surface-warning-weak text-text-on-warning-strong": !allGranted && computerUse(),
-                            "bg-surface-weak text-text-weak": !allGranted && !computerUse(),
+                            "bg-surface-success-weak text-text-on-success-strong": allReady,
+                            "bg-surface-warning-weak text-text-on-warning-strong": !allReady && (computerUse() || needsRelaunch),
+                            "bg-surface-weak text-text-weak": !allReady && !computerUse() && !needsRelaunch,
                           }}
                         >
                           <Icon
-                            name={allGranted ? "circle-check" : "circle-ban-sign"}
+                            name={allReady ? "circle-check" : needsRelaunch ? "reset" : "circle-ban-sign"}
                             class="h-3 w-3"
                           />
-                          {allGranted
+                          {allReady
                             ? language.t("settings.general.row.computerUse.statusAllGranted")
-                            : language.t("settings.general.row.computerUse.statusPartial", {
-                                granted: String(granted),
+                            : needsRelaunch
+                              ? language.t("settings.general.row.computerUse.statusRelaunchRequired")
+                              : language.t("settings.general.row.computerUse.statusActivePartial", {
+                                active: String(active),
                                 total: String(total),
                               })}
                         </span>
@@ -1008,10 +1016,11 @@ function DesktopPermissionsDialog(props: {
       ? language.t("settings.general.row.browserUse.title")
       : language.t("settings.general.row.computerUse.title")
 
-  const allGranted = createMemo(
-    () => permissions().length > 0 && permissions().every((p) => p.granted),
+  const allReady = createMemo(
+    () => permissions().length > 0 && permissions().every(systemPermissionReady),
   )
-  const grantedCount = createMemo(() => permissions().filter((p) => p.granted).length)
+  const relaunchRequired = createMemo(() => permissions().some(systemPermissionNeedsRelaunch))
+  const activeCount = createMemo(() => permissions().filter(systemPermissionReady).length)
 
   return (
     <Dialog
@@ -1032,18 +1041,20 @@ function DesktopPermissionsDialog(props: {
           <span
             classList={{
               "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-12-medium": true,
-              "bg-surface-success-weak text-text-on-success-strong": allGranted(),
-              "bg-surface-warning-weak text-text-on-warning-strong": !allGranted(),
+              "bg-surface-success-weak text-text-on-success-strong": allReady(),
+              "bg-surface-warning-weak text-text-on-warning-strong": !allReady(),
             }}
           >
             <Icon
-              name={allGranted() ? "circle-check" : "circle-ban-sign"}
+              name={allReady() ? "circle-check" : relaunchRequired() ? "reset" : "circle-ban-sign"}
               class="h-3.5 w-3.5"
             />
-            {allGranted()
+            {allReady()
               ? language.t("settings.general.row.computerUse.statusAllGranted")
-              : language.t("settings.general.row.computerUse.statusPartial", {
-                  granted: String(grantedCount()),
+              : relaunchRequired()
+                ? language.t("settings.general.row.computerUse.statusRelaunchRequired")
+                : language.t("settings.general.row.computerUse.statusActivePartial", {
+                  active: String(activeCount()),
                   total: String(permissions().length),
                 })}
           </span>
@@ -1067,38 +1078,47 @@ function DesktopPermissionsDialog(props: {
             <div
               classList={{
                 "flex flex-col gap-3 rounded-lg border px-4 py-4 sm:flex-row sm:items-start sm:justify-between": true,
-                "border-border-success-base bg-surface-success-weak/40": p.granted,
-                "border-border-weak-base": !p.granted,
+                "border-border-success-base bg-surface-success-weak/40": systemPermissionReady(p),
+                "border-border-warning-base bg-surface-warning-weak/40": systemPermissionNeedsRelaunch(p),
+                "border-border-weak-base": !systemPermissionGranted(p),
               }}
             >
               <div class="flex min-w-0 flex-1 flex-col gap-1.5">
                 <div class="flex items-center gap-2">
                   <Icon
-                    name={p.granted ? "circle-check" : "circle-ban-sign"}
+                    name={
+                      systemPermissionReady(p)
+                        ? "circle-check"
+                        : systemPermissionNeedsRelaunch(p)
+                          ? "reset"
+                          : "circle-ban-sign"
+                    }
                     classList={{
                       "h-4 w-4 shrink-0": true,
-                      "text-text-on-success-strong": p.granted,
-                      "text-text-on-warning-strong": !p.granted,
+                      "text-text-on-success-strong": systemPermissionReady(p),
+                      "text-text-on-warning-strong": !systemPermissionReady(p),
                     }}
                   />
                   <span class="text-14-medium text-text-strong">{p.label}</span>
                   <span
                     classList={{
                       "rounded-full px-1.5 py-0.5 text-11-medium": true,
-                      "bg-surface-success-weak text-text-on-success-strong": p.granted,
-                      "bg-surface-warning-weak text-text-on-warning-strong": !p.granted,
+                      "bg-surface-success-weak text-text-on-success-strong": systemPermissionReady(p),
+                      "bg-surface-warning-weak text-text-on-warning-strong": !systemPermissionReady(p),
                     }}
                   >
-                    {p.granted
+                    {systemPermissionReady(p)
                       ? language.t("settings.general.row.computerUse.permissionGranted")
-                      : language.t("settings.general.row.computerUse.permissionMissing")}
+                      : systemPermissionNeedsRelaunch(p)
+                        ? language.t("settings.general.row.computerUse.permissionRelaunchRequired")
+                        : language.t("settings.general.row.computerUse.permissionMissing")}
                   </span>
                 </div>
                 <span class="text-12-regular text-text-weak leading-relaxed">
                   {language.t(permissionDescriptionKey(p.key))}
                 </span>
               </div>
-              <Show when={!p.granted}>
+              <Show when={!systemPermissionGranted(p)}>
                 <div class="sm:shrink-0 sm:pt-0.5">
                   <Button
                     size="small"
@@ -1122,7 +1142,11 @@ function DesktopPermissionsDialog(props: {
         <div class="flex items-start gap-2 rounded-lg border border-border-warning-base bg-surface-warning-weak/40 px-3 py-2.5">
           <Icon name="circle-ban-sign" class="h-4 w-4 shrink-0 text-text-on-warning-strong mt-0.5" />
           <p class="text-12-regular text-text-base leading-relaxed">
-            {language.t("settings.general.row.computerUse.permissionsFooter")}
+            {language.t(
+              relaunchRequired()
+                ? "settings.general.row.computerUse.permissionsRelaunchFooter"
+                : "settings.general.row.computerUse.permissionsFooter",
+            )}
           </p>
         </div>
 
@@ -1131,7 +1155,7 @@ function DesktopPermissionsDialog(props: {
             {language.t("settings.general.row.computerUse.permissionDone")}
           </Button>
           <div class="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
-            <Show when={props.onConfirmEnable && !allGranted()}>
+            <Show when={props.onConfirmEnable && !allReady()}>
               <Button
                 variant="ghost"
                 size="normal"
@@ -1146,13 +1170,11 @@ function DesktopPermissionsDialog(props: {
             </Show>
             {/*
               Restart Codeplane only makes sense when at least one permission
-              is missing — TCC is read at process start, so a granted-and-
-              already-active permission doesn't need a relaunch. Hiding the
-              button in the fully-granted state keeps the footer focused on
-              the next-step action ("Enable Computer Use") and avoids
-              implying the user must restart for no reason.
+              is missing or granted-but-inactive in this process. TCC is read
+              at process start, so the macOS toggle can be on while the
+              running Electron process still needs a relaunch.
             */}
-            <Show when={platform.relaunchShell && !allGranted()}>
+            <Show when={platform.relaunchShell && !allReady()}>
               <Button
                 variant={props.onConfirmEnable ? "ghost" : "primary"}
                 size="normal"
@@ -1167,7 +1189,7 @@ function DesktopPermissionsDialog(props: {
                   : language.t("settings.general.row.computerUse.relaunch")}
               </Button>
             </Show>
-            <Show when={allGranted() && props.onConfirmEnable}>
+            <Show when={allReady() && props.onConfirmEnable}>
               <Button
                 variant="primary"
                 size="normal"

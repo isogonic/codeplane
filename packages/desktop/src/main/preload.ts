@@ -226,7 +226,14 @@ const api = {
     check: () =>
       ipcRenderer.invoke("system-permissions:check") as Promise<{
         platform: string
-        permissions: { key: string; label: string; granted: boolean; preferencePane?: string }[]
+        permissions: {
+          key: string
+          label: string
+          granted: boolean
+          active?: boolean
+          restartRequired?: boolean
+          preferencePane?: string
+        }[]
       }>,
     request: (permissionKey: string) =>
       ipcRenderer.invoke("system-permissions:request", permissionKey) as Promise<boolean>,

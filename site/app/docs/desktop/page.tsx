@@ -80,9 +80,12 @@ export default function Desktop() {
           batches let it move, click, type, and scroll through several UI steps from one
           vision pass before returning a final screenshot. When you first enable it, Codeplane
           checks whether the required system permissions (Accessibility and Screen Recording
-          on macOS) are granted and guides you to System Settings if they are not. On macOS,
-          screenshot capture is routed through the running Electron app so the Screen Recording
-          grant belongs to Codeplane Desktop rather than a helper process.
+          on macOS) are active and guides you to System Settings if they are not. If a
+          permission is already turned on in System Settings but the current desktop process
+          cannot use it yet, the dialog calls that out as a relaunch-required state instead
+          of reporting the toggle as missing. On macOS, screenshot capture is routed through
+          the running Electron app so the Screen Recording grant belongs to Codeplane Desktop
+          rather than a helper process.
         </p>
         <p>
           Both tools still go through the Codeplane permission system. Use desktop automation

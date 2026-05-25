@@ -46,6 +46,8 @@ export type SystemPermissionStatus = {
   key: string
   label: string
   granted: boolean
+  active?: boolean
+  restartRequired?: boolean
   preferencePane?: string
 }
 

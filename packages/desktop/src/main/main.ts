@@ -2008,6 +2008,14 @@ async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebConte
 // actions doesn't spam the system call.
 const PERMISSION_CACHE_TTL_MS = 1_500
 type CachedBool = { value: boolean; at: number }
+type DesktopSystemPermissionStatus = {
+  key: string
+  label: string
+  granted: boolean
+  active?: boolean
+  restartRequired?: boolean
+  preferencePane?: string
+}
 let accessibilityCache: CachedBool | undefined
 let screenRecordingCache: CachedBool | undefined
 
@@ -2068,10 +2076,31 @@ async function checkMacOSScreenRecording(): Promise<boolean> {
   return value
 }
 
+function macOSScreenRecordingStatusGranted() {
+  try {
+    return systemPreferences.getMediaAccessStatus("screen") === "granted"
+  } catch {
+    return false
+  }
+}
+
+async function checkMacOSScreenRecordingState() {
+  const active = await probeMacOSScreenRecording()
+  const granted = active || macOSScreenRecordingStatusGranted()
+  return {
+    granted,
+    active,
+    restartRequired: granted && !active,
+  }
+}
+
 async function missingMacOSComputerPermissions(params: DesktopComputerInput) {
   const missing: string[] = []
   if (desktopComputerNeedsAccessibility(params) && !(await checkMacOSAccessibility())) missing.push("Accessibility")
-  if (!(await checkMacOSScreenRecording())) missing.push("Screen Recording")
+  const screenRecording = await checkMacOSScreenRecordingState()
+  if (!screenRecording.active) {
+    missing.push(screenRecording.granted ? "Screen Recording (relaunch Codeplane Desktop)" : "Screen Recording")
+  }
   return missing
 }
 
@@ -2494,7 +2523,7 @@ function setupIpc() {
     },
   )
   ipcMain.handle("system-permissions:check", async () => {
-    const permissions: { key: string; label: string; granted: boolean; preferencePane?: string }[] = []
+    const permissions: DesktopSystemPermissionStatus[] = []
 
     if (process.platform === "darwin") {
       const accessibilityGranted = await checkMacOSAccessibility()
@@ -2502,29 +2531,32 @@ function setupIpc() {
         key: "accessibility",
         label: "Accessibility",
         granted: accessibilityGranted,
+        active: accessibilityGranted,
         preferencePane: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
       })
 
-      const screenRecordingGranted = await checkMacOSScreenRecording()
+      const screenRecording = await checkMacOSScreenRecordingState()
       permissions.push({
         key: "screen-recording",
         label: "Screen Recording",
-        granted: screenRecordingGranted,
+        granted: screenRecording.granted,
+        active: screenRecording.active,
+        restartRequired: screenRecording.restartRequired,
         preferencePane: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
       })
     }
 
     if (process.platform === "win32") {
       permissions.push(
-        { key: "accessibility", label: "UI Automation / Accessibility", granted: true },
-        { key: "screen-recording", label: "Screen capture", granted: true },
+        { key: "accessibility", label: "UI Automation / Accessibility", granted: true, active: true },
+        { key: "screen-recording", label: "Screen capture", granted: true, active: true },
       )
     }
 
     if (process.platform === "linux") {
       permissions.push(
-        { key: "accessibility", label: "X11 / input access", granted: true },
-        { key: "screen-recording", label: "Display access", granted: true },
+        { key: "accessibility", label: "X11 / input access", granted: true, active: true },
+        { key: "screen-recording", label: "Display access", granted: true, active: true },
       )
     }
 

@@ -121,7 +121,7 @@ hash -r`}</code></pre>
         <ul>
           <li><strong>Desktop auto-update disabled</strong>: check <code>CODEPLANE_DESKTOP_DISABLE_AUTO_UPDATE</code> and the desktop logs under the Codeplane log directory.</li>
           <li><strong>Local server does not appear</strong>: inspect <code>codeplane instance list</code> and <code>codeplane instance local status</code>.</li>
-          <li><strong>Computer use says macOS blocked it</strong>: grant Accessibility and Screen Recording to Codeplane Desktop, then restart the desktop app. Use <strong>Settings → General → Instance logs</strong> if the bridge still fails after restart.</li>
+          <li><strong>Computer use permission toggle is on but the dialog still blocks it</strong>: relaunch Codeplane Desktop so macOS reloads Accessibility and Screen Recording for the running process. Use <strong>Settings → General → Instance logs</strong> if the bridge still fails after restart.</li>
           <li><strong>Mobile cannot discover LAN server</strong>: run the server with <code>--mdns --hostname 0.0.0.0 --password ...</code> and make sure the phone is on the same network.</li>
           <li><strong>Mobile connects remotely but drops updates</strong>: check reverse proxy SSE buffering and idle timeouts.</li>
         </ul>
