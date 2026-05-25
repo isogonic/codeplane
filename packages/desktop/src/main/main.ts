@@ -2138,22 +2138,12 @@ function showSetupWindow(editId?: string) {
   if (previous && previous !== next && !previous.isDestroyed()) previous.close()
 }
 
-async function openLastInstanceOrSetup() {
-  const id = lastInstanceID()
-  const instance = id ? getInstance(id) : undefined
-  if (!instance) {
-    createWindow()
-    return
-  }
-  logger.log("main", "startup.open-last", instanceSummary(instance))
-  const opened = await openInstance(instance, { showErrorDialog: false }).catch((error) => {
-    logger.log("main", "startup.open-last.error", { error, ...instanceSummary(instance) })
-    return false
+function openDesktopStartPage() {
+  logger.log("main", "startup.open-selector", {
+    instances: instanceState.instances.length,
+    lastInstanceId: lastInstanceID() ?? null,
   })
-  if (!opened) {
-    logger.log("main", "startup.open-last.fallback", instanceSummary(instance))
-    createWindow()
-  }
+  createWindow()
 }
 
 function setupIpc() {
@@ -2792,7 +2782,7 @@ if (!gotLock) {
       setupIpc()
       setupAutoUpdater()
       void uiHost.cleanup()
-      await openLastInstanceOrSetup()
+      openDesktopStartPage()
 
       buildMenu(
         () => mainWindow?.webContents.reload(),

@@ -1225,45 +1225,43 @@ test("does not save a broken local instance when setup fails", async ({}, testIn
   }
 })
 
-test("falls back to the desktop start page when the last local instance fails during startup", async ({}, testInfo) => {
+test("always opens the desktop start page first even when a last local instance is saved", async ({}, testInfo) => {
   test.skip(process.platform === "win32", "local fixture binary is only seeded for POSIX platforms")
   let app: Awaited<ReturnType<typeof electron.launch>> | undefined
 
   try {
     const runtime = await launchDesktop(testInfo, {
-      brokenLocalVersions: [appVersion],
+      localVersions: [appVersion],
       instances: [
         {
-          id: "broken",
-          label: "Broken local workspace",
-          url: "local://broken",
+          id: "saved-local",
+          label: "Saved local workspace",
+          url: "local://saved-local",
           local: { binaryVersion: appVersion },
         },
       ],
-      lastInstanceId: "broken",
+      lastInstanceId: "saved-local",
     })
     app = runtime.app
     const page = runtime.page
 
     await expect(page.getByText("Connect to your instance")).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByText("Broken local workspace")).toBeVisible()
+    await expect(page.getByText("Saved local workspace")).toBeVisible()
     await expect(page.locator('main [data-desktop-action="instance-open"]')).toHaveCount(1)
-
-    await page.getByLabel("Add instance").first().click()
-    await expect(page.getByRole("heading", { name: "Add an instance" })).toBeVisible()
 
     await expect
       .poll(
         () =>
           readDesktopEntries(runtime.logFile).then((entries) => ({
-            startupFallback: entries.some((entry) => entry.scope === "main" && entry.event === "startup.open-last.fallback"),
-            localStartFailed: entries.some((entry) => entry.scope === "main" && entry.event === "instance.local.start-failed"),
+            startupSelector: entries.some((entry) => entry.scope === "main" && entry.event === "startup.open-selector"),
+            startupOpenLast: entries.some((entry) => entry.scope === "main" && entry.event === "startup.open-last"),
+            localStart: entries.some((entry) => entry.scope === "local-instance" && entry.event === "local.start"),
           })),
         {
-          message: "desktop should log the failed last-instance open and recover to setup",
+          message: "desktop should open the selector without auto-starting the saved local instance",
         },
       )
-      .toEqual({ startupFallback: true, localStartFailed: true })
+      .toEqual({ startupSelector: true, startupOpenLast: false, localStart: false })
   } finally {
     if (app) await app.close()
     await attachIfExists(testInfo, "desktop-log", testInfo.outputPath("desktop-runtime/logs/desktop.log"))
