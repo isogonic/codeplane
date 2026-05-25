@@ -403,6 +403,12 @@ export class BusyError extends Error {
   }
 }
 
+export class SessionNotFoundError extends Error {
+  constructor(public readonly sessionID: string, message?: string) {
+    super(message ?? `Session not found: ${sessionID}`)
+  }
+}
+
 export interface Interface {
   readonly create: (input?: {
     parentID?: SessionID
@@ -508,7 +514,7 @@ export const layer: Layer.Layer<Service, never, Bus.Service | Storage.Service> =
 
     const get = Effect.fn("Session.get")(function* (id: SessionID) {
       const row = yield* db((d) => d.select().from(SessionTable).where(eq(SessionTable.id, id)).get())
-      if (!row) throw new NotFoundError({ message: `Session not found: ${id}` })
+      if (!row) throw new SessionNotFoundError(id)
       return fromRow(row)
     })
 

@@ -77,7 +77,7 @@ export default [
       .where(eq(SessionTable.id, data.sessionID))
       .returning()
       .get()
-    if (!row) throw new NotFoundError({ message: `Session not found: ${data.sessionID}` })
+    if (!row) throw new Session.SessionNotFoundError(data.sessionID)
   }),
 
   SyncEvent.project(Session.Event.Deleted, (db, data) => {

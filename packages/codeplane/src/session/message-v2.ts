@@ -1,4 +1,5 @@
 import { BusEvent } from "@/bus/bus-event"
+import { SessionNotFoundError } from "./session"
 import { SessionID, MessageID, PartID } from "./schema"
 import z from "zod"
 import { NamedError } from "@codeplane-ai/shared/util/error"
@@ -1012,7 +1013,7 @@ export function page(input: { sessionID: SessionID; limit: number; before?: stri
     const row = Database.use((db) =>
       db.select({ id: SessionTable.id }).from(SessionTable).where(eq(SessionTable.id, input.sessionID)).get(),
     )
-    if (!row) throw new NotFoundError({ message: `Session not found: ${input.sessionID}` })
+    if (!row) throw new SessionNotFoundError(input.sessionID)
     return {
       items: [] as WithParts[],
       more: false,

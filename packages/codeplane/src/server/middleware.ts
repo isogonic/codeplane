@@ -30,6 +30,9 @@ export const ErrorMiddleware: ErrorHandler = (err, c) => {
   if (err instanceof Session.BusyError) {
     return c.json(new NamedError.Unknown({ message: err.message }).toObject(), { status: 400 })
   }
+  if (err instanceof Session.SessionNotFoundError) {
+    return c.json({ name: "SessionNotFoundError", data: { message: err.message } }, { status: 404 })
+  }
   if (err instanceof HTTPException) return err.getResponse()
   const message = err instanceof Error && err.stack ? err.stack : err.toString()
   return c.json(new NamedError.Unknown({ message }).toObject(), {

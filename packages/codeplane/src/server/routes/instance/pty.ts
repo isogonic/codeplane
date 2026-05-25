@@ -192,7 +192,7 @@ export function PtyRoutes(upgradeWebSocket: UpgradeWebSocket) {
             }),
           ))
         ) {
-          throw new Error("Session not found")
+          throw new NotFoundError({ message: "Session not found" })
         }
 
         type Socket = {

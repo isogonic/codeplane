@@ -10,9 +10,8 @@ export const ERRORS = {
         schema: resolver(
           z
             .object({
+              name: z.string(),
               data: z.any(),
-              errors: z.array(z.record(z.string(), z.any())),
-              success: z.literal(false),
             })
             .meta({
               ref: "BadRequestError",
@@ -26,6 +25,23 @@ export const ERRORS = {
     content: {
       "application/json": {
         schema: resolver(NotFoundError.Schema),
+      },
+    },
+  },
+  500: {
+    description: "Internal server error",
+    content: {
+      "application/json": {
+        schema: resolver(
+          z
+            .object({
+              name: z.literal("UnknownError"),
+              data: z.object({ message: z.string() }),
+            })
+            .meta({
+              ref: "InternalServerError",
+            }),
+        ),
       },
     },
   },

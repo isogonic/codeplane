@@ -264,12 +264,15 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
             (match) =>
               Effect.gen(function* () {
                 const namespace = path.basename(match, path.extname(match))
-                // `match` is an absolute filesystem path from `Glob.scanSync(..., { absolute: true })`.
-                // Import it as `file://` so Node on Windows accepts the dynamic import.
-                const mod = yield* Effect.promise(() => import(pathToFileURL(match).href))
-                return Object.entries<ToolDefinition>(mod).map(([id, def]) =>
-                  fromPlugin(id === "default" ? namespace : `${namespace}_${id}`, def),
-                )
+                try {
+                  const mod = yield* Effect.promise(() => import(pathToFileURL(match).href))
+                  return Object.entries<ToolDefinition>(mod).map(([id, def]) =>
+                    fromPlugin(id === "default" ? namespace : `${namespace}_${id}`, def),
+                  )
+                } catch (err) {
+                  log.error("failed to load custom tool file, skipping", { match, error: err })
+                  return []
+                }
               }),
             { concurrency: "unbounded" },
           )).flat(),
@@ -278,7 +281,11 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
         const plugins = yield* plugin.list()
         for (const p of plugins) {
           for (const [id, def] of Object.entries(p.tool ?? {})) {
-            custom.push(fromPlugin(id, def))
+            try {
+              custom.push(fromPlugin(id, def))
+            } catch (err) {
+              log.error("failed to register plugin tool, skipping", { tool: id, error: err })
+            }
           }
         }
 
