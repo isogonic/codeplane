@@ -1894,7 +1894,11 @@ function attachServerVersionWatcher(window: BrowserWindow, instance: SavedInstan
   watcher.ping()
 }
 
-async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebContents }) {
+async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebContents; showErrorDialog?: boolean }) {
+  const showOpenError = async (input: MessageBoxOptions) => {
+    if (opts?.showErrorDialog === false) return
+    await showMessageBox(input)
+  }
   const emit = (payload: Record<string, unknown>) => {
     const wc = opts?.progressTo
     if (!wc || wc.isDestroyed()) return
@@ -1908,7 +1912,7 @@ async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebConte
     } catch (error) {
       logger.log("main", "instance.local.start-failed", { error, ...instanceSummary(saved) })
       emit({ phase: "error", message: error instanceof Error ? error.message : String(error), percent: 0 })
-      await showMessageBox({
+      await showOpenError({
         type: "error",
         message: "Couldn't start the local Codeplane server",
         detail: error instanceof Error ? error.message : String(error),
@@ -1919,7 +1923,7 @@ async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebConte
   const target = asUrl(instance.url)
   if (!target) {
     emit({ phase: "error", message: "Invalid URL", percent: 0 })
-    await showMessageBox({
+    await showOpenError({
       type: "error",
       message: "Invalid instance URL",
       detail: instance.url,
@@ -2003,7 +2007,7 @@ async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebConte
   } catch (error) {
     logger.log("main", "instance.open.error", { error, ...instanceSummary(instance) })
     emit({ phase: "error", message: error instanceof Error ? error.message : String(error), percent: 0 })
-    await showMessageBox({
+    await showOpenError({
       type: "error",
       message: "Couldn't open this instance",
       detail: error instanceof Error ? error.message : String(error),
@@ -2142,11 +2146,14 @@ async function openLastInstanceOrSetup() {
     return
   }
   logger.log("main", "startup.open-last", instanceSummary(instance))
-  const opened = await openInstance(instance).catch((error) => {
+  const opened = await openInstance(instance, { showErrorDialog: false }).catch((error) => {
     logger.log("main", "startup.open-last.error", { error, ...instanceSummary(instance) })
     return false
   })
-  if (!opened) createWindow()
+  if (!opened) {
+    logger.log("main", "startup.open-last.fallback", instanceSummary(instance))
+    createWindow()
+  }
 }
 
 function setupIpc() {

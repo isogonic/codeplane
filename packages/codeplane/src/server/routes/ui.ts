@@ -4,11 +4,7 @@ import { proxy } from "hono/proxy"
 import { getMimeType } from "hono/utils/mime"
 import { createHash } from "node:crypto"
 import fs from "node:fs/promises"
-
-const embeddedUIPromise = Flag.CODEPLANE_DISABLE_EMBEDDED_WEB_UI
-  ? Promise.resolve(null)
-  : // @ts-expect-error - generated file at build time
-    import("codeplane-web-ui.gen.ts").then((module) => module.default as Record<string, string>).catch(() => null)
+import embeddedWebUI from "./codeplane-web-ui.gen"
 
 const themePreloadScript =
   /<script\b(?![^>]*\bsrc\s*=)[^>]*\bid=(['"])oc-theme-preload-script\1[^>]*>([\s\S]*?)<\/script>/i
@@ -26,17 +22,17 @@ const indexAsset = (embeddedWebUI: Record<string, string>) =>
 
 export const UIRoutes = (): Hono =>
   new Hono().all("/*", async (c) => {
-    const embeddedWebUI = await embeddedUIPromise
     const path = c.req.path
+    const resolvedEmbeddedWebUI = Flag.CODEPLANE_DISABLE_EMBEDDED_WEB_UI ? null : embeddedWebUI
 
-    if (embeddedWebUI) {
+    if (resolvedEmbeddedWebUI) {
       const requested = path.replace(/^\//, "")
       const match =
-        embeddedWebUI[requested] ??
+        resolvedEmbeddedWebUI[requested] ??
         (requested.startsWith("assets/index-") && requested.endsWith(".js")
-          ? embeddedWebUI[indexAsset(embeddedWebUI) ?? ""]
+          ? resolvedEmbeddedWebUI[indexAsset(resolvedEmbeddedWebUI) ?? ""]
           : undefined) ??
-        (requested.startsWith("assets/") ? undefined : embeddedWebUI["index.html"]) ??
+        (requested.startsWith("assets/") ? undefined : resolvedEmbeddedWebUI["index.html"]) ??
         null
       if (!match) return c.json({ error: "Not Found" }, 404)
 
@@ -62,11 +58,17 @@ export const UIRoutes = (): Hono =>
       // dev:server`). Honour CODEPLANE_DEV_UI_URL if the dev set it
       // — points at a running `bun --cwd packages/app dev` server so
       // the Codeplane backend serves live-reloaded UI without
-      // requiring a full binary rebuild. The hardcoded
-      // `example.invalid` upstream is the production placeholder
-      // that release builds replace at compile time; in dev it's
-      // unreachable and would 502 every UI request.
-      const upstream = Flag.CODEPLANE_DEV_UI_URL ?? "https://example.invalid/app"
+      // requiring a full binary rebuild.
+      const upstream = Flag.CODEPLANE_DEV_UI_URL
+      if (!upstream) {
+        return c.json(
+          {
+            error:
+              "This Codeplane runtime was built without an embedded web UI. Set CODEPLANE_DEV_UI_URL for dev, or use a packaged runtime with the web UI embedded.",
+          },
+          503,
+        )
+      }
       const upstreamHost = (() => {
         try {
           return new URL(upstream).host

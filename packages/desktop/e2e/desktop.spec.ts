@@ -15,6 +15,9 @@ type SavedInstance = {
   label?: string
   headers?: Record<string, string>
   ignoreCertificateErrors?: boolean
+  local?: {
+    binaryVersion: string
+  }
 }
 
 type DesktopLogEntry = {
@@ -1216,6 +1219,51 @@ test("does not save a broken local instance when setup fails", async ({}, testIn
         },
       )
       .toEqual({ prepare: true, start: true, saved: false })
+  } finally {
+    if (app) await app.close()
+    await attachIfExists(testInfo, "desktop-log", testInfo.outputPath("desktop-runtime/logs/desktop.log"))
+  }
+})
+
+test("falls back to the desktop start page when the last local instance fails during startup", async ({}, testInfo) => {
+  test.skip(process.platform === "win32", "local fixture binary is only seeded for POSIX platforms")
+  let app: Awaited<ReturnType<typeof electron.launch>> | undefined
+
+  try {
+    const runtime = await launchDesktop(testInfo, {
+      brokenLocalVersions: [appVersion],
+      instances: [
+        {
+          id: "broken",
+          label: "Broken local workspace",
+          url: "local://broken",
+          local: { binaryVersion: appVersion },
+        },
+      ],
+      lastInstanceId: "broken",
+    })
+    app = runtime.app
+    const page = runtime.page
+
+    await expect(page.getByText("Connect to your instance")).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText("Broken local workspace")).toBeVisible()
+    await expect(page.locator('main [data-desktop-action="instance-open"]')).toHaveCount(1)
+
+    await page.getByLabel("Add instance").first().click()
+    await expect(page.getByRole("heading", { name: "Add an instance" })).toBeVisible()
+
+    await expect
+      .poll(
+        () =>
+          readDesktopEntries(runtime.logFile).then((entries) => ({
+            startupFallback: entries.some((entry) => entry.scope === "main" && entry.event === "startup.open-last.fallback"),
+            localStartFailed: entries.some((entry) => entry.scope === "main" && entry.event === "instance.local.start-failed"),
+          })),
+        {
+          message: "desktop should log the failed last-instance open and recover to setup",
+        },
+      )
+      .toEqual({ startupFallback: true, localStartFailed: true })
   } finally {
     if (app) await app.close()
     await attachIfExists(testInfo, "desktop-log", testInfo.outputPath("desktop-runtime/logs/desktop.log"))
