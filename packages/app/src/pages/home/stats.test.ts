@@ -369,6 +369,17 @@ describe("dailyBuckets", () => {
     expect(buckets).toHaveLength(364)
     expect(buckets.every((b) => b.count === 0)).toBe(true)
   })
+
+  test("buckets are unique local calendar days across DST transitions", () => {
+    // Reference point lands after both 2025 fall-back (Oct 26) and
+    // 2026 spring-forward (Mar 29), so the 364-day window spans both.
+    const buckets = dailyBuckets([], now)
+    const labels = buckets.map((b) => {
+      const d = new Date(b.start)
+      return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+    })
+    expect(new Set(labels).size).toBe(buckets.length)
+  })
 })
 
 describe("recentSessions", () => {

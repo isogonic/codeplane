@@ -288,7 +288,7 @@ const uiHost = createDesktopUIHost({
         }
         if (!(await checkMacOSScreenRecording())) {
           logger.log("ui-host", "computer.bridge.screen-recording-uncertain", {
-            note: "Permission API/probe reports denied — trying the Electron capture path before failing.",
+            note: "Permission API reports denied — trying the Electron capture path before failing.",
           })
         }
       }
@@ -1999,13 +1999,10 @@ async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebConte
 }
 
 // macOS permission state is read repeatedly (every computer-use call plus
-// the settings UI). The underlying Electron APIs are cheap individually but
-// `systemPreferences.getMediaAccessStatus("screen")` is well-known to lag
-// reality on Sonoma/Sequoia — it returns the value sampled at process start
-// until the next restart. Pair the API check with a real probe via
-// `desktopCapturer.getSources`, which actually exercises the TCC entry and
-// returns truthful state. Cache the probe briefly so a burst of computer-use
-// actions doesn't spam the system call.
+// the settings UI). Keep this path passive: `desktopCapturer.getSources()`
+// can trigger the OS Screen Recording prompt and can also return empty
+// thumbnails even after System Settings shows the app as granted. The actual
+// computer-use capture path validates that the screen can be captured.
 const PERMISSION_CACHE_TTL_MS = 1_500
 type CachedBool = { value: boolean; at: number }
 type DesktopSystemPermissionStatus = {
@@ -2038,40 +2035,10 @@ async function checkMacOSAccessibility(): Promise<boolean> {
   return value
 }
 
-// Real screen-recording probe. `desktopCapturer.getSources` triggers the TCC
-// check inside the running process — when permission is granted, sources
-// come back with a non-empty thumbnail; when it's denied, the thumbnail is
-// empty (a black 1x1 image) even though the call resolves. This catches the
-// common case where the user grants Screen Recording in System Settings but
-// `getMediaAccessStatus` still reports "denied" (it caches at app launch).
-async function probeMacOSScreenRecording(): Promise<boolean> {
-  try {
-    const sources = await desktopCapturer.getSources({
-      types: ["screen"],
-      thumbnailSize: { width: 8, height: 8 },
-      fetchWindowIcons: false,
-    })
-    if (sources.length === 0) return false
-    return sources.some((source) => source.thumbnail && !source.thumbnail.isEmpty())
-  } catch {
-    return false
-  }
-}
-
 async function checkMacOSScreenRecording(): Promise<boolean> {
   const cached = readCache(screenRecordingCache)
   if (cached !== undefined) return cached
-  let value = false
-  try {
-    value = systemPreferences.getMediaAccessStatus("screen") === "granted"
-  } catch {
-    value = false
-  }
-  if (!value) {
-    // The Electron API can lag the OS — verify with a real capture probe
-    // before declaring permission missing.
-    value = await probeMacOSScreenRecording()
-  }
+  const value = macOSScreenRecordingStatusGranted()
   screenRecordingCache = { value, at: Date.now() }
   return value
 }
@@ -2084,20 +2051,19 @@ function macOSScreenRecordingStatusGranted() {
   }
 }
 
-async function checkMacOSScreenRecordingState() {
-  const active = await probeMacOSScreenRecording()
-  const granted = active || macOSScreenRecordingStatusGranted()
+function checkMacOSScreenRecordingState() {
+  const granted = macOSScreenRecordingStatusGranted()
   return {
     granted,
-    active,
-    restartRequired: granted && !active,
+    active: granted,
+    restartRequired: false,
   }
 }
 
 async function missingMacOSComputerPermissions(params: DesktopComputerInput) {
   const missing: string[] = []
   if (desktopComputerNeedsAccessibility(params) && !(await checkMacOSAccessibility())) missing.push("Accessibility")
-  const screenRecording = await checkMacOSScreenRecordingState()
+  const screenRecording = checkMacOSScreenRecordingState()
   if (!screenRecording.active) {
     missing.push(screenRecording.granted ? "Screen Recording (relaunch Codeplane Desktop)" : "Screen Recording")
   }
@@ -2535,7 +2501,7 @@ function setupIpc() {
         preferencePane: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
       })
 
-      const screenRecording = await checkMacOSScreenRecordingState()
+      const screenRecording = checkMacOSScreenRecordingState()
       permissions.push({
         key: "screen-recording",
         label: "Screen Recording",

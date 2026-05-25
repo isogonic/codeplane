@@ -1,5 +1,5 @@
 import type { AssistantMessage, Message, Part, ToolPart } from "@codeplane-ai/sdk/v2/client"
-import { DAY_MS, startOfDay, type DayBucket, type ModelStat, type Range, type Totals } from "./stats"
+import { calendarDayStarts, DAY_MS, startOfDay, type DayBucket, type ModelStat, type Range, type Totals } from "./stats"
 
 /** Bump whenever the cached aggregate shape changes. */
 export const SESSION_AGGREGATE_VERSION = 4
@@ -286,11 +286,9 @@ export const HEATMAP_DAYS_REFERENCE = 364
 
 export function heatmapBuckets(aggregates: SessionAggregate[], now: number): DayBucket[] {
   const today = startOfDay(now)
-  const start = today - (HEATMAP_DAYS_REFERENCE - 1) * DAY_MS
-  const buckets: DayBucket[] = []
-  for (let i = HEATMAP_DAYS_REFERENCE - 1; i >= 0; i--) {
-    buckets.push({ start: today - i * DAY_MS, count: 0 })
-  }
+  const buckets: DayBucket[] = calendarDayStarts(today, HEATMAP_DAYS_REFERENCE).map((start) => ({ start, count: 0 }))
+  if (buckets.length === 0) return buckets
+  const start = buckets[0]!.start
   for (const aggregate of aggregates) {
     if (!aggregate || !aggregate.days) continue
     for (const [dayKeyRaw, daily] of Object.entries(aggregate.days)) {

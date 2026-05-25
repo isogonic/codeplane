@@ -28,19 +28,6 @@ runs:
         bun-version-file: ${{ !steps.bun-url.outputs.url && 'package.json' || '' }}
         bun-download-url: ${{ steps.bun-url.outputs.url }}
 
-    - name: Get cache directory
-      id: cache
-      shell: bash
-      run: echo "dir=$(bun pm cache)" >> "$GITHUB_OUTPUT"
-
-    - name: Cache Bun dependencies
-      uses: actions/cache@v5
-      with:
-        path: ${{ steps.cache.outputs.dir }}
-        key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-bun-
-
     - name: Setup Python for node-gyp
       shell: bash
       run: |

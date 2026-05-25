@@ -18,6 +18,7 @@ import {
   resolveCodeplaneLocalTarget,
   resolveLocalBinaryPath,
   resolveNpmFetchTimeout,
+  resolveNpmTarballRetryDelays,
   writePreferredLocalVersion,
 } from "../src/local-runtime"
 
@@ -26,6 +27,7 @@ const env = {
   CODEPLANE_GLOBAL_HOME_DIR: process.env.CODEPLANE_GLOBAL_HOME_DIR,
   CODEPLANE_HOME_DIR: process.env.CODEPLANE_HOME_DIR,
   CODEPLANE_NPM_REGISTRY: process.env.CODEPLANE_NPM_REGISTRY,
+  CODEPLANE_NPM_TARBALL_RETRY_DELAYS_MS: process.env.CODEPLANE_NPM_TARBALL_RETRY_DELAYS_MS,
   npm_config_registry: process.env.npm_config_registry,
 }
 
@@ -38,6 +40,7 @@ beforeEach(async () => {
   delete process.env.CODEPLANE_BIN_DIR
   delete process.env.CODEPLANE_GLOBAL_HOME_DIR
   delete process.env.CODEPLANE_NPM_REGISTRY
+  delete process.env.CODEPLANE_NPM_TARBALL_RETRY_DELAYS_MS
   delete process.env.npm_config_registry
   originalFetch = globalThis.fetch
 })
@@ -52,6 +55,8 @@ afterEach(async () => {
   else process.env.CODEPLANE_HOME_DIR = env.CODEPLANE_HOME_DIR
   if (env.CODEPLANE_NPM_REGISTRY === undefined) delete process.env.CODEPLANE_NPM_REGISTRY
   else process.env.CODEPLANE_NPM_REGISTRY = env.CODEPLANE_NPM_REGISTRY
+  if (env.CODEPLANE_NPM_TARBALL_RETRY_DELAYS_MS === undefined) delete process.env.CODEPLANE_NPM_TARBALL_RETRY_DELAYS_MS
+  else process.env.CODEPLANE_NPM_TARBALL_RETRY_DELAYS_MS = env.CODEPLANE_NPM_TARBALL_RETRY_DELAYS_MS
   if (env.npm_config_registry === undefined) delete process.env.npm_config_registry
   else process.env.npm_config_registry = env.npm_config_registry
   await fs.rm(home, { force: true, recursive: true })
@@ -273,6 +278,10 @@ describe("local runtime fetch timeout", () => {
     expect(resolveNpmFetchTimeout("5000")).toBe(5_000)
     expect(resolveNpmFetchTimeout("9999999")).toBe(600_000)
   })
+
+  test("parses tarball retry delays", () => {
+    expect(resolveNpmTarballRetryDelays("1, 20, nope, 999999")).toEqual([1, 20, 300_000])
+  })
 })
 
 describe("local runtime architecture", () => {
@@ -425,6 +434,59 @@ describe("install codeplane local package", () => {
     }
   })
 
+  test("retries transient tarball 404s while npm registry edges catch up", async () => {
+    process.env.CODEPLANE_NPM_TARBALL_RETRY_DELAYS_MS = "1"
+    const target = resolveCodeplaneLocalTarget()
+    const fixture = await fs.mkdtemp(path.join(os.tmpdir(), "codeplane-fixture-"))
+    try {
+      const packageDir = path.join(fixture, "package")
+      await fs.mkdir(path.join(packageDir, "bin"), { recursive: true })
+      const binaryContents = "#!/bin/sh\necho retry-ok\n"
+      await fs.writeFile(path.join(packageDir, "bin", target.binaryName), binaryContents)
+      await fs.writeFile(
+        path.join(packageDir, "package.json"),
+        JSON.stringify({ name: target.packageName, version: "27.3.1" }),
+      )
+      const tgz = path.join(fixture, "fixture.tgz")
+      const tar = spawnSync("tar", ["-czf", tgz, "-C", fixture, "package"])
+      if (tar.status !== 0) throw new Error(`tar failed: ${tar.stderr?.toString()}`)
+      const tarballBytes = await fs.readFile(tgz)
+
+      let tarballCalls = 0
+      globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
+        const url = input instanceof URL ? input.toString() : input instanceof Request ? input.url : String(input)
+        if (url.endsWith(`/${target.packageName}/27.3.1`)) {
+          return new Response(
+            JSON.stringify({
+              version: "27.3.1",
+              dist: {
+                tarball: `https://registry.example.com/${target.packageName}/-/${target.packageName}-27.3.1.tgz`,
+              },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          )
+        }
+        tarballCalls += 1
+        if (tarballCalls === 1) return new Response("edge cache miss", { status: 404 })
+        return new Response(tarballBytes, {
+          status: 200,
+          headers: {
+            "content-type": "application/octet-stream",
+            "content-length": String(tarballBytes.length),
+          },
+        })
+      }) as unknown as typeof globalThis.fetch
+
+      const dest = path.join(home, "local_server", "binaries", "27.3.1")
+      const result = await installCodeplaneLocalPackage({ version: "27.3.1", directory: dest })
+
+      expect(tarballCalls).toBe(2)
+      expect(await fs.readFile(result.binaryPath, "utf8")).toBe(binaryContents)
+    } finally {
+      await fs.rm(fixture, { force: true, recursive: true })
+    }
+  })
+
   test("rejects a tarball whose SRI does not match the manifest", async () => {
     const target = resolveCodeplaneLocalTarget()
     const fixture = await fs.mkdtemp(path.join(os.tmpdir(), "codeplane-fixture-"))
@@ -514,6 +576,7 @@ describe("install codeplane local package", () => {
   })
 
   test("cleans temporary package roots after failed downloads", async () => {
+    process.env.CODEPLANE_NPM_TARBALL_RETRY_DELAYS_MS = "1"
     const target = resolveCodeplaneLocalTarget()
     globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
       const url = input instanceof URL ? input.toString() : input instanceof Request ? input.url : String(input)

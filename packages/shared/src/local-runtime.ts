@@ -2,7 +2,6 @@ import { spawn, spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { createWriteStream } from "node:fs"
 import fs from "node:fs/promises"
-import os from "node:os"
 import path from "node:path"
 import { Readable, Transform } from "node:stream"
 import { pipeline } from "node:stream/promises"
@@ -22,6 +21,15 @@ export function resolveNpmFetchTimeout(value = process.env.CODEPLANE_NPM_FETCH_T
   return Math.min(parsed, 600_000)
 }
 const NPM_FETCH_TIMEOUT_MS = resolveNpmFetchTimeout()
+export function resolveNpmTarballRetryDelays(value = process.env.CODEPLANE_NPM_TARBALL_RETRY_DELAYS_MS) {
+  if (!value?.trim()) return [1_000, 3_000, 7_000, 15_000, 30_000, 60_000, 90_000, 120_000]
+  return value
+    .split(",")
+    .map((part) => Number(part.trim()))
+    .filter((delay) => Number.isFinite(delay) && delay >= 0)
+    .slice(0, 12)
+    .map((delay) => Math.min(delay, 300_000))
+}
 const cleanVersion = (value: string) => (value ?? "").toString().trim().replace(/^[vV](?=\d)/, "")
 const localVersionFile = () => path.join(CodeplaneHome.paths().local_server, "default-version")
 const localCliVersionFile = () => path.join(CodeplaneHome.paths().bin, ".codeplane-version")
@@ -54,6 +62,34 @@ async function responseSnippet(response: Response) {
   const text = await response.text().catch(() => "")
   const snippet = text.replace(/\s+/g, " ").trim().slice(0, 160)
   return snippet ? ` Response: ${snippet}` : ""
+}
+
+function retryableTarballStatus(status: number) {
+  return status === 404 || status === 408 || status === 425 || status === 429 || status >= 500
+}
+
+function sleep(ms: number, signal?: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    const abortSignal = signal
+    if (abortSignal?.aborted) {
+      reject(abortSignal.reason instanceof Error ? abortSignal.reason : new Error("Aborted"))
+      return
+    }
+    let timer: ReturnType<typeof setTimeout>
+    const onAbort = () => {
+      clearTimeout(timer)
+      abortSignal?.removeEventListener("abort", onAbort)
+      reject(abortSignal?.reason instanceof Error ? abortSignal.reason : new Error("Aborted"))
+    }
+    const done = () => {
+      clearTimeout(timer)
+      abortSignal?.removeEventListener("abort", onAbort)
+      resolve()
+    }
+    timer = setTimeout(done, ms)
+    timer.unref?.()
+    abortSignal?.addEventListener("abort", onAbort, { once: true })
+  })
 }
 
 type RegistryConfig = {
@@ -456,6 +492,37 @@ function verifyShasum(buffer: Buffer, shasum: string, label: string) {
   }
 }
 
+async function fetchNpmTarball(input: {
+  tarball: URL
+  headers?: RequestInit["headers"]
+  packageName: string
+  version: string
+  progress?(progress: LocalInstallProgress): void
+  signal?: AbortSignal
+}) {
+  const delays = resolveNpmTarballRetryDelays()
+  for (let attempt = 0; ; attempt++) {
+    const response = await fetchWithTimeout(input.tarball, {
+      redirect: "follow",
+      headers: input.headers,
+      description: `npm tarball ${input.packageName}@${input.version}`,
+      signal: input.signal,
+      timeoutMs: NPM_FETCH_TIMEOUT_MS,
+    })
+    if (response.ok || !retryableTarballStatus(response.status) || attempt >= delays.length) return response
+    await response.body?.cancel().catch(() => undefined)
+    const delay = delays[attempt] ?? 0
+    input.progress?.({
+      version: input.version,
+      phase: "download",
+      message: `Waiting for npm to publish ${input.packageName}@${input.version}; retrying in ${Math.max(1, Math.round(delay / 1000))}s…`,
+      percent: 8,
+      binaryVersion: input.version,
+    })
+    await sleep(delay, input.signal)
+  }
+}
+
 export async function fetchCodeplaneLatestVersion(channel = "latest") {
   const manifest = await fetchNpmPackageManifest({
     name: "codeplane-ai",
@@ -569,15 +636,16 @@ export async function installCodeplaneLocalPackage(input: {
     })
 
     const tarball = new URL(manifest.tarball)
-    const response = await fetchWithTimeout(tarball, {
-      redirect: "follow",
+    const response = await fetchNpmTarball({
+      tarball,
       headers:
         registry.token && (registry.alwaysAuth || tarball.origin === new URL(registry.registry).origin)
           ? { authorization: `Bearer ${registry.token}` }
           : undefined,
-      description: `npm tarball ${target.packageName}@${version}`,
+      packageName: target.packageName,
+      version,
+      progress: (progress) => input.progress?.(progress),
       signal: input.signal,
-      timeoutMs: NPM_FETCH_TIMEOUT_MS,
     })
     if (!response.ok) {
       throw new Error(

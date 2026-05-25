@@ -1,4 +1,4 @@
-import { createStore } from "solid-js/store"
+import { createStore, produce } from "solid-js/store"
 import { createMemo, For, Match, Show, Switch } from "solid-js"
 import { Portal, useKeyboard, useRenderer, useTerminalDimensions, type JSX } from "@opentui/solid"
 import type { TextareaRenderable } from "@opentui/core"
@@ -19,6 +19,7 @@ import { ShellID } from "@/tui/_compat/tool-shell-id"
 import { useDialog } from "../../ui/dialog"
 import { getScrollAcceleration } from "../../util/scroll"
 import { useTuiConfig } from "../../context/tui-config"
+import { errorMessage } from "@/util/error"
 
 type PermissionStage = "permission" | "always" | "reject"
 
@@ -55,8 +56,10 @@ function EditBody(props: { request: PermissionRequest }) {
   const config = useTuiConfig()
   const dimensions = useTerminalDimensions()
 
-  const filepath = createMemo(() => (props.request.metadata?.filepath as string) ?? "")
-  const diff = createMemo(() => (props.request.metadata?.diff as string) ?? "")
+  const filepath = createMemo(() =>
+    typeof props.request.metadata?.filepath === "string" ? props.request.metadata.filepath : "",
+  )
+  const diff = createMemo(() => (typeof props.request.metadata?.diff === "string" ? props.request.metadata.diff : ""))
 
   const view = createMemo(() => {
     const diffStyle = config.diff_style
@@ -137,6 +140,8 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
   const sync = useSync()
   const [store, setStore] = createStore({
     stage: "permission" as PermissionStage,
+    submitting: false,
+    error: undefined as string | undefined,
   })
 
   const session = createMemo(() => sync.data.session.find((s) => s.id === props.request.sessionID))
@@ -154,6 +159,43 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
   })
 
   const { theme } = useTheme()
+  const reset = (stage: PermissionStage = "permission") => {
+    setStore({
+      stage,
+      submitting: false,
+      error: undefined,
+    })
+  }
+  const removeRequest = () => {
+    const requests = sync.data.permission[props.request.sessionID]
+    if (!requests) return
+    const index = requests.findIndex((request) => request.id === props.request.id)
+    if (index === -1) return
+    sync.set(
+      "permission",
+      props.request.sessionID,
+      produce((draft) => {
+        draft.splice(index, 1)
+      }),
+    )
+  }
+  const reply = async (input: { reply: "once" | "always" | "reject"; message?: string }) => {
+    if (store.submitting) return
+    setStore("submitting", true)
+    setStore("error", undefined)
+    try {
+      const result = await sdk.client.permission.reply({
+        ...input,
+        requestID: props.request.id,
+        workspace: project.workspace.current(),
+      })
+      if (result.error) throw result.error
+      removeRequest()
+    } catch (error) {
+      setStore("error", errorMessage(error))
+      setStore("submitting", false)
+    }
+  }
 
   return (
     <Switch>
@@ -184,29 +226,26 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
           }
           options={{ confirm: "Confirm", cancel: "Cancel" }}
           escapeKey="cancel"
+          submitting={store.submitting}
+          error={store.error}
           onSelect={(option) => {
-            setStore("stage", "permission")
-            if (option === "cancel") return
-            void sdk.client.permission.reply({
-              reply: "always",
-              requestID: props.request.id,
-              workspace: project.workspace.current(),
-            })
+            if (option === "cancel") {
+              reset()
+              return
+            }
+            void reply({ reply: "always" })
           }}
         />
       </Match>
       <Match when={store.stage === "reject"}>
         <RejectPrompt
+          submitting={store.submitting}
+          error={store.error}
           onConfirm={(message) => {
-            void sdk.client.permission.reply({
-              reply: "reject",
-              requestID: props.request.id,
-              message: message || undefined,
-              workspace: project.workspace.current(),
-            })
+            void reply({ reply: "reject", message: message || undefined })
           }}
           onCancel={() => {
-            setStore("stage", "permission")
+            reset()
           }}
         />
       </Match>
@@ -427,28 +466,22 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
               options={{ once: "Allow once", always: "Allow always", reject: "Reject" }}
               escapeKey="reject"
               fullscreen
+              submitting={store.submitting}
+              error={store.error}
               onSelect={(option) => {
                 if (option === "always") {
-                  setStore("stage", "always")
+                  reset("always")
                   return
                 }
                 if (option === "reject") {
                   if (session()?.parentID) {
-                    setStore("stage", "reject")
+                    reset("reject")
                     return
                   }
-                  void sdk.client.permission.reply({
-                    reply: "reject",
-                    requestID: props.request.id,
-                    workspace: project.workspace.current(),
-                  })
+                  void reply({ reply: "reject" })
                   return
                 }
-                void sdk.client.permission.reply({
-                  reply: "once",
-                  requestID: props.request.id,
-                  workspace: project.workspace.current(),
-                })
+                void reply({ reply: "once" })
               }}
             />
           )
@@ -460,7 +493,12 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
   )
 }
 
-function RejectPrompt(props: { onConfirm: (message: string) => void; onCancel: () => void }) {
+function RejectPrompt(props: {
+  submitting?: boolean
+  error?: string
+  onConfirm: (message: string) => void
+  onCancel: () => void
+}) {
   let input: TextareaRenderable
   const { theme } = useTheme()
   const keybind = useKeybind()
@@ -471,6 +509,10 @@ function RejectPrompt(props: { onConfirm: (message: string) => void; onCancel: (
 
   useKeyboard((evt) => {
     if (dialog.stack.length > 0) return
+    if (props.submitting) {
+      evt.preventDefault()
+      return
+    }
 
     if (evt.name === "escape" || keybind.match("app_exit", evt)) {
       evt.preventDefault()
@@ -498,6 +540,15 @@ function RejectPrompt(props: { onConfirm: (message: string) => void; onCancel: (
         <box paddingLeft={1}>
           <text fg={theme.textMuted}>Tell Codeplane what to do differently</text>
         </box>
+        <Show when={props.error}>
+          {(error) => (
+            <box paddingLeft={1}>
+              <text fg={theme.error} wrapMode="word">
+                {error()}
+              </text>
+            </box>
+          )}
+        </Show>
       </box>
       <box
         flexDirection={narrow() ? "column" : "row"}
@@ -524,7 +575,7 @@ function RejectPrompt(props: { onConfirm: (message: string) => void; onCancel: (
         />
         <box flexDirection="row" gap={2} flexShrink={0}>
           <text fg={theme.text}>
-            enter <span style={{ fg: theme.textMuted }}>confirm</span>
+            enter <span style={{ fg: theme.textMuted }}>{props.submitting ? "sending" : "confirm"}</span>
           </text>
           <text fg={theme.text}>
             esc <span style={{ fg: theme.textMuted }}>cancel</span>
@@ -542,6 +593,8 @@ function Prompt<const T extends Record<string, string>>(props: {
   options: T
   escapeKey?: keyof T
   fullscreen?: boolean
+  submitting?: boolean
+  error?: string
   onSelect: (option: keyof T) => void
 }) {
   const { theme } = useTheme()
@@ -555,32 +608,55 @@ function Prompt<const T extends Record<string, string>>(props: {
   const diffKey = Keybind.parse("ctrl+f")[0]
   const narrow = createMemo(() => dimensions().width < 80)
   const dialog = useDialog()
+  const select = (option: keyof T) => {
+    if (props.submitting) return
+    props.onSelect(option)
+  }
+  const move = (direction: number) => {
+    const idx = keys.indexOf(store.selected)
+    const next = keys[(idx + direction + keys.length) % keys.length]
+    setStore("selected", next)
+  }
 
   useKeyboard((evt) => {
     if (dialog.stack.length > 0) return
-
-    if (evt.name === "left" || evt.name == "h") {
+    if (props.submitting) {
       evt.preventDefault()
-      const idx = keys.indexOf(store.selected)
-      const next = keys[(idx - 1 + keys.length) % keys.length]
-      setStore("selected", next)
+      return
     }
 
-    if (evt.name === "right" || evt.name == "l") {
+    const digit = Number(evt.name)
+    if (Number.isInteger(digit) && digit >= 1 && digit <= keys.length) {
       evt.preventDefault()
-      const idx = keys.indexOf(store.selected)
-      const next = keys[(idx + 1) % keys.length]
-      setStore("selected", next)
+      const option = keys[digit - 1]
+      setStore("selected", option)
+      select(option)
+      return
     }
 
-    if (evt.name === "return") {
+    if (evt.name === "left" || evt.name === "up" || evt.name === "h" || evt.name === "k") {
       evt.preventDefault()
-      props.onSelect(store.selected)
+      move(-1)
+    }
+
+    if (evt.name === "right" || evt.name === "down" || evt.name === "l" || evt.name === "j") {
+      evt.preventDefault()
+      move(1)
+    }
+
+    if (evt.name === "tab") {
+      evt.preventDefault()
+      move(evt.shift ? -1 : 1)
+    }
+
+    if (evt.name === "return" || evt.name === "space" || evt.sequence === " ") {
+      evt.preventDefault()
+      select(store.selected)
     }
 
     if (props.escapeKey && (evt.name === "escape" || keybind.match("app_exit", evt))) {
       evt.preventDefault()
-      props.onSelect(props.escapeKey)
+      select(props.escapeKey)
     }
 
     if (props.fullscreen && diffKey && Keybind.match(diffKey, keybind.parse(evt))) {
@@ -625,6 +701,15 @@ function Prompt<const T extends Record<string, string>>(props: {
           </box>
         </Show>
         {props.body}
+        <Show when={props.error}>
+          {(error) => (
+            <box paddingLeft={1} flexShrink={0}>
+              <text fg={theme.error} wrapMode="word">
+                {error()}
+              </text>
+            </box>
+          )}
+        </Show>
       </box>
       <box
         flexDirection={narrow() ? "column" : "row"}
@@ -646,13 +731,15 @@ function Prompt<const T extends Record<string, string>>(props: {
                 paddingRight={1}
                 backgroundColor={option === store.selected ? theme.warning : theme.backgroundMenu}
                 onMouseOver={() => setStore("selected", option)}
+                onMouseDown={() => setStore("selected", option)}
                 onMouseUp={() => {
                   setStore("selected", option)
-                  props.onSelect(option)
+                  select(option)
                 }}
               >
                 <text fg={option === store.selected ? selectedForeground(theme, theme.warning) : theme.textMuted}>
                   {props.options[option]}
+                  {props.submitting && option === store.selected ? "..." : ""}
                 </text>
               </box>
             )}
@@ -665,10 +752,13 @@ function Prompt<const T extends Record<string, string>>(props: {
             </text>
           </Show>
           <text fg={theme.text}>
+            {"1-" + keys.length} <span style={{ fg: theme.textMuted }}>choose</span>
+          </text>
+          <text fg={theme.text}>
             {"⇆"} <span style={{ fg: theme.textMuted }}>select</span>
           </text>
           <text fg={theme.text}>
-            enter <span style={{ fg: theme.textMuted }}>confirm</span>
+            enter <span style={{ fg: theme.textMuted }}>{props.submitting ? "sending" : "confirm"}</span>
           </text>
         </box>
       </box>
@@ -681,3 +771,5 @@ function Prompt<const T extends Record<string, string>>(props: {
     </Show>
   )
 }
+
+export const _internalsForTesting = { Prompt }

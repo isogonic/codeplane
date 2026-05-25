@@ -180,6 +180,23 @@ export const startOfDay = (timestamp: number) => {
   return date.getTime()
 }
 
+// Build N consecutive calendar-day starts (local time), oldest first.
+// Stepping by raw DAY_MS skips/duplicates dates across DST boundaries;
+// advancing via `setDate(... + 1)` honors the calendar.
+export function calendarDayStarts(endDayStart: number, count: number): number[] {
+  if (count <= 0) return []
+  const cursor = new Date(endDayStart)
+  cursor.setHours(0, 0, 0, 0)
+  cursor.setDate(cursor.getDate() - (count - 1))
+  const result: number[] = []
+  for (let i = 0; i < count; i++) {
+    cursor.setHours(0, 0, 0, 0)
+    result.push(cursor.getTime())
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return result
+}
+
 const rangeStart = (now: number, range: Range): number | undefined => {
   const days = RANGE_DAYS[range]
   if (days === undefined) return undefined
@@ -232,13 +249,21 @@ export function aggregateProjects(input: ProjectInput[]): ProjectAggregate[] {
     })
 }
 
+// DST-aware: returns the local midnight of the day before the given local midnight.
+const previousDayStart = (dayStart: number) => {
+  const date = new Date(dayStart)
+  date.setHours(0, 0, 0, 0)
+  date.setDate(date.getDate() - 1)
+  return date.getTime()
+}
+
 export function streaks(activeDays: Set<number>, now: number) {
   if (activeDays.size === 0) return { current: 0, longest: 0 }
   const sorted = [...activeDays].sort((a, b) => a - b)
   let longest = 1
   let run = 1
   for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i]! - sorted[i - 1]! === DAY_MS) {
+    if (previousDayStart(sorted[i]!) === sorted[i - 1]!) {
       run += 1
       if (run > longest) longest = run
     } else {
@@ -247,10 +272,10 @@ export function streaks(activeDays: Set<number>, now: number) {
   }
   let current = 0
   let day = startOfDay(now)
-  if (!activeDays.has(day)) day -= DAY_MS
+  if (!activeDays.has(day)) day = previousDayStart(day)
   while (activeDays.has(day)) {
     current += 1
-    day -= DAY_MS
+    day = previousDayStart(day)
   }
   return { current, longest }
 }
@@ -375,12 +400,8 @@ export function aggregateModels(
 }
 
 export function dailyBuckets(messages: ReturnType<typeof collectMessages>, now: number): DayBucket[] {
-  const days = HEATMAP_DAYS
   const today = startOfDay(now)
-  const buckets: DayBucket[] = []
-  for (let i = days - 1; i >= 0; i--) {
-    buckets.push({ start: today - i * DAY_MS, count: 0 })
-  }
+  const buckets: DayBucket[] = calendarDayStarts(today, HEATMAP_DAYS).map((start) => ({ start, count: 0 }))
   if (buckets.length === 0) return buckets
   const start = buckets[0]!.start
   for (const { message } of messages) {

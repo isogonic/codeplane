@@ -1,11 +1,18 @@
 import { Global } from "@/global"
 import { Filesystem } from "@/tui/_compat/filesystem"
-import { Flock } from "@/tui/_compat/util/flock"
+import { Flock } from "@codeplane-ai/shared/util/flock"
 import { rename, rm } from "fs/promises"
 import { createSignal, type Setter } from "solid-js"
 import { createStore, unwrap } from "solid-js/store"
 import { createSimpleContext } from "./helper"
 import path from "path"
+
+function errorCode(error: unknown): string | undefined {
+  if (typeof error !== "object" || error === null || !("code" in error)) return undefined
+  const code = error.code
+  if (typeof code === "string") return code
+  return undefined
+}
 
 export const { use: useKV, provider: KVProvider } = createSimpleContext({
   name: "KV",
@@ -34,6 +41,7 @@ export const { use: useKV, provider: KVProvider } = createSimpleContext({
         setStore(x)
       })
       .catch((error) => {
+        if (errorCode(error) === "ENOENT") return
         console.error("Failed to read KV state", { filePath, error })
       })
       .finally(() => {
