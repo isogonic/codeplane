@@ -6,6 +6,7 @@ import {
   Menu,
   Notification,
   nativeImage,
+  screen,
   session,
   shell,
   dialog,
@@ -23,7 +24,7 @@ import {
 } from "@codeplane-ai/shared/local-runtime"
 import { createInstanceStore, type State as InstanceStoreState } from "@codeplane-ai/shared/instance-store"
 import { createServerVersionWatcher, type ServerVersionWatcher } from "@codeplane-ai/shared/server-version-watcher"
-import { createWriteStream, existsSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs"
+import { createWriteStream, existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs"
 import { execFile, spawn } from "node:child_process"
 import { randomUUID } from "node:crypto"
 import { promisify } from "node:util"
@@ -41,6 +42,7 @@ import {
 } from "./ui-host"
 import { createLocalInstanceManager, type LocalInstanceProgress } from "./local-instance"
 import {
+  type DesktopComputerCapture,
   desktopComputerNeedsAccessibility,
   performDesktopComputer,
   type DesktopComputerInput,
@@ -279,28 +281,21 @@ const uiHost = createDesktopUIHost({
 
     try {
       if (process.platform === "darwin") {
-        const missing: string[] = []
         if (desktopComputerNeedsAccessibility(params) && !(await checkMacOSAccessibility())) {
-          missing.push("Accessibility")
+          logger.log("ui-host", "computer.bridge.accessibility-uncertain", {
+            note: "Permission API reports denied — attempting action anyway",
+          })
         }
-        if (!checkMacOSScreenRecording()) {
-          missing.push("Screen Recording")
-        }
-        if (missing.length > 0) {
-          logger.log("ui-host", "computer.bridge.permissions-missing", { missing })
-          return jsonResponse(
-            {
-              ok: false,
-              error:
-                `Missing macOS permissions: ${missing.join(", ")}. ` +
-                "Grant them in Desktop Settings -> General -> Computer use, then retry. A desktop restart may still be required.",
-            },
-            403,
-          )
+        if (!(await checkMacOSScreenRecording())) {
+          logger.log("ui-host", "computer.bridge.screen-recording-uncertain", {
+            note: "Permission API/probe reports denied — trying the Electron capture path before failing.",
+          })
         }
       }
 
-      const result = await performDesktopComputer(params)
+      const result = await performDesktopComputer(params, {
+        captureScreen: process.platform === "darwin" ? captureElectronScreen : undefined,
+      })
       logger.log("ui-host", "computer.bridge.success", {
         action: params.action,
         count: result.actions.length,
@@ -309,6 +304,24 @@ const uiHost = createDesktopUIHost({
       })
       return jsonResponse({ ok: true, ...result })
     } catch (error) {
+      // The probe is best-effort: re-check after the failure so the user gets
+      // a precise list rather than a generic "blocked" message. The cache is
+      // intentionally not cleared here — we want to see the same view the
+      // pre-flight saw so we don't gaslight the user.
+      const missing = process.platform === "darwin" ? await missingMacOSComputerPermissions(params) : []
+      if (missing.length > 0 || (process.platform === "darwin" && isMacOSComputerPermissionError(error))) {
+        logger.log("ui-host", "computer.bridge.permissions-missing", { error, missing })
+        const detail = missing.length > 0 ? ` (${missing.join(", ")})` : ""
+        const hint =
+          " Open Desktop Settings -> General -> Computer use to grant access. After enabling each permission, fully quit and reopen Codeplane Desktop."
+        return jsonResponse(
+          {
+            ok: false,
+            error: `macOS blocked Computer use${detail}.${hint}`,
+          },
+          403,
+        )
+      }
       logger.log("ui-host", "computer.bridge.error", { error })
       return jsonResponse({ ok: false, error: error instanceof Error ? error.message : String(error) }, 500)
     }
@@ -320,6 +333,7 @@ const localManager = createLocalInstanceManager({
   configDir: codeplaneHome.root,
   dataDir: codeplaneHome.local_server,
   log: (event, data) => logger.log("local-instance", event, data),
+  debugLogging: () => desktopDebugLoggingEnabled(),
   extraEnv: async () => ({
     CODEPLANE_DESKTOP_BRIDGE_ORIGIN: await uiHost.origin(),
     CODEPLANE_DESKTOP_BRIDGE_TOKEN: desktopBridgeToken,
@@ -412,6 +426,23 @@ function readDesktopStorage(name: string | undefined, key: string) {
   return typeof value === "string" ? value : null
 }
 
+function readDesktopSettings() {
+  const raw = readDesktopStorage(undefined, "settings.v3")
+  if (!raw) return {}
+  try {
+    const parsed = JSON.parse(raw)
+    if (parsed && typeof parsed === "object") return parsed as Record<string, unknown>
+  } catch (error) {
+    logger.log("main", "settings.read-error", { error })
+  }
+  return {}
+}
+
+function desktopDebugLoggingEnabled() {
+  const general = readDesktopSettings().general
+  return !!general && typeof general === "object" && (general as Record<string, unknown>).debugLogging === true
+}
+
 function writeDesktopStorage(name: string | undefined, key: string, value: string) {
   const persist = { ...desktopPersistState() }
   const storageName = desktopStorageName(name)
@@ -465,6 +496,16 @@ async function ensureLocalRunning(
     onProgress,
   )
   return { ...instance, local: { binaryVersion: version }, url: running.url }
+}
+
+async function openLocalInstanceLogDir(id: string) {
+  const instance = getInstance(id)
+  if (!instance?.local) return false
+  const dir = localManager.logDir(id)
+  mkdirSync(dir, { recursive: true })
+  const error = await shell.openPath(dir)
+  if (error) throw new Error(error)
+  return true
 }
 
 function instanceSummary(instance: SavedInstance | DesktopHostInstance) {
@@ -1957,16 +1998,124 @@ async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebConte
   }
 }
 
+// macOS permission state is read repeatedly (every computer-use call plus
+// the settings UI). The underlying Electron APIs are cheap individually but
+// `systemPreferences.getMediaAccessStatus("screen")` is well-known to lag
+// reality on Sonoma/Sequoia — it returns the value sampled at process start
+// until the next restart. Pair the API check with a real probe via
+// `desktopCapturer.getSources`, which actually exercises the TCC entry and
+// returns truthful state. Cache the probe briefly so a burst of computer-use
+// actions doesn't spam the system call.
+const PERMISSION_CACHE_TTL_MS = 1_500
+type CachedBool = { value: boolean; at: number }
+let accessibilityCache: CachedBool | undefined
+let screenRecordingCache: CachedBool | undefined
+
+function readCache(cache: CachedBool | undefined): boolean | undefined {
+  if (!cache) return undefined
+  if (Date.now() - cache.at > PERMISSION_CACHE_TTL_MS) return undefined
+  return cache.value
+}
+
 async function checkMacOSAccessibility(): Promise<boolean> {
+  const cached = readCache(accessibilityCache)
+  if (cached !== undefined) return cached
+  let value = false
   try {
-    return systemPreferences.isTrustedAccessibilityClient(false)
+    value = systemPreferences.isTrustedAccessibilityClient(false)
+  } catch {
+    value = false
+  }
+  accessibilityCache = { value, at: Date.now() }
+  return value
+}
+
+// Real screen-recording probe. `desktopCapturer.getSources` triggers the TCC
+// check inside the running process — when permission is granted, sources
+// come back with a non-empty thumbnail; when it's denied, the thumbnail is
+// empty (a black 1x1 image) even though the call resolves. This catches the
+// common case where the user grants Screen Recording in System Settings but
+// `getMediaAccessStatus` still reports "denied" (it caches at app launch).
+async function probeMacOSScreenRecording(): Promise<boolean> {
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ["screen"],
+      thumbnailSize: { width: 8, height: 8 },
+      fetchWindowIcons: false,
+    })
+    if (sources.length === 0) return false
+    return sources.some((source) => source.thumbnail && !source.thumbnail.isEmpty())
   } catch {
     return false
   }
 }
 
-function checkMacOSScreenRecording(): boolean {
-  return systemPreferences.getMediaAccessStatus("screen") === "granted"
+async function checkMacOSScreenRecording(): Promise<boolean> {
+  const cached = readCache(screenRecordingCache)
+  if (cached !== undefined) return cached
+  let value = false
+  try {
+    value = systemPreferences.getMediaAccessStatus("screen") === "granted"
+  } catch {
+    value = false
+  }
+  if (!value) {
+    // The Electron API can lag the OS — verify with a real capture probe
+    // before declaring permission missing.
+    value = await probeMacOSScreenRecording()
+  }
+  screenRecordingCache = { value, at: Date.now() }
+  return value
+}
+
+async function missingMacOSComputerPermissions(params: DesktopComputerInput) {
+  const missing: string[] = []
+  if (desktopComputerNeedsAccessibility(params) && !(await checkMacOSAccessibility())) missing.push("Accessibility")
+  if (!(await checkMacOSScreenRecording())) missing.push("Screen Recording")
+  return missing
+}
+
+function isMacOSComputerPermissionError(error: unknown) {
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : ""
+  return /not authorized|not authorised|assistive access|accessibility|screen recording|screen capture|permission|privacy|tcc|denied/i.test(
+    message,
+  )
+}
+
+const captureElectronScreen: DesktopComputerCapture = async () => {
+  const primary = screen.getPrimaryDisplay()
+  const width = Math.max(1, Math.ceil(primary.bounds.width * primary.scaleFactor))
+  const height = Math.max(1, Math.ceil(primary.bounds.height * primary.scaleFactor))
+  const sources = await desktopCapturer.getSources({
+    types: ["screen"],
+    thumbnailSize: { width, height },
+    fetchWindowIcons: false,
+  })
+  const source =
+    sources.find((item) => item.display_id && item.display_id === String(primary.id)) ??
+    sources.find((item) => item.name === "Entire Screen") ??
+    sources[0]
+  if (!source) throw new Error("No screen source is available to Codeplane Desktop.")
+  if (source.thumbnail.isEmpty()) {
+    screenRecordingCache = { value: false, at: Date.now() }
+    throw new Error("Screen capture returned an empty image.")
+  }
+  const size = source.thumbnail.getSize()
+  if (size.width <= 0 || size.height <= 0) {
+    screenRecordingCache = { value: false, at: Date.now() }
+    throw new Error("Screen capture returned an invalid image.")
+  }
+  screenRecordingCache = { value: true, at: Date.now() }
+  return {
+    dataUrl: source.thumbnail.toDataURL(),
+    width: size.width,
+    height: size.height,
+  }
+}
+
+function invalidateMacOSPermissionCache() {
+  accessibilityCache = undefined
+  screenRecordingCache = undefined
 }
 
 function showSetupWindow(editId?: string) {
@@ -2110,6 +2259,10 @@ function setupIpc() {
     const instance = getInstance(id)
     if (!instance) return false
     return openInstance(instance, { progressTo: event.sender })
+  })
+  ipcMain.handle("instances:open-log-dir", async (_event, id: string) => {
+    logger.log("main", "instances.open-log-dir", { id })
+    return openLocalInstanceLogDir(id)
   })
   ipcMain.handle("instances:show-setup", (_event, editId?: string) => {
     logger.log("main", "instances.show-setup", { editId })
@@ -2352,7 +2505,7 @@ function setupIpc() {
         preferencePane: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
       })
 
-      const screenRecordingGranted = checkMacOSScreenRecording()
+      const screenRecordingGranted = await checkMacOSScreenRecording()
       permissions.push({
         key: "screen-recording",
         label: "Screen Recording",
@@ -2380,6 +2533,10 @@ function setupIpc() {
 
   ipcMain.handle("system-permissions:request", async (_event, permissionKey: string) => {
     if (process.platform === "darwin") {
+      // The user is actively re-granting — drop any stale cached value so
+      // the next check reflects the post-grant state instead of the snapshot
+      // from earlier in the session.
+      invalidateMacOSPermissionCache()
       if (permissionKey === "accessibility") {
         try {
           systemPreferences.isTrustedAccessibilityClient(true)
@@ -2463,6 +2620,32 @@ function setupIpc() {
       // Run on next tick so the IPC reply ships before the app exits.
       setImmediate(() => quitAndInstallShellUpdate("ipc-request"))
     }
+    return { ok: true as const }
+  })
+
+  // Cleanly relaunch the Electron shell. Used after the user grants TCC
+  // permissions in System Settings — macOS only re-reads TCC at process
+  // start, so the running app keeps seeing "denied" until it's restarted.
+  // Renderer-side `platform.restart()` reloads the *server*, not the shell,
+  // which doesn't reset TCC state. This IPC quits the Electron process and
+  // immediately relaunches it. `setImmediate` so the IPC reply ships before
+  // exit; the kept-alive renderer Promise resolves to `true` either way.
+  ipcMain.handle("app:relaunch-shell", () => {
+    logger.log("main", "app.relaunch.requested")
+    if (!app.isPackaged) {
+      // In development the dev script is the responsible parent; relaunch
+      // would leave the user without an app. Tell the renderer so it can
+      // surface a "please quit and reopen manually" toast.
+      return { ok: false as const, error: "Relaunch is only available in packaged builds." }
+    }
+    setImmediate(() => {
+      try {
+        app.relaunch()
+        app.exit(0)
+      } catch (error) {
+        logger.log("main", "app.relaunch.error", { error })
+      }
+    })
     return { ok: true as const }
   })
 }

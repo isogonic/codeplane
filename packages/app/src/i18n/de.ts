@@ -715,12 +715,30 @@ export const dict = {
   "settings.general.row.computerUse.permissionsBody":
     "{{ tool }} benötigt {{count}} Systemberechtigungen, um den Desktop zu steuern. Codeplane braucht diese, um den Cursor zu bewegen, zu klicken, zu tippen, Screenshots zu machen und Apps für dich zu öffnen.",
   "settings.general.row.computerUse.permissionGranted": "Erteilt",
-  "settings.general.row.computerUse.permissionMissing": "Nicht erteilt — klicke, um die Systemeinstellungen zu öffnen",
+  "settings.general.row.computerUse.permissionMissing": "Fehlt",
   "settings.general.row.computerUse.permissionOpenSettings": "Einstellungen öffnen",
   "settings.general.row.computerUse.permissionOpening": "Wird geöffnet…",
   "settings.general.row.computerUse.permissionsFooter":
-    "Nach der Erteilung musst du Codeplane Desktop möglicherweise neu starten, damit die Berechtigungen wirksam werden.",
-  "settings.general.row.computerUse.permissionDone": "Fertig",
+    "macOS liest diese Berechtigungen nur beim Start einer App ein. Nach dem Erteilen Codeplane Desktop beenden und erneut öffnen — der Button unten erledigt beides.",
+  "settings.general.row.computerUse.permissionDone": "Schließen",
+  "settings.general.row.computerUse.manage": "Berechtigungen verwalten",
+  "settings.general.row.computerUse.statusAllGranted": "Alle Berechtigungen erteilt",
+  "settings.general.row.computerUse.statusPartial": "{{granted}} von {{total}} erteilt",
+  "settings.general.row.computerUse.recheck": "Erneut prüfen",
+  "settings.general.row.computerUse.recheckLoading": "Prüfe…",
+  "settings.general.row.computerUse.relaunch": "Codeplane neu starten",
+  "settings.general.row.computerUse.relaunchPending": "Wird neu gestartet…",
+  "settings.general.row.computerUse.relaunchUnavailable.title": "Neustart nicht verfügbar",
+  "settings.general.row.computerUse.relaunchUnavailable.description":
+    "Dieser Build kann sich nicht selbst neu starten. Beende Codeplane Desktop und öffne es manuell, damit die Berechtigungen wirksam werden.",
+  "settings.general.row.computerUse.enableAnyway": "Trotzdem aktivieren",
+  "settings.general.row.computerUse.enableNow": "Computer-Steuerung aktivieren",
+  "settings.general.row.computerUse.permissionDescription.accessibility":
+    "Erlaubt Codeplane, den Cursor zu bewegen, zu klicken, zu tippen und Tastenkürzel zu senden. Ohne diese Berechtigung schlagen alle Klick-/Tipp-Aktionen mit „nicht für Bedienungshilfen autorisiert“ fehl.",
+  "settings.general.row.computerUse.permissionDescription.screenRecording":
+    "Erlaubt Codeplane, den Bildschirm aufzunehmen, damit der Agent sieht, woran er gerade arbeitet. Ohne diese Berechtigung kommen Screenshots leer zurück oder schlagen fehl.",
+  "settings.general.row.computerUse.permissionDescription.generic":
+    "Wird für Computer-Steuerung auf diesem Betriebssystem benötigt.",
   "settings.general.row.releaseNotes.title": "Versionshinweise",
   "settings.general.row.releaseNotes.description": '"Neuigkeiten"-Pop-ups nach Updates anzeigen',
   "settings.general.section.updates": "Updates",

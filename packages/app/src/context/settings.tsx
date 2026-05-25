@@ -35,6 +35,7 @@ export interface Settings {
     showSessionProgressBar: boolean
     browserUse: boolean
     computerUse: boolean
+    debugLogging: boolean
   }
   appearance: {
     fontSize: number
@@ -138,6 +139,7 @@ const defaultSettings: Settings = {
     showSessionProgressBar: true,
     browserUse: false,
     computerUse: false,
+    debugLogging: false,
   },
   appearance: {
     fontSize: 14,
@@ -281,6 +283,10 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         ),
         setComputerUse(value: boolean) {
           setStore("general", "computerUse", value)
+        },
+        debugLogging: withFallback(() => store.general?.debugLogging, defaultSettings.general.debugLogging),
+        setDebugLogging(value: boolean) {
+          setStore("general", "debugLogging", value)
         },
       },
       appearance: {

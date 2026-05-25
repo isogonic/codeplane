@@ -80,7 +80,9 @@ export default function Desktop() {
           batches let it move, click, type, and scroll through several UI steps from one
           vision pass before returning a final screenshot. When you first enable it, Codeplane
           checks whether the required system permissions (Accessibility and Screen Recording
-          on macOS) are granted and guides you to System Settings if they are not.
+          on macOS) are granted and guides you to System Settings if they are not. On macOS,
+          screenshot capture is routed through the running Electron app so the Screen Recording
+          grant belongs to Codeplane Desktop rather than a helper process.
         </p>
         <p>
           Both tools still go through the Codeplane permission system. Use desktop automation
@@ -93,6 +95,10 @@ export default function Desktop() {
           Desktop logs live under the Codeplane log directory, with <code>CODEPLANE_DESKTOP_LOG_DIR</code>
           available for tests and debugging. If a local instance will not start, verify
           <code>codeplane instance local status</code> from the CLI and inspect the desktop log next.
+          For desktop-managed local instances, use <strong>Settings → General → Instance logs</strong>
+          to open that instance's log folder directly. Enabling <strong>Debug logging</strong> starts
+          managed local instances with <code>--log-level DEBUG</code> and also writes their stdout/stderr
+          stream to <code>process.log</code> in the same folder.
         </p>
       </DocsLayout>
       <SiteFooter />

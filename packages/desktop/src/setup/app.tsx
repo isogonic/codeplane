@@ -69,10 +69,18 @@ type NotificationSettingsState = {
   errors: boolean
 }
 
+type GeneralSettingsState = {
+  debugLogging: boolean
+}
+
 const defaultNotificationSettings: NotificationSettingsState = {
   agent: true,
   permissions: true,
   errors: false,
+}
+
+const defaultGeneralSettings: GeneralSettingsState = {
+  debugLogging: false,
 }
 
 function readStoredSettings() {
@@ -98,6 +106,31 @@ function readNotificationSettings(): NotificationSettingsState {
         : defaultNotificationSettings.permissions,
     errors: typeof notifications.errors === "boolean" ? notifications.errors : defaultNotificationSettings.errors,
   }
+}
+
+function readGeneralSettings(): GeneralSettingsState {
+  const general = readStoredSettings().general as Record<string, unknown> | undefined
+  if (!general || typeof general !== "object") return defaultGeneralSettings
+  return {
+    debugLogging:
+      typeof general.debugLogging === "boolean" ? general.debugLogging : defaultGeneralSettings.debugLogging,
+  }
+}
+
+function writeGeneralSettings(settings: GeneralSettingsState) {
+  const stored = readStoredSettings()
+  const general = stored.general as Record<string, unknown> | undefined
+  api.storage.setItem(
+    undefined,
+    "settings.v3",
+    JSON.stringify({
+      ...stored,
+      general: {
+        ...(general && typeof general === "object" ? general : {}),
+        ...settings,
+      },
+    }),
+  )
 }
 
 function writeNotificationSettings(settings: NotificationSettingsState) {
@@ -709,6 +742,36 @@ const NotificationSettingsCard: Component = () => {
   )
 }
 
+const DiagnosticsSettingsCard: Component = () => {
+  const [settings, setSettings] = createSignal<GeneralSettingsState>(readGeneralSettings())
+
+  const setDebugLogging = (value: boolean) => {
+    const next = { ...settings(), debugLogging: value }
+    logSetup("diagnostics.debug-logging", { value })
+    setSettings(next)
+    writeGeneralSettings(next)
+  }
+
+  return (
+    <section class="mt-8" data-desktop-section="diagnostics">
+      <span class="text-[11px] font-medium uppercase tracking-[0.06em] text-text-weak">Diagnostics</span>
+      <div class="mt-2 flex items-start justify-between gap-4 border-t border-border-weak-base pt-4">
+        <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span class="text-[14px] font-semibold text-text-strong">Debug logging</span>
+          <span class="text-[12px] leading-relaxed text-text-weak">
+            Start desktop-managed local instances with DEBUG logs and tee process output into their log folders.
+          </span>
+        </div>
+        <div data-desktop-action="diagnostics-debug-logging">
+          <Switch checked={settings().debugLogging} onChange={setDebugLogging} hideLabel>
+            Debug logging
+          </Switch>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 const Sidebar: Component<{
   instances: SavedInstance[]
   view: View
@@ -842,6 +905,8 @@ const SettingsPanel: Component = () => {
       </section>
 
       <NotificationSettingsCard />
+
+      <DiagnosticsSettingsCard />
 
       <section class="mt-8" data-desktop-section="updates">
         <span class="text-[11px] font-medium uppercase tracking-[0.06em] text-text-weak">Updates</span>

@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/package.json",
   "name": "@codeplane-ai/desktop",
   "private": true,
-  "version": "28.21.38",
+  "version": "28.21.39",
   "productName": "Codeplane",
   "description": "Codeplane Desktop connects to remote Codeplane servers and caches the matching UI locally for fast native use.",
   "license": "MIT",
@@ -114,7 +114,14 @@
       "extendInfo": {
         "CFBundleGetInfoString": "Codeplane Desktop",
         "CFBundleSpokenName": "Codeplane",
-        "NSHumanReadableCopyright": "Copyright © 2026 Devin Oldenburg"
+        "NSHumanReadableCopyright": "Copyright © 2026 Devin Oldenburg",
+        "NSAccessibilityUsageDescription": "Codeplane needs Accessibility access to move the cursor, click, type, and send keyboard shortcuts when Computer Use is enabled.",
+        "NSScreenCaptureUsageDescription": "Codeplane captures the screen so Computer Use can see what the agent is operating on.",
+        "NSCameraUsageDescription": "Codeplane does not use the camera. This entry exists so embedded web content (e.g. a connected app's video call) can request access explicitly.",
+        "NSMicrophoneUsageDescription": "Codeplane does not use the microphone. This entry exists so embedded web content (e.g. a connected app's voice call) can request access explicitly.",
+        "NSDesktopFolderUsageDescription": "Codeplane may read files you drag in from your Desktop folder.",
+        "NSDocumentsFolderUsageDescription": "Codeplane may read files you drag in from your Documents folder.",
+        "NSDownloadsFolderUsageDescription": "Codeplane may read files you drag in from your Downloads folder."
       },
       "artifactName": "codeplane-desktop-${version}-mac-${arch}.${ext}"
     },

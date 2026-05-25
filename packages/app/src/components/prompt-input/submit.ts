@@ -296,7 +296,6 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     const mode = input.mode()
 
     if (text.trim().length === 0 && images.length === 0 && input.commentCount() === 0) {
-      if (input.working()) void abort()
       return
     }
 

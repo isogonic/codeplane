@@ -65,9 +65,20 @@ if (!(window as any).codeplaneDesktop) {
   }
   const list: any[] = JSON.parse(localStorage.getItem("codeplane:dev:instances") || "[]")
   const save = () => localStorage.setItem("codeplane:dev:instances", JSON.stringify(list))
+  const storageKey = (storageName: string | undefined, key: string) =>
+    `codeplane:dev:storage:${storageName ?? "default"}:${key}`
   ;(window as any).codeplaneDesktop = {
     version: "dev",
     debug: { log: (event: string, data: unknown, scope: string) => console.debug(`[${scope}] ${event}`, data) },
+    storage: {
+      getItem: (storageName: string | undefined, key: string) => localStorage.getItem(storageKey(storageName, key)),
+      setItem: (storageName: string | undefined, key: string, value: string) => {
+        localStorage.setItem(storageKey(storageName, key), value)
+      },
+      removeItem: (storageName: string | undefined, key: string) => {
+        localStorage.removeItem(storageKey(storageName, key))
+      },
+    },
     instances: {
       list: async () => list.slice(),
       save: async (i: any) => {

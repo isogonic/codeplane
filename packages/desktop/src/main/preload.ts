@@ -27,6 +27,7 @@ const bootstrap = ipcRenderer.sendSync("desktop:bootstrap") as {
     id: string
     key: string
     label?: string
+    local?: boolean
     proxyUrl: string
     remoteUrl: string
   }>
@@ -60,6 +61,7 @@ const api = {
     getDefaultKey: () => ipcRenderer.invoke("instances:get-default-key") as Promise<string | null>,
     setDefaultKey: (key: string | null) => ipcRenderer.invoke("instances:set-default-key", key) as Promise<boolean>,
     open: (id: string) => ipcRenderer.invoke("instances:open", id) as Promise<boolean>,
+    openLogDir: (id: string) => ipcRenderer.invoke("instances:open-log-dir", id) as Promise<boolean>,
     show: (editId?: string) => ipcRenderer.invoke("instances:show-setup", editId) as Promise<boolean>,
   },
   instances: {
@@ -229,6 +231,12 @@ const api = {
     request: (permissionKey: string) =>
       ipcRenderer.invoke("system-permissions:request", permissionKey) as Promise<boolean>,
   },
+  // Quit and immediately relaunch the Electron shell. macOS TCC entries
+  // are read at process start, so granting Accessibility / Screen Recording
+  // mid-session has no effect until the app restarts — this gives the
+  // permissions dialog a one-click way to do that.
+  relaunchShell: () =>
+    ipcRenderer.invoke("app:relaunch-shell") as Promise<{ ok: true } | { ok: false; error: string }>,
 }
 
 contextBridge.exposeInMainWorld("codeplaneDesktop", api)

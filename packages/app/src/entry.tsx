@@ -48,6 +48,7 @@ declare global {
         }>
         request: (permissionKey: string) => Promise<boolean>
       }
+      relaunchShell?: () => Promise<{ ok: true } | { ok: false; error: string }>
       [key: string]: unknown
     }
   }
@@ -308,6 +309,12 @@ const platform: Platform = {
     writeDefaultServerUrl(value)
   },
   systemPermissions: window.codeplaneDesktop?.systemPermissions,
+  relaunchShell: window.codeplaneDesktop?.relaunchShell
+    ? async () => {
+        const result = await window.codeplaneDesktop!.relaunchShell!()
+        return result.ok
+      }
+    : undefined,
 }
 
 if (root instanceof HTMLElement) {

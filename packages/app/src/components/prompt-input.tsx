@@ -26,7 +26,6 @@ import { Tooltip, TooltipKeybind } from "@codeplane-ai/ui/tooltip"
 import { IconButton } from "@codeplane-ai/ui/icon-button"
 import { Select } from "@codeplane-ai/ui/select"
 import { useDialog } from "@codeplane-ai/ui/context/dialog"
-import { showToast } from "@codeplane-ai/ui/toast"
 import { ModelSelectorPopover } from "@/components/dialog-select-model"
 import { useProviders } from "@/hooks/use-providers"
 import { useCommand } from "@/context/command"
@@ -1463,13 +1462,18 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
               <Tooltip placement="top" inactive={!working() && blank()} value={tip()}>
                 <IconButton
                   data-action="prompt-submit"
-                  type="submit"
+                  type={stopping() ? "button" : "submit"}
                   disabled={!working() && blank()}
                   tabIndex={inputMode() === "normal" ? undefined : -1}
                   icon={stopping() ? "stop" : inputMode() === "shell" ? "arrow-undo-down" : "arrow-up"}
                   variant="primary"
                   class="size-8"
                   aria-label={stopping() ? language.t("prompt.action.stop") : language.t("prompt.action.send")}
+                  onClick={(event) => {
+                    if (!stopping()) return
+                    event.preventDefault()
+                    void abort()
+                  }}
                 />
               </Tooltip>
             </div>

@@ -22,12 +22,13 @@ const promoted: Array<{ directory: string; sessionID: string }> = []
 const sentShell: string[] = []
 const sentPromptAsync: string[] = []
 const syncedDirectories: string[] = []
+const abortedSessions: string[] = []
 
 let params: { id?: string } = {}
 let selected = "/repo/worktree-a"
 let variant: string | undefined
 
-const promptValue: Prompt = [{ type: "text", content: "ls", start: 0, end: 2 }]
+let promptValue: Prompt = [{ type: "text", content: "ls", start: 0, end: 2 }]
 
 const clientFor = (directory: string) => {
   createdClients.push(directory)
@@ -52,7 +53,10 @@ const clientFor = (directory: string) => {
         return { data: undefined }
       },
       command: async () => ({ data: undefined }),
-      abort: async () => ({ data: undefined }),
+      abort: async (input: { sessionID: string }) => {
+        abortedSessions.push(input.sessionID)
+        return { data: undefined }
+      },
     },
     worktree: {
       create: async () => ({ data: { directory: `${directory}/new` } }),
@@ -223,8 +227,10 @@ beforeEach(() => {
   sentShell.length = 0
   sentPromptAsync.length = 0
   syncedDirectories.length = 0
+  abortedSessions.length = 0
   selected = "/repo/worktree-a"
   variant = undefined
+  promptValue = [{ type: "text", content: "ls", start: 0, end: 2 }]
   for (const key of Object.keys(storedSessions)) delete storedSessions[key]
 })
 
@@ -435,5 +441,32 @@ describe("prompt submit worktree selection", () => {
 
     expect(storedSessions["/repo/worktree-a"]).toEqual([{ id: "session-1", title: "New session 1" }])
     expect(optimisticSeeded).toEqual([true])
+  })
+
+  test("ignores blank submit events instead of aborting busy sessions", async () => {
+    params = { id: "session-1" }
+    promptValue = [{ type: "text", content: "", start: 0, end: 0 }]
+
+    const submit = createPromptSubmit({
+      info: () => ({ id: "session-1" }),
+      imageAttachments: () => [],
+      commentCount: () => 0,
+      autoAccept: () => false,
+      mode: () => "normal",
+      working: () => true,
+      editor: () => undefined,
+      queueScroll: () => undefined,
+      promptLength: (value) => value.reduce((sum, part) => sum + ("content" in part ? part.content.length : 0), 0),
+      addToHistory: () => undefined,
+      resetHistoryNavigation: () => undefined,
+      setMode: () => undefined,
+      setPopover: () => undefined,
+      onSubmit: () => undefined,
+    })
+
+    await submit.handleSubmit({ preventDefault: () => undefined } as unknown as Event)
+
+    expect(abortedSessions).toEqual([])
+    expect(sentPromptAsync).toEqual([])
   })
 })

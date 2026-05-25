@@ -36,7 +36,8 @@ function pickBase(model: Provider.Model): string {
 export function provider(model: Provider.Model) {
   const base = pickBase(model)
   const prompts = [base, PROMPT_RICH_BLOCKS]
-  if (model.capabilities.input.image && Flag.CODEPLANE_CLIENT === "app") {
+  const isDesktop = Flag.CODEPLANE_CLIENT === "app" || process.env.CODEPLANE_DESKTOP_MANAGED === "1"
+  if (model.capabilities.input.image && isDesktop) {
     prompts.push(PROMPT_BROWSER_INSPECTION)
   }
   return prompts
@@ -58,7 +59,7 @@ export const layer = Layer.effect(
       environment(model) {
         const project = Instance.project
         const hasVision = model.capabilities.input.image
-        const isDesktop = Flag.CODEPLANE_CLIENT === "app"
+        const isDesktop = Flag.CODEPLANE_CLIENT === "app" || process.env.CODEPLANE_DESKTOP_MANAGED === "1"
         return [
           [
             `You are powered by the model named ${model.api.id}. The exact model ID is ${model.providerID}/${model.api.id}`,

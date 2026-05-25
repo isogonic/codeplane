@@ -995,6 +995,14 @@ export const dict = {
   "settings.general.row.computerUse.title": "Computer use",
   "settings.general.row.computerUse.description":
     "Allow the agent to control this desktop with its own visible pointer: screenshots, mouse movement, clicks, drags, scrolling, keyboard input, shortcuts, and app launching. Disabled by default and only available in Codeplane Desktop with a vision-capable model.",
+  "settings.general.row.debugLogging.title": "Debug logging",
+  "settings.general.row.debugLogging.description":
+    "Write verbose runtime logs for desktop-managed local instances. Restart a running local instance to apply the new level.",
+  "settings.general.row.instanceLogs.title": "Instance logs",
+  "settings.general.row.instanceLogs.description": "Open this local instance's log directory.",
+  "settings.general.row.instanceLogs.action.open": "Open logs",
+  "settings.general.row.instanceLogs.action.opening": "Opening…",
+  "settings.general.row.instanceLogs.unavailable": "This instance does not have local logs on this desktop.",
   "settings.general.row.computerUse.permissionsTitle": "Permissions needed for {{ tool }}",
   "settings.general.row.computerUse.permissionsBody":
     "{{ tool }} requires {{count}} system permissions to control the desktop. Codeplane needs these to move the cursor, click, type, take screenshots, and open apps on your behalf.",
@@ -1005,6 +1013,24 @@ export const dict = {
   "settings.general.row.computerUse.permissionsFooter":
     "After granting, you may need to restart Codeplane Desktop for the permissions to take effect.",
   "settings.general.row.computerUse.permissionDone": "Done",
+  "settings.general.row.computerUse.manage": "Manage",
+  "settings.general.row.computerUse.statusAllGranted": "All granted",
+  "settings.general.row.computerUse.statusPartial": "{{granted}} of {{total}} granted",
+  "settings.general.row.computerUse.recheck": "Recheck",
+  "settings.general.row.computerUse.recheckLoading": "Checking...",
+  "settings.general.row.computerUse.relaunch": "Relaunch desktop",
+  "settings.general.row.computerUse.relaunchPending": "Relaunching...",
+  "settings.general.row.computerUse.enableAnyway": "Enable anyway",
+  "settings.general.row.computerUse.enableNow": "Enable now",
+  "settings.general.row.computerUse.relaunchUnavailable.title": "Relaunch manually",
+  "settings.general.row.computerUse.relaunchUnavailable.description":
+    "Quit and reopen Codeplane Desktop for the new macOS permissions to take effect.",
+  "settings.general.row.computerUse.permissionDescription.accessibility":
+    "Required for mouse movement, clicks, typing, keyboard shortcuts, scrolling, and app launch control.",
+  "settings.general.row.computerUse.permissionDescription.screenRecording":
+    "Required for screenshots so the agent can see the desktop before and after each action.",
+  "settings.general.row.computerUse.permissionDescription.generic":
+    "Required by macOS before Codeplane can control this desktop.",
 
   "settings.general.row.releaseNotes.title": "Release notes",
   "settings.general.row.releaseNotes.description": "Show What's New popups after updates",

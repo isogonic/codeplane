@@ -22,17 +22,40 @@ afterEach(async () => {
   await fs.rm(home, { force: true, recursive: true })
 })
 
-async function writeFakeBinary(home: string, version: string) {
+async function writeFakeBinary(
+  home: string,
+  version: string,
+  options: { argvPath?: string; envPath?: string } = {},
+) {
   const target = resolveCodeplaneLocalTarget()
   const dir = path.join(home, "local_server", "binaries", version, "bin")
   await fs.mkdir(dir, { recursive: true })
   const binary = path.join(dir, target.binaryName)
+  const envDump = options.envPath
+    ? `
+{
+  echo "CODEPLANE_CLIENT=\${CODEPLANE_CLIENT:-}"
+  echo "CODEPLANE_DESKTOP_MANAGED=\${CODEPLANE_DESKTOP_MANAGED:-}"
+  echo "CODEPLANE_DESKTOP_BRIDGE_ORIGIN=\${CODEPLANE_DESKTOP_BRIDGE_ORIGIN:-}"
+  echo "CODEPLANE_DESKTOP_BRIDGE_TOKEN=\${CODEPLANE_DESKTOP_BRIDGE_TOKEN:-}"
+  echo "CODEPLANE_LOG_DIR=\${CODEPLANE_LOG_DIR:-}"
+  echo "CODEPLANE_LOG_LEVEL=\${CODEPLANE_LOG_LEVEL:-}"
+} > ${JSON.stringify(options.envPath)}
+`
+    : ""
+  const argvDump = options.argvPath
+    ? `
+printf '%s\\n' "$@" > ${JSON.stringify(options.argvPath)}
+`
+    : ""
   // A tiny shell script that prints the listening line and stays alive.
   // Cross-platform note: this fixture is unix-only; tests on windows skip.
   // stdbuf + explicit fd flush so the parent sees the listening line
   // before the timeout. `wait` lets us forward SIGTERM cleanly.
   const script = `#!/usr/bin/env bash
 exec 1>&1
+${envDump}
+${argvDump}
 printf 'listening on http://127.0.0.1:54321\\n'
 trap "exit 0" SIGTERM SIGINT
 ( while true; do sleep 1; done ) &
@@ -41,6 +64,16 @@ wait $!
   await fs.writeFile(binary, script)
   await fs.chmod(binary, 0o755)
   return binary
+}
+
+async function readFileUntil(file: string, expected: string) {
+  let text = ""
+  for (let i = 0; i < 20; i++) {
+    text = await fs.readFile(file, "utf8").catch(() => "")
+    if (text.includes(expected)) return text
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+  return text
 }
 
 describe("findListeningPort", () => {
@@ -114,6 +147,60 @@ if (process.platform !== "win32") {
       } finally {
         await manager.stopAll()
       }
+    })
+
+    test("desktop-managed children run as desktop app clients with bridge env", async () => {
+      const envPath = path.join(home, "child-env.txt")
+      await writeFakeBinary(home, "27.3.2", { envPath })
+      const manager = createLocalInstanceManager({
+        binariesDir: path.join(home, "local_server", "binaries"),
+        configDir: home,
+        dataDir: path.join(home, "local_server"),
+        desktopManaged: true,
+        extraEnv: () => ({
+          CODEPLANE_DESKTOP_BRIDGE_ORIGIN: "http://127.0.0.1:43210",
+          CODEPLANE_DESKTOP_BRIDGE_TOKEN: "bridge-token",
+        }),
+      })
+      try {
+        await manager.start({ id: "fake-desktop", binaryVersion: "27.3.2" })
+        const text = await fs.readFile(envPath, "utf8")
+        expect(text).toContain("CODEPLANE_CLIENT=app")
+        expect(text).toContain("CODEPLANE_DESKTOP_MANAGED=1")
+        expect(text).toContain("CODEPLANE_DESKTOP_BRIDGE_ORIGIN=http://127.0.0.1:43210")
+        expect(text).toContain("CODEPLANE_DESKTOP_BRIDGE_TOKEN=bridge-token")
+      } finally {
+        await manager.stopAll()
+      }
+    })
+
+    test("debug logging passes DEBUG level and tees process output into the instance log directory", async () => {
+      const argvPath = path.join(home, "debug-argv.txt")
+      const envPath = path.join(home, "debug-env.txt")
+      await writeFakeBinary(home, "27.3.3", { argvPath, envPath })
+      const manager = createLocalInstanceManager({
+        binariesDir: path.join(home, "local_server", "binaries"),
+        configDir: home,
+        dataDir: path.join(home, "local_server"),
+        debugLogging: () => true,
+      })
+      try {
+        await manager.start({ id: "fake-debug", binaryVersion: "27.3.3" })
+        expect(await fs.readFile(argvPath, "utf8")).toContain("--log-level\nDEBUG")
+        const envText = await fs.readFile(envPath, "utf8")
+        expect(envText).toContain(`CODEPLANE_LOG_DIR=${manager.logDir("fake-debug")}`)
+        expect(envText).toContain("CODEPLANE_LOG_LEVEL=DEBUG")
+      } finally {
+        await manager.stopAll()
+      }
+      const processLog = await readFileUntil(
+        path.join(manager.logDir("fake-debug"), "process.log"),
+        "process log-end id=fake-debug",
+      )
+      expect(processLog).toContain("process log-start id=fake-debug")
+      expect(processLog).toContain('"debugLogging":true')
+      expect(processLog).toContain("stdout listening on http://127.0.0.1:54321")
+      expect(processLog).toContain("process log-end id=fake-debug")
     })
   })
 }

@@ -27,6 +27,7 @@ export type PlatformServerInstance = {
   id: string
   key: string
   label?: string
+  local?: boolean
   proxyUrl: string
   remoteUrl: string
 }
@@ -37,6 +38,7 @@ export type PlatformServerManager = {
   getDefaultKey(): Promise<string | null>
   setDefaultKey(key: string | null): Promise<boolean>
   open(id: string): Promise<boolean>
+  openLogDir(id: string): Promise<boolean>
   show(editId?: string): Promise<boolean>
 }
 
@@ -131,6 +133,16 @@ export type Platform = {
 
   /** Check and request OS-level permissions needed by desktop-only tools */
   systemPermissions?: SystemPermissionsAPI
+
+  /**
+   * Quit and immediately relaunch the native desktop shell. Surfaced
+   * separately from `restart()` (which reloads the server) because
+   * permission grants on macOS only take effect after the *Electron
+   * process* itself restarts — server reloads don't reset TCC state.
+   * Returns whether the relaunch was scheduled (false on dev builds or
+   * non-desktop platforms).
+   */
+  relaunchShell?(): Promise<boolean>
 }
 
 export const { use: usePlatform, provider: PlatformProvider } = createSimpleContext({

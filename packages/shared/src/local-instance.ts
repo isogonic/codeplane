@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process"
+import { createWriteStream } from "node:fs"
 import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
@@ -45,6 +46,7 @@ export type LocalInstanceManagerInput = {
   dataDir: string
   log?(event: string, data?: unknown): void
   extraEnv?(): Promise<Record<string, string | undefined>> | Record<string, string | undefined>
+  debugLogging?(): Promise<boolean> | boolean
   // When true, every spawned local server is told CODEPLANE_DESKTOP_MANAGED=1
   // so its Installation.method() returns "desktop" and the in-instance
   // /global/upgrade route returns a "use the desktop's Updates panel"
@@ -82,6 +84,37 @@ function createKeyedLock() {
   }
 }
 
+type ProcessLog = {
+  close(): void
+  write(source: string, text: string): void
+  writeHeader(data: Record<string, unknown>): void
+}
+
+function createProcessLog(dir: string, id: string): ProcessLog {
+  const stream = createWriteStream(path.join(dir, "process.log"), { flags: "a" })
+  let closed = false
+  stream.on("error", () => {
+    closed = true
+  })
+  const safeWrite = (text: string) => {
+    if (closed) return
+    stream.write(text)
+  }
+  return {
+    close() {
+      if (closed) return
+      closed = true
+      stream.end(`${new Date().toISOString()} process log-end id=${id}\n`)
+    },
+    write(source, text) {
+      safeWrite(`${new Date().toISOString()} ${source} ${text}`)
+    },
+    writeHeader(data) {
+      safeWrite(`\n${new Date().toISOString()} process log-start id=${id} ${JSON.stringify(data)}\n`)
+    },
+  }
+}
+
 export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
   const log = (event: string, data?: unknown) => config.log?.(event, data)
   const target = resolveCodeplaneLocalTarget()
@@ -92,6 +125,7 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
   const expectedBinaryPath = (version: string) => path.join(versionRoot(version), "bin", target.binaryName)
   const resolveBinary = (version: string) => resolveLocalBinaryPath(versionRoot(version), target.binaryName)
   const dataDirFor = (id: string) => path.join(config.dataDir, id)
+  const logDirFor = (id: string) => path.join(dataDirFor(id), "log")
   // Each local instance gets its own config dir so concurrent locals don't
   // clobber each other's codeplane.json. Falls back to the shared root when
   // the per-instance dir doesn't exist yet — it's created on start().
@@ -196,6 +230,7 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
       await ensureCli(input.binaryVersion, binary)
 
       const data = dataDirFor(input.id)
+      const logDir = logDirFor(input.id)
       const instanceConfig = configDirFor(input.id)
       await Promise.all([
         fs.mkdir(path.join(data, "data"), { recursive: true }),
@@ -203,9 +238,10 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
         fs.mkdir(path.join(data, "cache"), { recursive: true }),
         fs.mkdir(path.join(data, "state"), { recursive: true }),
         fs.mkdir(path.join(data, "bin"), { recursive: true }),
-        fs.mkdir(path.join(data, "log"), { recursive: true }),
+        fs.mkdir(logDir, { recursive: true }),
       ])
 
+      const debugLogging = (await config.debugLogging?.()) === true
       const env: Record<string, string | undefined> = {
         ...process.env,
         CODEPLANE_HOME_DIR: instanceConfig,
@@ -213,13 +249,14 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
         CODEPLANE_CACHE_DIR: path.join(data, "cache"),
         CODEPLANE_STATE_DIR: path.join(data, "state"),
         CODEPLANE_BIN_DIR: path.join(data, "bin"),
-        CODEPLANE_LOG_DIR: path.join(data, "log"),
+        CODEPLANE_LOG_DIR: logDir,
         XDG_DATA_HOME: path.join(data, "data"),
         XDG_CONFIG_HOME: path.join(data, "config"),
         XDG_CACHE_HOME: path.join(data, "cache"),
         XDG_STATE_HOME: path.join(data, "state"),
         HOME: process.env.HOME ?? os.homedir(),
       }
+      if (debugLogging) env.CODEPLANE_LOG_LEVEL = "DEBUG"
       if (config.desktopManaged === false) {
         // Explicit non-desktop manager (e.g. TUI). Make sure any inherited
         // CODEPLANE_DESKTOP_MANAGED from the parent process doesn't leak in.
@@ -249,8 +286,25 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
       // inside Codeplane's own Application Support folder. Storage paths are
       // already plumbed through CODEPLANE_* env vars above.
       const home = process.env.HOME?.trim() || process.env.USERPROFILE?.trim() || os.homedir()
-      log("local.start", { binary, cwd: home, data, id: input.id })
-      const child = spawn(binary, ["serve", "--hostname", "127.0.0.1", "--port", "0"], {
+      const args = [
+        "serve",
+        "--hostname",
+        "127.0.0.1",
+        "--port",
+        "0",
+        ...(debugLogging ? ["--log-level", "DEBUG"] : []),
+      ]
+      log("local.start", { args, binary, cwd: home, data, debugLogging, id: input.id })
+      const processLog = createProcessLog(logDir, input.id)
+      processLog.writeHeader({
+        args,
+        binary,
+        cwd: home,
+        data,
+        debugLogging,
+        version: input.binaryVersion,
+      })
+      const child = spawn(binary, args, {
         cwd: home,
         env,
         stdio: ["ignore", "pipe", "pipe"],
@@ -266,6 +320,7 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
           }
           const finalize = () => {
             running.delete(input.id)
+            processLog.close()
             resolve()
           }
           child.once("exit", finalize)
@@ -321,6 +376,7 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
         child.stdout?.on("data", (data: Buffer) => {
           const text = data.toString("utf8")
           stdoutChunks.push(text)
+          processLog.write("stdout", text)
           log("local.stdout", { id: input.id, line: text.trim() })
           if (settled) return
           const port = findListeningPort(text) ?? findListeningPort(stdoutChunks.join(""))
@@ -351,6 +407,7 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
         child.stderr?.on("data", (data: Buffer) => {
           const text = data.toString("utf8")
           stderrChunks.push(text)
+          processLog.write("stderr", text)
           log("local.stderr", { id: input.id, line: text.trim() })
         })
 
@@ -358,12 +415,16 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
           if (settled) return
           settled = true
           clearTimeout(timer)
+          processLog.write("process", `error ${error instanceof Error ? error.stack || error.message : String(error)}\n`)
+          processLog.close()
           log("local.start.error", { error, id: input.id })
           reject(error)
         })
 
         child.on("exit", (code, signal) => {
           running.delete(input.id)
+          processLog.write("process", `exit code=${code ?? ""} signal=${signal ?? ""}\n`)
+          processLog.close()
           if (settled) {
             log("local.exit", { code, id: input.id, signal })
             return
@@ -413,6 +474,10 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
     }))
   }
 
+  function logDir(id: string) {
+    return logDirFor(id)
+  }
+
   async function restart(
     input: { id: string; binaryVersion: string },
     progress?: (info: LocalInstanceProgress) => void,
@@ -437,6 +502,7 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
     isInstalled,
     isRunning,
     listRunning,
+    logDir,
     removeData,
     resolveTarget: async () => target,
     restart,

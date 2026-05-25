@@ -121,6 +121,7 @@ hash -r`}</code></pre>
         <ul>
           <li><strong>Desktop auto-update disabled</strong>: check <code>CODEPLANE_DESKTOP_DISABLE_AUTO_UPDATE</code> and the desktop logs under the Codeplane log directory.</li>
           <li><strong>Local server does not appear</strong>: inspect <code>codeplane instance list</code> and <code>codeplane instance local status</code>.</li>
+          <li><strong>Computer use says macOS blocked it</strong>: grant Accessibility and Screen Recording to Codeplane Desktop, then restart the desktop app. Use <strong>Settings → General → Instance logs</strong> if the bridge still fails after restart.</li>
           <li><strong>Mobile cannot discover LAN server</strong>: run the server with <code>--mdns --hostname 0.0.0.0 --password ...</code> and make sure the phone is on the same network.</li>
           <li><strong>Mobile connects remotely but drops updates</strong>: check reverse proxy SSE buffering and idle timeouts.</li>
         </ul>
@@ -131,6 +132,8 @@ hash -r`}</code></pre>
           <tbody>
             <tr><td><code>CODEPLANE_LOG_DIR</code></td><td>Override server/runtime log directory.</td></tr>
             <tr><td><code>CODEPLANE_DESKTOP_LOG_DIR</code></td><td>Override desktop shell logs.</td></tr>
+            <tr><td><code>Settings → General → Instance logs</code></td><td>Open the current desktop-managed local instance log folder.</td></tr>
+            <tr><td><code>process.log</code></td><td>Desktop-managed local instance stdout/stderr capture, including startup failures before server logging is ready.</td></tr>
             <tr><td><code>codeplane serve --print-logs</code></td><td>Mirror log output to stderr while still writing files.</td></tr>
             <tr><td><code>--log-level DEBUG</code></td><td>Increase detail for provider, MCP, config, route, and tool failures.</td></tr>
           </tbody>

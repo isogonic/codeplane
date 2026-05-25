@@ -63,6 +63,7 @@ export type DesktopHostInstance = {
   id: string
   url: string
   label?: string
+  local?: { binaryVersion: string }
   headers?: Record<string, string>
   ignoreCertificateErrors?: boolean
   clientCertSubject?: string
@@ -86,6 +87,7 @@ type ProxyInstance = {
   id: string
   key: string
   label?: string
+  local?: boolean
   proxyUrl: string
   remoteUrl: string
 }
@@ -813,6 +815,7 @@ export function createDesktopUIHost(input: {
             id: instance.id,
             key: proxyKey(instance.id),
             label: instance.label,
+            local: !!instance.local,
             proxyUrl: `${origin}/instance/${encodeURIComponent(instance.id)}`,
             remoteUrl: instance.url,
           }),

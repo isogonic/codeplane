@@ -99,6 +99,10 @@ type ToolInput = {
   sessionPermission?: Permission.Ruleset
 }
 
+function isDesktopClient() {
+  return Flag.CODEPLANE_CLIENT === "app" || process.env.CODEPLANE_DESKTOP_MANAGED === "1"
+}
+
 export type Availability = {
   known?: string[]
   available: string[]
@@ -358,8 +362,8 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
             tool.task,
             tool.fetch,
             tool.browse,
-            ...(["app"].includes(Flag.CODEPLANE_CLIENT) ? [tool.browser] : []),
-            ...(["app"].includes(Flag.CODEPLANE_CLIENT) ? [tool.computer] : []),
+            ...(isDesktopClient() ? [tool.browser] : []),
+            ...(isDesktopClient() ? [tool.computer] : []),
             tool.bashInteractive,
             tool.ssh,
             tool.todo,
@@ -474,13 +478,13 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
 
         if (tool.id === BrowserTool.id) {
           if (toolConfig?.browser !== true) return false
-          if (!(["app"].includes(Flag.CODEPLANE_CLIENT))) return false
+          if (!isDesktopClient()) return false
           return modelSupportsVision
         }
 
         if (tool.id === ComputerTool.id) {
           if (toolConfig?.computer !== true) return false
-          if (!(["app"].includes(Flag.CODEPLANE_CLIENT))) return false
+          if (!isDesktopClient()) return false
           return modelSupportsVision
         }
 
@@ -502,7 +506,7 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
             setup: "Enable Browser use in Desktop Settings → General.",
           }
         }
-        if (!(["app"].includes(Flag.CODEPLANE_CLIENT))) {
+        if (!isDesktopClient()) {
           return {
             id: tool.id,
             reason: "Browser control is only available in the desktop app.",
@@ -523,7 +527,7 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
             setup: "Enable Computer use in Desktop Settings → General.",
           }
         }
-        if (!(["app"].includes(Flag.CODEPLANE_CLIENT))) {
+        if (!isDesktopClient()) {
           return {
             id: tool.id,
             reason: "Computer use is only available in the desktop app.",

@@ -141,7 +141,25 @@ function psString(value: string) {
 
 function captureMac(file: string) {
   if (!commandExists("screencapture")) throw new Error("macOS screencapture is not available.")
-  runCommand("screencapture", ["-x", "-C", "-t", "png", file], { timeout: 20_000 })
+  try {
+    runCommand("screencapture", ["-x", "-C", "-t", "png", file], { timeout: 20_000 })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (/operation not permitted|not authorized|screen recording/i.test(message)) {
+      throw new Error(
+        "Screen Recording permission is required to capture the desktop. " +
+          "Open System Settings -> Privacy & Security -> Screen Recording, enable Codeplane, then quit and reopen Codeplane Desktop for the change to take effect.",
+        { cause: error },
+      )
+    }
+    throw error
+  }
+  if (!existsSync(file)) {
+    throw new Error(
+      "Screen Recording permission is required to capture the desktop. " +
+        "Open System Settings -> Privacy & Security -> Screen Recording, enable Codeplane, then quit and reopen Codeplane Desktop for the change to take effect.",
+    )
+  }
 }
 
 function captureWindows(file: string) {
@@ -265,12 +283,22 @@ function settle(ms: number | undefined) {
 function runMacActions(actions: RuntimeAction[]) {
   const script = `
 ObjC.import('ApplicationServices')
+ObjC.import('Foundation')
 
-const systemEvents = Application('System Events')
+function openApp(name) {
+  const trimmed = String(name || '').trim()
+  if (!trimmed) throw new Error('text must contain the app name for open_app.')
+  const task = $.NSTask.alloc.init
+  task.launchPath = '/usr/bin/open'
+  task.arguments = ['-a', trimmed]
+  task.launch
+}
+
 const tap = $.kCGHIDEventTap
 const left = 0
 const right = 1
 const middle = 2
+const source = $.CGEventSourceCreate($.kCGEventSourceStateHIDSystemState)
 const event = {
   leftDown: 1,
   leftUp: 2,
@@ -294,6 +322,53 @@ const keyCodes = {
   backspace: 51,
   delete: 117,
   forwarddelete: 117,
+  a: 0,
+  s: 1,
+  d: 2,
+  f: 3,
+  h: 4,
+  g: 5,
+  z: 6,
+  x: 7,
+  c: 8,
+  v: 9,
+  b: 11,
+  q: 12,
+  w: 13,
+  e: 14,
+  r: 15,
+  y: 16,
+  t: 17,
+  '1': 18,
+  '2': 19,
+  '3': 20,
+  '4': 21,
+  '6': 22,
+  '5': 23,
+  '=': 24,
+  '9': 25,
+  '7': 26,
+  '-': 27,
+  '8': 28,
+  '0': 29,
+  ']': 30,
+  o: 31,
+  u: 32,
+  '[': 33,
+  i: 34,
+  p: 35,
+  l: 37,
+  j: 38,
+  "'": 39,
+  k: 40,
+  ';': 41,
+  '\\\\': 42,
+  ',': 43,
+  '/': 44,
+  n: 45,
+  m: 46,
+  '.': 47,
+  "\\x60": 50,
   home: 115,
   end: 119,
   pageup: 116,
@@ -331,10 +406,30 @@ function click(x, y, down, up, button) {
 }
 
 function modifier(value) {
-  if (['cmd', 'command', 'meta', 'super'].indexOf(value) >= 0) return 'command down'
-  if (['ctrl', 'control'].indexOf(value) >= 0) return 'control down'
-  if (['alt', 'option'].indexOf(value) >= 0) return 'option down'
-  if (value === 'shift') return 'shift down'
+  if (['cmd', 'command', 'meta', 'super'].indexOf(value) >= 0) return Number($.kCGEventFlagMaskCommand)
+  if (['ctrl', 'control'].indexOf(value) >= 0) return Number($.kCGEventFlagMaskControl)
+  if (['alt', 'option'].indexOf(value) >= 0) return Number($.kCGEventFlagMaskAlternate)
+  if (value === 'shift') return Number($.kCGEventFlagMaskShift)
+  return 0
+}
+
+function postKey(code, down, flags) {
+  const ev = $.CGEventCreateKeyboardEvent(source, code, down)
+  if (flags) $.CGEventSetFlags(ev, flags)
+  $.CGEventPost(tap, ev)
+}
+
+function typeText(value) {
+  const text = String(value || '')
+  for (let i = 0; i < text.length; i++) {
+    const char = text.charAt(i)
+    const down = $.CGEventCreateKeyboardEvent(source, 0, true)
+    $.CGEventKeyboardSetUnicodeString(down, char.length, char)
+    $.CGEventPost(tap, down)
+    const up = $.CGEventCreateKeyboardEvent(source, 0, false)
+    $.CGEventKeyboardSetUnicodeString(up, char.length, char)
+    $.CGEventPost(tap, up)
+  }
 }
 
 function pressKey(input) {
@@ -342,13 +437,13 @@ function pressKey(input) {
   if (!raw) throw new Error('key is required for key action.')
   const parts = raw.split('+').map((part) => part.trim().toLowerCase()).filter(Boolean)
   const key = parts[parts.length - 1]
-  const using = parts.slice(0, -1).map(modifier).filter(Boolean)
-  const options = using.length ? { using } : {}
+  const flags = parts.slice(0, -1).reduce((mask, part) => mask | modifier(part), 0)
   if (keyCodes[key] !== undefined) {
-    systemEvents.keyCode(keyCodes[key], options)
+    postKey(keyCodes[key], true, flags)
+    postKey(keyCodes[key], false, flags)
     return
   }
-  systemEvents.keystroke(key, options)
+  typeText(key)
 }
 
 function runStep(input) {
@@ -358,7 +453,7 @@ function runStep(input) {
     return
   }
   if (input.action === 'type') {
-    systemEvents.keystroke(String(input.text || ''))
+    typeText(input.text)
     return
   }
   if (input.action === 'key') {
@@ -366,7 +461,7 @@ function runStep(input) {
     return
   }
   if (input.action === 'open_app') {
-    Application(String(input.text || '')).activate()
+    openApp(input.text)
     return
   }
   if (input.action === 'move') move(input.x, input.y)

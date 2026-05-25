@@ -239,4 +239,34 @@ describe("tool.registry", () => {
       }),
     ),
   )
+
+  it.live("keeps desktop tools visible for desktop-managed local servers", () =>
+    provideTmpdirInstance(
+      () =>
+        Effect.gen(function* () {
+          const previousClient = process.env.CODEPLANE_CLIENT
+          const previousDesktopManaged = process.env.CODEPLANE_DESKTOP_MANAGED
+          try {
+            process.env.CODEPLANE_CLIENT = "cli"
+            process.env.CODEPLANE_DESKTOP_MANAGED = "1"
+
+            const registry = yield* ToolRegistry.Service
+            const availability = yield* registry.availability(toolInput)
+            const computerBlock = availability.blocked.find((item) => item.id === "computer")
+            const browserBlock = availability.blocked.find((item) => item.id === "browser")
+
+            expect(availability.known).toContain("computer")
+            expect(availability.known).toContain("browser")
+            expect(computerBlock?.reason ?? "").not.toContain("only available in the desktop app")
+            expect(browserBlock?.reason ?? "").not.toContain("only available in the desktop app")
+          } finally {
+            if (previousClient === undefined) delete process.env.CODEPLANE_CLIENT
+            else process.env.CODEPLANE_CLIENT = previousClient
+            if (previousDesktopManaged === undefined) delete process.env.CODEPLANE_DESKTOP_MANAGED
+            else process.env.CODEPLANE_DESKTOP_MANAGED = previousDesktopManaged
+          }
+        }),
+      { config: { tools: { browser: true, computer: true } } },
+    ),
+  )
 })
