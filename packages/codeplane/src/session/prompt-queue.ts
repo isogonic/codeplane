@@ -386,6 +386,19 @@ export const layer = Layer.effect(
       if (!row) throw new NotFoundError({ message: `Prompt job not found: ${input.jobID}` })
       const job = fromRow(row)
       yield* publishUpdated(job)
+      // Terminal transitions free this session's busy slot, so the next
+      // pending job for the same session becomes claimable. Trip the worker
+      // now instead of letting up-to-a-full-tick of latency pile up between
+      // "turn finished" and "next queued turn starts." Without this wake,
+      // the user-visible symptom was "queued items just sit there after the
+      // active turn completes" (reported v29.0.16 → v29.0.17).
+      if (isTerminal) {
+        try {
+          wakeNotifier?.()
+        } catch (err) {
+          log.warn("wake notifier threw", { error: err instanceof Error ? err.message : String(err) })
+        }
+      }
       return job
     })
 
@@ -448,6 +461,17 @@ export const layer = Layer.effect(
       })
       for (const row of affected) {
         yield* publishUpdated(fromRow(row))
+      }
+      // Bulk cancel frees this session's busy slot; trip the worker so any
+      // un-cancelled queued sibling (e.g. a newly enqueued steer prompt
+      // that landed between cancelSession reading and writing) gets picked
+      // up on the next claim.
+      if (affected.length > 0) {
+        try {
+          wakeNotifier?.()
+        } catch (err) {
+          log.warn("wake notifier threw", { error: err instanceof Error ? err.message : String(err) })
+        }
       }
       return affected.length
     })
