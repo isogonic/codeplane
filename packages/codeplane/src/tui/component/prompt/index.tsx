@@ -332,13 +332,17 @@ export function Prompt(props: PromptProps) {
   const queuedForSession = createMemo<QueuedSubmission[]>(() => {
     if (!props.sessionID) return []
     const list = sync.data.prompt_queue?.[props.sessionID] ?? []
+    // Include `running` so the user keeps seeing the item the worker just
+    // claimed — without this, deleting the current head pending row makes
+    // the next sibling jump from pending → running and disappear from the
+    // dock at the same instant, looking like "one click deleted two."
     return list
-      .filter((job) => job.status === "pending" || job.status === "failed")
+      .filter((job) => job.status === "pending" || job.status === "running" || job.status === "failed")
       .map((job) => ({
         id: job.id,
         sessionID: job.sessionID,
         inputPreview: previewFromPayload(job.payload),
-        status: job.status as "pending" | "failed",
+        status: job.status as "pending" | "running" | "failed",
       }))
   })
   const followupModeLabel = createMemo(() => {
@@ -533,6 +537,21 @@ export function Prompt(props: PromptProps) {
       },
     ),
   )
+
+  // Defensive periodic refresh while the session is busy. If an SSE event
+  // drops silently (network blip, mid-flight reconnect, anything), the
+  // dock can drift from the server's actual queue and items appear "stuck"
+  // or fail to remove after they complete. A 3s poll while busy guarantees
+  // convergence without thrashing the server: idle sessions don't poll.
+  createEffect(() => {
+    const sessionID = props.sessionID
+    if (!sessionID) return
+    if (status().type === "idle") return
+    const interval = setInterval(() => {
+      void refreshQueue(sessionID)
+    }, 3_000)
+    onCleanup(() => clearInterval(interval))
+  })
 
   command.register(() => {
     return [

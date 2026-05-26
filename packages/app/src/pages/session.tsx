@@ -1690,8 +1690,16 @@ export default function Page() {
     return sync.data.prompt_queue[id] ?? []
   })
 
+  // Include `running` so the user keeps seeing the item that's currently
+  // being processed. Without this, the moment the worker claims the next
+  // queued job (status pending → running), it vanishes from the dock —
+  // which looks like "deleting one item removed two" when the deleted
+  // pending item happened to be the head, because freeing the busy slot
+  // immediately promotes the next sibling to running.
   const queuedJobs = createMemo(() =>
-    serverQueue().filter((job) => job.status === "pending" || job.status === "failed"),
+    serverQueue().filter(
+      (job) => job.status === "pending" || job.status === "running" || job.status === "failed",
+    ),
   )
 
   const editingFollowup = createMemo(() => {
@@ -2015,6 +2023,24 @@ export default function Page() {
       },
     ),
   )
+
+  // Defensive periodic refresh while the session is busy. The reducer
+  // already handles `session.queue.*` events, and explicit control
+  // commands trigger a refresh — but if an SSE event drops silently
+  // (network blip, mid-flight reconnect), the dock can drift from the
+  // server's actual queue and items appear "stuck" or fail to remove
+  // after they complete. A 3s poll while busy guarantees convergence
+  // without thrashing the server: idle sessions don't poll at all.
+  createEffect(() => {
+    const id = params.id
+    if (!id) return
+    if (!busy(id)) return
+    const dir = sdk.directory
+    const interval = window.setInterval(() => {
+      void refreshQueue(id, dir)
+    }, 3_000)
+    onCleanup(() => window.clearInterval(interval))
+  })
 
   createResizeObserver(
     () => promptDock,
