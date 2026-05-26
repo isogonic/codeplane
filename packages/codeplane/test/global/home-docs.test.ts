@@ -14,6 +14,7 @@ function makePaths(rootBase: string) {
     globalRoot,
     config: root,
     data: path.join(root, "data"),
+    secrets: path.join(root, "data", "secrets"),
     cache: path.join(root, "cache"),
     state: path.join(root, "state"),
     log: path.join(root, "log"),
@@ -35,6 +36,7 @@ function makeSingleRootPaths(rootBase: string) {
     globalRoot: root,
     config: root,
     data: path.join(root, "data"),
+    secrets: path.join(root, "data", "secrets"),
     cache: path.join(root, "cache"),
     state: path.join(root, "state"),
     log: path.join(root, "log"),
@@ -58,6 +60,7 @@ function makeManagedLocalPaths(rootBase: string) {
     globalRoot,
     config: root,
     data: path.join(localRoot, "data"),
+    secrets: path.join(localRoot, "data", "secrets"),
     cache: path.join(localRoot, "cache"),
     state: path.join(localRoot, "state"),
     log: path.join(localRoot, "log"),
@@ -102,6 +105,8 @@ describe("home docs", () => {
       path.join(paths.root, "docs", "storage.md"),
       path.join(paths.data, "AGENTS.md"),
       path.join(paths.data, "README.md"),
+      path.join(paths.secrets, "AGENTS.md"),
+      path.join(paths.secrets, "README.md"),
       path.join(paths.cache, "AGENTS.md"),
       path.join(paths.cache, "README.md"),
       path.join(paths.state, "AGENTS.md"),
@@ -132,6 +137,7 @@ describe("home docs", () => {
     const architectureGuide = await fs.readFile(path.join(paths.root, "docs", "instance-architecture.md"), "utf8")
     const configGuide = await fs.readFile(path.join(paths.root, "docs", "configuration.md"), "utf8")
     const dataAgents = await fs.readFile(path.join(paths.data, "AGENTS.md"), "utf8")
+    const secretsAgents = await fs.readFile(path.join(paths.secrets, "AGENTS.md"), "utf8")
     const globalAgents = await fs.readFile(path.join(paths.globalRoot, "AGENTS.md"), "utf8")
     const sharedAgents = await fs.readFile(path.join(paths.local_server, "AGENTS.md"), "utf8")
 
@@ -141,8 +147,10 @@ describe("home docs", () => {
     expect(architectureGuide).toContain("saved-instance registry")
     expect(architectureGuide).toContain("desktop/TUI managed local-instance runtime data")
     expect(configGuide).toContain('"mcp"')
-    expect(configGuide).toContain("{env:ANTHROPIC_API_KEY}")
+    expect(configGuide).toContain("{secret:anthropic-api-key}")
+    expect(configGuide).toContain("{secret:name}")
     expect(dataAgents).toContain("codeplane.db")
+    expect(secretsAgents).toContain("first-class per-instance secrets")
     expect(globalAgents).toContain("shared across instances on the same machine")
     expect(sharedAgents).toContain("shared across instances")
     expect(await ConfigAgent.load(paths.root)).toEqual({})
@@ -242,6 +250,7 @@ describe("home docs", () => {
       path.join(paths.root, "AGENTS.md"),
       path.join(paths.root, "docs", "storage.md"),
       path.join(paths.data, "AGENTS.md"),
+      path.join(paths.secrets, "AGENTS.md"),
       path.join(paths.cache, "AGENTS.md"),
       path.join(paths.state, "AGENTS.md"),
       path.join(paths.log, "AGENTS.md"),
@@ -251,8 +260,10 @@ describe("home docs", () => {
     const rootAgents = await fs.readFile(path.join(paths.root, "AGENTS.md"), "utf8")
     const storageGuide = await fs.readFile(path.join(paths.root, "docs", "storage.md"), "utf8")
     expect(rootAgents).toContain("authoritative instance config root")
+    expect(rootAgents).toContain("data/secrets/")
     expect(rootAgents).toContain("shared host-level resources")
     expect(storageGuide).toContain("auth.json")
+    expect(storageGuide).toContain("secrets/")
     expect(storageGuide).toContain("process.log")
   })
 

@@ -181,10 +181,35 @@ describe("tool.computer", () => {
                   ok: true,
                   actions: [{ action: "move", point: { x: 12, y: 34 }, amount: 5 }],
                   cursor: { x: 12, y: 34 },
+                  displays: [
+                    {
+                      id: "display-1",
+                      label: "Built-in Display",
+                      bounds: { x: 0, y: 0, width: 1728, height: 1117 },
+                      workArea: { x: 0, y: 25, width: 1728, height: 1092 },
+                      scaleFactor: 2,
+                      rotation: 0,
+                      primary: true,
+                      internal: true,
+                    },
+                    {
+                      id: "display-2",
+                      label: "Studio Display",
+                      bounds: { x: 1728, y: 0, width: 2560, height: 1440 },
+                      workArea: { x: 1728, y: 0, width: 2560, height: 1415 },
+                      scaleFactor: 1,
+                      rotation: 0,
+                      primary: false,
+                      internal: false,
+                      current: true,
+                    },
+                  ],
                   screenshot: {
                     dataUrl: "data:image/png;base64,AAAA",
                     width: 1440,
                     height: 900,
+                    displayId: "display-2",
+                    scope: "display",
                   },
                 }),
                 {
@@ -196,7 +221,7 @@ describe("tool.computer", () => {
 
             const def = yield* init()
             const result = yield* def.execute(
-              { action: "move", coordinate: [12, 34] },
+              { action: "move", coordinate: [12, 34], displayId: "display-2" },
               { ...ctx, extra: { model: model(true) } },
             )
 
@@ -204,9 +229,16 @@ describe("tool.computer", () => {
             expect(requests[0]?.url).toBe("http://127.0.0.1:43210/__desktop/computer")
             expect(requests[0]?.token).toBe("bridge-token")
             expect(requests[0]?.body).toContain('"action":"move"')
+            expect(requests[0]?.body).toContain('"displayId":"display-2"')
+            expect(result.output).toContain("Captured view: Studio Display [display-2].")
+            expect(result.output).toContain("Displays:")
             expect(result.metadata.width).toBe(1440)
             expect(result.metadata.height).toBe(900)
+            expect(result.metadata.displayId).toBe("display-2")
+            expect(result.metadata.displayScope).toBe("display")
+            expect(result.metadata.displayCount).toBe(2)
             expect(result.metadata.cursor).toEqual({ x: 12, y: 34 })
+            expect(result.metadata.displays?.[1]?.label).toBe("Studio Display")
             expect(result.attachments?.[0]?.url).toBe("data:image/png;base64,AAAA")
           }),
         { config: { tools: { computer: true } } },

@@ -1,11 +1,20 @@
-import { expect, test } from "@playwright/test"
+import { expect, test, type Page } from "@playwright/test"
+import type { Event, Message, Part, Project, Session, SessionStatus } from "@codeplane-ai/sdk/v2/client"
 import http from "node:http"
 
-const backendOrigin = "http://127.0.0.1:4096"
+const backendPort = Number(process.env.PLAYWRIGHT_SERVER_PORT ?? "4096")
+const backendOrigin = `http://127.0.0.1:${backendPort}`
 const serverStoreKey = "codeplane.global.dat:server"
+const directory = "/workspace"
+const sessionID = "ses_live_stream"
+const userMessageID = "msg_0001_user_live_stream"
+const assistantMessageID = "msg_0002_assistant_live_stream"
+const userPartID = "prt_0001_user_live_stream"
+const assistantPartID = "prt_0002_assistant_live_stream"
+const userPrompt = "Stream this reply live"
 
-function checksum(content: string) {
-  if (!content) return
+function checksum(content: string): string | undefined {
+  if (!content) return undefined
   let hash = 0x811c9dc5
   for (let i = 0; i < content.length; i++) {
     hash ^= content.charCodeAt(i)
@@ -21,6 +30,10 @@ function storageToken(value: string, fallbackName: string) {
 
 function serverStorage(scope: string) {
   return `codeplane.server.${storageToken(scope, "server")}.dat`
+}
+
+function slug(value: string) {
+  return Buffer.from(value, "utf8").toString("base64url")
 }
 
 function cors(response: http.ServerResponse, extra?: Record<string, string>) {
@@ -54,22 +67,174 @@ const provider = {
 const project = {
   id: "workspace",
   name: "workspace",
-  worktree: "/workspace",
+  worktree: directory,
   vcs: "git" as const,
   time: { created: 0, updated: 0 },
   sandboxes: [] as string[],
-}
+} satisfies Project
 
 type PathMode = "valid" | "transient-error" | "missing"
+type SessionMessagePageItem = { info: Message; parts: Part[] }
+
+function sessionInfo(created = Date.now() - 1_000): Session {
+  return {
+    id: sessionID,
+    slug: sessionID,
+    projectID: project.id,
+    directory,
+    title: "Live stream session",
+    version: "29.0.4",
+    time: { created, updated: created + 1 },
+  }
+}
+
+function userMessage(created = Date.now() - 900): Message {
+  return {
+    id: userMessageID,
+    sessionID,
+    role: "user",
+    time: { created },
+    agent: "build",
+    model: { providerID: "logicplanes", modelID: "logic-large" },
+  }
+}
+
+function assistantMessage(created = Date.now() - 800, completed?: number): Message {
+  return {
+    id: assistantMessageID,
+    sessionID,
+    role: "assistant",
+    parentID: userMessageID,
+    mode: "build",
+    agent: "build",
+    path: { cwd: directory, root: directory },
+    providerID: "logicplanes",
+    modelID: "logic-large",
+    cost: 0,
+    tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+    time: completed ? { created, completed } : { created },
+  }
+}
+
+function textPart(id: string, messageID: string, text: string): Part {
+  return {
+    id,
+    sessionID,
+    messageID,
+    type: "text",
+    text,
+  }
+}
+
+function initialState() {
+  const now = Date.now()
+  return {
+    session: sessionInfo(now - 1_000),
+    messages: [
+      {
+        info: userMessage(now - 900),
+        parts: [textPart(userPartID, userMessageID, userPrompt)],
+      },
+      {
+        info: assistantMessage(now - 800),
+        parts: [textPart(assistantPartID, assistantMessageID, "")],
+      },
+    ] satisfies SessionMessagePageItem[],
+    sessionStatus: {
+      [sessionID]: { type: "busy" as const },
+    } satisfies Record<string, SessionStatus>,
+  }
+}
 
 test.describe.configure({ mode: "serial" })
 
-test.describe("persisted projects across reconnect validation", () => {
+test.describe("persisted projects and live stream validation", () => {
   let server: http.Server | undefined
   let pathMode: PathMode = "valid"
   let projectPathChecks = 0
   let transientFailures = 0
+  let state = initialState()
   const streams = new Set<http.ServerResponse>()
+
+  const assistantEntry = () => {
+    const match = state.messages.find((item) => item.info.id === assistantMessageID)
+    if (!match) throw new Error("Missing assistant message fixture")
+    return match
+  }
+
+  const assistantText = () => {
+    const part = assistantEntry().parts.find((item) => item.id === assistantPartID)
+    if (!part || part.type !== "text") throw new Error("Missing assistant text part fixture")
+    return part
+  }
+
+  const emit = (event: { directory?: string; payload: Event }) => {
+    for (const stream of streams) {
+      stream.write(ssePayload(event))
+    }
+  }
+
+  const emitMany = (events: Array<{ directory?: string; payload: Event }>) => {
+    for (const event of events) {
+      emit(event)
+    }
+  }
+
+  const appendAssistantDelta = (delta: string) => {
+    assistantText().text += delta
+    emit({
+      directory,
+      payload: {
+        type: "message.part.delta",
+        properties: {
+          sessionID,
+          messageID: assistantMessageID,
+          partID: assistantPartID,
+          field: "text",
+          delta,
+        },
+      } satisfies Event,
+    })
+  }
+
+  const finishAssistant = (text: string, completed = Date.now()) => {
+    assistantText().text = text
+    assistantEntry().info = assistantMessage(completed - 500, completed)
+    state.session.time.updated = completed
+    state.sessionStatus[sessionID] = { type: "idle" }
+    emitMany([
+      {
+        directory,
+        payload: {
+          type: "message.part.updated",
+          properties: {
+            sessionID,
+            part: { ...assistantText() },
+            time: completed,
+          },
+        } satisfies Event,
+      },
+      {
+        directory,
+        payload: {
+          type: "message.updated",
+          properties: {
+            info: state.messages[1].info,
+          },
+        } satisfies Event,
+      },
+      {
+        directory,
+        payload: {
+          type: "session.status",
+          properties: {
+            sessionID,
+            status: { type: "idle" as const },
+          },
+        } satisfies Event,
+      },
+    ])
+  }
 
   test.beforeAll(async () => {
     server = http.createServer((request, response) => {
@@ -83,7 +248,7 @@ test.describe("persisted projects across reconnect validation", () => {
       }
 
       if (url.pathname === "/global/health") {
-        json(response, { healthy: true, version: "27.4.0" })
+        json(response, { healthy: true, version: "29.0.4" })
         return
       }
 
@@ -116,14 +281,24 @@ test.describe("persisted projects across reconnect validation", () => {
         return
       }
 
+      if (url.pathname === "/provider/auth") {
+        json(response, {})
+        return
+      }
+
+      if (url.pathname === "/project/current") {
+        json(response, project)
+        return
+      }
+
       if (url.pathname === "/project") {
         json(response, [project])
         return
       }
 
       if (url.pathname === "/path") {
-        const directory = url.searchParams.get("directory")
-        if (!directory) {
+        const requestedDirectory = url.searchParams.get("directory")
+        if (!requestedDirectory) {
           json(response, {
             home: "/Users/test",
             state: "/Users/test/.codeplane/state",
@@ -137,7 +312,7 @@ test.describe("persisted projects across reconnect validation", () => {
         projectPathChecks += 1
 
         if (pathMode === "missing") {
-          json(response, { name: "NotFoundError", data: { message: `Missing project: ${directory}` } }, 404)
+          json(response, { name: "NotFoundError", data: { message: `Missing project: ${requestedDirectory}` } }, 404)
           return
         }
 
@@ -151,9 +326,83 @@ test.describe("persisted projects across reconnect validation", () => {
           home: "/Users/test",
           state: "/Users/test/.codeplane/state",
           config: "/Users/test/.config/codeplane/config.json",
-          worktree: directory,
-          directory,
+          worktree: requestedDirectory,
+          directory: requestedDirectory,
         })
+        return
+      }
+
+      if (url.pathname === "/lsp") {
+        json(response, [])
+        return
+      }
+
+      if (url.pathname === "/mcp") {
+        json(response, {})
+        return
+      }
+
+      if (url.pathname === "/agent") {
+        json(response, [])
+        return
+      }
+
+      if (url.pathname === "/config") {
+        json(response, {})
+        return
+      }
+
+      if (url.pathname === "/vcs") {
+        json(response, null)
+        return
+      }
+
+      if (url.pathname === "/command") {
+        json(response, [])
+        return
+      }
+
+      if (url.pathname === "/permission") {
+        json(response, [])
+        return
+      }
+
+      if (url.pathname === "/question") {
+        json(response, [])
+        return
+      }
+
+      if (url.pathname === "/session/status") {
+        json(response, state.sessionStatus)
+        return
+      }
+
+      if (url.pathname === "/session") {
+        json(response, [state.session])
+        return
+      }
+
+      const sessionChildrenMatch = url.pathname.match(/^\/session\/([^/]+)\/children$/)
+      if (sessionChildrenMatch?.[1] === sessionID) {
+        json(response, [])
+        return
+      }
+
+      const sessionTodoMatch = url.pathname.match(/^\/session\/([^/]+)\/todo$/)
+      if (sessionTodoMatch?.[1] === sessionID) {
+        json(response, [])
+        return
+      }
+
+      const sessionMessagesMatch = url.pathname.match(/^\/session\/([^/]+)\/message$/)
+      if (sessionMessagesMatch?.[1] === sessionID) {
+        json(response, state.messages)
+        return
+      }
+
+      const sessionMatch = url.pathname.match(/^\/session\/([^/]+)$/)
+      if (sessionMatch?.[1] === sessionID) {
+        json(response, state.session)
         return
       }
 
@@ -162,7 +411,7 @@ test.describe("persisted projects across reconnect validation", () => {
 
     await new Promise<void>((resolve, reject) => {
       server?.once("error", reject)
-      server?.listen(4096, "127.0.0.1", resolve)
+      server?.listen(backendPort, "127.0.0.1", resolve)
     })
   })
 
@@ -180,22 +429,23 @@ test.describe("persisted projects across reconnect validation", () => {
     pathMode = "valid"
     projectPathChecks = 0
     transientFailures = 0
+    state = initialState()
   })
 
   test("keeps restored open projects when validation hits a transient reconnect error", async ({ page }) => {
     pathMode = "transient-error"
 
     await page.addInitScript(
-      ({ key, scope, storage }) => {
+      ({ key, scope, storage, worktree }) => {
         localStorage.setItem(
           key,
           JSON.stringify({
             list: [],
             projects: {
-              [scope]: [{ worktree: "/workspace", expanded: true }],
+              [scope]: [{ worktree, expanded: true }],
             },
             lastProject: {
-              [scope]: "/workspace",
+              [scope]: worktree,
             },
           }),
         )
@@ -205,6 +455,7 @@ test.describe("persisted projects across reconnect validation", () => {
         key: serverStoreKey,
         scope: backendOrigin,
         storage: serverStorage(backendOrigin),
+        worktree: directory,
       },
     )
 
@@ -226,23 +477,23 @@ test.describe("persisted projects across reconnect validation", () => {
           message: "persisted desktop project list should survive transient reconnect failures",
         },
       )
-      .toEqual(["/workspace"])
+      .toEqual([directory])
   })
 
   test("removes restored open projects when the backend reports them missing", async ({ page }) => {
     pathMode = "missing"
 
     await page.addInitScript(
-      ({ key, scope }) => {
+      ({ key, scope, worktree }) => {
         localStorage.setItem(
           key,
           JSON.stringify({
             list: [],
             projects: {
-              [scope]: [{ worktree: "/workspace", expanded: true }],
+              [scope]: [{ worktree, expanded: true }],
             },
             lastProject: {
-              [scope]: "/workspace",
+              [scope]: worktree,
             },
           }),
         )
@@ -250,6 +501,7 @@ test.describe("persisted projects across reconnect validation", () => {
       {
         key: serverStoreKey,
         scope: backendOrigin,
+        worktree: directory,
       },
     )
 
@@ -269,5 +521,133 @@ test.describe("persisted projects across reconnect validation", () => {
         },
       )
       .toBe(0)
+  })
+
+  async function openStreamSession(page: Page) {
+    await page.goto(`/${slug(directory)}/session/${sessionID}`)
+    await expect(page.getByText(userPrompt)).toBeVisible()
+    await expect(page.locator("[data-slot='session-turn-thinking']")).toBeVisible()
+  }
+
+  test("streams assistant deltas live and clears thinking when the turn completes", async ({ page }) => {
+    await openStreamSession(page)
+
+    assistantText().text = "Hello"
+    emit({
+      directory,
+      payload: {
+        type: "message.part.updated",
+        properties: {
+          sessionID,
+          part: { ...textPart(assistantPartID, assistantMessageID, "Hel") },
+          time: Date.now(),
+        },
+      } satisfies Event,
+    })
+    appendAssistantDelta("lo")
+
+    finishAssistant("Hello")
+
+    await expect(page.locator("[data-slot='session-turn-thinking']")).toHaveCount(0)
+    await expect(page.getByText("Hello", { exact: true })).toBeVisible()
+  })
+
+  test("keeps later tail deltas after a full part refresh in the same stream burst", async ({ page }) => {
+    await openStreamSession(page)
+
+    assistantText().text = "fresh tail"
+    emitMany([
+      {
+        directory,
+        payload: {
+          type: "message.part.delta",
+          properties: {
+            sessionID,
+            messageID: assistantMessageID,
+            partID: assistantPartID,
+            field: "text",
+            delta: " stale",
+          },
+        } satisfies Event,
+      },
+      {
+        directory,
+        payload: {
+          type: "message.part.updated",
+          properties: {
+            sessionID,
+            part: { ...textPart(assistantPartID, assistantMessageID, "fresh") },
+            time: 1,
+          },
+        } satisfies Event,
+      },
+      {
+        directory,
+        payload: {
+          type: "message.part.delta",
+          properties: {
+            sessionID,
+            messageID: assistantMessageID,
+            partID: assistantPartID,
+            field: "text",
+            delta: " tail",
+          },
+        } satisfies Event,
+      },
+    ])
+
+    finishAssistant("fresh tail")
+
+    await expect(page.locator("[data-slot='session-turn-thinking']")).toHaveCount(0)
+    await expect(page.getByText("fresh tail", { exact: true })).toBeVisible()
+  })
+
+  test("does not replay stale deltas after a newer full part refresh", async ({ page }) => {
+    await openStreamSession(page)
+
+    assistantText().text = "fresh"
+    emitMany([
+      {
+        directory,
+        payload: {
+          type: "message.part.updated",
+          properties: {
+            sessionID,
+            part: { ...textPart(assistantPartID, assistantMessageID, "old") },
+            time: 1,
+          },
+        } satisfies Event,
+      },
+      {
+        directory,
+        payload: {
+          type: "message.part.delta",
+          properties: {
+            sessionID,
+            messageID: assistantMessageID,
+            partID: assistantPartID,
+            field: "text",
+            delta: " stale",
+          },
+        } satisfies Event,
+      },
+      {
+        directory,
+        payload: {
+          type: "message.part.updated",
+          properties: {
+            sessionID,
+            part: { ...textPart(assistantPartID, assistantMessageID, "fresh") },
+            time: 2,
+          },
+        } satisfies Event,
+      },
+    ])
+
+    finishAssistant("fresh")
+
+    await expect(page.locator("[data-slot='session-turn-thinking']")).toHaveCount(0)
+    await expect(page.getByText("fresh", { exact: true })).toBeVisible()
+    await expect(page.getByText("fresh stale", { exact: true })).toHaveCount(0)
   })
 })

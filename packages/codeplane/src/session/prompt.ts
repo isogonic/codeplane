@@ -1,6 +1,5 @@
 import path from "path"
 import os from "os"
-import z from "zod"
 import * as EffectZod from "@/util/effect-zod"
 import { SessionID, MessageID, PartID } from "./schema"
 import { MessageV2 } from "./message-v2"
@@ -46,6 +45,7 @@ import { NamedError } from "@codeplane-ai/shared/util/error"
 import { SessionProcessor } from "./processor"
 import { Tool } from "@/tool"
 import { Permission } from "@/permission"
+import { Question } from "@/question"
 import { SessionStatus } from "./status"
 import { LLM } from "./llm"
 import { Shell } from "@/shell/shell"
@@ -53,6 +53,7 @@ import { AppFileSystem } from "@codeplane-ai/shared/filesystem"
 import { Truncate } from "@/tool"
 import { decodeDataUrl } from "@/util/data-url"
 import { Process } from "@/util"
+import { errorMessage } from "@/util/error"
 import { Cause, Effect, Exit, Layer, Option, Scope, Context, Schema } from "effect"
 import { zod } from "@/util/effect-zod"
 import { withStatics } from "@/util/schema"
@@ -78,6 +79,58 @@ const STRUCTURED_OUTPUT_SYSTEM_PROMPT = `IMPORTANT: The user has requested struc
 
 const log = Log.create({ service: "session.prompt" })
 const elog = EffectLogger.create({ service: "session.prompt" })
+
+type NativeToolFailure = {
+  kind: "execution_error" | "permission_denied" | "question_rejected"
+  action: "inspect_error" | "ask_user"
+  retryable: boolean
+  summary: string
+  nextStep: string
+  error: string
+}
+
+const classifyNativeToolFailure = (tool: string, error: unknown): NativeToolFailure => {
+  const originalError = errorMessage(error)
+  if (error instanceof Permission.RejectedError) {
+    return {
+      kind: "permission_denied",
+      action: "ask_user",
+      retryable: false,
+      summary: `Permission was denied for the ${tool} tool.`,
+      nextStep: "Ask the user whether to approve this action or choose a different approach.",
+      error: originalError,
+    }
+  }
+  if (error instanceof Question.RejectedError) {
+    return {
+      kind: "question_rejected",
+      action: "ask_user",
+      retryable: false,
+      summary: `The user rejected the ${tool} tool prompt.`,
+      nextStep: "Ask the user for a different choice or continue without this action.",
+      error: originalError,
+    }
+  }
+  return {
+    kind: "execution_error",
+    action: "inspect_error",
+    retryable: false,
+    summary: `The ${tool} tool failed to execute.`,
+    nextStep: "Use the error details to retry with corrected input or choose a different tool or approach.",
+    error: originalError,
+  }
+}
+
+const renderNativeToolFailureText = (tool: string, failure: NativeToolFailure) =>
+  [
+    failure.summary,
+    "",
+    `Tool: ${tool}`,
+    `Failure kind: ${failure.kind}`,
+    `Retryable: ${failure.retryable ? "yes" : "no"}`,
+    `Recommended next step: ${failure.nextStep}`,
+    `Original error: ${failure.error}`,
+  ].join("\n")
 
 export interface Interface {
   readonly cancel: (sessionID: SessionID) => Effect.Effect<void>
@@ -143,7 +196,12 @@ export const layer = Layer.effect(
             const scope = yield* Effect.scope
             yield* prompt(input).pipe(
               Effect.uninterruptible,
-              Effect.catchCause(() => Effect.void),
+              Effect.catchCause((cause) =>
+                recordError({
+                  sessionID: input.sessionID,
+                  error: Cause.squash(cause),
+                }).pipe(Effect.catch(() => Effect.void)),
+              ),
               Effect.forkIn(scope),
             )
           }),
@@ -249,6 +307,28 @@ export const layer = Layer.effect(
             error,
             time: { ...info.time, completed: Date.now() },
           })
+        }
+      } else {
+        const lastUser = yield* sessions.findMessage(input.sessionID, (m) => m.info.role === "user")
+        if (Option.isSome(lastUser) && lastUser.value.info.role === "user") {
+          const ctx = yield* InstanceState.context
+          const completed = Date.now()
+          yield* sessions.updateMessage({
+            id: MessageID.ascending(),
+            role: "assistant",
+            parentID: lastUser.value.info.id,
+            sessionID: input.sessionID,
+            mode: lastUser.value.info.agent,
+            agent: lastUser.value.info.agent,
+            variant: lastUser.value.info.model.variant,
+            path: { cwd: ctx.directory, root: ctx.worktree },
+            cost: 0,
+            tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+            modelID: lastUser.value.info.model.modelID,
+            providerID: lastUser.value.info.model.providerID,
+            time: { created: completed, completed },
+            error,
+          } satisfies MessageV2.Assistant)
         }
       }
 
@@ -552,7 +632,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       model: Provider.Model
       session: Session.Info
       tools?: Record<string, boolean>
-      processor: Pick<SessionProcessor.Handle, "message" | "updateToolCall" | "completeToolCall">
+      processor: Pick<SessionProcessor.Handle, "message" | "updateToolCall" | "failToolCall" | "completeToolCall">
       bypassAgentCheck: boolean
       messages: MessageV2.WithParts[]
     }) {
@@ -617,30 +697,70 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             return run.promise(
               Effect.gen(function* () {
                 const ctx = context(args, options)
-                yield* plugin.trigger(
-                  "tool.execute.before",
-                  { tool: item.id, sessionID: ctx.sessionID, callID: ctx.callID },
-                  { args },
-                )
-                const result = yield* item.execute(args, ctx)
-                const output = {
-                  ...result,
-                  attachments: result.attachments?.map((attachment) => ({
-                    ...attachment,
-                    id: PartID.ascending(),
-                    sessionID: ctx.sessionID,
-                    messageID: input.processor.message.id,
-                  })),
+                const toolResult = yield* Effect.gen(function* () {
+                  yield* plugin.trigger(
+                    "tool.execute.before",
+                    { tool: item.id, sessionID: ctx.sessionID, callID: ctx.callID },
+                    { args },
+                  )
+                  const result = yield* item.execute(args, ctx)
+                  const output = {
+                    ...result,
+                    attachments: result.attachments?.map((attachment) => ({
+                      ...attachment,
+                      id: PartID.ascending(),
+                      sessionID: ctx.sessionID,
+                      messageID: input.processor.message.id,
+                    })),
+                  }
+                  yield* plugin.trigger(
+                    "tool.execute.after",
+                    { tool: item.id, sessionID: ctx.sessionID, callID: ctx.callID, args },
+                    output,
+                  )
+                  return output
+                }).pipe(Effect.exit)
+
+                if (Exit.isSuccess(toolResult)) {
+                  if (options.abortSignal?.aborted) {
+                    yield* input.processor.completeToolCall(options.toolCallId, toolResult.value)
+                  }
+                  return toolResult.value
                 }
-                yield* plugin.trigger(
-                  "tool.execute.after",
-                  { tool: item.id, sessionID: ctx.sessionID, callID: ctx.callID, args },
-                  output,
-                )
-                if (options.abortSignal?.aborted) {
-                  yield* input.processor.completeToolCall(options.toolCallId, output)
+
+                if (Cause.hasInterruptsOnly(toolResult.cause) || options.abortSignal?.aborted) {
+                  return yield* Effect.failCause(toolResult.cause)
                 }
-                return output
+
+                const error = Cause.squash(toolResult.cause)
+                const failure = classifyNativeToolFailure(item.id, error)
+                const failureText = renderNativeToolFailureText(item.id, failure)
+                yield* input.processor.failToolCall(options.toolCallId, error, {
+                  errorText: failureText,
+                  metadata: {
+                    toolError: true,
+                    toolFailureKind: failure.kind,
+                    toolFailureAction: failure.action,
+                    toolRetryable: failure.retryable,
+                    toolSummary: failure.summary,
+                    toolNextStep: failure.nextStep,
+                    originalError: failure.error,
+                  },
+                })
+                return {
+                  title: item.id,
+                  metadata: {
+                    toolError: true,
+                    toolFailureKind: failure.kind,
+                    toolFailureAction: failure.action,
+                    toolRetryable: failure.retryable,
+                    toolSummary: failure.summary,
+                    toolNextStep: failure.nextStep,
+                    originalError: failure.error,
+                  },
+                  output: failureText,
+                  content: [{ type: "text" as const, text: failureText }],
+                }
               }),
             )
           },
@@ -664,6 +784,33 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                     Effect.gen(function* () {
                       const ctx = context(args, opts)
                       const title = `MCP: ${key}`
+                      const finalizeOutput = Effect.fnUntraced(function* (result: {
+                        outputText: string
+                        metadata: Record<string, any>
+                        attachments?: Omit<MessageV2.FilePart, "id" | "sessionID" | "messageID">[]
+                        content?: Array<Record<string, unknown>>
+                      }) {
+                        const truncated = yield* truncate.output(result.outputText, {}, input.agent)
+                        return {
+                          title,
+                          metadata: {
+                            ...result.metadata,
+                            mcp: true,
+                            tool: key,
+                            attachmentCount: result.attachments?.length ?? 0,
+                            truncated: truncated.truncated,
+                            ...(truncated.truncated && { outputPath: truncated.outputPath }),
+                          },
+                          output: truncated.content,
+                          attachments: result.attachments?.map((attachment) => ({
+                            ...attachment,
+                            id: PartID.ascending(),
+                            sessionID: ctx.sessionID,
+                            messageID: input.processor.message.id,
+                          })),
+                          ...(result.content ? { content: result.content } : {}),
+                        }
+                      })
                       yield* ctx.metadata({
                         title,
                         metadata: {
@@ -677,9 +824,46 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                         { args },
                       )
                       yield* ctx.ask({ permission: key, metadata: {}, patterns: ["*"], always: ["*"] })
-                      const result: Awaited<ReturnType<NonNullable<typeof execute>>> = yield* Effect.promise(() =>
-                        execute(args, opts),
-                      )
+                      const toolResult = yield* Effect.tryPromise({
+                        try: () => execute(args, opts),
+                        catch: (error) => error,
+                      }).pipe(Effect.exit)
+                      if (Exit.isFailure(toolResult)) {
+                        const failure = MCP.classifyToolFailure({ error: Cause.squash(toolResult.cause), tool: key })
+                        const failureText = [
+                          failure.summary,
+                          "",
+                          `Tool: ${key}`,
+                          `Failure kind: ${failure.kind}`,
+                          `Retryable: ${failure.retryable ? "yes" : "no"}`,
+                          `Recommended next step: ${failure.nextStep}`,
+                          `Original error: ${failure.error}`,
+                        ].join("\n")
+                        const output = yield* finalizeOutput({
+                          outputText: failureText,
+                          metadata: {
+                            mcpError: true,
+                            mcpFailureKind: failure.kind,
+                            mcpFailureAction: failure.action,
+                            mcpRetryable: failure.retryable,
+                            mcpSummary: failure.summary,
+                            mcpNextStep: failure.nextStep,
+                            originalError: failure.error,
+                            contentTypes: ["text"],
+                          },
+                          content: [{ type: "text", text: failureText }],
+                        })
+                        yield* plugin.trigger(
+                          "tool.execute.after",
+                          { tool: key, sessionID: ctx.sessionID, callID: opts.toolCallId, args },
+                          output,
+                        )
+                        if (opts.abortSignal?.aborted) {
+                          yield* input.processor.completeToolCall(opts.toolCallId, output)
+                        }
+                        return output
+                      }
+                      const result: Awaited<ReturnType<NonNullable<typeof execute>>> = toolResult.value
                       yield* plugin.trigger(
                         "tool.execute.after",
                         { tool: key, sessionID: ctx.sessionID, callID: opts.toolCallId, args },
@@ -716,29 +900,15 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                         }
                       }
 
-                      const truncated = yield* truncate.output(textParts.join("\n\n"), {}, input.agent)
-                      const metadata = {
-                        ...result.metadata,
-                        mcp: true,
-                        tool: key,
-                        contentTypes,
-                        attachmentCount: attachments.length,
-                        truncated: truncated.truncated,
-                        ...(truncated.truncated && { outputPath: truncated.outputPath }),
-                      }
-
-                      const output = {
-                        title,
-                        metadata,
-                        output: truncated.content,
-                        attachments: attachments.map((attachment) => ({
-                          ...attachment,
-                          id: PartID.ascending(),
-                          sessionID: ctx.sessionID,
-                          messageID: input.processor.message.id,
-                        })),
+                      const output = yield* finalizeOutput({
+                        outputText: textParts.join("\n\n"),
+                        metadata: {
+                          ...result.metadata,
+                          contentTypes,
+                        },
+                        attachments,
                         content: result.content,
-                      }
+                      })
                       if (opts.abortSignal?.aborted) {
                         yield* input.processor.completeToolCall(opts.toolCallId, output)
                       }
@@ -1603,6 +1773,30 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       throw new Error("Impossible")
     })
 
+    const interruptedAssistantSnapshot: (
+      sessionID: SessionID,
+      remaining?: number,
+    ) => Effect.Effect<MessageV2.WithParts> = Effect.fnUntraced(function* (sessionID: SessionID, remaining = 80) {
+      const msg = yield* lastAssistant(sessionID)
+      const hasLiveNonTaskTool = msg.parts.some(
+        (part) =>
+          part.type === "tool" &&
+          part.tool !== TaskTool.id &&
+          (part.state.status === "pending" || part.state.status === "running"),
+      )
+      if (!hasLiveNonTaskTool || remaining <= 0) return msg
+      yield* Effect.sleep("25 millis")
+      return yield* interruptedAssistantSnapshot(sessionID, remaining - 1)
+    })
+
+    const interrupted = Effect.fn("SessionPrompt.interrupted")(function* (sessionID: SessionID) {
+      yield* recordError({
+        sessionID,
+        error: new DOMException("Aborted", "AbortError"),
+      })
+      return yield* interruptedAssistantSnapshot(sessionID)
+    })
+
     const finalizeFinishedAssistants = Effect.fn("SessionPrompt.finalizeFinishedAssistants")(function* (
       msgs: MessageV2.WithParts[],
     ) {
@@ -1681,13 +1875,28 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       return { lastUser, lastAssistant, lastFinished, tasks }
     }
 
+    const hasAssistantOutputAfterLocalTool = (
+      parts: MessageV2.Part[] | undefined,
+      lastLocalToolIndex: number,
+    ) =>
+      (parts?.slice(lastLocalToolIndex + 1).some((part) => {
+        if (part.type === "text") return part.text.trim().length > 0
+        if (part.type === "reasoning") return part.text.trim().length > 0
+        return false
+      }) ??
+      false)
+
     const requiresAssistantFollowup = (
       assistant: MessageV2.Assistant | undefined,
       parts: MessageV2.Part[] | undefined,
-    ) =>
-      !!assistant &&
-      (assistant.finish === "tool-calls" ||
-        (parts?.some((part) => part.type === "tool" && !part.metadata?.providerExecuted) ?? false))
+    ) => {
+      if (!assistant) return false
+      if (assistant.finish === "tool-calls") return true
+      const lastLocalToolIndex =
+        parts?.findLastIndex((part) => part.type === "tool" && !part.metadata?.providerExecuted) ?? -1
+      if (lastLocalToolIndex === -1) return false
+      return !hasAssistantOutputAfterLocalTool(parts, lastLocalToolIndex)
+    }
 
     const runLoop: (sessionID: SessionID) => Effect.Effect<MessageV2.WithParts> = Effect.fn("SessionPrompt.run")(
       function* (sessionID: SessionID) {
@@ -1948,12 +2157,12 @@ NOTE: At any point in time through this workflow you should feel free to ask the
     const loop: (input: LoopInput) => Effect.Effect<MessageV2.WithParts, Session.BusyError> = Effect.fn(
       "SessionPrompt.loop",
     )(function* (input: LoopInput) {
-      return yield* state.ensureRunning(input.sessionID, lastAssistant(input.sessionID), runLoop(input.sessionID))
+      return yield* state.ensureRunning(input.sessionID, interrupted(input.sessionID), runLoop(input.sessionID))
     })
 
     const shell: (input: ShellInput) => Effect.Effect<MessageV2.WithParts> = Effect.fn("SessionPrompt.shell")(
       function* (input: ShellInput) {
-        return yield* state.startShell(input.sessionID, lastAssistant(input.sessionID), shellImpl(input))
+        return yield* state.startShell(input.sessionID, interrupted(input.sessionID), shellImpl(input))
       },
     )
 

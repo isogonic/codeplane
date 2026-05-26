@@ -37,6 +37,14 @@ export interface Handle {
     toolCallID: string,
     update: (part: MessageV2.ToolPart) => MessageV2.ToolPart,
   ) => Effect.Effect<MessageV2.ToolPart | undefined>
+  readonly failToolCall: (
+    toolCallID: string,
+    error: unknown,
+    options?: {
+      errorText?: string
+      metadata?: Record<string, any>
+    },
+  ) => Effect.Effect<boolean>
   readonly completeToolCall: (
     toolCallID: string,
     output: {
@@ -208,22 +216,38 @@ export const layer: Layer.Layer<
         yield* settleToolCall(toolCallID)
       })
 
-      const failToolCall = Effect.fn("SessionProcessor.failToolCall")(function* (toolCallID: string, error: unknown) {
+      const failToolCall = Effect.fn("SessionProcessor.failToolCall")(function* (
+        toolCallID: string,
+        error: unknown,
+        options?: {
+          errorText?: string
+          metadata?: Record<string, any>
+        },
+      ) {
         const match = yield* readToolCall(toolCallID)
-        if (!match || match.part.state.status !== "running") return false
+        if (!match || !["pending", "running"].includes(match.part.state.status)) return false
         const end = Date.now()
+        const start = match.part.state.status === "running" ? match.part.state.time.start : end
+        const stateMetadata = "metadata" in match.part.state ? match.part.state.metadata : undefined
         const metadata =
           match.part.tool === "task"
-            ? { ...(match.part.state.metadata ?? {}), status: "error", completedAt: end }
-            : match.part.state.metadata
+            ? {
+                ...stateMetadata,
+                ...(options?.metadata ?? {}),
+                status: "error",
+                completedAt: end,
+              }
+            : options?.metadata
+              ? { ...stateMetadata, ...options.metadata }
+              : stateMetadata
         yield* session.updatePart({
           ...match.part,
           state: {
             status: "error",
             input: match.part.state.input,
-            error: errorMessage(error),
+            error: options?.errorText ?? errorMessage(error),
             metadata,
-            time: { start: match.part.state.time.start, end },
+            time: { start, end },
           },
         })
         if (error instanceof Permission.RejectedError || error instanceof Question.RejectedError) {
@@ -760,6 +784,7 @@ export const layer: Layer.Layer<
           return ctx.assistantMessage
         },
         updateToolCall,
+        failToolCall,
         completeToolCall,
         process,
       } satisfies Handle

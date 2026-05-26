@@ -61,7 +61,7 @@ import { readToolDirectoryLabel, readToolFilePath, readToolLineRange } from "./m
 import { animate } from "motion"
 import { useLocation } from "@solidjs/router"
 import { attached, inline, kind } from "./message-file"
-import { taskAgent, taskChildSession } from "./message-part-task"
+import { taskAgent, taskChildSession, taskSubtitle } from "./message-part-task"
 
 function ShellSubmessage(props: { text: string; animate?: boolean }) {
   let widthRef: HTMLSpanElement | undefined
@@ -2116,8 +2116,8 @@ ToolRegistry.register({
     const title = createMemo(() => agent().name ?? i18n.t("ui.tool.agent.default"))
     const tone = createMemo(() => agent().color)
     const subtitle = createMemo(() => {
-      const value = props.input.description
-      if (typeof value === "string" && value) return value
+      const value = taskSubtitle(title(), props.input.description)
+      if (value) return value
       return childSessionId()
     })
     const taskStatus = createMemo(() => {
@@ -2152,14 +2152,16 @@ ToolRegistry.register({
       <div data-component="task-tool-card">
         <div data-slot="basic-tool-tool-info-structured">
           <div data-slot="basic-tool-tool-info-main">
-            <Show when={running()}>
-              <span data-component="task-tool-spinner" style={{ color: tone() ?? "var(--icon-interactive-base)" }}>
-                <Spinner />
+            <div data-component="task-tool-heading">
+              <Show when={running()}>
+                <span data-component="task-tool-spinner" style={{ color: tone() ?? "var(--icon-interactive-base)" }}>
+                  <Spinner />
+                </span>
+              </Show>
+              <span data-component="task-tool-title" style={{ color: tone() ?? "var(--text-strong)" }}>
+                {title()}
               </span>
-            </Show>
-            <span data-component="task-tool-title" style={{ color: tone() ?? "var(--text-strong)" }}>
-              {title()}
-            </span>
+            </div>
             <Show when={subtitle()}>
               <span data-slot="basic-tool-tool-subtitle">{subtitle()}</span>
             </Show>

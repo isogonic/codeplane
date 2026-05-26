@@ -38,7 +38,8 @@ export default function MCP() {
     "type": "local",
     "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/Users/me/Code"],
     "environment": {
-      "LOG_LEVEL": "warn"
+      "LOG_LEVEL": "warn",
+      "GITHUB_TOKEN": "{secret:github-token}"
     },
     "timeout": 30000
   },
@@ -46,7 +47,7 @@ export default function MCP() {
     "type": "remote",
     "url": "https://mcp.example.com/sse",
     "headers": {
-      "Authorization": "Bearer {env:MCP_TOKEN}"
+      "Authorization": "{secret:mcp-authorization}"
     },
     "oauth": false,
     "timeout": 30000
@@ -63,9 +64,9 @@ export default function MCP() {
           <tbody>
             <tr><td><code>type</code></td><td>yes</td><td><code>local</code> for a stdio process, <code>remote</code> for HTTP/SSE MCP.</td></tr>
             <tr><td><code>command</code></td><td>local only</td><td>Command array: executable first, then arguments.</td></tr>
-            <tr><td><code>environment</code></td><td>no</td><td>Environment variables for local servers. Supports <code>{`{env:VAR}`}</code> placeholders.</td></tr>
+            <tr><td><code>environment</code></td><td>no</td><td>Environment variables for local servers. Supports <code>{`{secret:name}`}</code>, <code>{`{env:VAR}`}</code>, and <code>{`{file:path}`}</code> placeholders.</td></tr>
             <tr><td><code>url</code></td><td>remote only</td><td>Remote MCP server URL.</td></tr>
-            <tr><td><code>headers</code></td><td>no</td><td>Headers sent to a remote server.</td></tr>
+            <tr><td><code>headers</code></td><td>no</td><td>Headers sent to a remote server. Secret-bearing headers should use <code>{`{secret:name}`}</code> instead of plaintext.</td></tr>
             <tr><td><code>oauth</code></td><td>no</td><td>OAuth client config for remote servers, or <code>false</code> to disable auto-detection.</td></tr>
             <tr><td><code>enabled</code></td><td>no</td><td>Set <code>false</code> to disable without removing the entry.</td></tr>
             <tr><td><code>timeout</code></td><td>no</td><td>Per-call timeout in ms. Defaults to 5000 when omitted.</td></tr>
@@ -119,6 +120,22 @@ export default function MCP() {
           and uses <code>callbackPort</code> to build the default loopback redirect URI when
           <code>redirectUri</code> is omitted. Set <code>oauth</code> to <code>false</code> for
           simple bearer-token servers.
+        </p>
+        <p>
+          In Codeplane Desktop, remote MCP entries that already have stored client registration but
+          no access token are resumed automatically when you open that instance. The desktop shell
+          opens one authorization window per affected MCP server, scoped to that instance's session,
+          so multiple pending OAuth flows can continue at the same time without sharing global auth
+          state.
+        </p>
+
+        <h2>Instance secrets</h2>
+        <p>
+          Use the Secrets settings page to store tokens per instance, then reference them from MCP
+          config with <code>{`{secret:name}`}</code>. The raw value is written to{" "}
+          <code>data/secrets/</code> for that instance, while <code>codeplane.jsonc</code> keeps
+          only the placeholder. Codeplane substitutes the real value when it starts the local MCP
+          process or sends remote MCP headers.
         </p>
 
         <h2>Debugging</h2>

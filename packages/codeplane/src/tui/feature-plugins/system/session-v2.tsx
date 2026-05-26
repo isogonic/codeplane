@@ -1,4 +1,5 @@
 import type { TuiPlugin, TuiPluginApi, TuiPluginModule } from "@codeplane-ai/plugin/tui"
+import { describeGenericToolDisplay } from "@codeplane-ai/shared/tool-display"
 import { useSyncV2 } from "@/tui/context/sync-v2"
 import { SplitBorder } from "@/tui/component/border"
 import { Spinner } from "@/tui/component/spinner"
@@ -471,6 +472,13 @@ type ToolProps = {
 function GenericTool(props: ToolProps) {
   const { theme } = useTheme()
   const output = createMemo(() => props.output?.trim() ?? "")
+  const display = createMemo(() =>
+    describeGenericToolDisplay({
+      tool: props.part.name,
+      args: props.input,
+      metadata: props.metadata,
+    }),
+  )
   const [expanded, setExpanded] = createSignal(false)
   const lines = createMemo(() => output().split("\n"))
   const maxLines = 3
@@ -484,12 +492,12 @@ function GenericTool(props: ToolProps) {
       when={output()}
       fallback={
         <InlineTool icon="⚙" pending="Writing command..." complete={toolComplete(props.part)} part={props.part}>
-          {props.part.name} {input(props.input)}
+          {[display().title, display().subtitle].filter(Boolean).join(" · ")}
         </InlineTool>
       }
     >
       <BlockTool
-        title={`# ${props.part.name} ${input(props.input)}`}
+        title={`# ${[display().title, display().subtitle].filter(Boolean).join(" · ")}`}
         part={props.part}
         onClick={overflow() ? () => setExpanded((prev) => !prev) : undefined}
       >

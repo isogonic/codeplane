@@ -15,6 +15,7 @@ import { useTerminal } from "@/context/terminal"
 import { showToast } from "@codeplane-ai/ui/toast"
 import { findLast } from "@codeplane-ai/shared/util/array"
 import { createSessionTabs } from "@/pages/session/helpers"
+import { isSessionWorking } from "@/pages/session/session-working"
 import { extractPromptFromParts } from "@/utils/prompt"
 import { UserMessage } from "@codeplane-ai/sdk/v2"
 import { useSessionLayout } from "@/pages/session/session-layout"
@@ -78,6 +79,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     if (!id) return []
     return sync.data.message[id] ?? []
   }
+  const working = () => isSessionWorking(status(), messages())
   const userMessages = () => messages().filter((m) => m.role === "user") as UserMessage[]
   const visibleUserMessages = () => {
     const revert = info()?.revert?.messageID
@@ -200,7 +202,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     const sessionID = params.id
     if (!sessionID) return
 
-    if (status().type !== "idle") {
+    if (working()) {
       await sdk.client.session.abort({ sessionID }).catch(() => {})
     }
 

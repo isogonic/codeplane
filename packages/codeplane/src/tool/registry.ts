@@ -12,25 +12,6 @@ import { ProjectTool } from "./project"
 import { ReadTool } from "./read"
 import { TaskTool } from "./task"
 import { TodoWriteTool } from "./todo"
-import { ChartTool } from "./chart"
-import {
-  KpiTool,
-  CalloutTool,
-  TimelineTool,
-  ProgressTool,
-  BadgeTool,
-  QuoteTool,
-  PreviewTool,
-  StockTool,
-  TabsTool,
-  ChoiceTool,
-  SelectTool,
-  FileTreeTool,
-  ImageGridTool,
-  ComparisonTool,
-  VideoTool,
-  DiffTool,
-} from "./rich-blocks"
 import { ToolsTool } from "./tools"
 import { WebFetchTool } from "./webfetch"
 import { BrowseTool } from "./browse"
@@ -165,23 +146,6 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
     const toolstatus = yield* ToolsTool
     const question = yield* QuestionTool
     const todo = yield* TodoWriteTool
-    const chart = yield* ChartTool
-    const kpi = yield* KpiTool
-    const callout = yield* CalloutTool
-    const timeline = yield* TimelineTool
-    const progress = yield* ProgressTool
-    const badge = yield* BadgeTool
-    const quote = yield* QuoteTool
-    const preview = yield* PreviewTool
-    const stock = yield* StockTool
-    const tabs = yield* TabsTool
-    const choice = yield* ChoiceTool
-    const select = yield* SelectTool
-    const filetree = yield* FileTreeTool
-    const imagegrid = yield* ImageGridTool
-    const comparison = yield* ComparisonTool
-    const video = yield* VideoTool
-    const diff = yield* DiffTool
     const lsptool = yield* LspTool
     const plan = yield* PlanExitTool
     const webfetch = yield* WebFetchTool
@@ -316,23 +280,6 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
           bashInteractive: Tool.init(bashInteractive),
           ssh: Tool.init(ssh),
           todo: Tool.init(todo),
-          chart: Tool.init(chart),
-          kpi: Tool.init(kpi),
-          callout: Tool.init(callout),
-          timeline: Tool.init(timeline),
-          progress: Tool.init(progress),
-          badge: Tool.init(badge),
-          quote: Tool.init(quote),
-          preview: Tool.init(preview),
-          stock: Tool.init(stock),
-          tabs: Tool.init(tabs),
-          choice: Tool.init(choice),
-          select: Tool.init(select),
-          filetree: Tool.init(filetree),
-          imagegrid: Tool.init(imagegrid),
-          comparison: Tool.init(comparison),
-          video: Tool.init(video),
-          diff: Tool.init(diff),
           search: Tool.init(websearch),
           code: Tool.init(codesearch),
           skill: Tool.init(skilltool),
@@ -366,23 +313,6 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
             tool.bashInteractive,
             tool.ssh,
             tool.todo,
-            tool.chart,
-            tool.kpi,
-            tool.callout,
-            tool.timeline,
-            tool.progress,
-            tool.badge,
-            tool.quote,
-            tool.preview,
-            tool.stock,
-            tool.tabs,
-            tool.choice,
-            tool.select,
-            tool.filetree,
-            tool.imagegrid,
-            tool.comparison,
-            tool.video,
-            tool.diff,
             tool.search,
             tool.code,
             tool.skill,

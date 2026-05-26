@@ -39,6 +39,21 @@ export function taskAgent(
   }
 }
 
+export function taskSubtitle(title: unknown, description: unknown) {
+  if (typeof description !== "string") return undefined
+  const trimmed = description.trim()
+  if (!trimmed) return undefined
+  if (typeof title !== "string") return trimmed
+
+  const escaped = title.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  if (!escaped) return trimmed
+
+  const deduped = trimmed.replace(new RegExp(`^${escaped}(?:\\s*[:\\-–—]\\s*|\\s+)`, "i"), "").trim()
+  if (!deduped) return undefined
+  if (deduped.toLowerCase() === title.trim().toLowerCase()) return undefined
+  return deduped
+}
+
 function currentSession(path: string) {
   return path.match(/\/session\/([^/?#]+)/)?.[1]
 }

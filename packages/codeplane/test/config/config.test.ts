@@ -1,7 +1,7 @@
 import { test, expect, describe, mock, afterEach, beforeEach } from "bun:test"
 import { Effect, Layer, Option } from "effect"
 import { NodeFileSystem, NodePath } from "@effect/platform-node"
-import { Config, ConfigManaged } from "../../src/config"
+import { Config, ConfigManaged, ConfigSecret } from "../../src/config"
 import { ConfigParse } from "../../src/config/parse"
 import { EffectFlock } from "@codeplane-ai/shared/util/effect-flock"
 
@@ -60,6 +60,7 @@ const layer = Config.layer.pipe(
   Layer.provide(Env.defaultLayer),
   Layer.provide(emptyAuth),
   Layer.provide(emptyAccount),
+  Layer.provide(ConfigSecret.defaultLayer),
   Layer.provideMerge(infra),
   Layer.provide(Npm.defaultLayer),
 )
@@ -70,30 +71,40 @@ const layerNoNpm = Config.layer.pipe(
   Layer.provide(Env.defaultLayer),
   Layer.provide(emptyAuth),
   Layer.provide(emptyAccount),
+  Layer.provide(ConfigSecret.defaultLayer),
   Layer.provideMerge(infra),
   Layer.provide(noopNpm),
 )
 
 const load = () => Effect.runPromise(Config.Service.use((svc) => svc.get()).pipe(Effect.scoped, Effect.provide(layer)))
+const loadRaw = () => Effect.runPromise(Config.Service.use((svc) => svc.getRaw()).pipe(Effect.scoped, Effect.provide(layer)))
 const loadNoNpm = () =>
   Effect.runPromise(Config.Service.use((svc) => svc.get()).pipe(Effect.scoped, Effect.provide(layerNoNpm)))
 const loadGlobal = () =>
   Effect.runPromise(Config.Service.use((svc) => svc.getGlobal()).pipe(Effect.scoped, Effect.provide(layer)))
+const loadGlobalRaw = () =>
+  Effect.runPromise(Config.Service.use((svc) => svc.getGlobalRaw()).pipe(Effect.scoped, Effect.provide(layer)))
 const save = (config: Config.Info) =>
   Effect.runPromise(Config.Service.use((svc) => svc.update(config)).pipe(Effect.scoped, Effect.provide(layer)))
+const saveGlobal = (config: Config.Info) =>
+  Effect.runPromise(Config.Service.use((svc) => svc.updateGlobal(config)).pipe(Effect.scoped, Effect.provide(layer)))
 const clear = (wait = false) =>
   Effect.runPromise(Config.Service.use((svc) => svc.invalidate(wait)).pipe(Effect.scoped, Effect.provide(layer)))
 const listDirs = () =>
   Effect.runPromise(Config.Service.use((svc) => svc.directories()).pipe(Effect.scoped, Effect.provide(layer)))
+const listSecrets = () =>
+  Effect.runPromise(ConfigSecret.Service.use((svc) => svc.list()).pipe(Effect.scoped, Effect.provide(ConfigSecret.defaultLayer)))
 // Get managed config directory from environment (set in preload.ts)
 const managedConfigDir = process.env.CODEPLANE_TEST_MANAGED_CONFIG_DIR!
 
 beforeEach(async () => {
+  await fs.rm(ConfigSecret.dirpath(), { force: true, recursive: true }).catch(() => {})
   await clear(true)
 })
 
 afterEach(async () => {
   await fs.rm(managedConfigDir, { force: true, recursive: true }).catch(() => {})
+  await fs.rm(ConfigSecret.dirpath(), { force: true, recursive: true }).catch(() => {})
   await clear(true)
 })
 
@@ -428,6 +439,7 @@ test("resolves env templates in account config with account token", async () => 
     Layer.provide(Env.defaultLayer),
     Layer.provide(emptyAuth),
     Layer.provide(fakeAccount),
+    Layer.provide(ConfigSecret.defaultLayer),
     Layer.provideMerge(infra),
   )
 
@@ -485,6 +497,149 @@ test("handles file inclusion with replacement tokens", async () => {
       expect(config.username).toBe("const out = await Bun.$`echo hi`")
     },
   })
+})
+
+test("handles secret substitution while preserving the raw placeholder", async () => {
+  const secretName = "github-token"
+  await fs.mkdir(ConfigSecret.dirpath(), { recursive: true })
+  await Filesystem.write(ConfigSecret.filepath(secretName), "ghp_test_secret")
+
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await writeConfig(dir, {
+        $schema: "https://example.invalid/config.json",
+        provider: {
+          github: {
+            options: {
+              apiKey: ConfigSecret.placeholder(secretName),
+            },
+          },
+        },
+      })
+    },
+  })
+
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const raw = await loadRaw()
+      const resolved = await load()
+      expect(raw.provider?.["github"]?.options?.apiKey).toBe(ConfigSecret.placeholder(secretName))
+      expect(resolved.provider?.["github"]?.options?.apiKey).toBe("ghp_test_secret")
+    },
+  })
+})
+
+test("update writes secret-like values to data/secrets and keeps placeholders in config", async () => {
+  const secretName = "mcp-github-headers-authorization"
+  const placeholder = ConfigSecret.placeholder(secretName)
+
+  await using tmp = await tmpdir()
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      await save({
+        mcp: {
+          github: {
+            type: "remote",
+            url: "https://example.invalid/mcp",
+            headers: {
+              Authorization: "Bearer ghp_secret_value",
+            },
+          },
+        },
+      } as Config.Info)
+
+      const writtenConfig = await Filesystem.readJson<any>(path.join(tmp.path, "config.json"))
+      expect(writtenConfig.mcp.github.headers.Authorization).toBe(placeholder)
+      expect(JSON.stringify(writtenConfig)).not.toContain("ghp_secret_value")
+      expect(await Filesystem.readText(ConfigSecret.filepath(secretName))).toBe("Bearer ghp_secret_value")
+    },
+  })
+})
+
+test("updateGlobal secretizes plaintext values and global raw config keeps placeholders", async () => {
+  await using tmp = await tmpdir()
+  const previousConfig = Global.Path.config
+
+  ;(Global.Path as { config: string }).config = tmp.path
+  await clear(true)
+
+  try {
+    const secretName = "provider-openai-options-apikey"
+    const placeholder = ConfigSecret.placeholder(secretName)
+
+    const next = await saveGlobal({
+      provider: {
+        openai: {
+          options: {
+            apiKey: "sk-live-secret",
+          },
+        },
+      },
+    } as Config.Info)
+
+    expect(next.provider?.["openai"]?.options?.apiKey).toBe(placeholder)
+    expect(await Filesystem.readText(ConfigSecret.filepath(secretName))).toBe("sk-live-secret")
+    expect(await Filesystem.readText(path.join(tmp.path, "codeplane.jsonc"))).toContain(placeholder)
+
+    const raw = await loadGlobalRaw()
+    const resolved = await loadGlobal()
+    expect(raw.provider?.["openai"]?.options?.apiKey).toBe(placeholder)
+    expect(resolved.provider?.["openai"]?.options?.apiKey).toBe("sk-live-secret")
+  } finally {
+    ;(Global.Path as { config: string }).config = previousConfig
+    await clear(true)
+  }
+})
+
+test("updateGlobal preserves existing placeholder-based auth strings", async () => {
+  await using tmp = await tmpdir()
+  const previousConfig = Global.Path.config
+  const previousToken = process.env["GITHUB_TOKEN"]
+
+  ;(Global.Path as { config: string }).config = tmp.path
+  process.env["GITHUB_TOKEN"] = "ghp_from_env"
+  await clear(true)
+
+  try {
+    const authValue = "Bearer {env:GITHUB_TOKEN}"
+    await saveGlobal({
+      mcp: {
+        github: {
+          type: "remote",
+          url: "https://example.invalid/mcp",
+          headers: {
+            Authorization: authValue,
+          },
+        },
+      },
+    } as Config.Info)
+
+    const raw = await loadGlobalRaw()
+    const resolved = await loadGlobal()
+    const written = await Filesystem.readText(path.join(tmp.path, "codeplane.jsonc"))
+
+    expect(raw.mcp?.["github"]?.headers?.Authorization).toBe(authValue)
+    expect(resolved.mcp?.["github"]?.headers?.Authorization).toBe("Bearer ghp_from_env")
+    expect(written).toContain(authValue)
+    expect(written).not.toContain("{secret:mcp-github-headers-authorization}")
+  } finally {
+    if (previousToken === undefined) delete process.env["GITHUB_TOKEN"]
+    else process.env["GITHUB_TOKEN"] = previousToken
+    ;(Global.Path as { config: string }).config = previousConfig
+    await clear(true)
+  }
+})
+
+test("secret listing ignores managed markdown files in data/secrets", async () => {
+  await fs.mkdir(ConfigSecret.dirpath(), { recursive: true })
+  await Filesystem.write(path.join(ConfigSecret.dirpath(), "AGENTS.md"), "# docs")
+  await Filesystem.write(path.join(ConfigSecret.dirpath(), "README.md"), "# docs")
+  await Filesystem.write(ConfigSecret.filepath("github-token"), "ghp_test_secret")
+
+  const secrets = await listSecrets()
+  expect(secrets.map((item) => item.name)).toEqual(["github-token"])
 })
 
 test("validates config schema and throws on invalid fields", async () => {
@@ -824,6 +979,7 @@ test("does not install dependencies into .opencode directories", async () => {
     Layer.provide(Env.defaultLayer),
     Layer.provide(emptyAuth),
     Layer.provide(emptyAccount),
+    Layer.provide(ConfigSecret.defaultLayer),
     Layer.provideMerge(infra),
     Layer.provide(
       Layer.mock(Npm.Service)({
@@ -1138,6 +1294,7 @@ test("installs dependencies in writable CODEPLANE_CONFIG_DIR", async () => {
     Layer.provide(Env.defaultLayer),
     Layer.provide(emptyAuth),
     Layer.provide(emptyAccount),
+    Layer.provide(ConfigSecret.defaultLayer),
     Layer.provideMerge(infra),
     Layer.provide(noopNpm),
   )
@@ -2051,6 +2208,7 @@ test("project config overrides remote well-known config", async () => {
     Layer.provide(Env.defaultLayer),
     Layer.provide(fakeAuth),
     Layer.provide(emptyAccount),
+    Layer.provide(ConfigSecret.defaultLayer),
     Layer.provideMerge(infra),
     Layer.provide(Npm.defaultLayer),
   )
@@ -2109,6 +2267,7 @@ test("wellknown URL with trailing slash is normalized", async () => {
     Layer.provide(Env.defaultLayer),
     Layer.provide(fakeAuth),
     Layer.provide(emptyAccount),
+    Layer.provide(ConfigSecret.defaultLayer),
     Layer.provideMerge(infra),
     Layer.provide(Npm.defaultLayer),
   )

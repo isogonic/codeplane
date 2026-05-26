@@ -279,3 +279,100 @@ test("authenticate() stores a connected client when auth completes without redir
     },
   })
 })
+
+test("autoConnectOAuth() starts an interactive flow for partial stored auth", async () => {
+  const { McpAuth } = await import("../../src/mcp/auth")
+
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        `${dir}/codeplane.json`,
+        JSON.stringify({
+          $schema: "https://example.invalid/config.json",
+          mcp: {
+            github: {
+              type: "remote",
+              url: "https://example.com/mcp",
+            },
+          },
+        }),
+      )
+    },
+  })
+
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      await Effect.runPromise(
+        MCP.Service.use((mcp) =>
+          Effect.gen(function* () {
+            yield* McpAuth.Service.use((auth) =>
+              auth.updateClientInfo("github", { clientId: "partial-client", clientSecret: "partial-secret" }, "https://example.com/mcp"),
+            ).pipe(Effect.provide(McpAuth.defaultLayer))
+
+            const launches = yield* mcp.autoConnectOAuth()
+            expect(launches).toEqual([
+              {
+                name: "github",
+                authorizationUrl: "https://auth.example.com/authorize?state=test",
+                redirectUri: "http://127.0.0.1:19876/mcp/oauth/callback",
+              },
+            ])
+
+            const status = yield* mcp.status()
+            expect(status.github?.status).toBe("needs_auth")
+          }),
+        ).pipe(Effect.provide(MCP.defaultLayer)),
+      )
+    },
+  })
+})
+
+test("autoConnectOAuth() can start multiple partial OAuth flows in one instance", async () => {
+  const { McpAuth } = await import("../../src/mcp/auth")
+
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        `${dir}/codeplane.json`,
+        JSON.stringify({
+          $schema: "https://example.invalid/config.json",
+          mcp: {
+            github: {
+              type: "remote",
+              url: "https://example.com/mcp",
+            },
+            jira: {
+              type: "remote",
+              url: "https://second.example.com/mcp",
+            },
+          },
+        }),
+      )
+    },
+  })
+
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      await Effect.runPromise(
+        MCP.Service.use((mcp) =>
+          Effect.gen(function* () {
+            yield* McpAuth.Service.use((auth) =>
+              Effect.gen(function* () {
+                yield* auth.updateClientInfo("github", { clientId: "github-client" }, "https://example.com/mcp")
+                yield* auth.updateClientInfo("jira", { clientId: "jira-client" }, "https://second.example.com/mcp")
+              }),
+            ).pipe(Effect.provide(McpAuth.defaultLayer))
+
+            const launches = yield* mcp.autoConnectOAuth()
+            expect(launches.map((entry) => entry.name).sort()).toEqual(["github", "jira"])
+
+            const rerun = yield* mcp.autoConnectOAuth()
+            expect(rerun.map((entry) => entry.name).sort()).toEqual(["github", "jira"])
+          }),
+        ).pipe(Effect.provide(MCP.defaultLayer)),
+      )
+    },
+  })
+})

@@ -8,6 +8,7 @@ import { useLanguage } from "@/context/language"
 import { usePermission } from "@/context/permission"
 import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
+import { isSessionWorking } from "@/pages/session/session-working"
 import { sessionPermissionRequest, sessionQuestionRequest } from "./session-request-tree"
 
 export const todoState = (input: {
@@ -63,7 +64,13 @@ export function createSessionComposerState(options?: { closeMs?: number | (() =>
     return sync.data.session_status[id] ?? idle
   })
 
-  const busy = createMemo(() => status().type !== "idle")
+  const messages = createMemo(() => {
+    const id = params.id
+    if (!id) return []
+    return sync.data.message[id] ?? []
+  })
+
+  const busy = createMemo(() => isSessionWorking(status(), messages()))
   const live = createMemo(() => busy() || blocked())
 
   const [store, setStore] = createStore({

@@ -25,6 +25,7 @@ import { For, type Component, createMemo, createEffect, on, onCleanup } from "so
 import { useLiveActivity } from "@/context/live-activity"
 import { useSync } from "@/context/sync"
 import { postTaskEvent } from "@/context/live-activity"
+import { hasPendingAssistantMessage } from "@/pages/session/session-working"
 import type { Message, Part } from "@codeplane-ai/sdk/v2/client"
 
 type Phase = "queued" | "running" | "completed" | "failed"
@@ -44,8 +45,15 @@ type StatusShape =
  * message stream as a part with `type: "error"`); we infer it
  * separately from the latest assistant message's parts.
  */
-function statusToPhase(status: StatusShape, hasError: boolean, lastWasAssistant: boolean): Phase {
+export function statusToPhase(input: {
+  status: StatusShape
+  hasError: boolean
+  lastWasAssistant: boolean
+  hasPendingAssistant: boolean
+}): Phase {
+  const { status, hasError, lastWasAssistant, hasPendingAssistant } = input
   if (status?.type === "busy" || status?.type === "retry") return "running"
+  if (hasPendingAssistant) return "running"
   if (hasError) return "failed"
   // Idle + the latest message is from the assistant → the turn finished.
   // Idle + nothing yet (or last is user) → we haven't started; "queued"
@@ -111,6 +119,7 @@ const PerSessionEmitter: Component<PerSessionEmitterProps> = (props) => {
   const messages = createMemo(() => sync.data.message[props.sessionId] ?? [])
   const previewTitle = createMemo(() => previewFromUserMessage(messages()))
   const turns = createMemo(() => messages().filter((m) => m.role === "user").length)
+  const hasPendingAssistant = createMemo(() => hasPendingAssistantMessage(messages()))
   const lastWasAssistant = createMemo(() => {
     const list = messages()
     const last = list[list.length - 1]
@@ -134,7 +143,12 @@ const PerSessionEmitter: Component<PerSessionEmitterProps> = (props) => {
   // Phase derives from the combined signals. We post on every change;
   // the shell rate-limits its ActivityKit updates internally.
   const phase = createMemo<Phase>(() =>
-    statusToPhase(status(), hasError(), lastWasAssistant()),
+    statusToPhase({
+      status: status(),
+      hasError: hasError(),
+      lastWasAssistant: lastWasAssistant(),
+      hasPendingAssistant: hasPendingAssistant(),
+    }),
   )
 
   // Single emit effect — collapses any combination of upstream changes

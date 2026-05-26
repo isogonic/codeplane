@@ -3,6 +3,7 @@ import type { Prompt } from "@/context/prompt"
 import type { FollowupDraft } from "./submit"
 
 let createPromptSubmit: typeof import("./submit").createPromptSubmit
+let resolveFollowupDisposition: typeof import("./submit").resolveFollowupDisposition
 
 const createdClients: string[] = []
 const createdSessions: string[] = []
@@ -245,6 +246,7 @@ beforeAll(async () => {
 
   const mod = await import("./submit")
   createPromptSubmit = mod.createPromptSubmit
+  resolveFollowupDisposition = mod.resolveFollowupDisposition
 })
 
 beforeEach(() => {
@@ -270,6 +272,49 @@ beforeEach(() => {
 })
 
 describe("prompt submit worktree selection", () => {
+  test("resolves follow-up behavior between send, queue, and steer", () => {
+    expect(
+      resolveFollowupDisposition({
+        isNewSession: true,
+        mode: "normal",
+        working: true,
+        shouldQueue: true,
+      }),
+    ).toBe("send")
+    expect(
+      resolveFollowupDisposition({
+        isNewSession: false,
+        mode: "shell",
+        working: true,
+        shouldQueue: true,
+      }),
+    ).toBe("send")
+    expect(
+      resolveFollowupDisposition({
+        isNewSession: false,
+        mode: "normal",
+        working: false,
+        shouldQueue: true,
+      }),
+    ).toBe("send")
+    expect(
+      resolveFollowupDisposition({
+        isNewSession: false,
+        mode: "normal",
+        working: true,
+        shouldQueue: true,
+      }),
+    ).toBe("queue")
+    expect(
+      resolveFollowupDisposition({
+        isNewSession: false,
+        mode: "normal",
+        working: true,
+        shouldQueue: false,
+      }),
+    ).toBe("steer")
+  })
+
   test("reads the latest worktree accessor value per submit", async () => {
     const submit = createPromptSubmit({
       info: () => undefined,
@@ -422,6 +467,13 @@ describe("prompt submit worktree selection", () => {
   test("sends follow-up drafts immediately while steer mode is enabled", async () => {
     params = { id: "session-1" }
     const queued: FollowupDraft[] = []
+    abortHold = (() => {
+      let resolve!: (value: { data: undefined }) => void
+      const promise = new Promise<{ data: undefined }>((done) => {
+        resolve = done
+      })
+      return { promise, resolve }
+    })()
 
     const submit = createPromptSubmit({
       info: () => ({ id: "session-1" }),
@@ -442,11 +494,19 @@ describe("prompt submit worktree selection", () => {
       onSubmit: () => undefined,
     })
 
-    await submit.handleSubmit({ preventDefault: () => undefined } as unknown as Event)
     await Promise.resolve()
+    const pending = submit.handleSubmit({ preventDefault: () => undefined } as unknown as Event)
     await Promise.resolve()
 
     expect(queued).toEqual([])
+    expect(abortedSessions).toEqual(["session-1"])
+    expect(sentPromptAsync).toEqual([])
+
+    abortHold.resolve({ data: undefined })
+    await pending
+    await Promise.resolve()
+    await Promise.resolve()
+
     expect(sentPromptAsync).toEqual(["/repo/main"])
   })
 

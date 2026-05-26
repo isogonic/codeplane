@@ -3,6 +3,9 @@ import type { Message, Part, PermissionRequest, Project, QuestionRequest, Sessio
 import { createStore } from "solid-js/store"
 import type { State } from "./types"
 import { applyDirectoryEvent, applyGlobalEvent, cleanupDroppedSessionCaches } from "./event-reducer"
+import { compactGlobalSdkEventsForFlush, type GlobalSdkQueuedEvent } from "../global-sdk-stream"
+
+type TextPart = Extract<Part, { type: "text" }>
 
 const rootSession = (input: { id: string; parentID?: string; archived?: number; created?: number; updated?: number }) =>
   ({
@@ -32,7 +35,19 @@ const textPart = (id: string, sessionID: string, messageID: string) =>
     messageID,
     type: "text",
     text: id,
-  }) as Part
+  }) as TextPart
+
+const deltaEvent = (input: { sessionID: string; messageID: string; partID: string; delta: string; field?: string }) =>
+  ({
+    type: "message.part.delta",
+    properties: {
+      sessionID: input.sessionID,
+      messageID: input.messageID,
+      partID: input.partID,
+      field: input.field ?? "text",
+      delta: input.delta,
+    },
+  }) as const
 
 const permissionRequest = (id: string, sessionID: string, title = id) =>
   ({
@@ -517,6 +532,140 @@ describe("applyDirectoryEvent", () => {
     })
 
     expect(store.part[messageID]).toBeUndefined()
+  })
+
+  test("applies compacted streamed text deltas to the final part text", () => {
+    const sessionID = "ses_1"
+    const messageID = "msg_1"
+    const [store, setStore] = createStore(baseState({ part: { [messageID]: [textPart("prt_1", sessionID, messageID)] } }))
+
+    const events = compactGlobalSdkEventsForFlush([
+      {
+        directory: "/tmp",
+        payload: deltaEvent({ sessionID, messageID, partID: "prt_1", delta: " Hel" }),
+      },
+      {
+        directory: "/tmp",
+        payload: deltaEvent({ sessionID, messageID, partID: "prt_1", delta: "lo" }),
+      },
+    ] satisfies GlobalSdkQueuedEvent[])
+
+    for (const item of events) {
+      applyDirectoryEvent({
+        event: item.payload,
+        store,
+        setStore,
+        push() {},
+        directory: item.directory,
+        loadLsp() {},
+      })
+    }
+
+    const updated = store.part[messageID]?.find((x) => x.id === "prt_1")
+    expect(updated?.type).toBe("text")
+    if (updated?.type === "text") expect(updated.text).toBe("prt_1 Hello")
+  })
+
+  test("keeps later streamed text after a full part refresh in the same batch", () => {
+    const sessionID = "ses_1"
+    const messageID = "msg_1"
+    const [store, setStore] = createStore(baseState({ part: { [messageID]: [textPart("prt_1", sessionID, messageID)] } }))
+
+    const events = compactGlobalSdkEventsForFlush([
+      {
+        directory: "/tmp",
+        payload: deltaEvent({ sessionID, messageID, partID: "prt_1", delta: " stale" }),
+      },
+      {
+        directory: "/tmp",
+        payload: {
+          type: "message.part.updated",
+          properties: {
+            sessionID,
+            part: {
+              ...textPart("prt_1", sessionID, messageID),
+              text: "fresh",
+            },
+            time: 1,
+          },
+        },
+      },
+      {
+        directory: "/tmp",
+        payload: deltaEvent({ sessionID, messageID, partID: "prt_1", delta: " tail" }),
+      },
+    ] satisfies GlobalSdkQueuedEvent[])
+
+    for (const item of events) {
+      applyDirectoryEvent({
+        event: item.payload,
+        store,
+        setStore,
+        push() {},
+        directory: item.directory,
+        loadLsp() {},
+      })
+    }
+
+    const updated = store.part[messageID]?.find((x) => x.id === "prt_1")
+    expect(updated?.type).toBe("text")
+    if (updated?.type === "text") expect(updated.text).toBe("fresh tail")
+  })
+
+  test("later full part refreshes replace older streamed state without replaying stale deltas", () => {
+    const sessionID = "ses_1"
+    const messageID = "msg_1"
+    const [store, setStore] = createStore(baseState({ part: { [messageID]: [textPart("prt_1", sessionID, messageID)] } }))
+
+    const events = compactGlobalSdkEventsForFlush([
+      {
+        directory: "/tmp",
+        payload: {
+          type: "message.part.updated",
+          properties: {
+            sessionID,
+            part: {
+              ...textPart("prt_1", sessionID, messageID),
+              text: "old",
+            },
+            time: 1,
+          },
+        },
+      },
+      {
+        directory: "/tmp",
+        payload: deltaEvent({ sessionID, messageID, partID: "prt_1", delta: " stale" }),
+      },
+      {
+        directory: "/tmp",
+        payload: {
+          type: "message.part.updated",
+          properties: {
+            sessionID,
+            part: {
+              ...textPart("prt_1", sessionID, messageID),
+              text: "fresh",
+            },
+            time: 2,
+          },
+        },
+      },
+    ] satisfies GlobalSdkQueuedEvent[])
+
+    for (const item of events) {
+      applyDirectoryEvent({
+        event: item.payload,
+        store,
+        setStore,
+        push() {},
+        directory: item.directory,
+        loadLsp() {},
+      })
+    }
+
+    const updated = store.part[messageID]?.find((x) => x.id === "prt_1")
+    expect(updated?.type).toBe("text")
+    if (updated?.type === "text") expect(updated.text).toBe("fresh")
   })
 
   test("tracks permission and question request lifecycles", () => {

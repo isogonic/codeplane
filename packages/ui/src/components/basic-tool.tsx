@@ -1,5 +1,6 @@
 import { createEffect, createMemo, createSignal, For, Match, on, onCleanup, Show, Switch, type JSX } from "solid-js"
 import { animate, type AnimationPlaybackControls } from "motion"
+import { describeGenericToolDisplay } from "@codeplane-ai/shared/tool-display"
 import { useI18n } from "../context/i18n"
 import { createStore } from "solid-js/store"
 import { Collapsible } from "./collapsible"
@@ -320,41 +321,39 @@ function label(input: Record<string, unknown> | undefined) {
   return keys.map((key) => input?.[key]).find((value): value is string => typeof value === "string" && value.length > 0)
 }
 
-function args(input: Record<string, unknown> | undefined) {
-  if (!input) return []
-  const skip = new Set(["description", "query", "url", "filePath", "path", "pattern", "name"])
-  return Object.entries(input)
-    .filter(([key]) => !skip.has(key))
-    .flatMap(([key, value]) => {
-      if (typeof value === "string") return [`${key}=${value}`]
-      if (typeof value === "number") return [`${key}=${value}`]
-      if (typeof value === "boolean") return [`${key}=${value}`]
-      return []
-    })
-    .slice(0, 3)
-}
-
 export function GenericTool(props: {
   tool: string
   status?: string
   startTime?: number
   hideDetails?: boolean
   input?: Record<string, unknown>
+  metadata?: Record<string, unknown>
   output?: string
   defaultOpen?: boolean
 }) {
   const i18n = useI18n()
+  const display = createMemo(() =>
+    describeGenericToolDisplay({
+      tool: props.tool,
+      args: props.input,
+      metadata: props.metadata,
+      resolveKnownName: (tool) => {
+        const key = `ui.tool.${tool}`
+        const translated = i18n.t(key)
+        return translated !== key ? translated : undefined
+      },
+    }),
+  )
 
   return (
     <BasicTool
-      icon="mcp"
+      icon={display().isMcp ? "server" : "mcp"}
       status={props.status}
       startTime={props.startTime}
       animated
       trigger={{
-        title: i18n.t("ui.basicTool.called", { tool: props.tool }),
-        subtitle: label(props.input),
-        args: args(props.input),
+        title: display().title,
+        subtitle: display().subtitle ?? label(props.input),
       }}
       hideDetails={props.hideDetails}
       defaultOpen={props.defaultOpen}

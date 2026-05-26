@@ -33,6 +33,7 @@ import { TextReveal } from "./text-reveal"
 import { createAutoScroll } from "../hooks"
 import { useI18n } from "../context/i18n"
 import { normalize } from "./session-diff"
+import { isSessionTurnWorking } from "./session-turn-working"
 
 function record(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value)
@@ -330,7 +331,13 @@ export function SessionTurn(
     if (typeof props.active === "boolean" && !props.active) return idle
     return data.store.session_status[props.sessionID] ?? idle
   })
-  const working = createMemo(() => status().type !== "idle" && active())
+  const working = createMemo(() =>
+    isSessionTurnWorking({
+      active: active(),
+      status: status(),
+      assistantMessages: assistantMessages(),
+    }),
+  )
   const reasoningDisplay = createMemo<ReasoningDisplay>(
     () => props.reasoningDisplay ?? (props.showReasoningSummaries === false ? "off" : "full"),
   )

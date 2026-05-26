@@ -2,8 +2,28 @@ import { spawnSync } from "node:child_process"
 import { existsSync, promises as fs } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
+import { buildMacComputerScript } from "@codeplane-ai/shared/computer-mac-script"
 
 export type DesktopComputerPoint = { x: number; y: number }
+export type DesktopComputerRect = DesktopComputerPoint & { width: number; height: number }
+export type DesktopComputerDisplay = {
+  id: string
+  label: string
+  bounds: DesktopComputerRect
+  workArea: DesktopComputerRect
+  scaleFactor: number
+  rotation: number
+  primary: boolean
+  internal: boolean
+  current?: boolean
+}
+export type DesktopComputerScreenshot = {
+  dataUrl: string
+  width: number
+  height: number
+  displayId?: string
+  scope?: "display" | "virtual-desktop"
+}
 
 export type DesktopComputerStep = {
   action: string
@@ -17,6 +37,7 @@ export type DesktopComputerStep = {
 
 export type DesktopComputerInput = DesktopComputerStep & {
   actions?: DesktopComputerStep[]
+  displayId?: string
 }
 
 export type DesktopComputerAction = {
@@ -31,11 +52,14 @@ export type DesktopComputerAction = {
 
 export type DesktopComputerResult = {
   actions: DesktopComputerAction[]
-  screenshot: { dataUrl: string; width: number; height: number }
+  screenshot: DesktopComputerScreenshot
   cursor?: DesktopComputerPoint
+  displays: DesktopComputerDisplay[]
 }
 
-export type DesktopComputerCapture = () => Promise<DesktopComputerResult["screenshot"]>
+export type DesktopComputerCapture = (request: {
+  displayId?: string
+}) => Promise<Pick<DesktopComputerResult, "screenshot" | "displays">>
 
 const CLICK_DELAY_US = 60_000
 let desktopCursor: DesktopComputerPoint | undefined
@@ -164,13 +188,16 @@ function captureLinux(file: string) {
   )
 }
 
-async function captureScreen(capture?: DesktopComputerCapture) {
-  if (capture) return capture()
+async function captureScreen(capture?: DesktopComputerCapture, displayId?: string) {
+  if (capture) return capture({ displayId })
   const file = tempPngPath()
   if (process.platform === "darwin") captureMac(file)
   else if (process.platform === "win32") captureWindows(file)
   else captureLinux(file)
-  return screenshotFromFile(file)
+  return {
+    screenshot: await screenshotFromFile(file),
+    displays: [],
+  }
 }
 
 function coordinate(value: number[] | undefined, name: string): DesktopComputerPoint {
@@ -187,223 +214,7 @@ function settle(ms: number | undefined) {
 }
 
 function runMacActions(actions: DesktopComputerAction[]) {
-  const script = `
-ObjC.import('ApplicationServices')
-ObjC.import('Foundation')
-
-function openApp(name) {
-  const trimmed = String(name || '').trim()
-  if (!trimmed) throw new Error('text must contain the app name for open_app.')
-  const task = $.NSTask.alloc.init
-  task.launchPath = '/usr/bin/open'
-  task.arguments = ['-a', trimmed]
-  task.launch
-}
-
-const tap = $.kCGHIDEventTap
-const left = 0
-const right = 1
-const middle = 2
-const source = $.CGEventSourceCreate($.kCGEventSourceStateHIDSystemState)
-const event = {
-  leftDown: 1,
-  leftUp: 2,
-  rightDown: 3,
-  rightUp: 4,
-  moved: 5,
-  leftDragged: 6,
-  rightDragged: 7,
-  scrollWheel: 22,
-  otherDown: 25,
-  otherUp: 26,
-  otherDragged: 27,
-}
-const keyCodes = {
-  enter: 36,
-  return: 36,
-  tab: 48,
-  escape: 53,
-  esc: 53,
-  space: 49,
-  backspace: 51,
-  delete: 117,
-  forwarddelete: 117,
-  a: 0,
-  s: 1,
-  d: 2,
-  f: 3,
-  h: 4,
-  g: 5,
-  z: 6,
-  x: 7,
-  c: 8,
-  v: 9,
-  b: 11,
-  q: 12,
-  w: 13,
-  e: 14,
-  r: 15,
-  y: 16,
-  t: 17,
-  '1': 18,
-  '2': 19,
-  '3': 20,
-  '4': 21,
-  '6': 22,
-  '5': 23,
-  '=': 24,
-  '9': 25,
-  '7': 26,
-  '-': 27,
-  '8': 28,
-  '0': 29,
-  ']': 30,
-  o: 31,
-  u: 32,
-  '[': 33,
-  i: 34,
-  p: 35,
-  l: 37,
-  j: 38,
-  "'": 39,
-  k: 40,
-  ';': 41,
-  '\\\\': 42,
-  ',': 43,
-  '/': 44,
-  n: 45,
-  m: 46,
-  '.': 47,
-  "\\x60": 50,
-  home: 115,
-  end: 119,
-  pageup: 116,
-  pagedown: 121,
-  left: 123,
-  arrowleft: 123,
-  right: 124,
-  arrowright: 124,
-  down: 125,
-  arrowdown: 125,
-  up: 126,
-  arrowup: 126,
-}
-
-function point(x, y) {
-  return $.CGPointMake(x, y)
-}
-
-function post(type, x, y, button) {
-  const ev = $.CGEventCreateMouseEvent(null, type, point(x, y), button)
-  $.CGEventPost(tap, ev)
-}
-
-function move(x, y) {
-  $.CGWarpMouseCursorPosition(point(x, y))
-  $.CGAssociateMouseAndMouseCursorPosition(1)
-  post(event.moved, x, y, left)
-}
-
-function click(x, y, down, up, button) {
-  move(x, y)
-  post(down, x, y, button)
-  $.usleep(${CLICK_DELAY_US})
-  post(up, x, y, button)
-}
-
-function modifier(value) {
-  if (['cmd', 'command', 'meta', 'super'].indexOf(value) >= 0) return Number($.kCGEventFlagMaskCommand)
-  if (['ctrl', 'control'].indexOf(value) >= 0) return Number($.kCGEventFlagMaskControl)
-  if (['alt', 'option'].indexOf(value) >= 0) return Number($.kCGEventFlagMaskAlternate)
-  if (value === 'shift') return Number($.kCGEventFlagMaskShift)
-  return 0
-}
-
-function postKey(code, down, flags) {
-  const ev = $.CGEventCreateKeyboardEvent(source, code, down)
-  if (flags) $.CGEventSetFlags(ev, flags)
-  $.CGEventPost(tap, ev)
-}
-
-function typeText(value) {
-  const text = String(value || '')
-  for (let i = 0; i < text.length; i++) {
-    const char = text.charAt(i)
-    const down = $.CGEventCreateKeyboardEvent(source, 0, true)
-    $.CGEventKeyboardSetUnicodeString(down, char.length, char)
-    $.CGEventPost(tap, down)
-    const up = $.CGEventCreateKeyboardEvent(source, 0, false)
-    $.CGEventKeyboardSetUnicodeString(up, char.length, char)
-    $.CGEventPost(tap, up)
-  }
-}
-
-function pressKey(input) {
-  const raw = String(input.key || input.text || '')
-  if (!raw) throw new Error('key is required for key action.')
-  const parts = raw.split('+').map((part) => part.trim().toLowerCase()).filter(Boolean)
-  const key = parts[parts.length - 1]
-  const flags = parts.slice(0, -1).reduce((mask, part) => mask | modifier(part), 0)
-  if (keyCodes[key] !== undefined) {
-    postKey(keyCodes[key], true, flags)
-    postKey(keyCodes[key], false, flags)
-    return
-  }
-  typeText(key)
-}
-
-function runStep(input) {
-  if (input.action === 'screenshot') return
-  if (input.action === 'wait') {
-    $.usleep(Math.max(0, Math.min(Number(input.durationMs || 1000), 30000)) * 1000)
-    return
-  }
-  if (input.action === 'type') {
-    typeText(input.text)
-    return
-  }
-  if (input.action === 'key') {
-    pressKey(input)
-    return
-  }
-  if (input.action === 'open_app') {
-    openApp(input.text)
-    return
-  }
-  if (input.action === 'move') move(input.x, input.y)
-  if (input.action === 'left_click') click(input.x, input.y, event.leftDown, event.leftUp, left)
-  if (input.action === 'double_click') {
-    click(input.x, input.y, event.leftDown, event.leftUp, left)
-    $.usleep(${CLICK_DELAY_US})
-    click(input.x, input.y, event.leftDown, event.leftUp, left)
-  }
-  if (input.action === 'right_click') click(input.x, input.y, event.rightDown, event.rightUp, right)
-  if (input.action === 'middle_click') click(input.x, input.y, event.otherDown, event.otherUp, middle)
-  if (input.action === 'drag') {
-    move(input.x, input.y)
-    post(event.leftDown, input.x, input.y, left)
-    $.usleep(${CLICK_DELAY_US})
-    const steps = 12
-    for (let i = 1; i <= steps; i++) {
-      const x = input.x + ((input.toX - input.x) * i / steps)
-      const y = input.y + ((input.toY - input.y) * i / steps)
-      move(x, y)
-      post(event.leftDragged, x, y, left)
-      $.usleep(20000)
-    }
-    post(event.leftUp, input.toX, input.toY, left)
-  }
-  if (input.action === 'scroll') {
-    if (Number.isFinite(input.x) && Number.isFinite(input.y)) move(input.x, input.y)
-    const ev = $.CGEventCreateScrollWheelEvent(null, 0, 1, -input.amount)
-    $.CGEventPost(tap, ev)
-  }
-}
-
-function run(argv) {
-  JSON.parse(argv[0]).forEach(runStep)
-}
-`.trim()
+  const script = buildMacComputerScript(CLICK_DELAY_US)
   try {
     runCommand(
       "osascript",
@@ -683,10 +494,11 @@ export async function performDesktopComputer(
 ): Promise<DesktopComputerResult> {
   const actions = performActions(params)
   settle(params.action === "wait" ? undefined : (params.durationMs ?? 120))
-  const screenshot = await captureScreen(options.captureScreen)
+  const captured = await captureScreen(options.captureScreen, params.displayId)
   return {
     actions,
-    screenshot,
+    screenshot: captured.screenshot,
     cursor: desktopCursor,
+    displays: captured.displays,
   }
 }

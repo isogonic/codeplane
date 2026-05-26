@@ -2,6 +2,7 @@ Desktop computer-use tool for Codeplane Desktop.
 
 Use this tool to:
 - Capture the current desktop screenshot, including the visible pointer when the OS supports it
+- Detect the full monitor inventory with bounds, work areas, scale factors, and the captured display
 - Move the real, visible desktop cursor to screen coordinates
 - Click, double-click, right-click, middle-click, drag, and scroll
 - Type text and press keyboard shortcuts
@@ -16,6 +17,7 @@ Reliability guidance:
 - Prefer screenshots before and after each action.
 - For obvious multi-step UI interaction, prefer one small batch over many single tool calls so the cursor moves as fast as a human operator.
 - Use coordinates from the most recent screenshot.
+- When multiple monitors exist, read the returned display inventory before choosing coordinates or an optional displayId for the next screenshot.
 - Keep actions small and verifiable.
 - Ask for confirmation before irreversible, financial, privacy-sensitive, or account-affecting actions.
 

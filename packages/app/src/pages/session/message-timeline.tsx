@@ -29,6 +29,7 @@ import { usePlatform } from "@/context/platform"
 import { useSettings } from "@/context/settings"
 import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
+import { hasPendingAssistantMessage, isSessionWorking } from "@/pages/session/session-working"
 import { messageAgentColor } from "@/utils/agent"
 import { sessionTitle } from "@/utils/session-title"
 import { parseCommentNote, readCommentMetadata } from "@/utils/comment-note"
@@ -267,12 +268,13 @@ export function MessageTimeline(props: {
     return sync.data.session_status[id] ?? idle
   })
   const pending = createMemo(() => {
-    if (sessionStatus().type === "idle") return
-    return sessionMessages().findLast(
+    const messages = sessionMessages()
+    if (!hasPendingAssistantMessage(messages)) return
+    return messages.findLast(
       (item): item is AssistantMessage => item.role === "assistant" && typeof item.time.completed !== "number",
     )
   })
-  const working = createMemo(() => sessionStatus().type !== "idle")
+  const working = createMemo(() => isSessionWorking(sessionStatus(), sessionMessages()))
   const lastUserAgent = createMemo(
     () => {
       const all = sessionMessages()
@@ -315,8 +317,7 @@ export function MessageTimeline(props: {
       if (message && message.role === "user") return message.id
     }
 
-    const status = sessionStatus()
-    if (status.type !== "idle") {
+    if (working()) {
       const messages = sessionMessages()
       for (let i = messages.length - 1; i >= 0; i--) {
         if (messages[i].role === "user") return messages[i].id

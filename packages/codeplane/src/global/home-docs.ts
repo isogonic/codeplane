@@ -6,6 +6,7 @@ type HomePaths = {
   globalRoot: string
   config: string
   data: string
+  secrets: string
   cache: string
   state: string
   log: string
@@ -115,8 +116,9 @@ When changing instance behavior:
 
 Secret handling:
 
-- Prefer \`{env:VAR_NAME}\` or \`{file:relative/path}\` substitutions in config over copying raw secrets into docs.
-- If the user explicitly wants a persisted local secret, store it only in the real config or Codeplane-managed auth files under ${mdLink(docs.rootAgents, paths.data, "data/")}.
+- Prefer \`{secret:name}\`, then \`{env:VAR_NAME}\` or \`{file:relative/path}\`, over copying raw secrets into config examples or docs.
+- Persist instance-scoped secrets under ${mdLink(docs.rootAgents, paths.secrets, "data/secrets/")}. Config should contain placeholders such as \`{secret:github-token}\`, not plaintext tokens.
+- If the user explicitly wants a persisted local secret, store it only in ${mdLink(docs.rootAgents, paths.secrets, "data/secrets/")} or Codeplane-managed auth files under ${mdLink(docs.rootAgents, paths.data, "data/")}.
 - Never copy secrets into \`cache/\`, \`state/\`, \`log/\`, or these markdown files.
 
 Instance boundaries:
@@ -144,6 +146,7 @@ Start here:
 Top-level directories:
 
 - \`data/\`: persisted runtime data such as auth, MCP OAuth state, storage, plans, and the main database.
+- \`data/secrets/\`: first-class per-instance secret store used by \`{secret:name}\` config placeholders.
 - \`cache/\`: disposable caches.
 - \`state/\`: UI and process state that can be recreated.
 - \`log/\`: runtime logs.
@@ -256,7 +259,7 @@ Example:
   "provider": {
     "anthropic": {
       "options": {
-        "apiKey": "{env:ANTHROPIC_API_KEY}"
+        "apiKey": "{secret:anthropic-api-key}"
       }
     }
   },
@@ -265,7 +268,7 @@ Example:
       "type": "remote",
       "url": "https://example.invalid/mcp",
       "headers": {
-        "Authorization": "Bearer {env:GITHUB_TOKEN}"
+        "Authorization": "{secret:github-authorization}"
       }
     }
   },
@@ -287,8 +290,11 @@ Example:
 
 Secret substitution rules:
 
+- \`{secret:name}\` reads a value from \`data/secrets/name\` for this instance.
 - \`{env:VAR_NAME}\` reads an environment variable at load time.
 - \`{file:relative/or/absolute/path}\` inlines file content into the config.
+
+The Settings UI can manage first-class instance secrets and writes them into \`data/secrets/\`. Config should keep placeholders, and Codeplane resolves the real values only at runtime.
 
 Do not hand-edit generated runtime files under \`data/\` when a real config field exists. Use the config file first, then let Codeplane regenerate runtime state.
 
@@ -316,7 +322,7 @@ Preferred secret pattern:
   "provider": {
     "openai": {
       "options": {
-        "apiKey": "{env:OPENAI_API_KEY}",
+        "apiKey": "{secret:openai-api-key}",
         "baseURL": "{env:OPENAI_BASE_URL}"
       }
     }
@@ -332,7 +338,7 @@ Persisted auth files:
 Rules for agents:
 
 - Never copy provider secrets into markdown, logs, cache, or screenshots.
-- Prefer editing \`codeplane.jsonc\` or environment injection.
+- Prefer \`{secret:name}\` in \`codeplane.jsonc\` and store the actual value in \`data/secrets/\`. Use environment injection only when the user explicitly wants environment-managed secrets.
 - Only touch \`data/auth.json\` directly when the user explicitly asks for repair or migration and no higher-level route exists.
 
 For the surrounding config shape, see ${mdLink(docs.providers, docs.configuration, "configuration.md")}.
@@ -367,7 +373,7 @@ Remote server example:
       "type": "remote",
       "url": "https://example.invalid/mcp",
       "headers": {
-        "Authorization": "Bearer {env:MCP_TOKEN}"
+        "Authorization": "{secret:mcp-authorization}"
       },
       "oauth": {
         "scope": "read write"
@@ -385,7 +391,7 @@ Managed auth state:
 Rules for agents:
 
 - Add or remove MCP servers by editing \`codeplane.jsonc\`.
-- Put secrets in \`{env:...}\` or the managed auth flow, not in docs.
+- Store local MCP credentials in \`data/secrets/\` and reference them with \`{secret:name}\`. Use \`{env:...}\` only when the user explicitly wants external environment management.
 - Do not store MCP server definitions in \`local_server/\`; that directory is only for shared runtime binaries and managed local-instance runtime data.
 
 For the broader config file rules, see ${mdLink(docs.mcp, docs.configuration, "configuration.md")}.
@@ -438,6 +444,7 @@ Common files and directories created on demand:
 
 - \`auth.json\`: provider auth state
 - \`mcp-auth.json\`: remote MCP OAuth state
+- \`secrets/\`: first-class per-instance secret store used by \`{secret:name}\` placeholders
 - \`codeplane.db\`: main SQLite database for this instance
 - \`storage/\`: JSON storage used by migration and compatibility paths
 - \`plans/\`: generated plan and task state
@@ -458,6 +465,7 @@ Rules for agents:
 - Back up or export before direct data surgery.
 - Never infer current auth or config solely from logs.
 - Do not place user-authored config into \`data/\`; use the instance root config or project \`.codeplane/\` config.
+- Use \`data/secrets/\` only for secret values. The names belong in config; the raw values belong in these files.
 `
 }
 
@@ -552,6 +560,24 @@ Do not treat files here as the preferred configuration surface when a setting ex
       dirReadme(
         "Codeplane Data Directory",
         `Persisted runtime state for this instance lives here. Read ${mdLink(path.join(paths.data, "README.md"), docs.storage, "storage.md")} before changing files by hand.`,
+      ),
+    ],
+    [
+      path.join(paths.secrets, "AGENTS.md"),
+      dirAgents(
+        "Codeplane Secrets Directory",
+        `This directory stores first-class per-instance secrets referenced by \`{secret:name}\` placeholders in config files.
+
+Each secret is one file whose filename is the secret name. Keep the real values here and keep only placeholders in \`codeplane.jsonc\`.
+
+Do not put copied config, logs, or scratch files here beyond the managed documentation files.`,
+      ),
+    ],
+    [
+      path.join(paths.secrets, "README.md"),
+      dirReadme(
+        "Codeplane Secrets Directory",
+        "First-class per-instance secret values for `{secret:name}` config placeholders. Keep config placeholders in the instance root and keep raw secret values only here.",
       ),
     ],
     [

@@ -10,6 +10,7 @@ import type {
 import { Button } from "@codeplane-ai/ui/button"
 import { FileIcon } from "@codeplane-ai/ui/file-icon"
 import { Icon, type IconProps } from "@codeplane-ai/ui/icon"
+import { describeGenericToolDisplay } from "@codeplane-ai/shared/tool-display"
 import { getDirectory, getFilename } from "@codeplane-ai/shared/util/path"
 import { useLanguage } from "@/context/language"
 import { diffs as listDiffs } from "@/utils/diffs"
@@ -39,6 +40,7 @@ type ActivityEvent =
       tool: string
       title: string
       subtitle?: string
+      metadata?: Record<string, unknown>
       status: ToolStatus
       duration?: number
     }
@@ -100,17 +102,28 @@ const textInputValue = (input: Record<string, unknown>, keys: string[]) =>
 const toolTitle = (part: ToolPart) => {
   const title = "title" in part.state && typeof part.state.title === "string" ? part.state.title : undefined
   if (title) return title
-  return part.tool
+  return describeGenericToolDisplay({
+    tool: part.tool,
+    args: part.state.input,
+    metadata: "metadata" in part.state ? part.state.metadata : undefined,
+  }).title
 }
 
 const toolSubtitle = (part: ToolPart) => {
+  const display = describeGenericToolDisplay({
+    tool: part.tool,
+    args: part.state.input,
+    metadata: "metadata" in part.state ? part.state.metadata : undefined,
+  })
+  if (display.subtitle) return display.subtitle
   const input = part.state.input
   const files = input.files
   if (Array.isArray(files) && files.length > 0) return files.filter((item) => typeof item === "string").join(", ")
   return textInputValue(input, ["filePath", "path", "description", "pattern", "query", "url", "command"])
 }
 
-const toolIcon = (tool: string): IconProps["name"] => {
+const toolIcon = (tool: string, metadata?: Record<string, unknown>): IconProps["name"] => {
+  if (metadata?.mcp === true) return "server"
   if (tool === "bash") return "console"
   if (tool === "edit" || tool === "write" || tool === "apply_patch") return "code-lines"
   if (tool === "read") return "glasses"
@@ -203,6 +216,7 @@ export function buildSessionActivity(input: {
           tool: part.tool,
           title: toolTitle(part),
           subtitle: toolSubtitle(part),
+          metadata: "metadata" in part.state ? part.state.metadata : undefined,
           status: part.state.status,
           duration: partDuration(part),
         }),
@@ -290,7 +304,13 @@ export function SessionActivityTab(props: {
         when={props.event.kind === "tool"}
         fallback={<Icon name={props.event.kind === "model" ? "models" : "code-lines"} size="small" />}
       >
-        <Icon name={toolIcon((props.event as Extract<ActivityEvent, { kind: "tool" }>).tool)} size="small" />
+        <Icon
+          name={toolIcon(
+            (props.event as Extract<ActivityEvent, { kind: "tool" }>).tool,
+            (props.event as Extract<ActivityEvent, { kind: "tool" }>).metadata,
+          )}
+          size="small"
+        />
       </Show>
     </div>
   )

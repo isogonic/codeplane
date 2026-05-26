@@ -46,6 +46,7 @@ import {
   type DesktopHostInstance,
   type DesktopUIPrepareProgress,
 } from "./ui-host"
+import { createDesktopMcpOAuthManager, fetchAutoConnectMcpOAuthLaunches } from "./mcp-auth"
 import {
   showDesktopNotification as showDesktopNotificationBridge,
   type DesktopNotificationPayload,
@@ -58,6 +59,7 @@ import {
 import { createLocalInstanceManager, type LocalInstanceProgress } from "./local-instance"
 import {
   type DesktopComputerCapture,
+  type DesktopComputerDisplay,
   desktopComputerNeedsAccessibility,
   performDesktopComputer,
   type DesktopComputerInput,
@@ -94,6 +96,7 @@ const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8" }
 let githubTokenCache: { token: string | null; resolvedAt: number } | undefined
 const GITHUB_TOKEN_TTL_MS = 5 * 60 * 1000
 const desktopBridgeToken = randomUUID()
+const DESKTOP_CAPTURE_MAX_EDGE = 6144
 
 function jsonResponse(body: unknown, status = 200) {
   return {
@@ -252,6 +255,10 @@ let mainWindow: BrowserWindow | undefined
 let currentInstanceID: string | undefined
 let instanceState: InstanceStoreState = { instances: [] }
 const configuredPartitions = new Set<string>()
+const mcpOAuthManager = createDesktopMcpOAuthManager({
+  BrowserWindow: BrowserWindow as unknown as new (options?: any) => BrowserWindow,
+  log: (event, data) => logger.log("main", event, data),
+})
 // Per-window watcher: started after the window first reaches a server's
 // `current` version, stopped on window-close, version-bump, or reconnect.
 // Keyed by window id so multiple instance windows don't share state.
@@ -833,6 +840,47 @@ function asUrl(input: string): URL | undefined {
     return new URL(withScheme)
   } catch {
     return undefined
+  }
+}
+
+async function instanceSessionFetch(instance: SavedInstance, input: string | URL, init?: RequestInit) {
+  const ses = ensureSession(instance)
+  const nativeFetch = "fetch" in ses && typeof ses.fetch === "function" ? ses.fetch.bind(ses) : fetch
+  return nativeFetch(typeof input === "string" ? input : input.toString(), { redirect: "follow", ...init })
+}
+
+async function triggerInstanceAutoMcpOAuth(instance: SavedInstance) {
+  const target = asUrl(instance.url)
+  if (!target) return
+
+  try {
+    const launches = await fetchAutoConnectMcpOAuthLaunches({
+      baseUrl: target.toString(),
+      fetchFn: ((input, init) =>
+        instanceSessionFetch(
+          instance,
+          typeof input === "string" || input instanceof URL ? input : input.url,
+          init,
+        )) as typeof fetch,
+    })
+    if (launches.length === 0) {
+      logger.log("main", "mcp.oauth.auto-connect.none", instanceSummary(instance))
+      return
+    }
+
+    logger.log("main", "mcp.oauth.auto-connect.start", {
+      count: launches.length,
+      launches: launches.map((launch) => launch.name),
+      ...instanceSummary(instance),
+    })
+
+    const ses = ensureSession(instance)
+    await Promise.allSettled(launches.map((launch) => mcpOAuthManager.open(instance, ses, launch)))
+  } catch (error) {
+    logger.log("main", "mcp.oauth.auto-connect.error", {
+      error: error instanceof Error ? error.message : String(error),
+      ...instanceSummary(instance),
+    })
   }
 }
 
@@ -1979,6 +2027,7 @@ async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebConte
       emit({ phase: "done", message: "Loading…", percent: 100, version: prepared.version })
       await loadWindowUrl(window, prepared.url)
       attachServerVersionWatcher(window, instance, prepared.version)
+      void triggerInstanceAutoMcpOAuth(instance)
     }
 
     // Atomically swap setup → instance. Hidden window starts at opacity 0
@@ -2095,18 +2144,92 @@ function isMacOSComputerPermissionError(error: unknown) {
   )
 }
 
-const captureElectronScreen: DesktopComputerCapture = async () => {
+function rectFromDisplayBounds(bounds: { x: number; y: number; width: number; height: number }) {
+  return {
+    x: Math.round(bounds.x),
+    y: Math.round(bounds.y),
+    width: Math.max(1, Math.round(bounds.width)),
+    height: Math.max(1, Math.round(bounds.height)),
+  }
+}
+
+function clampCaptureSize(width: number, height: number) {
+  const longestEdge = Math.max(width, height)
+  if (longestEdge <= DESKTOP_CAPTURE_MAX_EDGE) return { width, height }
+  const scale = DESKTOP_CAPTURE_MAX_EDGE / longestEdge
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  }
+}
+
+function virtualDesktopBounds(displays: DesktopComputerDisplay[]) {
+  const minX = Math.min(...displays.map((display) => display.bounds.x))
+  const minY = Math.min(...displays.map((display) => display.bounds.y))
+  const maxX = Math.max(...displays.map((display) => display.bounds.x + display.bounds.width))
+  const maxY = Math.max(...displays.map((display) => display.bounds.y + display.bounds.height))
+  return {
+    x: minX,
+    y: minY,
+    width: Math.max(1, maxX - minX),
+    height: Math.max(1, maxY - minY),
+  }
+}
+
+function listDesktopComputerDisplays(sourceNames: Map<string, string>) {
   const primary = screen.getPrimaryDisplay()
-  const width = Math.max(1, Math.ceil(primary.bounds.width * primary.scaleFactor))
-  const height = Math.max(1, Math.ceil(primary.bounds.height * primary.scaleFactor))
+  return screen.getAllDisplays().map((display, index) => {
+    const label =
+      sourceNames.get(String(display.id))?.trim() ||
+      ("label" in display && typeof display.label === "string" ? display.label.trim() : "") ||
+      (`Display ${index + 1}`)
+    return {
+      id: String(display.id),
+      label,
+      bounds: rectFromDisplayBounds(display.bounds),
+      workArea: rectFromDisplayBounds(display.workArea),
+      scaleFactor: display.scaleFactor,
+      rotation: display.rotation,
+      primary: display.id === primary.id,
+      internal: "internal" in display ? display.internal : false,
+    } satisfies DesktopComputerDisplay
+  })
+}
+
+const captureElectronScreen: DesktopComputerCapture = async ({ displayId }) => {
+  const sourceNames = new Map<string, string>()
+  const probeSources = await desktopCapturer.getSources({
+    types: ["screen"],
+    thumbnailSize: { width: 16, height: 16 },
+    fetchWindowIcons: false,
+  })
+  for (const source of probeSources) {
+    const sourceDisplayId = source.display_id?.trim()
+    if (!sourceDisplayId) continue
+    sourceNames.set(sourceDisplayId, source.name)
+  }
+  const displays = listDesktopComputerDisplays(sourceNames)
+  const selectedDisplay = displayId ? displays.find((display) => display.id === displayId) : undefined
+  if (displayId && !selectedDisplay) {
+    throw new Error(`Display ${displayId} is not available to Codeplane Desktop.`)
+  }
+  const captureBounds = selectedDisplay ? selectedDisplay.bounds : virtualDesktopBounds(displays)
+  const captureScaleFactor = selectedDisplay ? selectedDisplay.scaleFactor : Math.max(...displays.map((display) => display.scaleFactor), 1)
+  const thumbnailSize = clampCaptureSize(
+    Math.max(1, Math.ceil(captureBounds.width * captureScaleFactor)),
+    Math.max(1, Math.ceil(captureBounds.height * captureScaleFactor)),
+  )
   const sources = await desktopCapturer.getSources({
     types: ["screen"],
-    thumbnailSize: { width, height },
+    thumbnailSize,
     fetchWindowIcons: false,
   })
   const source =
-    sources.find((item) => item.display_id && item.display_id === String(primary.id)) ??
+    (selectedDisplay
+      ? sources.find((item) => item.display_id && item.display_id === selectedDisplay.id)
+      : undefined) ??
     sources.find((item) => item.name === "Entire Screen") ??
+    sources.find((item) => item.display_id && item.display_id === String(screen.getPrimaryDisplay().id)) ??
     sources[0]
   if (!source) throw new Error("No screen source is available to Codeplane Desktop.")
   if (source.thumbnail.isEmpty()) {
@@ -2119,10 +2242,18 @@ const captureElectronScreen: DesktopComputerCapture = async () => {
     throw new Error("Screen capture returned an invalid image.")
   }
   screenRecordingCache = { value: true, at: Date.now() }
+  const currentDisplayId = selectedDisplay?.id || (source.display_id?.trim() || undefined)
   return {
-    dataUrl: source.thumbnail.toDataURL(),
-    width: size.width,
-    height: size.height,
+    displays: displays.map((display) =>
+      currentDisplayId && display.id === currentDisplayId ? { ...display, current: true } : display,
+    ),
+    screenshot: {
+      dataUrl: source.thumbnail.toDataURL(),
+      width: size.width,
+      height: size.height,
+      displayId: currentDisplayId,
+      scope: currentDisplayId ? "display" : "virtual-desktop",
+    },
   }
 }
 

@@ -10,7 +10,9 @@ import { NamedError } from "@codeplane-ai/shared/util/error"
 import { PromptQueue } from "./prompt-queue"
 import type { Job } from "./prompt-queue"
 import type { PromptJobID } from "./prompt-queue-schema"
+import type { PromptJobStatus } from "./prompt-queue-schema"
 import type { SessionID } from "./schema"
+import { MessageV2 } from "./message-v2"
 
 /**
  * Background worker that drains {@link PromptQueue}.
@@ -45,10 +47,38 @@ export interface Interface {
 
 export class Service extends Context.Service<Service, Interface>()("@codeplane/PromptQueueWorker") {}
 
+export type PromptJobAbortDisposition = "cancel" | "requeue"
+export type PromptJobTerminalAction = "completed" | "cancelled" | "requeue"
+
 type Active = {
   jobID: PromptJobID
   sessionID: SessionID
   abort: AbortController
+  abortDisposition: PromptJobAbortDisposition
+}
+
+function abortedAssistantMessage(result: MessageV2.WithParts) {
+  if (result.info.role !== "assistant") return
+  if (result.info.error?.name !== "MessageAbortedError") return
+  const data = result.info.error.data
+  if (data && typeof data === "object" && "message" in data && typeof data.message === "string") {
+    return data.message
+  }
+  return "Interrupted while running"
+}
+
+export function classifyPromptJobTerminal(input: {
+  rowStatus: PromptJobStatus
+  result: MessageV2.WithParts
+  abortSignalAborted: boolean
+  abortDisposition: PromptJobAbortDisposition
+}): PromptJobTerminalAction {
+  if (input.abortSignalAborted) {
+    return input.abortDisposition === "requeue" ? "requeue" : "cancelled"
+  }
+  if (input.rowStatus === "cancelled") return "cancelled"
+  if (abortedAssistantMessage(input.result)) return "requeue"
+  return "completed"
 }
 
 const active = new Map<PromptJobID, Active>()
@@ -73,7 +103,8 @@ export const layer = Layer.effect(
      */
     const executeJob = Effect.fn("PromptQueueWorker.executeJob")(function* (job: Job) {
       const abort = new AbortController()
-      active.set(job.id, { jobID: job.id, sessionID: job.sessionID, abort })
+      const slot: Active = { jobID: job.id, sessionID: job.sessionID, abort, abortDisposition: "cancel" }
+      active.set(job.id, slot)
       const cleanup = () => active.delete(job.id)
 
       // Parse payload. A malformed payload is non-recoverable: the row was
@@ -114,8 +145,8 @@ export const layer = Layer.effect(
           Instance.provide({
             directory,
             init: () => AppRuntime.runPromise(InstanceBootstrap),
-            fn: () =>
-              AppRuntime.runPromise(
+            fn: async () =>
+              await AppRuntime.runPromise(
                 Effect.gen(function* () {
                   const sessions = yield* SessionPrompt.Service
                   const sessionService = yield* Session.Service
@@ -153,7 +184,60 @@ export const layer = Layer.effect(
       cleanup()
 
       if (Exit.isSuccess(exit)) {
-        yield* queue.recordResult({ jobID: job.id, status: "completed" })
+        const currentStatus = yield* queue
+          .get(job.id)
+          .pipe(
+            Effect.map((current) => current.status),
+            Effect.catch(() => Effect.succeed("running" as PromptJobStatus)),
+          )
+        const action = classifyPromptJobTerminal({
+          rowStatus: currentStatus,
+          result: exit.value,
+          abortSignalAborted: abort.signal.aborted,
+          abortDisposition: slot.abortDisposition,
+        })
+        if (action === "completed") {
+          yield* queue.recordResult({ jobID: job.id, status: "completed" })
+          return
+        }
+        const message = abortedAssistantMessage(exit.value) ?? (action === "cancelled" ? "Cancelled" : "Interrupted while running")
+        if (action === "cancelled") {
+          log.info("job cancelled", { jobID: job.id, sessionID: job.sessionID })
+          yield* recordTerminal(job.id, "cancelled", message)
+          return
+        }
+        const canRetry = job.attempt < job.maxAttempts
+        if (canRetry) {
+          log.warn("job interrupted — requeuing", {
+            jobID: job.id,
+            sessionID: job.sessionID,
+            attempt: job.attempt,
+            maxAttempts: job.maxAttempts,
+            error: message,
+          })
+          yield* queue
+            .recordResult({
+              jobID: job.id,
+              status: "pending",
+              errorMessage: message,
+              nextRunAt: Date.now() + RETRY_BACKOFF_MS,
+            })
+            .pipe(Effect.catch(() => Effect.void))
+          return
+        }
+        log.error("job interrupted permanently", {
+          jobID: job.id,
+          sessionID: job.sessionID,
+          attempt: job.attempt,
+          error: message,
+        })
+        yield* recordTerminal(job.id, "failed", message)
+        yield* Effect.promise(() =>
+          Bus.publish(Session.Event.Error, {
+            sessionID: job.sessionID,
+            error: new NamedError.Unknown({ message }).toObject(),
+          }),
+        ).pipe(Effect.catchCause(() => Effect.void))
         return
       }
 
@@ -268,11 +352,12 @@ export const layer = Layer.effect(
       started = false
       if (timer) clearInterval(timer)
       timer = undefined
-      // Abort in-flight jobs so the process can exit cleanly. Their final
-      // recordResult will mark them `cancelled`, and on next start `recover`
-      // would still re-queue them if anything slipped through.
+      // Abort in-flight jobs so the process can exit cleanly, but tag them for
+      // requeue so a restart does not silently convert active user work into a
+      // terminal cancellation.
       for (const slot of active.values()) {
         try {
+          slot.abortDisposition = "requeue"
           slot.abort.abort()
         } catch {}
       }
@@ -285,6 +370,7 @@ export const layer = Layer.effect(
       const slot = active.get(jobID)
       if (slot) {
         try {
+          slot.abortDisposition = "cancel"
           slot.abort.abort()
         } catch {}
       }
@@ -297,6 +383,7 @@ export const layer = Layer.effect(
       for (const slot of active.values()) {
         if (slot.sessionID !== sessionID) continue
         try {
+          slot.abortDisposition = "cancel"
           slot.abort.abort()
         } catch {}
       }

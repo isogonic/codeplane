@@ -163,7 +163,7 @@ describe("PromptQueue", () => {
     })
   })
 
-  test("cancelSession marks pending jobs cancelled", async () => {
+  test("cancelSession marks pending and running jobs cancelled", async () => {
     await using tmp = await tmpdir()
     await Instance.provide({
       directory: tmp.path,
@@ -176,6 +176,12 @@ describe("PromptQueue", () => {
             ),
           )
         }
+        const claimed = await AppRuntime.runPromise(
+          PromptQueue.Service.use((svc) => svc.claim(Date.now(), 10)),
+        )
+        expect(claimed).toHaveLength(1)
+        expect(claimed[0].status).toBe("running")
+
         const cancelled = await AppRuntime.runPromise(
           PromptQueue.Service.use((svc) => svc.cancelSession(sessionID)),
         )

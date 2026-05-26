@@ -84,15 +84,6 @@ function View(props: { api: TuiPluginApi }) {
             )}
           </For>
         </Show>
-        <Show when={open() && bad() > 0}>
-          <box paddingLeft={2} marginTop={1}>
-            <text fg={theme().textMuted} wrapMode="word">
-              MCP servers run on the connected codeplane instance — paths, env, and binaries are resolved on that
-              machine, not your local one. Edit them via{" "}
-              <span style={{ fg: theme().text }}>codeplane.json</span> on the instance.
-            </text>
-          </box>
-        </Show>
       </box>
     </Show>
   )

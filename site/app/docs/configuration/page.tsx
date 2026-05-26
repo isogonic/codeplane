@@ -94,13 +94,13 @@ export default function Configuration() {
         <pre><code>{`"provider": {
   "anthropic": {
     "options": {
-      "apiKey": "{env:ANTHROPIC_API_KEY}",
+      "apiKey": "{secret:anthropic-api-key}",
       "timeout": 300000
     }
   },
   "openai": {
     "options": {
-      "apiKey": "{env:OPENAI_API_KEY}",
+      "apiKey": "{secret:openai-api-key}",
       "baseURL": "{env:OPENAI_BASE_URL}"
     }
   },
@@ -117,7 +117,10 @@ export default function Configuration() {
 "small_model": "openai/gpt-5.2-mini",
 "disabled_providers": ["example-provider"]`}</code></pre>
         <p>
-          String values may use <code>{`{env:VAR}`}</code> placeholders. See{" "}
+          String values may use <code>{`{secret:name}`}</code>, <code>{`{env:VAR}`}</code>, and{" "}
+          <code>{`{file:path}`}</code> placeholders. Instance secrets live under{" "}
+          <code>data/secrets/</code> and the settings UI can create them without leaving plaintext
+          tokens in <code>codeplane.jsonc</code>. See{" "}
           <Link href="/docs/providers/">Providers</Link> for model overrides, OAuth, and custom
           OpenAI-compatible endpoints.
         </p>
@@ -190,11 +193,36 @@ export default function Configuration() {
   "remote-docs": {
     "type": "remote",
     "url": "https://mcp.example.com/sse",
-    "headers": { "Authorization": "Bearer {env:MCP_TOKEN}" },
+    "headers": { "Authorization": "{secret:mcp-authorization}" },
     "oauth": false
   }
 }`}</code></pre>
         <p>Full reference at <Link href="/docs/mcp/">MCP servers</Link>.</p>
+
+        <h2>secret placeholders</h2>
+        <pre><code>{`{
+  "provider": {
+    "github": {
+      "options": {
+        "apiKey": "{secret:github-token}"
+      }
+    }
+  },
+  "mcp": {
+    "cloudflare": {
+      "type": "local",
+      "command": ["npx", "-y", "@cloudflare/mcp-server-cloudflare", "run"],
+      "environment": {
+        "CLOUDFLARE_API_TOKEN": "{secret:cloudflare-token}"
+      }
+    }
+  }
+}`}</code></pre>
+        <p>
+          <code>{`{secret:name}`}</code> reads from <code>data/secrets/name</code> inside the
+          current instance. Codeplane resolves the real value only when it loads config or spawns
+          the MCP server, so shared config files and screenshots do not leak the plaintext secret.
+        </p>
 
         <h2>plugin and instructions</h2>
         <pre><code>{`"plugin": [

@@ -188,9 +188,9 @@ export const markdown = [
   "",
   "```preview",
   JSON.stringify({
-    url: "https://example.com/docs/markdown-blocks",
-    title: "Markdown rich-block reference",
-    description: "Charts, stocks, tabs, callouts, KPIs and more — all renderable inline.",
+    url: "https://example.com/docs/markdown",
+    title: "Markdown code fence reference",
+    description: "Custom fence languages now render as plain markdown code blocks.",
     site: "Codeplane Docs",
   }),
   "```",
@@ -300,7 +300,7 @@ export const markdown = [
           type: "folder",
           children: [
             { name: "markdown.tsx", status: "modified" },
-            { name: "markdown-blocks.ts", status: "added", hint: "rich blocks" },
+            { name: "markdown-blocks.ts", status: "modified", hint: "plain markdown only" },
             { name: "markdown.css", status: "modified" },
           ],
         },
@@ -326,8 +326,7 @@ export const markdown = [
     },
     after: {
       label: "After",
-      content:
-        "Charts, stocks, KPIs, tabs, choice/select, callouts, timelines, quotes, file trees, comparisons, diffs, and more.",
+      content: "Plain code blocks and markdown only.",
     },
   }),
   "```",

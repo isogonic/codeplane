@@ -47,6 +47,18 @@ type FollowupSendInput = {
   before?: () => Promise<boolean> | boolean
 }
 
+export function resolveFollowupDisposition(input: {
+  isNewSession: boolean
+  mode: "normal" | "shell"
+  working: boolean
+  shouldQueue: boolean
+}) {
+  if (input.isNewSession) return "send" as const
+  if (input.mode !== "normal") return "send" as const
+  if (!input.working) return "send" as const
+  return input.shouldQueue ? ("queue" as const) : ("steer" as const)
+}
+
 const draftText = (prompt: Prompt) => prompt.map((part) => ("content" in part ? part.content : "")).join("")
 
 const draftImages = (prompt: Prompt) => prompt.filter((part): part is ImageAttachmentPart => part.type === "image")
@@ -440,7 +452,14 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       })
     }
 
-    if (!isNewSession && mode === "normal" && input.shouldQueue?.()) {
+    const followupDisposition = resolveFollowupDisposition({
+      isNewSession,
+      mode,
+      working: input.working(),
+      shouldQueue: input.shouldQueue?.() ?? false,
+    })
+
+    if (followupDisposition === "queue") {
       input.onQueue?.(draft)
       clearContext()
       clearInput()
@@ -473,6 +492,9 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       const commandName = cmdName.slice(1)
       const customCommand = sync.data.command.find((c) => c.name === commandName)
       if (customCommand) {
+        if (followupDisposition === "steer") {
+          await client.session.abort({ sessionID: session.id }).catch(() => undefined)
+        }
         clearInput()
         client.session
           .command({
@@ -570,14 +592,21 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       return true
     }
 
-    void sendFollowupDraft({
+    const beforeSend = async () => {
+      if (followupDisposition === "steer") {
+        await client.session.abort({ sessionID: session.id }).catch(() => undefined)
+      }
+      return waitForWorktree()
+    }
+
+    const dispatch = sendFollowupDraft({
       client,
       sync,
       globalSync,
       draft,
       messageID,
       optimisticBusy: sessionDirectory === projectDirectory,
-      before: waitForWorktree,
+      before: beforeSend,
     }).catch((err) => {
       pending.delete(session.id)
       if (sessionDirectory === projectDirectory) {
@@ -591,6 +620,10 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       restoreCommentItems(commentItems)
       restoreInput()
     })
+
+    if (followupDisposition === "steer") {
+      await dispatch
+    }
   }
 
   return {

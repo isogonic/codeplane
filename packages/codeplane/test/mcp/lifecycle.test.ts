@@ -1,6 +1,7 @@
 import { test, expect, mock, beforeEach } from "bun:test"
 import { Effect } from "effect"
 import type { MCP as MCPNS } from "../../src/mcp/index"
+import { ConfigSecret } from "../../src/config"
 
 // --- Mock infrastructure ---
 
@@ -27,6 +28,7 @@ let connectError = "Mock transport cannot connect"
 let clientCreateCount = 0
 // Tracks how many times transport.close() is called across all mock transports
 let transportCloseCount = 0
+const stdioTransportOptions: any[] = []
 
 function getOrCreateClientState(name?: string): MockClientState {
   const key = name ?? "default"
@@ -54,7 +56,9 @@ class MockStdioTransport {
   stderr: null = null
   pid = 12345
   // oxlint-disable-next-line no-useless-constructor
-  constructor(_opts: any) {}
+  constructor(opts: any) {
+    stdioTransportOptions.push(opts)
+  }
   async start() {
     if (connectShouldHang) return new Promise<void>(() => {}) // never resolves
     if (connectShouldFail) throw new Error(connectError)
@@ -166,6 +170,7 @@ beforeEach(() => {
   connectError = "Mock transport cannot connect"
   clientCreateCount = 0
   transportCloseCount = 0
+  stdioTransportOptions.length = 0
 })
 
 // Import after mocks
@@ -464,6 +469,37 @@ test(
         const status = yield* mcp.status()
         expect(status["disabled-server"]?.status).toBe("disabled")
       }),
+  ),
+)
+
+test(
+  "local MCP add resolves {secret:...} placeholders before spawning the server",
+  withInstance({}, (mcp) =>
+    Effect.gen(function* () {
+      yield* Effect.promise(() => Bun.write(ConfigSecret.filepath("cloudflare-account"), "17e6dcab"))
+      yield* Effect.promise(() => Bun.write(ConfigSecret.filepath("cloudflare-token"), "cf-secret-token"))
+
+      lastCreatedClientName = "cloudflare"
+      getOrCreateClientState("cloudflare")
+
+      yield* mcp.add("cloudflare", {
+        type: "local",
+        command: ["npx", "@cloudflare/mcp-server-cloudflare", "run", "{secret:cloudflare-account}"],
+        environment: {
+          CLOUDFLARE_API_TOKEN: "{secret:cloudflare-token}",
+        },
+      })
+
+      expect(stdioTransportOptions.at(-1)).toEqual(
+        expect.objectContaining({
+          command: "npx",
+          args: ["@cloudflare/mcp-server-cloudflare", "run", "17e6dcab"],
+          env: expect.objectContaining({
+            CLOUDFLARE_API_TOKEN: "cf-secret-token",
+          }),
+        }),
+      )
+    }),
   ),
 )
 

@@ -59,6 +59,7 @@ import { MessageTimeline } from "@/pages/session/message-timeline"
 import { type DiffStyle, SessionReviewTab, type SessionReviewTabProps } from "@/pages/session/review-tab"
 import { SessionActivityTab } from "@/pages/session/session-activity-tab"
 import { useSessionLayout } from "@/pages/session/session-layout"
+import { isSessionWorking } from "@/pages/session/session-working"
 import { syncSessionModel } from "@/pages/session/session-model-helpers"
 import { SessionSidePanel } from "@/pages/session/session-side-panel"
 import { TerminalPanel } from "@/pages/session/terminal-panel"
@@ -825,17 +826,17 @@ export default function Page() {
         return [
           sdk.directory,
           id,
-          id ? (sync.data.session_status[id]?.type ?? "idle") : "idle",
+          id ? isSessionWorking(sync.data.session_status[id], sync.data.message[id]) : false,
           id ? composer.blocked() : false,
         ] as const
       },
-      ([dir, id, status, blocked]) => {
+      ([dir, id, working, blocked]) => {
         if (todoFrame !== undefined) cancelAnimationFrame(todoFrame)
         if (todoTimer !== undefined) window.clearTimeout(todoTimer)
         todoFrame = undefined
         todoTimer = undefined
         if (!id) return
-        if (status === "idle" && !blocked) return
+        if (!working && !blocked) return
         const cached = untrack(() => sync.data.todo[id] !== undefined || globalSync.data.session_todo[id] !== undefined)
 
         todoFrame = requestAnimationFrame(() => {
@@ -1020,9 +1021,13 @@ export default function Page() {
 
   createEffect(
     on(
-      () => sync.data.session_status[params.id ?? ""]?.type,
+      () => {
+        const id = params.id
+        if (!id) return false
+        return isSessionWorking(sync.data.session_status[id], sync.data.message[id])
+      },
       (next, prev) => {
-        if (next !== "idle" || prev === undefined || prev === "idle") return
+        if (next || prev === undefined || !prev) return
         refreshVcs()
       },
       { defer: true },
@@ -1559,7 +1564,7 @@ export default function Page() {
     })
 
   const busy = (sessionID: string) => {
-    return (sync.data.session_status[sessionID] ?? { type: "idle" as const }).type !== "idle"
+    return isSessionWorking(sync.data.session_status[sessionID], sync.data.message[sessionID])
   }
 
   const queuedFollowups = createMemo(() => {
@@ -1571,10 +1576,16 @@ export default function Page() {
   const followupStore = (item: FollowupItem) => globalSync.child(item.sessionDirectory, { bootstrap: false })[0]
 
   const followupSession = (sessionID: string, item: FollowupItem) =>
-    followupStore(item).session.find((entry) => entry.id === sessionID)
+    info()?.id === sessionID && item.sessionDirectory === sdk.directory
+      ? info()
+      : followupStore(item).session.find((entry) => entry.id === sessionID)
 
   const followupSessionBusy = (sessionID: string, item: FollowupItem) => {
-    return (followupStore(item).session_status[sessionID] ?? { type: "idle" as const }).type !== "idle"
+    const store = followupStore(item)
+    const local = info()?.id === sessionID && item.sessionDirectory === sdk.directory
+    const status = local ? sync.data.session_status[sessionID] : store.session_status[sessionID]
+    const messageList = local ? messages() : store.message[sessionID]
+    return isSessionWorking(status, messageList)
   }
 
   const followupBlocked = (sessionID: string, item: FollowupItem) => {
@@ -1615,6 +1626,13 @@ export default function Page() {
         globalSync,
         draft: item,
         optimisticBusy: true,
+        before: input.manual
+          ? () =>
+              client.session
+                .abort({ sessionID: input.sessionID })
+                .catch(() => undefined)
+                .then(() => true)
+          : undefined,
       }).catch((err) => {
         setFollowup("failed", input.sessionID, input.id)
         fail(err)

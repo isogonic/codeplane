@@ -10,6 +10,7 @@ const resolved = CodeplaneHome.paths()
 
 export const Path = {
   ...resolved,
+  secrets: path.join(resolved.data, "secrets"),
   get home() {
     return process.env.CODEPLANE_TEST_HOME || os.homedir()
   },
@@ -21,6 +22,7 @@ Flock.setGlobal({ state: Path.state })
 await Promise.all([
   fs.mkdir(Path.root, { recursive: true }),
   fs.mkdir(Path.data, { recursive: true }),
+  fs.mkdir(Path.secrets, { recursive: true }),
   fs.mkdir(Path.cache, { recursive: true }),
   fs.mkdir(Path.config, { recursive: true }),
   fs.mkdir(Path.state, { recursive: true }),

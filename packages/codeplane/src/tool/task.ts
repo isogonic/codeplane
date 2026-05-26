@@ -7,7 +7,6 @@ import { MessageV2 } from "../session/message-v2"
 import { Agent } from "../agent/agent"
 import type { SessionPrompt } from "../session/prompt"
 import { Config } from "../config"
-import { NotFoundError } from "../storage"
 import { Permission } from "../permission"
 import { Cause, Effect, Schema, Scope } from "effect"
 
@@ -147,7 +146,7 @@ export const TaskTool = Tool.define(
       }
 
       const assistantInfo = lastAssistant.info as MessageV2.Assistant
-      if (assistantInfo.finish || assistantInfo.error) {
+      if (assistantInfo.error || typeof assistantInfo.time.completed === "number" || assistantInfo.finish) {
         const text = resultText(lastAssistant)
         return {
           output: [
@@ -227,7 +226,7 @@ export const TaskTool = Tool.define(
             .pipe(
               Effect.catchCause((cause) => {
                 const error = Cause.squash(cause)
-                if (NotFoundError.isInstance(error)) return Effect.succeed(undefined)
+                if (error instanceof Session.SessionNotFoundError) return Effect.succeed(undefined)
                 return Effect.failCause(cause)
               }),
             )

@@ -566,6 +566,73 @@ describe("tool.task", () => {
     ),
   )
 
+  it.live("check treats completed child assistants as terminal even without finish", () =>
+    provideTmpdirInstance(() =>
+      Effect.gen(function* () {
+        const sessions = yield* Session.Service
+        const { chat, assistant } = yield* seed()
+        const child = yield* sessions.create({ parentID: chat.id, title: "Completed child" })
+        const childUser = yield* sessions.updateMessage({
+          id: MessageID.ascending(),
+          role: "user",
+          sessionID: child.id,
+          agent: "general",
+          model: ref,
+          time: { created: Date.now() },
+        })
+        const childAssistant: MessageV2.Assistant = {
+          id: MessageID.ascending(),
+          role: "assistant",
+          parentID: childUser.id,
+          sessionID: child.id,
+          mode: "general",
+          agent: "general",
+          cost: 0,
+          path: { cwd: "/tmp", root: "/tmp" },
+          tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+          modelID: ref.modelID,
+          providerID: ref.providerID,
+          time: { created: Date.now(), completed: Date.now() },
+        }
+        yield* sessions.updateMessage(childAssistant)
+        yield* sessions.updatePart({
+          id: PartID.ascending(),
+          messageID: childAssistant.id,
+          sessionID: child.id,
+          type: "text",
+          text: "subagent stopped with a final summary",
+        })
+
+        const tool = yield* TaskTool
+        const def = yield* tool.init()
+        const result = yield* def.execute(
+          {
+            description: "inspect bug",
+            prompt: "look into the cache key path",
+            subagent_type: "general",
+            action: "check",
+            task_id: child.id,
+          },
+          {
+            sessionID: chat.id,
+            messageID: assistant.id,
+            agent: "build",
+            abort: new AbortController().signal,
+            extra: { promptOps: stubOps(), bypassAgentCheck: true },
+            messages: [],
+            metadata: () => Effect.void,
+            ask: () => Effect.void,
+          },
+        )
+
+        expect((result.metadata as any).status).toBe("completed")
+        expect(result.output).toContain("<task_result>")
+        expect(result.output).toContain("subagent stopped with a final summary")
+        expect(result.output).not.toContain("Status: still running")
+      }),
+    ),
+  )
+
   it.live("execute shapes child permissions for recursive task and primary tools", () =>
     provideTmpdirInstance(
       () =>

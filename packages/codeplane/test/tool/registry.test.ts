@@ -43,6 +43,37 @@ describe("tool.registry", () => {
     ),
   )
 
+  it.live("does not expose retired rich block tools", () =>
+    provideTmpdirInstance(() =>
+      Effect.gen(function* () {
+        const registry = yield* ToolRegistry.Service
+        const ids = yield* registry.ids()
+
+        for (const id of [
+          "chart",
+          "kpi",
+          "callout",
+          "timeline",
+          "progress",
+          "badge",
+          "quote",
+          "preview",
+          "stock",
+          "tabs",
+          "choice",
+          "select",
+          "file-tree",
+          "image-grid",
+          "comparison",
+          "video",
+          "diff",
+        ]) {
+          expect(ids).not.toContain(id)
+        }
+      }),
+    ),
+  )
+
   it.live("keeps forge uncallable until Git host API credentials are configured", () =>
     provideTmpdirInstance(() =>
       Effect.gen(function* () {

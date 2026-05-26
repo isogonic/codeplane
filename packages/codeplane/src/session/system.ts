@@ -12,7 +12,6 @@ import PROMPT_KIMI from "./prompt/kimi.txt"
 
 import PROMPT_CODEX from "./prompt/codex.txt"
 import PROMPT_TRINITY from "./prompt/trinity.txt"
-import PROMPT_RICH_BLOCKS from "./prompt/rich-blocks.txt"
 import PROMPT_BROWSER_INSPECTION from "./prompt/browser-inspection.txt"
 import type { Provider } from "@/provider"
 import type { Agent } from "@/agent/agent"
@@ -35,7 +34,7 @@ function pickBase(model: Provider.Model): string {
 
 export function provider(model: Provider.Model) {
   const base = pickBase(model)
-  const prompts = [base, PROMPT_RICH_BLOCKS]
+  const prompts = [base]
   const isDesktop = Flag.CODEPLANE_CLIENT === "app" || process.env.CODEPLANE_DESKTOP_MANAGED === "1"
   if (model.capabilities.input.image && isDesktop) {
     prompts.push(PROMPT_BROWSER_INSPECTION)

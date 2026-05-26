@@ -66,7 +66,6 @@ describe("nextRunnableFollowup", () => {
     const next = nextRunnableFollowup({
       items: {
         blocked: [item("message-000", { sessionID: "blocked", sessionDirectory: "/repo" })],
-        missing: [item("message-001", { sessionID: "missing", sessionDirectory: "/repo" })],
         child: [item("message-002", { sessionID: "child", sessionDirectory: "/repo" })],
         archived: [item("message-003", { sessionID: "archived", sessionDirectory: "/repo" })],
         cron: [item("message-004", { sessionID: "cron", sessionDirectory: "/repo" })],
@@ -79,7 +78,6 @@ describe("nextRunnableFollowup", () => {
       paused: { paused: true },
       sending: false,
       session: (id) => {
-        if (id === "missing") return
         if (id === "child") return session({ id, parentID: "root" })
         if (id === "archived") return session({ id, time: { archived: 1 } })
         if (id === "cron") return session({ id, cronRunID: "cron-run" })
@@ -90,6 +88,22 @@ describe("nextRunnableFollowup", () => {
     })
 
     expect(next).toEqual({ sessionID: "runnable", item: runnable })
+  })
+
+  test("does not stall the queue when session metadata is temporarily unavailable", () => {
+    const missing = item("message-001", { sessionID: "missing", sessionDirectory: "/repo" })
+
+    const next = nextRunnableFollowup({
+      items: { missing: [missing] },
+      failed: {},
+      paused: {},
+      sending: false,
+      session: () => undefined,
+      busy: () => false,
+      blocked: () => false,
+    })
+
+    expect(next).toEqual({ sessionID: "missing", item: missing })
   })
 
   test("only considers the first queued item per session", () => {

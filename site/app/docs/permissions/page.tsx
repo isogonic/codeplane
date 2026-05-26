@@ -90,7 +90,8 @@ export default function Permissions() {
           <em>Browser use</em> or set <code>{`"tools": { "computer": true, "browser": true }`}</code>.
           Once enabled in Codeplane Desktop, browser control is exposed through an isolated Chrome
           DevTools session with a virtual pointer, and computer control is exposed through the
-          desktop bridge with a native screenshot after each action or batch.
+          desktop bridge with a native screenshot after each action or batch plus the detected
+          monitor inventory for the current desktop.
         </p>
 
         <h2>Scopes</h2>

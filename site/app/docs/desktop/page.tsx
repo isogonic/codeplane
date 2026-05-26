@@ -80,7 +80,10 @@ export default function Desktop() {
           <em>Computer use</em> gives the agent native access to the real, visible desktop cursor plus
           screenshot, mouse, keyboard, drag, scroll, and app-launch control. Fast action
           batches let it move, click, type, and scroll through several UI steps from one
-          vision pass before returning a final screenshot. When you first enable it, Codeplane
+          vision pass before returning a final screenshot. On multi-monitor setups, each call
+          returns the full detected display inventory with bounds, work areas, scale factors,
+          and the captured display, and the tool can target a specific display for the final
+          screenshot. When you first enable it, Codeplane
           checks whether the required system permissions (Accessibility and Screen Recording
           on macOS) are active and guides you to System Settings if they are not. If a
           permission is already turned on in System Settings but the current desktop process

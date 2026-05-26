@@ -291,7 +291,17 @@
   [data-slot="basic-tool-tool-info-main"] {
     flex: 1 1 auto;
     min-width: 0;
+    align-items: flex-start;
+    flex-direction: column;
+    row-gap: 2px;
+  }
+
+  [data-component="task-tool-heading"] {
+    display: inline-flex;
     align-items: center;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
   }
 
   [data-component="task-tool-spinner"] {
@@ -321,6 +331,8 @@
 
   [data-component="task-tool-title"] {
     flex-shrink: 0;
+    min-width: 0;
+    max-width: 100%;
     font-family: var(--font-family-sans);
     font-size: 14px;
     font-style: normal;
@@ -331,7 +343,11 @@
   }
 
   [data-slot="basic-tool-tool-subtitle"] {
-    color: var(--text-strong);
+    width: 100%;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    color: var(--text-weak);
   }
 
   &:hover,

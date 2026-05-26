@@ -68,6 +68,34 @@ export const McpRoutes = lazy(() =>
         ),
     )
     .post(
+      "/auth/auto-connect",
+      describeRoute({
+        summary: "Auto-connect pending MCP OAuth",
+        description:
+          "Start interactive OAuth flows for remote MCP servers in this instance that have partial stored auth state.",
+        operationId: "mcp.auth.autoConnect",
+        responses: {
+          200: {
+            description: "Pending OAuth launches started",
+            content: {
+              "application/json": {
+                schema: resolver(
+                  z.array(
+                    z.object({
+                      name: z.string(),
+                      authorizationUrl: z.string(),
+                      redirectUri: z.string(),
+                    }),
+                  ),
+                ),
+              },
+            },
+          },
+        },
+      }),
+      async (c) => c.json(await mcpRuntime.runPromise((svc) => svc.autoConnectOAuth())),
+    )
+    .post(
       "/:name/auth",
       describeRoute({
         summary: "Start MCP OAuth",

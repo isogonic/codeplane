@@ -2,6 +2,7 @@ import { NodeFileSystem } from "@effect/platform-node"
 import { FetchHttpClient } from "effect/unstable/http"
 import { expect } from "bun:test"
 import { Cause, Effect, Exit, Fiber, Layer } from "effect"
+import { dynamicTool, jsonSchema } from "ai"
 import path from "path"
 import { fileURLToPath } from "url"
 import { NamedError } from "@codeplane-ai/shared/util/error"
@@ -38,6 +39,7 @@ import { Shell } from "../../src/shell/shell"
 import { Snapshot } from "../../src/snapshot"
 import { ToolRegistry } from "../../src/tool"
 import { Truncate } from "../../src/tool"
+import { TaskTool } from "../../src/tool/task"
 import { Log } from "../../src/util"
 import * as CrossSpawnSpawner from "../../src/effect/cross-spawn-spawner"
 import { Ripgrep } from "../../src/file/ripgrep"
@@ -142,8 +144,45 @@ const mcp = Layer.succeed(
     supportsOAuth: () => Effect.succeed(false),
     hasStoredTokens: () => Effect.succeed(false),
     getAuthStatus: () => Effect.succeed("not_authenticated" as const),
+    autoConnectOAuth: () => Effect.succeed([]),
   }),
 )
+
+function mcpLayer(tools: Record<string, ReturnType<typeof dynamicTool>>) {
+  return Layer.succeed(
+    MCP.Service,
+    MCP.Service.of({
+      status: () => Effect.succeed({}),
+      clients: () => Effect.succeed({}),
+      tools: () => Effect.succeed(tools),
+      prompts: () => Effect.succeed({}),
+      resources: () => Effect.succeed({}),
+      add: () => Effect.succeed({ status: { status: "disabled" as const } }),
+      connect: () => Effect.void,
+      disconnect: () => Effect.void,
+      getPrompt: () => Effect.succeed(undefined),
+      readResource: () => Effect.succeed(undefined),
+      startAuth: () => Effect.die("unexpected MCP auth in prompt-effect tests"),
+      authenticate: () => Effect.die("unexpected MCP auth in prompt-effect tests"),
+      finishAuth: () => Effect.die("unexpected MCP auth in prompt-effect tests"),
+      removeAuth: () => Effect.void,
+      supportsOAuth: () => Effect.succeed(false),
+      hasStoredTokens: () => Effect.succeed(false),
+      getAuthStatus: () => Effect.succeed("not_authenticated" as const),
+      autoConnectOAuth: () => Effect.succeed([]),
+    }),
+  )
+}
+
+function failingMcpTool(error: Error) {
+  return dynamicTool({
+    description: "failing MCP test tool",
+    inputSchema: jsonSchema({ type: "object", properties: {}, additionalProperties: false }),
+    execute: async () => {
+      throw error
+    },
+  })
+}
 
 const lsp = Layer.succeed(
   LSP.Service,
@@ -168,7 +207,7 @@ const lsp = Layer.succeed(
 const status = SessionStatus.layer.pipe(Layer.provideMerge(Bus.layer))
 const run = SessionRunState.layer.pipe(Layer.provide(status))
 const infra = Layer.mergeAll(NodeFileSystem.layer, CrossSpawnSpawner.defaultLayer)
-function makeHttp() {
+function makeHttp(mcpLayerOverride = mcp) {
   const deps = Layer.mergeAll(
     Session.defaultLayer,
     Snapshot.defaultLayer,
@@ -184,7 +223,7 @@ function makeHttp() {
     Project.defaultLayer,
     ProviderSvc.defaultLayer,
     lsp,
-    mcp,
+    mcpLayerOverride,
     AppFileSystem.defaultLayer,
     status,
   ).pipe(Layer.provideMerge(infra))
@@ -222,6 +261,15 @@ function makeHttp() {
 
 const it = testEffect(makeHttp())
 const unix = process.platform !== "win32" ? it.live : it.live.skip
+const mcpFailures = testEffect(
+  makeHttp(
+    mcpLayer({
+      auth_server_protected: failingMcpTool(new Error("HTTP 401 Unauthorized")),
+      transport_server_probe: failingMcpTool(new Error("transport closed by peer")),
+      handler_server_mutation: failingMcpTool(new Error("handler-error: upstream failed")),
+    }),
+  ),
+)
 
 // Config that registers a custom "test" provider with a "test-model" model
 // so provider model lookup succeeds inside the loop.
@@ -576,6 +624,91 @@ it.live("loop continues when finish is tool-calls", () =>
   ),
 )
 
+it.live("native tool execution failures keep the loop running", () =>
+  provideTmpdirServer(
+    Effect.fnUntraced(function* ({ llm }) {
+      const registry = yield* ToolRegistry.Service
+      const { read } = yield* registry.named()
+      const original = read.execute.bind(read)
+      yield* Effect.addFinalizer(() => Effect.sync(() => void (read.execute = original)))
+      read.execute = () => Effect.die(new Error("boom"))
+
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const session = yield* sessions.create({
+        title: "Pinned",
+        permission: [{ permission: "*", pattern: "*", action: "allow" }],
+      })
+      yield* prompt.prompt({
+        sessionID: session.id,
+        agent: "build",
+        noReply: true,
+        parts: [{ type: "text", text: "read a file and continue" }],
+      })
+      yield* llm.tool("read", { filePath: "/tmp/boom.txt" })
+      yield* llm.text("still running")
+
+      const result = yield* prompt.loop({ sessionID: session.id })
+      expect(yield* llm.calls).toBe(2)
+      expect(result.info.role).toBe("assistant")
+      if (result.info.role === "assistant") {
+        expect(result.parts.some((part) => part.type === "text" && part.text === "still running")).toBe(true)
+      }
+
+      const msgs = yield* MessageV2.filterCompactedEffect(session.id)
+      const failed = msgs.find(
+        (item) => item.info.role === "assistant" && item.parts.some((part) => part.type === "tool" && part.tool === "read"),
+      )
+      expect(failed?.info.role).toBe("assistant")
+      if (!failed || failed.info.role !== "assistant") return
+
+      const tool = errorTool(failed.parts)
+      if (!tool) return
+
+      expect(tool.state.error).toContain("The read tool failed to execute.")
+      expect(tool.state.error).toContain("Original error: boom")
+      expect(tool.state.error).not.toContain("Tool execution aborted")
+      expect(tool.state.metadata?.toolError).toBe(true)
+      expect(tool.state.metadata?.toolFailureKind).toBe("execution_error")
+      expect(tool.state.metadata?.toolFailureAction).toBe("inspect_error")
+    }),
+    { git: true, config: providerCfg },
+  ),
+)
+
+it.live("loop does not spin a follow-up call when local tool output already produced final text", () =>
+  provideTmpdirServer(
+    ({ dir, llm }) =>
+      Effect.gen(function* () {
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const session = yield* sessions.create({
+          title: "Pinned",
+          permission: [{ permission: "*", pattern: "*", action: "allow" }],
+        })
+        const file = path.join(dir, "probe.txt")
+        yield* Effect.promise(() => Bun.write(file, "probe"))
+        yield* prompt.prompt({
+          sessionID: session.id,
+          agent: "build",
+          noReply: true,
+          parts: [{ type: "text", text: "find text files and summarize them" }],
+        })
+        yield* llm.push(reply().tool("glob", { pattern: "**/*.txt" }).text("done").stop())
+
+        const result = yield* prompt.loop({ sessionID: session.id })
+        expect(yield* llm.calls).toBe(1)
+        expect(result.info.role).toBe("assistant")
+        if (result.info.role === "assistant") {
+          expect(result.parts.some((part) => part.type === "text" && part.text === "done")).toBe(true)
+          expect(result.info.finish).toBe("stop")
+          expect(result.info.time.completed).toBeDefined()
+        }
+      }),
+    { git: true, config: providerCfg },
+  ),
+)
+
 it.live("loop exits immediately when last assistant completed without finish or tools", () =>
   provideTmpdirServer(
     Effect.fnUntraced(function* ({ llm }) {
@@ -664,6 +797,141 @@ it.live("loop continues when finish is stop but assistant has tool parts", () =>
         expect(result.parts.some((part) => part.type === "text" && part.text === "second")).toBe(true)
         expect(result.info.finish).toBe("stop")
       }
+    }),
+    { git: true, config: providerCfg },
+  ),
+)
+
+mcpFailures.live("MCP 401 failures become structured tool output the model can recover from", () =>
+  provideTmpdirServer(
+    Effect.fnUntraced(function* ({ llm }) {
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const session = yield* sessions.create({
+        title: "MCP auth failure",
+        permission: [{ permission: "*", pattern: "*", action: "allow" }],
+      })
+      yield* prompt.prompt({
+        sessionID: session.id,
+        agent: "build",
+        noReply: true,
+        parts: [{ type: "text", text: "use the MCP tool" }],
+      })
+      yield* llm.push(
+        reply().tool("auth_server_protected", {}).item(),
+        reply().text("I need you to authorize this MCP server before I can continue.").stop().item(),
+      )
+
+      const result = yield* prompt.loop({ sessionID: session.id })
+      expect(yield* llm.calls).toBe(2)
+      expect(result.parts.some((part) => part.type === "text" && part.text.includes("authorize this MCP server"))).toBe(true)
+
+      const msgs = yield* MessageV2.filterCompactedEffect(session.id)
+      const tool = msgs
+        .flatMap((msg) => msg.parts)
+        .find(
+          (part): part is CompletedToolPart =>
+            part.type === "tool" && part.tool === "auth_server_protected" && part.state.status === "completed",
+        )
+      expect(tool).toBeDefined()
+      if (!tool) return
+
+      expect(tool.state.output).toContain("needs authorization")
+      expect(tool.state.output).toContain("authorize or sign in")
+      expect(tool.state.metadata.mcpError).toBe(true)
+      expect(tool.state.metadata.mcpFailureKind).toBe("auth_required")
+      expect(tool.state.metadata.mcpFailureAction).toBe("authorize")
+      expect(tool.state.metadata.mcpRetryable).toBe(false)
+    }),
+    { git: true, config: providerCfg },
+  ),
+)
+
+mcpFailures.live("MCP transport-closed failures become reconnectable tool output", () =>
+  provideTmpdirServer(
+    Effect.fnUntraced(function* ({ llm }) {
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const session = yield* sessions.create({
+        title: "MCP transport failure",
+        permission: [{ permission: "*", pattern: "*", action: "allow" }],
+      })
+      yield* prompt.prompt({
+        sessionID: session.id,
+        agent: "build",
+        noReply: true,
+        parts: [{ type: "text", text: "probe the MCP server" }],
+      })
+      yield* llm.push(
+        reply().tool("transport_server_probe", {}).item(),
+        reply().text("The MCP server connection dropped. Retry after reconnecting it.").stop().item(),
+      )
+
+      const result = yield* prompt.loop({ sessionID: session.id })
+      expect(yield* llm.calls).toBe(2)
+      expect(result.parts.some((part) => part.type === "text" && part.text.includes("connection dropped"))).toBe(true)
+
+      const msgs = yield* MessageV2.filterCompactedEffect(session.id)
+      const tool = msgs
+        .flatMap((msg) => msg.parts)
+        .find(
+          (part): part is CompletedToolPart =>
+            part.type === "tool" && part.tool === "transport_server_probe" && part.state.status === "completed",
+        )
+      expect(tool).toBeDefined()
+      if (!tool) return
+
+      expect(tool.state.output).toContain("transport closed")
+      expect(tool.state.output).toContain("Retry the tool once")
+      expect(tool.state.metadata.mcpError).toBe(true)
+      expect(tool.state.metadata.mcpFailureKind).toBe("transport_closed")
+      expect(tool.state.metadata.mcpFailureAction).toBe("reconnect")
+      expect(tool.state.metadata.mcpRetryable).toBe(true)
+    }),
+    { git: true, config: providerCfg },
+  ),
+)
+
+mcpFailures.live("MCP handler errors become structured server-failure tool output", () =>
+  provideTmpdirServer(
+    Effect.fnUntraced(function* ({ llm }) {
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const session = yield* sessions.create({
+        title: "MCP handler failure",
+        permission: [{ permission: "*", pattern: "*", action: "allow" }],
+      })
+      yield* prompt.prompt({
+        sessionID: session.id,
+        agent: "build",
+        noReply: true,
+        parts: [{ type: "text", text: "run the MCP mutation" }],
+      })
+      yield* llm.push(
+        reply().tool("handler_server_mutation", {}).item(),
+        reply().text("That MCP server failed internally. Please inspect it before retrying.").stop().item(),
+      )
+
+      const result = yield* prompt.loop({ sessionID: session.id })
+      expect(yield* llm.calls).toBe(2)
+      expect(result.parts.some((part) => part.type === "text" && part.text.includes("failed internally"))).toBe(true)
+
+      const msgs = yield* MessageV2.filterCompactedEffect(session.id)
+      const tool = msgs
+        .flatMap((msg) => msg.parts)
+        .find(
+          (part): part is CompletedToolPart =>
+            part.type === "tool" && part.tool === "handler_server_mutation" && part.state.status === "completed",
+        )
+      expect(tool).toBeDefined()
+      if (!tool) return
+
+      expect(tool.state.output).toContain("internal handler error")
+      expect(tool.state.output).toContain("inspect or fix that server")
+      expect(tool.state.metadata.mcpError).toBe(true)
+      expect(tool.state.metadata.mcpFailureKind).toBe("handler_error")
+      expect(tool.state.metadata.mcpFailureAction).toBe("check_server")
+      expect(tool.state.metadata.mcpRetryable).toBe(false)
     }),
     { git: true, config: providerCfg },
   ),
@@ -938,6 +1206,112 @@ it.live(
       },
     ),
   5_000,
+)
+
+it.live(
+  "spawned subtask failures persist a terminal child assistant and stop checks from hanging",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ llm }) {
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const task = yield* TaskTool
+        const def = yield* task.init()
+        const chat = yield* sessions.create({
+          title: "Pinned",
+          permission: [{ permission: "*", pattern: "*", action: "allow" }],
+        })
+        yield* llm.tool("task", {
+          description: "inspect bug",
+          prompt: "look into the cache key path",
+          subagent_type: "general",
+          action: "spawn",
+        })
+        yield* llm.text("spawned")
+        yield* user(chat.id, "hello")
+
+        yield* prompt.loop({ sessionID: chat.id })
+        const parentMsgs = yield* MessageV2.filterCompactedEffect(chat.id)
+        const parentTaskMessage = parentMsgs.find(
+          (item): item is MessageV2.WithParts & { info: MessageV2.Assistant } =>
+            item.info.role === "assistant" &&
+            item.parts.some((part) => part.type === "tool" && part.tool === "task"),
+        )
+        expect(parentTaskMessage?.info.role).toBe("assistant")
+        if (!parentTaskMessage || parentTaskMessage.info.role !== "assistant") return
+
+        const parentTask = parentTaskMessage.parts.find(
+          (part): part is MessageV2.ToolPart & { state: MessageV2.ToolStateCompleted } =>
+            part.type === "tool" && part.tool === "task" && part.state.status === "completed",
+        )
+        expect(parentTask?.state.metadata?.sessionId).toBeDefined()
+        if (!parentTask?.state.metadata?.sessionId) return
+
+        const childID = SessionID.make(String(parentTask.state.metadata.sessionId))
+        const childAssistant = yield* Effect.promise(async () => {
+          const end = Date.now() + 5_000
+          while (Date.now() < end) {
+            const msgs = await Effect.runPromise(MessageV2.filterCompactedEffect(childID))
+            const assistant = msgs.findLast(
+              (item): item is MessageV2.WithParts & { info: MessageV2.Assistant } => item.info.role === "assistant",
+            )
+            if (assistant?.info.error) return assistant
+            await new Promise((done) => setTimeout(done, 20))
+          }
+          throw new Error("timed out waiting for spawned child error")
+        })
+
+        expect(childAssistant.info.error).toBeDefined()
+        expect(JSON.stringify(childAssistant.info.error)).toContain("ProviderModelNotFoundError")
+        expect(typeof childAssistant.info.time.completed).toBe("number")
+
+        const check = yield* def.execute(
+          {
+            description: "inspect bug",
+            prompt: "look into the cache key path",
+            subagent_type: "general",
+            action: "check",
+            task_id: childID,
+          },
+          {
+            sessionID: chat.id,
+            messageID: parentTaskMessage.info.id,
+            agent: "build",
+            abort: new AbortController().signal,
+            extra: {
+              bypassAgentCheck: true,
+              promptOps: {
+                cancel() {},
+                resolvePromptParts: () => Effect.succeed([]),
+                prompt: () => Effect.die("unexpected prompt during check"),
+                forkPrompt: () => Effect.void,
+              },
+            },
+            messages: parentMsgs,
+            metadata: () => Effect.void,
+            ask: () => Effect.void,
+          },
+        )
+
+        expect((check.metadata as any).status).toBe("completed")
+        expect(check.output).toContain("<task_result>")
+        expect(check.output).toContain("ProviderModelNotFoundError")
+        expect(check.output).not.toContain("starting up")
+        expect(check.output).not.toContain("still running")
+      }),
+      {
+        git: true,
+        config: (url) => ({
+          ...providerCfg(url),
+          agent: {
+            general: {
+              model: "test/missing-model",
+            },
+          },
+        }),
+      },
+    ),
+  10_000,
 )
 
 it.live(

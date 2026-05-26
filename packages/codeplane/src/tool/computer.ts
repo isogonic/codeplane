@@ -7,6 +7,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { Config } from "@/config"
 import { Flag } from "@/flag/flag"
+import { buildMacComputerScript } from "@codeplane-ai/shared/computer-mac-script"
 
 const AtomicAction = Schema.Union([
   Schema.Literal("screenshot"),
@@ -29,7 +30,7 @@ const AtomicAction = Schema.Union([
 
 const Fields = {
   coordinate: Schema.optional(Schema.mutable(Schema.Array(Schema.Number))).annotate({
-    description: "Screen coordinate [x, y] for mouse actions, in pixels from the top-left of the primary/virtual desktop.",
+    description: "Screen coordinate [x, y] for mouse actions, in pixels from the top-left of the virtual desktop across all monitors.",
   }),
   to: Schema.optional(Schema.mutable(Schema.Array(Schema.Number))).annotate({
     description: "Destination coordinate [x, y] for drag actions.",
@@ -63,6 +64,10 @@ export const Parameters = Schema.Struct({
     description:
       "Desktop action. Use batch with actions[] for fast multi-step cursor/keyboard control without reinitializing the native controller between steps.",
   }),
+  displayId: Schema.optional(Schema.String).annotate({
+    description:
+      "Optional monitor id for the final screenshot. Omit to capture the virtual desktop when the desktop bridge supports it. The tool always returns the detected monitor inventory.",
+  }),
   ...Fields,
   actions: Schema.optional(Schema.mutable(Schema.Array(Step))).annotate({
     description:
@@ -71,8 +76,27 @@ export const Parameters = Schema.Struct({
 })
 
 type Point = { x: number; y: number }
-type Screenshot = { dataUrl: string; width: number; height: number; path: string }
-type ToolScreenshot = Pick<Screenshot, "dataUrl" | "width" | "height">
+type Rect = Point & { width: number; height: number }
+type DisplaySnapshot = {
+  id: string
+  label: string
+  bounds: Rect
+  workArea: Rect
+  scaleFactor: number
+  rotation: number
+  primary: boolean
+  internal: boolean
+  current?: boolean
+}
+type Screenshot = {
+  dataUrl: string
+  width: number
+  height: number
+  path: string
+  displayId?: string
+  scope?: "display" | "virtual-desktop"
+}
+type ToolScreenshot = Pick<Screenshot, "dataUrl" | "width" | "height" | "displayId" | "scope">
 type StepInput = Schema.Schema.Type<typeof Step>
 type ParametersInput = Schema.Schema.Type<typeof Parameters>
 type RuntimeAction = {
@@ -215,7 +239,10 @@ async function captureScreen(): Promise<Screenshot> {
   if (process.platform === "darwin") captureMac(file)
   else if (process.platform === "win32") captureWindows(file)
   else captureLinux(file)
-  return screenshotFromFile(file)
+  return {
+    ...(await screenshotFromFile(file)),
+    scope: "virtual-desktop",
+  }
 }
 
 function isPoint(value: unknown): value is Point {
@@ -224,10 +251,38 @@ function isPoint(value: unknown): value is Point {
   return typeof point.x === "number" && typeof point.y === "number"
 }
 
+function isRect(value: unknown): value is Rect {
+  if (!value || typeof value !== "object") return false
+  const rect = value as Partial<Rect>
+  return (
+    typeof rect.x === "number" &&
+    typeof rect.y === "number" &&
+    typeof rect.width === "number" &&
+    typeof rect.height === "number"
+  )
+}
+
+function isDisplay(value: unknown): value is DisplaySnapshot {
+  if (!value || typeof value !== "object") return false
+  const display = value as Partial<DisplaySnapshot>
+  return (
+    typeof display.id === "string" &&
+    typeof display.label === "string" &&
+    isRect(display.bounds) &&
+    isRect(display.workArea) &&
+    typeof display.scaleFactor === "number" &&
+    typeof display.rotation === "number" &&
+    typeof display.primary === "boolean" &&
+    typeof display.internal === "boolean" &&
+    (display.current === undefined || typeof display.current === "boolean")
+  )
+}
+
 async function runDesktopBridge(params: ParametersInput): Promise<{
   actions: RuntimeAction[]
   screenshot: ToolScreenshot
   cursor?: Point
+  displays: DisplaySnapshot[]
 }> {
   const token = process.env.CODEPLANE_DESKTOP_BRIDGE_TOKEN?.trim()
   const response = await fetch(new URL("/__desktop/computer", process.env.CODEPLANE_DESKTOP_BRIDGE_ORIGIN!.trim()), {
@@ -245,6 +300,7 @@ async function runDesktopBridge(params: ParametersInput): Promise<{
         actions?: RuntimeAction[]
         screenshot?: Partial<ToolScreenshot>
         cursor?: Point
+        displays?: unknown[]
       }
     | undefined
   if (!response.ok || payload?.ok !== true) {
@@ -260,8 +316,11 @@ async function runDesktopBridge(params: ParametersInput): Promise<{
       dataUrl: screenshot.dataUrl,
       width: screenshot.width,
       height: screenshot.height,
+      displayId: typeof screenshot.displayId === "string" ? screenshot.displayId : undefined,
+      scope: screenshot.scope === "display" || screenshot.scope === "virtual-desktop" ? screenshot.scope : undefined,
     },
     cursor: isPoint(payload.cursor) ? payload.cursor : undefined,
+    displays: Array.isArray(payload.displays) ? payload.displays.filter(isDisplay) : [],
   }
 }
 
@@ -279,223 +338,7 @@ function settle(ms: number | undefined) {
 }
 
 function runMacActions(actions: RuntimeAction[]) {
-  const script = `
-ObjC.import('ApplicationServices')
-ObjC.import('Foundation')
-
-function openApp(name) {
-  const trimmed = String(name || '').trim()
-  if (!trimmed) throw new Error('text must contain the app name for open_app.')
-  const task = $.NSTask.alloc.init
-  task.launchPath = '/usr/bin/open'
-  task.arguments = ['-a', trimmed]
-  task.launch
-}
-
-const tap = $.kCGHIDEventTap
-const left = 0
-const right = 1
-const middle = 2
-const source = $.CGEventSourceCreate($.kCGEventSourceStateHIDSystemState)
-const event = {
-  leftDown: 1,
-  leftUp: 2,
-  rightDown: 3,
-  rightUp: 4,
-  moved: 5,
-  leftDragged: 6,
-  rightDragged: 7,
-  scrollWheel: 22,
-  otherDown: 25,
-  otherUp: 26,
-  otherDragged: 27,
-}
-const keyCodes = {
-  enter: 36,
-  return: 36,
-  tab: 48,
-  escape: 53,
-  esc: 53,
-  space: 49,
-  backspace: 51,
-  delete: 117,
-  forwarddelete: 117,
-  a: 0,
-  s: 1,
-  d: 2,
-  f: 3,
-  h: 4,
-  g: 5,
-  z: 6,
-  x: 7,
-  c: 8,
-  v: 9,
-  b: 11,
-  q: 12,
-  w: 13,
-  e: 14,
-  r: 15,
-  y: 16,
-  t: 17,
-  '1': 18,
-  '2': 19,
-  '3': 20,
-  '4': 21,
-  '6': 22,
-  '5': 23,
-  '=': 24,
-  '9': 25,
-  '7': 26,
-  '-': 27,
-  '8': 28,
-  '0': 29,
-  ']': 30,
-  o: 31,
-  u: 32,
-  '[': 33,
-  i: 34,
-  p: 35,
-  l: 37,
-  j: 38,
-  "'": 39,
-  k: 40,
-  ';': 41,
-  '\\\\': 42,
-  ',': 43,
-  '/': 44,
-  n: 45,
-  m: 46,
-  '.': 47,
-  "\\x60": 50,
-  home: 115,
-  end: 119,
-  pageup: 116,
-  pagedown: 121,
-  left: 123,
-  arrowleft: 123,
-  right: 124,
-  arrowright: 124,
-  down: 125,
-  arrowdown: 125,
-  up: 126,
-  arrowup: 126,
-}
-
-function point(x, y) {
-  return $.CGPointMake(x, y)
-}
-
-function post(type, x, y, button) {
-  const ev = $.CGEventCreateMouseEvent(null, type, point(x, y), button)
-  $.CGEventPost(tap, ev)
-}
-
-function move(x, y) {
-  $.CGWarpMouseCursorPosition(point(x, y))
-  $.CGAssociateMouseAndMouseCursorPosition(1)
-  post(event.moved, x, y, left)
-}
-
-function click(x, y, down, up, button) {
-  move(x, y)
-  post(down, x, y, button)
-  $.usleep(${CLICK_DELAY_US})
-  post(up, x, y, button)
-}
-
-function modifier(value) {
-  if (['cmd', 'command', 'meta', 'super'].indexOf(value) >= 0) return Number($.kCGEventFlagMaskCommand)
-  if (['ctrl', 'control'].indexOf(value) >= 0) return Number($.kCGEventFlagMaskControl)
-  if (['alt', 'option'].indexOf(value) >= 0) return Number($.kCGEventFlagMaskAlternate)
-  if (value === 'shift') return Number($.kCGEventFlagMaskShift)
-  return 0
-}
-
-function postKey(code, down, flags) {
-  const ev = $.CGEventCreateKeyboardEvent(source, code, down)
-  if (flags) $.CGEventSetFlags(ev, flags)
-  $.CGEventPost(tap, ev)
-}
-
-function typeText(value) {
-  const text = String(value || '')
-  for (let i = 0; i < text.length; i++) {
-    const char = text.charAt(i)
-    const down = $.CGEventCreateKeyboardEvent(source, 0, true)
-    $.CGEventKeyboardSetUnicodeString(down, char.length, char)
-    $.CGEventPost(tap, down)
-    const up = $.CGEventCreateKeyboardEvent(source, 0, false)
-    $.CGEventKeyboardSetUnicodeString(up, char.length, char)
-    $.CGEventPost(tap, up)
-  }
-}
-
-function pressKey(input) {
-  const raw = String(input.key || input.text || '')
-  if (!raw) throw new Error('key is required for key action.')
-  const parts = raw.split('+').map((part) => part.trim().toLowerCase()).filter(Boolean)
-  const key = parts[parts.length - 1]
-  const flags = parts.slice(0, -1).reduce((mask, part) => mask | modifier(part), 0)
-  if (keyCodes[key] !== undefined) {
-    postKey(keyCodes[key], true, flags)
-    postKey(keyCodes[key], false, flags)
-    return
-  }
-  typeText(key)
-}
-
-function runStep(input) {
-  if (input.action === 'screenshot') return
-  if (input.action === 'wait') {
-    $.usleep(Math.max(0, Math.min(Number(input.durationMs || 1000), 30000)) * 1000)
-    return
-  }
-  if (input.action === 'type') {
-    typeText(input.text)
-    return
-  }
-  if (input.action === 'key') {
-    pressKey(input)
-    return
-  }
-  if (input.action === 'open_app') {
-    openApp(input.text)
-    return
-  }
-  if (input.action === 'move') move(input.x, input.y)
-  if (input.action === 'left_click') click(input.x, input.y, event.leftDown, event.leftUp, left)
-  if (input.action === 'double_click') {
-    click(input.x, input.y, event.leftDown, event.leftUp, left)
-    $.usleep(${CLICK_DELAY_US})
-    click(input.x, input.y, event.leftDown, event.leftUp, left)
-  }
-  if (input.action === 'right_click') click(input.x, input.y, event.rightDown, event.rightUp, right)
-  if (input.action === 'middle_click') click(input.x, input.y, event.otherDown, event.otherUp, middle)
-  if (input.action === 'drag') {
-    move(input.x, input.y)
-    post(event.leftDown, input.x, input.y, left)
-    $.usleep(${CLICK_DELAY_US})
-    const steps = 12
-    for (let i = 1; i <= steps; i++) {
-      const x = input.x + ((input.toX - input.x) * i / steps)
-      const y = input.y + ((input.toY - input.y) * i / steps)
-      move(x, y)
-      post(event.leftDragged, x, y, left)
-      $.usleep(20000)
-    }
-    post(event.leftUp, input.toX, input.toY, left)
-  }
-  if (input.action === 'scroll') {
-    if (Number.isFinite(input.x) && Number.isFinite(input.y)) move(input.x, input.y)
-    const ev = $.CGEventCreateScrollWheelEvent(null, 0, 1, -input.amount)
-    $.CGEventPost(tap, ev)
-  }
-}
-
-function run(argv) {
-  JSON.parse(argv[0]).forEach(runStep)
-}
-`.trim()
+  const script = buildMacComputerScript(CLICK_DELAY_US)
   try {
     runCommand(
       "osascript",
@@ -760,14 +603,22 @@ async function runLocalComputer(params: ParametersInput): Promise<{
   actions: RuntimeAction[]
   screenshot: ToolScreenshot
   cursor?: Point
+  displays: DisplaySnapshot[]
 }> {
   const actions = performActions(params)
   settle(params.action === "wait" ? undefined : (params.durationMs ?? 120))
   const screenshot = await captureScreen()
   return {
     actions,
-    screenshot,
+    screenshot: {
+      dataUrl: screenshot.dataUrl,
+      width: screenshot.width,
+      height: screenshot.height,
+      displayId: screenshot.displayId,
+      scope: screenshot.scope,
+    },
     cursor: agentCursor,
+    displays: [],
   }
 }
 
@@ -787,6 +638,46 @@ function actionSummary(params: ParametersInput, actions: RuntimeAction[]) {
   return [`Ran ${actions.length} fast desktop actions:`, ...actions.slice(0, 12).map((action, index) => `${index + 1}. ${stepSummary(action)}`), actions.length > 12 ? `...${actions.length - 12} more actions.` : undefined]
     .filter(Boolean)
     .join("\n")
+}
+
+function rectSummary(rect: Rect) {
+  return `${rect.width}x${rect.height} @ (${rect.x}, ${rect.y})`
+}
+
+function displaysSummary(displays: DisplaySnapshot[]) {
+  if (displays.length === 0) return undefined
+  return [
+    "Displays:",
+    ...displays.map((display) => {
+      const flags = [
+        display.primary ? "primary" : undefined,
+        display.internal ? "internal" : undefined,
+        display.current ? "captured" : undefined,
+      ]
+        .filter(Boolean)
+        .join(", ")
+      return [
+        `- ${display.label} [${display.id}]`,
+        flags ? `(${flags})` : undefined,
+        `bounds ${rectSummary(display.bounds)}`,
+        `work area ${rectSummary(display.workArea)}`,
+        `scale ${display.scaleFactor}`,
+        display.rotation !== 0 ? `rotation ${display.rotation}` : undefined,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    }),
+  ].join("\n")
+}
+
+function capturedViewSummary(screenshot: ToolScreenshot, displays: DisplaySnapshot[]) {
+  if (screenshot.scope === "virtual-desktop") {
+    return `Captured view: virtual desktop${displays.length > 0 ? ` across ${displays.length} displays` : ""}.`
+  }
+  const captured = displays.find((display) => display.current) ?? displays.find((display) => display.id === screenshot.displayId)
+  if (captured) return `Captured view: ${captured.label} [${captured.id}].`
+  if (screenshot.displayId) return `Captured view: display ${screenshot.displayId}.`
+  return undefined
 }
 
 export const ComputerTool = Tool.define(
@@ -824,7 +715,13 @@ export const ComputerTool = Tool.define(
             permission: "computer",
             patterns,
             always: ["*"],
-            metadata: { action: params.action, actions: patterns, coordinate: params.coordinate, to: params.to },
+            metadata: {
+              action: params.action,
+              actions: patterns,
+              coordinate: params.coordinate,
+              to: params.to,
+              displayId: params.displayId,
+            },
           })
 
           const execution = yield* Effect.promise(() =>
@@ -832,6 +729,7 @@ export const ComputerTool = Tool.define(
           )
           const actions = execution.actions
           const screenshot = execution.screenshot
+          const displays = execution.displays
           agentCursor = execution.cursor
           const output = [
             `# Computer Use`,
@@ -839,6 +737,8 @@ export const ComputerTool = Tool.define(
             actionSummary(params, actions),
             "",
             `Screenshot: ${screenshot.width}x${screenshot.height}.`,
+            capturedViewSummary(screenshot, displays),
+            displaysSummary(displays),
             agentCursor ? `Agent cursor: (${agentCursor.x}, ${agentCursor.y}).` : undefined,
             "",
             "Security note: stop and ask the user before passwords, payments, account changes, destructive actions, or consent dialogs.",
@@ -855,6 +755,10 @@ export const ComputerTool = Tool.define(
               platform: process.platform,
               width: screenshot.width,
               height: screenshot.height,
+              displayId: screenshot.displayId,
+              displayScope: screenshot.scope,
+              displayCount: displays.length,
+              displays,
               screenshotMime: "image/png",
               screenshotDataUrl: screenshot.dataUrl,
               cursor: agentCursor,

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { taskAgent, taskChildSession } from "./message-part-task"
+import { taskAgent, taskChildSession, taskSubtitle } from "./message-part-task"
 import type { Session } from "@codeplane-ai/sdk/v2"
 
 describe("taskAgent", () => {
@@ -111,5 +111,23 @@ describe("taskChildSession", () => {
     const a = session({ id: "ses_a", parentID: "ses_p", title: "any", time: { created: 1, updated: 1 } })
     const b = session({ id: "ses_b", parentID: "ses_p", title: "any", time: { created: 2, updated: 2 } })
     expect(taskChildSession({}, {}, "/session/ses_p", [a, b])).toBe("ses_b")
+  })
+})
+
+describe("taskSubtitle", () => {
+  test("removes a duplicated task title prefix from the description", () => {
+    expect(taskSubtitle("Explore", "Explore website codebase")).toBe("website codebase")
+    expect(taskSubtitle("Explore", "Explore: website codebase")).toBe("website codebase")
+    expect(taskSubtitle("Explore", "Explore - website codebase")).toBe("website codebase")
+  })
+
+  test("keeps unrelated descriptions untouched", () => {
+    expect(taskSubtitle("Explore", "Inspect the auth flow")).toBe("Inspect the auth flow")
+  })
+
+  test("drops empty or title-only descriptions", () => {
+    expect(taskSubtitle("Explore", "Explore")).toBeUndefined()
+    expect(taskSubtitle("Explore", "  ")).toBeUndefined()
+    expect(taskSubtitle("Explore", undefined)).toBeUndefined()
   })
 })

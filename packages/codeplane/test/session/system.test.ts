@@ -11,6 +11,15 @@ function load<A>(dir: string, fn: (svc: Agent.Interface) => Effect.Effect<A>) {
 }
 
 describe("session.system", () => {
+  test("provider prompt does not include rich block instructions", () => {
+    const prompts = SystemPrompt.provider({
+      api: { id: "gpt-5" },
+      capabilities: { input: { image: false } },
+    } as any)
+
+    expect(prompts.some((prompt) => prompt.includes("# Rich UI blocks"))).toBe(false)
+  })
+
   test("skills output is sorted by name and stable across calls", async () => {
     await using tmp = await tmpdir({
       git: true,

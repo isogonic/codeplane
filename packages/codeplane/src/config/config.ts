@@ -42,6 +42,7 @@ import { ConfigPaths } from "./paths"
 import { ConfigPermission } from "./permission"
 import { ConfigPlugin } from "./plugin"
 import { ConfigProvider } from "./provider"
+import { ConfigSecret } from "./secret"
 import { ConfigServer } from "./server"
 import { ConfigSkills } from "./skills"
 import { ConfigVariable } from "./variable"
@@ -274,6 +275,7 @@ export type Info = DeepMutable<Schema.Schema.Type<typeof Info>> & {
 
 type State = {
   config: Info
+  rawConfig: Info
   directories: string[]
   deps: Fiber.Fiber<void, never>[]
   consoleState: ConsoleState
@@ -281,7 +283,9 @@ type State = {
 
 export interface Interface {
   readonly get: () => Effect.Effect<Info>
+  readonly getRaw: () => Effect.Effect<Info>
   readonly getGlobal: () => Effect.Effect<Info>
+  readonly getGlobalRaw: () => Effect.Effect<Info>
   readonly getConsoleState: () => Effect.Effect<ConsoleState>
   readonly update: (config: Info) => Effect.Effect<void>
   readonly updateGlobal: (config: Info) => Effect.Effect<Info>
@@ -325,6 +329,24 @@ function patchJsonc(input: string, patch: unknown, path: string[] = []): string 
   }, input)
 }
 
+type LoadedConfig = {
+  raw: Info
+  resolved: Info
+}
+
+const secretKeyPattern = /\b(token|secret|password|apikey|api[_-]?key|auth|authorization|cookie)\b/i
+const substitutionPattern = /\{(?:env|file|secret):[^}]+\}/
+
+function shouldSecretizeValue(key: string, value: string) {
+  if (!value.trim()) return false
+  if (substitutionPattern.test(value)) return false
+  return secretKeyPattern.test(key)
+}
+
+function secretNameFromPath(path: string[]) {
+  return ConfigSecret.normalizeName(path.join("-"))
+}
+
 function writable(info: Info) {
   const { plugin_origins: _plugin_origins, ...next } = info
   return next
@@ -358,6 +380,7 @@ export const layer = Layer.effect(
     const fs = yield* AppFileSystem.Service
     const authSvc = yield* Auth.Service
     const accountSvc = yield* Account.Service
+    const secretSvc = yield* ConfigSecret.Service
     const env = yield* Env.Service
     const npmSvc = yield* Npm.Service
 
@@ -376,29 +399,59 @@ export const layer = Layer.effect(
       options: { path: string } | { dir: string; source: string },
     ) {
       const source = "path" in options ? options.path : options.source
-      const expanded = yield* Effect.promise(() =>
-        ConfigVariable.substitute(
-          "path" in options ? { text, type: "path", path: options.path } : { text, type: "virtual", ...options },
+      const parsed = ConfigParse.jsonc(text, source)
+      const raw = ConfigParse.schema(Info.zod, parsed, source)
+      const resolved = ConfigParse.schema(
+        Info.zod,
+        yield* Effect.promise(() =>
+          ConfigVariable.resolveUnknown(
+            "path" in options ? { value: raw, type: "path", path: options.path } : { value: raw, type: "virtual", ...options },
+          ),
         ),
+        source,
       )
-      const parsed = ConfigParse.jsonc(expanded, source)
-      const data = ConfigParse.schema(Info.zod, parsed, source)
-      if (!("path" in options)) return data
+      if (!("path" in options)) return { raw, resolved } satisfies LoadedConfig
 
-      yield* Effect.promise(() => resolveLoadedPlugins(data, options.path))
-      if (!data.$schema) {
-        data.$schema = "https://example.invalid/config.json"
+      yield* Effect.promise(() => Promise.all([resolveLoadedPlugins(raw, options.path), resolveLoadedPlugins(resolved, options.path)]))
+      if (!raw.$schema) {
+        raw.$schema = "https://example.invalid/config.json"
+        resolved.$schema = "https://example.invalid/config.json"
         const updated = text.replace(/^\s*\{/, '{\n  "$schema": "https://example.invalid/config.json",')
         yield* fs.writeFileString(options.path, updated).pipe(Effect.catch(() => Effect.void))
       }
-      return data
+      return { raw, resolved } satisfies LoadedConfig
     })
 
     const loadFile = Effect.fnUntraced(function* (filepath: string) {
       log.info("loading", { path: filepath })
       const text = yield* readConfigFile(filepath)
-      if (!text) return {} as Info
+      if (!text) return { raw: {} as Info, resolved: {} as Info } satisfies LoadedConfig
       return yield* loadConfig(text, { path: filepath })
+    })
+
+    const secretizeUnknown = (value: unknown, trail: string[]): Effect.Effect<unknown> => {
+      if (Array.isArray(value)) {
+        return Effect.forEach(value, (item, index) => secretizeUnknown(item, [...trail, String(index)]), {
+          concurrency: "unbounded",
+        })
+      }
+      if (typeof value === "string") {
+        const key = trail[trail.length - 1] ?? ""
+        if (!shouldSecretizeValue(key, value)) return Effect.succeed(value)
+        const name = secretNameFromPath(trail)
+        if (!name) return Effect.succeed(value)
+        return secretSvc.set(name, value).pipe(Effect.map(() => ConfigSecret.placeholder(name)))
+      }
+      if (!value || typeof value !== "object") return Effect.succeed(value)
+      return Effect.forEach(
+        Object.entries(value),
+        ([key, item]) => secretizeUnknown(item, [...trail, key]).pipe(Effect.map((next) => [key, next] as const)),
+        { concurrency: "unbounded" },
+      ).pipe(Effect.map((entries) => Object.fromEntries(entries)))
+    }
+
+    const secretizeConfig = Effect.fnUntraced(function* (config: Info) {
+      return (yield* secretizeUnknown(config, [])) as Info
     })
 
     const loadGlobal = Effect.fnUntraced(function* () {
@@ -420,7 +473,7 @@ export const layer = Layer.effect(
         }
       }
 
-      let result: Info = yield* loadFile(globalConfigFile())
+      let result: LoadedConfig = yield* loadFile(globalConfigFile())
 
       // TOML "config" file (legacy pre-v26 format). Only honor it when it
       // sits inside *this* instance's dir — never XDG. Migrated into the
@@ -431,22 +484,37 @@ export const layer = Layer.effect(
           import(pathToFileURL(legacy).href, { with: { type: "toml" } })
             .then(async (mod) => {
               const { provider, model, ...rest } = mod.default
-              if (provider && model) result.model = `${provider}/${model}`
-              result["$schema"] = "https://example.invalid/config.json"
-              result = mergeDeep(result, rest)
-              await fsNode.writeFile(globalConfigFile(), JSON.stringify(result, null, 2))
+              if (provider && model) {
+                result.raw.model = `${provider}/${model}`
+                result.resolved.model = `${provider}/${model}`
+              }
+              result.raw["$schema"] = "https://example.invalid/config.json"
+              result.resolved["$schema"] = "https://example.invalid/config.json"
+              result = {
+                raw: mergeDeep(result.raw, rest),
+                resolved: mergeDeep(result.resolved, rest),
+              }
+              await fsNode.writeFile(globalConfigFile(), JSON.stringify(result.raw, null, 2))
               await fsNode.unlink(legacy)
             })
             .catch(() => {}),
         )
       }
 
-      result = withDiscoveredPlugins(
-        result,
-        Global.Path.config,
-        yield* Effect.promise(() => ConfigPlugin.load(Global.Path.config)),
-        "global",
-      )
+      result = {
+        raw: withDiscoveredPlugins(
+          result.raw,
+          Global.Path.config,
+          yield* Effect.promise(() => ConfigPlugin.load(Global.Path.config)),
+          "global",
+        ),
+        resolved: withDiscoveredPlugins(
+          result.resolved,
+          Global.Path.config,
+          yield* Effect.promise(() => ConfigPlugin.load(Global.Path.config)),
+          "global",
+        ),
+      }
 
       return result
     })
@@ -456,13 +524,23 @@ export const layer = Layer.effect(
         Effect.tapError((error) =>
           Effect.sync(() => log.error("failed to load global config, using defaults", { error: String(error) })),
         ),
-        Effect.orElseSucceed((): Info => ({})),
+        Effect.orElseSucceed(
+          (): LoadedConfig =>
+            ({
+              raw: {},
+              resolved: {},
+            }) as LoadedConfig,
+        ),
       ),
       Duration.infinity,
     )
 
     const getGlobal = Effect.fn("Config.getGlobal")(function* () {
-      return yield* cachedGlobal
+      return (yield* cachedGlobal).resolved
+    })
+
+    const getGlobalRaw = Effect.fn("Config.getGlobalRaw")(function* () {
+      return (yield* cachedGlobal).raw
     })
 
     const ensureGitignore = Effect.fn("Config.ensureGitignore")(function* (
@@ -491,6 +569,7 @@ export const layer = Layer.effect(
         const auth = yield* authSvc.all().pipe(Effect.orDie)
 
         let result: Info = {}
+        let rawResult: Info = {}
         const consoleManagedProviders = new Set<string>()
         let activeOrgName: string | undefined
 
@@ -522,9 +601,10 @@ export const layer = Layer.effect(
           result.plugin_origins = plugins
         })
 
-        const merge = (source: string, next: Info, kind?: ConfigPlugin.Scope) => {
-          result = mergeConfigConcatArrays(result, next)
-          return mergePluginOrigins(source, next.plugin, kind)
+        const merge = (source: string, next: LoadedConfig, kind?: ConfigPlugin.Scope) => {
+          result = mergeConfigConcatArrays(result, next.resolved)
+          rawResult = mergeConfigConcatArrays(rawResult, next.raw)
+          return mergePluginOrigins(source, next.resolved.plugin, kind)
         }
 
         for (const [key, value] of Object.entries(auth)) {
@@ -549,7 +629,7 @@ export const layer = Layer.effect(
           }
         }
 
-        const global = yield* getGlobal()
+        const global = yield* cachedGlobal
         yield* merge(Global.Path.config, global, "global")
 
         if (Flag.CODEPLANE_CONFIG) {
@@ -566,6 +646,9 @@ export const layer = Layer.effect(
         result.agent = result.agent || {}
         result.mode = result.mode || {}
         result.plugin = result.plugin || []
+        rawResult.agent = rawResult.agent || {}
+        rawResult.mode = rawResult.mode || {}
+        rawResult.plugin = rawResult.plugin || []
 
         const directories = yield* ConfigPaths.directories(ctx.directory, ctx.worktree)
 
@@ -652,7 +735,7 @@ export const layer = Layer.effect(
                 dir: path.dirname(source),
                 source,
               })
-              for (const providerID of Object.keys(next.provider ?? {})) {
+              for (const providerID of Object.keys(next.resolved.provider ?? {})) {
                 consoleManagedProviders.add(providerID)
               }
               yield* merge(source, next, "global")
@@ -679,13 +762,12 @@ export const layer = Layer.effect(
         // macOS managed preferences (.mobileconfig deployed via MDM) override everything
         const managed = yield* Effect.promise(() => ConfigManaged.readManagedPreferences())
         if (managed) {
-          result = mergeConfigConcatArrays(
-            result,
-            yield* loadConfig(managed.text, {
-              dir: path.dirname(managed.source),
-              source: managed.source,
-            }),
-          )
+          const next = yield* loadConfig(managed.text, {
+            dir: path.dirname(managed.source),
+            source: managed.source,
+          })
+          result = mergeConfigConcatArrays(result, next.resolved)
+          rawResult = mergeConfigConcatArrays(rawResult, next.raw)
         }
 
         for (const [name, mode] of Object.entries(result.mode ?? {})) {
@@ -727,8 +809,11 @@ export const layer = Layer.effect(
           result.compaction = { ...result.compaction, prune: false }
         }
 
+        rawResult.plugin_origins = result.plugin_origins
+
         return {
           config: result,
+          rawConfig: rawResult,
           directories,
           deps,
           consoleState: {
@@ -751,6 +836,10 @@ export const layer = Layer.effect(
       return yield* InstanceState.use(state, (s) => s.config)
     })
 
+    const getRaw = Effect.fn("Config.getRaw")(function* () {
+      return yield* InstanceState.use(state, (s) => s.rawConfig)
+    })
+
     const directories = Effect.fn("Config.directories")(function* () {
       return yield* InstanceState.use(state, (s) => s.directories)
     })
@@ -769,8 +858,9 @@ export const layer = Layer.effect(
       const dir = yield* InstanceState.directory
       const file = path.join(dir, "config.json")
       const existing = yield* loadFile(file)
+      const prepared = yield* secretizeConfig(config)
       yield* fs
-        .writeFileString(file, JSON.stringify(mergeDeep(writable(existing), writable(config)), null, 2))
+        .writeFileString(file, JSON.stringify(mergeDeep(writable(existing.raw), writable(prepared)), null, 2))
         .pipe(Effect.orDie)
       yield* Effect.promise(() => Instance.dispose())
     })
@@ -795,15 +885,16 @@ export const layer = Layer.effect(
     const updateGlobal = Effect.fn("Config.updateGlobal")(function* (config: Info) {
       const file = globalConfigFile()
       const before = (yield* readConfigFile(file)) ?? "{}"
+      const prepared = yield* secretizeConfig(config)
 
       let next: Info
       if (!file.endsWith(".jsonc")) {
         const existing = ConfigParse.schema(Info.zod, ConfigParse.jsonc(before, file), file)
-        const merged = mergeDeep(writable(existing), writable(config))
+        const merged = mergeDeep(writable(existing), writable(prepared))
         yield* fs.writeFileString(file, JSON.stringify(merged, null, 2)).pipe(Effect.orDie)
         next = merged
       } else {
-        const updated = patchJsonc(before, writable(config))
+        const updated = patchJsonc(before, writable(prepared))
         next = ConfigParse.schema(Info.zod, ConfigParse.jsonc(updated, file), file)
         yield* fs.writeFileString(file, updated).pipe(Effect.orDie)
       }
@@ -814,7 +905,9 @@ export const layer = Layer.effect(
 
     return Service.of({
       get,
+      getRaw,
       getGlobal,
+      getGlobalRaw,
       getConsoleState,
       update,
       updateGlobal,
@@ -831,5 +924,6 @@ export const defaultLayer = layer.pipe(
   Layer.provide(Env.defaultLayer),
   Layer.provide(Auth.defaultLayer),
   Layer.provide(Account.defaultLayer),
+  Layer.provide(ConfigSecret.defaultLayer),
   Layer.provide(Npm.defaultLayer),
 )

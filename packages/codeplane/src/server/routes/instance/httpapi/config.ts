@@ -46,7 +46,7 @@ export const configHandlers = Layer.unwrap(
     const configSvc = yield* Config.Service
 
     const get = Effect.fn("ConfigHttpApi.get")(function* () {
-      return yield* configSvc.get()
+      return yield* configSvc.getRaw()
     })
 
     const providers = Effect.fn("ConfigHttpApi.providers")(function* () {

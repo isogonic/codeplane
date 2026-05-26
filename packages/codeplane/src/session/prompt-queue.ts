@@ -265,9 +265,10 @@ export const layer = Layer.effect(
     })
 
     const cancelSession = Effect.fn("PromptQueue.cancelSession")(function* (sessionID: SessionID) {
-      // Only pending — a `running` job is owned by a worker fiber and must be
-      // cancelled via the worker's abort path, not by silently mutating its
-      // row out from under it.
+      // Mark both pending and running rows cancelled. The worker checks the
+      // durable row state before finalizing a successful-looking result, so a
+      // late `MessageAbortedError` from the runner cannot overwrite the user's
+      // explicit cancel back to `completed`.
       const result = yield* db((d) =>
         d
           .update(PromptJobTable)
@@ -277,7 +278,12 @@ export const layer = Layer.effect(
             time_completed: Date.now(),
             time_updated: Date.now(),
           })
-          .where(and(eq(PromptJobTable.session_id, sessionID), eq(PromptJobTable.status, "pending")))
+          .where(
+            and(
+              eq(PromptJobTable.session_id, sessionID),
+              inArray(PromptJobTable.status, ["pending", "running"]),
+            ),
+          )
           .run(),
       )
       // drizzle's better-sqlite3 driver returns `changes`; bun-sqlite uses

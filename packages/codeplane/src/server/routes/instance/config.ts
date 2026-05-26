@@ -29,7 +29,7 @@ export const ConfigRoutes = lazy(() =>
           },
         },
       }),
-      async (c) => c.json(await configRuntime.runPromise((svc) => svc.get())),
+      async (c) => c.json(await configRuntime.runPromise((svc) => svc.getRaw())),
     )
     .patch(
       "/",
@@ -56,7 +56,7 @@ export const ConfigRoutes = lazy(() =>
             Effect.gen(function* () {
               const config = c.req.valid("json")
               yield* svc.update(config)
-              return config
+              return yield* svc.getRaw()
             }),
           ),
         ),

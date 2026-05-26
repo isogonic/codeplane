@@ -5,24 +5,48 @@ import { createSessionContextFormatter } from "./session-context-format"
 
 const SPARK_WIDTH = 160
 const SPARK_HEIGHT = 36
-const SPARK_PADDING = 4
+const SPARK_PADDING_X = 6
+const SPARK_PADDING_Y = 5
 
-function buildSparkPath(turns: TurnSpeed[], peak: number) {
+function buildSparkDomain(turns: TurnSpeed[]) {
+  if (turns.length === 0) return { min: 0, max: 1 }
+  const values = turns.map((turn) => turn.tps)
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  if (max <= min) {
+    const pad = Math.max(max * 0.14, 1)
+    return {
+      min: Math.max(0, min - pad),
+      max: max + pad,
+    }
+  }
+  const spread = max - min
+  const pad = Math.max(spread * 0.2, max * 0.04, 1)
+  return {
+    min: Math.max(0, min - pad),
+    max: max + pad,
+  }
+}
+
+export function buildSparkPath(turns: TurnSpeed[]) {
   if (turns.length === 0) return { line: "", area: "", points: [] as { x: number; y: number; turn: TurnSpeed }[] }
-  const innerWidth = SPARK_WIDTH - SPARK_PADDING * 2
-  const innerHeight = SPARK_HEIGHT - SPARK_PADDING * 2
+  const innerWidth = SPARK_WIDTH - SPARK_PADDING_X * 2
+  const innerHeight = SPARK_HEIGHT - SPARK_PADDING_Y * 2
+  const domain = buildSparkDomain(turns)
+  const domainSpan = Math.max(domain.max - domain.min, 1)
   const denom = Math.max(turns.length - 1, 1)
   const points = turns.map((turn, i) => {
-    const x = SPARK_PADDING + (i / denom) * innerWidth
-    const ratio = peak > 0 ? Math.min(turn.tps / peak, 1) : 0
-    const y = SPARK_PADDING + (1 - ratio) * innerHeight
+    const x = SPARK_PADDING_X + (i / denom) * innerWidth
+    const ratio = Math.min(Math.max((turn.tps - domain.min) / domainSpan, 0), 1)
+    const y = SPARK_PADDING_Y + (1 - ratio) * innerHeight
     return { x, y, turn }
   })
   const line = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(" ")
   const first = points[0]
   const last = points.at(-1)
   if (!first || !last) return { line: "", area: "", points }
-  const area = `${line} L${last.x.toFixed(2)} ${(SPARK_HEIGHT - SPARK_PADDING).toFixed(2)} L${first.x.toFixed(2)} ${(SPARK_HEIGHT - SPARK_PADDING).toFixed(2)} Z`
+  const baseline = (SPARK_HEIGHT - SPARK_PADDING_Y).toFixed(2)
+  const area = `${line} L${last.x.toFixed(2)} ${baseline} L${first.x.toFixed(2)} ${baseline} Z`
   return { line, area, points }
 }
 
@@ -31,8 +55,7 @@ export function SessionTpsMeter(props: { speed: SpeedMetrics; label: string }) {
   const formatter = createMemo(() => createSessionContextFormatter(language.intl()))
 
   const headline = createMemo(() => props.speed.recent ?? props.speed.lifetime)
-  const peakValue = createMemo(() => props.speed.peak ?? 0)
-  const spark = createMemo(() => buildSparkPath(props.speed.turns, peakValue()))
+  const spark = createMemo(() => buildSparkPath(props.speed.turns))
   const lastIndex = createMemo(() => props.speed.turns.length - 1)
 
   const tpsTooltip = (turn: TurnSpeed, index: number) =>
@@ -63,7 +86,7 @@ export function SessionTpsMeter(props: { speed: SpeedMetrics; label: string }) {
           <svg
             viewBox={`0 0 ${SPARK_WIDTH} ${SPARK_HEIGHT}`}
             preserveAspectRatio="none"
-            class="h-9 min-w-0 flex-1 overflow-hidden"
+            class="h-9 min-w-0 flex-1 overflow-visible"
             aria-hidden="true"
           >
             <path d={spark().area} fill="var(--syntax-property)" fill-opacity="0.12" />

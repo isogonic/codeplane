@@ -3,7 +3,7 @@
   "info": {
     "title": "codeplane",
     "description": "codeplane api",
-    "version": "28.21.41"
+    "version": "29.0.4"
   },
   "paths": {
     "/global/cron": {
@@ -910,6 +910,133 @@
           {
             "lang": "js",
             "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.config.update({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/global/secrets": {
+      "get": {
+        "operationId": "global.secrets.list",
+        "summary": "List per-instance secrets",
+        "description": "List the secret names stored for the current Codeplane instance.",
+        "responses": {
+          "200": {
+            "description": "Secret list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConfigSecretEntry"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.secrets.list({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/global/secrets/{name}": {
+      "put": {
+        "operationId": "global.secrets.set",
+        "summary": "Create or replace a per-instance secret",
+        "description": "Store a secret in the current Codeplane instance data directory.",
+        "responses": {
+          "200": {
+            "description": "Stored secret metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigSecretEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": ["value"]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.secrets.set({\n  ...\n})"
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "global.secrets.remove",
+        "summary": "Delete a per-instance secret",
+        "description": "Remove a stored secret from the current Codeplane instance data directory.",
+        "responses": {
+          "200": {
+            "description": "Secret delete result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["success"]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.secrets.remove({\n  ...\n})"
           }
         ]
       }
@@ -7053,6 +7180,62 @@
         ]
       }
     },
+    "/mcp/auth/auto-connect": {
+      "post": {
+        "operationId": "mcp.auth.autoConnect",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Auto-connect pending MCP OAuth",
+        "description": "Start interactive OAuth flows for remote MCP servers in this instance that have partial stored auth state.",
+        "responses": {
+          "200": {
+            "description": "Pending OAuth launches started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "authorizationUrl": {
+                        "type": "string"
+                      },
+                      "redirectUri": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["name", "authorizationUrl", "redirectUri"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.mcp.auth.autoConnect({\n  ...\n})"
+          }
+        ]
+      }
+    },
     "/mcp/{name}/auth": {
       "post": {
         "operationId": "mcp.auth.start",
@@ -8228,6 +8411,52 @@
           "properties": {
             "type": "object",
             "properties": {}
+          }
+        },
+        "required": ["type", "properties"]
+      },
+      "Event.server.dropped": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "server.dropped"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        "required": ["type", "properties"]
+      },
+      "Event.server.heartbeat": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "server.heartbeat"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        "required": ["type", "properties"]
+      },
+      "Event.server.resume_failed": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "server.resume_failed"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "lastEventID": {
+                "type": "number"
+              }
+            }
           }
         },
         "required": ["type", "properties"]
@@ -12999,6 +13228,15 @@
                 "$ref": "#/components/schemas/Event.server.connected"
               },
               {
+                "$ref": "#/components/schemas/Event.server.dropped"
+              },
+              {
+                "$ref": "#/components/schemas/Event.server.heartbeat"
+              },
+              {
+                "$ref": "#/components/schemas/Event.server.resume_failed"
+              },
+              {
                 "$ref": "#/components/schemas/Event.global.disposed"
               },
               {
@@ -14447,6 +14685,21 @@
         },
         "additionalProperties": false
       },
+      "ConfigSecretEntry": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "placeholder": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "number"
+          }
+        },
+        "required": ["name", "placeholder", "updated_at"]
+      },
       "InternalServerError": {
         "type": "object",
         "properties": {
@@ -15509,6 +15762,15 @@
           },
           {
             "$ref": "#/components/schemas/Event.server.connected"
+          },
+          {
+            "$ref": "#/components/schemas/Event.server.dropped"
+          },
+          {
+            "$ref": "#/components/schemas/Event.server.heartbeat"
+          },
+          {
+            "$ref": "#/components/schemas/Event.server.resume_failed"
           },
           {
             "$ref": "#/components/schemas/Event.global.disposed"

@@ -3,7 +3,16 @@ import { Icon, type IconProps } from "@codeplane-ai/ui/icon"
 import { useLanguage } from "@/context/language"
 import { useUpdates } from "@/context/updates"
 
-export type SettingsSection = "general" | "shortcuts" | "providers" | "modes" | "models" | "mcp" | "plugins" | "skills"
+export type SettingsSection =
+  | "general"
+  | "shortcuts"
+  | "providers"
+  | "modes"
+  | "models"
+  | "mcp"
+  | "secrets"
+  | "plugins"
+  | "skills"
 
 export const settingsSections = [
   {
@@ -56,6 +65,13 @@ export const settingsSections = [
     groupKey: "settings.section.extensions",
   },
   {
+    value: "secrets",
+    icon: "shield",
+    titleKey: "secrets.page.title",
+    descriptionKey: "settings.tab.secrets.description",
+    groupKey: "settings.section.extensions",
+  },
+  {
     value: "skills",
     icon: "checklist",
     titleKey: "skills.page.title",
@@ -94,6 +110,7 @@ export function normalizeSettingsSection(value: string | undefined): SettingsSec
     value === "modes" ||
     value === "models" ||
     value === "mcp" ||
+    value === "secrets" ||
     value === "plugins" ||
     value === "skills"
   )

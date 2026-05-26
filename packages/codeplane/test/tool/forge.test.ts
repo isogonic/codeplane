@@ -67,7 +67,9 @@ const state = (client: HttpClient.HttpClient, initial: Config.Info, auth: Record
         Config.Service,
         Config.Service.of({
           get: () => Effect.succeed(config),
+          getRaw: () => Effect.succeed(config),
           getGlobal: () => Effect.succeed(config),
+          getGlobalRaw: () => Effect.succeed(config),
           getConsoleState: () =>
             Effect.succeed({ consoleManagedProviders: [], activeOrgName: undefined, switchableOrgCount: 0 }),
           update: (next) =>

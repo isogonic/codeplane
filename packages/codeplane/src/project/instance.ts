@@ -55,7 +55,7 @@ function track(directory: string, next: Promise<InstanceContext>) {
 }
 
 export const Instance = {
-  async provide<R>(input: { directory: string; init?: () => Promise<any>; fn: () => R }): Promise<R> {
+  async provide<R>(input: { directory: string; init?: () => Promise<any>; fn: () => R }): Promise<Awaited<R>> {
     const directory = AppFileSystem.resolve(input.directory)
     let existing = cache.get(directory)
     if (!existing) {
@@ -69,9 +69,7 @@ export const Instance = {
       )
     }
     const ctx = await existing
-    return context.provide(ctx, async () => {
-      return input.fn()
-    })
+    return (await context.provide(ctx, () => input.fn())) as Awaited<R>
   },
   get current() {
     return context.use()

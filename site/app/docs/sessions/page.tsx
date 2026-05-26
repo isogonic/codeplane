@@ -40,7 +40,7 @@ export default function Sessions() {
         <p>Hit <em>Branch from here</em> on any assistant message to start a new thread that inherits the timeline up to that point.</p>
 
         <h2>Queued follow-ups</h2>
-        <p>While the agent is busy, additional messages queue up. Drag to reorder, click <em>Send now</em> to interrupt the current turn. Queue order is per-session, server-side, multi-client.</p>
+        <p>While the agent is busy, additional messages can either wait in the follow-up queue or steer the turn immediately, depending on your setting. Drag queued follow-ups to reorder them, and click <em>Send now</em> to interrupt the current turn and run that follow-up next.</p>
 
         <h2>Run status</h2>
         <p>

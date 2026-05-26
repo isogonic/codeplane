@@ -30,10 +30,9 @@ export function nextRunnableFollowup(input: {
     .sort((a, b) => a.item.id.localeCompare(b.item.id))
     .find(({ sessionID, item }) => {
       const session = input.session(sessionID, item)
-      if (!session) return false
-      if (session.parentID) return false
-      if (session.time.archived !== undefined) return false
-      if (session.cronRunID) return false
+      if (session?.parentID) return false
+      if (session?.time.archived !== undefined) return false
+      if (session?.cronRunID) return false
       if (input.failed[sessionID] === item.id) return false
       if (input.paused[sessionID]) return false
       if (input.busy(sessionID, item)) return false

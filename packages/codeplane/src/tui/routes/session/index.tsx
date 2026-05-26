@@ -26,6 +26,7 @@ import { RichBlockText } from "@/tui/component/rich-block"
 import { selectedForeground, useTheme } from "@/tui/context/theme"
 import { ScrollBoxRenderable, addDefaultParsers, TextAttributes, RGBA } from "@opentui/core"
 import { Prompt, type PromptRef } from "@/tui/component/prompt"
+import { describeGenericToolDisplay } from "@codeplane-ai/shared/tool-display"
 import type {
   AssistantMessage,
   Part,
@@ -69,7 +70,6 @@ import { DialogForkFromTimeline } from "./dialog-fork-from-timeline"
 import { DialogSessionRename } from "../../component/dialog-session-rename"
 import { Sidebar } from "./sidebar"
 import { SubagentFooter } from "./subagent-footer.tsx"
-import { Flag } from "@/flag/flag"
 import { LANGUAGE_EXTENSIONS } from "@/lsp/language"
 import parsers from "@/tui/_compat/parsers-config"
 import * as Clipboard from "../../util/clipboard"
@@ -1821,7 +1821,6 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
           syntax={syntax()}
           conceal={ctx.conceal()}
           streaming={true}
-          experimental={Flag.CODEPLANE_EXPERIMENTAL_MARKDOWN}
         />
       </box>
     </Show>
@@ -1906,74 +1905,10 @@ function ToolPart(props: { last: boolean; part: ToolPart; message: AssistantMess
         <Match when={props.part.tool === "skill"}>
           <Skill {...toolprops} />
         </Match>
-        <Match when={RICH_BLOCK_TOOL_IDS.has(props.part.tool)}>
-          <RichBlockTool {...toolprops} />
-        </Match>
         <Match when={true}>
           <GenericTool {...toolprops} />
         </Match>
       </Switch>
-    </Show>
-  )
-}
-
-// First-class tools that produce a fenced rich-block as their output.
-// Anything in this set gets rendered with RichBlockText so the agent's
-// kpi/chart/callout/... payload becomes a real visual block in the TUI
-// instead of dumping the raw JSON in a generic text frame.
-const RICH_BLOCK_TOOL_IDS = new Set([
-  "chart",
-  "kpi",
-  "callout",
-  "timeline",
-  "progress",
-  "badge",
-  "quote",
-  "preview",
-  "stock",
-  "tabs",
-  "choice",
-  "select",
-  "file-tree",
-  "image-grid",
-  "comparison",
-  "video",
-  "diff",
-])
-
-function RichBlockTool(props: ToolProps<any>) {
-  const { theme, syntax } = useTheme()
-  const ctx = use()
-  const output = createMemo(() => props.output?.trim() ?? "")
-  return (
-    <Show
-      when={output()}
-      fallback={
-        <InlineTool icon="◈" pending={`Rendering ${props.tool}…`} complete={true} part={props.part}>
-          {props.tool}
-        </InlineTool>
-      }
-    >
-      <box
-        flexDirection="column"
-        flexShrink={0}
-        marginTop={1}
-        paddingLeft={3}
-        paddingRight={2}
-      >
-        <RichBlockText
-          text={output()}
-          syntax={syntax()}
-          conceal={ctx.conceal()}
-          streaming={false}
-          experimental={Flag.CODEPLANE_EXPERIMENTAL_MARKDOWN}
-        />
-        <Show when={props.part.state.status === "error" && (props.part.state as { error?: string }).error}>
-          <text fg={theme.error} marginTop={1}>
-            {(props.part.state as { error?: string }).error}
-          </text>
-        </Show>
-      </box>
     </Show>
   )
 }
@@ -1990,6 +1925,13 @@ function GenericTool(props: ToolProps<any>) {
   const { theme } = useTheme()
   const ctx = use()
   const output = createMemo(() => props.output?.trim() ?? "")
+  const display = createMemo(() =>
+    describeGenericToolDisplay({
+      tool: props.tool,
+      args: props.input,
+      metadata: props.metadata,
+    }),
+  )
   const [expanded, setExpanded] = createSignal(false)
   const lines = createMemo(() => output().split("\n"))
   const maxLines = 3
@@ -2004,12 +1946,12 @@ function GenericTool(props: ToolProps<any>) {
       when={props.output && ctx.showGenericToolOutput()}
       fallback={
         <InlineTool icon="⚙" pending="Writing command..." complete={true} part={props.part}>
-          {props.tool} {input(props.input)}
+          {[display().title, display().subtitle].filter(Boolean).join(" · ")}
         </InlineTool>
       }
     >
       <BlockTool
-        title={`# ${props.tool} ${input(props.input)}`}
+        title={`# ${[display().title, display().subtitle].filter(Boolean).join(" · ")}`}
         part={props.part}
         onClick={overflow() ? () => setExpanded((prev) => !prev) : undefined}
       >

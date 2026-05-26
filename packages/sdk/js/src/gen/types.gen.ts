@@ -167,6 +167,27 @@ export type EventServerConnected = {
   }
 }
 
+export type EventServerDropped = {
+  type: "server.dropped"
+  properties: {
+    [key: string]: unknown
+  }
+}
+
+export type EventServerHeartbeat = {
+  type: "server.heartbeat"
+  properties: {
+    [key: string]: unknown
+  }
+}
+
+export type EventServerResumeFailed = {
+  type: "server.resume_failed"
+  properties: {
+    lastEventID?: number
+  }
+}
+
 export type EventGlobalDisposed = {
   type: "global.disposed"
   properties: {
@@ -1767,6 +1788,9 @@ export type GlobalEvent = {
     | EventInstallationUpdateAvailable
     | EventProjectUpdated
     | EventServerConnected
+    | EventServerDropped
+    | EventServerHeartbeat
+    | EventServerResumeFailed
     | EventGlobalDisposed
     | EventServerInstanceDisposed
     | EventLspClientDiagnostics
@@ -2472,6 +2496,12 @@ export type Config = {
   }
 }
 
+export type ConfigSecretEntry = {
+  name: string
+  placeholder: string
+  updated_at: number
+}
+
 export type InternalServerError = {
   name: "UnknownError"
   data: {
@@ -2824,6 +2854,9 @@ export type Event =
   | EventInstallationUpdateAvailable
   | EventProjectUpdated
   | EventServerConnected
+  | EventServerDropped
+  | EventServerHeartbeat
+  | EventServerResumeFailed
   | EventGlobalDisposed
   | EventServerInstanceDisposed
   | EventLspClientDiagnostics
@@ -3419,6 +3452,71 @@ export type GlobalConfigUpdateResponses = {
 }
 
 export type GlobalConfigUpdateResponse = GlobalConfigUpdateResponses[keyof GlobalConfigUpdateResponses]
+
+export type GlobalSecretsListData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/global/secrets"
+}
+
+export type GlobalSecretsListResponses = {
+  /**
+   * Secret list
+   */
+  200: Array<ConfigSecretEntry>
+}
+
+export type GlobalSecretsListResponse = GlobalSecretsListResponses[keyof GlobalSecretsListResponses]
+
+export type GlobalSecretsRemoveData = {
+  body?: never
+  path: {
+    name: string
+  }
+  query?: never
+  url: "/global/secrets/{name}"
+}
+
+export type GlobalSecretsRemoveResponses = {
+  /**
+   * Secret delete result
+   */
+  200: {
+    success: boolean
+  }
+}
+
+export type GlobalSecretsRemoveResponse = GlobalSecretsRemoveResponses[keyof GlobalSecretsRemoveResponses]
+
+export type GlobalSecretsSetData = {
+  body?: {
+    value: string
+  }
+  path: {
+    name: string
+  }
+  query?: never
+  url: "/global/secrets/{name}"
+}
+
+export type GlobalSecretsSetErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type GlobalSecretsSetError = GlobalSecretsSetErrors[keyof GlobalSecretsSetErrors]
+
+export type GlobalSecretsSetResponses = {
+  /**
+   * Stored secret metadata
+   */
+  200: ConfigSecretEntry
+}
+
+export type GlobalSecretsSetResponse = GlobalSecretsSetResponses[keyof GlobalSecretsSetResponses]
 
 export type GlobalDisposeData = {
   body?: never
@@ -6127,6 +6225,29 @@ export type McpAddResponses = {
 }
 
 export type McpAddResponse = McpAddResponses[keyof McpAddResponses]
+
+export type McpAuthAutoConnectData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/mcp/auth/auto-connect"
+}
+
+export type McpAuthAutoConnectResponses = {
+  /**
+   * Pending OAuth launches started
+   */
+  200: Array<{
+    name: string
+    authorizationUrl: string
+    redirectUri: string
+  }>
+}
+
+export type McpAuthAutoConnectResponse = McpAuthAutoConnectResponses[keyof McpAuthAutoConnectResponses]
 
 export type McpAuthRemoveData = {
   body?: never

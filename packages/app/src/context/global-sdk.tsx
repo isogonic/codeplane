@@ -5,6 +5,7 @@ import { makeEventListener } from "@solid-primitives/event-listener"
 import { batch, onCleanup, onMount } from "solid-js"
 import z from "zod"
 import { createSdkForServer } from "@/utils/server"
+import { compactGlobalSdkEventsForFlush, globalSdkCoalesceKey, isGlobalSdkEvent } from "./global-sdk-stream"
 import { useLanguage } from "./language"
 import { usePlatform } from "./platform"
 import { useServer } from "./server"
@@ -13,7 +14,7 @@ const abortError = z.object({
   name: z.literal("AbortError"),
 })
 
-export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleContext({
+const globalSdkContext = createSimpleContext({
   name: "GlobalSDK",
   init: () => {
     const language = useLanguage()
@@ -21,13 +22,14 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
     const platform = usePlatform()
     const abort = new AbortController()
 
-    const eventFetch = (() => {
-      if (!platform.fetch || !server.current) return
-      if (!URL.canParse(server.current.http.url)) return
-      const url = new URL(server.current.http.url)
-      const loopback = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "::1"
-      if (!loopback) return platform.fetch
-    })()
+    const eventFetch: typeof platform.fetch | undefined =
+      !platform.fetch || !server.current || !URL.canParse(server.current.http.url)
+        ? undefined
+        : (() => {
+            const url = new URL(server.current.http.url)
+            const loopback = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "::1"
+            return loopback ? undefined : platform.fetch
+          })()
 
     const currentServer = server.current
     if (!currentServer) throw new Error(language.t("error.globalSDK.noServerAvailable"))
@@ -53,21 +55,9 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
     let queue: Queued[] = []
     let buffer: Queued[] = []
     const coalesced = new Map<string, number>()
-    const staleDeltas = new Set<string>()
     let timer: ReturnType<typeof setTimeout> | undefined
     let last = 0
     const recentEvents: number[] = []
-
-    const deltaKey = (directory: string, messageID: string, partID: string) => `${directory}:${messageID}:${partID}`
-
-    const key = (directory: string, payload: Event) => {
-      if (payload.type === "session.status") return `session.status:${directory}:${payload.properties.sessionID}`
-      if (payload.type === "lsp.updated") return `lsp.updated:${directory}`
-      if (payload.type === "message.part.updated") {
-        const part = payload.properties.part
-        return `message.part.updated:${directory}:${part.messageID}:${part.id}`
-      }
-    }
 
     const flush = () => {
       if (timer) clearTimeout(timer)
@@ -75,21 +65,16 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
 
       if (queue.length === 0) return
 
-      const events = queue
-      const skip = staleDeltas.size > 0 ? new Set(staleDeltas) : undefined
+      const raw = queue
       queue = buffer
-      buffer = events
+      buffer = raw
       queue.length = 0
       coalesced.clear()
-      staleDeltas.clear()
 
       last = Date.now()
+      const events = compactGlobalSdkEventsForFlush(raw)
       batch(() => {
         for (const event of events) {
-          if (skip && event.payload.type === "message.part.delta") {
-            const props = event.payload.properties
-            if (skip.has(deltaKey(event.directory, props.messageID, props.partID))) continue
-          }
           emitter.emit(event.directory, event.payload)
         }
       })
@@ -163,21 +148,14 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
               resetHeartbeat()
               streamErrorLogged = false
               const directory = event.directory ?? "global"
-              if (event.payload.type === "sync") {
-                continue
-              }
+              const payload = event.payload
+              if (!isGlobalSdkEvent(payload)) continue
 
-              const payload = event.payload as Event
-
-              const k = key(directory, payload)
+              const k = globalSdkCoalesceKey(directory, payload)
               if (k) {
                 const i = coalesced.get(k)
                 if (i !== undefined) {
                   queue[i] = { directory, payload }
-                  if (payload.type === "message.part.updated") {
-                    const part = payload.properties.part
-                    staleDeltas.add(deltaKey(directory, part.messageID, part.id))
-                  }
                   continue
                 }
                 coalesced.set(k, queue.length)
@@ -262,3 +240,6 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
     }
   },
 })
+
+export const useGlobalSDK = () => globalSdkContext.use()
+export const GlobalSDKProvider = globalSdkContext.provider
