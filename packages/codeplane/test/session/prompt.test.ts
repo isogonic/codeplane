@@ -2637,3 +2637,78 @@ it.live(
     ),
   30_000,
 )
+
+// Per-message anchoring (the v29.0.19 fix): each prompt() invocation must
+// produce exactly one assistant response, even when multiple prompts queue
+// up close together. Pre-fix, the FIRST runLoop's iter 2 would see all the
+// pending user messages and batch them into one AI call → one assistant
+// for N users. This test forks three concurrent prompts and asserts:
+//   - LLM is called exactly 3 times (one per prompt, not one batched)
+//   - 3 distinct assistant messages exist
+//   - Each user's response text matches what was queued for that prompt
+it.live(
+  "concurrent prompts produce one assistant per user message (no coalescing)",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ llm }) {
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const session = yield* sessions.create({
+          title: "Coalescing regression",
+          permission: [{ permission: "*", pattern: "*", action: "allow" }],
+        })
+
+        // Queue distinct replies up-front so the LLM hands them out FIFO
+        // as each prompt's runLoop reaches it.
+        yield* llm.text("ALPHA")
+        yield* llm.text("BETA")
+        yield* llm.text("GAMMA")
+
+        // Fire three prompts concurrently. The Runner serializes them
+        // through ensureRunning(queue:true), so they run one-after-another
+        // but their user-message inserts can land before the FIRST
+        // runLoop's second iteration without the v29.0.19 fix — which is
+        // exactly the bug we're pinning.
+        yield* Effect.all(
+          [
+            prompt.prompt({
+              sessionID: session.id,
+              agent: "build",
+              parts: [{ type: "text", text: "alpha?" }],
+            }),
+            prompt.prompt({
+              sessionID: session.id,
+              agent: "build",
+              parts: [{ type: "text", text: "beta?" }],
+            }),
+            prompt.prompt({
+              sessionID: session.id,
+              agent: "build",
+              parts: [{ type: "text", text: "gamma?" }],
+            }),
+          ],
+          { concurrency: "unbounded" },
+        )
+
+        // Three separate AI inference calls — not one batched call.
+        const hits = yield* llm.hits
+        expect(hits).toHaveLength(3)
+
+        // Three distinct assistant messages whose text matches the
+        // pre-queued replies, in order.
+        const msgs = yield* sessions.messages({ sessionID: session.id, limit: 100 })
+        const assistantTexts = msgs
+          .filter((m) => m.info.role === "assistant")
+          .map((m) => m.parts.filter((p) => p.type === "text").map((p) => (p as { text: string }).text).join(""))
+        expect(assistantTexts).toContain("ALPHA")
+        expect(assistantTexts).toContain("BETA")
+        expect(assistantTexts).toContain("GAMMA")
+
+        // Three user messages too — one per prompt invocation.
+        const userMsgs = msgs.filter((m) => m.info.role === "user")
+        expect(userMsgs).toHaveLength(3)
+      }),
+      { git: true, config: providerCfg },
+    ),
+  60_000,
+)

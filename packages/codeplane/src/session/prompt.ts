@@ -1942,7 +1942,32 @@ NOTE: At any point in time through this workflow you should feel free to ask the
           const lastAssistantMsg = msgs.findLast(
             (msg) => msg.info.role === "assistant" && msg.info.id === lastAssistant?.id,
           )
-          if (
+          // When this runLoop is anchored to a specific user message
+          // (typical `prompt(input)` path), exit ONLY when an assistant
+          // message exists whose `parentID` actually equals our user
+          // message — i.e. an assistant truly generated in response to
+          // OUR prompt. Just comparing IDs (`lastUser.id < lastAssistant.id`)
+          // is fragile: an assistant generated for an earlier user
+          // message can have `id > ownMessageID` from clock ordering when
+          // concurrent prompts queue up close together, falsely satisfying
+          // the exit and leaving our user message unanswered (regression
+          // pinned by the "concurrent prompts produce one assistant per
+          // user message" test).
+          if (ownMessageID) {
+            const ourAssistant = msgs.findLast(
+              (msg) =>
+                msg.info.role === "assistant" &&
+                (msg.info as MessageV2.Assistant).parentID === ownMessageID,
+            )
+            if (
+              ourAssistant &&
+              ourAssistant.info.role === "assistant" &&
+              !requiresAssistantFollowup(ourAssistant.info, ourAssistant.parts)
+            ) {
+              yield* slog.info("exiting loop (own msg addressed)", { ownMessageID })
+              break
+            }
+          } else if (
             lastAssistant &&
             !requiresAssistantFollowup(lastAssistant, lastAssistantMsg?.parts) &&
             lastUser.id < lastAssistant.id
