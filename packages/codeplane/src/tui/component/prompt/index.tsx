@@ -136,7 +136,7 @@ type QueuedSubmission = {
   id: string
   sessionID: string
   inputPreview: string
-  status: "pending" | "running" | "failed"
+  status: "pending" | "failed"
 }
 
 function snapshotPromptInfo(prompt: PromptInfo): PromptInfo {
@@ -332,17 +332,18 @@ export function Prompt(props: PromptProps) {
   const queuedForSession = createMemo<QueuedSubmission[]>(() => {
     if (!props.sessionID) return []
     const list = sync.data.prompt_queue?.[props.sessionID] ?? []
-    // Include `running` so the user keeps seeing the item the worker just
-    // claimed — without this, deleting the current head pending row makes
-    // the next sibling jump from pending → running and disappear from the
-    // dock at the same instant, looking like "one click deleted two."
+    // Dock shows only items that are actually waiting — pending and failed.
+    // The currently-running job is the active turn, already represented in
+    // the timeline; including it here made every just-submitted message
+    // look like "queued behind something" even when it was the only
+    // submission, which is the opposite of what the user expects.
     return list
-      .filter((job) => job.status === "pending" || job.status === "running" || job.status === "failed")
+      .filter((job) => job.status === "pending" || job.status === "failed")
       .map((job) => ({
         id: job.id,
         sessionID: job.sessionID,
         inputPreview: previewFromPayload(job.payload),
-        status: job.status as "pending" | "running" | "failed",
+        status: job.status as "pending" | "failed",
       }))
   })
   const followupModeLabel = createMemo(() => {

@@ -1690,16 +1690,16 @@ export default function Page() {
     return sync.data.prompt_queue[id] ?? []
   })
 
-  // Include `running` so the user keeps seeing the item that's currently
-  // being processed. Without this, the moment the worker claims the next
-  // queued job (status pending → running), it vanishes from the dock —
-  // which looks like "deleting one item removed two" when the deleted
-  // pending item happened to be the head, because freeing the busy slot
-  // immediately promotes the next sibling to running.
+  // Dock shows only items that are actually waiting — pending and failed.
+  // Running jobs are the active turn, already represented in the timeline
+  // (the user message + the streaming assistant). Showing them in the
+  // dock too made the dock label "N queued messages" lie about the very
+  // first send into an idle session, where the freshly-submitted message
+  // immediately flips to running and showed up as if it were still queued
+  // — user-reported bug v29.0.18 → v29.0.20: "I send a message, it sends
+  // AND adds to queue but never processes queue, wtf."
   const queuedJobs = createMemo(() =>
-    serverQueue().filter(
-      (job) => job.status === "pending" || job.status === "running" || job.status === "failed",
-    ),
+    serverQueue().filter((job) => job.status === "pending" || job.status === "failed"),
   )
 
   const editingFollowup = createMemo(() => {
