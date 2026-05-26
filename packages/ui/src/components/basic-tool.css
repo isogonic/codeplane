@@ -265,10 +265,17 @@
 /* Same hoist-pattern as tool-trigger above — see comment there. Without
    this flat duplicate, the build pipeline drops the parent's own
    declarations and task tool cards collapse to display: block. */
+/* The parent `tool-trigger` bleeds -10/+10 horizontally so its hover
+   background overshoots the message column. The card inside should NOT
+   inherit that bleed, otherwise the boxed task card sticks ~10px past
+   the right edge vs sibling rows (which only render text). Pull the
+   card back by 10px on each side so its left/right edges line up with
+   the visible content of plain tool rows. */
 [data-component="task-tool-card"],
 [data-component="task-tool-card"]:hover {
-  width: 100%;
+  width: calc(100% - 20px);
   min-width: 0;
+  margin-right: 10px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -375,7 +382,10 @@
 }
 
 [data-component="collapsible"].tool-collapsible[data-tool="task"] [data-component="task-tool-card"] {
-  margin-left: 18px;
+  /* 10px to compensate for the parent tool-trigger bleed (see above)
+     plus 18px to leave room for the L-shaped tree connector. */
+  margin-left: 28px;
+  width: calc(100% - 38px);
 }
 
 [data-component="collapsible"].tool-collapsible[data-tool="task"]::before {
