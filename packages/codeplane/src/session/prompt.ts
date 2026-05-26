@@ -1761,7 +1761,10 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         yield* sessions.touch(input.sessionID)
 
         if (input.noReply === true) return message
-        return yield* loop({ sessionID: input.sessionID })
+        // Anchor the loop to the user message we just created so a runLoop
+        // queued behind a still-running one can't accidentally pick up
+        // *our* user message and address it as part of an earlier batch.
+        return yield* loop({ sessionID: input.sessionID, messageID: message.info.id })
       },
     )
 
@@ -1898,20 +1901,36 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       return !hasAssistantOutputAfterLocalTool(parts, lastLocalToolIndex)
     }
 
-    const runLoop: (sessionID: SessionID) => Effect.Effect<MessageV2.WithParts> = Effect.fn("SessionPrompt.run")(
-      function* (sessionID: SessionID) {
-        const ctx = yield* InstanceState.context
-        const slog = elog.with({ sessionID })
-        let structured: unknown | undefined
-        let step = 0
-        const session = yield* sessions.get(sessionID)
+    const runLoop: (sessionID: SessionID, ownMessageID?: MessageID) => Effect.Effect<MessageV2.WithParts> = Effect.fn(
+      "SessionPrompt.run",
+    )(function* (sessionID: SessionID, ownMessageID?: MessageID) {
+      const ctx = yield* InstanceState.context
+      const slog = elog.with({ sessionID })
+      let structured: unknown | undefined
+      let step = 0
+      const session = yield* sessions.get(sessionID)
 
-        while (true) {
-          yield* status.set(sessionID, { type: "busy" })
-          yield* slog.info("loop", { step })
+      while (true) {
+        yield* status.set(sessionID, { type: "busy" })
+        yield* slog.info("loop", { step, ownMessageID })
 
-          let msgs = yield* MessageV2.filterCompactedEffect(sessionID)
-          yield* finalizeFinishedAssistants(msgs)
+        let msgs = yield* MessageV2.filterCompactedEffect(sessionID)
+        // When this runLoop was triggered by a specific user message
+        // (typical `prompt(input)` call), ignore any *newer* user messages
+        // that landed while we were running. Each prompt() enqueues its
+        // own runLoop via the Runner; without this filter the FIRST
+        // runLoop's second iteration would see N>1 pending user messages
+        // and the AI would respond to all of them in one batched reply,
+        // producing the user-reported bug "4 messages, only 1 reply"
+        // (and the queued runLoops would then no-op because lastUser was
+        // already addressed). Restricting `msgs` to <= ownMessageID for
+        // user roles means each prompt() owns exactly one AI turn.
+        // Assistant + tool messages are kept regardless so multi-step
+        // tool followups for *our* user message still iterate normally.
+        if (ownMessageID) {
+          msgs = msgs.filter((m) => m.info.role !== "user" || m.info.id <= ownMessageID)
+        }
+        yield* finalizeFinishedAssistants(msgs)
 
           const loopState = collectLoopState(msgs)
           const lastUser = loopState.lastUser
@@ -2157,7 +2176,11 @@ NOTE: At any point in time through this workflow you should feel free to ask the
     const loop: (input: LoopInput) => Effect.Effect<MessageV2.WithParts, Session.BusyError> = Effect.fn(
       "SessionPrompt.loop",
     )(function* (input: LoopInput) {
-      return yield* state.ensureRunning(input.sessionID, interrupted(input.sessionID), runLoop(input.sessionID))
+      return yield* state.ensureRunning(
+        input.sessionID,
+        interrupted(input.sessionID),
+        runLoop(input.sessionID, input.messageID),
+      )
     })
 
     const shell: (input: ShellInput) => Effect.Effect<MessageV2.WithParts> = Effect.fn("SessionPrompt.shell")(
@@ -2367,6 +2390,16 @@ export type PromptInput = Omit<Schema.Schema.Type<typeof PromptInput>, "parts"> 
 
 export class LoopInput extends Schema.Class<LoopInput>("SessionPrompt.LoopInput")({
   sessionID: SessionID,
+  /**
+   * Optional user-message anchor. When set, `runLoop` only addresses up to
+   * (and including) this user message — any newer user messages that
+   * landed during this loop's execution stay pending for their own queued
+   * runLoop call. Omitted from the route-driven `loop` invocation
+   * (no new user) so existing behavior is unchanged there; `prompt()`
+   * always passes it so each prompt invocation produces exactly one
+   * assistant response.
+   */
+  messageID: Schema.optional(MessageID),
 }) {
   static readonly zod = zod(this)
 }
