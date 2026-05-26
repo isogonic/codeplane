@@ -500,6 +500,19 @@ function createGlobalSync() {
           queue.push(directory)
         }
       }
+      // server.dropped fires when the SSE outbound queue overflowed on the
+      // server (slow client/proxy + dense delta traffic). Any of the dropped
+      // events could be a `message.part.updated` or `session.updated` that
+      // would otherwise have advanced the visible state, so refresh every
+      // workspace that currently has a live store. Without this the UI
+      // looked frozen until the user switched sessions because the deltas
+      // before the dropped barrier were never reconciled.
+      if (event.type === "server.dropped") {
+        if (recent) return
+        for (const directory of Object.keys(children.children)) {
+          queue.push(directory)
+        }
+      }
       return
     }
 

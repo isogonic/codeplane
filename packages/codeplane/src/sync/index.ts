@@ -160,17 +160,43 @@ function process<Def extends Definition>(def: Def, event: Event<Def>, options: {
     Database.effect(() => {
       if (options?.publish) {
         const result = convertEvent(def.type, event.data)
-        const publish = (data: unknown) => ProjectBus.publish(def, data as Properties<Def>)
+        const directory = Instance.directory
+        const project = Instance.project.id
+        const workspace = WorkspaceContext.workspaceID
+        // Notify in-process bus subscribers (typed + wildcard channels)
+        // without re-emitting to GlobalBus — we emit the typed payload
+        // ourselves below so the SSE consumer sees this event in
+        // deterministic order with respect to subsequent `bus.publish`
+        // calls. Otherwise the bus publish's GlobalBus emit happens
+        // asynchronously and a follow-up `message.part.delta` could
+        // reach the SSE consumer before the `message.part.updated`
+        // that introduced its part.
+        const publish = (data: unknown) => ProjectBus.publishLocal(def, data as Properties<Def>)
+        const emitTyped = (data: unknown) => {
+          GlobalBus.emit("event", {
+            directory,
+            project,
+            workspace,
+            payload: {
+              type: def.type,
+              properties: data as Properties<Def>,
+            },
+          })
+        }
         if (result instanceof Promise) {
-          void result.then(publish)
+          void result.then((data) => {
+            emitTyped(data)
+            return publish(data)
+          })
         } else {
+          emitTyped(result)
           void publish(result)
         }
 
         GlobalBus.emit("event", {
-          directory: Instance.directory,
-          project: Instance.project.id,
-          workspace: WorkspaceContext.workspaceID,
+          directory,
+          project,
+          workspace,
           payload: {
             type: "sync",
             syncEvent: {

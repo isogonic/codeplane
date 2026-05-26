@@ -96,6 +96,7 @@ const baseState = (input: Partial<State> = {}) =>
     limit: 10,
     message: {},
     part: {},
+    pendingDelta: {},
     ...input,
   }) as State
 
@@ -610,6 +611,125 @@ describe("applyDirectoryEvent", () => {
     const updated = store.part[messageID]?.find((x) => x.id === "prt_1")
     expect(updated?.type).toBe("text")
     if (updated?.type === "text") expect(updated.text).toBe("fresh tail")
+  })
+
+  test("buffers deltas that arrive before message.part.updated and drains them on arrival", () => {
+    const sessionID = "ses_1"
+    const messageID = "msg_1"
+    const partID = "prt_1"
+    const [store, setStore] = createStore(baseState())
+
+    // The server's bus publish for `message.part.updated` runs asynchronously
+    // (`void publish(...)` in SyncEvent.run), while `message.part.delta`
+    // publishes synchronously via `bus.publish`. So a delta can reach the
+    // client BEFORE the `message.part.updated` that creates the part. Without
+    // buffering these deltas were silently dropped — making streaming text
+    // look frozen until the next cumulative part snapshot arrived.
+    applyDirectoryEvent({
+      event: deltaEvent({ sessionID, messageID, partID, delta: "Hel" }),
+      store,
+      setStore,
+      push() {},
+      directory: "/tmp",
+      loadLsp() {},
+    })
+    applyDirectoryEvent({
+      event: deltaEvent({ sessionID, messageID, partID, delta: "lo" }),
+      store,
+      setStore,
+      push() {},
+      directory: "/tmp",
+      loadLsp() {},
+    })
+
+    expect(store.part[messageID]).toBeUndefined()
+    expect(store.pendingDelta[messageID]?.[partID]?.text).toBe("Hello")
+
+    applyDirectoryEvent({
+      event: {
+        type: "message.part.updated",
+        properties: {
+          sessionID,
+          part: { ...textPart(partID, sessionID, messageID), text: "" },
+          time: 1,
+        },
+      },
+      store,
+      setStore,
+      push() {},
+      directory: "/tmp",
+      loadLsp() {},
+    })
+
+    const part = store.part[messageID]?.[0]
+    expect(part?.type).toBe("text")
+    if (part?.type === "text") expect(part.text).toBe("Hello")
+    expect(store.pendingDelta[messageID]).toBeUndefined()
+  })
+
+  test("does not overwrite an already-populated server snapshot when draining buffered deltas", () => {
+    const sessionID = "ses_1"
+    const messageID = "msg_1"
+    const partID = "prt_1"
+    const [store, setStore] = createStore(baseState())
+
+    applyDirectoryEvent({
+      event: deltaEvent({ sessionID, messageID, partID, delta: "ignored" }),
+      store,
+      setStore,
+      push() {},
+      directory: "/tmp",
+      loadLsp() {},
+    })
+
+    applyDirectoryEvent({
+      event: {
+        type: "message.part.updated",
+        properties: {
+          sessionID,
+          part: { ...textPart(partID, sessionID, messageID), text: "server" },
+          time: 2,
+        },
+      },
+      store,
+      setStore,
+      push() {},
+      directory: "/tmp",
+      loadLsp() {},
+    })
+
+    const part = store.part[messageID]?.[0]
+    expect(part?.type).toBe("text")
+    // Server text is the source of truth — buffered delta is discarded because
+    // the cumulative snapshot already includes it.
+    if (part?.type === "text") expect(part.text).toBe("server")
+  })
+
+  test("clears buffered deltas when the owning message is removed", () => {
+    const sessionID = "ses_1"
+    const messageID = "msg_1"
+    const partID = "prt_1"
+    const [store, setStore] = createStore(baseState())
+
+    applyDirectoryEvent({
+      event: deltaEvent({ sessionID, messageID, partID, delta: "buffered" }),
+      store,
+      setStore,
+      push() {},
+      directory: "/tmp",
+      loadLsp() {},
+    })
+    expect(store.pendingDelta[messageID]?.[partID]?.text).toBe("buffered")
+
+    applyDirectoryEvent({
+      event: { type: "message.removed", properties: { sessionID, messageID } },
+      store,
+      setStore,
+      push() {},
+      directory: "/tmp",
+      loadLsp() {},
+    })
+    expect(store.pendingDelta[messageID]).toBeUndefined()
   })
 
   test("later full part refreshes replace older streamed state without replaying stale deltas", () => {

@@ -20,6 +20,44 @@ import { sanitizeProject } from "./utils"
 
 const SKIP_PARTS = new Set(["patch", "step-start", "step-finish"])
 
+/**
+ * Apply any deltas that arrived before the part existed in the store.
+ *
+ * The `message.part.updated` payload always carries the cumulative text
+ * server-side, so a pending delta for the same field is by definition
+ * already part of the payload's value. We still concatenate buffered
+ * deltas onto the field to recover the visible streaming text when the
+ * updated payload reflects only the snapshot at part creation (text="")
+ * and the deltas hold every chunk emitted since.
+ *
+ * The next `message.part.updated` will overwrite the field with the true
+ * cumulative server text, so any over-replay is self-healing.
+ */
+function mergePendingDeltas(part: Part, pending: Record<string, string>): Part {
+  const next = { ...(part as Record<string, unknown>) } as Record<string, unknown>
+  let changed = false
+  for (const [field, delta] of Object.entries(pending)) {
+    if (!delta) continue
+    const existing = next[field]
+    if (typeof existing === "string") {
+      // Server snapshots whose text already contains the buffered delta
+      // shouldn't double-append. A non-empty server text means the snapshot
+      // was generated AFTER the deltas, so we keep the server value as the
+      // source of truth.
+      if (existing.length === 0) {
+        next[field] = delta
+        changed = true
+      }
+      continue
+    }
+    if (existing === undefined || existing === null) {
+      next[field] = delta
+      changed = true
+    }
+  }
+  return (changed ? next : part) as Part
+}
+
 function fullyLoadedRootLimit(store: Store<State>, incoming: Session) {
   if (incoming.parentID) return store.limit
   const loadedRootCount = store.session.filter((session) => !session.parentID && !session.time?.archived).length
@@ -95,6 +133,10 @@ export function cleanupDroppedSessionCaches(
   ].filter(
     (sessionID, index, list) => !keep.has(sessionID) && !preserveCaches.has(sessionID) && list.indexOf(sessionID) === index,
   )
+  // Also clear any buffered deltas whose owning session is now dropped.
+  // `pendingDelta` is keyed by messageID, so we look up which message belongs
+  // to which session via the parts store. Any stale entries left after a
+  // tab churn are just memory we don't need to keep.
   if (stale.length === 0) return
   for (const sessionID of stale) {
     setSessionTodo?.(sessionID, undefined)
@@ -245,6 +287,7 @@ export function applyDirectoryEvent(input: {
             if (result.found) messages.splice(result.index, 1)
           }
           delete draft.part[props.messageID]
+          delete draft.pendingDelta[props.messageID]
         }),
       )
       break
@@ -252,58 +295,100 @@ export function applyDirectoryEvent(input: {
     case "message.part.updated": {
       const part = (event.properties as { part: Part }).part
       if (SKIP_PARTS.has(part.type)) break
+      // Drain any buffered deltas that arrived before this part existed.
+      // The server publishes `message.part.updated` via `SyncEvent.run` whose
+      // bus publish is fire-and-forget (`void publish(...)`), while
+      // `message.part.delta` goes through `bus.publish` directly. The two
+      // fibers can interleave so deltas reach the client first. The
+      // `message.part.updated` payload carries a `time` field whose value is
+      // the server-side `Date.now()` snapshot at the moment the cumulative
+      // text was captured — we only replay pending deltas for THIS part if
+      // they were buffered AFTER this snapshot. For now we conservatively
+      // replay every buffered delta for the part; the next
+      // `message.part.updated` will carry cumulative text that already
+      // includes every delta, so a redundant replay is harmless.
+      const pendingForPart = input.store.pendingDelta[part.messageID]?.[part.id]
+      const merged = pendingForPart ? mergePendingDeltas(part, pendingForPart) : part
       const parts = input.store.part[part.messageID]
       if (!parts) {
-        input.setStore("part", part.messageID, [part])
-        break
+        input.setStore("part", part.messageID, [merged])
+      } else {
+        const result = Binary.search(parts, part.id, (p) => p.id)
+        if (result.found) {
+          input.setStore("part", part.messageID, result.index, reconcile(merged))
+        } else {
+          input.setStore(
+            "part",
+            part.messageID,
+            produce((draft) => {
+              draft.splice(result.index, 0, merged)
+            }),
+          )
+        }
       }
-      const result = Binary.search(parts, part.id, (p) => p.id)
-      if (result.found) {
-        input.setStore("part", part.messageID, result.index, reconcile(part))
-        break
-      }
-      input.setStore(
-        "part",
-        part.messageID,
-        produce((draft) => {
-          draft.splice(result.index, 0, part)
-        }),
-      )
-      break
-    }
-    case "message.part.removed": {
-      const props = event.properties as { messageID: string; partID: string }
-      const parts = input.store.part[props.messageID]
-      if (!parts) break
-      const result = Binary.search(parts, props.partID, (p) => p.id)
-      if (result.found) {
+      if (pendingForPart) {
         input.setStore(
+          "pendingDelta",
           produce((draft) => {
-            const list = draft.part[props.messageID]
-            if (!list) return
-            const next = Binary.search(list, props.partID, (p) => p.id)
-            if (!next.found) return
-            list.splice(next.index, 1)
-            if (list.length === 0) delete draft.part[props.messageID]
+            const forMessage = draft[part.messageID]
+            if (!forMessage) return
+            delete forMessage[part.id]
+            if (Object.keys(forMessage).length === 0) delete draft[part.messageID]
           }),
         )
       }
       break
     }
+    case "message.part.removed": {
+      const props = event.properties as { messageID: string; partID: string }
+      input.setStore(
+        produce((draft) => {
+          const list = draft.part[props.messageID]
+          if (list) {
+            const next = Binary.search(list, props.partID, (p) => p.id)
+            if (next.found) {
+              list.splice(next.index, 1)
+              if (list.length === 0) delete draft.part[props.messageID]
+            }
+          }
+          const pendingForMessage = draft.pendingDelta[props.messageID]
+          if (pendingForMessage) {
+            delete pendingForMessage[props.partID]
+            if (Object.keys(pendingForMessage).length === 0) delete draft.pendingDelta[props.messageID]
+          }
+        }),
+      )
+      break
+    }
     case "message.part.delta": {
       const props = event.properties as { messageID: string; partID: string; field: string; delta: string }
       const parts = input.store.part[props.messageID]
-      if (!parts) break
-      const result = Binary.search(parts, props.partID, (p) => p.id)
-      if (!result.found) break
+      const result = parts ? Binary.search(parts, props.partID, (p) => p.id) : { found: false, index: 0 }
+      if (parts && result.found) {
+        input.setStore(
+          "part",
+          props.messageID,
+          produce((draft) => {
+            const part = draft[result.index]
+            const field = props.field as keyof typeof part
+            const existing = part[field] as string | undefined
+            ;(part[field] as string) = (existing ?? "") + props.delta
+          }),
+        )
+        break
+      }
+      // Part isn't in the store yet — the corresponding `message.part.updated`
+      // arrived later (server publish race) or this session's parts were
+      // evicted. Buffer the delta so it can be applied when the part shows
+      // up via `message.part.updated`. Without this branch the delta would
+      // be silently dropped and the UI would appear frozen until the next
+      // full part snapshot.
       input.setStore(
-        "part",
-        props.messageID,
+        "pendingDelta",
         produce((draft) => {
-          const part = draft[result.index]
-          const field = props.field as keyof typeof part
-          const existing = part[field] as string | undefined
-          ;(part[field] as string) = (existing ?? "") + props.delta
+          const forMessage = draft[props.messageID] ?? (draft[props.messageID] = {})
+          const forPart = forMessage[props.partID] ?? (forMessage[props.partID] = {})
+          forPart[props.field] = (forPart[props.field] ?? "") + props.delta
         }),
       )
       break

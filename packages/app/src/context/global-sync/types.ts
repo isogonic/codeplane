@@ -72,6 +72,28 @@ export type State = {
   part: {
     [messageID: string]: Part[]
   }
+  /**
+   * Buffer for `message.part.delta` events that arrive before the
+   * corresponding `message.part.updated` has created the part in the store.
+   *
+   * The server publishes `message.part.updated` via `SyncEvent.run` which
+   * schedules its bus publish asynchronously (`void publish(...)`), while
+   * `message.part.delta` goes through `bus.publish` directly via `yield*`.
+   * The two Effect fibers can interleave so that a delta reaches the
+   * client before the `message.part.updated` that introduces its part.
+   * Without buffering, the dropped first delta(s) made streaming text
+   * appear frozen until the next full part snapshot — which is exactly
+   * what users saw as "switch session and back to see changes".
+   *
+   * Keyed by `messageID -> partID -> field -> accumulated delta string`.
+   */
+  pendingDelta: {
+    [messageID: string]: {
+      [partID: string]: {
+        [field: string]: string
+      }
+    }
+  }
 }
 
 export type VcsCache = {

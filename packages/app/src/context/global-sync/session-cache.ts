@@ -18,6 +18,7 @@ export type SessionCache = {
   part: Record<string, Part[] | undefined>
   permission: Record<string, PermissionRequest[] | undefined>
   question: Record<string, QuestionRequest[] | undefined>
+  pendingDelta: Record<string, Record<string, Record<string, string>> | undefined>
 }
 
 export function cachedSessionIDs(store: SessionCache) {
@@ -36,23 +37,36 @@ export function cachedSessionIDs(store: SessionCache) {
   )
 }
 
+// `pendingDelta` is intentionally not surveyed for cached session IDs —
+// buffered deltas always belong to a message that already lives in
+// `store.message`. If the owning message gets evicted, `dropSessionCaches`
+// drops the buffered deltas too via its `droppedMessageIDs` walk above.
+
 export function dropSessionCaches(store: SessionCache, sessionIDs: Iterable<string>) {
   const stale = new Set(Array.from(sessionIDs).filter(Boolean))
   if (stale.size === 0) return
 
+  const droppedMessageIDs = new Set<string>()
   for (const key of Object.keys(store.part)) {
     const parts = store.part[key]
     if (!parts?.some((part) => stale.has(part?.sessionID ?? ""))) continue
+    droppedMessageIDs.add(key)
     delete store.part[key]
   }
 
   for (const sessionID of stale) {
+    const messages = store.message[sessionID]
+    if (messages) for (const message of messages) droppedMessageIDs.add(message.id)
     delete store.message[sessionID]
     delete store.todo[sessionID]
     delete store.session_diff[sessionID]
     delete store.session_status[sessionID]
     delete store.permission[sessionID]
     delete store.question[sessionID]
+  }
+
+  for (const messageID of droppedMessageIDs) {
+    delete store.pendingDelta[messageID]
   }
 }
 

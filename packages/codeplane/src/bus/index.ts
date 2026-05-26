@@ -42,6 +42,13 @@ type State = {
 
 export interface Interface {
   readonly publish: <D extends BusEvent.Definition>(def: D, properties: BusProperties<D>) => Effect.Effect<void>
+  /**
+   * Like `publish` but only notifies in-process PubSub subscribers
+   * (typed channel + wildcard). Skips the `GlobalBus.emit` so the caller
+   * can emit to GlobalBus itself with deterministic ordering relative to
+   * other synchronous emits (used by the sync-event projector path).
+   */
+  readonly publishLocal: <D extends BusEvent.Definition>(def: D, properties: BusProperties<D>) => Effect.Effect<void>
   readonly subscribe: <D extends BusEvent.Definition>(def: D) => Stream.Stream<Payload<D>>
   readonly subscribeAll: () => Stream.Stream<Payload>
   readonly subscribeCallback: <D extends BusEvent.Definition>(
@@ -102,15 +109,24 @@ export const layer = Layer.effect(
       })
     }
 
-    function publish<D extends BusEvent.Definition>(def: D, properties: BusProperties<D>) {
+    function publishToLocal<D extends BusEvent.Definition>(
+      def: D,
+      properties: BusProperties<D>,
+    ) {
       return Effect.gen(function* () {
         const s = yield* InstanceState.get(state)
         const payload: Payload = { type: def.type, properties }
-        log.info("publishing", { type: def.type })
-
         const ps = s.typed.get(def.type)
         if (ps) yield* PubSub.publish(ps, payload)
         yield* PubSub.publish(s.wildcard, payload)
+        return payload
+      })
+    }
+
+    function publish<D extends BusEvent.Definition>(def: D, properties: BusProperties<D>) {
+      return Effect.gen(function* () {
+        log.info("publishing", { type: def.type })
+        const payload = yield* publishToLocal(def, properties)
 
         const dir = yield* InstanceState.directory
         const context = yield* InstanceState.context
@@ -122,6 +138,13 @@ export const layer = Layer.effect(
           workspace,
           payload,
         })
+      })
+    }
+
+    function publishLocal<D extends BusEvent.Definition>(def: D, properties: BusProperties<D>) {
+      return Effect.gen(function* () {
+        log.info("publishing local", { type: def.type })
+        yield* publishToLocal(def, properties)
       })
     }
 
@@ -188,7 +211,7 @@ export const layer = Layer.effect(
       return yield* on(s.wildcard, "*", callback)
     })
 
-    return Service.of({ publish, subscribe, subscribeAll, subscribeCallback, subscribeAllCallback })
+    return Service.of({ publish, publishLocal, subscribe, subscribeAll, subscribeCallback, subscribeAllCallback })
   }),
 )
 
@@ -198,6 +221,16 @@ const { runPromise, runSync } = makeRuntime(Service, layer)
 
 export async function publish<D extends BusEvent.Definition>(def: D, properties: BusProperties<D>) {
   return runPromise((svc) => svc.publish(def, properties))
+}
+
+/**
+ * Local-only variant of `publish`: notifies in-process PubSub subscribers
+ * but does not emit to GlobalBus. Used by the sync-event projector path,
+ * which emits to GlobalBus synchronously itself so SSE consumers see
+ * events in deterministic order with respect to other emits.
+ */
+export async function publishLocal<D extends BusEvent.Definition>(def: D, properties: BusProperties<D>) {
+  return runPromise((svc) => svc.publishLocal(def, properties))
 }
 
 // runSync is safe because the entire subscribe chain is synchronous Effect

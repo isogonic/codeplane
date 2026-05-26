@@ -137,6 +137,7 @@ const busLayer = Layer.succeed(
   Bus.Service,
   Bus.Service.of({
     publish: () => Effect.void,
+    publishLocal: () => Effect.void,
     subscribe: () => Stream.empty,
     subscribeAll: () => Stream.empty,
     subscribeCallback: () => Effect.succeed(() => {}),
