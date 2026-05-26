@@ -44,6 +44,16 @@ type FollowupSendInput = {
   draft: FollowupDraft
   messageID?: string
   optimisticBusy?: boolean
+  /**
+   * Whether to add an optimistic user message to the local timeline before
+   * the server confirms. Defaults to true (existing behavior for send/steer).
+   * Pass `false` for queue-disposition submissions where the message lives
+   * in the dock until the server's worker actually runs it — adding it to
+   * the timeline AND the dock confuses users (two representations of the
+   * same submission) and removing the optimistic on a transient error
+   * looks like "my message disappeared."
+   */
+  optimisticMessage?: boolean
   before?: () => Promise<boolean> | boolean
 }
 
@@ -136,20 +146,26 @@ export async function sendFollowupDraft(input: FollowupSendInput) {
     model: { ...input.draft.model, variant: input.draft.variant },
   }
 
-  const add = () =>
+  const useOptimisticMessage = input.optimisticMessage !== false
+
+  const add = () => {
+    if (!useOptimisticMessage) return
     input.sync.session.optimistic.add({
       directory: input.draft.sessionDirectory,
       sessionID: input.draft.sessionID,
       message,
       parts: optimisticParts,
     })
+  }
 
-  const remove = () =>
+  const remove = () => {
+    if (!useOptimisticMessage) return
     input.sync.session.optimistic.remove({
       directory: input.draft.sessionDirectory,
       sessionID: input.draft.sessionID,
       messageID,
     })
+  }
 
   batch(() => {
     setBusy()

@@ -1778,14 +1778,26 @@ export default function Page() {
         ? sdk.client
         : sdk.createClient({ directory: draft.sessionDirectory, throwOnError: true })
 
+    // Refresh the dock IMMEDIATELY before the API call so the user gets
+    // visual feedback that something happened — without this, the dock
+    // empty-state lingers until the round-trip completes (~50-200ms
+    // typically, longer on slow connections). The refresh is idempotent
+    // and a no-op if the server hasn't enqueued yet; the post-promise
+    // refresh below catches the newly-enqueued row.
     void sendFollowupDraft({
       client,
       sync,
       globalSync,
       draft,
-      // Session is already busy when we queue, so the optimistic flip
-      // would be a no-op or worse, clobber a real status update.
+      // Session is already busy when we queue; an optimistic busy flip
+      // would clobber a real status update from the server.
       optimisticBusy: false,
+      // The dock is the user-facing representation for queued messages.
+      // Skip the optimistic timeline entry — otherwise the same message
+      // appears in both the timeline AND the dock, and a transient API
+      // error removes the timeline copy (looks like "the message just
+      // disappeared"). Keep one source of truth: the server's queue.
+      optimisticMessage: false,
     })
       .then(() => {
         // Refresh the queue snapshot so the dock fills in even if the
