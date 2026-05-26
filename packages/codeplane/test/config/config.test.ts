@@ -1,7 +1,7 @@
 import { test, expect, describe, mock, afterEach, beforeEach } from "bun:test"
 import { Effect, Layer, Option } from "effect"
 import { NodeFileSystem, NodePath } from "@effect/platform-node"
-import { Config, ConfigManaged, ConfigSecret } from "../../src/config"
+import { Config, ConfigManaged, ConfigSecret, ConfigVariable } from "../../src/config"
 import { ConfigParse } from "../../src/config/parse"
 import { EffectFlock } from "@codeplane-ai/shared/util/effect-flock"
 
@@ -530,6 +530,50 @@ test("handles secret substitution while preserving the raw placeholder", async (
   })
 })
 
+test("missing secret substitution does not block config loading", async () => {
+  const secretName = "missing-provider-token"
+
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await writeConfig(dir, {
+        $schema: "https://example.invalid/config.json",
+        provider: {
+          missing: {
+            options: {
+              apiKey: ConfigSecret.placeholder(secretName),
+            },
+          },
+        },
+      })
+    },
+  })
+
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const raw = await loadRaw()
+      const resolved = await load()
+      expect(raw.provider?.["missing"]?.options?.apiKey).toBe(ConfigSecret.placeholder(secretName))
+      expect(resolved.provider?.["missing"]?.options?.apiKey).toBe("")
+    },
+  })
+})
+
+test("substitute resolves secret-only config text", async () => {
+  const secretName = "substitute-token"
+  await fs.mkdir(ConfigSecret.dirpath(), { recursive: true })
+  await Filesystem.write(ConfigSecret.filepath(secretName), "secret-value")
+
+  await using tmp = await tmpdir()
+  const text = await ConfigVariable.substitute({
+    text: `{"token":"${ConfigSecret.placeholder(secretName)}"}`,
+    type: "path",
+    path: path.join(tmp.path, "config.json"),
+  })
+
+  expect(text).toBe('{"token":"secret-value"}')
+})
+
 test("update writes secret-like values to data/secrets and keeps placeholders in config", async () => {
   const secretName = "mcp-github-headers-authorization"
   const placeholder = ConfigSecret.placeholder(secretName)
@@ -587,6 +631,64 @@ test("updateGlobal secretizes plaintext values and global raw config keeps place
     const resolved = await loadGlobal()
     expect(raw.provider?.["openai"]?.options?.apiKey).toBe(placeholder)
     expect(resolved.provider?.["openai"]?.options?.apiKey).toBe("sk-live-secret")
+  } finally {
+    ;(Global.Path as { config: string }).config = previousConfig
+    await clear(true)
+  }
+})
+
+test("removeGlobalSecretReferences scrubs deleted placeholders from global config", async () => {
+  await using tmp = await tmpdir()
+  const previousConfig = Global.Path.config
+  const secretName = "ordis-api-key"
+  const placeholder = ConfigSecret.placeholder(secretName)
+
+  ;(Global.Path as { config: string }).config = tmp.path
+  await clear(true)
+
+  try {
+    await Filesystem.write(
+      path.join(tmp.path, "codeplane.jsonc"),
+      JSON.stringify(
+        {
+          provider: {
+            ordis: {
+              npm: "@ai-sdk/openai-compatible",
+              options: {
+                baseURL: "https://ordis.example/v1",
+                apiKey: placeholder,
+              },
+            },
+          },
+          mcp: {
+            ordis: {
+              type: "remote",
+              url: "https://ordis.example/mcp",
+              headers: {
+                Authorization: `Bearer ${placeholder}`,
+              },
+            },
+          },
+        },
+        null,
+        2,
+      ),
+    )
+
+    const removed = await Effect.runPromise(
+      Config.Service.use((svc) => svc.removeGlobalSecretReferences(secretName)).pipe(Effect.scoped, Effect.provide(layer)),
+    )
+
+    const written = await Filesystem.readText(path.join(tmp.path, "codeplane.jsonc"))
+    const raw = await loadGlobalRaw()
+    const resolved = await loadGlobal()
+
+    expect(removed).toBe(2)
+    expect(written).not.toContain(placeholder)
+    expect(raw.provider?.["ordis"]?.options?.baseURL).toBe("https://ordis.example/v1")
+    expect(raw.provider?.["ordis"]?.options?.apiKey).toBeUndefined()
+    expect(raw.mcp?.["ordis"]?.headers?.Authorization).toBeUndefined()
+    expect(resolved.provider?.["ordis"]?.options?.baseURL).toBe("https://ordis.example/v1")
   } finally {
     ;(Global.Path as { config: string }).config = previousConfig
     await clear(true)

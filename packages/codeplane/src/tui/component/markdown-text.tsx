@@ -3,14 +3,14 @@ import { useTheme } from "@/tui/context/theme"
 import type { SyntaxStyle } from "@opentui/core"
 import { marked, type Token, type Tokens } from "marked"
 
-export type RichBlockSegment = { kind: "markdown"; text: string }
+export type MarkdownSegment = { kind: "markdown"; text: string }
 
-export function splitMarkdownBlocks(text: string): RichBlockSegment[] {
+export function splitMarkdownSegments(text: string): MarkdownSegment[] {
   if (!text.trim()) return []
   return [{ kind: "markdown", text }]
 }
 
-interface RichBlockProps {
+interface MarkdownTextProps {
   text: string
   syntax: SyntaxStyle
   conceal?: boolean
@@ -18,7 +18,7 @@ interface RichBlockProps {
   experimental?: boolean
 }
 
-export function RichBlockText(props: RichBlockProps): JSX.Element {
+export function MarkdownText(props: MarkdownTextProps): JSX.Element {
   const { theme } = useTheme()
   const content = () => props.text.trim()
   const markdown = () => props.experimental !== false
@@ -31,7 +31,11 @@ export function RichBlockText(props: RichBlockProps): JSX.Element {
     token.type === "list" && "items" in token && Array.isArray(token.items)
 
   const isTableToken = (token: Token): token is Tokens.Table =>
-    token.type === "table" && "header" in token && Array.isArray(token.header) && "rows" in token && Array.isArray(token.rows)
+    token.type === "table" &&
+    "header" in token &&
+    Array.isArray(token.header) &&
+    "rows" in token &&
+    Array.isArray(token.rows)
 
   const plainInline = (tokens: Token[]): string => {
     return tokens
@@ -86,7 +90,8 @@ export function RichBlockText(props: RichBlockProps): JSX.Element {
     const first = itemContentTokens(item)[0]
     if (!first) return []
     if (first.type !== "paragraph" && first.type !== "text") return []
-    return tokenChildren(first).length > 0 ? tokenChildren(first) : [first]
+    const tokens = tokenChildren(first).length > 0 ? tokenChildren(first) : [first]
+    return item.task ? tokens.filter((token) => token.type !== "checkbox") : tokens
   }
 
   const restItemBlocks = (item: Tokens.ListItem) => {
@@ -96,37 +101,54 @@ export function RichBlockText(props: RichBlockProps): JSX.Element {
     return tokens.slice(1)
   }
 
-  const tableText = (cell: Tokens.TableCell) => plainInline(cell.tokens ?? [])
+  const tableText = (cell?: Tokens.TableCell) => (cell ? plainInline(cell.tokens ?? []) : "")
+  const tableTokens = (cell?: Tokens.TableCell) => cell?.tokens ?? []
 
   const renderTable = (table: Tokens.Table) => {
-    const rows = [table.header, ...table.rows]
-    const widths = table.header.map((_, column) =>
-      Math.max(...rows.map((row) => tableText(row[column] ?? table.header[column]).length)),
-    )
+    const headers = table.header.map((cell, index) => tableText(cell) || `Column ${index + 1}`)
     return (
       <box flexDirection="column">
-        <For each={rows}>
-          {(row, rowIndex) => (
-            <text wrapMode="none" fg={theme.markdownText}>
-              <For each={row}>
-                {(cell, columnIndex) => {
-                  const text = tableText(cell)
-                  const value = text.padEnd(widths[columnIndex()] ?? text.length)
-                  return (
-                    <>
-                      <span style={{ bold: rowIndex() === 0, fg: rowIndex() === 0 ? theme.markdownHeading : theme.markdownText }}>
-                        {value}
-                      </span>
-                      <Show when={columnIndex() < row.length - 1}>
-                        <span style={{ fg: theme.textMuted }}>  </span>
-                      </Show>
-                    </>
-                  )
-                }}
+        <Show
+          when={table.rows.length > 0}
+          fallback={
+            <text wrapMode="word" fg={theme.markdownText}>
+              <For each={headers}>
+                {(header, columnIndex) => (
+                  <>
+                    <span style={{ bold: true, fg: theme.markdownHeading }}>{header}</span>
+                    <Show when={columnIndex() < headers.length - 1}>
+                      <span style={{ fg: theme.textMuted }}> / </span>
+                    </Show>
+                  </>
+                )}
               </For>
             </text>
-          )}
-        </For>
+          }
+        >
+          <For each={table.rows}>
+            {(row, rowIndex) => (
+              <box
+                flexDirection="column"
+                border={["left"]}
+                borderColor={theme.textMuted}
+                paddingLeft={1}
+                paddingBottom={rowIndex() < table.rows.length - 1 ? 1 : 0}
+              >
+                <For each={headers}>
+                  {(header, columnIndex) => {
+                    const value = tableTokens(row[columnIndex()])
+                    return (
+                      <text wrapMode="word" fg={theme.markdownText}>
+                        <span style={{ bold: true, fg: theme.markdownHeading }}>{header}: </span>
+                        {renderInline(value)}
+                      </text>
+                    )
+                  }}
+                </For>
+              </box>
+            )}
+          </For>
+        </Show>
       </box>
     )
   }
@@ -137,7 +159,13 @@ export function RichBlockText(props: RichBlockProps): JSX.Element {
       <box flexDirection="column">
         <For each={list.items}>
           {(item, itemIndex) => {
-            const marker = list.ordered ? `${start + itemIndex()}. ` : item.task ? (item.checked ? "[x] " : "[ ] ") : "• "
+            const marker = list.ordered
+              ? `${start + itemIndex()}. `
+              : item.task
+                ? item.checked
+                  ? "[x] "
+                  : "[ ] "
+                : "• "
             const rest = restItemBlocks(item)
             return (
               <box flexDirection="column">

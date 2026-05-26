@@ -3,7 +3,9 @@
 // runs on its own renderer before any of those exist).
 import { createContext, createMemo, For, Show, useContext, type Accessor, type JSX } from "solid-js"
 import { RGBA, TextAttributes, type TerminalColors } from "@opentui/core"
+import { useTerminalDimensions } from "@opentui/solid"
 import { tuiT } from "@/tui/i18n"
+import { Locale } from "@/tui/_compat/locale"
 
 export type BootPalette = {
   bg: RGBA
@@ -173,7 +175,13 @@ export function TextField(props: {
   validate?: () => { ok: boolean; message?: string }
 }) {
   const palette = useBootPalette()
+  const dimensions = useTerminalDimensions()
   const valid = createMemo(() => props.validate?.() ?? { ok: true })
+  const valueWidth = createMemo(() => Math.max(1, Math.min(props.width ?? 88, dimensions().width - 6)))
+  const value = createMemo(() => Locale.truncateMiddle(props.value, valueWidth()))
+  const placeholder = createMemo(() =>
+    props.placeholder ? Locale.truncateMiddle(props.placeholder, valueWidth()) : undefined,
+  )
   return (
     <box flexDirection="column" paddingX={2}>
       <box flexDirection="row">
@@ -193,9 +201,15 @@ export function TextField(props: {
       <box flexDirection="row" paddingLeft={2}>
         <Show
           when={props.value || !props.placeholder}
-          fallback={<text fg={palette().fgDim}>{props.placeholder}</text>}
+          fallback={
+            <text fg={palette().fgDim} wrapMode="none">
+              {placeholder()}
+            </text>
+          }
         >
-          <text fg={props.focused ? palette().fg : palette().fgMuted}>{props.value}</text>
+          <text fg={props.focused ? palette().fg : palette().fgMuted} wrapMode="none">
+            {value()}
+          </text>
         </Show>
         <Show when={props.focused}>
           <text fg={palette().accent}>▎</text>

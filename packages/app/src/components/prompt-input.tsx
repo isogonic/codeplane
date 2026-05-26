@@ -140,7 +140,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   let slashPopoverRef!: HTMLDivElement
 
   const mirror = { input: false }
-  const inset = 56
+  const inset = 8
   const space = `${inset}px`
 
   const scrollCursorIntoView = () => {
@@ -1329,7 +1329,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   )
 
   return (
-    <div class="relative size-full _max-h-[320px] flex flex-col gap-0">
+    <div data-dock-group class="relative size-full _max-h-[320px] flex flex-col gap-0">
       {(promptReady(), null)}
       <PromptPopover
         popover={store.popover}
@@ -1350,7 +1350,6 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
         onSubmit={submitCurrentInput}
         classList={{
           "group/prompt-input": true,
-          "focus-within:shadow-xs-border": true,
           "border-icon-info-active border-dashed": store.draggingType !== null,
           [props.class ?? ""]: !!props.class,
         }}
@@ -1439,99 +1438,18 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
             </div>
           </div>
 
-          <div
-            aria-hidden="true"
-            class="pointer-events-none absolute inset-x-0 bottom-0"
-            style={{
-              height: space,
-              background:
-                "linear-gradient(to top, var(--surface-raised-stronger-non-alpha) calc(100% - 20px), transparent)",
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept={ACCEPTED_FILE_TYPES.join(",")}
+            class="hidden"
+            onChange={(e) => {
+              const list = e.currentTarget.files
+              if (list) void addAttachments(Array.from(list))
+              e.currentTarget.value = ""
             }}
           />
-
-          <div class="pointer-events-none absolute bottom-2 right-2 flex items-center gap-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept={ACCEPTED_FILE_TYPES.join(",")}
-              class="hidden"
-              onChange={(e) => {
-                const list = e.currentTarget.files
-                if (list) void addAttachments(Array.from(list))
-                e.currentTarget.value = ""
-              }}
-            />
-
-            <div class="flex items-center gap-1 pointer-events-auto">
-              <Tooltip placement="top" inactive={!working() && blank()} value={tip()}>
-                <IconButton
-                  data-action="prompt-submit"
-                  type={stopping() ? "button" : "submit"}
-                  disabled={!working() && blank()}
-                  tabIndex={inputMode() === "normal" ? undefined : -1}
-                  icon={stopping() ? "stop" : inputMode() === "shell" ? "arrow-undo-down" : "arrow-up"}
-                  variant="primary"
-                  class="size-8"
-                  aria-label={stopping() ? language.t("prompt.action.stop") : language.t("prompt.action.send")}
-                  onClick={(event) => {
-                    if (!stopping()) return
-                    event.preventDefault()
-                    void abort()
-                  }}
-                />
-              </Tooltip>
-            </div>
-          </div>
-
-          <div class="pointer-events-none absolute bottom-2 left-2">
-            <div
-              aria-hidden={inputMode() !== "normal"}
-              class="pointer-events-auto flex items-center gap-1"
-              style={{
-                "pointer-events": buttonsSpring() > 0.5 ? "auto" : "none",
-              }}
-            >
-              <TooltipKeybind
-                placement="top"
-                title={language.t("prompt.action.attachFile")}
-                keybind={command.keybind("file.attach")}
-              >
-                <Button
-                  data-action="prompt-attach"
-                  type="button"
-                  variant="ghost"
-                  class="size-8 p-0"
-                  style={buttons()}
-                  onClick={pick}
-                  disabled={inputMode() !== "normal"}
-                  tabIndex={inputMode() === "normal" ? undefined : -1}
-                  aria-label={language.t("prompt.action.attachFile")}
-                >
-                  <Icon name="plus" class="size-4.5" />
-                </Button>
-              </TooltipKeybind>
-              <TooltipKeybind
-                placement="top"
-                title={language.t("prompt.action.screenshot")}
-                keybind={command.keybind("file.screenshot")}
-              >
-                <Button
-                  data-action="prompt-screenshot"
-                  type="button"
-                  variant="ghost"
-                  class="size-8 p-0"
-                  style={buttons()}
-                  onClick={() => void captureScreenshot()}
-                  disabled={inputMode() !== "normal"}
-                  tabIndex={inputMode() === "normal" ? undefined : -1}
-                  aria-label={language.t("prompt.action.screenshot")}
-                >
-                  <Icon name="screenshot" class="size-4.5" />
-                </Button>
-              </TooltipKeybind>
-            </div>
-          </div>
         </div>
       </DockShellForm>
       <Show when={inputMode() === "normal" || inputMode() === "shell"}>
@@ -1722,6 +1640,27 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 </Show>
               </div>
             </div>
+            <Tooltip placement="top" inactive={!working() && blank()} value={tip()}>
+              <IconButton
+                data-action="prompt-submit"
+                type="button"
+                disabled={!working() && blank()}
+                tabIndex={inputMode() === "normal" ? undefined : -1}
+                icon={stopping() ? "stop" : inputMode() === "shell" ? "arrow-undo-down" : "arrow-up"}
+                variant="primary"
+                class="size-8 shrink-0"
+                aria-label={stopping() ? language.t("prompt.action.stop") : language.t("prompt.action.send")}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={(event) => {
+                  event.preventDefault()
+                  if (stopping()) {
+                    void abort()
+                    return
+                  }
+                  void submitCurrentInput(event)
+                }}
+              />
+            </Tooltip>
           </div>
         </DockTray>
       </Show>

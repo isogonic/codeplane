@@ -6,7 +6,7 @@ All commands run in the current working directory by default. Use the `workdir` 
 
 IMPORTANT: This tool is for terminal operations like git, npm, docker, etc. DO NOT use it for file operations (reading, writing, editing, searching, finding files) - use the specialized tools for this instead.
 
-DO NOT install plotting libraries (matplotlib, plotly, seaborn, ggplot, chart.js, d3, recharts, gnuplot, R libraries that produce images) and DO NOT run scripts that generate chart images. The chat surface CANNOT display generated image files. To put a chart in front of the user, call the `chart` tool — it renders inline in the conversation as a native widget. If you find yourself about to write `pip install matplotlib`, `npm install chart.js`, or any equivalent for the purpose of producing a visualization the user will see, STOP and call `chart` instead.
+DO NOT install plotting libraries (matplotlib, plotly, seaborn, ggplot, chart.js, d3, recharts, gnuplot, R libraries that produce images) only to create visuals for the chat surface. Prefer markdown tables, concise data summaries, or user-requested files/artifacts that the user can inspect directly.
 
 Before executing the command, please follow these steps:
 

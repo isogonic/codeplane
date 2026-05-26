@@ -26,23 +26,40 @@ function tr(translator: Translator | undefined, key: string, text: string, vars?
 }
 
 export function formatServerError(error: unknown, translate?: Translator, fallback?: string) {
+  const inner = unwrapServerError(error)
+  if (inner !== error) return formatServerError(inner, translate, fallback)
   if (isConfigInvalidErrorLike(error)) return parseReadableConfigInvalidError(error, translate)
   if (isProviderModelNotFoundErrorLike(error)) return parseReadableProviderModelNotFoundError(error, translate)
   if (error instanceof Error && error.message) return error.message
   if (typeof error === "string" && error) return error
+  if (isRecord(error) && typeof error.message === "string" && error.message) return error.message
+  if (isRecord(error) && isRecord(error.data) && typeof error.data.message === "string" && error.data.message) {
+    return error.data.message
+  }
   if (fallback) return fallback
   return tr(translate, "error.chain.unknown", "Unknown error")
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
+function unwrapServerError(error: unknown) {
+  if (!isRecord(error)) return error
+  if ("name" in error && typeof error.name === "string" && "data" in error) return error
+  if ("error" in error && error.error !== undefined) return error.error
+  return error
+}
+
 function isConfigInvalidErrorLike(error: unknown): error is ConfigInvalidError {
-  if (typeof error !== "object" || error === null) return false
-  const o = error as Record<string, unknown>
+  if (!isRecord(error)) return false
+  const o = error
   return o.name === "ConfigInvalidError" && typeof o.data === "object" && o.data !== null
 }
 
 function isProviderModelNotFoundErrorLike(error: unknown): error is ProviderModelNotFoundError {
-  if (typeof error !== "object" || error === null) return false
-  const o = error as Record<string, unknown>
+  if (!isRecord(error)) return false
+  const o = error
   return o.name === "ProviderModelNotFoundError" && typeof o.data === "object" && o.data !== null
 }
 

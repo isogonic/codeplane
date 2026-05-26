@@ -23,14 +23,10 @@ body,
   letter-spacing: -0.005em;
 }
 
-/* On macOS we still let some vibrancy material peek through, but most of
- * the window paints a near-solid surface so content stays readable. The
- * tiny bit of translucency keeps the app feeling native, without the
- * "see the desktop wallpaper through everything" effect. */
 html[data-os="macos"],
 html[data-os="macos"] body,
 html[data-os="macos"] #root {
-  background: color-mix(in srgb, var(--background-base) 92%, transparent);
+  background: var(--background-base);
 }
 
 html:not([data-os="macos"]),
@@ -48,11 +44,10 @@ html:not([data-os="macos"]) #root {
   -webkit-app-region: no-drag;
 }
 
-/* macOS titlebar — same subtle material as the rest of the window, plus a
- * 1-pixel hairline at the bottom so it reads as a real toolbar instead of
- * a transparent gap. */
+/* macOS titlebar — a 1-pixel hairline reads as real toolbar chrome without
+ * letting the desktop wallpaper show through the setup window. */
 html[data-os="macos"] .drag {
-  background: color-mix(in srgb, var(--background-base) 92%, transparent);
+  background: var(--background-base);
   border-bottom: 1px solid var(--border-weak-base);
 }
 

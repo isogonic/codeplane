@@ -17,13 +17,11 @@ const RECONNECT_OVERLAY_SCRIPT = String.raw`
   root.style.cssText = [
     'position:fixed', 'inset:0',
     'z-index:2147483647',
-    'background:color-mix(in srgb, var(--background-base) 72%, transparent)',
-    'backdrop-filter:blur(14px) saturate(140%)',
-    '-webkit-backdrop-filter:blur(14px) saturate(140%)',
+    'background:var(--background-base, #0e0e0e)',
     'display:flex', 'align-items:center', 'justify-content:center',
     'font-family:var(--font-family-sans, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif)',
     'font-size:13px',
-    'color:var(--text-base)',
+    'color:var(--text-base, #f5f5f5)',
     'opacity:0',
     'transition:opacity 180ms ease-out',
   ].join(';');
@@ -31,34 +29,33 @@ const RECONNECT_OVERLAY_SCRIPT = String.raw`
   const card = document.createElement('div');
   card.style.cssText = [
     'box-sizing:border-box',
-    'min-width:360px', 'max-width:520px',
-    'padding:24px',
-    'background:var(--surface-raised-stronger)',
-    'border:1px solid var(--border-weak-base)',
-    'border-radius:12px',
-    'box-shadow:var(--shadow-md, 0 12px 32px rgba(0,0,0,0.18))',
+    'width:min(360px, calc(100vw - 64px))',
+    'padding:0',
+    'background:transparent',
+    'border:0',
+    'box-shadow:none',
     'display:flex', 'flex-direction:column', 'gap:14px',
   ].join(';');
 
   const title = document.createElement('div');
   title.textContent = 'Server upgraded';
-  title.style.cssText = 'font-size:14px;font-weight:600;letter-spacing:-0.005em;color:var(--text-base)';
+  title.style.cssText = 'font-size:14px;font-weight:600;color:var(--text-base, #f5f5f5);text-align:center';
 
   const message = document.createElement('div');
   message.textContent = 'Downloading matching client UI…';
-  message.style.cssText = 'font-size:13px;line-height:1.45;color:var(--text-weak)';
+  message.style.cssText = 'font-size:13px;line-height:1.45;color:var(--text-weak, #a1a1aa);text-align:center';
 
   const meta = document.createElement('div');
-  meta.style.cssText = 'font-size:11px;color:var(--text-weaker);font-variant-numeric:tabular-nums;display:flex;justify-content:space-between;gap:12px';
+  meta.style.cssText = 'font-size:11px;color:var(--text-weaker, #71717a);font-variant-numeric:tabular-nums;display:flex;justify-content:space-between;gap:12px';
   const phaseLabel = document.createElement('span');
   const versionLabel = document.createElement('span');
   meta.appendChild(phaseLabel);
   meta.appendChild(versionLabel);
 
   const track = document.createElement('div');
-  track.style.cssText = 'box-sizing:border-box;height:8px;background:var(--surface-base);border:1px solid var(--border-weak-base);border-radius:999px;overflow:hidden;position:relative';
+  track.style.cssText = 'box-sizing:border-box;height:8px;background:var(--surface-base, #27272a);border:1px solid var(--border-weak-base, #3f3f46);border-radius:999px;overflow:hidden;position:relative';
   const fill = document.createElement('div');
-  fill.style.cssText = 'height:100%;width:4%;background:var(--border-active);border-radius:inherit;transition:width 200ms ease';
+  fill.style.cssText = 'height:100%;width:4%;background:var(--border-active, #60a5fa);border-radius:inherit;transition:width 200ms ease';
   track.appendChild(fill);
 
   card.append(title, message, track, meta);

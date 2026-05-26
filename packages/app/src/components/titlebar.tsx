@@ -141,7 +141,7 @@ export function Titlebar() {
                   class="group/sidebar-toggle titlebar-icon w-8 h-7 p-0 box-border rounded-md"
                   onClick={layout.sidebar.toggle}
                   aria-label={language.t("command.sidebar.toggle")}
-                  aria-expanded={layout.sidebar.opened()}
+                  aria-pressed={layout.sidebar.opened()}
                 >
                   <Icon size="small" name={layout.sidebar.opened() ? "sidebar-active" : "sidebar"} />
                 </Button>

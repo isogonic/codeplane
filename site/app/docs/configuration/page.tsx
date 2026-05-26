@@ -120,7 +120,9 @@ export default function Configuration() {
           String values may use <code>{`{secret:name}`}</code>, <code>{`{env:VAR}`}</code>, and{" "}
           <code>{`{file:path}`}</code> placeholders. Instance secrets live under{" "}
           <code>data/secrets/</code> and the settings UI can create them without leaving plaintext
-          tokens in <code>codeplane.jsonc</code>. See{" "}
+          tokens in <code>codeplane.jsonc</code>. Deleting a managed secret also removes matching
+          placeholders from global config; if a referenced secret file is missing, Codeplane
+          resolves that value as empty so the instance can still open. See{" "}
           <Link href="/docs/providers/">Providers</Link> for model overrides, OAuth, and custom
           OpenAI-compatible endpoints.
         </p>
@@ -222,6 +224,7 @@ export default function Configuration() {
           <code>{`{secret:name}`}</code> reads from <code>data/secrets/name</code> inside the
           current instance. Codeplane resolves the real value only when it loads config or spawns
           the MCP server, so shared config files and screenshots do not leak the plaintext secret.
+          Missing secret files resolve to an empty string until the value is restored in Settings.
         </p>
 
         <h2>plugin and instructions</h2>

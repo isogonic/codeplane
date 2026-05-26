@@ -637,13 +637,13 @@ function CronEditorDialog(props: {
           />
           <div class="flex flex-col gap-2">
             <label class="text-12-medium text-text-weak">{language.t("cron.field.scheduleKind")}</label>
-            <div class="inline-flex items-center gap-1 rounded-md border border-border-weak-base p-0.5 self-start">
+            <div class="inline-flex items-center gap-0.5 rounded-lg bg-surface-base p-1 self-start">
               <button
                 type="button"
-                class="px-3 py-1 rounded text-13-regular transition-colors"
+                class="px-3 h-7 rounded-md text-13-medium transition-colors"
                 classList={{
                   "bg-surface-base-active text-text-strong": store.scheduleKind === "cron",
-                  "text-text-base hover:text-text-strong": store.scheduleKind !== "cron",
+                  "text-text-weak hover:text-text-base": store.scheduleKind !== "cron",
                 }}
                 onClick={() => setStore("scheduleKind", "cron")}
               >
@@ -651,10 +651,10 @@ function CronEditorDialog(props: {
               </button>
               <button
                 type="button"
-                class="px-3 py-1 rounded text-13-regular transition-colors"
+                class="px-3 h-7 rounded-md text-13-medium transition-colors"
                 classList={{
                   "bg-surface-base-active text-text-strong": store.scheduleKind === "interval",
-                  "text-text-base hover:text-text-strong": store.scheduleKind !== "interval",
+                  "text-text-weak hover:text-text-base": store.scheduleKind !== "interval",
                 }}
                 onClick={() => setStore("scheduleKind", "interval")}
               >

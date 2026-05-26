@@ -1,7 +1,15 @@
 /*
- * Dock surface — the chat composer's chrome. `bg-card` rounded-xl with a
- * 1px ring, no harsh shadow. Focus-within adds a soft `ring/35` halo.
- * The tray sits above and joins via `data-dock-attach="top"`.
+ * Dock surface — the chat composer's chrome.
+ *
+ * When a shell and an `attach="top"` tray are children of the same
+ * `[data-dock-group]` wrapper, the wrapper owns the single rounded
+ * `var(--card)` outline and focus-within ring, and the inner shell/tray
+ * render with no border, no background, no rounded corners, and no gap.
+ * That gives the composer a single unbroken card around the editor and
+ * the controls row beneath it (matches the Codex composer layout).
+ *
+ * When used standalone (no group wrapper), shell and tray each render
+ * with their own card chrome — preserved for non-composer surfaces.
  */
 
 [data-dock-surface="shell"] {
@@ -30,12 +38,32 @@
   overflow: clip;
 }
 
-/* Sit the attached tray as a separate rounded card below the shell with
-   a small gap. The previous incarnation overlapped the two by negative
-   margin so the rings merged, but the shell's rounded bottom corners
-   then peeked past the tray's square top on the left and right; the
-   user prefers two clearly-rounded cards stacked with breathing room
-   between them. */
 [data-dock-surface="tray"][data-dock-attach="top"] {
   margin-top: 0.25rem;
+}
+
+/* Grouped composer — single card around editor + controls row. */
+[data-dock-group] {
+  position: relative;
+  border-radius: var(--radius-xl);
+  box-shadow: inset 0 0 0 1px var(--border);
+  background-color: var(--card);
+  color: var(--card-foreground);
+  overflow: clip;
+  transition: box-shadow 120ms ease;
+}
+
+[data-dock-group] [data-dock-surface="shell"],
+[data-dock-group] [data-dock-surface="tray"] {
+  background-color: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+[data-dock-group] [data-dock-surface="shell"]:focus-within {
+  box-shadow: none;
+}
+
+[data-dock-group] [data-dock-surface="tray"][data-dock-attach="top"] {
+  margin-top: 0;
 }

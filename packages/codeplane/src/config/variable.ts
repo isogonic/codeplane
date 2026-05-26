@@ -17,9 +17,12 @@ type ParseSource =
       dir: string
     }
 
+type MissingMode = "error" | "empty"
+
 type SubstituteInput = ParseSource & {
   text: string
-  missing?: "error" | "empty"
+  missing?: MissingMode
+  missingSecret?: MissingMode
 }
 
 function source(input: ParseSource) {
@@ -82,8 +85,11 @@ async function resolveSecretToken(input: ParseSource, token: string, missing: "e
   ).trim()
 }
 
-export async function resolveString(input: ParseSource & { value: string; missing?: "error" | "empty" }) {
+export async function resolveString(
+  input: ParseSource & { value: string; missing?: MissingMode; missingSecret?: MissingMode },
+) {
   const missing = input.missing ?? "error"
+  const missingSecret = input.missingSecret ?? missing
   let text = input.value.replace(/\{env:([^}]+)\}/g, (_, varName) => {
     return process.env[varName] || ""
   })
@@ -93,7 +99,7 @@ export async function resolveString(input: ParseSource & { value: string; missin
   }
 
   for (const token of Array.from(text.matchAll(/\{secret:[^}]+\}/g)).map((match) => match[0])) {
-    text = replaceLiteral(text, token, await resolveSecretToken(input, token, missing))
+    text = replaceLiteral(text, token, await resolveSecretToken(input, token, missingSecret))
   }
 
   return text
@@ -102,7 +108,8 @@ export async function resolveString(input: ParseSource & { value: string; missin
 export async function resolveUnknown(
   input: ParseSource & {
     value: unknown
-    missing?: "error" | "empty"
+    missing?: MissingMode
+    missingSecret?: MissingMode
   },
 ): Promise<unknown> {
   if (typeof input.value === "string") {
@@ -122,40 +129,41 @@ export async function resolveUnknown(
 /** Apply {env:VAR}, {file:path}, and {secret:name} substitutions to config text. */
 export async function substitute(input: SubstituteInput) {
   const missing = input.missing ?? "error"
+  const missingSecret = input.missingSecret ?? missing
   let text = input.text.replace(/\{env:([^}]+)\}/g, (_, varName) => {
     return process.env[varName] || ""
   })
 
   const fileMatches = Array.from(text.matchAll(/\{file:[^}]+\}/g))
-  if (!fileMatches.length) return text
+  if (fileMatches.length) {
+    let out = ""
+    let cursor = 0
 
-  let out = ""
-  let cursor = 0
+    for (const match of fileMatches) {
+      const token = match[0]
+      const index = match.index!
+      out += text.slice(cursor, index)
 
-  for (const match of fileMatches) {
-    const token = match[0]
-    const index = match.index!
-    out += text.slice(cursor, index)
+      const lineStart = text.lastIndexOf("\n", index - 1) + 1
+      const prefix = text.slice(lineStart, index).trimStart()
+      if (prefix.startsWith("//")) {
+        out += token
+        cursor = index + token.length
+        continue
+      }
 
-    const lineStart = text.lastIndexOf("\n", index - 1) + 1
-    const prefix = text.slice(lineStart, index).trimStart()
-    if (prefix.startsWith("//")) {
-      out += token
+      const fileContent = await resolveFileToken(input, token, missing)
+
+      out += JSON.stringify(fileContent).slice(1, -1)
       cursor = index + token.length
-      continue
     }
 
-    const fileContent = await resolveFileToken(input, token, missing)
-
-    out += JSON.stringify(fileContent).slice(1, -1)
-    cursor = index + token.length
+    out += text.slice(cursor)
+    text = out
   }
 
-  out += text.slice(cursor)
-  text = out
-
   for (const token of Array.from(text.matchAll(/\{secret:[^}]+\}/g)).map((match) => match[0])) {
-    text = replaceLiteral(text, token, await resolveSecretToken(input, token, missing))
+    text = replaceLiteral(text, token, await resolveSecretToken(input, token, missingSecret))
   }
 
   return text

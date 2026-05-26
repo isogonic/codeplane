@@ -308,7 +308,7 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
         defaultValue={defaultTab()}
         variant="alt"
       >
-        <Tabs.List data-slot="tablist" class="bg-transparent border-b-0 px-4 pt-2 pb-0 gap-4 h-10">
+        <Tabs.List data-slot="tablist" class="bg-transparent border-b-0 px-4 py-1.5 gap-4">
           <Show when={showServerTab()}>
             <Tabs.Trigger value="servers" data-slot="tab" class="text-12-regular">
               {language.t("status.popover.tab.servers")}

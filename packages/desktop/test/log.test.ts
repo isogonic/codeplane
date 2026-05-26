@@ -17,10 +17,11 @@ afterEach(async () => {
 })
 
 describe("createDesktopLogger - basic shape", () => {
-  test("returns log() and path()", async () => {
+  test("returns log(), flush(), and path()", async () => {
     const dir = await makeTempDir()
     const logger = createDesktopLogger(dir)
     expect(typeof logger.log).toBe("function")
+    expect(typeof logger.flush).toBe("function")
     expect(typeof logger.path).toBe("function")
     expect(logger.path()).toBe(path.join(dir, "desktop.log"))
   })
@@ -45,8 +46,7 @@ describe("createDesktopLogger - writes to disk", () => {
     const sub = path.join(dir, "logs", "deep")
     const logger = createDesktopLogger(sub)
     logger.log("scope", "event")
-    // Wait for the queued write
-    await new Promise((r) => setTimeout(r, 50))
+    await logger.flush()
     const stat = await fs.stat(sub)
     expect(stat.isDirectory()).toBe(true)
   })
@@ -55,7 +55,7 @@ describe("createDesktopLogger - writes to disk", () => {
     const dir = await makeTempDir()
     const logger = createDesktopLogger(dir)
     logger.log("a", "b")
-    await new Promise((r) => setTimeout(r, 50))
+    await logger.flush()
     const text = await fs.readFile(logger.path(), "utf8")
     expect(text.endsWith("\n")).toBe(true)
     const lines = text.trim().split("\n")
@@ -69,7 +69,7 @@ describe("createDesktopLogger - writes to disk", () => {
     const dir = await makeTempDir()
     const logger = createDesktopLogger(dir)
     logger.log("scope", "event")
-    await new Promise((r) => setTimeout(r, 50))
+    await logger.flush()
     const text = await fs.readFile(logger.path(), "utf8")
     const entry = JSON.parse(text.trim())
     expect(typeof entry.ts).toBe("string")
@@ -82,7 +82,7 @@ describe("createDesktopLogger - writes to disk", () => {
     const dir = await makeTempDir()
     const logger = createDesktopLogger(dir)
     logger.log("a", "b")
-    await new Promise((r) => setTimeout(r, 50))
+    await logger.flush()
     const text = await fs.readFile(logger.path(), "utf8")
     const entry = JSON.parse(text.trim())
     expect(entry.pid).toBe(process.pid)
@@ -92,7 +92,7 @@ describe("createDesktopLogger - writes to disk", () => {
     const dir = await makeTempDir()
     const logger = createDesktopLogger(dir)
     logger.log("scope", "event", { a: 1, b: "two" })
-    await new Promise((r) => setTimeout(r, 50))
+    await logger.flush()
     const text = await fs.readFile(logger.path(), "utf8")
     const entry = JSON.parse(text.trim())
     expect(entry.data).toEqual({ a: 1, b: "two" })
@@ -102,7 +102,7 @@ describe("createDesktopLogger - writes to disk", () => {
     const dir = await makeTempDir()
     const logger = createDesktopLogger(dir)
     logger.log("scope", "event")
-    await new Promise((r) => setTimeout(r, 50))
+    await logger.flush()
     const text = await fs.readFile(logger.path(), "utf8")
     const entry = JSON.parse(text.trim())
     expect("data" in entry).toBe(false)
@@ -114,7 +114,7 @@ describe("createDesktopLogger - writes to disk", () => {
     logger.log("s", "first")
     logger.log("s", "second")
     logger.log("s", "third")
-    await new Promise((r) => setTimeout(r, 100))
+    await logger.flush()
     const text = await fs.readFile(logger.path(), "utf8")
     const lines = text.trim().split("\n").map((l) => JSON.parse(l))
     expect(lines).toHaveLength(3)
@@ -130,7 +130,7 @@ describe("createDesktopLogger - serialization edge cases", () => {
     const logger = createDesktopLogger(dir)
     const err = new Error("boom")
     logger.log("scope", "event", { err })
-    await new Promise((r) => setTimeout(r, 50))
+    await logger.flush()
     const text = await fs.readFile(logger.path(), "utf8")
     const entry = JSON.parse(text.trim())
     expect(entry.data.err).toEqual({
@@ -150,7 +150,7 @@ describe("createDesktopLogger - serialization edge cases", () => {
       }
     }
     logger.log("scope", "event", new MyError("bad"))
-    await new Promise((r) => setTimeout(r, 50))
+    await logger.flush()
     const text = await fs.readFile(logger.path(), "utf8")
     const entry = JSON.parse(text.trim())
     expect(entry.data.name).toBe("MyError")
@@ -161,7 +161,7 @@ describe("createDesktopLogger - serialization edge cases", () => {
     const dir = await makeTempDir()
     const logger = createDesktopLogger(dir)
     logger.log("scope", "event", { big: 1234567890123456789n })
-    await new Promise((r) => setTimeout(r, 50))
+    await logger.flush()
     const text = await fs.readFile(logger.path(), "utf8")
     const entry = JSON.parse(text.trim())
     expect(entry.data.big).toBe("1234567890123456789")
@@ -173,7 +173,7 @@ describe("createDesktopLogger - serialization edge cases", () => {
     const obj: Record<string, unknown> = { a: 1 }
     obj.self = obj
     logger.log("scope", "event", obj)
-    await new Promise((r) => setTimeout(r, 50))
+    await logger.flush()
     const text = await fs.readFile(logger.path(), "utf8")
     const entry = JSON.parse(text.trim())
     expect(entry.data.a).toBe(1)
@@ -187,7 +187,7 @@ describe("createDesktopLogger - serialization edge cases", () => {
     const b: Record<string, unknown> = { a }
     a.b = b
     logger.log("scope", "event", { a })
-    await new Promise((r) => setTimeout(r, 50))
+    await logger.flush()
     const text = await fs.readFile(logger.path(), "utf8")
     const entry = JSON.parse(text.trim())
     expect(entry.data.a.b.a).toBe("[circular]")
@@ -197,7 +197,7 @@ describe("createDesktopLogger - serialization edge cases", () => {
     const dir = await makeTempDir()
     const logger = createDesktopLogger(dir)
     logger.log("scope", "event", [1, "two", true])
-    await new Promise((r) => setTimeout(r, 50))
+    await logger.flush()
     const text = await fs.readFile(logger.path(), "utf8")
     const entry = JSON.parse(text.trim())
     expect(entry.data).toEqual([1, "two", true])
@@ -207,7 +207,7 @@ describe("createDesktopLogger - serialization edge cases", () => {
     const dir = await makeTempDir()
     const logger = createDesktopLogger(dir)
     logger.log("scope", "event", { list: [{ id: 1 }, { id: 2 }] })
-    await new Promise((r) => setTimeout(r, 50))
+    await logger.flush()
     const text = await fs.readFile(logger.path(), "utf8")
     const entry = JSON.parse(text.trim())
     expect(entry.data.list).toEqual([{ id: 1 }, { id: 2 }])
@@ -217,7 +217,7 @@ describe("createDesktopLogger - serialization edge cases", () => {
     const dir = await makeTempDir()
     const logger = createDesktopLogger(dir)
     logger.log("scope", "event", null)
-    await new Promise((r) => setTimeout(r, 50))
+    await logger.flush()
     const text = await fs.readFile(logger.path(), "utf8")
     const entry = JSON.parse(text.trim())
     expect(entry.data).toBeNull()
@@ -227,7 +227,7 @@ describe("createDesktopLogger - serialization edge cases", () => {
     const dir = await makeTempDir()
     const logger = createDesktopLogger(dir)
     logger.log("scope", "event", "plain text")
-    await new Promise((r) => setTimeout(r, 50))
+    await logger.flush()
     const text = await fs.readFile(logger.path(), "utf8")
     const entry = JSON.parse(text.trim())
     expect(entry.data).toBe("plain text")
@@ -237,7 +237,7 @@ describe("createDesktopLogger - serialization edge cases", () => {
     const dir = await makeTempDir()
     const logger = createDesktopLogger(dir)
     logger.log("scope", "event", 42)
-    await new Promise((r) => setTimeout(r, 50))
+    await logger.flush()
     const text = await fs.readFile(logger.path(), "utf8")
     const entry = JSON.parse(text.trim())
     expect(entry.data).toBe(42)
@@ -247,7 +247,7 @@ describe("createDesktopLogger - serialization edge cases", () => {
     const dir = await makeTempDir()
     const logger = createDesktopLogger(dir)
     logger.log("scope", "event", true)
-    await new Promise((r) => setTimeout(r, 50))
+    await logger.flush()
     const text = await fs.readFile(logger.path(), "utf8")
     const entry = JSON.parse(text.trim())
     expect(entry.data).toBe(true)
@@ -261,7 +261,7 @@ describe("createDesktopLogger - many writes ordered correctly", () => {
     for (let i = 0; i < 100; i++) {
       logger.log("scope", `event-${i}`, { i })
     }
-    await new Promise((r) => setTimeout(r, 200))
+    await logger.flush()
     const text = await fs.readFile(logger.path(), "utf8")
     const lines = text.trim().split("\n").map((l) => JSON.parse(l))
     expect(lines).toHaveLength(100)
@@ -280,7 +280,7 @@ describe("createDesktopLogger - many writes ordered correctly", () => {
     b.log("b", "1")
     a.log("a", "2")
     b.log("b", "2")
-    await new Promise((r) => setTimeout(r, 100))
+    await Promise.all([a.flush(), b.flush()])
     const text = await fs.readFile(a.path(), "utf8")
     const lines = text.trim().split("\n").map((l) => JSON.parse(l))
     expect(lines).toHaveLength(4)
@@ -292,13 +292,19 @@ describe("createDesktopLogger - resilient to fs errors", () => {
     const dir = await makeTempDir()
     // Make the dir read-only so writes silently fail; logger must not crash.
     const logger = createDesktopLogger(dir)
+    const originalConsoleError = console.error
+    const consoleErrors: Parameters<typeof console.error>[] = []
     await fs.chmod(dir, 0o400)
+    console.error = (...args: Parameters<typeof console.error>) => {
+      consoleErrors.push(args)
+    }
     try {
       expect(() => logger.log("scope", "event")).not.toThrow()
       logger.log("scope", "after")
-      // Give the queued write a chance to run/fail; nothing should be unhandled.
-      await new Promise((r) => setTimeout(r, 50))
+      await logger.flush()
+      expect(consoleErrors).toHaveLength(1)
     } finally {
+      console.error = originalConsoleError
       await fs.chmod(dir, 0o700)
     }
   })

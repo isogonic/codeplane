@@ -22,7 +22,7 @@ import { useSync } from "@/tui/context/sync"
 import { useEvent } from "@/tui/context/event"
 import { SplitBorder, ThinBorder } from "@/tui/component/border"
 import { Spinner } from "@/tui/component/spinner"
-import { RichBlockText } from "@/tui/component/rich-block"
+import { MarkdownText } from "@/tui/component/markdown-text"
 import { selectedForeground, useTheme } from "@/tui/context/theme"
 import { ScrollBoxRenderable, addDefaultParsers, TextAttributes, RGBA } from "@opentui/core"
 import { Prompt, type PromptRef } from "@/tui/component/prompt"
@@ -184,7 +184,7 @@ export function Session() {
     return false
   })
   const showTimestamps = createMemo(() => timestamps() === "show")
-  const contentWidth = createMemo(() => dimensions().width - (sidebarVisible() ? 42 : 0) - 4)
+  const contentWidth = createMemo(() => Math.max(1, dimensions().width - (sidebarVisible() ? 42 : 0) - 4))
   const providers = createMemo(() => Model.index(sync.data.provider))
   const permissionAutoAccept = createMemo<Record<string, boolean>>(() => kv.get(TUI_PERMISSION_AUTO_ACCEPT_KEY, {}))
 
@@ -1816,7 +1816,7 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
         paddingLeft={2}
         paddingRight={2}
       >
-        <RichBlockText
+        <MarkdownText
           text={props.part.text.trim()}
           syntax={syntax()}
           conceal={ctx.conceal()}

@@ -6,12 +6,17 @@ const backendPort = Number(process.env.PLAYWRIGHT_SERVER_PORT ?? "4096")
 const backendOrigin = `http://127.0.0.1:${backendPort}`
 const serverStoreKey = "codeplane.global.dat:server"
 const directory = "/workspace"
+const sessionDirectory = `${directory}/packages/app`
 const sessionID = "ses_live_stream"
+const otherSessionID = "ses_other_stream"
 const userMessageID = "msg_0001_user_live_stream"
 const assistantMessageID = "msg_0002_assistant_live_stream"
+const otherMessageID = "msg_0003_other_stream"
 const userPartID = "prt_0001_user_live_stream"
 const assistantPartID = "prt_0002_assistant_live_stream"
+const otherPartID = "prt_0003_other_stream"
 const userPrompt = "Stream this reply live"
+const otherPrompt = "Keep this other session visible"
 
 function checksum(content: string): string | undefined {
   if (!content) return undefined
@@ -81,8 +86,20 @@ function sessionInfo(created = Date.now() - 1_000): Session {
     id: sessionID,
     slug: sessionID,
     projectID: project.id,
-    directory,
+    directory: sessionDirectory,
     title: "Live stream session",
+    version: "29.0.4",
+    time: { created, updated: created + 1 },
+  }
+}
+
+function otherSessionInfo(created = Date.now() - 1_500): Session {
+  return {
+    id: otherSessionID,
+    slug: otherSessionID,
+    projectID: project.id,
+    directory,
+    title: "Other session",
     version: "29.0.4",
     time: { created, updated: created + 1 },
   }
@@ -92,6 +109,17 @@ function userMessage(created = Date.now() - 900): Message {
   return {
     id: userMessageID,
     sessionID,
+    role: "user",
+    time: { created },
+    agent: "build",
+    model: { providerID: "logicplanes", modelID: "logic-large" },
+  }
+}
+
+function otherMessage(created = Date.now() - 1_400): Message {
+  return {
+    id: otherMessageID,
+    sessionID: otherSessionID,
     role: "user",
     time: { created },
     agent: "build",
@@ -116,10 +144,10 @@ function assistantMessage(created = Date.now() - 800, completed?: number): Messa
   }
 }
 
-function textPart(id: string, messageID: string, text: string): Part {
+function textPart(id: string, messageID: string, text: string, ownerSessionID = sessionID): Part {
   return {
     id,
-    sessionID,
+    sessionID: ownerSessionID,
     messageID,
     type: "text",
     text,
@@ -130,6 +158,7 @@ function initialState() {
   const now = Date.now()
   return {
     session: sessionInfo(now - 1_000),
+    otherSession: otherSessionInfo(now - 1_500),
     messages: [
       {
         info: userMessage(now - 900),
@@ -140,8 +169,15 @@ function initialState() {
         parts: [textPart(assistantPartID, assistantMessageID, "")],
       },
     ] satisfies SessionMessagePageItem[],
+    otherMessages: [
+      {
+        info: otherMessage(now - 1_400),
+        parts: [textPart(otherPartID, otherMessageID, otherPrompt, otherSessionID)],
+      },
+    ] satisfies SessionMessagePageItem[],
     sessionStatus: {
       [sessionID]: { type: "busy" as const },
+      [otherSessionID]: { type: "idle" as const },
     } satisfies Record<string, SessionStatus>,
   }
 }
@@ -183,7 +219,7 @@ test.describe("persisted projects and live stream validation", () => {
   const appendAssistantDelta = (delta: string) => {
     assistantText().text += delta
     emit({
-      directory,
+      directory: sessionDirectory,
       payload: {
         type: "message.part.delta",
         properties: {
@@ -204,7 +240,7 @@ test.describe("persisted projects and live stream validation", () => {
     state.sessionStatus[sessionID] = { type: "idle" }
     emitMany([
       {
-        directory,
+        directory: sessionDirectory,
         payload: {
           type: "message.part.updated",
           properties: {
@@ -215,7 +251,7 @@ test.describe("persisted projects and live stream validation", () => {
         } satisfies Event,
       },
       {
-        directory,
+        directory: sessionDirectory,
         payload: {
           type: "message.updated",
           properties: {
@@ -224,7 +260,7 @@ test.describe("persisted projects and live stream validation", () => {
         } satisfies Event,
       },
       {
-        directory,
+        directory: sessionDirectory,
         payload: {
           type: "session.status",
           properties: {
@@ -378,18 +414,18 @@ test.describe("persisted projects and live stream validation", () => {
       }
 
       if (url.pathname === "/session") {
-        json(response, [state.session])
+        json(response, [state.session, state.otherSession])
         return
       }
 
       const sessionChildrenMatch = url.pathname.match(/^\/session\/([^/]+)\/children$/)
-      if (sessionChildrenMatch?.[1] === sessionID) {
+      if (sessionChildrenMatch?.[1] === sessionID || sessionChildrenMatch?.[1] === otherSessionID) {
         json(response, [])
         return
       }
 
       const sessionTodoMatch = url.pathname.match(/^\/session\/([^/]+)\/todo$/)
-      if (sessionTodoMatch?.[1] === sessionID) {
+      if (sessionTodoMatch?.[1] === sessionID || sessionTodoMatch?.[1] === otherSessionID) {
         json(response, [])
         return
       }
@@ -399,10 +435,18 @@ test.describe("persisted projects and live stream validation", () => {
         json(response, state.messages)
         return
       }
+      if (sessionMessagesMatch?.[1] === otherSessionID) {
+        json(response, state.otherMessages)
+        return
+      }
 
       const sessionMatch = url.pathname.match(/^\/session\/([^/]+)$/)
       if (sessionMatch?.[1] === sessionID) {
         json(response, state.session)
+        return
+      }
+      if (sessionMatch?.[1] === otherSessionID) {
+        json(response, state.otherSession)
         return
       }
 
@@ -534,7 +578,7 @@ test.describe("persisted projects and live stream validation", () => {
 
     assistantText().text = "Hello"
     emit({
-      directory,
+      directory: sessionDirectory,
       payload: {
         type: "message.part.updated",
         properties: {
@@ -552,13 +596,29 @@ test.describe("persisted projects and live stream validation", () => {
     await expect(page.getByText("Hello", { exact: true })).toBeVisible()
   })
 
+  test("keeps nested-directory live streams current while switching sessions", async ({ page }) => {
+    await openStreamSession(page)
+
+    await page.goto(`/${slug(directory)}/session/${otherSessionID}`)
+    await expect(page.getByText(otherPrompt)).toBeVisible()
+
+    appendAssistantDelta("still ")
+    appendAssistantDelta("running")
+    finishAssistant("still running")
+
+    await page.goto(`/${slug(directory)}/session/${sessionID}`)
+
+    await expect(page.locator("[data-slot='session-turn-thinking']")).toHaveCount(0)
+    await expect(page.getByText("still running", { exact: true })).toBeVisible()
+  })
+
   test("keeps later tail deltas after a full part refresh in the same stream burst", async ({ page }) => {
     await openStreamSession(page)
 
     assistantText().text = "fresh tail"
     emitMany([
       {
-        directory,
+        directory: sessionDirectory,
         payload: {
           type: "message.part.delta",
           properties: {
@@ -571,7 +631,7 @@ test.describe("persisted projects and live stream validation", () => {
         } satisfies Event,
       },
       {
-        directory,
+        directory: sessionDirectory,
         payload: {
           type: "message.part.updated",
           properties: {
@@ -582,7 +642,7 @@ test.describe("persisted projects and live stream validation", () => {
         } satisfies Event,
       },
       {
-        directory,
+        directory: sessionDirectory,
         payload: {
           type: "message.part.delta",
           properties: {
@@ -608,7 +668,7 @@ test.describe("persisted projects and live stream validation", () => {
     assistantText().text = "fresh"
     emitMany([
       {
-        directory,
+        directory: sessionDirectory,
         payload: {
           type: "message.part.updated",
           properties: {
@@ -619,7 +679,7 @@ test.describe("persisted projects and live stream validation", () => {
         } satisfies Event,
       },
       {
-        directory,
+        directory: sessionDirectory,
         payload: {
           type: "message.part.delta",
           properties: {
@@ -632,7 +692,7 @@ test.describe("persisted projects and live stream validation", () => {
         } satisfies Event,
       },
       {
-        directory,
+        directory: sessionDirectory,
         payload: {
           type: "message.part.updated",
           properties: {

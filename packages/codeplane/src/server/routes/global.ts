@@ -380,12 +380,11 @@ export const GlobalRoutes = lazy(() =>
       }),
       validator("param", z.object({ name: z.string() })),
       validator("json", z.object({ value: z.string() })),
-      async (c) =>
-        c.json(
-          await secretRuntime.runPromise((svc) =>
-            svc.set(c.req.valid("param").name, c.req.valid("json").value),
-          ),
-        ),
+      async (c) => {
+        const entry = await secretRuntime.runPromise((svc) => svc.set(c.req.valid("param").name, c.req.valid("json").value))
+        await configRuntime.runPromise((cfg) => cfg.invalidate())
+        return c.json(entry)
+      },
     )
     .delete(
       "/secrets/:name",
@@ -405,12 +404,13 @@ export const GlobalRoutes = lazy(() =>
         },
       }),
       validator("param", z.object({ name: z.string() })),
-      async (c) =>
-        c.json(
-          await secretRuntime.runPromise((svc) =>
-            svc.remove(c.req.valid("param").name).pipe(Effect.map((success) => ({ success }))),
-          ),
-        ),
+      async (c) => {
+        const name = c.req.valid("param").name
+        const removedReferences = await configRuntime.runPromise((cfg) => cfg.removeGlobalSecretReferences(name))
+        const success = await secretRuntime.runPromise((svc) => svc.remove(name))
+        if (success && removedReferences === 0) await configRuntime.runPromise((cfg) => cfg.invalidate())
+        return c.json({ success })
+      },
     )
     .post(
       "/dispose",

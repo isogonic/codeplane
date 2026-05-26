@@ -795,6 +795,10 @@ exports[`tool parameters JSON Schema (wire shape) task 1`] = `
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
+    "action": {
+      "description": "How to execute: 'run' blocks until complete (default), 'spawn' starts in background and returns task_id immediately so you can continue working, 'check' polls a spawned task by task_id and returns status or final result",
+      "type": "string",
+    },
     "command": {
       "description": "The command that triggered this task",
       "type": "string",
@@ -812,7 +816,7 @@ exports[`tool parameters JSON Schema (wire shape) task 1`] = `
       "type": "string",
     },
     "task_id": {
-      "description": "This should only be set if you mean to resume a previous task (you can pass a prior task_id and the task will continue the same subagent session as before instead of creating a fresh one)",
+      "description": "For 'check' action: the task_id of a previously spawned task. For 'run' action: resume an existing task session instead of creating a new one.",
       "type": "string",
     },
   },

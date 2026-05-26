@@ -39,6 +39,15 @@ type SigninPhase =
   | { kind: "verifying" }
   | { kind: "result"; ok: boolean; message: string }
 
+const sensitiveHeaderNames = new Set([
+  "authorization",
+  "cookie",
+  "cf-access-client-secret",
+  "proxy-authorization",
+  "set-cookie",
+  "x-api-key",
+])
+
 function slugify(input: string, fallback: string): string {
   const slug = input
     .toLowerCase()
@@ -53,6 +62,28 @@ function basicAuthHeader(user: string, pass: string): string {
   // same way against the same server as one created from any other
   // surface.
   return `Basic ${Buffer.from(`${user}:${pass}`, "utf8").toString("base64")}`
+}
+
+function isHttpUrl(input: string) {
+  try {
+    const parsed = new URL(input)
+    return (parsed.protocol === "http:" || parsed.protocol === "https:") && parsed.hostname.length > 0
+  } catch {
+    return false
+  }
+}
+
+export function isSensitiveHeaderName(name: string) {
+  const normalized = name.trim().toLowerCase()
+  return sensitiveHeaderNames.has(normalized) || normalized.endsWith("-token") || normalized.endsWith("-secret")
+}
+
+export function redactHeaderLineForDisplay(line: string) {
+  const idx = line.indexOf(":")
+  if (idx <= 0) return line
+  const name = line.slice(0, idx).trim()
+  if (!isSensitiveHeaderName(name)) return line
+  return `${name}: <redacted>`
 }
 
 // Parse a free-form headers blob (one `Name: value` per line) into a
@@ -235,7 +266,7 @@ export function RemoteInstanceForm(props: {
       setFocused("url")
       return undefined
     }
-    if (!/^https?:\/\//i.test(trimmedUrl)) {
+    if (!isHttpUrl(trimmedUrl)) {
       setError(tuiT("boot.remote.urlMustStart"))
       setFocused("url")
       return undefined
@@ -321,7 +352,7 @@ export function RemoteInstanceForm(props: {
       setFocused("url")
       return
     }
-    if (!/^https?:\/\//i.test(trimmedUrl)) {
+    if (!isHttpUrl(trimmedUrl)) {
       setError(tuiT("boot.remote.urlMustStart"))
       setFocused("url")
       return
@@ -577,14 +608,11 @@ export function RemoteInstanceForm(props: {
   })
 
   // Mask the password field so it doesn't leak over someone's shoulder
-  // (or screen-share). Length-preserving so the cursor/length cues still
-  // help the user. Preserves a single trailing char as a "show last"
-  // affordance when actively typing — matches common terminal patterns.
+  // or into screen-share / terminal recordings. Length-preserving keeps
+  // enough cursor/length feedback without exposing any trailing secret char.
   const passwordDisplay = createMemo(() => {
     const value = password()
-    if (focused() !== "password") return value ? "•".repeat(value.length) : ""
-    if (value.length === 0) return ""
-    return "•".repeat(Math.max(0, value.length - 1)) + value.slice(-1)
+    return value ? "•".repeat(value.length) : ""
   })
 
   const headersDisplay = createMemo(() => {
@@ -594,9 +622,9 @@ export function RemoteInstanceForm(props: {
     const blob = headersText()
     if (!blob) return ""
     const lines = blob.split("\n")
-    if (lines.length === 1) return lines[0] ?? ""
+    if (lines.length === 1) return redactHeaderLineForDisplay(lines[0] ?? "")
     const last = lines[lines.length - 1] ?? ""
-    return last
+    return redactHeaderLineForDisplay(last)
   })
 
   const headersHint = createMemo(() => {
@@ -676,7 +704,7 @@ export function RemoteInstanceForm(props: {
           validate={() => {
             const v = url().trim()
             if (!v) return { ok: false, message: tuiT("common.required") }
-            if (!/^https?:\/\//i.test(v)) return { ok: false, message: tuiT("boot.remote.urlMustStart") }
+            if (!isHttpUrl(v)) return { ok: false, message: tuiT("boot.remote.urlMustStart") }
             return { ok: true }
           }}
         />
@@ -714,7 +742,7 @@ export function RemoteInstanceForm(props: {
           <box flexDirection="column" paddingX={4}>
             <For each={headersText().split("\n").slice(0, -1)}>
               {(line) => (
-                <text fg={palette().fgDim}>{line || " "}</text>
+                <text fg={palette().fgDim}>{line ? redactHeaderLineForDisplay(line) : " "}</text>
               )}
             </For>
           </box>
@@ -767,7 +795,7 @@ export function RemoteInstanceForm(props: {
           <box flexDirection="row">
             <text fg={palette().accent}>{tuiT("boot.remote.signInPaste")} </text>
             <text fg={palette().divider}>›</text>
-            <text fg={palette().fg}> {signinPaste() || " "}</text>
+            <text fg={palette().fg}> {signinPaste() ? redactHeaderLineForDisplay(signinPaste()!) : " "}</text>
             <text fg={palette().accent}>▎</text>
           </box>
           <text fg={palette().fgDim}>  {tuiT("boot.remote.signInPasteHint")}</text>

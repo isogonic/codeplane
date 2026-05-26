@@ -3,7 +3,7 @@ import { describeGenericToolDisplay } from "@codeplane-ai/shared/tool-display"
 import { useSyncV2 } from "@/tui/context/sync-v2"
 import { SplitBorder } from "@/tui/component/border"
 import { Spinner } from "@/tui/component/spinner"
-import { RichBlockText } from "@/tui/component/rich-block"
+import { MarkdownText } from "@/tui/component/markdown-text"
 import { useTheme } from "@/tui/context/theme"
 import { useLocal } from "@/tui/context/local"
 import { useKeyboard, useRenderer, useTerminalDimensions, type JSX } from "@opentui/solid"
@@ -363,7 +363,7 @@ function AssistantText(props: { part: SessionMessageAssistantText; syntax: Synta
   return (
     <Show when={props.part.text.trim()}>
       <box paddingLeft={3} marginTop={1} flexDirection="column" flexShrink={0}>
-        <RichBlockText text={props.part.text.trim()} syntax={props.syntax} streaming={true} conceal={true} />
+        <MarkdownText text={props.part.text.trim()} syntax={props.syntax} streaming={true} conceal={true} />
       </box>
     </Show>
   )

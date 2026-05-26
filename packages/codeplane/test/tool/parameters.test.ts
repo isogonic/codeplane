@@ -312,6 +312,10 @@ describe("tool parameters", () => {
       const parsed = parse(Task, { description: "d", prompt: "p", subagent_type: "general" })
       expect(parsed.subagent_type).toBe("general")
     })
+    test("accepts background task actions", () => {
+      const parsed = parse(Task, { action: "spawn", description: "d", prompt: "p", subagent_type: "general" })
+      expect(parsed.action).toBe("spawn")
+    })
     test("rejects missing prompt", () => {
       expect(accepts(Task, { description: "d", subagent_type: "general" })).toBe(false)
     })

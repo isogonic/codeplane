@@ -90,6 +90,23 @@ describe("formatServerError", () => {
     expect(formatServerError("Failed to connect to server", language.t)).toBe("Failed to connect to server")
   })
 
+  test("unwraps SDK error envelopes", () => {
+    const error = {
+      error: {
+        name: "ConfigInvalidError",
+        data: {
+          message: "Missing secret",
+        },
+      },
+    }
+
+    expect(formatServerError(error, language.t)).toBe("Arquivo de config em config invalido: Missing secret")
+  })
+
+  test("returns message-like object errors", () => {
+    expect(formatServerError({ message: "Failed to open CLI" }, language.t)).toBe("Failed to open CLI")
+  })
+
   test("uses translated unknown fallback", () => {
     expect(formatServerError(0, language.t)).toBe("Erro desconhecido")
   })

@@ -61,6 +61,7 @@ const state = () => {
               config = { ...config, ...next, git: { ...(config.git ?? {}), ...(next.git ?? {}) } }
               return config
             }),
+          removeGlobalSecretReferences: () => Effect.succeed(0),
           invalidate: () => Effect.void,
           directories: () => Effect.succeed([]),
           waitForDependencies: () => Effect.void,

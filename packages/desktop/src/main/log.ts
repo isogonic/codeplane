@@ -4,6 +4,8 @@ import path from "node:path"
 export type DesktopLogData = unknown
 export type DesktopLogger = {
   log(scope: string, event: string, data?: DesktopLogData): void
+  /** Wait for all writes queued before this call to finish. */
+  flush(): Promise<void>
   /** Like `log` but always tags the entry as an error so it's mirrored to
    * the persistent dedup file even when the heuristic wouldn't have
    * caught it. Useful for "expected but worth recording" failures whose
@@ -335,6 +337,9 @@ export function createDesktopLogger(dir: string): DesktopLogger {
   return {
     log(scope, event, data) {
       enqueue({ ts: new Date().toISOString(), pid: process.pid, scope, event, data }, false)
+    },
+    flush() {
+      return writes
     },
     error(scope, event, data) {
       enqueue({ ts: new Date().toISOString(), pid: process.pid, scope, event, data }, true)

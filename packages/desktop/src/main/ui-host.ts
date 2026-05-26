@@ -1,6 +1,8 @@
 import type { Session } from "electron"
+import { createHash } from "node:crypto"
 import fs from "node:fs/promises"
 import http from "node:http"
+import https from "node:https"
 import net from "node:net"
 import path from "node:path"
 import { pipeline } from "node:stream/promises"
@@ -40,6 +42,7 @@ const UPSTREAM_REQUEST_HEADERS_BLOCKED = new Set([
   "sec-fetch-site",
   "sec-fetch-user",
 ])
+const INSTANCE_HEADER_BLOCKED = new Set(["host", "origin", "referer", "user-agent", "content-length"])
 const RESPONSE_HEADERS_BLOCKED = new Set(["content-encoding", "content-length", "content-security-policy", "set-cookie"])
 const MIME_TYPES = {
   ".avif": "image/avif",
@@ -73,6 +76,7 @@ export type DesktopHostInstance = {
 }
 
 type CacheMetadata = {
+  entryHash?: string
   fetchedAt: number
   instances?: Record<string, { lastUsedAt: number; origin: string }>
   lastUsedAt: number
@@ -245,6 +249,60 @@ async function readRequestBody(request: http.IncomingMessage) {
   return chunks.length > 0 ? Buffer.concat(chunks) : undefined
 }
 
+function copyUpstreamRequestHeaders(request: http.IncomingMessage) {
+  const headers = new Headers()
+  for (const [name, value] of Object.entries(request.headers)) {
+    if (UPSTREAM_REQUEST_HEADERS_BLOCKED.has(name.toLowerCase())) continue
+    if (value === undefined) continue
+    if (Array.isArray(value)) {
+      for (const item of value) headers.append(name, item)
+      continue
+    }
+    headers.set(name, value)
+  }
+  return headers
+}
+
+function headersRecord(headers: Headers) {
+  const out: Record<string, string> = {}
+  for (const [name, value] of headers.entries()) out[name] = value
+  return out
+}
+
+function responseHeaders(headers: Headers | http.IncomingHttpHeaders) {
+  const out: Record<string, string | string[]> = {}
+  if (headers instanceof Headers) {
+    for (const [name, value] of headers.entries()) {
+      if (RESPONSE_HEADERS_BLOCKED.has(name.toLowerCase())) continue
+      out[name] = value
+    }
+    return out
+  }
+  for (const [name, value] of Object.entries(headers)) {
+    if (RESPONSE_HEADERS_BLOCKED.has(name.toLowerCase())) continue
+    if (value === undefined) continue
+    out[name] = typeof value === "number" ? String(value) : value
+  }
+  return out
+}
+
+function isLiveEventStreamRequest(request: http.IncomingMessage, pathname: string, instance: DesktopHostInstance) {
+  if (request.method !== "GET" && request.method !== "HEAD") return false
+  if (instance.clientCertSubject) return false
+  return pathname === "/global/event" || pathname === "/event"
+}
+
+async function cookieHeader(session: Session, remote: URL) {
+  if (!("cookies" in session)) return
+  try {
+    const cookies = await session.cookies.get({ url: remote.toString() })
+    const value = cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join("; ")
+    return value || undefined
+  } catch {
+    return
+  }
+}
+
 function upgradeRemotePath(remote: URL) {
   return `${remote.pathname || "/"}${remote.search}`
 }
@@ -336,6 +394,14 @@ async function writeMetadata(root: string, value: CacheMetadata) {
   await fs.writeFile(path.join(root, "meta.json"), `${JSON.stringify(value, null, 2)}\n`)
 }
 
+function hashBytes(bytes: Uint8Array) {
+  return createHash("sha256").update(bytes).digest("hex")
+}
+
+async function localEntryHash(root: string) {
+  return hashBytes(await fs.readFile(path.join(root, "index.html")))
+}
+
 async function directoryBytes(target: string): Promise<number> {
   const entries = await fs.readdir(target, { withFileTypes: true }).catch(() => undefined)
   if (!entries) return 0
@@ -384,16 +450,6 @@ async function markOriginChecked(base: string, origin: string, version: string) 
   await writeOriginIndex(base, index)
 }
 
-async function freshOriginCache(base: string, origin: string) {
-  const index = await readOriginIndex(base)
-  const entry = index[origin]
-  if (!entry) return undefined
-  if (Date.now() - entry.checkedAt >= CACHE_TTL_MS) return undefined
-  const root = versionRoot(base, entry.version)
-  if (!(await exists(path.join(root, "index.html")))) return undefined
-  return entry
-}
-
 function staticFile(root: string, pathname: string) {
   const relative = cleanPathname(pathname)
   const resolved = path.resolve(root, relative || "index.html")
@@ -414,9 +470,10 @@ async function touchVersion(base: string, version: string, origin: string, insta
   const root = versionRoot(base, version)
   const current = await readMetadata(root)
   await writeMetadata(root, {
+    entryHash: current?.entryHash,
     fetchedAt: current?.fetchedAt ?? Date.now(),
     instances: {
-      ...(current?.instances ?? {}),
+      ...current?.instances,
       [instanceID]: {
         lastUsedAt: Date.now(),
         origin,
@@ -590,6 +647,40 @@ async function crawlUI(
   log?.("crawl.success", { assets: saved.size, root: targetRoot, url: instance.url })
 }
 
+async function remoteEntryHash(session: Session, instance: DesktopHostInstance) {
+  const response = await fetchThroughSession(session, baseUrl(instance.url), {
+    cache: "no-store",
+    headers: { "cache-control": "no-cache" },
+  })
+  if (!response.ok) throw new Error(`UI entry validation failed with HTTP ${response.status} for ${instance.url}`)
+  const contentType = response.headers.get("content-type") ?? ""
+  if (!isTextAsset("index.html", contentType)) {
+    await response.body?.cancel().catch(() => undefined)
+    throw new Error(`UI entry validation returned ${contentType || "an unknown content type"} for ${instance.url}`)
+  }
+  return hashBytes(new Uint8Array(await response.arrayBuffer()))
+}
+
+async function cachedEntryStillCurrent(
+  base: string,
+  session: Session,
+  instance: DesktopHostInstance,
+  version: string,
+  log?: (event: string, data?: unknown) => void,
+) {
+  const root = versionRoot(base, version)
+  const [cached, remote] = await Promise.all([
+    readMetadata(root).then((meta) => meta?.entryHash ?? localEntryHash(root)),
+    remoteEntryHash(session, instance),
+  ])
+  const current = cached === remote
+  log?.(current ? "cache.entry.current" : "cache.entry.stale", {
+    id: instance.id,
+    version,
+  })
+  return current
+}
+
 async function ensureCachedVersion(
   base: string,
   session: Session,
@@ -600,19 +691,22 @@ async function ensureCachedVersion(
 ) {
   const root = versionRoot(base, version)
   if (await exists(path.join(root, "index.html"))) {
-    await ensureLegacyThemeAssets(root)
-    log?.("cache.hit", { root, version })
-    progress?.({
-      phase: "download",
-      message: `Using cached UI for Codeplane ${version}.`,
-      percent: 86,
-      version,
-      completed: 1,
-      total: 1,
-      cacheHit: true,
-    })
-    await touchVersion(base, version, instanceOrigin(instance.url), instance.id)
-    return root
+    if (await cachedEntryStillCurrent(base, session, instance, version, log)) {
+      await ensureLegacyThemeAssets(root)
+      log?.("cache.hit", { root, version })
+      progress?.({
+        phase: "download",
+        message: `Using cached UI for Codeplane ${version}.`,
+        percent: 86,
+        version,
+        completed: 1,
+        total: 1,
+        cacheHit: true,
+      })
+      await touchVersion(base, version, instanceOrigin(instance.url), instance.id)
+      return root
+    }
+    await fs.rm(root, { force: true, recursive: true })
   }
 
   const temp = `${root}.tmp-${Date.now()}`
@@ -637,6 +731,7 @@ async function ensureCachedVersion(
     version,
   })
   await writeMetadata(temp, {
+    entryHash: await localEntryHash(temp),
     fetchedAt: Date.now(),
     instances: {
       [instance.id]: {
@@ -691,6 +786,117 @@ export function createDesktopUIHost(input: {
     return input.getInstance(id)
   }
 
+  const proxyLiveEventStream = async (
+    request: http.IncomingMessage,
+    response: http.ServerResponse<http.IncomingMessage>,
+    session: Session,
+    instance: DesktopHostInstance,
+    remote: URL,
+    pathname: string,
+  ) => {
+    const headers = copyUpstreamRequestHeaders(request)
+    headers.set("accept", headers.get("accept") || "text/event-stream")
+    headers.set("cache-control", "no-cache")
+    for (const [name, value] of Object.entries(instance.headers ?? {})) {
+      if (!value) continue
+      if (INSTANCE_HEADER_BLOCKED.has(name.toLowerCase())) continue
+      if (headers.has(name)) continue
+      headers.set(name, value)
+    }
+    const cookies = await cookieHeader(session, remote)
+    if (cookies) headers.set("cookie", cookies)
+
+    await new Promise<void>((resolve, reject) => {
+      const client = remote.protocol === "https:" ? https : remote.protocol === "http:" ? http : undefined
+      if (!client) {
+        reject(new Error(`Unsupported stream proxy target protocol: ${remote.protocol}`))
+        return
+      }
+      let settled = false
+      const settle = (error?: unknown) => {
+        if (settled) return
+        settled = true
+        if (error) {
+          reject(error)
+          return
+        }
+        resolve()
+      }
+      const upstream = client.request(
+        remote,
+        {
+          headers: headersRecord(headers),
+          method: request.method,
+          ...(remote.protocol === "https:" ? { rejectUnauthorized: !instance.ignoreCertificateErrors } : {}),
+        },
+        (upstreamResponse) => {
+          log("proxy.stream.response", {
+            id: instance.id,
+            method: request.method,
+            pathname,
+            remote: remote.toString(),
+            status: upstreamResponse.statusCode,
+          })
+          if (!responseOpen(response)) {
+            upstream.destroy()
+            settle()
+            return
+          }
+          response.writeHead(upstreamResponse.statusCode ?? 502, responseHeaders(upstreamResponse.headers))
+          if (request.method === "HEAD") {
+            upstreamResponse.resume()
+            response.end()
+            settle()
+            return
+          }
+          let completed = false
+          const cancelUpstream = () => {
+            if (completed) return
+            upstream.destroy()
+            upstreamResponse.destroy()
+          }
+          response.once("close", cancelUpstream)
+          void pipeline(upstreamResponse, response)
+            .then(() => settle())
+            .catch((error) => {
+              if (isClientClosedError(error) || !responseOpen(response)) {
+                log("proxy.stream.client-closed", {
+                  id: instance.id,
+                  method: request.method,
+                  pathname,
+                  remote: remote.toString(),
+                })
+                settle()
+                return
+              }
+              settle(error)
+            })
+            .finally(() => {
+              completed = true
+              response.removeListener("close", cancelUpstream)
+            })
+        },
+      )
+      upstream.once("error", (error) => {
+        if (isClientClosedError(error) || !responseOpen(response)) {
+          log("proxy.stream.client-closed", {
+            id: instance.id,
+            method: request.method,
+            pathname,
+            remote: remote.toString(),
+          })
+          settle()
+          return
+        }
+        settle(error)
+      })
+      request.once("close", () => {
+        if (!responseOpen(response)) upstream.destroy()
+      })
+      upstream.end()
+    })
+  }
+
   const proxyRequest = async (
     request: http.IncomingMessage,
     response: http.ServerResponse<http.IncomingMessage>,
@@ -702,16 +908,11 @@ export function createDesktopUIHost(input: {
     const session = input.getSession(instance)
     const remote = new URL(pathname.replace(/^\/+/, ""), baseUrl(instance.url))
     remote.search = reqUrl.search
-    const headers = new Headers()
-    for (const [name, value] of Object.entries(request.headers)) {
-      if (UPSTREAM_REQUEST_HEADERS_BLOCKED.has(name.toLowerCase())) continue
-      if (value === undefined) continue
-      if (Array.isArray(value)) {
-        for (const item of value) headers.append(name, item)
-        continue
-      }
-      headers.set(name, value)
+    if (isLiveEventStreamRequest(request, pathname, instance)) {
+      await proxyLiveEventStream(request, response, session, instance, remote, pathname)
+      return
     }
+    const headers = copyUpstreamRequestHeaders(request)
     const upstream = await fetchThroughSession(session, remote, {
       method: request.method,
       body: request.method === "GET" || request.method === "HEAD" ? undefined : await readRequestBody(request),
@@ -724,11 +925,6 @@ export function createDesktopUIHost(input: {
       remote: remote.toString(),
       status: upstream.status,
     })
-    const upstreamHeaders: Record<string, string> = {}
-    for (const [name, value] of upstream.headers.entries()) {
-      if (RESPONSE_HEADERS_BLOCKED.has(name.toLowerCase())) continue
-      upstreamHeaders[name] = value
-    }
     if (!responseOpen(response)) {
       await upstream.body?.cancel().catch(() => undefined)
       log("proxy.client-closed", {
@@ -740,7 +936,7 @@ export function createDesktopUIHost(input: {
       })
       return
     }
-    response.writeHead(upstream.status, upstreamHeaders)
+    response.writeHead(upstream.status, responseHeaders(upstream.headers))
     if (!upstream.body) {
       response.end()
       return
@@ -961,42 +1157,6 @@ export function createDesktopUIHost(input: {
     const session = input.getSession(instance)
     const originValue = instanceOrigin(instance.url)
 
-    // Fast path: if we re-validated this origin within CACHE_TTL_MS and the
-    // cached UI is intact on disk, reuse it without probing the server. The
-    // version watcher will catch any drift on its next poll and re-call us
-    // with `targetVersion` set — that path skips the fast path and forces a
-    // download of the matching bundle. Skipping the fast path is REQUIRED
-    // when `targetVersion` is set, otherwise a stale origin entry would
-    // cause the re-prepare to loop on the old version.
-    if (!opts?.targetVersion) {
-      const fresh = await freshOriginCache(input.cacheDir, originValue)
-      if (fresh) {
-        log("cache.fresh", {
-          checkedAt: fresh.checkedAt,
-          id: instance.id,
-          origin: originValue,
-          version: fresh.version,
-        })
-        activeID = instance.id
-        const cachedRoot = versionRoot(input.cacheDir, fresh.version)
-        await ensureLegacyThemeAssets(cachedRoot)
-        await touchVersion(input.cacheDir, fresh.version, originValue, instance.id)
-        root = cachedRoot
-        const url = `${await ensureServer()}/?server=${encodeURIComponent(instance.id)}&ui=${encodeURIComponent(fresh.version)}`
-        progress?.({
-          cacheHit: true,
-          completed: 1,
-          message: `Using cached UI for Codeplane ${fresh.version}.`,
-          percent: 100,
-          phase: "done",
-          total: 1,
-          version: fresh.version,
-        })
-        log("prepare.success", { fast: true, id: instance.id, root, version: fresh.version })
-        return { url, version: fresh.version }
-      }
-    }
-
     progress?.({
       phase: "probe",
       message: opts?.targetVersion
@@ -1005,6 +1165,10 @@ export function createDesktopUIHost(input: {
       percent: 5,
       version: opts?.targetVersion,
     })
+    // Always re-check the server before choosing a UI bundle. A fresh
+    // origin-cache entry only proves that the cache was valid at the last
+    // connection; after an external server upgrade it becomes exactly the
+    // stale pointer that makes Desktop keep loading the old client.
     const version = opts?.targetVersion ?? (await fetchVersion(session, instance))
     log(opts?.targetVersion ? "version.target.given" : "version.fetch.success", {
       id: instance.id,
@@ -1113,7 +1277,7 @@ export function createDesktopUIHost(input: {
       before.versions.map(async (version) => {
         const target = versionRoot(input.cacheDir, version)
         const meta = await readMetadata(target)
-        const nextInstances = { ...(meta?.instances ?? {}) }
+        const nextInstances = { ...meta?.instances }
         delete nextInstances[instance.id]
         const usedByOrigin = Object.values(nextIndex).some((entry) => entry.version === version)
         const usedByInstance = Object.keys(nextInstances).length > 0

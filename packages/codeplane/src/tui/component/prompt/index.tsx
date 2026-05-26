@@ -1,5 +1,13 @@
-import { BoxRenderable, RGBA, TextareaRenderable, MouseEvent, PasteEvent, decodePasteBytes } from "@opentui/core"
-import { createEffect, createMemo, onMount, createSignal, onCleanup, on, Show, Switch, Match } from "solid-js"
+import {
+  BoxRenderable,
+  RGBA,
+  TextareaRenderable,
+  MouseEvent,
+  PasteEvent,
+  decodePasteBytes,
+  TextAttributes,
+} from "@opentui/core"
+import { createEffect, createMemo, onMount, createSignal, onCleanup, on, Show, Switch, Match, For } from "solid-js"
 import "opentui-spinner/solid"
 import path from "path"
 import { fileURLToPath } from "url"
@@ -33,7 +41,7 @@ import { iife } from "@/util/iife"
 import { Locale } from "@/tui/_compat/locale"
 import { formatDuration } from "@/util/format"
 import { createColors, createFrames } from "../../ui/spinner.ts"
-import { useDialog } from "@/tui/ui/dialog"
+import { useDialog, type DialogContext } from "@/tui/ui/dialog"
 import { DialogProvider as DialogProviderConnect } from "../dialog-provider"
 import { DialogAlert } from "../../ui/dialog-alert"
 import { useToast } from "../../ui/toast"
@@ -124,6 +132,8 @@ type QueuedSubmission = {
   id: string
   sessionID: string
   inputPreview: string
+  mode: "normal" | "shell"
+  prompt: PromptInfo
   dispatch: () => Promise<unknown>
 }
 
@@ -141,8 +151,161 @@ function dequeueFollowup(sessionID: string): QueuedSubmission | undefined {
   return next
 }
 
+function takeFollowup(sessionID: string, id: string): QueuedSubmission | undefined {
+  const item = followupQueue[sessionID]?.find((entry) => entry.id === id)
+  if (!item) return undefined
+  setFollowupQueue(sessionID, (prev) => (prev ?? []).filter((entry) => entry.id !== id))
+  return item
+}
+
+function moveFollowup(sessionID: string, id: string, direction: -1 | 1) {
+  setFollowupQueue(sessionID, (prev) => {
+    const list = prev ?? []
+    const from = list.findIndex((entry) => entry.id === id)
+    const to = from + direction
+    if (from < 0 || to < 0 || to >= list.length) return list
+    const next = list.slice()
+    const [item] = next.splice(from, 1)
+    if (!item) return list
+    next.splice(to, 0, item)
+    return next
+  })
+}
+
 function clearFollowupQueue(sessionID: string) {
   setFollowupQueue(sessionID, [])
+}
+
+function snapshotPromptInfo(prompt: PromptInfo): PromptInfo {
+  return structuredClone(unwrap(prompt))
+}
+
+function queuedPromptPreview(prompt: PromptInfo) {
+  const text = prompt.input
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line.length > 0)
+  if (text) return text
+
+  const file = prompt.parts.find((part) => part.type === "file")
+  if (file) return `[${file.mime === "application/pdf" ? "PDF" : "file"}: ${file.filename ?? "attachment"}]`
+
+  const agent = prompt.parts.find((part) => part.type === "agent")
+  if (agent) return `@${agent.name}`
+
+  return "[attachment]"
+}
+
+function FollowupQueueAction(props: { label: string; disabled?: boolean; danger?: boolean; onClick: () => void }) {
+  const { theme } = useTheme()
+  const [hover, setHover] = createSignal(false)
+  const background = createMemo(() =>
+    props.disabled ? undefined : hover() ? theme.backgroundElement : theme.backgroundMenu,
+  )
+  const foreground = createMemo(() => {
+    if (props.disabled) return theme.textMuted
+    if (props.danger) return theme.error
+    return theme.text
+  })
+
+  return (
+    <box
+      paddingLeft={1}
+      paddingRight={1}
+      backgroundColor={background()}
+      onMouseOver={() => setHover(true)}
+      onMouseOut={() => setHover(false)}
+      onMouseUp={(event) => {
+        event.stopPropagation()
+        if (props.disabled) return
+        props.onClick()
+      }}
+    >
+      <text fg={foreground()}>{props.label}</text>
+    </box>
+  )
+}
+
+function FollowupQueueDock(props: {
+  items: QueuedSubmission[]
+  onSend: (id: string) => void
+  onEdit: (id: string) => void
+  onDelete: (id: string) => void
+  onMove: (id: string, direction: -1 | 1) => void
+}) {
+  const { theme } = useTheme()
+  const dimensions = useTerminalDimensions()
+  const [collapsed, setCollapsed] = createSignal(false)
+  const count = createMemo(() => props.items.length)
+  const summary = createMemo(() => `${count()} queued follow-up${count() === 1 ? "" : "s"}`)
+  const preview = createMemo(() => props.items[0]?.inputPreview ?? "")
+  const previewWidth = createMemo(() => Math.max(16, dimensions().width - 44))
+  const rowWidth = createMemo(() => Math.max(16, dimensions().width - 56))
+  const listMaxHeight = createMemo(() => Math.max(1, dimensions().height - 13))
+
+  return (
+    <box
+      backgroundColor={theme.backgroundPanel}
+      border={["left"]}
+      borderColor={theme.secondary}
+      customBorderChars={SplitBorder.customBorderChars}
+      flexShrink={0}
+    >
+      <box
+        flexDirection="row"
+        alignItems="center"
+        gap={1}
+        paddingLeft={2}
+        paddingRight={2}
+        paddingTop={1}
+        paddingBottom={1}
+        onMouseUp={() => setCollapsed(!collapsed())}
+      >
+        <text fg={theme.secondary} attributes={TextAttributes.BOLD}>
+          {summary()}
+        </text>
+        <Show when={collapsed() && preview()}>
+          <text fg={theme.textMuted} overflow="hidden" wrapMode="none" flexGrow={1}>
+            {Locale.truncate(preview(), previewWidth())}
+          </text>
+        </Show>
+        <box flexGrow={1} />
+        <text fg={theme.textMuted}>{collapsed() ? "▴" : "▾"}</text>
+      </box>
+
+      <Show when={!collapsed()}>
+        <scrollbox
+          paddingLeft={2}
+          paddingRight={2}
+          paddingBottom={1}
+          maxHeight={listMaxHeight()}
+          scrollbarOptions={{ visible: count() > listMaxHeight() }}
+        >
+          <For each={props.items}>
+            {(item, index) => {
+              const first = createMemo(() => index() === 0)
+              const last = createMemo(() => index() === props.items.length - 1)
+              return (
+                <box flexDirection="row" alignItems="center" gap={1} flexShrink={0}>
+                  <text fg={theme.textMuted} flexShrink={0}>
+                    {`${index() + 1}.`}
+                  </text>
+                  <text fg={theme.text} overflow="hidden" wrapMode="none" flexGrow={1}>
+                    {Locale.truncate(item.inputPreview, rowWidth())}
+                  </text>
+                  <FollowupQueueAction label="send" onClick={() => props.onSend(item.id)} />
+                  <FollowupQueueAction label="edit" onClick={() => props.onEdit(item.id)} />
+                  <FollowupQueueAction label="↑" disabled={first()} onClick={() => props.onMove(item.id, -1)} />
+                  <FollowupQueueAction label="↓" disabled={last()} onClick={() => props.onMove(item.id, 1)} />
+                  <FollowupQueueAction label="×" danger onClick={() => props.onDelete(item.id)} />
+                </box>
+              )
+            }}
+          </For>
+        </scrollbox>
+      </Show>
+    </box>
+  )
 }
 
 export function Prompt(props: PromptProps) {
@@ -181,6 +344,12 @@ export function Prompt(props: PromptProps) {
   const queuedForSession = createMemo<QueuedSubmission[]>(() =>
     props.sessionID ? (followupQueue[props.sessionID] ?? []) : [],
   )
+  const followupModeLabel = createMemo(() => {
+    if (followupMode() === "steer") return "Steer"
+    const count = queuedForSession().length
+    return count > 0 ? `Follow-up (${count})` : "Follow-up"
+  })
+  const followupModeColor = createMemo(() => (followupMode() === "steer" ? theme.warning : theme.secondary))
   const [dismissedEditorSelectionKey, setDismissedEditorSelectionKey] = createSignal<string>()
   const editorContext = createMemo(() => {
     const selection = fileContextEnabled() ? editor.selection() : undefined
@@ -705,6 +874,47 @@ export function Prompt(props: PromptProps) {
     )
   }
 
+  function loadPrompt(prompt: PromptInfo, mode: "normal" | "shell" = prompt.mode ?? "normal") {
+    const next = snapshotPromptInfo(prompt)
+    input.setText(next.input)
+    setStore("prompt", next)
+    setStore("mode", mode)
+    restoreExtmarksFromParts(next.parts)
+    input.gotoBufferEnd()
+  }
+
+  function editQueuedFollowup(id: string) {
+    if (!props.sessionID) return
+    const item = takeFollowup(props.sessionID, id)
+    if (!item) return
+
+    if (store.prompt.input) {
+      stash.push(snapshotPromptInfo(store.prompt))
+    }
+
+    loadPrompt(item.prompt, item.mode)
+  }
+
+  async function sendQueuedFollowup(id: string, abortFirst = true) {
+    if (!props.sessionID) return
+    const item = takeFollowup(props.sessionID, id)
+    if (!item) return
+    if (abortFirst && status().type !== "idle") {
+      await sdk.client.session.abort({ sessionID: props.sessionID }).catch(() => undefined)
+    }
+    void item.dispatch()
+  }
+
+  function deleteQueuedFollowup(id: string) {
+    if (!props.sessionID) return
+    takeFollowup(props.sessionID, id)
+  }
+
+  function moveQueuedFollowup(id: string, direction: -1 | 1) {
+    if (!props.sessionID) return
+    moveFollowup(props.sessionID, id, direction)
+  }
+
   command.register(() => [
     {
       title: "Stash prompt",
@@ -776,6 +986,60 @@ export function Prompt(props: PromptProps) {
         dialog.clear()
       },
     },
+    ...queuedForSession().flatMap((item, index) => [
+      {
+        title: `Queued follow-up ${index + 1}: send now`,
+        description: item.inputPreview,
+        value: `prompt.followup.${item.id}.send`,
+        category: "Prompt",
+        onSelect: (dialog: DialogContext) => {
+          void sendQueuedFollowup(item.id)
+          dialog.clear()
+        },
+      },
+      {
+        title: `Queued follow-up ${index + 1}: edit`,
+        description: item.inputPreview,
+        value: `prompt.followup.${item.id}.edit`,
+        category: "Prompt",
+        onSelect: (dialog: DialogContext) => {
+          editQueuedFollowup(item.id)
+          dialog.clear()
+        },
+      },
+      {
+        title: `Queued follow-up ${index + 1}: delete`,
+        description: item.inputPreview,
+        value: `prompt.followup.${item.id}.delete`,
+        category: "Prompt",
+        onSelect: (dialog: DialogContext) => {
+          deleteQueuedFollowup(item.id)
+          dialog.clear()
+        },
+      },
+      {
+        title: `Queued follow-up ${index + 1}: move up`,
+        description: item.inputPreview,
+        value: `prompt.followup.${item.id}.up`,
+        category: "Prompt",
+        enabled: index > 0,
+        onSelect: (dialog: DialogContext) => {
+          moveQueuedFollowup(item.id, -1)
+          dialog.clear()
+        },
+      },
+      {
+        title: `Queued follow-up ${index + 1}: move down`,
+        description: item.inputPreview,
+        value: `prompt.followup.${item.id}.down`,
+        category: "Prompt",
+        enabled: index < queuedForSession().length - 1,
+        onSelect: (dialog: DialogContext) => {
+          moveQueuedFollowup(item.id, 1)
+          dialog.clear()
+        },
+      },
+    ]),
   ])
 
   async function submit() {
@@ -867,7 +1131,8 @@ export function Prompt(props: PromptProps) {
     }
 
     const messageID = MessageID.ascending()
-    let inputText = store.prompt.input
+    const promptSnapshot = snapshotPromptInfo(store.prompt)
+    let inputText = promptSnapshot.input
 
     // Expand pasted text inline before submitting
     const allExtmarks = input.extmarks.getAllForTypeId(promptPartTypeId)
@@ -886,7 +1151,7 @@ export function Prompt(props: PromptProps) {
     }
 
     // Filter out text parts (pasted content) since they're now expanded inline
-    const nonTextParts = store.prompt.parts.filter((part) => part.type !== "text")
+    const nonTextParts = promptSnapshot.parts.filter((part) => part.type !== "text")
 
     // Capture mode before it gets reset
     const currentMode = store.mode
@@ -1000,13 +1265,10 @@ export function Prompt(props: PromptProps) {
       enqueueFollowup(props.sessionID, {
         id: messageID,
         sessionID: props.sessionID,
-        inputPreview: inputText.slice(0, 120),
+        inputPreview: queuedPromptPreview(promptSnapshot),
+        mode: currentMode,
+        prompt: promptSnapshot,
         dispatch,
-      })
-      toast.show({
-        variant: "info",
-        message: `Queued (${(followupQueue[props.sessionID]?.length ?? 0)})`,
-        duration: 1500,
       })
     } else {
       if (disposition === "steer" && props.sessionID) {
@@ -1019,7 +1281,7 @@ export function Prompt(props: PromptProps) {
       setStore("mode", "normal")
     }
     history.append({
-      ...store.prompt,
+      ...promptSnapshot,
       mode: currentMode,
     })
     input.extmarks.clear()
@@ -1206,6 +1468,15 @@ export function Prompt(props: PromptProps) {
         promptPartTypeId={() => promptPartTypeId}
       />
       <box ref={(r) => (anchor = r)} visible={props.visible !== false}>
+        <Show when={queuedForSession().length > 0}>
+          <FollowupQueueDock
+            items={queuedForSession()}
+            onSend={(id) => void sendQueuedFollowup(id)}
+            onEdit={editQueuedFollowup}
+            onDelete={deleteQueuedFollowup}
+            onMove={moveQueuedFollowup}
+          />
+        </Show>
         <box
           border={["left"]}
           borderColor={borderHighlight()}
@@ -1444,6 +1715,10 @@ export function Prompt(props: PromptProps) {
                               </span>
                             </text>
                           </Show>
+                          <text fg={fadeColor(theme.textMuted, modelMetaAlpha())}>·</text>
+                          <text fg={fadeColor(followupModeColor(), modelMetaAlpha())} wrapMode="none" flexShrink={0}>
+                            <span style={{ bold: followupMode() === "steer" }}>{followupModeLabel()}</span>
+                          </text>
                         </box>
                       </Show>
                     </>
@@ -1560,13 +1835,7 @@ export function Prompt(props: PromptProps) {
               <Show when={status().type !== "retry"}>
                 <text fg={theme.text}>
                   {keybind.print("followup_toggle")}{" "}
-                  <span style={{ fg: theme.textMuted }}>
-                    {followupMode() === "queue"
-                      ? queuedForSession().length > 0
-                        ? `queue (${queuedForSession().length})`
-                        : "queue"
-                      : "steer"}
-                  </span>
+                  <span style={{ fg: followupModeColor() }}>{followupModeLabel()}</span>
                 </text>
               </Show>
               <text fg={store.interrupt > 0 ? theme.primary : theme.text}>

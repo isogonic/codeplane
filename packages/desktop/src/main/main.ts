@@ -429,6 +429,17 @@ async function clearDesktopInstanceCache(instance: SavedInstance): Promise<Deskt
   return before
 }
 
+async function clearRendererHttpCache(
+  ses: Session,
+  instance: SavedInstance | DesktopHostInstance,
+  reason: string,
+) {
+  await ses
+    .clearCache()
+    .then(() => logger.log("main", "window.cache.clear.success", { id: instance.id, reason }))
+    .catch((error) => logger.log("main", "window.cache.clear.error", { error, id: instance.id, reason }))
+}
+
 app.setName(APP_NAME)
 app.setAppUserModelId(APP_ID)
 logger.log("main", "bootstrap", {
@@ -568,8 +579,6 @@ async function ensureLocalRunning(
   onProgress?: (progress: LocalInstanceProgress) => void,
 ): Promise<SavedInstance> {
   if (!instance.local) return instance
-  const existing = localManager.getRunning(instance.id)
-  if (existing) return { ...instance, url: existing.url }
   const version = instance.local.binaryVersion || (await readPreferredLocalVersion())
   const running = await localManager.start(
     {
@@ -1627,26 +1636,15 @@ function createWindowOptions(ses?: Session, savedBounds?: DesktopWindowBounds) {
     height: bounds.height,
     minWidth: 800,
     minHeight: 480,
-    // On macOS we let the native NSVisualEffectView material show through —
-    // a transparent backgroundColor lets the renderer paint translucent
-    // surfaces (titlebar, sidebar) on top of vibrancy. Other platforms keep
-    // the opaque fallback so first paint never flashes white.
-    backgroundColor: isMac ? "#00000000" : "#0e0e0e",
+    // Keep the shell opaque so the setup and reconnect screens never show
+    // wallpaper through the window while a server is connecting or upgrading.
+    backgroundColor: "#0e0e0e",
     show: false,
     icon: iconPath(),
     titleBarStyle: isMac ? "hiddenInset" : "default",
     // Align the traffic light cluster vertically with our 44px titlebar so
     // the close/min/zoom dots sit centered against the toolbar contents.
     ...(isMac ? { trafficLightPosition: { x: 18, y: 14 } } : {}),
-    // Native macOS material — feels like a real Cocoa app instead of an
-    // Electron shell painted with a flat color. `under-window` blends the
-    // desktop wallpaper into the chrome, matching Finder / Mail / Notes.
-    ...(isMac
-      ? {
-          vibrancy: "under-window" as const,
-          visualEffectState: "followWindow" as const,
-        }
-      : {}),
     roundedCorners: true,
     webPreferences: {
       preload: getAppAssetPath("dist", "main", "preload.cjs"),
@@ -1784,6 +1782,7 @@ function attachInteractiveBootstrap(
         logger.log("main", "instance.bootstrap.ready", { prepared, ...instanceSummary(target) })
         cleanup()
         emit({ phase: "done", message: "Loading…", percent: 100, version: prepared.version })
+        await clearRendererHttpCache(ensureSession(target), target, "interactive-bootstrap")
         await loadWindowUrl(window, prepared.url)
         attachServerVersionWatcher(window, target, prepared.version)
         logger.log("main", "instance.bootstrap.success", { prepared, ...instanceSummary(target) })
@@ -1872,6 +1871,11 @@ function attachServerVersionWatcher(window: BrowserWindow, instance: SavedInstan
     baseUrl,
     headers: live.headers,
     currentVersion: connectedVersion,
+    fetchImpl: (input, init) => {
+      const requestUrl = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url
+      const target = getInstanceLive(instance.id) ?? instance
+      return ensureSession(target).fetch(requestUrl, init)
+    },
     onChange: ({ version, previous }) => {
       if (windowReconnecting.has(window.id)) return
       windowReconnecting.add(window.id)
@@ -1906,6 +1910,7 @@ function attachServerVersionWatcher(window: BrowserWindow, instance: SavedInstan
           )
           if (window.isDestroyed()) return
           emit({ phase: "done", message: "Loading…", percent: 100, version: prepared.version })
+          await clearRendererHttpCache(ensureSession(refreshed), refreshed, "server-upgrade")
           await loadWindowUrl(window, prepared.url)
           // Re-arm the watcher with the new connected version so we react
           // to the next bump too.
@@ -2010,21 +2015,22 @@ async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebConte
     const prepared = await uiHost
       .prepare(instance, (progress: DesktopUIPrepareProgress) => emit(progress))
       .catch(async (error) => {
-      if (!(error instanceof DesktopVersionAuthRequiredError)) throw error
-      logger.log("main", "instance.open.auth-required", {
-        authUrl: error.authUrl,
-        ...instanceSummary(instance),
+        if (!(error instanceof DesktopVersionAuthRequiredError)) throw error
+        logger.log("main", "instance.open.auth-required", {
+          authUrl: error.authUrl,
+          ...instanceSummary(instance),
+        })
+        // Hand the window over to the interactive bootstrap watcher BEFORE we
+        // navigate to the auth URL, so the listeners catch the very first
+        // `did-finish-load` from the auth page and the later redirect back.
+        attachInteractiveBootstrap(window, instance, { progressTo: opts?.progressTo })
+        emit({ phase: "probe", message: "Waiting for sign-in…", percent: 12 })
+        await loadWindowUrl(window, error.authUrl)
+        return
       })
-      // Hand the window over to the interactive bootstrap watcher BEFORE we
-      // navigate to the auth URL, so the listeners catch the very first
-      // `did-finish-load` from the auth page and the later redirect back.
-      attachInteractiveBootstrap(window, instance, { progressTo: opts?.progressTo })
-      emit({ phase: "probe", message: "Waiting for sign-in…", percent: 12 })
-      await loadWindowUrl(window, error.authUrl)
-      return
-    })
     if (prepared) {
       emit({ phase: "done", message: "Loading…", percent: 100, version: prepared.version })
+      await clearRendererHttpCache(ses, instance, "instance-open")
       await loadWindowUrl(window, prepared.url)
       attachServerVersionWatcher(window, instance, prepared.version)
       void triggerInstanceAutoMcpOAuth(instance)

@@ -75,6 +75,7 @@ const state = (client: HttpClient.HttpClient, initial: Config.Info, auth: Record
             config = { ...config, ...next, git: { ...(config.git ?? {}), ...(next.git ?? {}) } }
             return config
           }),
+        removeGlobalSecretReferences: () => Effect.succeed(0),
         invalidate: () => Effect.void,
         directories: () => Effect.succeed([]),
         waitForDependencies: () => Effect.void,
@@ -128,7 +129,7 @@ describe("tool.tools", () => {
         expect(result.output).toContain("forge: blocked - No Git host config exists.")
         expect(result.output).toContain('operation="config_set"')
         expect(result.output).toContain("git: ok - callable right now")
-        expect(result.output).toContain("Local requirements:")
+        expect(result.output).toContain("## Local requirements")
         expect(result.output).toContain("Forge auth checks: skipped")
       }),
     ),

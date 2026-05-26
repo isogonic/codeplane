@@ -8,7 +8,7 @@ import { type ProviderMetadata, type LanguageModelUsage } from "ai"
 import { Flag } from "../flag/flag"
 import { InstallationVersion } from "../installation/version"
 
-import { Database, NotFoundError, eq, and, or, gte, isNull, isNotNull, desc, like, inArray, lt, sql } from "../storage"
+import { Database, eq, and, gte, isNull, isNotNull, desc, like, inArray, lt } from "../storage"
 import { SyncEvent } from "../sync"
 import type { SQL } from "../storage"
 import { PartTable, SessionTable } from "./session.sql"
@@ -40,10 +40,6 @@ function createDefaultTitle(isChild = false) {
   return (isChild ? childTitlePrefix : parentTitlePrefix) + new Date().toISOString()
 }
 
-function directoryCondition(directory: string) {
-  return eq(SessionTable.directory, directory)
-}
-
 function projectDirectoryScore(
   directory: string,
   project: Pick<typeof ProjectTable.$inferSelect, "id" | "worktree" | "sandboxes">,
@@ -56,18 +52,34 @@ function projectDirectoryScore(
   }, -1)
 }
 
-function directoryConditions(directory: string) {
-  const projects = Database.use((db) =>
+function sessionProjects() {
+  return Database.use((db) =>
     db
       .select({ id: ProjectTable.id, worktree: ProjectTable.worktree, sandboxes: ProjectTable.sandboxes })
       .from(ProjectTable)
       .all(),
   )
+}
+
+function projectForDirectory(directory: string, projects = sessionProjects()) {
   const project = projects
     .map((project, index) => ({ project, index, score: projectDirectoryScore(directory, project) }))
     .filter((item) => item.score >= 0)
     .sort((a, b) => b.score - a.score || a.index - b.index)[0]?.project
-  return [directoryCondition(directory), eq(SessionTable.project_id, project?.id ?? ProjectID.global)]
+  return project
+}
+
+function projectIDForDirectory(directory: string, projects: ReturnType<typeof sessionProjects>) {
+  return projectForDirectory(directory, projects)?.id ?? ProjectID.global
+}
+
+function inDirectoryScope(
+  directory: string,
+  row: Pick<SessionRow, "directory">,
+  projects: ReturnType<typeof sessionProjects>,
+) {
+  if (!AppFileSystem.contains(directory, row.directory)) return false
+  return projectIDForDirectory(row.directory, projects) === projectIDForDirectory(directory, projects)
 }
 
 export function isDefaultTitle(title: string) {
@@ -798,9 +810,8 @@ export function* list(input?: {
   limit?: number
   archived?: boolean
 }) {
-  const conditions: SQL[] = input?.directory
-    ? directoryConditions(input.directory)
-    : [eq(SessionTable.project_id, Instance.project.id)]
+  const directoryProjects = input?.directory ? sessionProjects() : undefined
+  const conditions: SQL[] = input?.directory ? [] : [eq(SessionTable.project_id, Instance.project.id)]
 
   if (input?.workspaceID) {
     conditions.push(eq(SessionTable.workspace_id, input.workspaceID))
@@ -823,16 +834,21 @@ export function* list(input?: {
 
   const limit = input?.limit ?? 100
 
-  const rows = Database.use((db) =>
-    db
-      .select()
-      .from(SessionTable)
-      .where(and(...conditions))
-      .orderBy(desc(SessionTable.time_updated))
-      .limit(limit)
-      .all(),
-  )
-  for (const row of rows) {
+  const rows = Database.use((db) => {
+    const query =
+      conditions.length > 0
+        ? db
+            .select()
+            .from(SessionTable)
+            .where(and(...conditions))
+        : db.select().from(SessionTable)
+    const ordered = query.orderBy(desc(SessionTable.time_updated))
+    return input?.directory ? ordered.all() : ordered.limit(limit).all()
+  })
+  const scoped = input?.directory
+    ? rows.filter((row) => inDirectoryScope(input.directory!, row, directoryProjects!))
+    : rows
+  for (const row of scoped.slice(0, limit)) {
     yield fromRow(row)
   }
 }
@@ -846,11 +862,8 @@ export function* listGlobal(input?: {
   limit?: number
   archived?: boolean
 }) {
+  const directoryProjects = input?.directory ? sessionProjects() : undefined
   const conditions: SQL[] = []
-
-  if (input?.directory) {
-    conditions.push(...directoryConditions(input.directory))
-  }
   if (input?.roots) {
     conditions.push(isNull(SessionTable.parent_id))
   }
@@ -877,11 +890,15 @@ export function* listGlobal(input?: {
             .from(SessionTable)
             .where(and(...conditions))
         : db.select().from(SessionTable)
-    return query.orderBy(desc(SessionTable.time_updated), desc(SessionTable.id)).limit(limit).all()
+    const ordered = query.orderBy(desc(SessionTable.time_updated), desc(SessionTable.id))
+    return input?.directory ? ordered.all() : ordered.limit(limit).all()
   })
 
-  const ids = [...new Set(rows.map((row) => row.project_id))]
-  const projects = new Map<string, ProjectInfo>()
+  const scoped = input?.directory
+    ? rows.filter((row) => inDirectoryScope(input.directory!, row, directoryProjects!)).slice(0, limit)
+    : rows.slice(0, limit)
+  const ids = [...new Set(scoped.map((row) => row.project_id))]
+  const projectMap = new Map<string, ProjectInfo>()
 
   if (ids.length > 0) {
     const items = Database.use((db) =>
@@ -892,7 +909,7 @@ export function* listGlobal(input?: {
         .all(),
     )
     for (const item of items) {
-      projects.set(item.id, {
+      projectMap.set(item.id, {
         id: item.id,
         name: item.name ?? undefined,
         worktree: item.worktree,
@@ -900,8 +917,8 @@ export function* listGlobal(input?: {
     }
   }
 
-  for (const row of rows) {
-    const project = projects.get(row.project_id) ?? null
+  for (const row of scoped) {
+    const project = projectMap.get(row.project_id) ?? null
     yield { ...fromRow(row), project }
   }
 }

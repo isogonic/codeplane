@@ -176,14 +176,14 @@ export const CronSidebarPanel = (props: {
     <div class="flex flex-col min-h-0 flex-1 py-2">
       <Show when={onTasksPage() && projectWorktree()} keyed>
         {(worktree) => (
-          <div class="shrink-0 px-1">
+          <div class="shrink-0 px-1 pb-1">
             <A
               href={`/${base64Encode(worktree)}/session`}
               class="block w-full rounded-md transition-colors hover:bg-surface-raised-base-hover"
             >
-              <div class="flex items-center gap-2 px-2 py-2 min-w-0">
-                <Icon name="arrow-left" size="small" class="shrink-0 icon-strong-base" />
-                <span class="text-14-medium text-text-strong truncate">
+              <div class="flex items-center gap-1.5 px-2 py-1 min-w-0">
+                <Icon name="chevron-left" size="small" class="shrink-0 text-text-weak" />
+                <span class="text-12-medium text-text-weak truncate">
                   {language.t("common.back")}
                 </span>
               </div>

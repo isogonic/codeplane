@@ -13,6 +13,7 @@ const ISSUER = "https://auth.openai.com"
 const CODEX_API_ENDPOINT = "https://chatgpt.com/backend-api/codex/responses"
 const OAUTH_PORT = 1455
 const OAUTH_POLLING_SAFETY_MARGIN_MS = 3000
+const unsupportedOAuthModels = new Set(["gpt-5.5-pro"])
 
 interface PkceCodes {
   verifier: string
@@ -375,6 +376,10 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
           "gpt-5.4-mini",
         ])
         for (const [modelId, model] of Object.entries(provider.models)) {
+          if (unsupportedOAuthModels.has(model.api.id)) {
+            delete provider.models[modelId]
+            continue
+          }
           if (modelId.includes("codex")) continue
           if (allowedModels.has(model.api.id)) continue
           const match = model.api.id.match(/^gpt-(\d+\.\d+)/)

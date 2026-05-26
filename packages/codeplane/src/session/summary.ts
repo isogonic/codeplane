@@ -138,15 +138,21 @@ export const layer = Layer.effect(
     const storage = yield* Storage.Service
     const bus = yield* Bus.Service
 
-    const computeDiff = Effect.fn("SessionSummary.computeDiff")(function* (input: { messages: MessageV2.WithParts[] }) {
+    const computeToolDiffs = (messages: MessageV2.WithParts[]) =>
+      normalizeDiffs(
+        messages.flatMap((item) =>
+          item.parts.flatMap((part) => {
+            if (part.type !== "tool" || part.state.status !== "completed") return []
+            return metadataDiffs(part.state.metadata, item.info.role === "assistant" ? item.info.path.root : undefined)
+          }),
+        ),
+      )
+
+    const computeSnapshotDiffs = Effect.fn("SessionSummary.computeSnapshotDiffs")(function* (input: {
+      messages: MessageV2.WithParts[]
+    }) {
       let from: string | undefined
       let to: string | undefined
-      const toolDiffs = input.messages.flatMap((item) =>
-        item.parts.flatMap((part) => {
-          if (part.type !== "tool" || part.state.status !== "completed") return []
-          return metadataDiffs(part.state.metadata, item.info.role === "assistant" ? item.info.path.root : undefined)
-        }),
-      )
       for (const item of input.messages) {
         if (!from) {
           for (const part of item.parts) {
@@ -161,10 +167,29 @@ export const layer = Layer.effect(
         }
       }
       if (from && to) {
-        const diffs = yield* snapshot.diffFull(from, to).pipe(Effect.catch(() => Effect.succeed([])))
-        if (diffs.length > 0) return diffs
+        return yield* snapshot.diffFull(from, to).pipe(Effect.catch(() => Effect.succeed([])))
       }
+      return []
+    })
+
+    const computeDiff = Effect.fn("SessionSummary.computeDiff")(function* (input: { messages: MessageV2.WithParts[] }) {
+      const toolDiffs = computeToolDiffs(input.messages)
+      const diffs = normalizeDiffs(yield* computeSnapshotDiffs(input))
+      if (diffs.length > 0) return diffs
       return toolDiffs
+    })
+
+    const computeMessageDiff = Effect.fn("SessionSummary.computeMessageDiff")(function* (input: {
+      messages: MessageV2.WithParts[]
+    }) {
+      const toolDiffs = computeToolDiffs(input.messages)
+      const files = new Set(toolDiffs.map((diff) => diff.file))
+      if (files.size === 0) return []
+
+      const snapshotDiffs = normalizeDiffs(yield* computeSnapshotDiffs(input))
+      const filtered = snapshotDiffs.filter((diff) => files.has(diff.file))
+      const seen = new Set(filtered.map((diff) => diff.file))
+      return [...filtered, ...toolDiffs.filter((diff) => !seen.has(diff.file))]
     })
 
     const summarize = Effect.fn("SessionSummary.summarize")(function* (input: {
@@ -191,12 +216,20 @@ export const layer = Layer.effect(
       )
       const target = messages.find((m) => m.info.id === input.messageID)
       if (!target || target.info.role !== "user") return
-      const msgDiffs = yield* computeDiff({ messages })
+      const msgDiffs = yield* computeMessageDiff({ messages })
       target.info.summary = { ...target.info.summary, diffs: msgDiffs }
       yield* sessions.updateMessage(target.info)
     })
 
     const diff = Effect.fn("SessionSummary.diff")(function* (input: { sessionID: SessionID; messageID?: MessageID }) {
+      if (input.messageID) {
+        const all = yield* sessions.messages({ sessionID: input.sessionID })
+        const messages = all.filter(
+          (m) => m.info.id === input.messageID || (m.info.role === "assistant" && m.info.parentID === input.messageID),
+        )
+        return yield* computeMessageDiff({ messages })
+      }
+
       const diffs = yield* storage
         .read<Snapshot.FileDiff[]>(["session_diff", input.sessionID])
         .pipe(Effect.catch(() => Effect.succeed([] as Snapshot.FileDiff[])))
@@ -208,14 +241,8 @@ export const layer = Layer.effect(
       }
 
       const all = yield* sessions.messages({ sessionID: input.sessionID })
-      const messages = input.messageID
-        ? all.filter(
-            (m) =>
-              m.info.id === input.messageID || (m.info.role === "assistant" && m.info.parentID === input.messageID),
-          )
-        : all
-      const next = normalizeDiffs(yield* computeDiff({ messages }).pipe(Effect.catch(() => Effect.succeed([]))))
-      if (!input.messageID && next.length > 0) {
+      const next = normalizeDiffs(yield* computeDiff({ messages: all }).pipe(Effect.catch(() => Effect.succeed([]))))
+      if (next.length > 0) {
         yield* storage.write(["session_diff", input.sessionID], next).pipe(Effect.ignore)
         yield* bus.publish(Session.Event.Diff, { sessionID: input.sessionID, diff: next })
       }

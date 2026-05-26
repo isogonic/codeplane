@@ -207,12 +207,27 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
     return lock(`start:${input.id}`, async () => {
       const existing = activeManaged(input.id)
       if (existing) {
-        return {
-          id: input.id,
-          binaryVersion: existing.binaryVersion,
-          port: existing.port,
-          url: existing.url,
+        if (existing.binaryVersion === input.binaryVersion) {
+          return {
+            id: input.id,
+            binaryVersion: existing.binaryVersion,
+            port: existing.port,
+            url: existing.url,
+          }
         }
+        log("local.start.version-mismatch", {
+          id: input.id,
+          requestedVersion: input.binaryVersion,
+          runningVersion: existing.binaryVersion,
+        })
+        progress?.({
+          version: input.binaryVersion,
+          phase: "start",
+          message: `Restarting local Codeplane ${existing.binaryVersion} as ${input.binaryVersion}…`,
+          percent: 4,
+          binaryVersion: input.binaryVersion,
+        })
+        await existing.stop()
       }
 
       let binary = await resolveBinary(input.binaryVersion)

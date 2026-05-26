@@ -33,6 +33,7 @@ import { TextReveal } from "./text-reveal"
 import { createAutoScroll } from "../hooks"
 import { useI18n } from "../context/i18n"
 import { normalize } from "./session-diff"
+import { messageDiffs } from "./session-turn-diffs"
 import { isSessionTurnWorking } from "./session-turn-working"
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -243,35 +244,6 @@ export function SessionTurn(
 
   const compaction = createMemo(() => parts().find((part) => part.type === "compaction"))
 
-  const diffs = createMemo(() => {
-    const files = message()?.summary?.diffs
-    if (!files?.length) return emptyDiffs
-
-    const seen = new Set<string>()
-    return files
-      .reduceRight<SnapshotFileDiff[]>((result, diff) => {
-        if (seen.has(diff.file)) return result
-        seen.add(diff.file)
-        result.push(diff)
-        return result
-      }, [])
-      .reverse()
-  })
-  const MAX_FILES = 10
-  const edited = createMemo(() => diffs().length)
-  const [state, setState] = createStore({
-    showAll: false,
-    expanded: [] as string[],
-  })
-  const showAll = () => state.showAll
-  const expanded = () => state.expanded
-  const overflow = createMemo(() => Math.max(0, edited() - MAX_FILES))
-  const visible = createMemo(() => (showAll() ? diffs() : diffs().slice(0, MAX_FILES)))
-  const toggleAll = () => {
-    autoScroll.pause()
-    setState("showAll", !showAll())
-  }
-
   const assistantMessages = createMemo(
     () => {
       const msg = message()
@@ -291,6 +263,30 @@ export function SessionTurn(
     emptyAssistant,
     { equals: same },
   )
+
+  const diffs = createMemo(() => {
+    const msg = message()
+    if (!msg?.summary?.diffs?.length) return emptyDiffs
+    return messageDiffs({
+      diffs: msg.summary.diffs,
+      assistants: assistantMessages(),
+      partsByMessageID: data.store.part,
+    })
+  })
+  const MAX_FILES = 10
+  const edited = createMemo(() => diffs().length)
+  const [state, setState] = createStore({
+    showAll: false,
+    expanded: [] as string[],
+  })
+  const showAll = () => state.showAll
+  const expanded = () => state.expanded
+  const overflow = createMemo(() => Math.max(0, edited() - MAX_FILES))
+  const visible = createMemo(() => (showAll() ? diffs() : diffs().slice(0, MAX_FILES)))
+  const toggleAll = () => {
+    autoScroll.pause()
+    setState("showAll", !showAll())
+  }
 
   const interrupted = createMemo(() => assistantMessages().some((m) => m.error?.name === "MessageAbortedError"))
   const divider = createMemo(() => {

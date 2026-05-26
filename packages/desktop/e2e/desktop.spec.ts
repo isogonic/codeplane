@@ -105,6 +105,7 @@ function createFixtureAssets(version: string, label: string) {
         <p class="eyebrow">Desktop Fixture</p>
         <h1>${label}</h1>
         <p data-testid="fixture-server-version">${version}</p>
+        <p data-testid="fixture-client-version">loading</p>
         <p data-testid="fixture-providers">loading</p>
         <p data-testid="fixture-theme">loading</p>
         <p data-testid="fixture-path">loading</p>
@@ -112,6 +113,8 @@ function createFixtureAssets(version: string, label: string) {
         <p data-testid="fixture-provider-api">loading</p>
         <p data-testid="fixture-file-list">loading</p>
         <p data-testid="fixture-find-files">loading</p>
+        <p data-testid="fixture-live-stream">loading</p>
+        <p data-testid="fixture-live-done">loading</p>
       </header>
       <nav class="actions">
         <button data-testid="fixture-home">Home</button>
@@ -191,9 +194,36 @@ const fetchJson = async (id, url, init, format) => {
     console.error("fixture:api:error", id, error);
   }
 };
+const streamLiveEvents = async () => {
+  const started = performance.now();
+  try {
+    const response = await fetch("/global/event", { headers: { accept: "text/event-stream" } });
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("missing stream body");
+    const decoder = new TextDecoder();
+    let firstMs = -1;
+    let count = 0;
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      count += 1;
+      if (firstMs < 0) {
+        firstMs = Math.round(performance.now() - started);
+        setStatus("fixture-live-stream", "first:" + firstMs);
+      }
+      console.log("fixture:stream", decoder.decode(next.value).trim());
+    }
+    setStatus("fixture-live-done", "ok:" + count);
+  } catch (error) {
+    setStatus("fixture-live-stream", "error");
+    setStatus("fixture-live-done", "error");
+    console.error("fixture:stream:error", error);
+  }
+};
 
 window.addEventListener("DOMContentLoaded", async () => {
   console.log("fixture:init", version, label);
+  setStatus("fixture-client-version", version);
   document.querySelector('[data-testid="fixture-home"]')?.addEventListener("click", () => updateView("home"));
   document.querySelector('[data-testid="fixture-projects"]')?.addEventListener("click", () => updateView("projects"));
   document.querySelector('[data-testid="fixture-settings"]')?.addEventListener("click", () => updateView("settings"));
@@ -252,6 +282,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     },
     (data) => "ok:" + (Array.isArray(data) ? data.length : 0),
   );
+  await streamLiveEvents();
 });`
 
   return { css, html, js }
@@ -297,6 +328,7 @@ function sendJson(response, body, gzip = false) {
 
 const args = parseArgs(process.argv.slice(2))
 const server = http.createServer((request, response) => {
+  void (async () => {
   const url = new URL(request.url || "/", "http://" + args.host)
 
   if (url.pathname === "/global/version") {
@@ -312,6 +344,19 @@ const server = http.createServer((request, response) => {
 
   if (url.pathname === "/config/providers") {
     sendJson(response, { providers: ["logicplanes"] })
+    return
+  }
+
+  if (url.pathname === "/global/event") {
+    response.writeHead(200, {
+      "Cache-Control": "no-cache, no-transform",
+      "Content-Type": "text/event-stream; charset=utf-8",
+    })
+    response.write("data: local-one\\n\\n")
+    await new Promise((resolve) => setTimeout(resolve, 250))
+    response.write("data: local-two\\n\\n")
+    await new Promise((resolve) => setTimeout(resolve, 250))
+    response.end("data: local-done\\n\\n")
     return
   }
 
@@ -371,6 +416,10 @@ const server = http.createServer((request, response) => {
 
   response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" })
   response.end("missing")
+  })().catch((error) => {
+    response.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" })
+    response.end(error instanceof Error ? error.message : String(error))
+  })
 })
 
 server.listen(args.port, args.host, () => {
@@ -395,7 +444,9 @@ async function startFixtureServer(
   label: string,
   options?: { assetDelayMs?: number },
 ) {
-  const assets = createFixtureAssets(version, label)
+  let currentVersion = version
+  let currentLabel = label
+  let assets = createFixtureAssets(currentVersion, currentLabel)
   const writer = createLineWriter(testInfo.outputPath(`${slug}-server.log`))
   const sendJson = (response: http.ServerResponse<http.IncomingMessage>, body: unknown, gzip = false) => {
     const payload = Buffer.from(`${JSON.stringify(body)}\n`)
@@ -422,7 +473,7 @@ async function startFixtureServer(
       })
 
       if (url.pathname === "/global/version") {
-        sendJson(response, { current: version })
+        sendJson(response, { current: currentVersion })
         return
       }
 
@@ -435,6 +486,19 @@ async function startFixtureServer(
       if (url.pathname === "/config/providers") {
         if (options?.assetDelayMs) await sleep(options.assetDelayMs)
         sendJson(response, { providers: ["logicplanes"] })
+        return
+      }
+
+      if (url.pathname === "/global/event") {
+        response.writeHead(200, {
+          "Cache-Control": "no-cache, no-transform",
+          "Content-Type": "text/event-stream; charset=utf-8",
+        })
+        response.write("data: fixture-one\n\n")
+        await sleep(250)
+        response.write("data: fixture-two\n\n")
+        await sleep(250)
+        response.end("data: fixture-done\n\n")
         return
       }
 
@@ -518,6 +582,11 @@ async function startFixtureServer(
     },
     logFile: writer.file,
     origin: `http://127.0.0.1:${address.port}`,
+    setVersion: (nextVersion: string, nextLabel = currentLabel) => {
+      currentVersion = nextVersion
+      currentLabel = nextLabel
+      assets = createFixtureAssets(currentVersion, currentLabel)
+    },
   }
 }
 
@@ -601,6 +670,19 @@ async function startProtectedFixtureServer(testInfo: TestInfo, slug: string, ver
 
     if (url.pathname === "/config/providers") {
       sendJson(response, { providers: ["logicplanes"] })
+      return
+    }
+
+    if (url.pathname === "/global/event") {
+      response.writeHead(200, {
+        "Cache-Control": "no-cache, no-transform",
+        "Content-Type": "text/event-stream; charset=utf-8",
+      })
+      response.write("data: protected-one\n\n")
+      setTimeout(() => {
+        response.write("data: protected-two\n\n")
+        setTimeout(() => response.end("data: protected-done\n\n"), 250)
+      }, 250)
       return
     }
 
@@ -1021,6 +1103,97 @@ test("downloads separate cached UI bundles per server version", async ({}, testI
     await attachIfExists(testInfo, "desktop-log", testInfo.outputPath("desktop-runtime/logs/desktop.log"))
     await attachIfExists(testInfo, "primary-server-log", primary.logFile)
     await attachIfExists(testInfo, "legacy-server-log", legacy.logFile)
+  }
+})
+
+test("revalidates a cached instance and reloads same-name assets after the server upgrades", async ({}, testInfo) => {
+  const server = await startFixtureServer(testInfo, "mutable", "28.0.0", "Mutable workspace")
+  let app: Awaited<ReturnType<typeof electron.launch>> | undefined
+
+  try {
+    const runtime = await launchDesktop(testInfo, {
+      instances: [{ id: "mutable", label: "Mutable workspace", url: server.origin }],
+    })
+    app = runtime.app
+    let page = runtime.page
+
+    let instanceWindow = app.waitForEvent("window")
+    await page.locator('main [data-desktop-action="instance-open"]').first().click()
+    page = await instanceWindow
+    await page.waitForLoadState("domcontentloaded")
+    await expect(page.getByTestId("fixture-server-version")).toHaveText("28.0.0")
+    await expect(page.getByTestId("fixture-client-version")).toHaveText("28.0.0")
+
+    page = await openSetupFromInstance(app, page)
+    server.setVersion("28.0.1")
+
+    instanceWindow = app.waitForEvent("window")
+    await page.locator('main [data-desktop-action="instance-open"]').first().click()
+    page = await instanceWindow
+    await page.waitForLoadState("domcontentloaded")
+
+    await expect(page.getByTestId("fixture-server-version")).toHaveText("28.0.1")
+    await expect(page.getByTestId("fixture-client-version")).toHaveText("28.0.1")
+    await expect(page.getByTestId("fixture-providers")).toHaveText(/^ok:/)
+
+    await expect
+      .poll(
+        () =>
+          readDesktopEntries(runtime.logFile).then((entries) => ({
+            browserCacheCleared: entries.some(
+              (entry) => entry.scope === "main" && entry.event === "window.cache.clear.success",
+            ),
+            newVersionPrepared: entries.some(
+              (entry) =>
+                entry.scope === "ui-host" &&
+                entry.event === "prepare.success" &&
+                typeof entry.data === "object" &&
+                entry.data !== null &&
+                "version" in entry.data &&
+                entry.data.version === "28.0.1",
+            ),
+          })),
+        {
+          message: "desktop should revalidate the server and clear renderer cache before loading the upgraded UI",
+        },
+      )
+      .toEqual({ browserCacheCleared: true, newVersionPrepared: true })
+  } finally {
+    if (app) await app.close()
+    await server.close()
+    await attachIfExists(testInfo, "desktop-log", testInfo.outputPath("desktop-runtime/logs/desktop.log"))
+    await attachIfExists(testInfo, "mutable-server-log", server.logFile)
+  }
+})
+
+test("streams live events through the desktop cache without buffering", async ({}, testInfo) => {
+  const server = await startFixtureServer(testInfo, "stream", appVersion, "Streaming workspace")
+  let app: Awaited<ReturnType<typeof electron.launch>> | undefined
+
+  try {
+    const runtime = await launchDesktop(testInfo, {
+      instances: [{ id: "stream", label: "Streaming workspace", url: server.origin }],
+    })
+    app = runtime.app
+    let page = runtime.page
+
+    const instanceWindow = app.waitForEvent("window")
+    await page.locator('main [data-desktop-action="instance-open"]').first().click()
+    page = await instanceWindow
+    await page.waitForLoadState("domcontentloaded")
+
+    await expect(page.getByTestId("fixture-live-stream")).toHaveText(/^first:\d+$/)
+    await expect(page.getByTestId("fixture-live-done")).toHaveText(/^ok:/)
+    const firstMs = Number((await page.getByTestId("fixture-live-stream").textContent())?.replace("first:", ""))
+    expect(firstMs).toBeLessThan(300)
+
+    const logEntries = await readDesktopEntries(runtime.logFile)
+    expect(logEntries.some((entry) => entry.scope === "ui-host" && entry.event === "proxy.stream.response")).toBe(true)
+  } finally {
+    if (app) await app.close()
+    await server.close()
+    await attachIfExists(testInfo, "desktop-log", testInfo.outputPath("desktop-runtime/logs/desktop.log"))
+    await attachIfExists(testInfo, "stream-server-log", server.logFile)
   }
 })
 

@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test"
-import { splitMarkdownBlocks } from "@/tui/component/rich-block"
+import { splitMarkdownSegments } from "@/tui/component/markdown-text"
 
 describe("tui rich-block removal", () => {
   test("returns single markdown segment for plain text", () => {
-    expect(splitMarkdownBlocks("Just some text.")).toEqual([{ kind: "markdown", text: "Just some text." }])
+    expect(splitMarkdownSegments("Just some text.")).toEqual([{ kind: "markdown", text: "Just some text." }])
   })
 
   test("keeps recognised fenced blocks as markdown", () => {
     const md = ['```callout warning', "Heads up.", "```"].join("\n")
-    expect(splitMarkdownBlocks(md)).toEqual([{ kind: "markdown", text: md }])
+    expect(splitMarkdownSegments(md)).toEqual([{ kind: "markdown", text: md }])
   })
 
   test("keeps mixed content in one markdown segment", () => {
@@ -27,13 +27,13 @@ describe("tui rich-block removal", () => {
       "",
       "Outro.",
     ].join("\n")
-    const segs = splitMarkdownBlocks(md)
+    const segs = splitMarkdownSegments(md)
     expect(segs).toEqual([{ kind: "markdown", text: md }])
   })
 
   test("leaves unknown languages as markdown (so they syntax-highlight as code)", () => {
     const md = ["```python", "print('hello')", "```"].join("\n")
-    expect(splitMarkdownBlocks(md)).toEqual([{ kind: "markdown", text: md }])
+    expect(splitMarkdownSegments(md)).toEqual([{ kind: "markdown", text: md }])
   })
 
   test("treats every former rich block language as plain markdown", () => {
@@ -65,19 +65,19 @@ describe("tui rich-block removal", () => {
     ]
     for (const lang of langs) {
       const md = `\`\`\`${lang}\n{}\n\`\`\``
-      const segs = splitMarkdownBlocks(md)
+      const segs = splitMarkdownSegments(md)
       expect(segs).toEqual([{ kind: "markdown", text: md }])
     }
   })
 
   test("keeps tilde fences as markdown", () => {
     const md = ["~~~callout warning", "tilde-style", "~~~"].join("\n")
-    const segs = splitMarkdownBlocks(md)
+    const segs = splitMarkdownSegments(md)
     expect(segs).toEqual([{ kind: "markdown", text: md }])
   })
 
   test("does not split when fence is unterminated", () => {
     const md = "Some text\n```chart\n{ unterminated"
-    expect(splitMarkdownBlocks(md)).toEqual([{ kind: "markdown", text: md }])
+    expect(splitMarkdownSegments(md)).toEqual([{ kind: "markdown", text: md }])
   })
 })

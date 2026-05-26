@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "bun:test"
 import fs from "node:fs/promises"
 import http from "node:http"
 import net from "node:net"
@@ -12,6 +12,8 @@ async function makeTempDir() {
   tempDirs.push(dir)
   return dir
 }
+
+const exists = (input: string) => fs.access(input).then(() => true).catch(() => false)
 
 afterEach(async () => {
   await Promise.all(tempDirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })))
@@ -34,10 +36,24 @@ afterEach(async () => {
   )
 })
 
+type FakeSessionOptions = {
+  cookies?: Array<{ name: string; value: string }>
+  onFetch?: (url: URL) => void
+}
+
 // Minimal Session mock — only the bits ui-host actually calls.
-function fakeSession(): { fetch: (input: string | URL, init?: RequestInit) => Promise<Response> } {
+function fakeSession(
+  options?: FakeSessionOptions,
+): { fetch: (input: string | URL, init?: RequestInit) => Promise<Response>; cookies: { get: () => Promise<Array<{ name: string; value: string }>> } } {
   return {
-    fetch: async (input, init) => globalThis.fetch(typeof input === "string" ? input : input.toString(), init),
+    cookies: {
+      get: async () => options?.cookies ?? [],
+    },
+    fetch: async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString())
+      options?.onFetch?.(url)
+      return globalThis.fetch(url.toString(), init)
+    },
   } as never
 }
 
@@ -257,6 +273,94 @@ describe("createDesktopUIHost - public surface", () => {
 
     expect(amoled).toBe(oc2)
   })
+
+  test("prepare revalidates a fresh origin cache before choosing the UI version", async () => {
+    const cacheDir = await makeTempDir()
+    const instance = { id: "remote-a", url: "http://app.local" }
+    let version = "99.0.0"
+    const versionRequests: string[] = []
+    globalThis.fetch = (async (input) => {
+      const url = new URL(typeof input === "string" ? input : input.toString())
+      if (url.pathname === "/global/version") {
+        versionRequests.push(version)
+        return new Response(JSON.stringify({ current: version }), {
+          headers: { "content-type": "application/json" },
+        })
+      }
+      if (url.pathname === "/") {
+        return new Response(
+          `<!doctype html><script type="module" src="/assets/app.js"></script><p>${version}</p>`,
+          { headers: { "content-type": "text/html" } },
+        )
+      }
+      if (url.pathname === "/assets/app.js") {
+        return new Response(`window.__fixtureVersion=${JSON.stringify(version)}`, {
+          headers: { "content-type": "text/javascript" },
+        })
+      }
+      return new Response("missing", { status: 404 })
+    }) as never
+    const host = createDesktopUIHost({
+      cacheDir,
+      getInstance: () => instance,
+      getSession: () => fakeSession() as never,
+    })
+
+    await expect(host.prepare(instance)).resolves.toMatchObject({ version: "99.0.0" })
+    version = "99.0.1"
+    await expect(host.prepare(instance)).resolves.toMatchObject({ version: "99.0.1" })
+
+    const index = JSON.parse(await fs.readFile(path.join(cacheDir, "ui-cache", "origins.json"), "utf8")) as Record<
+      string,
+      { version: string }
+    >
+    expect(index["http://app.local"]?.version).toBe("99.0.1")
+    expect(await exists(path.join(cacheDir, "ui-cache", "99.0.1", "index.html"))).toBe(true)
+    expect(versionRequests).toEqual(["99.0.0", "99.0.1"])
+  })
+
+  test("prepare refreshes a cached UI when the same server version serves a new entry bundle", async () => {
+    const cacheDir = await makeTempDir()
+    const instance = { id: "remote-a", url: "http://app.local" }
+    let label = "old"
+    globalThis.fetch = (async (input) => {
+      const url = new URL(typeof input === "string" ? input : input.toString())
+      if (url.pathname === "/global/version") {
+        return new Response(JSON.stringify({ current: "99.0.0" }), {
+          headers: { "content-type": "application/json" },
+        })
+      }
+      if (url.pathname === "/") {
+        return new Response(
+          `<!doctype html><script type="module" src="/assets/app.js"></script><p>${label}</p>`,
+          { headers: { "content-type": "text/html" } },
+        )
+      }
+      if (url.pathname === "/assets/app.js") {
+        return new Response(`window.__fixtureLabel=${JSON.stringify(label)}`, {
+          headers: { "content-type": "text/javascript" },
+        })
+      }
+      return new Response("missing", { status: 404 })
+    }) as never
+    const logs: string[] = []
+    const host = createDesktopUIHost({
+      cacheDir,
+      getInstance: () => instance,
+      getSession: () => fakeSession() as never,
+      log: (event) => logs.push(event),
+    })
+
+    await expect(host.prepare(instance)).resolves.toMatchObject({ version: "99.0.0" })
+    label = "new"
+    await expect(host.prepare(instance)).resolves.toMatchObject({ version: "99.0.0" })
+
+    expect(await fs.readFile(path.join(cacheDir, "ui-cache", "99.0.0", "index.html"), "utf8")).toContain("<p>new</p>")
+    expect(await fs.readFile(path.join(cacheDir, "ui-cache", "99.0.0", "assets", "app.js"), "utf8")).toContain(
+      'window.__fixtureLabel="new"',
+    )
+    expect(logs).toContain("cache.entry.stale")
+  })
 })
 
 describe("createDesktopUIHost - prepare auth-shape detection", () => {
@@ -373,6 +477,82 @@ describe("createDesktopUIHost - bootstrap response shape", () => {
     expect(host.proxyKey("a/b")).toBe("desktop-instance:a/b")
     expect(host.proxyKey("with spaces")).toBe("desktop-instance:with spaces")
     expect(host.proxyKey("special!@#$%^&*()")).toBe("desktop-instance:special!@#$%^&*()")
+  })
+})
+
+describe("createDesktopUIHost - live streams", () => {
+  test("proxies global event streams natively without session.fetch buffering", async () => {
+    const cacheDir = await makeTempDir()
+    const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+    const backendRequests: Array<{ cookie: string; header: string; pathname: string }> = []
+    const backend = http.createServer((request, response) => {
+      void (async () => {
+        const url = new URL(request.url ?? "/", "http://127.0.0.1")
+        backendRequests.push({
+          cookie: request.headers.cookie ?? "",
+          header: String(request.headers["x-fixture-auth"] ?? ""),
+          pathname: url.pathname,
+        })
+        if (url.pathname === "/global/version") {
+          response.setHeader("content-type", "application/json")
+          response.end(JSON.stringify({ current: "99.0.0" }))
+          return
+        }
+        if (url.pathname === "/") {
+          response.setHeader("content-type", "text/html")
+          response.end('<!doctype html><script type="module" src="/assets/app.js"></script><div id="root"></div>')
+          return
+        }
+        if (url.pathname === "/assets/app.js") {
+          response.setHeader("content-type", "text/javascript")
+          response.end("export default null")
+          return
+        }
+        if (url.pathname === "/global/event") {
+          response.writeHead(200, {
+            "cache-control": "no-cache, no-transform",
+            "content-type": "text/event-stream; charset=utf-8",
+          })
+          response.write("data: first\n\n")
+          await sleep(250)
+          response.end("data: done\n\n")
+          return
+        }
+        response.writeHead(404)
+        response.end("missing")
+      })().catch((error) => {
+        response.writeHead(500)
+        response.end(error instanceof Error ? error.message : String(error))
+      })
+    })
+    const instanceUrl = await listen(backend)
+    const fetchPaths: string[] = []
+    const host = createDesktopUIHost({
+      cacheDir,
+      getInstance: () => ({ headers: { "x-fixture-auth": "stream" }, id: "local", url: instanceUrl }),
+      getSession: () =>
+        fakeSession({
+          cookies: [{ name: "codeplane_auth", value: "1" }],
+          onFetch: (url) => fetchPaths.push(url.pathname),
+        }) as never,
+    })
+    const prepared = await host.prepare({ headers: { "x-fixture-auth": "stream" }, id: "local", url: instanceUrl })
+    const streamUrl = new URL("/global/event", prepared.url)
+    streamUrl.searchParams.set("server", "local")
+    const response = await fetch(streamUrl, { headers: { accept: "text/event-stream" } })
+    const reader = response.body?.getReader()
+    if (!reader) throw new Error("expected response body")
+    const started = Date.now()
+    const first = await reader.read()
+    const firstMs = Date.now() - started
+    await reader.cancel()
+
+    expect(response.status).toBe(200)
+    expect(new TextDecoder().decode(first.value)).toContain("data: first")
+    expect(firstMs).toBeLessThan(200)
+    expect(fetchPaths).not.toContain("/global/event")
+    expect(backendRequests.some((entry) => entry.pathname === "/global/event" && entry.cookie === "codeplane_auth=1")).toBe(true)
+    expect(backendRequests.some((entry) => entry.pathname === "/global/event" && entry.header === "stream")).toBe(true)
   })
 })
 

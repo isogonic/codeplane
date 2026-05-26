@@ -51,6 +51,49 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
 }
 
+const FullscreenProgressOverlay: Component<{
+  stateName: "local-install" | "opening" | "prepare"
+  title: string
+  message: string
+  percent: number
+  icon?: "download" | "server"
+  detail?: string
+}> = (props) => (
+  <div
+    class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background-base"
+    data-desktop-state={props.stateName}
+  >
+    <div class="flex w-full max-w-[380px] flex-col items-center gap-4 px-8">
+      <div class="flex size-10 items-center justify-center rounded-md bg-surface-base text-text-weak">
+        <Icon name={props.icon ?? "download"} size="small" />
+      </div>
+      <div class="flex flex-col items-center gap-1 text-center">
+        <span class="text-[14px] font-semibold text-text-strong" data-desktop-prepare-title>
+          {props.title}
+        </span>
+        <span class="text-[12px] leading-relaxed text-text-weak" data-desktop-prepare-message>
+          {props.message}
+        </span>
+      </div>
+      <div class="w-full">
+        <Progress value={props.percent} maxValue={100} hideLabel>
+          {props.title}
+        </Progress>
+      </div>
+      <div class="flex min-h-[16px] w-full justify-center text-[11px] tabular-nums text-text-weaker">
+        <Show when={props.detail} fallback={<span data-desktop-prepare-percent>{Math.round(props.percent)}%</span>}>
+          {(detail) => (
+            <span class="flex w-full items-center justify-between gap-4">
+              <span>{detail()}</span>
+              <span data-desktop-prepare-percent>{Math.round(props.percent)}%</span>
+            </span>
+          )}
+        </Show>
+      </div>
+    </div>
+  </div>
+)
+
 function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
@@ -1606,31 +1649,20 @@ const InstanceForm: Component<{
 
       <Show when={preparing()}>
         {(state) => (
-          <div class="mt-5 flex flex-col gap-3 border-t border-border-weak-base pt-4" data-desktop-state="prepare">
-            <div class="flex items-center justify-between gap-3">
-              <div class="flex flex-col gap-1">
-                <span class="text-[13px] font-medium text-text-strong" data-desktop-prepare-title>
-                  Preparing local UI cache
-                </span>
-                <span class="text-[12px] text-text-weak" data-desktop-prepare-message>
-                  {state().message}
-                </span>
-              </div>
-              <span class="text-[12px] font-medium text-text-weak tabular-nums" data-desktop-prepare-percent>
-                {Math.round(state().percent)}%
-              </span>
-            </div>
-            <Progress value={state().percent} maxValue={100} hideLabel>
-              Preparing local UI cache
-            </Progress>
-            <Show when={state().completed !== undefined && state().total !== undefined}>
-              <span class="text-[12px] text-text-weak">
-                {state().cacheHit
-                  ? "This version is already cached locally."
-                  : `${state().completed ?? 0} of ${state().total ?? 0} assets ready.`}
-              </span>
-            </Show>
-          </div>
+          <FullscreenProgressOverlay
+            stateName="prepare"
+            title="Preparing local UI cache"
+            message={state().message}
+            percent={state().percent}
+            icon="download"
+            detail={
+              state().completed !== undefined && state().total !== undefined
+                ? state().cacheHit
+                  ? "Already cached locally"
+                  : `${state().completed ?? 0} / ${state().total ?? 0} assets ready`
+                : undefined
+            }
+          />
         )}
       </Show>
 
@@ -2120,23 +2152,18 @@ const LocalInstanceForm: Component<{
 
       <Show when={installing()}>
         {(state) => (
-          <div class="mt-5 flex flex-col gap-3 border-t border-border-weak-base pt-4" data-desktop-state="local-install">
-            <div class="flex items-center justify-between gap-3">
-              <div class="flex flex-col gap-1">
-                <span class="text-[13px] font-medium text-text-strong">Installing local Codeplane</span>
-                <span class="text-[12px] text-text-weak">{state().message}</span>
-              </div>
-              <span class="text-[12px] font-medium text-text-weak tabular-nums">{Math.round(state().percent)}%</span>
-            </div>
-            <Progress value={state().percent} maxValue={100} hideLabel>
-              Installing local Codeplane
-            </Progress>
-            <Show when={state().total !== undefined && state().transferred !== undefined}>
-              <span class="text-[12px] text-text-weak">
-                {formatBytes(state().transferred ?? 0)} / {formatBytes(state().total ?? 0)}
-              </span>
-            </Show>
-          </div>
+          <FullscreenProgressOverlay
+            stateName="local-install"
+            title="Installing local Codeplane"
+            message={state().message}
+            percent={state().percent}
+            icon="server"
+            detail={
+              state().total !== undefined && state().transferred !== undefined
+                ? `${formatBytes(state().transferred ?? 0)} / ${formatBytes(state().total ?? 0)}`
+                : undefined
+            }
+          />
         )}
       </Show>
 
@@ -2144,18 +2171,20 @@ const LocalInstanceForm: Component<{
 
       <Show when={preparing()}>
         {(state) => (
-          <div class="mt-5 flex flex-col gap-3 border-t border-border-weak-base pt-4" data-desktop-state="prepare">
-            <div class="flex items-center justify-between gap-3">
-              <div class="flex flex-col gap-1">
-                <span class="text-[13px] font-medium text-text-strong">Preparing local UI cache</span>
-                <span class="text-[12px] text-text-weak">{state().message}</span>
-              </div>
-              <span class="text-[12px] font-medium text-text-weak tabular-nums">{Math.round(state().percent)}%</span>
-            </div>
-            <Progress value={state().percent} maxValue={100} hideLabel>
-              Preparing local UI cache
-            </Progress>
-          </div>
+          <FullscreenProgressOverlay
+            stateName="prepare"
+            title="Preparing local UI cache"
+            message={state().message}
+            percent={state().percent}
+            icon="download"
+            detail={
+              state().completed !== undefined && state().total !== undefined
+                ? state().cacheHit
+                  ? "Already cached locally"
+                  : `${state().completed ?? 0} / ${state().total ?? 0} assets ready`
+                : undefined
+            }
+          />
         )}
       </Show>
 
@@ -2621,7 +2650,7 @@ export const App: Component = () => {
           <Show when={opening()}>
             {(state) => (
               <div
-                class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background-base/85 backdrop-blur-sm"
+                class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background-base"
                 data-desktop-state="opening"
               >
                 <div class="flex w-full max-w-[360px] flex-col items-center gap-4 px-8">

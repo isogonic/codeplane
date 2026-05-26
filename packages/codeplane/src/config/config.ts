@@ -289,6 +289,7 @@ export interface Interface {
   readonly getConsoleState: () => Effect.Effect<ConsoleState>
   readonly update: (config: Info) => Effect.Effect<void>
   readonly updateGlobal: (config: Info) => Effect.Effect<Info>
+  readonly removeGlobalSecretReferences: (name: string) => Effect.Effect<number>
   readonly invalidate: (wait?: boolean) => Effect.Effect<void>
   readonly directories: () => Effect.Effect<string[]>
   readonly waitForDependencies: () => Effect.Effect<void>
@@ -312,13 +313,17 @@ function globalConfigFile() {
   return path.join(Global.Path.config, "codeplane.jsonc")
 }
 
+const jsoncFormattingOptions = {
+  insertSpaces: true,
+  tabSize: 2,
+}
+
+type JsonPath = Array<string | number>
+
 function patchJsonc(input: string, patch: unknown, path: string[] = []): string {
   if (!isRecord(patch)) {
     const edits = modify(input, path, patch, {
-      formattingOptions: {
-        insertSpaces: true,
-        tabSize: 2,
-      },
+      formattingOptions: jsoncFormattingOptions,
     })
     return applyEdits(input, edits)
   }
@@ -327,6 +332,40 @@ function patchJsonc(input: string, patch: unknown, path: string[] = []): string 
     if (value === undefined) return result
     return patchJsonc(result, value, [...path, key])
   }, input)
+}
+
+function secretReferencePaths(value: unknown, placeholder: string, trail: JsonPath = []): JsonPath[] {
+  if (typeof value === "string") return value.includes(placeholder) ? [trail] : []
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) => secretReferencePaths(item, placeholder, [...trail, index]))
+  }
+  if (!isRecord(value)) return []
+  return Object.entries(value).flatMap(([key, item]) => secretReferencePaths(item, placeholder, [...trail, key]))
+}
+
+function compareDeletionPaths(a: JsonPath, b: JsonPath) {
+  if (a.length !== b.length) return b.length - a.length
+  for (let i = 0; i < a.length; i++) {
+    const left = a[i]
+    const right = b[i]
+    if (left === right) continue
+    if (typeof left === "number" && typeof right === "number") return right - left
+    return String(right).localeCompare(String(left))
+  }
+  return 0
+}
+
+function removeJsoncPaths(input: string, paths: JsonPath[]) {
+  return paths
+    .slice()
+    .sort(compareDeletionPaths)
+    .reduce((result, jsonPath) => {
+      const edits = modify(result, jsonPath, undefined, {
+        formattingOptions: jsoncFormattingOptions,
+      })
+      if (!edits.length) return result
+      return applyEdits(result, edits)
+    }, input)
 }
 
 type LoadedConfig = {
@@ -404,8 +443,13 @@ export const layer = Layer.effect(
       const resolved = ConfigParse.schema(
         Info.zod,
         yield* Effect.promise(() =>
+          // Missing secrets should not brick the whole instance. Keep the
+          // placeholder in raw config and resolve to empty until the user
+          // restores it in Settings -> Secrets.
           ConfigVariable.resolveUnknown(
-            "path" in options ? { value: raw, type: "path", path: options.path } : { value: raw, type: "virtual", ...options },
+            "path" in options
+              ? { value: raw, type: "path", path: options.path, missingSecret: "empty" }
+              : { value: raw, type: "virtual", ...options, missingSecret: "empty" },
           ),
         ),
         source,
@@ -452,6 +496,25 @@ export const layer = Layer.effect(
 
     const secretizeConfig = Effect.fnUntraced(function* (config: Info) {
       return (yield* secretizeUnknown(config, [])) as Info
+    })
+
+    const removeGlobalSecretReferences = Effect.fn("Config.removeGlobalSecretReferences")(function* (name: string) {
+      const placeholder = ConfigSecret.placeholder(name)
+      const files = Array.from(new Set([globalConfigFile(), ...globalConfigCandidates(Global.Path.config)]))
+      const removed = (yield* Effect.forEach(files, (file) =>
+        Effect.gen(function* () {
+          const before = yield* readConfigFile(file)
+          if (!before) return 0
+          const raw = ConfigParse.schema(Info.zod, ConfigParse.jsonc(before, file), file)
+          const paths = secretReferencePaths(writable(raw), placeholder)
+          if (!paths.length) return 0
+          yield* fs.writeFileString(file, removeJsoncPaths(before, paths)).pipe(Effect.orDie)
+          return paths.length
+        }),
+      )).reduce((sum, count) => sum + count, 0)
+
+      if (removed > 0) yield* invalidate()
+      return removed
     })
 
     const loadGlobal = Effect.fnUntraced(function* () {
@@ -911,6 +974,7 @@ export const layer = Layer.effect(
       getConsoleState,
       update,
       updateGlobal,
+      removeGlobalSecretReferences,
       invalidate,
       directories,
       waitForDependencies,

@@ -23,6 +23,7 @@ import { useGlobalSDK } from "./global-sdk"
 import { bootstrapDirectory, bootstrapGlobal, clearProviderRev } from "./global-sync/bootstrap"
 import { createChildStoreManager } from "./global-sync/child-store"
 import { applyDirectoryEvent, applyGlobalEvent, cleanupDroppedSessionCaches } from "./global-sync/event-reducer"
+import { globalEventTargetDirectories } from "./global-sync/event-targets"
 import { createRefreshQueue } from "./global-sync/queue"
 import { cachedSessionIDs } from "./global-sync/session-cache"
 import { clearSessionPrefetchDirectory } from "./global-sync/session-prefetch"
@@ -516,27 +517,33 @@ function createGlobalSync() {
       return
     }
 
-    const existing = children.children[directory]
-    if (!existing) return
-    children.mark(directory)
-    const [store, setStore] = existing
-    applyDirectoryEvent({
+    for (const target of globalEventTargetDirectories({
+      source: directory,
       event,
-      directory,
-      store,
-      setStore,
-      push: queue.push,
-      setSessionTodo,
-      vcsCache: children.vcsCache.get(directory),
-      loadLsp: () => {
-        void sdkFor(directory)
-          .lsp.status()
-          .then((x) => {
-            setStore("lsp", x.data ?? [])
-            setStore("lsp_ready", true)
-          })
-      },
-    })
+      stores: Object.entries(children.children).map(([directory, [store]]) => ({ directory, store })),
+    })) {
+      const existing = children.children[target]
+      if (!existing) continue
+      children.mark(target)
+      const [store, setStore] = existing
+      applyDirectoryEvent({
+        event,
+        directory: target,
+        store,
+        setStore,
+        push: queue.push,
+        setSessionTodo,
+        vcsCache: children.vcsCache.get(target),
+        loadLsp: () => {
+          void sdkFor(target)
+            .lsp.status()
+            .then((x) => {
+              setStore("lsp", x.data ?? [])
+              setStore("lsp_ready", true)
+            })
+        },
+      })
+    }
   })
 
   onCleanup(unsub)

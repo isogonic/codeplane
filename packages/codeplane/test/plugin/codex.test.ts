@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import {
+  CodexAuthPlugin,
   parseJwtClaims,
   extractAccountIdFromClaims,
   extractAccountId,
@@ -12,7 +13,63 @@ function createTestJwt(payload: object): string {
   return `${header}.${body}.sig`
 }
 
+const pluginInput = {
+  client: {} as never,
+  project: {} as never,
+  directory: "",
+  worktree: "",
+  experimental_workspace: {
+    register() {},
+  },
+  serverUrl: new URL("https://example.com"),
+  $: {} as never,
+}
+
+function makeModel(id: string) {
+  return {
+    id,
+    providerID: "openai",
+    api: { id, url: "", npm: "@ai-sdk/openai" },
+    name: id,
+    capabilities: {
+      temperature: false,
+      reasoning: true,
+      attachment: true,
+      toolcall: true,
+      input: { text: true, audio: false, image: false, video: false, pdf: false },
+      output: { text: true, audio: false, image: false, video: false, pdf: false },
+      interleaved: false,
+    },
+    cost: { input: 1, output: 1, cache: { read: 1, write: 1 } },
+    limit: { context: 1_000_000, input: 1_000_000, output: 128_000 },
+    status: "active" as const,
+    options: {},
+    headers: {},
+    release_date: "",
+  }
+}
+
 describe("plugin.codex", () => {
+  test("removes unsupported ChatGPT account models from OAuth provider list", async () => {
+    const hooks = await CodexAuthPlugin(pluginInput)
+    const provider = {
+      id: "openai",
+      name: "OpenAI",
+      source: "api" as const,
+      env: [],
+      options: {},
+      models: {
+        "gpt-5.4": makeModel("gpt-5.4"),
+        "gpt-5.5-pro": makeModel("gpt-5.5-pro"),
+      },
+    }
+
+    await hooks.auth!.loader!(async () => ({ type: "oauth", refresh: "", access: "", expires: Date.now() }), provider)
+
+    expect(provider.models["gpt-5.4"]).toBeDefined()
+    expect(provider.models["gpt-5.5-pro"]).toBeUndefined()
+  })
+
   describe("parseJwtClaims", () => {
     test("parses valid JWT with claims", () => {
       const payload = { email: "test@example.com", chatgpt_account_id: "acc-123" }

@@ -359,6 +359,7 @@
       &:has([data-selected]) {
         color: var(--foreground);
         background-color: var(--tabs-selected-background);
+        box-shadow: none;
       }
     }
   }

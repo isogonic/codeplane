@@ -10,6 +10,7 @@ const env = {
 }
 
 let home: string
+const CHILD_PROCESS_TEST_TIMEOUT_MS = 15_000
 
 beforeEach(async () => {
   home = await fs.mkdtemp(path.join(os.tmpdir(), "codeplane-mgr-"))
@@ -73,7 +74,7 @@ wait $!
 
 async function readFileUntil(file: string, expected: string) {
   let text = ""
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 200; i++) {
     text = await fs.readFile(file, "utf8").catch(() => "")
     if (text.includes(expected)) return text
     await new Promise((resolve) => setTimeout(resolve, 10))
@@ -115,130 +116,176 @@ if (process.platform !== "win32") {
   })
 
   describe("local instance manager", () => {
-    test("start() resolves when the child prints the listening line and stop() tears it down", async () => {
-      await writeFakeBinary(home, "27.3.1")
-      const manager = createLocalInstanceManager({
-        binariesDir: path.join(home, "local_server", "binaries"),
-        configDir: home,
-        dataDir: path.join(home, "local_server"),
-      })
-      try {
-        const running = await manager.start({ id: "fake-1", binaryVersion: "27.3.1" })
-        expect(running.url).toBe("http://127.0.0.1:54321")
-        expect(running.binaryVersion).toBe("27.3.1")
-        expect(manager.isRunning("fake-1")).toBe(true)
-        expect(manager.getRunning("fake-1")?.binaryVersion).toBe("27.3.1")
-      } finally {
-        await manager.stopAll()
-      }
-    })
+    test(
+      "start() resolves when the child prints the listening line and stop() tears it down",
+      async () => {
+        await writeFakeBinary(home, "27.3.1")
+        const manager = createLocalInstanceManager({
+          binariesDir: path.join(home, "local_server", "binaries"),
+          configDir: home,
+          dataDir: path.join(home, "local_server"),
+        })
+        try {
+          const running = await manager.start({ id: "fake-1", binaryVersion: "27.3.1" })
+          expect(running.url).toBe("http://127.0.0.1:54321")
+          expect(running.binaryVersion).toBe("27.3.1")
+          expect(manager.isRunning("fake-1")).toBe(true)
+          expect(manager.getRunning("fake-1")?.binaryVersion).toBe("27.3.1")
+        } finally {
+          await manager.stopAll()
+        }
+      },
+      { timeout: CHILD_PROCESS_TEST_TIMEOUT_MS },
+    )
 
-    test("concurrent start() calls for the same id collapse to a single child", async () => {
-      await writeFakeBinary(home, "27.3.1")
-      const manager = createLocalInstanceManager({
-        binariesDir: path.join(home, "local_server", "binaries"),
-        configDir: home,
-        dataDir: path.join(home, "local_server"),
-      })
-      try {
-        const [a, b, c] = await Promise.all([
-          manager.start({ id: "fake-2", binaryVersion: "27.3.1" }),
-          manager.start({ id: "fake-2", binaryVersion: "27.3.1" }),
-          manager.start({ id: "fake-2", binaryVersion: "27.3.1" }),
-        ])
-        expect(a.url).toBe(b.url)
-        expect(b.url).toBe(c.url)
-        expect(manager.listRunning()).toHaveLength(1)
-      } finally {
-        await manager.stopAll()
-      }
-    })
+    test(
+      "concurrent start() calls for the same id collapse to a single child",
+      async () => {
+        await writeFakeBinary(home, "27.3.1")
+        const manager = createLocalInstanceManager({
+          binariesDir: path.join(home, "local_server", "binaries"),
+          configDir: home,
+          dataDir: path.join(home, "local_server"),
+        })
+        try {
+          const [a, b, c] = await Promise.all([
+            manager.start({ id: "fake-2", binaryVersion: "27.3.1" }),
+            manager.start({ id: "fake-2", binaryVersion: "27.3.1" }),
+            manager.start({ id: "fake-2", binaryVersion: "27.3.1" }),
+          ])
+          expect(a.url).toBe(b.url)
+          expect(b.url).toBe(c.url)
+          expect(manager.listRunning()).toHaveLength(1)
+        } finally {
+          await manager.stopAll()
+        }
+      },
+      { timeout: CHILD_PROCESS_TEST_TIMEOUT_MS },
+    )
 
-    test("desktop-managed children run as desktop app clients with bridge env", async () => {
-      const envPath = path.join(home, "child-env.txt")
-      await writeFakeBinary(home, "27.3.2", { envPath })
-      const manager = createLocalInstanceManager({
-        binariesDir: path.join(home, "local_server", "binaries"),
-        configDir: home,
-        dataDir: path.join(home, "local_server"),
-        desktopManaged: true,
-        extraEnv: () => ({
-          CODEPLANE_DESKTOP_BRIDGE_ORIGIN: "http://127.0.0.1:43210",
-          CODEPLANE_DESKTOP_BRIDGE_TOKEN: "bridge-token",
-        }),
-      })
-      try {
-        await manager.start({ id: "fake-desktop", binaryVersion: "27.3.2" })
-        const text = await fs.readFile(envPath, "utf8")
-        expect(text).toContain("CODEPLANE_CLIENT=app")
-        expect(text).toContain("CODEPLANE_DESKTOP_MANAGED=1")
-        expect(text).toContain("CODEPLANE_DESKTOP_BRIDGE_ORIGIN=http://127.0.0.1:43210")
-        expect(text).toContain("CODEPLANE_DESKTOP_BRIDGE_TOKEN=bridge-token")
-      } finally {
-        await manager.stopAll()
-      }
-    })
+    test(
+      "start() restarts an already-running id when the requested binary version changes",
+      async () => {
+        await writeFakeBinary(home, "27.3.6")
+        await writeFakeBinary(home, "27.3.7")
+        const manager = createLocalInstanceManager({
+          binariesDir: path.join(home, "local_server", "binaries"),
+          configDir: home,
+          dataDir: path.join(home, "local_server"),
+        })
+        try {
+          await expect(manager.start({ id: "fake-updated", binaryVersion: "27.3.6" })).resolves.toMatchObject({
+            binaryVersion: "27.3.6",
+          })
+          await expect(manager.start({ id: "fake-updated", binaryVersion: "27.3.7" })).resolves.toMatchObject({
+            binaryVersion: "27.3.7",
+          })
+          expect(manager.getRunning("fake-updated")?.binaryVersion).toBe("27.3.7")
+          expect(manager.listRunning()).toHaveLength(1)
+        } finally {
+          await manager.stopAll()
+        }
+      },
+      { timeout: CHILD_PROCESS_TEST_TIMEOUT_MS },
+    )
 
-    test("start() gives each local instance an isolated runtime home", async () => {
-      const alphaEnvPath = path.join(home, "alpha-env.txt")
-      const betaEnvPath = path.join(home, "beta-env.txt")
-      await writeFakeBinary(home, "27.3.4", { envPath: alphaEnvPath })
-      await writeFakeBinary(home, "27.3.5", { envPath: betaEnvPath })
-      const manager = createLocalInstanceManager({
-        binariesDir: path.join(home, "local_server", "binaries"),
-        configDir: home,
-        dataDir: path.join(home, "local_server"),
-      })
-      try {
-        await manager.start({ id: "alpha", binaryVersion: "27.3.4" })
-        await manager.start({ id: "beta", binaryVersion: "27.3.5" })
+    test(
+      "desktop-managed children run as desktop app clients with bridge env",
+      async () => {
+        const envPath = path.join(home, "child-env.txt")
+        await writeFakeBinary(home, "27.3.2", { envPath })
+        const manager = createLocalInstanceManager({
+          binariesDir: path.join(home, "local_server", "binaries"),
+          configDir: home,
+          dataDir: path.join(home, "local_server"),
+          desktopManaged: true,
+          extraEnv: () => ({
+            CODEPLANE_DESKTOP_BRIDGE_ORIGIN: "http://127.0.0.1:43210",
+            CODEPLANE_DESKTOP_BRIDGE_TOKEN: "bridge-token",
+          }),
+        })
+        try {
+          await manager.start({ id: "fake-desktop", binaryVersion: "27.3.2" })
+          const text = await fs.readFile(envPath, "utf8")
+          expect(text).toContain("CODEPLANE_CLIENT=app")
+          expect(text).toContain("CODEPLANE_DESKTOP_MANAGED=1")
+          expect(text).toContain("CODEPLANE_DESKTOP_BRIDGE_ORIGIN=http://127.0.0.1:43210")
+          expect(text).toContain("CODEPLANE_DESKTOP_BRIDGE_TOKEN=bridge-token")
+        } finally {
+          await manager.stopAll()
+        }
+      },
+      { timeout: CHILD_PROCESS_TEST_TIMEOUT_MS },
+    )
 
-        const alphaText = await fs.readFile(alphaEnvPath, "utf8")
-        const betaText = await fs.readFile(betaEnvPath, "utf8")
-        expect(alphaText).toContain(`CODEPLANE_HOME_DIR=${path.join(home, "local_server", "alpha", "config")}`)
-        expect(alphaText).toContain(`CODEPLANE_DATA_DIR=${path.join(home, "local_server", "alpha", "data")}`)
-        expect(alphaText).toContain(`CODEPLANE_CACHE_DIR=${path.join(home, "local_server", "alpha", "cache")}`)
-        expect(alphaText).toContain(`CODEPLANE_STATE_DIR=${path.join(home, "local_server", "alpha", "state")}`)
-        expect(alphaText).toContain(`CODEPLANE_BIN_DIR=${path.join(home, "local_server", "alpha", "bin")}`)
-        expect(alphaText).toContain(`CODEPLANE_LOG_DIR=${path.join(home, "local_server", "alpha", "log")}`)
-        expect(betaText).toContain(`CODEPLANE_HOME_DIR=${path.join(home, "local_server", "beta", "config")}`)
-        expect(betaText).toContain(`CODEPLANE_DATA_DIR=${path.join(home, "local_server", "beta", "data")}`)
-        expect(betaText).toContain(`CODEPLANE_CACHE_DIR=${path.join(home, "local_server", "beta", "cache")}`)
-        expect(betaText).toContain(`CODEPLANE_STATE_DIR=${path.join(home, "local_server", "beta", "state")}`)
-        expect(betaText).toContain(`CODEPLANE_BIN_DIR=${path.join(home, "local_server", "beta", "bin")}`)
-        expect(betaText).toContain(`CODEPLANE_LOG_DIR=${path.join(home, "local_server", "beta", "log")}`)
-      } finally {
-        await manager.stopAll()
-      }
-    })
+    test(
+      "start() gives each local instance an isolated runtime home",
+      async () => {
+        const alphaEnvPath = path.join(home, "alpha-env.txt")
+        const betaEnvPath = path.join(home, "beta-env.txt")
+        await writeFakeBinary(home, "27.3.4", { envPath: alphaEnvPath })
+        await writeFakeBinary(home, "27.3.5", { envPath: betaEnvPath })
+        const manager = createLocalInstanceManager({
+          binariesDir: path.join(home, "local_server", "binaries"),
+          configDir: home,
+          dataDir: path.join(home, "local_server"),
+        })
+        try {
+          await manager.start({ id: "alpha", binaryVersion: "27.3.4" })
+          await manager.start({ id: "beta", binaryVersion: "27.3.5" })
 
-    test("debug logging passes DEBUG level and tees process output into the instance log directory", async () => {
-      const argvPath = path.join(home, "debug-argv.txt")
-      const envPath = path.join(home, "debug-env.txt")
-      await writeFakeBinary(home, "27.3.3", { argvPath, envPath })
-      const manager = createLocalInstanceManager({
-        binariesDir: path.join(home, "local_server", "binaries"),
-        configDir: home,
-        dataDir: path.join(home, "local_server"),
-        debugLogging: () => true,
-      })
-      try {
-        await manager.start({ id: "fake-debug", binaryVersion: "27.3.3" })
-        expect(await fs.readFile(argvPath, "utf8")).toContain("--log-level\nDEBUG")
-        const envText = await fs.readFile(envPath, "utf8")
-        expect(envText).toContain(`CODEPLANE_LOG_DIR=${manager.logDir("fake-debug")}`)
-        expect(envText).toContain("CODEPLANE_LOG_LEVEL=DEBUG")
-      } finally {
-        await manager.stopAll()
-      }
-      const processLog = await readFileUntil(
-        path.join(manager.logDir("fake-debug"), "process.log"),
-        "process log-end id=fake-debug",
-      )
-      expect(processLog).toContain("process log-start id=fake-debug")
-      expect(processLog).toContain('"debugLogging":true')
-      expect(processLog).toContain("stdout listening on http://127.0.0.1:54321")
-      expect(processLog).toContain("process log-end id=fake-debug")
-    })
+          const alphaText = await fs.readFile(alphaEnvPath, "utf8")
+          const betaText = await fs.readFile(betaEnvPath, "utf8")
+          expect(alphaText).toContain(`CODEPLANE_HOME_DIR=${path.join(home, "local_server", "alpha", "config")}`)
+          expect(alphaText).toContain(`CODEPLANE_DATA_DIR=${path.join(home, "local_server", "alpha", "data")}`)
+          expect(alphaText).toContain(`CODEPLANE_CACHE_DIR=${path.join(home, "local_server", "alpha", "cache")}`)
+          expect(alphaText).toContain(`CODEPLANE_STATE_DIR=${path.join(home, "local_server", "alpha", "state")}`)
+          expect(alphaText).toContain(`CODEPLANE_BIN_DIR=${path.join(home, "local_server", "alpha", "bin")}`)
+          expect(alphaText).toContain(`CODEPLANE_LOG_DIR=${path.join(home, "local_server", "alpha", "log")}`)
+          expect(betaText).toContain(`CODEPLANE_HOME_DIR=${path.join(home, "local_server", "beta", "config")}`)
+          expect(betaText).toContain(`CODEPLANE_DATA_DIR=${path.join(home, "local_server", "beta", "data")}`)
+          expect(betaText).toContain(`CODEPLANE_CACHE_DIR=${path.join(home, "local_server", "beta", "cache")}`)
+          expect(betaText).toContain(`CODEPLANE_STATE_DIR=${path.join(home, "local_server", "beta", "state")}`)
+          expect(betaText).toContain(`CODEPLANE_BIN_DIR=${path.join(home, "local_server", "beta", "bin")}`)
+          expect(betaText).toContain(`CODEPLANE_LOG_DIR=${path.join(home, "local_server", "beta", "log")}`)
+        } finally {
+          await manager.stopAll()
+        }
+      },
+      { timeout: CHILD_PROCESS_TEST_TIMEOUT_MS },
+    )
+
+    test(
+      "debug logging passes DEBUG level and tees process output into the instance log directory",
+      async () => {
+        const argvPath = path.join(home, "debug-argv.txt")
+        const envPath = path.join(home, "debug-env.txt")
+        await writeFakeBinary(home, "27.3.3", { argvPath, envPath })
+        const manager = createLocalInstanceManager({
+          binariesDir: path.join(home, "local_server", "binaries"),
+          configDir: home,
+          dataDir: path.join(home, "local_server"),
+          debugLogging: () => true,
+        })
+        try {
+          await manager.start({ id: "fake-debug", binaryVersion: "27.3.3" })
+          expect(await fs.readFile(argvPath, "utf8")).toContain("--log-level\nDEBUG")
+          const envText = await fs.readFile(envPath, "utf8")
+          expect(envText).toContain(`CODEPLANE_LOG_DIR=${manager.logDir("fake-debug")}`)
+          expect(envText).toContain("CODEPLANE_LOG_LEVEL=DEBUG")
+        } finally {
+          await manager.stopAll()
+        }
+        const processLog = await readFileUntil(
+          path.join(manager.logDir("fake-debug"), "process.log"),
+          "process log-end id=fake-debug",
+        )
+        expect(processLog).toContain("process log-start id=fake-debug")
+        expect(processLog).toContain('"debugLogging":true')
+        expect(processLog).toContain("stdout listening on http://127.0.0.1:54321")
+        expect(processLog).toContain("process log-end id=fake-debug")
+      },
+      { timeout: CHILD_PROCESS_TEST_TIMEOUT_MS },
+    )
   })
 }

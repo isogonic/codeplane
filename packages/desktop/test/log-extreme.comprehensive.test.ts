@@ -18,8 +18,7 @@ describe("EXTREME desktop logger", () => {
     test(`bulk basic write ${i}`, async () => {
       const logger = createDesktopLogger(dir)
       logger.log(`scope-${i}`, `event-${i}`, { iteration: i })
-      await new Promise((r) => setTimeout(r, 1))
-      // The file may not have been flushed yet, but the call shouldn't throw.
+      await logger.flush()
       expect(typeof logger.path()).toBe("string")
     })
   }
@@ -27,6 +26,7 @@ describe("EXTREME desktop logger", () => {
     test(`event types #${i}`, async () => {
       const logger = createDesktopLogger(dir)
       logger.log("scope", "event", { num: i, str: `s${i}`, bool: i % 2 === 0 })
+      await logger.flush()
       expect(logger.path()).toBe(path.join(dir, "desktop.log"))
     })
   }

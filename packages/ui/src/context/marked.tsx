@@ -5,7 +5,6 @@ import katex from "katex"
 import { bundledLanguages, type BundledLanguage } from "shiki"
 import { createSimpleContext } from "./helper"
 import { getSharedHighlighter, registerCustomTheme, ThemeRegistrationResolved } from "@pierre/diffs"
-import { isMarkdownBlockLang, renderMarkdownBlock } from "../components/markdown-blocks"
 
 registerCustomTheme("Codeplane", () => {
   return Promise.resolve({
@@ -470,13 +469,6 @@ async function highlightCodeBlocks(html: string): Promise<string> {
       result = result.replace(fullMatch, () => mermaidCodeBlock(code))
       continue
     }
-    if (isMarkdownBlockLang(langKey)) {
-      const rendered = renderMarkdownBlock(code, langKey)
-      if (rendered) {
-        result = result.replace(fullMatch, () => rendered)
-        continue
-      }
-    }
 
     let language = langKey
     if (!(language in bundledLanguages)) {
@@ -567,10 +559,6 @@ export const { use: useMarked, provider: MarkedProvider } = createSimpleContext(
         async highlight(code, lang) {
           const langKey = codeBlockLanguage(lang)
           if (langKey === "mermaid") return mermaidCodeBlock(code)
-          if (isMarkdownBlockLang(langKey)) {
-            const rendered = renderMarkdownBlock(code, langKey)
-            if (rendered) return rendered
-          }
 
           const highlighter = await getSharedHighlighter({
             themes: ["Codeplane"],

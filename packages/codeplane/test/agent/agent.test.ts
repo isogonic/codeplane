@@ -710,6 +710,7 @@ test("defaultAgent throws when all primary agents are disabled", async () => {
     config: {
       agent: {
         build: { disable: true },
+        goal: { disable: true },
         plan: { disable: true },
       },
     },
@@ -717,7 +718,7 @@ test("defaultAgent throws when all primary agents are disabled", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      // build and plan are disabled, no primary-capable agents remain
+      // all visible primary agents are disabled, so only hidden/internal primaries remain
       await expect(load(tmp.path, (svc) => svc.defaultAgent())).rejects.toThrow("no primary visible agent found")
     },
   })

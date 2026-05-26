@@ -52,7 +52,7 @@ export function Dialog(
           e.stopPropagation()
         }}
         width={width()}
-        maxWidth={dimensions().width - 2}
+        maxWidth={Math.max(1, dimensions().width - 2)}
         backgroundColor={theme.backgroundPanel}
         borderColor={theme.borderSubtle}
         border={["top", "bottom"]}
