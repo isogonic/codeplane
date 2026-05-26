@@ -482,6 +482,60 @@
       background-color: transparent !important;
       border: none !important;
     }
+
+    /* Tool outputs are technical inline content (status reports, MCP
+       results, command output) — not standalone documents. The default
+       Markdown styling gives headings a 24px bottom margin and paragraphs
+       a 12px bottom margin, which makes structured outputs like
+       `tools status` (h1 + paragraph + h2 + bullet) feel disconnected
+       and overscaled inside a tool card. Tighten the typography so the
+       content reads as one coherent block. */
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      margin-bottom: 4px;
+      font-size: 13px;
+      color: var(--text-strong);
+    }
+
+    h1 + *,
+    h2 + *,
+    h3 + *,
+    h4 + *,
+    h5 + *,
+    h6 + * {
+      margin-top: 0;
+    }
+
+    p {
+      margin-bottom: 6px;
+    }
+
+    ul,
+    ol {
+      margin-top: 2px;
+      margin-bottom: 6px;
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 2px;
+    }
+
+    /* Add a little breathing room above a heading that follows other
+       content, so the section break is still visible without the heavy
+       document-level spacing. */
+    * + h1,
+    * + h2,
+    * + h3,
+    * + h4,
+    * + h5,
+    * + h6 {
+      margin-top: 10px;
+    }
   }
 
   pre {

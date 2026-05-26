@@ -113,6 +113,38 @@ function formatEditorContext(selection: EditorSelection) {
 
 let stashed: { prompt: PromptInfo; cursor: number } | undefined
 
+export type FollowupMode = "queue" | "steer"
+
+// Queue of pending submissions per session. Each entry carries a `dispatch`
+// closure that fires the actual SDK call when the session is next idle. The
+// store is module-level so the queue survives prompt remounts within the same
+// process (e.g. dialog open/close cycles); it is keyed by sessionID so a user
+// can have independent queues across sessions.
+type QueuedSubmission = {
+  id: string
+  sessionID: string
+  inputPreview: string
+  dispatch: () => Promise<unknown>
+}
+
+const [followupQueue, setFollowupQueue] = createStore<Record<string, QueuedSubmission[]>>({})
+
+function enqueueFollowup(sessionID: string, item: QueuedSubmission) {
+  setFollowupQueue(sessionID, (prev) => [...(prev ?? []), item])
+}
+
+function dequeueFollowup(sessionID: string): QueuedSubmission | undefined {
+  const list = followupQueue[sessionID]
+  if (!list || list.length === 0) return
+  const [next, ...rest] = list
+  setFollowupQueue(sessionID, rest)
+  return next
+}
+
+function clearFollowupQueue(sessionID: string) {
+  setFollowupQueue(sessionID, [])
+}
+
 export function Prompt(props: PromptProps) {
   let input: TextareaRenderable
   let anchor: BoxRenderable
@@ -140,6 +172,15 @@ export function Prompt(props: PromptProps) {
   const list = createMemo(() => props.placeholders?.normal ?? [])
   const shell = createMemo(() => props.placeholders?.shell ?? [])
   const fileContextEnabled = createMemo(() => kv.get("file_context_enabled", true))
+  const followupMode = createMemo<FollowupMode>(() => {
+    const raw = kv.get("followup_mode", "queue")
+    return raw === "steer" ? "steer" : "queue"
+  })
+  const setFollowupMode = (next: FollowupMode) => kv.set("followup_mode", next)
+  const toggleFollowupMode = () => setFollowupMode(followupMode() === "queue" ? "steer" : "queue")
+  const queuedForSession = createMemo<QueuedSubmission[]>(() =>
+    props.sessionID ? (followupQueue[props.sessionID] ?? []) : [],
+  )
   const [dismissedEditorSelectionKey, setDismissedEditorSelectionKey] = createSignal<string>()
   const editorContext = createMemo(() => {
     const selection = fileContextEnabled() ? editor.selection() : undefined
@@ -294,6 +335,26 @@ export function Prompt(props: PromptProps) {
     }
   })
 
+  // Drain the follow-up queue when this session transitions back to idle.
+  // Mirrors the web app's followup-queue auto-drain: pop the next queued
+  // submission and dispatch it; the resulting busy → idle cycle will pull the
+  // next item on the following idle event.
+  createEffect(
+    on(
+      () => [props.sessionID, status().type] as const,
+      ([sessionID, type], prev) => {
+        if (!sessionID) return
+        if (!prev) return
+        const [prevSessionID, prevType] = prev
+        if (prevSessionID !== sessionID) return
+        if (prevType === "idle" || type !== "idle") return
+        const next = dequeueFollowup(sessionID)
+        if (!next) return
+        void next.dispatch()
+      },
+    ),
+  )
+
   command.register(() => {
     return [
       {
@@ -375,6 +436,7 @@ export function Prompt(props: PromptProps) {
             void sdk.client.session.abort({
               sessionID: props.sessionID,
             })
+            clearFollowupQueue(props.sessionID)
             setStore("interrupt", 0)
           }
           dialog.clear()
@@ -696,6 +758,24 @@ export function Prompt(props: PromptProps) {
         ))
       },
     },
+    {
+      title:
+        followupMode() === "queue"
+          ? "Follow-up: switch to steer (interrupt + send)"
+          : "Follow-up: switch to queue (wait for idle)",
+      value: "prompt.followup.toggle",
+      keybind: "followup_toggle",
+      category: "Prompt",
+      onSelect: (dialog) => {
+        toggleFollowupMode()
+        toast.show({
+          variant: "info",
+          message: `Follow-up mode: ${followupMode()}`,
+          duration: 2000,
+        })
+        dialog.clear()
+      },
+    },
   ])
 
   async function submit() {
@@ -830,51 +910,60 @@ export function Prompt(props: PromptProps) {
           ]
         : []
 
-    if (store.mode === "shell") {
-      void sdk.client.session.shell({
-        sessionID,
-        agent: agent.name,
-        model: {
-          providerID: selectedModel.providerID,
-          modelID: selectedModel.modelID,
-        },
-        command: inputText,
-      })
-      setStore("mode", "normal")
-    } else if (
+    // Detect a custom slash command up front so the dispatch closure does not
+    // need to re-parse the text and so the disposition logic below can route
+    // commands the same way the web app does (steer = abort+send, queue =
+    // delay until idle).
+    const isCustomCommand =
+      currentMode !== "shell" &&
       inputText.startsWith("/") &&
       iife(() => {
         const firstLine = inputText.split("\n")[0]
         const command = firstLine.split(" ")[0].slice(1)
         return sync.data.command.some((x) => x.name === command)
       })
-    ) {
-      // Parse command from first line, preserve multi-line content in arguments
-      const firstLineEnd = inputText.indexOf("\n")
-      const firstLine = firstLineEnd === -1 ? inputText : inputText.slice(0, firstLineEnd)
-      const [command, ...firstLineArgs] = firstLine.split(" ")
-      const restOfInput = firstLineEnd === -1 ? "" : inputText.slice(firstLineEnd + 1)
-      const args = firstLineArgs.join(" ") + (restOfInput ? "\n" + restOfInput : "")
 
-      void sdk.client.session.command({
-        sessionID,
-        command: command.slice(1),
-        arguments: args,
-        agent: agent.name,
-        model: `${selectedModel.providerID}/${selectedModel.modelID}`,
-        messageID,
-        variant,
-        parts: nonTextParts
-          .filter((x) => x.type === "file")
-          .map((x) => ({
-            id: PartID.ascending(),
-            ...x,
-          })),
-      })
-    } else {
+    // Build a single dispatch closure that captures all the state needed to
+    // send this submission later (queue drain) or now (immediate / steer).
+    const dispatch = async () => {
+      if (currentMode === "shell") {
+        void sdk.client.session.shell({
+          sessionID: sessionID!,
+          agent: agent.name,
+          model: {
+            providerID: selectedModel.providerID,
+            modelID: selectedModel.modelID,
+          },
+          command: inputText,
+        })
+        return
+      }
+      if (isCustomCommand) {
+        const firstLineEnd = inputText.indexOf("\n")
+        const firstLine = firstLineEnd === -1 ? inputText : inputText.slice(0, firstLineEnd)
+        const [command, ...firstLineArgs] = firstLine.split(" ")
+        const restOfInput = firstLineEnd === -1 ? "" : inputText.slice(firstLineEnd + 1)
+        const args = firstLineArgs.join(" ") + (restOfInput ? "\n" + restOfInput : "")
+        void sdk.client.session.command({
+          sessionID: sessionID!,
+          command: command.slice(1),
+          arguments: args,
+          agent: agent.name,
+          model: `${selectedModel.providerID}/${selectedModel.modelID}`,
+          messageID,
+          variant,
+          parts: nonTextParts
+            .filter((x) => x.type === "file")
+            .map((x) => ({
+              id: PartID.ascending(),
+              ...x,
+            })),
+        })
+        return
+      }
       sdk.client.session
         .prompt({
-          sessionID,
+          sessionID: sessionID!,
           ...selectedModel,
           messageID,
           agent: agent.name,
@@ -892,6 +981,42 @@ export function Prompt(props: PromptProps) {
         })
         .catch(() => {})
       lastSubmittedEditorSelectionKey = currentEditorSelectionKey
+    }
+
+    // Resolve queue / steer / send. Matches packages/app/src/components/
+    // prompt-input/submit.ts:resolveFollowupDisposition: new sessions and
+    // shell mode always send; otherwise busy + queue-mode buffers the draft
+    // and busy + steer-mode aborts before sending.
+    const wasNewSession = !props.sessionID
+    const statusType = status().type
+    const disposition: "send" | "queue" | "steer" =
+      wasNewSession || currentMode === "shell" || statusType === "idle"
+        ? "send"
+        : followupMode() === "steer"
+          ? "steer"
+          : "queue"
+
+    if (disposition === "queue" && props.sessionID) {
+      enqueueFollowup(props.sessionID, {
+        id: messageID,
+        sessionID: props.sessionID,
+        inputPreview: inputText.slice(0, 120),
+        dispatch,
+      })
+      toast.show({
+        variant: "info",
+        message: `Queued (${(followupQueue[props.sessionID]?.length ?? 0)})`,
+        duration: 1500,
+      })
+    } else {
+      if (disposition === "steer" && props.sessionID) {
+        await sdk.client.session.abort({ sessionID: props.sessionID }).catch(() => undefined)
+      }
+      void dispatch()
+    }
+
+    if (currentMode === "shell") {
+      setStore("mode", "normal")
     }
     history.append({
       ...store.prompt,
@@ -1432,6 +1557,18 @@ export function Prompt(props: PromptProps) {
                   })()}
                 </box>
               </box>
+              <Show when={status().type !== "retry"}>
+                <text fg={theme.text}>
+                  {keybind.print("followup_toggle")}{" "}
+                  <span style={{ fg: theme.textMuted }}>
+                    {followupMode() === "queue"
+                      ? queuedForSession().length > 0
+                        ? `queue (${queuedForSession().length})`
+                        : "queue"
+                      : "steer"}
+                  </span>
+                </text>
+              </Show>
               <text fg={store.interrupt > 0 ? theme.primary : theme.text}>
                 esc{" "}
                 <span style={{ fg: store.interrupt > 0 ? theme.primary : theme.textMuted }}>

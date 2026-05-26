@@ -3148,3 +3148,229 @@ describe("ProviderTransform.variants", () => {
     })
   })
 })
+
+describe("ProviderTransform.message - oversized image clamping (Anthropic many-image limit)", () => {
+  // Build a minimal PNG header with the requested width/height encoded in the IHDR.
+  // The rest of the file isn't a valid PNG, but `readImageDimensions` only inspects
+  // the signature + IHDR width/height (offsets 16/20), so this is enough to drive
+  // the clamp logic in tests without bundling real screenshot bytes.
+  const fakePngBase64 = (width: number, height: number): string => {
+    const buf = Buffer.alloc(33)
+    buf[0] = 0x89
+    buf[1] = 0x50
+    buf[2] = 0x4e
+    buf[3] = 0x47
+    buf[4] = 0x0d
+    buf[5] = 0x0a
+    buf[6] = 0x1a
+    buf[7] = 0x0a
+    // IHDR length = 13
+    buf.writeUInt32BE(13, 8)
+    buf.write("IHDR", 12, "ascii")
+    buf.writeUInt32BE(width, 16)
+    buf.writeUInt32BE(height, 20)
+    // bit depth / color type / compression / filter / interlace (any values)
+    buf[24] = 0x08
+    buf[25] = 0x06
+    buf[26] = 0x00
+    buf[27] = 0x00
+    buf[28] = 0x00
+    // CRC bytes left at zero — we don't validate.
+    return buf.toString("base64")
+  }
+
+  const dataUrl = (width: number, height: number) => `data:image/png;base64,${fakePngBase64(width, height)}`
+
+  const anthropicModel = {
+    id: "anthropic/claude-sonnet-4-7",
+    providerID: "anthropic",
+    api: {
+      id: "claude-sonnet-4-7",
+      url: "https://api.anthropic.com",
+      npm: "@ai-sdk/anthropic",
+    },
+    name: "Claude Sonnet 4.7",
+    capabilities: {
+      temperature: true,
+      reasoning: true,
+      attachment: true,
+      toolcall: true,
+      input: { text: true, audio: false, image: true, video: false, pdf: true },
+      output: { text: true, audio: false, image: false, video: false, pdf: false },
+      interleaved: false,
+    },
+    cost: { input: 0.003, output: 0.015, cache: { read: 0.0003, write: 0.00375 } },
+    limit: { context: 200000, output: 8192 },
+    status: "active",
+    options: {},
+    headers: {},
+  } as any
+
+  const openaiModel = {
+    ...anthropicModel,
+    id: "openai/gpt-4o",
+    providerID: "openai",
+    api: { id: "gpt-4o", url: "https://api.openai.com", npm: "@ai-sdk/openai" },
+  } as any
+
+  test("replaces every oversized image in a many-image request, preserves the rest", () => {
+    // Regression: the original bug report had 20+ screenshot attachments in a single
+    // Anthropic call. The provider rejected the entire request because at least one
+    // image exceeded 2000px. The guard must clamp only the oversized ones and leave
+    // every other image, text, and structural part untouched.
+    const msgs = [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Look at these screenshots" },
+          { type: "image", image: dataUrl(1920, 1080) }, // ok
+          { type: "image", image: dataUrl(1920, 1080) }, // ok
+          { type: "image", image: dataUrl(3000, 1500) }, // oversized
+          { type: "image", image: dataUrl(1920, 6000) }, // oversized
+          { type: "image", image: dataUrl(1500, 1500) }, // ok
+        ],
+      },
+    ] as any[]
+
+    const result = ProviderTransform.message(msgs, anthropicModel, {}) as any[]
+
+    expect(result).toHaveLength(1)
+    const content = result[0].content
+    expect(content).toHaveLength(6)
+    expect(content[0]).toEqual({ type: "text", text: "Look at these screenshots" })
+    expect(content[1].type).toBe("image")
+    expect(content[2].type).toBe("image")
+    expect(content[3]).toEqual({
+      type: "text",
+      text: expect.stringContaining("[Image omitted"),
+    })
+    expect(content[4]).toEqual({
+      type: "text",
+      text: expect.stringContaining("[Image omitted"),
+    })
+    expect(content[5].type).toBe("image")
+  })
+
+  test("does not clamp images for non-Anthropic providers (OpenAI has no 2000px many-image limit)", () => {
+    const msgs = [
+      {
+        role: "user",
+        content: [
+          { type: "image", image: dataUrl(3000, 3000) },
+          { type: "image", image: dataUrl(3000, 3000) },
+          { type: "image", image: dataUrl(3000, 3000) },
+          { type: "image", image: dataUrl(3000, 3000) },
+          { type: "image", image: dataUrl(3000, 3000) },
+          { type: "image", image: dataUrl(3000, 3000) },
+        ],
+      },
+    ] as any[]
+
+    const result = ProviderTransform.message(msgs, openaiModel, {}) as any[]
+
+    for (const part of result[0].content) {
+      expect(part.type).toBe("image")
+    }
+  })
+
+  test("counts images across multiple messages and across tool result content", () => {
+    const msgs = [
+      {
+        role: "user",
+        content: [
+          { type: "image", image: dataUrl(1024, 1024) },
+          { type: "image", image: dataUrl(1024, 1024) },
+        ],
+      },
+      {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: "call_1",
+            toolName: "browse",
+            output: {
+              type: "content",
+              value: [
+                { type: "text", text: "Captured screenshots" },
+                { type: "media", mediaType: "image/png", data: fakePngBase64(1280, 720) },
+                { type: "media", mediaType: "image/png", data: fakePngBase64(1920, 4500) }, // oversized
+                { type: "media", mediaType: "image/png", data: fakePngBase64(1280, 720) },
+              ],
+            },
+          },
+        ],
+      },
+      {
+        role: "user",
+        content: [{ type: "image", image: dataUrl(800, 600) }],
+      },
+    ] as any[]
+
+    const result = ProviderTransform.message(msgs, anthropicModel, {}) as any[]
+
+    // First user message untouched (no oversized images among its own parts)
+    expect(result[0].content[0]).toEqual({ type: "image", image: dataUrl(1024, 1024) })
+    expect(result[0].content[1]).toEqual({ type: "image", image: dataUrl(1024, 1024) })
+
+    // Tool result: only the oversized media item is replaced
+    const toolValue = result[1].content[0].output.value
+    expect(toolValue).toHaveLength(4)
+    expect(toolValue[0]).toEqual({ type: "text", text: "Captured screenshots" })
+    expect(toolValue[1].type).toBe("media")
+    expect(toolValue[2]).toEqual({
+      type: "text",
+      text: expect.stringContaining("[Image omitted"),
+    })
+    expect(toolValue[3].type).toBe("media")
+
+    // Third message untouched
+    expect(result[2].content[0]).toEqual({ type: "image", image: dataUrl(800, 600) })
+  })
+
+  test("clamps file parts with image mediaType (URL form) the same as image parts", () => {
+    const msgs = [
+      {
+        role: "user",
+        content: [
+          { type: "file", mediaType: "image/png", url: dataUrl(1024, 1024) },
+          { type: "file", mediaType: "image/png", url: dataUrl(1024, 1024) },
+          { type: "file", mediaType: "image/png", url: dataUrl(4096, 4096) }, // oversized
+          { type: "file", mediaType: "image/png", url: dataUrl(1024, 1024) },
+          { type: "file", mediaType: "image/png", url: dataUrl(1024, 1024) },
+        ],
+      },
+    ] as any[]
+
+    const result = ProviderTransform.message(msgs, anthropicModel, {}) as any[]
+
+    expect(result[0].content).toHaveLength(5)
+    expect(result[0].content[2]).toEqual({
+      type: "text",
+      text: expect.stringContaining("[Image omitted"),
+    })
+    for (const i of [0, 1, 3, 4]) {
+      expect(result[0].content[i].type).toBe("file")
+    }
+  })
+
+  test("non-data URL images (https://...) are left untouched even in many-image requests", () => {
+    const httpUrl = "https://example.com/big.png"
+    const msgs = [
+      {
+        role: "user",
+        content: [
+          { type: "image", image: dataUrl(1024, 1024) },
+          { type: "image", image: dataUrl(1024, 1024) },
+          { type: "image", image: dataUrl(1024, 1024) },
+          { type: "image", image: dataUrl(1024, 1024) },
+          { type: "image", image: httpUrl },
+        ],
+      },
+    ] as any[]
+
+    const result = ProviderTransform.message(msgs, anthropicModel, {}) as any[]
+
+    expect(result[0].content[4]).toEqual({ type: "image", image: httpUrl })
+  })
+})

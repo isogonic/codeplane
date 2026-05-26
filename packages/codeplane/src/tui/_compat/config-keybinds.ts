@@ -116,6 +116,7 @@ const KeybindsSchema = Schema.Struct({
   plugin_manager: keybind("none", "Open plugin manager dialog"),
   display_thinking: keybind("none", "Toggle thinking blocks visibility"),
   permissions_autoaccept: keybind("<leader>p", "Toggle permission auto-accept for the current session"),
+  followup_toggle: keybind("<leader>f", "Toggle follow-up disposition (queue vs steer) when sending while busy"),
 }).annotate({ identifier: "KeybindsConfig" })
 
 export type Keybinds = Schema.Schema.Type<typeof KeybindsSchema>

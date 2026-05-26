@@ -320,8 +320,220 @@ function unsupportedParts(msgs: ModelMessage[], model: Provider.Model): ModelMes
   })
 }
 
+// Anthropic enforces a 2000-pixel per-side limit on images only when a
+// request contains many images. Above the (undocumented) "many image"
+// threshold, larger images cause:
+//   messages.N.content.M.image.source.base64.data: At least one of the image
+//   dimensions exceed max allowed size for many-image requests: 2000 pixels
+// This typically fires when an agent has accumulated lots of full-page browse
+// screenshots, high-DPI desktop captures, or user-pasted images. We can't
+// resize losslessly inside the Bun-compiled standalone binary (no native
+// image library is bundled), so when we detect an oversized image inside a
+// many-image request to an Anthropic-family model we strip it and leave an
+// informative marker behind so the model knows what happened and can ask the
+// user / a tool to re-capture at a smaller size.
+//
+// Single-image (or few-image) requests are unaffected — Anthropic accepts
+// larger images in that regime, and stripping them would needlessly degrade
+// the conversation.
+const ANTHROPIC_IMAGE_MAX_DIM = 2000
+const MANY_IMAGE_THRESHOLD = 5
+
+function isAnthropicTarget(model: Provider.Model): boolean {
+  if (model.api.npm === "@ai-sdk/gateway") return false
+  return (
+    model.providerID === "anthropic" ||
+    model.providerID === "google-vertex-anthropic" ||
+    model.api.id.includes("anthropic") ||
+    model.api.id.includes("claude") ||
+    model.id.includes("anthropic") ||
+    model.id.includes("claude") ||
+    model.api.npm === "@ai-sdk/anthropic" ||
+    model.api.npm === "@ai-sdk/google-vertex/anthropic" ||
+    model.api.npm === "@ai-sdk/amazon-bedrock"
+  )
+}
+
+// Decode width/height from PNG/JPEG/GIF/WebP byte headers. Returns null when
+// the format is unrecognized or the header is truncated. We never throw — an
+// unparseable image just passes through unchanged.
+function imageDimensions(bytes: Uint8Array): { width: number; height: number } | null {
+  if (bytes.length < 24) return null
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+
+  // PNG: signature + IHDR width/height at offsets 16/20 (big-endian 32-bit)
+  const pngSig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
+  if (pngSig.every((value, index) => bytes[index] === value)) {
+    return { width: view.getUint32(16), height: view.getUint32(20) }
+  }
+
+  // JPEG: SOI (FF D8) then walk segments looking for the first SOF (FFC0..FFCF,
+  // excluding FFC4/FFC8/FFCC which are not SOF markers)
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) {
+    let i = 2
+    while (i < bytes.length - 1) {
+      if (bytes[i] !== 0xff) return null
+      while (i < bytes.length && bytes[i] === 0xff) i++
+      if (i >= bytes.length) return null
+      const marker = bytes[i++]
+      if (marker === 0xd9 || marker === 0xda) return null
+      if (marker >= 0xd0 && marker <= 0xd7) continue
+      if (i + 2 > bytes.length) return null
+      const segLen = (bytes[i] << 8) | bytes[i + 1]
+      const isSof = marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc
+      if (isSof) {
+        if (i + 7 > bytes.length) return null
+        const height = (bytes[i + 3] << 8) | bytes[i + 4]
+        const width = (bytes[i + 5] << 8) | bytes[i + 6]
+        return { width, height }
+      }
+      if (segLen < 2) return null
+      i += segLen
+    }
+    return null
+  }
+
+  // GIF: GIF87a/GIF89a + little-endian uint16 width/height at offsets 6/8
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) {
+    return { width: view.getUint16(6, true), height: view.getUint16(8, true) }
+  }
+
+  // WebP: RIFF....WEBP then VP8 / VP8L / VP8X chunk
+  if (
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50 &&
+    bytes[12] === 0x56 &&
+    bytes[13] === 0x50 &&
+    bytes[14] === 0x38
+  ) {
+    if (bytes[15] === 0x20 && bytes.length >= 30) {
+      return {
+        width: view.getUint16(26, true) & 0x3fff,
+        height: view.getUint16(28, true) & 0x3fff,
+      }
+    }
+    if (bytes[15] === 0x4c && bytes.length >= 25) {
+      const b0 = bytes[21]
+      const b1 = bytes[22]
+      const b2 = bytes[23]
+      const b3 = bytes[24]
+      return {
+        width: 1 + (((b1 & 0x3f) << 8) | b0),
+        height: 1 + (((b3 & 0x0f) << 10) | (b2 << 2) | ((b1 & 0xc0) >> 6)),
+      }
+    }
+    if (bytes[15] === 0x58 && bytes.length >= 30) {
+      return {
+        width: 1 + (bytes[24] | (bytes[25] << 8) | (bytes[26] << 16)),
+        height: 1 + (bytes[27] | (bytes[28] << 8) | (bytes[29] << 16)),
+      }
+    }
+  }
+
+  return null
+}
+
+function dimensionsFromBase64(b64: string): { width: number; height: number } | null {
+  if (!b64) return null
+  try {
+    const buf = Buffer.from(b64, "base64")
+    return imageDimensions(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength))
+  } catch {
+    return null
+  }
+}
+
+function dimensionsFromDataUrl(value: unknown): { width: number; height: number } | null {
+  if (typeof value !== "string") return null
+  if (!value.startsWith("data:")) return null
+  const match = value.match(/^data:([^;]+);base64,(.+)$/)
+  if (!match) return null
+  return dimensionsFromBase64(match[2])
+}
+
+function isImageMediaType(value: unknown): value is string {
+  return typeof value === "string" && value.startsWith("image/")
+}
+
+function oversizedPlaceholder(opts: { width: number; height: number; maxDim: number }): {
+  type: "text"
+  text: string
+} {
+  return {
+    type: "text",
+    text:
+      `[Image omitted: ${opts.width}\u00d7${opts.height} exceeds the provider's ` +
+      `${opts.maxDim}-pixel per-side limit for many-image requests. Re-capture the screenshot ` +
+      `at a smaller size or send fewer large images per turn if needed.]`,
+  }
+}
+
+function countImageParts(msgs: ModelMessage[]): number {
+  let total = 0
+  for (const msg of msgs) {
+    if (!Array.isArray(msg.content)) continue
+    for (const part of msg.content as any[]) {
+      if (part?.type === "image") total++
+      else if (part?.type === "file" && isImageMediaType(part.mediaType)) total++
+      else if (part?.type === "tool-result" && part.output?.type === "content" && Array.isArray(part.output.value)) {
+        for (const item of part.output.value as any[]) {
+          if (item?.type === "media" && isImageMediaType(item.mediaType)) total++
+        }
+      }
+    }
+  }
+  return total
+}
+
+function clampOversizedImages(msgs: ModelMessage[], maxDim: number, threshold: number): ModelMessage[] {
+  if (countImageParts(msgs) < threshold) return msgs
+
+  return msgs.map((msg) => {
+    if (!Array.isArray(msg.content)) return msg
+    const next = (msg.content as any[]).map((part) => {
+      if (part?.type === "image") {
+        const dim = dimensionsFromDataUrl(part.image)
+        if (dim && (dim.width > maxDim || dim.height > maxDim)) {
+          return oversizedPlaceholder({ width: dim.width, height: dim.height, maxDim })
+        }
+        return part
+      }
+      if (part?.type === "file" && isImageMediaType(part.mediaType)) {
+        const dim = dimensionsFromDataUrl(part.url) ?? dimensionsFromDataUrl(part.data)
+        if (dim && (dim.width > maxDim || dim.height > maxDim)) {
+          return oversizedPlaceholder({ width: dim.width, height: dim.height, maxDim })
+        }
+        return part
+      }
+      if (part?.type === "tool-result" && part.output?.type === "content" && Array.isArray(part.output.value)) {
+        const value = (part.output.value as any[]).map((item) => {
+          if (item?.type === "media" && isImageMediaType(item.mediaType)) {
+            const dim = dimensionsFromBase64(String(item.data ?? ""))
+            if (dim && (dim.width > maxDim || dim.height > maxDim)) {
+              return oversizedPlaceholder({ width: dim.width, height: dim.height, maxDim })
+            }
+          }
+          return item
+        })
+        return { ...part, output: { ...part.output, value } }
+      }
+      return part
+    })
+    return { ...msg, content: next } as ModelMessage
+  })
+}
+
 export function message(msgs: ModelMessage[], model: Provider.Model, options: Record<string, unknown>) {
   msgs = unsupportedParts(msgs, model)
+  if (isAnthropicTarget(model)) {
+    msgs = clampOversizedImages(msgs, ANTHROPIC_IMAGE_MAX_DIM, MANY_IMAGE_THRESHOLD)
+  }
   msgs = normalizeMessages(msgs, model, options)
   if (
     (model.providerID === "anthropic" ||
