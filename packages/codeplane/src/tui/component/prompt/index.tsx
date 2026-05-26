@@ -928,19 +928,20 @@ export function Prompt(props: PromptProps) {
     loadPrompt(restored, "normal")
   }
 
-  // "Send now": promote this job to position 0 in the server queue. The
-  // worker picks head-of-queue next as soon as the active turn finishes;
-  // `abortFirst` cancels the active turn so the promoted item runs
-  // immediately rather than after the current one.
-  async function sendQueuedFollowup(id: string, abortFirst = true) {
+  // "Send now": promote this job to the head of the queue so the worker
+  // picks it next, as soon as the active turn finishes. We do NOT call
+  // session.abort first — that's session-wide and would server-cancel
+  // every other pending job in the queue (matches the user-reported bug
+  // "click send on one item → all items get aborted"). If the user wants
+  // to interrupt the active turn AND run a queued item immediately, they
+  // can use the dedicated interrupt command (double-tap), but that intent
+  // is "stop everything," not "skip ahead."
+  async function sendQueuedFollowup(id: string) {
     const sessionID = props.sessionID
     if (!sessionID) return
     const pending = (sync.data.prompt_queue?.[sessionID] ?? []).filter((j) => j.status === "pending")
     if (!pending.some((j) => j.id === id)) return
     const reordered = [id, ...pending.filter((j) => j.id !== id).map((j) => j.id)]
-    if (abortFirst && status().type !== "idle") {
-      await sdk.client.session.abort({ sessionID }).catch(() => undefined)
-    }
     await sdk.client.session.queue.reorder({ sessionID, jobIDs: reordered }).catch(() => undefined)
     void refreshQueue(sessionID)
   }
