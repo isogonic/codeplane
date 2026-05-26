@@ -501,30 +501,35 @@ export function Prompt(props: PromptProps) {
     }
   })
 
-  // Snapshot the server-side prompt queue when the session changes so the
-  // dock paints immediately on first render. After that, the SSE event
-  // stream keeps the store fresh via session.queue.{created,updated,removed}.
-  // The snapshot races the bus events; the sync reducer is idempotent
-  // (duplicate Created is dropped; unknown Updated is treated as create).
+  // Re-snapshot the server queue for a session. Used both on session change
+  // (initial paint) and as a defensive sweep after a control command
+  // (enqueue / cancel / reorder) — if a single SSE event drops on the floor,
+  // refetching keeps the dock in sync with what the server actually has.
+  function refreshQueue(sessionID: string) {
+    return sdk.client.session.queue
+      .list({ sessionID })
+      .then((res) => {
+        if (props.sessionID !== sessionID) return
+        if (!res.data) return
+        sync.set("prompt_queue", sessionID, res.data)
+      })
+      .catch(() => {
+        // Snapshot failed (e.g. session not yet visible on server, or
+        // transient network blip). Bus events will reconcile later.
+      })
+  }
+
+  // Snapshot the server queue when the session changes so the dock paints
+  // immediately on first render. After that, the SSE event stream keeps the
+  // store fresh via session.queue.{created,updated,removed}; the reducer is
+  // idempotent (duplicate Created is dropped; unknown Updated is treated as
+  // create) so the snapshot vs. event-stream race resolves cleanly.
   createEffect(
     on(
       () => props.sessionID,
       (sessionID) => {
         if (!sessionID) return
-        const started = sessionID
-        void sdk.client.session.queue
-          .list({ sessionID })
-          .then((res) => {
-            if (props.sessionID !== started) return
-            if (!res.data) return
-            // Replace the per-session entry wholesale — easier than diffing
-            // and the dock immediately reflects whatever the server believes.
-            sync.set("prompt_queue", sessionID, res.data)
-          })
-          .catch(() => {
-            // Snapshot failed (e.g. session not yet visible on server).
-            // Bus events will fill in on first enqueue.
-          })
+        void refreshQueue(sessionID)
       },
     ),
   )
@@ -937,12 +942,16 @@ export function Prompt(props: PromptProps) {
       await sdk.client.session.abort({ sessionID }).catch(() => undefined)
     }
     await sdk.client.session.queue.reorder({ sessionID, jobIDs: reordered }).catch(() => undefined)
+    void refreshQueue(sessionID)
   }
 
   function deleteQueuedFollowup(id: string) {
     const sessionID = props.sessionID
     if (!sessionID) return
-    void sdk.client.session.queue.cancel({ sessionID, jobID: id }).catch(() => undefined)
+    void sdk.client.session.queue
+      .cancel({ sessionID, jobID: id })
+      .then(() => refreshQueue(sessionID))
+      .catch(() => undefined)
   }
 
   function moveQueuedFollowup(id: string, direction: -1 | 1) {
@@ -958,6 +967,7 @@ export function Prompt(props: PromptProps) {
     next.splice(to, 0, moved)
     void sdk.client.session.queue
       .reorder({ sessionID, jobIDs: next.map((j) => j.id) })
+      .then(() => refreshQueue(sessionID))
       .catch(() => undefined)
   }
 
@@ -1299,6 +1309,12 @@ export function Prompt(props: PromptProps) {
             },
             ...nonTextParts.map(assign),
           ],
+        })
+        .then(() => {
+          // Refresh the queue snapshot so the dock fills in even if the
+          // session.queue.created SSE event arrives late or is dropped.
+          // Cheap (one HTTP round-trip), idempotent (reducer dedupes by id).
+          if (sessionID) void refreshQueue(sessionID)
         })
         .catch(() => {})
       lastSubmittedEditorSelectionKey = currentEditorSelectionKey

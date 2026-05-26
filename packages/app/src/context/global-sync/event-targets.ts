@@ -26,6 +26,9 @@ const routeBySessionID = new Set([
   "question.replied",
   "session.diff",
   "session.status",
+  "session.queue.created",
+  "session.queue.updated",
+  "session.queue.removed",
   "todo.updated",
 ])
 

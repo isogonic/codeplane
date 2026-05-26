@@ -1750,6 +1750,28 @@ export default function Page() {
   // promptAsync. The server FIFOs per session, survives our disconnect, and
   // broadcasts `session.queue.created` so the dock fills in within one
   // round-trip. No local store — the old `followup.items` is gone.
+  // Re-snapshot the server queue for a session. Used both on session change
+  // (initial paint) and as a defensive sweep after we send a control command
+  // (enqueue / cancel / reorder) — if a single SSE event drops on the floor,
+  // refetching keeps the dock in sync with what the server actually has.
+  const refreshQueue = (sessionID: string, directory: string) => {
+    const client =
+      directory === sdk.directory
+        ? sdk.client
+        : sdk.createClient({ directory, throwOnError: true })
+    return client.session.queue
+      .list({ sessionID })
+      .then((res) => {
+        if (sdk.directory !== directory) return
+        const [, setStore] = globalSync.child(directory, { bootstrap: false })
+        if (!res.data) return
+        setStore("prompt_queue", sessionID, reconcile(res.data))
+      })
+      .catch(() => {
+        /* Best effort — SSE events will reconcile later. */
+      })
+  }
+
   const queueFollowup = (draft: FollowupDraft) => {
     const client =
       draft.sessionDirectory === sdk.directory
@@ -1764,7 +1786,14 @@ export default function Page() {
       // Session is already busy when we queue, so the optimistic flip
       // would be a no-op or worse, clobber a real status update.
       optimisticBusy: false,
-    }).catch((err) => fail(err))
+    })
+      .then(() => {
+        // Refresh the queue snapshot so the dock fills in even if the
+        // session.queue.created SSE event got dropped or hasn't arrived yet.
+        // Cheap (one HTTP round-trip) and idempotent (reducer dedupes by id).
+        void refreshQueue(draft.sessionID, draft.sessionDirectory)
+      })
+      .catch((err) => fail(err))
   }
 
   // "Send now": promote the chosen pending job to the head of its session
@@ -1794,7 +1823,10 @@ export default function Page() {
     const job = serverQueue().find((entry) => entry.id === id)
     if (!job) return
 
-    void sdk.client.session.queue.cancel({ sessionID, jobID: job.id }).catch((err) => fail(err))
+    void sdk.client.session.queue
+      .cancel({ sessionID, jobID: job.id })
+      .then(() => refreshQueue(sessionID, sdk.directory))
+      .catch((err) => fail(err))
 
     let parsed: { parts?: Array<{ type?: string; text?: string }> } = {}
     try {
@@ -1817,7 +1849,10 @@ export default function Page() {
     const sessionID = params.id
     if (!sessionID) return
     setFollowup("edit", sessionID, (value) => (value?.id === id ? undefined : value))
-    void sdk.client.session.queue.cancel({ sessionID, jobID: id }).catch((err) => fail(err))
+    void sdk.client.session.queue
+      .cancel({ sessionID, jobID: id })
+      .then(() => refreshQueue(sessionID, sdk.directory))
+      .catch((err) => fail(err))
   }
 
   // Reorder: pass the full intended order through to the server. The server
@@ -1827,13 +1862,20 @@ export default function Page() {
   // will reconcile the dock to whatever actually happened.
   const reorderFollowup = (sessionID: string, ids: string[]) => {
     if (ids.length === 0) return
-    void sdk.client.session.queue.reorder({ sessionID, jobIDs: ids }).catch((err) => {
-      // 409 conflict (row state changed mid-flight) is expected during
-      // rapid drag interactions; let the next sync event correct the dock.
-      const status = (err as { response?: { status?: number } })?.response?.status
-      if (status === 409) return
-      fail(err)
-    })
+    void sdk.client.session.queue
+      .reorder({ sessionID, jobIDs: ids })
+      .then(() => refreshQueue(sessionID, sdk.directory))
+      .catch((err) => {
+        // 409 conflict (row state changed mid-flight) is expected during
+        // rapid drag interactions; refresh the snapshot so the dock matches
+        // what the server actually has.
+        const status = (err as { response?: { status?: number } })?.response?.status
+        if (status === 409) {
+          void refreshQueue(sessionID, sdk.directory)
+          return
+        }
+        fail(err)
+      })
   }
 
   const clearFollowupEdit = () => {
