@@ -3,7 +3,7 @@
   "info": {
     "title": "codeplane",
     "description": "codeplane api",
-    "version": "29.0.4"
+    "version": "29.0.11"
   },
   "paths": {
     "/global/cron": {
@@ -5165,6 +5165,376 @@
         ]
       }
     },
+    "/session/{sessionID}/queue": {
+      "get": {
+        "operationId": "session.queue.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sessionID",
+            "schema": {
+              "type": "string",
+              "pattern": "^ses.*"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "all",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "summary": "List queued prompt jobs",
+        "description": "Snapshot of the per-session prompt queue. Returns jobs in run order (sort_order first, then id). Use this on first paint; subscribe to the SSE stream's session.queue.* events for live updates.",
+        "responses": {
+          "200": {
+            "description": "List of jobs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^pjob.*"
+                      },
+                      "sessionID": {
+                        "type": "string",
+                        "pattern": "^ses.*"
+                      },
+                      "directory": {
+                        "type": "string"
+                      },
+                      "payload": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": ["pending", "running", "completed", "failed", "cancelled"]
+                      },
+                      "attempt": {
+                        "type": "number"
+                      },
+                      "maxAttempts": {
+                        "type": "number"
+                      },
+                      "nextRunAt": {
+                        "type": "number"
+                      },
+                      "timeStarted": {
+                        "type": "number"
+                      },
+                      "timeCompleted": {
+                        "type": "number"
+                      },
+                      "errorMessage": {
+                        "type": "string"
+                      },
+                      "sortOrder": {
+                        "type": "number"
+                      },
+                      "timeCreated": {
+                        "type": "number"
+                      },
+                      "timeUpdated": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "sessionID",
+                      "directory",
+                      "payload",
+                      "status",
+                      "attempt",
+                      "maxAttempts",
+                      "timeCreated",
+                      "timeUpdated"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.queue.list({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/session/{sessionID}/queue/{jobID}": {
+      "delete": {
+        "operationId": "session.queue.cancel",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sessionID",
+            "schema": {
+              "type": "string",
+              "pattern": "^ses.*"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "jobID",
+            "schema": {
+              "type": "string",
+              "pattern": "^pjob.*"
+            },
+            "required": true
+          }
+        ],
+        "summary": "Cancel a queued or running prompt job",
+        "description": "Idempotent: cancelling an already-terminal job is a no-op. For a running job this also signals the worker to abort the in-flight turn.",
+        "responses": {
+          "204": {
+            "description": "Cancelled"
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.queue.cancel({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/session/{sessionID}/queue/reorder": {
+      "post": {
+        "operationId": "session.queue.reorder",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sessionID",
+            "schema": {
+              "type": "string",
+              "pattern": "^ses.*"
+            },
+            "required": true
+          }
+        ],
+        "summary": "Reorder pending prompt jobs",
+        "description": "Rewrite the run order for the session's pending jobs. Caller passes the complete intended order; running / completed / failed / cancelled rows are not allowed in the input. Returns the affected jobs in their new order.",
+        "responses": {
+          "200": {
+            "description": "Reordered jobs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^pjob.*"
+                      },
+                      "sessionID": {
+                        "type": "string",
+                        "pattern": "^ses.*"
+                      },
+                      "directory": {
+                        "type": "string"
+                      },
+                      "payload": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": ["pending", "running", "completed", "failed", "cancelled"]
+                      },
+                      "attempt": {
+                        "type": "number"
+                      },
+                      "maxAttempts": {
+                        "type": "number"
+                      },
+                      "nextRunAt": {
+                        "type": "number"
+                      },
+                      "timeStarted": {
+                        "type": "number"
+                      },
+                      "timeCompleted": {
+                        "type": "number"
+                      },
+                      "errorMessage": {
+                        "type": "string"
+                      },
+                      "sortOrder": {
+                        "type": "number"
+                      },
+                      "timeCreated": {
+                        "type": "number"
+                      },
+                      "timeUpdated": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "sessionID",
+                      "directory",
+                      "payload",
+                      "status",
+                      "attempt",
+                      "maxAttempts",
+                      "timeCreated",
+                      "timeUpdated"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "jobIDs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^pjob.*"
+                    }
+                  }
+                },
+                "required": ["jobIDs"]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.session.queue.reorder({\n  ...\n})"
+          }
+        ]
+      }
+    },
     "/session/{sessionID}/command": {
       "post": {
         "operationId": "session.command",
@@ -9353,6 +9723,192 @@
         },
         "required": ["type", "properties"]
       },
+      "Event.session.queue.created": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "session.queue.created"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "sessionID": {
+                "type": "string",
+                "pattern": "^ses.*"
+              },
+              "job": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^pjob.*"
+                  },
+                  "sessionID": {
+                    "type": "string",
+                    "pattern": "^ses.*"
+                  },
+                  "directory": {
+                    "type": "string"
+                  },
+                  "payload": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": ["pending", "running", "completed", "failed", "cancelled"]
+                  },
+                  "attempt": {
+                    "type": "number"
+                  },
+                  "maxAttempts": {
+                    "type": "number"
+                  },
+                  "nextRunAt": {
+                    "type": "number"
+                  },
+                  "timeStarted": {
+                    "type": "number"
+                  },
+                  "timeCompleted": {
+                    "type": "number"
+                  },
+                  "errorMessage": {
+                    "type": "string"
+                  },
+                  "sortOrder": {
+                    "type": "number"
+                  },
+                  "timeCreated": {
+                    "type": "number"
+                  },
+                  "timeUpdated": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "sessionID",
+                  "directory",
+                  "payload",
+                  "status",
+                  "attempt",
+                  "maxAttempts",
+                  "timeCreated",
+                  "timeUpdated"
+                ]
+              }
+            },
+            "required": ["sessionID", "job"]
+          }
+        },
+        "required": ["type", "properties"]
+      },
+      "Event.session.queue.updated": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "session.queue.updated"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "sessionID": {
+                "type": "string",
+                "pattern": "^ses.*"
+              },
+              "job": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^pjob.*"
+                  },
+                  "sessionID": {
+                    "type": "string",
+                    "pattern": "^ses.*"
+                  },
+                  "directory": {
+                    "type": "string"
+                  },
+                  "payload": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": ["pending", "running", "completed", "failed", "cancelled"]
+                  },
+                  "attempt": {
+                    "type": "number"
+                  },
+                  "maxAttempts": {
+                    "type": "number"
+                  },
+                  "nextRunAt": {
+                    "type": "number"
+                  },
+                  "timeStarted": {
+                    "type": "number"
+                  },
+                  "timeCompleted": {
+                    "type": "number"
+                  },
+                  "errorMessage": {
+                    "type": "string"
+                  },
+                  "sortOrder": {
+                    "type": "number"
+                  },
+                  "timeCreated": {
+                    "type": "number"
+                  },
+                  "timeUpdated": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "sessionID",
+                  "directory",
+                  "payload",
+                  "status",
+                  "attempt",
+                  "maxAttempts",
+                  "timeCreated",
+                  "timeUpdated"
+                ]
+              }
+            },
+            "required": ["sessionID", "job"]
+          }
+        },
+        "required": ["type", "properties"]
+      },
+      "Event.session.queue.removed": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "session.queue.removed"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "sessionID": {
+                "type": "string",
+                "pattern": "^ses.*"
+              },
+              "jobID": {
+                "type": "string",
+                "pattern": "^pjob.*"
+              }
+            },
+            "required": ["sessionID", "jobID"]
+          }
+        },
+        "required": ["type", "properties"]
+      },
       "Event.worktree.ready": {
         "type": "object",
         "properties": {
@@ -13303,6 +13859,15 @@
                 "$ref": "#/components/schemas/Event.command.executed"
               },
               {
+                "$ref": "#/components/schemas/Event.session.queue.created"
+              },
+              {
+                "$ref": "#/components/schemas/Event.session.queue.updated"
+              },
+              {
+                "$ref": "#/components/schemas/Event.session.queue.removed"
+              },
+              {
                 "$ref": "#/components/schemas/Event.worktree.ready"
               },
               {
@@ -15488,6 +16053,16 @@
         },
         "required": ["type", "prompt", "description", "agent"]
       },
+      "ConflictError": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "data": {}
+        },
+        "required": ["name", "data"]
+      },
       "ProviderAuthMethod": {
         "type": "object",
         "properties": {
@@ -15837,6 +16412,15 @@
           },
           {
             "$ref": "#/components/schemas/Event.command.executed"
+          },
+          {
+            "$ref": "#/components/schemas/Event.session.queue.created"
+          },
+          {
+            "$ref": "#/components/schemas/Event.session.queue.updated"
+          },
+          {
+            "$ref": "#/components/schemas/Event.session.queue.removed"
           },
           {
             "$ref": "#/components/schemas/Event.worktree.ready"

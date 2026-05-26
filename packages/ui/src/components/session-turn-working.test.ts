@@ -39,6 +39,26 @@ describe("session-turn-working", () => {
     ).toBe(true)
   })
 
+  test("stops a completed assistant turn even when session status is stale busy", () => {
+    expect(
+      isSessionTurnWorking({
+        active: true,
+        status: busy,
+        assistantMessages: [assistant(3)],
+      }),
+    ).toBe(false)
+  })
+
+  test("keeps an active turn working before the first assistant message arrives", () => {
+    expect(
+      isSessionTurnWorking({
+        active: true,
+        status: busy,
+        assistantMessages: [],
+      }),
+    ).toBe(true)
+  })
+
   test("respects inactive turns", () => {
     expect(
       isSessionTurnWorking({

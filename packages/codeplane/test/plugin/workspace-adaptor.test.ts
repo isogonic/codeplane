@@ -2,6 +2,7 @@ import { afterAll, afterEach, describe, expect, test } from "bun:test"
 import { Effect } from "effect"
 import path from "path"
 import { pathToFileURL } from "url"
+import { resetDatabase } from "../fixture/db"
 import { tmpdir } from "../fixture/fixture"
 
 const disableDefault = process.env.CODEPLANE_DISABLE_DEFAULT_PLUGINS
@@ -18,9 +19,15 @@ Flag.CODEPLANE_EXPERIMENTAL_WORKSPACES = true
 
 afterEach(async () => {
   await Instance.disposeAll()
+  // Clean up the SQLite event table this test populates while
+  // CODEPLANE_EXPERIMENTAL_WORKSPACES is on. Without this, later test
+  // files (test/sync, test/workspace) see leftover EventTable rows and
+  // their length-based assertions fail when run after this one in the
+  // full suite.
+  await resetDatabase()
 })
 
-afterAll(() => {
+afterAll(async () => {
   if (disableDefault === undefined) {
     delete process.env.CODEPLANE_DISABLE_DEFAULT_PLUGINS
   } else {
@@ -28,6 +35,9 @@ afterAll(() => {
   }
 
   Flag.CODEPLANE_EXPERIMENTAL_WORKSPACES = experimental
+  // Final sweep — afterEach already ran for the last test, but a flag
+  // reset without a DB reset would let any post-init data linger.
+  await resetDatabase()
 })
 
 describe("plugin.workspace", () => {

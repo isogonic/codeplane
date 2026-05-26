@@ -170,6 +170,12 @@ import type {
   SessionPromptAsyncResponses,
   SessionPromptErrors,
   SessionPromptResponses,
+  SessionQueueCancelErrors,
+  SessionQueueCancelResponses,
+  SessionQueueListErrors,
+  SessionQueueListResponses,
+  SessionQueueReorderErrors,
+  SessionQueueReorderResponses,
   SessionRevertErrors,
   SessionRevertResponses,
   SessionShareErrors,
@@ -2106,6 +2112,119 @@ export class Worktree extends HeyApiClient {
   }
 }
 
+export class Queue extends HeyApiClient {
+  /**
+   * List queued prompt jobs
+   *
+   * Snapshot of the per-session prompt queue. Returns jobs in run order (sort_order first, then id). Use this on first paint; subscribe to the SSE stream's session.queue.* events for live updates.
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      workspace?: string
+      all?: boolean
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "query", key: "all" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<SessionQueueListResponses, SessionQueueListErrors, ThrowOnError>({
+      url: "/session/{sessionID}/queue",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Cancel a queued or running prompt job
+   *
+   * Idempotent: cancelling an already-terminal job is a no-op. For a running job this also signals the worker to abort the in-flight turn.
+   */
+  public cancel<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      jobID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "path", key: "jobID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).delete<SessionQueueCancelResponses, SessionQueueCancelErrors, ThrowOnError>(
+      {
+        url: "/session/{sessionID}/queue/{jobID}",
+        ...options,
+        ...params,
+      },
+    )
+  }
+
+  /**
+   * Reorder pending prompt jobs
+   *
+   * Rewrite the run order for the session's pending jobs. Caller passes the complete intended order; running / completed / failed / cancelled rows are not allowed in the input. Returns the affected jobs in their new order.
+   */
+  public reorder<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      workspace?: string
+      jobIDs?: Array<string>
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "jobIDs" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<SessionQueueReorderResponses, SessionQueueReorderErrors, ThrowOnError>(
+      {
+        url: "/session/{sessionID}/queue/reorder",
+        ...options,
+        ...params,
+        headers: {
+          "Content-Type": "application/json",
+          ...options?.headers,
+          ...params.headers,
+        },
+      },
+    )
+  }
+}
+
 export class Session2 extends HeyApiClient {
   /**
    * List sessions
@@ -3055,6 +3174,11 @@ export class Session2 extends HeyApiClient {
       ...options,
       ...params,
     })
+  }
+
+  private _queue?: Queue
+  get queue(): Queue {
+    return (this._queue ??= new Queue({ client: this.client }))
   }
 }
 

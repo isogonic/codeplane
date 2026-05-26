@@ -16,8 +16,15 @@ import type {
   SessionStatus,
   ProviderListResponse,
   ProviderAuthMethod,
+  SessionQueueListResponses,
   VcsInfo,
 } from "@/tui/_compat/sdk-v2"
+
+/**
+ * Mirrors `PromptQueue.Job` on the server. Lifted off the SDK list response
+ * (hey-api inlines the shape per-operation; this lifts it to a name).
+ */
+export type PromptQueueJob = NonNullable<SessionQueueListResponses[200]>[number]
 import { createStore, produce, reconcile } from "solid-js/store"
 import { useProject } from "@/tui/context/project"
 import { useEvent } from "@/tui/context/event"
@@ -79,6 +86,14 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       }
       formatter: FormatterStatus[]
       vcs: VcsInfo | undefined
+      /**
+       * Server-authoritative prompt queue, keyed by sessionID. Populated by
+       * a snapshot fetch on session change and kept fresh by
+       * session.queue.{created,updated,removed} bus events.
+       */
+      prompt_queue: {
+        [sessionID: string]: PromptQueueJob[]
+      }
     }>({
       provider_next: {
         all: [],
@@ -109,6 +124,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       mcp_resource: {},
       formatter: [],
       vcs: undefined,
+      prompt_queue: {},
     })
 
     const event = useEvent()
@@ -310,6 +326,71 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
 
         case "session.status": {
           setStore("session_status", event.properties.sessionID, event.properties.status)
+          break
+        }
+
+        // Server-authoritative prompt queue. Mirrors active rows (pending +
+        // running) plus `failed` ones — failed rows stay visible in the dock
+        // so the user can see the error and dismiss explicitly. `completed`
+        // and `cancelled` are pruned as they arrive.
+        case "session.queue.created": {
+          const { sessionID, job } = event.properties as { sessionID: string; job: PromptQueueJob }
+          const existing = store.prompt_queue[sessionID]
+          if (!existing) {
+            setStore("prompt_queue", sessionID, [job])
+            break
+          }
+          // Idempotent: snapshot fetch can race the SSE backfill.
+          if (existing.some((j) => j.id === job.id)) break
+          setStore(
+            "prompt_queue",
+            sessionID,
+            produce<PromptQueueJob[]>((draft) => {
+              draft.push(job)
+            }),
+          )
+          break
+        }
+        case "session.queue.updated": {
+          const { sessionID, job } = event.properties as { sessionID: string; job: PromptQueueJob }
+          const terminal = job.status === "completed" || job.status === "cancelled"
+          const existing = store.prompt_queue[sessionID]
+          if (!existing) {
+            if (!terminal) setStore("prompt_queue", sessionID, [job])
+            break
+          }
+          setStore(
+            "prompt_queue",
+            sessionID,
+            produce<PromptQueueJob[]>((draft) => {
+              const index = draft.findIndex((j) => j.id === job.id)
+              if (terminal) {
+                if (index >= 0) draft.splice(index, 1)
+                return
+              }
+              if (index < 0) {
+                // Updated arrived before Created (snapshot still in flight).
+                // Treat the row as authoritative — add and reconcile later.
+                draft.push(job)
+                return
+              }
+              draft[index] = job
+            }),
+          )
+          break
+        }
+        case "session.queue.removed": {
+          const { sessionID, jobID } = event.properties as { sessionID: string; jobID: string }
+          const existing = store.prompt_queue[sessionID]
+          if (!existing) break
+          setStore(
+            "prompt_queue",
+            sessionID,
+            produce<PromptQueueJob[]>((draft) => {
+              const index = draft.findIndex((j) => j.id === jobID)
+              if (index >= 0) draft.splice(index, 1)
+            }),
+          )
           break
         }
 

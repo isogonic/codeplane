@@ -28,6 +28,23 @@ export const ERRORS = {
       },
     },
   },
+  409: {
+    description: "Conflict",
+    content: {
+      "application/json": {
+        schema: resolver(
+          z
+            .object({
+              name: z.string(),
+              data: z.any(),
+            })
+            .meta({
+              ref: "ConflictError",
+            }),
+        ),
+      },
+    },
+  },
   500: {
     description: "Internal server error",
     content: {

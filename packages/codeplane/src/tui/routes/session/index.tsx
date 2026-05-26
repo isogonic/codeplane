@@ -1775,14 +1775,11 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
         paddingLeft={2}
         paddingRight={2}
       >
-        <code
-          filetype="markdown"
-          drawUnstyledText={false}
+        <MarkdownText
+          text={"_Thinking:_ " + content()}
+          syntax={subtleSyntax()}
           streaming={true}
-          syntaxStyle={subtleSyntax()}
-          content={"_Thinking:_ " + content()}
           conceal={ctx.conceal()}
-          fg={theme.textMuted}
         />
       </box>
     </Show>

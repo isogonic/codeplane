@@ -24,6 +24,7 @@ export const ErrorMiddleware: ErrorHandler = (err, c) => {
     else if (err.name === "ConfigInvalidError") status = 400
     else if (err.name === "ProviderAuthValidationFailed") status = 400
     else if (err.name === "CronValidationError") status = 400
+    else if (err.name === "PromptQueueConflict") status = 409
     else if (err.name.startsWith("Worktree")) status = 400
     else status = 500
     return c.json(err.toObject(), { status })

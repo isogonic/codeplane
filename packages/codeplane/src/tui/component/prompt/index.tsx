@@ -123,76 +123,54 @@ let stashed: { prompt: PromptInfo; cursor: number } | undefined
 
 export type FollowupMode = "queue" | "steer"
 
-// Queue of pending submissions per session. Each entry carries a `dispatch`
-// closure that fires the actual SDK call when the session is next idle. The
-// store is module-level so the queue survives prompt remounts within the same
-// process (e.g. dialog open/close cycles); it is keyed by sessionID so a user
-// can have independent queues across sessions.
+// Queue rows are server-authoritative: each entry mirrors a `prompt_job`
+// in the SQLite-backed `PromptQueue` table. Local state for the dock
+// (preview text, reorder, etc.) is derived from `sync.data.prompt_queue`,
+// populated by a snapshot fetch on session change and kept fresh by
+// session.queue.{created,updated,removed} bus events.
+//
+// Display name kept as `QueuedSubmission` so the existing dock component
+// keeps its prop shape; underneath, this is just a `PromptQueueJob` plus a
+// computed `inputPreview`.
 type QueuedSubmission = {
   id: string
   sessionID: string
   inputPreview: string
-  mode: "normal" | "shell"
-  prompt: PromptInfo
-  dispatch: () => Promise<unknown>
-}
-
-const [followupQueue, setFollowupQueue] = createStore<Record<string, QueuedSubmission[]>>({})
-
-function enqueueFollowup(sessionID: string, item: QueuedSubmission) {
-  setFollowupQueue(sessionID, (prev) => [...(prev ?? []), item])
-}
-
-function dequeueFollowup(sessionID: string): QueuedSubmission | undefined {
-  const list = followupQueue[sessionID]
-  if (!list || list.length === 0) return
-  const [next, ...rest] = list
-  setFollowupQueue(sessionID, rest)
-  return next
-}
-
-function takeFollowup(sessionID: string, id: string): QueuedSubmission | undefined {
-  const item = followupQueue[sessionID]?.find((entry) => entry.id === id)
-  if (!item) return undefined
-  setFollowupQueue(sessionID, (prev) => (prev ?? []).filter((entry) => entry.id !== id))
-  return item
-}
-
-function moveFollowup(sessionID: string, id: string, direction: -1 | 1) {
-  setFollowupQueue(sessionID, (prev) => {
-    const list = prev ?? []
-    const from = list.findIndex((entry) => entry.id === id)
-    const to = from + direction
-    if (from < 0 || to < 0 || to >= list.length) return list
-    const next = list.slice()
-    const [item] = next.splice(from, 1)
-    if (!item) return list
-    next.splice(to, 0, item)
-    return next
-  })
-}
-
-function clearFollowupQueue(sessionID: string) {
-  setFollowupQueue(sessionID, [])
+  status: "pending" | "running" | "failed"
 }
 
 function snapshotPromptInfo(prompt: PromptInfo): PromptInfo {
   return structuredClone(unwrap(prompt))
 }
 
-function queuedPromptPreview(prompt: PromptInfo) {
-  const text = prompt.input
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find((line) => line.length > 0)
-  if (text) return text
-
-  const file = prompt.parts.find((part) => part.type === "file")
-  if (file) return `[${file.mime === "application/pdf" ? "PDF" : "file"}: ${file.filename ?? "attachment"}]`
-
-  const agent = prompt.parts.find((part) => part.type === "agent")
-  if (agent) return `@${agent.name}`
-
+/**
+ * Best-effort preview extraction from the server's stored payload. Server
+ * stores `JSON.stringify({ parts: [...] })` — we peel out the first
+ * non-empty line of text, fall back to a file or generic placeholder. If
+ * the payload doesn't parse cleanly (older row, schema drift), we surface
+ * a placeholder rather than crash the dock.
+ */
+function previewFromPayload(payload: string): string {
+  let parsed: { parts?: Array<{ type?: string; text?: string; filename?: string }> }
+  try {
+    parsed = JSON.parse(payload)
+  } catch {
+    return "[attachment]"
+  }
+  const parts = parsed.parts ?? []
+  for (const part of parts) {
+    if (part.type === "text" && typeof part.text === "string") {
+      const line = part.text
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .find((l) => l.length > 0)
+      if (line) return line
+    }
+  }
+  const file = parts.find((p) => p.type === "file")
+  if (file?.filename) return `[file: ${file.filename}]`
+  const agent = parts.find((p) => p.type === "agent")
+  if (agent && "name" in (agent as Record<string, unknown>)) return `@${(agent as { name?: string }).name ?? "agent"}`
   return "[attachment]"
 }
 
@@ -241,7 +219,11 @@ function FollowupQueueDock(props: {
   const preview = createMemo(() => props.items[0]?.inputPreview ?? "")
   const previewWidth = createMemo(() => Math.max(16, dimensions().width - 44))
   const rowWidth = createMemo(() => Math.max(16, dimensions().width - 56))
-  const listMaxHeight = createMemo(() => Math.max(1, dimensions().height - 13))
+  // Cap the expanded queue at a few visible rows so it never crowds the
+  // transcript — beyond that, the inner scrollbox handles overflow. The
+  // `dimensions().height - 13` floor only kicks in on very short terminals
+  // where 6 rows wouldn't fit alongside the rest of the prompt chrome.
+  const listMaxHeight = createMemo(() => Math.min(6, Math.max(1, dimensions().height - 13)))
 
   return (
     <box
@@ -341,9 +323,24 @@ export function Prompt(props: PromptProps) {
   })
   const setFollowupMode = (next: FollowupMode) => kv.set("followup_mode", next)
   const toggleFollowupMode = () => setFollowupMode(followupMode() === "queue" ? "steer" : "queue")
-  const queuedForSession = createMemo<QueuedSubmission[]>(() =>
-    props.sessionID ? (followupQueue[props.sessionID] ?? []) : [],
-  )
+  // Dock items derived from the server-authoritative prompt queue. We
+  // surface pending + failed rows (failed stays visible so the user can see
+  // the error and dismiss explicitly); running is the active turn that the
+  // message timeline already represents. Items are returned in the order
+  // the server will run them (which matches their array order in the store
+  // — the reducer appends Created events).
+  const queuedForSession = createMemo<QueuedSubmission[]>(() => {
+    if (!props.sessionID) return []
+    const list = sync.data.prompt_queue?.[props.sessionID] ?? []
+    return list
+      .filter((job) => job.status === "pending" || job.status === "failed")
+      .map((job) => ({
+        id: job.id,
+        sessionID: job.sessionID,
+        inputPreview: previewFromPayload(job.payload),
+        status: job.status as "pending" | "failed",
+      }))
+  })
   const followupModeLabel = createMemo(() => {
     if (followupMode() === "steer") return "Steer"
     const count = queuedForSession().length
@@ -504,22 +501,30 @@ export function Prompt(props: PromptProps) {
     }
   })
 
-  // Drain the follow-up queue when this session transitions back to idle.
-  // Mirrors the web app's followup-queue auto-drain: pop the next queued
-  // submission and dispatch it; the resulting busy → idle cycle will pull the
-  // next item on the following idle event.
+  // Snapshot the server-side prompt queue when the session changes so the
+  // dock paints immediately on first render. After that, the SSE event
+  // stream keeps the store fresh via session.queue.{created,updated,removed}.
+  // The snapshot races the bus events; the sync reducer is idempotent
+  // (duplicate Created is dropped; unknown Updated is treated as create).
   createEffect(
     on(
-      () => [props.sessionID, status().type] as const,
-      ([sessionID, type], prev) => {
+      () => props.sessionID,
+      (sessionID) => {
         if (!sessionID) return
-        if (!prev) return
-        const [prevSessionID, prevType] = prev
-        if (prevSessionID !== sessionID) return
-        if (prevType === "idle" || type !== "idle") return
-        const next = dequeueFollowup(sessionID)
-        if (!next) return
-        void next.dispatch()
+        const started = sessionID
+        void sdk.client.session.queue
+          .list({ sessionID })
+          .then((res) => {
+            if (props.sessionID !== started) return
+            if (!res.data) return
+            // Replace the per-session entry wholesale — easier than diffing
+            // and the dock immediately reflects whatever the server believes.
+            sync.set("prompt_queue", sessionID, res.data)
+          })
+          .catch(() => {
+            // Snapshot failed (e.g. session not yet visible on server).
+            // Bus events will fill in on first enqueue.
+          })
       },
     ),
   )
@@ -602,10 +607,13 @@ export function Prompt(props: PromptProps) {
           }, 5000)
 
           if (store.interrupt >= 2) {
+            // `session.abort` calls PromptQueue.cancelSession server-side,
+            // which drops every pending+running job for this session — so
+            // double-interrupt continues to clear the queue without a
+            // separate client-side wipe.
             void sdk.client.session.abort({
               sessionID: props.sessionID,
             })
-            clearFollowupQueue(props.sessionID)
             setStore("interrupt", 0)
           }
           dialog.clear()
@@ -883,36 +891,74 @@ export function Prompt(props: PromptProps) {
     input.gotoBufferEnd()
   }
 
+  // Edit a queued row: cancel the server-side job, then pre-fill the
+  // composer with a text-only reconstruction of the payload. The original
+  // PromptInfo (parts, file context, etc.) is gone because the server only
+  // persists the wire-format request — good enough for v1, user can re-add
+  // attachments. If the row is already running by the time we hit this,
+  // cancel returns 204 (no-op) and the user re-runs from the composer.
   function editQueuedFollowup(id: string) {
-    if (!props.sessionID) return
-    const item = takeFollowup(props.sessionID, id)
-    if (!item) return
+    const sessionID = props.sessionID
+    if (!sessionID) return
+    const row = sync.data.prompt_queue?.[sessionID]?.find((j) => j.id === id)
+    if (!row) return
+
+    void sdk.client.session.queue.cancel({ sessionID, jobID: id }).catch(() => undefined)
 
     if (store.prompt.input) {
       stash.push(snapshotPromptInfo(store.prompt))
     }
 
-    loadPrompt(item.prompt, item.mode)
+    let parsed: { parts?: Array<{ type?: string; text?: string }> } = {}
+    try {
+      parsed = JSON.parse(row.payload)
+    } catch {
+      // Payload schema drift — fall through with empty composer.
+    }
+    const text = (parsed.parts ?? [])
+      .filter((p): p is { type: "text"; text: string } => p.type === "text" && typeof p.text === "string")
+      .map((p) => p.text)
+      .join("")
+    const restored: PromptInfo = { input: text, parts: [], mode: "normal" }
+    loadPrompt(restored, "normal")
   }
 
+  // "Send now": promote this job to position 0 in the server queue. The
+  // worker picks head-of-queue next as soon as the active turn finishes;
+  // `abortFirst` cancels the active turn so the promoted item runs
+  // immediately rather than after the current one.
   async function sendQueuedFollowup(id: string, abortFirst = true) {
-    if (!props.sessionID) return
-    const item = takeFollowup(props.sessionID, id)
-    if (!item) return
+    const sessionID = props.sessionID
+    if (!sessionID) return
+    const pending = (sync.data.prompt_queue?.[sessionID] ?? []).filter((j) => j.status === "pending")
+    if (!pending.some((j) => j.id === id)) return
+    const reordered = [id, ...pending.filter((j) => j.id !== id).map((j) => j.id)]
     if (abortFirst && status().type !== "idle") {
-      await sdk.client.session.abort({ sessionID: props.sessionID }).catch(() => undefined)
+      await sdk.client.session.abort({ sessionID }).catch(() => undefined)
     }
-    void item.dispatch()
+    await sdk.client.session.queue.reorder({ sessionID, jobIDs: reordered }).catch(() => undefined)
   }
 
   function deleteQueuedFollowup(id: string) {
-    if (!props.sessionID) return
-    takeFollowup(props.sessionID, id)
+    const sessionID = props.sessionID
+    if (!sessionID) return
+    void sdk.client.session.queue.cancel({ sessionID, jobID: id }).catch(() => undefined)
   }
 
   function moveQueuedFollowup(id: string, direction: -1 | 1) {
-    if (!props.sessionID) return
-    moveFollowup(props.sessionID, id, direction)
+    const sessionID = props.sessionID
+    if (!sessionID) return
+    const pending = (sync.data.prompt_queue?.[sessionID] ?? []).filter((j) => j.status === "pending")
+    const from = pending.findIndex((j) => j.id === id)
+    const to = from + direction
+    if (from < 0 || to < 0 || to >= pending.length) return
+    const next = pending.slice()
+    const [moved] = next.splice(from, 1)
+    if (!moved) return
+    next.splice(to, 0, moved)
+    void sdk.client.session.queue
+      .reorder({ sessionID, jobIDs: next.map((j) => j.id) })
+      .catch(() => undefined)
   }
 
   command.register(() => [
@@ -1226,8 +1272,18 @@ export function Prompt(props: PromptProps) {
         })
         return
       }
+      // Always go through the server's persistent queue, even for an idle
+      // session. The server's PromptQueueWorker picks up the row on its next
+      // tick; for an empty queue, that's milliseconds. This keeps execution
+      // entirely server-side — the client never invokes the synchronous
+      // `prompt` endpoint. Benefits over the previous in-process path:
+      //   - the request survives a client disconnect / TUI crash
+      //   - failures retry with bounded attempts
+      //   - the dock shows the in-flight row the same way it shows pending
+      //     ones, with no special-case "we're executing this one right now"
+      //     client state
       sdk.client.session
-        .prompt({
+        .promptAsync({
           sessionID: sessionID!,
           ...selectedModel,
           messageID,
@@ -1248,34 +1304,35 @@ export function Prompt(props: PromptProps) {
       lastSubmittedEditorSelectionKey = currentEditorSelectionKey
     }
 
-    // Resolve queue / steer / send. Matches packages/app/src/components/
-    // prompt-input/submit.ts:resolveFollowupDisposition: new sessions and
-    // shell mode always send; otherwise busy + queue-mode buffers the draft
-    // and busy + steer-mode aborts before sending.
+    // Resolve send vs steer. With the server-authoritative queue,
+    // "queue" and "send" collapse into the same call: the server's
+    // PromptQueueWorker decides what runs and when, so the only thing the
+    // client has to choose is whether to abort the active turn first.
+    //
+    //   - steer: abort the in-flight turn before submitting (the server
+    //     also cancels pending queue rows for the session on abort, so a
+    //     queued backlog is wiped — matching the previous semantics).
+    //   - everything else: just submit. If the queue is empty and the
+    //     session is idle, the worker picks the row up on its next tick
+    //     (milliseconds). If the queue has rows, this one lands at the
+    //     end and the worker reaches it in FIFO order.
+    //
+    // Shell and custom command still bypass the queue because they have
+    // no async server-queue counterpart yet. They run server-side, but
+    // synchronously — not queued.
     const wasNewSession = !props.sessionID
     const statusType = status().type
-    const disposition: "send" | "queue" | "steer" =
-      wasNewSession || currentMode === "shell" || statusType === "idle"
-        ? "send"
-        : followupMode() === "steer"
-          ? "steer"
-          : "queue"
+    const steering =
+      !wasNewSession &&
+      currentMode !== "shell" &&
+      statusType !== "idle" &&
+      followupMode() === "steer" &&
+      !!props.sessionID
 
-    if (disposition === "queue" && props.sessionID) {
-      enqueueFollowup(props.sessionID, {
-        id: messageID,
-        sessionID: props.sessionID,
-        inputPreview: queuedPromptPreview(promptSnapshot),
-        mode: currentMode,
-        prompt: promptSnapshot,
-        dispatch,
-      })
-    } else {
-      if (disposition === "steer" && props.sessionID) {
-        await sdk.client.session.abort({ sessionID: props.sessionID }).catch(() => undefined)
-      }
-      void dispatch()
+    if (steering && props.sessionID) {
+      await sdk.client.session.abort({ sessionID: props.sessionID }).catch(() => undefined)
     }
+    void dispatch()
 
     if (currentMode === "shell") {
       setStore("mode", "normal")
@@ -1689,35 +1746,34 @@ export function Prompt(props: PromptProps) {
               cursorColor={theme.text}
               syntaxStyle={syntax()}
             />
-            <box flexDirection="row" flexShrink={0} paddingTop={1} gap={1} justifyContent="space-between">
-              <box flexDirection="row" gap={1}>
+            <box
+              flexDirection="row"
+              flexShrink={0}
+              paddingTop={1}
+              gap={1}
+              justifyContent="space-between"
+              alignItems="center"
+            >
+              <box flexDirection="row" gap={1} flexShrink={1}>
                 <Show when={local.agent.current()} fallback={<box height={1} />}>
                   {(agent) => (
                     <>
-                      <text fg={fadeColor(highlight(), agentMetaAlpha())}>
+                      <text fg={fadeColor(highlight(), agentMetaAlpha())} wrapMode="none" flexShrink={0}>
                         {store.mode === "shell" ? "Shell" : Locale.titlecase(agent().name)}
                       </text>
                       <Show when={store.mode === "normal"}>
-                        <box flexDirection="row" gap={1}>
+                        <box flexDirection="row" gap={1} flexShrink={1}>
                           <text fg={fadeColor(theme.textMuted, modelMetaAlpha())}>·</text>
                           <text
-                            flexShrink={0}
+                            flexShrink={1}
                             fg={fadeColor(keybind.leader ? theme.textMuted : theme.text, modelMetaAlpha())}
+                            overflow="hidden"
+                            wrapMode="none"
                           >
                             {local.model.parsed().model}
                           </text>
-                          <text fg={fadeColor(theme.textMuted, modelMetaAlpha())}>{currentProviderLabel()}</text>
-                          <Show when={showVariant()}>
-                            <text fg={fadeColor(theme.textMuted, variantMetaAlpha())}>·</text>
-                            <text>
-                              <span style={{ fg: fadeColor(theme.warning, variantMetaAlpha()), bold: true }}>
-                                {local.model.variant.current()}
-                              </span>
-                            </text>
-                          </Show>
-                          <text fg={fadeColor(theme.textMuted, modelMetaAlpha())}>·</text>
-                          <text fg={fadeColor(followupModeColor(), modelMetaAlpha())} wrapMode="none" flexShrink={0}>
-                            <span style={{ bold: followupMode() === "steer" }}>{followupModeLabel()}</span>
+                          <text fg={fadeColor(theme.textMuted, modelMetaAlpha())} wrapMode="none" flexShrink={0}>
+                            {currentProviderLabel()}
                           </text>
                         </box>
                       </Show>
@@ -1725,11 +1781,24 @@ export function Prompt(props: PromptProps) {
                   )}
                 </Show>
               </box>
-              <Show when={hasRightContent()}>
-                <box flexDirection="row" gap={1} alignItems="center">
+              <box flexDirection="row" gap={1} alignItems="center" justifyContent="flex-end" flexShrink={0}>
+                <Show when={local.agent.current() && store.mode === "normal"}>
+                  <text fg={fadeColor(followupModeColor(), modelMetaAlpha())} wrapMode="none" flexShrink={0}>
+                    <span style={{ bold: followupMode() === "steer" }}>{followupModeLabel()}</span>
+                  </text>
+                  <Show when={showVariant()}>
+                    <text fg={fadeColor(theme.textMuted, variantMetaAlpha())}>·</text>
+                    <text wrapMode="none" flexShrink={0}>
+                      <span style={{ fg: fadeColor(theme.warning, variantMetaAlpha()), bold: true }}>
+                        {local.model.variant.current()}
+                      </span>
+                    </text>
+                  </Show>
+                </Show>
+                <Show when={hasRightContent()}>
                   {props.right}
-                </box>
-              </Show>
+                </Show>
+              </box>
             </box>
           </box>
         </box>

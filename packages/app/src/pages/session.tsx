@@ -20,7 +20,7 @@ import { createMediaQuery } from "@solid-primitives/media"
 import { createResizeObserver } from "@solid-primitives/resize-observer"
 import { useLocal } from "@/context/local"
 import { selectionFromLines, useFile, type FileSelection, type SelectedLineRange } from "@/context/file"
-import { createStore } from "solid-js/store"
+import { createStore, reconcile } from "solid-js/store"
 import { ResizeHandle } from "@codeplane-ai/ui/resize-handle"
 import { Select } from "@codeplane-ai/ui/select"
 import { Tabs } from "@codeplane-ai/ui/tabs"
@@ -47,7 +47,8 @@ import { useTerminal } from "@/context/terminal"
 import { type FollowupDraft, sendFollowupDraft } from "@/components/prompt-input/submit"
 import { createSessionComposerState, SessionComposerRegion } from "@/pages/session/composer"
 import { sessionPermissionRequest, sessionQuestionRequest } from "@/pages/session/composer/session-request-tree"
-import { nextRunnableFollowup, type FollowupItem } from "@/pages/session/followup-queue"
+import type { Prompt as PromptType, ContextItem } from "@/context/prompt"
+import type { PromptQueueJob } from "@/context/global-sync/types"
 import {
   createOpenReviewFile,
   createSessionTabs,
@@ -59,7 +60,7 @@ import { MessageTimeline } from "@/pages/session/message-timeline"
 import { type DiffStyle, SessionReviewTab, type SessionReviewTabProps } from "@/pages/session/review-tab"
 import { SessionActivityTab } from "@/pages/session/session-activity-tab"
 import { useSessionLayout } from "@/pages/session/session-layout"
-import { isSessionWorking } from "@/pages/session/session-working"
+import { hasUnansweredUserMessage, isSessionWorking } from "@/pages/session/session-working"
 import { syncSessionModel } from "@/pages/session/session-model-helpers"
 import { SessionSidePanel } from "@/pages/session/session-side-panel"
 import { TerminalPanel } from "@/pages/session/terminal-panel"
@@ -73,8 +74,17 @@ import { same } from "@/utils/same"
 import { formatServerError } from "@/utils/server-errors"
 
 const emptyUserMessages: UserMessage[] = []
-type FollowupEdit = Pick<FollowupItem, "id" | "prompt" | "context">
-const emptyFollowups: FollowupItem[] = []
+type FollowupEdit = {
+  id: string
+  prompt: PromptType
+  context: (ContextItem & { key: string })[]
+}
+const WORKING_RESYNC_INITIAL_MS = 1_500
+const WORKING_RESYNC_INTERVAL_MS = 4_000
+const WORKING_RESYNC_MAX_ATTEMPTS = 60
+const IDLE_RESYNC_SETTLE_MS = 250
+const IDLE_RESYNC_RETRY_MS = 1_250
+const IDLE_RESYNC_MAX_ATTEMPTS = 3
 
 type ChangeMode = "git" | "branch" | "turn"
 type VcsMode = "git" | "branch"
@@ -531,17 +541,18 @@ export default function Page() {
     deferRender: false,
   })
 
+  // After the central-queue migration, only the composer-edit cache lives
+  // client-side. Active queue items (pending/running/failed) come from
+  // `sync.data.prompt_queue[sessionID]`, populated by the server's
+  // session.queue.{created,updated,removed} bus events. The `edit` slot
+  // here is the staging area for "edit a queued item" — we cancel the
+  // server row and stash the original payload here so the composer can
+  // re-populate.
   const [followup, setFollowup] = persisted(
-    Persist.serverWorkspace(sdk.scope, sdk.directory, "followup", ["followup.v1"]),
+    Persist.serverWorkspace(sdk.scope, sdk.directory, "followup", ["followup.v2"]),
     createStore<{
-      items: Record<string, FollowupItem[] | undefined>
-      failed: Record<string, string | undefined>
-      paused: Record<string, boolean | undefined>
       edit: Record<string, FollowupEdit | undefined>
     }>({
-      items: {},
-      failed: {},
-      paused: {},
       edit: {},
     }),
   )
@@ -566,6 +577,10 @@ export default function Page() {
   let refreshTimer: number | undefined
   let todoFrame: number | undefined
   let todoTimer: number | undefined
+  let workingResyncTimer: number | undefined
+  let workingResyncToken = 0
+  let idleResyncTimer: number | undefined
+  let idleResyncToken = 0
   let diffFrame: number | undefined
   let diffTimer: number | undefined
 
@@ -851,6 +866,102 @@ export default function Page() {
         })
       },
       { defer: true },
+    ),
+  )
+
+  const activeMessageLimit = (id: string) => Math.max(INITIAL_MESSAGE_PAGE_SIZE, sync.data.message[id]?.length ?? 0)
+  const forceVisibleSessionSync = (id: string) =>
+    sync.session.sync(id, { force: true, messageLimit: activeMessageLimit(id) })
+  const needsSettledIdleResync = (id: string) => hasUnansweredUserMessage(sync.data.message[id])
+  const needsLiveResync = (id: string) =>
+    isSessionWorking(sync.data.session_status[id], sync.data.message[id]) ||
+    hasUnansweredUserMessage(sync.data.message[id])
+
+  createEffect(
+    on(
+      () => {
+        const id = params.id
+        return [
+          sdk.directory,
+          id,
+          id ? isSessionWorking(sync.data.session_status[id], sync.data.message[id]) : false,
+        ] as const
+      },
+      ([dir, id, working], previous) => {
+        const token = ++idleResyncToken
+        if (idleResyncTimer !== undefined) window.clearTimeout(idleResyncTimer)
+        idleResyncTimer = undefined
+        if (!id || working) return
+
+        const wasWorking = previous?.[2] === true
+        const staleIdle = untrack(() => needsSettledIdleResync(id))
+        if (!wasWorking && !staleIdle) return
+
+        const schedule = (attempt: number, delay: number) => {
+          idleResyncTimer = window.setTimeout(() => {
+            idleResyncTimer = undefined
+            if (token !== idleResyncToken) return
+            if (sdk.directory !== dir || params.id !== id) return
+
+            void Promise.allSettled([
+              untrack(() => forceVisibleSessionSync(id)),
+              sdk.client.session.status().then((x) => {
+                if (token !== idleResyncToken) return
+                if (sdk.directory !== dir || params.id !== id) return
+                sync.set("session_status", x.data ?? {})
+              }),
+            ]).then(() => {
+              if (token !== idleResyncToken) return
+              if (sdk.directory !== dir || params.id !== id) return
+              const stillStale = untrack(() => needsSettledIdleResync(id))
+              if (stillStale && attempt < IDLE_RESYNC_MAX_ATTEMPTS) schedule(attempt + 1, IDLE_RESYNC_RETRY_MS)
+            })
+          }, delay)
+        }
+
+        schedule(1, IDLE_RESYNC_SETTLE_MS)
+      },
+      { defer: true },
+    ),
+  )
+
+  createEffect(
+    on(
+      () => {
+        const id = params.id
+        return [sdk.directory, id, id ? needsLiveResync(id) : false] as const
+      },
+      ([dir, id, needs]) => {
+        const token = ++workingResyncToken
+        if (workingResyncTimer !== undefined) window.clearTimeout(workingResyncTimer)
+        workingResyncTimer = undefined
+        if (!id || !needs) return
+
+        const schedule = (attempt: number, delay: number) => {
+          workingResyncTimer = window.setTimeout(() => {
+            workingResyncTimer = undefined
+            if (token !== workingResyncToken) return
+            if (sdk.directory !== dir || params.id !== id) return
+            void Promise.allSettled([
+              untrack(() => forceVisibleSessionSync(id)),
+              sdk.client.session.status().then((x) => {
+                if (token !== workingResyncToken) return
+                if (sdk.directory !== dir || params.id !== id) return
+                sync.set("session_status", x.data ?? {})
+              }),
+            ]).then(() => {
+              if (token !== workingResyncToken) return
+              if (sdk.directory !== dir || params.id !== id) return
+              const stillNeeds = untrack(() => needsLiveResync(id))
+              if (stillNeeds && attempt < WORKING_RESYNC_MAX_ATTEMPTS) {
+                schedule(attempt + 1, WORKING_RESYNC_INTERVAL_MS)
+              }
+            })
+          }, delay)
+        }
+
+        schedule(1, WORKING_RESYNC_INITIAL_MS)
+      },
     ),
   )
 
@@ -1567,36 +1678,21 @@ export default function Page() {
     return isSessionWorking(sync.data.session_status[sessionID], sync.data.message[sessionID])
   }
 
-  const queuedFollowups = createMemo(() => {
+  // Server-authoritative queue: rows come from `sync.data.prompt_queue` —
+  // populated by the snapshot fetch below and kept fresh by the
+  // session.queue.{created,updated,removed} bus events. We display
+  // pending + running + failed (failed stays so the user sees the error
+  // and can dismiss explicitly). The active turn lives at the head of the
+  // list with status === "running", followed by pending rows in run order.
+  const serverQueue = createMemo(() => {
     const id = params.id
-    if (!id) return emptyFollowups
-    return followup.items[id] ?? emptyFollowups
+    if (!id) return [] as PromptQueueJob[]
+    return sync.data.prompt_queue[id] ?? []
   })
 
-  const followupStore = (item: FollowupItem) => globalSync.child(item.sessionDirectory, { bootstrap: false })[0]
-
-  const followupSession = (sessionID: string, item: FollowupItem) =>
-    info()?.id === sessionID && item.sessionDirectory === sdk.directory
-      ? info()
-      : followupStore(item).session.find((entry) => entry.id === sessionID)
-
-  const followupSessionBusy = (sessionID: string, item: FollowupItem) => {
-    const store = followupStore(item)
-    const local = info()?.id === sessionID && item.sessionDirectory === sdk.directory
-    const status = local ? sync.data.session_status[sessionID] : store.session_status[sessionID]
-    const messageList = local ? messages() : store.message[sessionID]
-    return isSessionWorking(status, messageList)
-  }
-
-  const followupBlocked = (sessionID: string, item: FollowupItem) => {
-    const store = followupStore(item)
-    return (
-      !!sessionQuestionRequest(store.session, store.question, sessionID) ||
-      !!sessionPermissionRequest(store.session, store.permission, sessionID, (request) => {
-        return !permission.autoResponds(request, item.sessionDirectory)
-      })
-    )
-  }
+  const queuedJobs = createMemo(() =>
+    serverQueue().filter((job) => job.status === "pending" || job.status === "failed"),
+  )
 
   const editingFollowup = createMemo(() => {
     const id = params.id
@@ -1604,56 +1700,43 @@ export default function Page() {
     return followup.edit[id]
   })
 
-  const followupMutation = useMutation(() => ({
-    mutationFn: async (input: { sessionID: string; id: string; manual?: boolean }) => {
-      const item = (followup.items[input.sessionID] ?? []).find((entry) => entry.id === input.id)
-      if (!item) return
+  // Reverse-engineer a preview line from the server-side payload. Format:
+  //   `{ parts: [{ type: "text", text: "..." } | { type: "file", ... }], ... }`
+  // — see `buildRequestParts`. We pick the first non-empty text line; if
+  // none, surface an attachment placeholder.
+  const previewFromPayload = (payload: string) => {
+    let parsed: { parts?: Array<{ type?: string; text?: string; filename?: string; path?: string }> }
+    try {
+      parsed = JSON.parse(payload)
+    } catch {
+      return `[${language.t("common.attachment")}]`
+    }
+    const parts = parsed.parts ?? []
+    for (const part of parts) {
+      if (part.type === "text" && typeof part.text === "string") {
+        const line = part.text
+          .split(/\r?\n/)
+          .map((l) => l.trim())
+          .find((l) => l.length > 0)
+        if (line) return line
+      }
+    }
+    const file = parts.find((p) => p.type === "file")
+    if (file?.filename) return `[file:${file.filename}]`
+    return `[${language.t("common.attachment")}]`
+  }
 
-      if (input.manual) setFollowup("paused", input.sessionID, undefined)
-      setFollowup("failed", input.sessionID, undefined)
+  // The dock cares about active items only — pending + failed. (Running is
+  // the in-flight turn; the timeline already represents it.) For each row
+  // we surface the preview text the user originally typed.
+  const followupDock = createMemo(() =>
+    queuedJobs().map((job) => ({ id: job.id, text: previewFromPayload(job.payload) })),
+  )
 
-      const client =
-        item.sessionDirectory === sdk.directory
-          ? sdk.client
-          : sdk.createClient({
-              directory: item.sessionDirectory,
-              throwOnError: true,
-            })
-
-      const ok = await sendFollowupDraft({
-        client,
-        sync,
-        globalSync,
-        draft: item,
-        optimisticBusy: true,
-        before: input.manual
-          ? () =>
-              client.session
-                .abort({ sessionID: input.sessionID })
-                .catch(() => undefined)
-                .then(() => true)
-          : undefined,
-      }).catch((err) => {
-        setFollowup("failed", input.sessionID, input.id)
-        fail(err)
-        return false
-      })
-      if (!ok) return
-
-      setFollowup("items", input.sessionID, (items) => (items ?? []).filter((entry) => entry.id !== input.id))
-      if (input.manual) resumeScroll()
-    },
-  }))
-
-  const followupBusy = (sessionID: string) =>
-    followupMutation.isPending && followupMutation.variables?.sessionID === sessionID
-
-  const sendingFollowup = createMemo(() => {
-    const id = params.id
-    if (!id) return
-    if (!followupBusy(id)) return
-    return followupMutation.variables?.id
-  })
+  // No `sending` indicator anymore — the server runs jobs as soon as the
+  // active turn finishes, so there's no client-side "sending" gap. We
+  // expose `undefined` here to keep the composer-region prop shape stable.
+  const sendingFollowup = createMemo<string | undefined>(() => undefined)
 
   const queueEnabled = createMemo(() => {
     const id = params.id
@@ -1663,98 +1746,93 @@ export default function Page() {
     )
   })
 
-  const followupText = (item: FollowupDraft) => {
-    const text = item.prompt
-      .map((part) => {
-        if (part.type === "image") return `[image:${part.filename}]`
-        if (part.type === "file") return `[file:${part.path}]`
-        if (part.type === "agent") return `@${part.name}`
-        return part.content
-      })
-      .join("")
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .find((line) => !!line)
-
-    if (text) return text
-    return `[${language.t("common.attachment")}]`
-  }
-
+  // Enqueue: hand the draft straight to the server's persistent queue via
+  // promptAsync. The server FIFOs per session, survives our disconnect, and
+  // broadcasts `session.queue.created` so the dock fills in within one
+  // round-trip. No local store — the old `followup.items` is gone.
   const queueFollowup = (draft: FollowupDraft) => {
-    setFollowup("items", draft.sessionID, (items) => [
-      ...(items ?? []),
-      { id: Identifier.ascending("message"), ...draft },
-    ])
-    setFollowup("failed", draft.sessionID, undefined)
-    setFollowup("paused", draft.sessionID, undefined)
+    const client =
+      draft.sessionDirectory === sdk.directory
+        ? sdk.client
+        : sdk.createClient({ directory: draft.sessionDirectory, throwOnError: true })
+
+    void sendFollowupDraft({
+      client,
+      sync,
+      globalSync,
+      draft,
+      // Session is already busy when we queue, so the optimistic flip
+      // would be a no-op or worse, clobber a real status update.
+      optimisticBusy: false,
+    }).catch((err) => fail(err))
   }
 
-  const followupDock = createMemo(() => queuedFollowups().map((item) => ({ id: item.id, text: followupText(item) })))
-
+  // "Send now": promote the chosen pending job to the head of its session
+  // queue. Server already runs head-of-queue next as soon as the active
+  // turn finishes, so this is just a reorder. We pass the current order
+  // with the chosen id moved to the front.
   const sendFollowup = (sessionID: string, id: string, opts?: { manual?: boolean }) => {
-    const item = (followup.items[sessionID] ?? []).find((entry) => entry.id === id)
-    if (!item) return Promise.resolve()
-    const session = followupSession(sessionID, item)
-    if (session?.parentID || session?.time.archived || session?.cronRunID) return Promise.resolve()
-    if (followupMutation.isPending) return Promise.resolve()
-    if (followupBusy(sessionID)) return Promise.resolve()
-
-    return followupMutation.mutateAsync({ sessionID, id, manual: opts?.manual })
+    const list = (sync.data.prompt_queue[sessionID] ?? []).filter((j) => j.status === "pending")
+    const target = list.find((j) => j.id === id)
+    if (!target) return Promise.resolve()
+    const reordered = [target.id, ...list.filter((j) => j.id !== target.id).map((j) => j.id)]
+    if (opts?.manual) resumeScroll()
+    return sdk.client.session.queue
+      .reorder({ sessionID, jobIDs: reordered })
+      .catch((err) => fail(err))
+      .then(() => undefined)
   }
 
+  // Edit: cancel the server row, then pre-fill the composer with a best-
+  // effort text reconstruction. We can't recover the original Prompt
+  // (images, file context, etc.) because the payload only carries the
+  // wire-format parts the server received. Good enough for v1 — the user
+  // can re-attach files/images if needed.
   const editFollowup = (id: string) => {
     const sessionID = params.id
     if (!sessionID) return
-    if (followupBusy(sessionID)) return
+    const job = serverQueue().find((entry) => entry.id === id)
+    if (!job) return
 
-    const item = queuedFollowups().find((entry) => entry.id === id)
-    if (!item) return
+    void sdk.client.session.queue.cancel({ sessionID, jobID: job.id }).catch((err) => fail(err))
 
-    setFollowup("items", sessionID, (items) => (items ?? []).filter((entry) => entry.id !== id))
-    setFollowup("failed", sessionID, (value) => (value === id ? undefined : value))
+    let parsed: { parts?: Array<{ type?: string; text?: string }> } = {}
+    try {
+      parsed = JSON.parse(job.payload)
+    } catch {
+      /* leave parsed empty — composer will load with no prefill */
+    }
+    const text = (parsed.parts ?? [])
+      .filter((p): p is { type: "text"; text: string } => p.type === "text" && typeof p.text === "string")
+      .map((p) => p.text)
+      .join("")
     setFollowup("edit", sessionID, {
-      id: item.id,
-      prompt: item.prompt,
-      context: item.context,
+      id: job.id,
+      prompt: text ? [{ type: "text", content: text, start: 0, end: text.length }] : [],
+      context: [],
     })
   }
 
   const deleteFollowup = (id: string) => {
     const sessionID = params.id
     if (!sessionID) return
-    if (followupBusy(sessionID)) return
-
-    setFollowup("items", sessionID, (items) => (items ?? []).filter((entry) => entry.id !== id))
-    setFollowup("failed", sessionID, (value) => (value === id ? undefined : value))
     setFollowup("edit", sessionID, (value) => (value?.id === id ? undefined : value))
+    void sdk.client.session.queue.cancel({ sessionID, jobID: id }).catch((err) => fail(err))
   }
 
-  // Reorder is purely a UI concern — the followup queue lives entirely in
-  // client state until each draft is sent to the server one at a time. We
-  // accept an explicit `ids` array (rather than from→to indices) so the
-  // dock can call us during a live drag without us having to recompute
-  // indices ourselves; the dock already knows the target order.
-  //
-  // The store update is a no-op when the order hasn't actually changed —
-  // matters for drag-over events that fire on the same item repeatedly,
-  // and avoids triggering a `failed` clear when the user dragged onto
-  // themselves.
+  // Reorder: pass the full intended order through to the server. The server
+  // validates that every id refers to a pending row in this session and
+  // rewrites sort_order atomically. On 409 (something raced — a worker
+  // claim, an external cancel) we silently swallow: the next sync event
+  // will reconcile the dock to whatever actually happened.
   const reorderFollowup = (sessionID: string, ids: string[]) => {
-    if (followupBusy(sessionID)) return
-    setFollowup("items", sessionID, (items) => {
-      const current = items ?? []
-      if (current.length !== ids.length) return current
-      const byID = new Map(current.map((entry) => [entry.id, entry] as const))
-      const next: FollowupItem[] = []
-      for (const id of ids) {
-        const entry = byID.get(id)
-        // Drop the reorder if any id doesn't exist — refusing the change
-        // is safer than letting a stale dock truncate the queue.
-        if (!entry) return current
-        next.push(entry)
-      }
-      const same = next.every((entry, i) => entry.id === current[i]?.id)
-      return same ? current : next
+    if (ids.length === 0) return
+    void sdk.client.session.queue.reorder({ sessionID, jobIDs: ids }).catch((err) => {
+      // 409 conflict (row state changed mid-flight) is expected during
+      // rapid drag interactions; let the next sync event correct the dock.
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 409) return
+      fail(err)
     })
   }
 
@@ -1857,20 +1935,32 @@ export default function Page() {
 
   const timelineActions = createMemo(() => (archived() ? undefined : { revert }))
 
-  createEffect(() => {
-    const next = nextRunnableFollowup({
-      items: followup.items,
-      failed: followup.failed,
-      paused: followup.paused,
-      sending: followupMutation.isPending,
-      session: followupSession,
-      busy: followupSessionBusy,
-      blocked: followupBlocked,
-    })
-    if (!next) return
-
-    void sendFollowup(next.sessionID, next.item.id)
-  })
+  // Snapshot the server queue on session change so the dock paints
+  // immediately, then rely on the SSE event stream to keep it fresh. The
+  // snapshot races with the bus events: the reducer is idempotent (drop
+  // duplicate Created, treat unknown Updated as create) so the order
+  // doesn't matter.
+  createEffect(
+    on(
+      () => [sdk.directory, params.id] as const,
+      ([dir, id]) => {
+        if (!id) return
+        const startedDir = dir
+        const startedID = id
+        void sdk.client.session.queue
+          .list({ sessionID: id })
+          .then((res) => {
+            if (sdk.directory !== startedDir || params.id !== startedID) return
+            if (!res.data) return
+            sync.set("prompt_queue", id, reconcile(res.data))
+          })
+          .catch(() => {
+            // Snapshot failed (e.g. session not yet visible on server) —
+            // bus events will fill in as soon as the first enqueue lands.
+          })
+      },
+    ),
+  )
 
   createResizeObserver(
     () => promptDock,
@@ -1944,6 +2034,8 @@ export default function Page() {
     if (refreshTimer !== undefined) window.clearTimeout(refreshTimer)
     if (todoFrame !== undefined) cancelAnimationFrame(todoFrame)
     if (todoTimer !== undefined) window.clearTimeout(todoTimer)
+    if (workingResyncTimer !== undefined) window.clearTimeout(workingResyncTimer)
+    if (idleResyncTimer !== undefined) window.clearTimeout(idleResyncTimer)
     if (diffFrame !== undefined) cancelAnimationFrame(diffFrame)
     if (diffTimer !== undefined) window.clearTimeout(diffTimer)
     if (scrollStateFrame !== undefined) cancelAnimationFrame(scrollStateFrame)
@@ -2081,10 +2173,15 @@ export default function Page() {
                       sending: sendingFollowup(),
                       edit: editingFollowup(),
                       onQueue: queueFollowup,
+                      // With the server-authoritative queue, there's no
+                      // client-side dispatch loop to pause. We map abort to
+                      // a session-wide cancel: stops the in-flight turn AND
+                      // drops every pending queued job, matching the user's
+                      // intent of "stop everything".
                       onAbort: () => {
                         const id = params.id
                         if (!id) return
-                        setFollowup("paused", id, true)
+                        void sdk.client.session.abort({ sessionID: id }).catch((err) => fail(err))
                       },
                       onSend: (id) => {
                         void sendFollowup(params.id!, id, { manual: true })

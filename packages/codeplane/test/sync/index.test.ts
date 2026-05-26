@@ -9,17 +9,22 @@ import { EventTable } from "../../src/sync/event.sql"
 import { Identifier } from "../../src/id/id"
 import { Flag } from "../../src/flag/flag"
 import { initProjectors } from "../../src/server/projectors"
+import { resetDatabase } from "../fixture/db"
 
 const original = Flag.CODEPLANE_EXPERIMENTAL_WORKSPACES
 
-beforeEach(() => {
-  Database.close()
+beforeEach(async () => {
+  // Wipe the SQLite file (not just close the handle) so leftover
+  // EventTable rows from prior test files (notably plugin/workspace-adaptor)
+  // don't break our length-based assertions.
+  await resetDatabase()
 
   Flag.CODEPLANE_EXPERIMENTAL_WORKSPACES = true
 })
 
-afterEach(() => {
+afterEach(async () => {
   Flag.CODEPLANE_EXPERIMENTAL_WORKSPACES = original
+  await resetDatabase()
 })
 
 function withInstance(fn: () => void | Promise<void>) {

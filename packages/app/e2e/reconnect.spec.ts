@@ -272,6 +272,70 @@ test.describe("persisted projects and live stream validation", () => {
     ])
   }
 
+  const finishAssistantWithoutIdleStatus = (text: string, completed = Date.now()) => {
+    assistantText().text = text
+    assistantEntry().info = assistantMessage(completed - 500, completed)
+    state.session.time.updated = completed
+    emitMany([
+      {
+        directory: sessionDirectory,
+        payload: {
+          type: "message.part.updated",
+          properties: {
+            sessionID,
+            part: { ...assistantText() },
+            time: completed,
+          },
+        } satisfies Event,
+      },
+      {
+        directory: sessionDirectory,
+        payload: {
+          type: "message.updated",
+          properties: {
+            info: state.messages[1].info,
+          },
+        } satisfies Event,
+      },
+    ])
+  }
+
+  const finishAssistantWithoutEvents = (text: string, completed = Date.now()) => {
+    const info = assistantMessage(completed - 500, completed)
+    const part = textPart(assistantPartID, assistantMessageID, text)
+    const index = state.messages.findIndex((item) => item.info.id === assistantMessageID)
+    if (index === -1) {
+      state.messages.push({ info, parts: [part] })
+    } else {
+      state.messages[index] = { info, parts: [part] }
+    }
+    state.session.time.updated = completed
+    state.sessionStatus = {}
+  }
+
+  const finishAssistantWithOnlyIdleStatus = (text: string, completed = Date.now()) => {
+    const info = assistantMessage(completed - 500, completed)
+    const part = textPart(assistantPartID, assistantMessageID, text)
+    const index = state.messages.findIndex((item) => item.info.id === assistantMessageID)
+    if (index === -1) {
+      state.messages.push({ info, parts: [part] })
+    } else {
+      state.messages[index] = { info, parts: [part] }
+    }
+    state.session.time.updated = completed
+    state.sessionStatus[sessionID] = { type: "idle" }
+    emit({
+      directory: sessionDirectory,
+      payload: {
+        type: "session.status",
+        properties: {
+          sessionID,
+          status: { type: "idle" as const },
+        },
+      } satisfies Event,
+    })
+  }
+
   test.beforeAll(async () => {
     server = http.createServer((request, response) => {
       const url = new URL(request.url ?? "/", backendOrigin)
@@ -594,6 +658,36 @@ test.describe("persisted projects and live stream validation", () => {
 
     await expect(page.locator("[data-slot='session-turn-thinking']")).toHaveCount(0)
     await expect(page.getByText("Hello", { exact: true })).toBeVisible()
+  })
+
+  test("clears thinking when the assistant completes even if the idle status event is missed", async ({ page }) => {
+    await openStreamSession(page)
+
+    appendAssistantDelta("Hey! What are you working on?")
+    finishAssistantWithoutIdleStatus("Hey! What are you working on?")
+
+    await expect(page.locator("[data-slot='session-turn-thinking']")).toHaveCount(0)
+    await expect(page.getByText("Hey! What are you working on?", { exact: true })).toBeVisible()
+  })
+
+  test("resyncs a working session when completion events are missed entirely", async ({ page }) => {
+    state.messages = [state.messages[0]!]
+    await openStreamSession(page)
+
+    finishAssistantWithoutEvents("Hey. What can I help you with?")
+
+    await expect(page.getByText("Hey. What can I help you with?", { exact: true })).toBeVisible({ timeout: 8_000 })
+    await expect(page.locator("[data-slot='session-turn-thinking']")).toHaveCount(0)
+  })
+
+  test("resyncs after idle status when final message events are missed", async ({ page }) => {
+    state.messages = [state.messages[0]!]
+    await openStreamSession(page)
+
+    finishAssistantWithOnlyIdleStatus("Done after idle-only event")
+
+    await expect(page.getByText("Done after idle-only event", { exact: true })).toBeVisible({ timeout: 8_000 })
+    await expect(page.locator("[data-slot='session-turn-thinking']")).toHaveCount(0)
   })
 
   test("keeps nested-directory live streams current while switching sessions", async ({ page }) => {

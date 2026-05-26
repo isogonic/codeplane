@@ -533,6 +533,60 @@ export type EventCommandExecuted = {
   }
 }
 
+export type EventSessionQueueCreated = {
+  type: "session.queue.created"
+  properties: {
+    sessionID: string
+    job: {
+      id: string
+      sessionID: string
+      directory: string
+      payload: string
+      status: "pending" | "running" | "completed" | "failed" | "cancelled"
+      attempt: number
+      maxAttempts: number
+      nextRunAt?: number
+      timeStarted?: number
+      timeCompleted?: number
+      errorMessage?: string
+      sortOrder?: number
+      timeCreated: number
+      timeUpdated: number
+    }
+  }
+}
+
+export type EventSessionQueueUpdated = {
+  type: "session.queue.updated"
+  properties: {
+    sessionID: string
+    job: {
+      id: string
+      sessionID: string
+      directory: string
+      payload: string
+      status: "pending" | "running" | "completed" | "failed" | "cancelled"
+      attempt: number
+      maxAttempts: number
+      nextRunAt?: number
+      timeStarted?: number
+      timeCompleted?: number
+      errorMessage?: string
+      sortOrder?: number
+      timeCreated: number
+      timeUpdated: number
+    }
+  }
+}
+
+export type EventSessionQueueRemoved = {
+  type: "session.queue.removed"
+  properties: {
+    sessionID: string
+    jobID: string
+  }
+}
+
 export type EventWorktreeReady = {
   type: "worktree.ready"
   properties: {
@@ -1813,6 +1867,9 @@ export type GlobalEvent = {
     | EventMcpToolsChanged
     | EventMcpBrowserOpenFailed
     | EventCommandExecuted
+    | EventSessionQueueCreated
+    | EventSessionQueueUpdated
+    | EventSessionQueueRemoved
     | EventWorktreeReady
     | EventWorktreeFailed
     | EventPtyCreated
@@ -2764,6 +2821,11 @@ export type SubtaskPartInput = {
   command?: string
 }
 
+export type ConflictError = {
+  name: string
+  data: unknown
+}
+
 export type ProviderAuthMethod = {
   type: "oauth" | "api"
   label: string
@@ -2879,6 +2941,9 @@ export type Event =
   | EventMcpToolsChanged
   | EventMcpBrowserOpenFailed
   | EventCommandExecuted
+  | EventSessionQueueCreated
+  | EventSessionQueueUpdated
+  | EventSessionQueueRemoved
   | EventWorktreeReady
   | EventWorktreeFailed
   | EventPtyCreated
@@ -5391,6 +5456,146 @@ export type SessionPromptAsyncResponses = {
 }
 
 export type SessionPromptAsyncResponse = SessionPromptAsyncResponses[keyof SessionPromptAsyncResponses]
+
+export type SessionQueueListData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+    all?: boolean
+  }
+  url: "/session/{sessionID}/queue"
+}
+
+export type SessionQueueListErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type SessionQueueListError = SessionQueueListErrors[keyof SessionQueueListErrors]
+
+export type SessionQueueListResponses = {
+  /**
+   * List of jobs
+   */
+  200: Array<{
+    id: string
+    sessionID: string
+    directory: string
+    payload: string
+    status: "pending" | "running" | "completed" | "failed" | "cancelled"
+    attempt: number
+    maxAttempts: number
+    nextRunAt?: number
+    timeStarted?: number
+    timeCompleted?: number
+    errorMessage?: string
+    sortOrder?: number
+    timeCreated: number
+    timeUpdated: number
+  }>
+}
+
+export type SessionQueueListResponse = SessionQueueListResponses[keyof SessionQueueListResponses]
+
+export type SessionQueueCancelData = {
+  body?: never
+  path: {
+    sessionID: string
+    jobID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/queue/{jobID}"
+}
+
+export type SessionQueueCancelErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type SessionQueueCancelError = SessionQueueCancelErrors[keyof SessionQueueCancelErrors]
+
+export type SessionQueueCancelResponses = {
+  /**
+   * Cancelled
+   */
+  204: void
+}
+
+export type SessionQueueCancelResponse = SessionQueueCancelResponses[keyof SessionQueueCancelResponses]
+
+export type SessionQueueReorderData = {
+  body?: {
+    jobIDs: Array<string>
+  }
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/queue/reorder"
+}
+
+export type SessionQueueReorderErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+  /**
+   * Conflict
+   */
+  409: ConflictError
+}
+
+export type SessionQueueReorderError = SessionQueueReorderErrors[keyof SessionQueueReorderErrors]
+
+export type SessionQueueReorderResponses = {
+  /**
+   * Reordered jobs
+   */
+  200: Array<{
+    id: string
+    sessionID: string
+    directory: string
+    payload: string
+    status: "pending" | "running" | "completed" | "failed" | "cancelled"
+    attempt: number
+    maxAttempts: number
+    nextRunAt?: number
+    timeStarted?: number
+    timeCompleted?: number
+    errorMessage?: string
+    sortOrder?: number
+    timeCreated: number
+    timeUpdated: number
+  }>
+}
+
+export type SessionQueueReorderResponse = SessionQueueReorderResponses[keyof SessionQueueReorderResponses]
 
 export type SessionCommandData = {
   body?: {

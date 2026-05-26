@@ -9,6 +9,7 @@ import type {
   Todo,
 } from "@codeplane-ai/sdk/v2/client"
 import { dropSessionCaches, pickSessionCacheEvictions } from "./session-cache"
+import type { PromptQueueJob } from "./types"
 
 const msg = (id: string, sessionID: string) =>
   ({
@@ -40,7 +41,9 @@ describe("app session cache", () => {
       permission: Record<string, PermissionRequest[] | undefined>
       question: Record<string, QuestionRequest[] | undefined>
       pendingDelta: Record<string, Record<string, Record<string, string>> | undefined>
+      prompt_queue: Record<string, PromptQueueJob[] | undefined>
     } = {
+      prompt_queue: {},
       session_status: { ses_1: { type: "busy" } as SessionStatus },
       session_diff: { ses_1: [] },
       todo: { ses_1: [] as Todo[] },
@@ -74,7 +77,9 @@ describe("app session cache", () => {
       permission: Record<string, PermissionRequest[] | undefined>
       question: Record<string, QuestionRequest[] | undefined>
       pendingDelta: Record<string, Record<string, Record<string, string>> | undefined>
+      prompt_queue: Record<string, PromptQueueJob[] | undefined>
     } = {
+      prompt_queue: {},
       session_status: {},
       session_diff: {},
       todo: {},

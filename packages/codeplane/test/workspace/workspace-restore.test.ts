@@ -23,8 +23,11 @@ void Log.init({ print: false })
 
 const original = Flag.CODEPLANE_EXPERIMENTAL_WORKSPACES
 
-beforeEach(() => {
-  Database.close()
+beforeEach(async () => {
+  // Wipe the SQLite file (not just close the handle) so leftover
+  // EventTable rows from prior test files (notably plugin/workspace-adaptor)
+  // don't break our length-based assertions in the full-suite run.
+  await resetDatabase()
   Flag.CODEPLANE_EXPERIMENTAL_WORKSPACES = true
 })
 

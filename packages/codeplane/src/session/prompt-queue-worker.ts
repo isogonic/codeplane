@@ -245,7 +245,48 @@ export const layer = Layer.effect(
       const squashed = Cause.squash(exit.cause)
       const message = squashed instanceof Error ? squashed.message : String(squashed)
 
-      if (wasCancelled) {
+      // The DB row is the authoritative cancel signal: an external caller
+      // (HTTP /abort, double-Ctrl-C, etc.) may have flipped status -> cancelled
+      // by going through PromptQueue.cancelSession without ever signaling the
+      // worker's AbortController. Without this check we'd treat the runner
+      // failure as a retryable error and requeue work the user just stopped.
+      const currentRowStatus = yield* queue
+        .get(job.id)
+        .pipe(
+          Effect.map((current) => current.status),
+          Effect.catch(() => Effect.succeed("running" as PromptJobStatus)),
+        )
+
+      if (wasCancelled || currentRowStatus === "cancelled") {
+        // Graceful worker shutdown signals abort with disposition="requeue"
+        // so user work survives a restart; honor that by re-queuing instead
+        // of recording a terminal cancel.
+        if (wasCancelled && slot.abortDisposition === "requeue") {
+          const canRetryStop = job.attempt < job.maxAttempts
+          if (canRetryStop) {
+            log.warn("job interrupted on stop — requeuing", {
+              jobID: job.id,
+              sessionID: job.sessionID,
+              attempt: job.attempt,
+              error: message,
+            })
+            yield* queue
+              .recordResult({
+                jobID: job.id,
+                status: "pending",
+                errorMessage: message || "Worker stopped",
+                nextRunAt: Date.now() + RETRY_BACKOFF_MS,
+              })
+              .pipe(Effect.catch(() => Effect.void))
+            return
+          }
+          log.error("job interrupted on stop and retries exhausted", {
+            jobID: job.id,
+            sessionID: job.sessionID,
+          })
+          yield* recordTerminal(job.id, "failed", message || "Worker stopped")
+          return
+        }
         log.info("job cancelled", { jobID: job.id, sessionID: job.sessionID })
         yield* recordTerminal(job.id, "cancelled", message || "Cancelled")
         return
@@ -341,6 +382,11 @@ export const layer = Layer.effect(
       )
       if (recovered.length > 0) log.info("recovered jobs from previous run", { count: recovered.length })
       timer = setInterval(safeTick, TICK_MS)
+      // Register the in-process wake hook so PromptQueue.enqueue can
+      // trigger a tick as soon as a row commits, removing the up-to-TICK_MS
+      // latency on idle sends. The interval timer above stays as a safety
+      // net (handles backoff-deferred retries and missed wakes).
+      PromptQueue.setWakeNotifier(safeTick)
       // Don't wait a whole tick on cold start — push immediately so a queued
       // job from the recovery pass runs within milliseconds, not seconds.
       setTimeout(safeTick, 50)
@@ -350,6 +396,9 @@ export const layer = Layer.effect(
     const stop = Effect.fn("PromptQueueWorker.stop")(function* () {
       if (!started && !timer && active.size === 0) return
       started = false
+      // Drop the wake hook before shutting down so a late publish from a
+      // racing fiber doesn't try to re-enter a half-torn-down worker.
+      PromptQueue.setWakeNotifier(undefined)
       if (timer) clearInterval(timer)
       timer = undefined
       // Abort in-flight jobs so the process can exit cleanly, but tag them for

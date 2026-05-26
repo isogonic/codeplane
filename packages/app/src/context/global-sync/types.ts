@@ -11,11 +11,19 @@ import type {
   ProviderListResponse,
   QuestionRequest,
   Session,
+  SessionQueueListResponses,
   SessionStatus,
   SnapshotFileDiff,
   Todo,
   VcsInfo,
 } from "@codeplane-ai/sdk/v2/client"
+
+/**
+ * Server-owned prompt-queue row. Hey-api inlines the shape per-operation;
+ * we lift it once here so the rest of the app has a single name to import.
+ * Mirrors `PromptQueue.Job` on the server.
+ */
+export type PromptQueueJob = NonNullable<SessionQueueListResponses[200]>[number]
 import type { Accessor } from "solid-js"
 import type { SetStoreFunction, Store } from "solid-js/store"
 
@@ -71,6 +79,16 @@ export type State = {
   }
   part: {
     [messageID: string]: Part[]
+  }
+  /**
+   * Server-authoritative prompt queue per session. Populated by the
+   * `session.queue.list` snapshot on first paint, then kept fresh by
+   * `session.queue.{created,updated,removed}` bus events. Rows include
+   * pending and running jobs; terminal rows (completed/failed/cancelled)
+   * are pruned by the reducer except briefly to let a "failed" toast fire.
+   */
+  prompt_queue: {
+    [sessionID: string]: PromptQueueJob[]
   }
   /**
    * Buffer for `message.part.delta` events that arrive before the

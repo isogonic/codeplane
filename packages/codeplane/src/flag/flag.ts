@@ -1,16 +1,19 @@
 import { Config } from "effect"
 
-function truthy(key: string) {
+// Exported so flag.test.ts can exercise the parsing semantics without
+// reloading the entire Flag module (which forks Flag across consumers — see
+// the comment in flag.test.ts).
+export function truthy(key: string) {
   const value = process.env[key]?.toLowerCase()
   return value === "true" || value === "1"
 }
 
-function falsy(key: string) {
+export function falsy(key: string) {
   const value = process.env[key]?.toLowerCase()
   return value === "false" || value === "0"
 }
 
-function number(key: string) {
+export function number(key: string) {
   const value = process.env[key]
   if (!value) return undefined
   const parsed = Number(value)

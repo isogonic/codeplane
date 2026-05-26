@@ -434,13 +434,14 @@ export const SessionRoutes = lazy(() =>
           const sessionID = c.req.valid("param").sessionID
           const svc = yield* SessionPrompt.Service
           const aborted = new DOMException("Aborted", "AbortError")
-          yield* svc.cancel(sessionID).pipe(Effect.catch(() => Effect.void))
-          // Also drain any pending prompt-jobs for this session so they
-          // don't fire after the user thinks they've stopped the session.
-          // Errors here are non-fatal — the cancel above already did the
-          // critical part (interrupting the in-process Runner).
+          // Mark all pending+running queue rows cancelled BEFORE cancelling
+          // the in-process Runner. The PromptQueueWorker's failure path
+          // checks the DB row status to decide whether to retry — if we let
+          // svc.cancel run first, the worker can race the DB update and
+          // requeue a job the user just stopped.
           const queue = yield* PromptQueue.Service
           yield* queue.cancelSession(sessionID).pipe(Effect.catch(() => Effect.succeed(0)))
+          yield* svc.cancel(sessionID).pipe(Effect.catch(() => Effect.void))
           const todo = yield* Todo.Service
           yield* todo.update({ sessionID, todos: [] }).pipe(Effect.catch(() => Effect.void))
           yield* svc.recordError({ sessionID, error: aborted }).pipe(Effect.catch(() => Effect.void))
@@ -990,6 +991,101 @@ export const SessionRoutes = lazy(() =>
 
         return c.body(null, 204)
       },
+    )
+    .get(
+      "/:sessionID/queue",
+      describeRoute({
+        summary: "List queued prompt jobs",
+        description:
+          "Snapshot of the per-session prompt queue. Returns jobs in run order (sort_order first, then id). Use this on first paint; subscribe to the SSE stream's session.queue.* events for live updates.",
+        operationId: "session.queue.list",
+        responses: {
+          200: {
+            description: "List of jobs",
+            content: {
+              "application/json": {
+                schema: resolver(PromptQueue.Job.zod.array()),
+              },
+            },
+          },
+          ...errors(400, 404),
+        },
+      }),
+      validator("param", z.object({ sessionID: SessionID.zod })),
+      validator(
+        "query",
+        z.object({
+          // Default behavior matches the UI: callers care about
+          // pending+running. Pass `?all=1` to include terminal rows for
+          // history / debugging views.
+          all: queryBoolean.optional(),
+        }),
+      ),
+      async (c) =>
+        jsonRequest("SessionRoutes.queue.list", c, function* () {
+          const sessionID = c.req.valid("param").sessionID
+          const all = c.req.valid("query").all === true
+          const svc = yield* PromptQueue.Service
+          return yield* svc.list({
+            sessionID,
+            statuses: all ? undefined : ["pending", "running"],
+          })
+        }),
+    )
+    .delete(
+      "/:sessionID/queue/:jobID",
+      describeRoute({
+        summary: "Cancel a queued or running prompt job",
+        description:
+          "Idempotent: cancelling an already-terminal job is a no-op. For a running job this also signals the worker to abort the in-flight turn.",
+        operationId: "session.queue.cancel",
+        responses: {
+          204: { description: "Cancelled" },
+          ...errors(400, 404),
+        },
+      }),
+      validator(
+        "param",
+        z.object({ sessionID: SessionID.zod, jobID: PromptQueue.PromptJobID.zod }),
+      ),
+      async (c) => {
+        const { jobID } = c.req.valid("param")
+        await runRequest(
+          "SessionRoutes.queue.cancel",
+          c,
+          PromptQueue.Service.use((svc) => svc.cancel(jobID)),
+        )
+        return c.body(null, 204)
+      },
+    )
+    .post(
+      "/:sessionID/queue/reorder",
+      describeRoute({
+        summary: "Reorder pending prompt jobs",
+        description:
+          "Rewrite the run order for the session's pending jobs. Caller passes the complete intended order; running / completed / failed / cancelled rows are not allowed in the input. Returns the affected jobs in their new order.",
+        operationId: "session.queue.reorder",
+        responses: {
+          200: {
+            description: "Reordered jobs",
+            content: {
+              "application/json": {
+                schema: resolver(PromptQueue.Job.zod.array()),
+              },
+            },
+          },
+          ...errors(400, 404, 409),
+        },
+      }),
+      validator("param", z.object({ sessionID: SessionID.zod })),
+      validator("json", z.object({ jobIDs: PromptQueue.PromptJobID.zod.array() })),
+      async (c) =>
+        jsonRequest("SessionRoutes.queue.reorder", c, function* () {
+          const { sessionID } = c.req.valid("param")
+          const { jobIDs } = c.req.valid("json")
+          const svc = yield* PromptQueue.Service
+          return yield* svc.reorder({ sessionID, jobIDs })
+        }),
     )
     .post(
       "/:sessionID/command",

@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import type { Message, SessionStatus } from "@codeplane-ai/sdk/v2/client"
-import { hasPendingAssistantMessage, isSessionWorking } from "./session-working"
+import { hasPendingAssistantMessage, hasUnansweredUserMessage, isSessionWorking } from "./session-working"
 
 const idle = { type: "idle" } as SessionStatus
 const busy = { type: "busy" } as SessionStatus
@@ -38,8 +38,23 @@ test("detects a pending assistant turn from messages", () => {
   expect(hasPendingAssistantMessage(undefined)).toBe(false)
 })
 
+test("detects a user message that has not received an assistant reply yet", () => {
+  expect(hasUnansweredUserMessage([user()])).toBe(true)
+  expect(hasUnansweredUserMessage([user(), assistant(3)])).toBe(false)
+  expect(hasUnansweredUserMessage([assistant(3), user()])).toBe(true)
+  expect(hasUnansweredUserMessage(undefined)).toBe(false)
+})
+
 test("treats pending assistant turns as working even when status is idle", () => {
   expect(isSessionWorking(idle, [user(), assistant()])).toBe(true)
-  expect(isSessionWorking(busy, [user(), assistant(3)])).toBe(true)
   expect(isSessionWorking(idle, [user(), assistant(3)])).toBe(false)
+})
+
+test("does not keep a completed turn working when only the session status is stale busy", () => {
+  expect(isSessionWorking(busy, [user(), assistant(3)])).toBe(false)
+})
+
+test("keeps a busy session working before the assistant reply starts", () => {
+  expect(isSessionWorking(busy, [user()])).toBe(true)
+  expect(isSessionWorking(busy, undefined)).toBe(true)
 })

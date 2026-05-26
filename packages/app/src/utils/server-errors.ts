@@ -16,6 +16,11 @@ export type ProviderModelNotFoundError = {
   }
 }
 
+export type OAuthErrorLike = {
+  error: string
+  error_description?: string
+}
+
 type Translator = (key: string, vars?: Record<string, string | number>) => string
 
 function tr(translator: Translator | undefined, key: string, text: string, vars?: Record<string, string | number>) {
@@ -30,6 +35,7 @@ export function formatServerError(error: unknown, translate?: Translator, fallba
   if (inner !== error) return formatServerError(inner, translate, fallback)
   if (isConfigInvalidErrorLike(error)) return parseReadableConfigInvalidError(error, translate)
   if (isProviderModelNotFoundErrorLike(error)) return parseReadableProviderModelNotFoundError(error, translate)
+  if (isOAuthErrorLike(error)) return parseReadableOAuthError(error, translate)
   if (error instanceof Error && error.message) return error.message
   if (typeof error === "string" && error) return error
   if (isRecord(error) && typeof error.message === "string" && error.message) return error.message
@@ -47,8 +53,68 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function unwrapServerError(error: unknown) {
   if (!isRecord(error)) return error
   if ("name" in error && typeof error.name === "string" && "data" in error) return error
+  if (isOAuthErrorLike(error)) return error
   if ("error" in error && error.error !== undefined) return error.error
   return error
+}
+
+const OAUTH_ERROR_CODES = new Set([
+  "invalid_request",
+  "invalid_client",
+  "invalid_grant",
+  "unauthorized_client",
+  "unsupported_grant_type",
+  "invalid_scope",
+  "access_denied",
+  "authorization_pending",
+  "slow_down",
+  "expired_token",
+  "server_error",
+  "temporarily_unavailable",
+])
+
+function isOAuthErrorLike(error: unknown): error is OAuthErrorLike {
+  if (!isRecord(error)) return false
+  if (typeof error.error !== "string") return false
+  if (OAUTH_ERROR_CODES.has(error.error)) return true
+  return typeof error.error_description === "string"
+}
+
+export function parseReadableOAuthError(error: OAuthErrorLike, translator?: Translator) {
+  const code = error.error
+  const description = error.error_description?.trim() ?? ""
+  switch (code) {
+    case "invalid_grant":
+    case "expired_token":
+      return tr(
+        translator,
+        "error.chain.authExpired",
+        "Your session has expired. Please sign in again.",
+        { code, description },
+      )
+    case "access_denied":
+      return tr(
+        translator,
+        "error.chain.authDenied",
+        "Access denied. Please sign in again to continue.",
+        { code, description },
+      )
+    case "invalid_client":
+    case "unauthorized_client":
+      return tr(
+        translator,
+        "error.chain.authInvalidClient",
+        "Authentication failed. Please sign in again.",
+        { code, description },
+      )
+  }
+  const base = `Authentication error (${code})`
+  return tr(
+    translator,
+    "error.chain.authGeneric",
+    description ? `${base}: ${description}` : base,
+    { code, description },
+  )
 }
 
 function isConfigInvalidErrorLike(error: unknown): error is ConfigInvalidError {

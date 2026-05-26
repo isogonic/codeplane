@@ -1,7 +1,9 @@
 import { Effect, Layer, Context, Schema } from "effect"
 import z from "zod"
 import { Log } from "@/util"
-import { Database, NotFoundError, and, asc, eq, lte, isNull, or, inArray } from "../storage"
+import { Bus } from "@/bus"
+import { BusEvent } from "@/bus/bus-event"
+import { Database, NotFoundError, and, asc, eq, lte, isNull, or, inArray, sql } from "../storage"
 import { NamedError } from "@codeplane-ai/shared/util/error"
 import { PromptJobTable } from "./prompt-queue.sql"
 import { PromptJobID, PromptJobStatus } from "./prompt-queue-schema"
@@ -52,12 +54,63 @@ export const Job = Schema.Struct({
   timeStarted: Schema.optional(Schema.Number),
   timeCompleted: Schema.optional(Schema.Number),
   errorMessage: Schema.optional(Schema.String),
+  sortOrder: Schema.optional(Schema.Number),
   timeCreated: Schema.Number,
   timeUpdated: Schema.Number,
 }).pipe(withStatics((s) => ({ zod: zod(s) })))
 export type Job = Schema.Schema.Type<typeof Job>
 
 export const DEFAULT_MAX_ATTEMPTS = 3
+
+/**
+ * In-process wake hook for the {@link PromptQueueWorker}. The worker
+ * normally ticks on an interval, which adds up to a full tick of latency
+ * between a fresh `enqueue` and the worker actually claiming the row. For
+ * an idle session where the user expects instant response (the "send"
+ * path), that delay is user-visible.
+ *
+ * Solution: the worker registers `safeTick` here on start, and `enqueue`
+ * invokes it once the new row is committed. A no-op when the worker is
+ * not running (tests, stop window) or not started yet. Errors are
+ * swallowed — a missed wake just means we wait for the next interval
+ * tick, which is the original behavior.
+ */
+let wakeNotifier: (() => void) | undefined
+
+export function setWakeNotifier(notify: (() => void) | undefined) {
+  wakeNotifier = notify
+}
+
+/**
+ * Live updates pushed to subscribed clients (via the SSE event stream) so
+ * every surface — TUI, web app, etc. — can render the queue without holding
+ * its own copy. The contract is intentionally simple:
+ *
+ *   - `Created`  → a new row landed (status === "pending"). Add to view.
+ *   - `Updated`  → a row's status / attempt / error / timestamps changed.
+ *                  When the new status is terminal (completed/failed/cancelled)
+ *                  clients typically drop it from the *active* queue view, but
+ *                  the payload is still delivered so transient UI (e.g. brief
+ *                  failure toast) can react before the row disappears.
+ *   - `Removed`  → row is gone from the table entirely. Drop from view.
+ *
+ * Payloads embed `sessionID` at the top level so existing per-session filter
+ * paths (the same ones `session.status` rides on) need no extra work.
+ */
+const PromptQueueJobEventSchema = Schema.Struct({
+  sessionID: SessionID,
+  job: Job,
+})
+const PromptQueueJobRemovedEventSchema = Schema.Struct({
+  sessionID: SessionID,
+  jobID: PromptJobID,
+})
+
+export const Event = {
+  Created: BusEvent.define("session.queue.created", PromptQueueJobEventSchema),
+  Updated: BusEvent.define("session.queue.updated", PromptQueueJobEventSchema),
+  Removed: BusEvent.define("session.queue.removed", PromptQueueJobRemovedEventSchema),
+}
 
 export interface EnqueueInput {
   readonly sessionID: SessionID
@@ -92,6 +145,15 @@ export interface Interface {
    * the rest `failed`. Returns the recovered jobs for telemetry.
    */
   readonly recover: () => Effect.Effect<Job[]>
+  /**
+   * Rewrite the run order for the given session's *pending* rows. Callers
+   * pass the complete intended order (each id must reference a pending row in
+   * the session). The service assigns sort_order = 0, 1, 2, ... in input
+   * order; running / completed / failed / cancelled rows are untouched.
+   * Returns the affected jobs in their new order so callers can render the
+   * result without a re-fetch.
+   */
+  readonly reorder: (input: { sessionID: SessionID; jobIDs: PromptJobID[] }) => Effect.Effect<Job[]>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@codeplane/PromptQueue") {}
@@ -114,6 +176,7 @@ function fromRow(row: Row): Job {
     timeStarted: row.time_started ?? undefined,
     timeCompleted: row.time_completed ?? undefined,
     errorMessage: row.error_message ?? undefined,
+    sortOrder: row.sort_order ?? undefined,
     timeCreated: row.time_created,
     timeUpdated: row.time_updated,
   }
@@ -122,6 +185,36 @@ function fromRow(row: Row): Job {
 export const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
+    const bus = yield* Bus.Service
+
+    /**
+     * Best-effort publish: a failure here must not roll back the DB mutation
+     * we just committed, and clients can always re-fetch the snapshot over
+     * HTTP if they miss an event. So we swallow and log; the row is
+     * authoritative.
+     */
+    const publishCreated = (job: Job) =>
+      bus.publish(Event.Created, { sessionID: job.sessionID, job }).pipe(
+        Effect.catchCause((cause) => {
+          log.warn("publish failed", { event: "created", jobID: job.id, cause: String(cause) })
+          return Effect.void
+        }),
+      )
+    const publishUpdated = (job: Job) =>
+      bus.publish(Event.Updated, { sessionID: job.sessionID, job }).pipe(
+        Effect.catchCause((cause) => {
+          log.warn("publish failed", { event: "updated", jobID: job.id, cause: String(cause) })
+          return Effect.void
+        }),
+      )
+    const publishRemoved = (sessionID: SessionID, jobID: PromptJobID) =>
+      bus.publish(Event.Removed, { sessionID, jobID }).pipe(
+        Effect.catchCause((cause) => {
+          log.warn("publish failed", { event: "removed", jobID, cause: String(cause) })
+          return Effect.void
+        }),
+      )
+
     const get = Effect.fn("PromptQueue.get")(function* (jobID: PromptJobID) {
       const row = yield* db((d) => d.select().from(PromptJobTable).where(eq(PromptJobTable.id, jobID)).get())
       if (!row) throw new NotFoundError({ message: `Prompt job not found: ${jobID}` })
@@ -141,7 +234,19 @@ export const layer = Layer.effect(
         const builder = where
           ? d.select().from(PromptJobTable).where(where)
           : d.select().from(PromptJobTable)
-        return builder.orderBy(asc(PromptJobTable.id)).all()
+        // Match `claim`'s ordering so clients render rows in the order the
+        // worker will run them: explicit reorders first (sort_order ASC),
+        // then insertion order (id ASC). `sort_order IS NULL` evaluates to
+        // 1 for NULL and 0 otherwise — sorting ASC puts non-null first
+        // (NULLS LAST), so a reordered subset always sorts before
+        // never-reordered rows.
+        return builder
+          .orderBy(
+            sql`${PromptJobTable.sort_order} IS NULL`,
+            asc(PromptJobTable.sort_order),
+            asc(PromptJobTable.id),
+          )
+          .all()
       })
       return rows.map(fromRow)
     })
@@ -170,8 +275,18 @@ export const layer = Layer.effect(
         return d.select().from(PromptJobTable).where(eq(PromptJobTable.id, id)).get()
       })
       if (!row) throw new Error(`failed to read back enqueued job ${id}`)
+      const job = fromRow(row)
       log.info("enqueued", { jobID: id, sessionID: input.sessionID })
-      return fromRow(row)
+      yield* publishCreated(job)
+      // Poke the worker so it claims this row immediately rather than
+      // waiting up to TICK_MS for the next interval-driven tick. Best
+      // effort — see comment on `wakeNotifier` above.
+      try {
+        wakeNotifier?.()
+      } catch (err) {
+        log.warn("wake notifier threw", { error: err instanceof Error ? err.message : String(err) })
+      }
+      return job
     })
 
     /**
@@ -202,7 +317,15 @@ export const layer = Layer.effect(
                   or(isNull(PromptJobTable.next_run_at), lte(PromptJobTable.next_run_at, now)),
                 ),
               )
-              .orderBy(asc(PromptJobTable.id))
+              // Run explicitly-reordered rows first (lowest sort_order wins),
+              // then never-reordered rows in id (FIFO) order. `IS NULL` is 1
+              // for NULL and 0 otherwise in SQLite, so ordering by it ASC
+              // gives "non-null first, null last" — i.e. NULLS LAST semantics.
+              .orderBy(
+                sql`${PromptJobTable.sort_order} IS NULL`,
+                asc(PromptJobTable.sort_order),
+                asc(PromptJobTable.id),
+              )
               // Over-fetch — we filter by `busy` in JS and need extra rows
               // to fill `limit` if many candidates share a busy session.
               .limit(limit * 4)
@@ -234,7 +357,14 @@ export const layer = Layer.effect(
           { behavior: "immediate" },
         ),
       )
-      return rows.map(fromRow)
+      const jobs = rows.map(fromRow)
+      // Notify subscribers that these rows have flipped pending → running.
+      // We publish after the transaction commits so a subscriber doing a
+      // follow-up DB read sees the new status. Best-effort — see publish*.
+      for (const job of jobs) {
+        yield* publishUpdated(job)
+      }
+      return jobs
     })
 
     const recordResult = Effect.fn("PromptQueue.recordResult")(function* (input: RecordResultInput) {
@@ -254,7 +384,9 @@ export const layer = Layer.effect(
         return d.select().from(PromptJobTable).where(eq(PromptJobTable.id, input.jobID)).get()
       })
       if (!row) throw new NotFoundError({ message: `Prompt job not found: ${input.jobID}` })
-      return fromRow(row)
+      const job = fromRow(row)
+      yield* publishUpdated(job)
+      return job
     })
 
     const cancel = Effect.fn("PromptQueue.cancel")(function* (jobID: PromptJobID) {
@@ -269,14 +401,29 @@ export const layer = Layer.effect(
       // durable row state before finalizing a successful-looking result, so a
       // late `MessageAbortedError` from the runner cannot overwrite the user's
       // explicit cancel back to `completed`.
-      const result = yield* db((d) =>
-        d
-          .update(PromptJobTable)
+      const now = Date.now()
+      const affected = yield* db((d) => {
+        // Read first so we know which rows to publish updates for after the
+        // bulk update. This is a single SQL round-trip in better-sqlite3 and
+        // bun-sqlite (both are synchronous), so the cost is negligible vs.
+        // the value of accurate per-row notifications for the UI.
+        const before = d
+          .select()
+          .from(PromptJobTable)
+          .where(
+            and(
+              eq(PromptJobTable.session_id, sessionID),
+              inArray(PromptJobTable.status, ["pending", "running"]),
+            ),
+          )
+          .all()
+        if (before.length === 0) return [] as Row[]
+        d.update(PromptJobTable)
           .set({
             status: "cancelled",
             error_message: "Session-wide cancellation",
-            time_completed: Date.now(),
-            time_updated: Date.now(),
+            time_completed: now,
+            time_updated: now,
           })
           .where(
             and(
@@ -284,15 +431,25 @@ export const layer = Layer.effect(
               inArray(PromptJobTable.status, ["pending", "running"]),
             ),
           )
-          .run(),
-      )
-      // drizzle's better-sqlite3 driver returns `changes`; bun-sqlite uses
-      // `rowsAffected`. Try both.
-      const changes =
-        (result as unknown as { changes?: number }).changes ??
-        (result as unknown as { rowsAffected?: number }).rowsAffected ??
-        0
-      return changes
+          .run()
+        return d
+          .select()
+          .from(PromptJobTable)
+          .where(
+            and(
+              eq(PromptJobTable.session_id, sessionID),
+              inArray(
+                PromptJobTable.id,
+                before.map((r) => r.id),
+              ),
+            ),
+          )
+          .all()
+      })
+      for (const row of affected) {
+        yield* publishUpdated(fromRow(row))
+      }
+      return affected.length
     })
 
     const recover = Effect.fn("PromptQueue.recover")(function* () {
@@ -305,6 +462,7 @@ export const layer = Layer.effect(
       for (const row of stuck) {
         const job = fromRow(row)
         const next: PromptJobStatus = job.attempt >= job.maxAttempts ? "failed" : "pending"
+        const updatedAt = Date.now()
         // Use direct SQL update so we don't trip recordResult's terminal-time
         // logic for the requeue case.
         yield* db((d) =>
@@ -316,24 +474,117 @@ export const layer = Layer.effect(
                 next === "failed"
                   ? "Server restarted while running and retries are exhausted"
                   : "Server restarted while running — re-queued",
-              time_completed: next === "failed" ? Date.now() : null,
+              time_completed: next === "failed" ? updatedAt : null,
               // Light backoff so a crash-loop doesn't immediately rerun this row.
-              next_run_at: next === "pending" ? Date.now() + 5_000 : null,
-              time_updated: Date.now(),
+              next_run_at: next === "pending" ? updatedAt + 5_000 : null,
+              time_updated: updatedAt,
             })
             .where(eq(PromptJobTable.id, job.id))
             .run(),
         )
-        recovered.push({ ...job, status: next })
+        const recoveredJob: Job = {
+          ...job,
+          status: next,
+          errorMessage:
+            next === "failed"
+              ? "Server restarted while running and retries are exhausted"
+              : "Server restarted while running — re-queued",
+          timeCompleted: next === "failed" ? updatedAt : undefined,
+          nextRunAt: next === "pending" ? updatedAt + 5_000 : undefined,
+          timeUpdated: updatedAt,
+        }
+        recovered.push(recoveredJob)
+        // Notify subscribed clients so a freshly reconnected UI immediately
+        // sees a recovered row's new status (still-queued vs. terminally
+        // failed). Without this, the client has to poll the snapshot.
+        yield* publishUpdated(recoveredJob)
       }
       return recovered
     })
 
-    return Service.of({ enqueue, claim, recordResult, cancel, cancelSession, get, list, recover })
+    const reorder = Effect.fn("PromptQueue.reorder")(function* (input: {
+      sessionID: SessionID
+      jobIDs: PromptJobID[]
+    }) {
+      const { sessionID, jobIDs } = input
+      if (jobIDs.length === 0) return [] as Job[]
+
+      // Validate up-front: every id must reference a *pending* row in this
+      // session. Anything else (running / completed / failed / cancelled, or
+      // a row from a different session) is a caller bug — fail loud so the
+      // UI sees the error instead of a silent partial reorder.
+      const rows = yield* db((d) =>
+        d
+          .select()
+          .from(PromptJobTable)
+          .where(
+            and(eq(PromptJobTable.session_id, sessionID), inArray(PromptJobTable.id, jobIDs)),
+          )
+          .all(),
+      )
+      const byID = new Map(rows.map((row) => [row.id, row] as const))
+      for (const id of jobIDs) {
+        const row = byID.get(id)
+        if (!row) {
+          throw new NotFoundError({ message: `Prompt job not found in session: ${id}` })
+        }
+        if (row.status !== "pending") {
+          throw new ConflictError({
+            message: `Cannot reorder job ${id}: status is ${row.status}, not pending`,
+            jobID: id,
+          })
+        }
+      }
+      if (new Set(jobIDs).size !== jobIDs.length) {
+        throw new ConflictError({ message: "Duplicate ids in reorder input" })
+      }
+
+      const now = Date.now()
+      const updated = yield* Effect.sync(() =>
+        Database.transaction(
+          (d) => {
+            const out: Row[] = []
+            for (const [index, id] of jobIDs.entries()) {
+              const result = d
+                .update(PromptJobTable)
+                .set({ sort_order: index, time_updated: now })
+                .where(
+                  and(
+                    eq(PromptJobTable.id, id),
+                    eq(PromptJobTable.session_id, sessionID),
+                    eq(PromptJobTable.status, "pending"),
+                  ),
+                )
+                .returning()
+                .all()
+              if (result.length === 0) {
+                // Row flipped out of pending between the pre-check and this
+                // update (e.g. worker just claimed it). Abort the whole
+                // reorder rather than ship a half-applied one.
+                throw new ConflictError({
+                  message: `Cannot reorder job ${id}: row state changed`,
+                  jobID: id,
+                })
+              }
+              out.push(result[0]!)
+            }
+            return out
+          },
+          { behavior: "immediate" },
+        ),
+      )
+      const jobs = updated.map(fromRow)
+      for (const job of jobs) {
+        yield* publishUpdated(job)
+      }
+      return jobs
+    })
+
+    return Service.of({ enqueue, claim, recordResult, cancel, cancelSession, get, list, recover, reorder })
   }),
 )
 
-export const defaultLayer = layer
+export const defaultLayer = layer.pipe(Layer.provide(Bus.layer))
 
 export * as PromptQueue from "./prompt-queue"
 

@@ -7,6 +7,7 @@ import type {
   SnapshotFileDiff,
   Todo,
 } from "@codeplane-ai/sdk/v2/client"
+import type { PromptQueueJob } from "./types"
 
 export const SESSION_CACHE_LIMIT = 40
 
@@ -19,6 +20,7 @@ export type SessionCache = {
   permission: Record<string, PermissionRequest[] | undefined>
   question: Record<string, QuestionRequest[] | undefined>
   pendingDelta: Record<string, Record<string, Record<string, string>> | undefined>
+  prompt_queue: Record<string, PromptQueueJob[] | undefined>
 }
 
 export function cachedSessionIDs(store: SessionCache) {
@@ -30,6 +32,11 @@ export function cachedSessionIDs(store: SessionCache) {
       ...Object.keys(store.permission),
       ...Object.keys(store.question),
       ...Object.keys(store.session_status),
+      // A session with only a queue row (just-enqueued, no messages yet)
+      // would otherwise be evicted on the very next trim pass — survey
+      // prompt_queue so freshly-queued sessions stick until their first
+      // message lands.
+      ...Object.keys(store.prompt_queue ?? {}),
       ...Object.values(store.part)
         .map((parts) => parts?.find((part) => !!part?.sessionID)?.sessionID)
         .filter((sessionID): sessionID is string => !!sessionID),
@@ -63,6 +70,9 @@ export function dropSessionCaches(store: SessionCache, sessionIDs: Iterable<stri
     delete store.session_status[sessionID]
     delete store.permission[sessionID]
     delete store.question[sessionID]
+    // Older callers may not have a prompt_queue map at all (added with the
+    // server-authoritative queue migration); skip rather than throw.
+    if (store.prompt_queue) delete store.prompt_queue[sessionID]
   }
 
   for (const messageID of droppedMessageIDs) {

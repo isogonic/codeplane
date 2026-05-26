@@ -3,6 +3,9 @@ import { PromptQueue } from "../../src/session/prompt-queue"
 import { SessionID } from "../../src/session/schema"
 import { AppRuntime } from "../../src/effect/app-runtime"
 import { Instance } from "../../src/project/instance"
+import { Bus } from "../../src/bus"
+import type { Job } from "../../src/session/prompt-queue"
+import type { PromptJobID } from "../../src/session/prompt-queue-schema"
 import { resetDatabase } from "../fixture/db"
 import { tmpdir } from "../fixture/fixture"
 
@@ -159,6 +162,198 @@ describe("PromptQueue", () => {
         const after = await AppRuntime.runPromise(PromptQueue.Service.use((svc) => svc.get(job.id)))
         expect(after.status).toBe("failed")
         expect(after.timeCompleted).toBeGreaterThan(0)
+      },
+    })
+  })
+
+  test("publishes Created on enqueue, Updated on claim and recordResult", async () => {
+    await using tmp = await tmpdir()
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const sessionID = session("events")
+        type Created = { sessionID: string; job: Job }
+        type Updated = { sessionID: string; job: Job }
+        const created: Created[] = []
+        const updated: Updated[] = []
+        // Use the top-level subscribe helper (synchronous, returns an unsub
+        // closure). The Bus is keyed by Instance directory, so this
+        // subscription receives publishes issued by PromptQueue inside the
+        // same Instance.provide scope.
+        const unsubCreated = Bus.subscribe(PromptQueue.Event.Created, (ev) => created.push(ev.properties as Created))
+        const unsubUpdated = Bus.subscribe(PromptQueue.Event.Updated, (ev) => updated.push(ev.properties as Updated))
+        // Give the subscriber fibers a tick to actually start consuming.
+        await Bun.sleep(10)
+        try {
+          const job = await AppRuntime.runPromise(
+            PromptQueue.Service.use((svc) =>
+              svc.enqueue({ sessionID, directory: tmp.path, payload: "{}" }),
+            ),
+          )
+          await Bun.sleep(20)
+          expect(created).toHaveLength(1)
+          expect(created[0].job.id).toBe(job.id)
+          expect(created[0].sessionID).toBe(sessionID)
+
+          await AppRuntime.runPromise(PromptQueue.Service.use((svc) => svc.claim(Date.now(), 10)))
+          await Bun.sleep(20)
+          expect(updated.some((u) => u.job.id === job.id && u.job.status === "running")).toBe(true)
+
+          await AppRuntime.runPromise(
+            PromptQueue.Service.use((svc) => svc.recordResult({ jobID: job.id, status: "completed" })),
+          )
+          await Bun.sleep(20)
+          expect(updated.some((u) => u.job.id === job.id && u.job.status === "completed")).toBe(true)
+        } finally {
+          unsubCreated()
+          unsubUpdated()
+        }
+      },
+    })
+  })
+
+  test("publishes Updated for every cancelled row on cancelSession", async () => {
+    await using tmp = await tmpdir()
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const sessionID = session("cancel-events")
+        const ids = new Set<PromptJobID>()
+        for (let i = 0; i < 3; i++) {
+          const job = await AppRuntime.runPromise(
+            PromptQueue.Service.use((svc) =>
+              svc.enqueue({ sessionID, directory: tmp.path, payload: "{}" }),
+            ),
+          )
+          ids.add(job.id)
+        }
+
+        const cancelled: { jobID: PromptJobID }[] = []
+        const unsub = Bus.subscribe(PromptQueue.Event.Updated, (ev) => {
+          const props = ev.properties as { sessionID: string; job: Job }
+          if (props.job.status === "cancelled") cancelled.push({ jobID: props.job.id })
+        })
+        await Bun.sleep(10)
+        try {
+          await AppRuntime.runPromise(
+            PromptQueue.Service.use((svc) => svc.cancelSession(sessionID)),
+          )
+          await Bun.sleep(20)
+          const cancelledIDs = new Set(cancelled.map((c) => c.jobID))
+          // Exactly the enqueued ids should be reported, no duplicates.
+          expect(cancelledIDs).toEqual(ids)
+        } finally {
+          unsub()
+        }
+      },
+    })
+  })
+
+  test("reorder rewrites sort_order; claim respects it (explicit-first, NULLS last)", async () => {
+    await using tmp = await tmpdir()
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const sessionID = session("reorder")
+        // Three pending jobs in insertion (FIFO) order: A, B, C.
+        const a = await AppRuntime.runPromise(
+          PromptQueue.Service.use((svc) => svc.enqueue({ sessionID, directory: tmp.path, payload: "{}" })),
+        )
+        const b = await AppRuntime.runPromise(
+          PromptQueue.Service.use((svc) => svc.enqueue({ sessionID, directory: tmp.path, payload: "{}" })),
+        )
+        const c = await AppRuntime.runPromise(
+          PromptQueue.Service.use((svc) => svc.enqueue({ sessionID, directory: tmp.path, payload: "{}" })),
+        )
+
+        // Reorder to C, A, B.
+        const reordered = await AppRuntime.runPromise(
+          PromptQueue.Service.use((svc) => svc.reorder({ sessionID, jobIDs: [c.id, a.id, b.id] })),
+        )
+        expect(reordered.map((j) => j.id)).toEqual([c.id, a.id, b.id])
+        expect(reordered.map((j) => j.sortOrder)).toEqual([0, 1, 2])
+
+        // claim picks them up in the new order.
+        const first = await AppRuntime.runPromise(PromptQueue.Service.use((svc) => svc.claim(Date.now(), 1)))
+        expect(first[0]?.id).toBe(c.id)
+        await AppRuntime.runPromise(
+          PromptQueue.Service.use((svc) => svc.recordResult({ jobID: first[0]!.id, status: "completed" })),
+        )
+        const second = await AppRuntime.runPromise(PromptQueue.Service.use((svc) => svc.claim(Date.now(), 1)))
+        expect(second[0]?.id).toBe(a.id)
+      },
+    })
+  })
+
+  test("reorder rejects non-pending jobs and unknown ids", async () => {
+    await using tmp = await tmpdir()
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const sessionID = session("reorder-reject")
+        const a = await AppRuntime.runPromise(
+          PromptQueue.Service.use((svc) => svc.enqueue({ sessionID, directory: tmp.path, payload: "{}" })),
+        )
+        const b = await AppRuntime.runPromise(
+          PromptQueue.Service.use((svc) => svc.enqueue({ sessionID, directory: tmp.path, payload: "{}" })),
+        )
+        // Claim moves A to "running" — it's no longer reorderable.
+        await AppRuntime.runPromise(PromptQueue.Service.use((svc) => svc.claim(Date.now(), 1)))
+
+        await expect(
+          AppRuntime.runPromise(
+            PromptQueue.Service.use((svc) => svc.reorder({ sessionID, jobIDs: [a.id, b.id] })),
+          ),
+        ).rejects.toThrow(/PromptQueueConflict|not pending|state changed/)
+
+        // Unknown id → NotFoundError.
+        await expect(
+          AppRuntime.runPromise(
+            PromptQueue.Service.use((svc) =>
+              svc.reorder({
+                sessionID,
+                jobIDs: ["pjob_does_not_exist" as unknown as typeof a.id],
+              }),
+            ),
+          ),
+        ).rejects.toThrow(/NotFoundError|not found/i)
+      },
+    })
+  })
+
+  test("newly-enqueued jobs sort after reordered ones", async () => {
+    await using tmp = await tmpdir()
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const sessionID = session("reorder-after")
+        const a = await AppRuntime.runPromise(
+          PromptQueue.Service.use((svc) => svc.enqueue({ sessionID, directory: tmp.path, payload: "{}" })),
+        )
+        const b = await AppRuntime.runPromise(
+          PromptQueue.Service.use((svc) => svc.enqueue({ sessionID, directory: tmp.path, payload: "{}" })),
+        )
+        await AppRuntime.runPromise(
+          PromptQueue.Service.use((svc) => svc.reorder({ sessionID, jobIDs: [b.id, a.id] })),
+        )
+        // C enqueued after reorder; sort_order remains NULL so it falls
+        // *after* the reordered pair regardless of insertion order.
+        const c = await AppRuntime.runPromise(
+          PromptQueue.Service.use((svc) => svc.enqueue({ sessionID, directory: tmp.path, payload: "{}" })),
+        )
+
+        const order: string[] = []
+        for (let i = 0; i < 3; i++) {
+          const claimed = await AppRuntime.runPromise(
+            PromptQueue.Service.use((svc) => svc.claim(Date.now(), 1)),
+          )
+          if (claimed.length === 0) break
+          order.push(claimed[0].id)
+          await AppRuntime.runPromise(
+            PromptQueue.Service.use((svc) => svc.recordResult({ jobID: claimed[0].id, status: "completed" })),
+          )
+        }
+        expect(order).toEqual([b.id, a.id, c.id])
       },
     })
   })

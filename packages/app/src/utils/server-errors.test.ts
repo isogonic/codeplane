@@ -131,6 +131,29 @@ describe("formatServerError", () => {
     )
   })
 
+  test("formats OAuth invalid_grant into a friendly message", () => {
+    const error = {
+      error: "invalid_grant",
+      error_description: "refresh token already used",
+    }
+    expect(formatServerError(error, language.t)).toBe("Your session has expired. Please sign in again.")
+  })
+
+  test("formats OAuth access_denied", () => {
+    const error = { error: "access_denied", error_description: "user revoked consent" }
+    expect(formatServerError(error, language.t)).toBe("Access denied. Please sign in again to continue.")
+  })
+
+  test("formats OAuth errors wrapped in an SDK envelope", () => {
+    const wrapped = { error: { error: "invalid_grant", error_description: "expired" } }
+    expect(formatServerError(wrapped, language.t)).toBe("Your session has expired. Please sign in again.")
+  })
+
+  test("formats unknown OAuth codes with description", () => {
+    const error = { error: "custom_oauth_error", error_description: "something broke" }
+    expect(formatServerError(error, language.t)).toBe("Authentication error (custom_oauth_error): something broke")
+  })
+
   test("formats provider model suggestions", () => {
     const error = {
       name: "ProviderModelNotFoundError",

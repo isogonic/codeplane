@@ -12,7 +12,7 @@ import type {
   SnapshotFileDiff,
   Todo,
 } from "@codeplane-ai/sdk/v2/client"
-import type { State, VcsCache } from "./types"
+import type { PromptQueueJob, State, VcsCache } from "./types"
 import { trimSessions } from "./session-trim"
 import { cachedSessionIDs, dropSessionCaches } from "./session-cache"
 import { diffs as list, message as clean } from "@/utils/diffs"
@@ -254,6 +254,76 @@ export function applyDirectoryEvent(input: {
     case "session.status": {
       const props = event.properties as { sessionID: string; status: SessionStatus }
       input.setStore("session_status", props.sessionID, reconcile(props.status))
+      break
+    }
+    // Server-authoritative prompt queue. Store mirrors active rows
+    // (pending + running) plus `failed` rows — failed jobs stay in the dock
+    // so the user can see the error and explicitly dismiss them.
+    // `completed` and `cancelled` are pruned the moment they arrive.
+    case "session.queue.created": {
+      const props = event.properties as { sessionID: string; job: PromptQueueJob }
+      const existing = input.store.prompt_queue[props.sessionID]
+      if (!existing) {
+        input.setStore("prompt_queue", props.sessionID, [props.job])
+        break
+      }
+      // Idempotent: a snapshot fetch racing the SSE backfill can deliver
+      // the same Created twice. Drop the duplicate rather than display it
+      // twice in the dock.
+      if (existing.some((j) => j.id === props.job.id)) break
+      input.setStore(
+        "prompt_queue",
+        props.sessionID,
+        produce<PromptQueueJob[]>((draft) => {
+          draft.push(props.job)
+        }),
+      )
+      break
+    }
+    case "session.queue.updated": {
+      const props = event.properties as { sessionID: string; job: PromptQueueJob }
+      const job = props.job
+      const isTerminal = job.status === "completed" || job.status === "cancelled"
+      const existing = input.store.prompt_queue[props.sessionID]
+      if (!existing) {
+        // First time we hear about this session: add row unless it's
+        // already terminal (no point staging then immediately dropping).
+        if (!isTerminal) input.setStore("prompt_queue", props.sessionID, [job])
+        break
+      }
+      input.setStore(
+        "prompt_queue",
+        props.sessionID,
+        produce<PromptQueueJob[]>((draft) => {
+          const index = draft.findIndex((j) => j.id === job.id)
+          if (isTerminal) {
+            if (index >= 0) draft.splice(index, 1)
+            return
+          }
+          if (index < 0) {
+            // We never saw the Created for this row (e.g. snapshot fetch
+            // hadn't completed yet). Treat the Updated as authoritative
+            // and add the row so the dock stays in sync.
+            draft.push(job)
+            return
+          }
+          draft[index] = job
+        }),
+      )
+      break
+    }
+    case "session.queue.removed": {
+      const props = event.properties as { sessionID: string; jobID: string }
+      const existing = input.store.prompt_queue[props.sessionID]
+      if (!existing) break
+      input.setStore(
+        "prompt_queue",
+        props.sessionID,
+        produce<PromptQueueJob[]>((draft) => {
+          const index = draft.findIndex((j) => j.id === props.jobID)
+          if (index >= 0) draft.splice(index, 1)
+        }),
+      )
       break
     }
     case "message.updated": {

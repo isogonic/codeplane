@@ -40,10 +40,19 @@ export const PromptJobTable = sqliteTable(
     time_started: integer(),
     time_completed: integer(),
     error_message: text(),
+    /**
+     * Explicit run-order override. NULL means "use natural id order" (i.e.
+     * insertion / FIFO). Reorder operations assign small ascending integers
+     * (0, 1, 2, ...) so reordered rows sort before never-reordered ones; new
+     * enqueues land with NULL, so they naturally go after any reordered set.
+     * `claim` orders by `sort_order ASC NULLS LAST, id ASC`.
+     */
+    sort_order: integer(),
     ...Timestamps,
   },
   (table) => [
     index("prompt_job_session_idx").on(table.session_id),
     index("prompt_job_status_next_idx").on(table.status, table.next_run_at),
+    index("prompt_job_status_sort_idx").on(table.status, table.sort_order),
   ],
 )

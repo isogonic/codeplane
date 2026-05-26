@@ -383,14 +383,11 @@ function AssistantReasoning(props: { part: SessionMessageAssistantReasoning; sub
         borderColor={theme.backgroundElement}
         flexShrink={0}
       >
-        <code
-          filetype="markdown"
-          drawUnstyledText={false}
+        <MarkdownText
+          text={"_Thinking:_ " + content()}
+          syntax={props.subtleSyntax}
           streaming={true}
-          syntaxStyle={props.subtleSyntax}
-          content={"_Thinking:_ " + content()}
           conceal={true}
-          fg={theme.textMuted}
         />
       </box>
     </Show>

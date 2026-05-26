@@ -13,5 +13,9 @@ export function isSessionTurnWorking(input: {
   status: SessionStatus
   assistantMessages: readonly AssistantMessage[]
 }) {
-  return input.active && (input.status.type !== "idle" || hasPendingTurnAssistant(input.assistantMessages))
+  if (!input.active) return false
+  if (hasPendingTurnAssistant(input.assistantMessages)) return true
+  if (input.status.type === "idle") return false
+  if (input.status.type === "retry") return true
+  return input.assistantMessages.length === 0
 }

@@ -806,6 +806,11 @@ export function createDesktopUIHost(input: {
     const cookies = await cookieHeader(session, remote)
     if (cookies) headers.set("cookie", cookies)
 
+    request.socket?.setNoDelay(true)
+    request.socket?.setKeepAlive(true, 30_000)
+    response.socket?.setNoDelay(true)
+    response.socket?.setKeepAlive(true, 30_000)
+
     await new Promise<void>((resolve, reject) => {
       const client = remote.protocol === "https:" ? https : remote.protocol === "http:" ? http : undefined
       if (!client) {
@@ -843,12 +848,15 @@ export function createDesktopUIHost(input: {
             return
           }
           response.writeHead(upstreamResponse.statusCode ?? 502, responseHeaders(upstreamResponse.headers))
+          response.flushHeaders()
           if (request.method === "HEAD") {
             upstreamResponse.resume()
             response.end()
             settle()
             return
           }
+          upstreamResponse.socket?.setNoDelay(true)
+          upstreamResponse.socket?.setKeepAlive(true, 30_000)
           let completed = false
           const cancelUpstream = () => {
             if (completed) return
