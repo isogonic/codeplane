@@ -145,7 +145,6 @@ export function BasicTool(props: BasicToolProps) {
   // Animated height for collapsible open/close
   let contentRef: HTMLDivElement | undefined
   let heightAnim: AnimationPlaybackControls | undefined
-  const initialOpen = open()
 
   createEffect(
     on(
@@ -154,14 +153,27 @@ export function BasicTool(props: BasicToolProps) {
         if (!props.animated || !contentRef) return
         heightAnim?.stop()
         if (isOpen) {
-          contentRef.style.overflow = "hidden"
+          // Set overflow: visible at the START of the expand animation,
+          // not on .finished. The body inside often has its own border /
+          // box-shadow that paints from edge to edge — with overflow:
+          // hidden during the spring animation (~200 ms), those edges
+          // get clipped against the wrapper bounds and the border looks
+          // like it "doesn't load" until you click twice. The user
+          // reported this as the "border doesn't load on first
+          // collapse/expand" bug. The spring animation already keeps
+          // the wrapper height ≤ the body height while expanding, so
+          // setting overflow visible only causes a single frame of
+          // potential layout shift at the bottom, far less noticeable
+          // than the missing border.
+          contentRef.style.overflow = "visible"
           heightAnim = animate(contentRef, { height: "auto" }, SPRING)
           void heightAnim.finished.then(() => {
             if (!contentRef || !open()) return
-            contentRef.style.overflow = "visible"
             contentRef.style.height = "auto"
           })
         } else {
+          // Closing still hides overflow so the body's content doesn't
+          // spill out under the collapsing wrapper.
           contentRef.style.overflow = "hidden"
           heightAnim = animate(contentRef, { height: "0px" }, SPRING)
         }
@@ -299,9 +311,18 @@ export function BasicTool(props: BasicToolProps) {
           ref={contentRef}
           data-slot="collapsible-content"
           data-animated
+          // Drive these from the live `open()` accessor so SolidJS tracks
+          // them — without the accessor inside the style object, the
+          // initial render froze `overflow: hidden` and the border was
+          // clipped by the wrapper until the spring `.finished` microtask
+          // fired (~200 ms later). On expand we want overflow: visible
+          // immediately so the body's border paints with the rest of the
+          // content. The createEffect above still owns the height
+          // animation via `animate(...)` — these inline styles are only
+          // the at-rest values for the open/closed states.
           style={{
-            height: initialOpen ? "auto" : "0px",
-            overflow: initialOpen ? "visible" : "hidden",
+            height: open() ? "auto" : "0px",
+            overflow: open() ? "visible" : "hidden",
           }}
         >
           {props.children}

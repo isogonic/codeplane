@@ -2712,3 +2712,93 @@ it.live(
     ),
   60_000,
 )
+
+// Regression: the v29.0.19 ownMessageID filter dropped runLoop-generated
+// user messages whose id > ownMessageID. compaction.create() writes
+// exactly such a message (a user message carrying a `compaction` part
+// with a fresh ascending id). With the broken filter, the next iteration
+// no longer saw the just-scheduled compaction task, so the trigger
+// condition (lastFinished.tokens > usable) still held, and the loop
+// fired compaction.create() again — and again, on every iteration —
+// producing the user-visible "infinite Session compacted dividers" bug.
+//
+// This test sets a tiny context limit so a single ordinary assistant
+// reply trips overflow, then drives the loop with an LLM script that
+// satisfies BOTH the compaction summary call (1) and the post-compaction
+// reply (1). If the filter regresses, we'd see N > 2 LLM calls and a
+// runaway count of compaction user messages.
+it.live(
+  "autocompact runs once per trigger; the runLoop does not re-schedule the same compaction every iteration",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ llm }) {
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const session = yield* sessions.create({
+          title: "Compact loop regression",
+          permission: [{ permission: "*", pattern: "*", action: "allow" }],
+        })
+
+        // Reply 1: the initial assistant turn — reports usage well above
+        // the (tiny) usable context so the next iteration's overflow
+        // check returns true.
+        yield* llm.push(
+          reply()
+            .text("first reply (will overflow)")
+            .usage({ input: 5_000, output: 5_000 })
+            .stop(),
+        )
+        // Reply 2: the compaction summary itself.
+        yield* llm.push(reply().text("[summary of prior turn]").usage({ input: 50, output: 50 }).stop())
+        // Reply 3: the post-compaction continuation responding to the
+        // original user prompt. After compaction the prior assistant
+        // gets marked `summary: true` and the loop picks up where it
+        // left off.
+        yield* llm.push(reply().text("post compaction").usage({ input: 50, output: 50 }).stop())
+
+        yield* prompt.prompt({
+          sessionID: session.id,
+          agent: "build",
+          parts: [{ type: "text", text: "trigger overflow please" }],
+        })
+
+        // If the regression returned, we'd never reach this point —
+        // the loop would spin forever creating compaction-user messages
+        // without ever making the summary LLM call. A generous bound
+        // catches the loop without making the assertion fragile.
+        const hits = yield* llm.hits
+        expect(hits.length).toBeLessThanOrEqual(5)
+
+        const msgs = yield* sessions.messages({ sessionID: session.id, limit: 200 })
+        const compactionUserMsgs = msgs.filter(
+          (m) => m.info.role === "user" && m.parts.some((p) => p.type === "compaction"),
+        )
+        // Exactly ONE compaction trigger fired. Pre-fix this number was
+        // observed in the wild as 12+ within a single user-visible
+        // session frame.
+        expect(compactionUserMsgs.length).toBe(1)
+      }),
+      {
+        git: true,
+        config: (url) => ({
+          ...providerCfg(url),
+          // Override the per-test model context to a tiny number so a
+          // single ordinary reply trips overflow without having to
+          // simulate 100k-token messages.
+          provider: {
+            ...providerCfg(url).provider,
+            test: {
+              ...providerCfg(url).provider.test,
+              models: {
+                "test-model": {
+                  ...providerCfg(url).provider.test.models["test-model"],
+                  limit: { context: 1_000, output: 200 },
+                },
+              },
+            },
+          },
+        }),
+      },
+    ),
+  60_000,
+)

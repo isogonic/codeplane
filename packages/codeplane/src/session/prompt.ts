@@ -1909,6 +1909,17 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       let structured: unknown | undefined
       let step = 0
       const session = yield* sessions.get(sessionID)
+      // Defense-in-depth re-entry fence for autocompact. Without it, any
+      // bug that hides the just-scheduled compaction task from
+      // `collectLoopState` (the recent ownMessageID-filter regression
+      // being the proximate example) lets the trigger refire against
+      // the same `lastFinished` assistant on every iteration, producing
+      // an infinite stream of "Session compacted" dividers. Track the
+      // last finished-assistant id we already scheduled a compaction for
+      // and skip if we'd re-schedule against the same one — guarantees
+      // forward progress: each finished assistant triggers at most one
+      // auto-compaction within a single runLoop instance.
+      let lastAutoCompactedFinishedID: string | undefined
 
       while (true) {
         yield* status.set(sessionID, { type: "busy" })
@@ -1927,8 +1938,23 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         // user roles means each prompt() owns exactly one AI turn.
         // Assistant + tool messages are kept regardless so multi-step
         // tool followups for *our* user message still iterate normally.
+        //
+        // EXCEPTION: runLoop-generated user messages (compaction,
+        // subtask) carry a task part and belong to OUR turn even though
+        // their ID is greater than `ownMessageID` (they're created
+        // AFTER our prompt to schedule follow-up work). Dropping them
+        // would hide the scheduled task from collectLoopState — the
+        // task would never execute, the trigger condition (e.g. context
+        // overflow) would still hold, and the next iteration would
+        // re-schedule the same task. That's the infinite-"Session
+        // compacted" loop pinned by the user report.
         if (ownMessageID) {
-          msgs = msgs.filter((m) => m.info.role !== "user" || m.info.id <= ownMessageID)
+          msgs = msgs.filter(
+            (m) =>
+              m.info.role !== "user" ||
+              m.info.id <= ownMessageID ||
+              m.parts.some((p) => p.type === "compaction" || p.type === "subtask"),
+          )
         }
         yield* finalizeFinishedAssistants(msgs)
 
@@ -2032,8 +2058,10 @@ NOTE: At any point in time through this workflow you should feel free to ask the
           if (
             lastFinished &&
             lastFinished.summary !== true &&
+            lastFinished.id !== lastAutoCompactedFinishedID &&
             (yield* compaction.isOverflow({ tokens: lastFinished.tokens, model }))
           ) {
+            lastAutoCompactedFinishedID = lastFinished.id
             yield* compaction.create({ sessionID, agent: lastUser.agent, model: lastUser.model, auto: true })
             continue
           }
