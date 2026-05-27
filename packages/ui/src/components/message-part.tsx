@@ -225,58 +225,7 @@ function next(text: string, start: number) {
 }
 
 function createPacedValue(getValue: () => string, live?: () => boolean) {
-  const [value, setValue] = createSignal(getValue())
-  let shown = getValue()
-  let timeout: ReturnType<typeof setTimeout> | undefined
-
-  const clear = () => {
-    if (!timeout) return
-    clearTimeout(timeout)
-    timeout = undefined
-  }
-
-  const sync = (text: string) => {
-    shown = text
-    setValue(text)
-  }
-
-  const run = () => {
-    timeout = undefined
-    const text = getValue()
-    if (!live?.()) {
-      sync(text)
-      return
-    }
-    if (!text.startsWith(shown) || text.length <= shown.length) {
-      sync(text)
-      return
-    }
-    const end = next(text, shown.length)
-    sync(text.slice(0, end))
-    if (end < text.length) timeout = setTimeout(run, TEXT_RENDER_PACE_MS)
-  }
-
-  createEffect(() => {
-    const text = getValue()
-    if (!live?.()) {
-      clear()
-      sync(text)
-      return
-    }
-    if (!text.startsWith(shown) || text.length < shown.length) {
-      clear()
-      sync(text)
-      return
-    }
-    if (text.length === shown.length || timeout) return
-    timeout = setTimeout(run, TEXT_RENDER_PACE_MS)
-  })
-
-  onCleanup(() => {
-    clear()
-  })
-
-  return value
+  return getValue
 }
 
 function PacedMarkdown(props: { text: string; cacheKey: string; streaming: boolean }) {

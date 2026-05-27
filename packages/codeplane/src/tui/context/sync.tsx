@@ -484,12 +484,9 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           setStore(
             "part",
             event.properties.messageID,
-            produce((draft) => {
-              const part = draft[result.index]
-              const field = event.properties.field as keyof typeof part
-              const existing = part[field] as string | undefined
-              ;(part[field] as string) = (existing ?? "") + event.properties.delta
-            }),
+            result.index,
+            event.properties.field as any,
+            (existing: string | undefined) => (existing ?? "") + event.properties.delta,
           )
           break
         }

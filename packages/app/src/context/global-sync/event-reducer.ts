@@ -438,12 +438,9 @@ export function applyDirectoryEvent(input: {
         input.setStore(
           "part",
           props.messageID,
-          produce((draft) => {
-            const part = draft[result.index]
-            const field = props.field as keyof typeof part
-            const existing = part[field] as string | undefined
-            ;(part[field] as string) = (existing ?? "") + props.delta
-          }),
+          result.index,
+          props.field as any,
+          (existing: string | undefined) => (existing ?? "") + props.delta
         )
         break
       }
@@ -453,14 +450,19 @@ export function applyDirectoryEvent(input: {
       // up via `message.part.updated`. Without this branch the delta would
       // be silently dropped and the UI would appear frozen until the next
       // full part snapshot.
-      input.setStore(
-        "pendingDelta",
-        produce((draft) => {
-          const forMessage = draft[props.messageID] ?? (draft[props.messageID] = {})
-          const forPart = forMessage[props.partID] ?? (forMessage[props.partID] = {})
-          forPart[props.field] = (forPart[props.field] ?? "") + props.delta
-        }),
-      )
+      if (!input.store.pendingDelta[props.messageID]) {
+        input.setStore("pendingDelta", props.messageID, { [props.partID]: { [props.field]: props.delta } })
+      } else if (!input.store.pendingDelta[props.messageID][props.partID]) {
+        input.setStore("pendingDelta", props.messageID, props.partID, { [props.field]: props.delta })
+      } else {
+        input.setStore(
+          "pendingDelta",
+          props.messageID,
+          props.partID,
+          props.field,
+          (existing: string | undefined) => (existing ?? "") + props.delta
+        )
+      }
       break
     }
     case "vcs.branch.updated": {
