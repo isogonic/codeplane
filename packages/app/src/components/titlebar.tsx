@@ -191,24 +191,16 @@ export function Titlebar() {
                   "duration-180 ease-in": layout.sidebar.opened(),
                 }}
               >
-                <Show when={platform.desktop || (hasProjects() && nav())}>
+                {/*
+                  Server-switcher button was previously rendered here on
+                  the left next to back/forward. Removed: the same
+                  control is exposed on the right via StatusPopover
+                  (status-popover.tsx) and via the cmd-K palette entry
+                  `server.switch`. Having both shipped twice in the same
+                  titlebar was a 1:1 duplicate the user flagged.
+                */}
+                <Show when={hasProjects() && nav()}>
                   <div class="titlebar-cluster flex items-center gap-0.5 rounded-lg p-0.5">
-                    <Show when={platform.desktop}>
-                      <Tooltip
-                        placement="bottom"
-                        value={language.t("command.server.switch")}
-                        openDelay={2000}
-                      >
-                        <Button
-                          variant="ghost"
-                          icon="server"
-                          class="titlebar-icon w-7 h-6 p-0 box-border rounded-md"
-                          onClick={() => command.trigger("server.switch")}
-                          aria-label={language.t("command.server.switch")}
-                        />
-                      </Tooltip>
-                    </Show>
-                    <Show when={hasProjects() && nav()}>
                       <Tooltip placement="bottom" value={language.t("common.goBack")} openDelay={2000}>
                         <Button
                           variant="ghost"
@@ -229,7 +221,6 @@ export function Titlebar() {
                           aria-label={language.t("common.goForward")}
                         />
                       </Tooltip>
-                    </Show>
                   </div>
                 </Show>
                 <div id="codeplane-titlebar-left" class="flex items-center gap-3 min-w-0 px-2" />

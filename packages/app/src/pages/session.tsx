@@ -1,4 +1,4 @@
-import type { Project, UserMessage } from "@codeplane-ai/sdk/v2"
+import type { Message, Part, Project, UserMessage } from "@codeplane-ai/sdk/v2"
 import { useDialog } from "@codeplane-ai/ui/context/dialog"
 import { createQuery, skipToken, useMutation, useQueryClient } from "@tanstack/solid-query"
 import {
@@ -74,6 +74,66 @@ import { same } from "@/utils/same"
 import { formatServerError } from "@/utils/server-errors"
 
 const emptyUserMessages: UserMessage[] = []
+
+/**
+ * Pre-v29.0.26 sessions can have long runs of compaction-only user
+ * messages from the autocompact-loop bug (the runLoop fired
+ * compaction.create() every iteration without ever processing the
+ * scheduled task). Each of those messages renders as a "Session
+ * compacted" divider and hides every adjacent real message because the
+ * turn renderer treats compaction turns as standalone dividers.
+ *
+ * This filter hides compaction-only user messages that didn't produce
+ * any assistant response. A legitimate compaction always has an
+ * assistant child (the summary, marked `summary: true`); a runaway one
+ * doesn't. The first compaction-only message in a run is still kept if
+ * NO compaction in the run has a child — that way the user still sees
+ * "Session compacted" once, even on legacy data, instead of the wall
+ * of dividers.
+ *
+ * Server-side v29.0.26 prevents new runs from forming; this filter
+ * cleans up the historical noise so pre-fix sessions render properly.
+ */
+function collapseEmptyCompactionTurns(
+  userMessages: UserMessage[],
+  partsByMessage: Record<string, Part[]>,
+  allMessages: Message[],
+): UserMessage[] {
+  if (userMessages.length === 0) return userMessages
+  const hasCompactionPart = (id: string) =>
+    (partsByMessage[id] ?? []).some((part) => part.type === "compaction")
+  const hasAssistantChild = (id: string) =>
+    allMessages.some((m) => m.role === "assistant" && m.parentID === id)
+  let changed = false
+  const out: UserMessage[] = []
+  // Track whether the previous emitted user message was a compaction
+  // divider; collapse adjacent compaction-only dividers into one.
+  let lastEmittedWasCompactionDivider = false
+  for (const msg of userMessages) {
+    if (!hasCompactionPart(msg.id)) {
+      out.push(msg)
+      lastEmittedWasCompactionDivider = false
+      continue
+    }
+    if (hasAssistantChild(msg.id)) {
+      // Real compaction that produced a summary. Keep it.
+      out.push(msg)
+      lastEmittedWasCompactionDivider = true
+      continue
+    }
+    // Empty compaction (no summary produced). Hide unless this is the
+    // first in the run — keep one divider so the user knows compaction
+    // was scheduled.
+    if (lastEmittedWasCompactionDivider) {
+      changed = true
+      continue
+    }
+    out.push(msg)
+    lastEmittedWasCompactionDivider = true
+  }
+  return changed ? out : userMessages
+}
+
 type FollowupEdit = {
   id: string
   prompt: PromptType
@@ -492,8 +552,8 @@ export default function Page() {
   const visibleUserMessages = createMemo(
     () => {
       const revert = revertMessageID()
-      if (!revert) return userMessages()
-      return userMessages().filter((m) => m.id < revert)
+      const base = revert ? userMessages().filter((m) => m.id < revert) : userMessages()
+      return collapseEmptyCompactionTurns(base, sync.data.part, messages())
     },
     emptyUserMessages,
     {

@@ -195,7 +195,16 @@ export const BodySizeLimitMiddleware: MiddlewareHandler = async (c, next) => {
 // against expensive routes (LLM proxies, file scans).
 
 const REQUEST_WINDOW_MS = 60_000
-const REQUEST_MAX_PER_WINDOW = 600
+// The web app's dev mode loads hundreds of modules through the same
+// origin on first paint (HMR + every component as a separate module
+// request). A 600 req/min cap blew that up — see the
+// `dist/assets/index-*.js` chunk list. The real DOS surface we care
+// about is over-the-network brute-forcing of expensive endpoints
+// (LLM proxies, file scans), not asset loads from the same host.
+// Bumped the cap, and made the loopback bypass below skip the limit
+// entirely for traffic that physically can't come from a remote
+// attacker.
+const REQUEST_MAX_PER_WINDOW = 3_000
 const requestCounts = new Map<string, { count: number; windowStart: number }>()
 const REQUEST_TRACKED_MAX = 50_000
 
@@ -212,8 +221,22 @@ function evictOldestRequestKey() {
   if (oldestKey) requestCounts.delete(oldestKey)
 }
 
+// Loopback clients are bypassed: if the attacker is on the box already
+// they've won by other means, and any legitimate local tooling (browser
+// dev mode, IDE, the desktop shell talking to its embedded server)
+// makes high-frequency requests that we don't want to throttle.
+function isLoopbackClient(key: string): boolean {
+  if (key === "unknown") return false
+  // IPv4 loopback
+  if (key === "127.0.0.1" || key.startsWith("127.")) return true
+  // IPv6 loopback (with or without zone id / brackets)
+  if (key === "::1" || key === "[::1]" || key.startsWith("::ffff:127.")) return true
+  return false
+}
+
 export const RequestRateMiddleware: MiddlewareHandler = async (c, next) => {
   const key = clientKeyForRequest(c)
+  if (isLoopbackClient(key)) return next()
   const now = Date.now()
   let entry = requestCounts.get(key)
   if (!entry || now - entry.windowStart > REQUEST_WINDOW_MS) {
