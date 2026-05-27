@@ -145,7 +145,10 @@ export function SessionHeader() {
   const tree = createMemo(() => !configurableHeader || settings.general.showFileTree())
   const term = createMemo(() => !configurableHeader || settings.general.showTerminal())
   const status = createMemo(() => !configurableHeader || settings.general.showStatus())
-  const inlineDesktopHeader = createMemo(() => platform.desktop && platform.os === "macos")
+  // Desktop shells (where the titlebar is always present and roomy) show
+  // OpenControl unconditionally. Web in a narrow viewport hides it
+  // behind `xl:flex` so the titlebar doesn't overflow.
+  const alwaysShowOpenControl = createMemo(() => platform.desktop)
 
   const [exists, setExists] = createStore<Partial<Record<OpenApp, boolean>>>({
     finder: true,
@@ -260,14 +263,18 @@ export function SessionHeader() {
   onMount(() => {
     setRightMount(document.getElementById("codeplane-titlebar-right"))
   })
-  const titlebarRightMount = createMemo(() => {
-    if (inlineDesktopHeader()) return null
-    return rightMount()
-  })
+  // Always portal the OpenControl + PanelControls (terminal / review /
+  // file-tree) into the titlebar. Until v29.0.28 macOS desktop kept them
+  // in a dedicated sub-header bar BELOW the titlebar, which wasted
+  // vertical space on the chat screen and put the buttons in a
+  // different spot than on every other platform. Unifying everyone on
+  // the portal path frees that height up and matches the OpenCode
+  // layout the user asked for.
+  const titlebarRightMount = createMemo(() => rightMount())
 
   const OpenControl = () => (
     <Show when={projectDirectory()}>
-      <div class={inlineDesktopHeader() ? "flex items-center" : "hidden xl:flex items-center"}>
+      <div class={alwaysShowOpenControl() ? "flex items-center" : "hidden xl:flex items-center"}>
         <Show
           when={canOpen()}
         >
@@ -433,15 +440,6 @@ export function SessionHeader() {
             </div>
           </Portal>
         )}
-      </Show>
-      <Show when={inlineDesktopHeader()}>
-        <div class="shrink-0 flex items-center gap-3 px-3 py-2 border-b border-border-weak-base bg-background-base">
-          <div class="flex min-w-0 flex-1" />
-          <div class="flex items-center gap-2 shrink-0">
-            <OpenControl />
-            <PanelControls />
-          </div>
-        </div>
       </Show>
     </>
   )

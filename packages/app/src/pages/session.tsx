@@ -80,19 +80,23 @@ const emptyUserMessages: UserMessage[] = []
  * messages from the autocompact-loop bug (the runLoop fired
  * compaction.create() every iteration without ever processing the
  * scheduled task). Each of those messages renders as a "Session
- * compacted" divider and hides every adjacent real message because the
- * turn renderer treats compaction turns as standalone dividers.
+ * compacted" divider and hides every adjacent real message.
  *
- * This filter hides compaction-only user messages that didn't produce
- * any assistant response. A legitimate compaction always has an
- * assistant child (the summary, marked `summary: true`); a runaway one
- * doesn't. The first compaction-only message in a run is still kept if
- * NO compaction in the run has a child — that way the user still sees
- * "Session compacted" once, even on legacy data, instead of the wall
- * of dividers.
+ * Hide compaction-only user messages that produced no assistant
+ * response, EXCEPT for the trailing (most recent) one. The trailing
+ * exception is critical: a freshly scheduled compaction is mid-flight
+ * for several seconds while `compaction.process` streams the summary
+ * assistant; during that window the user message exists without an
+ * assistant child yet, and hiding it would make the chat flicker —
+ * the compaction divider, then the streaming summary, would
+ * disappear and reappear as SSE events for the summary assistant land.
+ * A runaway-loop dropping is only ever observed in non-trailing
+ * positions (the loop spammed N dividers and then the session moved
+ * on), so the "never hide trailing" rule preserves correctness for
+ * legacy data while eliminating the in-flight flicker.
  *
- * Server-side v29.0.26 prevents new runs from forming; this filter
- * cleans up the historical noise so pre-fix sessions render properly.
+ * Server-side v29.0.26 prevents new runaway runs from forming; this
+ * filter just cleans up the historical noise.
  */
 function collapseEmptyCompactionTurns(
   userMessages: UserMessage[],
@@ -104,6 +108,7 @@ function collapseEmptyCompactionTurns(
     (partsByMessage[id] ?? []).some((part) => part.type === "compaction")
   const hasAssistantChild = (id: string) =>
     allMessages.some((m) => m.role === "assistant" && m.parentID === id)
+  const trailingID = userMessages[userMessages.length - 1]?.id
   let changed = false
   const out: UserMessage[] = []
   // Track whether the previous emitted user message was a compaction
@@ -113,6 +118,13 @@ function collapseEmptyCompactionTurns(
     if (!hasCompactionPart(msg.id)) {
       out.push(msg)
       lastEmittedWasCompactionDivider = false
+      continue
+    }
+    // Always keep the trailing user message, even if it's a compaction
+    // mid-flight. Filtering it produces the user-reported flicker.
+    if (msg.id === trailingID) {
+      out.push(msg)
+      lastEmittedWasCompactionDivider = true
       continue
     }
     if (hasAssistantChild(msg.id)) {
