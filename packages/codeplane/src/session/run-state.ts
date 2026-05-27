@@ -8,6 +8,16 @@ import { SessionStatus } from "./status"
 
 export interface Interface {
   readonly assertNotBusy: (sessionID: SessionID) => Effect.Effect<void>
+  /**
+   * Non-throwing busy check. Returns true if there is a Runner for the
+   * session AND it is actively running work or has anything queued.
+   * Used by the prompt-queue worker to gate `claim` so it doesn't pick
+   * up a new pending job while an in-process turn (synchronous or
+   * follow-up) is still mid-flight — that would race
+   * `createUserMessage` ahead of the Runner lock and write the queued
+   * message into the timeline of the wrong turn.
+   */
+  readonly busy: (sessionID: SessionID) => Effect.Effect<boolean>
   readonly cancel: (sessionID: SessionID) => Effect.Effect<void>
   /**
    * Submit work; runs immediately when idle, or queues behind active work
@@ -101,6 +111,13 @@ export const layer = Layer.effect(
       if (existing && (existing.busy || existing.queueDepth > 0)) throw new Session.BusyError(sessionID)
     })
 
+    const busy = Effect.fn("SessionRunState.busy")(function* (sessionID: SessionID) {
+      const data = yield* InstanceState.get(state)
+      const existing = data.runners.get(sessionID)
+      if (!existing) return false
+      return existing.busy || existing.queueDepth > 0
+    })
+
     const cancel = Effect.fn("SessionRunState.cancel")(function* (sessionID: SessionID) {
       const data = yield* InstanceState.get(state)
       const existing = data.runners.get(sessionID)
@@ -139,7 +156,7 @@ export const layer = Layer.effect(
       return yield* (yield* runner(sessionID, onInterrupt)).startShell(work)
     })
 
-    return Service.of({ assertNotBusy, cancel, ensureRunning, startShell })
+    return Service.of({ assertNotBusy, busy, cancel, ensureRunning, startShell })
   }),
 )
 

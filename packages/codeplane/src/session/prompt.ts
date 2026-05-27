@@ -1757,13 +1757,52 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       function* (input: PromptInput) {
         const session = yield* sessions.get(input.sessionID)
         yield* revert.cleanup(session)
-        const message = yield* createUserMessage(input)
+
+        // noReply path is used by tests + a few internal seed paths
+        // that explicitly want a user message in the DB WITHOUT running
+        // the loop. Keep eager creation here — no lock involved.
+        if (input.noReply === true) {
+          const message = yield* createUserMessage(input)
+          yield* sessions.touch(input.sessionID)
+          return message
+        }
+
         yield* sessions.touch(input.sessionID)
 
-        if (input.noReply === true) return message
-        // Anchor the loop to the user message we just created so a runLoop
-        // queued behind a still-running one can't accidentally pick up
-        // *our* user message and address it as part of an earlier batch.
+        // Materialize the user message INSIDE the Runner lock. The
+        // queue worker (prompt-queue-worker.ts) calls this function as
+        // soon as it claims a pending job, but the session may still
+        // be processing an earlier turn through the synchronous prompt
+        // path — that turn doesn't have a row in prompt_queue, so the
+        // worker's claim doesn't know to defer. If we ran
+        // createUserMessage eagerly here, the queued message would
+        // appear in the chat timeline AS PART OF the still-running
+        // turn, then the new turn would run later. The user sees the
+        // same message in both the queued-dock and the timeline,
+        // attached to the wrong AI response — exactly the
+        // "queueing also sends mid-running, breaks chat screen" bug
+        // the user reported.
+        //
+        // When the session is BUSY, defer createUserMessage to inside
+        // the Runner's work so the queued user message only enters
+        // the timeline when its turn actually starts running, not
+        // mid-active-turn. Idle sessions take the eager path so the
+        // calling fiber owns createUserMessage and abort signals
+        // propagate the way callers (and tests) expect.
+        const isBusy = yield* state.busy(input.sessionID)
+        if (isBusy) {
+          const work: Effect.Effect<MessageV2.WithParts> = Effect.gen(function* () {
+            const message = yield* createUserMessage(input)
+            return yield* runLoop(input.sessionID, message.info.id)
+          }) as Effect.Effect<MessageV2.WithParts>
+          return yield* state.ensureRunning(input.sessionID, interrupted(input.sessionID), work)
+        }
+
+        const message = yield* createUserMessage(input)
+        // Anchor the loop to the user message we just created so a
+        // runLoop queued behind a still-running one can't accidentally
+        // pick up *our* user message and address it as part of an
+        // earlier batch.
         return yield* loop({ sessionID: input.sessionID, messageID: message.info.id })
       },
     )

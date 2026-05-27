@@ -1623,15 +1623,15 @@ it.live(
           })
           .pipe(Effect.forkChild)
 
-        yield* Effect.promise(async () => {
-          const end = Date.now() + 5000
-          while (Date.now() < end) {
-            const msgs = await Effect.runPromise(sessions.messages({ sessionID: chat.id }))
-            if (msgs.some((msg) => msg.info.role === "user" && msg.info.id === id)) return
-            await new Promise((done) => setTimeout(done, 20))
-          }
-          throw new Error("timed out waiting for second prompt to save")
-        })
+        // Give the second fork a moment to attempt enqueue. The user
+        // message must NOT exist in the timeline yet — v29.0.32
+        // defers createUserMessage to inside the Runner lock so a
+        // queued message doesn't dual-write into the running turn.
+        // Pre-fix this loop polled until the message appeared; that
+        // behavior was the bug.
+        yield* Effect.sleep("100 millis")
+        const interim = yield* sessions.messages({ sessionID: chat.id })
+        expect(interim.some((msg) => msg.info.role === "user" && msg.info.id === id)).toBe(false)
 
         gate.resolve()
 
@@ -2801,4 +2801,71 @@ it.live(
       },
     ),
   60_000,
+)
+
+// Regression for v29.0.32: queueing a follow-up while the session is
+// busy must NOT create the user message in the timeline until the
+// runner lock is acquired. Pre-fix, `SessionPrompt.prompt` eagerly
+// called `createUserMessage` BEFORE `state.ensureRunning`, so the
+// queued user message showed up in the chat timeline attached to the
+// currently-running turn (visually a dual-write: same text in both
+// the queue dock AND the active turn).
+it.live(
+  "second prompt during active turn defers user-message creation until lock acquired",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ llm }) {
+        const gate = defer<void>()
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const chat = yield* sessions.create({ title: "Queue defer" })
+
+        yield* llm.hold("first", gate.promise)
+        yield* llm.text("second")
+
+        const a = yield* prompt
+          .prompt({
+            sessionID: chat.id,
+            agent: "build",
+            model: ref,
+            parts: [{ type: "text", text: "first prompt" }],
+          })
+          .pipe(Effect.forkChild)
+
+        yield* llm.wait(1)
+
+        const queuedID = MessageID.ascending()
+        const b = yield* prompt
+          .prompt({
+            sessionID: chat.id,
+            messageID: queuedID,
+            agent: "build",
+            model: ref,
+            parts: [{ type: "text", text: "queued prompt" }],
+          })
+          .pipe(Effect.forkChild)
+
+        // Give the second fork ~100ms to attempt enqueue. The user
+        // message MUST NOT exist in the timeline yet — that's the
+        // pre-fix dual-write bug.
+        yield* Effect.sleep("100 millis")
+        const interim = yield* sessions.messages({ sessionID: chat.id })
+        const queuedVisible = interim.some(
+          (m) => m.info.role === "user" && m.info.id === queuedID,
+        )
+        expect(queuedVisible).toBe(false)
+
+        // Release the first prompt; second now acquires lock + writes.
+        gate.resolve()
+        const [ea, eb] = yield* Effect.all([Fiber.await(a), Fiber.await(b)])
+        expect(Exit.isSuccess(ea)).toBe(true)
+        expect(Exit.isSuccess(eb)).toBe(true)
+
+        const after = yield* sessions.messages({ sessionID: chat.id })
+        const queuedAfter = after.find((m) => m.info.role === "user" && m.info.id === queuedID)
+        expect(queuedAfter).toBeDefined()
+      }),
+      { git: true, config: providerCfg },
+    ),
+  10_000,
 )
