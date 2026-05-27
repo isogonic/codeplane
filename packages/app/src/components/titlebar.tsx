@@ -131,7 +131,7 @@ export function Titlebar() {
           <div class="flex items-center gap-2 shrink-0">
             <Show when={!isHome()}>
               <TooltipKeybind
-                class="hidden xl:flex shrink-0 ml-12"
+                class="hidden xl:flex shrink-0"
                 placement="bottom"
                 title={language.t("command.sidebar.toggle")}
                 keybind={command.keybind("sidebar.toggle")}
