@@ -79,6 +79,20 @@ export type PromptRef = {
   submit(): void
 }
 
+type PromptLayoutInput = Pick<TextareaRenderable, "getLayoutNode" | "gotoBufferEnd" | "isDestroyed">
+
+export function refreshPromptInputLayout(
+  input: PromptLayoutInput | undefined,
+  renderer: { requestRender: () => void },
+  options: { gotoEnd?: boolean } = {},
+) {
+  if (!input || input.isDestroyed) return false
+  input.getLayoutNode().markDirty()
+  if (options.gotoEnd) input.gotoBufferEnd()
+  renderer.requestRender()
+  return true
+}
+
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
@@ -415,13 +429,7 @@ export function Prompt(props: PromptProps) {
   event.on(TuiEvent.PromptAppend.type, (evt) => {
     if (!input || input.isDestroyed) return
     input.insertText(evt.properties.text)
-    setTimeout(() => {
-      // setTimeout is a workaround and needs to be addressed properly
-      if (!input || input.isDestroyed) return
-      input.getLayoutNode().markDirty()
-      input.gotoBufferEnd()
-      renderer.requestRender()
-    }, 0)
+    refreshPromptInputLayout(input, renderer, { gotoEnd: true })
   })
 
   createEffect(() => {
@@ -1764,12 +1772,7 @@ export function Prompt(props: PromptProps) {
                 input.insertText(normalizedText)
 
                 // Force layout update and render for the pasted content
-                setTimeout(() => {
-                  // setTimeout is a workaround and needs to be addressed properly
-                  if (!input || input.isDestroyed) return
-                  input.getLayoutNode().markDirty()
-                  renderer.requestRender()
-                }, 0)
+                refreshPromptInputLayout(input, renderer)
               }}
               ref={(r: TextareaRenderable) => {
                 input = r
@@ -1777,11 +1780,6 @@ export function Prompt(props: PromptProps) {
                   promptPartTypeId = input.extmarks.registerType("prompt-part")
                 }
                 props.ref?.(ref)
-                setTimeout(() => {
-                  // setTimeout is a workaround and needs to be addressed properly
-                  if (!input || input.isDestroyed) return
-                  input.cursorColor = theme.text
-                }, 0)
               }}
               onMouseDown={(r: MouseEvent) => r.target?.focus()}
               focusedBackgroundColor={theme.backgroundElement}

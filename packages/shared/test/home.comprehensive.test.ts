@@ -10,6 +10,7 @@ const env = {
   CODEPLANE_BIN_DIR: process.env.CODEPLANE_BIN_DIR,
   CODEPLANE_LOG_DIR: process.env.CODEPLANE_LOG_DIR,
   CODEPLANE_TEST_HOME: process.env.CODEPLANE_TEST_HOME,
+  CODEPLANE_GLOBAL_HOME_DIR: process.env.CODEPLANE_GLOBAL_HOME_DIR,
 }
 
 beforeEach(() => {
@@ -20,6 +21,7 @@ beforeEach(() => {
   delete process.env.CODEPLANE_BIN_DIR
   delete process.env.CODEPLANE_LOG_DIR
   delete process.env.CODEPLANE_TEST_HOME
+  delete process.env.CODEPLANE_GLOBAL_HOME_DIR
 })
 
 afterEach(() => {

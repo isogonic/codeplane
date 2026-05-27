@@ -80,6 +80,8 @@ const translated = {
   "ui.textField.copyLink": "링크 복사",
   "ui.textField.copied": "복사됨",
   "ui.imagePreview.alt": "이미지 미리보기",
+  "ui.imagePreview.loading": "이미지 로드 중…",
+  "ui.imagePreview.error": "이미지를 불러오지 못했습니다",
   "ui.scrollView.ariaLabel": "스크롤 가능한 콘텐츠",
   "ui.tool.read": "읽기",
   "ui.tool.loaded": "로드됨",

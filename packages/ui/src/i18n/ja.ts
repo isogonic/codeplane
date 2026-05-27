@@ -78,6 +78,8 @@ const translated = {
   "ui.textField.copyLink": "リンクをコピー",
   "ui.textField.copied": "コピーしました",
   "ui.imagePreview.alt": "画像プレビュー",
+  "ui.imagePreview.loading": "画像を読み込み中…",
+  "ui.imagePreview.error": "画像を読み込めませんでした",
   "ui.scrollView.ariaLabel": "スクロール可能なコンテンツ",
   "ui.tool.read": "読み込み",
   "ui.tool.loaded": "読み込み済み",

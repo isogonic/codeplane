@@ -9,6 +9,7 @@ type PartDeltaEvent = GlobalSdkQueuedEvent & {
   payload: {
     type: "message.part.delta"
     properties: {
+      sessionID: string
       messageID: string
       partID: string
       field: string
@@ -88,23 +89,6 @@ function messagePartDeltaInfo(event: GlobalSdkQueuedEvent): PendingDelta | undef
   }
 }
 
-function partUpdateKey(event: GlobalSdkQueuedEvent): string | undefined {
-  if (event.payload.type !== "message.part.updated") return undefined
-  const properties = event.payload.properties
-  if (!isRecord(properties)) return undefined
-  const part = properties.part
-  if (!isRecord(part)) return undefined
-
-  const messageID = stringValue(part, "messageID")
-  const partID = stringValue(part, "id")
-  if (!messageID || !partID) return undefined
-  return messagePartIdentityKey({
-    directory: event.directory,
-    messageID,
-    partID,
-  })
-}
-
 function clonePartDeltaEvent(event: PartDeltaEvent, delta: string): PartDeltaEvent {
   return {
     ...event,
@@ -123,11 +107,10 @@ export function compactGlobalSdkEventsForFlush(events: readonly GlobalSdkQueuedE
   const pending = new Map<string, PendingDelta>()
   const order: string[] = []
 
-  const flushPending = (dropPartKey?: string) => {
+  const flushPending = () => {
     for (const deltaKey of order) {
       const item = pending.get(deltaKey)
       if (!item) continue
-      if (dropPartKey && item.partKey === dropPartKey) continue
       compacted.push(item.event)
     }
     pending.clear()
@@ -153,7 +136,7 @@ export function compactGlobalSdkEventsForFlush(events: readonly GlobalSdkQueuedE
       continue
     }
 
-    flushPending(partUpdateKey(event))
+    flushPending()
     compacted.push(event)
   }
 

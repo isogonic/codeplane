@@ -77,6 +77,8 @@ const translated = {
   "ui.textField.copyLink": "Kopiraj link",
   "ui.textField.copied": "Kopirano",
   "ui.imagePreview.alt": "Pregled slike",
+  "ui.imagePreview.loading": "Učitavanje slike…",
+  "ui.imagePreview.error": "Slika se nije mogla učitati",
   "ui.scrollView.ariaLabel": "sadržaj za pomjeranje",
   "ui.tool.read": "Čitanje",
   "ui.tool.loaded": "Učitano",

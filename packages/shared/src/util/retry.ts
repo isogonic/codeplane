@@ -19,7 +19,14 @@ const TRANSIENT_MESSAGES = [
 
 function isTransientError(error: unknown): boolean {
   if (!error) return false
-  // oxlint-disable-next-line no-base-to-string -- error is unknown, intentional coercion for message matching
+  if (error instanceof DOMException && error.name === "AbortError") return false
+  if (error instanceof TypeError && (error.message.includes("fetch") || error.message.includes("network"))) return true
+  if (error instanceof Error && "code" in error) {
+    const code = (error as Record<string, unknown>).code
+    if (typeof code === "string") {
+      return ["ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND"].includes(code)
+    }
+  }
   const message = String(error instanceof Error ? error.message : error).toLowerCase()
   return TRANSIENT_MESSAGES.some((m) => message.includes(m))
 }

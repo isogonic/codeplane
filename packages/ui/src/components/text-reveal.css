@@ -139,6 +139,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  [data-component="text-reveal"] {
+    --_dur: 0ms;
+    --_travel: 0px;
+  }
+
   [data-component="text-reveal"] [data-slot="text-reveal-track"] {
     transition-duration: 0ms !important;
   }

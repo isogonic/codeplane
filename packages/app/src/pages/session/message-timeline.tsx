@@ -47,6 +47,7 @@ type MessageComment = {
 }
 
 const emptyMessages: MessageType[] = []
+const emptySet: ReadonlySet<string> = new Set<string>()
 const idle = { type: "idle" as const }
 type UserActions = {
   fork?: (input: { sessionID: string; messageID: string }) => Promise<void> | void
@@ -251,10 +252,41 @@ export function MessageTimeline(props: {
 
   const rendered = createMemo(() => props.renderedUserMessages.map((message) => message.id))
   const sessionID = createMemo(() => params.id)
+  // User messages whose `promptAsync` call landed while another turn was
+  // still running are persisted by the server (so they have a real
+  // message ID + show up in `sync.data.message`) AND get parked in
+  // `prompt_queue` with status `pending` until the queue runner picks
+  // them up. Pre-fix they rendered in the timeline immediately, looking
+  // like normal sent messages with no response — confusing because the
+  // followup dock simultaneously listed the same prompt as "queued".
+  // The dock is the source of truth for queued state; the timeline
+  // hides those messages until the queue flips them to `running`, at
+  // which point this set drops the id and the message + its streaming
+  // assistant reply appear together in the normal place.
+  const queuedUserMessageIDs = createMemo(() => {
+    const id = sessionID()
+    if (!id) return emptySet
+    const queue = sync.data.prompt_queue[id]
+    if (!queue || queue.length === 0) return emptySet
+    const ids = new Set<string>()
+    for (const job of queue) {
+      if (job.status !== "pending" && job.status !== "failed") continue
+      try {
+        const parsed = JSON.parse(job.payload) as { messageID?: unknown }
+        if (typeof parsed.messageID === "string") ids.add(parsed.messageID)
+      } catch {
+        /* malformed payload — ignore */
+      }
+    }
+    return ids
+  })
   const sessionMessages = createMemo(() => {
     const id = sessionID()
     if (!id) return emptyMessages
-    return sync.data.message[id] ?? emptyMessages
+    const all = sync.data.message[id] ?? emptyMessages
+    const queued = queuedUserMessageIDs()
+    if (queued.size === 0) return all
+    return all.filter((message) => message.role !== "user" || !queued.has(message.id))
   })
   const turnSlices = createMemo(() => {
     return visibleTurnSlices({
@@ -929,6 +961,8 @@ export function MessageTimeline(props: {
             </Show>
             <div
               role="log"
+              aria-live="polite"
+              aria-atomic="false"
               data-slot="session-turn-list"
               class="flex flex-col items-start justify-start pb-16 transition-[margin]"
               classList={{

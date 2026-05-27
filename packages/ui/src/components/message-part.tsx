@@ -57,7 +57,9 @@ import { AnimatedCountList } from "./tool-count-summary"
 import { ToolStatusTitle } from "./tool-status-title"
 import { patchFiles } from "./apply-patch-file"
 import { projectToolCommand, projectToolSubtitle, projectToolTitle } from "./message-part-project"
+import { createCopiedState } from "../hooks/create-copied-state"
 import { readToolDirectoryLabel, readToolFilePath, readToolLineRange } from "./message-part-read"
+
 import { animate } from "motion"
 import { useLocation } from "@solidjs/router"
 import { attached, inline, kind } from "./message-file"
@@ -203,42 +205,6 @@ function summarizeReasoning(text: string) {
     .replace(/[#*_~>-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim()
-}
-
-const TEXT_RENDER_PACE_MS = 24
-const TEXT_RENDER_SNAP = /[\s.,!?;:)\]]/
-
-function step(size: number) {
-  if (size <= 12) return 2
-  if (size <= 48) return 4
-  if (size <= 96) return 8
-  return Math.min(24, Math.ceil(size / 8))
-}
-
-function next(text: string, start: number) {
-  const end = Math.min(text.length, start + step(text.length - start))
-  const max = Math.min(text.length, end + 8)
-  for (let i = end; i < max; i++) {
-    if (TEXT_RENDER_SNAP.test(text[i] ?? "")) return i + 1
-  }
-  return end
-}
-
-function createPacedValue(getValue: () => string, live?: () => boolean) {
-  return getValue
-}
-
-function PacedMarkdown(props: { text: string; cacheKey: string; streaming: boolean }) {
-  const value = createPacedValue(
-    () => props.text,
-    () => props.streaming,
-  )
-
-  return (
-    <Show when={value()}>
-      <Markdown text={value()} cacheKey={props.cacheKey} streaming={props.streaming} />
-    </Show>
-  )
 }
 
 function relativizeProjectPath(path: string, directory?: string) {
@@ -1011,10 +977,9 @@ export function UserMessageDisplay(props: { message: UserMessage; parts: PartTyp
   const i18n = useI18n()
   const fileReference = useFileReference()
   const [state, setState] = createStore({
-    copied: false,
     busy: false,
   })
-  const copied = () => state.copied
+  const copiedState = createCopiedState()
   const busy = () => state.busy
 
   const textPart = createMemo(
@@ -1062,8 +1027,7 @@ export function UserMessageDisplay(props: { message: UserMessage; parts: PartTyp
     const content = text()
     if (!content) return
     await copyText(i18n, content, i18n.t("ui.message.copiedMessage"))
-    setState("copied", true)
-    setTimeout(() => setState("copied", false), 2000)
+    copiedState.flash()
   }
 
   const copyPath = async (path: string) => {
@@ -1170,12 +1134,12 @@ export function UserMessageDisplay(props: { message: UserMessage; parts: PartTyp
               </Tooltip>
             </Show>
             <Tooltip
-              value={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copyMessage")}
+              value={copiedState.copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copyMessage")}
               placement="top"
               gutter={4}
             >
               <IconButton
-                icon={copied() ? "check" : "copy"}
+                icon={copiedState.copied() ? "check" : "copy"}
                 size="normal"
                 variant="ghost"
                 onMouseDown={(e) => e.preventDefault()}
@@ -1183,7 +1147,7 @@ export function UserMessageDisplay(props: { message: UserMessage; parts: PartTyp
                   event.stopPropagation()
                   void handleCopy()
                 }}
-                aria-label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copyMessage")}
+                aria-label={copiedState.copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copyMessage")}
               />
             </Tooltip>
           </div>
@@ -1634,38 +1598,43 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
     if (typeof props.showAssistantCopyPartID === "string") return props.showAssistantCopyPartID === part().id
     return isLastTextPart()
   })
-  const [copied, setCopied] = createSignal(false)
+  const copiedState = createCopiedState()
 
   const handleCopy = async () => {
     const content = text()
     if (!content) return
     await copyText(i18n, content, i18n.t("ui.message.copiedResponse"))
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    copiedState.flash()
   }
 
   return (
     <Show when={text()}>
       <div data-component="text-part">
         <div data-slot="text-part-body">
-          <Show when={streaming()} fallback={<Markdown text={text()} cacheKey={part().id} streaming={false} />}>
-            <PacedMarkdown text={text()} cacheKey={part().id} streaming={streaming()} />
-          </Show>
+          {/*
+            Render a single <Markdown> regardless of streaming state. Swapping
+            between two different components when streaming ends remounts the
+            renderer, which throws away the in-component parse state and
+            briefly shows raw escaped text before the final parse resolves.
+            Letting `streaming` toggle on the same instance keeps the DOM
+            and cache continuous.
+          */}
+          <Markdown text={text()} cacheKey={part().id} streaming={streaming()} />
         </div>
         <Show when={showCopy()}>
           <div data-slot="text-part-copy-wrapper" data-interrupted={interrupted() ? "" : undefined}>
             <Tooltip
-              value={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copyResponse")}
+              value={copiedState.copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copyResponse")}
               placement="top"
               gutter={4}
             >
               <IconButton
-                icon={copied() ? "check" : "copy"}
+                icon={copiedState.copied() ? "check" : "copy"}
                 size="normal"
                 variant="ghost"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={handleCopy}
-                aria-label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copyResponse")}
+                aria-label={copiedState.copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copyResponse")}
               />
             </Tooltip>
             <Show when={meta()}>
@@ -1736,9 +1705,7 @@ PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props) {
           </div>
           <Collapsible.Content>
             <div data-slot="reasoning-body">
-              <Show when={streaming()} fallback={<Markdown text={text()} cacheKey={part().id} streaming={false} />}>
-                <PacedMarkdown text={text()} cacheKey={part().id} streaming={streaming()} />
-              </Show>
+              <Markdown text={text()} cacheKey={part().id} streaming={streaming()} />
             </div>
           </Collapsible.Content>
         </Collapsible>
@@ -2166,14 +2133,13 @@ ToolRegistry.register({
       const out = stripAnsi(final || live || "")
       return `$ ${command}${out ? "\n\n" + out : ""}`
     })
-    const [copied, setCopied] = createSignal(false)
+    const copiedState = createCopiedState()
 
     const handleCopy = async () => {
       const content = text()
       if (!content) return
       await copyText(i18n, content, i18n.t("ui.message.copiedCode"))
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      copiedState.flash()
     }
 
     let preRef: HTMLPreElement | undefined
@@ -2235,17 +2201,17 @@ ToolRegistry.register({
             </Show>
             <div data-slot="bash-copy">
               <Tooltip
-                value={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
+                value={copiedState.copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
                 placement="top"
                 gutter={4}
               >
                 <IconButton
-                  icon={copied() ? "check" : "copy"}
+                  icon={copiedState.copied() ? "check" : "copy"}
                   size="small"
                   variant="secondary"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={handleCopy}
-                  aria-label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
+                  aria-label={copiedState.copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
                 />
               </Tooltip>
             </div>
@@ -2272,14 +2238,13 @@ ToolRegistry.register({
       const out = stripAnsi(props.output || props.metadata.output || "")
       return `$ ${cmd}${out ? "\n\n" + out : ""}`
     })
-    const [copied, setCopied] = createSignal(false)
+    const copiedState = createCopiedState()
 
     const handleCopy = async () => {
       const content = text()
       if (!content) return
       await copyText(i18n, content, i18n.t("ui.message.copiedCode"))
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      copiedState.flash()
     }
 
     return (
@@ -2307,17 +2272,17 @@ ToolRegistry.register({
         <div data-component="bash-output">
           <div data-slot="bash-copy">
             <Tooltip
-              value={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
+              value={copiedState.copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
               placement="top"
               gutter={4}
             >
               <IconButton
-                icon={copied() ? "check" : "copy"}
+                icon={copiedState.copied() ? "check" : "copy"}
                 size="small"
                 variant="secondary"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={handleCopy}
-                aria-label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
+                aria-label={copiedState.copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
               />
             </Tooltip>
           </div>
@@ -2391,13 +2356,12 @@ ToolRegistry.register({
       const body = cmd ? `${header}${cmd}` : header.trim()
       return `${body}${out ? "\n\n" + out : ""}`
     })
-    const [copied, setCopied] = createSignal(false)
+    const copiedState = createCopiedState()
     const handleCopy = async () => {
       const content = text()
       if (!content) return
       await copyText(i18n, content, i18n.t("ui.message.copiedCode"))
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      copiedState.flash()
     }
 
     return (
@@ -2425,17 +2389,17 @@ ToolRegistry.register({
         <div data-component="bash-output">
           <div data-slot="bash-copy">
             <Tooltip
-              value={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
+              value={copiedState.copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
               placement="top"
               gutter={4}
             >
               <IconButton
-                icon={copied() ? "check" : "copy"}
+                icon={copiedState.copied() ? "check" : "copy"}
                 size="small"
                 variant="secondary"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={handleCopy}
-                aria-label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
+                aria-label={copiedState.copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
               />
             </Tooltip>
           </div>
@@ -2567,14 +2531,13 @@ ToolRegistry.register({
       )
       return `$ ${command()}${out ? "\n\n" + out : ""}`
     })
-    const [copied, setCopied] = createSignal(false)
+    const copiedState = createCopiedState()
 
     const handleCopy = async () => {
       const content = text()
       if (!content) return
       await copyText(i18n, content, i18n.t("ui.message.copiedCode"))
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      copiedState.flash()
     }
 
     return (
@@ -2602,17 +2565,17 @@ ToolRegistry.register({
         <div data-component="bash-output">
           <div data-slot="bash-copy">
             <Tooltip
-              value={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
+              value={copiedState.copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
               placement="top"
               gutter={4}
             >
               <IconButton
-                icon={copied() ? "check" : "copy"}
+                icon={copiedState.copied() ? "check" : "copy"}
                 size="small"
                 variant="secondary"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={handleCopy}
-                aria-label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
+                aria-label={copiedState.copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
               />
             </Tooltip>
           </div>

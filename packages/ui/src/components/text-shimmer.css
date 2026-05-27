@@ -101,6 +101,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  [data-component="text-shimmer"] {
+    --text-shimmer-duration: 0ms;
+    --text-shimmer-step: 0ms;
+    --text-shimmer-swap: 0ms;
+  }
+
   [data-component="text-shimmer"] [data-slot="text-shimmer-char-base"],
   [data-component="text-shimmer"] [data-slot="text-shimmer-char-shimmer"] {
     transition-duration: 0ms;

@@ -1,4 +1,4 @@
-import { marked } from "marked"
+import { marked, Marked } from "marked"
 import markedKatex from "marked-katex-extension"
 import markedShiki from "marked-shiki"
 import katex from "katex"
@@ -580,6 +580,43 @@ export const { use: useMarked, provider: MarkedProvider } = createSimpleContext(
       }),
     )
 
+    // Synchronous live parser — same renderers + KaTeX as the full
+    // parser, but NO `markedShiki`. Skipping shiki keeps `parse()` a
+    // plain sync string return (shiki forces it to a Promise), which
+    // lets us format markdown into real <p>/<h1>/<ul>/<pre> nodes
+    // DURING streaming on every delta — before the async highlighter
+    // has loaded a language. Code blocks render as un-highlighted
+    // <pre><code> until the async parse completes and the cached path
+    // takes over with full shiki syntax colors. The user never sees
+    // raw `**bold**` / `# heading` text mid-stream.
+    const liveMarked = new Marked(
+      {
+        renderer: {
+          link({ href, title, text }) {
+            const titleAttr = title ? ` title="${title}"` : ""
+            return `<a href="${href}"${titleAttr} class="external-link" target="_blank" rel="noopener noreferrer">${text}</a>`
+          },
+        },
+      },
+      markedKatex({
+        throwOnError: false,
+        nonStandard: true,
+      }),
+    )
+    const liveParse = (markdown: string): string => {
+      try {
+        // `parse` returns string here because no async extensions are
+        // registered. Cast covers the union signature in marked types.
+        const out = liveMarked.parse(markdown) as string | Promise<string>
+        if (typeof out === "string") return out
+        // Should never hit — but fall back gracefully if a future
+        // marked release pessimises the signature.
+        return ""
+      } catch {
+        return ""
+      }
+    }
+
     if (props.nativeParser) {
       const nativeParser = props.nativeParser
       return {
@@ -588,9 +625,10 @@ export const { use: useMarked, provider: MarkedProvider } = createSimpleContext(
           const withMath = renderMathExpressions(html)
           return highlightCodeBlocks(withMath)
         },
+        liveParse,
       }
     }
 
-    return jsParser
+    return Object.assign(jsParser, { liveParse })
   },
 })

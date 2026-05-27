@@ -78,6 +78,8 @@ const translated = {
   "ui.textField.copyLink": "Bağlantı kopyala",
   "ui.textField.copied": "Kopyalandı",
   "ui.imagePreview.alt": "Görsel önizleme",
+  "ui.imagePreview.loading": "Görsel yükleniyor…",
+  "ui.imagePreview.error": "Görsel yüklenemedi",
   "ui.scrollView.ariaLabel": "kaydırılabilir içerik",
   "ui.tool.read": "Oku",
   "ui.tool.loaded": "Yüklendi",

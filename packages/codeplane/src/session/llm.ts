@@ -106,6 +106,7 @@ const live: Layer.Layer<
         providerID: input.model.providerID,
       })
 
+      console.log("diag llm: before provider/config/auth")
       const [language, cfg, item, info] = yield* Effect.all(
         [
           provider.getLanguage(input.model),
@@ -115,6 +116,7 @@ const live: Layer.Layer<
         ],
         { concurrency: "unbounded" },
       )
+      console.log("diag llm: after provider/config/auth")
 
       // TODO: move this to a proper hook
       const isOpenaiOauth = item.id === "openai" && info?.type === "oauth"
@@ -195,6 +197,7 @@ const live: Layer.Layer<
         input.model.providerID.toLowerCase().includes("litellm") ||
         input.model.api.id.toLowerCase().includes("litellm")
 
+      console.log("diag llm: before chat.params")
       const params = yield* plugin.trigger(
         "chat.params",
         {
@@ -214,6 +217,7 @@ const live: Layer.Layer<
           options,
         },
       )
+      console.log("diag llm: after chat.params")
 
       const maxOutputTokens =
         isLiteLLMProxy &&
@@ -226,6 +230,7 @@ const live: Layer.Layer<
         delete params.options.reasoningSummary
       }
 
+      console.log("diag llm: before chat.headers")
       const { headers } = yield* plugin.trigger(
         "chat.headers",
         {
@@ -239,6 +244,7 @@ const live: Layer.Layer<
           headers: {},
         },
       )
+      console.log("diag llm: after chat.headers")
 
       const tools = input.model.capabilities.toolcall ? resolveTools(input) : {}
 
@@ -367,6 +373,7 @@ const live: Layer.Layer<
           })
         : undefined
 
+      console.log("diag llm: before streamText")
       return streamText({
         onError(error) {
           l.error("stream error", {

@@ -78,6 +78,8 @@ const translated = {
   "ui.textField.copyLink": "Kopier link",
   "ui.textField.copied": "Kopieret",
   "ui.imagePreview.alt": "Billedforhåndsvisning",
+  "ui.imagePreview.loading": "Indlæser billede…",
+  "ui.imagePreview.error": "Billedet kunne ikke indlæses",
   "ui.scrollView.ariaLabel": "rulbart indhold",
   "ui.tool.read": "Læs",
   "ui.tool.loaded": "Indlæst",

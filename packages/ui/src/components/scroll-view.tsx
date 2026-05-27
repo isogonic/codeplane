@@ -68,11 +68,10 @@ export function ScrollView(props: ScrollViewProps) {
     const { scrollTop, scrollHeight, clientHeight } = viewportRef
 
     if (scrollHeight <= clientHeight || scrollHeight === 0) {
-      setState("showThumb", false)
+      if (state.showThumb) setState("showThumb", false)
       return
     }
 
-    setState("showThumb", true)
     const trackPadding = 8
     const trackHeight = clientHeight - trackPadding * 2
 
@@ -89,8 +88,10 @@ export function ScrollView(props: ScrollViewProps) {
     // Ensure thumb stays within bounds (shouldn't be necessary due to math above, but good for safety)
     const boundedTop = trackPadding + Math.max(0, Math.min(top, maxThumbTop))
 
-    setState("thumbHeight", height)
-    setState("thumbTop", boundedTop)
+    // Batch all state changes to a single update
+    if (!state.showThumb || state.thumbHeight !== height || state.thumbTop !== boundedTop) {
+      setState({ showThumb: true, thumbHeight: height, thumbTop: boundedTop })
+    }
   }
 
   onMount(() => {
@@ -132,10 +133,12 @@ export function ScrollView(props: ScrollViewProps) {
       thumbRef.releasePointerCapture(e.pointerId)
       thumbRef.removeEventListener("pointermove", onPointerMove)
       thumbRef.removeEventListener("pointerup", onPointerUp)
+      thumbRef.removeEventListener("pointercancel", onPointerUp)
     }
 
     thumbRef.addEventListener("pointermove", onPointerMove)
     thumbRef.addEventListener("pointerup", onPointerUp)
+    thumbRef.addEventListener("pointercancel", onPointerUp)
   }
 
   // Keybinds implementation

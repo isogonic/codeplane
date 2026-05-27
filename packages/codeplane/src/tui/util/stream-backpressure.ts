@@ -1,7 +1,7 @@
 import type { EventAugmented, GlobalEvent } from "@/tui/_compat/sdk-v2"
 
 export const TUI_EVENT_FLUSH_MS = 16
-export const TUI_STREAM_DELTA_FLUSH_MS = 50
+export const TUI_STREAM_DELTA_FLUSH_MS = 16
 export const ACTIVE_SESSION_POLL_INTERVAL_MS = 10_000
 export const ACTIVE_SESSION_STALE_MS = 7_500
 

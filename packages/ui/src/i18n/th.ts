@@ -78,6 +78,8 @@ const translated = {
   "ui.textField.copyLink": "คัดลอกลิงก์",
   "ui.textField.copied": "คัดลอกแล้ว",
   "ui.imagePreview.alt": "ตัวอย่างรูปภาพ",
+  "ui.imagePreview.loading": "กำลังโหลดรูปภาพ…",
+  "ui.imagePreview.error": "โหลดรูปภาพไม่สำเร็จ",
   "ui.scrollView.ariaLabel": "เนื้อหาที่เลื่อนได้",
   "ui.tool.read": "อ่าน",
   "ui.tool.loaded": "โหลดแล้ว",

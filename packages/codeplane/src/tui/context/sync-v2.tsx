@@ -3,6 +3,7 @@
 // shell/agent/model events). Strictly type-checked.
 import { useEvent } from "@/tui/context/event"
 import type {
+  EventAugmented,
   SessionMessage,
   SessionMessageAssistant,
   SessionMessageAssistantReasoning,
@@ -50,9 +51,19 @@ function latestReasoning(assistant: SessionMessageAssistant | undefined, reasoni
   )
 }
 
-export const { use: useSyncV2, provider: SyncProviderV2 } = createSimpleContext({
-  name: "SyncV2",
-  init: () => {
+type SyncV2EventSource = {
+  subscribe: (handler: (event: EventAugmented) => void) => void
+}
+
+type SyncV2Sdk = {
+  client: {
+    session: {
+      messages(input: { sessionID: string }): Promise<{ data: unknown }>
+    }
+  }
+}
+
+export function createSyncV2State(input: { event: SyncV2EventSource; sdk: SyncV2Sdk }) {
     const [store, setStore] = createStore<{
       messages: {
         [sessionID: string]: SessionMessage[]
@@ -61,8 +72,47 @@ export const { use: useSyncV2, provider: SyncProviderV2 } = createSimpleContext(
       messages: {},
     })
 
-    const event = useEvent()
-    const sdk = useSDK()
+    const event = input.event
+    const sdk = input.sdk
+    let fallbackEventID = 0
+
+    function eventID(event: { id?: string; type: string; properties: { sessionID?: string; timestamp?: number } }) {
+      return event.id ?? `${event.type}:${event.properties.sessionID ?? "global"}:${event.properties.timestamp ?? 0}:${fallbackEventID++}`
+    }
+
+    function activeAssistantIndex(sessionID: string) {
+      const messages = store.messages[sessionID]
+      if (!messages) return -1
+      return messages.findLastIndex((message) => message.type === "assistant" && !message.time.completed)
+    }
+
+    function latestTextIndex(sessionID: string, assistantIndex: number) {
+      const assistant = store.messages[sessionID]?.[assistantIndex] as SessionMessageAssistant | undefined
+      if (!assistant) return -1
+      return assistant.content.findLastIndex((item) => item.type === "text")
+    }
+
+    function latestToolIndex(sessionID: string, assistantIndex: number, callID?: string) {
+      const assistant = store.messages[sessionID]?.[assistantIndex] as SessionMessageAssistant | undefined
+      if (!assistant) return -1
+      return assistant.content.findLastIndex(
+        (item) => item.type === "tool" && (callID === undefined || item.id === callID)
+      )
+    }
+
+    function latestReasoningIndex(sessionID: string, assistantIndex: number, reasoningID: string) {
+      const assistant = store.messages[sessionID]?.[assistantIndex] as SessionMessageAssistant | undefined
+      if (!assistant) return -1
+      return assistant.content.findLastIndex(
+        (item) => item.type === "reasoning" && item.id === reasoningID
+      )
+    }
+
+    function activeCompactionIndex(sessionID: string) {
+      const messages = store.messages[sessionID]
+      if (!messages) return -1
+      return messages.findLastIndex((message) => message.type === "compaction")
+    }
 
     function update(sessionID: string, fn: (messages: SessionMessage[]) => void) {
       setStore(
@@ -151,12 +201,25 @@ export const { use: useSyncV2, provider: SyncProviderV2 } = createSimpleContext(
             activeAssistant(draft)?.content.push({ type: "text", text: "" })
           })
           break
-        case "session.next.text.delta":
-          update(event.properties.sessionID, (draft) => {
-            const match = latestText(activeAssistant(draft))
-            if (match) match.text += event.properties.delta
-          })
+        case "session.next.text.delta": {
+          const sessionID = event.properties.sessionID
+          const astIdx = activeAssistantIndex(sessionID)
+          if (astIdx >= 0) {
+            const txtIdx = latestTextIndex(sessionID, astIdx)
+            if (txtIdx >= 0) {
+              setStore(
+                "messages",
+                sessionID,
+                astIdx,
+                "content" as any,
+                txtIdx,
+                "text" as any,
+                (existing: string | undefined) => (existing ?? "") + event.properties.delta,
+              )
+            }
+          }
           break
+        }
         case "session.next.text.ended":
           update(event.properties.sessionID, (draft) => {
             const match = latestText(activeAssistant(draft))
@@ -174,12 +237,29 @@ export const { use: useSyncV2, provider: SyncProviderV2 } = createSimpleContext(
             })
           })
           break
-        case "session.next.tool.input.delta":
-          update(event.properties.sessionID, (draft) => {
-            const match = latestTool(activeAssistant(draft), event.properties.callID)
-            if (match?.state.status === "pending") match.state.input += event.properties.delta
-          })
+        case "session.next.tool.input.delta": {
+          const sessionID = event.properties.sessionID
+          const astIdx = activeAssistantIndex(sessionID)
+          if (astIdx >= 0) {
+            const toolIdx = latestToolIndex(sessionID, astIdx, event.properties.callID)
+            if (toolIdx >= 0) {
+              const tool = (store.messages[sessionID][astIdx] as any).content[toolIdx] as SessionMessageAssistantTool
+              if (tool.state.status === "pending") {
+                setStore(
+                  "messages",
+                  sessionID,
+                  astIdx,
+                  "content" as any,
+                  toolIdx,
+                  "state" as any,
+                  "input" as any,
+                  (existing: string | undefined) => (existing ?? "") + event.properties.delta,
+                )
+              }
+            }
+          }
           break
+        }
         case "session.next.tool.input.ended":
           break
         case "session.next.tool.called":
@@ -237,12 +317,25 @@ export const { use: useSyncV2, provider: SyncProviderV2 } = createSimpleContext(
             })
           })
           break
-        case "session.next.reasoning.delta":
-          update(event.properties.sessionID, (draft) => {
-            const match = latestReasoning(activeAssistant(draft), event.properties.reasoningID)
-            if (match) match.text += event.properties.delta
-          })
+        case "session.next.reasoning.delta": {
+          const sessionID = event.properties.sessionID
+          const astIdx = activeAssistantIndex(sessionID)
+          if (astIdx >= 0) {
+            const rIdx = latestReasoningIndex(sessionID, astIdx, event.properties.reasoningID)
+            if (rIdx >= 0) {
+              setStore(
+                "messages",
+                sessionID,
+                astIdx,
+                "content" as any,
+                rIdx,
+                "text" as any,
+                (existing: string | undefined) => (existing ?? "") + event.properties.delta,
+              )
+            }
+          }
           break
+        }
         case "session.next.reasoning.ended":
           update(event.properties.sessionID, (draft) => {
             const match = latestReasoning(activeAssistant(draft), event.properties.reasoningID)
@@ -250,6 +343,17 @@ export const { use: useSyncV2, provider: SyncProviderV2 } = createSimpleContext(
           })
           break
         case "session.next.retried":
+          break
+        case "session.next.compacted":
+          update(event.properties.sessionID, (draft) => {
+            draft.push({
+              id: eventID(event),
+              type: "compaction",
+              reason: event.properties.auto ? "auto" : "manual",
+              summary: "",
+              time: { created: event.properties.timestamp },
+            })
+          })
           break
         case "session.next.compaction.started":
           update(event.properties.sessionID, (draft) => {
@@ -262,12 +366,20 @@ export const { use: useSyncV2, provider: SyncProviderV2 } = createSimpleContext(
             })
           })
           break
-        case "session.next.compaction.delta":
-          update(event.properties.sessionID, (draft) => {
-            const match = activeCompaction(draft)
-            if (match) match.summary += event.properties.text
-          })
+        case "session.next.compaction.delta": {
+          const sessionID = event.properties.sessionID
+          const compIdx = activeCompactionIndex(sessionID)
+          if (compIdx >= 0) {
+            setStore(
+              "messages",
+              sessionID,
+              compIdx,
+              "summary" as any,
+              (existing: string | undefined) => (existing ?? "") + event.properties.text,
+            )
+          }
           break
+        }
         case "session.next.compaction.ended":
           update(event.properties.sessionID, (draft) => {
             const match = activeCompaction(draft)
@@ -303,5 +415,9 @@ export const { use: useSyncV2, provider: SyncProviderV2 } = createSimpleContext(
     }
 
     return result
-  },
+}
+
+export const { use: useSyncV2, provider: SyncProviderV2 } = createSimpleContext({
+  name: "SyncV2",
+  init: () => createSyncV2State({ event: useEvent(), sdk: useSDK() }),
 })

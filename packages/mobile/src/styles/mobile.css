@@ -1148,8 +1148,16 @@ select {
   font-size: 16px;
 }
 
-/* Disable iOS pinch-zoom on the picker chrome. */
-* {
+/* Disable double-tap zoom on picker chrome without blocking pinch-zoom everywhere. */
+#root,
+.mobile-page,
+.mobile-page__scroll,
+.mobile-scroll,
+.bottom-sheet,
+.bottom-sheet__scrim,
+.mobile-card,
+.mobile-button,
+.mobile-link {
   touch-action: manipulation;
 }
 

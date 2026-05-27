@@ -61,6 +61,7 @@ export function createServerVersionWatcher(options: ServerVersionWatcherOptions)
   const poll = async () => {
     if (stopped || inflight) return
     inflight = true
+    abort?.abort()
     abort = new AbortController()
     try {
       // Bypass any HTTP cache on the way. Without this, Electron's

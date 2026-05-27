@@ -79,6 +79,8 @@ const translated = {
   "ui.textField.copyLink": "複製連結",
   "ui.textField.copied": "已複製",
   "ui.imagePreview.alt": "圖片預覽",
+  "ui.imagePreview.loading": "正在載入圖片…",
+  "ui.imagePreview.error": "圖片載入失敗",
   "ui.scrollView.ariaLabel": "可捲動內容",
   "ui.tool.read": "讀取",
   "ui.tool.loaded": "已載入",

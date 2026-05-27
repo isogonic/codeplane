@@ -1201,7 +1201,12 @@ export function createDesktopUIHost(input: {
         .finally(() => inflight.delete(version))
     log(existing ? "cache.inflight.reuse" : "cache.inflight.start", { version })
     inflight.set(version, ready)
-    root = await ready
+    try {
+      root = await ready
+    } catch (error) {
+      inflight.delete(version)
+      throw error
+    }
     progress?.({
       phase: "finalize",
       message: "Finishing desktop cache setup…",

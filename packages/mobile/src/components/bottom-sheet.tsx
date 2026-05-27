@@ -29,12 +29,28 @@ export const BottomSheet: Component<{
   onDismiss?: () => void
   children: JSX.Element
 }> = (props) => {
+  let previousOverflow: string | undefined
+
+  const restoreOverflow = () => {
+    if (previousOverflow === undefined) return
+    document.body.style.overflow = previousOverflow
+    previousOverflow = undefined
+  }
+
+  createEffect(() => {
+    const open = props.open
+    if (!open) {
+      restoreOverflow()
+      return
+    }
+    previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+  })
+
+  onCleanup(restoreOverflow)
+
   createEffect(() => {
     if (!props.open) return
-    // Lock body scroll while the sheet is open so the page beneath
-    // doesn't drift on iOS overscroll.
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault()
@@ -43,7 +59,6 @@ export const BottomSheet: Component<{
     }
     window.addEventListener("keydown", onKey)
     onCleanup(() => {
-      document.body.style.overflow = previousOverflow
       window.removeEventListener("keydown", onKey)
     })
   })

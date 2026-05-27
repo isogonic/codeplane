@@ -18,66 +18,97 @@ async function read(file: string): Promise<State> {
     .catch(() => ({ instances: [] }))
 }
 
+const mutationQueues = new Map<string, Promise<unknown>>()
+
+async function queuedRead(file: string) {
+  await mutationQueues.get(file)?.catch(() => undefined)
+  return read(file)
+}
+
+async function mutate<T>(file: string, fn: (state: State) => Promise<{ state: State; value: T }> | { state: State; value: T }) {
+  let result: T | undefined
+  const prev = mutationQueues.get(file) ?? Promise.resolve()
+  const next = prev.catch(() => undefined).then(async () => {
+    const output = await fn(await read(file))
+    result = output.value
+    await write(file, output.state)
+  })
+  mutationQueues.set(file, next)
+  void next.finally(() => {
+    if (mutationQueues.get(file) === next) mutationQueues.delete(file)
+  }).catch(() => undefined)
+  await next
+  return result as T
+}
+
 async function write(file: string, value: State) {
   await fs.mkdir(path.dirname(file), { recursive: true })
   await fs.writeFile(file, `${JSON.stringify(value, null, 2)}\n`)
 }
 
 export function createInstanceStore(file: string) {
-  const getState = () => read(file)
-  const list = () => read(file).then((state) => state.instances)
-  const getLast = () => read(file).then((state) => state.lastInstanceID)
+  const getState = () => queuedRead(file)
+  const list = () => queuedRead(file).then((state) => state.instances)
+  const getLast = () => queuedRead(file).then((state) => state.lastInstanceID)
 
   async function replace(value: State) {
     const next = {
       instances: Array.isArray(value.instances) ? value.instances : [],
       lastInstanceID: value.lastInstanceID,
     }
-    await write(file, next)
-    return next
+    return mutate(file, () => ({ state: next, value: next }))
   }
 
   async function save(instance: SavedInstance) {
-    const state = await read(file)
-    const existing = state.instances.findIndex((item) => item.id === instance.id)
-    const instances =
-      existing === -1
-        ? [...state.instances, instance]
-        : state.instances.map((item, index) => (index === existing ? instance : item))
-    await write(file, {
-      instances,
-      lastInstanceID: state.lastInstanceID,
+    return mutate(file, (state) => {
+      const existing = state.instances.findIndex((item) => item.id === instance.id)
+      const instances =
+        existing === -1
+          ? [...state.instances, instance]
+          : state.instances.map((item, index) => (index === existing ? instance : item))
+      return {
+        state: {
+          instances,
+          lastInstanceID: state.lastInstanceID,
+        },
+        value: instances,
+      }
     })
-    return instances
   }
 
   async function remove(id: string) {
-    const state = await read(file)
-    const instances = state.instances.filter((item) => item.id !== id)
-    await write(file, {
-      instances,
-      lastInstanceID: state.lastInstanceID === id ? undefined : state.lastInstanceID,
+    return mutate(file, (state) => {
+      const instances = state.instances.filter((item) => item.id !== id)
+      return {
+        state: {
+          instances,
+          lastInstanceID: state.lastInstanceID === id ? undefined : state.lastInstanceID,
+        },
+        value: instances,
+      }
     })
-    return instances
   }
 
   async function setLast(id: string | undefined) {
-    const state = await read(file)
-    await write(file, {
-      instances: state.instances,
-      lastInstanceID: id,
+    return mutate(file, (state) => {
+      return {
+        state: {
+          instances: state.instances,
+          lastInstanceID: id,
+        },
+        value: id,
+      }
     })
-    return id
   }
 
   async function migrate(legacyFile: string) {
-    const current = await read(file)
-    if (current.instances.length > 0 || current.lastInstanceID) return current
-    if (legacyFile === file) return current
-    const legacy = await read(legacyFile)
-    if (legacy.instances.length === 0 && !legacy.lastInstanceID) return current
-    await write(file, legacy)
-    return legacy
+    return mutate(file, async (current) => {
+      if (current.instances.length > 0 || current.lastInstanceID) return { state: current, value: current }
+      if (legacyFile === file) return { state: current, value: current }
+      const legacy = await read(legacyFile)
+      if (legacy.instances.length === 0 && !legacy.lastInstanceID) return { state: current, value: current }
+      return { state: legacy, value: legacy }
+    })
   }
 
   return {

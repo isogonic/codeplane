@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import path from "path"
 import { CodeplaneHome } from "../../src/home"
 
@@ -9,9 +9,16 @@ const keys = [
   "CODEPLANE_STATE_DIR",
   "CODEPLANE_BIN_DIR",
   "CODEPLANE_LOG_DIR",
+  "CODEPLANE_GLOBAL_HOME_DIR",
 ] as const
 
 const env = Object.fromEntries(keys.map((key) => [key, process.env[key]]))
+
+beforeEach(() => {
+  for (const key of keys) {
+    delete process.env[key]
+  }
+})
 
 afterEach(() => {
   for (const key of keys) {

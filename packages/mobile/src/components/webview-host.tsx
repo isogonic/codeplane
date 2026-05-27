@@ -80,6 +80,12 @@ export const WebviewHost: Component<{
   const [started, setStarted] = createSignal(false)
   let frameRef: HTMLIFrameElement | undefined
   let taskMonitor: ReturnType<typeof createTaskMonitor> | undefined
+  const injectTimers: number[] = []
+
+  const clearInjectTimers = () => {
+    for (const timer of injectTimers) clearTimeout(timer)
+    injectTimers.length = 0
+  }
 
   const isNative = props.api.isNative
   const host = () => {
@@ -370,14 +376,16 @@ export const WebviewHost: Component<{
   }
 
   const openInWebView = async () => {
+    clearInjectTimers()
     setStarted(true)
     setOpenError(null)
-    setBrowserOpen(true)
     // Prefer the on-device cache when ready; falls through to the
     // live-origin InAppBrowser flow otherwise.
     if (await tryOpenInOfflineCache()) {
+      setBrowserOpen(false)
       return
     }
+    setBrowserOpen(true)
     const bg = getComputedStyle(document.documentElement)
       .getPropertyValue("--background-base")
       .trim()
@@ -413,21 +421,21 @@ export const WebviewHost: Component<{
       void injectCloseButton()
       void injectLAState()
       void injectFontFallback()
-      window.setTimeout(() => void injectCloseButton(), 250)
-      window.setTimeout(() => void injectCloseButton(), 750)
-      window.setTimeout(() => void injectCloseButton(), 1500)
+      injectTimers.push(window.setTimeout(() => void injectCloseButton(), 250))
+      injectTimers.push(window.setTimeout(() => void injectCloseButton(), 750))
+      injectTimers.push(window.setTimeout(() => void injectCloseButton(), 1500))
       // Re-inject the LA state on the same staircase. SPA-style apps
       // sometimes replace `document` between the openWebView resolve
       // and the first true page paint; without these later passes the
       // embedded UI would render its first frame before the snapshot
       // landed and the toggle would flash hidden→visible.
-      window.setTimeout(() => void injectLAState(), 250)
-      window.setTimeout(() => void injectLAState(), 1500)
+      injectTimers.push(window.setTimeout(() => void injectLAState(), 250))
+      injectTimers.push(window.setTimeout(() => void injectLAState(), 1500))
       // Same staircase for the font fallback so emoji glyphs are in
       // place before the first message paints. The injection itself
       // is idempotent (checks for `#__codeplane_mobile_fonts`).
-      window.setTimeout(() => void injectFontFallback(), 250)
-      window.setTimeout(() => void injectFontFallback(), 1500)
+      injectTimers.push(window.setTimeout(() => void injectFontFallback(), 250))
+      injectTimers.push(window.setTimeout(() => void injectFontFallback(), 1500))
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       console.warn("[webview-host] InAppBrowser.openWebView failed", err)
@@ -649,6 +657,7 @@ export const WebviewHost: Component<{
         dispatchedClose = true
         // eslint-disable-next-line no-console
         console.log("[webview-host] closeEvent")
+        clearInjectTimers()
         setBrowserOpen(false)
         props.onClose()
       }
@@ -845,6 +854,7 @@ export const WebviewHost: Component<{
     onCleanup(() => {
       offNet()
       taskMonitor?.dispose()
+      clearInjectTimers()
       if (typeof window !== "undefined") {
         window.removeEventListener("message", onWindowMessage, false)
       }

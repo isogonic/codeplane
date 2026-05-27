@@ -5,6 +5,7 @@ import { Collapsible } from "./collapsible"
 import { Icon } from "./icon"
 import { IconButton } from "./icon-button"
 import { Tooltip } from "./tooltip"
+import { createCopiedState } from "../hooks/create-copied-state"
 import { useI18n } from "../context/i18n"
 import { showToast } from "./toast"
 import { writeClipboardText } from "./clipboard"
@@ -19,12 +20,11 @@ export interface ToolErrorCardProps extends Omit<ComponentProps<"div">, "childre
 
 export function ToolErrorCard(props: ToolErrorCardProps) {
   const i18n = useI18n()
+  const copiedState = createCopiedState()
   const [state, setState] = createStore({
     open: props.defaultOpen ?? false,
-    copied: false,
   })
   const open = () => state.open
-  const copied = () => state.copied
   const [split, rest] = splitProps(props, ["tool", "error", "defaultOpen", "subtitle", "href"])
   const name = createMemo(() => {
     const map: Record<string, string> = {
@@ -84,8 +84,7 @@ export function ToolErrorCard(props: ToolErrorCardProps) {
       title: i18n.t("ui.message.copied"),
       description: i18n.t("ui.message.copiedText"),
     })
-    setState("copied", true)
-    setTimeout(() => setState("copied", false), 2000)
+    copiedState.flash()
   }
 
   return (
@@ -135,12 +134,12 @@ export function ToolErrorCard(props: ToolErrorCardProps) {
             <Show when={open()}>
               <div data-slot="tool-error-copy">
                 <Tooltip
-                  value={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.toolErrorCard.copyError")}
+                  value={copiedState.copied() ? i18n.t("ui.message.copied") : i18n.t("ui.toolErrorCard.copyError")}
                   placement="top"
                   gutter={4}
                 >
                   <IconButton
-                    icon={copied() ? "check" : "copy"}
+                    icon={copiedState.copied() ? "check" : "copy"}
                     size="normal"
                     variant="ghost"
                     onMouseDown={(e) => e.preventDefault()}
@@ -148,7 +147,7 @@ export function ToolErrorCard(props: ToolErrorCardProps) {
                       e.stopPropagation()
                       void copy()
                     }}
-                    aria-label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.toolErrorCard.copyError")}
+                    aria-label={copiedState.copied() ? i18n.t("ui.message.copied") : i18n.t("ui.toolErrorCard.copyError")}
                   />
                 </Tooltip>
               </div>

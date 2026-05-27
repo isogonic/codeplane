@@ -8,6 +8,7 @@ import { checksum } from "@codeplane-ai/shared/util/encode"
 import { ComponentProps, createEffect, createMemo, createResource, createSignal, onCleanup, splitProps } from "solid-js"
 import { isServer } from "solid-js/web"
 import { stream } from "./markdown-stream"
+import { selectMarkdownContent, shouldParseMarkdown } from "./markdown-streaming"
 import { showToast } from "./toast"
 import { writeClipboardText } from "./clipboard"
 
@@ -770,6 +771,20 @@ export function Markdown(
   const i18n = useI18n()
   const fileReference = useFileReference()
   const [root, setRoot] = createSignal<HTMLDivElement>()
+
+  // Synchronous live markdown — used by `liveHtml` to render the
+  // current still-streaming tail as real formatted markdown rather
+  // than escaped `wrapWords` text. Falls back to `wrapWords` if the
+  // parser context isn't available or sanitisation produces nothing
+  // (defensive — DOMPurify in SSR / tests may return empty).
+  const liveMarkdown = (text: string): string => {
+    const liveParse = (marked as { liveParse?: (s: string) => string }).liveParse
+    if (!liveParse) return wrapWords(text)
+    const raw = liveParse(text)
+    if (!raw) return wrapWords(text)
+    const safe = sanitize(raw)
+    return safe || wrapWords(text)
+  }
   const cachedHtml = createMemo(() => {
     if (isServer) return undefined
     const text = normalizeText(local.text)
@@ -782,7 +797,12 @@ export function Markdown(
       const block = blocks[index]
       const hash = checksum(block.raw)
       if (!hash) return undefined
-      const key = `${base}:${index}:${block.mode}`
+      // Cache key intentionally omits `block.mode` so HTML parsed during
+      // streaming (`:live`) is reused once the stream ends and the same
+      // text is re-read in `:full` mode. Without this, switching from
+      // streaming → completed forces a re-parse and the user briefly sees
+      // raw escaped text before the new parse resolves.
+      const key = `${base}:${index}`
       const cached = cache.get(key)
       if (!cached || cached.hash !== hash) return undefined
       touch(key, cached)
@@ -793,7 +813,6 @@ export function Markdown(
 
   const liveHtml = createMemo(() => {
     if (isServer) return undefined
-    if (!local.streaming) return undefined
     const text = normalizeText(local.text)
     if (!text) return undefined
     const base = local.cacheKey ?? checksum(text)
@@ -806,13 +825,19 @@ export function Markdown(
       const block = blocks[index]
       const hash = checksum(block.raw)
       if (!hash) return undefined
-      const key = `${base}:${index}:${block.mode}`
+      const key = `${base}:${index}`
       const cached = cache.get(key)
       if (cached && cached.hash === hash) {
         out.push(cached.html)
         continue
       }
-      out.push(wrapWords(block.src))
+      // Render real markdown synchronously via the shiki-less live
+      // parser — the user sees formatted prose/headings/lists/code
+      // blocks immediately on every delta. The async path replaces
+      // each block with the fully-highlighted version as soon as it
+      // resolves (shiki language load + DOMPurify pass), via the
+      // cached entry above.
+      out.push(liveMarkdown(block.src))
       usedFallback = true
     }
     return usedFallback ? out.join("") : undefined
@@ -821,7 +846,7 @@ export function Markdown(
   const [html] = createResource(
     () => {
       const cached = cachedHtml()
-      if (cached !== undefined) return null
+      if (!shouldParseMarkdown(cached, local.streaming ?? false)) return null
       return {
         text: normalizeText(local.text),
         key: local.cacheKey,
@@ -837,7 +862,9 @@ export function Markdown(
       return Promise.all(
         stream(src.text, src.streaming).map(async (block, index) => {
           const hash = checksum(block.raw)
-          const key = base ? `${base}:${index}:${block.mode}` : hash
+          // Cache key matches `cachedHtml`/`liveHtml` so streaming and
+          // non-streaming reuse the same parsed HTML entries.
+          const key = base ? `${base}:${index}` : hash
 
           if (key && hash) {
             const cached = cache.get(key)
@@ -866,10 +893,21 @@ export function Markdown(
 
   createEffect(() => {
     const container = root()
+    const isStreaming = local.streaming ?? false
     const cached = cachedHtml()
     const live = liveHtml()
-    const parsed = html.latest ?? html()
-    const content = local.text ? (cached ?? parsed ?? live ?? "") : ""
+    // `html()` is the async parse result; during rapid streaming it can lag
+    // the current text by 1+ deltas. `selectMarkdownContent` therefore prefers
+    // the synchronously-derived `cached` / `live` paths during streaming and
+    // only falls back to `parsed` once the stream is done.
+    const parsed = html()
+    const content = selectMarkdownContent({
+      text: local.text,
+      cached,
+      live,
+      parsed,
+      streaming: isStreaming,
+    })
     if (!container) return
     if (isServer) return
 
@@ -881,13 +919,14 @@ export function Markdown(
       return
     }
 
-    const locale = i18n.t("ui.message.copyCode")
+    const locale = i18n.locale()
+    const copyCode = i18n.t("ui.message.copyCode")
     if (content === lastContent && locale === lastLocale) return
 
     const labels = {
       copy: i18n.t("ui.message.copy"),
       copied: i18n.t("ui.message.copied"),
-      copyCode: locale,
+      copyCode,
       copiedCode: i18n.t("ui.message.copiedCode"),
       copyPath: i18n.t("ui.message.copyPath"),
       copiedPath: i18n.t("ui.message.copiedPath"),
@@ -933,7 +972,10 @@ export function Markdown(
         return true
       },
     })
-    renderMermaidPreviews(container)
+    // Only render mermaid previews when NOT streaming. Running async
+    // mermaid parsing + SVG injection on every tiny text delta is
+    // a major source of jank and layout thrash.
+    if (!isStreaming) renderMermaidPreviews(container)
 
     if (!copyCleanup)
       copyCleanup = setupCodeCopy(container, () => ({

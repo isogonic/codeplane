@@ -191,12 +191,16 @@ function captureLinux(file: string) {
 async function captureScreen(capture?: DesktopComputerCapture, displayId?: string) {
   if (capture) return capture({ displayId })
   const file = tempPngPath()
-  if (process.platform === "darwin") captureMac(file)
-  else if (process.platform === "win32") captureWindows(file)
-  else captureLinux(file)
-  return {
-    screenshot: await screenshotFromFile(file),
-    displays: [],
+  try {
+    if (process.platform === "darwin") captureMac(file)
+    else if (process.platform === "win32") captureWindows(file)
+    else captureLinux(file)
+    return {
+      screenshot: await screenshotFromFile(file),
+      displays: [],
+    }
+  } finally {
+    fs.unlink(file).catch(() => {})
   }
 }
 

@@ -406,7 +406,36 @@ it.live("loop exits immediately when last assistant has stop finish", () =>
       const chat = yield* sessions.create({ title: "Pinned" })
       yield* seed(chat.id, { finish: "stop" })
 
-      const result = yield* prompt.loop({ sessionID: chat.id })
+      const result = yield* prompt.loop({ sessionID: chat.id }).pipe(
+        Effect.timeoutOrElse({
+          duration: "5 seconds",
+          orElse: () =>
+            Effect.gen(function* () {
+              const hits = yield* llm.hits
+              const pending = yield* llm.pending
+              const msgs = yield* sessions.messages({ sessionID: chat.id, limit: 50 })
+              console.log(
+                JSON.stringify(
+                  {
+                    hits: hits.length,
+                    pending,
+                    messages: msgs.map((m) => ({
+                      id: m.info.id,
+                      role: m.info.role,
+                      parentID: m.info.role === "assistant" ? m.info.parentID : undefined,
+                      finish: m.info.role === "assistant" ? m.info.finish : undefined,
+                      error: m.info.role === "assistant" ? m.info.error?.name : undefined,
+                      parts: m.parts.map((p) => p.type),
+                    })),
+                  },
+                  null,
+                  2,
+                ),
+              )
+              return yield* Effect.die(new Error("prompt.loop diagnostics timeout"))
+            }),
+        }),
+      )
       expect(result.info.role).toBe("assistant")
       if (result.info.role === "assistant") {
         expect(result.info.finish).toBe("stop")
@@ -427,15 +456,55 @@ it.live("loop calls LLM and returns assistant message", () =>
         title: "Pinned",
         permission: [{ permission: "*", pattern: "*", action: "allow" }],
       })
-      yield* prompt.prompt({
-        sessionID: chat.id,
-        agent: "build",
-        noReply: true,
-        parts: [{ type: "text", text: "hello" }],
-      })
+      console.log("diag loop: before prompt.prompt")
+      yield* prompt
+        .prompt({
+          sessionID: chat.id,
+          agent: "build",
+          noReply: true,
+          parts: [{ type: "text", text: "hello" }],
+        })
+        .pipe(
+          Effect.timeoutOrElse({
+            duration: "5 seconds",
+            orElse: () => Effect.die(new Error("prompt.prompt diagnostics timeout")),
+          }),
+        )
+      console.log("diag loop: after prompt.prompt")
       yield* llm.text("world")
+      console.log("diag loop: after llm.text")
 
-      const result = yield* prompt.loop({ sessionID: chat.id })
+      console.log("diag loop: before prompt.loop")
+      const result = yield* prompt.loop({ sessionID: chat.id }).pipe(
+        Effect.timeoutOrElse({
+          duration: "5 seconds",
+          orElse: () =>
+            Effect.gen(function* () {
+              const hits = yield* llm.hits
+              const pending = yield* llm.pending
+              const msgs = yield* sessions.messages({ sessionID: chat.id, limit: 50 })
+              console.log(
+                JSON.stringify(
+                  {
+                    hits: hits.length,
+                    pending,
+                    messages: msgs.map((m) => ({
+                      id: m.info.id,
+                      role: m.info.role,
+                      parentID: m.info.role === "assistant" ? m.info.parentID : undefined,
+                      finish: m.info.role === "assistant" ? m.info.finish : undefined,
+                      error: m.info.role === "assistant" ? m.info.error?.name : undefined,
+                      parts: m.parts.map((p) => p.type),
+                    })),
+                  },
+                  null,
+                  2,
+                ),
+              )
+              return yield* Effect.die(new Error("prompt.loop diagnostics timeout"))
+            }),
+        }),
+      )
       expect(result.info.role).toBe("assistant")
       const parts = result.parts.filter((p) => p.type === "text")
       expect(parts.some((p) => p.type === "text" && p.text === "world")).toBe(true)

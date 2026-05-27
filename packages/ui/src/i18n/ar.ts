@@ -78,6 +78,8 @@ const translated = {
   "ui.textField.copyLink": "نسخ الرابط",
   "ui.textField.copied": "تم النسخ",
   "ui.imagePreview.alt": "معاينة الصورة",
+  "ui.imagePreview.loading": "جارٍ تحميل الصورة…",
+  "ui.imagePreview.error": "تعذر تحميل الصورة",
   "ui.scrollView.ariaLabel": "محتوى قابل للتمرير",
   "ui.tool.read": "قراءة",
   "ui.tool.loaded": "تم التحميل",

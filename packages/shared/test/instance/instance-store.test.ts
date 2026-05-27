@@ -71,4 +71,23 @@ describe("instance-store", () => {
       lastInstanceID: "remote-1",
     })
   })
+
+  test("serializes concurrent read-modify-write updates", async () => {
+    const files = await fixture()
+    const store = createInstanceStore(files.current)
+
+    await Promise.all([
+      store.save({ id: "remote-1", url: "https://one.example.com" }),
+      store.save({ id: "remote-2", url: "https://two.example.com" }),
+      store.setLast("remote-2"),
+    ])
+
+    expect(await store.getState()).toEqual({
+      instances: [
+        { id: "remote-1", url: "https://one.example.com" },
+        { id: "remote-2", url: "https://two.example.com" },
+      ],
+      lastInstanceID: "remote-2",
+    })
+  })
 })

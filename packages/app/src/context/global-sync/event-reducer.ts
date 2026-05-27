@@ -40,14 +40,23 @@ function mergePendingDeltas(part: Part, pending: Record<string, string>): Part {
     if (!delta) continue
     const existing = next[field]
     if (typeof existing === "string") {
-      // Server snapshots whose text already contains the buffered delta
-      // shouldn't double-append. A non-empty server text means the snapshot
-      // was generated AFTER the deltas, so we keep the server value as the
-      // source of truth.
-      if (existing.length === 0) {
-        next[field] = delta
-        changed = true
-      }
+      // The buffered `delta` is the SUM of every `message.part.delta`
+      // event that landed before the `message.part.updated` snapshot
+      // created the part in the store. There are three cases:
+      //
+      //   1. snapshot includes the deltas (server captured AFTER the
+      //      deltas): `existing` already ends with `delta` — no-op.
+      //   2. snapshot predates the deltas (race — server published the
+      //      snapshot via fire-and-forget `void publish`, so a later
+      //      delta on the bus can reach the client first): we must
+      //      append `delta` to `existing` or the streamed text just
+      //      vanishes from the UI (user-reported "20 lines stream then
+      //      reset" loop).
+      //   3. they diverged (model retry / step boundary). Treat as
+      //      case 2 — concat and let the next snapshot reconcile.
+      if (existing.endsWith(delta)) continue
+      next[field] = existing + delta
+      changed = true
       continue
     }
     if (existing === undefined || existing === null) {
@@ -56,6 +65,47 @@ function mergePendingDeltas(part: Part, pending: Record<string, string>): Part {
     }
   }
   return (changed ? next : part) as Part
+}
+
+// Fields that are append-only delta streams during streaming. Text parts
+// stream their `text` field; reasoning parts also stream their `text`
+// field (the part TYPE is `reasoning`, but the field name on the part
+// shape is still `text`). Tool input streaming hits the `state` object —
+// reduced separately. An incoming `message.part.updated` snapshot can
+// be older than the deltas that already landed locally because the
+// server publishes part snapshots via fire-and-forget `void publish`,
+// so a snapshot can be overtaken on the wire. Treating these fields as
+// monotonic prevents the visible flicker where text grows, snaps back,
+// then grows again.
+const STREAMING_FIELDS = ["text"] as const
+
+function preserveStreamingFields(existing: Part, incoming: Part): Part {
+  if (existing.type !== incoming.type) return incoming
+  // Once the part has an end time, the server's snapshot is authoritative —
+  // it may legitimately replace streamed text (e.g. trailing whitespace
+  // cleanup at completion).
+  const existingTime = (existing as { time?: { end?: number } }).time
+  const incomingTime = (incoming as { time?: { end?: number } }).time
+  if (existingTime?.end !== undefined || incomingTime?.end !== undefined) return incoming
+
+  let next: Record<string, unknown> | undefined
+  for (const field of STREAMING_FIELDS) {
+    const have = (existing as Record<string, unknown>)[field]
+    const want = (incoming as Record<string, unknown>)[field]
+    if (typeof have !== "string" || typeof want !== "string") continue
+    // Mid-stream: keep the LONGER text unconditionally. The previous
+    // `have.startsWith(want)` guard reset the part whenever the server
+    // snapshot diverged from the accumulated delta stream (model retry,
+    // tool-call boundary, whitespace normalisation) — the user saw 20
+    // lines arrive, then reset, then another 20, then reset, in a
+    // loop. Trust the longer string; if the server really did revise
+    // the content, the next snapshot will arrive with `time.end` set
+    // and pass the early-return above.
+    if (have.length <= want.length) continue
+    next = next ?? { ...(incoming as Record<string, unknown>) }
+    next[field] = have
+  }
+  return (next ?? incoming) as Part
 }
 
 function fullyLoadedRootLimit(store: Store<State>, incoming: Session) {
@@ -385,7 +435,8 @@ export function applyDirectoryEvent(input: {
       } else {
         const result = Binary.search(parts, part.id, (p) => p.id)
         if (result.found) {
-          input.setStore("part", part.messageID, result.index, reconcile(merged))
+          const guarded = preserveStreamingFields(parts[result.index], merged)
+          input.setStore("part", part.messageID, result.index, reconcile(guarded))
         } else {
           input.setStore(
             "part",

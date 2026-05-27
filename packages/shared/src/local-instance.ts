@@ -340,11 +340,22 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
             resolve()
             return
           }
+          let finalized = false
           const finalize = () => {
+            if (finalized) return
+            finalized = true
+            clearTimeout(forceKillTimer)
             running.delete(input.id)
             processLog.close()
             resolve()
           }
+          const forceKillTimer = setTimeout(() => {
+            try {
+              child.kill("SIGKILL")
+            } catch {}
+            finalize()
+          }, SHUTDOWN_GRACE_MS)
+          forceKillTimer.unref()
           child.once("exit", finalize)
           try {
             if (process.platform === "win32") {
@@ -352,9 +363,6 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
               return
             }
             child.kill("SIGTERM")
-            setTimeout(() => {
-              if (child.exitCode === null && !child.killed) child.kill("SIGKILL")
-            }, SHUTDOWN_GRACE_MS).unref()
           } catch (error) {
             log("local.stop.error", { error, id: input.id })
             finalize()
@@ -401,7 +409,10 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
           processLog.write("stdout", text)
           log("local.stdout", { id: input.id, line: text.trim() })
           if (settled) return
-          const port = findListeningPort(text) ?? findListeningPort(stdoutChunks.join(""))
+          let port = findListeningPort(text)
+          if (port === undefined) {
+            port = findListeningPort(stdoutChunks.join(""))
+          }
           if (port === undefined) return
           settled = true
           clearTimeout(timer)

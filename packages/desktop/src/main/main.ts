@@ -1542,6 +1542,7 @@ function attachWindowHandlers(window: BrowserWindow) {
       saveBoundsTimer = undefined
       saveBounds()
     }, 250)
+    saveBoundsTimer.unref()
   }
   window.on("resize", scheduleSaveBounds)
   window.on("move", scheduleSaveBounds)
@@ -1842,6 +1843,7 @@ function attachInteractiveBootstrap(
       .then(async (prepared) => {
         logger.log("main", "instance.bootstrap.ready", { prepared, ...instanceSummary(target) })
         cleanup()
+        currentInstanceID = target.id
         emit({ phase: "done", message: "Loading…", percent: 100, version: prepared.version })
         await clearRendererHttpCache(ensureSession(target), target, "interactive-bootstrap")
         await loadWindowUrl(window, prepared.url)
@@ -2071,7 +2073,6 @@ async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebConte
     if (previousFullscreen) window.setFullScreen(true)
     else if (restoreMaximized) window.maximize()
     mainWindow = window
-    currentInstanceID = instance.id
     await setLastInstanceID(instance.id)
     const prepared = await uiHost
       .prepare(instance, (progress: DesktopUIPrepareProgress) => emit(progress))
@@ -2090,6 +2091,7 @@ async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebConte
         return
       })
     if (prepared) {
+      currentInstanceID = instance.id
       emit({ phase: "done", message: "Loading…", percent: 100, version: prepared.version })
       await clearRendererHttpCache(ses, instance, "instance-open")
       await loadWindowUrl(window, prepared.url)
@@ -2389,9 +2391,10 @@ function setupIpc() {
         instanceCount: instances.length,
       })
     } catch {
+      const fallbackID = lastInstanceID()
       event.returnValue = {
         currentKey: null,
-        defaultKey: lastInstanceID() ? uiHost.proxyKey(lastInstanceID()!) : null,
+        defaultKey: fallbackID ? uiHost.proxyKey(fallbackID) : null,
         instances: [],
       }
     }

@@ -14,10 +14,13 @@ import { Config } from "@/config"
 import { NotFoundError } from "@/storage"
 import { ModelID, ProviderID } from "@/provider/schema"
 import { Effect, Layer, Context, Schema } from "effect"
+import * as DateTime from "effect/DateTime"
 import { InstanceState } from "@/effect"
 import { isOverflow as overflow, usable } from "./overflow"
 import { makeRuntime } from "@/effect/run-service"
 import { fn } from "@/util/fn"
+import { SyncEvent } from "@/sync"
+import { SessionEvent } from "@/v2/session-event"
 
 const log = Log.create({ service: "session.compaction" })
 
@@ -296,7 +299,7 @@ export const layer: Layer.Layer<
     // calls, then erases output of older tool calls to free context space
     const prune = Effect.fn("SessionCompaction.prune")(function* (input: { sessionID: SessionID }) {
       const cfg = yield* config.get()
-      if (!cfg.compaction?.prune) return
+      if (cfg.compaction?.prune === false) return
       log.info("pruning")
 
       const msgs = yield* session
@@ -556,7 +559,17 @@ export const layer: Layer.Layer<
       }
 
       if (processor.message.error) return "stop"
-      if (result === "continue") yield* bus.publish(Event.Compacted, { sessionID: input.sessionID })
+      if (result === "continue") {
+        yield* Effect.sync(() =>
+          SyncEvent.run(SessionEvent.Compacted.Sync, {
+            sessionID: input.sessionID,
+            timestamp: DateTime.makeUnsafe(Date.now()),
+            auto: input.auto,
+            overflow: input.overflow,
+          }),
+        )
+        yield* bus.publish(Event.Compacted, { sessionID: input.sessionID })
+      }
       return result
     })
 

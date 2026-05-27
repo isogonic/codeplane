@@ -1,7 +1,8 @@
 import { TextField as Kobalte } from "@kobalte/core/text-field"
-import { createSignal, Show, splitProps } from "solid-js"
+import { Show, splitProps } from "solid-js"
 import type { ComponentProps } from "solid-js"
 import { useI18n } from "../context/i18n"
+import { createCopiedState } from "../hooks/create-copied-state"
 import { IconButton } from "./icon-button"
 import { Tooltip } from "./tooltip"
 import { showToast } from "./toast"
@@ -55,16 +56,16 @@ export function TextField(props: TextFieldProps) {
     "copyKind",
     "multiline",
   ])
-  const [copied, setCopied] = createSignal(false)
+  const copiedState = createCopiedState()
 
   const label = () => {
-    if (copied()) return i18n.t("ui.textField.copied")
+    if (copiedState.copied()) return i18n.t("ui.textField.copied")
     if (local.copyKind === "link") return i18n.t("ui.textField.copyLink")
     return i18n.t("ui.textField.copyToClipboard")
   }
 
   const icon = () => {
-    if (copied()) return "check"
+    if (copiedState.copied()) return "check"
     if (local.copyKind === "link") return "link"
     return "copy"
   }
@@ -78,8 +79,7 @@ export function TextField(props: TextFieldProps) {
       title: i18n.t("ui.message.copied"),
       description: local.copyKind === "link" ? i18n.t("ui.message.copiedLink") : i18n.t("ui.message.copiedText"),
     })
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    copiedState.flash()
   }
 
   function handleClick() {
@@ -114,7 +114,7 @@ export function TextField(props: TextFieldProps) {
           <Kobalte.TextArea {...others} autoResize data-slot="input-input" class={local.class} />
         </Show>
         <Show when={local.copyable}>
-          <Tooltip value={label()} placement="top" gutter={4} forceOpen={copied()} skipDelayDuration={0}>
+          <Tooltip value={label()} placement="top" gutter={4} forceOpen={copiedState.copied()} skipDelayDuration={0}>
             <IconButton
               type="button"
               icon={icon()}

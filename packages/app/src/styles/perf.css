@@ -41,7 +41,7 @@
 
 [data-component="session-turn"] [data-slot="session-turn-message-content"] {
   content-visibility: auto;
-  contain-intrinsic-size: auto 320px;
+  contain-intrinsic-size: auto 800px;
 }
 
 /* Tool transcripts and code blocks already scroll horizontally inside their

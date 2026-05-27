@@ -567,7 +567,15 @@ describe("applyDirectoryEvent", () => {
     if (updated?.type === "text") expect(updated.text).toBe("prt_1 Hello")
   })
 
-  test("keeps later streamed text after a full part refresh in the same batch", () => {
+  test("mid-stream part.updated snapshots cannot shrink accumulated text — only deltas extend", () => {
+    // Batch arrives with [delta, snapshot, delta]. Under the new
+    // monotonic-during-streaming contract a snapshot WITHOUT
+    // `time.end` cannot replace text that's already longer locally —
+    // it's almost always a stale race rather than a legitimate
+    // refresh. The user-facing symptom of the old behaviour was the
+    // "20 lines stream then reset, 20 more, reset again" loop where
+    // every periodic snapshot wiped out everything the deltas had
+    // accumulated.
     const sessionID = "ses_1"
     const messageID = "msg_1"
     const [store, setStore] = createStore(baseState({ part: { [messageID]: [textPart("prt_1", sessionID, messageID)] } }))
@@ -610,7 +618,9 @@ describe("applyDirectoryEvent", () => {
 
     const updated = store.part[messageID]?.find((x) => x.id === "prt_1")
     expect(updated?.type).toBe("text")
-    if (updated?.type === "text") expect(updated.text).toBe("fresh tail")
+    // Snapshot's "fresh" is silently dropped (existing text is longer);
+    // both deltas extend the original seed.
+    if (updated?.type === "text") expect(updated.text).toBe("prt_1 stale tail")
   })
 
   test("buffers deltas that arrive before message.part.updated and drains them on arrival", () => {
@@ -667,14 +677,18 @@ describe("applyDirectoryEvent", () => {
     expect(store.pendingDelta[messageID]).toBeUndefined()
   })
 
-  test("does not overwrite an already-populated server snapshot when draining buffered deltas", () => {
+  test("drops buffered deltas already represented in the server snapshot suffix", () => {
+    // Cumulative snapshot scenario: the server text already ENDS WITH the
+    // buffered delta, so the delta is just the trailing chunk that's
+    // already been folded into the cumulative `text` field. Re-appending
+    // would double the suffix.
     const sessionID = "ses_1"
     const messageID = "msg_1"
     const partID = "prt_1"
     const [store, setStore] = createStore(baseState())
 
     applyDirectoryEvent({
-      event: deltaEvent({ sessionID, messageID, partID, delta: "ignored" }),
+      event: deltaEvent({ sessionID, messageID, partID, delta: "world" }),
       store,
       setStore,
       push() {},
@@ -687,7 +701,7 @@ describe("applyDirectoryEvent", () => {
         type: "message.part.updated",
         properties: {
           sessionID,
-          part: { ...textPart(partID, sessionID, messageID), text: "server" },
+          part: { ...textPart(partID, sessionID, messageID), text: "hello world" },
           time: 2,
         },
       },
@@ -700,9 +714,164 @@ describe("applyDirectoryEvent", () => {
 
     const part = store.part[messageID]?.[0]
     expect(part?.type).toBe("text")
-    // Server text is the source of truth — buffered delta is discarded because
-    // the cumulative snapshot already includes it.
-    if (part?.type === "text") expect(part.text).toBe("server")
+    // Snapshot suffix matches buffered delta — no double-append.
+    if (part?.type === "text") expect(part.text).toBe("hello world")
+  })
+
+  test("appends buffered deltas onto a stale snapshot that arrived before them", () => {
+    // Race: snapshot was captured server-side BEFORE the deltas were
+    // emitted, but reached the client AFTER the deltas (server publishes
+    // snapshots via fire-and-forget `void publish`). Dropping the deltas
+    // here is the "20 lines stream then reset, 20 more, reset again" bug
+    // the user reported — streamed text vanished from the UI.
+    const sessionID = "ses_1"
+    const messageID = "msg_1"
+    const partID = "prt_1"
+    const [store, setStore] = createStore(baseState())
+
+    applyDirectoryEvent({
+      event: deltaEvent({ sessionID, messageID, partID, delta: "world" }),
+      store,
+      setStore,
+      push() {},
+      directory: "/tmp",
+      loadLsp() {},
+    })
+
+    applyDirectoryEvent({
+      event: {
+        type: "message.part.updated",
+        properties: {
+          sessionID,
+          part: { ...textPart(partID, sessionID, messageID), text: "hello " },
+          time: 2,
+        },
+      },
+      store,
+      setStore,
+      push() {},
+      directory: "/tmp",
+      loadLsp() {},
+    })
+
+    const part = store.part[messageID]?.[0]
+    expect(part?.type).toBe("text")
+    // Stale snapshot — delta is appended so the user keeps seeing what
+    // already streamed in.
+    if (part?.type === "text") expect(part.text).toBe("hello world")
+  })
+
+  test("does not reset accumulated text when a diverging part.updated arrives mid-stream", () => {
+    // Regression for the periodic-reset bug: while the assistant is
+    // streaming a long response, the server can publish an intermediate
+    // `message.part.updated` snapshot whose text doesn't share a clean
+    // prefix with what's already accumulated (model retry, step
+    // boundary, whitespace normalisation). The OLD `preserveStreamingFields`
+    // guard required `have.startsWith(want)` and otherwise let the
+    // shorter snapshot overwrite — the UI snapped back to the snapshot's
+    // text and the user lost everything streamed since.
+    const sessionID = "ses_1"
+    const messageID = "msg_1"
+    const partID = "prt_1"
+    const [store, setStore] = createStore(baseState())
+
+    // Seed the store: a part that already has 20-lines of streamed text.
+    const accumulated = Array.from({ length: 20 }, (_, i) => `line ${i + 1}`).join("\n")
+    applyDirectoryEvent({
+      event: {
+        type: "message.part.updated",
+        properties: {
+          sessionID,
+          part: { ...textPart(partID, sessionID, messageID), text: "" },
+          time: 1,
+        },
+      },
+      store,
+      setStore,
+      push() {},
+      directory: "/tmp",
+      loadLsp() {},
+    })
+    applyDirectoryEvent({
+      event: deltaEvent({ sessionID, messageID, partID, delta: accumulated }),
+      store,
+      setStore,
+      push() {},
+      directory: "/tmp",
+      loadLsp() {},
+    })
+
+    // A diverging snapshot arrives — different content, no `time.end`.
+    applyDirectoryEvent({
+      event: {
+        type: "message.part.updated",
+        properties: {
+          sessionID,
+          part: { ...textPart(partID, sessionID, messageID), text: "totally different shorter" },
+          time: 2,
+        },
+      },
+      store,
+      setStore,
+      push() {},
+      directory: "/tmp",
+      loadLsp() {},
+    })
+
+    const part = store.part[messageID]?.[0]
+    expect(part?.type).toBe("text")
+    // The user's 20 lines are intact — no reset.
+    if (part?.type === "text") expect(part.text).toBe(accumulated)
+  })
+
+  test("allows part.updated to replace text once the part has a completion time", () => {
+    // Once `time.end` is set, the server's snapshot is authoritative —
+    // legitimate end-of-turn cleanup (trailing whitespace, redaction)
+    // must be allowed through even if it shortens the text.
+    const sessionID = "ses_1"
+    const messageID = "msg_1"
+    const partID = "prt_1"
+    const [store, setStore] = createStore(baseState())
+
+    applyDirectoryEvent({
+      event: {
+        type: "message.part.updated",
+        properties: {
+          sessionID,
+          part: { ...textPart(partID, sessionID, messageID), text: "draft   " },
+          time: 1,
+        },
+      },
+      store,
+      setStore,
+      push() {},
+      directory: "/tmp",
+      loadLsp() {},
+    })
+
+    applyDirectoryEvent({
+      event: {
+        type: "message.part.updated",
+        properties: {
+          sessionID,
+          part: {
+            ...textPart(partID, sessionID, messageID),
+            text: "final",
+            time: { start: 1, end: 2 },
+          } as Part,
+          time: 2,
+        },
+      },
+      store,
+      setStore,
+      push() {},
+      directory: "/tmp",
+      loadLsp() {},
+    })
+
+    const part = store.part[messageID]?.[0]
+    expect(part?.type).toBe("text")
+    if (part?.type === "text") expect(part.text).toBe("final")
   })
 
   test("clears buffered deltas when the owning message is removed", () => {
@@ -732,7 +901,12 @@ describe("applyDirectoryEvent", () => {
     expect(store.pendingDelta[messageID]).toBeUndefined()
   })
 
-  test("later full part refreshes replace older streamed state without replaying stale deltas", () => {
+  test("a completion snapshot (time.end set) does replace mid-stream accumulated text", () => {
+    // Once the assistant finishes its turn the server emits a final
+    // `message.part.updated` with `time.end`. THAT snapshot is
+    // authoritative — it may legitimately shorten the text (trailing
+    // whitespace trim, redaction). The streaming-monotonic guard above
+    // releases the moment `time.end` is present on either side.
     const sessionID = "ses_1"
     const messageID = "msg_1"
     const [store, setStore] = createStore(baseState({ part: { [messageID]: [textPart("prt_1", sessionID, messageID)] } }))
@@ -765,7 +939,8 @@ describe("applyDirectoryEvent", () => {
             part: {
               ...textPart("prt_1", sessionID, messageID),
               text: "fresh",
-            },
+              time: { start: 1, end: 2 },
+            } as Part,
             time: 2,
           },
         },
@@ -786,6 +961,98 @@ describe("applyDirectoryEvent", () => {
     const updated = store.part[messageID]?.find((x) => x.id === "prt_1")
     expect(updated?.type).toBe("text")
     if (updated?.type === "text") expect(updated.text).toBe("fresh")
+  })
+
+  test("does not shrink streamed text when a stale part snapshot is a prefix of the local text", () => {
+    const sessionID = "ses_1"
+    const messageID = "msg_1"
+    const partID = "prt_1"
+    const [store, setStore] = createStore(
+      baseState({ part: { [messageID]: [{ ...textPart(partID, sessionID, messageID), text: "" }] } }),
+    )
+
+    // Streaming order on the wire: deltas land first and the cumulative server
+    // snapshot lands later (server publishes part snapshots via fire-and-forget
+    // `void publish` in SyncEvent.run, so a snapshot can be overtaken by a
+    // later delta). The reducer must not let the snapshot shrink text it has
+    // already accumulated from deltas, or the user sees the part flash shorter
+    // before the next delta resumes it.
+    applyDirectoryEvent({
+      event: deltaEvent({ sessionID, messageID, partID, delta: "Hello" }),
+      store,
+      setStore,
+      push() {},
+      directory: "/tmp",
+      loadLsp() {},
+    })
+    applyDirectoryEvent({
+      event: deltaEvent({ sessionID, messageID, partID, delta: " world" }),
+      store,
+      setStore,
+      push() {},
+      directory: "/tmp",
+      loadLsp() {},
+    })
+
+    applyDirectoryEvent({
+      event: {
+        type: "message.part.updated",
+        properties: {
+          sessionID,
+          part: { ...textPart(partID, sessionID, messageID), text: "Hello" },
+          time: 1,
+        },
+      },
+      store,
+      setStore,
+      push() {},
+      directory: "/tmp",
+      loadLsp() {},
+    })
+
+    const part = store.part[messageID]?.[0]
+    expect(part?.type).toBe("text")
+    if (part?.type === "text") expect(part.text).toBe("Hello world")
+  })
+
+  test("accepts a server snapshot that legitimately revises the text once the part is finalized", () => {
+    const sessionID = "ses_1"
+    const messageID = "msg_1"
+    const partID = "prt_1"
+    const [store, setStore] = createStore(
+      baseState({
+        part: {
+          [messageID]: [{ ...textPart(partID, sessionID, messageID), text: "Hello world  " }],
+        },
+      }),
+    )
+
+    // When streaming ends the server sets `time.end` and may legitimately
+    // shorten/normalize text (e.g. trim trailing whitespace). The monotonic
+    // guard must release at that point.
+    applyDirectoryEvent({
+      event: {
+        type: "message.part.updated",
+        properties: {
+          sessionID,
+          part: {
+            ...textPart(partID, sessionID, messageID),
+            text: "Hello world",
+            time: { start: 1, end: 2 },
+          },
+          time: 2,
+        },
+      },
+      store,
+      setStore,
+      push() {},
+      directory: "/tmp",
+      loadLsp() {},
+    })
+
+    const part = store.part[messageID]?.[0]
+    expect(part?.type).toBe("text")
+    if (part?.type === "text") expect(part.text).toBe("Hello world")
   })
 
   test("tracks permission and question request lifecycles", () => {

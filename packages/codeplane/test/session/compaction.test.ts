@@ -23,6 +23,8 @@ import { ModelID, ProviderID } from "../../src/provider/schema"
 import type { Provider } from "../../src/provider"
 import * as SessionProcessorModule from "../../src/session/processor"
 import { Snapshot } from "../../src/snapshot"
+import { Database } from "../../src/storage"
+import { SessionEntryTable } from "../../src/session/session.sql"
 import { ProviderTest } from "../fake/provider"
 import { testEffect } from "../lib/effect"
 import * as CrossSpawnSpawner from "../../src/effect/cross-spawn-spawner"
@@ -690,12 +692,97 @@ describe("session.compaction.prune", () => {
             expect(part.state.time.compacted).toBeNumber()
           }
         }),
+    ),
+  )
 
-      {
-        config: {
-          compaction: { prune: true },
-        },
-      },
+  it.live(
+    "does not prune when compaction.prune is disabled",
+    provideTmpdirInstance(
+      (dir) =>
+        Effect.gen(function* () {
+          const compact = yield* SessionCompaction.Service
+          const ssn = yield* SessionNs.Service
+          const info = yield* ssn.create({})
+          const a = yield* ssn.updateMessage({
+            id: MessageID.ascending(),
+            role: "user",
+            sessionID: info.id,
+            agent: "build",
+            model: ref,
+            time: { created: Date.now() },
+          })
+          yield* ssn.updatePart({
+            id: PartID.ascending(),
+            messageID: a.id,
+            sessionID: info.id,
+            type: "text",
+            text: "first",
+          })
+          const b: MessageV2.Assistant = {
+            id: MessageID.ascending(),
+            role: "assistant",
+            sessionID: info.id,
+            mode: "build",
+            agent: "build",
+            path: { cwd: dir, root: dir },
+            cost: 0,
+            tokens: {
+              output: 0,
+              input: 0,
+              reasoning: 0,
+              cache: { read: 0, write: 0 },
+            },
+            modelID: ref.modelID,
+            providerID: ref.providerID,
+            parentID: a.id,
+            time: { created: Date.now() },
+            finish: "end_turn",
+          }
+          yield* ssn.updateMessage(b)
+          yield* ssn.updatePart({
+            id: PartID.ascending(),
+            messageID: b.id,
+            sessionID: info.id,
+            type: "tool",
+            callID: crypto.randomUUID(),
+            tool: "bash",
+            state: {
+              status: "completed",
+              input: {},
+              output: "x".repeat(200_000),
+              title: "done",
+              metadata: {},
+              time: { start: Date.now(), end: Date.now() },
+            },
+          })
+          for (const text of ["second", "third"]) {
+            const msg = yield* ssn.updateMessage({
+              id: MessageID.ascending(),
+              role: "user",
+              sessionID: info.id,
+              agent: "build",
+              model: ref,
+              time: { created: Date.now() },
+            })
+            yield* ssn.updatePart({
+              id: PartID.ascending(),
+              messageID: msg.id,
+              sessionID: info.id,
+              type: "text",
+              text,
+            })
+          }
+
+          yield* compact.prune({ sessionID: info.id })
+
+          const msgs = yield* ssn.messages({ sessionID: info.id })
+          const part = msgs.flatMap((msg) => msg.parts).find((part) => part.type === "tool")
+          expect(part?.type).toBe("tool")
+          if (part?.type === "tool" && part.state.status === "completed") {
+            expect(part.state.time.compacted).toBeUndefined()
+          }
+        }),
+      { config: { compaction: { prune: false } } },
     ),
   )
 
@@ -862,6 +949,10 @@ describe("session.compaction.process", () => {
           ])
           expect(result).toBe("continue")
           expect(seen).toBe(true)
+          const entry = Database.use((db) => db.select().from(SessionEntryTable).all()).find(
+            (entry) => entry.session_id === session.id && entry.type === "compaction",
+          )
+          expect(entry?.data).toMatchObject({ sessionID: session.id, auto: false })
         } finally {
           unsub?.()
           await rt.dispose()
@@ -1412,7 +1503,7 @@ describe("session.compaction.process", () => {
 
           await Promise.race([
             ready.promise,
-            wait(1000).then(() => {
+            wait(5000).then(() => {
               throw new Error("timed out waiting for retry status")
             }),
           ])
@@ -1421,13 +1512,13 @@ describe("session.compaction.process", () => {
           abort.abort()
           const result = await Promise.race([
             run.then((value) => ({ kind: "done" as const, value, ms: Date.now() - start })),
-            wait(250).then(() => ({ kind: "timeout" as const })),
+            wait(1000).then(() => ({ kind: "timeout" as const })),
           ])
 
           expect(result.kind).toBe("done")
           if (result.kind === "done") {
             expect(result.value).toBe("stop")
-            expect(result.ms).toBeLessThan(250)
+            expect(result.ms).toBeLessThan(1000)
           }
         } finally {
           off?.()

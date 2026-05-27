@@ -76,6 +76,8 @@ const translated = {
   "ui.textField.copyLink": "Link kopieren",
   "ui.textField.copied": "Kopiert",
   "ui.imagePreview.alt": "Bildvorschau",
+  "ui.imagePreview.loading": "Bild wird geladen…",
+  "ui.imagePreview.error": "Bild konnte nicht geladen werden",
   "ui.scrollView.ariaLabel": "scrollbarer Inhalt",
   "ui.tool.read": "Lesen",
   "ui.tool.loaded": "Geladen",

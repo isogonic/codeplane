@@ -6,10 +6,11 @@ export const message = {
     parts: Part[]
   } {
     const { parts: _parts, ...rest } = input
+    const uid = crypto.randomUUID()
 
     const info: UserMessage = {
       ...rest,
-      id: "asdasd",
+      id: uid,
       time: {
         created: Date.now(),
       },
@@ -22,7 +23,7 @@ export const message = {
         (part) =>
           ({
             ...part,
-            id: "asdasd",
+            id: crypto.randomUUID(),
             messageID: info.id,
             sessionID: info.sessionID,
           }) as Part,
