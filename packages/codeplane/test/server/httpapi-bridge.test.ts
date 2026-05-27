@@ -4,6 +4,7 @@ import { Flag } from "../../src/flag/flag"
 import { Instance } from "../../src/project/instance"
 import { InstanceRoutes } from "../../src/server/routes/instance"
 import { FilePaths } from "../../src/server/routes/instance/httpapi/file"
+import * as AuthRateLimit from "../../src/server/rate-limit"
 import { Log } from "../../src/util"
 import { resetDatabase } from "../fixture/db"
 import { tmpdir } from "../fixture/fixture"
@@ -41,6 +42,9 @@ afterEach(async () => {
   Flag.CODEPLANE_EXPERIMENTAL_HTTPAPI = original.CODEPLANE_EXPERIMENTAL_HTTPAPI
   Flag.CODEPLANE_SERVER_PASSWORD = original.CODEPLANE_SERVER_PASSWORD
   Flag.CODEPLANE_SERVER_USERNAME = original.CODEPLANE_SERVER_USERNAME
+  // Module-level state; clear between tests so failed-auth counts don't
+  // leak across test cases and accidentally trigger the lockout.
+  AuthRateLimit.reset()
   await Instance.disposeAll()
   await resetDatabase()
 })
@@ -100,12 +104,18 @@ describe("HttpApi Hono bridge", () => {
     expect(good.status).toBe(200)
   })
 
-  test("accepts auth_token query credentials", async () => {
+  // Regression: `auth_token` query credentials are NO LONGER accepted on
+  // plain HTTP requests. Allowing them leaked secrets through server logs,
+  // browser history, Referer headers and intermediate proxy caches.
+  // WebSocket upgrade requests are the only path that still rewrites the
+  // query into the Authorization header — see src/server/middleware.ts and
+  // packages/app/src/components/terminal.tsx for the legitimate caller.
+  test("rejects auth_token query credentials on HTTP requests", async () => {
     await using tmp = await tmpdir({ git: true })
     await Bun.write(`${tmp.path}/hello.txt`, "hello")
 
-    const response = await app({ password: "secret" }).request(
-      fileUrl({ token: Buffer.from("codeplane:secret").toString("base64") }),
+    const response = await app({ password: "secret-password-strong" }).request(
+      fileUrl({ token: Buffer.from("codeplane:secret-password-strong").toString("base64") }),
       {
         headers: {
           "x-codeplane-directory": tmp.path,
@@ -113,7 +123,7 @@ describe("HttpApi Hono bridge", () => {
       },
     )
 
-    expect(response.status).toBe(200)
+    expect(response.status).toBe(401)
   })
 
   test("selects instance from query before directory header", async () => {

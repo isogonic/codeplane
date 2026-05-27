@@ -103,11 +103,18 @@ export function WorkspaceRouterMiddleware(upgrade: UpgradeWebSocket): Middleware
     proxyURL.hash = url.hash
     proxyURL.searchParams.delete("workspace")
 
+    // Log only the path — never the full URL with query string. The
+    // browser terminal passes Basic Auth credentials as `auth_token=...`
+    // on WebSocket-upgrade URLs (the WebSocket API can't set headers),
+    // and we don't want those credentials landing in plaintext server
+    // logs. Same goes for any other potentially-sensitive query params
+    // (cursor positions, etc).
     log.info("workspace proxy forwarding", {
       workspaceID,
-      request: url.toString(),
-      target: String(target.url),
-      proxy: proxyURL.toString(),
+      method: c.req.method,
+      path: url.pathname,
+      target: target.url instanceof URL ? `${target.url.protocol}//${target.url.host}${target.url.pathname}` : String(target.url),
+      proxyPath: proxyURL.pathname,
     })
 
     if (c.req.header("upgrade")?.toLowerCase() === "websocket") {

@@ -3,6 +3,7 @@ import { cmd } from "./cmd"
 import { withNetworkOptions, resolveNetworkOptions } from "../network"
 import { Flag } from "../../flag/flag"
 import { upgrade } from "../upgrade"
+import { evaluatePassword } from "../../server/auth-policy"
 
 export const ServeCommand = cmd({
   command: "serve",
@@ -27,14 +28,17 @@ export const ServeCommand = cmd({
   handler: async (args) => {
     const opts = await resolveNetworkOptions(args)
     const isLocal = opts.hostname === "127.0.0.1" || opts.hostname === "localhost" || opts.hostname === "::1"
-    if (!Flag.CODEPLANE_SERVER_PASSWORD) {
-      if (!isLocal) {
-        console.log(
-          `Refusing to bind ${opts.hostname}:${opts.port} without a password. Each Codeplane instance is single-user — exposing it on a network without HTTP Basic Auth would let anyone reach your model providers, MCP servers, and plugins. Re-run with --password <secret> (or set CODEPLANE_SERVER_PASSWORD) to enable Basic Auth.`,
-        )
-        process.exit(1)
-      }
-      console.log("Warning: CODEPLANE_SERVER_PASSWORD is not set; server is unsecured (loopback-only).")
+    const verdict = evaluatePassword({
+      password: Flag.CODEPLANE_SERVER_PASSWORD,
+      username: Flag.CODEPLANE_SERVER_USERNAME,
+      isLocalBind: isLocal,
+    })
+    if (verdict.kind === "refuse") {
+      console.error(verdict.message)
+      process.exit(1)
+    }
+    if (verdict.kind === "warn") {
+      console.warn("Warning:", verdict.message)
     }
     const server = await Server.listen(opts)
     console.log(`codeplane server listening on http://${server.hostname}:${server.port}`)
