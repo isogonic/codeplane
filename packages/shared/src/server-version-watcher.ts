@@ -63,11 +63,30 @@ export function createServerVersionWatcher(options: ServerVersionWatcherOptions)
     inflight = true
     abort = new AbortController()
     try {
-      const response = await fetchImpl(`${base}/global/version`, {
-        headers: { ...(options.headers ?? {}) },
-        redirect: "follow",
+      // Bypass any HTTP cache on the way. Without this, Electron's
+      // session.fetch (used by the desktop) could return a cached
+      // "current=<oldVersion>" response forever — the watcher would
+      // never see new releases and the desktop UI would never refresh
+      // after a server upgrade. Three layers of bust:
+      //   1. Cache-Control + pragma request headers (most proxies)
+      //   2. A per-poll cache-buster query param (defeats anything that
+      //      keys solely by URL — Electron's net cache used to do this
+      //      before Cache-Control headers were honored)
+      //   3. `cache: "no-store"` request hint (typed as optional via
+      //      RequestInit; Bun's fetch type omits it but the runtime
+      //      accepts it — passed via a typed widen)
+      const url = `${base}/global/version?_=${Date.now()}`
+      const init = {
+        headers: {
+          ...(options.headers ?? {}),
+          "cache-control": "no-cache, no-store, must-revalidate",
+          pragma: "no-cache",
+        },
+        redirect: "follow" as const,
         signal: abort.signal,
-      })
+        cache: "no-store" as const,
+      }
+      const response = await fetchImpl(url, init as unknown as RequestInit)
       if (stopped) return
       if (!response.ok) {
         // Treat HTTP errors as transient; the next poll retries.

@@ -434,10 +434,45 @@ async function clearRendererHttpCache(
   instance: SavedInstance | DesktopHostInstance,
   reason: string,
 ) {
-  await ses
-    .clearCache()
-    .then(() => logger.log("main", "window.cache.clear.success", { id: instance.id, reason }))
-    .catch((error) => logger.log("main", "window.cache.clear.error", { error, id: instance.id, reason }))
+  // `ses.clearCache()` clears the HTTP cache, but leaves:
+  //   - ServiceWorker registrations (web app doesn't register one today,
+  //     but a stale registration from a previous build version would
+  //     intercept asset fetches and serve old code anyway)
+  //   - CacheStorage entries (used by the standard SW caching API, same
+  //     concern)
+  //   - GPU/shader caches (mostly cosmetic, but a stale one can wedge the
+  //     renderer after a major Electron version bump)
+  // We wipe all three on every server-upgrade reconnect so the new UI
+  // bundle is what actually executes. The renderer's HTTP cache + the
+  // session storages here together cover every layer Electron has cached
+  // between the desktop and the local server. Without these, a server
+  // upgrade leaves the renderer running yesterday's JS bundle ("desktop
+  // doesn't upgrade on update" user report, addressed v29.0.22).
+  await Promise.all([
+    ses
+      .clearCache()
+      .then(() => logger.log("main", "window.cache.clear.success", { id: instance.id, reason }))
+      .catch((error) => logger.log("main", "window.cache.clear.error", { error, id: instance.id, reason })),
+    ses
+      .clearStorageData({ storages: ["serviceworkers", "cachestorage", "shadercache"] })
+      .then(() =>
+        logger.log("main", "window.storage.clear.success", {
+          id: instance.id,
+          reason,
+          storages: ["serviceworkers", "cachestorage", "shadercache"],
+        }),
+      )
+      .catch((error) => logger.log("main", "window.storage.clear.error", { error, id: instance.id, reason })),
+    // `clearCodeCaches({ urls: [] })` clears the V8 bytecode cache for
+    // every origin — the desired behavior on upgrade so we re-parse the
+    // new JS bundle from scratch instead of replaying stale bytecode
+    // that targeted the old bundle's source. Per Electron's docs, an
+    // empty `urls` array is the "clear all" sentinel.
+    ses
+      .clearCodeCaches({ urls: [] })
+      .then(() => logger.log("main", "window.codecache.clear.success", { id: instance.id, reason }))
+      .catch((error) => logger.log("main", "window.codecache.clear.error", { error, id: instance.id, reason })),
+  ])
 }
 
 app.setName(APP_NAME)
