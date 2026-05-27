@@ -22,7 +22,7 @@ import { useSync } from "@/tui/context/sync"
 import { useEvent } from "@/tui/context/event"
 import { editorSelectionKey, useEditorContext, type EditorSelection } from "@/tui/context/editor"
 import { MessageID, PartID } from "@/session/schema"
-import { createStore, produce, unwrap } from "solid-js/store"
+import { createStore, produce, reconcile, unwrap } from "solid-js/store"
 import { useKeybind } from "@/tui/context/keybind"
 import { usePromptHistory, type PromptInfo } from "./history"
 import { computePromptTraits } from "./traits"
@@ -516,7 +516,12 @@ export function Prompt(props: PromptProps) {
       .then((res) => {
         if (props.sessionID !== sessionID) return
         if (!res.data) return
-        sync.set("prompt_queue", sessionID, res.data)
+        // reconcile() keyed on job id so repeat refreshes with the
+        // same data don't produce new array refs and force every
+        // downstream <For>/memo to redraw. Without this, each
+        // refreshQueue tick (3s busy poll) re-keys the entire queue
+        // list — visible as TUI flicker.
+        sync.set("prompt_queue", sessionID, reconcile(res.data, { key: "id" }))
       })
       .catch(() => {
         // Snapshot failed (e.g. session not yet visible on server, or

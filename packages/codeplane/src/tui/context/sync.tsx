@@ -325,7 +325,15 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         }
 
         case "session.status": {
-          setStore("session_status", event.properties.sessionID, event.properties.status)
+          // reconcile() — without it, every session.status event
+          // replaces the entry with a freshly-allocated object even
+          // when the status didn't change, which invalidates every
+          // memo downstream and causes the TUI to redraw the whole
+          // message list on every status tick. Server emits this on
+          // each turn boundary and inside the keepalive — exactly the
+          // periodic "TUI reloads for every little thing" the user
+          // reported.
+          setStore("session_status", event.properties.sessionID, reconcile(event.properties.status))
           break
         }
 

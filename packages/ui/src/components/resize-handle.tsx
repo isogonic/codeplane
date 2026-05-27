@@ -31,6 +31,23 @@ export function ResizeHandle(props: ResizeHandleProps) {
     const start = local.direction === "horizontal" ? e.clientX : e.clientY
     const startSize = local.size
     let current = startSize
+    // rAF-coalesce onResize: the user moves the mouse at ~120-1000 Hz on
+    // modern trackpads, and `onResize` calls into persisted-store writes
+    // that synchronously serialize + send IPC. Without coalescing the
+    // sidebar/panel resize stalls the entire renderer thread, which on
+    // the desktop shell is also driving the chrome — exactly the
+    // "extremely buggy / laggy" feel users reported. Schedule the
+    // newest value to the next frame so we do at most ~60 onResize
+    // calls per second, regardless of how fast the OS sends mousemove.
+    let pendingClamped: number | undefined
+    let rafID: number | undefined
+    const flush = () => {
+      rafID = undefined
+      if (pendingClamped === undefined) return
+      const value = pendingClamped
+      pendingClamped = undefined
+      local.onResize(value)
+    }
 
     document.body.style.userSelect = "none"
     document.body.style.overflow = "hidden"
@@ -46,8 +63,8 @@ export function ResizeHandle(props: ResizeHandleProps) {
             ? start - pos
             : pos - start
       current = startSize + delta
-      const clamped = Math.min(local.max, Math.max(local.min, current))
-      local.onResize(clamped)
+      pendingClamped = Math.min(local.max, Math.max(local.min, current))
+      if (rafID === undefined) rafID = requestAnimationFrame(flush)
     }
 
     const onMouseUp = () => {
@@ -55,6 +72,14 @@ export function ResizeHandle(props: ResizeHandleProps) {
       document.body.style.overflow = ""
       document.removeEventListener("mousemove", onMouseMove)
       document.removeEventListener("mouseup", onMouseUp)
+      // Run any queued frame synchronously on release so the final
+      // size is applied immediately (no stale frame between mouseup
+      // and the next rAF).
+      if (rafID !== undefined) {
+        cancelAnimationFrame(rafID)
+        rafID = undefined
+      }
+      flush()
 
       const threshold = local.collapseThreshold ?? 0
       if (local.onCollapse && threshold > 0 && current < threshold) {

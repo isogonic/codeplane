@@ -649,16 +649,28 @@ const DesktopUpdateCard: Component = () => {
       </div>
 
       <Show when={state().kind === "downloading"}>
-        {(_) => {
-          const s = state() as Extract<DesktopUpdateState, { kind: "downloading" }>
-          return (
-            <div class="px-1">
-              <Progress value={s.percent} maxValue={100} hideLabel>
-                Downloading desktop update
-              </Progress>
-            </div>
-          )
-        }}
+        <div class="px-1">
+          {/*
+            Read `state()` reactively inside the JSX. The previous
+            implementation used the `<Show>` render-callback form and
+            snapshotted `const s = state()` inside the callback, but
+            `<Show>`'s default (non-keyed) condition memoizes by
+            truthiness — once `state().kind === "downloading"` flips to
+            true the callback runs exactly once with percent=0, and
+            subsequent `setState({percent: 33, ...})` updates never
+            re-invoke the callback. The result: the bar stays at 0%
+            while the "Installing… 33%" label (rendered reactively
+            elsewhere) keeps updating. Reading `state()` directly in
+            the prop expression makes Solid track the percent field.
+          */}
+          <Progress
+            value={state().kind === "downloading" ? (state() as Extract<DesktopUpdateState, { kind: "downloading" }>).percent : 0}
+            maxValue={100}
+            hideLabel
+          >
+            Downloading desktop update
+          </Progress>
+        </div>
       </Show>
 
       <Show when={(state().kind === "available" || state().kind === "downloaded") && notes()?.body}>

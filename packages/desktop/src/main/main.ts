@@ -1526,10 +1526,36 @@ function attachWindowHandlers(window: BrowserWindow) {
 
   // Persist raw Electron bounds. Do not clamp to a display; macOS secondary
   // monitors can legitimately use negative or far-out coordinates.
-  window.on("resize", saveBounds)
-  window.on("move", saveBounds)
+  //
+  // saveBounds is debounced because `resize` and `move` fire on every
+  // frame during a drag (~60-120 Hz on macOS), and each call synchronously
+  // serializes the entire desktop persist blob and writeFileSync's it to
+  // disk via electron-store. That blocks the main process — which on
+  // macOS also drives window compositing — and is the dominant cause of
+  // the "drag is laggy / behind" feel users reported. Coalesce to one
+  // write per ~250 ms instead. Maximize/unmaximize fire once each so
+  // they can persist immediately.
+  let saveBoundsTimer: NodeJS.Timeout | undefined
+  const scheduleSaveBounds = () => {
+    if (saveBoundsTimer) clearTimeout(saveBoundsTimer)
+    saveBoundsTimer = setTimeout(() => {
+      saveBoundsTimer = undefined
+      saveBounds()
+    }, 250)
+  }
+  window.on("resize", scheduleSaveBounds)
+  window.on("move", scheduleSaveBounds)
   window.on("maximize", saveBounds)
   window.on("unmaximize", saveBounds)
+  // Always flush on close — a user dragging the window then immediately
+  // quitting must still have their bounds saved.
+  window.on("close", () => {
+    if (saveBoundsTimer) {
+      clearTimeout(saveBoundsTimer)
+      saveBoundsTimer = undefined
+    }
+    saveBounds()
+  })
 
   // Forward macOS-relevant window state to the renderer so CSS can react —
   // fullscreen hides traffic lights (drop the 88px reserved gutter) and

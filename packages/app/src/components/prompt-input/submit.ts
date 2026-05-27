@@ -476,10 +476,19 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     })
 
     if (followupDisposition === "queue") {
-      input.onQueue?.(draft)
-      clearContext()
-      clearInput()
-      return
+      // If `onQueue` isn't wired (a freshly-created session whose parent
+      // hasn't re-evaluated `params.id` yet, so the followup prop is
+      // undefined), don't silently swallow the draft. Fall through to
+      // the normal send path so the message is still delivered. Pre-fix
+      // behavior was a silent drop — the user pressed Send, the input
+      // cleared, but nothing reached the server.
+      if (input.onQueue) {
+        input.onQueue(draft)
+        clearContext()
+        clearInput()
+        return
+      }
+      // Fall through — treat as a regular send rather than dropping.
     }
 
     input.onSubmit?.()

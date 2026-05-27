@@ -980,7 +980,15 @@ export default function Page() {
               sdk.client.session.status().then((x) => {
                 if (token !== idleResyncToken) return
                 if (sdk.directory !== dir || params.id !== id) return
-                sync.set("session_status", x.data ?? {})
+                // reconcile() instead of bare set() so identical
+                // session_status entries DON'T produce new object
+                // references. Without reconcile, every resync tick
+                // (each 1.25s during idle backoff) replaces the entire
+                // map with a freshly-allocated object and every memo
+                // reading sync.data.session_status[id] re-runs even
+                // though nothing changed — visible to the user as
+                // periodic chat flicker.
+                sync.set("session_status", reconcile(x.data ?? {}))
               }),
             ]).then(() => {
               if (token !== idleResyncToken) return
@@ -1019,7 +1027,11 @@ export default function Page() {
               sdk.client.session.status().then((x) => {
                 if (token !== workingResyncToken) return
                 if (sdk.directory !== dir || params.id !== id) return
-                sync.set("session_status", x.data ?? {})
+                // reconcile() — see the idle-resync site above for the
+                // full rationale. Working-resync ticks every 4s while
+                // the session is busy; without reconcile, the chat
+                // re-renders on every tick.
+                sync.set("session_status", reconcile(x.data ?? {}))
               }),
             ]).then(() => {
               if (token !== workingResyncToken) return
