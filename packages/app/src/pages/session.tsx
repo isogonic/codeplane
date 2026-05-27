@@ -1888,18 +1888,58 @@ export default function Page() {
       .catch((err) => fail(err))
   }
 
-  // "Send now": promote the chosen pending job to the head of its session
-  // queue. Server already runs head-of-queue next as soon as the active
-  // turn finishes, so this is just a reorder. We pass the current order
-  // with the chosen id moved to the front.
+  // "Send now": promote the chosen job to the head of its session queue.
+  //
+  // Pending jobs: reorder them to position 0 (server runs head-of-queue
+  // next as soon as the active turn finishes).
+  //
+  // Failed jobs: the dock surfaces these so the user can retry them.
+  // They're not eligible for reorder (the server only reorders pending
+  // rows), so we cancel the dead row and re-enqueue the original
+  // payload. The payload is the same JSON the API received on the
+  // first attempt, so a re-send is byte-for-byte equivalent to the
+  // original submission.
+  //
+  // Pre-v29.0.30 this function only looked at pending rows and
+  // silently returned on a failed row — clicking "Send now" on a
+  // failed job looked completely dead with no error or feedback.
   const sendFollowup = (sessionID: string, id: string, opts?: { manual?: boolean }) => {
-    const list = (sync.data.prompt_queue[sessionID] ?? []).filter((j) => j.status === "pending")
-    const target = list.find((j) => j.id === id)
+    const all = sync.data.prompt_queue[sessionID] ?? []
+    const target = all.find((j) => j.id === id && (j.status === "pending" || j.status === "failed"))
     if (!target) return Promise.resolve()
-    const reordered = [target.id, ...list.filter((j) => j.id !== target.id).map((j) => j.id)]
     if (opts?.manual) resumeScroll()
+
+    if (target.status === "failed") {
+      // Cancel the dead row, then re-enqueue. We parse the stored payload
+      // back into a PromptInput and submit via promptAsync — same path
+      // queueFollowup uses, so the new row picks up the same FIFO + sync
+      // event flow.
+      let parsed: Record<string, unknown> = {}
+      try {
+        parsed = JSON.parse(target.payload) as Record<string, unknown>
+      } catch {
+        return sdk.client.session.queue
+          .cancel({ sessionID, jobID: target.id })
+          .then(() => refreshQueue(sessionID, sdk.directory))
+          .catch((err) => fail(err))
+      }
+      return sdk.client.session.queue
+        .cancel({ sessionID, jobID: target.id })
+        .then(() =>
+          sdk.client.session.promptAsync({
+            sessionID,
+            ...(parsed as Record<string, never>),
+          }),
+        )
+        .then(() => refreshQueue(sessionID, sdk.directory))
+        .catch((err) => fail(err))
+    }
+
+    const pending = all.filter((j) => j.status === "pending")
+    const reordered = [target.id, ...pending.filter((j) => j.id !== target.id).map((j) => j.id)]
     return sdk.client.session.queue
       .reorder({ sessionID, jobIDs: reordered })
+      .then(() => refreshQueue(sessionID, sdk.directory))
       .catch((err) => fail(err))
       .then(() => undefined)
   }

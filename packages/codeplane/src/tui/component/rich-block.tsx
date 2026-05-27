@@ -1,4 +1,4 @@
-import { For, Show, createMemo, type JSX } from "solid-js"
+import { Index, Show, createMemo, type JSX } from "solid-js"
 import { useTheme } from "@/tui/context/theme"
 import type { SyntaxStyle } from "@opentui/core"
 import { marked, type Token, type Tokens } from "marked"
@@ -105,28 +105,28 @@ export function RichBlockText(props: RichBlockProps): JSX.Element {
     )
     return (
       <box flexDirection="column">
-        <For each={rows}>
+        <Index each={rows}>
           {(row, rowIndex) => (
             <text wrapMode="none" fg={theme.markdownText}>
-              <For each={row}>
+              <Index each={row()}>
                 {(cell, columnIndex) => {
-                  const text = tableText(cell)
-                  const value = text.padEnd(widths[columnIndex()] ?? text.length)
+                  const text = tableText(cell())
+                  const value = text.padEnd(widths[columnIndex] ?? text.length)
                   return (
                     <>
-                      <span style={{ bold: rowIndex() === 0, fg: rowIndex() === 0 ? theme.markdownHeading : theme.markdownText }}>
+                      <span style={{ bold: rowIndex === 0, fg: rowIndex === 0 ? theme.markdownHeading : theme.markdownText }}>
                         {value}
                       </span>
-                      <Show when={columnIndex() < row.length - 1}>
+                      <Show when={columnIndex < row().length - 1}>
                         <span style={{ fg: theme.textMuted }}>  </span>
                       </Show>
                     </>
                   )
                 }}
-              </For>
+              </Index>
             </text>
           )}
-        </For>
+        </Index>
       </box>
     )
   }
@@ -135,17 +135,17 @@ export function RichBlockText(props: RichBlockProps): JSX.Element {
     const start = typeof list.start === "number" ? list.start : 1
     return (
       <box flexDirection="column">
-        <For each={list.items}>
+        <Index each={list.items}>
           {(item, itemIndex) => {
-            const marker = list.ordered ? `${start + itemIndex()}. ` : item.task ? (item.checked ? "[x] " : "[ ] ") : "• "
-            const rest = restItemBlocks(item)
+            const marker = list.ordered ? `${start + itemIndex}. ` : item().task ? (item().checked ? "[x] " : "[ ] ") : "• "
+            const rest = restItemBlocks(item())
             return (
               <box flexDirection="column">
                 <text wrapMode="word" fg={theme.markdownText}>
                   <span style={{ fg: list.ordered ? theme.markdownListEnumeration : theme.markdownListItem }}>
                     {marker}
                   </span>
-                  {renderInline(firstItemText(item))}
+                  {renderInline(firstItemText(item()))}
                 </text>
                 <Show when={rest.length > 0}>
                   <box flexDirection="column" paddingLeft={marker.length}>
@@ -155,7 +155,7 @@ export function RichBlockText(props: RichBlockProps): JSX.Element {
               </box>
             )
           }}
-        </For>
+        </Index>
       </box>
     )
   }
@@ -215,17 +215,24 @@ export function RichBlockText(props: RichBlockProps): JSX.Element {
 
   const renderBlocks = (tokens: Token[]): JSX.Element => {
     const visible = tokens.filter((token) => token.type !== "space")
+    // <Index> over <For>: marked.lexer() returns brand-new token
+    // objects on every call, so streaming-text deltas would re-key
+    // every block with <For> and remount each block's renderable
+    // (including expensive syntax-highlighted code blocks). <Index>
+    // keys by position so identical content at the same index just
+    // updates props instead of unmounting. See markdown-text.tsx for
+    // the matching change.
     return (
-      <For each={visible}>
+      <Index each={visible}>
         {(block, blockIndex) => (
           <>
-            {renderBlock(block)}
-            <Show when={blockIndex() < visible.length - 1}>
+            {renderBlock(block())}
+            <Show when={blockIndex < visible.length - 1}>
               <box height={1} />
             </Show>
           </>
         )}
-      </For>
+      </Index>
     )
   }
 

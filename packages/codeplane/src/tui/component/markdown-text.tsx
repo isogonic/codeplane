@@ -1,4 +1,4 @@
-import { For, Show, createMemo, type JSX } from "solid-js"
+import { Index, Show, createMemo, type JSX } from "solid-js"
 import { useTheme } from "@/tui/context/theme"
 import type { SyntaxStyle } from "@opentui/core"
 import { marked, type Token, type Tokens } from "marked"
@@ -112,42 +112,42 @@ export function MarkdownText(props: MarkdownTextProps): JSX.Element {
           when={table.rows.length > 0}
           fallback={
             <text wrapMode="word" fg={theme.markdownText}>
-              <For each={headers}>
+              <Index each={headers}>
                 {(header, columnIndex) => (
                   <>
-                    <span style={{ bold: true, fg: theme.markdownHeading }}>{header}</span>
-                    <Show when={columnIndex() < headers.length - 1}>
+                    <span style={{ bold: true, fg: theme.markdownHeading }}>{header()}</span>
+                    <Show when={columnIndex < headers.length - 1}>
                       <span style={{ fg: theme.textMuted }}> / </span>
                     </Show>
                   </>
                 )}
-              </For>
+              </Index>
             </text>
           }
         >
-          <For each={table.rows}>
+          <Index each={table.rows}>
             {(row, rowIndex) => (
               <box
                 flexDirection="column"
                 border={["left"]}
                 borderColor={theme.textMuted}
                 paddingLeft={1}
-                paddingBottom={rowIndex() < table.rows.length - 1 ? 1 : 0}
+                paddingBottom={rowIndex < table.rows.length - 1 ? 1 : 0}
               >
-                <For each={headers}>
+                <Index each={headers}>
                   {(header, columnIndex) => {
-                    const value = tableTokens(row[columnIndex()])
+                    const value = tableTokens(row()[columnIndex])
                     return (
                       <text wrapMode="word" fg={theme.markdownText}>
-                        <span style={{ bold: true, fg: theme.markdownHeading }}>{header}: </span>
+                        <span style={{ bold: true, fg: theme.markdownHeading }}>{header()}: </span>
                         {renderInline(value)}
                       </text>
                     )
                   }}
-                </For>
+                </Index>
               </box>
             )}
-          </For>
+          </Index>
         </Show>
       </box>
     )
@@ -157,23 +157,23 @@ export function MarkdownText(props: MarkdownTextProps): JSX.Element {
     const start = typeof list.start === "number" ? list.start : 1
     return (
       <box flexDirection="column">
-        <For each={list.items}>
+        <Index each={list.items}>
           {(item, itemIndex) => {
             const marker = list.ordered
-              ? `${start + itemIndex()}. `
-              : item.task
-                ? item.checked
+              ? `${start + itemIndex}. `
+              : item().task
+                ? item().checked
                   ? "[x] "
                   : "[ ] "
                 : "• "
-            const rest = restItemBlocks(item)
+            const rest = restItemBlocks(item())
             return (
               <box flexDirection="column">
                 <text wrapMode="word" fg={theme.markdownText}>
                   <span style={{ fg: list.ordered ? theme.markdownListEnumeration : theme.markdownListItem }}>
                     {marker}
                   </span>
-                  {renderInline(firstItemText(item))}
+                  {renderInline(firstItemText(item()))}
                 </text>
                 <Show when={rest.length > 0}>
                   <box flexDirection="column" paddingLeft={marker.length}>
@@ -183,7 +183,7 @@ export function MarkdownText(props: MarkdownTextProps): JSX.Element {
               </box>
             )
           }}
-        </For>
+        </Index>
       </box>
     )
   }
@@ -243,17 +243,27 @@ export function MarkdownText(props: MarkdownTextProps): JSX.Element {
 
   const renderBlocks = (tokens: Token[]): JSX.Element => {
     const visible = tokens.filter((token) => token.type !== "space")
+    // <Index> keys by position, not by reference. `marked.lexer()`
+    // returns brand-new token objects on every call, so streaming text
+    // (every chunk re-lexes the whole message) would re-key every block
+    // with <For> and unmount/remount the underlying renderable —
+    // expensive in opentui because syntax-highlighted code blocks
+    // re-tokenize and repaint. <Index> keeps the same DOM node at each
+    // position; identical content at the same index just updates its
+    // props. Fixes the user-reported "TUI flickers / whole screen
+    // reloads every time the agent calls a tool" — that's actually the
+    // markdown rebuild fired by each text delta during the tool burst.
     return (
-      <For each={visible}>
+      <Index each={visible}>
         {(block, blockIndex) => (
           <>
-            {renderBlock(block)}
-            <Show when={blockIndex() < visible.length - 1}>
+            {renderBlock(block())}
+            <Show when={blockIndex < visible.length - 1}>
               <box height={1} />
             </Show>
           </>
         )}
-      </For>
+      </Index>
     )
   }
 
