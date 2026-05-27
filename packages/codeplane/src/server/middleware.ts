@@ -15,6 +15,11 @@ import * as AuthRateLimit from "./rate-limit"
 const log = Log.create({ service: "server" })
 
 export const ErrorMiddleware: ErrorHandler = (err, c) => {
+  // Always log the full error server-side. The CLIENT never sees the
+  // stack trace — for any unrecognized error we return a generic message
+  // (see the fall-through case below). Stack traces expose internal
+  // paths, dependency versions, and sometimes user data; leaking them
+  // through 500 responses was a small info-disclosure bug.
   log.error("failed", {
     error: err,
   })
@@ -28,6 +33,9 @@ export const ErrorMiddleware: ErrorHandler = (err, c) => {
     else if (err.name === "PromptQueueConflict") status = 409
     else if (err.name.startsWith("Worktree")) status = 400
     else status = 500
+    // NamedError instances are part of the documented API surface —
+    // their `message` is intentionally user-facing. The 500 path below
+    // is for *unexpected* errors and gets sanitized differently.
     return c.json(err.toObject(), { status })
   }
   if (err instanceof Session.BusyError) {
@@ -37,10 +45,40 @@ export const ErrorMiddleware: ErrorHandler = (err, c) => {
     return c.json({ name: "SessionNotFoundError", data: { message: err.message } }, { status: 404 })
   }
   if (err instanceof HTTPException) return err.getResponse()
-  const message = err instanceof Error && err.stack ? err.stack : err.toString()
-  return c.json(new NamedError.Unknown({ message }).toObject(), {
+  // Unknown error path. Return a generic message + correlation token; the
+  // real details stay in the server log. Without this, a stray
+  // `throw new Error("connection refused to /Users/devin/...")` would
+  // leak filesystem paths and host details to anyone who could trigger
+  // it. Token lets support tie a user report to the corresponding log
+  // line.
+  const correlation = Math.random().toString(36).slice(2, 10)
+  log.error("unhandled error", {
+    correlation,
+    message: err instanceof Error ? err.message : String(err),
+    stack: err instanceof Error ? err.stack : undefined,
+  })
+  return c.json(new NamedError.Unknown({ message: `Internal server error (ref ${correlation})` }).toObject(), {
     status: 500,
   })
+}
+
+// Minimum wall-clock time every auth check takes, in milliseconds. Masks
+// any timing-leak surface that might survive constant-time compares
+// (response serialization, header parsing, etc). A 50 ms floor is high
+// enough to drown out micro-second-scale leaks but small enough that
+// legitimate clients don't notice. Set to 0 in tests via the env var.
+const MIN_AUTH_LATENCY_MS = (() => {
+  const raw = process.env["CODEPLANE_SERVER_MIN_AUTH_LATENCY_MS"]
+  if (raw === undefined) return 50
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 50
+})()
+
+async function sleepUntilAtLeast(startedAt: number, minMs: number): Promise<void> {
+  if (minMs <= 0) return
+  const elapsed = Date.now() - startedAt
+  if (elapsed >= minMs) return
+  await new Promise<void>((resolve) => setTimeout(resolve, minMs - elapsed))
 }
 
 export const AuthMiddleware: MiddlewareHandler = async (c, next) => {
@@ -50,6 +88,7 @@ export const AuthMiddleware: MiddlewareHandler = async (c, next) => {
   const password = Flag.CODEPLANE_SERVER_PASSWORD
   if (!password) return next()
   const username = Flag.CODEPLANE_SERVER_USERNAME ?? "codeplane"
+  const startedAt = Date.now()
 
   const clientKey = clientKeyForRequest(c)
 
@@ -110,11 +149,18 @@ export const AuthMiddleware: MiddlewareHandler = async (c, next) => {
     if (err instanceof HTTPException && err.status === 401) {
       const entry = AuthRateLimit.recordFailure(clientKey)
       log.warn("auth failure", {
+        audit: true,
         client: clientKey,
         path: c.req.path,
         failures: entry.failures,
         locked: entry.blockedUntil > Date.now(),
       })
+      // Floor the failed-auth response time so latency can't be used as
+      // a side channel. The constant-time compares already handle the
+      // byte-by-byte case, but any wall-clock divergence between the
+      // "user lookup", "rate limit hit", and "compare failed" branches
+      // would otherwise be observable.
+      await sleepUntilAtLeast(startedAt, MIN_AUTH_LATENCY_MS)
     }
     throw err
   }

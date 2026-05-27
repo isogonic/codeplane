@@ -74,6 +74,11 @@ delete process.env["CEREBRAS_API_KEY"]
 delete process.env["SAMBANOVA_API_KEY"]
 delete process.env["CODEPLANE_SERVER_PASSWORD"]
 delete process.env["CODEPLANE_SERVER_USERNAME"]
+// The auth middleware floors failed-auth response time to mask timing
+// leaks. In tests we run thousands of auth-fail assertions back-to-back;
+// disable the floor so the suite doesn't slow to a crawl. Production
+// defaults to 50 ms.
+process.env["CODEPLANE_SERVER_MIN_AUTH_LATENCY_MS"] = "0"
 
 // Use in-memory sqlite
 process.env["CODEPLANE_DB"] = ":memory:"

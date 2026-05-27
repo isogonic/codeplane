@@ -14,6 +14,14 @@ import {
   LoggerMiddleware,
   TextJsonMiddleware,
 } from "./middleware"
+import {
+  BodySizeLimitMiddleware,
+  IpAllowlistMiddleware,
+  OriginValidationMiddleware,
+  RequestRateMiddleware,
+  SecurityHeadersMiddleware,
+  TrustedHostsMiddleware,
+} from "./security"
 import { FenceMiddleware } from "./fence"
 import { initProjectors } from "./projectors"
 import { InstanceRoutes } from "./routes/instance"
@@ -51,8 +59,36 @@ export type Listener = {
 export const Default = lazy(() => create({}))
 
 function create(opts: { cors?: string[] }) {
+  // Middleware order matters. From outside to inside:
+  //
+  //   ErrorMiddleware           — catches anything thrown below.
+  //   SecurityHeadersMiddleware — defensive response headers on every
+  //                               response (including 4xx/5xx).
+  //   IpAllowlistMiddleware     — opt-in via env; drops connections from
+  //                               IPs not on the allowlist before doing
+  //                               any other work.
+  //   RequestRateMiddleware     — blanket per-IP request cap; runs before
+  //                               auth so an attacker probing the auth
+  //                               surface can't bypass total request
+  //                               budgeting.
+  //   OriginValidationMiddleware — CSRF defense; only matters for
+  //                                state-changing methods + WS upgrades.
+  //   BodySizeLimitMiddleware   — refuses absurd Content-Length up front.
+  //   TextJsonMiddleware        — content-type normalization.
+  //   AuthMiddleware            — Basic Auth + per-IP failed-auth rate
+  //                               limit + min-latency floor.
+  //   LoggerMiddleware          — only logs after auth so failed-auth
+  //                               request paths still hit it but auth
+  //                               attempts are dedicated entries.
+  //   CompressionMiddleware / CorsMiddleware  — generic.
   const app = new Hono()
     .onError(ErrorMiddleware)
+    .use(SecurityHeadersMiddleware)
+    .use(TrustedHostsMiddleware)
+    .use(IpAllowlistMiddleware)
+    .use(RequestRateMiddleware)
+    .use(OriginValidationMiddleware({ allowedOrigins: opts.cors }))
+    .use(BodySizeLimitMiddleware)
     .use(TextJsonMiddleware)
     .use(AuthMiddleware)
     .use(LoggerMiddleware)

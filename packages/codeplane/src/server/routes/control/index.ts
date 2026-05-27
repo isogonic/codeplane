@@ -127,18 +127,40 @@ export function ControlPlaneRoutes(): Hono {
       validator(
         "json",
         z.object({
-          service: z.string().meta({ description: "Service name for the log entry" }),
+          // Service names are namespaced into the log; restrict to a
+          // boring identifier shape to keep an authenticated attacker
+          // from forging entries under `server`, `server.security`,
+          // `server.audit` etc. Length cap defends against log-volume
+          // attacks that try to fill disk via this endpoint.
+          service: z
+            .string()
+            .min(1)
+            .max(64)
+            .regex(/^[a-z0-9][a-z0-9._-]*$/i, "service must be a simple identifier")
+            .refine((v) => !v.toLowerCase().startsWith("server"), "service prefix 'server' is reserved")
+            .meta({ description: "Service name for the log entry" }),
           level: z.enum(["debug", "info", "error", "warn"]).meta({ description: "Log level" }),
-          message: z.string().meta({ description: "Log message" }),
+          // Cap message + extra so /log can't be used to dump arbitrary
+          // volumes into the server log. 8 KB / 16 KB are generous for
+          // legitimate UI / SDK logging while still bounded.
+          message: z.string().max(8 * 1024).meta({ description: "Log message" }),
           extra: z
             .record(z.string(), z.any())
             .optional()
+            .refine(
+              (v) => v === undefined || JSON.stringify(v).length <= 16 * 1024,
+              "extra is too large (16 KB serialized max)",
+            )
             .meta({ description: "Additional metadata for the log entry" }),
         }),
       ),
       async (c) => {
         const { service, level, message, extra } = c.req.valid("json")
-        const logger = Log.create({ service })
+        // Mark client-submitted entries so they're distinguishable from
+        // internal log lines at audit time. An attacker can spoof
+        // `service` within the regex above, but cannot remove this
+        // marker because it's added server-side.
+        const logger = Log.create({ service: `client.${service}` })
 
         switch (level) {
           case "debug":
