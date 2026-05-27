@@ -614,6 +614,58 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
     </div>
   )
 
+  // Request OS notification permission. On the desktop shell Electron's
+  // main process is the authority — the bridge exposes isSupported() but
+  // doesn't gate on permission (Electron uses the app's own bundle
+  // entitlement). On the web we use the browser Notification API; the
+  // permission prompt MUST be called inside a user gesture (click
+  // handler), so we trigger it on the toggle's `onChange`, not on app
+  // boot. Returns true if notifications can now be delivered.
+  const requestNotificationPermission = async (): Promise<boolean> => {
+    if (typeof window === "undefined") return false
+    const desktop = (window as { codeplaneDesktop?: { notifications?: { isSupported?: () => Promise<boolean> } } })
+      .codeplaneDesktop
+    if (desktop?.notifications?.isSupported) {
+      const ok = await desktop.notifications.isSupported().catch(() => false)
+      return ok
+    }
+    if (!("Notification" in window)) return false
+    if (Notification.permission === "granted") return true
+    if (Notification.permission === "denied") return false
+    const result = await Notification.requestPermission().catch(() => "denied")
+    return result === "granted"
+  }
+
+  // Toggle handler wrapper: when flipping a notification toggle ON,
+  // first request permission. If the user denies, revert the toggle
+  // and surface a one-time message. If the user accepts (or we're on
+  // the desktop shell which is always granted), set the toggle.
+  const toggleNotification = (current: boolean, setter: (v: boolean) => void) => async (next: boolean) => {
+    if (!next) {
+      setter(false)
+      return
+    }
+    const allowed = await requestNotificationPermission()
+    if (!allowed) {
+      // Permission was denied. Don't flip the toggle — the user will
+      // see it stays off, which is the most honest UX: enabling a
+      // setting that can't take effect would be misleading.
+      setter(false)
+      // No toast — the user-visible "fail" is the toggle staying off.
+      // If we wanted to surface the reason we'd add inline help text
+      // under the row referencing settings.general.notifications.permissionDenied.
+      return
+    }
+    setter(true)
+    if (!current) return
+  }
+
+  const sendTestNotification = () => {
+    void platform
+      .notify?.(language.t("settings.general.notifications.test.title"), language.t("settings.general.notifications.test.body"), "/")
+      .catch(() => undefined)
+  }
+
   const NotificationsSection = () => (
     <div class="flex flex-col gap-1">
       <h3 class="text-14-medium text-text-strong pb-2">{language.t("settings.general.section.notifications")}</h3>
@@ -626,7 +678,9 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
           <div data-action="settings-notifications-agent">
             <Switch
               checked={settings.notifications.agent()}
-              onChange={(checked) => settings.notifications.setAgent(checked)}
+              onChange={toggleNotification(settings.notifications.agent(), (v) =>
+                settings.notifications.setAgent(v),
+              )}
             />
           </div>
         </SettingsRow>
@@ -638,7 +692,9 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
           <div data-action="settings-notifications-permissions">
             <Switch
               checked={settings.notifications.permissions()}
-              onChange={(checked) => settings.notifications.setPermissions(checked)}
+              onChange={toggleNotification(settings.notifications.permissions(), (v) =>
+                settings.notifications.setPermissions(v),
+              )}
             />
           </div>
         </SettingsRow>
@@ -650,11 +706,24 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
           <div data-action="settings-notifications-errors">
             <Switch
               checked={settings.notifications.errors()}
-              onChange={(checked) => settings.notifications.setErrors(checked)}
+              onChange={toggleNotification(settings.notifications.errors(), (v) =>
+                settings.notifications.setErrors(v),
+              )}
             />
           </div>
         </SettingsRow>
       </SettingsList>
+
+      <div class="pt-2">
+        <Button
+          variant="secondary"
+          size="small"
+          onClick={sendTestNotification}
+          data-action="settings-notifications-test"
+        >
+          {language.t("settings.general.notifications.test.button")}
+        </Button>
+      </div>
     </div>
   )
 

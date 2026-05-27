@@ -361,7 +361,14 @@ export const { use: useSync, useOptional: useSyncOptional, provider: SyncProvide
             input.setStore("message", input.sessionID, reconcile(message, { key: "id" }))
             for (const p of next.part) {
               const filtered = p.part.filter((x) => !SKIP_PARTS.has(x.type))
-              if (filtered.length) input.setStore("part", p.id, filtered)
+              // reconcile() with id-key so part snapshots from
+              // load-more / working-resync don't churn identities
+              // on every fetch. Without this, every 4s resync
+              // recreated all part proxies and downstream memos
+              // remounted the entire assistant turn — visible to
+              // the user as "chat fails to show until refresh"
+              // because the new mount briefly showed empty parts.
+              if (filtered.length) input.setStore("part", p.id, reconcile(filtered, { key: "id" }))
             }
             setMeta("limit", key, message.length)
             setMeta("cursor", key, next.cursor)

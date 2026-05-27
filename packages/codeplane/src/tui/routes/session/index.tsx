@@ -1536,6 +1536,7 @@ function UserMessage(props: {
 }) {
   const ctx = use()
   const local = useLocal()
+  const sync = useSync()
   const text = createMemo(() => {
     const texts = props.parts
       .map((x) => {
@@ -1550,7 +1551,31 @@ function UserMessage(props: {
   const files = createMemo(() => props.parts.flatMap((x) => (x.type === "file" ? [x] : [])))
   const { theme } = useTheme()
   const [hover, setHover] = createSignal(false)
-  const queued = createMemo(() => props.pending && props.message.id > props.pending)
+  // Pre-v29.0.33 this was `props.pending && props.message.id > props.pending` —
+  // an id-comparison heuristic against the most-recent assistant whose
+  // `time.completed` was still undefined. That signal got stuck because
+  // a successfully-finished assistant only gets `time.completed` stamped
+  // by the NEXT runLoop's first iteration, so a turn that ran cleanly
+  // and then sat idle left its assistant looking "uncompleted" forever
+  // — every subsequent user message rendered QUEUED, even ones the
+  // server had already processed. Authoritative source is the per-
+  // session prompt_queue store: a user message is queued iff there's a
+  // pending job for its session whose payload's messageID matches this
+  // message's id. Parsing payloads on each render is fine — the queue
+  // is short (typically 0-5 entries).
+  const queued = createMemo(() => {
+    const jobs = sync.data.prompt_queue[props.message.sessionID] ?? []
+    for (const job of jobs) {
+      if (job.status !== "pending") continue
+      try {
+        const payload = JSON.parse(job.payload) as { messageID?: string }
+        if (payload.messageID === props.message.id) return true
+      } catch {
+        // Malformed payload: ignore, fall through.
+      }
+    }
+    return false
+  })
   const color = createMemo(() => local.agent.color(props.message.agent))
   const queuedFg = createMemo(() => selectedForeground(theme, color()))
   const metadataVisible = createMemo(() => queued() || ctx.showTimestamps())

@@ -26,8 +26,15 @@
 //      so a flood of distinct attacker IPs can't OOM us.
 
 const WINDOW_MS = 15 * 60_000
-const SOFT_LIMIT = 5
-const HARD_LIMIT = 50
+// SOFT_LIMIT raised from 5 → 20 in v29.0.33. The middleware now gates
+// recordFailure on "credentials were actually presented", so legitimate
+// browser-boot bursts (no Authorization header) don't count anymore.
+// What remains in the counter is real wrong-password attempts. Even so,
+// 5 was too tight — a user fat-fingering through a 2FA-style password
+// manager could trip the lockout. 20 still bounds an attacker to
+// 80 guesses/window against the SHA-256 + timing-safe compare path.
+const SOFT_LIMIT = 20
+const HARD_LIMIT = 100
 const HARD_BLOCK_MS = WINDOW_MS
 const BASE_LOCKOUT_MS = 5_000
 const MAX_LOCKOUT_MS = WINDOW_MS

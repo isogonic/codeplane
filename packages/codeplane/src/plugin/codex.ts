@@ -492,6 +492,37 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
           label: "ChatGPT Pro/Plus (browser)",
           type: "oauth",
           authorize: async () => {
+            // The browser OAuth flow uses a redirect_uri of
+            // http://localhost:1455/auth/callback — the codex plugin
+            // starts an HTTP server on that port to receive the
+            // authorization code. If the Codeplane server itself is
+            // running behind a non-loopback hostname (i.e., a remote
+            // deployment the user is accessing through a reverse proxy
+            // like 1i.codeplane.cc), that callback never reaches the
+            // plugin: OpenAI redirects the user's browser to
+            // localhost:1455 ON THE USER'S MACHINE, which has nothing
+            // listening, and the pending PKCE state on the remote
+            // codeplane is orphaned. Surface a clear error pointing
+            // the user at the "headless" flow (paste the code manually)
+            // or instruct them to authenticate via a local install.
+            const serverHost = input.serverUrl.hostname
+            const isLoopback =
+              serverHost === "localhost" ||
+              serverHost === "127.0.0.1" ||
+              serverHost === "::1" ||
+              serverHost.startsWith("127.")
+            if (!isLoopback) {
+              throw new Error(
+                "ChatGPT (browser) OAuth requires the Codeplane server to be reachable at " +
+                  "http://localhost:1455. This server appears to be running at a public " +
+                  "address (" +
+                  input.serverUrl.host +
+                  "), so the OAuth callback can't reach it. Either (a) authenticate on a " +
+                  "local Codeplane install — credentials sync across instances — or (b) use " +
+                  '"ChatGPT Pro/Plus (headless)" below, which gives you a code to paste back.',
+              )
+            }
+
             const { redirectUri } = await startOAuthServer()
             const pkce = await generatePKCE()
             const state = generateState()

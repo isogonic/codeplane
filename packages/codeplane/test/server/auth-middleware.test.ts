@@ -88,6 +88,31 @@ describe("AuthMiddleware", () => {
     expect(res.status).not.toBe(401)
   })
 
+  test("no-credentials 401 does NOT count toward auth rate limit (browser bootstrap)", async () => {
+    // v29.0.33 regression: a fresh browser tab fires 20+ unauthenticated
+    // requests (HTML, manifest, favicons, module preloads, code-split
+    // chunks). Pre-fix each counted as a failed auth attempt and a
+    // password-protected remote instance locked the user's IP before
+    // they could even type credentials. Now we only count failures
+    // that ACTUALLY presented an Authorization header.
+    Flag.CODEPLANE_SERVER_PASSWORD = STRONG
+    const app = makeApp()
+    const ip = "10.0.0.77"
+    // Fire 30 requests with no credentials — well above any soft limit.
+    for (let i = 0; i < 30; i++) {
+      const r = await app.request("/ping", { headers: { "x-real-ip": ip } })
+      expect(r.status).toBe(401)
+    }
+    // Now provide valid credentials. Pre-fix this would have returned
+    // 429 because the limiter would have been tripped by the 30
+    // unauthenticated requests. Post-fix the limiter is empty and
+    // valid creds succeed.
+    const ok = await app.request("/ping", {
+      headers: { authorization: authHeader("codeplane", STRONG), "x-real-ip": ip },
+    })
+    expect(ok.status).toBe(200)
+  })
+
   test("after enough failures, further attempts get 429 with Retry-After", async () => {
     Flag.CODEPLANE_SERVER_PASSWORD = STRONG
     const app = makeApp()

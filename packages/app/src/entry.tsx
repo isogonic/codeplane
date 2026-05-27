@@ -160,16 +160,24 @@ desktopNotifications?.onClick?.((href) => {
 })
 
 const notify: Platform["notify"] = async (title, description, href) => {
+  // Desktop shell: always go through Electron's main-process Notification
+  // API and TRUST it. Pre-v29.0.33 we fell through to the web Notification
+  // path when the desktop bridge returned `shown=false`, but the web path
+  // also short-circuited when the window had focus — so a desktop user
+  // with the app focused got no native notification at all. macOS Focus
+  // Mode / Do Not Disturb / restricted entitlements legitimately cause
+  // the bridge to report `shown=false`; falling back to a flaky web
+  // Notification API in that case helps nobody.
   if (desktopNotifications?.notify) {
-    const shown = await desktopNotifications.notify({ title, description, href }).catch(() => false)
-    if (shown) return true
+    return await desktopNotifications.notify({ title, description, href }).catch(() => false)
   }
-
-  const inView = document.visibilityState === "visible" && document.hasFocus()
-  if (inView) return false
 
   if (!("Notification" in window)) return false
 
+  // Web fallback: don't suppress on focus. The user explicitly opted into
+  // native notifications via the settings toggle; honour that even when
+  // the window is visible. If a user finds in-window notifications
+  // annoying they can disable the toggle.
   const permission =
     Notification.permission === "default"
       ? await Notification.requestPermission().catch(() => "denied")

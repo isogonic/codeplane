@@ -57,8 +57,6 @@ import { playSoundById } from "@/utils/sound"
 import { createAim } from "@/utils/aim"
 import { setNavigate } from "@/utils/notification-click"
 import {
-  desktopNativeNotificationEnabled,
-  shouldShowInAppNotificationToast,
 } from "@/utils/native-notifications"
 import { Worktree as WorktreeState } from "@/utils/worktree"
 import { setSessionHandoff } from "@/pages/session/handoff"
@@ -572,7 +570,6 @@ export default function Layout(props: ParentProps) {
           e.details.type === "permission.asked"
             ? language.t("notification.permission.title")
             : language.t("notification.question.title")
-        const icon = e.details.type === "permission.asked" ? ("checklist" as const) : ("bubble-5" as const)
         const directory = e.name
         const props = e.details.properties
         if (e.details.type === "permission.asked" && permission.autoResponds(e.details.properties, directory)) return
@@ -609,48 +606,12 @@ export default function Layout(props: ParentProps) {
           }
         }
 
-        const currentSession = params.id
-        const currentWorkspaceTarget = workspaceKey(directory) === workspaceKey(currentDir())
-        const currentSessionTarget = currentWorkspaceTarget && props.sessionID === currentSession
-        const childSessionTarget = currentWorkspaceTarget && session?.parentID === currentSession
-        const nativeNotificationEnabled = desktopNativeNotificationEnabled({
-          desktop: platform.desktop,
-          enabled:
-            e.details.type === "permission.asked"
-              ? settings.notifications.permissions()
-              : settings.notifications.agent(),
-        })
-
-        if (
-          !shouldShowInAppNotificationToast({
-            desktopNativeNotificationEnabled: nativeNotificationEnabled,
-            currentSessionTarget,
-            childSessionTarget,
-          })
-        ) {
-          dismissSessionAlert(sessionKey)
-          return
-        }
-
+        // Pre-v29.0.33 a duplicate in-app toast also fired here for
+        // permission.asked / question.asked events. The user asked
+        // for "no in-app toasts more" — native OS notifications only.
+        // The native delivery happens above; this just clears any
+        // stale alert state for the session.
         dismissSessionAlert(sessionKey)
-
-        const toastId = showToast({
-          persistent: true,
-          icon,
-          title,
-          description,
-          actions: [
-            {
-              label: language.t("notification.action.goToSession"),
-              onClick: () => navigate(href),
-            },
-            {
-              label: language.t("common.dismiss"),
-              onClick: "dismiss",
-            },
-          ],
-        })
-        toastBySession.set(sessionKey, toastId)
       })
       onCleanup(unsub)
 

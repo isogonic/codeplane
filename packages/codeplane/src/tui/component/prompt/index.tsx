@@ -1817,6 +1817,23 @@ export function Prompt(props: PromptProps) {
                           <text fg={fadeColor(theme.textMuted, modelMetaAlpha())} wrapMode="none" flexShrink={0}>
                             {currentProviderLabel()}
                           </text>
+                          {/*
+                            Variant (reasoning effort: xhigh / xmedium / xlow)
+                            moved to the LEFT cluster in v29.0.33 — it
+                            describes the MODEL configuration, not the
+                            follow-up dispatch mode, so it belongs next to
+                            the model name. Pre-fix it sat next to
+                            "Follow-up" on the right, which the user said
+                            "wasn't right".
+                          */}
+                          <Show when={showVariant()}>
+                            <text fg={fadeColor(theme.textMuted, variantMetaAlpha())}>·</text>
+                            <text wrapMode="none" flexShrink={0}>
+                              <span style={{ fg: fadeColor(theme.warning, variantMetaAlpha()), bold: true }}>
+                                {local.model.variant.current()}
+                              </span>
+                            </text>
+                          </Show>
                         </box>
                       </Show>
                     </>
@@ -1828,14 +1845,6 @@ export function Prompt(props: PromptProps) {
                   <text fg={fadeColor(followupModeColor(), modelMetaAlpha())} wrapMode="none" flexShrink={0}>
                     <span style={{ bold: followupMode() === "steer" }}>{followupModeLabel()}</span>
                   </text>
-                  <Show when={showVariant()}>
-                    <text fg={fadeColor(theme.textMuted, variantMetaAlpha())}>·</text>
-                    <text wrapMode="none" flexShrink={0}>
-                      <span style={{ fg: fadeColor(theme.warning, variantMetaAlpha()), bold: true }}>
-                        {local.model.variant.current()}
-                      </span>
-                    </text>
-                  </Show>
                 </Show>
                 <Show when={hasRightContent()}>
                   {props.right}

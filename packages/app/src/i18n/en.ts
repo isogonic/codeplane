@@ -1114,6 +1114,11 @@ export const dict = {
   "settings.general.notifications.permissions.description": "Show system notification when a permission is required",
   "settings.general.notifications.errors.title": "Errors",
   "settings.general.notifications.errors.description": "Show system notification when an error occurs",
+  "settings.general.notifications.test.button": "Send test notification",
+  "settings.general.notifications.test.title": "Codeplane",
+  "settings.general.notifications.test.body": "Notifications are working — you'll see system messages here for the events you've enabled.",
+  "settings.general.notifications.permissionDenied":
+    "Your browser/OS has blocked notifications for this app. Enable them in your system settings.",
 
   "settings.general.sounds.agent.title": "Agent",
   "settings.general.sounds.agent.description": "Play sound when the agent is complete or needs attention",

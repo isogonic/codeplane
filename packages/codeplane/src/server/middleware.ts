@@ -141,12 +141,34 @@ export const AuthMiddleware: MiddlewareHandler = async (c, next) => {
     },
   })
 
+  // A request only counts as an "auth attempt" if it actually presented
+  // credentials. Missing Authorization header is the browser's normal
+  // "challenge me so I can prompt the user" handshake — every fresh
+  // tab loads HTML + manifest + favicon + module preloads + code-split
+  // chunks (20+ requests) unauthenticated, and pre-v29.0.33 each of
+  // those counted toward the 5-failure SOFT_LIMIT. On a password-
+  // protected remote instance the IP locked itself out before the user
+  // could even type credentials — the user reported the 429 storm with
+  // "Too many authentication attempts" against every endpoint and
+  // asset. Real brute-force attempts always SEND an Authorization
+  // header (or the WS auth_token query), so gating recordFailure on
+  // "credentials were presented" keeps the defense intact.
+  const hadCredentials = !!c.req.header("authorization") || (isWsUpgrade && !!c.req.query("auth_token"))
+
   try {
     await auth(c, next)
     if (succeeded) AuthRateLimit.recordSuccess(clientKey)
     return
   } catch (err) {
     if (err instanceof HTTPException && err.status === 401) {
+      if (!hadCredentials) {
+        // No-credentials 401 — just bounce the browser into the auth
+        // prompt without recording anything. Floor latency anyway so
+        // an attacker can't tell from timing whether they hit the
+        // rate-limit branch.
+        await sleepUntilAtLeast(startedAt, MIN_AUTH_LATENCY_MS)
+        throw err
+      }
       const entry = AuthRateLimit.recordFailure(clientKey)
       log.warn("auth failure", {
         audit: true,

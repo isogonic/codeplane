@@ -109,6 +109,13 @@ export async function showDesktopNotification<TIcon = unknown>(
       settle(false, "throw", error)
       return
     }
-    timer = setTimeout(() => settle(false, "timeout"), bridge.timeoutMs ?? 1500)
+    // 1500 ms was tight enough that macOS NotificationCenter sometimes
+    // finished its animation AFTER the timer fired — Electron emits
+    // 'show' only once the OS confirms display, so the timer reported
+    // failure for a notification that actually rendered. Push to 5 s
+    // to absorb the slow path; if the OS truly never shows it (e.g.
+    // hard Focus block, missing entitlement) we still time out and
+    // fall through to the caller's fallback handling.
+    timer = setTimeout(() => settle(false, "timeout"), bridge.timeoutMs ?? 5000)
   })
 }

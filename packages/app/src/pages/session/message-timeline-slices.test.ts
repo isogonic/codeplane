@@ -38,7 +38,14 @@ describe("visibleTurnSlices", () => {
     expect(result.has("u1")).toBe(false)
   })
 
-  test("stops a slice at the next user turn", () => {
+  test("late-arriving assistant whose parentID matches an earlier user joins that user's slice", () => {
+    // v29.0.33 regression: SSE events can land out-of-order so an
+    // assistant with parentID="u1" might end up at array index AFTER
+    // user "u2". Pre-fix the slice loop broke on the first
+    // subsequent user role, dropping the late child entirely — that
+    // was the user-reported "chat fails to show, refresh fixes it"
+    // bug. Now we group by parentID so children find their owner
+    // regardless of array position.
     const messages: MessageType[] = [
       user("u1"),
       assistant("a1", "u1"),
@@ -49,7 +56,9 @@ describe("visibleTurnSlices", () => {
 
     const result = visibleTurnSlices({ messages, renderedUserMessageIDs: ["u1", "u2"] })
 
-    expect(result.get("u1")?.map((message) => message.id)).toEqual(["u1", "a1"])
+    // u1 picks up both its immediate child AND the late child whose
+    // parentID points back to u1. Sorted by id ("a1" < "late").
+    expect(result.get("u1")?.map((message) => message.id)).toEqual(["u1", "a1", "late"])
     expect(result.get("u2")?.map((message) => message.id)).toEqual(["u2", "a2"])
   })
 })
