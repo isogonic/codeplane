@@ -1503,7 +1503,6 @@ const layer: Layer.Layer<
         delete options["chunkTimeout"]
 
         options["fetch"] = async (input: any, init?: BunFetchRequestInit) => {
-          console.log("diag provider.fetch", typeof input === "string" ? input : input?.url, init?.method)
           const fetchFn = customFetch ?? fetch
           const opts = init ?? {}
           const chunkAbortCtl = typeof chunkTimeout === "number" && chunkTimeout > 0 ? new AbortController() : undefined

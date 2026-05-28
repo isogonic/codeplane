@@ -646,12 +646,10 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         agent: input.agent,
         sessionPermission: input.session.permission,
       }
-      console.log("diag resolveTools: before registry/mcp")
       const [nativeTools, nativeAvailability, mcpTools] = yield* Effect.all(
         [registry.tools(toolInput), registry.availability(toolInput), mcp.tools()],
         { concurrency: "unbounded" },
       )
-      console.log("diag resolveTools: after registry/mcp", nativeTools.length)
 
       const context = (args: any, options: ToolExecutionOptions): Tool.Context => ({
         sessionID: input.session.id,
@@ -1012,6 +1010,11 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         const available = (yield* agents.list()).filter((a) => !a.hidden).map((a) => a.name)
         const hint = available.length ? ` Available agents: ${available.join(", ")}` : ""
         const error = new NamedError.Unknown({ message: `Agent not found: "${task.agent}".${hint}` })
+        yield* bus.publish(Session.Event.Error, { sessionID, error: error.toObject() })
+        throw error
+      }
+      if (taskAgent.mode === "primary") {
+        const error = new NamedError.Unknown({ message: `Agent "${task.agent}" is a primary agent and cannot be used as a subagent.` })
         yield* bus.publish(Session.Event.Error, { sessionID, error: error.toObject() })
         throw error
       }
@@ -2147,7 +2150,6 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             const lastUserMsg = msgs.findLast((m) => m.info.role === "user")
             const bypassAgentCheck = lastUserMsg?.parts.some((p) => p.type === "agent") ?? false
 
-            console.log("diag runLoop: before resolveTools")
             const tools = model.capabilities.toolcall
               ? yield* resolveTools({
                   agent,
@@ -2159,7 +2161,6 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                   messages: msgs,
                 })
               : {}
-            console.log("diag runLoop: after resolveTools")
 
             if (model.capabilities.toolcall && lastUser.format?.type === "json_schema") {
               tools["StructuredOutput"] = createStructuredOutputTool({
@@ -2190,14 +2191,12 @@ NOTE: At any point in time through this workflow you should feel free to ask the
 
             yield* plugin.trigger("experimental.chat.messages.transform", {}, { messages: msgs })
 
-            console.log("diag runLoop: before model/system")
             const [skills, env, instructions, modelMsgs] = yield* Effect.all([
               sys.skills(agent),
               Effect.sync(() => sys.environment(model)),
               instruction.system().pipe(Effect.orDie),
               MessageV2.toModelMessagesEffect(msgs, model),
             ])
-            console.log("diag runLoop: after model/system")
             const toolAvailability = model.capabilities.toolcall
               ? yield* toolAvailabilitySystem({ agent, model, session })
               : undefined
@@ -2211,7 +2210,6 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             ]
             const format = lastUser.format ?? { type: "text" as const }
             if (format.type === "json_schema") system.push(STRUCTURED_OUTPUT_SYSTEM_PROMPT)
-            console.log("diag runLoop: before handle.process")
             const result = yield* handle.process({
               user: lastUser,
               agent,
@@ -2224,7 +2222,6 @@ NOTE: At any point in time through this workflow you should feel free to ask the
               model,
               toolChoice: format.type === "json_schema" ? "required" : undefined,
             })
-            console.log("diag runLoop: after handle.process", result)
 
             if (structured !== undefined) {
               handle.message.structured = structured

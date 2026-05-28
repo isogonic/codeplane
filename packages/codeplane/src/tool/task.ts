@@ -60,7 +60,7 @@ function resultText(result: MessageV2.WithParts) {
   )
   if (tool) return `Tool ${tool.tool} failed: ${tool.state.error}`
 
-  return ""
+  return "(subagent completed with no output)"
 }
 
 export const Parameters = Schema.Struct({
@@ -134,6 +134,9 @@ export const TaskTool = Tool.define(
       ctx: Tool.Context,
     ) {
       const childSession = yield* sessions.get(taskSessionID)
+      if (childSession.parentID !== parentSessionID) {
+        return yield* Effect.fail(new Error(`task_id ${taskSessionID} is not a child of session ${parentSessionID}`))
+      }
       const msgs = yield* sessions.messages({ sessionID: taskSessionID })
 
       const lastAssistant = [...msgs].reverse().find((m) => m.info.role === "assistant")
@@ -355,7 +358,19 @@ export const TaskTool = Tool.define(
       parameters: Parameters,
       timeoutMs: null,
       execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
-        run(params, ctx).pipe(Effect.orDie),
+        run(params, ctx).pipe(
+          Effect.catch((error) => {
+            if (error instanceof Session.BusyError) {
+              return Effect.succeed({
+                title: params.description ?? "Subagent",
+                metadata: { status: "error" },
+                output: `Subagent session is busy (queue full). The child session already has a prompt being processed. Try again with a new task_id or wait for the current task to finish.`,
+              })
+            }
+            return Effect.die(error)
+          }),
+          Effect.orDie,
+        ),
     }
   }) as any,
 ) as Effect.Effect<
