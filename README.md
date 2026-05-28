@@ -1,10 +1,4 @@
 <div align="center">
-  <a href="https://codeplane.cc">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
-      <img src="assets/logo.svg" alt="Codeplane" width="96">
-    </picture>
-  </a>
 
   <h1>Codeplane</h1>
 
