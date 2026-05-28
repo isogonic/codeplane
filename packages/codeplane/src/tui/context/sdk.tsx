@@ -1,5 +1,6 @@
 import { createOpencodeClient } from "@/tui/_compat/sdk-v2"
 import type { GlobalEvent } from "@/tui/_compat/sdk-v2"
+import { parseSSE } from "@/control-plane/sse"
 import { createSimpleContext } from "./helper"
 import { createGlobalEmitter } from "@solid-primitives/event-bus"
 import { Flag } from "@/flag/flag"
@@ -13,6 +14,33 @@ import {
 
 export type EventSource = {
   subscribe: (handler: (event: GlobalEvent) => void) => Promise<() => void>
+}
+
+async function streamGlobalEvents(input: {
+  url: string
+  fetch?: typeof fetch
+  headers?: RequestInit["headers"]
+  signal: AbortSignal
+  onOpen?: () => Promise<void> | void
+  onEvent: (event: GlobalEvent) => void
+}) {
+  const headers = new Headers(input.headers)
+  if (!headers.has("accept")) headers.set("accept", "text/event-stream")
+
+  const response = await (input.fetch ?? fetch)(new URL("/global/event", `${input.url}/`), {
+    headers,
+    redirect: "follow",
+    signal: input.signal,
+  })
+  if (!response.ok) throw new Error(`SSE failed: ${response.status} ${response.statusText}`)
+  if (!response.body) throw new Error("No body in SSE response")
+
+  await input.onOpen?.()
+  await parseSSE(response.body, input.signal, (event) => {
+    if (!event || typeof event !== "object") return
+    if (!("payload" in event)) return
+    input.onEvent(event as GlobalEvent)
+  })
 }
 
 export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
@@ -124,25 +152,26 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
           let reportedGap = false
 
           try {
-            const events = await sdk.global.event({
+            await streamGlobalEvents({
+              url: props.url,
+              fetch: props.fetch,
+              headers: props.headers,
               signal: ctrl.signal,
-              sseMaxRetryAttempts: 0,
+              onOpen: async () => {
+                if (!Flag.CODEPLANE_EXPERIMENTAL_WORKSPACES) return
+                // Start syncing workspaces after the event stream is live so
+                // we don't miss the initial sync-related events.
+                await sdk.sync.start().catch(() => {})
+              },
+              onEvent: (event) => {
+                if (ctrl.signal.aborted) return
+                const type = event.payload.type as string
+                if (type !== "server.connected" && type !== "server.heartbeat") {
+                  sawUsefulEvent = true
+                }
+                handleEvent(event)
+              },
             })
-
-            if (Flag.CODEPLANE_EXPERIMENTAL_WORKSPACES) {
-              // Start syncing workspaces, it's important to do this after
-              // we've started listening to events
-              await sdk.sync.start().catch(() => {})
-            }
-
-            for await (const event of events.stream) {
-              if (ctrl.signal.aborted) break
-              const type = event.payload.type as string
-              if (type !== "server.connected" && type !== "server.heartbeat") {
-                sawUsefulEvent = true
-              }
-              handleEvent(event)
-            }
           } catch {
             if (abort.signal.aborted || ctrl.signal.aborted) break
             reportedGap = true
