@@ -554,6 +554,7 @@ export const layer: Layer.Layer<
                 end: Date.now(),
               },
             })
+            yield* session.updatePart(MessageV2.internalFollowupMarker({ messageID: continueMsg.id, sessionID: input.sessionID }))
           }
         }
       }

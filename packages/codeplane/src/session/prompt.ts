@@ -1191,6 +1191,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         text: "Summarize the task tool output above and continue with your task.",
         synthetic: true,
       } satisfies MessageV2.TextPart)
+      yield* sessions.updatePart(MessageV2.internalFollowupMarker({ messageID: summaryUserMsg.id, sessionID }))
     })
 
     const shellImpl = Effect.fn("SessionPrompt.shellImpl")(function* (input: ShellInput) {
@@ -1994,7 +1995,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             (m) =>
               m.info.role !== "user" ||
               m.info.id <= ownMessageID ||
-              m.parts.some((p) => p.type === "compaction" || p.type === "subtask"),
+              MessageV2.isInternalFollowupUserMessage(m),
           )
         }
         yield* finalizeFinishedAssistants(msgs)
@@ -2021,17 +2022,18 @@ NOTE: At any point in time through this workflow you should feel free to ask the
           // pinned by the "concurrent prompts produce one assistant per
           // user message" test).
           if (ownMessageID) {
+            const targetUserID = lastUser.id
             const ourAssistant = msgs.findLast(
               (msg) =>
                 msg.info.role === "assistant" &&
-                (msg.info as MessageV2.Assistant).parentID === ownMessageID,
+                (msg.info as MessageV2.Assistant).parentID === targetUserID,
             )
             if (
               ourAssistant &&
               ourAssistant.info.role === "assistant" &&
               !requiresAssistantFollowup(ourAssistant.info, ourAssistant.parts)
             ) {
-              yield* slog.info("exiting loop (own msg addressed)", { ownMessageID })
+              yield* slog.info("exiting loop (anchored msg addressed)", { ownMessageID, targetUserID })
               break
             }
           } else if (
@@ -2240,6 +2242,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                 auto: true,
                 overflow: !handle.message.finish,
               })
+              return "continue" as const
             }
             const needsFollowup = requiresAssistantFollowup(handle.message, MessageV2.parts(handle.message.id))
             if (!needsFollowup && !handle.message.error && format.type === "json_schema") {

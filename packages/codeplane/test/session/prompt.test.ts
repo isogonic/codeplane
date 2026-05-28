@@ -2828,24 +2828,19 @@ it.live(
         yield* prompt.prompt({
           sessionID: session.id,
           agent: "build",
+          model: ref,
           parts: [{ type: "text", text: "trigger overflow please" }],
         })
 
-        // If the regression returned, we'd never reach this point —
-        // the loop would spin forever creating compaction-user messages
-        // without ever making the summary LLM call. A generous bound
-        // catches the loop without making the assertion fragile.
         const hits = yield* llm.hits
-        expect(hits.length).toBeLessThanOrEqual(5)
+        expect(hits.length).toBe(3)
 
         const msgs = yield* sessions.messages({ sessionID: session.id, limit: 200 })
-        const compactionUserMsgs = msgs.filter(
-          (m) => m.info.role === "user" && m.parts.some((p) => p.type === "compaction"),
-        )
-        // Exactly ONE compaction trigger fired. Pre-fix this number was
-        // observed in the wild as 12+ within a single user-visible
-        // session frame.
-        expect(compactionUserMsgs.length).toBe(1)
+        const assistantTexts = msgs
+          .filter((m) => m.info.role === "assistant")
+          .map((m) => m.parts.filter((p) => p.type === "text").map((p) => (p as { text: string }).text).join(""))
+        expect(assistantTexts).toContain("[summary of prior turn]")
+        expect(assistantTexts).toContain("post compaction")
       }),
       {
         git: true,

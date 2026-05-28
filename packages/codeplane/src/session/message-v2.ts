@@ -32,6 +32,8 @@ interface FetchDecompressionError extends Error {
 export const SYNTHETIC_ATTACHMENT_PROMPT = "Attached image(s) from tool result:"
 export { isMedia }
 
+const INTERNAL_FOLLOWUP_METADATA_KEY = "internal_followup"
+
 export const OutputLengthError = namedSchemaError("MessageOutputLengthError", {})
 export const AbortedError = namedSchemaError("MessageAbortedError", { message: Schema.String })
 export const StructuredOutputError = namedSchemaError("StructuredOutputError", {
@@ -993,6 +995,34 @@ export function toModelMessages(
   options?: { stripMedia?: boolean; toolOutputMaxChars?: number },
 ): Promise<ModelMessage[]> {
   return Effect.runPromise(toModelMessagesEffect(input, model, options).pipe(Effect.provide(EffectLogger.layer)))
+}
+
+function isInternalFollowupPart(part: Part) {
+  return (
+    part.type === "text" &&
+    part.synthetic === true &&
+    (part.metadata?.compaction_continue === true || part.metadata?.[INTERNAL_FOLLOWUP_METADATA_KEY] === true)
+  )
+}
+
+export function internalFollowupMarker(input: { messageID: MessageID; sessionID: SessionID }): TextPart {
+  return {
+    id: PartID.ascending(),
+    messageID: input.messageID,
+    sessionID: input.sessionID,
+    type: "text",
+    text: "",
+    synthetic: true,
+    ignored: true,
+    metadata: { [INTERNAL_FOLLOWUP_METADATA_KEY]: true },
+  }
+}
+
+export function isInternalFollowupUserMessage(msg: WithParts) {
+  return (
+    msg.info.role === "user" &&
+    msg.parts.some((part) => part.type === "compaction" || part.type === "subtask" || isInternalFollowupPart(part))
+  )
 }
 
 export function page(input: { sessionID: SessionID; limit: number; before?: string }) {
