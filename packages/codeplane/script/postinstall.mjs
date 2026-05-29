@@ -172,29 +172,92 @@ async function tryFindBinaryWithRetry(attempts = 5, delayMs = 200) {
   throw lastError
 }
 
-async function main() {
-  if (os.platform() === "win32") {
-    // On Windows, the .exe is already included in the package and bin field points to it.
-    // No postinstall setup needed.
-    console.log("Windows detected: binary setup not needed (using packaged .exe)")
-    return
+function selfVersion() {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json"), "utf8"))
+    return typeof pkg.version === "string" ? pkg.version : undefined
+  } catch {
+    return undefined
   }
+}
 
+// Fetch a platform package's tarball straight from the npm registry and unpack
+// it into our own node_modules. npm silently SKIPS optionalDependencies in
+// several common cases — in-place `npm i -g` upgrades, a transient registry
+// hiccup during install, --no-optional, or a lockfile generated on another OS —
+// which otherwise strands the CLI with "failed to install the right version".
+// Reconstructing the package here means the wrapper's findBinary() resolves it
+// normally, with no shim changes. Fallback-only: never runs on the happy path.
+async function downloadPackage(pkg, version, destDir) {
+  const tarball = `${pkg}-${version}.tgz`
+  const registry = (process.env.npm_config_registry || "https://registry.npmjs.org").replace(/\/+$/, "")
+  const url = `${registry}/${pkg}/-/${tarball}`
+  const response = await fetch(url)
+  if (!response || !response.ok) {
+    throw new Error(`download failed (${response ? response.status : "no response"}) for ${url}`)
+  }
+  const buffer = Buffer.from(await response.arrayBuffer())
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "codeplane-pkg-"))
+  try {
+    const archive = path.join(tmp, tarball)
+    fs.writeFileSync(archive, buffer)
+    // npm tarballs unpack to a top-level "package/" directory.
+    require("child_process").execFileSync("tar", ["-xzf", archive, "-C", tmp], { stdio: "ignore" })
+    const unpacked = path.join(tmp, "package")
+    if (!fs.existsSync(unpacked)) throw new Error("tarball did not contain a package/ directory")
+    fs.mkdirSync(path.dirname(destDir), { recursive: true })
+    fs.rmSync(destDir, { recursive: true, force: true })
+    fs.cpSync(unpacked, destDir, { recursive: true })
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+}
+
+async function healMissingBinary() {
+  const version = selfVersion()
+  if (!version) throw new Error("could not read codeplane-ai version")
+  const { platform, arch } = detectPlatformAndArch()
+  const binaryName = platform === "windows" ? "codeplane.exe" : "codeplane"
+  const nodeModules = path.join(__dirname, "node_modules")
+  let lastError
+  for (const pkg of packageNames(platform, arch)) {
+    try {
+      const destDir = path.join(nodeModules, pkg)
+      await downloadPackage(pkg, version, destDir)
+      const binaryPath = path.join(destDir, "bin", binaryName)
+      if (!fs.existsSync(binaryPath)) throw new Error(`${pkg} tarball missing bin/${binaryName}`)
+      if (platform !== "windows") fs.chmodSync(binaryPath, 0o755)
+      return { binaryPath, pkg }
+    } catch (error) {
+      lastError = error
+    }
+  }
+  throw lastError || new Error("no matching platform package could be installed")
+}
+
+async function main() {
   let binaryPath
   try {
     binaryPath = (await tryFindBinaryWithRetry()).binaryPath
-  } catch (error) {
-    // The wrapper script (bin/codeplane) does its own findBinary at runtime,
-    // so a missing optional-dependency here only loses the .codeplane fast-
-    // start cache — it does NOT prevent codeplane from running. Warn but
-    // do not fail the install.
-    console.warn(
-      "[codeplane postinstall] Skipping fast-start cache: " +
-        (error && error.message ? error.message : String(error)) +
-        ". The CLI will still work; startup may be slightly slower on first run.",
-    )
-    return
+  } catch {
+    // optionalDependency missing — self-heal by fetching the platform package
+    // so the CLI works instead of failing with "failed to install the right version".
+    try {
+      const healed = await healMissingBinary()
+      binaryPath = healed.binaryPath
+      console.log("[codeplane postinstall] Installed missing platform package " + healed.pkg + ".")
+    } catch (error) {
+      console.warn(
+        "[codeplane postinstall] Could not install the platform binary automatically: " +
+          (error && error.message ? error.message : String(error)) +
+          '. Re-run `npm install -g codeplane-ai`, or install the matching "codeplane-<platform>-<arch>" package manually.',
+      )
+      return
+    }
   }
+
+  // Windows runs the packaged .exe directly via the bin field; no fast-start cache.
+  if (os.platform() === "win32") return
 
   try {
     const target = path.join(__dirname, "bin", ".codeplane")
