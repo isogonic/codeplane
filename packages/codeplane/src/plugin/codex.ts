@@ -13,7 +13,22 @@ const ISSUER = "https://auth.openai.com"
 const CODEX_API_ENDPOINT = "https://chatgpt.com/backend-api/codex/responses"
 const OAUTH_PORT = 1455
 const OAUTH_POLLING_SAFETY_MARGIN_MS = 3000
-const unsupportedOAuthModels = new Set(["gpt-5.5-pro"])
+// Refresh slightly before expiry so a token that lapses mid-request (or under
+// clock skew) doesn't produce a 401.
+const TOKEN_REFRESH_MARGIN_MS = 60_000
+// Model slugs the Codex backend (chatgpt.com/backend-api/codex) refuses for
+// ChatGPT-account auth, returning 400 "not supported when using Codex with a
+// ChatGPT account". Verified against the live backend 2026-05; the older codex
+// slugs were retired there. Keep in sync as OpenAI admits/retires models —
+// offering a model that hard-fails on send is worse than hiding it.
+const unsupportedOAuthModels = new Set([
+  "gpt-5.5-pro",
+  "gpt-5-codex",
+  "gpt-5.1-codex",
+  "gpt-5.1-codex-max",
+  "gpt-5.1-codex-mini",
+  "gpt-5.2-codex",
+])
 
 interface PkceCodes {
   verifier: string
@@ -139,9 +154,30 @@ async function refreshAccessToken(refreshToken: string): Promise<TokenResponse> 
     }).toString(),
   })
   if (!response.ok) {
-    throw new Error(`Token refresh failed: ${response.status}`)
+    const detail = await response.text().catch(() => "")
+    // A 400 here is almost always an expired/revoked refresh token (the grant
+    // can't be renewed) — point the user at reconnecting rather than leaving a
+    // bare status code.
+    const hint = response.status === 400 ? " Your ChatGPT session may have expired — reconnect the provider." : ""
+    throw new Error(`Codex token refresh failed: ${response.status}.${hint}${detail ? ` ${detail.slice(0, 200)}` : ""}`)
   }
   return response.json()
+}
+
+let inflightRefresh: Promise<TokenResponse> | undefined
+
+// Single-flight wrapper around refreshAccessToken. When several requests see an
+// expired token at once (e.g. parallel tool calls or concurrent sessions) they
+// must share ONE network refresh: OpenAI rotates the refresh token on use, so
+// parallel refreshes race and the losers send an already-consumed token, fail,
+// and can persist a dead credential.
+export function refreshTokensOnce(refreshToken: string): Promise<TokenResponse> {
+  if (!inflightRefresh) {
+    inflightRefresh = refreshAccessToken(refreshToken).finally(() => {
+      inflightRefresh = undefined
+    })
+  }
+  return inflightRefresh
 }
 
 const HTML_SUCCESS = `<!doctype html>
@@ -310,12 +346,23 @@ async function startOAuthServer(): Promise<{ port: number; redirectUri: string }
   })
 
   await new Promise<void>((resolve, reject) => {
+    // If listen fails (e.g. port 1455 already in use by another codex login),
+    // drop the cached handle so a retry can rebind — otherwise the early-return
+    // above would hand back a redirect URI for a server that never listened,
+    // and every subsequent attempt would hang until the 5-minute timeout.
+    oauthServer!.once("error", (err) => {
+      oauthServer = undefined
+      reject(err)
+    })
     oauthServer!.listen(OAUTH_PORT, () => {
       log.info("codex oauth server started", { port: OAUTH_PORT })
       resolve()
     })
-    oauthServer!.on("error", reject)
   })
+
+  // Keep a persistent guard so a post-startup socket error is logged instead of
+  // crashing the process as an unhandled 'error' event.
+  oauthServer?.on("error", (err) => log.error("codex oauth server error", { error: err }))
 
   return { port: OAUTH_PORT, redirectUri: `http://localhost:${OAUTH_PORT}/auth/callback` }
 }
@@ -364,17 +411,10 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
         const auth = await getAuth()
         if (auth.type !== "oauth") return {}
 
-        // Filter models to only allowed Codex models for OAuth
-        const allowedModels = new Set([
-          "gpt-5.1-codex",
-          "gpt-5.1-codex-max",
-          "gpt-5.1-codex-mini",
-          "gpt-5.2",
-          "gpt-5.2-codex",
-          "gpt-5.3-codex",
-          "gpt-5.4",
-          "gpt-5.4-mini",
-        ])
+        // Non-codex gpt-5.x slugs (<= 5.4) to keep for OAuth. Codex slugs are
+        // kept by the `includes("codex")` rule below unless listed in
+        // unsupportedOAuthModels; models > 5.4 are kept by the numeric rule.
+        const allowedModels = new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.4", "gpt-5.4-mini"])
         for (const [modelId, model] of Object.entries(provider.models)) {
           if (unsupportedOAuthModels.has(model.api.id)) {
             delete provider.models[modelId]
@@ -382,7 +422,9 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
           }
           if (modelId.includes("codex")) continue
           if (allowedModels.has(model.api.id)) continue
-          const match = model.api.id.match(/^gpt-(\d+\.\d+)/)
+          // Keep anything newer than 5.4 (incl. integer majors like a future
+          // gpt-6) on the assumption newer GPTs stay Codex-compatible.
+          const match = model.api.id.match(/^gpt-(\d+(?:\.\d+)?)/)
           if (match && parseFloat(match[1]) > 5.4) continue
           delete provider.models[modelId]
         }
@@ -427,22 +469,31 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
             // Cast to include accountId field
             const authWithAccount = currentAuth as typeof currentAuth & { accountId?: string }
 
-            // Check if token needs refresh
-            if (!currentAuth.access || currentAuth.expires < Date.now()) {
+            // Check if token needs refresh (with a margin so it never lapses
+            // mid-request)
+            if (!currentAuth.access || currentAuth.expires - Date.now() < TOKEN_REFRESH_MARGIN_MS) {
               log.info("refreshing codex access token")
-              const tokens = await refreshAccessToken(currentAuth.refresh)
+              const tokens = await refreshTokensOnce(currentAuth.refresh)
+              // A refresh response may omit the rotated tokens; never overwrite
+              // working credentials with undefined or the provider becomes
+              // permanently unauthenticated.
+              const refresh = tokens.refresh_token || currentAuth.refresh
+              const access = tokens.access_token || currentAuth.access
+              const expires = Date.now() + (tokens.expires_in ?? 3600) * 1000
               const newAccountId = extractAccountId(tokens) || authWithAccount.accountId
               await input.client.auth.set({
                 providerID: "openai",
                 auth: {
                   type: "oauth",
-                  refresh: tokens.refresh_token,
-                  access: tokens.access_token,
-                  expires: Date.now() + (tokens.expires_in ?? 3600) * 1000,
+                  refresh,
+                  access,
+                  expires,
                   ...(newAccountId && { accountId: newAccountId }),
                 },
               })
-              currentAuth.access = tokens.access_token
+              currentAuth.access = access
+              currentAuth.refresh = refresh
+              currentAuth.expires = expires
               authWithAccount.accountId = newAccountId
             }
 
@@ -535,15 +586,21 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
               instructions: "Complete authorization in your browser. This window will close automatically.",
               method: "auto" as const,
               callback: async () => {
-                const tokens = await callbackPromise
-                stopOAuthServer()
-                const accountId = extractAccountId(tokens)
-                return {
-                  type: "success" as const,
-                  refresh: tokens.refresh_token,
-                  access: tokens.access_token,
-                  expires: Date.now() + (tokens.expires_in ?? 3600) * 1000,
-                  accountId,
+                // finally: tear down the :1455 server whether auth succeeds,
+                // times out, or fails the CSRF/state check — otherwise a failed
+                // attempt leaves the socket bound and blocks the next login.
+                try {
+                  const tokens = await callbackPromise
+                  const accountId = extractAccountId(tokens)
+                  return {
+                    type: "success" as const,
+                    refresh: tokens.refresh_token,
+                    access: tokens.access_token,
+                    expires: Date.now() + (tokens.expires_in ?? 3600) * 1000,
+                    accountId,
+                  }
+                } finally {
+                  stopOAuthServer()
                 }
               },
             }
@@ -568,8 +625,13 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
               device_auth_id: string
               user_code: string
               interval: string
+              expires_in?: number | string
             }
             const interval = Math.max(parseInt(deviceData.interval) || 5, 1) * 1000
+            // Stop polling once the device code expires (default 15 min) so the
+            // connect dialog can't wait forever when the code is never entered.
+            const expiresInMs = (Number(deviceData.expires_in) || 900) * 1000
+            const deadline = Date.now() + expiresInMs
 
             return {
               url: `${ISSUER}/codex/device`,
@@ -577,6 +639,7 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
               method: "auto" as const,
               async callback() {
                 while (true) {
+                  if (Date.now() >= deadline) return { type: "failed" as const }
                   const response = await fetch(`${ISSUER}/api/accounts/deviceauth/token`, {
                     method: "POST",
                     headers: {

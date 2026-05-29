@@ -63,8 +63,10 @@ function message(providerID: ProviderID, e: APICallError) {
 
     try {
       const body = JSON.parse(e.responseBody)
-      // try to extract common error message fields
-      const errMsg = body.message || body.error || body.error?.message
+      // try to extract common error message fields. `detail` is what the Codex
+      // backend (chatgpt.com/backend-api/codex) returns, e.g. for an
+      // unsupported model on a ChatGPT account.
+      const errMsg = body.message || body.error || body.error?.message || body.detail
       if (errMsg && typeof errMsg === "string") {
         return `${msg}: ${errMsg}`
       }
@@ -189,6 +191,27 @@ export function parseAPICallError(input: { providerID: ProviderID; error: APICal
   }
 
   const metadata = input.error.url ? { url: input.error.url } : undefined
+
+  // GitHub Copilot reports hard quota/usage-limit exhaustion (the premium-request
+  // allowance is spent; it resets at the billing period, often days out) as a 429
+  // carrying this header plus a multi-day `retry-after`. Unlike a transient rate
+  // limit it won't clear by waiting, so the AI SDK's default `isRetryable: true`
+  // for 429 makes the session sleep out its whole retry budget against a wall that
+  // won't move. Mark it non-retryable and surface an actionable message instead.
+  // Transient Copilot rate limits don't set this header, so they stay retryable.
+  if (input.error.responseHeaders?.["x-ratelimit-exceeded"] === "quota_exceeded") {
+    return {
+      type: "api_error",
+      message:
+        "GitHub Copilot quota exceeded: your premium request allowance is used up (it resets at your billing period). Switch to an included model or upgrade your Copilot plan.",
+      statusCode: input.error.statusCode,
+      isRetryable: false,
+      responseHeaders: input.error.responseHeaders,
+      responseBody: input.error.responseBody,
+      metadata,
+    }
+  }
+
   return {
     type: "api_error",
     message: m,

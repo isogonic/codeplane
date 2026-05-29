@@ -99,6 +99,57 @@
     height: 2rem;
   }
 
+  /* Tactile press on the composer send button. The IconButton's base
+     transition omits `transform`, so it's redeclared here (kept in sync
+     with icon-button.css) to keep the smooth bg/shadow transitions while
+     adding a quick spring-settle on release. Scoped to the submit action
+     so it stays a chat-composer detail, not a global button change. */
+  @media (prefers-reduced-motion: no-preference) {
+    [data-component="icon-button"][data-action="prompt-submit"] {
+      transition:
+        background-color 120ms ease,
+        color 120ms ease,
+        box-shadow 120ms ease,
+        border-color 120ms ease,
+        opacity 120ms ease,
+        transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    [data-component="icon-button"][data-action="prompt-submit"]:active:not(:disabled) {
+      transform: scale(0.92);
+      transition-duration: 60ms;
+    }
+  }
+
+  /* Staggered entrance for the empty new-session view — the first thing
+     seen when opening a fresh session. Reuses the house `fadeUp` keyframe
+     so it matches the rest of the app's motion language. Per-element delay
+     is set inline. Gated on no-preference so reduced-motion users see the
+     content instantly (no opacity:0 left hanging). */
+  @media (prefers-reduced-motion: no-preference) {
+    .session-new-enter {
+      animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+  }
+
+  /* Rotating prompt example placeholder fades in on each cycle instead of
+     hard-swapping. Opacity-only (no transform) so it stays an inline span
+     and the parent's truncate/ellipsis on long examples keeps working. */
+  @media (prefers-reduced-motion: no-preference) {
+    .prompt-placeholder-cycle {
+      animation: prompt-placeholder-cycle 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+  }
+
+  @keyframes prompt-placeholder-cycle {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
   .chat-header {
     height: 3rem;     /* 48px desktop */
     padding-inline: 0.75rem;

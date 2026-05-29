@@ -156,18 +156,17 @@ describe("ProviderTransform.options - zai/zhipuai thinking", () => {
       headers: {},
     }) as any
 
+  // GLM models reason by default. Forcing `thinking: { type: "enabled" }` makes them emit the
+  // post-tool-call answer as `reasoning_content` with empty `content`, so we must NOT inject it.
   for (const providerID of ["zai-coding-plan", "zai", "zhipuai-coding-plan", "zhipuai"]) {
-    test(`${providerID} should set thinking cfg`, () => {
+    test(`${providerID} should not force thinking cfg`, () => {
       const result = ProviderTransform.options({
         model: createModel(providerID),
         sessionID,
         providerOptions: {},
       })
 
-      expect(result.thinking).toEqual({
-        type: "enabled",
-        clear_thinking: false,
-      })
+      expect(result.thinking).toBeUndefined()
     })
   }
 })

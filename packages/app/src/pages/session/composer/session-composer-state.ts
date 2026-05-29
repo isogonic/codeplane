@@ -10,6 +10,7 @@ import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
 import { isSessionWorking } from "@/pages/session/session-working"
 import { sessionPermissionRequest, sessionQuestionRequest } from "./session-request-tree"
+import { todoProgress } from "./todo-progress"
 
 export const todoState = (input: {
   count: number
@@ -54,9 +55,7 @@ export function createSessionComposerState(options?: { closeMs?: number | (() =>
     return globalSync.data.session_todo[id] ?? []
   })
 
-  const done = createMemo(
-    () => todos().length > 0 && todos().every((todo) => todo.status === "completed" || todo.status === "cancelled"),
-  )
+  const done = createMemo(() => todoProgress(todos()).allResolved)
 
   const status = createMemo(() => {
     const id = params.id

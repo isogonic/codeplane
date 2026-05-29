@@ -158,6 +158,68 @@ test("remaps fallback oauth model urls to the enterprise host", async () => {
     },
   )
 
-  expect(models.claude.api.url).toBe("https://copilot-api.ghe.example.com")
-  expect(models.claude.api.npm).toBe("@ai-sdk/github-copilot")
+  // Claude speaks the Anthropic /v1/messages dialect, so the fallback must keep it
+  // on the anthropic SDK and the /v1 suffix while still remapping to the enterprise host.
+  expect(models.claude.api.url).toBe("https://copilot-api.ghe.example.com/v1")
+  expect(models.claude.api.npm).toBe("@ai-sdk/anthropic")
+})
+
+test("fallback keeps non-claude models on the copilot sdk and base host", async () => {
+  globalThis.fetch = mock(() => Promise.reject(new Error("timeout"))) as unknown as typeof fetch
+
+  const hooks = await CopilotAuthPlugin({
+    client: {} as never,
+    project: {} as never,
+    directory: "",
+    worktree: "",
+    experimental_workspace: { register() {} },
+    serverUrl: new URL("https://example.com"),
+    $: {} as never,
+  })
+
+  const models = await hooks.provider!.models!(
+    {
+      id: "github-copilot",
+      models: {
+        "gpt-5.2": {
+          id: "gpt-5.2",
+          providerID: "github-copilot",
+          api: { id: "gpt-5.2", url: "https://api.githubcopilot.com", npm: "@ai-sdk/openai-compatible" },
+        },
+      },
+    } as never,
+    {
+      auth: { type: "oauth", refresh: "token", access: "token", expires: 0 } as never,
+    },
+  )
+
+  expect(models["gpt-5.2"].api.url).toBe("https://api.githubcopilot.com")
+  expect(models["gpt-5.2"].api.npm).toBe("@ai-sdk/github-copilot")
+})
+
+test("sends copilot client identity headers on the models request", async () => {
+  let captured: Record<string, string> = {}
+  globalThis.fetch = mock((_url: string, init?: RequestInit) => {
+    captured = (init?.headers as Record<string, string>) ?? {}
+    return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }))
+  }) as unknown as typeof fetch
+
+  const hooks = await CopilotAuthPlugin({
+    client: {} as never,
+    project: {} as never,
+    directory: "",
+    worktree: "",
+    experimental_workspace: { register() {} },
+    serverUrl: new URL("https://example.com"),
+    $: {} as never,
+  })
+
+  await hooks.provider!.models!(
+    { id: "github-copilot", models: {} } as never,
+    { auth: { type: "oauth", refresh: "secret-token", access: "secret-token", expires: 0 } as never },
+  )
+
+  expect(captured["Copilot-Integration-Id"]).toBe("vscode-chat")
+  expect(captured["Editor-Version"]).toMatch(/^codeplane\//)
+  expect(captured["Authorization"]).toBe("Bearer secret-token")
 })

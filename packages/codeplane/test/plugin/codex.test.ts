@@ -1,9 +1,10 @@
-import { describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "bun:test"
 import {
   CodexAuthPlugin,
   parseJwtClaims,
   extractAccountIdFromClaims,
   extractAccountId,
+  refreshTokensOnce,
   type IdTokenClaims,
 } from "../../src/plugin/codex"
 
@@ -50,7 +51,35 @@ function makeModel(id: string) {
 }
 
 describe("plugin.codex", () => {
-  test("removes unsupported ChatGPT account models from OAuth provider list", async () => {
+  test("removes models the Codex backend rejects, keeps supported ones", async () => {
+    const hooks = await CodexAuthPlugin(pluginInput)
+    // Slugs OpenAI's Codex backend rejects for ChatGPT accounts (verified live).
+    const removed = [
+      "gpt-5.5-pro",
+      "gpt-5-codex",
+      "gpt-5.1-codex",
+      "gpt-5.1-codex-max",
+      "gpt-5.1-codex-mini",
+      "gpt-5.2-codex",
+    ]
+    // Slugs the backend accepts and we should still offer.
+    const kept = ["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark", "gpt-5.4", "gpt-5.4-mini", "gpt-5.5"]
+    const provider = {
+      id: "openai",
+      name: "OpenAI",
+      source: "api" as const,
+      env: [],
+      options: {},
+      models: Object.fromEntries([...removed, ...kept].map((id) => [id, makeModel(id)])),
+    }
+
+    await hooks.auth!.loader!(async () => ({ type: "oauth", refresh: "", access: "", expires: Date.now() }), provider)
+
+    for (const id of removed) expect(provider.models[id], `${id} should be removed`).toBeUndefined()
+    for (const id of kept) expect(provider.models[id], `${id} should be kept`).toBeDefined()
+  })
+
+  test("keeps a future integer-major model (gpt-6) but still drops older ones", async () => {
     const hooks = await CodexAuthPlugin(pluginInput)
     const provider = {
       id: "openai",
@@ -58,16 +87,13 @@ describe("plugin.codex", () => {
       source: "api" as const,
       env: [],
       options: {},
-      models: {
-        "gpt-5.4": makeModel("gpt-5.4"),
-        "gpt-5.5-pro": makeModel("gpt-5.5-pro"),
-      },
+      models: { "gpt-6": makeModel("gpt-6"), "gpt-4o": makeModel("gpt-4o") },
     }
 
     await hooks.auth!.loader!(async () => ({ type: "oauth", refresh: "", access: "", expires: Date.now() }), provider)
 
-    expect(provider.models["gpt-5.4"]).toBeDefined()
-    expect(provider.models["gpt-5.5-pro"]).toBeUndefined()
+    expect(provider.models["gpt-6"]).toBeDefined()
+    expect(provider.models["gpt-4o"]).toBeUndefined()
   })
 
   describe("parseJwtClaims", () => {
@@ -176,5 +202,188 @@ describe("plugin.codex", () => {
         }),
       ).toBe("acc-123")
     })
+  })
+})
+
+const realFetch = globalThis.fetch
+afterEach(() => {
+  globalThis.fetch = realFetch
+})
+
+// Route fetch calls to the token endpoint vs the codex request endpoint.
+function stubFetch(opts: {
+  onToken: () => Record<string, unknown>
+  onRequest?: (url: string, init: RequestInit | undefined) => void
+}) {
+  let tokenCalls = 0
+  globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+    const u = url instanceof URL ? url.toString() : typeof url === "string" ? url : url.url
+    if (u.includes("/oauth/token")) {
+      tokenCalls++
+      await Promise.resolve()
+      return new Response(JSON.stringify(opts.onToken()), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    }
+    opts.onRequest?.(u, init)
+    return new Response("{}", { status: 200, headers: { "content-type": "application/json" } })
+  }) as typeof globalThis.fetch
+  return () => tokenCalls
+}
+
+describe("refreshTokensOnce", () => {
+  test("single-flights concurrent refreshes, then refreshes again once settled", async () => {
+    const tokenCalls = stubFetch({
+      onToken: () => ({ access_token: "a", refresh_token: "r", expires_in: 3600 }),
+    })
+    const [a, b] = await Promise.all([refreshTokensOnce("rt"), refreshTokensOnce("rt")])
+    expect(tokenCalls()).toBe(1)
+    expect(a).toBe(b)
+    // inflight cleared after settle → a fresh call hits the network again
+    await refreshTokensOnce("rt")
+    expect(tokenCalls()).toBe(2)
+  })
+
+  test("a 400 refresh failure throws an actionable, body-bearing error", async () => {
+    globalThis.fetch = (async (url: RequestInfo | URL) => {
+      const u = url instanceof URL ? url.toString() : typeof url === "string" ? url : url.url
+      if (u.includes("/oauth/token")) {
+        return new Response(JSON.stringify({ error: "invalid_grant" }), { status: 400 })
+      }
+      return new Response("{}", { status: 200 })
+    }) as typeof globalThis.fetch
+
+    const err = await refreshTokensOnce("dead-token").then(
+      () => undefined,
+      (e) => e as Error,
+    )
+    expect(err).toBeInstanceOf(Error)
+    expect(err!.message).toContain("reconnect the provider")
+    expect(err!.message).toContain("invalid_grant")
+  })
+})
+
+describe("codex oauth fetch (refresh path)", () => {
+  function makeLoaderInput() {
+    const setCalls: any[] = []
+    const input = {
+      ...pluginInput,
+      client: { auth: { set: async (a: any) => void setCalls.push(a) } } as never,
+    }
+    return { input, setCalls }
+  }
+  const emptyProvider = { id: "openai", name: "OpenAI", source: "api" as const, env: [], options: {}, models: {} }
+
+  test("refreshes an expired token and sends the request with the new bearer", async () => {
+    const { input, setCalls } = makeLoaderInput()
+    const hooks = await CodexAuthPlugin(input)
+    const current: any = { type: "oauth", refresh: "old-refresh", access: "old-access", expires: 0, accountId: "acc" }
+    const opts: any = await hooks.auth!.loader!(async () => current, emptyProvider)
+
+    let sent: { url: string; init: RequestInit | undefined } | undefined
+    stubFetch({
+      onToken: () => ({ access_token: "new-access", refresh_token: "new-refresh", expires_in: 3600 }),
+      onRequest: (url, init) => (sent = { url, init }),
+    })
+
+    await opts.fetch("https://api.openai.com/v1/responses", { method: "POST", body: "{}" })
+
+    // persisted the rotated credentials
+    expect(setCalls).toHaveLength(1)
+    expect(setCalls[0].auth.access).toBe("new-access")
+    expect(setCalls[0].auth.refresh).toBe("new-refresh")
+    // request went to the codex endpoint with the fresh bearer + account header
+    expect(sent!.url).toBe("https://chatgpt.com/backend-api/codex/responses")
+    const headers = sent!.init!.headers as Headers
+    expect(headers.get("authorization")).toBe("Bearer new-access")
+    expect(headers.get("chatgpt-account-id")).toBe("acc")
+  })
+
+  test("preserves the existing refresh token when the response omits one", async () => {
+    const { input, setCalls } = makeLoaderInput()
+    const hooks = await CodexAuthPlugin(input)
+    const current: any = { type: "oauth", refresh: "old-refresh", access: "old-access", expires: 0 }
+    const opts: any = await hooks.auth!.loader!(async () => current, emptyProvider)
+
+    stubFetch({ onToken: () => ({ access_token: "new-access", expires_in: 3600 }) })
+
+    await opts.fetch("https://api.openai.com/v1/responses", { method: "POST", body: "{}" })
+
+    expect(setCalls[0].auth.access).toBe("new-access")
+    expect(setCalls[0].auth.refresh).toBe("old-refresh")
+  })
+
+  test("concurrent requests on an expired token trigger a single refresh", async () => {
+    const { input } = makeLoaderInput()
+    const hooks = await CodexAuthPlugin(input)
+    const current: any = { type: "oauth", refresh: "old-refresh", access: "old-access", expires: 0 }
+    const opts: any = await hooks.auth!.loader!(async () => current, emptyProvider)
+
+    const tokenCalls = stubFetch({
+      onToken: () => ({ access_token: "new-access", refresh_token: "new-refresh", expires_in: 3600 }),
+    })
+
+    await Promise.all([
+      opts.fetch("https://api.openai.com/v1/responses", { method: "POST", body: "{}" }),
+      opts.fetch("https://api.openai.com/v1/responses", { method: "POST", body: "{}" }),
+    ])
+
+    expect(tokenCalls()).toBe(1)
+  })
+
+  test("does not refresh a token that is still comfortably valid", async () => {
+    const { input, setCalls } = makeLoaderInput()
+    const hooks = await CodexAuthPlugin(input)
+    const current: any = {
+      type: "oauth",
+      refresh: "r",
+      access: "valid-access",
+      expires: Date.now() + 3600_000,
+      accountId: "acc",
+    }
+    const opts: any = await hooks.auth!.loader!(async () => current, emptyProvider)
+
+    let sent: { init: RequestInit | undefined } | undefined
+    const tokenCalls = stubFetch({
+      onToken: () => ({ access_token: "should-not-happen", expires_in: 3600 }),
+      onRequest: (_url, init) => (sent = { init }),
+    })
+
+    await opts.fetch("https://api.openai.com/v1/responses", { method: "POST", body: "{}" })
+
+    expect(tokenCalls()).toBe(0)
+    expect(setCalls).toHaveLength(0)
+    expect((sent!.init!.headers as Headers).get("authorization")).toBe("Bearer valid-access")
+  })
+})
+
+describe("codex headless device flow", () => {
+  test("stops polling and fails once the device code has expired", async () => {
+    let tokenPolls = 0
+    globalThis.fetch = (async (url: RequestInfo | URL) => {
+      const u = url instanceof URL ? url.toString() : typeof url === "string" ? url : url.url
+      if (u.includes("/deviceauth/usercode")) {
+        // negative expires_in → the poll deadline is already in the past
+        return new Response(
+          JSON.stringify({ device_auth_id: "dev-1", user_code: "ABCD-EFGH", interval: "1", expires_in: -1 }),
+          { status: 200 },
+        )
+      }
+      if (u.includes("/deviceauth/token")) {
+        tokenPolls++
+        return new Response("{}", { status: 403 })
+      }
+      return new Response("{}", { status: 200 })
+    }) as typeof globalThis.fetch
+
+    const hooks = await CodexAuthPlugin(pluginInput)
+    const method = hooks.auth!.methods!.find((m: any) => m.label.includes("headless")) as any
+    const flow = await method.authorize()
+    const result = await flow.callback()
+
+    expect(result.type).toBe("failed")
+    // deadline is checked before polling, so the token endpoint is never hit
+    expect(tokenPolls).toBe(0)
   })
 })

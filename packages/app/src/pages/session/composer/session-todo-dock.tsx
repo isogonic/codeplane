@@ -7,9 +7,10 @@ import { useSpring } from "@codeplane-ai/ui/motion-spring"
 import { TextReveal } from "@codeplane-ai/ui/text-reveal"
 import { TextStrikethrough } from "@codeplane-ai/ui/text-strikethrough"
 import { createResizeObserver } from "@solid-primitives/resize-observer"
-import { Index, createEffect, createMemo, onCleanup } from "solid-js"
+import { Index, Show, createEffect, createMemo, onCleanup } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useLanguage } from "@/context/language"
+import { isCancelled, isCompleted, isHighPriority, isInProgress, todoProgress, todoStatus } from "./todo-progress"
 
 const doneToken = "\u0000done\u0000"
 const totalToken = "\u0000total\u0000"
@@ -54,8 +55,9 @@ export function SessionTodoDock(props: {
 
   const toggle = () => setStore("collapsed", (value) => !value)
 
-  const total = createMemo(() => props.todos.length)
-  const done = createMemo(() => props.todos.filter((todo) => todo.status === "completed").length)
+  const counts = createMemo(() => todoProgress(props.todos))
+  const total = createMemo(() => counts().total)
+  const done = createMemo(() => counts().done)
   const label = createMemo(() => language.t("session.todo.progress", { done: done(), total: total() }))
   const progress = createMemo(() =>
     language
@@ -65,9 +67,9 @@ export function SessionTodoDock(props: {
 
   const active = createMemo(
     () =>
-      props.todos.find((todo) => todo.status === "in_progress") ??
-      props.todos.find((todo) => todo.status === "pending") ??
-      props.todos.filter((todo) => todo.status === "completed").at(-1) ??
+      props.todos.find((todo) => isInProgress(todo)) ??
+      props.todos.find((todo) => todoStatus(todo) === "pending") ??
+      props.todos.filter((todo) => isCompleted(todo)).at(-1) ??
       props.todos[0],
   )
 
@@ -221,6 +223,7 @@ function TodoList(props: { todos: Todo[] }) {
   return (
     <div class="relative">
       <div
+        role="list"
         class="px-3 pb-11 flex flex-col gap-1.5 max-h-42 overflow-y-auto no-scrollbar"
         style={{ "overflow-anchor": "none" }}
         onScroll={(e) => {
@@ -228,38 +231,58 @@ function TodoList(props: { todos: Todo[] }) {
         }}
       >
         <Index each={props.todos}>
-          {(todo) => (
-            <Checkbox
-              readOnly
-              checked={todo().status === "completed"}
-              indeterminate={todo().status === "in_progress"}
-              data-in-progress={todo().status === "in_progress" ? "" : undefined}
-              data-state={todo().status}
-              icon={dot(todo().status)}
-              style={{
-                "--checkbox-align": "flex-start",
-                "--checkbox-offset": "1px",
-                transition: "opacity 220ms var(--tool-motion-ease, cubic-bezier(0.22, 1, 0.36, 1))",
-                opacity: todo().status === "pending" ? "0.94" : "1",
-              }}
-            >
-              <TextStrikethrough
-                active={todo().status === "completed" || todo().status === "cancelled"}
-                text={todo().content}
-                class="text-14-regular min-w-0 break-words"
+          {(todo) => {
+            const status = createMemo(() => todoStatus(todo()))
+            const struck = createMemo(() => status() === "completed" || status() === "cancelled")
+            const flagged = createMemo(() => isHighPriority(todo()) && status() !== "completed" && status() !== "cancelled")
+            return (
+              <Checkbox
+                role="listitem"
+                readOnly
+                checked={status() === "completed"}
+                indeterminate={status() === "in_progress"}
+                data-in-progress={status() === "in_progress" ? "" : undefined}
+                data-state={status()}
+                data-priority={todo().priority}
+                icon={dot(status())}
                 style={{
-                  "line-height": "var(--line-height-normal)",
-                  transition:
-                    "color 220ms var(--tool-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)), opacity 220ms var(--tool-motion-ease, cubic-bezier(0.22, 1, 0.36, 1))",
-                  color:
-                    todo().status === "completed" || todo().status === "cancelled"
-                      ? "var(--text-weak)"
-                      : "var(--text-strong)",
-                  opacity: todo().status === "pending" ? "0.92" : "1",
+                  "--checkbox-align": "flex-start",
+                  "--checkbox-offset": "1px",
+                  transition: "opacity 220ms var(--tool-motion-ease, cubic-bezier(0.22, 1, 0.36, 1))",
+                  opacity: status() === "pending" ? "0.94" : "1",
                 }}
-              />
-            </Checkbox>
-          )}
+              >
+                <span class="flex items-baseline gap-1.5 min-w-0">
+                  <TextStrikethrough
+                    active={struck()}
+                    text={todo().content}
+                    class="text-14-regular min-w-0 break-words"
+                    style={{
+                      flex: "1 1 auto",
+                      "line-height": "var(--line-height-normal)",
+                      transition:
+                        "color 220ms var(--tool-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)), opacity 220ms var(--tool-motion-ease, cubic-bezier(0.22, 1, 0.36, 1))",
+                      color: struck() ? "var(--text-weak)" : "var(--text-strong)",
+                      opacity: status() === "pending" ? "0.92" : "1",
+                    }}
+                  />
+                  <Show when={flagged()}>
+                    <span
+                      aria-hidden="true"
+                      class="shrink-0 self-center rounded-full"
+                      title="High priority"
+                      style={{
+                        width: "5px",
+                        height: "5px",
+                        "margin-top": "1px",
+                        background: "var(--accent)",
+                      }}
+                    />
+                  </Show>
+                </span>
+              </Checkbox>
+            )
+          }}
         </Index>
       </div>
       <div

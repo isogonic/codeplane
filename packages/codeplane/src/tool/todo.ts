@@ -39,16 +39,19 @@ export const TodoWriteTool = Tool.define<typeof Parameters, Metadata, Todo.Servi
             metadata: {},
           })
 
+          const todos = params.todos.map(Todo.normalize)
+
           yield* todo.update({
             sessionID: ctx.sessionID,
-            todos: params.todos,
+            todos,
           })
 
+          const remaining = todos.filter((x) => x.status !== "completed" && x.status !== "cancelled").length
           return {
-            title: `${params.todos.filter((x) => x.status !== "completed").length} todos`,
-            output: JSON.stringify(params.todos, null, 2),
+            title: `${remaining} ${remaining === 1 ? "todo" : "todos"}`,
+            output: JSON.stringify(todos, null, 2),
             metadata: {
-              todos: params.todos,
+              todos,
             },
           }
         }),

@@ -19,6 +19,64 @@ export const Info = Schema.Struct({
   .pipe(withStatics((s) => ({ zod: zod(s) })))
 export type Info = Schema.Schema.Type<typeof Info>
 
+// The tool exposes `status`/`priority` as free-form strings so the model
+// sees a simple JSON schema, but the clients (web dock, TUI) match exact
+// canonical values. Coerce common variants — case, whitespace, hyphens,
+// and obvious synonyms — to the canonical set so an "In Progress" or
+// "done" from the model still renders correctly everywhere.
+export type Status = "pending" | "in_progress" | "completed" | "cancelled"
+export type Priority = "high" | "medium" | "low"
+
+const STATUS_ALIASES: Record<string, Status> = {
+  pending: "pending",
+  todo: "pending",
+  not_started: "pending",
+  open: "pending",
+  queued: "pending",
+  in_progress: "in_progress",
+  inprogress: "in_progress",
+  active: "in_progress",
+  working: "in_progress",
+  started: "in_progress",
+  doing: "in_progress",
+  completed: "completed",
+  complete: "completed",
+  done: "completed",
+  finished: "completed",
+  cancelled: "cancelled",
+  canceled: "cancelled",
+  skipped: "cancelled",
+  skip: "cancelled",
+  abandoned: "cancelled",
+}
+
+const PRIORITY_ALIASES: Record<string, Priority> = {
+  high: "high",
+  urgent: "high",
+  critical: "high",
+  medium: "medium",
+  med: "medium",
+  normal: "medium",
+  moderate: "medium",
+  low: "low",
+  minor: "low",
+  trivial: "low",
+}
+
+const canonicalKey = (raw: string | null | undefined) =>
+  (raw ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_")
+
+export const normalizeStatus = (raw: string | null | undefined): Status => STATUS_ALIASES[canonicalKey(raw)] ?? "pending"
+
+export const normalizePriority = (raw: string | null | undefined): Priority =>
+  PRIORITY_ALIASES[canonicalKey(raw)] ?? "medium"
+
+export const normalize = (todo: Info): Info => ({
+  content: todo.content,
+  status: normalizeStatus(todo.status),
+  priority: normalizePriority(todo.priority),
+})
+
 export const Event = {
   Updated: BusEvent.define(
     "todo.updated",
@@ -42,13 +100,14 @@ export const layer = Layer.effect(
     const bus = yield* Bus.Service
 
     const update = Effect.fn("Todo.update")(function* (input: { sessionID: SessionID; todos: Info[] }) {
+      const todos = input.todos.map(normalize)
       yield* Effect.sync(() =>
         Database.transaction((db) => {
           db.delete(TodoTable).where(eq(TodoTable.session_id, input.sessionID)).run()
-          if (input.todos.length === 0) return
+          if (todos.length === 0) return
           db.insert(TodoTable)
             .values(
-              input.todos.map((todo, position) => ({
+              todos.map((todo, position) => ({
                 session_id: input.sessionID,
                 content: todo.content,
                 status: todo.status,
@@ -59,7 +118,7 @@ export const layer = Layer.effect(
             .run()
         }),
       )
-      yield* bus.publish(Event.Updated, input)
+      yield* bus.publish(Event.Updated, { sessionID: input.sessionID, todos })
     })
 
     const get = Effect.fn("Todo.get")(function* (sessionID: SessionID) {

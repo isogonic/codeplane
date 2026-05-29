@@ -1,4 +1,4 @@
-import { Component, Show, createEffect, createSignal, onCleanup, onMount } from "solid-js"
+import { Component, Show, createEffect, createSignal, getOwner, onCleanup, onMount, runWithOwner } from "solid-js"
 import { InAppBrowser, ToolBarType } from "@capgo/inappbrowser"
 import type { CodeplaneMobileAPI } from "../platform/api"
 import type { SavedInstance } from "@codeplane-ai/shared/instance"
@@ -81,6 +81,13 @@ export const WebviewHost: Component<{
   let frameRef: HTMLIFrameElement | undefined
   let taskMonitor: ReturnType<typeof createTaskMonitor> | undefined
   const injectTimers: number[] = []
+
+  // Captured synchronously during render so teardown registered later
+  // from the *async* `onMount` (after its first `await`, where Solid's
+  // ambient owner is already gone) still attaches to this component's
+  // owner — otherwise the cleanup silently never runs and we leak the
+  // network/window/InAppBrowser listeners on every instance close.
+  const owner = getOwner()
 
   const clearInjectTimers = () => {
     for (const timer of injectTimers) clearTimeout(timer)
@@ -851,23 +858,29 @@ export const WebviewHost: Component<{
       // double-open on first mount — we hit that bug earlier.
     }
 
-    onCleanup(() => {
-      offNet()
-      taskMonitor?.dispose()
-      clearInjectTimers()
-      if (typeof window !== "undefined") {
-        window.removeEventListener("message", onWindowMessage, false)
-      }
-      for (const off of offHandles) off?.remove().catch(() => {})
-      // Belt-and-braces: even if our individual `remove()` calls drop
-      // on the floor, this ensures the next mount starts with a clean
-      // listener slate (mirrors the upfront `removeAllListeners` we
-      // do on registration).
-      if (isNative) InAppBrowser.removeAllListeners().catch(() => {})
-      // Best-effort close of any still-open in-app browser when the
-      // host unmounts (e.g. the user hit Android's hardware back).
-      if (isNative) InAppBrowser.close().catch(() => {})
-    })
+    const registerHostTeardown = () =>
+      onCleanup(() => {
+        offNet()
+        taskMonitor?.dispose()
+        clearInjectTimers()
+        if (typeof window !== "undefined") {
+          window.removeEventListener("message", onWindowMessage, false)
+        }
+        for (const off of offHandles) off?.remove().catch(() => {})
+        // Belt-and-braces: even if our individual `remove()` calls drop
+        // on the floor, this ensures the next mount starts with a clean
+        // listener slate (mirrors the upfront `removeAllListeners` we
+        // do on registration).
+        if (isNative) InAppBrowser.removeAllListeners().catch(() => {})
+        // Best-effort close of any still-open in-app browser when the
+        // host unmounts (e.g. the user hit Android's hardware back).
+        if (isNative) InAppBrowser.close().catch(() => {})
+      })
+    // We're past `onMount`'s awaits here, so the ambient owner is gone;
+    // re-enter the captured render-time owner so this teardown actually
+    // registers (and runs on unmount) instead of being dropped.
+    if (owner) runWithOwner(owner, registerHostTeardown)
+    else registerHostTeardown()
   })
 
   createEffect(() => {

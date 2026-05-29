@@ -28,6 +28,23 @@ function base(enterpriseUrl?: string) {
   return enterpriseUrl ? `https://copilot-api.${normalizeDomain(enterpriseUrl)}` : "https://api.githubcopilot.com"
 }
 
+// Identify codeplane to the Copilot backend the way first-party Copilot clients do.
+// `Copilot-Integration-Id` in particular gates access on policy-restricted and
+// enterprise accounts; omitting it can get otherwise-valid requests rejected.
+function clientHeaders(): Record<string, string> {
+  const version = `codeplane/${InstallationVersion}`
+  return {
+    "User-Agent": version,
+    "Editor-Version": version,
+    "Editor-Plugin-Version": version,
+    "Copilot-Integration-Id": "vscode-chat",
+  }
+}
+
+function isClaude(model: Model): boolean {
+  return model.api.id.includes("claude") || model.id.includes("claude")
+}
+
 // Check if a message is a synthetic user msg used to attach an image from a tool call
 function imgMsg(msg: any): boolean {
   if (msg?.role !== "user") return false
@@ -43,13 +60,19 @@ function imgMsg(msg: any): boolean {
   )
 }
 
-function fix(model: Model, url: string): Model {
+// Used when the live /models fetch is unavailable (no auth, or the request failed).
+// Claude models speak the Anthropic /v1/messages dialect, so they must keep the
+// @ai-sdk/anthropic SDK and the /v1 suffix; everything else uses the Copilot SDK.
+// Bundled catalog models arrive as @ai-sdk/openai-compatible, so routing is decided
+// by model id here rather than trusting the incoming npm.
+function fix(model: Model, baseUrl: string): Model {
+  const claude = isClaude(model)
   return {
     ...model,
     api: {
       ...model.api,
-      url,
-      npm: "@ai-sdk/github-copilot",
+      url: claude ? `${baseUrl}/v1` : baseUrl,
+      npm: claude ? "@ai-sdk/anthropic" : "@ai-sdk/github-copilot",
     },
   }
 }
@@ -69,8 +92,8 @@ export async function CopilotAuthPlugin(input: PluginInput): Promise<Hooks> {
         return CopilotModels.get(
           base(auth.enterpriseUrl),
           {
+            ...clientHeaders(),
             Authorization: `Bearer ${auth.refresh}`,
-            "User-Agent": `codeplane/${InstallationVersion}`,
           },
           provider.models,
         ).catch((error) => {
@@ -150,7 +173,7 @@ export async function CopilotAuthPlugin(input: PluginInput): Promise<Hooks> {
             const headers: Record<string, string> = {
               "x-initiator": isAgent ? "agent" : "user",
               ...(init?.headers as Record<string, string>),
-              "User-Agent": `codeplane/${InstallationVersion}`,
+              ...clientHeaders(),
               Authorization: `Bearer ${info.refresh}`,
               "Openai-Intent": "conversation-edits",
             }

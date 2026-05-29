@@ -31,7 +31,12 @@ import { ModelID, ProviderID } from "./schema"
 
 const log = Log.create({ service: "provider" })
 
-function shouldUseCopilotResponsesApi(modelID: string): boolean {
+// GitHub Copilot serves some models only via the OpenAI Responses API
+// (/responses) and others via Chat Completions (/chat/completions). Codex models
+// are Responses-only, so they must always use it. The gpt-5+ families also prefer
+// Responses, except gpt-5-mini which we intentionally keep on Chat Completions.
+export function shouldUseCopilotResponsesApi(modelID: string): boolean {
+  if (modelID.includes("codex")) return true
   const match = /^gpt-(\d+)/.exec(modelID)
   if (!match) return false
   return Number(match[1]) >= 5 && !modelID.startsWith("gpt-5-mini")

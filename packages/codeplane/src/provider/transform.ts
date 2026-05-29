@@ -1069,15 +1069,9 @@ export function options(input: {
     result["chat_template_args"] = { enable_thinking: true }
   }
 
-  if (
-    ["zai", "zhipuai"].some((id) => input.model.providerID.includes(id)) &&
-    input.model.api.npm === "@ai-sdk/openai-compatible"
-  ) {
-    result["thinking"] = {
-      type: "enabled",
-      clear_thinking: false,
-    }
-  }
+  // Do not force `thinking: { type: "enabled" }` on z.ai/zhipuai GLM models. They already
+  // reason by default, and explicitly enabling thinking makes them emit the post-tool-call
+  // answer entirely as `reasoning_content` with empty `content` — the visible reply disappears.
 
   if (input.model.providerID === "openai" || input.providerOptions?.setCacheKey) {
     result["promptCacheKey"] = input.sessionID

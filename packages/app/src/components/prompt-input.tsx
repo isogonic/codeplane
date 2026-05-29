@@ -1434,7 +1434,9 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 display: prompt.dirty() ? "none" : undefined,
               }}
             >
-              {placeholder()}
+              <Show when={placeholder()} keyed>
+                {(text) => <span class="prompt-placeholder-cycle">{text}</span>}
+              </Show>
             </div>
           </div>
 

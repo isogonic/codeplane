@@ -46,14 +46,19 @@ function providerIconsPlugin() {
 
 async function fetchProviderIcons() {
   const url = process.env.CODEPLANE_MODELS_URL || "https://models.dev"
-  const providers = await fetch(`${url}/api.json`)
+  const providers: string[] = await fetch(`${url}/api.json`)
     .then((res) => res.json())
     .then((json) => Object.keys(json))
-  await Promise.all(
-    providers.map((provider) =>
-      fetch(`${url}/logos/${provider}.svg`)
-        .then((res) => res.text())
-        .then((svg) => fs.writeFileSync(`./src/assets/icons/provider/${provider}.svg`, svg)),
-    ),
-  )
+  const concurrency = 8
+  for (let i = 0; i < providers.length; i += concurrency) {
+    await Promise.all(
+      providers.slice(i, i + concurrency).map(async (provider) => {
+        const res = await fetch(`${url}/logos/${provider}.svg`)
+        if (!res.ok) return
+        const svg = await res.text()
+        if (!svg.includes("<svg")) return
+        fs.writeFileSync(`./src/assets/icons/provider/${provider}.svg`, svg)
+      }),
+    )
+  }
 }

@@ -82,6 +82,10 @@ interface ProcessorContext extends Input {
   needsCompaction: boolean
   currentText: MessageV2.TextPart | undefined
   reasoningMap: Record<string, MessageV2.ReasoningPart>
+  // Per-step tracking so we can recover answers that GLM-style models emit in
+  // the reasoning channel with empty content. Reset on every start-step.
+  stepHadText: boolean
+  stepReasoningText: string
 }
 
 type StreamEvent = Event
@@ -132,6 +136,8 @@ export const layer: Layer.Layer<
         needsCompaction: false,
         currentText: undefined,
         reasoningMap: {},
+        stepHadText: false,
+        stepReasoningText: "",
       }
       let aborted = false
       const slog = log.clone().tag("session.id", input.sessionID).tag("messageID", input.assistantMessage.id)
@@ -291,6 +297,7 @@ export const layer: Layer.Layer<
               timestamp: DateTime.makeUnsafe(Date.now()),
             })
             ctx.reasoningMap[value.id].text += value.text
+            ctx.stepReasoningText += value.text
             if (value.providerMetadata) ctx.reasoningMap[value.id].metadata = value.providerMetadata
             yield* session.updatePartDelta({
               sessionID: ctx.reasoningMap[value.id].sessionID,
@@ -465,6 +472,8 @@ export const layer: Layer.Layer<
             throw value.error
 
           case "start-step": {
+            ctx.stepHadText = false
+            ctx.stepReasoningText = ""
             if (!ctx.snapshot) ctx.snapshot = yield* snapshot.track()
             // The AI SDK fires `start-step` on receipt of the FIRST CHUNK
             // from the model — i.e. just past TTFT. Stamping it here pairs
@@ -494,6 +503,33 @@ export const layer: Layer.Layer<
           }
 
           case "finish-step": {
+            // openai-compatible reasoning models (e.g. z.ai/zhipuai GLM, deepseek, qwen)
+            // stream chain-of-thought via `reasoning_content` and the answer via `content`.
+            // GLM in particular often emits a short post-tool answer entirely in
+            // `reasoning_content`, leaving `content` empty — with reasoning display off the
+            // turn looks blank. When such a step ends without continuing to a tool and
+            // produced no visible text, surface the reasoning as the answer. Scoped by SDK
+            // (not the catalog `interleaved` flag, which is incomplete — e.g. glm-4.6 hits
+            // this with interleaved:false), and self-limiting since it only fires when
+            // reasoning was actually streamed but no content was.
+            if (
+              ctx.model.api.npm === "@ai-sdk/openai-compatible" &&
+              value.finishReason !== "tool-calls" &&
+              value.finishReason !== "error" &&
+              !ctx.stepHadText &&
+              ctx.stepReasoningText.trim()
+            ) {
+              const now = Date.now()
+              yield* session.updatePart({
+                id: PartID.ascending(),
+                messageID: ctx.assistantMessage.id,
+                sessionID: ctx.assistantMessage.sessionID,
+                type: "text",
+                text: ctx.stepReasoningText.trim(),
+                time: { start: now, end: now },
+              })
+              ctx.stepHadText = true
+            }
             const usage = Session.getUsage({
               model: ctx.model,
               usage: value.usage,
@@ -583,6 +619,7 @@ export const layer: Layer.Layer<
 
           case "text-delta":
             if (!ctx.currentText) return
+            if (value.text) ctx.stepHadText = true
             ctx.currentText.text += value.text
             if (value.providerMetadata) ctx.currentText.metadata = value.providerMetadata
             yield* session.updatePartDelta({
