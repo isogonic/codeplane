@@ -278,6 +278,14 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
         XDG_STATE_HOME: path.join(data, "state"),
         HOME: process.env.HOME ?? os.homedir(),
       }
+      // The TUI launches its bundle on the codeplane binary's embedded Bun via
+      // BUN_BE_BUN=1 (see packages/codeplane/src/tui/launcher.ts). That env var
+      // MUST NOT reach the spawned local server: BUN_BE_BUN=1 makes the
+      // codeplane single-file binary behave as `bun` itself, so it parses
+      // `serve` as a Bun script name and dies with `error: Script not found
+      // "serve"`. Always strip it from the child so the binary runs as the
+      // codeplane CLI.
+      delete env.BUN_BE_BUN
       if (debugLogging) env.CODEPLANE_LOG_LEVEL = "DEBUG"
       if (config.desktopManaged === false) {
         // Explicit non-desktop manager (e.g. TUI). Make sure any inherited

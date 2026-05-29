@@ -204,12 +204,18 @@ const InstanceDaemonStartCommand = cmd({
         `  log    ${logPath}`,
     )
 
+    // Strip BUN_BE_BUN so the codeplane single-file binary runs as the CLI
+    // and not as `bun` (which would read `serve` as a script name and exit
+    // with `Script not found "serve"`). Mirrors the guard in
+    // packages/shared/src/local-instance.ts.
+    const daemonEnv = { ...process.env }
+    delete daemonEnv.BUN_BE_BUN
     const child = spawn(
       binary!,
       ["serve", "--instance", id, "--hostname", "127.0.0.1", "--port", "0"],
       {
         cwd: process.env.HOME?.trim() || process.cwd(),
-        env: { ...process.env },
+        env: daemonEnv,
         // `detached: true` + `unref()` makes the child outlive the
         // parent process. stdio piped to the log file (not "ignore"
         // because we need to find the listen line for the port).
