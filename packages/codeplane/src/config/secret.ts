@@ -2,23 +2,16 @@ export * as ConfigSecret from "./secret"
 
 import path from "path"
 import { AppFileSystem } from "@codeplane-ai/shared/filesystem"
-import { Context, Effect, Layer, Option, Schema } from "effect"
+import { Context, Effect, Layer } from "effect"
+import { applyEdits, modify, parse as parseJsonc } from "jsonc-parser"
 import { Global } from "@/global"
-import { withStatics } from "@/util/schema"
-import { zod } from "@/util/effect-zod"
-
-export const Entry = Schema.Struct({
-  name: Schema.String,
-  placeholder: Schema.String,
-  updated_at: Schema.Number,
-})
-  .annotate({ identifier: "ConfigSecretEntry" })
-  .pipe(withStatics((s) => ({ zod: zod(s) })))
-export type Entry = Schema.Schema.Type<typeof Entry>
+import { Filesystem } from "@/util"
 
 const INVALID_SEGMENT = /[^a-z0-9._-]+/g
 const EDGE_SEPARATOR = /^[._-]+|[._-]+$/g
-const RESERVED = new Set(["agents.md", "readme.md"])
+
+const FORMATTING = { insertSpaces: true, tabSize: 2 }
+const HEADER = "// Instance secrets. Reference any value below as {secret:<name>} in codeplane.jsonc.\n"
 
 export function normalizeName(name: string) {
   return name.trim().toLowerCase().replace(/\s+/g, "-").replace(INVALID_SEGMENT, "-").replace(EDGE_SEPARATOR, "")
@@ -28,12 +21,16 @@ export function placeholder(name: string) {
   return `{secret:${normalizeName(name)}}`
 }
 
-export function dirpath() {
-  return Global.Path.secrets
+// secrets.jsonc is the single secret store for this instance. It lives in the
+// instance config folder next to codeplane.jsonc and is meant to be hand-edited.
+export function filepath() {
+  return path.join(Global.Path.config, "secrets.jsonc")
 }
 
-export function filepath(name: string) {
-  return path.join(dirpath(), normalizeName(name))
+// Pre-secrets.jsonc instances stored one file per secret under data/secrets/.
+// Kept as a read-only fallback so those references keep resolving.
+function legacyFilepath(name: string) {
+  return path.join(Global.Path.secrets, normalizeName(name))
 }
 
 function assertName(name: string) {
@@ -41,21 +38,33 @@ function assertName(name: string) {
   if (!normalized) {
     throw new Error("Secret names must contain at least one letter or number")
   }
-  if (RESERVED.has(normalized)) {
-    throw new Error("That secret name is reserved by Codeplane")
-  }
   return normalized
 }
 
-function updatedAt(info: { mtime: Option.Option<Date> }) {
-  return Option.getOrUndefined(info.mtime)?.getTime() ?? Date.now()
+function parseSecrets(text: string | undefined): Record<string, string> {
+  if (!text?.trim()) return {}
+  const parsed = parseJsonc(text)
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {}
+  const out: Record<string, string> = {}
+  for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+    if (typeof value === "string") out[key] = value
+  }
+  return out
+}
+
+// Plain (non-Effect) reader used by config variable resolution for {secret:name}.
+// Reads secrets.jsonc, then falls back to the legacy per-name file.
+export async function read(name: string): Promise<string | undefined> {
+  const secrets = parseSecrets(await Filesystem.readText(filepath()).catch(() => undefined))
+  if (name in secrets) return secrets[name]
+  const normalized = normalizeName(name)
+  if (normalized !== name && normalized in secrets) return secrets[normalized]
+  const legacy = await Filesystem.readText(legacyFilepath(name)).catch(() => undefined)
+  return legacy === undefined ? undefined : legacy.trim()
 }
 
 export interface Interface {
-  readonly list: () => Effect.Effect<Entry[]>
-  readonly get: (name: string) => Effect.Effect<string | undefined>
-  readonly set: (name: string, value: string) => Effect.Effect<Entry>
-  readonly remove: (name: string) => Effect.Effect<boolean>
+  readonly set: (name: string, value: string) => Effect.Effect<void>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@codeplane/ConfigSecret") {}
@@ -65,61 +74,17 @@ export const layer = Layer.effect(
   Effect.gen(function* () {
     const fs = yield* AppFileSystem.Service
 
-    const list = Effect.fn("ConfigSecret.list")(function* () {
-      yield* fs.ensureDir(dirpath()).pipe(Effect.orDie)
-      const entries = yield* fs.readDirectoryEntries(dirpath()).pipe(Effect.orElseSucceed(() => []))
-      return yield* Effect.forEach(
-        entries
-          .filter((entry) => entry.type === "file" && !RESERVED.has(entry.name.toLowerCase()))
-          .map((entry) => entry.name)
-          .sort((a, b) => a.localeCompare(b)),
-        (name) =>
-          Effect.gen(function* () {
-            const info = yield* fs.stat(filepath(name)).pipe(Effect.orDie)
-            return {
-              name,
-              placeholder: placeholder(name),
-              updated_at: updatedAt(info),
-            } satisfies Entry
-          }),
-        { concurrency: "unbounded" },
-      )
-    })
-
-    const get = Effect.fn("ConfigSecret.get")(function* (name: string) {
-      const normalized = assertName(name)
-      const target = filepath(normalized)
-      const exists = yield* fs.existsSafe(target)
-      if (!exists) return undefined
-      return yield* fs.readFileString(target).pipe(Effect.orDie)
-    })
-
     const set = Effect.fn("ConfigSecret.set")(function* (name: string, value: string) {
       const normalized = assertName(name)
-      yield* fs.writeWithDirs(filepath(normalized), value, 0o600).pipe(Effect.orDie)
-      const info = yield* fs.stat(filepath(normalized)).pipe(Effect.orDie)
-      return {
-        name: normalized,
-        placeholder: placeholder(normalized),
-        updated_at: updatedAt(info),
-      } satisfies Entry
-    })
-
-    const remove = Effect.fn("ConfigSecret.remove")(function* (name: string) {
-      const normalized = assertName(name)
-      const target = filepath(normalized)
+      const target = filepath()
       const exists = yield* fs.existsSafe(target)
-      if (!exists) return false
-      yield* fs.remove(target).pipe(Effect.orDie)
-      return true
+      const before = exists ? yield* fs.readFileString(target).pipe(Effect.orDie) : ""
+      const base = before.trim() ? before : `${HEADER}{}\n`
+      const next = applyEdits(base, modify(base, [normalized], value, { formattingOptions: FORMATTING }))
+      yield* fs.writeWithDirs(target, next, 0o600).pipe(Effect.orDie)
     })
 
-    return Service.of({
-      list,
-      get,
-      set,
-      remove,
-    })
+    return Service.of({ set })
   }),
 )
 

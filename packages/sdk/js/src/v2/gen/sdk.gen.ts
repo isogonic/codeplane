@@ -75,10 +75,6 @@ import type {
   GlobalReleaseNotesErrors,
   GlobalReleaseNotesResponses,
   GlobalRestartResponses,
-  GlobalSecretsListResponses,
-  GlobalSecretsRemoveResponses,
-  GlobalSecretsSetErrors,
-  GlobalSecretsSetResponses,
   GlobalUpgradeErrors,
   GlobalUpgradeResponses,
   GlobalVersionResponses,
@@ -601,74 +597,6 @@ export class Config extends HeyApiClient {
   }
 }
 
-export class Secrets extends HeyApiClient {
-  /**
-   * List per-instance secrets
-   *
-   * List the secret names stored for the current Codeplane instance.
-   */
-  public list<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
-    return (options?.client ?? this.client).get<GlobalSecretsListResponses, unknown, ThrowOnError>({
-      url: "/global/secrets",
-      ...options,
-    })
-  }
-
-  /**
-   * Delete a per-instance secret
-   *
-   * Remove a stored secret from the current Codeplane instance data directory.
-   */
-  public remove<ThrowOnError extends boolean = false>(
-    parameters: {
-      name: string
-    },
-    options?: Options<never, ThrowOnError>,
-  ) {
-    const params = buildClientParams([parameters], [{ args: [{ in: "path", key: "name" }] }])
-    return (options?.client ?? this.client).delete<GlobalSecretsRemoveResponses, unknown, ThrowOnError>({
-      url: "/global/secrets/{name}",
-      ...options,
-      ...params,
-    })
-  }
-
-  /**
-   * Create or replace a per-instance secret
-   *
-   * Store a secret in the current Codeplane instance data directory.
-   */
-  public set<ThrowOnError extends boolean = false>(
-    parameters: {
-      name: string
-      value?: string
-    },
-    options?: Options<never, ThrowOnError>,
-  ) {
-    const params = buildClientParams(
-      [parameters],
-      [
-        {
-          args: [
-            { in: "path", key: "name" },
-            { in: "body", key: "value" },
-          ],
-        },
-      ],
-    )
-    return (options?.client ?? this.client).put<GlobalSecretsSetResponses, GlobalSecretsSetErrors, ThrowOnError>({
-      url: "/global/secrets/{name}",
-      ...options,
-      ...params,
-      headers: {
-        "Content-Type": "application/json",
-        ...options?.headers,
-        ...params.headers,
-      },
-    })
-  }
-}
-
 export class BashInteractive extends HeyApiClient {
   /**
    * Kill a running bash_interactive tool call
@@ -801,11 +729,6 @@ export class Global extends HeyApiClient {
   private _config?: Config
   get config(): Config {
     return (this._config ??= new Config({ client: this.client }))
-  }
-
-  private _secrets?: Secrets
-  get secrets(): Secrets {
-    return (this._secrets ??= new Secrets({ client: this.client }))
   }
 
   private _bashInteractive?: BashInteractive

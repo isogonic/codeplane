@@ -3,7 +3,7 @@
   "info": {
     "title": "codeplane",
     "description": "codeplane api",
-    "version": "29.0.11"
+    "version": "31.0.0"
   },
   "paths": {
     "/global/cron": {
@@ -914,133 +914,6 @@
         ]
       }
     },
-    "/global/secrets": {
-      "get": {
-        "operationId": "global.secrets.list",
-        "summary": "List per-instance secrets",
-        "description": "List the secret names stored for the current Codeplane instance.",
-        "responses": {
-          "200": {
-            "description": "Secret list",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConfigSecretEntry"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "x-codeSamples": [
-          {
-            "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.secrets.list({\n  ...\n})"
-          }
-        ]
-      }
-    },
-    "/global/secrets/{name}": {
-      "put": {
-        "operationId": "global.secrets.set",
-        "summary": "Create or replace a per-instance secret",
-        "description": "Store a secret in the current Codeplane instance data directory.",
-        "responses": {
-          "200": {
-            "description": "Stored secret metadata",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConfigSecretEntry"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BadRequestError"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "schema": {
-              "type": "string"
-            },
-            "required": true
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "value": {
-                    "type": "string"
-                  }
-                },
-                "required": ["value"]
-              }
-            }
-          }
-        },
-        "x-codeSamples": [
-          {
-            "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.secrets.set({\n  ...\n})"
-          }
-        ]
-      },
-      "delete": {
-        "operationId": "global.secrets.remove",
-        "summary": "Delete a per-instance secret",
-        "description": "Remove a stored secret from the current Codeplane instance data directory.",
-        "responses": {
-          "200": {
-            "description": "Secret delete result",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": ["success"]
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "schema": {
-              "type": "string"
-            },
-            "required": true
-          }
-        ],
-        "x-codeSamples": [
-          {
-            "lang": "js",
-            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.secrets.remove({\n  ...\n})"
-          }
-        ]
-      }
-    },
     "/global/dispose": {
       "post": {
         "operationId": "global.dispose",
@@ -1400,7 +1273,10 @@
                 "properties": {
                   "service": {
                     "description": "Service name for the log entry",
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[a-z0-9][a-z0-9._-]*$"
                   },
                   "level": {
                     "description": "Log level",
@@ -1409,7 +1285,8 @@
                   },
                   "message": {
                     "description": "Log message",
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 8192
                   },
                   "extra": {
                     "description": "Additional metadata for the log entry",
@@ -8601,6 +8478,80 @@
         },
         "required": ["id", "taskID", "status", "attempt", "time"]
       },
+      "Event.server.connected": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "server.connected"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        "required": ["type", "properties"]
+      },
+      "Event.server.dropped": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "server.dropped"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        "required": ["type", "properties"]
+      },
+      "Event.server.heartbeat": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "server.heartbeat"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        "required": ["type", "properties"]
+      },
+      "Event.server.resume_failed": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "server.resume_failed"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "lastEventID": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "required": ["type", "properties"]
+      },
+      "Event.global.disposed": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "global.disposed"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        "required": ["type", "properties"]
+      },
       "Event.installation.updated": {
         "type": "object",
         "properties": {
@@ -8767,80 +8718,6 @@
           },
           "properties": {
             "$ref": "#/components/schemas/Project"
-          }
-        },
-        "required": ["type", "properties"]
-      },
-      "Event.server.connected": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "server.connected"
-          },
-          "properties": {
-            "type": "object",
-            "properties": {}
-          }
-        },
-        "required": ["type", "properties"]
-      },
-      "Event.server.dropped": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "server.dropped"
-          },
-          "properties": {
-            "type": "object",
-            "properties": {}
-          }
-        },
-        "required": ["type", "properties"]
-      },
-      "Event.server.heartbeat": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "server.heartbeat"
-          },
-          "properties": {
-            "type": "object",
-            "properties": {}
-          }
-        },
-        "required": ["type", "properties"]
-      },
-      "Event.server.resume_failed": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "server.resume_failed"
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "lastEventID": {
-                "type": "number"
-              }
-            }
-          }
-        },
-        "required": ["type", "properties"]
-      },
-      "Event.global.disposed": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "global.disposed"
-          },
-          "properties": {
-            "type": "object",
-            "properties": {}
           }
         },
         "required": ["type", "properties"]
@@ -13772,15 +13649,6 @@
           "payload": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/Event.installation.updated"
-              },
-              {
-                "$ref": "#/components/schemas/Event.installation.update-available"
-              },
-              {
-                "$ref": "#/components/schemas/Event.project.updated"
-              },
-              {
                 "$ref": "#/components/schemas/Event.server.connected"
               },
               {
@@ -13794,6 +13662,15 @@
               },
               {
                 "$ref": "#/components/schemas/Event.global.disposed"
+              },
+              {
+                "$ref": "#/components/schemas/Event.installation.updated"
+              },
+              {
+                "$ref": "#/components/schemas/Event.installation.update-available"
+              },
+              {
+                "$ref": "#/components/schemas/Event.project.updated"
               },
               {
                 "$ref": "#/components/schemas/Event.server.instance.disposed"
@@ -15250,21 +15127,6 @@
         },
         "additionalProperties": false
       },
-      "ConfigSecretEntry": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "placeholder": {
-            "type": "string"
-          },
-          "updated_at": {
-            "type": "number"
-          }
-        },
-        "required": ["name", "placeholder", "updated_at"]
-      },
       "InternalServerError": {
         "type": "object",
         "properties": {
@@ -15538,6 +15400,9 @@
               "experimentalOver200K": {
                 "type": "object",
                 "properties": {
+                  "threshold": {
+                    "type": "number"
+                  },
                   "input": {
                     "type": "number"
                   },
@@ -16327,15 +16192,6 @@
       "Event": {
         "anyOf": [
           {
-            "$ref": "#/components/schemas/Event.installation.updated"
-          },
-          {
-            "$ref": "#/components/schemas/Event.installation.update-available"
-          },
-          {
-            "$ref": "#/components/schemas/Event.project.updated"
-          },
-          {
             "$ref": "#/components/schemas/Event.server.connected"
           },
           {
@@ -16349,6 +16205,15 @@
           },
           {
             "$ref": "#/components/schemas/Event.global.disposed"
+          },
+          {
+            "$ref": "#/components/schemas/Event.installation.updated"
+          },
+          {
+            "$ref": "#/components/schemas/Event.installation.update-available"
+          },
+          {
+            "$ref": "#/components/schemas/Event.project.updated"
           },
           {
             "$ref": "#/components/schemas/Event.server.instance.disposed"

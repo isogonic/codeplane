@@ -1983,6 +1983,50 @@ describe("SessionNs.getUsage", () => {
     expect(result.tokens.cache.write).toBe(0)
   })
 
+  test("applies the over-context surcharge at the model's tier threshold, not a fixed 200k", () => {
+    const usageAt = (inputTokens: number) => ({
+      inputTokens,
+      outputTokens: 0,
+      totalTokens: inputTokens,
+      inputTokenDetails: { noCacheTokens: undefined, cacheReadTokens: undefined, cacheWriteTokens: undefined },
+      outputTokenDetails: { textTokens: undefined, reasoningTokens: undefined },
+    })
+
+    // GPT-5.5-shaped: base $5/1M input, surcharge $10/1M, real breakpoint 272k.
+    const model = createModel({
+      context: 1_050_000,
+      output: 128_000,
+      cost: {
+        input: 5,
+        output: 30,
+        cache: { read: 0.5, write: 0 },
+        experimentalOver200K: { threshold: 272_000, input: 10, output: 45, cache: { read: 1, write: 0 } },
+      } as Provider.Model["cost"],
+    })
+
+    // 250k: above the legacy 200k mark but below the real 272k breakpoint → base rate.
+    expect(SessionNs.getUsage({ model, usage: usageAt(250_000) }).cost).toBeCloseTo((250_000 * 5) / 1_000_000, 10)
+    // 300k: above 272k → surcharge rate.
+    expect(SessionNs.getUsage({ model, usage: usageAt(300_000) }).cost).toBeCloseTo((300_000 * 10) / 1_000_000, 10)
+
+    // Backward-compat: an entry without an explicit threshold still falls back to 200k,
+    // so the same 250k request is billed at the surcharge.
+    const legacy = createModel({
+      context: 1_050_000,
+      output: 128_000,
+      cost: {
+        input: 5,
+        output: 30,
+        cache: { read: 0.5, write: 0 },
+        experimentalOver200K: { input: 10, output: 45, cache: { read: 1, write: 0 } },
+      } as Provider.Model["cost"],
+    })
+    expect(SessionNs.getUsage({ model: legacy, usage: usageAt(250_000) }).cost).toBeCloseTo(
+      (250_000 * 10) / 1_000_000,
+      10,
+    )
+  })
+
   test("extracts cached tokens to cache.read", () => {
     const model = createModel({ context: 100_000, output: 32_000 })
     const result = SessionNs.getUsage({

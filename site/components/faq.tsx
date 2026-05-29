@@ -99,23 +99,23 @@ const ITEMS: Item[] = [
 export function Faq() {
   const [open, setOpen] = useState<number | null>(0)
   return (
-    <ul className="flex flex-col">
+    <ul className="flex max-w-3xl flex-col border-t border-line">
       {ITEMS.map((item, i) => {
         const isOpen = open === i
         return (
-          <li key={i} className="border-t border-line first:border-t-0">
+          <li key={i} className="border-b border-line">
             <button
               onClick={() => setOpen(isOpen ? null : i)}
               aria-expanded={isOpen}
-              className="grid w-full grid-cols-[auto_1fr] items-baseline gap-4 py-4 text-left text-[14.5px] text-ink"
+              className="grid w-full grid-cols-[auto_1fr] items-baseline gap-4 py-5 text-left text-[15px] text-ink transition-colors hover:text-ink"
             >
               <span aria-hidden className="text-ink-muted">{isOpen ? "[−]" : "[+]"}</span>
-              <span className="font-medium">{item.q}</span>
+              <span className="font-bold">{item.q}</span>
             </button>
             {isOpen ? (
-              <div className="grid grid-cols-[auto_1fr] gap-4 pb-5 text-[13.5px] leading-relaxed text-ink-2">
+              <div className="grid grid-cols-[auto_1fr] gap-4 pb-6 text-[14px] leading-[1.7] text-ink-2">
                 <span aria-hidden className="invisible select-none">[+]</span>
-                <div className="docs-prose-inline [&_a]:underline [&_a]:underline-offset-4 [&_a]:decoration-line [&_a:hover]:decoration-ink [&_code]:bg-surface-2 [&_code]:px-1">
+                <div className="[&_a]:underline [&_a]:underline-offset-4 [&_a]:decoration-line [&_a:hover]:decoration-ink [&_a:hover]:text-ink [&_code]:bg-surface-3 [&_code]:px-1">
                   {item.a}
                 </div>
               </div>

@@ -1,50 +1,53 @@
 import type { MetadataRoute } from "next"
+import { existsSync, readdirSync, statSync } from "node:fs"
+import { join } from "node:path"
 
 /*
- * Static sitemap — emitted to /sitemap.xml at build time via the App
- * Router's MetadataRoute.Sitemap convention. Every public route gets one
- * entry. `priority` is a hint, not a guarantee — landing page is 1.0,
- * docs hub + install are 0.9, surface + reference pages 0.7, the rest 0.5.
+ * Sitemap — emitted to /sitemap.xml at build time. The docs routes are
+ * discovered by scanning app/docs/ at build, so adding a new doc page is
+ * enough to put it in the sitemap; there is no list to keep in sync. The
+ * landing page + docs hub are weekly/high priority; everything else gets
+ * a sensible default.
  */
 export const dynamic = "force-static"
+
 const HOST = "https://codeplane.cc"
 
-type Entry = { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"] }
+const PRIORITY: Record<string, number> = {
+  "/": 1.0,
+  "/docs/": 0.9,
+  "/docs/install/": 0.9,
+  "/docs/quickstart/": 0.8,
+  "/docs/configuration/": 0.8,
+  "/docs/providers/": 0.8,
+  "/docs/cli/": 0.8,
+  "/docs/api/": 0.7,
+  "/docs/architecture/": 0.7,
+}
 
-const ROUTES: Entry[] = [
-  { path: "/",                     priority: 1.0, changeFrequency: "weekly" },
-  { path: "/docs/",                priority: 0.9, changeFrequency: "weekly" },
-  { path: "/docs/install/",        priority: 0.9, changeFrequency: "weekly" },
-  { path: "/docs/quickstart/",     priority: 0.8, changeFrequency: "monthly" },
-  { path: "/docs/configuration/",  priority: 0.8, changeFrequency: "monthly" },
-  { path: "/docs/providers/",      priority: 0.8, changeFrequency: "monthly" },
-  { path: "/docs/cli/",            priority: 0.8, changeFrequency: "monthly" },
-  { path: "/docs/tui/",            priority: 0.7, changeFrequency: "monthly" },
-  { path: "/docs/desktop/",        priority: 0.7, changeFrequency: "monthly" },
-  { path: "/docs/web/",            priority: 0.7, changeFrequency: "monthly" },
-  { path: "/docs/mobile/",         priority: 0.7, changeFrequency: "monthly" },
-  { path: "/docs/instances/",      priority: 0.6, changeFrequency: "monthly" },
-  { path: "/docs/sessions/",       priority: 0.6, changeFrequency: "monthly" },
-  { path: "/docs/permissions/",    priority: 0.6, changeFrequency: "monthly" },
-  { path: "/docs/keybinds/",       priority: 0.6, changeFrequency: "monthly" },
-  { path: "/docs/themes/",         priority: 0.5, changeFrequency: "monthly" },
-  { path: "/docs/api/",            priority: 0.7, changeFrequency: "monthly" },
-  { path: "/docs/architecture/",   priority: 0.7, changeFrequency: "monthly" },
-  { path: "/docs/mcp/",            priority: 0.7, changeFrequency: "monthly" },
-  { path: "/docs/plugins/",        priority: 0.7, changeFrequency: "monthly" },
-  { path: "/docs/sdk/",            priority: 0.7, changeFrequency: "monthly" },
-  { path: "/docs/self-hosting/",   priority: 0.7, changeFrequency: "monthly" },
-  { path: "/docs/troubleshooting/", priority: 0.7, changeFrequency: "monthly" },
-  { path: "/docs/release/",        priority: 0.6, changeFrequency: "weekly" },
-  { path: "/docs/changelog/",      priority: 0.6, changeFrequency: "weekly" },
-]
+const WEEKLY = new Set(["/", "/docs/", "/docs/install/", "/docs/release/", "/docs/changelog/"])
+const PAGE_FILES = ["page.tsx", "page.ts", "page.jsx", "page.mdx"]
+
+function docsRoutes(): string[] {
+  const dir = join(process.cwd(), "app", "docs")
+  const routes = new Set<string>(["/docs/"])
+  if (existsSync(dir)) {
+    for (const name of readdirSync(dir)) {
+      const sub = join(dir, name)
+      if (!statSync(sub).isDirectory()) continue
+      if (PAGE_FILES.some((f) => existsSync(join(sub, f)))) routes.add(`/docs/${name}/`)
+    }
+  }
+  return [...routes].sort()
+}
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date()
-  return ROUTES.map(({ path, priority, changeFrequency }) => ({
+  const paths = ["/", ...docsRoutes()]
+  return paths.map((path) => ({
     url: `${HOST}${path}`,
     lastModified: now,
-    changeFrequency,
-    priority,
+    changeFrequency: WEEKLY.has(path) ? "weekly" : "monthly",
+    priority: PRIORITY[path] ?? (path.startsWith("/docs/") ? 0.6 : 0.5),
   }))
 }

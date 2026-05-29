@@ -90,6 +90,99 @@ function wrapSSE(res: Response, ms: number, ctl: AbortController) {
   })
 }
 
+// Connection-phase failures — stale keep-alive sockets, transient TCP resets, or a
+// provider load balancer dropping a connection during the handshake — surface from
+// Bun's fetch as an error *before* any response is returned. The AI SDK wraps them as a
+// retryable `Cannot connect to API: The socket connection was closed unexpectedly`
+// APICallError, which the outer SessionRetry policy recovers — but only after a visible
+// multi-second backoff, so the user sees the turn "fail a few times then work". z.ai's
+// coding endpoints are especially prone to this. Retrying immediately with a fresh
+// connection makes the common case transparent. Only safe-to-retry connection errors
+// qualify — never user cancellations or elapsed timeout budgets.
+const TRANSIENT_CONNECT_CODES = new Set([
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "ECONNABORTED",
+  "EPIPE",
+  "ETIMEDOUT",
+  "ENETUNREACH",
+  "ENETDOWN",
+  "EHOSTUNREACH",
+  "EAI_AGAIN",
+  "UND_ERR_SOCKET",
+  "UND_ERR_CONNECT_TIMEOUT",
+])
+const TRANSIENT_CONNECT_MESSAGES = [
+  "socket connection was closed",
+  "other side closed",
+  "connection closed",
+  "connection reset",
+  "connection refused",
+  "fetch failed",
+  "failed to fetch",
+  "network error",
+  "terminated",
+]
+export function isTransientConnectionError(e: unknown, depth = 0): boolean {
+  if (!e || typeof e !== "object" || depth > 5) return false
+  // Never retry a user cancellation or an elapsed timeout budget.
+  const name = (e as { name?: string }).name
+  if (name === "AbortError" || name === "TimeoutError") return false
+  const code = (e as { code?: string }).code
+  if (typeof code === "string" && TRANSIENT_CONNECT_CODES.has(code)) return true
+  const message = (e as { message?: string }).message
+  if (typeof message === "string") {
+    const lower = message.toLowerCase()
+    if (TRANSIENT_CONNECT_MESSAGES.some((m) => lower.includes(m))) return true
+  }
+  // Bun/undici nest the underlying socket error on `.cause`; AggregateError on `.errors`.
+  const cause = (e as { cause?: unknown }).cause
+  if (cause && cause !== e && isTransientConnectionError(cause, depth + 1)) return true
+  const errors = (e as { errors?: unknown }).errors
+  if (Array.isArray(errors) && errors.some((inner) => isTransientConnectionError(inner, depth + 1))) return true
+  return false
+}
+
+/**
+ * Run `doFetch` and transparently retry connection-phase failures (see
+ * {@link isTransientConnectionError}) with a fresh connection and brief escalating
+ * backoff. Only the initial fetch() throw is retried here — once a Response is
+ * returned, mid-stream failures are the consumer's (and the outer retry policy's)
+ * concern. Aborts are never retried.
+ */
+export async function fetchWithConnectRetry(
+  doFetch: () => Promise<Response>,
+  opts: {
+    maxRetries?: number
+    signal?: AbortSignal
+    onRetry?: (attempt: number, error: unknown) => void
+    sleepMs?: (attempt: number) => number
+  } = {},
+): Promise<Response> {
+  const maxRetries = opts.maxRetries ?? 2
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await doFetch()
+    } catch (e) {
+      if (attempt >= maxRetries || opts.signal?.aborted || !isTransientConnectionError(e)) throw e
+      opts.onRetry?.(attempt + 1, e)
+      const ms = opts.sleepMs ? opts.sleepMs(attempt) : 250 * (attempt + 1)
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, ms)
+        opts.signal?.addEventListener(
+          "abort",
+          () => {
+            clearTimeout(timer)
+            resolve()
+          },
+          { once: true },
+        )
+      })
+      if (opts.signal?.aborted) throw e
+    }
+  }
+}
+
 function googleVertexAnthropicBaseURL(project: string | undefined, location: string | undefined) {
   if (!project) return
   if (location !== "eu" && location !== "us") return
@@ -886,6 +979,10 @@ const ProviderCost = Schema.Struct({
   cache: ProviderCacheCost,
   experimentalOver200K: Schema.optional(
     Schema.Struct({
+      // Token count above which this surcharge applies. models.dev now specifies a
+      // per-model breakpoint (e.g. 272k for GPT-5.5); optional + defaulted to 200_000
+      // for legacy `context_over_200k` entries that predate the `tiers` field.
+      threshold: Schema.optional(Schema.Number),
       input: Schema.Number,
       output: Schema.Number,
       cache: ProviderCacheCost,
@@ -999,8 +1096,24 @@ function cost(c: ModelsDev.Model["cost"]): Model["cost"] {
       write: c?.cache_write ?? 0,
     },
   }
-  if (c?.context_over_200k) {
+  // Prefer the generalized `tiers` breakpoint (e.g. GPT-5.5 surcharges above 272k,
+  // not 200k). Fall back to the legacy fixed-200k `context_over_200k` field.
+  const contextTier = c?.tiers
+    ?.filter((t) => t.tier.type === "context")
+    .sort((a, b) => a.tier.size - b.tier.size)[0]
+  if (contextTier) {
     result.experimentalOver200K = {
+      threshold: contextTier.tier.size,
+      cache: {
+        read: contextTier.cache_read ?? 0,
+        write: contextTier.cache_write ?? 0,
+      },
+      input: contextTier.input,
+      output: contextTier.output,
+    }
+  } else if (c?.context_over_200k) {
+    result.experimentalOver200K = {
+      threshold: 200_000,
       cache: {
         read: c.context_over_200k.cache_read ?? 0,
         write: c.context_over_200k.cache_write ?? 0,
@@ -1058,6 +1171,9 @@ function fromModelsDevModel(provider: ModelsDev.Provider, model: ModelsDev.Model
   }
 
   if (model.id === "gpt-5.3-codex-spark") {
+    // models.dev incorrectly advertises image/pdf input for this model. Per OpenAI it
+    // is text-only ("currently text-only at a 128k context window", introducing-gpt-5-3-codex-spark),
+    // so strip the vision capabilities to avoid sending attachments the API rejects.
     base.capabilities.attachment = false
     base.capabilities.input.image = false
     base.capabilities.input.pdf = false
@@ -1536,11 +1652,28 @@ const layer: Layer.Layer<
             }
           }
 
-          const res = await fetchFn(input, {
-            ...opts,
-            // @ts-ignore see here: https://github.com/oven-sh/bun/issues/16682
-            timeout: false,
-          })
+          // Transparently retry connection-phase drops with a fresh connection so a single
+          // stale/reset socket doesn't surface as a user-visible "Cannot connect to API"
+          // failure + multi-second SessionRetry backoff. Only the initial fetch() throw is
+          // retried; mid-stream failures fall through to the outer retry policy. The
+          // Idempotency-Key header guards against duplicate turns on a retried request.
+          const res = await fetchWithConnectRetry(
+            () =>
+              fetchFn(input, {
+                ...opts,
+                // @ts-ignore see here: https://github.com/oven-sh/bun/issues/16682
+                timeout: false,
+              }),
+            {
+              signal: opts.signal ?? undefined,
+              onRetry: (attempt, error) =>
+                log.warn("transient connection error, retrying with fresh connection", {
+                  providerID: model.providerID,
+                  attempt,
+                  error: error instanceof Error ? error.message : String(error),
+                }),
+            },
+          )
 
           if (!chunkAbortCtl) return res
           return wrapSSE(res, chunkTimeout, chunkAbortCtl)

@@ -1,4 +1,3 @@
-import { useNavigate } from "@solidjs/router"
 import { Button } from "@codeplane-ai/ui/button"
 import { useDialog } from "@codeplane-ai/ui/context/dialog"
 import { Dialog } from "@codeplane-ai/ui/dialog"
@@ -53,7 +52,6 @@ export function McpSettings(props: { layout?: "dialog" | "page" } = {}) {
   const globalSync = useGlobalSync()
   const globalSDK = useGlobalSDK()
   const dialog = useDialog()
-  const navigate = useNavigate()
   const page = () => props.layout === "page"
 
   const [statuses, statusActions] = createResource<Record<string, McpStatus>>(async () => {
@@ -143,9 +141,6 @@ export function McpSettings(props: { layout?: "dialog" | "page" } = {}) {
           </div>
         </Show>
         <div class="flex items-center gap-2">
-          <Button variant="secondary" size="large" icon="shield" onClick={() => navigate("/settings/secrets")}>
-            {language.t("secrets.page.title")}
-          </Button>
           <Button variant="primary" size="large" icon="plus-small" onClick={() => openEditor()}>
             {language.t("mcp.page.add")}
           </Button>

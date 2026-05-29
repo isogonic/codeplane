@@ -560,8 +560,18 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
     const tools: Interface["tools"] = Effect.fn("ToolRegistry.tools")(function* (input) {
       const filtered = (yield* splitAvailability(input)).tools
 
+      // Let plugins gate which tools the model can see this turn (e.g. read-only
+      // mode, per-agent restrictions). Plugins mutate the array of tool IDs.
+      const listed = yield* plugin.trigger(
+        "tool.list",
+        { agent: input.agent.name },
+        { tools: filtered.map((tool) => tool.id) },
+      )
+      const allowed = new Set(listed.tools)
+      const gated = filtered.filter((tool) => allowed.has(tool.id))
+
       return yield* Effect.forEach(
-        filtered,
+        gated,
         Effect.fnUntraced(function* (tool: Tool.Def) {
           using _ = log.time(tool.id)
           const output = {

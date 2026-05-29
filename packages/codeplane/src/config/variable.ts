@@ -65,24 +65,13 @@ async function resolveFileToken(input: ParseSource, token: string, missing: "err
 
 async function resolveSecretToken(input: ParseSource, token: string, missing: "error" | "empty") {
   const name = token.replace(/^\{secret:/, "").replace(/\}$/, "")
-  const resolvedPath = ConfigSecret.filepath(name)
-  return (
-    await Filesystem.readText(resolvedPath).catch((error: NodeJS.ErrnoException) => {
-      if (missing === "empty") return ""
-
-      const errMsg = `bad secret reference: "${token}"`
-      if (error.code === "ENOENT") {
-        throw new InvalidError(
-          {
-            path: source(input),
-            message: errMsg + ` ${resolvedPath} does not exist`,
-          },
-          { cause: error },
-        )
-      }
-      throw new InvalidError({ path: source(input), message: errMsg }, { cause: error })
-    })
-  ).trim()
+  const value = await ConfigSecret.read(name)
+  if (value !== undefined) return value
+  if (missing === "empty") return ""
+  throw new InvalidError({
+    path: source(input),
+    message: `bad secret reference: "${token}" is not defined in ${ConfigSecret.filepath()}`,
+  })
 }
 
 export async function resolveString(

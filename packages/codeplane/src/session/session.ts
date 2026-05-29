@@ -390,7 +390,8 @@ export const getUsage = (input: { model: Provider.Model; usage: LanguageModelUsa
   }
 
   const costInfo =
-    input.model.cost?.experimentalOver200K && tokens.input + tokens.cache.read > 200_000
+    input.model.cost?.experimentalOver200K &&
+    tokens.input + tokens.cache.read > (input.model.cost.experimentalOver200K.threshold ?? 200_000)
       ? input.model.cost.experimentalOver200K
       : input.model.cost
   return {

@@ -77,6 +77,41 @@ export type CronRun = {
   }
 }
 
+export type EventServerConnected = {
+  type: "server.connected"
+  properties: {
+    [key: string]: unknown
+  }
+}
+
+export type EventServerDropped = {
+  type: "server.dropped"
+  properties: {
+    [key: string]: unknown
+  }
+}
+
+export type EventServerHeartbeat = {
+  type: "server.heartbeat"
+  properties: {
+    [key: string]: unknown
+  }
+}
+
+export type EventServerResumeFailed = {
+  type: "server.resume_failed"
+  properties: {
+    lastEventID?: number
+  }
+}
+
+export type EventGlobalDisposed = {
+  type: "global.disposed"
+  properties: {
+    [key: string]: unknown
+  }
+}
+
 export type EventInstallationUpdated = {
   type: "installation.updated"
   properties: {
@@ -158,41 +193,6 @@ export type Project = {
 export type EventProjectUpdated = {
   type: "project.updated"
   properties: Project
-}
-
-export type EventServerConnected = {
-  type: "server.connected"
-  properties: {
-    [key: string]: unknown
-  }
-}
-
-export type EventServerDropped = {
-  type: "server.dropped"
-  properties: {
-    [key: string]: unknown
-  }
-}
-
-export type EventServerHeartbeat = {
-  type: "server.heartbeat"
-  properties: {
-    [key: string]: unknown
-  }
-}
-
-export type EventServerResumeFailed = {
-  type: "server.resume_failed"
-  properties: {
-    lastEventID?: number
-  }
-}
-
-export type EventGlobalDisposed = {
-  type: "global.disposed"
-  properties: {
-    [key: string]: unknown
-  }
 }
 
 export type EventServerInstanceDisposed = {
@@ -1838,14 +1838,14 @@ export type GlobalEvent = {
   project?: string
   workspace?: string
   payload:
-    | EventInstallationUpdated
-    | EventInstallationUpdateAvailable
-    | EventProjectUpdated
     | EventServerConnected
     | EventServerDropped
     | EventServerHeartbeat
     | EventServerResumeFailed
     | EventGlobalDisposed
+    | EventInstallationUpdated
+    | EventInstallationUpdateAvailable
+    | EventProjectUpdated
     | EventServerInstanceDisposed
     | EventLspClientDiagnostics
     | EventLspUpdated
@@ -2553,12 +2553,6 @@ export type Config = {
   }
 }
 
-export type ConfigSecretEntry = {
-  name: string
-  placeholder: string
-  updated_at: number
-}
-
 export type InternalServerError = {
   name: "UnknownError"
   data: {
@@ -2644,6 +2638,7 @@ export type Model = {
       write: number
     }
     experimentalOver200K?: {
+      threshold?: number
       input: number
       output: number
       cache: {
@@ -2912,14 +2907,14 @@ export type File = {
 }
 
 export type Event =
-  | EventInstallationUpdated
-  | EventInstallationUpdateAvailable
-  | EventProjectUpdated
   | EventServerConnected
   | EventServerDropped
   | EventServerHeartbeat
   | EventServerResumeFailed
   | EventGlobalDisposed
+  | EventInstallationUpdated
+  | EventInstallationUpdateAvailable
+  | EventProjectUpdated
   | EventServerInstanceDisposed
   | EventLspClientDiagnostics
   | EventLspUpdated
@@ -3517,71 +3512,6 @@ export type GlobalConfigUpdateResponses = {
 }
 
 export type GlobalConfigUpdateResponse = GlobalConfigUpdateResponses[keyof GlobalConfigUpdateResponses]
-
-export type GlobalSecretsListData = {
-  body?: never
-  path?: never
-  query?: never
-  url: "/global/secrets"
-}
-
-export type GlobalSecretsListResponses = {
-  /**
-   * Secret list
-   */
-  200: Array<ConfigSecretEntry>
-}
-
-export type GlobalSecretsListResponse = GlobalSecretsListResponses[keyof GlobalSecretsListResponses]
-
-export type GlobalSecretsRemoveData = {
-  body?: never
-  path: {
-    name: string
-  }
-  query?: never
-  url: "/global/secrets/{name}"
-}
-
-export type GlobalSecretsRemoveResponses = {
-  /**
-   * Secret delete result
-   */
-  200: {
-    success: boolean
-  }
-}
-
-export type GlobalSecretsRemoveResponse = GlobalSecretsRemoveResponses[keyof GlobalSecretsRemoveResponses]
-
-export type GlobalSecretsSetData = {
-  body?: {
-    value: string
-  }
-  path: {
-    name: string
-  }
-  query?: never
-  url: "/global/secrets/{name}"
-}
-
-export type GlobalSecretsSetErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-}
-
-export type GlobalSecretsSetError = GlobalSecretsSetErrors[keyof GlobalSecretsSetErrors]
-
-export type GlobalSecretsSetResponses = {
-  /**
-   * Stored secret metadata
-   */
-  200: ConfigSecretEntry
-}
-
-export type GlobalSecretsSetResponse = GlobalSecretsSetResponses[keyof GlobalSecretsSetResponses]
 
 export type GlobalDisposeData = {
   body?: never

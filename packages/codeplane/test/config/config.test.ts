@@ -92,19 +92,19 @@ const clear = (wait = false) =>
   Effect.runPromise(Config.Service.use((svc) => svc.invalidate(wait)).pipe(Effect.scoped, Effect.provide(layer)))
 const listDirs = () =>
   Effect.runPromise(Config.Service.use((svc) => svc.directories()).pipe(Effect.scoped, Effect.provide(layer)))
-const listSecrets = () =>
-  Effect.runPromise(ConfigSecret.Service.use((svc) => svc.list()).pipe(Effect.scoped, Effect.provide(ConfigSecret.defaultLayer)))
+const writeSecrets = (record: Record<string, string>) =>
+  Filesystem.write(ConfigSecret.filepath(), JSON.stringify(record, null, 2))
 // Get managed config directory from environment (set in preload.ts)
 const managedConfigDir = process.env.CODEPLANE_TEST_MANAGED_CONFIG_DIR!
 
 beforeEach(async () => {
-  await fs.rm(ConfigSecret.dirpath(), { force: true, recursive: true }).catch(() => {})
+  await fs.rm(ConfigSecret.filepath(), { force: true }).catch(() => {})
   await clear(true)
 })
 
 afterEach(async () => {
   await fs.rm(managedConfigDir, { force: true, recursive: true }).catch(() => {})
-  await fs.rm(ConfigSecret.dirpath(), { force: true, recursive: true }).catch(() => {})
+  await fs.rm(ConfigSecret.filepath(), { force: true }).catch(() => {})
   await clear(true)
 })
 
@@ -501,8 +501,7 @@ test("handles file inclusion with replacement tokens", async () => {
 
 test("handles secret substitution while preserving the raw placeholder", async () => {
   const secretName = "github-token"
-  await fs.mkdir(ConfigSecret.dirpath(), { recursive: true })
-  await Filesystem.write(ConfigSecret.filepath(secretName), "ghp_test_secret")
+  await writeSecrets({ [secretName]: "ghp_test_secret" })
 
   await using tmp = await tmpdir({
     init: async (dir) => {
@@ -561,8 +560,7 @@ test("missing secret substitution does not block config loading", async () => {
 
 test("substitute resolves secret-only config text", async () => {
   const secretName = "substitute-token"
-  await fs.mkdir(ConfigSecret.dirpath(), { recursive: true })
-  await Filesystem.write(ConfigSecret.filepath(secretName), "secret-value")
+  await writeSecrets({ [secretName]: "secret-value" })
 
   await using tmp = await tmpdir()
   const text = await ConfigVariable.substitute({
@@ -574,7 +572,7 @@ test("substitute resolves secret-only config text", async () => {
   expect(text).toBe('{"token":"secret-value"}')
 })
 
-test("update writes secret-like values to data/secrets and keeps placeholders in config", async () => {
+test("update writes secret-like values to secrets.jsonc and keeps placeholders in config", async () => {
   const secretName = "mcp-github-headers-authorization"
   const placeholder = ConfigSecret.placeholder(secretName)
 
@@ -597,7 +595,7 @@ test("update writes secret-like values to data/secrets and keeps placeholders in
       const writtenConfig = await Filesystem.readJson<any>(path.join(tmp.path, "config.json"))
       expect(writtenConfig.mcp.github.headers.Authorization).toBe(placeholder)
       expect(JSON.stringify(writtenConfig)).not.toContain("ghp_secret_value")
-      expect(await Filesystem.readText(ConfigSecret.filepath(secretName))).toBe("Bearer ghp_secret_value")
+      expect(await ConfigSecret.read(secretName)).toBe("Bearer ghp_secret_value")
     },
   })
 })
@@ -624,71 +622,13 @@ test("updateGlobal secretizes plaintext values and global raw config keeps place
     } as Config.Info)
 
     expect(next.provider?.["openai"]?.options?.apiKey).toBe(placeholder)
-    expect(await Filesystem.readText(ConfigSecret.filepath(secretName))).toBe("sk-live-secret")
+    expect(await ConfigSecret.read(secretName)).toBe("sk-live-secret")
     expect(await Filesystem.readText(path.join(tmp.path, "codeplane.jsonc"))).toContain(placeholder)
 
     const raw = await loadGlobalRaw()
     const resolved = await loadGlobal()
     expect(raw.provider?.["openai"]?.options?.apiKey).toBe(placeholder)
     expect(resolved.provider?.["openai"]?.options?.apiKey).toBe("sk-live-secret")
-  } finally {
-    ;(Global.Path as { config: string }).config = previousConfig
-    await clear(true)
-  }
-})
-
-test("removeGlobalSecretReferences scrubs deleted placeholders from global config", async () => {
-  await using tmp = await tmpdir()
-  const previousConfig = Global.Path.config
-  const secretName = "ordis-api-key"
-  const placeholder = ConfigSecret.placeholder(secretName)
-
-  ;(Global.Path as { config: string }).config = tmp.path
-  await clear(true)
-
-  try {
-    await Filesystem.write(
-      path.join(tmp.path, "codeplane.jsonc"),
-      JSON.stringify(
-        {
-          provider: {
-            ordis: {
-              npm: "@ai-sdk/openai-compatible",
-              options: {
-                baseURL: "https://ordis.example/v1",
-                apiKey: placeholder,
-              },
-            },
-          },
-          mcp: {
-            ordis: {
-              type: "remote",
-              url: "https://ordis.example/mcp",
-              headers: {
-                Authorization: `Bearer ${placeholder}`,
-              },
-            },
-          },
-        },
-        null,
-        2,
-      ),
-    )
-
-    const removed = await Effect.runPromise(
-      Config.Service.use((svc) => svc.removeGlobalSecretReferences(secretName)).pipe(Effect.scoped, Effect.provide(layer)),
-    )
-
-    const written = await Filesystem.readText(path.join(tmp.path, "codeplane.jsonc"))
-    const raw = await loadGlobalRaw()
-    const resolved = await loadGlobal()
-
-    expect(removed).toBe(2)
-    expect(written).not.toContain(placeholder)
-    expect(raw.provider?.["ordis"]?.options?.baseURL).toBe("https://ordis.example/v1")
-    expect(raw.provider?.["ordis"]?.options?.apiKey).toBeUndefined()
-    expect(raw.mcp?.["ordis"]?.headers?.Authorization).toBeUndefined()
-    expect(resolved.provider?.["ordis"]?.options?.baseURL).toBe("https://ordis.example/v1")
   } finally {
     ;(Global.Path as { config: string }).config = previousConfig
     await clear(true)
@@ -732,16 +672,6 @@ test("updateGlobal preserves existing placeholder-based auth strings", async () 
     ;(Global.Path as { config: string }).config = previousConfig
     await clear(true)
   }
-})
-
-test("secret listing ignores managed markdown files in data/secrets", async () => {
-  await fs.mkdir(ConfigSecret.dirpath(), { recursive: true })
-  await Filesystem.write(path.join(ConfigSecret.dirpath(), "AGENTS.md"), "# docs")
-  await Filesystem.write(path.join(ConfigSecret.dirpath(), "README.md"), "# docs")
-  await Filesystem.write(ConfigSecret.filepath("github-token"), "ghp_test_secret")
-
-  const secrets = await listSecrets()
-  expect(secrets.map((item) => item.name)).toEqual(["github-token"])
 })
 
 test("validates config schema and throws on invalid fields", async () => {

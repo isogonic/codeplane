@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/package.json",
   "name": "@codeplane-ai/desktop",
   "private": true,
-  "version": "30.0.2",
+  "version": "31.0.0",
   "productName": "Codeplane",
   "description": "Codeplane Desktop connects to remote Codeplane servers and caches the matching UI locally for fast native use.",
   "license": "MIT",
@@ -210,6 +210,24 @@
         }
       },
       "artifactName": "codeplane-desktop-${version}-linux-${arch}.${ext}"
+    },
+    "deb": {
+      "afterInstall": "build/after-install.sh",
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0",
+        "libdrm2",
+        "libgbm1",
+        "libxcb-dri3-0",
+        "libasound2"
+      ]
     },
     "nsis": {
       "oneClick": false,

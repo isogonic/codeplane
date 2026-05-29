@@ -89,12 +89,12 @@ The root scripts separate the web app frontend from the local Codeplane server:
 # Development (from project root)
 bun dev:server           # Start server + open web interface
 bun dev:web              # Start the Vite web app
-bun --cwd packages/codeplane dev serve --port 4096
+bun --cwd packages/codeplane dev serve --instance dev --port 4096
 
 # Production
 codeplane --help          # Show all available commands
-codeplane serve --port 4096
-codeplane web --port 4096
+codeplane serve --instance dev --port 4096
+codeplane web --instance dev --port 4096
 codeplane <directory>     # Start server + open web interface for a directory
 ```
 
@@ -103,13 +103,13 @@ codeplane <directory>     # Start server + open web interface for a directory
 To start the Codeplane headless API server:
 
 ```bash
-bun --cwd packages/codeplane dev serve
+bun --cwd packages/codeplane dev serve --instance dev
 ```
 
 The CLI default port is `0`, which lets the OS choose a free port. Pass an explicit port when you need a stable URL:
 
 ```bash
-bun --cwd packages/codeplane dev serve --port 8080
+bun --cwd packages/codeplane dev serve --instance dev --port 8080
 ```
 
 ### Running the Web App
@@ -140,7 +140,7 @@ your debugger via that URL. Other methods can result in breakpoints being mapped
 Caveats:
 
 - If breakpoints do not attach through the root scripts, debug the server directly:
-  - `bun run --inspect=ws://localhost:6499/ --cwd packages/codeplane ./src/index.ts serve --port 4096`
+  - `bun run --inspect=ws://localhost:6499/ --cwd packages/codeplane ./src/index.ts serve --instance dev --port 4096`
   - Then run `bun run dev:web` and connect the web app to that server.
 
 Other tips and tricks:

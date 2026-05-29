@@ -1,104 +1,116 @@
 /*
- * Three stat panels with ASCII-art-flavoured SVG illustrations sat
- * above their caption — the opencode.ai layout we're imitating uses
- * a thin line-graph, a dot grid, and a bar chart. The numbers here are
- * tuned to the fork's reality (small, honest, doesn't pretend to be
- * upstream's reach).
+ * Three stat cards, each pairing a big number with a small, *meaningful*
+ * diagram (not the old random scribbles):
+ *   - Surfaces  → a hub-and-spoke: one server, five surfaces.
+ *   - Providers → a tidy 15×5 dot matrix (= 75 dots, "75+").
+ *   - Telemetry → a flat line pinned at zero.
+ * Cards use the app's warm raised surface + soft rounding.
  */
 export function StatsBoard() {
   return (
-    <div className="grid grid-cols-1 gap-12 md:grid-cols-3">
-      <Stat fig={1} numeric="5" label="Surfaces — TUI, desktop, web, iOS, server">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <StatCard value="5" label="Surfaces — terminal, desktop, web, iOS, and the server itself">
         <FigSurfaces />
-      </Stat>
-      <Stat fig={2} numeric="75+" label="LLM providers via OpenAI-compatible config">
-        <FigDots />
-      </Stat>
-      <Stat fig={3} numeric="0" label="Bytes of telemetry sent home">
-        <FigBars />
-      </Stat>
+      </StatCard>
+      <StatCard value="75+" label="LLM providers via OpenAI-compatible config">
+        <FigProviders />
+      </StatCard>
+      <StatCard value="0" label="Bytes of telemetry ever sent home">
+        <FigTelemetry />
+      </StatCard>
     </div>
   )
 }
 
-function Stat({
-  fig,
-  numeric,
+function StatCard({
+  value,
   label,
   children,
 }: {
-  fig: number
-  numeric: string
+  value: string
   label: string
   children: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col items-center text-center">
-      <div className="h-[220px] w-full flex items-end justify-center text-ink-soft">
-        {children}
+    <div className="flex flex-col rounded-[var(--radius-xl)] border border-line bg-surface-2 p-6">
+      <div className="h-24 w-full text-ink-soft">{children}</div>
+      <div className="mt-5 text-[clamp(30px,3.4vw,40px)] font-semibold leading-none tracking-[-0.02em] text-ink">
+        {value}
       </div>
-      <p className="mt-6 text-[13px] text-ink-2">
-        <span className="text-ink-muted">Fig. {fig}.</span>{" "}
-        <span className="font-bold text-ink">{numeric}</span> {label}
-      </p>
+      <p className="mt-2 text-[13px] leading-snug text-ink-muted">{label}</p>
     </div>
   )
 }
 
-/* Stairs / line-rise illustration. */
+/* One server (filled centre node) wired to five surfaces. */
 function FigSurfaces() {
+  const cx = 100
+  const cy = 44
+  const r = 30
+  const nodes = [-90, -18, 54, 126, 198].map((deg) => {
+    const a = (deg * Math.PI) / 180
+    return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }
+  })
   return (
-    <svg viewBox="0 0 240 200" width="240" height="200" aria-hidden="true">
-      <g stroke="currentColor" strokeWidth="1" fill="none">
-        {/* stairs of horizontal segments climbing left-to-right */}
-        {Array.from({ length: 24 }).map((_, i) => {
-          const x1 = 8 + i * 9
-          const x2 = x1 + 14
-          const y = 188 - (i + 1) * 6
-          return <line key={i} x1={x1} y1={y} x2={x2} y2={y} />
-        })}
-        {/* connecting curve */}
-        <path d="M8 188 Q 120 60 232 30" strokeOpacity="0.35" />
+    <svg viewBox="0 0 200 96" className="h-full w-full" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <g stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        {nodes.map((n, i) => (
+          <line key={i} x1={cx} y1={cy} x2={n.x} y2={n.y} strokeOpacity="0.55" />
+        ))}
       </g>
+      {nodes.map((n, i) => (
+        <circle key={i} cx={n.x} cy={n.y} r="5" fill="var(--surface-2)" stroke="currentColor" strokeWidth="1.5" />
+      ))}
+      <circle cx={cx} cy={cy} r="7" fill="var(--ink)" />
     </svg>
   )
 }
 
-/* Dot grid illustration. */
-function FigDots() {
-  const cols = 22
-  const rows = 14
+/* A tidy 15×5 matrix = 75 dots, with a handful lit to read as "and more". */
+function FigProviders() {
+  const cols = 15
+  const rows = 5
+  const lit = new Set(["0-14", "1-13", "2-14", "3-12", "4-13", "4-14", "0-0", "2-2"])
+  const dots: { x: number; y: number; on: boolean }[] = []
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      dots.push({
+        x: 14 + (c * (200 - 28)) / (cols - 1),
+        y: 16 + (r * (80 - 16)) / (rows - 1),
+        on: lit.has(`${r}-${c}`),
+      })
+    }
+  }
   return (
-    <svg viewBox="0 0 240 200" width="240" height="200" aria-hidden="true">
-      <g fill="currentColor">
-        {Array.from({ length: rows }).map((_, r) =>
-          Array.from({ length: cols }).map((_, c) => {
-            const x = 12 + c * 10
-            const y = 14 + r * 12
-            // sparse pattern — drop ~30% to mimic the opencode dot field
-            const seed = (r * 31 + c * 17) % 100
-            const skip = seed < 30
-            const size = seed < 12 ? 3 : 2
-            if (skip) return null
-            return <rect key={`${r}-${c}`} x={x} y={y} width={size} height={size} />
-          }),
-        )}
-      </g>
+    <svg viewBox="0 0 200 96" className="h-full w-full" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      {dots.map((d, i) => (
+        <circle
+          key={i}
+          cx={d.x}
+          cy={d.y}
+          r={d.on ? 2.6 : 2.1}
+          fill={d.on ? "var(--ink)" : "currentColor"}
+          fillOpacity={d.on ? 1 : 0.5}
+        />
+      ))}
     </svg>
   )
 }
 
-/* Bar-chart illustration. */
-function FigBars() {
-  const heights = [60, 90, 70, 130, 100, 150, 110, 160, 140, 170, 120, 180, 100, 90, 70, 80]
+/* A flat line pinned at zero against faint gridlines — nothing leaves. */
+function FigTelemetry() {
+  const gx = [40, 80, 120, 160]
+  const baseY = 62
   return (
-    <svg viewBox="0 0 240 200" width="240" height="200" aria-hidden="true">
-      <g stroke="currentColor" strokeWidth="2">
-        {heights.map((h, i) => {
-          const x = 16 + i * 13
-          return <line key={i} x1={x} y1={190} x2={x} y2={190 - h} />
-        })}
+    <svg viewBox="0 0 200 96" className="h-full w-full" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <g stroke="currentColor" strokeWidth="1" strokeOpacity="0.25">
+        {gx.map((x) => (
+          <line key={x} x1={x} y1="14" x2={x} y2={baseY} />
+        ))}
+        <line x1="14" y1={baseY} x2="186" y2={baseY} strokeOpacity="0.35" />
       </g>
+      <line x1="16" y1={baseY} x2="184" y2={baseY} stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="16" cy={baseY} r="3" fill="var(--ink)" />
     </svg>
   )
 }

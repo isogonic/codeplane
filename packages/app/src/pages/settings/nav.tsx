@@ -10,7 +10,6 @@ export type SettingsSection =
   | "modes"
   | "models"
   | "mcp"
-  | "secrets"
   | "plugins"
   | "skills"
 
@@ -65,13 +64,6 @@ export const settingsSections = [
     groupKey: "settings.section.extensions",
   },
   {
-    value: "secrets",
-    icon: "shield",
-    titleKey: "secrets.page.title",
-    descriptionKey: "settings.tab.secrets.description",
-    groupKey: "settings.section.extensions",
-  },
-  {
     value: "skills",
     icon: "checklist",
     titleKey: "skills.page.title",
@@ -110,7 +102,6 @@ export function normalizeSettingsSection(value: string | undefined): SettingsSec
     value === "modes" ||
     value === "models" ||
     value === "mcp" ||
-    value === "secrets" ||
     value === "plugins" ||
     value === "skills"
   )

@@ -1,4 +1,5 @@
-import { createMemo, For, Show } from "solid-js"
+import { createMemo, createSignal, For, Show } from "solid-js"
+import { createResizeObserver } from "@solid-primitives/resize-observer"
 import { useLanguage } from "@/context/language"
 import type { SpeedMetrics, TurnSpeed } from "./session-context-metrics"
 import { createSessionContextFormatter } from "./session-context-format"
@@ -28,9 +29,9 @@ function buildSparkDomain(turns: TurnSpeed[]) {
   }
 }
 
-export function buildSparkPath(turns: TurnSpeed[]) {
+export function buildSparkPath(turns: TurnSpeed[], width = SPARK_WIDTH) {
   if (turns.length === 0) return { line: "", area: "", points: [] as { x: number; y: number; turn: TurnSpeed }[] }
-  const innerWidth = SPARK_WIDTH - SPARK_PADDING_X * 2
+  const innerWidth = Math.max(width - SPARK_PADDING_X * 2, 1)
   const innerHeight = SPARK_HEIGHT - SPARK_PADDING_Y * 2
   const domain = buildSparkDomain(turns)
   const domainSpan = Math.max(domain.max - domain.min, 1)
@@ -54,8 +55,20 @@ export function SessionTpsMeter(props: { speed: SpeedMetrics; label: string }) {
   const language = useLanguage()
   const formatter = createMemo(() => createSessionContextFormatter(language.intl()))
 
+  // Track the sparkline's rendered pixel width so the viewBox can match it 1:1.
+  // The SVG only mounts once there are >1 turns, so the ref is a signal — that
+  // keeps the observer target reactive and picks the element up whenever it
+  // appears (e.g. a live session crossing from 1 to 2 turns).
+  const [sparkEl, setSparkEl] = createSignal<SVGSVGElement>()
+  const [sparkWidth, setSparkWidth] = createSignal(SPARK_WIDTH)
+  if (typeof ResizeObserver === "function") {
+    createResizeObserver(sparkEl, ({ width }) => {
+      if (width > 0) setSparkWidth(width)
+    })
+  }
+
   const headline = createMemo(() => props.speed.recent ?? props.speed.lifetime)
-  const spark = createMemo(() => buildSparkPath(props.speed.turns))
+  const spark = createMemo(() => buildSparkPath(props.speed.turns, sparkWidth()))
   const lastIndex = createMemo(() => props.speed.turns.length - 1)
 
   const tpsTooltip = (turn: TurnSpeed, index: number) =>
@@ -84,7 +97,8 @@ export function SessionTpsMeter(props: { speed: SpeedMetrics; label: string }) {
         </div>
         <Show when={props.speed.turns.length > 1}>
           <svg
-            viewBox={`0 0 ${SPARK_WIDTH} ${SPARK_HEIGHT}`}
+            ref={setSparkEl}
+            viewBox={`0 0 ${sparkWidth()} ${SPARK_HEIGHT}`}
             preserveAspectRatio="none"
             class="h-9 min-w-0 flex-1 overflow-visible"
             aria-hidden="true"

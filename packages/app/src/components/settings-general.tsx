@@ -128,12 +128,6 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
   })
   const [openingLogDir, setOpeningLogDir] = createSignal(false)
 
-  const openPermissionsDialog = (tool: "computer") => {
-    dialog.show(() => (
-      <DesktopPermissionsDialog tool={tool} />
-    ))
-  }
-
   const setDesktopTool = (tool: "browser" | "computer", checked: boolean) => {
     // Browser tool has no OS permission gate today — flip immediately.
     if (tool === "browser") {
@@ -379,26 +373,7 @@ export const SettingsGeneral: Component<{ layout?: "dialog" | "page" }> = (props
           </SettingsRow>
           <SettingsRow
             title={language.t("settings.general.row.computerUse.title")}
-            description={
-              <>
-                {language.t("settings.general.row.computerUse.description")}
-                <Show when={platform.systemPermissions}>
-                  <span class="mt-1.5 inline-flex items-center gap-2 align-middle">
-                    <button
-                      type="button"
-                      class="text-11-medium text-text-weak hover:text-text-strong underline-offset-2 hover:underline cursor-pointer"
-                      data-action="settings-computer-use-manage"
-                      onClick={(e: MouseEvent) => {
-                        e.preventDefault()
-                        openPermissionsDialog("computer")
-                      }}
-                    >
-                      {language.t("settings.general.row.computerUse.manage")}
-                    </button>
-                  </span>
-                </Show>
-              </>
-            }
+            description={language.t("settings.general.row.computerUse.description")}
           >
             <div data-action="settings-computer-use">
               <Switch
@@ -1040,7 +1015,7 @@ function DesktopPermissionsDialog(props: {
       class="w-[calc(100vw-2rem)] max-w-[40rem]"
       transition
     >
-      <div class="flex w-full flex-col gap-5 px-5 pb-5">
+      <div class="flex w-full flex-col gap-4 px-5 pb-5">
         <p class="text-14-regular text-text-base leading-relaxed">
           {language.t("settings.general.row.computerUse.permissionsBody", {
             tool: toolLabel(),
@@ -1084,11 +1059,11 @@ function DesktopPermissionsDialog(props: {
           </Button>
         </div>
 
-        <div class="flex flex-col gap-3">
+        <div class="flex flex-col gap-2">
           {permissions().map((p) => (
             <div
               classList={{
-                "flex flex-col gap-3 rounded-lg border px-4 py-4 sm:flex-row sm:items-start sm:justify-between": true,
+                "flex flex-col gap-2 rounded-lg border px-3.5 py-3 sm:flex-row sm:items-start sm:justify-between": true,
                 "border-border-success-base bg-surface-success-weak/40": systemPermissionReady(p),
                 "border-border-warning-base bg-surface-warning-weak/40": systemPermissionNeedsRelaunch(p),
                 "border-border-weak-base": !systemPermissionGranted(p),
@@ -1150,16 +1125,15 @@ function DesktopPermissionsDialog(props: {
           ))}
         </div>
 
-        <div class="flex items-start gap-2 rounded-lg border border-border-warning-base bg-surface-warning-weak/40 px-3 py-2.5">
-          <Icon name="circle-ban-sign" class="h-4 w-4 shrink-0 text-text-on-warning-strong mt-0.5" />
-          <p class="text-12-regular text-text-base leading-relaxed">
+        <Show when={!allReady()}>
+          <p class="text-12-regular text-text-weak leading-relaxed">
             {language.t(
               relaunchRequired()
                 ? "settings.general.row.computerUse.permissionsRelaunchFooter"
                 : "settings.general.row.computerUse.permissionsFooter",
             )}
           </p>
-        </div>
+        </Show>
 
         <div class="flex flex-col-reverse gap-2 border-t border-border-weak-base pt-3 sm:flex-row sm:items-center sm:justify-between">
           <Button variant="ghost" size="normal" onClick={handleClose}>

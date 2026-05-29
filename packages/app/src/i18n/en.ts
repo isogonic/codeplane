@@ -1006,10 +1006,10 @@ export const dict = {
   "settings.general.row.instanceLogs.unavailable": "This instance does not have local logs on this desktop.",
   "settings.general.row.computerUse.permissionsTitle": "Permissions needed for {{ tool }}",
   "settings.general.row.computerUse.permissionsBody":
-    "{{ tool }} requires {{count}} system permissions to control the desktop. Codeplane needs these to move the cursor, click, type, take screenshots, and open apps on your behalf.",
+    "{{ tool }} needs {{count}} system permissions to control this desktop.",
   "settings.general.row.computerUse.permissionGranted": "Ready",
-  "settings.general.row.computerUse.permissionMissing": "Not active — open System Settings or relaunch",
-  "settings.general.row.computerUse.permissionRelaunchRequired": "Turned on — relaunch required",
+  "settings.general.row.computerUse.permissionMissing": "Not active",
+  "settings.general.row.computerUse.permissionRelaunchRequired": "Relaunch required",
   "settings.general.row.computerUse.permissionOpenSettings": "Open Settings",
   "settings.general.row.computerUse.permissionOpening": "Opening…",
   "settings.general.row.computerUse.permissionsFooter":
@@ -1017,7 +1017,6 @@ export const dict = {
   "settings.general.row.computerUse.permissionsRelaunchFooter":
     "The permission is turned on in System Settings, but this running Codeplane process cannot use it yet. Relaunch Codeplane Desktop to apply it.",
   "settings.general.row.computerUse.permissionDone": "Done",
-  "settings.general.row.computerUse.manage": "Manage",
   "settings.general.row.computerUse.statusAllGranted": "All active",
   "settings.general.row.computerUse.statusActivePartial": "{{active}} of {{total}} active",
   "settings.general.row.computerUse.statusPartial": "{{granted}} of {{total}} granted",
@@ -1032,9 +1031,9 @@ export const dict = {
   "settings.general.row.computerUse.relaunchUnavailable.description":
     "Quit and reopen Codeplane Desktop for the new macOS permissions to take effect.",
   "settings.general.row.computerUse.permissionDescription.accessibility":
-    "Required for mouse movement, clicks, typing, keyboard shortcuts, scrolling, and app launch control.",
+    "Move the cursor, click, type, and send keyboard shortcuts.",
   "settings.general.row.computerUse.permissionDescription.screenRecording":
-    "Required for screenshots so the agent can see the desktop before and after each action.",
+    "Take screenshots so the agent can see the desktop.",
   "settings.general.row.computerUse.permissionDescription.generic":
     "Required by macOS before Codeplane can control this desktop.",
 
@@ -1420,18 +1419,4 @@ export const dict = {
   "skills.editor.error.value": "Source is required.",
   "skills.editor.error.url": "URL must start with http:// or https://.",
   "skills.editor.error.duplicate": "That source is already configured.",
-  "settings.tab.secrets.description": "Manage per-instance secrets",
-  "secrets.page.title": "Secrets",
-  "secrets.page.note": "Use {secret:name} in config. Values are stored in data/secrets/.",
-  "secrets.page.add": "Add secret",
-  "secrets.page.empty": "No secrets stored for this instance",
-  "secrets.page.confirm.remove": "Delete secret \"{{name}}\"?",
-  "secrets.editor.title.add": "Add secret",
-  "secrets.editor.title.edit": "Replace secret",
-  "secrets.editor.name": "Secret name",
-  "secrets.editor.name.error": "Enter a secret name.",
-  "secrets.editor.value": "Secret value",
-  "secrets.editor.value.error": "Enter a secret value.",
-  "secrets.toast.saved": "Secret saved",
-  "secrets.toast.removed": "Secret removed",
 }

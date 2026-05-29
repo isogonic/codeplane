@@ -109,10 +109,8 @@ else
         ;;
     esac
 
-    archive_ext=".zip"
-    if [ "$os" = "linux" ]; then
-      archive_ext=".tar.gz"
-    fi
+    # npm tarballs are always .tgz regardless of host OS.
+    archive_ext=".tgz"
 
     is_musl=false
     if [ "$os" = "linux" ]; then
@@ -165,43 +163,47 @@ else
       target="$target-musl"
     fi
 
-    filename="$APP-$target$archive_ext"
-
-
-    if [ "$os" = "linux" ]; then
-        if ! command -v tar >/dev/null 2>&1; then
-             echo -e "${RED}Error: 'tar' is required but not installed.${NC}"
-             exit 1
-        fi
-    else
-        if ! command -v unzip >/dev/null 2>&1; then
-            echo -e "${RED}Error: 'unzip' is required but not installed.${NC}"
-            exit 1
-        fi
+    # tar is required on every platform — the npm registry tarballs are
+    # .tgz (gzipped tar). macOS / Linux / Windows 10+ all ship `tar` by
+    # default, so no platform-specific extractor is needed any more.
+    if ! command -v tar >/dev/null 2>&1; then
+        echo -e "${RED}Error: 'tar' is required but not installed.${NC}"
+        exit 1
     fi
 
+    # The CLI binaries are distributed as platform-specific npm packages
+    # (codeplane-darwin-arm64, codeplane-linux-x64, …). The wrapper
+    # package `codeplane-ai` declares them as optionalDependencies; this
+    # script bypasses Node entirely by fetching the matching platform
+    # tarball directly from the npm registry. The previous GitHub-release
+    # download path was broken for two reasons: (a) the `v<x.y.z>` CLI
+    # release tags don't always get a matching GitHub Release record
+    # (only `-desktop` / `-mobile` tags do), and (b) when they do, the
+    # uploaded assets are .dmg / .AppImage / .exe — not the standalone
+    # CLI .zip the install script expected.
+    npm_pkg="codeplane-$target"
     if [ -z "$requested_version" ]; then
-        url="https://github.com/devinoldenburg/codeplane/releases/latest/download/$filename"
-        specific_version=$(curl -s https://api.github.com/repos/devinoldenburg/codeplane/releases/latest | sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p')
-
-        if [[ $? -ne 0 || -z "$specific_version" ]]; then
-            echo -e "${RED}Failed to fetch version information${NC}"
+        specific_version=$(curl -fsSL "https://registry.npmjs.org/$npm_pkg/latest" 2>/dev/null \
+            | sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' \
+            | head -1)
+        if [[ -z "$specific_version" ]]; then
+            echo -e "${RED}Failed to fetch version from npm registry${NC}"
+            echo -e "${MUTED}Registry: https://registry.npmjs.org/$npm_pkg${NC}"
             exit 1
         fi
     else
-        # Strip leading 'v' if present
-        requested_version="${requested_version#v}"
-        url="https://github.com/devinoldenburg/codeplane/releases/download/v${requested_version}/$filename"
-        specific_version=$requested_version
-
-        # Verify the release exists before downloading
-        http_status=$(curl -sI -o /dev/null -w "%{http_code}" "https://github.com/devinoldenburg/codeplane/releases/tag/v${requested_version}")
+        specific_version="${requested_version#v}"
+        # Verify the requested version exists on npm before downloading.
+        http_status=$(curl -sI -o /dev/null -w "%{http_code}" "https://registry.npmjs.org/$npm_pkg/$specific_version")
         if [ "$http_status" = "404" ]; then
-            echo -e "${RED}Error: Release v${requested_version} not found${NC}"
-            echo -e "${MUTED}Available releases: https://github.com/devinoldenburg/codeplane/releases${NC}"
+            echo -e "${RED}Error: $npm_pkg@$specific_version not published${NC}"
+            echo -e "${MUTED}Available versions: https://www.npmjs.com/package/$npm_pkg${NC}"
             exit 1
         fi
     fi
+
+    filename="$npm_pkg-$specific_version.tgz"
+    url="https://registry.npmjs.org/$npm_pkg/-/$filename"
 fi
 
 print_message() {
@@ -218,6 +220,110 @@ print_message() {
     echo -e "${color}${message}${NC}"
 }
 
+native_tui_package() {
+    local native_os="$os"
+    if [ "$native_os" = "windows" ]; then
+        native_os="win32"
+    fi
+    printf "@opentui/core-%s-%s" "$native_os" "$arch"
+}
+
+has_tui_assets() {
+    if [ ! -f "${INSTALL_DIR}/runtime/tui/node-main.js" ]; then
+        return 1
+    fi
+    local native_pkg
+    native_pkg=$(native_tui_package)
+    local native_name="${native_pkg##*/}"
+    [ -d "${INSTALL_DIR}/node_modules/@opentui/${native_name}" ]
+}
+
+install_native_tui_dependency() {
+    local package_json="$1"
+    local scratch_dir="$2"
+    if [ ! -f "$package_json" ]; then
+        return 0
+    fi
+
+    local native_pkg
+    native_pkg=$(native_tui_package)
+    local native_name="${native_pkg##*/}"
+    local native_version
+    native_version=$(sed -n "s#.*\"${native_pkg}\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*#\1#p" "$package_json" | head -1)
+    if [ -z "$native_version" ]; then
+        print_message warning "${MUTED}No ${native_pkg} dependency declared; skipping native TUI dependency install.${NC}"
+        return 0
+    fi
+
+    local dep_filename="${native_name}-${native_version}.tgz"
+    local dep_url="https://registry.npmjs.org/@opentui/${native_name}/-/${dep_filename}"
+    local dep_dir="${INSTALL_DIR}/node_modules/@opentui/${native_name}"
+    print_message info "${MUTED}Installing${NC} ${native_pkg} ${MUTED}for the TUI renderer${NC}"
+    curl -fsSL -o "${scratch_dir}/${dep_filename}" "$dep_url"
+    rm -rf "$dep_dir"
+    mkdir -p "$dep_dir"
+    tar -xzf "${scratch_dir}/${dep_filename}" -C "$dep_dir" --strip-components=1
+}
+
+path_dir_can_host_shim() {
+    local dir="$1"
+    if [ -z "$dir" ]; then
+        return 1
+    fi
+    case "$dir" in
+        /*) ;;
+        *) return 1 ;;
+    esac
+    case "$dir" in
+        "$INSTALL_DIR"|"$INSTALL_DIR"/) return 1 ;;
+        "$HOME"/*|/opt/homebrew/bin|/usr/local/bin) ;;
+        *) return 1 ;;
+    esac
+    [ -d "$dir" ] && [ -w "$dir" ] && [ -x "$dir" ]
+}
+
+write_codeplane_shim() {
+    local dir="$1"
+    local shim="$dir/codeplane"
+    if [ -L "$shim" ]; then
+        ln -sf "${INSTALL_DIR}/codeplane" "$shim"
+    elif [ -e "$shim" ]; then
+        if ! grep -q "codeplane installer shim" "$shim" 2>/dev/null; then
+            return 1
+        fi
+        printf '#!/usr/bin/env sh\n# codeplane installer shim\nexec "%s" "$@"\n' "${INSTALL_DIR}/codeplane" > "$shim"
+        chmod 755 "$shim"
+    elif ! ln -s "${INSTALL_DIR}/codeplane" "$shim" 2>/dev/null; then
+        printf '#!/usr/bin/env sh\n# codeplane installer shim\nexec "%s" "$@"\n' "${INSTALL_DIR}/codeplane" > "$shim"
+        chmod 755 "$shim"
+    fi
+    print_message info "${MUTED}Linked${NC} codeplane ${MUTED}command → ${NC}$shim"
+}
+
+ensure_codeplane_command() {
+    if command -v codeplane >/dev/null 2>&1; then
+        return 0
+    fi
+
+    local old_ifs="$IFS"
+    IFS=:
+    for dir in $PATH; do
+        IFS="$old_ifs"
+        if path_dir_can_host_shim "$dir" && write_codeplane_shim "$dir"; then
+            return 0
+        fi
+        IFS=:
+    done
+    IFS="$old_ifs"
+
+    print_message warning ""
+    print_message warning "The codeplane binary was installed, but this shell does not have a writable user bin directory already on PATH."
+    print_message info "  Run now:     ${MUTED}${INSTALL_DIR}/codeplane${NC}"
+    print_message info "  New shells:  ${MUTED}codeplane${NC} after your shell config reloads"
+    print_message info "  Or run:      ${MUTED}export PATH=${INSTALL_DIR}:\$PATH${NC}"
+    print_message warning ""
+}
+
 check_version() {
     if command -v codeplane >/dev/null 2>&1; then
         codeplane_path=$(which codeplane)
@@ -227,9 +333,11 @@ check_version() {
 
         if [[ "$installed_version" != "$specific_version" ]]; then
             print_message info "${MUTED}Installed version: ${NC}$installed_version."
-        else
+        elif has_tui_assets; then
             print_message info "${MUTED}Version ${NC}$specific_version${MUTED} already installed"
             exit 0
+        else
+            print_message info "${MUTED}Version ${NC}$specific_version${MUTED} already installed, but TUI assets are missing. Reinstalling assets.${NC}"
         fi
     fi
 }
@@ -334,13 +442,26 @@ download_and_install() {
         curl -# -L -o "$tmp_dir/$filename" "$url"
     fi
 
-    if [ "$os" = "linux" ]; then
-        tar -xzf "$tmp_dir/$filename" -C "$tmp_dir"
+    # npm tarballs unpack to <tmp>/package/... — `--strip-components 1`
+    # peels the leading `package/` so the binary lands at <tmp>/bin/codeplane.
+    tar -xzf "$tmp_dir/$filename" -C "$tmp_dir" --strip-components=1
+
+    if [ ! -f "$tmp_dir/bin/codeplane" ]; then
+        # Some older platform tarballs put the binary at the package root
+        # (without the bin/ subdir). Fall back to that layout.
+        if [ -f "$tmp_dir/codeplane" ]; then
+            mv "$tmp_dir/codeplane" "${INSTALL_DIR}/codeplane"
+        else
+            echo -e "${RED}Error: codeplane binary not found in tarball at ${tmp_dir}${NC}"
+            ls -la "$tmp_dir" >&2 || true
+            exit 1
+        fi
     else
-        unzip -q "$tmp_dir/$filename" -d "$tmp_dir"
+        rm -rf "${INSTALL_DIR}/runtime"
+        cp -R "$tmp_dir/bin/." "${INSTALL_DIR}/"
     fi
 
-    mv "$tmp_dir/codeplane" "$INSTALL_DIR"
+    install_native_tui_dependency "$tmp_dir/package.json" "$tmp_dir"
     chmod 755 "${INSTALL_DIR}/codeplane"
     rm -rf "$tmp_dir"
 }
@@ -351,12 +472,64 @@ install_from_binary() {
     chmod 755 "${INSTALL_DIR}/codeplane"
 }
 
+# Codeplane's `tui` (and the default `codeplane` invocation) spawns a
+# child process that needs either Bun or Node.js 22+ available. The TUI
+# launcher checks bin paths next to the codeplane executable first, so
+# linking an already-installed bun into $INSTALL_DIR makes the TUI work
+# regardless of how the user's shell PATH is configured (a common
+# failure mode on fresh installs where no ~/.zshrc exists yet).
+ensure_runtime() {
+    local link_path="${INSTALL_DIR}/bun"
+    if [ -L "$link_path" ] || [ -x "$link_path" ]; then
+        return 0
+    fi
+
+    local found=""
+    for candidate in "$HOME/.bun/bin/bun" "/opt/homebrew/bin/bun" "/usr/local/bin/bun" "/usr/bin/bun"; do
+        if [ -x "$candidate" ]; then
+            found="$candidate"
+            break
+        fi
+    done
+
+    if [ -z "$found" ]; then
+        found=$(command -v bun 2>/dev/null || true)
+    fi
+
+    if [ -n "$found" ]; then
+        ln -sf "$found" "$link_path"
+        print_message info "${MUTED}Linked${NC} bun ${MUTED}runtime → ${NC}$link_path"
+        return 0
+    fi
+
+    # Fall back to Node 22+ if available.
+    local node_found=""
+    node_found=$(command -v node 2>/dev/null || true)
+    if [ -n "$node_found" ]; then
+        local node_major
+        node_major=$("$node_found" --version 2>/dev/null | sed -n 's/^v\([0-9][0-9]*\).*/\1/p')
+        if [ -n "$node_major" ] && [ "$node_major" -ge 22 ]; then
+            ln -sf "$node_found" "${INSTALL_DIR}/node"
+            print_message info "${MUTED}Linked${NC} node ${MUTED}runtime → ${NC}${INSTALL_DIR}/node"
+            return 0
+        fi
+    fi
+
+    print_message warning ""
+    print_message warning "No bun runtime found. Codeplane's TUI needs bun (preferred) or Node.js 22+."
+    print_message info   "  Install bun:  ${MUTED}curl -fsSL https://bun.sh/install | bash${NC}"
+    print_message info   "  Or set:       ${MUTED}export CODEPLANE_TUI_RUNTIME=/path/to/node${NC}"
+    print_message warning ""
+}
+
 if [ -n "$binary_path" ]; then
     install_from_binary
 else
     check_version
     download_and_install
 fi
+ensure_runtime
+ensure_codeplane_command
 
 
 add_to_path() {
@@ -443,18 +616,14 @@ if [ -n "${GITHUB_ACTIONS-}" ] && [ "${GITHUB_ACTIONS}" == "true" ]; then
     print_message info "Added $INSTALL_DIR to \$GITHUB_PATH"
 fi
 
+
 echo -e ""
-echo -e "${MUTED}                    ${NC}             ▄     "
-echo -e "${MUTED}█▀▀█ █▀▀█ █▀▀█ █▀▀▄ ${NC}█▀▀▀ █▀▀█ █▀▀█ █▀▀█"
-echo -e "${MUTED}█░░█ █░░█ █▀▀▀ █░░█ ${NC}█░░░ █░░█ █░░█ █▀▀▀"
-echo -e "${MUTED}▀▀▀▀ █▀▀▀ ▀▀▀▀ ▀  ▀ ${NC}▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀"
+echo -e "  ${ORANGE}▶${NC} codeplane ${specific_version} installed."
 echo -e ""
+echo -e "  ${MUTED}Get started:${NC}"
+echo -e "    cd <project>"
+echo -e "    codeplane              ${MUTED}# launch the TUI${NC}"
+echo -e "    codeplane web          ${MUTED}# or open the web UI${NC}"
 echo -e ""
-echo -e "${MUTED}Codeplane includes free models, to start:${NC}"
-echo -e ""
-echo -e "cd <project>  ${MUTED}# Open directory${NC}"
-echo -e "codeplane      ${MUTED}# Run command${NC}"
-echo -e ""
-echo -e "${MUTED}For more information visit ${NC}https://codeplane.cc/docs"
-echo -e ""
+echo -e "  ${MUTED}Docs:${NC} https://codeplane.cc/docs"
 echo -e ""

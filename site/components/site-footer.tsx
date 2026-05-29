@@ -1,61 +1,50 @@
 import Link from "next/link"
+import { Logo } from "./logo"
 import { latestCliVersion } from "@/lib/releases"
 
 /*
- * Site footer. The published version label is resolved at build time
- * from the npm registry so it never drifts out of sync with the actual
- * release. The "fork notice" line stays prominent — anyone who scrolled
- * past it on the homepage sees it again here.
+ * Full-width footer. Published version is resolved at build time from
+ * the npm registry so it never drifts from the real release. The fork
+ * disclosure stays prominent — anyone who scrolled past it on the
+ * homepage meets it again here.
  */
 export async function SiteFooter() {
   const version = await latestCliVersion()
   return (
-    <footer className="mt-24 border-t border-line">
-      <div className="rail">
-        <div className="container">
-          <div className="grid grid-cols-1 border-line text-center text-[13px] text-ink-2 sm:grid-cols-2 md:grid-cols-4">
-            <FootCell href="https://github.com/devinoldenburg/codeplane">
-              GitHub <span className="text-ink-muted">[fork]</span>
-            </FootCell>
-            <FootCell href="/docs/">Docs</FootCell>
-            <FootCell href="/docs/changelog/">Changelog</FootCell>
-            <FootCell href="https://opencode.ai">Upstream</FootCell>
+    <footer className="mt-28 border-t border-line">
+      <div className="shell flex flex-col gap-8 py-14 md:flex-row md:items-start md:justify-between">
+        <div className="flex items-center text-ink">
+          <Logo size={20} />
+        </div>
+        <nav className="flex flex-wrap gap-x-8 gap-y-3 text-[13px] text-ink-2">
+          <a className="transition-colors hover:text-ink" href="https://github.com/devinoldenburg/codeplane">
+            GitHub
+          </a>
+          <Link className="transition-colors hover:text-ink" href="/docs/">Docs</Link>
+          <Link className="transition-colors hover:text-ink" href="/docs/install/">Install</Link>
+          <Link className="transition-colors hover:text-ink" href="/docs/changelog/">Changelog</Link>
+          <a className="transition-colors hover:text-ink" href="https://opencode.ai">Upstream</a>
+        </nav>
+      </div>
+      <div className="border-t border-line">
+        <div className="shell flex flex-col gap-2 py-7 text-[12px] leading-relaxed text-ink-muted">
+          <div>
+            ©2026 Codeplane · MIT licensed · An experimental fork of{" "}
+            <a className="link" href="https://opencode.ai">opencode</a>{" "}
+            for personal use — not affiliated with Anomaly.
           </div>
-          <div className="flex flex-col items-center gap-2 border-t border-line py-7 text-center text-[12px] text-ink-muted">
-            <div>
-              ©2026 Codeplane · MIT licensed · Experimental fork of{" "}
-              <a className="underline underline-offset-4 decoration-line hover:decoration-ink hover:text-ink" href="https://opencode.ai">
-                opencode
-              </a>
-              {" "}for personal use — not affiliated with Anomaly.
-            </div>
-            <div>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+            <span>
               Built by{" "}
-              <a
-                className="underline underline-offset-4 decoration-line hover:decoration-ink hover:text-ink"
-                href="https://devinoldenburg.com"
-                rel="author"
-              >
-                Devin Oldenburg
-              </a>
-              .
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1">
-              <a className="hover:text-ink" href="https://github.com/devinoldenburg/codeplane">github.com/devinoldenburg/codeplane</a>
-              <Link className="hover:text-ink" href="/docs/changelog/">v{version}</Link>
-            </div>
+              <a className="link" href="https://devinoldenburg.com" rel="author">Devin Oldenburg</a>.
+            </span>
+            <a className="transition-colors hover:text-ink" href="https://github.com/devinoldenburg/codeplane">
+              github.com/devinoldenburg/codeplane
+            </a>
+            <Link className="transition-colors hover:text-ink" href="/docs/changelog/">v{version}</Link>
           </div>
         </div>
       </div>
     </footer>
   )
-}
-
-function FootCell({ href, children }: { href: string; children: React.ReactNode }) {
-  const className =
-    "block border-line py-6 transition-colors hover:text-ink border-r last:border-r-0"
-  if (href.startsWith("/")) {
-    return <Link href={href} className={className}>{children}</Link>
-  }
-  return <a href={href} className={className}>{children}</a>
 }

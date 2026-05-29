@@ -16,14 +16,12 @@ import { UpdateChecker } from "@/installation/update-checker"
 import { Log } from "../../util"
 import { lazy } from "../../util/lazy"
 import { Config } from "../../config"
-import { ConfigSecret } from "../../config/secret"
 import { errors } from "../error"
 import { killProc as bashInteractiveKill } from "../../tool/bash_interactive_runtime"
 import { CronRoutes } from "./cron"
 
 const log = Log.create({ service: "server" })
 const configRuntime = makeRuntime(Config.Service, Config.defaultLayer)
-const secretRuntime = makeRuntime(ConfigSecret.Service, ConfigSecret.defaultLayer)
 const eventHeartbeatMs = 5_000
 
 // Small in-process cache for release-notes lookups. Notes are immutable per
@@ -339,77 +337,6 @@ export const GlobalRoutes = lazy(() =>
         const config = c.req.valid("json")
         const next = await configRuntime.runPromise((cfg) => cfg.updateGlobal(config))
         return c.json(next)
-      },
-    )
-    .get(
-      "/secrets",
-      describeRoute({
-        summary: "List per-instance secrets",
-        description: "List the secret names stored for the current Codeplane instance.",
-        operationId: "global.secrets.list",
-        responses: {
-          200: {
-            description: "Secret list",
-            content: {
-              "application/json": {
-                schema: resolver(z.array(ConfigSecret.Entry.zod)),
-              },
-            },
-          },
-        },
-      }),
-      async (c) => c.json(await secretRuntime.runPromise((svc) => svc.list())),
-    )
-    .put(
-      "/secrets/:name",
-      describeRoute({
-        summary: "Create or replace a per-instance secret",
-        description: "Store a secret in the current Codeplane instance data directory.",
-        operationId: "global.secrets.set",
-        responses: {
-          200: {
-            description: "Stored secret metadata",
-            content: {
-              "application/json": {
-                schema: resolver(ConfigSecret.Entry.zod),
-              },
-            },
-          },
-          ...errors(400),
-        },
-      }),
-      validator("param", z.object({ name: z.string() })),
-      validator("json", z.object({ value: z.string() })),
-      async (c) => {
-        const entry = await secretRuntime.runPromise((svc) => svc.set(c.req.valid("param").name, c.req.valid("json").value))
-        await configRuntime.runPromise((cfg) => cfg.invalidate())
-        return c.json(entry)
-      },
-    )
-    .delete(
-      "/secrets/:name",
-      describeRoute({
-        summary: "Delete a per-instance secret",
-        description: "Remove a stored secret from the current Codeplane instance data directory.",
-        operationId: "global.secrets.remove",
-        responses: {
-          200: {
-            description: "Secret delete result",
-            content: {
-              "application/json": {
-                schema: resolver(z.object({ success: z.boolean() })),
-              },
-            },
-          },
-        },
-      }),
-      validator("param", z.object({ name: z.string() })),
-      async (c) => {
-        const name = c.req.valid("param").name
-        const removedReferences = await configRuntime.runPromise((cfg) => cfg.removeGlobalSecretReferences(name))
-        const success = await secretRuntime.runPromise((svc) => svc.remove(name))
-        if (success && removedReferences === 0) await configRuntime.runPromise((cfg) => cfg.invalidate())
-        return c.json({ success })
       },
     )
     .post(

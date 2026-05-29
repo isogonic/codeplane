@@ -476,8 +476,12 @@ test(
   "local MCP add resolves {secret:...} placeholders before spawning the server",
   withInstance({}, (mcp) =>
     Effect.gen(function* () {
-      yield* Effect.promise(() => Bun.write(ConfigSecret.filepath("cloudflare-account"), "17e6dcab"))
-      yield* Effect.promise(() => Bun.write(ConfigSecret.filepath("cloudflare-token"), "cf-secret-token"))
+      yield* Effect.promise(() =>
+        Bun.write(
+          ConfigSecret.filepath(),
+          JSON.stringify({ "cloudflare-account": "17e6dcab", "cloudflare-token": "cf-secret-token" }),
+        ),
+      )
 
       lastCreatedClientName = "cloudflare"
       getOrCreateClientState("cloudflare")

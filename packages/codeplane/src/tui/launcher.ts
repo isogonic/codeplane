@@ -140,8 +140,24 @@ async function buildDevEntry() {
   return result.outputs.find((item) => item.kind === "entry-point")?.path ?? outfile
 }
 
-async function resolveLaunchTarget() {
+async function resolveLaunchTarget(): Promise<{ command: string; args: string[]; env?: Record<string, string> }> {
   const bundled = await resolveBundledEntry()
+
+  // The packaged TUI bundle needs Bun specifically: @opentui/core uses
+  // bun:ffi, and the bundle imports `ws` (a Bun built-in, but absent under
+  // Node). The codeplane executable IS a Bun single-file binary, so reuse its
+  // embedded Bun via BUN_BE_BUN=1 rather than depending on a separate Bun
+  // being installed. This makes the TUI self-contained on every platform the
+  // binary runs on (glibc + musl, x64 + arm64) with no extra payload. Node is
+  // never a valid runtime here, so we must not fall back to it.
+  if (bundled && isPackagedBinary()) {
+    return {
+      command: process.execPath,
+      args: [bundled],
+      env: { BUN_BE_BUN: "1" },
+    }
+  }
+
   const runtime = await resolveRuntimeCommand()
   if (!runtime)
     throw new Error(
@@ -152,8 +168,6 @@ async function resolveLaunchTarget() {
   if (bundled) {
     return {
       command: runtime,
-      // The bundle was built with target=bun + plugins; Bun can run it
-      // directly. Node can also run the bundle since it's plain ESM JS.
       args: [bundled],
     }
   }
@@ -179,6 +193,7 @@ export async function launchTUI(args: string[] = []) {
     stdio: "inherit",
     env: {
       ...process.env,
+      ...target.env,
       CODEPLANE_CLIENT: "tui",
     },
   })

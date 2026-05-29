@@ -9,7 +9,6 @@ import { ModesSettings } from "@/pages/agents"
 import { McpSettings } from "@/pages/mcp"
 import { ModelsSettings } from "@/pages/models"
 import { PluginsSettings } from "@/pages/plugins"
-import { SecretsSettings } from "@/pages/secrets"
 import { SkillsSettings } from "@/pages/skills"
 import { normalizeSettingsSection, settingsPath, settingsSection, type SettingsSection } from "./settings/nav"
 
@@ -30,7 +29,6 @@ const settingsContent: Record<
   modes: { component: ModesSettings },
   models: { component: ModelsSettings },
   mcp: { component: McpSettings },
-  secrets: { component: SecretsSettings },
   plugins: { component: PluginsSettings },
   skills: { component: SkillsSettings },
 }

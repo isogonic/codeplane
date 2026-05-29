@@ -278,8 +278,7 @@
     justify-content: center;
     height: 100%;
     padding: 0 0.75rem 0 0.5rem;
-    border-left: 1px solid var(--border-weaker-base);
-    background: var(--background-stronger);
+    background: var(--background);
   }
 
   [data-slot="file-tabs-open-action"]::before {
@@ -290,7 +289,7 @@
     left: -1rem;
     width: 1rem;
     pointer-events: none;
-    background: linear-gradient(90deg, transparent, var(--background-stronger));
+    background: linear-gradient(90deg, transparent, var(--background));
   }
 
   [data-slot="file-tabs-open-action"] [data-component="tooltip-trigger"] {

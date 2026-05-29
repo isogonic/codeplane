@@ -34,6 +34,33 @@ function isOpenAiErrorRetryable(e: APICallError) {
   return status === 404 || e.isRetryable
 }
 
+// The Codex backend (chatgpt.com/backend-api/codex) reports an exhausted ChatGPT-plan
+// rolling allowance as a 429 with `error.type: "usage_limit_reached"` and a `resets_at`
+// /`resets_in_seconds` that is typically HOURS away. The AI SDK's default `isRetryable`
+// for 429 is true, so the session would burn its whole retry budget on quick retries
+// against a wall that won't move for hours. Detect it, mark it non-retryable, and tell
+// the user when it actually resets so they can switch models/providers or wait.
+function usageLimitError(body: unknown): { resets_in_seconds?: unknown } | undefined {
+  const err = (body as { error?: { type?: unknown; code?: unknown } } | undefined)?.error
+  if (err && (err.type === "usage_limit_reached" || err.code === "usage_limit_reached")) {
+    return err as { resets_in_seconds?: unknown }
+  }
+  return undefined
+}
+
+function usageLimitMessage(err: { resets_in_seconds?: unknown }): string {
+  const secs = typeof err.resets_in_seconds === "number" ? err.resets_in_seconds : undefined
+  const when = iife(() => {
+    if (secs === undefined || secs <= 0) return ""
+    if (secs < 90) return " It resets in about a minute."
+    const h = Math.floor(secs / 3600)
+    const m = Math.round((secs % 3600) / 60)
+    if (h >= 1) return ` It resets in about ${h}h${m ? ` ${m}m` : ""}.`
+    return ` It resets in about ${Math.max(1, m)} minute${m === 1 ? "" : "s"}.`
+  })
+  return `Codex usage limit reached for your ChatGPT plan.${when} Switch to another model or provider, or try again after it resets.`
+}
+
 // Providers not reliably handled in this function:
 // - z.ai: can accept overflow silently (needs token-count/context-window checks)
 function isOverflow(message: string) {
@@ -125,7 +152,9 @@ export function parseStreamError(input: unknown): ParsedStreamError | undefined 
   const responseBody = JSON.stringify(body)
   if (body.type !== "error") return
 
-  switch (body?.error?.code) {
+  // The Codex backend keys some errors by `type` rather than the OpenAI-standard
+  // `code` (e.g. `usage_limit_reached`), so match on either.
+  switch (body?.error?.code ?? body?.error?.type) {
     case "context_length_exceeded":
       return {
         type: "context_overflow",
@@ -136,6 +165,13 @@ export function parseStreamError(input: unknown): ParsedStreamError | undefined 
       return {
         type: "api_error",
         message: "Quota exceeded. Check your plan and billing details.",
+        isRetryable: false,
+        responseBody,
+      }
+    case "usage_limit_reached":
+      return {
+        type: "api_error",
+        message: usageLimitMessage(body.error),
         isRetryable: false,
         responseBody,
       }
@@ -204,6 +240,21 @@ export function parseAPICallError(input: { providerID: ProviderID; error: APICal
       type: "api_error",
       message:
         "GitHub Copilot quota exceeded: your premium request allowance is used up (it resets at your billing period). Switch to an included model or upgrade your Copilot plan.",
+      statusCode: input.error.statusCode,
+      isRetryable: false,
+      responseHeaders: input.error.responseHeaders,
+      responseBody: input.error.responseBody,
+      metadata,
+    }
+  }
+
+  // Codex ChatGPT-plan allowance exhausted — a 429 whose `error.type` is
+  // `usage_limit_reached` and that resets hours away. Don't burn the retry budget.
+  const usageLimit = usageLimitError(body)
+  if (usageLimit) {
+    return {
+      type: "api_error",
+      message: usageLimitMessage(usageLimit),
       statusCode: input.error.statusCode,
       isRetryable: false,
       responseHeaders: input.error.responseHeaders,

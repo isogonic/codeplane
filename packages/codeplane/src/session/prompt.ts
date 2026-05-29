@@ -734,30 +734,34 @@ NOTE: At any point in time through this workflow you should feel free to ask the
 
                 const error = Cause.squash(toolResult.cause)
                 const failure = classifyNativeToolFailure(item.id, error)
-                const failureText = renderNativeToolFailureText(item.id, failure)
+                const failureMetadata = {
+                  toolError: true,
+                  toolFailureKind: failure.kind,
+                  toolFailureAction: failure.action,
+                  toolRetryable: failure.retryable,
+                  toolSummary: failure.summary,
+                  toolNextStep: failure.nextStep,
+                  originalError: failure.error,
+                }
+                const errored = yield* plugin.trigger(
+                  "tool.execute.error",
+                  { tool: item.id, sessionID: ctx.sessionID, callID: ctx.callID, args },
+                  {
+                    error: String(failure.error ?? error),
+                    output: renderNativeToolFailureText(item.id, failure),
+                    title: item.id,
+                    metadata: failureMetadata,
+                  },
+                )
+                const failureText = errored.output
+                const failedMetadata = errored.metadata ?? failureMetadata
                 yield* input.processor.failToolCall(options.toolCallId, error, {
                   errorText: failureText,
-                  metadata: {
-                    toolError: true,
-                    toolFailureKind: failure.kind,
-                    toolFailureAction: failure.action,
-                    toolRetryable: failure.retryable,
-                    toolSummary: failure.summary,
-                    toolNextStep: failure.nextStep,
-                    originalError: failure.error,
-                  },
+                  metadata: failedMetadata,
                 })
                 return {
-                  title: item.id,
-                  metadata: {
-                    toolError: true,
-                    toolFailureKind: failure.kind,
-                    toolFailureAction: failure.action,
-                    toolRetryable: failure.retryable,
-                    toolSummary: failure.summary,
-                    toolNextStep: failure.nextStep,
-                    originalError: failure.error,
-                  },
+                  title: errored.title ?? item.id,
+                  metadata: failedMetadata,
                   output: failureText,
                   content: [{ type: "text" as const, text: failureText }],
                 }
@@ -830,15 +834,23 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                       }).pipe(Effect.exit)
                       if (Exit.isFailure(toolResult)) {
                         const failure = MCP.classifyToolFailure({ error: Cause.squash(toolResult.cause), tool: key })
-                        const failureText = [
-                          failure.summary,
-                          "",
-                          `Tool: ${key}`,
-                          `Failure kind: ${failure.kind}`,
-                          `Retryable: ${failure.retryable ? "yes" : "no"}`,
-                          `Recommended next step: ${failure.nextStep}`,
-                          `Original error: ${failure.error}`,
-                        ].join("\n")
+                        const errored = yield* plugin.trigger(
+                          "tool.execute.error",
+                          { tool: key, sessionID: ctx.sessionID, callID: opts.toolCallId, args },
+                          {
+                            error: String(failure.error),
+                            output: [
+                              failure.summary,
+                              "",
+                              `Tool: ${key}`,
+                              `Failure kind: ${failure.kind}`,
+                              `Retryable: ${failure.retryable ? "yes" : "no"}`,
+                              `Recommended next step: ${failure.nextStep}`,
+                              `Original error: ${failure.error}`,
+                            ].join("\n"),
+                          },
+                        )
+                        const failureText = errored.output
                         const output = yield* finalizeOutput({
                           outputText: failureText,
                           metadata: {
@@ -1157,11 +1169,19 @@ NOTE: At any point in time through this workflow you should feel free to ask the
 
       if (!result) {
         const end = Date.now()
+        const errored = yield* plugin.trigger(
+          "tool.execute.error",
+          { tool: TaskTool.id, sessionID, callID: part.callID, args: taskArgs },
+          {
+            error: error?.message ?? "Tool execution failed",
+            output: error ? `Tool execution failed: ${error.message}` : "Tool execution failed",
+          },
+        )
         yield* sessions.updatePart({
           ...part,
           state: {
             status: "error",
-            error: error ? `Tool execution failed: ${error.message}` : "Tool execution failed",
+            error: errored.output,
             time: {
               start: part.state.status === "running" ? part.state.time.start : end,
               end,

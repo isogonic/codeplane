@@ -7,8 +7,9 @@
   "packageManager": "bun@1.3.13",
   "scripts": {
     "dev": "bun --cwd packages/app dev",
-    "dev:server": "bun run --cwd packages/codeplane --conditions=browser src/index.ts web",
+    "dev:server": "bun run --cwd packages/codeplane --conditions=browser src/index.ts web --instance dev",
     "dev:web": "bun --cwd packages/app dev",
+    "dev:instance": "bun run --cwd packages/codeplane --conditions=browser script/dev-instance.ts",
     "version:sync": "bun script/sync-version.ts",
     "version:bump": "bun script/bump-version.ts",
     "lint": "oxlint",

@@ -42,20 +42,20 @@ export function InstallTabs({
   const [active, setActive] = useState<TabId>("macos")
   return (
     <>
-      <div role="tablist" className="mb-7 flex flex-wrap gap-x-1 gap-y-2 border-b border-line pb-1">
+      <div role="tablist" className="mb-8 inline-flex max-w-full flex-wrap gap-1 rounded-[var(--radius-lg)] border border-line bg-surface-3 p-1">
         {TABS.map((t) => (
           <button
             key={t.id}
             role="tab"
             aria-selected={active === t.id}
             onClick={() => setActive(t.id)}
-            className={`-mb-px inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+            className={`inline-flex items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] px-3 py-1.5 text-[13px] font-medium transition ${
               active === t.id
-                ? "border-ink text-ink"
-                : "border-transparent text-ink-muted hover:text-ink"
+                ? "bg-surface text-ink shadow-[var(--shadow-xs)]"
+                : "text-ink-muted hover:text-ink"
             }`}
           >
-            <HugeiconsIcon icon={t.icon} size={16} strokeWidth={1.5} />
+            <HugeiconsIcon icon={t.icon} size={15} strokeWidth={1.75} />
             {t.label}
           </button>
         ))}
@@ -79,7 +79,7 @@ function PanelMacOS({ desktopTag, cliVersion }: { desktopTag: string; cliVersion
   return (
     <div className="docs-prose">
       <h2 className="mt-0">macOS</h2>
-      <p className="lede !mb-8 !text-[17px]">
+      <p className="lede !mb-6">
         One-line installer for the CLI plus a <code>.dmg</code> for the desktop app. Both ship for
         Apple Silicon and Intel.
       </p>
@@ -119,7 +119,7 @@ function PanelLinux({ desktopTag, cliVersion }: { desktopTag: string; cliVersion
   return (
     <div className="docs-prose">
       <h2 className="mt-0">Linux</h2>
-      <p className="lede !mb-8 !text-[17px]">
+      <p className="lede !mb-6">
         Standalone CLI binary plus desktop packages for the major distributions. Tested on Ubuntu,
         Fedora, and Arch.
       </p>
@@ -169,7 +169,7 @@ function PanelWindows({ desktopTag }: { desktopTag: string }) {
   return (
     <div className="docs-prose">
       <h2 className="mt-0">Windows</h2>
-      <p className="lede !mb-8 !text-[17px]">
+      <p className="lede !mb-6">
         NSIS installer for the desktop app. The CLI runs natively via npm or under WSL2 — there is
         no PowerShell one-liner today (the bash install script is the only scripted path).
       </p>
@@ -204,7 +204,7 @@ function PanelNpm() {
   return (
     <div className="docs-prose">
       <h2 className="mt-0">npm / Bun</h2>
-      <p className="lede !mb-8 !text-[17px]">
+      <p className="lede !mb-6">
         The native CLI binary is republished to npm on every release as{" "}
         <code>codeplane-ai</code> (the wrapper) plus a set of{" "}
         <code>codeplane-{`<os>`}-{`<arch>`}</code> packages declared as{" "}
@@ -236,7 +236,7 @@ function PanelMobile({ mobileTag }: { mobileTag: string }) {
   return (
     <div className="docs-prose">
       <h2 className="mt-0">Mobile</h2>
-      <p className="lede !mb-8 !text-[17px]">
+      <p className="lede !mb-6">
         Native iOS shell wrapping the web UI; connects to any Codeplane server you self-host.
         Android is in active development — no Play Store listing yet.
       </p>
@@ -271,14 +271,7 @@ function PanelMobile({ mobileTag }: { mobileTag: string }) {
       </p>
 
       <h3>Android — coming soon</h3>
-      <p>
-        <span
-          aria-disabled="true"
-          className="inline-flex cursor-not-allowed items-center gap-2 rounded-full border border-line bg-surface-3 px-4 py-2 text-sm font-medium text-ink-muted no-underline"
-        >
-          Google Play — not yet available
-        </span>
-      </p>
+      <p className="text-ink-muted">Google Play — not yet available.</p>
       <p className="text-ink-muted">
         A debug-signed APK ships with every mobile release for hands-on testing
         (<code>Codeplane-Android-{v}-debug-signed.apk</code>) but it is not a release build and

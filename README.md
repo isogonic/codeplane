@@ -48,7 +48,7 @@ Then verify:
 
 ```bash
 codeplane --version
-codeplane web --port 4096
+codeplane web --instance dev --port 4096
 ```
 
 Full platform matrix, desktop downloads, mobile status, uninstall steps, and directory layout are documented at [codeplane.cc/docs/install](https://codeplane.cc/docs/install/).

@@ -8,40 +8,37 @@
 //   re-execing. So the per-instance home dir routing has to land in the env
 //   *before* Global is imported. That's what this file does.
 //
-// Behavior (post-v27.4.29 — per-instance is the default, not opt-in):
+// Behavior:
 //
 //   - If CODEPLANE_HOME_DIR is already set in the env (e.g. the desktop
-//     shell spawned us with an explicit per-instance dir), do nothing and
-//     respect the parent's choice.
+//     shell, or a TUI/daemon-spawned server, pinned an explicit per-instance
+//     dir), do nothing and respect the parent's choice.
 //   - Otherwise, scan argv for `--instance <id>` / `-i <id>` /
-//     `--instance=<id>`. If absent, default to the literal id "default".
-//   - Set CODEPLANE_HOME_DIR to <default-root>/instances/<id>. This
-//     guarantees that providers, models, MCP servers, agents, commands,
-//     plugins, skills, and the global codeplane.jsonc all live in a
-//     per-instance subtree — completely isolated from every other instance
-//     on the same machine.
-//   - On the very first time the "default" instance dir is created, copy
-//     legacy config files from <root>/* into <root>/instances/default/*
-//     so existing users keep their configuration without any manual
-//     migration step. Originals are left in place; the migration is one-way
-//     and only fires when <root>/instances/default/ does not exist yet.
+//     `--instance=<id>`. When present, set CODEPLANE_HOME_DIR to
+//     <root>/instances/<id> so providers, models, MCP servers, agents,
+//     commands, plugins, skills, and codeplane.jsonc all live in a
+//     per-instance subtree, isolated from every other instance on the
+//     same machine. The subtree is created lazily on first use.
+//   - When NO instance is given, Codeplane does NOT invent a "default"
+//     instance. Commands that boot a server bound to one instance's
+//     config/data (`serve`, `web`) hard-error and ask the user to pass
+//     `--instance <id>`. Registry/meta commands (`instance`, `tui`,
+//     `generate`, `upgrade`, `completion`, `--help`) don't need a
+//     per-instance home and resolve to the shared root for their own state.
 //
 // The argv scan is tiny and self-contained so it works without yargs being
 // loaded yet. The full yargs parser still sees the same args later.
 
 import { CodeplaneHome } from "@codeplane-ai/shared/home"
-import fs from "fs"
 import path from "path"
+// dispatch.ts is dependency-free, so importing it here does not pull Global
+// (or anything that reads CODEPLANE_HOME_DIR) into the graph before we set it.
+import { effectiveCommand } from "../tui/dispatch"
 
-const DEFAULT_INSTANCE_ID = "default"
-
-// Files / directories that live at the root of the Codeplane home folder
-// and should be migrated into the default-instance dir on first run. The
-// global instances.json (saved-instance registry) is *not* migrated — it
-// stays at the root so every per-instance server can see the same registry
-// of saved remotes / locals.
-const LEGACY_FILES = ["codeplane.jsonc", "codeplane.json", "config.json"]
-const LEGACY_DIRS = ["plugins", "agents", "commands", "skills"]
+// Commands that run a server pinned to one instance's config/data. These
+// must be told which instance to use; everything else (registry/meta
+// commands) is fine resolving to the shared root.
+const INSTANCE_REQUIRED_COMMANDS = new Set(["serve", "web"])
 
 function readFlagFromArgv(argv: readonly string[], flag: string, alias?: string): string | undefined {
   // Skip the runtime + script entry (process.argv[0..1]); yargs does the same.
@@ -66,64 +63,62 @@ function readInstanceFromArgv(argv: readonly string[]): string | undefined {
   return readFlagFromArgv(argv, "instance", "i")
 }
 
-function copyEntry(src: string, dest: string): void {
-  if (!fs.existsSync(src)) return
-  if (fs.existsSync(dest)) return
-  fs.cpSync(src, dest, { recursive: true, errorOnExist: false, force: false })
-}
-
-function migrateLegacyToDefault(root: string, target: string): void {
-  // Only migrate when the default-instance dir does not exist yet — that's
-  // our signal that this is the very first run after switching to the
-  // per-instance default. Subsequent runs do nothing here.
-  if (fs.existsSync(target)) return
-  try {
-    fs.mkdirSync(target, { recursive: true })
-  } catch {
-    return
-  }
-  for (const name of LEGACY_FILES) copyEntry(path.join(root, name), path.join(target, name))
-  for (const name of LEGACY_DIRS) copyEntry(path.join(root, name), path.join(target, name))
-}
-
 function applyInstance(): void {
   if (process.env.CODEPLANE_HOME_DIR && process.env.CODEPLANE_HOME_DIR.length > 0) {
     // The spawning process already pinned a home dir (e.g. desktop shell
-    // running a managed local instance). Respect it. The desktop also
-    // doesn't set CODEPLANE_GLOBAL_HOME_DIR — that's fine, home.ts falls
-    // back to CODEPLANE_HOME_DIR for the global root in that case, and
-    // since the desktop doesn't use per-instance routing the two paths
-    // coincide and instances.json lands at the same spot the desktop
-    // already expects.
+    // running a managed local instance, or a TUI/daemon-spawned server).
+    // Respect it. The desktop also doesn't set CODEPLANE_GLOBAL_HOME_DIR —
+    // that's fine, home.ts falls back to CODEPLANE_HOME_DIR for the global
+    // root in that case, and since the desktop doesn't use per-instance
+    // routing the two paths coincide and instances.json lands at the same
+    // spot the desktop already expects.
     return
   }
+
   const requested = readInstanceFromArgv(process.argv)
   // Sanitize: reject path separators so a user can't inject `..` or an
-  // absolute path via the flag. Fall back to the default id if the value
-  // is malformed rather than failing silently with a global root.
+  // absolute path via the flag. A malformed value is treated as "no
+  // instance" rather than silently resolving somewhere unexpected.
   const safe =
     requested && !requested.includes("/") && !requested.includes("\\") && !requested.startsWith(".")
       ? requested
       : undefined
-  const id = safe ?? DEFAULT_INSTANCE_ID
 
   const defaultPaths = CodeplaneHome.paths()
-  const target = path.join(defaultPaths.root, "instances", id)
 
-  if (id === DEFAULT_INSTANCE_ID) {
-    migrateLegacyToDefault(defaultPaths.root, target)
+  if (safe) {
+    process.env.CODEPLANE_HOME_DIR = path.join(defaultPaths.root, "instances", safe)
+    // CODEPLANE_GLOBAL_HOME_DIR is what home.ts uses to resolve the shared
+    // registry (instances.json) + the shared local-runtime cache
+    // (local_server/) to the OUTER root, regardless of which per-instance
+    // subtree CODEPLANE_HOME_DIR points at.
+    process.env.CODEPLANE_GLOBAL_HOME_DIR = defaultPaths.root
+    return
   }
 
-  process.env.CODEPLANE_HOME_DIR = target
-  // CODEPLANE_GLOBAL_HOME_DIR is what home.ts uses to resolve the
-  // shared registry (instances.json) + the shared local-runtime cache
-  // (local_server/) to the OUTER root, regardless of which per-instance
-  // subtree CODEPLANE_HOME_DIR points at. Without this, every CLI
-  // invocation since v27.4.29 has been writing instances.json into
-  // <root>/instances/<id>/instances.json, where the desktop's
-  // <root>/instances.json reader doesn't see it — so a remote added in
-  // the desktop UI was invisible from `codeplane tui` and vice versa.
-  process.env.CODEPLANE_GLOBAL_HOME_DIR = defaultPaths.root
+  // No --instance. Codeplane does not auto-create a "default" instance, so a
+  // command that needs a per-instance home cannot proceed without being told
+  // which one to use. Use the *effective* command (after default-command
+  // injection in tui/dispatch) so a bare `codeplane` that resolves to `web`
+  // is caught too. effectiveCommand returns undefined for --help/--version.
+  const command = effectiveCommand(process.argv.slice(2))
+  if (command && INSTANCE_REQUIRED_COMMANDS.has(command)) {
+    const example = path.join(defaultPaths.root, "instances", "<id>")
+    process.stderr.write(
+      `[codeplane] No instance selected.\n` +
+        `Codeplane no longer creates a "default" instance automatically — choose one explicitly:\n\n` +
+        `    codeplane ${command} --instance <id>\n\n` +
+        `The first run with a new id creates its config + data under:\n` +
+        `    ${example}\n\n` +
+        "Use `codeplane instance --help` to manage saved servers, or `codeplane tui` to pick one interactively.\n",
+    )
+    process.exit(1)
+  }
+
+  // Registry/meta commands (instance, tui, generate, upgrade, completion,
+  // help, or no command): no per-instance home. home.ts resolves both the
+  // home and the shared root to the outer root, which is what reading the
+  // saved-instance registry and the shared runtime cache expects.
 }
 
 // Apply --password / --username CLI flags by setting the matching env vars

@@ -113,4 +113,56 @@ describe("plugin.trigger", () => {
 
     expect(out.system).toEqual(["async"])
   })
+
+  test("tool.list lets plugins gate which tools the model sees", async () => {
+    await using tmp = await project(
+      [
+        "export default async () => ({",
+        '  "tool.list": (input, output) => {',
+        '    if (input.agent === "reviewer") output.tools = output.tools.filter((id) => id !== "bash")',
+        "  },",
+        "})",
+        "",
+      ].join("\n"),
+    )
+
+    const out = await Instance.provide({
+      directory: tmp.path,
+      fn: async () =>
+        Effect.gen(function* () {
+          const plugin = yield* Plugin.Service
+          const out = { tools: ["read", "bash", "write"] }
+          yield* plugin.trigger("tool.list", { agent: "reviewer" }, out)
+          return out
+        }).pipe(Effect.provide(Plugin.defaultLayer), Effect.runPromise),
+    })
+
+    expect(out.tools).toEqual(["read", "write"])
+  })
+
+  test("tool.execute.error lets plugins rewrite failure output", async () => {
+    await using tmp = await project(
+      [
+        "export default async () => ({",
+        '  "tool.execute.error": (input, output) => {',
+        "    output.output = `${output.output} [handled:${input.tool}]`",
+        "  },",
+        "})",
+        "",
+      ].join("\n"),
+    )
+
+    const out = await Instance.provide({
+      directory: tmp.path,
+      fn: async () =>
+        Effect.gen(function* () {
+          const plugin = yield* Plugin.Service
+          const out = { error: "boom", output: "Tool failed" }
+          yield* plugin.trigger("tool.execute.error", { tool: "bash", sessionID: "s", callID: "c", args: {} }, out)
+          return out
+        }).pipe(Effect.provide(Plugin.defaultLayer), Effect.runPromise),
+    })
+
+    expect(out.output).toBe("Tool failed [handled:bash]")
+  })
 })

@@ -29,7 +29,6 @@ const { TuiConfig } = await import("./config/tui")
 const { runBootWizard } = await import("./boot/wizard")
 const { createInstanceService } = await import("./instance-service")
 const { headersForInstance, normalizeInstanceUrl } = await import("./client")
-const { localInstanceUrl } = await import("@codeplane-ai/shared/instance")
 import type { Args } from "./context/args"
 import type { BootSelection } from "./boot/wizard"
 import type { InstanceService } from "./instance-service"
@@ -65,21 +64,6 @@ function parseArgs(argv: string[]) {
   return result
 }
 
-function defaultLocalSeed(): SavedInstance {
-  return {
-    id: "default",
-    url: localInstanceUrl("default"),
-    label: "Default local",
-    local: { binaryVersion: "" },
-  }
-}
-
-async function ensureSavedDefault(service: InstanceService): Promise<SavedInstance> {
-  const seed = defaultLocalSeed()
-  await service.save(seed)
-  return seed
-}
-
 type Resolved = {
   instance: SavedInstance
   directory?: string
@@ -97,13 +81,9 @@ async function resolveSelection(
     return { instance: found, directory: args.directory }
   }
 
-  // Interactive: render the boot wizard. If there are no saved instances,
-  // seed a default-local entry so the list is never empty.
-  let instances = await service.list()
-  if (instances.length === 0) {
-    await ensureSavedDefault(service)
-    instances = await service.list()
-  }
+  // Interactive: render the boot wizard. With no saved instances the wizard
+  // shows its empty state, where the user creates a local or remote one.
+  const instances = await service.list()
 
   const selection: BootSelection | null = await runBootWizard({
     service,

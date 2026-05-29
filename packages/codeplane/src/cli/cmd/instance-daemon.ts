@@ -184,10 +184,10 @@ const InstanceDaemonStartCommand = cmd({
     const binary = status.binaryPath
 
     // Make sure the per-instance dir exists for the log + state file.
-    // The shared/home.ts paths.root may be the per-instance home for
-    // THIS process (the preflight routes us to instances/default/),
-    // but the daemon target instance has its own subdir; resolveLocalBinaryPath
-    // doesn't pre-create it.
+    // This process (`codeplane instance daemon start`) is a registry/meta
+    // command with no per-instance home of its own. The daemon state + log
+    // live under the shared root at instances/<id>/, which nothing has
+    // created yet; resolveLocalBinaryPath doesn't pre-create it.
     const instanceDir = path.dirname(daemonStateFile(id))
     mkdirSync(instanceDir, { recursive: true })
 

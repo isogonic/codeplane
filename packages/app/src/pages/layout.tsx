@@ -2517,7 +2517,7 @@ export default function Layout(props: ParentProps) {
         ) : cronContextActive() ? (
           <div
             classList={{
-              "flex flex-col min-h-0 min-w-0 box-border rounded-tl-[12px]": true,
+              "flex flex-col min-h-0 min-w-0 box-border": true,
               "border-l border-t border-border-weaker-base bg-background-base": !mobile,
               "flex-1 min-w-0 max-w-full overflow-hidden": !!mobile,
             }}

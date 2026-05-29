@@ -1957,12 +1957,52 @@ test("mode cost preserves over-200k pricing from base model", () => {
   expect(model.cost.cache.write).toEqual(0)
   expect(model.options["serviceTier"]).toEqual("priority")
   expect(model.cost.experimentalOver200K).toEqual({
+    threshold: 200_000,
     input: 5,
     output: 22.5,
     cache: {
       read: 0.5,
       write: 0,
     },
+  })
+})
+
+test("cost.tiers sets the surcharge threshold at the real per-model breakpoint", () => {
+  const provider = {
+    id: "openai",
+    name: "OpenAI",
+    env: [],
+    api: "https://api.openai.com/v1",
+    models: {
+      "gpt-5.5": {
+        id: "gpt-5.5",
+        name: "GPT-5.5",
+        family: "gpt",
+        release_date: "2026-04-23",
+        attachment: true,
+        reasoning: true,
+        temperature: false,
+        tool_call: true,
+        cost: {
+          input: 5,
+          output: 30,
+          cache_read: 0.5,
+          // legacy field claims the surcharge starts at 200k …
+          context_over_200k: { input: 10, output: 45, cache_read: 1 },
+          // … but the real OpenAI breakpoint is 272k, expressed via `tiers`.
+          tiers: [{ input: 10, output: 45, cache_read: 1, tier: { type: "context", size: 272_000 } }],
+        },
+        limit: { context: 1_050_000, input: 922_000, output: 128_000 },
+      },
+    },
+  } as unknown as ModelsDev.Provider
+
+  const model = Provider.fromModelsDevProvider(provider).models["gpt-5.5"]
+  expect(model.cost.experimentalOver200K).toEqual({
+    threshold: 272_000,
+    input: 10,
+    output: 45,
+    cache: { read: 1, write: 0 },
   })
 })
 

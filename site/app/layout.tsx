@@ -48,9 +48,10 @@ export const metadata: Metadata = {
     locale: "en_US",
     images: [
       {
-        url: "/og.svg",
+        url: "/og.png",
         width: 1200,
         height: 630,
+        type: "image/png",
         alt: "Codeplane — a coding agent that lives everywhere you code.",
       },
     ],
@@ -60,13 +61,12 @@ export const metadata: Metadata = {
     title: "Codeplane — open-source coding agent",
     description:
       "Terminal, desktop, web, mobile — one self-hosted agent that follows you across surfaces. MIT, any model, MCP-native.",
-    images: ["/og.svg"],
+    images: ["/og.png"],
   },
   icons: {
     icon: [
-      { url: "/favicon.svg", type: "image/svg+xml", media: "(prefers-color-scheme: light)" },
-      { url: "/favicon.svg", type: "image/svg+xml", media: "(prefers-color-scheme: dark)" },
       { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
@@ -94,8 +94,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+    { media: "(prefers-color-scheme: light)", color: "#f7f4f0" },
+    { media: "(prefers-color-scheme: dark)", color: "#100f0e" },
   ],
   colorScheme: "light dark",
   width: "device-width",
@@ -104,8 +104,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="font-sans">
-      <body className="min-h-screen antialiased">
+    <html lang="en">
+      <body className="min-h-screen font-sans antialiased">
         {children}
         {/*
          * JSON-LD structured data — helps Google show the project as a
@@ -151,6 +151,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     name: "Codeplane",
                     logo: { "@type": "ImageObject", url: "https://codeplane.cc/icon-512.png" },
                   },
+                },
+                {
+                  "@type": "Organization",
+                  name: "Codeplane",
+                  url: "https://codeplane.cc",
+                  logo: "https://codeplane.cc/icon-512.png",
+                  sameAs: ["https://github.com/devinoldenburg/codeplane"],
                 },
               ],
             }),

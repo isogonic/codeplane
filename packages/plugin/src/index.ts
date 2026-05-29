@@ -277,6 +277,31 @@ export interface Hooks {
       metadata: any
     },
   ) => Promise<void>
+  /**
+   * Called when a tool fails to execute. Fires for native tools, MCP tools,
+   * and the task/subagent tool, completing the tool lifecycle alongside
+   * `tool.execute.before` and `tool.execute.after`.
+   *
+   * Use it to observe failures (telemetry, metrics, retries) and to rewrite
+   * the text the model sees so it can recover gracefully instead of giving up.
+   *
+   * - `error`: the original error message (informational)
+   * - `output`: the failure text shown to the model. Mutate to customize.
+   * - `title`/`metadata`: tool-call title and metadata where available; mutate
+   *   to enrich the recorded tool call.
+   *
+   * Note: some tools (e.g. certain MCP tools) still produce output on failure,
+   * in which case `tool.execute.after` also fires after this hook.
+   */
+  "tool.execute.error"?: (
+    input: { tool: string; sessionID: string; callID: string; args: any },
+    output: {
+      error: string
+      output: string
+      title?: string
+      metadata?: Record<string, any>
+    },
+  ) => Promise<void>
   "experimental.chat.messages.transform"?: (
     input: {},
     output: {
@@ -329,4 +354,15 @@ export interface Hooks {
    * Modify tool definitions (description and parameters) sent to LLM
    */
   "tool.definition"?: (input: { toolID: string }, output: { description: string; parameters: any }) => Promise<void>
+  /**
+   * Called once per turn when the set of tools exposed to the model is
+   * assembled, after agent/session permission filtering. Lets plugins gate
+   * which tools the model can see and call — e.g. enforce a read-only mode,
+   * disable network tools, or restrict tools for a specific agent.
+   *
+   * - `agent`: the active agent name
+   * - `tools`: the available tool IDs. Mutate the array to add or remove
+   *   entries; removed tools are hidden from the model for this turn.
+   */
+  "tool.list"?: (input: { agent: string }, output: { tools: string[] }) => Promise<void>
 }

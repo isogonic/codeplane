@@ -85,6 +85,21 @@ import type { SavedInstance } from "@codeplane-ai/shared/instance"
  * TUI launch the same platform package from the same Codeplane home.
  */
 
+// Linux portable builds (AppImage, tar.gz) can't carry a setuid-root
+// chrome-sandbox helper, and on distros that restrict unprivileged user
+// namespaces (Ubuntu 24.04+ via AppArmor) the namespace sandbox fails too, so
+// Electron aborts before any window appears. The .deb installs under
+// /opt/Codeplane and makes chrome-sandbox setuid in its postinstall, so it
+// keeps the Chromium sandbox; every other Linux launch (AppImage sets
+// process.env.APPIMAGE; tar.gz runs from an arbitrary dir) disables the
+// sandbox so the app still starts. Must run before app `ready`.
+if (process.platform === "linux") {
+  const managedInstall = process.execPath.startsWith("/opt/Codeplane/")
+  if (process.env.APPIMAGE || !managedInstall) {
+    app.commandLine.appendSwitch("no-sandbox")
+  }
+}
+
 const SESSION_PARTITION_PREFIX = "persist:codeplane:"
 const HEADER_PREFIX_BLOCKED = ["host", "origin", "referer", "user-agent", "content-length"]
 const GITHUB_API_HEADERS = {
@@ -2400,7 +2415,10 @@ function setupIpc() {
     }
   })
   ipcMain.handle("desktop:log-path", () => logger.path())
-  ipcMain.handle("instances:list", () => savedInstances())
+  // Resync from disk so instances registered out-of-band (e.g. the dev-instance
+  // CLI writing straight to instances.json) show up when the picker reopens,
+  // without requiring a full app restart.
+  ipcMain.handle("instances:list", async () => (await syncInstanceState()).instances)
   ipcMain.handle("instances:get-default-key", () => {
     const defaultID = lastInstanceID()
     return defaultID ? uiHost.proxyKey(defaultID) : null

@@ -35,6 +35,23 @@ const Cost = Schema.Struct({
       cache_write: Schema.optional(Schema.Number),
     }),
   ),
+  // models.dev's generalized long-context pricing: a surcharge that applies once a
+  // request exceeds an explicit per-model token breakpoint (`tier.size`), e.g. 272k
+  // for GPT-5.5, 256k for qwen3.6-plus. Supersedes the fixed-200k `context_over_200k`.
+  tiers: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        input: Schema.Number,
+        output: Schema.Number,
+        cache_read: Schema.optional(Schema.Number),
+        cache_write: Schema.optional(Schema.Number),
+        tier: Schema.Struct({
+          type: Schema.String,
+          size: Schema.Number,
+        }),
+      }),
+    ),
+  ),
 })
 
 export const Model = Schema.Struct({

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { APICallError } from "ai"
-import { parseAPICallError } from "../../src/provider/error"
+import { parseAPICallError, parseStreamError } from "../../src/provider/error"
 
 describe("parseAPICallError", () => {
   test("surfaces the Codex backend `detail` field instead of dumping raw JSON", () => {
@@ -59,5 +59,66 @@ describe("parseAPICallError", () => {
     expect(parsed.type).toBe("api_error")
     if (parsed.type !== "api_error") throw new Error("expected api_error")
     expect(parsed.isRetryable).toBe(true)
+  })
+
+  test("marks a Codex `usage_limit_reached` 429 non-retryable with the reset time", () => {
+    // exact shape the chatgpt.com/backend-api/codex backend returns when the
+    // ChatGPT-plan rolling allowance is spent (resets ~33h out).
+    const error = new APICallError({
+      message: "The usage limit has been reached",
+      url: "https://api.openai.com/v1/responses",
+      requestBodyValues: {},
+      statusCode: 429,
+      responseBody: JSON.stringify({
+        error: {
+          type: "usage_limit_reached",
+          message: "The usage limit has been reached",
+          plan_type: "prolite",
+          resets_at: 1780175813,
+          resets_in_seconds: 119008,
+        },
+      }),
+      isRetryable: true,
+    })
+
+    const parsed = parseAPICallError({ providerID: "openai" as never, error })
+
+    expect(parsed.type).toBe("api_error")
+    if (parsed.type !== "api_error") throw new Error("expected api_error")
+    expect(parsed.isRetryable).toBe(false)
+    expect(parsed.message).toContain("Codex usage limit reached")
+    expect(parsed.message).toContain("33h")
+  })
+
+  test("usage_limit_reached without a reset hint stays non-retryable, no reset clause", () => {
+    const error = new APICallError({
+      message: "The usage limit has been reached",
+      url: "https://api.openai.com/v1/responses",
+      requestBodyValues: {},
+      statusCode: 429,
+      responseBody: JSON.stringify({ error: { type: "usage_limit_reached" } }),
+      isRetryable: true,
+    })
+
+    const parsed = parseAPICallError({ providerID: "openai" as never, error })
+
+    if (parsed.type !== "api_error") throw new Error("expected api_error")
+    expect(parsed.isRetryable).toBe(false)
+    expect(parsed.message).toContain("Codex usage limit reached")
+    expect(parsed.message).not.toContain("resets in")
+  })
+})
+
+describe("parseStreamError", () => {
+  test("classifies a `usage_limit_reached` stream error (keyed by type) non-retryable", () => {
+    const parsed = parseStreamError({
+      type: "error",
+      error: { type: "usage_limit_reached", message: "The usage limit has been reached", resets_in_seconds: 300 },
+    })
+
+    expect(parsed?.type).toBe("api_error")
+    if (parsed?.type !== "api_error") throw new Error("expected api_error")
+    expect(parsed.isRetryable).toBe(false)
+    expect(parsed.message).toContain("5 minute")
   })
 })
