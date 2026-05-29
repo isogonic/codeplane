@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none" width="120" height="120">
-  <style>
-    :root { color: #0a0a0a; }
-    @media (prefers-color-scheme: dark) { :root { color: #ffffff; } }
-    .plane { fill: currentColor; }
-  </style>
-  <path class="plane" d="M64 64L448 256L64 448V320L256 256L64 192V64Z"/>
-</svg>
