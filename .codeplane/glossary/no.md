@@ -7,8 +7,8 @@
 
 ## Do Not Translate (Locale Additions)
 
-- `CodePlane` (preserve casing in prose; keep `codeplane` only in commands, package names, paths, or code)
-- `CodePlane CLI`
+- `Codeplane` (preserve casing in prose; keep `codeplane` only in commands, package names, paths, or code)
+- `Codeplane CLI`
 - `CLI`, `MCP`, `OAuth`
 - Sound names (PR #10018 notes these were intentionally left untranslated)
 

@@ -35,7 +35,7 @@ Locale guidance does not override code/command preservation rules or the global 
 
 ---
 
-# Do-Not-Translate Terms (CodePlane Docs)
+# Do-Not-Translate Terms (Codeplane Docs)
 
 Generated from: `packages/web/src/content/docs/*.mdx` (default English docs)
 Generated on: 2026-02-10
@@ -152,14 +152,14 @@ OAuth
 Ollama integration docs
 OpenAI's Data Policies
 OpenChamber
-CodePlane
-CodePlane config
-CodePlane Config
-CodePlane Web - Active Session
-CodePlane Web - New Session
-CodePlane Web - See Servers
-CodePlane Zen
-CodePlane-Obsidian
+Codeplane
+Codeplane config
+Codeplane Config
+Codeplane Web - Active Session
+Codeplane Web - New Session
+Codeplane Web - See Servers
+Codeplane Zen
+Codeplane-Obsidian
 OpenRouter dashboard
 OpenWork
 OVHcloud panel
@@ -299,7 +299,7 @@ NoeFabris
 OpenAI
 OpenAPI
 OpenChamber
-CodePlane
+Codeplane
 OpenRouter
 OpenWork
 ownUserPermissions
@@ -322,7 +322,7 @@ xAI
 ZenMux
 ```
 
-## CodePlane CLI commands (as shown in docs)
+## Codeplane CLI commands (as shown in docs)
 
 ```text
 codeplane

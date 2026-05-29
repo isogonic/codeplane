@@ -37,7 +37,7 @@ Prefer guidance that is:
 
 ## Do Not Translate (Locale Additions)
 
-- `CodePlane` (preserve casing)
+- `Codeplane` (preserve casing)
 
 ## Preferred Terms
 

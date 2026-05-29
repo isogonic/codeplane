@@ -2,10 +2,10 @@ name: "Setup Git Committer"
 description: "Create app token and configure git user"
 inputs:
   codeplane-app-id:
-    description: "CodePlane GitHub App ID"
+    description: "Codeplane GitHub App ID"
     required: true
   codeplane-app-secret:
-    description: "CodePlane GitHub App private key"
+    description: "Codeplane GitHub App private key"
     required: true
 outputs:
   token:

@@ -6,9 +6,9 @@
 
 ## Do Not Translate (Locale Additions)
 
-- `CodePlane` (preserve casing in prose; keep `codeplane` only when it is part of commands, package names, paths, or code)
-- `CodePlane Zen`
-- `CodePlane CLI`
+- `Codeplane` (preserve casing in prose; keep `codeplane` only when it is part of commands, package names, paths, or code)
+- `Codeplane Zen`
+- `Codeplane CLI`
 - `CLI`, `MCP`, `OAuth`
 - `Model Context Protocol` (prefer the English expansion when introducing `MCP`)
 
@@ -38,5 +38,5 @@ These are preferred terms for docs/UI prose and may evolve.
 
 ## Avoid
 
-- Avoid `codeplane` in prose when referring to the product name; use `CodePlane`
+- Avoid `codeplane` in prose when referring to the product name; use `Codeplane`
 - Avoid mixing alternative terms for the same concept across docs when a preferred term is already established

@@ -6,8 +6,8 @@
 
 ## Do Not Translate (Locale Additions)
 
-- `CodePlane` (preserve casing in prose; keep `codeplane` only in commands, package names, paths, or code)
-- `CodePlane CLI`
+- `Codeplane` (preserve casing in prose; keep `codeplane` only in commands, package names, paths, or code)
+- `Codeplane CLI`
 - `CLI`, `MCP`, `OAuth`
 - Locale code `br` in repo config, code, and paths (repo alias for Brazilian Portuguese)
 

@@ -22,8 +22,8 @@ body:
   - type: input
     id: codeplane-version
     attributes:
-      label: CodePlane version
-      description: What version of CodePlane are you using?
+      label: Codeplane version
+      description: What version of Codeplane are you using?
     validations:
       required: false
 
