@@ -153,7 +153,7 @@ async function waitForListening(child: ReturnType<typeof spawn>) {
 }
 
 async function smokeServe(binaryPath: string, version: string) {
-  const child = spawn(binaryPath, ["serve", "--hostname", "127.0.0.1", "--port", "0"], {
+  const child = spawn(binaryPath, ["serve", "--instance", "smoke", "--hostname", "127.0.0.1", "--port", "0"], {
     env: process.env,
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
