@@ -85,14 +85,17 @@ export const GrepTool = Tool.define(
               [...new Set(rows.map((row) => row.path))],
               Effect.fnUntraced(function* (file) {
                 const info = yield* fs.stat(file).pipe(Effect.catch(() => Effect.succeed(undefined)))
-                if (!info || info.type === "Directory") return undefined
-                return [
-                  file,
-                  info.mtime.pipe(
-                    Option.map((time) => time.getTime()),
-                    Option.getOrElse(() => 0),
-                  ) ?? 0,
-                ] as const
+                if (info && info.type === "Directory") return undefined
+                // A failed stat (permission, race, odd FS) must NOT drop the
+                // file's matches — ripgrep already found them. Keep the file
+                // with mtime 0 so it sorts last instead of vanishing.
+                const mtime = info
+                  ? (info.mtime.pipe(
+                      Option.map((time) => time.getTime()),
+                      Option.getOrElse(() => 0),
+                    ) ?? 0)
+                  : 0
+                return [file, mtime] as const
               }),
               { concurrency: 16 },
             )).filter((entry): entry is readonly [string, number] => Boolean(entry)),
@@ -120,8 +123,13 @@ export const GrepTool = Tool.define(
               current = match.path
               output.push(`${match.path}:`)
             }
+            // Truncate on a codepoint boundary so a surrogate pair (emoji /
+            // astral-plane char at the limit) isn't split into an orphaned
+            // surrogate that becomes U+FFFD when the output is UTF-8 encoded.
             const text =
-              match.text.length > MAX_LINE_LENGTH ? match.text.substring(0, MAX_LINE_LENGTH) + "..." : match.text
+              match.text.length > MAX_LINE_LENGTH
+                ? [...match.text].slice(0, MAX_LINE_LENGTH).join("") + "..."
+                : match.text
             output.push(`  Line ${match.line}: ${text}`)
           }
 

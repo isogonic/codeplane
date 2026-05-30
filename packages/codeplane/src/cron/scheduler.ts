@@ -208,8 +208,13 @@ export const layer = Layer.effect(
       const slot = active.get(run.id)
       const abort = slot?.abort ?? new AbortController()
       const timeoutMs = task.timeoutMs ?? DEFAULT_TIMEOUT_MS
+      // Distinguish a wall-clock timeout from other aborts (user cancel, stop).
+      // abort.signal.aborted alone can't tell them apart, and a timed-out run
+      // that still resolves cleanly would otherwise be recorded as "success".
+      let timedOut = false
       const timeoutHandle = setTimeout(() => {
         log.warn("cron run timeout", { runID: run.id })
+        timedOut = true
         abort.abort()
       }, timeoutMs)
 
@@ -251,6 +256,29 @@ export const layer = Layer.effect(
             yield* appendLog(current, `Session ${sessionID} completed after run was ${current.status}`).pipe(
               Effect.ignore,
             )
+            return
+          }
+          // The run was force-aborted by the timeout handler but still resolved
+          // cleanly (the inner session stops on abort). Recording "success" here
+          // would hide the timeout from the user and the task's lastRunStatus.
+          if (timedOut) {
+            const timeoutMessage = `Run exceeded timeout (${timeoutMs}ms)`
+            yield* cron
+              .recordRun({
+                runID: run.id,
+                patch: { status: "timeout", timeCompleted: completedAt, errorMessage: timeoutMessage },
+              })
+              .pipe(Effect.catch(() => Effect.void))
+            yield* appendLog(current, timeoutMessage).pipe(Effect.ignore)
+            yield* cron
+              .markTaskAfterRun({
+                taskID: task.id,
+                runID: run.id,
+                runStatus: "timeout",
+                completedAt,
+                error: timeoutMessage,
+              })
+              .pipe(Effect.catch(() => Effect.void))
             return
           }
           yield* cron.recordRun({

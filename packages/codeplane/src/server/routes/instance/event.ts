@@ -134,11 +134,17 @@ export const EventRoutes = () => {
         if (lastEventID !== null) {
           const replay = buffer.since(lastEventID)
           if (replay === null) {
-            const ev = buffer.append(
-              JSON.stringify({ type: "server.resume_failed", properties: { lastEventID } }),
-            )
-            q.push({ kind: "event", ev })
-            replayMaxID = ev.id
+            // Per-connection notice — emit directly with id 0 (a non-resumable
+            // synthetic, like `server.connected`). Appending it to the SHARED
+            // resume buffer gave it a global id and replayed this one client's
+            // "resume_failed" to every other client that later reconnected.
+            q.push({
+              kind: "event",
+              ev: { id: 0, data: JSON.stringify({ type: "server.resume_failed", properties: { lastEventID } }) },
+            })
+            // The client will refetch state, so skip everything already
+            // buffered and continue from the current tip.
+            replayMaxID = buffer.nextId - 1
           } else {
             for (const ev of replay) {
               q.push({ kind: "event", ev })

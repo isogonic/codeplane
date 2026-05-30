@@ -39,19 +39,16 @@ export function createHoverCommentUtility(props: {
     line = next
   }
 
-  const loop = () => {
-    if (!button.isConnected) return
-    sync()
-    requestAnimationFrame(loop)
-  }
-
   const open = () => {
     const next = props.getHoveredLine() ?? line
     if (!next) return
     props.onSelect(next)
   }
 
-  requestAnimationFrame(loop)
+  // `line` is kept current by the pointer handlers below and open() reads
+  // getHoveredLine() fresh, so the previous unconditional per-frame
+  // requestAnimationFrame(loop) — which ran sync() every frame for the entire
+  // lifetime of the hover button — was pure idle CPU burn (jank + battery).
   button.addEventListener("mouseenter", sync)
   button.addEventListener("mousemove", sync)
   button.addEventListener("pointerdown", (event) => {

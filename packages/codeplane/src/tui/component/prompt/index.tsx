@@ -612,12 +612,22 @@ export function Prompt(props: PromptProps) {
         hidden: true,
         onSelect: async () => {
           const content = await Clipboard.read()
-          if (content?.mime.startsWith("image/")) {
+          if (!content) return
+          if (content.mime.startsWith("image/")) {
             await pasteAttachment({
               filename: "clipboard",
               mime: content.mime,
               content: content.data,
             })
+            return
+          }
+          // Text clipboard content was previously dropped — this command
+          // consumes Ctrl+V but only handled images, so on terminals that
+          // deliver Ctrl+V as a keypress (not bracketed paste) a text paste
+          // silently did nothing. Insert it like the bracketed-paste path.
+          if (content.data && input && !input.isDestroyed) {
+            input.insertText(content.data)
+            refreshPromptInputLayout(input, renderer, { gotoEnd: true })
           }
         },
       },

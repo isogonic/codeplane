@@ -23,7 +23,7 @@
 // the natural cap.
 
 import path from "node:path"
-import { existsSync, readFileSync, unlinkSync, writeFileSync, mkdirSync, openSync } from "node:fs"
+import { existsSync, readFileSync, unlinkSync, writeFileSync, mkdirSync, openSync, statSync } from "node:fs"
 import { spawn } from "node:child_process"
 import type { Argv } from "yargs"
 import { CodeplaneHome } from "@codeplane-ai/shared/home"
@@ -95,7 +95,11 @@ async function probePort(url: string, timeoutMs = 1500): Promise<{ ok: boolean; 
   }
 }
 
-async function waitForListening(logPath: string, deadline: number): Promise<{ port: number; url: string } | undefined> {
+async function waitForListening(
+  logPath: string,
+  startOffset: number,
+  deadline: number,
+): Promise<{ port: number; url: string } | undefined> {
   // Poll the log file for the spawned `codeplane serve`'s startup line:
   //   `codeplane server listening on http://127.0.0.1:NNNNN`
   // Once we see it, parse the port and return. Polling is cheaper than
@@ -103,7 +107,11 @@ async function waitForListening(logPath: string, deadline: number): Promise<{ po
   // to settle within seconds.
   while (Date.now() < deadline) {
     if (existsSync(logPath)) {
-      const text = readFileSync(logPath, "utf8")
+      // Only scan bytes written by THIS spawn. The log is opened in append
+      // mode (to keep prior sessions for post-mortem), so reading from the
+      // start would match a previous run's stale `listening on …` line and
+      // report the wrong port.
+      const text = readFileSync(logPath, "utf8").slice(startOffset)
       const match = text.match(/listening on (https?:\/\/[^\s]+)/)
       if (match) {
         const url = match[1].trim()
@@ -193,7 +201,9 @@ const InstanceDaemonStartCommand = cmd({
 
     const logPath = daemonLogFile(id)
     // Open in append mode so re-running start doesn't wipe a previous
-    // session's output (handy for post-mortem when the daemon dies).
+    // session's output (handy for post-mortem when the daemon dies). Capture
+    // the current size first so we only parse THIS run's listening line.
+    const logStartOffset = existsSync(logPath) ? statSync(logPath).size : 0
     const logFd = openSync(logPath, "a")
 
     UI.println(UI.Style.TEXT_INFO_BOLD + `Spawning daemon for "${id}"…`)
@@ -230,7 +240,7 @@ const InstanceDaemonStartCommand = cmd({
     child.unref()
 
     UI.println(UI.Style.TEXT_NORMAL + `\nWaiting for server to bind to a port (up to 30s)…`)
-    const listening = await waitForListening(logPath, Date.now() + 30_000)
+    const listening = await waitForListening(logPath, logStartOffset, Date.now() + 30_000)
     if (!listening) {
       // Server never logged its listen line. Don't write state — there's
       // nothing for `stop` or `status` to use. Inform the user where to
@@ -297,8 +307,14 @@ const InstanceDaemonStopCommand = cmd({
       )
       return
     }
+    // The daemon is spawned detached (its own process-group leader), so signal
+    // the whole GROUP — otherwise the server's child processes (MCP/LSP/bash)
+    // are orphaned when only the daemon pid is killed. A negative pid targets
+    // the process group on POSIX; Windows has no equivalent here, so fall back
+    // to the pid (behaviour unchanged there).
+    const killTarget = process.platform === "win32" ? state.pid : -state.pid
     try {
-      process.kill(state.pid, "SIGTERM")
+      process.kill(killTarget, "SIGTERM")
     } catch (err) {
       fail(`Failed to send SIGTERM to pid ${state.pid}: ${err instanceof Error ? err.message : String(err)}`)
     }
@@ -310,7 +326,7 @@ const InstanceDaemonStopCommand = cmd({
     }
     if (isPidAlive(state.pid)) {
       try {
-        process.kill(state.pid, "SIGKILL")
+        process.kill(killTarget, "SIGKILL")
       } catch {}
     }
     try {

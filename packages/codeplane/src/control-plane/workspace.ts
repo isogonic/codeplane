@@ -354,9 +354,13 @@ function setStatus(id: WorkspaceID, status: ConnectionStatus["status"]) {
   const next = { workspaceID: id, status }
   connections.set(id, next)
 
-  if (status === "error") {
-    aborts.delete(id)
-  }
+  // NOTE: do not delete the abort controller here on the "error" transition.
+  // syncWorkspaceLoop sets "error" on a transient connect failure and then
+  // keeps running (backoff + reconnect). Removing the controller orphaned the
+  // still-running loop (stopSync could no longer abort it), defeated the
+  // startSync dedup (a second loop spawned alongside the first), and made
+  // isSyncing() report false while syncing. The controller is removed only when
+  // the loop actually exits (the .finally below) or in stopSync.
 
   GlobalBus.emit("event", {
     directory: "global",
@@ -624,16 +628,20 @@ async function startSync(space: Info) {
   const abort = new AbortController()
   aborts.set(space.id, abort)
 
-  void syncWorkspaceLoop(space, abort.signal).catch((error) => {
-    aborts.delete(space.id)
-    if (abort.signal.aborted) return
-
-    setStatus(space.id, "error")
-    log.warn("workspace listener failed", {
-      workspaceID: space.id,
-      error,
+  void syncWorkspaceLoop(space, abort.signal)
+    .catch((error) => {
+      if (abort.signal.aborted) return
+      setStatus(space.id, "error")
+      log.warn("workspace listener failed", {
+        workspaceID: space.id,
+        error,
+      })
     })
-  })
+    .finally(() => {
+      // Clean up only if we're still the registered controller — a later
+      // startSync may have replaced us after stopSync aborted this loop.
+      if (aborts.get(space.id) === abort) aborts.delete(space.id)
+    })
 }
 
 function stopSync(id: WorkspaceID) {

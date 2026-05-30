@@ -1,6 +1,7 @@
 import type { EventAugmented as Event } from "@/tui/_compat/sdk-v2"
 import { useProject } from "./project"
 import { useSDK } from "./sdk"
+import { shouldDeliverEvent } from "@/tui/util/event-routing"
 
 type LooseEvent<Type extends string> = Type extends Event["type"]
   ? Extract<Event, { type: Type }>
@@ -21,20 +22,21 @@ export function useEvent() {
       // because the underlying server emits those richer payloads.
       const payload = event.payload as unknown as Event
 
-      // Special hack for truly global events
-      if (event.directory === "global") {
-        handler(payload)
-      }
-
-      if (project.workspace.current()) {
-        if (event.workspace === project.workspace.current()) {
-          handler(payload)
-        }
-
-        return
-      }
-
-      if (event.directory === project.instance.directory()) {
+      // Deliver events for the current view, matching on EITHER the active
+      // workspace OR the instance directory. The directory fallback is what
+      // keeps streaming smooth: live deltas emitted by the prompt-queue worker
+      // are stamped `workspace: undefined`, so a workspace-scoped session would
+      // otherwise drop every delta and only refresh via the 10s poll — the
+      // "TUI updates only every ~15s during streaming" bug. See
+      // `shouldDeliverEvent` for the full rationale.
+      if (
+        shouldDeliverEvent({
+          directory: event.directory,
+          eventWorkspace: event.workspace,
+          currentWorkspace: project.workspace.current(),
+          instanceDirectory: project.instance.directory(),
+        })
+      ) {
         handler(payload)
       }
     })

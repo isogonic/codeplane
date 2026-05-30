@@ -32,3 +32,19 @@ describe("McpOAuthCallback.ensureRunning", () => {
     expect(McpOAuthCallback.isRunning()).toBe(true)
   })
 })
+
+describe("McpOAuthCallback.escapeHtml", () => {
+  test("neutralizes a reflected script payload", () => {
+    const escaped = McpOAuthCallback.escapeHtml(`<script>alert('xss')</script>`)
+    expect(escaped).not.toContain("<script>")
+    expect(escaped).toBe("&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;")
+  })
+
+  test("escapes all HTML-significant characters", () => {
+    expect(McpOAuthCallback.escapeHtml(`& < > " '`)).toBe("&amp; &lt; &gt; &quot; &#39;")
+  })
+
+  test("leaves a benign provider error message intact", () => {
+    expect(McpOAuthCallback.escapeHtml("access_denied")).toBe("access_denied")
+  })
+})

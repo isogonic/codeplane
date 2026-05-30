@@ -17,6 +17,23 @@ const MAX_TIMEOUT_MS = 10 * 60_000
 const MAX_INLINE_OUTPUT_BYTES = 256 * 1024
 const CONTROL_DIR = path.join(os.tmpdir(), "codeplane-ssh")
 
+// Truncate to a byte budget on a codepoint boundary. The old code compared
+// .length (UTF-16 units) to a byte limit and sliced by units, which both
+// mis-measured multi-byte text and could split a surrogate pair at the cut
+// (orphaned surrogate → U+FFFD on UTF-8 encode).
+function truncateBytes(text: string, maxBytes: number): string {
+  if (Buffer.byteLength(text, "utf-8") <= maxBytes) return text
+  let bytes = 0
+  let out = ""
+  for (const ch of text) {
+    const chBytes = Buffer.byteLength(ch, "utf-8")
+    if (bytes + chBytes > maxBytes) break
+    bytes += chBytes
+    out += ch
+  }
+  return out + "…"
+}
+
 export const Parameters = Schema.Struct({
   host: Schema.String.annotate({
     description: "Destination as [user@]host[:port], or a host alias from ~/.ssh/config.",
@@ -398,7 +415,7 @@ export const SshTool = Tool.define(
               host: params.host,
               operation,
               exit,
-              stderr: stderr.length > MAX_INLINE_OUTPUT_BYTES ? `${stderr.slice(0, MAX_INLINE_OUTPUT_BYTES)}…` : stderr,
+              stderr: truncateBytes(stderr, MAX_INLINE_OUTPUT_BYTES),
               duration_ms: duration,
               ...(outFile ? { transcriptPath: outFile } : {}),
             },

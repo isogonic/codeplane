@@ -1,6 +1,7 @@
 import { Schema } from "effect"
 import { AppRuntime } from "@/effect/app-runtime"
 import { Worktree } from "@/worktree"
+import { Project } from "@/project"
 import { type WorkspaceAdaptor, WorkspaceInfo } from "../types"
 
 const WorktreeConfig = Schema.Struct({
@@ -37,6 +38,11 @@ export const WorktreeAdaptor: WorkspaceAdaptor = {
   async remove(info) {
     const config = decodeWorktreeConfig(info)
     await AppRuntime.runPromise(Worktree.Service.use((svc) => svc.remove({ directory: config.directory })))
+    // Also drop the sandbox registration for this worktree, mirroring the
+    // experimental worktree.remove route. Without this, removing a worktree
+    // workspace through the adaptor left a stale sandbox registered in the
+    // project (leak + the directory could be treated as an active sandbox).
+    await AppRuntime.runPromise(Project.Service.use((svc) => svc.removeSandbox(info.projectID, config.directory)))
   },
   target(info) {
     const config = decodeWorktreeConfig(info)

@@ -19,6 +19,12 @@ type Entry = {
 
 const max = 200
 const cache = new Map<string, Entry>()
+// Live (shiki-less) HTML keyed by the block source checksum. The streaming
+// `liveHtml` path re-ran liveMarkdown() for EVERY block on every delta, even
+// blocks whose source was unchanged (e.g. the stable head while a trailing
+// code block streams) — re-parsing + re-sanitizing the whole prefix each tick.
+const liveCache = new Map<string, string>()
+const liveMax = 200
 
 if (typeof window !== "undefined" && DOMPurify.isSupported) {
   DOMPurify.addHook("afterSanitizeAttributes", (node: Element) => {
@@ -335,7 +341,19 @@ function singleFileReference(text: string) {
   } satisfies FileReferenceMatch
 }
 
+// Memoize the pure per-string file-reference scan. markTextFileReferences runs
+// this over every text node of the WHOLE accumulated message on every streaming
+// delta; caching by the node's text means stable earlier text isn't re-regex'd
+// each chunk (mirrors the liveCache/wrapCache pattern in this file).
+const fileReferencesCache = new Map<string, FileReferenceMatch[]>()
+const fileReferencesCacheMax = 1000
 function fileReferences(text: string) {
+  // Both pattern branches require a literal "." (a file extension), so text
+  // without one can never match — skip the expensive alternation regex.
+  if (!text.includes(".")) return [] as FileReferenceMatch[]
+  const memo = fileReferencesCache.get(text)
+  if (memo) return memo
+
   const result: FileReferenceMatch[] = []
   fileReferencePattern.lastIndex = 0
 
@@ -355,6 +373,11 @@ function fileReferences(text: string) {
     })
   }
 
+  fileReferencesCache.set(text, result)
+  if (fileReferencesCache.size > fileReferencesCacheMax) {
+    const first = fileReferencesCache.keys().next().value
+    if (first !== undefined) fileReferencesCache.delete(first)
+  }
   return result
 }
 
@@ -785,13 +808,24 @@ export function Markdown(
     const safe = sanitize(raw)
     return safe || wrapWords(text)
   }
+  // Shared block layout: cachedHtml + liveHtml both ran stream() (a full
+  // marked.lexer pass over the ENTIRE accumulated message) independently on
+  // every streaming delta — 2 redundant full-document re-lexes per chunk. They
+  // pass the same mode while streaming, so the blocks are identical; compute
+  // once here and reuse.
+  const streamBlocks = createMemo(() => {
+    if (isServer) return []
+    const text = normalizeText(local.text)
+    if (!text) return []
+    return stream(text, local.streaming ?? false)
+  })
   const cachedHtml = createMemo(() => {
     if (isServer) return undefined
     const text = normalizeText(local.text)
     if (!text) return ""
     const base = local.cacheKey ?? checksum(text)
     if (!base) return undefined
-    const blocks = stream(text, local.streaming ?? false)
+    const blocks = streamBlocks()
     const out: string[] = []
     for (let index = 0; index < blocks.length; index++) {
       const block = blocks[index]
@@ -817,7 +851,7 @@ export function Markdown(
     if (!text) return undefined
     const base = local.cacheKey ?? checksum(text)
     if (!base) return undefined
-    const blocks = stream(text, true)
+    const blocks = streamBlocks()
     if (blocks.length === 0) return undefined
     const out: string[] = []
     let usedFallback = false
@@ -836,8 +870,21 @@ export function Markdown(
       // blocks immediately on every delta. The async path replaces
       // each block with the fully-highlighted version as soon as it
       // resolves (shiki language load + DOMPurify pass), via the
-      // cached entry above.
-      out.push(liveMarkdown(block.src))
+      // cached entry above. Memoize the live HTML by block source so an
+      // unchanged block isn't re-parsed/re-sanitized on every delta.
+      const liveKey = checksum(block.src)
+      let liveOut = liveKey ? liveCache.get(liveKey) : undefined
+      if (liveOut === undefined) {
+        liveOut = liveMarkdown(block.src)
+        if (liveKey) {
+          liveCache.set(liveKey, liveOut)
+          if (liveCache.size > liveMax) {
+            const first = liveCache.keys().next().value
+            if (first !== undefined) liveCache.delete(first)
+          }
+        }
+      }
+      out.push(liveOut)
       usedFallback = true
     }
     return usedFallback ? out.join("") : undefined

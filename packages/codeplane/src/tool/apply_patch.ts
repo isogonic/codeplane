@@ -184,6 +184,23 @@ export const ApplyPatchTool = Tool.define(
         }
       }
 
+      // Reject a patch that writes the same resolved path from more than one
+      // hunk. Each hunk verifies against the ORIGINAL on-disk content, so the
+      // apply phase would overwrite earlier hunks with the last — silently
+      // losing edits (data loss). The model should combine them into one hunk.
+      const writeCounts = new Map<string, number>()
+      for (const change of fileChanges) {
+        if (change.type === "delete") continue
+        const target = change.movePath ?? change.filePath
+        writeCounts.set(target, (writeCounts.get(target) ?? 0) + 1)
+      }
+      const duplicateTarget = [...writeCounts].find(([, count]) => count > 1)
+      if (duplicateTarget) {
+        return yield* Effect.fail(
+          new Error(`apply_patch verification failed: multiple hunks target the same file: ${duplicateTarget[0]}`),
+        )
+      }
+
       // Build per-file metadata for UI rendering (used for both permission and result)
       const files = fileChanges.map((change) => ({
         filePath: change.filePath,
@@ -230,9 +247,14 @@ export const ApplyPatchTool = Tool.define(
             if (change.movePath) {
               // Create parent directories (recursive: true is safe on existing/root dirs)
 
-              yield* afs.writeWithDirs(change.movePath!, Bom.join(change.newContent, change.bom))
-              yield* afs.remove(change.filePath)
-              updates.push({ file: change.filePath, event: "unlink" })
+              yield* afs.writeWithDirs(change.movePath, Bom.join(change.newContent, change.bom))
+              // Move-to-same-path is an in-place edit — only remove the source
+              // when it differs from the destination, otherwise we'd delete the
+              // file we just wrote (both paths are already path.resolve'd).
+              if (change.movePath !== change.filePath) {
+                yield* afs.remove(change.filePath)
+                updates.push({ file: change.filePath, event: "unlink" })
+              }
               updates.push({ file: change.movePath, event: "add" })
             }
             break

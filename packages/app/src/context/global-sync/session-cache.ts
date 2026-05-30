@@ -45,9 +45,14 @@ export function cachedSessionIDs(store: SessionCache) {
 }
 
 // `pendingDelta` is intentionally not surveyed for cached session IDs —
-// buffered deltas always belong to a message that already lives in
+// buffered deltas normally belong to a message that already lives in
 // `store.message`. If the owning message gets evicted, `dropSessionCaches`
-// drops the buffered deltas too via its `droppedMessageIDs` walk above.
+// drops the buffered deltas too via its `droppedMessageIDs` walk. But a delta
+// whose part snapshot NEVER lands (and whose session is later evicted before
+// any message/part is created) has no message in `store.message`/`store.part`,
+// so the walk can't reach it. To stop those orphans from leaking forever,
+// `dropSessionCaches` also bounds `pendingDelta` to this many entries.
+export const PENDING_DELTA_LIMIT = 200
 
 export function dropSessionCaches(store: SessionCache, sessionIDs: Iterable<string>) {
   const stale = new Set(Array.from(sessionIDs).filter(Boolean))
@@ -77,6 +82,17 @@ export function dropSessionCaches(store: SessionCache, sessionIDs: Iterable<stri
 
   for (const messageID of droppedMessageIDs) {
     delete store.pendingDelta[messageID]
+  }
+
+  // Bound orphaned buffered deltas (snapshot never landed, so the walk above
+  // can't reach them). Object key order is insertion order, so dropping from
+  // the front evicts the oldest — the ones least likely to still be awaiting an
+  // imminent snapshot.
+  const pendingKeys = Object.keys(store.pendingDelta)
+  if (pendingKeys.length > PENDING_DELTA_LIMIT) {
+    for (const messageID of pendingKeys.slice(0, pendingKeys.length - PENDING_DELTA_LIMIT)) {
+      delete store.pendingDelta[messageID]
+    }
   }
 }
 

@@ -1,4 +1,5 @@
 import { Effect, Layer, Context, Schema } from "effect"
+import { NamedError } from "@codeplane-ai/shared/util/error"
 import { Bus } from "../bus"
 import { Snapshot } from "../snapshot"
 import { Storage } from "@/storage"
@@ -72,7 +73,22 @@ export const layer = Layer.effect(
       if (!rev) return session
 
       rev.snapshot = session.revert?.snapshot ?? (yield* snap.track())
-      if (session.revert?.snapshot) yield* snap.restore(session.revert.snapshot)
+      if (session.revert?.snapshot) {
+        // If restoring the prior revert point fails, the working tree is not at
+        // the base the new revert assumes — proceeding would compute the diff
+        // and record revert state against a wrong tree. Surface the failure and
+        // abort instead of reporting a bogus success.
+        const ok = yield* snap.restore(session.revert.snapshot)
+        if (!ok) {
+          yield* bus
+            .publish(Session.Event.Error, {
+              sessionID: input.sessionID,
+              error: new NamedError.Unknown({ message: "Failed to restore snapshot during revert" }).toObject(),
+            })
+            .pipe(Effect.ignore)
+          return session
+        }
+      }
       yield* snap.revert(patches)
       if (rev.snapshot) rev.diff = yield* snap.diff(rev.snapshot as string)
       const range = all.filter((msg) => msg.info.id >= rev!.messageID)
@@ -96,7 +112,22 @@ export const layer = Layer.effect(
       yield* state.assertNotBusy(input.sessionID)
       const session = yield* sessions.get(input.sessionID)
       if (!session.revert) return session
-      if (session.revert.snapshot) yield* snap.restore(session.revert!.snapshot!)
+      if (session.revert.snapshot) {
+        // Don't clear revert state on a failed restore — the tree is still in
+        // the reverted state, so reporting success (and dropping the ability to
+        // retry) would silently strand the user. Surface the error and keep the
+        // revert in place.
+        const ok = yield* snap.restore(session.revert!.snapshot!)
+        if (!ok) {
+          yield* bus
+            .publish(Session.Event.Error, {
+              sessionID: input.sessionID,
+              error: new NamedError.Unknown({ message: "Failed to restore snapshot during unrevert" }).toObject(),
+            })
+            .pipe(Effect.ignore)
+          return session
+        }
+      }
       yield* sessions.clearRevert(input.sessionID)
       return yield* sessions.get(input.sessionID)
     })

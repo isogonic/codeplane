@@ -125,7 +125,7 @@ function snapshotLayer(diffs: Snapshot.FileDiff[]) {
       cleanup: () => Effect.void,
       track: () => Effect.succeed("from"),
       patch: () => Effect.succeed({ hash: "to", files: [] }),
-      restore: () => Effect.void,
+      restore: () => Effect.succeed(true),
       revert: () => Effect.void,
       diff: () => Effect.succeed(""),
       diffFull: (from, to) => Effect.succeed(from === "from" && to === "to" ? diffs : []),

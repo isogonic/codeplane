@@ -11,14 +11,20 @@ import type { SessionID } from "./schema"
 function sqlite(db: Database.TxOrDb, sessionID: SessionID): SessionEntryStepper.Adapter<void> {
   return {
     getCurrentAssistant() {
-      return db
+      // The in-flight assistant is always the newest assistant row, so fetch
+      // only that one. The previous `.all().map().find()` deserialized EVERY
+      // assistant entry of the session on every streaming sub-event — O(N) per
+      // event, O(N^2) over a long session, on the hot streaming path.
+      const row = db
         .select()
         .from(SessionEntryTable)
         .where(and(eq(SessionEntryTable.session_id, sessionID), eq(SessionEntryTable.type, "assistant")))
         .orderBy(desc(SessionEntryTable.id))
-        .all()
-        .map((row) => ({ id: row.id, type: row.type, ...row.data }) as SessionEntry.Entry)
-        .find((entry): entry is SessionEntry.Assistant => entry.type === "assistant" && !entry.time.completed)
+        .limit(1)
+        .get()
+      if (!row) return undefined
+      const entry = { id: row.id, type: row.type, ...row.data } as SessionEntry.Entry
+      return entry.type === "assistant" && !entry.time.completed ? entry : undefined
     },
     updateAssistant(assistant) {
       const { id, type, ...data } = assistant
@@ -54,6 +60,16 @@ function step(db: Database.TxOrDb, event: SessionEvent.Event) {
   SessionEntryStepper.stepWith(sqlite(db, event.data.sessionID), event)
 }
 
+// Tool.Progress fires per chunk during tool execution, and each one rewrites the
+// entire assistant entry blob to SessionEntryTable. Live UI progress flows
+// through the separate SSE MessageV2.PartUpdated path; this DB blob is only read
+// on cold load/reconnect, and the final tool state is always written on
+// success/error. So coalesce the per-chunk progress writes to at most one per
+// window per session — turning O(chunks) full-blob writes into a trickle.
+// Progress is latest-wins, so a skipped intermediate write loses nothing durable.
+const lastProgressWrite = new Map<string, number>()
+const PROGRESS_WRITE_INTERVAL_MS = 200
+
 export default [
   SyncEvent.project(SessionEvent.Prompted.Sync, (db, data) => {
     step(db, { type: "session.next.prompted", data })
@@ -85,12 +101,18 @@ export default [
     step(db, { type: "session.next.tool.called", data })
   }),
   SyncEvent.project(SessionEvent.Tool.Progress.Sync, (db, data) => {
+    const now = Date.now()
+    const last = lastProgressWrite.get(data.sessionID) ?? 0
+    if (now - last < PROGRESS_WRITE_INTERVAL_MS) return // coalesce intermediate progress
+    lastProgressWrite.set(data.sessionID, now)
     step(db, { type: "session.next.tool.progress", data })
   }),
   SyncEvent.project(SessionEvent.Tool.Success.Sync, (db, data) => {
+    lastProgressWrite.delete(data.sessionID)
     step(db, { type: "session.next.tool.success", data })
   }),
   SyncEvent.project(SessionEvent.Tool.Error.Sync, (db, data) => {
+    lastProgressWrite.delete(data.sessionID)
     step(db, { type: "session.next.tool.error", data })
   }),
   SyncEvent.project(SessionEvent.Reasoning.Started.Sync, (db, data) => {

@@ -44,6 +44,26 @@ const writeState = async (state: StoredState) => {
   await mobilePreferences.setItem(KEY_INSTANCES, JSON.stringify(state))
 }
 
+// Serialize read-modify-write of the shared instances blob. save/setLastId/
+// remove each read the full state, mutate, and write it back; concurrent calls
+// (e.g. saving a new instance while another flow sets lastInstanceID, or a
+// remove racing a save) clobbered each other — the later write dropped the
+// other's change (lost instance or wrong "last opened"). Each mutation here
+// runs in a chain and re-reads the latest state. Mirrors ui-cache.mutateState.
+let writeChain: Promise<unknown> = Promise.resolve()
+const mutate = (mutator: (state: StoredState) => void): Promise<void> => {
+  const run = writeChain.then(async () => {
+    const state = await readState()
+    mutator(state)
+    await writeState(state)
+  })
+  writeChain = run.then(
+    () => {},
+    () => {},
+  )
+  return run
+}
+
 type HeadersStore = {
   get: (id: string) => Promise<Record<string, string>>
   set: (id: string, headers: Record<string, string>) => Promise<void>
@@ -73,19 +93,18 @@ export function mobileInstanceStore(headersStore: HeadersStore) {
   const getLastId = async () => (await readState()).lastInstanceID
 
   const setLastId = async (id: string) => {
-    const state = await readState()
-    await writeState({ ...state, lastInstanceID: id })
+    await mutate((state) => {
+      state.lastInstanceID = id
+    })
   }
 
   const save = async (instance: SavedInstance): Promise<SavedInstance[]> => {
-    const state = await readState()
     const persisted = stripPlaintextHeaders(instance)
-    const idx = state.instances.findIndex((item) => item.id === instance.id)
-    const next: Persisted[] =
-      idx === -1
-        ? [...state.instances, persisted]
-        : state.instances.map((item, i) => (i === idx ? persisted : item))
-    await writeState({ instances: next, lastInstanceID: state.lastInstanceID })
+    await mutate((state) => {
+      const idx = state.instances.findIndex((item) => item.id === instance.id)
+      if (idx === -1) state.instances.push(persisted)
+      else state.instances[idx] = persisted
+    })
     if (instance.headers && Object.keys(instance.headers).length > 0 && !("__secure" in instance.headers)) {
       await headersStore.set(instance.id, instance.headers)
     }
@@ -93,10 +112,9 @@ export function mobileInstanceStore(headersStore: HeadersStore) {
   }
 
   const remove = async (id: string): Promise<SavedInstance[]> => {
-    const state = await readState()
-    await writeState({
-      instances: state.instances.filter((item) => item.id !== id),
-      lastInstanceID: state.lastInstanceID === id ? undefined : state.lastInstanceID,
+    await mutate((state) => {
+      state.instances = state.instances.filter((item) => item.id !== id)
+      if (state.lastInstanceID === id) state.lastInstanceID = undefined
     })
     await headersStore.clear(id)
     // SSO config + tokens are also instance-scoped; clear them on

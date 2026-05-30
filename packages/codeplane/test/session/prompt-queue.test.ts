@@ -101,6 +101,45 @@ describe("PromptQueue", () => {
     })
   })
 
+  test("per-session FIFO holds when the head is deferred by retry backoff", async () => {
+    await using tmp = await tmpdir()
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const sessionID = session("fifo-backoff")
+        const j1 = await AppRuntime.runPromise(
+          PromptQueue.Service.use((svc) =>
+            svc.enqueue({ sessionID, directory: tmp.path, payload: JSON.stringify({ tag: 1 }) }),
+          ),
+        )
+        await AppRuntime.runPromise(
+          PromptQueue.Service.use((svc) =>
+            svc.enqueue({ sessionID, directory: tmp.path, payload: JSON.stringify({ tag: 2 }) }),
+          ),
+        )
+        const now = Date.now()
+        // Claim the head (j1), then simulate a transient failure that requeues
+        // it with a backoff window (future next_run_at).
+        const claimed1 = await AppRuntime.runPromise(PromptQueue.Service.use((svc) => svc.claim(now, 10)))
+        expect(claimed1).toHaveLength(1)
+        expect(claimed1[0].id).toBe(j1.id)
+        await AppRuntime.runPromise(
+          PromptQueue.Service.use((svc) =>
+            svc.recordResult({ jobID: j1.id, status: "pending", nextRunAt: now + 10_000 }),
+          ),
+        )
+        // While the head is in backoff, the LATER prompt (j2) must NOT be
+        // claimed ahead of it — that would scramble the conversation order.
+        const duringBackoff = await AppRuntime.runPromise(PromptQueue.Service.use((svc) => svc.claim(now + 1_000, 10)))
+        expect(duringBackoff).toHaveLength(0)
+        // Once the backoff elapses, the head (j1) is claimed — not j2.
+        const afterBackoff = await AppRuntime.runPromise(PromptQueue.Service.use((svc) => svc.claim(now + 20_000, 10)))
+        expect(afterBackoff).toHaveLength(1)
+        expect(afterBackoff[0].id).toBe(j1.id)
+      },
+    })
+  })
+
   test("recover marks running rows for requeue or fail", async () => {
     await using tmp = await tmpdir()
     await Instance.provide({

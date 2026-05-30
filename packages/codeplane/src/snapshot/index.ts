@@ -49,7 +49,7 @@ export interface Interface {
   readonly cleanup: () => Effect.Effect<void>
   readonly track: () => Effect.Effect<string | undefined>
   readonly patch: (hash: string) => Effect.Effect<Patch>
-  readonly restore: (snapshot: string) => Effect.Effect<void>
+  readonly restore: (snapshot: string) => Effect.Effect<boolean>
   readonly revert: (patches: Patch[]) => Effect.Effect<void>
   readonly diff: (hash: string) => Effect.Effect<string>
   readonly diffFull: (from: string, to: string) => Effect.Effect<FileDiff[]>
@@ -320,7 +320,7 @@ export const layer: Layer.Layer<
             Effect.gen(function* () {
               yield* add()
               const result = yield* git(
-                [...quote, ...args(["diff", "--cached", "--no-ext-diff", "--name-only", hash, "--", "."])],
+                [...quote, ...args(["diff", "--cached", "--no-ext-diff", "--name-only", "-z", hash, "--", "."])],
                 {
                   cwd: state.directory,
                 },
@@ -329,11 +329,10 @@ export const layer: Layer.Layer<
                 log.warn("failed to get diff", { hash, exitCode: result.code })
                 return { hash, files: [] }
               }
-              const files = result.text
-                .trim()
-                .split("\n")
-                .map((x) => x.trim())
-                .filter(Boolean)
+              // -z + NUL split (matching add()/ignore()): a "\n" split mangled
+              // filenames containing tabs/newlines (git would also quote/escape
+              // them without -z), yielding wrong/missing files in the patch.
+              const files = result.text.split("\0").filter(Boolean)
 
               // Hide ignored-file removals from the user-facing patch output.
               const ignored = yield* ignore(files)
@@ -348,6 +347,10 @@ export const layer: Layer.Layer<
           )
         })
 
+        // Returns true on success, false on failure. Callers (session revert/
+        // unrevert) must NOT report success or mutate revert state when this
+        // returns false — otherwise the working tree silently stays unreverted
+        // while the UI shows a completed revert.
         const restore = Effect.fnUntraced(function* (snapshot: string) {
           return yield* locked(
             Effect.gen(function* () {
@@ -357,19 +360,20 @@ export const layer: Layer.Layer<
                 const checkout = yield* git([...core, ...args(["checkout-index", "-a", "-f"])], {
                   cwd: state.worktree,
                 })
-                if (checkout.code === 0) return
+                if (checkout.code === 0) return true
                 log.error("failed to restore snapshot", {
                   snapshot,
                   exitCode: checkout.code,
                   stderr: checkout.stderr,
                 })
-                return
+                return false
               }
               log.error("failed to restore snapshot", {
                 snapshot,
                 exitCode: result.code,
                 stderr: result.stderr,
               })
+              return false
             }),
           )
         })
@@ -429,8 +433,15 @@ export const layer: Layer.Layer<
                   continue
                 }
 
+                // -z emits raw, NUL-separated, unquoted paths, so the
+                // `have.has(item.rel)` check matches non-ASCII names (git's
+                // default octal quoting like `"caf\303\251.txt"` would miss
+                // them) AND names containing tabs/newlines (a "\n" split would
+                // mangle those). A miss treats a file that DID exist in the
+                // snapshot as "did not exist" and DELETES it instead of
+                // restoring it — data loss.
                 const tree = yield* git(
-                  [...core, ...args(["ls-tree", "--name-only", first.hash, "--", ...run.map((item) => item.rel)])],
+                  [...quote, ...args(["ls-tree", "--name-only", "-z", first.hash, "--", ...run.map((item) => item.rel)])],
                   {
                     cwd: state.worktree,
                   },
@@ -448,13 +459,7 @@ export const layer: Layer.Layer<
                   continue
                 }
 
-                const have = new Set(
-                  tree.text
-                    .trim()
-                    .split("\n")
-                    .map((item) => item.trim())
-                    .filter(Boolean),
-                )
+                const have = new Set(tree.text.split("\0").filter(Boolean))
                 const list = run.filter((item) => have.has(item.rel))
                 if (list.length) {
                   log.info("reverting", { hash: first.hash, files: list.length })
@@ -652,30 +657,40 @@ export const layer: Layer.Layer<
               const status = new Map<string, "added" | "deleted" | "modified">()
 
               const statuses = yield* git(
-                [...quote, ...args(["diff", "--no-ext-diff", "--name-status", "--no-renames", from, to, "--", "."])],
+                [...quote, ...args(["diff", "--no-ext-diff", "--name-status", "--no-renames", "-z", from, to, "--", "."])],
                 { cwd: state.directory },
               )
 
-              for (const line of statuses.text.trim().split("\n")) {
-                if (!line) continue
-                const [code, file] = line.split("\t")
-                if (!code || !file) continue
+              // -z output is `status\0path\0status\0path...` (raw, unquoted
+              // paths). A "\n"+tab split corrupted filenames containing tabs or
+              // newlines (and git would octal-quote non-ASCII without -z).
+              const statusTokens = statuses.text.split("\0").filter(Boolean)
+              for (let i = 0; i + 1 < statusTokens.length; i += 2) {
+                const code = statusTokens[i]
+                const file = statusTokens[i + 1]
                 status.set(file, code.startsWith("A") ? "added" : code.startsWith("D") ? "deleted" : "modified")
               }
 
               const numstat = yield* git(
-                [...quote, ...args(["diff", "--no-ext-diff", "--no-renames", "--numstat", from, to, "--", "."])],
+                [...quote, ...args(["diff", "--no-ext-diff", "--no-renames", "--numstat", "-z", from, to, "--", "."])],
                 {
                   cwd: state.directory,
                 },
               )
 
+              // -z numstat: records are NUL-separated; within each record the
+              // adds/dels/path fields are TAB-separated and the path is raw and
+              // last (so it may itself contain tabs — keep everything after the
+              // first two fields).
               const rows = numstat.text
-                .trim()
-                .split("\n")
+                .split("\0")
                 .filter(Boolean)
-                .flatMap((line) => {
-                  const [adds, dels, file] = line.split("\t")
+                .flatMap((record) => {
+                  const parts = record.split("\t")
+                  if (parts.length < 3) return []
+                  const adds = parts[0]
+                  const dels = parts[1]
+                  const file = parts.slice(2).join("\t")
                   if (!file) return []
                   const binary = adds === "-" && dels === "-"
                   const additions = binary ? 0 : parseInt(adds)

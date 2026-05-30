@@ -55,10 +55,16 @@ export function LocalInstanceForm(props: {
   })
 
   const refreshStatus = async () => {
-    if (!version()) return
+    const requested = version()
+    if (!requested) return
     try {
-      setStatus(await props.service.localStatus(version()))
+      const s = await props.service.localStatus(requested)
+      // Drop stale results: a later keystroke changed the field while this
+      // lookup was in flight, so its status no longer matches what's shown.
+      if (version() !== requested) return
+      setStatus(s)
     } catch {
+      if (version() !== requested) return
       setStatus(undefined)
     }
   }

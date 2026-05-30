@@ -125,10 +125,17 @@ const filterExperimentalServers = (servers: Record<string, LSPServer.Info>) => {
 
 type LocInput = { file: string; line: number; character: number }
 
+// How long a server that failed to spawn/initialize stays skipped before a
+// fresh attempt. Without a TTL a single transient failure (binary still
+// downloading, momentary OOM) marked the server broken for the whole session,
+// so the LSP never attached again until restart. Long enough to avoid a
+// spawn-storm on every keystroke, short enough to self-heal.
+const BROKEN_TTL_MS = 5 * 60_000
+
 interface State {
   clients: LSPClient.Info[]
   servers: Record<string, LSPServer.Info>
-  broken: Set<string>
+  broken: Map<string, number>
   spawning: Map<string, Promise<LSPClient.Info | undefined>>
 }
 
@@ -205,7 +212,7 @@ export const layer = Layer.effect(
         const s: State = {
           clients: [],
           servers,
-          broken: new Set(),
+          broken: new Map(),
           spawning: new Map(),
         }
 
@@ -229,18 +236,22 @@ export const layer = Layer.effect(
       }
       const s = yield* InstanceState.get(state)
       return yield* Effect.promise(async () => {
-        const extension = path.parse(file).ext || file
+        // Extensionless files (Dockerfile, Makefile, …) fall back to the
+        // basename, not the full path — servers register matchers like
+        // `"Dockerfile"`, which the absolute path could never equal, so the
+        // LSP otherwise never attached to those files.
+        const extension = path.parse(file).ext || path.basename(file)
         const result: LSPClient.Info[] = []
 
         async function schedule(server: LSPServer.Info, root: string, key: string) {
           const handle = await server
             .spawn(root, ctx)
             .then((value) => {
-              if (!value) s.broken.add(key)
+              if (!value) s.broken.set(key, Date.now())
               return value
             })
             .catch((err) => {
-              s.broken.add(key)
+              s.broken.set(key, Date.now())
               log.error(`Failed to spawn LSP server ${server.id}`, { error: err })
               return undefined
             })
@@ -254,7 +265,7 @@ export const layer = Layer.effect(
             root,
             directory: ctx.directory,
           }).catch(async (err) => {
-            s.broken.add(key)
+            s.broken.set(key, Date.now())
             await Process.stop(handle.process)
             log.error(`Failed to initialize LSP client ${server.id}`, { error: err })
             return undefined
@@ -277,12 +288,25 @@ export const layer = Layer.effect(
 
           const root = await server.root(file, ctx)
           if (!root) continue
-          if (s.broken.has(root + server.id)) continue
+          const brokenAt = s.broken.get(root + server.id)
+          if (brokenAt !== undefined) {
+            if (Date.now() - brokenAt < BROKEN_TTL_MS) continue
+            s.broken.delete(root + server.id) // TTL expired — allow a fresh spawn attempt
+          }
 
           const match = s.clients.find((x) => x.root === root && x.serverID === server.id)
-          if (match) {
+          if (match && !match.closed) {
             result.push(match)
             continue
+          }
+          if (match) {
+            // Cached client's connection/process died — drop it (and any stale
+            // broken marker) so the spawn path below replaces it instead of
+            // returning a dead client that yields stale/empty diagnostics.
+            const idx = s.clients.indexOf(match)
+            if (idx >= 0) s.clients.splice(idx, 1)
+            s.broken.delete(root + server.id)
+            void match.shutdown().catch(() => undefined)
           }
 
           const inflight = s.spawning.get(root + server.id)
@@ -346,12 +370,20 @@ export const layer = Layer.effect(
       const ctx = yield* InstanceState.context
       const s = yield* InstanceState.get(state)
       return yield* Effect.promise(async () => {
-        const extension = path.parse(file).ext || file
+        // Extensionless files (Dockerfile, Makefile, …) fall back to the
+        // basename, not the full path — servers register matchers like
+        // `"Dockerfile"`, which the absolute path could never equal, so the
+        // LSP otherwise never attached to those files.
+        const extension = path.parse(file).ext || path.basename(file)
         for (const server of Object.values(s.servers)) {
           if (server.extensions.length && !server.extensions.includes(extension)) continue
           const root = await server.root(file, ctx)
           if (!root) continue
-          if (s.broken.has(root + server.id)) continue
+          const brokenAt = s.broken.get(root + server.id)
+          if (brokenAt !== undefined) {
+            if (Date.now() - brokenAt < BROKEN_TTL_MS) continue
+            s.broken.delete(root + server.id) // TTL expired — allow a fresh spawn attempt
+          }
           return true
         }
         return false

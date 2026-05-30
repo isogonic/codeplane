@@ -4,7 +4,12 @@ import * as Tool from "./tool"
 import { EffectBridge } from "@/effect"
 import { Question } from "../question"
 import { Shell } from "@/shell/shell"
-import { appendOutput, register as registerProc, unregister as unregisterProc } from "./bash_interactive_runtime"
+import {
+  appendOutput,
+  INTERACTIVE_OUTPUT_CAP,
+  register as registerProc,
+  unregister as unregisterProc,
+} from "./bash_interactive_runtime"
 import DESCRIPTION from "./bash_interactive.txt"
 
 const DEFAULT_TIMEOUT_MS = 120_000
@@ -506,6 +511,7 @@ export const BashInteractiveTool = Tool.define(
 
                   const dataDisp = proc.onData((chunk) => {
                     allOutput += chunk
+                    if (allOutput.length > INTERACTIVE_OUTPUT_CAP) allOutput = allOutput.slice(-INTERACTIVE_OUTPUT_CAP)
                     appendOutput(callID, chunk)
                     scheduleFlush()
 
@@ -527,6 +533,15 @@ export const BashInteractiveTool = Tool.define(
                     try {
                       proc.kill("SIGTERM")
                     } catch {}
+                    // Escalate to SIGKILL if SIGTERM is ignored, mirroring the
+                    // overall-timeout path — otherwise the stop button can leave
+                    // the process running for minutes. Unref so the timer can't
+                    // keep the host alive; killing an exited proc just throws.
+                    setTimeout(() => {
+                      try {
+                        proc.kill("SIGKILL")
+                      } catch {}
+                    }, 1500).unref?.()
                   }
                   ctx.abort.addEventListener("abort", abortListener)
                 },

@@ -5,6 +5,7 @@ import path from "path"
 import { firstBy } from "remeda"
 import { createMemo, createResource, createEffect, onMount, onCleanup, Index, Show, createSignal } from "solid-js"
 import { createStore } from "solid-js/store"
+import { createDebouncedSignal } from "../../util/signal"
 import { useEditorContext } from "@/tui/context/editor"
 import { useSDK } from "@/tui/context/sdk"
 import { useSync } from "@/tui/context/sync"
@@ -140,7 +141,10 @@ export function Autocomplete(props: {
   // On keypress those can be briefly out of sync, so filter() may return an empty/partial string.
   // Copy it into search in an effect because effects run after reactive updates have been rendered and painted
   // so the input has settled and all consumers read the same stable value.
-  const [search, setSearch] = createSignal("")
+  // Debounced: the createResource below uses search() as its source, so an
+  // undebounced signal fired a fresh file-search request on every keystroke
+  // ("i","in","ind",…). Mirrors dialog-session-list's 150ms debounce.
+  const [search, setSearch] = createDebouncedSignal("", 150)
   createEffect(() => {
     const next = filter()
     setSearch(next ? next : "")
@@ -495,7 +499,7 @@ export function Autocomplete(props: {
   function select() {
     const selected = options()[store.selected]
     if (!selected) return
-    hide()
+    hide(true)
     selected.onSelect?.()
   }
 
@@ -528,9 +532,13 @@ export function Autocomplete(props: {
     })
   }
 
-  function hide() {
+  // clearSlash is only set when SELECTING/triggering a slash command — that
+  // path needs to wipe the "/query" text it left in the composer. Closing the
+  // menu (Escape / onInput) must NOT delete the user's typed input: pressing
+  // Escape on a half-typed "/test" previously erased the whole token.
+  function hide(clearSlash = false) {
     const text = props.input().plainText
-    if (store.visible === "/" && !text.endsWith(" ") && text.startsWith("/")) {
+    if (clearSlash && store.visible === "/" && !text.endsWith(" ") && text.startsWith("/")) {
       const cursor = props.input().logicalCursor
       props.input().deleteRange(0, 0, cursor.row, cursor.col)
       // Sync the prompt store immediately since onContentChange is async
@@ -549,6 +557,10 @@ export function Autocomplete(props: {
 
     onCleanup(() => {
       unsubscribeMention()
+      // If we unmount while the menu is still open (e.g. navigating away with
+      // the dropdown showing), show()'s keybind suspend was never balanced by
+      // hide(). Restore it, or command keybinds stay suspended permanently.
+      if (store.visible) command.keybinds(true)
     })
 
     props.ref({

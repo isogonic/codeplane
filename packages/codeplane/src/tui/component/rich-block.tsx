@@ -1,7 +1,8 @@
 import { Index, Show, createMemo, type JSX } from "solid-js"
 import { useTheme } from "@/tui/context/theme"
 import type { SyntaxStyle } from "@opentui/core"
-import { marked, type Token, type Tokens } from "marked"
+import { type Token, type Tokens } from "marked"
+import { createIncrementalLexer } from "@/tui/util/markdown-incremental"
 
 export type RichBlockSegment = { kind: "markdown"; text: string }
 
@@ -22,7 +23,8 @@ export function RichBlockText(props: RichBlockProps): JSX.Element {
   const { theme } = useTheme()
   const content = () => props.text.trim()
   const markdown = () => props.experimental !== false
-  const blocks = createMemo(() => marked.lexer(content(), { gfm: true }).filter((token) => token.type !== "space"))
+  const lexIncrementally = createIncrementalLexer()
+  const blocks = createMemo(() => lexIncrementally(content()).filter((token) => token.type !== "space"))
 
   const tokenChildren = (token: Token): Token[] =>
     "tokens" in token && Array.isArray(token.tokens) ? token.tokens : []

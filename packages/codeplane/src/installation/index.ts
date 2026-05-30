@@ -156,7 +156,14 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
             extendEnv: true,
           })
           const handle = yield* spawner.spawn(proc)
-          const out = yield* Stream.mkString(Stream.decodeText(handle.stdout))
+          // Drain stderr concurrently with stdout (mirroring `run` below). A
+          // probed CLI that writes a large amount to stderr would otherwise
+          // fill the unread stderr pipe and block forever — exitCode never
+          // resolves and the install/upgrade flow deadlocks.
+          const [out] = yield* Effect.all(
+            [Stream.mkString(Stream.decodeText(handle.stdout)), Stream.mkString(Stream.decodeText(handle.stderr))],
+            { concurrency: 2 },
+          )
           yield* handle.exitCode
           return out
         },
@@ -283,7 +290,9 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
           if (formula.includes("/")) {
             const infoJson = yield* text(["brew", "info", "--json=v2", formula])
             const info = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(BrewInfoV2))(infoJson)
-            return cleanVersion(info.formulae[0].versions.stable)
+            const formulaInfo = info.formulae[0]
+            if (!formulaInfo) return yield* Effect.fail(new Error("No brew formula info found"))
+            return cleanVersion(formulaInfo.versions.stable)
           }
           const response = yield* httpOk.execute(
             HttpClientRequest.get("https://formulae.brew.sh/api/formula/codeplane.json").pipe(
@@ -312,7 +321,9 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
             ).pipe(HttpClientRequest.setHeaders({ Accept: "application/json;odata=verbose" })),
           )
           const data = yield* HttpClientResponse.schemaBodyJson(ChocoPackage)(response)
-          return cleanVersion(data.d.results[0].Version)
+          const chocoEntry = data.d.results[0]
+          if (!chocoEntry) return yield* Effect.fail(new Error("No choco version found"))
+          return cleanVersion(chocoEntry.Version)
         }
 
         if (detectedMethod === "scoop") {
@@ -426,12 +437,12 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
             const formula = yield* getBrewFormula()
             const env = { HOMEBREW_NO_AUTO_UPDATE: "1" }
             if (formula.includes("/")) {
-              const tap = yield* run(["brew", "tap", "anomalyco/tap"], { env })
+              const tap = yield* run(["brew", "tap", "devinoldenburg/tap"], { env })
               if (tap.code !== 0) {
                 result = tap
                 break
               }
-              const repo = yield* text(["brew", "--repo", "anomalyco/tap"])
+              const repo = yield* text(["brew", "--repo", "devinoldenburg/tap"])
               const dir = repo.trim()
               if (dir) {
                 const pull = yield* run(["git", "pull", "--ff-only"], { cwd: dir, env })

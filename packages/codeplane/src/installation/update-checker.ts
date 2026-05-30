@@ -22,6 +22,7 @@ type Snapshot = {
 let snapshot: Snapshot | undefined
 let inflight: Promise<Snapshot> | undefined
 let timer: ReturnType<typeof setTimeout> | undefined
+let stopped = false
 let lastAnnounced: string | undefined
 
 function shouldSkip(method: Method) {
@@ -97,13 +98,17 @@ async function tick() {
 export const UpdateChecker = {
   start() {
     if (timer) return
+    stopped = false
     timer = setTimeout(function loop() {
       void tick().finally(() => {
-        timer = setTimeout(loop, POLL_INTERVAL_MS)
+        // Don't re-arm if stop() was called while this cycle was in flight —
+        // otherwise the poll timer resurrects itself after shutdown.
+        if (!stopped) timer = setTimeout(loop, POLL_INTERVAL_MS)
       })
     }, INITIAL_DELAY_MS)
   },
   stop() {
+    stopped = true
     if (timer) {
       clearTimeout(timer)
       timer = undefined

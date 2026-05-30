@@ -126,6 +126,9 @@ export default function Layout(props: ParentProps) {
   let scrollContainerRef: HTMLDivElement | undefined
   let dialogRun = 0
   let dialogDead = false
+  // Token so a slower navigateToProject (e.g. resolving via network) can't
+  // overwrite the route a newer, faster project switch already landed on.
+  let projectNavRun = 0
 
   const params = useParams()
   const globalSDK = useGlobalSDK()
@@ -1114,6 +1117,10 @@ export default function Layout(props: ParentProps) {
         if (match.found) draft.session.splice(match.index, 1)
       }),
     )
+    // Clear the archived session's notification contributions, otherwise its
+    // unseen count keeps inflating the project/global badge for a session the
+    // user can no longer see or open.
+    notification.session.markViewed(session.id)
     if (session.id === params.id) {
       if (nextSession) {
         navigate(`/${params.dir}/session/${nextSession.id}`)
@@ -1396,6 +1403,7 @@ export default function Layout(props: ParentProps) {
 
   async function navigateToProject(directory: string | undefined) {
     if (!directory) return
+    const run = ++projectNavRun
     const root = projectRoot(directory)
     const fallback = `/${base64Encode(root)}/session`
 
@@ -1420,9 +1428,12 @@ export default function Layout(props: ParentProps) {
       return canOpen(target)
     }
     const openSession = async (target: { directory: string; id: string }) => {
+      // A newer project switch has superseded this one — don't navigate.
+      if (projectNavRun !== run) return true
       if (!canOpen(target.directory)) return false
       const [data] = globalSync.child(target.directory, { bootstrap: false })
       if (data.session.some((item) => item.id === target.id)) {
+        if (projectNavRun !== run) return true
         setStore("lastProjectSession", root, { directory: target.directory, id: target.id, at: Date.now() })
         navigateWithSidebarReset(`/${base64Encode(target.directory)}/session/${target.id}`)
         return true
@@ -1431,6 +1442,7 @@ export default function Layout(props: ParentProps) {
         .get({ sessionID: target.id })
         .then((x) => x.data)
         .catch(() => undefined)
+      if (projectNavRun !== run) return true
       if (!resolved?.directory) return false
       if (!canOpen(resolved.directory)) return false
       setStore("lastProjectSession", root, { directory: resolved.directory, id: resolved.id, at: Date.now() })

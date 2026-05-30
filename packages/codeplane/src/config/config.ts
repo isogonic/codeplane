@@ -618,21 +618,37 @@ export const layer = Layer.effect(
           if (value.type === "wellknown") {
             const url = key.replace(/\/+$/, "")
             process.env[value.key] = value.token
-            log.debug("fetching remote config", { url: `${url}/.well-known/codeplane` })
-            const response = yield* Effect.promise(() => fetch(`${url}/.well-known/codeplane`))
-            if (!response.ok) {
-              throw new Error(`failed to fetch remote config from ${url}: ${response.status}`)
-            }
-            const wellknown = (yield* Effect.promise(() => response.json())) as { config?: Record<string, unknown> }
-            const remoteConfig = wellknown.config ?? {}
-            if (!remoteConfig.$schema) remoteConfig.$schema = "https://example.invalid/config.json"
-            const source = `${url}/.well-known/codeplane`
-            const next = yield* loadConfig(JSON.stringify(remoteConfig), {
-              dir: path.dirname(source),
-              source,
-            })
-            yield* merge(source, next, "global")
-            log.debug("loaded remote config from well-known", { url })
+            // A temporarily unreachable / erroring well-known server must not
+            // brick instance startup (this loader runs under orDie). Degrade
+            // gracefully to local config, mirroring the active-org block below.
+            yield* Effect.gen(function* () {
+              log.debug("fetching remote config", { url: `${url}/.well-known/codeplane` })
+              // tryPromise (not promise) so a network rejection becomes a
+              // typed failure that Effect.catch below can handle, rather than a
+              // defect that escapes under orDie and bricks startup.
+              const response = yield* Effect.tryPromise(() => fetch(`${url}/.well-known/codeplane`))
+              if (!response.ok) {
+                return yield* Effect.fail(new Error(`failed to fetch remote config from ${url}: ${response.status}`))
+              }
+              const wellknown = (yield* Effect.tryPromise(() => response.json())) as { config?: Record<string, unknown> }
+              const remoteConfig = wellknown.config ?? {}
+              if (!remoteConfig.$schema) remoteConfig.$schema = "https://example.invalid/config.json"
+              const source = `${url}/.well-known/codeplane`
+              const next = yield* loadConfig(JSON.stringify(remoteConfig), {
+                dir: path.dirname(source),
+                source,
+              })
+              yield* merge(source, next, "global")
+              log.debug("loaded remote config from well-known", { url })
+            }).pipe(
+              Effect.catch((err) => {
+                log.warn("failed to load remote well-known config, continuing with local config", {
+                  url,
+                  error: err instanceof Error ? err.message : String(err),
+                })
+                return Effect.void
+              }),
+            )
           }
         }
 
@@ -787,7 +803,14 @@ export const layer = Layer.effect(
         }
 
         if (Flag.CODEPLANE_PERMISSION) {
-          result.permission = mergeDeep(result.permission ?? {}, JSON.parse(Flag.CODEPLANE_PERMISSION))
+          // This loader runs under Effect.orDie; an unguarded JSON.parse on a
+          // malformed env var would become a defect and brick instance config
+          // loading. Degrade to a warning + skip, like the well-known block.
+          try {
+            result.permission = mergeDeep(result.permission ?? {}, JSON.parse(Flag.CODEPLANE_PERMISSION))
+          } catch (error) {
+            log.warn("ignoring malformed CODEPLANE_PERMISSION", { error: String(error) })
+          }
         }
 
         if (result.tools) {

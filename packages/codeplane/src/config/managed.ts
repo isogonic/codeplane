@@ -60,9 +60,19 @@ export async function readManagedPreferences() {
       log.warn("failed to convert managed preferences plist", { path: plist })
       continue
     }
+    let text: string
+    try {
+      // plutil output can be truncated/malformed; an unguarded throw here
+      // becomes a defect under Effect.promise + orDie at the config-load call
+      // site and would brick instance startup. Skip the source instead.
+      text = parseManagedPlist(result.stdout.toString())
+    } catch (error) {
+      log.warn("failed to parse managed preferences plist", { path: plist, error: String(error) })
+      continue
+    }
     return {
       source: `mobileconfig:${plist}`,
-      text: parseManagedPlist(result.stdout.toString()),
+      text,
     }
   }
 

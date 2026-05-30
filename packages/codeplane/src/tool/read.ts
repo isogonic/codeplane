@@ -15,6 +15,8 @@ const DEFAULT_READ_LIMIT = 2000
 const MAX_LINE_LENGTH = 2000
 const MAX_LINE_SUFFIX = `... (line truncated to ${MAX_LINE_LENGTH} chars)`
 const MAX_BYTES = 50 * 1024
+// Upper bound on image/PDF attachments we inline (base64) into a message.
+const MAX_ATTACHMENT_BYTES = 32 * 1024 * 1024
 const MAX_BYTES_LABEL = `${MAX_BYTES / 1024} KB`
 const SAMPLE_BYTES = 4096
 
@@ -219,6 +221,17 @@ export const ReadTool = Tool.define(
 
       const mime = sniffAttachmentMime(sample, AppFileSystem.mimeType(filepath))
       if (isImageAttachment(mime) || isPdfAttachment(mime)) {
+        // Cap attachment size before slurping the whole file into memory and
+        // base64-encoding it (~1.33x). Without this, reading a very large
+        // image/PDF spikes memory and can OOM the process. 32MB matches the
+        // most permissive provider request limit, so legitimate files still pass.
+        if (Number(stat.size) > MAX_ATTACHMENT_BYTES) {
+          return yield* Effect.fail(
+            new Error(
+              `File too large to inline (${Math.round(Number(stat.size) / 1024 / 1024)} MB > ${MAX_ATTACHMENT_BYTES / 1024 / 1024} MB): ${filepath}`,
+            ),
+          )
+        }
         const bytes = yield* fs.readFile(filepath)
         const msg = isPdfAttachment(mime) ? "PDF read successfully" : "Image read successfully"
         return {
@@ -318,7 +331,11 @@ async function lines(filepath: string, opts: { limit: number; offset: number }) 
         continue
       }
 
-      const line = text.length > MAX_LINE_LENGTH ? text.substring(0, MAX_LINE_LENGTH) + MAX_LINE_SUFFIX : text
+      // Truncate on a codepoint boundary, not a UTF-16 code unit. substring()
+      // could split a surrogate pair (emoji / astral-plane char straddling the
+      // limit), orphaning a surrogate that becomes U+FFFD on UTF-8 encode.
+      const line =
+        text.length > MAX_LINE_LENGTH ? [...text].slice(0, MAX_LINE_LENGTH).join("") + MAX_LINE_SUFFIX : text
       const size = Buffer.byteLength(line, "utf-8") + (raw.length > 0 ? 1 : 0)
       if (bytes + size > MAX_BYTES) {
         cut = true

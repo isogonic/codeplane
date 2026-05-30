@@ -43,7 +43,18 @@ async function mutate<T>(file: string, fn: (state: State) => Promise<{ state: St
 
 async function write(file: string, value: State) {
   await fs.mkdir(path.dirname(file), { recursive: true })
-  await fs.writeFile(file, `${JSON.stringify(value, null, 2)}\n`)
+  // Atomic write: stage into a sibling temp file then rename onto the
+  // destination. A plain writeFile that crashes/loses power mid-write would
+  // truncate instances.json and lose EVERY saved server. rename(2) is atomic
+  // within the same directory, so a reader sees either the old or new file.
+  const tmp = `${file}.tmp.${process.pid.toString(36)}.${Date.now().toString(36)}`
+  try {
+    await fs.writeFile(tmp, `${JSON.stringify(value, null, 2)}\n`)
+    await fs.rename(tmp, file)
+  } catch (err) {
+    await fs.rm(tmp, { force: true }).catch(() => {})
+    throw err
+  }
 }
 
 export function createInstanceStore(file: string) {

@@ -320,6 +320,18 @@ export function deriveNewContentsFromChunks(filePath: string, chunks: UpdateFile
 
   let originalLines = originalContent.text.split("\n")
 
+  // Preserve the file's dominant line ending. Splitting a CRLF file on "\n"
+  // leaves a trailing "\r" on every line; patch chunk lines are LF-only, so
+  // matching failed (or naive rejoining produced mixed CRLF/LF endings — silent
+  // corruption of Windows files). For a pure-CRLF file, strip the "\r" so
+  // matching works, then restore "\r\n" on output. LF files are untouched.
+  const crlfCount = (originalContent.text.match(/\r\n/g) ?? []).length
+  const lfCount = (originalContent.text.match(/\n/g) ?? []).length
+  const usesCrlf = crlfCount > 0 && crlfCount === lfCount
+  if (usesCrlf) {
+    originalLines = originalLines.map((line) => (line.endsWith("\r") ? line.slice(0, -1) : line))
+  }
+
   // Drop trailing empty element for consistent line counting
   if (originalLines.length > 0 && originalLines[originalLines.length - 1] === "") {
     originalLines.pop()
@@ -333,7 +345,7 @@ export function deriveNewContentsFromChunks(filePath: string, chunks: UpdateFile
     newLines.push("")
   }
 
-  const next = Bom.split(newLines.join("\n"))
+  const next = Bom.split(newLines.join(usesCrlf ? "\r\n" : "\n"))
   const newContent = next.text
 
   // Generate unified diff
@@ -366,8 +378,13 @@ function computeReplacements(
 
     // Handle pure addition (no old lines)
     if (chunk.old_lines.length === 0) {
-      const insertionIdx =
-        originalLines.length > 0 && originalLines[originalLines.length - 1] === ""
+      // With a `@@ context` anchor, insert at the resolved position (just after
+      // the context line). Only fall back to end-of-file when there is NO
+      // anchor — previously a context-anchored insertion was always appended at
+      // EOF, ignoring the anchor entirely.
+      const insertionIdx = chunk.change_context
+        ? lineIndex
+        : originalLines.length > 0 && originalLines[originalLines.length - 1] === ""
           ? originalLines.length - 1
           : originalLines.length
       replacements.push([insertionIdx, 0, chunk.new_lines])

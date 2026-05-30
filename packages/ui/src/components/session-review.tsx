@@ -624,8 +624,8 @@ export const SessionReview = (props: SessionReviewProps) => {
                                     </div>
                                     <div data-slot="session-review-large-diff-meta">
                                       {i18n.t("ui.sessionReview.largeDiff.meta", {
-                                        limit: MAX_DIFF_CHANGED_LINES.toLocaleString(),
-                                        current: changedLines().toLocaleString(),
+                                        limit: MAX_DIFF_CHANGED_LINES.toLocaleString(i18n.locale()),
+                                        current: changedLines().toLocaleString(i18n.locale()),
                                       })}
                                     </div>
                                     <div data-slot="session-review-large-diff-actions">

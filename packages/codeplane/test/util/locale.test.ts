@@ -118,8 +118,10 @@ describe("duration", () => {
   })
 
   test("formats over 1d", () => {
-    const result = duration(2 * 24 * 3600 * 1000)
-    expect(typeof result).toBe("string")
+    // Was "0d 48h" (days always computed as 0); now days/hours split correctly.
+    expect(duration(2 * 24 * 3600 * 1000)).toBe("2d 0h")
+    expect(duration(2.5 * 24 * 3600 * 1000)).toBe("2d 12h")
+    expect(duration(25 * 3600 * 1000)).toBe("1d 1h")
   })
 })
 

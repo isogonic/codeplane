@@ -614,7 +614,17 @@ async function crawlUI(
         : finalUrl.pathname.endsWith("/")
           ? `${cleanPathname(finalUrl.pathname)}index.html`
           : cleanPathname(finalUrl.pathname)
-    const out = path.join(targetRoot, file)
+    // Containment guard: `file` derives from server-controlled URL/redirect
+    // pathnames. cleanPathname URL-decodes (so %2e%2e/%2f survive WHATWG URL
+    // normalization) and path.join resolves "..", letting a malicious or
+    // compromised server write arbitrary files outside the UI cache. Refuse
+    // any path that escapes targetRoot.
+    const out = path.resolve(targetRoot, file)
+    const rootWithSep = targetRoot.endsWith(path.sep) ? targetRoot : targetRoot + path.sep
+    if (out !== targetRoot && !out.startsWith(rootWithSep)) {
+      log?.("crawl.reject-traversal", { file, url: current })
+      continue
+    }
     const bytes = Buffer.from(await response.arrayBuffer())
     await fs.mkdir(path.dirname(out), { recursive: true })
     await fs.writeFile(out, bytes)

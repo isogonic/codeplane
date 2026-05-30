@@ -202,6 +202,9 @@ export function createTaskMonitor(opts: TaskMonitorOptions): Monitor {
   let optedInSessionIds: string[] = opts.optedInSessionIds ?? []
   let activityId: string | null = null
   let lastUpdateAt = 0
+  // Guards against two concurrent tripStart() calls (rapid first events) both
+  // awaiting start() and creating duplicate Live Activities, orphaning one.
+  let starting = false
   /** Pending start timer — runs the heuristic-gated start path. */
   let startTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -244,18 +247,25 @@ export function createTaskMonitor(opts: TaskMonitorOptions): Monitor {
   }
 
   const tripStart = async () => {
-    if (activityId) return
+    if (activityId || starting) return
     const contentState = buildContentState()
     if (!contentState) return
-    const handle = await opts.liveActivities.start(attributes(), contentState, {
-      // Live Activities go stale and dim after this window — mirror
-      // the ActivityKit default (~8 hours) so a forgotten task tidies
-      // up.
-      staleAfterSeconds: 8 * 60 * 60,
-    })
-    if (handle) {
-      activityId = handle.activityId
-      lastUpdateAt = Date.now()
+    // Set the in-flight guard synchronously, BEFORE the await, so a second
+    // concurrent call bails instead of starting a duplicate activity.
+    starting = true
+    try {
+      const handle = await opts.liveActivities.start(attributes(), contentState, {
+        // Live Activities go stale and dim after this window — mirror
+        // the ActivityKit default (~8 hours) so a forgotten task tidies
+        // up.
+        staleAfterSeconds: 8 * 60 * 60,
+      })
+      if (handle) {
+        activityId = handle.activityId
+        lastUpdateAt = Date.now()
+      }
+    } finally {
+      starting = false
     }
   }
 
@@ -403,11 +413,17 @@ export function createTaskMonitor(opts: TaskMonitorOptions): Monitor {
       //      is currently running → start the activity immediately.
       //   c) otherwise → no-op until the next event.
       if (activityId) {
-        const next = buildContentState()
-        if (next) {
+        const nextState = buildContentState()
+        if (nextState) {
           void flushUpdate(true)
         } else {
-          void checkForEnd()
+          // No opted-in session remains to display. The underlying task may
+          // still be running, so checkForEnd() (which only ends once nothing
+          // is active) would leave a stale activity pinned to the Lock Screen.
+          // The user explicitly opted out — end it now.
+          const heldId = activityId
+          activityId = null
+          void opts.liveActivities.end(heldId, undefined, "default")
         }
       } else {
         const hasOptedIn = optedInSessionIds.some((id) => {

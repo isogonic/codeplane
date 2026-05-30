@@ -111,11 +111,13 @@ function registryKey(registry: string) {
 }
 
 function merge(base: Info, next: Info): Info {
-  const scopes = {
-    ...(base.scopes ?? {}),
-    ...Object.fromEntries(
-      Object.entries(next.scopes ?? {}).map(([scope, value]) => [normalizeScope(scope) ?? scope, value]),
-    ),
+  type Scope = NonNullable<Info["scopes"]>[string]
+  const scopes: Record<string, Scope> = { ...(base.scopes ?? {}) }
+  for (const [scope, value] of Object.entries(next.scopes ?? {})) {
+    const key = normalizeScope(scope) ?? scope
+    // Deep-merge per scope: overriding only one field (e.g. registry) in a
+    // later config must not drop the others (e.g. a previously-set authToken).
+    scopes[key] = { ...(scopes[key] ?? {}), ...value }
   }
 
   return {

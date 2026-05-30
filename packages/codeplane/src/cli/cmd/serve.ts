@@ -52,7 +52,24 @@ export const ServeCommand = cmd({
     // swallowed to keep server startup robust.
     void upgrade().catch(() => undefined)
 
+    // Graceful shutdown: previously the handler blocked on a never-resolving
+    // promise and the `server.stop()` below was unreachable, so SIGINT/SIGTERM
+    // killed the process without stopping the cron scheduler, prompt-queue
+    // worker, mDNS, or UpdateChecker — and could orphan child process groups.
+    // Mirror the TUI's signal handling. close=true also lets stop() flush/close.
+    let shuttingDown = false
+    const shutdown = (code = 0) => {
+      if (shuttingDown) return
+      shuttingDown = true
+      void server
+        .stop(true)
+        .catch(() => undefined)
+        .finally(() => process.exit(code))
+    }
+    for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
+      process.once(sig, () => shutdown(0))
+    }
+
     await new Promise(() => {})
-    await server.stop()
   },
 })

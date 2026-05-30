@@ -1,5 +1,5 @@
 import path from "path"
-import { Effect, Layer, Record, Result, Schema, Context } from "effect"
+import { Effect, Layer, Record, Result, Schema, Context, Semaphore } from "effect"
 import { zod } from "@/util/effect-zod"
 import { Global } from "../global"
 import { AppFileSystem } from "@codeplane-ai/shared/filesystem"
@@ -7,6 +7,12 @@ import { AppFileSystem } from "@codeplane-ai/shared/filesystem"
 export const OAUTH_DUMMY_KEY = "codeplane-oauth-dummy-key"
 
 const file = path.join(Global.Path.data, "auth.json")
+// Serialize the read-modify-write of auth.json. set/remove read the whole file
+// (all()), mutate in memory, and write it back; concurrent calls (e.g. an
+// OAuth token refresh racing another provider's set) each read the same state
+// and the last writer clobbered the other's credential. Mirrors config/secret
+// and mcp/auth.
+const writeLock = Semaphore.makeUnsafe(1)
 
 const fail = (message: string) => (cause: unknown) => new AuthError({ message, cause })
 
@@ -71,21 +77,29 @@ export const layer = Layer.effect(
     })
 
     const set = Effect.fn("Auth.set")(function* (key: string, info: Info) {
-      const norm = key.replace(/\/+$/, "")
-      const data = yield* all()
-      if (norm !== key) delete data[key]
-      delete data[norm + "/"]
-      yield* fsys
-        .writeJson(file, { ...data, [norm]: info }, 0o600)
-        .pipe(Effect.mapError(fail("Failed to write auth data")))
+      yield* writeLock.withPermits(1)(
+        Effect.gen(function* () {
+          const norm = key.replace(/\/+$/, "")
+          const data = yield* all()
+          if (norm !== key) delete data[key]
+          delete data[norm + "/"]
+          yield* fsys
+            .writeJson(file, { ...data, [norm]: info }, 0o600)
+            .pipe(Effect.mapError(fail("Failed to write auth data")))
+        }),
+      )
     })
 
     const remove = Effect.fn("Auth.remove")(function* (key: string) {
-      const norm = key.replace(/\/+$/, "")
-      const data = yield* all()
-      delete data[key]
-      delete data[norm]
-      yield* fsys.writeJson(file, data, 0o600).pipe(Effect.mapError(fail("Failed to write auth data")))
+      yield* writeLock.withPermits(1)(
+        Effect.gen(function* () {
+          const norm = key.replace(/\/+$/, "")
+          const data = yield* all()
+          delete data[key]
+          delete data[norm]
+          yield* fsys.writeJson(file, data, 0o600).pipe(Effect.mapError(fail("Failed to write auth data")))
+        }),
+      )
     })
 
     return Service.of({ get, all, set, remove })

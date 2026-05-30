@@ -1,7 +1,7 @@
 import type * as SDK from "@codeplane-ai/sdk/v2"
-import { Effect, Exit, Layer, Option, Schema, Scope, Context, Stream } from "effect"
+import { Cause, Effect, Exit, Layer, Option, Schema, Scope, Context, Stream } from "effect"
 import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
-import { Account } from "@/account/account"
+import { Account, type AccountError } from "@/account/account"
 import { Bus } from "@/bus"
 import { InstanceState } from "@/effect"
 import { Provider } from "@/provider"
@@ -16,6 +16,9 @@ import { SessionShareTable } from "./share.sql"
 
 const log = Log.create({ service: "share-next" })
 const disabled = process.env["CODEPLANE_DISABLE_SHARE"] === "true" || process.env["CODEPLANE_DISABLE_SHARE"] === "1"
+// Upper bound on the per-session share cache (negative entries included) so a
+// long-running server doesn't accumulate one permanent entry per session.
+const SHARED_CACHE_CAP = 2000
 
 export type Api = {
   create: string
@@ -240,32 +243,81 @@ export const layer = Layer.effect(
       }
 
       const share = yield* get(sessionID)
-      s.shared.set(sessionID, share ?? null)
+      if (share) {
+        s.shared.set(sessionID, share)
+        return share
+      }
+
+      // Negative cache: avoid a DB lookup on every event for unshared sessions.
+      // But it was never evicted (only on session delete), so on a long-lived
+      // server the `shared` map grew one permanent null entry per session ever
+      // touched. Bound it: when full, drop the oldest null entries (positive
+      // share entries are always kept). Evicted nulls are simply re-derived.
+      if (s.shared.size >= SHARED_CACHE_CAP) {
+        let toEvict = Math.ceil(SHARED_CACHE_CAP / 4)
+        for (const [k, v] of s.shared) {
+          if (v !== null) continue
+          s.shared.delete(k)
+          if (--toEvict <= 0) break
+        }
+      }
+      s.shared.set(sessionID, null)
       return share
     })
 
-    const flush = Effect.fn("ShareNext.flush")(function* (sessionID: SessionID) {
-      if (disabled) return
-      const s = yield* InstanceState.get(state)
-      const queued = s.queue.get(sessionID)
-      if (!queued) return
+    // Explicitly typed arrow (not Effect.fn) so the self-reference in the retry
+    // path below doesn't make the type inference circular.
+    const flush = (sessionID: SessionID): Effect.Effect<void, AccountError> =>
+      Effect.gen(function* () {
+        if (disabled) return
+        const s = yield* InstanceState.get(state)
+        const queued = s.queue.get(sessionID)
+        if (!queued) return
 
-      s.queue.delete(sessionID)
+        s.queue.delete(sessionID)
 
-      const share = yield* getCached(sessionID)
-      if (!share) return
+        const share = yield* getCached(sessionID)
+        if (!share) return
 
-      const req = yield* request()
-      const res = yield* HttpClientRequest.post(`${req.baseUrl}${req.api.sync(share.id)}`).pipe(
-        HttpClientRequest.setHeaders(req.headers),
-        HttpClientRequest.bodyJson({ secret: share.secret, data: Array.from(queued.values()) }),
-        Effect.flatMap((r) => http.execute(r)),
-      )
+        const req = yield* request()
+        // Capture the outcome as a value (Exit) so a transient network error or
+        // 4xx doesn't permanently drop the queued deltas. Previously the queue
+        // entry was deleted up-front and a failed POST was only logged — the
+        // deltas were lost forever.
+        const exit = yield* HttpClientRequest.post(`${req.baseUrl}${req.api.sync(share.id)}`).pipe(
+          HttpClientRequest.setHeaders(req.headers),
+          HttpClientRequest.bodyJson({ secret: share.secret, data: Array.from(queued.values()) }),
+          Effect.flatMap((r) => http.execute(r)),
+          Effect.exit,
+        )
 
-      if (res.status >= 400) {
-        log.warn("failed to sync share", { sessionID, shareID: share.id, status: res.status })
-      }
-    })
+        const failed = Exit.isFailure(exit) || exit.value.status >= 400
+        if (!failed) return
+
+        if (Exit.isSuccess(exit)) {
+          log.warn("failed to sync share", { sessionID, shareID: share.id, status: exit.value.status })
+        } else {
+          log.warn("failed to sync share", { sessionID, shareID: share.id, cause: Cause.pretty(exit.cause) })
+        }
+
+        // Re-queue the unsent deltas so they're retried instead of dropped. A
+        // concurrent sync() may already have created a fresh entry (with its own
+        // scheduled flush) while this POST was in flight — merge our older items
+        // into it (without clobbering newer ones) and let that flush carry them.
+        // Otherwise restore the entry and reschedule a flush ourselves (an entry
+        // in the queue must always have a pending flush, or it never sends).
+        const current = s.queue.get(sessionID)
+        if (current) {
+          for (const [k, v] of queued) if (!current.has(k)) current.set(k, v)
+          return
+        }
+        s.queue.set(sessionID, queued)
+        yield* flush(sessionID).pipe(
+          Effect.delay(5000),
+          Effect.catchCause((cause) => Effect.sync(() => log.error("share flush retry failed", { sessionID, cause }))),
+          Effect.forkIn(s.scope),
+        )
+      })
 
     const full = Effect.fn("ShareNext.full")(function* (sessionID: SessionID) {
       log.info("full sync", { sessionID })

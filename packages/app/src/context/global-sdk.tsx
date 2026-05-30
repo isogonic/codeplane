@@ -75,7 +75,13 @@ const globalSdkContext = createSimpleContext({
       const events = compactGlobalSdkEventsForFlush(raw)
       batch(() => {
         for (const event of events) {
-          emitter.emit(event.directory, event.payload)
+          // Isolate each emit: a single throwing handler must not blackhole the
+          // rest of the flushed batch (which spans all directories).
+          try {
+            emitter.emit(event.directory, event.payload)
+          } catch (error) {
+            console.error("global-sdk flush handler threw", { directory: event.directory, error })
+          }
         }
       })
 

@@ -24,6 +24,21 @@ describe("parseHeaders", () => {
     })
   })
 
+  test("does not split a value's parenthesised tokens (Firefox User-Agent rv:)", () => {
+    expect(
+      parseHeaders("User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/119.0"),
+    ).toEqual({
+      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/119.0",
+    })
+  })
+
+  test("still splits real second headers that follow a parenthesised value", () => {
+    expect(parseHeaders("User-Agent: Mozilla/5.0 (X11; rv:109.0); X-Foo: bar")).toEqual({
+      "User-Agent": "Mozilla/5.0 (X11; rv:109.0)",
+      "X-Foo": "bar",
+    })
+  })
+
   test("ignores blanks and malformed entries", () => {
     expect(parseHeaders("\n\nA: b\n\n   ;:nope;C: d ;")).toEqual({ A: "b", C: "d" })
   })

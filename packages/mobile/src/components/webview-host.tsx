@@ -1280,8 +1280,17 @@ function closeButtonScript(): string {
         // body's children (rather than replacing body itself)
         // also trigger a re-ensure. Cheap because ensure() short-
         // circuits when the button is already present.
-        var observer = new MutationObserver(function () { ensure(); });
-        observer.observe(document.documentElement, { childList: true, subtree: true });
+        // Idempotent install: this script is re-injected on every
+        // navigation (open staircase + each urlChangeEvent). Without the
+        // window-level guard, every SPA route / SSO redirect that keeps the
+        // same document added another never-disconnected observer — they
+        // accumulated and all fired ensure() on every mutation (memory + lag).
+        // A full navigation gets a fresh window, so the flag resets naturally.
+        if (!window.__cpCloseObserver) {
+          window.__cpCloseObserver = true;
+          var observer = new MutationObserver(function () { ensure(); });
+          observer.observe(document.documentElement, { childList: true, subtree: true });
+        }
       } catch (e) {}
     })();
     true;
