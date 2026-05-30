@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { Effect } from "effect"
+import fs from "fs/promises"
+import path from "path"
 import { AppRuntime } from "../../src/effect/app-runtime"
 import { makeRuntime } from "../../src/effect/run-service"
 import { Cron, CronScheduler } from "../../src/cron"
@@ -46,6 +48,30 @@ describe("cron routes", () => {
       directory: tmp.path,
       name: "directory-only",
     })
+  })
+
+  test("lists tasks via a symlinked directory", async () => {
+    // Regression: list({directory}) must resolve symlinks so a symlinked request path
+    // matches the realpath stored at create time (otherwise the task list is empty).
+    await using tmp = await tmpdir({ git: true })
+    await using linkHome = await tmpdir()
+    const link = path.join(linkHome.path, "symlinked-project")
+    await fs.symlink(tmp.path, link)
+
+    const result = await AppRuntime.runPromise(
+      Effect.gen(function* () {
+        const cron = yield* Cron.Service
+        const task = yield* cron.create({
+          directory: tmp.path,
+          name: "symlink-task",
+          prompt: "Run from symlinked dir",
+          schedule: { kind: "cron", expression: "0 9 * * 1-5" },
+        })
+        const viaSymlink = yield* cron.list({ directory: link })
+        return { taskId: task.id, ids: viaSymlink.map((t) => t.id) }
+      }),
+    )
+    expect(result.ids).toContain(result.taskId)
   })
 
   test("rejects unstable timeout and retry values", async () => {

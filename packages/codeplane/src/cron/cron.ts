@@ -7,6 +7,7 @@ import { Project } from "@/project"
 import { ProjectID } from "@/project/schema"
 import { Log } from "@/util"
 import { NamedError } from "@codeplane-ai/shared/util/error"
+import { AppFileSystem } from "@codeplane-ai/shared/filesystem"
 import { Database, NotFoundError, and, eq, desc, lte } from "../storage"
 import { CronTaskTable, CronRunTable } from "./cron.sql"
 import { ProjectTable } from "../project/project.sql"
@@ -358,7 +359,8 @@ export const layer = Layer.effect(
       const rows = yield* db((d) => {
         const filters = [
           input?.projectID ? eq(CronTaskTable.project_id, input.projectID) : undefined,
-          input?.directory ? eq(CronTaskTable.directory, input.directory) : undefined,
+          // Resolve symlinks so a symlinked request directory matches the stored realpath.
+          input?.directory ? eq(CronTaskTable.directory, AppFileSystem.resolve(input.directory)) : undefined,
         ].filter(Boolean) as ReturnType<typeof eq>[]
         const where = filters.length > 0 ? and(...filters) : undefined
         const builder = where
@@ -382,7 +384,7 @@ export const layer = Layer.effect(
           return d
             .select({ id: ProjectTable.id, worktree: ProjectTable.worktree })
             .from(ProjectTable)
-            .where(eq(ProjectTable.worktree, input.directory))
+            .where(eq(ProjectTable.worktree, AppFileSystem.resolve(input.directory)))
             .get()
         }
         return undefined
@@ -417,7 +419,8 @@ export const layer = Layer.effect(
       const status = input.status ?? "active"
       const nextRun = status === "active" ? computeNextRunAt(input.schedule, now) : null
       const sched = encodeSchedule(input.schedule)
-      const directory = input.directory || project.worktree
+      // Store the realpath so list/resolve filters (which resolve too) match consistently.
+      const directory = input.directory ? AppFileSystem.resolve(input.directory) : project.worktree
       yield* db((d) =>
         d
           .insert(CronTaskTable)
