@@ -8,10 +8,18 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Get baseline download URL
-      id: bun-url
+    - name: Setup Bun
+      id: setup-bun
       shell: bash
       run: |
+        set -euo pipefail
+        if command -v bun &>/dev/null; then
+          echo "bun already available at $(command -v bun) — version $(bun --version)"
+          echo "bun_path=$(command -v bun)" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        # Per-runner install to avoid ETXTBSY when multiple runners share a user
+        BUN_INSTALL_DIR="$RUNNER_TEMP/.bun-$$"
         if [ "$RUNNER_ARCH" = "X64" ]; then
           V=$(node -p "require('./package.json').packageManager.split('@')[1]")
           case "$RUNNER_OS" in
@@ -19,14 +27,23 @@ runs:
             Linux)   OS=linux ;;
             Windows) OS=windows ;;
           esac
-          echo "url=https://github.com/oven-sh/bun/releases/download/bun-v${V}/bun-${OS}-x64-baseline.zip" >> "$GITHUB_OUTPUT"
+          BUN_URL="https://github.com/oven-sh/bun/releases/download/bun-v${V}/bun-${OS}-x64-baseline.zip"
+        else
+          V=$(node -p "require('./package.json').packageManager.split('@')[1]")
+          BUN_URL="https://github.com/oven-sh/bun/releases/download/bun-v${V}/bun-${OS}-${RUNNER_ARCH}.zip"
         fi
-
-    - name: Setup Bun
-      uses: oven-sh/setup-bun@v2
-      with:
-        bun-version-file: ${{ !steps.bun-url.outputs.url && 'package.json' || '' }}
-        bun-download-url: ${{ steps.bun-url.outputs.url }}
+        echo "Downloading bun from ${BUN_URL}"
+        TMP_DIR=$(mktemp -d)
+        curl -fsSL "$BUN_URL" -o "$TMP_DIR/bun.zip"
+        unzip -o -q "$TMP_DIR/bun.zip" -d "$TMP_DIR"
+        rm -rf "$TMP_DIR/bun.zip"
+        mkdir -p "$BUN_INSTALL_DIR/bin"
+        mv "$TMP_DIR"/*/bun "$BUN_INSTALL_DIR/bin/bun"
+        chmod +x "$BUN_INSTALL_DIR/bin/bun"
+        rm -rf "$TMP_DIR"
+        echo "$BUN_INSTALL_DIR/bin" >> "$GITHUB_PATH"
+        echo "bun_path=$BUN_INSTALL_DIR/bin/bun" >> "$GITHUB_OUTPUT"
+        echo "Installed bun $($BUN_INSTALL_DIR/bin/bun --version)"
 
     - name: Setup Python for node-gyp
       shell: bash
