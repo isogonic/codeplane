@@ -26,7 +26,7 @@ import { FenceMiddleware } from "./fence"
 import { initProjectors } from "./projectors"
 import { InstanceRoutes } from "./routes/instance"
 import { ControlPlaneRoutes } from "./routes/control"
-import { UIRoutes } from "./routes/ui"
+import { PublicUIMiddleware, UIRoutes } from "./routes/ui"
 import { GlobalRoutes } from "./routes/global"
 import { WorkspaceRouterMiddleware } from "./workspace"
 import { InstanceMiddleware } from "./routes/instance/middleware"
@@ -90,10 +90,20 @@ function create(opts: { cors?: string[] }) {
     .use(OriginValidationMiddleware({ allowedOrigins: opts.cors }))
     .use(BodySizeLimitMiddleware)
     .use(TextJsonMiddleware)
+    // CORS runs BEFORE the auth gate so that responses produced ahead of the
+    // routes — the public `/global/auth` discovery probe and the 401 the web
+    // login screen reads — carry the right `Access-Control-Allow-Origin`
+    // header. Without this a cross-origin browser fetch to the probe fails
+    // and the app can't tell it needs to show the login screen.
+    .use(CorsMiddleware(opts))
+    // Serve the public web-UI shell + static assets BEFORE the auth gate so
+    // the SPA can boot and render its own login screen instead of the
+    // browser's native Basic Auth popup. Only shell/asset GETs are handled
+    // here; all API/data requests fall through to AuthMiddleware untouched.
+    .use(PublicUIMiddleware)
     .use(AuthMiddleware)
     .use(LoggerMiddleware)
     .use(CompressionMiddleware)
-    .use(CorsMiddleware(opts))
     .route("/global", GlobalRoutes())
 
   const runtime = adapter.create(app)

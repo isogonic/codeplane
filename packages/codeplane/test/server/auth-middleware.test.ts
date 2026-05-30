@@ -199,4 +199,77 @@ describe("AuthMiddleware", () => {
     })
     expect(wrongUser.status).toBe(401)
   })
+
+  test("401 responses never carry a WWW-Authenticate challenge (no native browser popup)", async () => {
+    // The whole point of the custom login UI: the browser must NOT show its
+    // built-in Basic Auth dialog. We suppress the challenge header on every
+    // 401 path — both the no-credentials bootstrap and the wrong-password
+    // case — while keeping the 401 status that every client keys off.
+    Flag.CODEPLANE_SERVER_PASSWORD = STRONG
+    const app = makeApp()
+
+    const noCreds = await app.request("/ping")
+    expect(noCreds.status).toBe(401)
+    expect(noCreds.headers.get("www-authenticate")).toBeNull()
+
+    const wrongCreds = await app.request("/ping", {
+      headers: { authorization: authHeader("codeplane", "wrong-but-long-enough"), "x-real-ip": "10.1.2.3" },
+    })
+    expect(wrongCreds.status).toBe(401)
+    expect(wrongCreds.headers.get("www-authenticate")).toBeNull()
+  })
+
+  describe("/global/auth discovery probe", () => {
+    test("reports auth not required when no password is set", async () => {
+      Flag.CODEPLANE_SERVER_PASSWORD = undefined
+      const res = await makeApp().request("/global/auth")
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ required: false, authenticated: true })
+    })
+
+    test("reports required + unauthenticated without credentials", async () => {
+      Flag.CODEPLANE_SERVER_PASSWORD = STRONG
+      const res = await makeApp().request("/global/auth")
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ required: true, authenticated: false })
+    })
+
+    test("reports required + authenticated with valid credentials", async () => {
+      Flag.CODEPLANE_SERVER_PASSWORD = STRONG
+      const res = await makeApp().request("/global/auth", {
+        headers: { authorization: authHeader("codeplane", STRONG) },
+      })
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ required: true, authenticated: true })
+    })
+
+    test("reports required + unauthenticated with wrong credentials", async () => {
+      Flag.CODEPLANE_SERVER_PASSWORD = STRONG
+      const res = await makeApp().request("/global/auth", {
+        headers: { authorization: authHeader("codeplane", "wrong-but-long-enough") },
+      })
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ required: true, authenticated: false })
+    })
+
+    test("honors a custom username in the discovery probe", async () => {
+      Flag.CODEPLANE_SERVER_PASSWORD = STRONG
+      Flag.CODEPLANE_SERVER_USERNAME = "alice"
+      const ok = await makeApp().request("/global/auth", {
+        headers: { authorization: authHeader("alice", STRONG) },
+      })
+      expect(await ok.json()).toEqual({ required: true, authenticated: true })
+
+      const wrong = await makeApp().request("/global/auth", {
+        headers: { authorization: authHeader("codeplane", STRONG) },
+      })
+      expect(await wrong.json()).toEqual({ required: true, authenticated: false })
+    })
+
+    test("the probe never returns a WWW-Authenticate challenge", async () => {
+      Flag.CODEPLANE_SERVER_PASSWORD = STRONG
+      const res = await makeApp().request("/global/auth")
+      expect(res.headers.get("www-authenticate")).toBeNull()
+    })
+  })
 })
