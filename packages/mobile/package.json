@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/package.json",
   "name": "@codeplane-ai/mobile",
   "private": true,
-  "version": "31.0.3",
+  "version": "31.1.0",
   "productName": "Codeplane",
   "description": "Codeplane Mobile — iOS + Android shell that connects to remote Codeplane servers and renders the matching web UI, optimised for touch.",
   "license": "MIT",
