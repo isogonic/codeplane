@@ -42,6 +42,7 @@ import { PermissionProvider } from "@/context/permission"
 import { usePlatform } from "@/context/platform"
 import { PromptProvider } from "@/context/prompt"
 import { ServerConnection, ServerProvider, serverName, useServer } from "@/context/server"
+import { AuthGate } from "@/components/auth-gate"
 import { SettingsProvider } from "@/context/settings"
 import { TerminalProvider } from "@/context/terminal"
 import { UpdatesProvider } from "@/context/updates"
@@ -337,37 +338,39 @@ export function AppInterface(props: {
       disableHealthCheck={props.disableHealthCheck}
       servers={props.servers}
     >
-      <ConnectionGate disableHealthCheck={props.disableHealthCheck}>
-        <ServerKey>
-          <QueryProvider>
-            <GlobalSDKProvider>
-              <GlobalSyncProvider>
-                <Dynamic
-                  component={props.router ?? Router}
-                  root={(routerProps) => <RouterRoot appChildren={props.children}>{routerProps.children}</RouterRoot>}
-                >
-                  <Route path="/" component={HomeRoute} />
-                  <Route path="/notifications" component={NotificationsRoute} />
-                  <Route path="/modes" component={ModesRedirect} />
-                  <Route path="/models" component={ModelsRedirect} />
-                  <Route path="/mcp" component={McpRedirect} />
-                  <Route path="/plugins" component={PluginsRedirect} />
-                  <Route path="/skills" component={SkillsRedirect} />
-                  <Route path="/settings/:tab?" component={SettingsRoute} />
-                  <Route path="/cron" component={CronRoute} />
-                  <Route path="/cron/worktree/:dir/session/:id" component={CronSessionRoute} />
-                  <Route path="/cron/worktree/:dir" component={CronRoute} />
-                  <Route path="/cron/:projectID" component={CronRoute} />
-                  <Route path="/:dir" component={DirectoryLayout}>
-                    <Route path="/" component={SessionIndexRoute} />
-                    <Route path="/session/:id?" component={SessionRoute} />
-                  </Route>
-                </Dynamic>
-              </GlobalSyncProvider>
-            </GlobalSDKProvider>
-          </QueryProvider>
-        </ServerKey>
-      </ConnectionGate>
+      <AuthGate>
+        <ConnectionGate disableHealthCheck={props.disableHealthCheck}>
+          <ServerKey>
+            <QueryProvider>
+              <GlobalSDKProvider>
+                <GlobalSyncProvider>
+                  <Dynamic
+                    component={props.router ?? Router}
+                    root={(routerProps) => <RouterRoot appChildren={props.children}>{routerProps.children}</RouterRoot>}
+                  >
+                    <Route path="/" component={HomeRoute} />
+                    <Route path="/notifications" component={NotificationsRoute} />
+                    <Route path="/modes" component={ModesRedirect} />
+                    <Route path="/models" component={ModelsRedirect} />
+                    <Route path="/mcp" component={McpRedirect} />
+                    <Route path="/plugins" component={PluginsRedirect} />
+                    <Route path="/skills" component={SkillsRedirect} />
+                    <Route path="/settings/:tab?" component={SettingsRoute} />
+                    <Route path="/cron" component={CronRoute} />
+                    <Route path="/cron/worktree/:dir/session/:id" component={CronSessionRoute} />
+                    <Route path="/cron/worktree/:dir" component={CronRoute} />
+                    <Route path="/cron/:projectID" component={CronRoute} />
+                    <Route path="/:dir" component={DirectoryLayout}>
+                      <Route path="/" component={SessionIndexRoute} />
+                      <Route path="/session/:id?" component={SessionRoute} />
+                    </Route>
+                  </Dynamic>
+                </GlobalSyncProvider>
+              </GlobalSDKProvider>
+            </QueryProvider>
+          </ServerKey>
+        </ConnectionGate>
+      </AuthGate>
     </ServerProvider>
   )
 }

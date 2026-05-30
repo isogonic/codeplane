@@ -150,10 +150,25 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
         list: [] as StoredServer[],
         projects: {} as Record<string, StoredProject[]>,
         lastProject: {} as Record<string, string>,
+        // Basic Auth credentials captured by the in-app login screen, keyed
+        // by connection key. Overlaid onto the active connection's http so
+        // the SDK turns them into an `Authorization: Basic` header — exactly
+        // the format every other Codeplane client (TUI/CLI/desktop/mobile)
+        // already speaks, so this stays fully backwards compatible.
+        credentials: {} as Record<string, { username?: string; password?: string }>,
       }),
     )
 
     const url = (x: StoredServer) => (typeof x === "string" ? x : "type" in x ? x.http.url : x.url)
+
+    const withCredentials = (conn: ServerConnection.Any): ServerConnection.Any => {
+      const creds = store.credentials[ServerConnection.key(conn)]
+      if (!creds || (!creds.password && !creds.username)) return conn
+      // Never clobber credentials that were stored on the connection itself
+      // (e.g. a remote instance saved with an explicit username/password).
+      if (conn.http.password) return conn
+      return { ...conn, http: { ...conn.http, username: creds.username, password: creds.password } }
+    }
 
     const allServers = createMemo((): Array<ServerConnection.Any> => {
       const servers = [
@@ -172,7 +187,7 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
       const deduped = new Map(
         servers.map((value) => {
           const conn: ServerConnection.Any = "type" in value ? value : { type: "http", http: value }
-          return [ServerConnection.key(conn), conn]
+          return [ServerConnection.key(conn), withCredentials(conn)]
         }),
       )
 
@@ -242,6 +257,23 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
       })
     }
 
+    // Persist Basic Auth credentials captured by the in-app login screen for
+    // a given connection. Stored separately from the server list so it also
+    // works for the embedded-origin connection (which never lives in
+    // `store.list`). The credentials are overlaid by `withCredentials`.
+    function authenticate(key: ServerConnection.Key, creds: { username?: string; password?: string }) {
+      setStore("credentials", key, {
+        username: creds.username?.trim() || undefined,
+        password: creds.password,
+      })
+    }
+
+    function clearCredentials(key: ServerConnection.Key) {
+      setStore("credentials", key, undefined!)
+    }
+
+    const credentialsFor = (key: ServerConnection.Key) => store.credentials[key]
+
     const isReady = createMemo(() => ready() && !!state.active)
 
     const check = (conn: ServerConnection.Any) => checkServerHealth(conn.http).then((x) => x.healthy)
@@ -298,6 +330,9 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
       setActive,
       add,
       remove,
+      authenticate,
+      clearCredentials,
+      credentialsFor,
       projects: {
         list: projectsList,
         open(directory: string) {
