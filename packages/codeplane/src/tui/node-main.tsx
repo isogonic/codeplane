@@ -178,6 +178,7 @@ async function main() {
     const config = await TuiConfig.get()
     const tuiArgs: Args = {
       instanceID: target.instance.id,
+      instanceLabel: target.instance.label ?? target.instance.id,
       continue: args.continueSession,
       sessionID: args.sessionID,
       fork: args.fork,

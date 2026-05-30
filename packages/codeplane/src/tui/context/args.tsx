@@ -2,6 +2,7 @@ import { createSimpleContext } from "./helper"
 
 export interface Args {
   instanceID?: string
+  instanceLabel?: string
   model?: string
   agent?: string
   prompt?: string
