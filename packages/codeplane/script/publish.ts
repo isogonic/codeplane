@@ -6,7 +6,7 @@ import { fileURLToPath } from "url"
 
 const dir = fileURLToPath(new URL("..", import.meta.url))
 process.chdir(dir)
-const repo = process.env.GH_REPO ?? "devinoldenburg/codeplane"
+const repo = process.env.GH_REPO ?? "isogonic/codeplane"
 const repoURL = `https://github.com/${repo}`
 const npmOnly = process.env.CODEPLANE_PUBLISH_NPM_ONLY === "1"
 

@@ -3,7 +3,7 @@ description: "find issue(s) on github"
 model: codeplane/claude-haiku-4-5
 ---
 
-Search through existing issues in devinoldenburg/codeplane using the gh cli to find issues matching this query:
+Search through existing issues in isogonic/codeplane using the gh cli to find issues matching this query:
 
 $ARGUMENTS
 

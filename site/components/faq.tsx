@@ -27,7 +27,7 @@ const ITEMS: Item[] = [
     a: (
       <>
         No. Codeplane is an independent fork maintained at{" "}
-        <a href="https://github.com/devinoldenburg/codeplane">github.com/devinoldenburg/codeplane</a>.
+        <a href="https://github.com/isogonic/codeplane">github.com/isogonic/codeplane</a>.
         It is not endorsed by, supported by, or aligned with the opencode team. The fork rebases on
         upstream releases as they ship.
       </>

@@ -1959,7 +1959,7 @@ the types.
 | :--- | :--- |
 | `MODELS_DEV_API_JSON` | Path to a local models.dev API JSON (skips the network fetch in `script/generate.ts`) |
 | `CODEPLANE_MODELS_URL` | Override the models.dev base URL (default `https://models.dev`) |
-| `GH_REPO` | Build-script repo override (default `devinoldenburg/codeplane`) |
+| `GH_REPO` | Build-script repo override (default `isogonic/codeplane`) |
 
 ---
 

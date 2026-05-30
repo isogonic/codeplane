@@ -6,12 +6,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/devinoldenburg/codeplane"
+    "url": "https://github.com/isogonic/codeplane"
   },
   "bugs": {
-    "url": "https://github.com/devinoldenburg/codeplane/issues"
+    "url": "https://github.com/isogonic/codeplane/issues"
   },
-  "homepage": "https://github.com/devinoldenburg/codeplane",
+  "homepage": "https://github.com/isogonic/codeplane",
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "build": "tsc"

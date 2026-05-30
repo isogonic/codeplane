@@ -641,7 +641,7 @@ zod
 ```text
 24601/codeplane-zellij-namer
 angristan/codeplane-wakatime
-devinoldenburg/codeplane
+isogonic/codeplane
 apps/codeplane-agent
 athal7/codeplane-devcontainers
 awesome-codeplane/awesome-codeplane

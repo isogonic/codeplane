@@ -9,15 +9,15 @@
   "homepage": "https://codeplane.cc",
   "repository": {
     "type": "git",
-    "url": "https://github.com/devinoldenburg/codeplane.git"
+    "url": "https://github.com/isogonic/codeplane.git"
   },
   "bugs": {
-    "url": "https://github.com/devinoldenburg/codeplane/issues"
+    "url": "https://github.com/isogonic/codeplane/issues"
   },
   "author": {
     "name": "Devin Oldenburg",
     "email": "devin@logicplanes.com",
-    "url": "https://github.com/devinoldenburg"
+    "url": "https://github.com/isogonic"
   },
   "type": "module",
   "scripts": {

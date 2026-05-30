@@ -53,7 +53,7 @@
       "additionalProperties": false
     },
     "command": {
-      "description": "Command configuration, see https://github.com/devinoldenburg/codeplane",
+      "description": "Command configuration, see https://github.com/isogonic/codeplane",
       "type": "object",
       "propertyNames": {
         "type": "string"
@@ -2237,7 +2237,7 @@
       }
     },
     "agent": {
-      "description": "Agent configuration, see https://github.com/devinoldenburg/codeplane",
+      "description": "Agent configuration, see https://github.com/isogonic/codeplane",
       "type": "object",
       "properties": {
         "plan": {

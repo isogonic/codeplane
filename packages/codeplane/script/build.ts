@@ -18,7 +18,7 @@ await import("./generate.ts")
 import { Script } from "@codeplane-ai/script"
 import pkg from "../package.json"
 
-const repo = process.env.GH_REPO ?? "devinoldenburg/codeplane"
+const repo = process.env.GH_REPO ?? "isogonic/codeplane"
 const repoURL = `https://github.com/${repo}`
 
 // Load migrations from migration directories

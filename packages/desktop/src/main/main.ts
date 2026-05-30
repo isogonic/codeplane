@@ -177,7 +177,7 @@ async function githubApiHeaders(): Promise<Record<string, string>> {
   if (!token) return { ...GITHUB_API_HEADERS }
   return { ...GITHUB_API_HEADERS, authorization: `Bearer ${token}` }
 }
-const GITHUB_RELEASES_API_URL = "https://api.github.com/repos/devinoldenburg/codeplane/releases"
+const GITHUB_RELEASES_API_URL = "https://api.github.com/repos/isogonic/codeplane/releases"
 const DESKTOP_STORAGE_DIRECT = "__direct__"
 const APP_ID = "cc.codeplane.desktop"
 const APP_NAME = "Codeplane"
@@ -1114,7 +1114,7 @@ function getDesktopAssetExtension(): "zip" | "tar.gz" {
 }
 
 function desktopReleaseDownloadUrl(version: string) {
-  return `https://github.com/devinoldenburg/codeplane/releases/tag/${codeplaneDesktopReleaseTag(version)}`
+  return `https://github.com/isogonic/codeplane/releases/tag/${codeplaneDesktopReleaseTag(version)}`
 }
 
 // Latest desktop shell version reported by the GitHub release check. Cached so
@@ -1666,7 +1666,7 @@ function buildMenu(reload: () => void, openSetup: () => void, openInstanceSwitch
       submenu: [
         {
           label: "Codeplane on GitHub",
-          click: () => void shell.openExternal("https://github.com/devinoldenburg/codeplane"),
+          click: () => void shell.openExternal("https://github.com/isogonic/codeplane"),
         },
         {
           label: "Check for updates…",

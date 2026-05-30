@@ -21198,7 +21198,7 @@
     "npm": "@ai-sdk/openai-compatible",
     "api": "https://example.invalid/zen",
     "name": "Codeplane",
-    "doc": "https://github.com/devinoldenburg/codeplane",
+    "doc": "https://github.com/isogonic/codeplane",
     "models": {
       "gpt-5.2-codex": {
         "id": "gpt-5.2-codex",

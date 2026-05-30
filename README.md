@@ -11,7 +11,7 @@
     <a href="https://codeplane.cc/docs/">Docs</a> &nbsp;·&nbsp;
     <a href="https://codeplane.cc/docs/install/">Install</a> &nbsp;·&nbsp;
     <a href="https://codeplane.cc/docs/changelog/">Changelog</a> &nbsp;·&nbsp;
-    <a href="https://github.com/devinoldenburg/codeplane/issues">Issues</a>
+    <a href="https://github.com/isogonic/codeplane/issues">Issues</a>
   </p>
 </div>
 

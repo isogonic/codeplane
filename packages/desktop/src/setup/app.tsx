@@ -1005,7 +1005,7 @@ const Sidebar: Component<{
 }
 
 const SettingsPanel: Component = () => {
-  const onOpenRepo = () => void api.auth.openExternal("https://github.com/devinoldenburg/codeplane")
+  const onOpenRepo = () => void api.auth.openExternal("https://github.com/isogonic/codeplane")
   return (
     <div class="mx-auto flex w-full max-w-[520px] flex-col px-10 pt-12 pb-10">
       <h1 class="text-text-strong text-[22px] font-semibold leading-tight tracking-tight">Settings</h1>

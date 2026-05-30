@@ -21,7 +21,7 @@ const SAMPLE_NOTES = {
 - Native SSH tool with five operations (\`exec\`, \`script\`, \`upload\`, \`download\`, \`sync\`) and OpenSSH ControlMaster reuse.
 - Smarter "What's new" dialog after every release.
 `,
-  url: "https://github.com/devinoldenburg/codeplane/releases/tag/v27.0.5",
+  url: "https://github.com/isogonic/codeplane/releases/tag/v27.0.5",
   publishedAt: "2026-05-01T13:35:02Z",
 }
 

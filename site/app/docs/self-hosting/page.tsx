@@ -110,7 +110,7 @@ sudo systemctl enable --now codeplane`}</code></pre>
   -e CODEPLANE_SERVER_PASSWORD=change-me \\
   -v codeplane-data:/data \\
   -e CODEPLANE_HOME_DIR=/data \\
-  ghcr.io/devinoldenburg/codeplane:latest \\
+  ghcr.io/isogonic/codeplane:latest \\
   serve --port 4096 --hostname 0.0.0.0`}</code></pre>
 
         <h2>Authentication</h2>

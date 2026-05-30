@@ -41,7 +41,7 @@ custom-domain documentation:
   - `2606:50c0:8002::153`
   - `2606:50c0:8003::153`
 - Optional `CNAME` record for `www.codeplane.cc` to the repository owner's
-  GitHub Pages host, for example `devinoldenburg.github.io`.
+  GitHub Pages host, for example `isogonic.github.io`.
 
 Use GitHub's official custom-domain guide as the source of truth for DNS
 values: https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site

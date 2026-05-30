@@ -17,7 +17,7 @@ export async function SiteFooter() {
           <Logo size={20} />
         </div>
         <nav className="flex flex-wrap gap-x-8 gap-y-3 text-[13px] text-ink-2">
-          <a className="transition-colors hover:text-ink" href="https://github.com/devinoldenburg/codeplane">
+          <a className="transition-colors hover:text-ink" href="https://github.com/isogonic/codeplane">
             GitHub
           </a>
           <Link className="transition-colors hover:text-ink" href="/docs/">Docs</Link>
@@ -36,10 +36,10 @@ export async function SiteFooter() {
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
             <span>
               Built by{" "}
-              <a className="link" href="https://devinoldenburg.com" rel="author">Devin Oldenburg</a>.
+              <a className="link" href="https://github.com/isogonic" rel="author">Isogonic</a>.
             </span>
-            <a className="transition-colors hover:text-ink" href="https://github.com/devinoldenburg/codeplane">
-              github.com/devinoldenburg/codeplane
+            <a className="transition-colors hover:text-ink" href="https://github.com/isogonic/codeplane">
+              github.com/isogonic/codeplane
             </a>
             <Link className="transition-colors hover:text-ink" href="/docs/changelog/">v{version}</Link>
           </div>

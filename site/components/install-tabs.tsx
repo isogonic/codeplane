@@ -71,7 +71,7 @@ export function InstallTabs({
 }
 
 function downloadUrl(tag: string, name: string) {
-  return `https://github.com/devinoldenburg/codeplane/releases/download/${tag}/${name}`
+  return `https://github.com/isogonic/codeplane/releases/download/${tag}/${name}`
 }
 
 function PanelMacOS({ desktopTag, cliVersion }: { desktopTag: string; cliVersion: string }) {
@@ -245,7 +245,7 @@ function PanelMobile({ mobileTag }: { mobileTag: string }) {
       <p>
         TestFlight is currently invite-only — there is no public join URL. Request an invite by
         opening an{" "}
-        <a href="https://github.com/devinoldenburg/codeplane/issues/new?title=TestFlight%20invite&body=Apple%20ID%3A%20%3Cyour-email%3E">
+        <a href="https://github.com/isogonic/codeplane/issues/new?title=TestFlight%20invite&body=Apple%20ID%3A%20%3Cyour-email%3E">
           invite-request issue
         </a>{" "}
         with the Apple ID email Codeplane should add to the tester list.
@@ -258,7 +258,7 @@ function PanelMobile({ mobileTag }: { mobileTag: string }) {
       </p>
       <ul>
         <li>
-          <a href={`https://github.com/devinoldenburg/codeplane/releases/download/${mobileTag}/Codeplane-iOS-${v}.xcarchive.zip`}>
+          <a href={`https://github.com/isogonic/codeplane/releases/download/${mobileTag}/Codeplane-iOS-${v}.xcarchive.zip`}>
             <code>Codeplane-iOS-{v}.xcarchive.zip</code>
           </a>
         </li>

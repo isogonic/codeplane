@@ -21,7 +21,7 @@ export function SiteHeader({ active }: { active?: "docs" | "install" }) {
         </Link>
         <nav className="ml-auto flex items-center gap-5 text-ink-2 sm:gap-7">
           <a
-            href="https://github.com/devinoldenburg/codeplane"
+            href="https://github.com/isogonic/codeplane"
             className="hidden transition-colors hover:text-ink sm:inline"
           >
             GitHub

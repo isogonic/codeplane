@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   description:
     "Codeplane is an open-source MIT-licensed coding agent. Run it from your terminal, desktop, browser, or phone — connected to a single self-hosted Codeplane server. Bring any model (OpenAI, Anthropic, OpenRouter, Ollama, vLLM, custom), wire in MCP servers, share sessions across surfaces.",
   applicationName: "Codeplane",
-  authors: [{ name: "Devin Oldenburg", url: "https://github.com/devinoldenburg" }],
+  authors: [{ name: "Devin Oldenburg", url: "https://github.com/isogonic" }],
   creator: "Devin Oldenburg",
   publisher: "Codeplane",
   keywords: [
@@ -135,10 +135,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   author: {
                     "@type": "Person",
                     name: "Devin Oldenburg",
-                    url: "https://github.com/devinoldenburg",
+                    url: "https://github.com/isogonic",
                   },
                   sameAs: [
-                    "https://github.com/devinoldenburg/codeplane",
+                    "https://github.com/isogonic/codeplane",
                   ],
                 },
                 {
@@ -157,7 +157,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   name: "Codeplane",
                   url: "https://codeplane.cc",
                   logo: "https://codeplane.cc/icon-512.png",
-                  sameAs: ["https://github.com/devinoldenburg/codeplane"],
+                  sameAs: ["https://github.com/isogonic/codeplane"],
                 },
               ],
             }),

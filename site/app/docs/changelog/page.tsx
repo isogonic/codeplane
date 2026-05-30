@@ -145,7 +145,7 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
       if (m) {
         flush()
         out.push(
-          <a key={`${keyPrefix}-i${n++}`} href={`https://github.com/devinoldenburg/codeplane/pull/${m[1]}`} className="underline underline-offset-4 decoration-line hover:decoration-ink hover:text-ink">
+          <a key={`${keyPrefix}-i${n++}`} href={`https://github.com/isogonic/codeplane/pull/${m[1]}`} className="underline underline-offset-4 decoration-line hover:decoration-ink hover:text-ink">
             {m[0]}
           </a>,
         )
@@ -279,8 +279,8 @@ export default async function ChangelogPage() {
         <h1>Changelog</h1>
         <p className="lede">
           Pulled directly from{" "}
-          <a href="https://github.com/devinoldenburg/codeplane/releases">
-            github.com/devinoldenburg/codeplane/releases
+          <a href="https://github.com/isogonic/codeplane/releases">
+            github.com/isogonic/codeplane/releases
           </a>{" "}
           at build time. Each row is one Codeplane version; the per-platform notes (Desktop /
           Mobile) are collapsed under their parent and expand inline when you click them.
@@ -289,8 +289,8 @@ export default async function ChangelogPage() {
         {groups.length === 0 ? (
           <p className="text-ink-muted">
             (Couldn&apos;t reach the GitHub API at build time. Browse{" "}
-            <a href="https://github.com/devinoldenburg/codeplane/releases">
-              github.com/devinoldenburg/codeplane/releases
+            <a href="https://github.com/isogonic/codeplane/releases">
+              github.com/isogonic/codeplane/releases
             </a>{" "}
             directly.)
           </p>
@@ -305,8 +305,8 @@ export default async function ChangelogPage() {
         <h2>Older history</h2>
         <p>
           Every release before this page existed lives on{" "}
-          <a href="https://github.com/devinoldenburg/codeplane/releases?page=2">
-            github.com/devinoldenburg/codeplane/releases?page=2
+          <a href="https://github.com/isogonic/codeplane/releases?page=2">
+            github.com/isogonic/codeplane/releases?page=2
           </a>
           . The Codeplane project began at v28.0.0; nothing older exists in this fork.
         </p>

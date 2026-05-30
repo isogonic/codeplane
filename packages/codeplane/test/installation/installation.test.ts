@@ -205,7 +205,7 @@ describe("installation", () => {
         () => jsonResponse({ versions: { stable: "2.0.0" } }),
         (cmd, args) => {
           // getBrewFormula: return core formula (no tap)
-          if (cmd === "brew" && args.includes("--formula") && args.includes("devinoldenburg/tap/codeplane")) return ""
+          if (cmd === "brew" && args.includes("--formula") && args.includes("isogonic/tap/codeplane")) return ""
           if (cmd === "brew" && args.includes("--formula") && args.includes("codeplane")) return "codeplane"
           return ""
         },
@@ -224,7 +224,7 @@ describe("installation", () => {
       const layer = testLayer(
         () => jsonResponse({}), // HTTP not used for tap formula
         (cmd, args) => {
-          if (cmd === "brew" && args.includes("devinoldenburg/tap/codeplane") && args.includes("--formula"))
+          if (cmd === "brew" && args.includes("isogonic/tap/codeplane") && args.includes("--formula"))
             return "codeplane"
           if (cmd === "brew" && args.includes("--json=v2")) return brewInfoJson
           return ""

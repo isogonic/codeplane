@@ -2,7 +2,7 @@
 
 ## Sources
 
-- PR #9884: https://github.com/devinoldenburg/codeplane/pull/9884
+- PR #9884: https://github.com/isogonic/codeplane/pull/9884
 
 ## Do Not Translate (Locale Additions)
 

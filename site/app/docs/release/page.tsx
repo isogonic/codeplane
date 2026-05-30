@@ -89,7 +89,7 @@ bun --cwd packages/codeplane script/build.ts --skip-embed-web-ui --skip-install 
 
         <h2>GitHub release</h2>
         <pre><code>{`gh release create vX.Y.Z \
-  --repo devinoldenburg/codeplane \
+  --repo isogonic/codeplane \
   --target main \
   --title "vX.Y.Z" \
   --notes "$(cat <<'EOF'
@@ -130,10 +130,10 @@ EOF
         </table>
 
         <h2>After creating the release</h2>
-        <pre><code>{`gh run list --repo devinoldenburg/codeplane --workflow=npm-release --limit 4
-gh run list --repo devinoldenburg/codeplane --workflow=desktop-release --limit 4
-gh run list --repo devinoldenburg/codeplane --workflow=mobile-release --limit 4
-gh release view vX.Y.Z --repo devinoldenburg/codeplane
+        <pre><code>{`gh run list --repo isogonic/codeplane --workflow=npm-release --limit 4
+gh run list --repo isogonic/codeplane --workflow=desktop-release --limit 4
+gh run list --repo isogonic/codeplane --workflow=mobile-release --limit 4
+gh release view vX.Y.Z --repo isogonic/codeplane
 npm view codeplane-ai@X.Y.Z version`}</code></pre>
         <p>
           When npm succeeds, smoke install into a temporary prefix and run the installed binary from

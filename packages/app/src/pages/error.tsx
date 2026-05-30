@@ -248,7 +248,7 @@ export const ErrorPage: Component<ErrorPageProps> = (props) => {
             <button
               type="button"
               class="flex items-center text-text-interactive-base gap-1"
-              onClick={() => platform.openLink("https://github.com/devinoldenburg/codeplane/issues/new")}
+              onClick={() => platform.openLink("https://github.com/isogonic/codeplane/issues/new")}
             >
               <div>{language.t("error.page.report.issues")}</div>
             </button>

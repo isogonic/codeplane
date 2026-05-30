@@ -30,10 +30,10 @@ export default function Desktop() {
 
         <h2>Install</h2>
         <ul>
-          <li><a href="https://github.com/devinoldenburg/codeplane/releases/latest/download/codeplane-desktop-macos-apple-silicon.dmg">macOS Apple Silicon (<code>.dmg</code>)</a></li>
-          <li><a href="https://github.com/devinoldenburg/codeplane/releases/latest/download/codeplane-desktop-macos-intel.dmg">macOS Intel (<code>.dmg</code>)</a></li>
-          <li><a href="https://github.com/devinoldenburg/codeplane/releases/latest/download/codeplane-desktop-windows-x64.exe">Windows x64 (<code>.exe</code>)</a></li>
-          <li><a href="https://github.com/devinoldenburg/codeplane/releases/latest/download/codeplane-desktop-linux-x64.AppImage">Linux x64 (<code>.AppImage</code>)</a></li>
+          <li><a href="https://github.com/isogonic/codeplane/releases/latest/download/codeplane-desktop-macos-apple-silicon.dmg">macOS Apple Silicon (<code>.dmg</code>)</a></li>
+          <li><a href="https://github.com/isogonic/codeplane/releases/latest/download/codeplane-desktop-macos-intel.dmg">macOS Intel (<code>.dmg</code>)</a></li>
+          <li><a href="https://github.com/isogonic/codeplane/releases/latest/download/codeplane-desktop-windows-x64.exe">Windows x64 (<code>.exe</code>)</a></li>
+          <li><a href="https://github.com/isogonic/codeplane/releases/latest/download/codeplane-desktop-linux-x64.AppImage">Linux x64 (<code>.AppImage</code>)</a></li>
         </ul>
         <p>Full install matrix at <Link href="/docs/install/">Install</Link>.</p>
 

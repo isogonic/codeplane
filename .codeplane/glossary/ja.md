@@ -2,8 +2,8 @@
 
 ## Sources
 
-- PR #9821: https://github.com/devinoldenburg/codeplane/pull/9821
-- PR #13160: https://github.com/devinoldenburg/codeplane/pull/13160
+- PR #9821: https://github.com/isogonic/codeplane/pull/9821
+- PR #13160: https://github.com/isogonic/codeplane/pull/13160
 
 ## Do Not Translate (Locale Additions)
 

@@ -86,13 +86,13 @@ export default function DocsIndex() {
             <ul className="bullet-list text-[14px]">
               <li>
                 <div>
-                  <a className="link" href="https://github.com/devinoldenburg/codeplane/issues/new">File an issue</a>{" "}
+                  <a className="link" href="https://github.com/isogonic/codeplane/issues/new">File an issue</a>{" "}
                   on GitHub — bugs, ideas, or a TestFlight invite request.
                 </div>
               </li>
               <li>
                 <div>
-                  <a className="link" href="https://github.com/devinoldenburg/codeplane/releases">Release notes</a>{" "}
+                  <a className="link" href="https://github.com/isogonic/codeplane/releases">Release notes</a>{" "}
                   for every version since v28.0.0.
                 </div>
               </li>

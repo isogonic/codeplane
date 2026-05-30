@@ -35,12 +35,12 @@ export default function Mobile() {
         <h2>Install</h2>
         <p>
           <strong>iOS</strong> — TestFlight is invite-only today. Request an invite by opening an{" "}
-          <a href="https://github.com/devinoldenburg/codeplane/issues/new?title=TestFlight%20invite&body=Apple%20ID%3A%20%3Cyour-email%3E">
+          <a href="https://github.com/isogonic/codeplane/issues/new?title=TestFlight%20invite&body=Apple%20ID%3A%20%3Cyour-email%3E">
             invite-request issue
           </a>{" "}
           with the Apple ID email you want added. Alternatively, sideload the{" "}
           <code>.xcarchive.zip</code> from{" "}
-          <a href="https://github.com/devinoldenburg/codeplane/releases">releases</a>{" "}
+          <a href="https://github.com/isogonic/codeplane/releases">releases</a>{" "}
           and re-sign + install via Xcode Organizer.
         </p>
         <p>

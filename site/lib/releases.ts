@@ -12,7 +12,7 @@
  * build time gives us stable links.
  */
 
-const API = "https://api.github.com/repos/devinoldenburg/codeplane/releases?per_page=30"
+const API = "https://api.github.com/repos/isogonic/codeplane/releases?per_page=30"
 
 type Release = {
   tag_name: string

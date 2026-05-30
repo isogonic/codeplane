@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-const repo = process.env.GH_REPO ?? "devinoldenburg/codeplane"
+const repo = process.env.GH_REPO ?? "isogonic/codeplane"
 
 async function sendToPostHog(event: string, properties: Record<string, any>) {
   const key = process.env["POSTHOG_KEY"]

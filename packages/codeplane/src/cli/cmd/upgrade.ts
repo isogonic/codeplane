@@ -56,7 +56,7 @@ export const UpgradeCommand = cmd<unknown, { target?: string; check?: boolean }>
       }
       process.stderr.write(
         `\nCannot determine how this build of codeplane was installed, so no automatic upgrade path exists.\n` +
-          `Re-install manually from https://github.com/devinoldenburg/codeplane/releases/latest, or use the\n` +
+          `Re-install manually from https://github.com/isogonic/codeplane/releases/latest, or use the\n` +
           `package manager you originally installed with (npm/pnpm/bun/yarn/brew/scoop/choco).\n`,
       )
       process.exit(2)

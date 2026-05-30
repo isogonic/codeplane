@@ -202,8 +202,8 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
       })
 
       const getBrewFormula = Effect.fnUntraced(function* () {
-        const tapFormula = yield* text(["brew", "list", "--formula", "devinoldenburg/tap/codeplane"])
-        if (tapFormula.includes("codeplane")) return "devinoldenburg/tap/codeplane"
+        const tapFormula = yield* text(["brew", "list", "--formula", "isogonic/tap/codeplane"])
+        if (tapFormula.includes("codeplane")) return "isogonic/tap/codeplane"
         const coreFormula = yield* text(["brew", "list", "--formula", "codeplane"])
         if (coreFormula.includes("codeplane")) return "codeplane"
         return "codeplane"
@@ -213,7 +213,7 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
         function* (target: string) {
           const installUrl =
             process.env.CODEPLANE_INSTALL_URL ||
-            "https://raw.githubusercontent.com/devinoldenburg/codeplane/main/install"
+            "https://raw.githubusercontent.com/isogonic/codeplane/main/install"
           const response = yield* httpOk.execute(HttpClientRequest.get(installUrl))
           const body = yield* response.text
           const bodyBytes = new TextEncoder().encode(body)
@@ -340,7 +340,7 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
         const ghHeaders: Record<string, string> = { Accept: "application/json" }
         if (ghToken) ghHeaders.Authorization = `Bearer ${ghToken}`
         const response = yield* httpOk.execute(
-          HttpClientRequest.get("https://api.github.com/repos/devinoldenburg/codeplane/releases?per_page=20").pipe(
+          HttpClientRequest.get("https://api.github.com/repos/isogonic/codeplane/releases?per_page=20").pipe(
             HttpClientRequest.setHeaders(ghHeaders),
           ),
         )
@@ -437,12 +437,12 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
             const formula = yield* getBrewFormula()
             const env = { HOMEBREW_NO_AUTO_UPDATE: "1" }
             if (formula.includes("/")) {
-              const tap = yield* run(["brew", "tap", "devinoldenburg/tap"], { env })
+              const tap = yield* run(["brew", "tap", "isogonic/tap"], { env })
               if (tap.code !== 0) {
                 result = tap
                 break
               }
-              const repo = yield* text(["brew", "--repo", "devinoldenburg/tap"])
+              const repo = yield* text(["brew", "--repo", "isogonic/tap"])
               const dir = repo.trim()
               if (dir) {
                 const pull = yield* run(["git", "pull", "--ff-only"], { cwd: dir, env })
@@ -485,7 +485,7 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
           if (ghToken) headers.Authorization = `Bearer ${ghToken}`
           const response = yield* httpOk.execute(
             HttpClientRequest.get(
-              `https://api.github.com/repos/devinoldenburg/codeplane/releases/tags/${encodeURIComponent(tag)}`,
+              `https://api.github.com/repos/isogonic/codeplane/releases/tags/${encodeURIComponent(tag)}`,
             ).pipe(HttpClientRequest.setHeaders(headers)),
           )
           const data = yield* HttpClientResponse.schemaBodyJson(GitHubReleaseFull)(response)

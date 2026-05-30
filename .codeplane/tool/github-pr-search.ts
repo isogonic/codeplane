@@ -24,7 +24,7 @@ interface PR {
 export default tool({
   description: `Use this tool to search GitHub pull requests by title and description.
 
-This tool searches PRs in the devinoldenburg/codeplane repository and returns LLM-friendly results including:
+This tool searches PRs in the isogonic/codeplane repository and returns LLM-friendly results including:
 - PR number and title
 - Author
 - State (open/closed/merged)

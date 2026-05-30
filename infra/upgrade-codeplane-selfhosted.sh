@@ -17,7 +17,7 @@ set -euo pipefail
 PARENT_PID="${CODEPLANE_PARENT_PID:-}"
 REPO_ROOT="${CODEPLANE_REPO_ROOT:-/workspace/codeplane}"
 WORK_DIR="${CODEPLANE_UPGRADE_WORKDIR:-/workspace/.codeplane-upgrade}"
-TARBALL_URL_TEMPLATE="${CODEPLANE_TARBALL_URL:-https://api.github.com/repos/devinoldenburg/codeplane/tarball/v%s}"
+TARBALL_URL_TEMPLATE="${CODEPLANE_TARBALL_URL:-https://api.github.com/repos/isogonic/codeplane/tarball/v%s}"
 
 DEST_BIN="${REPO_ROOT}/packages/codeplane/dist/codeplane-linux-x64/bin/codeplane"
 
@@ -55,7 +55,7 @@ fi
 curl -fsSL "${CURL_AUTH[@]}" "$TARBALL_URL" | tar -xz
 
 # The tarball extracts to a single top-level directory (codeplane-<sha> or
-# devinoldenburg-codeplane-<sha>). Pick whichever dir tar produced.
+# isogonic-codeplane-<sha>). Pick whichever dir tar produced.
 SRC_DIR=$(find . -maxdepth 1 -mindepth 1 -type d | head -n 1)
 if [[ -z "$SRC_DIR" || ! -d "$SRC_DIR" ]]; then
   log "tarball did not produce an extracted directory - aborting"

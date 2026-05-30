@@ -98,7 +98,7 @@ export const Info = Schema.Struct({
     description: "Server configuration for codeplane serve and web commands",
   }),
   command: Schema.optional(Schema.Record(Schema.String, ConfigCommand.Info)).annotate({
-    description: "Command configuration, see https://github.com/devinoldenburg/codeplane",
+    description: "Command configuration, see https://github.com/isogonic/codeplane",
   }),
   commit: Schema.optional(ConfigCommit.Info).annotate({
     description: "Commit behavior for Codeplane-created commits.",
@@ -173,7 +173,7 @@ export const Info = Schema.Struct({
       }),
       [Schema.Record(Schema.String, AgentRef)],
     ),
-  ).annotate({ description: "Agent configuration, see https://github.com/devinoldenburg/codeplane" }),
+  ).annotate({ description: "Agent configuration, see https://github.com/isogonic/codeplane" }),
   provider: Schema.optional(Schema.Record(Schema.String, ConfigProvider.Info)).annotate({
     description: "Custom provider configurations and model overrides",
   }),

@@ -513,7 +513,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://github.com/devinoldenburg/codeplane",
+            "HTTP-Referer": "https://github.com/isogonic/codeplane",
             "X-Title": "codeplane",
             "X-Source": "codeplane",
           },
@@ -524,7 +524,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://github.com/devinoldenburg/codeplane",
+            "HTTP-Referer": "https://github.com/isogonic/codeplane",
             "X-Title": "codeplane",
           },
         },
@@ -534,7 +534,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://github.com/devinoldenburg/codeplane",
+            "HTTP-Referer": "https://github.com/isogonic/codeplane",
             "X-Title": "codeplane",
           },
         },
@@ -544,7 +544,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "http-referer": "https://github.com/devinoldenburg/codeplane",
+            "http-referer": "https://github.com/isogonic/codeplane",
             "x-title": "codeplane",
           },
         },
@@ -644,7 +644,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://github.com/devinoldenburg/codeplane",
+            "HTTP-Referer": "https://github.com/isogonic/codeplane",
             "X-Title": "codeplane",
           },
         },
@@ -929,7 +929,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://github.com/devinoldenburg/codeplane",
+            "HTTP-Referer": "https://github.com/isogonic/codeplane",
             "X-Title": "codeplane",
           },
         },

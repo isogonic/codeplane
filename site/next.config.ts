@@ -22,7 +22,7 @@ const config: NextConfig = {
   reactStrictMode: true,
   // GitHub Pages serves from the apex codeplane.cc (custom domain) so
   // no base path is needed. If you ever move to user-pages style
-  // (https://devinoldenburg.github.io/codeplane), set basePath here.
+  // (https://isogonic.github.io/codeplane), set basePath here.
   // basePath: "",
 }
 

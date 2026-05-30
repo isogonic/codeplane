@@ -139,7 +139,7 @@ release-create:desktop:
       bash -euo pipefail <<'EOF'
       [ "$RUN_DESKTOP" = "1" ] || { echo "Skipping (RUN_DESKTOP=0)"; exit 0; }
       release_json=$(curl --fail --silent --show-error \
-        https://api.github.com/repos/devinoldenburg/codeplane/releases/tags/${SOURCE_TAG})
+        https://api.github.com/repos/isogonic/codeplane/releases/tags/${SOURCE_TAG})
       title=$(printf '%s' "$release_json" | jq -r '.name // .tag_name')
       notes=$(printf '%s' "$release_json" | jq -r '.body // ""')
       printf '%s\n' "$notes" | grep -q '[^[:space:]]' || { echo "Source release $SOURCE_TAG is missing notes." >&2; exit 1; }
@@ -172,7 +172,7 @@ release-create:mobile:
       bash -euo pipefail <<'EOF'
       [ "$RUN_MOBILE" = "1" ] || { echo "Skipping (RUN_MOBILE=0)"; exit 0; }
       release_json=$(curl --fail --silent --show-error \
-        https://api.github.com/repos/devinoldenburg/codeplane/releases/tags/${SOURCE_TAG})
+        https://api.github.com/repos/isogonic/codeplane/releases/tags/${SOURCE_TAG})
       title=$(printf '%s' "$release_json" | jq -r '.name // .tag_name')
       notes=$(printf '%s' "$release_json" | jq -r '.body // ""')
       printf '%s\n' "$notes" | grep -q '[^[:space:]]' || { echo "Source release $SOURCE_TAG is missing notes." >&2; exit 1; }
