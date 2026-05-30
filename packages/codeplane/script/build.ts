@@ -362,8 +362,8 @@ try {
 
     await buildTUIBundle(`dist/${name}/bin/runtime/tui`)
 
-    // Smoke test: only run if binary is for current platform
-    if (item.os === process.platform && item.arch === process.arch && !item.abi) {
+    // Smoke test: only run if binary is for current platform and web UI is embedded
+    if (item.os === process.platform && item.arch === process.arch && !item.abi && !skipEmbedWebUi) {
       const binaryPath = `dist/${name}/bin/codeplane`
       const nodeRuntimePath = `dist/${name}/bin/runtime/node${process.platform === "win32" ? ".exe" : ""}`
       await copyNodeRuntime(nodeRuntimePath)
@@ -374,6 +374,17 @@ try {
         console.log(`Running smoke test: ${binaryPath} serve`)
         await smokeServe(binaryPath, Script.version)
         console.log(`Serve smoke test passed: ${binaryPath}`)
+      } catch (e) {
+        console.error(`Smoke test failed for ${name}:`, e)
+        process.exit(1)
+      }
+    } else if (skipEmbedWebUi && item.os === process.platform && item.arch === process.arch && !item.abi) {
+      const binaryPath = `dist/${name}/bin/codeplane`
+      console.log(`Running smoke test: ${binaryPath} --version`)
+      try {
+        const versionOutput = await $`${binaryPath} --version`.text()
+        console.log(`Smoke test passed: ${versionOutput.trim()}`)
+        console.log(`Skipping serve smoke test (web UI not embedded)`)
       } catch (e) {
         console.error(`Smoke test failed for ${name}:`, e)
         process.exit(1)
