@@ -1,0 +1,62 @@
+name: metrics
+
+description: |
+  Collects and reports code metrics.
+  Tracks lines of code, complexity, test coverage, and more.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  collect-metrics:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Count lines of code
+        run: |
+          echo "## Code Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "### Lines of Code" >> $GITHUB_STEP_SUMMARY
+          for dir in packages/*; do
+            if [ -d "$dir" ]; then
+              count=$(find "$dir" -name "*.ts" -not -path "*/node_modules/*" -not -name "*.d.ts" | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}')
+              echo "- $(basename $dir): ${count} lines" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+      - name: Count files
+        run: |
+          echo "### File Count" >> $GITHUB_STEP_SUMMARY
+          for dir in packages/*; do
+            if [ -d "$dir" ]; then
+              count=$(find "$dir" -name "*.ts" -not -path "*/node_modules/*" -not -name "*.d.ts" | wc -l)
+              echo "- $(basename $dir): ${count} files" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+      - name: Count tests
+        run: |
+          echo "### Test Count" >> $GITHUB_STEP_SUMMARY
+          for dir in packages/*/test; do
+            if [ -d "$dir" ]; then
+              count=$(find "$dir" -name "*.test.ts" -o -name "*.spec.ts" | wc -l)
+              echo "- $(basename $(dirname $dir)): ${count} test files" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+        continue-on-error: true
+      - name: Dependency count
+        run: |
+          echo "### Dependencies" >> $GITHUB_STEP_SUMMARY
+          node -e "
+            const pkg = require('./package.json');
+            const deps = Object.keys(pkg.dependencies || {});
+            const devDeps = Object.keys(pkg.devDependencies || {});
+            console.log('- Production deps:', deps.length);
+            console.log('- Dev deps:', devDeps.length);
+            console.log('- Total deps:', deps.length + devDeps.length);
+          " >> $GITHUB_STEP_SUMMARY
+        continue-on-error: true

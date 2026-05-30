@@ -1,0 +1,67 @@
+name: dependency-report
+
+description: |
+  Generates detailed dependency reports.
+  Tracks dependency usage, outdated packages, and license compliance.
+
+on:
+  schedule:
+    - cron: "0 5 * * 1"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-dependency-report:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: List dependencies
+        run: |
+          echo "## Dependency Report" >> dependency-report.md
+          echo "" >> dependency-report.md
+          echo "### Production Dependencies" >> dependency-report.md
+          node -e "
+            const pkg = require('./package.json');
+            const deps = pkg.dependencies || {};
+            for (const [name, version] of Object.entries(deps)) {
+              console.log('- **' + name + '**: ' + version);
+            }
+          " >> dependency-report.md
+          echo "" >> dependency-report.md
+          echo "### Dev Dependencies" >> dependency-report.md
+          node -e "
+            const pkg = require('./package.json');
+            const deps = pkg.devDependencies || {};
+            for (const [name, version] of Object.entries(deps)) {
+              console.log('- **' + name + '**: ' + version);
+            }
+          " >> dependency-report.md
+          cat dependency-report.md
+      - name: Check outdated
+        run: |
+          echo "" >> dependency-report.md
+          echo "### Outdated Dependencies" >> dependency-report.md
+          bun outdated 2>/dev/null >> dependency-report.md || echo "bun outdated not available"
+        continue-on-error: true
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-report
+          path: dependency-report.md
+          retention-days: 30
+
+  dependency-summary:
+    needs: generate-dependency-report
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Generate dependency summary
+        run: |
+          echo "## Dependency Report" >> $GITHUB_STEP_SUMMARY
+          echo "- Dependency report: ${{ needs.generate-dependency-report.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "Check artifacts for detailed dependency report" >> $GITHUB_STEP_SUMMARY

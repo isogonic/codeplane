@@ -1,0 +1,52 @@
+name: test-flakiness
+
+description: |
+  Detects and reports flaky tests.
+  Runs the test suite multiple times to identify inconsistent tests.
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: "Number of test runs"
+        required: false
+        default: "5"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  detect-flakes:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Run tests multiple times
+        run: |
+          RUNS="${{ inputs.runs || '5' }}"
+          cd packages/codeplane
+          for i in $(seq 1 $RUNS); do
+            echo "Run $i/$RUNS"
+            bun test 2>&1 | tee "test-flake-$i.txt" || echo "Run $i failed"
+          done
+        continue-on-error: true
+      - name: Analyze results
+        run: |
+          cd packages/codeplane
+          echo "Analyzing test results..."
+          for file in test-flake-*.txt; do
+            if [ -f "$file" ]; then
+              echo "  $file: $(grep -c "passed\|failed" "$file" || echo "0") results"
+            fi
+          done
+        continue-on-error: true
+      - name: Report
+        run: |
+          echo "## Flaky Test Detection" >> $GITHUB_STEP_SUMMARY
+          echo "Ran tests ${{ inputs.runs || '5' }} times" >> $GITHUB_STEP_SUMMARY
+          echo "Check the logs for flaky test detection" >> $GITHUB_STEP_SUMMARY

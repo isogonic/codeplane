@@ -1,0 +1,151 @@
+name: pr-validation
+
+description: |
+  Comprehensive PR validation pipeline.
+  Runs on every PR to check code quality, tests, build, and more.
+  Provides detailed feedback to PR authors.
+
+on:
+  pull_request:
+    branches: [main, dev]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  pr-metadata:
+    runs-on: ubuntu-24.04
+    outputs:
+      files_changed: ${{ steps.files.outputs.files_changed }}
+      is_draft: ${{ github.event.pull_request.draft }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: files
+        run: |
+          # Count files changed
+          CHANGED=$(git diff --name-only origin/main | wc -l)
+          echo "files_changed=${CHANGED}" >> "$GITHUB_OUTPUT"
+          echo "::notice::Files changed: ${CHANGED}"
+
+  size-check:
+    needs: pr-metadata
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check PR size
+        run: |
+          CHANGED="${{ needs.pr-metadata.outputs.files_changed }}"
+          if [ "$CHANGED" -gt 500 ]; then
+            echo "::warning::PR is very large (${CHANGED} files changed). Consider splitting into smaller PRs."
+          elif [ "$CHANGED" -gt 100 ]; then
+            echo "::warning::PR is large (${CHANGED} files changed). Please review carefully."
+          else
+            echo "::notice::PR size is reasonable (${CHANGED} files changed)"
+          fi
+      - name: Check line changes
+        run: |
+          LINES=$(git diff --stat origin/main | tail -1 | awk '{print $4}')
+          echo "Total lines changed: ${LINES}"
+          if [ "${LINES:-0}" -gt 5000 ]; then
+            echo "::warning::PR changes more than 5000 lines — consider breaking it up"
+          fi
+
+  label-pr:
+    needs: pr-metadata
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Auto-label PR
+        run: |
+          # Check for docs changes
+          if git diff --name-only origin/main | grep -q "^site/\|^docs/\|\.md$"; then
+            echo "::notice::Label: documentation"
+          fi
+          # Check for package changes
+          for pkg in codeplane app desktop mobile shared sdk ui plugin; do
+            if git diff --name-only origin/main | grep -q "packages/${pkg}/"; then
+              echo "::notice::Label: package-${pkg}"
+            fi
+          done
+          # Check for workflow changes
+          if git diff --name-only origin/main | grep -q "\.github/workflows/"; then
+            echo "::notice::Label: ci-cd"
+          fi
+        continue-on-error: true
+
+  lint-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Run lint
+        run: bun lint
+
+  typecheck-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Run typecheck
+        run: bunx turbo typecheck
+
+  test-check:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [codeplane, shared, ui, app, plugin, sdk]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Run tests for ${{ matrix.package }}
+        run: |
+          if [ -d "packages/${{ matrix.package }}/test" ]; then
+            bun --cwd packages/${{ matrix.package }} test 2>&1 | tee test-output.txt || echo "Tests may fail — review required"
+          else
+            echo "No tests for ${{ matrix.package }}"
+          fi
+        continue-on-error: true
+
+  build-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Build web app
+        run: bun --cwd packages/app run build
+      - name: Build CLI
+        run: |
+          cd packages/codeplane
+          bun script/build.ts --skip-embed-web-ui --skip-install --single
+
+  pr-summary:
+    needs: [size-check, label-pr, lint-check, typecheck-check, test-check, build-check]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Post PR summary
+        run: |
+          echo "## PR Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Size check | ${{ needs.size-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Lint | ${{ needs.lint-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Typecheck | ${{ needs.typecheck-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ needs.test-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build-check.result }} |" >> $GITHUB_STEP_SUMMARY

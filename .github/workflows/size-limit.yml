@@ -1,0 +1,58 @@
+name: size-limit
+
+description: |
+  Monitors the size of the built binary and bundle.
+  Fails if the size exceeds the limit.
+  Also tracks size trends over time.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-size:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Build
+        run: |
+          cd packages/codeplane
+          bun script/build.ts --skip-embed-web-ui --skip-install --single
+      - name: Check binary size
+        run: |
+          SIZE=$(stat -c%s packages/codeplane/dist/codeplane-linux-x64/bin/codeplane)
+          LIMIT=100000000  # 100MB
+          echo "Binary size: ${SIZE} bytes"
+          if [ "$SIZE" -gt "$LIMIT" ]; then
+            echo "::error::Binary size exceeds limit (${SIZE} > ${LIMIT})"
+            exit 1
+          fi
+          echo "::notice::Binary size within limit"
+      - name: Check TUI bundle size
+        run: |
+          TUI_SIZE=$(du -sb packages/codeplane/dist/codeplane-linux-x64/bin/runtime/tui/ | awk '{print $1}')
+          TUI_LIMIT=50000000  # 50MB
+          echo "TUI bundle size: ${TUI_SIZE} bytes"
+          if [ "$TUI_SIZE" -gt "$TUI_LIMIT" ]; then
+            echo "::error::TUI bundle size exceeds limit"
+            exit 1
+          fi
+          echo "::notice::TUI bundle size within limit"
+      - name: Check web app size
+        run: |
+          if [ -d packages/app/dist ]; then
+            WEB_SIZE=$(du -sb packages/app/dist/ | awk '{print $1}')
+            echo "Web app size: ${WEB_SIZE} bytes"
+          fi
+      - name: Size report
+        run: |
+          echo "## Size Report" >> $GITHUB_STEP_SUMMARY
+          echo "Binary size: $(du -h packages/codeplane/dist/codeplane-linux-x64/bin/codeplane | awk '{print $1}')" >> $GITHUB_STEP_SUMMARY
+          echo "TUI bundle size: $(du -sh packages/codeplane/dist/codeplane-linux-x64/bin/runtime/tui/ | awk '{print $1}')" >> $GITHUB_STEP_SUMMARY

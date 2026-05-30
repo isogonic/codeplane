@@ -1,0 +1,119 @@
+name: build-macos
+
+description: |
+  macOS-specific builds for both Apple Silicon (arm64) and Intel (x64).
+  Validates the DMG, zip, and TUI bundle on real macOS runners.
+
+on:
+  push:
+    branches: [main, "release/*"]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+    paths:
+      - "packages/codeplane/**"
+      - "packages/desktop/**"
+      - "packages/app/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-build-${{ github.ref_name }}-${{ github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build-macos-arm64:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Install macOS dependencies
+        run: |
+          xcode-select --print-path
+          sw_vers
+      - name: Build CLI for macOS arm64
+        run: |
+          cd packages/codeplane
+          bun script/build.ts --skip-embed-web-ui --skip-install --single
+        env:
+          CODEPLANE_VERSION: "${{ github.ref_name }}"
+      - name: Test binary
+        run: |
+          ./packages/codeplane/dist/codeplane-darwin-arm64/bin/codeplane --version
+      - name: Test TUI bundle
+        run: |
+          test -f packages/codeplane/dist/codeplane-darwin-arm64/bin/runtime/tui/node-main.js
+          echo "::notice::TUI bundle present"
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64-build
+          path: packages/codeplane/dist/codeplane-darwin-arm64/
+          retention-days: 7
+
+  build-macos-x64:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Install macOS dependencies
+        run: |
+          xcode-select --print-path
+          sw_vers
+      - name: Build CLI for macOS x64
+        run: |
+          cd packages/codeplane
+          bun script/build.ts --skip-embed-web-ui --skip-install --single
+        env:
+          CODEPLANE_VERSION: "${{ github.ref_name }}"
+      - name: Test binary
+        run: |
+          ./packages/codeplane/dist/codeplane-darwin-x64/bin/codeplane --version
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-x64-build
+          path: packages/codeplane/dist/codeplane-darwin-x64/
+          retention-days: 7
+
+  build-desktop-macos:
+    needs: [build-macos-arm64, build-macos-x64]
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Build desktop app
+        run: |
+          cd packages/desktop
+          bun install 2>/dev/null || true
+          if command -v electron-builder &> /dev/null; then
+            electron-builder --mac --arm64 --x64
+          else
+            echo "::warning::electron-builder not available"
+          fi
+        continue-on-error: true
+      - name: Upload desktop artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos-build
+          path: packages/desktop/dist/
+          retention-days: 7
+        continue-on-error: true
+
+  notarize-check:
+    needs: build-desktop-macos
+    runs-on: macos-14
+    steps:
+      - name: Check notarization readiness
+        run: |
+          if [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_ID_PASSWORD:-}" ]; then
+            echo "::notice::Apple ID credentials available for notarization"
+          else
+            echo "::warning::Apple ID credentials not available — notarization will be skipped"
+          fi
+        continue-on-error: true
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}

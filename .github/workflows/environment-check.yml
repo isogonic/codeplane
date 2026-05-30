@@ -1,0 +1,52 @@
+name: environment-check
+
+description: |
+  Checks environment variables and secrets configuration.
+  Ensures all required secrets are present before deployment.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-env:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for env files
+        run: |
+          if [ -f .env ]; then
+            echo "::warning::.env file found in repo — should not be committed"
+          fi
+          if [ -f .env.example ]; then
+            echo "::notice::.env.example found"
+            cat .env.example
+          fi
+      - name: Check for env vars in code
+        run: |
+          # Check for hardcoded env var usage
+          grep -r "process.env" --include="*.ts" --include="*.js" packages/ | head -20 || echo "No env vars in code"
+        continue-on-error: true
+      - name: Check secrets
+        run: |
+          echo "::notice::Checking for secrets..."
+          # Check for common secret patterns
+          if grep -r "api_key\|apikey\|secret\|password\|token" --include="*.ts" --include="*.js" packages/ | grep -v "node_modules" | grep -v "test" | grep -v "env:"; then
+            echo "::warning::Potential secrets in code"
+          fi
+        continue-on-error: true
+      - name: Check GitHub Actions secrets
+        run: |
+          echo "::notice::Checking GitHub Actions secrets..."
+          # These are the secrets that should be configured
+          REQUIRED_SECRETS="NPM_TOKEN HOMEBREW_TAP_TOKEN"
+          for secret in $REQUIRED_SECRETS; do
+            echo "Required secret: $secret"
+          done
+        continue-on-error: true

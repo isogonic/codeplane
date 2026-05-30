@@ -1,0 +1,76 @@
+name: openapi-check
+
+description: |
+  Validates the OpenAPI schema and generated SDK.
+  Ensures the API spec is correct and SDK is in sync.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/sdk/openapi.json"
+      - "packages/codeplane/src/server/**"
+      - "packages/sdk/js/src/gen/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "packages/sdk/openapi.json"
+      - "packages/codeplane/src/server/**"
+      - "packages/sdk/js/src/gen/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-openapi:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Check OpenAPI schema
+        run: |
+          if [ -f packages/sdk/openapi.json ]; then
+            echo "::notice::OpenAPI schema found"
+            # Validate JSON
+            node -e "JSON.parse(require('fs').readFileSync('packages/sdk/openapi.json', 'utf8'))" && echo "Valid JSON"
+            # Check structure
+            node -e "
+              const spec = JSON.parse(require('fs').readFileSync('packages/sdk/openapi.json', 'utf8'));
+              console.log('OpenAPI version:', spec.openapi || spec.swagger);
+              console.log('Info title:', spec.info?.title);
+              console.log('Paths count:', Object.keys(spec.paths || {}).length);
+              console.log('Components count:', Object.keys(spec.components?.schemas || {}).length);
+            "
+          else
+            echo "::error::OpenAPI schema not found"
+          fi
+        continue-on-error: true
+      - name: Check generated SDK
+        run: |
+          if [ -f packages/sdk/js/src/gen/sdk.gen.ts ]; then
+            echo "::notice::Generated SDK found"
+            wc -l packages/sdk/js/src/gen/sdk.gen.ts
+          else
+            echo "::warning::Generated SDK not found"
+          fi
+        continue-on-error: true
+      - name: Check SDK v2
+        run: |
+          if [ -f packages/sdk/js/src/v2/gen/sdk.gen.ts ]; then
+            echo "::notice::Generated SDK v2 found"
+            wc -l packages/sdk/js/src/v2/gen/sdk.gen.ts
+          else
+            echo "::warning::Generated SDK v2 not found"
+          fi
+        continue-on-error: true
+
+  openapi-report:
+    needs: [validate-openapi]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Generate OpenAPI report
+        run: |
+          echo "## OpenAPI Report" >> $GITHUB_STEP_SUMMARY
+          echo "- OpenAPI validation: ${{ needs.validate-openapi.result }}" >> $GITHUB_STEP_SUMMARY

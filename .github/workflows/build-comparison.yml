@@ -1,0 +1,83 @@
+name: build-comparison
+
+description: |
+  Compares builds between different commits.
+  Shows size differences and performance changes.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      base:
+        description: "Base commit"
+        required: true
+        type: string
+      head:
+        description: "Head commit"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-base:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.base || 'HEAD~1' }}
+      - uses: ./.github/actions/setup-bun
+      - name: Build base
+        run: |
+          cd packages/codeplane
+          bun script/build.ts --skip-embed-web-ui --skip-install --single
+          du -h dist/codeplane-linux-x64/bin/codeplane > base-size.txt
+      - name: Upload base
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-base
+          path: base-size.txt
+          retention-days: 1
+
+  build-head:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.head || 'HEAD' }}
+      - uses: ./.github/actions/setup-bun
+      - name: Build head
+        run: |
+          cd packages/codeplane
+          bun script/build.ts --skip-embed-web-ui --skip-install --single
+          du -h dist/codeplane-linux-x64/bin/codeplane > head-size.txt
+      - name: Upload head
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-head
+          path: head-size.txt
+          retention-days: 1
+
+  compare:
+    needs: [build-base, build-head]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download builds
+        uses: actions/download-artifact@v4
+        with:
+          pattern: build-*
+          merge-multiple: true
+      - name: Compare
+        run: |
+          echo "## Build Comparison" >> $GITHUB_STEP_SUMMARY
+          if [ -f base-size.txt ] && [ -f head-size.txt ]; then
+            echo "### Base ($(cat base-size.txt))" >> $GITHUB_STEP_SUMMARY
+            echo "### Head ($(cat head-size.txt))" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Size files not found" >> $GITHUB_STEP_SUMMARY
+          fi
+        continue-on-error: true

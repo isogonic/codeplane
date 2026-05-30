@@ -1,0 +1,52 @@
+name: stale
+
+description: |
+  Marks stale issues and PRs, and closes them after a period of inactivity.
+  Keeps the repository clean and organized.
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale-issues:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          stale-issue-message: "This issue has been marked as stale because it has not had any activity in 60 days. It will be closed in 14 days if no further activity occurs."
+          stale-issue-label: "stale"
+          days-before-stale: 60
+          days-before-close: 14
+          exempt-issue-labels: "pinned,security,bug,enhancement"
+          remove-stale-when-updated: true
+
+  stale-prs:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          stale-pr-message: "This pull request has been marked as stale because it has not had any activity in 30 days. It will be closed in 7 days if no further activity occurs."
+          stale-pr-label: "stale"
+          days-before-pr-stale: 30
+          days-before-pr-close: 7
+          exempt-pr-labels: "pinned,work-in-progress,do-not-merge"
+          remove-stale-when-updated: true
+
+  close-duplicate-issues:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check for duplicate issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # This is a simplified check
+          echo "::notice::Checking for duplicate issues..."
+        continue-on-error: true

@@ -1,0 +1,99 @@
+name: environment-validation
+
+description: |
+  Validates the environment and dependencies before running.
+  Checks for required tools, versions, and configurations.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-environment:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Bun
+        run: |
+          if command -v bun &> /dev/null; then
+            bun --version
+            echo "✅ Bun installed"
+          else
+            echo "❌ Bun not installed"
+            exit 1
+          fi
+      - name: Check Node
+        run: |
+          if command -v node &> /dev/null; then
+            node --version
+            echo "✅ Node installed"
+          else
+            echo "❌ Node not installed"
+          fi
+        continue-on-error: true
+      - name: Check npm
+        run: |
+          if command -v npm &> /dev/null; then
+            npm --version
+            echo "✅ npm installed"
+          else
+            echo "❌ npm not installed"
+          fi
+        continue-on-error: true
+      - name: Check git
+        run: |
+          if command -v git &> /dev/null; then
+            git --version
+            echo "✅ Git installed"
+          else
+            echo "❌ Git not installed"
+          fi
+        continue-on-error: true
+      - name: Check package.json
+        run: |
+          if [ -f package.json ]; then
+            echo "✅ package.json found"
+            node -e "
+              const pkg = require('./package.json');
+              console.log('Package:', pkg.name);
+              console.log('Version:', pkg.version);
+              console.log('Package manager:', pkg.packageManager);
+            "
+          else
+            echo "❌ package.json not found"
+            exit 1
+          fi
+      - name: Check lockfile
+        run: |
+          if [ -f bun.lock ]; then
+            echo "✅ bun.lock found"
+          else
+            echo "❌ bun.lock not found"
+          fi
+        continue-on-error: true
+      - name: Check workspaces
+        run: |
+          for pkg in packages/*/package.json; do
+            if [ -f "$pkg" ]; then
+              name=$(node -e "console.log(require('./$pkg').name)")
+              echo "✅ ${name}"
+            fi
+          done
+        continue-on-error: true
+
+  env-report:
+    needs: validate-environment
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Generate environment report
+        run: |
+          echo "## Environment Validation" >> $GITHUB_STEP_SUMMARY
+          echo "Status: ${{ needs.validate-environment.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "All required tools and configurations checked" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,76 @@
+name: issue-triage
+
+description: |
+  Automatically triages incoming issues.
+  Labels them, checks for duplicates, and assigns based on keywords.
+
+on:
+  issues:
+    types: [opened, edited]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Issue number to triage"
+        required: true
+        type: string
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  triage:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Label issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ISSUE="${{ github.event.issue.number || inputs.issue_number }}"
+          TITLE="${{ github.event.issue.title || '' }}"
+          BODY="${{ github.event.issue.body || '' }}"
+
+          # Check for bug keywords
+          if echo "$TITLE $BODY" | grep -qiE "bug|crash|error|broken|fail|issue|problem"; then
+            gh issue edit "$ISSUE" --repo "${{ github.repository }}" --add-label "bug"
+          fi
+
+          # Check for feature request keywords
+          if echo "$TITLE $BODY" | grep -qiE "feature|request|enhance|add|support|implement"; then
+            gh issue edit "$ISSUE" --repo "${{ github.repository }}" --add-label "enhancement"
+          fi
+
+          # Check for documentation keywords
+          if echo "$TITLE $BODY" | grep -qiE "doc|readme|guide|help|wiki|tutorial"; then
+            gh issue edit "$ISSUE" --repo "${{ github.repository }}" --add-label "documentation"
+          fi
+
+          # Check for CI/CD keywords
+          if echo "$TITLE $BODY" | grep -qiE "ci|cd|workflow|pipeline|github|action|build"; then
+            gh issue edit "$ISSUE" --repo "${{ github.repository }}" --add-label "ci-cd"
+          fi
+
+          # Check for performance keywords
+          if echo "$TITLE $BODY" | grep -qiE "slow|performance|speed|memory|leak|cpu|optimize"; then
+            gh issue edit "$ISSUE" --repo "${{ github.repository }}" --add-label "performance"
+          fi
+
+          echo "::notice::Issue #$ISSUE triaged"
+        continue-on-error: true
+
+  check-duplicates:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check for duplicate issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE="${{ github.event.issue.number || inputs.issue_number }}"
+          TITLE="${{ github.event.issue.title || '' }}"
+
+          # Search for issues with similar titles
+          echo "::notice::Searching for similar issues..."
+          gh issue list --repo "${{ github.repository }}" --state open --search "${TITLE}" --limit 10
+        continue-on-error: true

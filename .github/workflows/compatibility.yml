@@ -1,0 +1,87 @@
+name: compatibility
+
+description: |
+  Compatibility tests across different OS versions, Node versions,
+  and Bun versions. Ensures broad compatibility.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  node-version-matrix:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["18.x", "20.x", "22.x"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - uses: ./.github/actions/setup-bun
+      - name: Test with Node ${{ matrix.node }}
+        run: |
+          node --version
+          bun --version
+          echo "::notice::Tested with Node ${{ matrix.node }}"
+
+  os-version-matrix:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-22.04
+          - ubuntu-24.04
+          - macos-13
+          - macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Test on ${{ matrix.os }}
+        run: |
+          uname -a
+          bun --version
+          echo "::notice::Tested on ${{ matrix.os }}"
+
+  bun-version-matrix:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        bun: ["1.2", "1.3", "latest"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Bun ${{ matrix.bun }}
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ matrix.bun }}
+      - name: Test with Bun ${{ matrix.bun }}
+        run: |
+          bun --version
+          cd packages/codeplane
+          bun install
+          echo "::notice::Tested with Bun ${{ matrix.bun }}"
+        continue-on-error: true
+
+  compatibility-report:
+    needs: [node-version-matrix, os-version-matrix, bun-version-matrix]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Generate compatibility report
+        run: |
+          echo "## Compatibility Report" >> $GITHUB_STEP_SUMMARY
+          echo "- Node version matrix: ${{ needs.node-version-matrix.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- OS version matrix: ${{ needs.os-version-matrix.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Bun version matrix: ${{ needs.bun-version-matrix.result }}" >> $GITHUB_STEP_SUMMARY

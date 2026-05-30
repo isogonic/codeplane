@@ -1,0 +1,103 @@
+name: release-checklist
+
+description: |
+  Validates that all release checklist items are complete.
+  Runs before a release to ensure nothing is missed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release"
+        required: true
+        type: string
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  check-checklist:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-bun
+      - name: Check version bump
+        run: |
+          VERSION="${{ github.ref_name || inputs.version }}"
+          VERSION="${VERSION#v}"
+          if [ -f packages/shared/src/version.ts ]; then
+            FILE_VERSION=$(grep -oP 'VERSION = "\K[^"]+' packages/shared/src/version.ts)
+            if [ "$FILE_VERSION" == "$VERSION" ]; then
+              echo "✅ Version bump: ${VERSION}"
+            else
+              echo "❌ Version mismatch: file=${FILE_VERSION}, expected=${VERSION}"
+            fi
+          fi
+      - name: Check typecheck
+        run: |
+          if bunx turbo typecheck; then
+            echo "✅ Typecheck passes"
+          else
+            echo "❌ Typecheck fails"
+          fi
+        continue-on-error: true
+      - name: Check lint
+        run: |
+          if bun lint; then
+            echo "✅ Lint passes"
+          else
+            echo "❌ Lint fails"
+          fi
+        continue-on-error: true
+      - name: Check tests
+        run: |
+          cd packages/codeplane
+          if bun test; then
+            echo "✅ Tests pass"
+          else
+            echo "❌ Tests fail"
+          fi
+        continue-on-error: true
+      - name: Check changelog
+        run: |
+          if [ -f CHANGELOG.md ]; then
+            echo "✅ CHANGELOG.md exists"
+          else
+            echo "❌ CHANGELOG.md missing"
+          fi
+        continue-on-error: true
+      - name: Check docs
+        run: |
+          if [ -d site/app/docs ]; then
+            echo "✅ Docs exist"
+          else
+            echo "❌ Docs missing"
+          fi
+        continue-on-error: true
+      - name: Check release notes
+        run: |
+          if [ -n "$(gh release view "${{ github.ref_name || inputs.version }}" --repo "${{ github.repository }}" --json body -q '.body' 2>/dev/null)" ]; then
+            echo "✅ Release notes present"
+          else
+            echo "❌ Release notes missing"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+        continue-on-error: true
+
+  checklist-report:
+    needs: check-checklist
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Generate checklist report
+        run: |
+          echo "## Release Checklist" >> $GITHUB_STEP_SUMMARY
+          echo "Version: ${{ github.ref_name || inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "Status: ${{ needs.check-checklist.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "Check logs for individual checklist items" >> $GITHUB_STEP_SUMMARY

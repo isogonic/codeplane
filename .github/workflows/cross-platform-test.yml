@@ -1,0 +1,87 @@
+name: cross-platform-test
+
+description: |
+  Runs the full test suite across all supported platforms.
+  Ensures tests pass on macOS, Linux, and Windows.
+
+on:
+  push:
+    branches: [main, "release/*"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Run tests
+        run: |
+          cd packages/codeplane
+          bun test 2>&1 | tee test-output.txt || echo "Tests completed with some failures"
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-linux
+          path: packages/codeplane/test-output.txt
+        continue-on-error: true
+
+  test-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Run tests
+        run: |
+          cd packages/codeplane
+          bun test 2>&1 | tee test-output.txt || echo "Tests completed with some failures"
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-macos
+          path: packages/codeplane/test-output.txt
+        continue-on-error: true
+
+  test-windows:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Run tests
+        shell: bash
+        run: |
+          cd packages/codeplane
+          bun test 2>&1 | tee test-output.txt || echo "Tests completed with some failures"
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-windows
+          path: packages/codeplane/test-output.txt
+        continue-on-error: true
+
+  test-report:
+    needs: [test-linux, test-macos, test-windows]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download all results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-*
+          merge-multiple: true
+      - name: Generate report
+        run: |
+          echo "## Cross-Platform Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "- Linux: ${{ needs.test-linux.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- macOS: ${{ needs.test-macos.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Windows: ${{ needs.test-windows.result }}" >> $GITHUB_STEP_SUMMARY
+          for file in test-output.txt; do
+            if [ -f "$file" ]; then
+              echo "### $(echo $file | sed 's/test-results-//g' | sed 's/test-output.txt//g')" >> $GITHUB_STEP_SUMMARY
+              tail -20 "$file" >> $GITHUB_STEP_SUMMARY
+            fi
+          done

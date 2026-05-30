@@ -1,0 +1,76 @@
+name: schema-validation
+
+description: |
+  Validates OpenAPI schema, JSON schemas, and configuration schemas.
+  Ensures schema consistency across the codebase.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/sdk/openapi.json"
+      - "packages/codeplane/src/config/**"
+      - "**/*.schema.json"
+  pull_request:
+    branches: [main]
+    paths:
+      - "packages/sdk/openapi.json"
+      - "packages/codeplane/src/config/**"
+      - "**/*.schema.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-openapi:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Validate OpenAPI schema
+        run: |
+          if [ -f packages/sdk/openapi.json ]; then
+            echo "::notice::Validating OpenAPI schema..."
+            # Check if it's valid JSON
+            node -e "JSON.parse(require('fs').readFileSync('packages/sdk/openapi.json', 'utf8'))" && echo "Valid JSON"
+            # Check if it has required fields
+            node -e "
+              const spec = JSON.parse(require('fs').readFileSync('packages/sdk/openapi.json', 'utf8'));
+              console.log('OpenAPI version:', spec.openapi || spec.swagger);
+              console.log('Paths:', Object.keys(spec.paths || {}).length);
+              console.log('Components:', Object.keys(spec.components?.schemas || {}).length);
+            "
+          else
+            echo "::warning::No openapi.json found"
+          fi
+        continue-on-error: true
+
+  validate-config-schema:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Check config schema
+        run: |
+          echo "::notice::Checking config schemas..."
+          # Check for zod schemas in config files
+          grep -r "z\." packages/codeplane/src/config/ --include="*.ts" | head -10 || echo "No zod schemas found"
+        continue-on-error: true
+
+  validate-generated-sdk:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Check SDK generation
+        run: |
+          if [ -f packages/sdk/js/src/gen/sdk.gen.ts ]; then
+            echo "::notice::SDK generated types exist"
+            wc -l packages/sdk/js/src/gen/sdk.gen.ts
+          fi
+          if [ -f packages/sdk/js/src/v2/gen/sdk.gen.ts ]; then
+            echo "::notice::SDK v2 generated types exist"
+            wc -l packages/sdk/js/src/v2/gen/sdk.gen.ts
+          fi
+        continue-on-error: true

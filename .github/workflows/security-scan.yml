@@ -1,0 +1,110 @@
+name: security-scan
+
+description: |
+  Comprehensive security scanning pipeline.
+  Runs on every PR, push, and weekly schedule.
+  Checks for vulnerabilities, secrets, and insecure code patterns.
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  schedule:
+    - cron: "0 3 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  npm-audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Run npm audit
+        run: |
+          npm audit --audit-level=moderate || true
+      - name: Run npm audit for production
+        run: |
+          npm audit --production --audit-level=moderate || true
+        continue-on-error: true
+
+  secret-scan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run secret scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+      - name: Check for common secrets
+        run: |
+          # Check for common secret patterns
+          if grep -r "api_key\|apikey\|API_KEY\|SECRET\|PASSWORD\|TOKEN" --include="*.ts" --include="*.js" --include="*.json" packages/ | grep -v "node_modules" | grep -v "test" | grep -v "env:"; then
+            echo "::warning::Potential secrets found in source code"
+          fi
+        continue-on-error: true
+
+  codeql-analysis:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript, typescript
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  dependency-review:
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+
+  insecure-pattern-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for insecure patterns
+        run: |
+          # Check for eval usage
+          if grep -r "eval(" --include="*.ts" --include="*.js" packages/ | grep -v "node_modules" | grep -v "test"; then
+            echo "::warning::eval() found in source code"
+          fi
+          # Check for innerHTML
+          if grep -r "innerHTML" --include="*.ts" --include="*.tsx" packages/ | grep -v "node_modules" | grep -v "test"; then
+            echo "::warning::innerHTML found in source code — may be XSS risk"
+          fi
+          # Check for console.log
+          if grep -r "console.log" --include="*.ts" --include="*.tsx" packages/ | grep -v "node_modules" | grep -v "test"; then
+            echo "::warning::console.log found in source code"
+          fi
+        continue-on-error: true
+
+  security-report:
+    needs: [npm-audit, secret-scan, codeql-analysis, insecure-pattern-check]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Generate security report
+        run: |
+          echo "## Security Scan Report" >> $GITHUB_STEP_SUMMARY
+          echo "- npm audit: ${{ needs.npm-audit.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Secret scan: ${{ needs.secret-scan.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- CodeQL: ${{ needs.codeql-analysis.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Insecure patterns: ${{ needs.insecure-pattern-check.result }}" >> $GITHUB_STEP_SUMMARY

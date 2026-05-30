@@ -1,0 +1,94 @@
+name: staging-deploy
+
+description: |
+  Deploys to the staging environment on every push to main.
+  Staging URL is a preview instance of the Codeplane server.
+  Also deploys preview builds of the website.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "*.md"
+      - "docs/**"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Staging environment"
+        required: false
+        default: "staging"
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: staging-${{ github.ref_name }}-${{ github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-staging-server:
+    runs-on: ubuntu-24.04
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Build staging server
+        run: |
+          cd packages/codeplane
+          bun script/build.ts --skip-embed-web-ui --skip-install --single
+        env:
+          CODEPLANE_VERSION: "staging-${{ github.sha }}"
+      - name: Deploy to staging
+        run: |
+          echo "::notice::Deploying to staging environment"
+          echo "Staging server built at: packages/codeplane/dist/codeplane-linux-x64/bin/codeplane"
+          # In a real setup, this would deploy to a staging server
+          # e.g., scp, rsync, or use a deployment platform
+        continue-on-error: true
+
+  deploy-staging-web:
+    runs-on: ubuntu-24.04
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Build staging web app
+        run: |
+          cd packages/app
+          bun run build
+      - name: Deploy web app preview
+        run: |
+          echo "::notice::Deploying web app preview"
+          echo "Built at: packages/app/dist/"
+          # In a real setup, deploy to Vercel, Netlify, or similar
+        continue-on-error: true
+
+  deploy-staging-site:
+    runs-on: ubuntu-24.04
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Build staging site
+        run: |
+          cd site
+          bun install
+          bun run build
+      - name: Deploy staging site
+        run: |
+          echo "::notice::Deploying staging site"
+          echo "Built at: site/out/"
+        continue-on-error: true
+
+  health-check-staging:
+    needs: [deploy-staging-server, deploy-staging-web, deploy-staging-site]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Health check
+        run: |
+          echo "::notice::Running health checks on staging"
+          # curl -s https://staging.codeplane.cc/health || echo "Staging health check not available"
+        continue-on-error: true

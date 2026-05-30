@@ -1,0 +1,80 @@
+name: reproducible-build
+
+description: |
+  Verifies that builds are reproducible across different runs.
+  Compares checksums of built artifacts to ensure consistency.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-first:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Build
+        run: |
+          cd packages/codeplane
+          bun script/build.ts --skip-embed-web-ui --skip-install --single
+        env:
+          CODEPLANE_VERSION: "reproducible-test"
+      - name: Compute checksum
+        run: |
+          sha256sum packages/codeplane/dist/codeplane-linux-x64/bin/codeplane > first-checksum.txt
+          cat first-checksum.txt
+      - name: Upload checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: first-build
+          path: first-checksum.txt
+          retention-days: 1
+
+  build-second:
+    needs: build-first
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Build
+        run: |
+          cd packages/codeplane
+          bun script/build.ts --skip-embed-web-ui --skip-install --single
+        env:
+          CODEPLANE_VERSION: "reproducible-test"
+      - name: Compute checksum
+        run: |
+          sha256sum packages/codeplane/dist/codeplane-linux-x64/bin/codeplane > second-checksum.txt
+          cat second-checksum.txt
+      - name: Download first checksum
+        uses: actions/download-artifact@v4
+        with:
+          name: first-build
+      - name: Compare
+        run: |
+          if diff -q first-checksum.txt second-checksum.txt; then
+            echo "::notice::Builds are reproducible!"
+          else
+            echo "::warning::Builds are NOT reproducible"
+            diff first-checksum.txt second-checksum.txt
+          fi
+        continue-on-error: true
+
+  reproducible-report:
+    needs: [build-first, build-second]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Report
+        run: |
+          echo "## Reproducible Build Report" >> $GITHUB_STEP_SUMMARY
+          echo "- First build: ${{ needs.build-first.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Second build: ${{ needs.build-second.result }}" >> $GITHUB_STEP_SUMMARY

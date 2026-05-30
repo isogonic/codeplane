@@ -1,0 +1,68 @@
+name: backport
+
+description: |
+  Backports commits from main to release branches.
+  Automatically creates PRs when a commit is tagged with a backport label.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: "Commit SHA to backport"
+        required: true
+        type: string
+      target_branch:
+        description: "Target branch"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  backport:
+    runs-on: ubuntu-24.04
+    if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'backport')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Get target branches
+        id: branches
+        run: |
+          # Extract target branches from labels
+          LABELS="${{ join(github.event.pull_request.labels.*.name, ' ') }}"
+          BRANCHES=""
+          for label in $LABELS; do
+            if [[ "$label" == backport/* ]]; then
+              branch="${label#backport/}"
+              BRANCHES="${BRANCHES} ${branch}"
+            fi
+          done
+          echo "branches=${BRANCHES}" >> "$GITHUB_OUTPUT"
+          echo "::notice::Target branches: ${BRANCHES}"
+      - name: Create backport PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          COMMIT="${{ github.event.pull_request.merge_commit_sha }}"
+          BRANCHES="${{ steps.branches.outputs.branches }}"
+          for branch in $BRANCHES; do
+            echo "Backporting ${COMMIT} to ${branch}"
+            git fetch origin "${branch}"
+            git checkout -b "backport-${COMMIT:0:8}-${branch}" "origin/${branch}"
+            git cherry-pick "$COMMIT" || echo "Cherry-pick may have conflicts"
+            git push origin "backport-${COMMIT:0:8}-${branch}"
+            gh pr create \
+              --repo "${{ github.repository }}" \
+              --title "Backport: ${{ github.event.pull_request.title }}" \
+              --body "Backport of #${{ github.event.pull_request.number }} to ${branch}" \
+              --base "${branch}" \
+              --head "backport-${COMMIT:0:8}-${branch}"
+          done
+        continue-on-error: true

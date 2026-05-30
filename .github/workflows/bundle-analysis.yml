@@ -1,0 +1,64 @@
+name: bundle-analysis
+
+description: |
+  Analyzes bundle sizes and dependencies.
+  Identifies large dependencies and potential optimizations.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "bun.lock"
+      - "packages/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze-bundle:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Build for analysis
+        run: |
+          cd packages/codeplane
+          bun script/build.ts --skip-embed-web-ui --skip-install --single
+        env:
+          CODEPLANE_VERSION: "bundle-analysis"
+      - name: Analyze binary
+        run: |
+          echo "## Bundle Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "### Binary Sections" >> $GITHUB_STEP_SUMMARY
+          if command -v readelf &> /dev/null; then
+            readelf -S packages/codeplane/dist/codeplane-linux-x64/bin/codeplane 2>/dev/null | head -20 || echo "readelf not available"
+          fi
+          echo "### Binary Size" >> $GITHUB_STEP_SUMMARY
+          du -h packages/codeplane/dist/codeplane-linux-x64/bin/codeplane >> $GITHUB_STEP_SUMMARY
+      - name: Analyze TUI bundle
+        run: |
+          echo "### TUI Bundle" >> $GITHUB_STEP_SUMMARY
+          echo "Files:" >> $GITHUB_STEP_SUMMARY
+          ls -la packages/codeplane/dist/codeplane-linux-x64/bin/runtime/tui/ | head -20 >> $GITHUB_STEP_SUMMARY
+          echo "Size:" >> $GITHUB_STEP_SUMMARY
+          du -sh packages/codeplane/dist/codeplane-linux-x64/bin/runtime/tui/ >> $GITHUB_STEP_SUMMARY
+      - name: Check for large assets
+        run: |
+          echo "### Large Assets" >> $GITHUB_STEP_SUMMARY
+          find packages/codeplane/dist/codeplane-linux-x64/bin/runtime/tui/ -type f -size +1M -exec ls -lh {} \; >> $GITHUB_STEP_SUMMARY
+        continue-on-error: true
+      - name: Dependency analysis
+        run: |
+          echo "### Dependency Analysis" >> $GITHUB_STEP_SUMMARY
+          for pkg in packages/*/package.json; do
+            node -e "
+              const pkg = require('./$pkg');
+              const deps = {...pkg.dependencies, ...pkg.devDependencies};
+              console.log('$(basename $(dirname $pkg)):', Object.keys(deps).length, 'dependencies');
+            " >> $GITHUB_STEP_SUMMARY
+          done
+        continue-on-error: true

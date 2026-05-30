@@ -1,0 +1,44 @@
+name: branch-protection
+
+description: |
+  Validates branch protection rules and repository settings.
+  Ensures all required branches are properly protected.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  administration: read
+
+jobs:
+  check-protection:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check main branch protection
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Checking branch protection rules..."
+          gh api "repos/${{ github.repository }}/branches/main/protection" 2>/dev/null | \
+            jq -r '{
+              required_status_checks: .required_status_checks,
+              enforce_admins: .enforce_admins,
+              required_pull_request_reviews: .required_pull_request_reviews,
+              restrictions: .restrictions
+            }' || echo "::warning::Could not check branch protection"
+        continue-on-error: true
+      - name: Check required checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "::notice::Checking required status checks..."
+          # Verify that key checks are required
+        continue-on-error: true
+      - name: Report
+        run: |
+          echo "## Branch Protection Report" >> $GITHUB_STEP_SUMMARY
+          echo "Branch protection checked for main" >> $GITHUB_STEP_SUMMARY

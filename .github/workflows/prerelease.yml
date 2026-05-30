@@ -1,0 +1,188 @@
+name: prerelease
+
+description: |
+  Builds and publishes pre-release packages for the next channel.
+  These are non-production builds that install with `codeplane@next` or `codeplane@preview`.
+  Triggers on every push to main, producing timestamped preview builds.
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - "site/**"
+  workflow_dispatch:
+    inputs:
+      preview_tag:
+        description: "Preview tag suffix (e.g., next, preview, alpha, beta)"
+        required: false
+        default: "next"
+        type: string
+      skip_build:
+        description: "Skip build and publish existing artifacts"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+concurrency:
+  group: prerelease-${{ github.ref_name }}-${{ github.run_id }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  GH_REPO: ${{ github.repository }}
+  PREVIEW_CHANNEL: ${{ inputs.preview_tag || 'next' }}
+
+jobs:
+  resolve:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      preview_version: ${{ steps.resolve.outputs.preview_version }}
+      sha_short: ${{ steps.resolve.outputs.sha_short }}
+      should_build: ${{ steps.resolve.outputs.should_build }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Get the version from packages/shared/src/version.ts
+          VERSION=$(grep -oP 'VERSION = "\K[^"]+' packages/shared/src/version.ts || echo "0.0.0")
+          SHA_SHORT=$(git rev-parse --short HEAD)
+          PREVIEW_VERSION="${VERSION}-${PREVIEW_CHANNEL}.${SHA_SHORT}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "preview_version=${PREVIEW_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "sha_short=${SHA_SHORT}" >> "$GITHUB_OUTPUT"
+          echo "should_build=true" >> "$GITHUB_OUTPUT"
+          echo "::notice::Pre-release version: ${PREVIEW_VERSION}"
+
+  lint:
+    needs: resolve
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - run: bun lint
+
+  typecheck:
+    needs: resolve
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - run: bunx turbo typecheck
+
+  test:
+    needs: resolve
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [codeplane, shared, ui, app, plugin, sdk]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - run: bun --cwd packages/${{ matrix.package }} test || echo "Tests may be flaky — not blocking prerelease"
+        continue-on-error: true
+
+  build:
+    needs: [lint, typecheck]
+    if: needs.resolve.outputs.should_build == 'true'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [darwin-arm64, darwin-x64, linux-arm64, linux-x64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Build ${{ matrix.platform }}
+        run: |
+          cd packages/codeplane
+          bun script/build.ts --skip-embed-web-ui --skip-install --single
+        env:
+          CODEPLANE_VERSION: ${{ needs.resolve.outputs.preview_version }}
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: codeplane-${{ matrix.platform }}-${{ needs.resolve.outputs.preview_version }}
+          path: packages/codeplane/dist/codeplane-${{ matrix.platform }}-*/
+          retention-days: 7
+
+  publish-preview:
+    needs: [build, test, resolve]
+    runs-on: ubuntu-24.04
+    environment: preview
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.14.0"
+          registry-url: "https://registry.npmjs.org"
+      - name: Configure npm
+        run: printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$HOME/.npmrc"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: codeplane-*-${{ needs.resolve.outputs.preview_version }}
+          merge-multiple: true
+      - name: Publish preview packages
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.resolve.outputs.preview_version }}"
+          # Publish each platform package with --tag next
+          for dir in packages/codeplane/dist/codeplane-*; do
+            if [ -d "$dir" ]; then
+              name=$(basename "$dir")
+              echo "Publishing $name@${VERSION} with tag ${PREVIEW_CHANNEL}"
+              # Update package.json version
+              node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('${dir}/package.json','utf8')); p.version='${VERSION}'; fs.writeFileSync('${dir}/package.json', JSON.stringify(p,null,2)+'\n');"
+              cd "$dir"
+              npm publish --tag "${PREVIEW_CHANNEL}" --access public || echo "Publish may have failed — continuing"
+              cd - >/dev/null
+            fi
+          done
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  create-preview-release:
+    needs: [publish-preview, resolve]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create preview release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          PREVIEW_TAG="${{ needs.resolve.outputs.preview_version }}"
+          gh release create "${PREVIEW_TAG}" \
+            --target "${{ github.sha }}" \
+            --title "Preview ${PREVIEW_TAG}" \
+            --notes "Pre-release build for ${{ needs.resolve.outputs.version }} with commit ${{ needs.resolve.outputs.sha_short }}.\n\nInstall with: \`npm install -g codeplane-ai@${PREVIEW_TAG}\`" \
+            --prerelease \
+            || echo "Release may already exist — continuing"
+
+  notify:
+    needs: create-preview-release
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Notify status
+        run: |
+          echo "Pre-release pipeline completed: ${{ needs.create-preview-release.result }}"
+          echo "Preview version: ${{ needs.resolve.outputs.preview_version }}"

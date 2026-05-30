@@ -1,0 +1,59 @@
+name: first-time-contributor
+
+description: |
+  Welcomes first-time contributors and provides helpful guidance.
+  Runs when a new user opens their first PR or issue.
+
+on:
+  pull_request:
+    types: [opened]
+  issues:
+    types: [opened]
+  workflow_dispatch:
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  welcome:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check if first contribution
+        id: check
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            USER="${{ github.event.pull_request.user.login }}"
+            TYPE="PR"
+          else
+            USER="${{ github.event.issue.user.login }}"
+            TYPE="issue"
+          fi
+          PREVIOUS=$(gh api "repos/${{ github.repository }}/issues?creator=${USER}&state=all&per_page=1" -q '. | length' 2>/dev/null || echo "0")
+          if [ "$PREVIOUS" -le 1 ]; then
+            echo "is_first=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_first=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "user=${USER}" >> "$GITHUB_OUTPUT"
+          echo "type=${TYPE}" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Comment on PR
+        if: steps.check.outputs.is_first == 'true' && steps.check.outputs.type == 'PR'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --body "Welcome @${{ steps.check.outputs.user }}! 🎉 Thanks for your first contribution to Codeplane.\n\nPlease make sure:\n- [ ] All tests pass\n- [ ] Typecheck passes\n- [ ] Lint passes\n- [ ] You've updated the docs if needed\n\nOur team will review your PR soon!"
+      - name: Comment on issue
+        if: steps.check.outputs.is_first == 'true' && steps.check.outputs.type == 'issue'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" \
+            --repo "${{ github.repository }}" \
+            --body "Welcome @${{ steps.check.outputs.user }}! 🎉 Thanks for opening your first issue.\n\nWe'll triage this shortly. In the meantime, please make sure you've provided:\n- A clear description\n- Steps to reproduce (if it's a bug)\n- Expected vs actual behavior\n\nThanks for helping make Codeplane better!"

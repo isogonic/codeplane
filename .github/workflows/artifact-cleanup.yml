@@ -1,0 +1,53 @@
+name: artifact-cleanup
+
+description: |
+  Automatically cleans up old workflow artifacts.
+  Prevents storage quota issues.
+
+on:
+  schedule:
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Delete artifacts older than N days"
+        required: false
+        default: "30"
+        type: string
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Delete old artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          DAYS="${{ inputs.days || '30' }}"
+          echo "::notice::Deleting artifacts older than ${DAYS} days"
+          # List artifacts
+          gh api "repos/${{ github.repository }}/actions/artifacts" --paginate | \
+            jq -r ".artifacts[] | select(.created_at < \"$(date -d "${DAYS} days ago" -u +%Y-%m-%dT%H:%M:%SZ)\" | .id)" | \
+            while read id; do
+              echo "Deleting artifact $id"
+              gh api -X DELETE "repos/${{ github.repository }}/actions/artifacts/$id" || true
+            done
+        continue-on-error: true
+      - name: Delete old workflow runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "::notice::Cleaning old workflow runs..."
+          # List workflow runs older than 30 days
+          gh api "repos/${{ github.repository }}/actions/runs" --paginate | \
+            jq -r ".workflow_runs[] | select(.created_at < \"$(date -d "30 days ago" -u +%Y-%m-%dT%H:%M:%SZ)\" | .id)" | \
+            while read id; do
+              echo "Deleting run $id"
+              gh api -X DELETE "repos/${{ github.repository }}/actions/runs/$id" || true
+            done
+        continue-on-error: true

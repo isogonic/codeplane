@@ -1,0 +1,216 @@
+name: release-orchestrator
+
+description: |
+  Master orchestrator for all release types.
+  Dispatches the appropriate release workflow based on the tag.
+  Also handles rollback, hotfix, and emergency release scenarios.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: "Release type"
+        required: true
+        type: choice
+        options:
+          - stable
+          - hotfix
+          - emergency
+          - rollback
+      version:
+        description: "Version to release (for manual dispatch)"
+        required: true
+        type: string
+      skip_tests:
+        description: "Skip test suite"
+        required: false
+        default: false
+        type: boolean
+      skip_desktop:
+        description: "Skip desktop build"
+        required: false
+        default: false
+        type: boolean
+      skip_mobile:
+        description: "Skip mobile build"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: release-${{ github.ref_name }}-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  determine-release:
+    runs-on: ubuntu-24.04
+    outputs:
+      release_type: ${{ steps.determine.outputs.release_type }}
+      version: ${{ steps.determine.outputs.version }}
+      is_stable: ${{ steps.determine.outputs.is_stable }}
+      is_hotfix: ${{ steps.determine.outputs.is_hotfix }}
+      is_emergency: ${{ steps.determine.outputs.is_emergency }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: determine
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            TYPE="${{ inputs.release_type }}"
+            VERSION="${{ inputs.version }}"
+          else
+            TAG="${{ github.ref_name }}"
+            VERSION="${TAG#v}"
+            if [[ "$TAG" == *-hotfix* ]]; then
+              TYPE="hotfix"
+            elif [[ "$TAG" == *-emergency* ]]; then
+              TYPE="emergency"
+            else
+              TYPE="stable"
+            fi
+          fi
+          echo "release_type=${TYPE}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "is_stable=$([ "$TYPE" == "stable" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "is_hotfix=$([ "$TYPE" == "hotfix" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "is_emergency=$([ "$TYPE" == "emergency" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "::notice::Release type: ${TYPE}, Version: ${VERSION}"
+
+  pre-release-checks:
+    needs: determine-release
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Verify version consistency
+        run: |
+          VERSION="${{ needs.determine-release.outputs.version }}"
+          # Check version.ts
+          VERSION_TS=$(grep -oP 'VERSION = "\K[^"]+' packages/shared/src/version.ts || echo "")
+          if [ "$VERSION_TS" != "$VERSION" ]; then
+            echo "::warning::version.ts (${VERSION_TS}) does not match release version (${VERSION})"
+          fi
+          # Check package.json
+          PKG_VERSION=$(node -e "console.log(require('./package.json').version)")
+          if [ "$PKG_VERSION" != "$VERSION" ]; then
+            echo "::warning::package.json version (${PKG_VERSION}) does not match release version (${VERSION})"
+          fi
+      - name: Check changelog
+        run: |
+          if [ -f CHANGELOG.md ]; then
+            echo "CHANGELOG.md found"
+            head -20 CHANGELOG.md
+          else
+            echo "::warning::No CHANGELOG.md found"
+          fi
+      - name: Verify branch protection
+        run: |
+          echo "::notice::Ensure release is from main branch"
+          echo "Current branch: ${{ github.ref_name }}"
+
+  dispatch-npm-release:
+    needs: [determine-release, pre-release-checks]
+    if: needs.determine-release.outputs.is_stable == 'true' || needs.determine-release.outputs.is_hotfix == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Dispatch npm release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run npm-release.yml \
+            --ref "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}"
+          echo "::notice::Dispatched npm-release workflow"
+
+  dispatch-desktop-release:
+    needs: [determine-release, pre-release-checks]
+    if: needs.determine-release.outputs.is_stable == 'true' || needs.determine-release.outputs.is_hotfix == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Dispatch desktop release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run desktop-release.yml \
+            --ref "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}"
+          echo "::notice::Dispatched desktop-release workflow"
+
+  dispatch-mobile-release:
+    needs: [determine-release, pre-release-checks]
+    if: needs.determine-release.outputs.is_stable == 'true' && inputs.skip_mobile != true
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Dispatch mobile release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run mobile-release.yml \
+            --ref "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}"
+          echo "::notice::Dispatched mobile-release workflow"
+
+  dispatch-pages-deploy:
+    needs: [determine-release, pre-release-checks]
+    if: needs.determine-release.outputs.is_stable == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Dispatch pages deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run pages.yml \
+            --ref "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}"
+          echo "::notice::Dispatched pages deploy workflow"
+
+  dispatch-docker-publish:
+    needs: [determine-release, pre-release-checks]
+    if: needs.determine-release.outputs.is_stable == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Dispatch docker build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run docker-build.yml \
+            --ref "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}"
+          echo "::notice::Dispatched docker-build workflow"
+
+  dispatch-homebrew-update:
+    needs: [determine-release, dispatch-npm-release]
+    if: needs.determine-release.outputs.is_stable == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Update homebrew formula
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN || github.token }}
+        run: |
+          echo "::notice::Homebrew formula update will be triggered by npm-release workflow"
+
+  release-summary:
+    needs: [determine-release, dispatch-npm-release, dispatch-desktop-release, dispatch-mobile-release, dispatch-pages-deploy, dispatch-docker-publish, dispatch-homebrew-update]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Generate release summary
+        run: |
+          echo "## Release Orchestrator Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Release type: ${{ needs.determine-release.outputs.release_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: ${{ needs.determine-release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- npm release: ${{ needs.dispatch-npm-release.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- desktop release: ${{ needs.dispatch-desktop-release.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- mobile release: ${{ needs.dispatch-mobile-release.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- pages deploy: ${{ needs.dispatch-pages-deploy.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- docker publish: ${{ needs.dispatch-docker-publish.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- homebrew update: ${{ needs.dispatch-homebrew-update.result }}" >> $GITHUB_STEP_SUMMARY

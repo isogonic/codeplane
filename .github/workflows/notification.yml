@@ -1,0 +1,74 @@
+name: notification
+
+description: |
+  Sends notifications to various channels (Slack, Discord, Email)
+  on release, failure, and other important events.
+
+on:
+  workflow_run:
+    workflows:
+      - npm-release
+      - desktop-release
+      - prerelease
+      - nightly
+      - beta-release
+      - hotfix
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      message:
+        description: "Custom message"
+        required: true
+        type: string
+      channel:
+        description: "Notification channel"
+        required: false
+        default: "slack"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-24.04
+    if: always()
+    steps:
+      - name: Prepare notification
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_run" ]; then
+            WORKFLOW="${{ github.event.workflow_run.name }}"
+            STATUS="${{ github.event.workflow_run.conclusion }}"
+            URL="${{ github.event.workflow_run.html_url }}"
+            MESSAGE="Workflow ${WORKFLOW} completed with status: ${STATUS}\n${URL}"
+          else
+            MESSAGE="${{ inputs.message }}"
+          fi
+          echo "NOTIFICATION_MESSAGE=${MESSAGE}" >> "$GITHUB_ENV"
+
+      - name: Send to Slack
+        if: env.SLACK_WEBHOOK_URL != ''
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"${NOTIFICATION_MESSAGE}\"}" \
+            "${SLACK_WEBHOOK_URL}" || echo "Slack notification failed"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true
+
+      - name: Send to Discord
+        if: env.DISCORD_WEBHOOK_URL != ''
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"content\":\"${NOTIFICATION_MESSAGE}\"}" \
+            "${DISCORD_WEBHOOK_URL}" || echo "Discord notification failed"
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        continue-on-error: true
+
+      - name: GitHub comment
+        if: github.event_name == 'workflow_run'
+        run: |
+          echo "::notice::${NOTIFICATION_MESSAGE}"
+        continue-on-error: true

@@ -1,0 +1,44 @@
+name: cache-maintenance
+
+description: |
+  Maintains and monitors GitHub Actions caches.
+  Clears stale caches and reports cache usage.
+
+on:
+  schedule:
+    - cron: "0 2 * * 0"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  cache-report:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: List caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "## Cache Report" >> $GITHUB_STEP_SUMMARY
+          echo "| Key | Size | Created |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|------|---------|" >> $GITHUB_STEP_SUMMARY
+          gh api "repos/${{ github.repository }}/actions/caches" --paginate | \
+            jq -r '.actions_caches[] | "| \(.key) | \(.size_in_bytes) bytes | \(.created_at) |"' >> $GITHUB_STEP_SUMMARY
+        continue-on-error: true
+
+  cache-cleanup:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Delete old caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Delete caches older than 14 days
+          gh api "repos/${{ github.repository }}/actions/caches" --paginate | \
+            jq -r ".actions_caches[] | select(.created_at < \"$(date -d "14 days ago" -u +%Y-%m-%dT%H:%M:%SZ)\" | .id)" | \
+            while read id; do
+              echo "Deleting cache $id"
+              gh api -X DELETE "repos/${{ github.repository }}/actions/caches/$id" || true
+            done
+        continue-on-error: true

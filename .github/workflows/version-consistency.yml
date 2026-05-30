@@ -1,0 +1,61 @@
+name: version-consistency
+
+description: |
+  Checks that all version references are consistent across the codebase.
+  Ensures package.json, version.ts, and other files match.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    paths:
+      - "packages/shared/src/version.ts"
+      - "package.json"
+      - "packages/*/package.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-versions:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Check version.ts
+        run: |
+          if [ -f packages/shared/src/version.ts ]; then
+            VERSION=$(grep -oP 'VERSION = "\K[^"]+' packages/shared/src/version.ts)
+            echo "::notice::version.ts: ${VERSION}"
+          else
+            echo "::error::version.ts not found"
+            exit 1
+          fi
+      - name: Check package.json
+        run: |
+          PKG_VERSION=$(node -e "console.log(require('./package.json').version)")
+          echo "::notice::package.json: ${PKG_VERSION}"
+      - name: Check workspace packages
+        run: |
+          for pkg in packages/*/package.json; do
+            name=$(node -e "console.log(require('./$pkg').name)")
+            version=$(node -e "console.log(require('./$pkg').version)")
+            echo "  ${name}: ${version}"
+          done
+      - name: Compare versions
+        run: |
+          VERSION_TS=$(grep -oP 'VERSION = "\K[^"]+' packages/shared/src/version.ts)
+          PKG_VERSION=$(node -e "console.log(require('./package.json').version)")
+          if [ "$VERSION_TS" != "$PKG_VERSION" ]; then
+            echo "::warning::version.ts (${VERSION_TS}) != package.json (${PKG_VERSION})"
+          else
+            echo "::notice::Versions are consistent"
+          fi
+        continue-on-error: true
+      - name: Check for hardcoded versions
+        run: |
+          # Check for hardcoded version references in code
+          grep -r "v28\." --include="*.ts" --include="*.tsx" --include="*.md" packages/ site/ docs/ || echo "No hardcoded old versions"
+        continue-on-error: true

@@ -1,0 +1,100 @@
+name: monitoring
+
+description: |
+  Continuous monitoring and health checks.
+  Runs periodically to check the health of the npm registry,
+  GitHub releases, website, and other services.
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  npm-health:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check npm registry
+        run: |
+          curl -s https://registry.npmjs.org/codeplane-ai/latest | jq -r '{name, version}'
+          echo "::notice::npm registry check complete"
+      - name: Check all platform packages
+        run: |
+          for pkg in codeplane-darwin-arm64 codeplane-darwin-x64 codeplane-linux-arm64 codeplane-linux-x64 codeplane-linux-arm64-musl codeplane-linux-x64-musl codeplane-windows-arm64 codeplane-windows-x64; do
+            status=$(curl -s -o /dev/null -w "%{http_code}" "https://registry.npmjs.org/${pkg}/latest")
+            echo "  ${pkg}: HTTP ${status}"
+          done
+      - name: Check scoped packages
+        run: |
+          for pkg in @codeplane-ai/plugin @codeplane-ai/sdk; do
+            encoded=$(echo "$pkg" | sed 's|/|%2f|g')
+            status=$(curl -s -o /dev/null -w "%{http_code}" "https://registry.npmjs.org/${encoded}/latest")
+            echo "  ${pkg}: HTTP ${status}"
+          done
+
+  github-health:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check GitHub releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list --repo "${{ github.repository }}" --limit 5
+          echo "::notice::GitHub releases check complete"
+      - name: Check open issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue list --repo "${{ github.repository }}" --limit 5
+      - name: Check open PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr list --repo "${{ github.repository }}" --limit 5
+
+  website-health:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check codeplane.cc
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" https://codeplane.cc
+          echo "::notice::Website check complete"
+        continue-on-error: true
+      - name: Check docs
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" https://codeplane.cc/docs/
+        continue-on-error: true
+
+  stale-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check stale issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Find issues with no activity in 30 days
+          gh issue list --repo "${{ github.repository }}" --state open --search "updated:<$(date -d '30 days ago' +%Y-%m-%d)" --limit 10
+        continue-on-error: true
+      - name: Check stale PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Find PRs with no activity in 14 days
+          gh pr list --repo "${{ github.repository }}" --state open --search "updated:<$(date -d '14 days ago' +%Y-%m-%d)" --limit 10
+        continue-on-error: true
+
+  report:
+    needs: [npm-health, github-health, website-health, stale-check]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Generate monitoring report
+        run: |
+          echo "## Monitoring Report" >> $GITHUB_STEP_SUMMARY
+          echo "- npm health: ${{ needs.npm-health.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub health: ${{ needs.github-health.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Website health: ${{ needs.website-health.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Stale check: ${{ needs.stale-check.result }}" >> $GITHUB_STEP_SUMMARY

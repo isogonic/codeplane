@@ -1,0 +1,93 @@
+name: performance-benchmark
+
+description: |
+  Performance benchmarks for the CLI, server, and TUI.
+  Runs on every PR and release to detect regressions.
+  Compares build times, binary sizes, and startup times.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark-build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Benchmark build time
+        run: |
+          cd packages/codeplane
+          START=$(date +%s.%N)
+          bun script/build.ts --skip-embed-web-ui --skip-install --single
+          END=$(date +%s.%N)
+          DURATION=$(echo "$END - $START" | bc)
+          echo "::notice::Build time: ${DURATION}s"
+      - name: Benchmark binary size
+        run: |
+          du -h packages/codeplane/dist/codeplane-linux-x64/bin/codeplane
+          ls -la packages/codeplane/dist/codeplane-linux-x64/bin/codeplane
+      - name: Benchmark TUI bundle size
+        run: |
+          du -sh packages/codeplane/dist/codeplane-linux-x64/bin/runtime/tui/
+          echo "::notice::TUI bundle size checked"
+
+  benchmark-startup:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Build CLI
+        run: |
+          cd packages/codeplane
+          bun script/build.ts --skip-embed-web-ui --skip-install --single
+      - name: Benchmark startup time
+        run: |
+          START=$(date +%s.%N)
+          ./packages/codeplane/dist/codeplane-linux-x64/bin/codeplane --version
+          END=$(date +%s.%N)
+          DURATION=$(echo "$END - $START" | bc)
+          echo "::notice::Startup time (--version): ${DURATION}s"
+      - name: Benchmark help time
+        run: |
+          START=$(date +%s.%N)
+          ./packages/codeplane/dist/codeplane-linux-x64/bin/codeplane --help
+          END=$(date +%s.%N)
+          DURATION=$(echo "$END - $START" | bc)
+          echo "::notice::Help time (--help): ${DURATION}s"
+
+  benchmark-memory:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun
+      - name: Build CLI
+        run: |
+          cd packages/codeplane
+          bun script/build.ts --skip-embed-web-ui --skip-install --single
+      - name: Memory benchmark
+        run: |
+          # Start the server and check memory
+          timeout 10s ./packages/codeplane/dist/codeplane-linux-x64/bin/codeplane serve --port 19876 --hostname 127.0.0.1 &
+          sleep 3
+          # Check memory usage
+          ps aux | grep codeplane | grep -v grep
+        continue-on-error: true
+
+  benchmark-report:
+    needs: [benchmark-build, benchmark-startup, benchmark-memory]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Generate benchmark report
+        run: |
+          echo "## Performance Benchmarks" >> $GITHUB_STEP_SUMMARY
+          echo "- Build benchmark: ${{ needs.benchmark-build.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Startup benchmark: ${{ needs.benchmark-startup.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Memory benchmark: ${{ needs.benchmark-memory.result }}" >> $GITHUB_STEP_SUMMARY
