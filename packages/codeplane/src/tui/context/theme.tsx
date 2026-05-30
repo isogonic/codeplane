@@ -307,6 +307,15 @@ function isBuiltInTheme(theme: ThemeJson) {
   return Object.values(DEFAULT_THEMES).some((item) => item === theme)
 }
 
+// `oc-2` is the Web/Desktop parity palette. Its colors are already tuned for
+// soft contrast against warm surfaces, so running them through the built-in
+// softening pass (which desaturates + relightens accents) washes them out and
+// hurts legibility. Resolve it verbatim so the TUI matches the desktop exactly.
+function shouldSoften(theme: ThemeJson) {
+  if (theme === oc2) return false
+  return isBuiltInTheme(theme)
+}
+
 function softenBuiltInTheme(theme: Theme, mode: "dark" | "light"): Theme {
   const softened = { ...theme } as MutableTheme
   for (const key of SOFTENED_THEME_COLOR_KEYS) {
@@ -563,13 +572,13 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
     // recover. Fall back to the known-good built-in instead.
     const safeResolve = (theme: ThemeJson, label: string) => {
       try {
-        return resolveTheme(theme, store.mode, { soften: isBuiltInTheme(theme) })
+        return resolveTheme(theme, store.mode, { soften: shouldSoften(theme) })
       } catch (e) {
         Log.Default.warn("invalid theme, falling back to oc-2", {
           theme: label,
           error: e instanceof Error ? e.message : String(e),
         })
-        return resolveTheme(store.themes["oc-2"], store.mode, { soften: true })
+        return resolveTheme(store.themes["oc-2"], store.mode, { soften: false })
       }
     }
 
