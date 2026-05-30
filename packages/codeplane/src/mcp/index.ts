@@ -334,6 +334,10 @@ export interface Interface {
   ) => Effect.Effect<Awaited<ReturnType<MCPClient["readResource"]>> | undefined>
   readonly startAuth: (mcpName: string) => Effect.Effect<{ authorizationUrl: string; oauthState: string }>
   readonly authenticate: (mcpName: string) => Effect.Effect<Status>
+  readonly beginAuth: (
+    mcpName: string,
+    opts?: { redirectUri?: string },
+  ) => Effect.Effect<{ authorizationUrl: string; redirectUri: string } | { status: Status }>
   readonly autoConnectOAuth: () => Effect.Effect<InteractiveAuthLaunch[]>
   readonly finishAuth: (mcpName: string, authorizationCode: string) => Effect.Effect<Status>
   readonly removeAuth: (mcpName: string) => Effect.Effect<void>
@@ -887,7 +891,10 @@ export const layer = Layer.effect(
       return `${yield* InstanceState.directory}\x00${mcpName}`
     })
 
-    const startAuth = Effect.fn("MCP.startAuth")(function* (mcpName: string) {
+    const startAuth = Effect.fn("MCP.startAuth")(function* (
+      mcpName: string,
+      redirectOverride?: { redirectUri: string },
+    ) {
       const mcpConfig = yield* getMcpConfig(mcpName)
       if (!mcpConfig) throw new Error(`MCP server ${mcpName} not found or disabled`)
       if (mcpConfig.type !== "remote") throw new Error(`MCP server ${mcpName} is not a remote server`)
@@ -897,8 +904,22 @@ export const layer = Layer.effect(
       const oauthConfig = typeof mcpConfig.oauth === "object" ? mcpConfig.oauth : undefined
       const s = yield* InstanceState.get(state)
 
-      // Start the callback server with custom redirectUri if configured
-      yield* Effect.promise(() => McpOAuthCallback.ensureRunning(oauthConfig?.redirectUri))
+      // Redirect URI precedence: an explicit user-configured redirectUri always
+      // wins; otherwise the caller may hand us a server-hosted callback URL
+      // (the button flow does this so web + mobile browsers can complete OAuth
+      // against a remote instance). Falling through to undefined keeps the
+      // historical loopback default for the CLI path.
+      const configuredRedirect = oauthConfig?.redirectUri
+      const effectiveRedirect = configuredRedirect ?? redirectOverride?.redirectUri
+      const serverHostedCallback = !configuredRedirect && !!redirectOverride
+
+      // The loopback callback server is only meaningful when the redirect lands
+      // back on 127.0.0.1. For a server-hosted callback the codeplane HTTP
+      // server itself receives the redirect, so we skip it (binding the
+      // server's own port would just be a no-op).
+      if (!serverHostedCallback) {
+        yield* Effect.promise(() => McpOAuthCallback.ensureRunning(configuredRedirect))
+      }
 
       const oauthState = Array.from(crypto.getRandomValues(new Uint8Array(32)))
         .map((b) => b.toString(16).padStart(2, "0"))
@@ -912,7 +933,7 @@ export const layer = Layer.effect(
           clientId: oauthConfig?.clientId,
           clientSecret: oauthConfig?.clientSecret,
           scope: oauthConfig?.scope,
-          redirectUri: oauthConfig?.redirectUri,
+          redirectUri: effectiveRedirect,
         },
         {
           onRedirect: async (url) => {
@@ -952,12 +973,15 @@ export const layer = Layer.effect(
       )
     })
 
-    const beginInteractiveAuth = Effect.fn("MCP.beginInteractiveAuth")(function* (mcpName: string) {
+    const beginInteractiveAuth = Effect.fn("MCP.beginInteractiveAuth")(function* (
+      mcpName: string,
+      redirectOverride?: { redirectUri: string },
+    ) {
       const s = yield* InstanceState.get(state)
       const existing = s.interactiveAuths.get(mcpName)
       if (existing) return { flow: existing } as const
 
-      const result = yield* startAuth(mcpName)
+      const result = yield* startAuth(mcpName, redirectOverride)
       if (!result.authorizationUrl) {
         const client = "client" in result ? result.client : undefined
         const mcpConfig = yield* getMcpConfig(mcpName)
@@ -1090,6 +1114,25 @@ export const layer = Layer.effect(
       return launches.filter((entry): entry is InteractiveAuthLaunch => !!entry)
     })
 
+    // Non-blocking single-server OAuth start used by the UI "Authorize" button.
+    // Unlike authenticate() (which opens the system browser server-side and
+    // blocks until the callback), beginAuth registers the callback waiter and
+    // returns the authorization URL immediately so the client decides how to
+    // open it (embedded window on desktop, new tab on web/mobile) and polls
+    // status() for completion. The forked fiber finishes the exchange when the
+    // callback arrives at either the loopback server or the server-hosted route.
+    const beginAuth = Effect.fn("MCP.beginAuth")(function* (mcpName: string, opts?: { redirectUri?: string }) {
+      const result = (yield* beginInteractiveAuth(
+        mcpName,
+        opts?.redirectUri ? { redirectUri: opts.redirectUri } : undefined,
+      )) as { flow?: InteractiveAuthFlow; status?: Status }
+      type BeginResult = { authorizationUrl: string; redirectUri: string } | { status: Status }
+      if (result.flow) {
+        return { authorizationUrl: result.flow.authorizationUrl, redirectUri: result.flow.redirectUri } as BeginResult
+      }
+      return { status: (result.status ?? { status: "failed", error: "OAuth flow failed to start" }) as Status } as BeginResult
+    })
+
     const finishAuth = Effect.fn("MCP.finishAuth")(function* (mcpName: string, authorizationCode: string) {
       const s = yield* InstanceState.get(state)
       const transport = s.pendingOAuthTransports.get(mcpName)
@@ -1160,6 +1203,7 @@ export const layer = Layer.effect(
       readResource,
       startAuth,
       authenticate,
+      beginAuth,
       autoConnectOAuth,
       finishAuth,
       removeAuth,

@@ -123,6 +123,13 @@ const api = {
   auth: {
     openExternal: (url: string) => ipcRenderer.invoke("auth:open-external", url) as Promise<boolean>,
   },
+  mcp: {
+    // Open the embedded OAuth window for a remote MCP server. Returns once the
+    // window has been launched (not when auth completes — the renderer polls
+    // mcp.status for that).
+    authorize: (input: { name: string; authorizationUrl: string; redirectUri: string }) =>
+      ipcRenderer.invoke("mcp:authorize", input) as Promise<{ ok: true } | { ok: false; error: string }>,
+  },
   notifications: {
     isSupported: () => ipcRenderer.invoke("notifications:is-supported") as Promise<boolean>,
     notify: (input: { title: string; description?: string; href?: string }) =>

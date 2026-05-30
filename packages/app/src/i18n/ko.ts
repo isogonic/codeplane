@@ -3,6 +3,18 @@ import { dict as en } from "./en"
 type Keys = keyof typeof en
 
 const translated = {
+  "mcp.status.needs_client_registration": "클라이언트 ID 필요",
+  "mcp.action.authorize": "인증",
+  "mcp.action.authorizing": "인증 중…",
+  "mcp.action.signOut": "로그아웃",
+  "mcp.toast.authorized": "{{name}} 인증됨",
+  "mcp.toast.authFailed": "인증 실패",
+  "mcp.toast.authTimeout": "인증 시간이 초과되었습니다 — 다시 시도하세요",
+  "mcp.toast.notSupported": "이 서버는 OAuth를 지원하지 않습니다",
+  "mcp.toast.needsClientId": "클라이언트 등록이 필요합니다",
+  "mcp.toast.signedOut": "로그아웃되었습니다",
+  "mcp.toast.popupBlocked": "이 사이트의 팝업을 허용한 후 다시 인증을 시도하세요",
+  "mcp.oauth.clientRegistrationHint": "이 서버에는 미리 등록된 client ID가 필요합니다. 설정에 oauth.clientId를 추가하세요.",
   "command.category.suggested": "추천",
   "command.category.view": "보기",
   "command.category.project": "프로젝트",

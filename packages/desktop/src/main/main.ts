@@ -46,7 +46,7 @@ import {
   type DesktopHostInstance,
   type DesktopUIPrepareProgress,
 } from "./ui-host"
-import { createDesktopMcpOAuthManager, fetchAutoConnectMcpOAuthLaunches } from "./mcp-auth"
+import { createDesktopMcpOAuthManager } from "./mcp-auth"
 import {
   showDesktopNotification as showDesktopNotificationBridge,
   type DesktopNotificationPayload,
@@ -902,45 +902,15 @@ function asUrl(input: string): URL | undefined {
   }
 }
 
-async function instanceSessionFetch(instance: SavedInstance, input: string | URL, init?: RequestInit) {
+// Open the embedded, session-scoped OAuth window for a single MCP server.
+// Triggered by the renderer's "Authorize" button (via the mcp:authorize IPC) —
+// the desktop no longer opens any OAuth window automatically on instance load.
+async function openInstanceMcpOAuth(
+  instance: SavedInstance,
+  launch: { name: string; authorizationUrl: string; redirectUri: string },
+) {
   const ses = ensureSession(instance)
-  const nativeFetch = "fetch" in ses && typeof ses.fetch === "function" ? ses.fetch.bind(ses) : fetch
-  return nativeFetch(typeof input === "string" ? input : input.toString(), { redirect: "follow", ...init })
-}
-
-async function triggerInstanceAutoMcpOAuth(instance: SavedInstance) {
-  const target = asUrl(instance.url)
-  if (!target) return
-
-  try {
-    const launches = await fetchAutoConnectMcpOAuthLaunches({
-      baseUrl: target.toString(),
-      fetchFn: ((input, init) =>
-        instanceSessionFetch(
-          instance,
-          typeof input === "string" || input instanceof URL ? input : input.url,
-          init,
-        )) as typeof fetch,
-    })
-    if (launches.length === 0) {
-      logger.log("main", "mcp.oauth.auto-connect.none", instanceSummary(instance))
-      return
-    }
-
-    logger.log("main", "mcp.oauth.auto-connect.start", {
-      count: launches.length,
-      launches: launches.map((launch) => launch.name),
-      ...instanceSummary(instance),
-    })
-
-    const ses = ensureSession(instance)
-    await Promise.allSettled(launches.map((launch) => mcpOAuthManager.open(instance, ses, launch)))
-  } catch (error) {
-    logger.log("main", "mcp.oauth.auto-connect.error", {
-      error: error instanceof Error ? error.message : String(error),
-      ...instanceSummary(instance),
-    })
-  }
+  await mcpOAuthManager.open(instance, ses, launch)
 }
 
 function getAppAssetPath(...parts: string[]) {
@@ -2117,7 +2087,6 @@ async function openInstance(saved: SavedInstance, opts?: { progressTo?: WebConte
       await clearRendererHttpCache(ses, instance, "instance-open")
       await loadWindowUrl(window, prepared.url)
       attachServerVersionWatcher(window, instance, prepared.version)
-      void triggerInstanceAutoMcpOAuth(instance)
     }
 
     // Atomically swap setup → instance. Hidden window starts at opacity 0
@@ -2630,6 +2599,45 @@ function setupIpc() {
     await shell.openExternal(target.toString())
     return true
   })
+
+  // Begin an MCP OAuth flow in an embedded, sandboxed, session-scoped window.
+  // The renderer's "Authorize" button calls this after the backend hands back
+  // an authorization URL; the window auto-closes once the provider redirects to
+  // the (server-hosted) callback, and the backend completes the token exchange.
+  ipcMain.handle(
+    "mcp:authorize",
+    async (
+      _event,
+      input: { name: string; authorizationUrl: string; redirectUri: string },
+    ): Promise<{ ok: true } | { ok: false; error: string }> => {
+      const authUrl = asUrl(input?.authorizationUrl ?? "")
+      const redirectUri = asUrl(input?.redirectUri ?? "")
+      if (!authUrl || (authUrl.protocol !== "https:" && authUrl.protocol !== "http:")) {
+        return { ok: false, error: "Invalid authorization URL" }
+      }
+      if (!redirectUri || (redirectUri.protocol !== "https:" && redirectUri.protocol !== "http:")) {
+        return { ok: false, error: "Invalid redirect URI" }
+      }
+      const instance = getInstance(currentInstanceID)
+      if (!instance) return { ok: false, error: "No active instance" }
+      const name = typeof input?.name === "string" && input.name ? input.name : "MCP server"
+      try {
+        logger.log("main", "mcp.oauth.authorize.open", { mcpName: name, ...instanceSummary(instance) })
+        await openInstanceMcpOAuth(instance, {
+          name,
+          authorizationUrl: authUrl.toString(),
+          redirectUri: redirectUri.toString(),
+        })
+        return { ok: true }
+      } catch (error) {
+        logger.log("main", "mcp.oauth.authorize.error", {
+          error: error instanceof Error ? error.message : String(error),
+          ...instanceSummary(instance),
+        })
+        return { ok: false, error: error instanceof Error ? error.message : String(error) }
+      }
+    },
+  )
 
   // Open a child BrowserWindow at the instance URL so the user can sign in
   // through whatever auth proxy sits in front of it (Cloudflare Access,

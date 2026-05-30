@@ -3,6 +3,18 @@ import { dict as en } from "./en"
 type Keys = keyof typeof en
 
 const translated = {
+  "mcp.status.needs_client_registration": "ID client requis",
+  "mcp.action.authorize": "Autoriser",
+  "mcp.action.authorizing": "Autorisation…",
+  "mcp.action.signOut": "Se déconnecter",
+  "mcp.toast.authorized": "{{name}} autorisé",
+  "mcp.toast.authFailed": "Échec de l'autorisation",
+  "mcp.toast.authTimeout": "Délai d'autorisation dépassé — réessayez",
+  "mcp.toast.notSupported": "Ce serveur ne prend pas en charge OAuth",
+  "mcp.toast.needsClientId": "Enregistrement du client requis",
+  "mcp.toast.signedOut": "Déconnecté",
+  "mcp.toast.popupBlocked": "Autorisez les fenêtres contextuelles pour ce site, puis réessayez l'autorisation",
+  "mcp.oauth.clientRegistrationHint": "Ce serveur nécessite un ID client préenregistré. Ajoutez oauth.clientId à sa configuration.",
   "command.category.suggested": "Suggéré",
   "command.category.view": "Affichage",
   "command.category.project": "Projet",

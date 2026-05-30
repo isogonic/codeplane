@@ -3,6 +3,18 @@ import { dict as en } from "./en"
 type Keys = keyof typeof en
 
 const translated = {
+  "mcp.status.needs_client_registration": "potreban client ID",
+  "mcp.action.authorize": "Autorizuj",
+  "mcp.action.authorizing": "Autorizacija…",
+  "mcp.action.signOut": "Odjavi se",
+  "mcp.toast.authorized": "Autorizovan {{name}}",
+  "mcp.toast.authFailed": "Autorizacija nije uspjela",
+  "mcp.toast.authTimeout": "Isteklo vrijeme autorizacije — pokušajte ponovo",
+  "mcp.toast.notSupported": "Ovaj server ne podržava OAuth",
+  "mcp.toast.needsClientId": "Potrebna je registracija klijenta",
+  "mcp.toast.signedOut": "Odjavljeni ste",
+  "mcp.toast.popupBlocked": "Dozvolite skočne prozore za ovu stranicu, pa pokušajte ponovo autorizovati",
+  "mcp.oauth.clientRegistrationHint": "Ovaj server zahtijeva unaprijed registrovan client ID. Dodajte oauth.clientId u njegovu konfiguraciju.",
   "command.category.suggested": "Predloženo",
   "command.category.view": "Prikaz",
   "command.category.project": "Projekat",

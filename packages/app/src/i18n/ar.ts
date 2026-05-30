@@ -3,6 +3,18 @@ import { dict as en } from "./en"
 type Keys = keyof typeof en
 
 const translated = {
+  "mcp.status.needs_client_registration": "يحتاج إلى معرّف العميل",
+  "mcp.action.authorize": "تفويض",
+  "mcp.action.authorizing": "جارٍ التفويض…",
+  "mcp.action.signOut": "تسجيل الخروج",
+  "mcp.toast.authorized": "تم تفويض {{name}}",
+  "mcp.toast.authFailed": "فشل التفويض",
+  "mcp.toast.authTimeout": "انتهت مهلة التفويض — حاول مرة أخرى",
+  "mcp.toast.notSupported": "هذا الخادم لا يدعم OAuth",
+  "mcp.toast.needsClientId": "يلزم تسجيل العميل",
+  "mcp.toast.signedOut": "تم تسجيل الخروج",
+  "mcp.toast.popupBlocked": "اسمح بالنوافذ المنبثقة لهذا الموقع، ثم حاول التفويض مرة أخرى",
+  "mcp.oauth.clientRegistrationHint": "يحتاج هذا الخادم إلى معرّف عميل (client ID) مسجّل مسبقًا. أضِف oauth.clientId إلى إعداداته.",
   "command.category.suggested": "مقترح",
   "command.category.view": "عرض",
   "command.category.project": "مشروع",

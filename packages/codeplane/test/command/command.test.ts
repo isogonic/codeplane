@@ -29,6 +29,7 @@ const it = testEffect(
             readResource: () => Effect.succeed(undefined),
             startAuth: () => Effect.die("unexpected auth"),
             authenticate: () => Effect.die("unexpected auth"),
+            beginAuth: () => Effect.die("unexpected auth"),
             finishAuth: () => Effect.die("unexpected auth"),
             removeAuth: () => Effect.void,
             supportsOAuth: () => Effect.succeed(false),

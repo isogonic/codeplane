@@ -3,17 +3,32 @@ import { useDialog } from "@codeplane-ai/ui/context/dialog"
 import { Dialog } from "@codeplane-ai/ui/dialog"
 import { Icon } from "@codeplane-ai/ui/icon"
 import { IconButton } from "@codeplane-ai/ui/icon-button"
+import { Spinner } from "@codeplane-ai/ui/spinner"
 import { Switch } from "@codeplane-ai/ui/switch"
 import { Tag } from "@codeplane-ai/ui/tag"
 import { TextField } from "@codeplane-ai/ui/text-field"
 import { showToast } from "@codeplane-ai/ui/toast"
 import type { McpLocalConfig, McpRemoteConfig, McpStatus } from "@codeplane-ai/sdk/v2/client"
 import { useMutation } from "@tanstack/solid-query"
-import { batch, createMemo, createResource, createSignal, For, Show } from "solid-js"
+import { batch, createMemo, createResource, createSignal, For, onCleanup, Show } from "solid-js"
 import { createStore, produce } from "solid-js/store"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { useGlobalSync } from "@/context/global-sync"
 import { useLanguage } from "@/context/language"
+
+// The desktop shell opens OAuth in an embedded, session-scoped window that
+// auto-closes on redirect (window.codeplaneDesktop.mcp.authorize, injected by
+// the Electron preload). On web/mobile this bridge is absent and we fall back
+// to a popup/tab.
+function desktopMcpAuthorize() {
+  return window.codeplaneDesktop?.mcp?.authorize
+}
+
+const OAUTH_CALLBACK_PATH = "/mcp/oauth/callback"
+
+function supportsOAuth(config: McpConfig): config is McpRemoteConfig {
+  return config.type === "remote" && config.oauth !== false
+}
 
 type McpConfig = McpLocalConfig | McpRemoteConfig
 type McpServerEntry = {
@@ -44,7 +59,7 @@ const statusKeys = {
   failed: "mcp.status.failed",
   needs_auth: "mcp.status.needs_auth",
   disabled: "mcp.status.disabled",
-  needs_client_registration: "mcp.status.needs_auth",
+  needs_client_registration: "mcp.status.needs_client_registration",
 } as const
 
 export function McpSettings(props: { layout?: "dialog" | "page" } = {}) {
@@ -119,6 +134,142 @@ export function McpSettings(props: { layout?: "dialog" | "page" } = {}) {
     },
   }))
 
+  // --- OAuth authorization (button-triggered, works on desktop/web/mobile) ---
+  const [authorizing, setAuthorizing] = createStore<Record<string, boolean>>({})
+  const cancelFlags = new Map<string, { cancelled: boolean }>()
+  onCleanup(() => {
+    for (const flag of cancelFlags.values()) flag.cancelled = true
+  })
+
+  const pollUntilResolved = async (name: string, flag: { cancelled: boolean }) => {
+    // Match the backend's 5-minute callback window so a late completion is
+    // reflected as connected rather than a premature timeout.
+    const deadline = Date.now() + 5 * 60 * 1000
+    while (!flag.cancelled && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 1200))
+      if (flag.cancelled) return "cancelled" as const
+      const result = await globalSDK.client.mcp.status().catch(() => null)
+      if (!result?.data) continue
+      const map = result.data as Record<string, McpStatus>
+      statusActions.mutate(map) // keep the row's status pill live during the flow
+      const status = map[name]?.status
+      if (status === "connected") return "connected" as const
+      if (status === "failed") return "failed" as const
+    }
+    return flag.cancelled ? ("cancelled" as const) : ("timeout" as const)
+  }
+
+  const authorize = async (server: McpServerEntry) => {
+    if (authorizing[server.name]) return
+    const desktop = desktopMcpAuthorize()
+    // Open a placeholder window synchronously (inside the click handler) so the
+    // browser doesn't treat the post-`begin` open as an unrequested popup.
+    const placeholder = desktop
+      ? null
+      : window.open("about:blank", `mcp_oauth_${server.name}`, "width=620,height=860")
+    const flag = { cancelled: false }
+    cancelFlags.set(server.name, flag)
+    setAuthorizing(server.name, true)
+    const redirectUri = `${window.location.origin}${OAUTH_CALLBACK_PATH}`
+    try {
+      const res = await globalSDK.client.mcp.auth.begin({ name: server.name, redirectUri })
+      const data = res.data
+      if (!data?.supports) {
+        showToast({ variant: "error", title: language.t("mcp.toast.notSupported") })
+        return
+      }
+      if (data.status?.status === "connected") {
+        void statusActions.refetch()
+        showToast({
+          variant: "success",
+          icon: "circle-check",
+          title: language.t("mcp.toast.authorized", { name: server.name }),
+        })
+        return
+      }
+      if (data.status?.status === "needs_client_registration") {
+        showToast({
+          variant: "error",
+          title: language.t("mcp.toast.needsClientId"),
+          description: language.t("mcp.oauth.clientRegistrationHint"),
+        })
+        return
+      }
+      if (!data.authorizationUrl) {
+        showToast({ variant: "error", title: language.t("mcp.toast.authFailed") })
+        return
+      }
+
+      if (desktop) {
+        await desktop({
+          name: server.name,
+          authorizationUrl: data.authorizationUrl,
+          redirectUri: data.redirectUri ?? redirectUri,
+        })
+      } else if (placeholder && !placeholder.closed) {
+        placeholder.location.href = data.authorizationUrl
+      } else {
+        const opened = window.open(data.authorizationUrl, "_blank", "noopener,noreferrer")
+        if (!opened) {
+          showToast({ variant: "error", title: language.t("mcp.toast.popupBlocked") })
+          return
+        }
+      }
+
+      const outcome = await pollUntilResolved(server.name, flag)
+      if (outcome === "connected") {
+        showToast({
+          variant: "success",
+          icon: "circle-check",
+          title: language.t("mcp.toast.authorized", { name: server.name }),
+        })
+      } else if (outcome === "failed") {
+        showToast({ variant: "error", title: language.t("mcp.toast.authFailed") })
+      } else if (outcome === "timeout") {
+        showToast({ variant: "error", title: language.t("mcp.toast.authTimeout") })
+      }
+    } catch (err) {
+      showToast({
+        variant: "error",
+        title: language.t("common.requestFailed"),
+        description: err instanceof Error ? err.message : String(err),
+      })
+    } finally {
+      // Close the helper window once the flow ends (success page auto-closes
+      // itself; here we also dismiss it on early return / failure / cancel and
+      // tidy the about:blank placeholder that never got navigated).
+      if (placeholder && !placeholder.closed) placeholder.close()
+      setAuthorizing(server.name, false)
+      cancelFlags.delete(server.name)
+      void statusActions.refetch()
+    }
+  }
+
+  const cancelAuthorize = (name: string) => {
+    const flag = cancelFlags.get(name)
+    if (flag) flag.cancelled = true
+  }
+
+  const signOut = useMutation(() => ({
+    mutationFn: async (name: string) => {
+      await globalSDK.client.mcp.auth.remove({ name }).catch(() => undefined)
+      // Reconnect so the server returns to the needs_auth state (and the
+      // Authorize button reappears) rather than dropping out entirely.
+      await globalSDK.client.mcp.connect({ name }).catch(() => undefined)
+      void statusActions.refetch()
+    },
+    onSuccess: () => {
+      showToast({ variant: "success", icon: "circle-check", title: language.t("mcp.toast.signedOut") })
+    },
+    onError: (err: unknown) => {
+      showToast({
+        variant: "error",
+        title: language.t("common.requestFailed"),
+        description: err instanceof Error ? err.message : String(err),
+      })
+    },
+  }))
+
   const openEditor = (entry?: McpServerEntry) => {
     dialog.show(() => <McpEditorDialog entry={entry} />)
   }
@@ -161,7 +312,12 @@ export function McpSettings(props: { layout?: "dialog" | "page" } = {}) {
               <McpRow
                 server={server}
                 toggling={() => setEnabled.isPending && setEnabled.variables?.name === server.name}
+                authorizing={() => authorizing[server.name]}
+                signingOut={() => signOut.isPending && signOut.variables === server.name}
                 onToggle={(enabled) => setEnabled.mutate({ name: server.name, enabled })}
+                onAuthorize={() => authorize(server)}
+                onCancelAuthorize={() => cancelAuthorize(server.name)}
+                onSignOut={() => signOut.mutate(server.name)}
                 onEdit={() => openEditor(server)}
                 onRemove={() => {
                   if (!window.confirm(language.t("mcp.page.confirm.remove", { name: server.name }))) return
@@ -189,18 +345,29 @@ export default function McpPage() {
 function McpRow(props: {
   server: McpServerEntry
   toggling: () => boolean
+  authorizing: () => boolean
+  signingOut: () => boolean
   onToggle: (enabled: boolean) => void
+  onAuthorize: () => void
+  onCancelAuthorize: () => void
+  onSignOut: () => void
   onEdit: () => void
   onRemove: () => void
 }) {
   const language = useLanguage()
+  const status = () => (props.server.config.enabled === false ? "disabled" : props.server.status?.status)
   const statusLabel = () => {
-    const s = props.server.config.enabled === false ? "disabled" : props.server.status?.status
+    const s = status()
     if (!s) return undefined
-    const key = statusKeys[s as keyof typeof statusKeys]
+    const key = statusKeys[s]
     return key ? language.t(key) : s
   }
   const enabled = () => props.server.config.enabled !== false
+  // Remote, OAuth-capable, and currently connecting/connected — the states
+  // where an Authorize / Sign out action is meaningful.
+  const oauthCapable = () => enabled() && supportsOAuth(props.server.config)
+  const needsAuth = () => oauthCapable() && (status() === "needs_auth" || status() === "failed")
+  const isConnected = () => status() === "connected"
   const hint = () => {
     if (props.server.config.type === "remote") return props.server.config.url
     if (props.server.config.type === "local")
@@ -224,6 +391,31 @@ function McpRow(props: {
           </Show>
         </div>
         <div class="flex shrink-0 items-center gap-2">
+          <Show when={props.authorizing()}>
+            <div class="flex items-center gap-1.5">
+              <Spinner class="size-3.5 text-text-weak" />
+              <span class="text-11-regular text-text-weak">{language.t("mcp.action.authorizing")}</span>
+              <Button type="button" variant="ghost" size="small" onClick={props.onCancelAuthorize}>
+                {language.t("common.cancel")}
+              </Button>
+            </div>
+          </Show>
+          <Show when={!props.authorizing() && needsAuth()}>
+            <Button type="button" variant="primary" size="small" icon="shield" onClick={props.onAuthorize}>
+              {language.t("mcp.action.authorize")}
+            </Button>
+          </Show>
+          <Show when={!props.authorizing() && isConnected() && oauthCapable()}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="small"
+              disabled={props.signingOut()}
+              onClick={props.onSignOut}
+            >
+              {props.signingOut() ? language.t("common.saving") : language.t("mcp.action.signOut")}
+            </Button>
+          </Show>
           <Switch checked={enabled()} disabled={props.toggling()} onChange={(value) => props.onToggle(value)} hideLabel>
             {language.t("common.enabled")}
           </Switch>

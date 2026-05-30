@@ -3003,6 +3003,9 @@ export type McpStatusNeedsClientRegistration = {
   error: string
 }
 
+/**
+ * Set when the flow resolved without user interaction
+ */
 export type McpStatus =
   | McpStatusConnected
   | McpStatusDisabled
@@ -6527,6 +6530,76 @@ export type McpAuthAuthenticateResponses = {
 }
 
 export type McpAuthAuthenticateResponse = McpAuthAuthenticateResponses[keyof McpAuthAuthenticateResponses]
+
+export type McpAuthBeginData = {
+  body?: never
+  path: {
+    name: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+    redirectUri?: string
+  }
+  url: "/mcp/{name}/auth/begin"
+}
+
+export type McpAuthBeginErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type McpAuthBeginError = McpAuthBeginErrors[keyof McpAuthBeginErrors]
+
+export type McpAuthBeginResponses = {
+  /**
+   * OAuth flow begun (authorization URL) or already resolved (status)
+   */
+  200: {
+    supports: boolean
+    /**
+     * URL to open for authorization
+     */
+    authorizationUrl?: string
+    /**
+     * Redirect URI the provider will return to
+     */
+    redirectUri?: string
+    status?: McpStatus
+  }
+}
+
+export type McpAuthBeginResponse = McpAuthBeginResponses[keyof McpAuthBeginResponses]
+
+export type McpAuthServerCallbackData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/mcp/oauth/callback"
+}
+
+export type McpAuthServerCallbackErrors = {
+  /**
+   * Missing or invalid state / code
+   */
+  400: unknown
+}
+
+export type McpAuthServerCallbackResponses = {
+  /**
+   * Authorization handled (success or provider error)
+   */
+  200: unknown
+}
 
 export type McpConnectData = {
   body?: never

@@ -89,6 +89,78 @@ function cleanupStateIndex(oauthState: string) {
   }
 }
 
+export type CallbackOutcome = { kind: "success" } | { kind: "error"; status: 200 | 400; message: string }
+
+// Resolve (or reject) the pending OAuth flow identified by `state`. This is the
+// single source of truth shared by every callback entrypoint — the loopback
+// HTTP server (desktop / local CLI) AND the server-hosted route
+// `GET /mcp/oauth/callback` (which is reachable from web + mobile browsers
+// talking to a remote instance, where 127.0.0.1 loopback never could be).
+//
+// Security: the flow is keyed by an unguessable 32-byte random `state`, so an
+// attacker who hits this endpoint without the legitimate state can't complete
+// or hijack a flow. Provider errors reject with HTTP 200 (the auth server
+// controls the redirect and a 4xx would be misleading); CSRF / shape problems
+// return 400.
+export function resolveCallback(input: {
+  code?: string | null
+  state?: string | null
+  error?: string | null
+  errorDescription?: string | null
+}): CallbackOutcome {
+  const { code, state, error, errorDescription } = input
+
+  log.info("received oauth callback", { hasCode: !!code, state, error })
+
+  if (!state) {
+    log.error("oauth callback missing state parameter")
+    return { kind: "error", status: 400, message: "Missing required state parameter - potential CSRF attack" }
+  }
+
+  if (error) {
+    const errorMsg = errorDescription || error
+    const pending = pendingAuths.get(state)
+    if (pending) {
+      clearTimeout(pending.timeout)
+      pendingAuths.delete(state)
+      cleanupStateIndex(state)
+      pending.reject(new Error(errorMsg))
+    }
+    return { kind: "error", status: 200, message: errorMsg }
+  }
+
+  if (!code) {
+    return { kind: "error", status: 400, message: "No authorization code provided" }
+  }
+
+  const pending = pendingAuths.get(state)
+  if (!pending) {
+    log.error("oauth callback with invalid state", { state, pendingStates: Array.from(pendingAuths.keys()) })
+    return { kind: "error", status: 400, message: "Invalid or expired state parameter - potential CSRF attack" }
+  }
+
+  clearTimeout(pending.timeout)
+  pendingAuths.delete(state)
+  cleanupStateIndex(state)
+  pending.resolve(code)
+
+  return { kind: "success" }
+}
+
+// Map a callback query string to the HTTP response (status + HTML body) that
+// every entrypoint serves. Centralizing this keeps the loopback server and the
+// server-hosted route byte-for-byte identical.
+export function handleCallbackQuery(searchParams: URLSearchParams): { status: number; body: string } {
+  const outcome = resolveCallback({
+    code: searchParams.get("code"),
+    state: searchParams.get("state"),
+    error: searchParams.get("error"),
+    errorDescription: searchParams.get("error_description"),
+  })
+  if (outcome.kind === "success") return { status: 200, body: HTML_SUCCESS }
+  return { status: outcome.status, body: HTML_ERROR(outcome.message) }
+}
+
 function handleRequest(req: import("http").IncomingMessage, res: import("http").ServerResponse) {
   const url = new URL(req.url || "/", `http://localhost:${currentPort}`)
 
@@ -98,60 +170,9 @@ function handleRequest(req: import("http").IncomingMessage, res: import("http").
     return
   }
 
-  const code = url.searchParams.get("code")
-  const state = url.searchParams.get("state")
-  const error = url.searchParams.get("error")
-  const errorDescription = url.searchParams.get("error_description")
-
-  log.info("received oauth callback", { hasCode: !!code, state, error })
-
-  // Enforce state parameter presence
-  if (!state) {
-    const errorMsg = "Missing required state parameter - potential CSRF attack"
-    log.error("oauth callback missing state parameter", { url: url.toString() })
-    res.writeHead(400, { "Content-Type": "text/html" })
-    res.end(HTML_ERROR(errorMsg))
-    return
-  }
-
-  if (error) {
-    const errorMsg = errorDescription || error
-    if (pendingAuths.has(state)) {
-      const pending = pendingAuths.get(state)!
-      clearTimeout(pending.timeout)
-      pendingAuths.delete(state)
-      cleanupStateIndex(state)
-      pending.reject(new Error(errorMsg))
-    }
-    res.writeHead(200, { "Content-Type": "text/html" })
-    res.end(HTML_ERROR(errorMsg))
-    return
-  }
-
-  if (!code) {
-    res.writeHead(400, { "Content-Type": "text/html" })
-    res.end(HTML_ERROR("No authorization code provided"))
-    return
-  }
-
-  // Validate state parameter
-  if (!pendingAuths.has(state)) {
-    const errorMsg = "Invalid or expired state parameter - potential CSRF attack"
-    log.error("oauth callback with invalid state", { state, pendingStates: Array.from(pendingAuths.keys()) })
-    res.writeHead(400, { "Content-Type": "text/html" })
-    res.end(HTML_ERROR(errorMsg))
-    return
-  }
-
-  const pending = pendingAuths.get(state)!
-
-  clearTimeout(pending.timeout)
-  pendingAuths.delete(state)
-  cleanupStateIndex(state)
-  pending.resolve(code)
-
-  res.writeHead(200, { "Content-Type": "text/html" })
-  res.end(HTML_SUCCESS)
+  const { status, body } = handleCallbackQuery(url.searchParams)
+  res.writeHead(status, { "Content-Type": "text/html" })
+  res.end(body)
 }
 
 export async function ensureRunning(redirectUri?: string): Promise<void> {
