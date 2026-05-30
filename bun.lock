@@ -30,7 +30,7 @@
     },
     "packages/app": {
       "name": "@codeplane-ai/app",
-      "version": "31.1.0",
+      "version": "31.1.2",
       "dependencies": {
         "@codeplane-ai/sdk": "file:../sdk/js",
         "@codeplane-ai/shared": "file:../shared",
@@ -84,7 +84,7 @@
     },
     "packages/codeplane": {
       "name": "codeplane",
-      "version": "31.1.0",
+      "version": "31.1.2",
       "bin": {
         "codeplane": "./bin/codeplane",
       },
@@ -231,7 +231,7 @@
     },
     "packages/desktop": {
       "name": "@codeplane-ai/desktop",
-      "version": "31.1.0",
+      "version": "31.1.2",
       "devDependencies": {
         "@codeplane-ai/shared": "file:../shared",
         "@codeplane-ai/ui": "file:../ui",
@@ -254,7 +254,7 @@
     },
     "packages/mobile": {
       "name": "@codeplane-ai/mobile",
-      "version": "31.1.0",
+      "version": "31.1.2",
       "dependencies": {
         "@capacitor/android": "7.4.4",
         "@capacitor/app": "7.1.0",
@@ -292,7 +292,7 @@
     },
     "packages/plugin": {
       "name": "@codeplane-ai/plugin",
-      "version": "31.1.0",
+      "version": "31.1.2",
       "dependencies": {
         "@codeplane-ai/sdk": "file:../sdk/js",
         "effect": "4.0.0-beta.48",
@@ -315,7 +315,7 @@
     },
     "packages/script": {
       "name": "@codeplane-ai/script",
-      "version": "31.1.0",
+      "version": "31.1.2",
       "dependencies": {
         "@codeplane-ai/shared": "file:../shared",
         "semver": "^7.6.3",
@@ -327,7 +327,7 @@
     },
     "packages/sdk/js": {
       "name": "@codeplane-ai/sdk",
-      "version": "31.1.0",
+      "version": "31.1.2",
       "dependencies": {
         "cross-spawn": "7.0.6",
       },
@@ -342,7 +342,7 @@
     },
     "packages/shared": {
       "name": "@codeplane-ai/shared",
-      "version": "31.1.0",
+      "version": "31.1.2",
       "dependencies": {
         "@effect/platform-node": "4.0.0-beta.48",
         "@npmcli/arborist": "9.4.0",
@@ -363,7 +363,7 @@
     },
     "packages/ui": {
       "name": "@codeplane-ai/ui",
-      "version": "31.1.0",
+      "version": "31.1.2",
       "dependencies": {
         "@codeplane-ai/sdk": "file:../sdk/js",
         "@codeplane-ai/shared": "file:../shared",
