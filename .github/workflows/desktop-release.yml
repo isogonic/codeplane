@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   resolve:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     outputs:
       enabled: ${{ steps.resolve.outputs.enabled }}
       source_tag: ${{ steps.resolve.outputs.source_tag }}
@@ -75,7 +75,7 @@ jobs:
   create-release:
     needs: resolve
     if: ${{ needs.resolve.outputs.enabled == 'true' }}
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -151,7 +151,7 @@ jobs:
           - os: macos-14
             target: mac
             package_command: bunx electron-builder --mac dmg zip --x64 --arm64 --publish never
-          - os: self-hosted
+          - os: ubuntu-latest
             target: linux
             package_command: bunx electron-builder --linux AppImage deb tar.gz --x64 --publish never
           - os: windows-2025
@@ -311,7 +311,7 @@ jobs:
     # as a draft) so it stays visible regardless; this step just ensures the
     # title/notes mirror the source release and --latest is set.
     if: ${{ needs.resolve.outputs.enabled == 'true' && always() }}
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Publish release
         shell: bash
