@@ -1,11 +1,13 @@
 import type { TuiPlugin, TuiPluginApi, TuiPluginModule } from "@codeplane-ai/plugin/tui"
 import { createMemo, Show } from "solid-js"
 import { Global } from "@/global"
+import { useArgs } from "@/tui/context/args"
 
 const id = "internal:sidebar-footer"
 
-function View(props: { api: TuiPluginApi }) {
+export function View(props: { api: TuiPluginApi }) {
   const theme = () => props.api.theme.current
+  const args = useArgs()
   const has = createMemo(() =>
     props.api.state.provider.some(
       (item) => item.id !== "opencode" || Object.values(item.models).some((model) => model.cost?.input !== 0),
@@ -63,13 +65,17 @@ function View(props: { api: TuiPluginApi }) {
         <span style={{ fg: theme().textMuted }}>{path().parent}/</span>
         <span style={{ fg: theme().text }}>{path().name}</span>
       </text>
-      <text fg={theme().textMuted}>
-        <span style={{ fg: theme().success }}>•</span>{" "}
-        <span style={{ fg: theme().text }}>
-          <b>Codeplane</b>
-        </span>{" "}
-        <span>{props.api.app.version}</span>
-      </text>
+      <box>
+        <text fg={theme().textMuted}>
+          <span style={{ fg: theme().text }}>
+            <b>Codeplane</b>
+          </span>{" "}
+          <span>{props.api.app.version}</span>
+        </text>
+        <Show when={args.instanceLabel}>
+          <text fg={theme().textMuted}>{args.instanceLabel}</text>
+        </Show>
+      </box>
     </box>
   )
 }
