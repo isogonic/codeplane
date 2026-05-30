@@ -165,16 +165,83 @@ jobs:
             url="https://registry.npmjs.org/${platform}/-/${platform}-${VERSION}.tgz"
             curl -fsSL -o "/tmp/${platform}.tgz" "$url"
             SHAS[$platform]=$(sha256sum "/tmp/${platform}.tgz" | awk '{print $1}')
+            # Guard against an empty/missing tarball (sha of zero bytes).
+            if [ -z "${SHAS[$platform]}" ] || [ "${SHAS[$platform]}" = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" ]; then
+              echo "Tarball for ${platform}@${VERSION} is empty or missing; aborting Homebrew update." >&2
+              exit 1
+            fi
           done
 
-          # Update the formula
+          # Regenerate the whole formula from scratch with REAL per-platform
+          # sha256 values. The previous sed-based approach was buggy: the URL
+          # lines use the `#{version}` interpolation (so a literal-version sed
+          # matched nothing) and a single `sha256` sed rewrote EVERY block to
+          # the same (last) platform's hash. Writing the file wholesale is
+          # deterministic and keeps every platform's hash correct.
+          mkdir -p Formula
           FORMULA="Formula/codeplane.rb"
-          sed -i "s/version \".*\"/version \"${VERSION}\"/" "$FORMULA"
+          cat > "$FORMULA" <<RUBY
+          # typed: false
+          # frozen_string_literal: true
 
-          for platform in "${PLATFORMS[@]}"; do
-            sed -i "s|${platform}-[0-9.]*\.tgz|${platform}-${VERSION}.tgz|" "$FORMULA"
-            sed -i "s|sha256 \"[^\"]*\"|sha256 \"${SHAS[$platform]}\"|" "$FORMULA"
-          done
+          # Codeplane — the AI coding agent built for the terminal.
+          # Auto-updated by the npm-release workflow on each release.
+          class Codeplane < Formula
+            desc "The AI coding agent built for the terminal"
+            homepage "${repoURL:-https://github.com/isogonic/codeplane}"
+            version "${VERSION}"
+            depends_on "ripgrep"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "https://registry.npmjs.org/codeplane-darwin-arm64/-/codeplane-darwin-arm64-#{version}.tgz"
+                sha256 "${SHAS[codeplane-darwin-arm64]}"
+
+                def install
+                  bin.install "package/bin/codeplane"
+                end
+              end
+              if Hardware::CPU.intel?
+                url "https://registry.npmjs.org/codeplane-darwin-x64/-/codeplane-darwin-x64-#{version}.tgz"
+                sha256 "${SHAS[codeplane-darwin-x64]}"
+
+                def install
+                  bin.install "package/bin/codeplane"
+                end
+              end
+            end
+
+            on_linux do
+              if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
+                url "https://registry.npmjs.org/codeplane-linux-arm64/-/codeplane-linux-arm64-#{version}.tgz"
+                sha256 "${SHAS[codeplane-linux-arm64]}"
+
+                def install
+                  bin.install "package/bin/codeplane"
+                end
+              end
+              if Hardware::CPU.intel? && Hardware::CPU.is_64_bit?
+                url "https://registry.npmjs.org/codeplane-linux-x64/-/codeplane-linux-x64-#{version}.tgz"
+                sha256 "${SHAS[codeplane-linux-x64]}"
+
+                def install
+                  bin.install "package/bin/codeplane"
+                end
+              end
+            end
+
+            test do
+              system "#{bin}/codeplane", "--version"
+            end
+          end
+          RUBY
+
+          # The heredoc above is indented for YAML readability; strip the
+          # leading 10 spaces so the committed Ruby file is clean.
+          sed -i 's/^          //' "$FORMULA"
+
+          # Remove any stale root-level formula left by the legacy publish path.
+          [ -f codeplane.rb ] && git rm -f codeplane.rb || true
 
           # Commit and push
           git add "$FORMULA"
