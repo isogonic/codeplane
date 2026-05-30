@@ -43,7 +43,7 @@ env:
 
 jobs:
   build-docker:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -79,7 +79,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   build-dockerfile:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -112,7 +112,7 @@ EOF
   publish-docker:
     needs: [build-docker, build-dockerfile]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3

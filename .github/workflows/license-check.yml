@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   check-headers:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - name: Check for license headers
@@ -37,7 +37,7 @@ jobs:
         continue-on-error: true
 
   check-dependencies:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -55,7 +55,7 @@ jobs:
         continue-on-error: true
 
   check-license-file:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - name: Check LICENSE file

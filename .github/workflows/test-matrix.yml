@@ -26,10 +26,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-14, windows-2025]
+        os: [self-hosted, macos-14, windows-2025]
         package: [codeplane, shared, ui, app, plugin, sdk, desktop, mobile]
         include:
-          - os: ubuntu-24.04
+          - os: self-hosted
             package: codeplane
             flags: "--coverage"
     steps:
@@ -59,7 +59,7 @@ jobs:
   matrix-report:
     needs: test-matrix
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Download all results
         uses: actions/download-artifact@v4
@@ -69,6 +69,6 @@ jobs:
       - name: Generate matrix report
         run: |
           echo "## Test Matrix Report" >> $GITHUB_STEP_SUMMARY
-          echo "Tested on: ubuntu-24.04, macos-14, windows-2025" >> $GITHUB_STEP_SUMMARY
+          echo "Tested on: self-hosted (Linux), macos-14, windows-2025" >> $GITHUB_STEP_SUMMARY
           echo "Packages tested: codeplane, shared, ui, app, plugin, sdk, desktop, mobile" >> $GITHUB_STEP_SUMMARY
           echo "Check artifacts for detailed test results" >> $GITHUB_STEP_SUMMARY

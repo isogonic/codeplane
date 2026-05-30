@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   generate-sbom:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -51,7 +51,7 @@ jobs:
 
   validate-sbom:
     needs: generate-sbom
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/download-artifact@v4
         with:

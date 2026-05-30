@@ -30,7 +30,7 @@ env:
 
 jobs:
   check-changes:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     outputs:
       has_changes: ${{ steps.check.outputs.has_changes }}
     steps:
@@ -52,7 +52,7 @@ jobs:
   security-scan:
     needs: check-changes
     if: needs.check-changes.outputs.has_changes == 'true' || inputs.force_build == true
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - name: Run npm audit
@@ -78,7 +78,7 @@ jobs:
   dependency-audit:
     needs: check-changes
     if: needs.check-changes.outputs.has_changes == 'true' || inputs.force_build == true
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -103,7 +103,7 @@ jobs:
 
   build-all-platforms:
     needs: [security-scan, dependency-audit]
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
@@ -136,9 +136,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-14]
+        os: [self-hosted, macos-14]
         include:
-          - os: ubuntu-24.04
+          - os: self-hosted
             platform: linux-x64
           - os: macos-14
             platform: darwin-arm64
@@ -155,7 +155,7 @@ jobs:
 
   publish-nightly:
     needs: [smoke-test, build-all-platforms]
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     environment: nightly
     steps:
       - uses: actions/checkout@v4
@@ -187,7 +187,7 @@ jobs:
 
   cleanup-old-nightlies:
     needs: publish-nightly
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Delete old artifacts
         uses: geekyeggo/delete-artifact@v4

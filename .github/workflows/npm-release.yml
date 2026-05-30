@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   resolve:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     outputs:
       enabled: ${{ steps.resolve.outputs.enabled }}
       source_tag: ${{ steps.resolve.outputs.source_tag }}
@@ -58,7 +58,7 @@ jobs:
   publish:
     needs: resolve
     if: ${{ needs.resolve.outputs.enabled == 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
         with:

@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   analyze-code:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -63,7 +63,7 @@ jobs:
   static-analysis-report:
     needs: analyze-code
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Generate analysis report
         run: |

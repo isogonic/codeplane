@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   cache-report:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: List caches
         env:
@@ -28,7 +28,7 @@ jobs:
         continue-on-error: true
 
   cache-cleanup:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Delete old caches
         env:

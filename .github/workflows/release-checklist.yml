@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   check-checklist:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
         with:
@@ -93,7 +93,7 @@ jobs:
   checklist-report:
     needs: check-checklist
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Generate checklist report
         run: |

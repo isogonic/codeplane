@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   detect-regressions:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -58,7 +58,7 @@ jobs:
   regression-report:
     needs: [detect-regressions]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Generate regression report
         run: |

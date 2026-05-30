@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   collect-performance:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -52,7 +52,7 @@ jobs:
 
   trend-analysis:
     needs: collect-performance
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Check performance trends
         run: |

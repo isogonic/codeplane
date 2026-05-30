@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   build-benchmark:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -39,7 +39,7 @@ jobs:
           echo "::notice::Web app build time: ${DURATION}s"
 
   size-benchmark:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -60,7 +60,7 @@ jobs:
           done
 
   startup-benchmark:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -80,7 +80,7 @@ jobs:
   benchmark-report:
     needs: [build-benchmark, size-benchmark, startup-benchmark]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Final report
         run: |

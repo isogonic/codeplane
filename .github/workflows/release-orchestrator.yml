@@ -50,7 +50,7 @@ concurrency:
 
 jobs:
   determine-release:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     outputs:
       release_type: ${{ steps.determine.outputs.release_type }}
       version: ${{ steps.determine.outputs.version }}
@@ -87,7 +87,7 @@ jobs:
 
   pre-release-checks:
     needs: determine-release
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -120,7 +120,7 @@ jobs:
   dispatch-npm-release:
     needs: [determine-release, pre-release-checks]
     if: needs.determine-release.outputs.is_stable == 'true' || needs.determine-release.outputs.is_hotfix == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Dispatch npm release
         env:
@@ -134,7 +134,7 @@ jobs:
   dispatch-desktop-release:
     needs: [determine-release, pre-release-checks]
     if: needs.determine-release.outputs.is_stable == 'true' || needs.determine-release.outputs.is_hotfix == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Dispatch desktop release
         env:
@@ -148,7 +148,7 @@ jobs:
   dispatch-mobile-release:
     needs: [determine-release, pre-release-checks]
     if: needs.determine-release.outputs.is_stable == 'true' && inputs.skip_mobile != true
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Dispatch mobile release
         env:
@@ -162,7 +162,7 @@ jobs:
   dispatch-pages-deploy:
     needs: [determine-release, pre-release-checks]
     if: needs.determine-release.outputs.is_stable == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Dispatch pages deploy
         env:
@@ -176,7 +176,7 @@ jobs:
   dispatch-docker-publish:
     needs: [determine-release, pre-release-checks]
     if: needs.determine-release.outputs.is_stable == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Dispatch docker build
         env:
@@ -190,7 +190,7 @@ jobs:
   dispatch-homebrew-update:
     needs: [determine-release, dispatch-npm-release]
     if: needs.determine-release.outputs.is_stable == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Update homebrew formula
         env:
@@ -201,7 +201,7 @@ jobs:
   release-summary:
     needs: [determine-release, dispatch-npm-release, dispatch-desktop-release, dispatch-mobile-release, dispatch-pages-deploy, dispatch-docker-publish, dispatch-homebrew-update]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Generate release summary
         run: |

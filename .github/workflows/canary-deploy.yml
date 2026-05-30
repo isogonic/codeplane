@@ -32,7 +32,7 @@ concurrency:
 
 jobs:
   deploy-canary:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     environment: canary
     steps:
       - uses: actions/checkout@v4
@@ -57,7 +57,7 @@ jobs:
 
   canary-health-check:
     needs: deploy-canary
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Check error rates
         run: |
@@ -72,7 +72,7 @@ jobs:
   promote-or-rollback:
     needs: canary-health-check
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Decide promote or rollback
         run: |

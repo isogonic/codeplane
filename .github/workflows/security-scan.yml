@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   npm-audit:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -33,7 +33,7 @@ jobs:
         continue-on-error: true
 
   secret-scan:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,7 +54,7 @@ jobs:
         continue-on-error: true
 
   codeql-analysis:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - name: Initialize CodeQL
@@ -67,7 +67,7 @@ jobs:
         uses: github/codeql-action/analyze@v3
 
   dependency-review:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
@@ -77,7 +77,7 @@ jobs:
           fail-on-severity: moderate
 
   insecure-pattern-check:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - name: Check for insecure patterns
@@ -99,7 +99,7 @@ jobs:
   security-report:
     needs: [npm-audit, secret-scan, codeql-analysis, insecure-pattern-check]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Generate security report
         run: |

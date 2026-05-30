@@ -25,7 +25,7 @@ env:
 
 jobs:
   pr-metadata:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     outputs:
       files_changed: ${{ steps.files.outputs.files_changed }}
       is_draft: ${{ github.event.pull_request.draft }}
@@ -42,7 +42,7 @@ jobs:
 
   size-check:
     needs: pr-metadata
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
         with:
@@ -67,7 +67,7 @@ jobs:
 
   label-pr:
     needs: pr-metadata
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - name: Auto-label PR
@@ -89,7 +89,7 @@ jobs:
         continue-on-error: true
 
   lint-check:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -97,7 +97,7 @@ jobs:
         run: bun lint
 
   typecheck-check:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -105,7 +105,7 @@ jobs:
         run: bunx turbo typecheck
 
   test-check:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
@@ -123,7 +123,7 @@ jobs:
         continue-on-error: true
 
   build-check:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -137,7 +137,7 @@ jobs:
   pr-summary:
     needs: [size-check, label-pr, lint-check, typecheck-check, test-check, build-check]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Post PR summary
         run: |

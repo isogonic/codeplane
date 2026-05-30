@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   validate-openapi:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -47,7 +47,7 @@ jobs:
         continue-on-error: true
 
   validate-config-schema:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -59,7 +59,7 @@ jobs:
         continue-on-error: true
 
   validate-generated-sdk:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun

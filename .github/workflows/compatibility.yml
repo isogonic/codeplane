@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   node-version-matrix:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
@@ -41,8 +41,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-22.04
-          - ubuntu-24.04
+          - self-hosted
           - macos-13
           - macos-14
     steps:
@@ -55,7 +54,7 @@ jobs:
           echo "::notice::Tested on ${{ matrix.os }}"
 
   bun-version-matrix:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
@@ -77,7 +76,7 @@ jobs:
   compatibility-report:
     needs: [node-version-matrix, os-version-matrix, bun-version-matrix]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Generate compatibility report
         run: |

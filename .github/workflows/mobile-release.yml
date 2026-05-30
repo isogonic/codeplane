@@ -48,7 +48,7 @@ concurrency:
 
 jobs:
   resolve:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     outputs:
       enabled: ${{ steps.resolve.outputs.enabled }}
       source_tag: ${{ steps.resolve.outputs.source_tag }}
@@ -104,7 +104,7 @@ jobs:
   create-release:
     needs: resolve
     if: ${{ needs.resolve.outputs.enabled == 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
         with:
@@ -150,7 +150,7 @@ jobs:
       - resolve
       - create-release
     if: ${{ needs.resolve.outputs.enabled == 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
         with:
@@ -332,7 +332,7 @@ jobs:
       - resolve
       - create-release
     if: ${{ needs.resolve.outputs.enabled == 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
         with:
@@ -470,7 +470,7 @@ jobs:
     # for `v<x.y.z>-desktop`, and only one release can be `--latest`. The
     # source `v<x.y.z>` is the canonical "latest" anyway.
     if: ${{ needs.resolve.outputs.enabled == 'true' && always() }}
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Publish release
         shell: bash

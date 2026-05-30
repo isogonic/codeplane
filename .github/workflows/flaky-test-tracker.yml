@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   track-flakes:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -46,7 +46,7 @@ jobs:
   flaky-summary:
     needs: track-flakes
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Generate flaky summary
         run: |

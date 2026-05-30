@@ -41,7 +41,7 @@ jobs:
         continue-on-error: true
 
   build-android:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -59,7 +59,7 @@ jobs:
         continue-on-error: true
 
   check-mobile-web:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -77,7 +77,7 @@ jobs:
   mobile-report:
     needs: [build-ios, build-android, check-mobile-web]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Generate mobile report
         run: |

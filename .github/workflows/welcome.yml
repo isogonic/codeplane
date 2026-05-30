@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   welcome-pr:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
         continue-on-error: true
 
   welcome-issue:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     if: github.event_name == 'issues'
     steps:
       - uses: actions/checkout@v4

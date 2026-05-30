@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   npm-health:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Check npm registry
         run: |
@@ -36,7 +36,7 @@ jobs:
           done
 
   github-health:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Check GitHub releases
         env:
@@ -56,7 +56,7 @@ jobs:
           gh pr list --repo "${{ github.repository }}" --limit 5
 
   website-health:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Check codeplane.cc
         run: |
@@ -69,7 +69,7 @@ jobs:
         continue-on-error: true
 
   stale-check:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Check stale issues
         env:
@@ -89,7 +89,7 @@ jobs:
   report:
     needs: [npm-health, github-health, website-health, stale-check]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Generate monitoring report
         run: |

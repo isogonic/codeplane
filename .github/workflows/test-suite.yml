@@ -33,7 +33,7 @@ env:
 
 jobs:
   unit-tests:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
@@ -52,7 +52,7 @@ jobs:
 
   integration-tests:
     needs: unit-tests
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -71,7 +71,7 @@ jobs:
 
   e2e-tests:
     needs: unit-tests
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -86,7 +86,7 @@ jobs:
 
   coverage:
     if: inputs.coverage == true
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -105,7 +105,7 @@ jobs:
   test-report:
     needs: [unit-tests, integration-tests, e2e-tests]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Summarize test results
         run: |

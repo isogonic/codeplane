@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   post-merge-health:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -47,7 +47,7 @@ jobs:
   post-merge-report:
     needs: post-merge-health
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Generate post-merge report
         run: |

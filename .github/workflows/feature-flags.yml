@@ -39,7 +39,7 @@ permissions:
 
 jobs:
   manage-feature:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     environment: ${{ inputs.environment }}
     steps:
       - uses: actions/checkout@v4
@@ -62,7 +62,7 @@ jobs:
 
   validate-feature:
     needs: manage-feature
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Validate feature flag
         run: |

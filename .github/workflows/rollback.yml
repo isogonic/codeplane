@@ -28,7 +28,7 @@ permissions:
 
 jobs:
   validate-rollback:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -45,7 +45,7 @@ jobs:
 
   rollback-npm:
     needs: validate-rollback
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     environment: rollback
     steps:
       - uses: actions/setup-node@v6
@@ -71,7 +71,7 @@ jobs:
 
   rollback-github:
     needs: validate-rollback
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - name: Update GitHub release
@@ -89,7 +89,7 @@ jobs:
   notify-rollback:
     needs: [rollback-npm, rollback-github]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Notify
         run: |

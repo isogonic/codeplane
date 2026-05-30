@@ -21,8 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-22.04
-          - ubuntu-24.04
+          - self-hosted
           - macos-13
           - macos-14
           - macos-15
@@ -36,7 +35,7 @@ jobs:
           echo "::notice::OS compatibility check for ${{ matrix.os }}"
 
   browser-compatibility:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -55,7 +54,7 @@ jobs:
         continue-on-error: true
 
   runtime-compatibility:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -78,7 +77,7 @@ jobs:
   report:
     needs: [os-compatibility, browser-compatibility, runtime-compatibility]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Generate compatibility report
         run: |

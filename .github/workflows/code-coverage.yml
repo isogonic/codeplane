@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   coverage:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -45,7 +45,7 @@ jobs:
         continue-on-error: true
 
   coverage-trend:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - name: Check coverage trend

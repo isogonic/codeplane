@@ -23,7 +23,7 @@ env:
 
 jobs:
   lint:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -38,7 +38,7 @@ jobs:
           fi
 
   typecheck:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -50,7 +50,7 @@ jobs:
           echo "Packages: app, codeplane, desktop, mobile, plugin, sdk, shared, ui, site"
 
   format-check:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -65,7 +65,7 @@ jobs:
         continue-on-error: true
 
   commit-message-check:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
         with:
@@ -82,7 +82,7 @@ jobs:
           fi
 
   dead-code-check:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -101,7 +101,7 @@ jobs:
   quality-report:
     needs: [lint, typecheck, format-check, commit-message-check, dead-code-check]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Generate quality report
         run: |

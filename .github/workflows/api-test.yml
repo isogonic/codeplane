@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   api-test:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -64,7 +64,7 @@ jobs:
   api-report:
     needs: api-test
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Generate API test report
         run: |

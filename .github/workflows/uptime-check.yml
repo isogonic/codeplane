@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   check-services:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Check website
         run: |
@@ -43,7 +43,7 @@ jobs:
   report:
     needs: check-services
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Uptime report
         run: |

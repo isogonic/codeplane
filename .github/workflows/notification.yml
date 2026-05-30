@@ -32,7 +32,7 @@ permissions:
 
 jobs:
   notify:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     if: always()
     steps:
       - name: Prepare notification

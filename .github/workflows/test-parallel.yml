@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   test-shard:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
@@ -47,7 +47,7 @@ jobs:
   test-parallel-report:
     needs: test-shard
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Download all shards
         uses: actions/download-artifact@v4

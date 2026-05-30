@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   create-hotfix-branch:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,7 +42,7 @@ jobs:
 
   build-hotfix:
     needs: create-hotfix-branch
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
@@ -65,7 +65,7 @@ jobs:
 
   publish-hotfix:
     needs: build-hotfix
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     environment: hotfix
     steps:
       - uses: actions/checkout@v4
@@ -99,7 +99,7 @@ jobs:
 
   create-hotfix-release:
     needs: publish-hotfix
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - name: Create hotfix release
@@ -116,7 +116,7 @@ jobs:
   notify-hotfix:
     needs: create-hotfix-release
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Notify
         run: |

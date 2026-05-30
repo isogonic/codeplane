@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   run-tests-multiple:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
@@ -38,7 +38,7 @@ jobs:
 
   analyze-flakes:
     needs: run-tests-multiple
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Download all results
         uses: actions/download-artifact@v4

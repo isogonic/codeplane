@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   test-linux:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -66,7 +66,7 @@ jobs:
   test-report:
     needs: [test-linux, test-macos, test-windows]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Download all results
         uses: actions/download-artifact@v4

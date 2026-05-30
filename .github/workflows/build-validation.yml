@@ -30,7 +30,7 @@ env:
 
 jobs:
   build-web-app:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -50,7 +50,7 @@ jobs:
           retention-days: 3
 
   build-sdk:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -68,7 +68,7 @@ jobs:
           test -f packages/sdk/js/src/v2/gen/sdk.gen.ts || echo "::warning::SDK v2 types not generated"
 
   build-site:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -83,7 +83,7 @@ jobs:
           ls -la site/out/ | head -10
 
   build-cli-current-platform:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -103,7 +103,7 @@ jobs:
           test -f packages/codeplane/dist/codeplane-linux-*/bin/runtime/tui/node-main.js || echo "::error::TUI bundle missing"
 
   build-desktop-shell:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -115,7 +115,7 @@ jobs:
         continue-on-error: true
 
   build-mobile-shell:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -129,7 +129,7 @@ jobs:
   build-report:
     needs: [build-web-app, build-sdk, build-site, build-cli-current-platform, build-desktop-shell, build-mobile-shell]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Generate build report
         run: |

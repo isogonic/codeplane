@@ -29,7 +29,7 @@ concurrency:
 
 jobs:
   deploy-staging-server:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     environment: staging
     steps:
       - uses: actions/checkout@v4
@@ -49,7 +49,7 @@ jobs:
         continue-on-error: true
 
   deploy-staging-web:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     environment: staging
     steps:
       - uses: actions/checkout@v4
@@ -66,7 +66,7 @@ jobs:
         continue-on-error: true
 
   deploy-staging-site:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     environment: staging
     steps:
       - uses: actions/checkout@v4
@@ -85,7 +85,7 @@ jobs:
   health-check-staging:
     needs: [deploy-staging-server, deploy-staging-web, deploy-staging-site]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Health check
         run: |

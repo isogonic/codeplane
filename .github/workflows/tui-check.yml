@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   build-tui:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -44,7 +44,7 @@ jobs:
           ls packages/codeplane/dist/codeplane-linux-x64/bin/runtime/tui/ | head -20
 
   check-tui-components:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -64,7 +64,7 @@ jobs:
   tui-report:
     needs: [build-tui, check-tui-components]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Generate TUI report
         run: |

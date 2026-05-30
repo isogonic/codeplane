@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   generate-security-report:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
@@ -43,7 +43,7 @@ jobs:
   security-summary:
     needs: generate-security-report
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Generate security summary
         run: |
