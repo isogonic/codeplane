@@ -100,14 +100,10 @@ jobs:
     needs: [lint, typecheck]
     if: needs.resolve.outputs.should_build == 'true'
     runs-on: self-hosted
-    strategy:
-      fail-fast: false
-      matrix:
-        platform: [darwin-arm64, darwin-x64, linux-arm64, linux-x64]
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
-      - name: Build ${{ matrix.platform }}
+      - name: Build CLI for current platform
         run: |
           cd packages/codeplane
           bun script/build.ts --skip-embed-web-ui --skip-install --single
@@ -116,8 +112,8 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: codeplane-${{ matrix.platform }}-${{ needs.resolve.outputs.preview_version }}
-          path: packages/codeplane/dist/codeplane-${{ matrix.platform }}-*/
+          name: codeplane-preview-${{ needs.resolve.outputs.preview_version }}
+          path: packages/codeplane/dist/codeplane-*-
           retention-days: 7
 
   publish-preview:
@@ -138,8 +134,8 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: codeplane-*-${{ needs.resolve.outputs.preview_version }}
-          merge-multiple: true
+          name: codeplane-preview-${{ needs.resolve.outputs.preview_version }}
+          path: packages/codeplane/dist
       - name: Publish preview packages
         run: |
           set -euo pipefail
