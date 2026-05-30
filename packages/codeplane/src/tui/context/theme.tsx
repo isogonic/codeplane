@@ -28,6 +28,7 @@ import onedark from "./theme/one-dark.json" with { type: "json" }
 import opencode from "./theme/opencode.json" with { type: "json" }
 import orng from "./theme/orng.json" with { type: "json" }
 import lucentOrng from "./theme/lucent-orng.json" with { type: "json" }
+import oc2 from "./theme/oc-2.json" with { type: "json" }
 import palenight from "./theme/palenight.json" with { type: "json" }
 import rosepine from "./theme/rosepine.json" with { type: "json" }
 import solarized from "./theme/solarized.json" with { type: "json" }
@@ -111,6 +112,7 @@ export const DEFAULT_THEMES: Record<string, ThemeJson> = {
   opencode,
   orng,
   ["lucent-orng"]: lucentOrng,
+  "oc-2": oc2,
   palenight,
   rosepine,
   solarized,
@@ -197,7 +199,7 @@ const [store, setStore] = createStore<State>({
   themes: listThemes(),
   mode: "dark",
   lock: undefined,
-  active: "opencode",
+  active: "oc-2",
   ready: false,
 })
 
@@ -453,8 +455,8 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
         }
         draft.mode = mode
         draft.lock = lock
-        const active = config.theme ?? kv.get("theme", "opencode")
-        draft.active = typeof active === "string" ? active : "opencode"
+        const active = config.theme ?? kv.get("theme", "oc-2")
+        draft.active = typeof active === "string" ? active : "oc-2"
         draft.ready = false
       }),
     )
@@ -473,7 +475,7 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
             syncThemes()
           })
           .catch(() => {
-            setStore("active", "opencode")
+            setStore("active", "oc-2")
           }),
       ]).finally(() => {
         setStore("ready", true)
@@ -503,7 +505,15 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
           systemTheme = undefined
           syncThemes()
           if (store.active === "system") {
-            setStore("active", "opencode")
+            setStore("active", "oc-2")
+          }
+          return
+        })
+        .catch(() => {
+          systemTheme = undefined
+          syncThemes()
+          if (store.active === "system") {
+            setStore("active", "oc-2")
           }
         })
     }
@@ -555,11 +565,11 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
       try {
         return resolveTheme(theme, store.mode, { soften: isBuiltInTheme(theme) })
       } catch (e) {
-        Log.Default.warn("invalid theme, falling back to opencode", {
+        Log.Default.warn("invalid theme, falling back to oc-2", {
           theme: label,
           error: e instanceof Error ? e.message : String(e),
         })
-        return resolveTheme(store.themes.opencode, store.mode, { soften: true })
+        return resolveTheme(store.themes["oc-2"], store.mode, { soften: true })
       }
     }
 
@@ -577,7 +587,7 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
         }
       }
 
-      return safeResolve(store.themes.opencode, "opencode")
+      return safeResolve(store.themes["oc-2"], "oc-2")
     })
 
     createEffect(() => {
