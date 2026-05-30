@@ -3,7 +3,7 @@
 // Steps share a single CliRenderer that is fully destroyed before this
 // promise resolves so the main TUI starts on a clean screen.
 import { createSignal, createMemo, For, Show, batch, onCleanup } from "solid-js"
-import { render, useKeyboard } from "@opentui/solid"
+import { render, useKeyboard, useTerminalDimensions } from "@opentui/solid"
 import { CliRenderEvents, createCliRenderer, type CliRenderer, TextAttributes } from "@opentui/core"
 import path from "node:path"
 import fs from "node:fs/promises"
@@ -238,6 +238,7 @@ function DirectoryPicker(props: {
   onQuit: () => void
 }) {
   const palette = useBootPalette()
+  const dimensions = useTerminalDimensions()
   const [cwd, setCwd] = createSignal(path.resolve(props.initialDirectory))
   const [entries, setEntries] = createSignal<Entry[]>([])
   const [selected, setSelected] = createSignal(0)
@@ -245,7 +246,14 @@ function DirectoryPicker(props: {
   const [scroll, setScroll] = createSignal(0)
   const [error] = createSignal<string | undefined>(undefined)
 
-  const VIEWPORT = 14
+  // Rows consumed by everything that isn't the scrollable list: the header,
+  // section heading, "pick for" line, search row, controls row, their top
+  // margins, the ▲/▼ "more" rows, the "Showing X–Y of Z" line, and the bottom
+  // status bar. Subtract that from the terminal height so the list grows to
+  // fill the space instead of capping at a fixed window with a big empty gap
+  // below it.
+  const CHROME_ROWS = 16
+  const VIEWPORT = createMemo(() => Math.max(5, dimensions().height - CHROME_ROWS))
 
   const refresh = async (next: string) => {
     const list = await listDir(next)
@@ -265,7 +273,9 @@ function DirectoryPicker(props: {
     return all.filter((e) => e.name.toLowerCase().includes(q))
   })
 
-  const visible = createMemo(() => filtered().slice(scroll(), scroll() + VIEWPORT))
+  const visible = createMemo(() => filtered().slice(scroll(), scroll() + VIEWPORT()))
+  const hasMoreAbove = createMemo(() => scroll() > 0)
+  const hasMoreBelow = createMemo(() => scroll() + VIEWPORT() < filtered().length)
 
   const move = (delta: number) => {
     const list = filtered()
@@ -275,7 +285,7 @@ function DirectoryPicker(props: {
     if (next > list.length - 1) next = list.length - 1
     setSelected(next)
     if (next < scroll()) setScroll(next)
-    else if (next >= scroll() + VIEWPORT) setScroll(next - VIEWPORT + 1)
+    else if (next >= scroll() + VIEWPORT()) setScroll(next - VIEWPORT() + 1)
   }
 
   const enter = async () => {
@@ -308,8 +318,8 @@ function DirectoryPicker(props: {
     if (evt.ctrl && evt.name === "c") return props.onQuit()
     if (evt.name === "up") return move(-1)
     if (evt.name === "down") return move(1)
-    if (evt.name === "pageup") return move(-VIEWPORT)
-    if (evt.name === "pagedown") return move(VIEWPORT)
+    if (evt.name === "pageup") return move(-VIEWPORT())
+    if (evt.name === "pagedown") return move(VIEWPORT())
     if (evt.name === "home" && !evt.ctrl) {
       setSelected(0)
       setScroll(0)
@@ -318,7 +328,7 @@ function DirectoryPicker(props: {
     if (evt.name === "end") {
       const last = filtered().length - 1
       setSelected(Math.max(0, last))
-      setScroll(Math.max(0, last - VIEWPORT + 1))
+      setScroll(Math.max(0, last - VIEWPORT() + 1))
       return
     }
     if (evt.name === "right") return void enter()
@@ -383,6 +393,12 @@ function DirectoryPicker(props: {
             {search() ? tuiT("boot.directory.noMatches", { search: search() }) : tuiT("boot.directory.empty")}
           </text>
         </Show>
+        <Show when={hasMoreAbove()}>
+          <box flexDirection="row">
+            <text fg={palette().fgDim}>  ▲ </text>
+            <text fg={palette().fgDim}>{tuiT("boot.directory.moreAbove", { count: scroll() })}</text>
+          </box>
+        </Show>
         <For each={visible()}>
           {(entry, i) => {
             const realIdx = createMemo(() => scroll() + i())
@@ -405,12 +421,20 @@ function DirectoryPicker(props: {
             )
           }}
         </For>
-        <Show when={filtered().length > VIEWPORT}>
+        <Show when={hasMoreBelow()}>
+          <box flexDirection="row">
+            <text fg={palette().fgDim}>  ▼ </text>
+            <text fg={palette().fgDim}>
+              {tuiT("boot.directory.moreBelow", { count: filtered().length - scroll() - VIEWPORT() })}
+            </text>
+          </box>
+        </Show>
+        <Show when={filtered().length > VIEWPORT()}>
           <box marginTop={1}>
             <text fg={palette().fgDim}>
               {tuiT("boot.directory.showing", {
                 start: scroll() + 1,
-                end: Math.min(scroll() + VIEWPORT, filtered().length),
+                end: Math.min(scroll() + VIEWPORT(), filtered().length),
                 total: filtered().length,
               })}
             </text>

@@ -43,6 +43,8 @@ const en = {
   "boot.directory.noMatches": "No matches for \"{{search}}\".",
   "boot.directory.empty": "Empty directory.",
   "boot.directory.showing": "Showing {{start}}-{{end}} of {{total}}",
+  "boot.directory.moreAbove": "{{count}} more above",
+  "boot.directory.moreBelow": "{{count}} more below",
   "boot.directory.openHereOrDrillIn": "Drill in / open here",
   "boot.directory.search": "Search",
   "boot.local.heading": "New Local Instance",
