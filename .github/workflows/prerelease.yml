@@ -97,7 +97,7 @@ jobs:
         continue-on-error: true
 
   build:
-    needs: [lint, typecheck]
+    needs: [lint, typecheck, resolve]
     if: needs.resolve.outputs.should_build == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -113,7 +113,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: codeplane-preview-${{ needs.resolve.outputs.preview_version }}
-          path: packages/codeplane/dist/codeplane-*-
+          path: packages/codeplane/dist/codeplane-*
           retention-days: 7
 
   publish-preview:
