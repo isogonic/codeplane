@@ -34,7 +34,9 @@ function convertToLineEnding(text: string, ending: "\n" | "\r\n"): string {
 
 const locks = new Map<string, Semaphore.Semaphore>()
 
-function lock(filePath: string) {
+// Per-file edit lock, shared with write.ts so edit/write to the same path
+// serialize their read-modify-write and parallel sub-agents can't lose edits.
+export function lock(filePath: string) {
   const resolvedFilePath = AppFileSystem.resolve(filePath)
   const hit = locks.get(resolvedFilePath)
   if (hit) return hit
@@ -107,6 +109,10 @@ export const EditTool = Tool.define(
                 if (yield* format.file(filePath)) {
                   contentNew = yield* Bom.syncFile(afs, filePath, desiredBom)
                 }
+                // Recompute the diff against the FORMATTED content (mirroring the
+                // update branch) — otherwise the recorded diff/snapshot reflects
+                // the pre-format text and mismatches what's actually on disk.
+                diff = trimDiff(createTwoFilesPatch(filePath, filePath, contentOld, contentNew))
                 yield* bus.publish(File.Event.Edited, { file: filePath })
                 yield* bus.publish(FileWatcher.Event.Updated, {
                   file: filePath,

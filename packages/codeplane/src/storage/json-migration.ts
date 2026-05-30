@@ -406,6 +406,12 @@ export async function run(db: SQLiteBunDatabase<any, any> | NodeSQLiteDatabase<a
 
   db.run("COMMIT")
 
+  // synchronous = OFF was a bulk-insert optimization for the migration only.
+  // This DB connection is shared for the rest of the process's lifetime, so
+  // restore a durable setting — leaving it OFF risks corruption on crash/power
+  // loss for every subsequent write. NORMAL is the WAL-recommended durable mode.
+  db.run("PRAGMA synchronous = NORMAL")
+
   log.info("json migration complete", {
     projects: stats.projects,
     sessions: stats.sessions,

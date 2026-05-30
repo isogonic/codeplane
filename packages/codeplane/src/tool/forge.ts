@@ -262,6 +262,43 @@ function endpoint(ctx: ForgeContext, suffix = "") {
   return `${ctx.repoBase}${suffix}`
 }
 
+function safeHost(value: string | undefined): string | undefined {
+  if (!value) return undefined
+  try {
+    return new URL(value.includes("://") ? value : `https://${value}`).host.toLowerCase()
+  } catch {
+    return undefined
+  }
+}
+
+function forgeAllowedHosts(ctx: Pick<ForgeContext, "host" | "apiBase" | "baseUrl">): Set<string> {
+  return new Set([safeHost(ctx.host), safeHost(ctx.apiBase), safeHost(ctx.baseUrl)].filter((h): h is string => !!h))
+}
+
+// The `raw` operation is the only path that accepts a caller-supplied absolute
+// URL, and request() unconditionally attaches the configured Git-host
+// credential. An agent acting on untrusted input (prompt injection, a malicious
+// repo file, an MCP result) could otherwise point `raw` at an attacker host
+// (or 169.254.169.254) and exfiltrate the token. Only allow absolute URLs whose
+// host is one of the configured forge endpoints.
+export function forgeRawUrlAllowed(ctx: Pick<ForgeContext, "host" | "apiBase" | "baseUrl">, url: string): boolean {
+  const target = safeHost(url)
+  if (!target) return false
+  return forgeAllowedHosts(ctx).has(target)
+}
+
+function assertForgeHost(ctx: ForgeContext, url: string) {
+  if (forgeRawUrlAllowed(ctx, url)) return Effect.void
+  const target = safeHost(url)
+  if (!target) return Effect.fail(new Error(`raw path is not a valid URL: ${url}`))
+  return Effect.fail(
+    new Error(
+      `raw operation refused: host "${target}" is not the configured forge host (allowed: ${Array.from(forgeAllowedHosts(ctx)).join(", ")}). ` +
+        `The Git-host credential is only sent to the configured instance.`,
+    ),
+  )
+}
+
 function titleFor(params: Params, ctx: ForgeContext, url: string) {
   return `${ctx.provider} ${params.operation} ${new URL(url).pathname}`
 }
@@ -763,6 +800,7 @@ export const ForgeTool = Tool.define<
           const rawPath = params.path.startsWith("http")
             ? params.path
             : `${ctx.apiBase}/${params.path.replace(/^\/+/, "")}`
+          if (params.path.startsWith("http")) yield* assertForgeHost(ctx, rawPath)
           return yield* request(
             params,
             toolCtx,

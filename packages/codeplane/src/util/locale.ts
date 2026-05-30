@@ -53,8 +53,11 @@ export function duration(input: number) {
     const minutes = Math.floor((input % 3600000) / 60000)
     return `${hours}h ${minutes}m`
   }
-  const hours = Math.floor(input / 3600000)
-  const days = Math.floor((input % 3600000) / 86400000)
+  // days from the total, hours = remainder within the day. The old code divided
+  // the (< 1h) hour-remainder by 86400000, so days was ALWAYS 0 and hours was
+  // the total hour count — e.g. 2 days rendered "0d 48h" instead of "2d 0h".
+  const days = Math.floor(input / 86400000)
+  const hours = Math.floor((input % 86400000) / 3600000)
   return `${days}d ${hours}h`
 }
 

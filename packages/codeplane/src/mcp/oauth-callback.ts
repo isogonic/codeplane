@@ -5,6 +5,19 @@ import { OAUTH_CALLBACK_PORT, OAUTH_CALLBACK_PATH, parseRedirectUri } from "./oa
 
 const log = Log.create({ service: "mcp.oauth-callback" })
 
+// The OAuth authorization server is untrusted (it controls the redirect back to
+// this loopback callback). `error`/`error_description` are attacker-controllable
+// query params that were interpolated raw into the HTML error page — a reflected
+// XSS executing in the loopback origin. Escape before embedding.
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
 // Current callback server configuration (may differ from defaults if custom redirectUri is used)
 let currentPort = OAUTH_CALLBACK_PORT
 let currentPath = OAUTH_CALLBACK_PATH
@@ -45,7 +58,7 @@ const HTML_ERROR = (error: string) => `<!DOCTYPE html>
   <div class="container">
     <h1>Authorization Failed</h1>
     <p>An error occurred during authorization.</p>
-    <div class="error">${error}</div>
+    <div class="error">${escapeHtml(error)}</div>
   </div>
 </body>
 </html>`
@@ -57,6 +70,9 @@ interface PendingAuth {
 }
 
 let server: ReturnType<typeof createServer> | undefined
+// In-flight start, so concurrent ensureRunning() calls don't each create a
+// server (check-then-act race across the awaits below).
+let starting: Promise<void> | undefined
 const pendingAuths = new Map<string, PendingAuth>()
 // Reverse index: caller-provided cancel key -> oauthState, so cancelPending()
 // can find the right entry in pendingAuths (which is keyed by oauthState).
@@ -150,23 +166,37 @@ export async function ensureRunning(redirectUri?: string): Promise<void> {
 
   if (server) return
 
-  const running = await isPortInUse(port)
-  if (running) {
-    log.info("oauth callback server already running on another instance", { port })
-    return
-  }
+  // Dedupe concurrent starts; a second caller awaits the same start instead of
+  // creating its own server.
+  if (!starting) {
+    starting = (async () => {
+      const running = await isPortInUse(port)
+      if (running) {
+        log.info("oauth callback server already running on another instance", { port })
+        return
+      }
 
-  currentPort = port
-  currentPath = path
+      const next = createServer(handleRequest)
+      await new Promise<void>((resolve, reject) => {
+        next.listen(port, () => {
+          log.info("oauth callback server started", { port, path })
+          resolve()
+        })
+        next.on("error", reject)
+      })
 
-  server = createServer(handleRequest)
-  await new Promise<void>((resolve, reject) => {
-    server!.listen(currentPort, () => {
-      log.info("oauth callback server started", { port: currentPort, path: currentPath })
-      resolve()
+      // Assign module state only AFTER a successful listen. Assigning before
+      // (the old behaviour) meant a failed bind left `server` non-null, so
+      // every later ensureRunning() returned early thinking it was running —
+      // permanently breaking the OAuth callback.
+      server = next
+      currentPort = port
+      currentPath = path
+    })().finally(() => {
+      starting = undefined
     })
-    server!.on("error", reject)
-  })
+  }
+  return starting
 }
 
 export function waitForCallback(oauthState: string, cancelKey?: string): Promise<string> {

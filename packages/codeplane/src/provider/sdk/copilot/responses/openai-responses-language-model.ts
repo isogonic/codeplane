@@ -1266,11 +1266,18 @@ export class OpenAIResponsesLanguageModel implements LanguageModelV3 {
                 }),
                 raw: value.response.incomplete_details?.reason ?? undefined,
               }
-              usage.inputTokens = value.response.usage.input_tokens
-              usage.outputTokens = value.response.usage.output_tokens
-              usage.totalTokens = value.response.usage.input_tokens + value.response.usage.output_tokens
-              usage.reasoningTokens = value.response.usage.output_tokens_details?.reasoning_tokens ?? undefined
-              usage.cachedInputTokens = value.response.usage.input_tokens_details?.cached_tokens ?? undefined
+              // Copilot's proxied /responses endpoint sometimes emits a
+              // completed/incomplete chunk without a populated `usage` object.
+              // Guard the access so a missing `usage` doesn't throw and abort
+              // the whole turn (leaving the user with a broken/empty response).
+              const responseUsage = value.response.usage
+              if (responseUsage) {
+                usage.inputTokens = responseUsage.input_tokens
+                usage.outputTokens = responseUsage.output_tokens
+                usage.totalTokens = responseUsage.input_tokens + responseUsage.output_tokens
+                usage.reasoningTokens = responseUsage.output_tokens_details?.reasoning_tokens ?? undefined
+                usage.cachedInputTokens = responseUsage.input_tokens_details?.cached_tokens ?? undefined
+              }
               if (typeof value.response.service_tier === "string") {
                 serviceTier = value.response.service_tier
               }

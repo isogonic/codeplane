@@ -43,7 +43,11 @@ export const layer = Layer.effect(
 
         async function getCommand(item: Formatter.Info) {
           let cmd = commands[item.name]
-          if (cmd === false || cmd === undefined) {
+          // Cache a `false` (not-enabled) result too. Positive results were
+          // already cached permanently; only negatives were re-detected on
+          // every edit, re-running each formatter's enabled() check (filesystem
+          // walks + potential npm installs) needlessly.
+          if (cmd === undefined) {
             cmd = await item.enabled(ctx)
             commands[item.name] = cmd
           }

@@ -40,6 +40,31 @@ import { emptyConsoleState, type ConsoleState } from "@/config/console-state"
 import path from "path"
 import { useKV } from "./kv"
 
+// Apply buffered deltas (events that arrived before this part's snapshot) onto
+// a freshly-arrived part snapshot. The buffered value per field is the SUM of
+// every delta that landed first. If the snapshot already includes them
+// (`existing.endsWith(delta)`) it's a no-op; otherwise we concat and let the
+// next cumulative snapshot reconcile. Mirrors the web app's mergePendingDeltas.
+export function mergePendingDeltas(part: Part, pending: { [field: string]: string }): Part {
+  const next = { ...(part as Record<string, unknown>) } as Record<string, unknown>
+  let changed = false
+  for (const [field, delta] of Object.entries(pending)) {
+    if (!delta) continue
+    const existing = next[field]
+    if (typeof existing === "string") {
+      if (existing.endsWith(delta)) continue
+      next[field] = existing + delta
+      changed = true
+      continue
+    }
+    if (existing === undefined || existing === null) {
+      next[field] = delta
+      changed = true
+    }
+  }
+  return (changed ? next : part) as Part
+}
+
 export const { use: useSync, provider: SyncProvider } = createSimpleContext({
   name: "Sync",
   init: () => {
@@ -74,6 +99,14 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       }
       part: {
         [messageID: string]: Part[]
+      }
+      // Buffer for message.part.delta events that arrive before the part's
+      // message.part.updated snapshot exists in the store (snapshot-fetch vs
+      // SSE race on session open). Without this the deltas were dropped and
+      // streaming text looked truncated/frozen. Drained + cleared when the part
+      // snapshot lands. Mirrors the web app's global-sync reducer.
+      pendingDelta: {
+        [messageID: string]: { [partID: string]: { [field: string]: string } }
       }
       lsp_ready: boolean
       lsp: LspStatus[]
@@ -117,6 +150,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       todo: {},
       message: {},
       part: {},
+      pendingDelta: {},
       lsp_ready: false,
       lsp: [],
       mcp_ready: false,
@@ -298,15 +332,44 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           break
 
         case "session.deleted": {
-          const result = Binary.search(store.session, event.properties.info.id, (s) => s.id)
-          if (result.found) {
-            setStore(
-              "session",
-              produce((draft) => {
-                draft.splice(result.index, 1)
-              }),
-            )
-          }
+          const sessionID = event.properties.info.id
+          const result = Binary.search(store.session, sessionID, (s) => s.id)
+          // Free ALL per-session state, not just the session row — otherwise a
+          // deleted session leaks its messages/parts/todos/diffs/status/
+          // permissions/questions/queue for the lifetime of the process.
+          const messages = store.message[sessionID]
+          batch(() => {
+            if (result.found) {
+              setStore(
+                "session",
+                produce((draft) => {
+                  draft.splice(result.index, 1)
+                }),
+              )
+            }
+            if (messages) {
+              setStore(
+                "part",
+                produce((draft) => {
+                  for (const m of messages) delete draft[m.id]
+                }),
+              )
+              setStore(
+                "pendingDelta",
+                produce((draft) => {
+                  for (const m of messages) delete draft[m.id]
+                }),
+              )
+            }
+            setStore("message", produce((draft) => delete draft[sessionID]))
+            setStore("todo", produce((draft) => delete draft[sessionID]))
+            setStore("session_status", produce((draft) => delete draft[sessionID]))
+            setStore("session_diff", produce((draft) => delete draft[sessionID]))
+            setStore("permission", produce((draft) => delete draft[sessionID]))
+            setStore("question", produce((draft) => delete draft[sessionID]))
+            setStore("prompt_queue", produce((draft) => delete draft[sessionID]))
+          })
+          fullSyncedSessions.delete(sessionID)
           break
         }
         case "session.updated": {
@@ -437,62 +500,139 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
                   delete draft[oldest.id]
                 }),
               )
+              setStore(
+                "pendingDelta",
+                produce((draft) => {
+                  delete draft[oldest.id]
+                }),
+              )
             })
           }
           break
         }
         case "message.removed": {
           const messages = store.message[event.properties.sessionID]
+          // Session not synced locally — nothing to remove. Without this guard
+          // Binary.search reads undefined.length and throws, which aborts the
+          // flush and stalls live event delivery (streaming appears frozen).
+          if (!messages) break
           const result = Binary.search(messages, event.properties.messageID, (m) => m.id)
           if (result.found) {
+            // Drop the message AND its parts together — otherwise store.part
+            // keeps the removed message's parts forever (unbounded growth over
+            // a long session), mirroring the >100-message eviction above.
+            batch(() => {
+              setStore(
+                "message",
+                event.properties.sessionID,
+                produce((draft) => {
+                  draft.splice(result.index, 1)
+                }),
+              )
+              setStore(
+                "part",
+                produce((draft) => {
+                  delete draft[event.properties.messageID]
+                }),
+              )
+              setStore(
+                "pendingDelta",
+                produce((draft) => {
+                  delete draft[event.properties.messageID]
+                }),
+              )
+            })
+          }
+          break
+        }
+        case "message.part.updated": {
+          const incoming = event.properties.part
+          // Drain any deltas that were buffered before this snapshot arrived.
+          const pendingForPart = store.pendingDelta[incoming.messageID]?.[incoming.id]
+          const merged = pendingForPart ? mergePendingDeltas(incoming, pendingForPart) : incoming
+          const parts = store.part[incoming.messageID]
+          if (!parts) {
+            setStore("part", incoming.messageID, [merged])
+          } else {
+            const result = Binary.search(parts, incoming.id, (p) => p.id)
+            if (result.found) {
+              setStore("part", incoming.messageID, result.index, reconcile(merged))
+            } else {
+              setStore(
+                "part",
+                incoming.messageID,
+                produce((draft) => {
+                  draft.splice(result.index, 0, merged)
+                }),
+              )
+            }
+          }
+          if (pendingForPart) {
             setStore(
-              "message",
-              event.properties.sessionID,
+              "pendingDelta",
               produce((draft) => {
-                draft.splice(result.index, 1)
+                const forMessage = draft[incoming.messageID]
+                if (!forMessage) return
+                delete forMessage[incoming.id]
+                if (Object.keys(forMessage).length === 0) delete draft[incoming.messageID]
               }),
             )
           }
           break
         }
-        case "message.part.updated": {
-          const parts = store.part[event.properties.part.messageID]
-          if (!parts) {
-            setStore("part", event.properties.part.messageID, [event.properties.part])
-            break
-          }
-          const result = Binary.search(parts, event.properties.part.id, (p) => p.id)
-          if (result.found) {
-            setStore("part", event.properties.part.messageID, result.index, reconcile(event.properties.part))
-            break
-          }
-          setStore(
-            "part",
-            event.properties.part.messageID,
-            produce((draft) => {
-              draft.splice(result.index, 0, event.properties.part)
-            }),
-          )
-          break
-        }
 
         case "message.part.delta": {
-          const parts = store.part[event.properties.messageID]
-          if (!parts) break
-          const result = Binary.search(parts, event.properties.partID, (p) => p.id)
-          if (!result.found) break
-          setStore(
-            "part",
-            event.properties.messageID,
-            result.index,
-            event.properties.field as any,
-            (existing: string | undefined) => (existing ?? "") + event.properties.delta,
-          )
+          const { messageID, partID, field, delta } = event.properties
+          const parts = store.part[messageID]
+          const result = parts ? Binary.search(parts, partID, (p) => p.id) : { found: false, index: 0 }
+          if (parts && result.found) {
+            setStore(
+              "part",
+              messageID,
+              result.index,
+              field as any,
+              (existing: string | undefined) => (existing ?? "") + delta,
+            )
+            break
+          }
+          // Part snapshot hasn't landed yet (snapshot-fetch vs SSE race on
+          // session open). Buffer the delta instead of dropping it; it's
+          // applied when message.part.updated creates the part. Without this the
+          // streamed text was silently lost — "frozen"/truncated streaming.
+          if (!store.pendingDelta[messageID]) {
+            setStore("pendingDelta", messageID, { [partID]: { [field]: delta } })
+          } else if (!store.pendingDelta[messageID][partID]) {
+            setStore("pendingDelta", messageID, partID, { [field]: delta })
+          } else {
+            setStore(
+              "pendingDelta",
+              messageID,
+              partID,
+              field,
+              (existing: string | undefined) => (existing ?? "") + delta,
+            )
+          }
           break
         }
 
         case "message.part.removed": {
+          // Drop any buffered deltas for this part so the pendingDelta buffer
+          // can't leak a never-drained entry.
+          if (store.pendingDelta[event.properties.messageID]?.[event.properties.partID]) {
+            setStore(
+              "pendingDelta",
+              produce((draft) => {
+                const forMessage = draft[event.properties.messageID]
+                if (!forMessage) return
+                delete forMessage[event.properties.partID]
+                if (Object.keys(forMessage).length === 0) delete draft[event.properties.messageID]
+              }),
+            )
+          }
           const parts = store.part[event.properties.messageID]
+          // Message not in the local part store — nothing to remove. Guard
+          // against Binary.search(undefined) throwing and stalling delivery.
+          if (!parts) break
           const result = Binary.search(parts, event.properties.partID, (p) => p.id)
           if (result.found)
             setStore(

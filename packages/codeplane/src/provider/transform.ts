@@ -693,7 +693,9 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
           max: {
             thinking: {
               type: "enabled",
-              budgetTokens: 31999,
+              // Reserve output room — budget == max_tokens left ~1 token for
+              // the answer (see the @ai-sdk/anthropic case).
+              budgetTokens: Math.min(31_999, Math.floor((maxOutputTokens(model) * 3) / 4)),
             },
           },
         }
@@ -850,13 +852,19 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
         high: {
           thinking: {
             type: "enabled",
-            budgetTokens: Math.min(16_000, Math.floor(model.limit.output / 2 - 1)),
+            // Clamp to a valid floor: a config model with output limit 0/unset
+            // would otherwise yield a negative budget, which Anthropic rejects.
+            budgetTokens: Math.max(1024, Math.min(16_000, Math.floor(model.limit.output / 2 - 1))),
           },
         },
         max: {
           thinking: {
             type: "enabled",
-            budgetTokens: Math.min(31_999, model.limit.output - 1),
+            // Leave room for the visible answer. `max_tokens` is capped at
+            // maxOutputTokens(model) and Anthropic counts thinking tokens
+            // toward it, so a budget of `output - 1` left ~1 token for the
+            // reply (empty/truncated answers). Reserve a quarter for output.
+            budgetTokens: Math.min(31_999, Math.floor((maxOutputTokens(model) * 3) / 4)),
           },
         },
       }
@@ -891,7 +899,9 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
           max: {
             reasoningConfig: {
               type: "enabled",
-              budgetTokens: 31999,
+              // Reserve output room (see the non-bedrock anthropic case above):
+              // budget == max_tokens left ~1 token for the answer.
+              budgetTokens: Math.min(31_999, Math.floor((maxOutputTokens(model) * 3) / 4)),
             },
           },
         }
@@ -1003,7 +1013,9 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
           max: {
             thinking: {
               type: "enabled",
-              budgetTokens: 31999,
+              // Reserve output room — budget == max_tokens left ~1 token for
+              // the answer (see the @ai-sdk/anthropic case).
+              budgetTokens: Math.min(31_999, Math.floor((maxOutputTokens(model) * 3) / 4)),
             },
           },
         }
@@ -1096,7 +1108,7 @@ export function options(input: {
   ) {
     result["thinking"] = {
       type: "enabled",
-      budgetTokens: Math.min(16_000, Math.floor(input.model.limit.output / 2 - 1)),
+      budgetTokens: Math.max(1024, Math.min(16_000, Math.floor(input.model.limit.output / 2 - 1))),
     }
   }
 

@@ -93,7 +93,15 @@ function message(providerID: ProviderID, e: APICallError) {
       // try to extract common error message fields. `detail` is what the Codex
       // backend (chatgpt.com/backend-api/codex) returns, e.g. for an
       // unsupported model on a ChatGPT account.
-      const errMsg = body.message || body.error || body.error?.message || body.detail
+      // Order matters: the standard provider error shape is `{ error: { message } }`,
+      // so `body.error.message` must be tried before the bare `body.error` object —
+      // otherwise the truthy object short-circuits the chain, fails the
+      // `typeof === "string"` check below, and the real message is lost.
+      const errMsg =
+        body.message ||
+        body.error?.message ||
+        (typeof body.error === "string" ? body.error : undefined) ||
+        body.detail
       if (errMsg && typeof errMsg === "string") {
         return `${msg}: ${errMsg}`
       }
@@ -150,11 +158,24 @@ export function parseStreamError(input: unknown): ParsedStreamError | undefined 
   if (!body) return
 
   const responseBody = JSON.stringify(body)
-  if (body.type !== "error") return
 
-  // The Codex backend keys some errors by `type` rather than the OpenAI-standard
-  // `code` (e.g. `usage_limit_reached`), so match on either.
-  switch (body?.error?.code ?? body?.error?.type) {
+  // Accept BOTH shapes that reach here: the wrapped AI-SDK error
+  // `{ type:"error", error:{ code|type, message } }` AND a flat provider error
+  // `{ message, type|code }` (the Copilot chat/responses transforms enqueue the
+  // raw chunk, which has no `type:"error"` wrapper). The previous
+  // `body.type !== "error"` gate dropped the flat shape, so a streamed
+  // context-overflow/quota error from those endpoints was never classified
+  // (no auto-compaction; quota wrongly retried). The switch only matches known
+  // error codes, so a non-error body still falls through to undefined.
+  const errorBody = (body.error && typeof body.error === "object" ? body.error : body) as {
+    code?: string
+    type?: string
+    message?: string
+    resets_in_seconds?: unknown
+  }
+  const errorMessage = typeof errorBody.message === "string" ? errorBody.message : undefined
+
+  switch (errorBody.code ?? errorBody.type) {
     case "context_length_exceeded":
       return {
         type: "context_overflow",
@@ -171,7 +192,7 @@ export function parseStreamError(input: unknown): ParsedStreamError | undefined 
     case "usage_limit_reached":
       return {
         type: "api_error",
-        message: usageLimitMessage(body.error),
+        message: usageLimitMessage(errorBody),
         isRetryable: false,
         responseBody,
       }
@@ -185,14 +206,14 @@ export function parseStreamError(input: unknown): ParsedStreamError | undefined 
     case "invalid_prompt":
       return {
         type: "api_error",
-        message: typeof body?.error?.message === "string" ? body?.error?.message : "Invalid prompt.",
+        message: errorMessage ?? "Invalid prompt.",
         isRetryable: false,
         responseBody,
       }
     case "server_error":
       return {
         type: "api_error",
-        message: typeof body?.error?.message === "string" ? body?.error?.message : "Server error.",
+        message: errorMessage ?? "Server error.",
         isRetryable: true,
         responseBody,
       }

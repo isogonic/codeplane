@@ -337,6 +337,7 @@ export function createCodeplaneMobile(): CodeplaneMobileAPI {
       },
       onChange(cb) {
         let listener: { remove: () => Promise<void> } | undefined
+        let removed = false
         Network.addListener("networkStatusChange", (status) =>
           cb({
             connected: !!status.connected,
@@ -344,9 +345,16 @@ export function createCodeplaneMobile(): CodeplaneMobileAPI {
           }),
         )
           .then((l) => {
+            // Unsubscribed before resolve — remove immediately, don't leak.
+            if (removed) {
+              l.remove().catch(() => {})
+              return
+            }
             listener = l
           })
           .catch(() => {
+            // Don't register the web fallback if already unsubscribed.
+            if (removed) return
             const onOnline = () => cb({ connected: true, connectionType: "unknown" })
             const onOffline = () => cb({ connected: false, connectionType: "none" })
             window.addEventListener("online", onOnline)
@@ -359,6 +367,7 @@ export function createCodeplaneMobile(): CodeplaneMobileAPI {
             }
           })
         return () => {
+          removed = true
           listener?.remove().catch(() => {})
         }
       },
@@ -480,15 +489,23 @@ export function createCodeplaneMobile(): CodeplaneMobileAPI {
       },
       onClick(cb) {
         let listener: { remove: () => Promise<void> } | undefined
+        let removed = false
         LocalNotifications.addListener("localNotificationActionPerformed", (event) => {
           const href = event.notification.extra?.href
           cb(typeof href === "string" ? href : undefined)
         })
           .then((l) => {
+            // If unsubscribed before addListener resolved, remove immediately
+            // so the listener isn't leaked.
+            if (removed) {
+              l.remove().catch(() => {})
+              return
+            }
             listener = l
           })
           .catch(() => {})
         return () => {
+          removed = true
           listener?.remove().catch(() => {})
         }
       },
@@ -497,6 +514,7 @@ export function createCodeplaneMobile(): CodeplaneMobileAPI {
     deepLinks: {
       onOpen(cb) {
         let listener: { remove: () => Promise<void> } | undefined
+        let removed = false
         CapApp.addListener("appUrlOpen", (event: URLOpenListenerEvent) => {
           try {
             cb(new URL(event.url))
@@ -505,10 +523,17 @@ export function createCodeplaneMobile(): CodeplaneMobileAPI {
           }
         })
           .then((l) => {
+            // If unsubscribed before addListener resolved, remove immediately
+            // so the listener isn't leaked.
+            if (removed) {
+              l.remove().catch(() => {})
+              return
+            }
             listener = l
           })
           .catch(() => {})
         return () => {
+          removed = true
           listener?.remove().catch(() => {})
         }
       },
@@ -517,6 +542,7 @@ export function createCodeplaneMobile(): CodeplaneMobileAPI {
     back: {
       onBack(cb) {
         let listener: { remove: () => Promise<void> } | undefined
+        let removed = false
         CapApp.addListener("backButton", () => {
           // The handler returns `true` to indicate it handled the press.
           // If it returns `false`/undefined, we fall back to the default
@@ -525,10 +551,17 @@ export function createCodeplaneMobile(): CodeplaneMobileAPI {
           if (!handled) CapApp.exitApp().catch(() => {})
         })
           .then((l) => {
+            // If unsubscribed before addListener resolved, remove immediately
+            // so the listener isn't leaked.
+            if (removed) {
+              l.remove().catch(() => {})
+              return
+            }
             listener = l
           })
           .catch(() => {})
         return () => {
+          removed = true
           listener?.remove().catch(() => {})
         }
       },

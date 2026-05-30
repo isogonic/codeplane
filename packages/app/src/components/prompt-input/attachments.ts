@@ -8,6 +8,12 @@ import { getCursorPosition } from "./editor-dom"
 import { attachmentMime } from "./files"
 import { normalizePaste, pasteMode } from "./paste"
 
+// Reject oversized attachments before reading them: dataUrl() slurps the whole
+// file into memory and base64-encodes it (~33% larger), so a large dragged/
+// pasted file would spike memory and freeze the tab. Matches the server-side
+// read-tool attachment cap.
+const MAX_ATTACHMENT_BYTES = 32 * 1024 * 1024
+
 function dataUrl(file: File, mime: string) {
   return new Promise<string>((resolve) => {
     const reader = new FileReader()
@@ -46,6 +52,11 @@ export function createPromptAttachments(input: PromptAttachmentsInput) {
   }
 
   const add = async (file: File, toast = true) => {
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      if (toast) warn()
+      return false
+    }
+
     const mime = await attachmentMime(file)
     if (!mime) {
       if (toast) warn()

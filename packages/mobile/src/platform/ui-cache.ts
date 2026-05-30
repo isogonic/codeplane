@@ -101,6 +101,31 @@ const writeState = async (state: State) => {
   await mobilePreferences.setItem(STORAGE_KEY, JSON.stringify(state))
 }
 
+// Serialize read-modify-write of the shared cache. The watcher probes every
+// instance concurrently, so two check() calls each read the full state, set
+// their own entry, and write the full snapshot back — the later write dropped
+// the other's entry (lost "Update available" badges). Each update here runs in
+// a chain and re-reads the latest state, writing only its own entry.
+let writeChain: Promise<unknown> = Promise.resolve()
+// Generalized serialized read-modify-write: re-reads the latest state INSIDE
+// the chain so concurrent mutations never clobber each other. markOpened/clear
+// previously did a bare readState/writeState OUTSIDE this chain, so a write
+// racing a watcher check() dropped one side's changes (lost badges / stale
+// rows). Route every mutation through here.
+const mutateState = (mutator: (state: State) => void): Promise<void> => {
+  const run = writeChain.then(async () => {
+    const state = await readState()
+    mutator(state)
+    await writeState(state)
+  })
+  writeChain = run.catch(() => {})
+  return run
+}
+const updateEntry = (instanceId: string, entry: UICacheEntry): Promise<void> =>
+  mutateState((state) => {
+    state[instanceId] = entry
+  })
+
 const emit = (entry: UICacheEntry) => {
   const set = listeners.get(entry.instanceId)
   if (set) {
@@ -285,8 +310,7 @@ export const uiCache: UICacheAPI = {
       origin,
       state: "checking",
     }
-    state[instanceId] = checking
-    await writeState(state)
+    await updateEntry(instanceId, checking)
     emit(checking)
     const headers = await mobileHeadersStore.get(instanceId)
     const result = await fetchVersion(instanceUrl, headers)
@@ -299,8 +323,7 @@ export const uiCache: UICacheAPI = {
         lastCheckedAt: Date.now(),
         error: undefined,
       }
-      state[instanceId] = next
-      await writeState(state)
+      await updateEntry(instanceId, next)
       emit(next)
       return next
     }
@@ -318,8 +341,7 @@ export const uiCache: UICacheAPI = {
         lastCheckedAt: Date.now(),
         error: undefined,
       }
-      state[instanceId] = reset
-      await writeState(state)
+      await updateEntry(instanceId, reset)
       emit(reset)
       return reset
     }
@@ -330,27 +352,24 @@ export const uiCache: UICacheAPI = {
       lastCheckedAt: Date.now(),
       error: result.message,
     }
-    state[instanceId] = failure
-    await writeState(state)
+    await updateEntry(instanceId, failure)
     emit(failure)
     return failure
   },
 
   async markOpened(instanceId, version) {
-    const state = await readState()
-    const previous = state[instanceId] ?? { instanceId, state: "unknown" as const }
-    const next: UICacheEntry = {
-      ...previous,
-      instanceId,
-      openedVersion: version,
-      lastOpenedAt: Date.now(),
-      state:
-        previous.remoteVersion && previous.remoteVersion !== version
-          ? "stale"
-          : "fresh",
-    }
-    state[instanceId] = next
-    await writeState(state)
+    let next!: UICacheEntry
+    await mutateState((state) => {
+      const previous = state[instanceId] ?? { instanceId, state: "unknown" as const }
+      next = {
+        ...previous,
+        instanceId,
+        openedVersion: version,
+        lastOpenedAt: Date.now(),
+        state: previous.remoteVersion && previous.remoteVersion !== version ? "stale" : "fresh",
+      }
+      state[instanceId] = next
+    })
     emit(next)
     return next
   },
@@ -399,8 +418,8 @@ export const uiCache: UICacheAPI = {
   },
 
   async clear(instanceId) {
-    const state = await readState()
-    delete state[instanceId]
-    await writeState(state)
+    await mutateState((state) => {
+      delete state[instanceId]
+    })
   },
 }

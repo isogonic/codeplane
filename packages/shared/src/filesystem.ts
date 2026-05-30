@@ -1,5 +1,5 @@
 import { NodeFileSystem } from "@effect/platform-node"
-import { dirname, join, relative, resolve as pathResolve } from "path"
+import { dirname, isAbsolute, join, relative, resolve as pathResolve } from "path"
 import { realpathSync } from "fs"
 import * as NFS from "fs/promises"
 import { lookup } from "mime-types"
@@ -78,9 +78,13 @@ export namespace AppFileSystem {
       })
 
       const writeJson = Effect.fn("FileSystem.writeJson")(function* (path: string, data: unknown, mode?: number) {
-        const content = JSON.stringify(data, null, 2)
-        yield* fs.writeFileString(path, content)
-        if (mode) yield* fs.chmod(path, mode)
+        // Route through the atomic stage-and-rename writer (defined below) so a
+        // crash / power loss mid-write can't truncate the file. This matters
+        // most for auth.json and mcp-auth.json, where a half-write would lose
+        // ALL stored credentials and force the user to re-authenticate every
+        // provider. (Referencing writeWithDirs here is safe: it's resolved when
+        // writeJson is invoked, by which point the const is initialised.)
+        yield* writeWithDirs(path, JSON.stringify(data, null, 2), mode)
       })
 
       const ensureDir = Effect.fn("FileSystem.ensureDir")(function* (path: string) {
@@ -245,13 +249,18 @@ export namespace AppFileSystem {
       .replace(/^\/mnt\/([a-zA-Z])(?:\/|$)/, (_, drive) => `${drive.toUpperCase()}:/`)
   }
 
-  export function overlaps(a: string, b: string) {
-    const relA = relative(a, b)
-    const relB = relative(b, a)
-    return !relA || !relA.startsWith("..") || !relB || !relB.startsWith("..")
+  export function contains(parent: string, child: string) {
+    const rel = relative(parent, child)
+    // On Windows, relative() across drives (C:\ -> D:\) returns an ABSOLUTE
+    // path (e.g. "D:\\bar"), which does not start with ".." — so the old check
+    // wrongly reported containment, bypassing path-traversal guards. A result
+    // that is empty means same path (contained); ".."-prefixed or absolute
+    // means a different subtree/root (not contained).
+    if (rel === "") return true
+    return !rel.startsWith("..") && !isAbsolute(rel)
   }
 
-  export function contains(parent: string, child: string) {
-    return !relative(parent, child).startsWith("..")
+  export function overlaps(a: string, b: string) {
+    return contains(a, b) || contains(b, a)
   }
 }

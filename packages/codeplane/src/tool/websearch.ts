@@ -50,7 +50,9 @@ function formatResults(results: ReadonlyArray<Schema.Schema.Type<typeof ExaResul
     const remainingForBody = Math.max(0, maxChars - used - header.length - 4)
     const body = r.text
       ? r.text.length > remainingForBody
-        ? r.text.slice(0, remainingForBody).trimEnd() + "…"
+        ? // slice by code points so a surrogate pair (emoji/astral char) at the
+          // boundary isn't split into an orphaned surrogate (→ U+FFFD on encode)
+          [...r.text].slice(0, remainingForBody).join("").trimEnd() + "…"
         : r.text
       : ""
     const block = body ? `${header}\n\n${body}` : header

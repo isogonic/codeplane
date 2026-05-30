@@ -172,7 +172,16 @@ export const layer = Layer.effect(
       yield* bus.publish(Event.Asked, info)
 
       return yield* Effect.ensuring(
-        Deferred.await(deferred),
+        Deferred.await(deferred).pipe(
+          // When the turn is aborted/interrupted with this question still
+          // pending, emit question.rejected so clients remove the dock entry.
+          // Without it, only pending.delete ran server-side and the entry
+          // leaked in every client. reply()/reject() resolve the deferred
+          // (success/typed-failure, not interrupt), so this fires only on abort.
+          Effect.onInterrupt(() =>
+            bus.publish(Event.Rejected, { sessionID: info.sessionID, requestID: id }).pipe(Effect.ignore),
+          ),
+        ),
         Effect.sync(() => {
           pending.delete(id)
         }),

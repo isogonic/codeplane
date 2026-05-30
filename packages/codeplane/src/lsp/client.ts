@@ -157,6 +157,15 @@ export async function create(input: { serverID: string; server: LSPServer.Handle
 
   // --- Connection state ---
 
+  // Track liveness: previously nothing observed connection errors / closure or
+  // the server process dying, so a crashed server stayed cached and silently
+  // returned stale/empty diagnostics for the rest of the session. `closed` lets
+  // the pool drop and respawn a dead client on the next edit.
+  let closed = false
+  const markClosed = () => {
+    closed = true
+  }
+
   const pushDiagnostics = new Map<string, Diagnostic[]>()
   const pullDiagnostics = new Map<string, Diagnostic[]>()
   const published = new Map<string, { at: number; version?: number }>()
@@ -230,6 +239,9 @@ export async function create(input: { serverID: string; server: LSPServer.Handle
     },
   ])
   connection.onRequest("workspace/diagnostic/refresh", async () => null)
+  connection.onError(markClosed)
+  connection.onClose(markClosed)
+  input.server.process.once("exit", markClosed)
   connection.listen()
 
   // --- Initialize handshake ---
@@ -298,7 +310,20 @@ export async function create(input: { serverID: string; server: LSPServer.Handle
     })
   }
 
-  const files: Record<string, { version: number; text: string }> = {}
+  // Bounded so a long session touching many files doesn't grow this map (each
+  // entry holds the file's full text) without limit. Evicting an entry is
+  // harmless: the next didChange for that path falls back to a full-document
+  // sync instead of incremental.
+  const LSP_OPEN_FILES_MAX = 2000
+  const files = new Map<string, { version: number; text: string }>()
+  const rememberFile = (filePath: string, entry: { version: number; text: string }) => {
+    files.delete(filePath) // re-insert at the end so recently-touched files are newest (LRU)
+    files.set(filePath, entry)
+    if (files.size > LSP_OPEN_FILES_MAX) {
+      const oldest = files.keys().next().value
+      if (oldest !== undefined) files.delete(oldest)
+    }
+  }
 
   // --- Diagnostic helpers ---
 
@@ -578,6 +603,9 @@ export async function create(input: { serverID: string; server: LSPServer.Handle
     get serverID() {
       return input.serverID
     },
+    get closed() {
+      return closed
+    },
     get connection() {
       return connection
     },
@@ -590,7 +618,7 @@ export async function create(input: { serverID: string; server: LSPServer.Handle
         const extension = path.extname(request.path)
         const languageId = LANGUAGE_EXTENSIONS[extension] ?? "plaintext"
 
-        const document = files[request.path]
+        const document = files.get(request.path)
         if (document !== undefined) {
           // Do not wipe diagnostics on didChange. Some servers (e.g. clangd) only
           // re-emit diagnostics when the content actually changes, so clearing
@@ -607,7 +635,7 @@ export async function create(input: { serverID: string; server: LSPServer.Handle
           })
 
           const next = document.version + 1
-          files[request.path] = { version: next, text }
+          rememberFile(request.path, { version: next, text })
           logger.info("textDocument/didChange", {
             path: request.path,
             version: next,
@@ -654,7 +682,7 @@ export async function create(input: { serverID: string; server: LSPServer.Handle
             text,
           },
         })
-        files[request.path] = { version: 0, text }
+        rememberFile(request.path, { version: 0, text })
         return 0
       },
     },

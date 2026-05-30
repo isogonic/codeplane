@@ -146,4 +146,30 @@ describe("file watcher invalidation", () => {
 
     expect(refresh).toEqual([])
   })
+
+  test("computes the parent dir for native Windows (backslash) paths on add", () => {
+    const refresh: string[] = []
+    invalidateFromWatcher(
+      {
+        type: "file.watcher.updated",
+        properties: {
+          // normalize() preserves native separators, so on Windows the path
+          // arrives backslash-separated. Splitting only on "/" computed an
+          // empty parent and the parent dir was never refreshed.
+          file: "src\\components\\new.ts",
+          event: "add",
+        },
+      },
+      {
+        normalize: (input) => input,
+        hasFile: () => false,
+        loadFile: () => {},
+        node: () => undefined,
+        isDirLoaded: (path) => path === "src\\components",
+        refreshDir: (path) => refresh.push(path),
+      },
+    )
+
+    expect(refresh).toEqual(["src\\components"])
+  })
 })

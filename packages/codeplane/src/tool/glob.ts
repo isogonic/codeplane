@@ -46,6 +46,11 @@ export const GlobTool = Tool.define(
           yield* assertExternalDirectoryEffect(ctx, search, { kind: "directory" })
 
           const limit = 100
+          // Scan up to this many matches so the mtime sort below picks the
+          // genuinely most-recent files. Taking only `limit+1` BEFORE sorting
+          // (the old behaviour) returned the first 100 in ripgrep traversal
+          // order — not the most-recently-modified files the tool advertises.
+          const scanCap = 10_000
           let truncated = false
           const files = yield* rg.files({ cwd: search, glob: [params.pattern], signal: ctx.abort }).pipe(
             Stream.mapEffect(
@@ -62,16 +67,17 @@ export const GlobTool = Tool.define(
                 }),
               { concurrency: 16, unordered: true },
             ),
-            Stream.take(limit + 1),
+            Stream.take(scanCap + 1),
             Stream.runCollect,
             Effect.map((chunk) => [...chunk]),
           )
 
+          // Sort by recency FIRST, then truncate to the output limit.
+          files.sort((a, b) => b.mtime - a.mtime)
           if (files.length > limit) {
             truncated = true
             files.length = limit
           }
-          files.sort((a, b) => b.mtime - a.mtime)
 
           const output = []
           if (files.length === 0) output.push("No files found")

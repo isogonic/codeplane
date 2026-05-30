@@ -10,6 +10,7 @@ import {
   setSessionPrefetch,
 } from "./global-sync/session-prefetch"
 import { useGlobalSync } from "./global-sync"
+import { preserveStreamingFields } from "./global-sync/event-reducer"
 import { useSDK } from "./sdk"
 import type { Message, Part } from "@codeplane-ai/sdk/v2/client"
 import { SESSION_CACHE_LIMIT, dropSessionCaches, pickSessionCacheEvictions } from "./global-sync/session-cache"
@@ -368,7 +369,20 @@ export const { use: useSync, useOptional: useSyncOptional, provider: SyncProvide
               // remounted the entire assistant turn — visible to
               // the user as "chat fails to show until refresh"
               // because the new mount briefly showed empty parts.
-              if (filtered.length) input.setStore("part", p.id, reconcile(filtered, { key: "id" }))
+              if (!filtered.length) continue
+              // Preserve actively-streaming text the same way the live SSE
+              // reducer does: a periodic resync's REST snapshot can lag the
+              // in-flight delta stream, and reconciling it raw would visibly
+              // revert the streamed text (flicker). Keep the longer text for
+              // parts that haven't ended yet.
+              const existingParts = store.part[p.id]
+              const guarded = existingParts
+                ? filtered.map((incoming) => {
+                    const prev = existingParts.find((e) => e.id === incoming.id)
+                    return prev ? preserveStreamingFields(prev, incoming) : incoming
+                  })
+                : filtered
+              input.setStore("part", p.id, reconcile(guarded, { key: "id" }))
             }
             setMeta("limit", key, message.length)
             setMeta("cursor", key, next.cursor)

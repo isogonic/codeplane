@@ -71,9 +71,21 @@ export const { use: useKV, provider: KVProvider } = createSimpleContext({
       },
       set(key: string, value: any) {
         setStore(key, value)
-        const snapshot = structuredClone(unwrap(store))
+        const newValue = structuredClone(unwrap(store)[key])
         write = write
-          .then(() => Flock.withLock(lock, () => writeSnapshot(snapshot)))
+          .then(() =>
+            Flock.withLock(lock, async () => {
+              // Merge into the LATEST on-disk state under the cross-process lock
+              // — another TUI instance may have changed other keys. Writing our
+              // full (stale) in-memory snapshot clobbered those (lost settings).
+              // Fall back to the in-memory store only if the file can't be read.
+              const current = await Filesystem.readJson<Record<string, any>>(filePath).catch(() =>
+                structuredClone(unwrap(store)),
+              )
+              current[key] = newValue
+              return writeSnapshot(current)
+            }),
+          )
           .catch((error) => {
             console.error("Failed to write KV state", { filePath, error })
           })

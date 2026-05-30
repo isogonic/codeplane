@@ -3,7 +3,7 @@ import z from "zod"
 import { Log } from "@/util"
 import { Bus } from "@/bus"
 import { BusEvent } from "@/bus/bus-event"
-import { Database, NotFoundError, and, asc, eq, lte, isNull, or, inArray, sql } from "../storage"
+import { Database, NotFoundError, and, asc, eq, inArray, sql } from "../storage"
 import { NamedError } from "@codeplane-ai/shared/util/error"
 import { PromptJobTable } from "./prompt-queue.sql"
 import { PromptJobID, PromptJobStatus } from "./prompt-queue-schema"
@@ -308,15 +308,17 @@ export const layer = Layer.effect(
               .all()
             const busy = new Set(busyRows.map((r) => r.session_id))
 
+            // ALL pending rows, INCLUDING ones deferred by retry backoff
+            // (future next_run_at). We must see deferred rows here: the first
+            // pending row per session (in FIFO order) is that session's head,
+            // and claiming a LATER sibling while the head is in backoff would
+            // scramble per-session order (its assistant reply lands before the
+            // earlier prompt's). The previous query filtered deferred rows out,
+            // so a ready sibling got claimed ahead of a backed-off head.
             const candidates = d
               .select()
               .from(PromptJobTable)
-              .where(
-                and(
-                  eq(PromptJobTable.status, "pending"),
-                  or(isNull(PromptJobTable.next_run_at), lte(PromptJobTable.next_run_at, now)),
-                ),
-              )
+              .where(eq(PromptJobTable.status, "pending"))
               // Run explicitly-reordered rows first (lowest sort_order wins),
               // then never-reordered rows in id (FIFO) order. `IS NULL` is 1
               // for NULL and 0 otherwise in SQLite, so ordering by it ASC
@@ -326,17 +328,23 @@ export const layer = Layer.effect(
                 asc(PromptJobTable.sort_order),
                 asc(PromptJobTable.id),
               )
-              // Over-fetch — we filter by `busy` in JS and need extra rows
-              // to fill `limit` if many candidates share a busy session.
-              .limit(limit * 4)
+              // Over-fetch — busy/deferred heads consume slots, so fetch extra
+              // to still fill `limit` distinct claimable sessions.
+              .limit(limit * 8)
               .all()
 
             const claimed: Row[] = []
+            const headSeen = new Set<string>()
             for (const row of candidates) {
               if (claimed.length >= limit) break
               if (busy.has(row.session_id)) continue
-              // Once we claim a job for a session, no further job for the
-              // same session can be claimed in this tick.
+              // Only the session's FIFO head is claimable; skip later siblings
+              // so a session never runs out of order within a tick.
+              if (headSeen.has(row.session_id)) continue
+              headSeen.add(row.session_id)
+              // Head still in retry backoff → the whole session waits. Do NOT
+              // claim a later sibling ahead of it.
+              if (row.next_run_at != null && row.next_run_at > now) continue
               const updated = d
                 .update(PromptJobTable)
                 .set({

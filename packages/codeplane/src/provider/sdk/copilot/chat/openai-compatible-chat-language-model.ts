@@ -30,6 +30,18 @@ import { defaultOpenAICompatibleErrorStructure, type ProviderErrorStructure } fr
 import type { MetadataExtractor } from "./openai-compatible-metadata-extractor"
 import { prepareTools } from "./openai-compatible-prepare-tools"
 
+// Cheap necessary-condition gate before the authoritative isParsableJson:
+// streamed tool-call arguments are accumulated across many deltas and
+// isParsableJson (a full JSON.parse of the whole buffer) was run on EVERY
+// chunk — O(chunks) full parses of a growing buffer. A complete JSON
+// object/array always ends with "}"/"]" after trimming, so if it doesn't, the
+// parse can't succeed and we skip it. isParsableJson stays the source of truth,
+// so correctness is unchanged.
+function maybeCompleteJson(args: string): boolean {
+  const trimmed = args.trimEnd()
+  return trimmed.endsWith("}") || trimmed.endsWith("]")
+}
+
 export type OpenAICompatibleChatConfig = {
   provider: string
   headers: () => Record<string, string | undefined>
@@ -287,7 +299,10 @@ export class OpenAICompatibleChatLanguageModel implements LanguageModelV3 {
         outputTokens: {
           total: responseBody.usage?.completion_tokens ?? undefined,
           text: undefined,
-          reasoning: responseBody.usage?.completion_tokens_details?.reasoning_tokens ?? undefined,
+          reasoning:
+            responseBody.usage?.completion_tokens_details?.reasoning_tokens ??
+            responseBody.usage?.reasoning_tokens ??
+            undefined,
         },
         raw: responseBody.usage ?? undefined,
       },
@@ -409,7 +424,11 @@ export class OpenAICompatibleChatLanguageModel implements LanguageModelV3 {
                 unified: "error",
                 raw: undefined,
               }
-              controller.enqueue({ type: "error", error: value.error.message })
+              // Enqueue the structured error (not just its message string) so
+              // parseStreamError can classify context-overflow / quota / etc.
+              // by code — matching the responses transform. A bare message
+              // string carries no code and was never classified.
+              controller.enqueue({ type: "error", error: value.error })
               return
             }
 
@@ -434,8 +453,9 @@ export class OpenAICompatibleChatLanguageModel implements LanguageModelV3 {
               usage.promptTokens = prompt_tokens ?? undefined
               usage.completionTokens = completion_tokens ?? undefined
               usage.totalTokens = total_tokens ?? undefined
-              if (completion_tokens_details?.reasoning_tokens != null) {
-                usage.completionTokensDetails.reasoningTokens = completion_tokens_details?.reasoning_tokens
+              const reasoningTokens = completion_tokens_details?.reasoning_tokens ?? value.usage.reasoning_tokens
+              if (reasoningTokens != null) {
+                usage.completionTokensDetails.reasoningTokens = reasoningTokens
               }
               if (completion_tokens_details?.accepted_prediction_tokens != null) {
                 usage.completionTokensDetails.acceptedPredictionTokens =
@@ -582,7 +602,7 @@ export class OpenAICompatibleChatLanguageModel implements LanguageModelV3 {
 
                     // check if tool call is complete
                     // (some providers send the full tool call in one chunk):
-                    if (isParsableJson(toolCall.function.arguments)) {
+                    if (maybeCompleteJson(toolCall.function.arguments) && isParsableJson(toolCall.function.arguments)) {
                       controller.enqueue({
                         type: "tool-input-end",
                         id: toolCall.id,
@@ -624,6 +644,7 @@ export class OpenAICompatibleChatLanguageModel implements LanguageModelV3 {
                 if (
                   toolCall.function?.name != null &&
                   toolCall.function?.arguments != null &&
+                  maybeCompleteJson(toolCall.function.arguments) &&
                   isParsableJson(toolCall.function.arguments)
                 ) {
                   controller.enqueue({
@@ -728,6 +749,10 @@ const openaiCompatibleTokenUsageSchema = z
     prompt_tokens: z.number().nullish(),
     completion_tokens: z.number().nullish(),
     total_tokens: z.number().nullish(),
+    // Some OpenAI-compatible providers (incl. GitHub Copilot for certain models)
+    // report reasoning at the usage top level rather than nested under
+    // completion_tokens_details — capture it as a fallback so it isn't dropped.
+    reasoning_tokens: z.number().nullish(),
     prompt_tokens_details: z
       .object({
         cached_tokens: z.number().nullish(),

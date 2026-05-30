@@ -36,12 +36,19 @@ export type NetworkOptions = InferredOptionTypes<typeof options>
 export function withNetworkOptions<T>(yargs: Argv<T>) {
   return yargs.options(options)
 }
+// Detect an explicitly-passed flag in BOTH `--flag value` and `--flag=value`
+// forms. Plain process.argv.includes("--port") missed the equals syntax, so
+// `--port=8080` was treated as "not set" and the config value overrode the CLI.
+function flagSet(name: string) {
+  return process.argv.some((a) => a === name || a.startsWith(name + "="))
+}
+
 export async function resolveNetworkOptions(args: NetworkOptions) {
-  const portExplicitlySet = process.argv.includes("--port")
-  const hostnameExplicitlySet = process.argv.includes("--hostname")
-  const mdnsExplicitlySet = process.argv.includes("--mdns")
-  const mdnsDomainExplicitlySet = process.argv.includes("--mdns-domain")
-  const corsExplicitlySet = process.argv.includes("--cors")
+  const portExplicitlySet = flagSet("--port")
+  const hostnameExplicitlySet = flagSet("--hostname")
+  const mdnsExplicitlySet = flagSet("--mdns")
+  const mdnsDomainExplicitlySet = flagSet("--mdns-domain")
+  const corsExplicitlySet = flagSet("--cors")
   if (portExplicitlySet && hostnameExplicitlySet && !mdnsExplicitlySet && !mdnsDomainExplicitlySet && !corsExplicitlySet) {
     return resolveNetworkOptionsNoConfig(args)
   }
@@ -51,10 +58,10 @@ export async function resolveNetworkOptions(args: NetworkOptions) {
 }
 
 export function resolveNetworkOptionsNoConfig(args: NetworkOptions, config?: Config.Info) {
-  const portExplicitlySet = process.argv.includes("--port")
-  const hostnameExplicitlySet = process.argv.includes("--hostname")
-  const mdnsExplicitlySet = process.argv.includes("--mdns")
-  const mdnsDomainExplicitlySet = process.argv.includes("--mdns-domain")
+  const portExplicitlySet = flagSet("--port")
+  const hostnameExplicitlySet = flagSet("--hostname")
+  const mdnsExplicitlySet = flagSet("--mdns")
+  const mdnsDomainExplicitlySet = flagSet("--mdns-domain")
   const mdns = mdnsExplicitlySet ? args.mdns : (config?.server?.mdns ?? args.mdns)
   const mdnsDomain = mdnsDomainExplicitlySet ? args["mdns-domain"] : (config?.server?.mdnsDomain ?? args["mdns-domain"])
   const port = portExplicitlySet ? args.port : (config?.server?.port ?? args.port)

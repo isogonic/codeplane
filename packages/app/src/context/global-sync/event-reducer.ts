@@ -79,7 +79,7 @@ function mergePendingDeltas(part: Part, pending: Record<string, string>): Part {
 // then grows again.
 const STREAMING_FIELDS = ["text"] as const
 
-function preserveStreamingFields(existing: Part, incoming: Part): Part {
+export function preserveStreamingFields(existing: Part, incoming: Part): Part {
   if (existing.type !== incoming.type) return incoming
   // Once the part has an end time, the server's snapshot is authoritative —
   // it may legitimately replace streamed text (e.g. trailing whitespace

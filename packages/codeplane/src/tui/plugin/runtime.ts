@@ -349,30 +349,20 @@ function createPluginScope(load: PluginLoad, id: string) {
     ctrl.abort()
     const queue = [...list].reverse()
     list = []
-    const until = Date.now() + DISPOSE_TIMEOUT_MS
     for (const item of queue) {
-      const left = until - Date.now()
-      if (left <= 0) {
-        fail("timed out cleaning up tui plugin", {
-          path: load.spec,
-          id,
-          timeout: DISPOSE_TIMEOUT_MS,
-        })
-        break
-      }
-
-      const out = await runCleanup(item.fn, left)
-      if (out.type === "ok") continue
+      // Each cleanup gets its own timeout and we ALWAYS continue to the next —
+      // a single slow/hung/throwing cleanup must not abandon the rest, which
+      // would leak the remaining commands/routes/slots/event handlers. (A
+      // shared budget + break previously let one stuck plugin starve all the
+      // others.)
+      const out = await runCleanup(item.fn, DISPOSE_TIMEOUT_MS)
       if (out.type === "timeout") {
         fail("timed out cleaning up tui plugin", {
           path: load.spec,
           id,
           timeout: DISPOSE_TIMEOUT_MS,
         })
-        break
-      }
-
-      if (out.type === "error") {
+      } else if (out.type === "error") {
         fail("failed to clean up tui plugin", {
           path: load.spec,
           id,

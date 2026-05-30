@@ -46,7 +46,13 @@ export function invalidateFromWatcher(event: WatcherEvent, ops: WatcherOps) {
   }
   if (kind !== "add" && kind !== "unlink") return
 
-  const parent = path.split("/").slice(0, -1).join("/")
+  // normalize() preserves native separators, so on Windows `path` may use
+  // backslashes; splitting only on "/" would treat the whole path as one
+  // segment and compute parent="" (parent dir never refreshed → tree out of
+  // sync after add/unlink). Slice at the last separator of either kind, which
+  // also preserves the separator style the tree keys by.
+  const sep = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"))
+  const parent = sep === -1 ? "" : path.slice(0, sep)
   if (!ops.isDirLoaded(parent)) return
 
   ops.refreshDir(parent)

@@ -110,7 +110,23 @@ export const WebCommand = cmd({
     // autoupdate config. Errors swallowed to keep server startup robust.
     void upgrade().catch(() => undefined)
 
+    // Graceful shutdown: the `await new Promise(() => {})` blocks forever, so
+    // the `server.stop()` below was unreachable — SIGINT/SIGTERM killed the
+    // process without stopping the cron scheduler / prompt-queue worker / mDNS /
+    // UpdateChecker (and could orphan child process groups). Mirror serve.ts.
+    let shuttingDown = false
+    const shutdown = (code = 0) => {
+      if (shuttingDown) return
+      shuttingDown = true
+      void server
+        .stop(true)
+        .catch(() => undefined)
+        .finally(() => process.exit(code))
+    }
+    for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
+      process.once(sig, () => shutdown(0))
+    }
+
     await new Promise(() => {})
-    await server.stop()
   },
 })

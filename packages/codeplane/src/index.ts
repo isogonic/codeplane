@@ -110,8 +110,13 @@ const cli = yargs(args)
       run_id: processMetadata.runID,
     })
 
-    const marker = path.join(Global.Path.data, "codeplane.db")
-    if (!(await Filesystem.exists(marker))) {
+    // Gate the one-time migration on the ACTUAL DB file the connection uses
+    // (channel-specific, e.g. codeplane-nightly.db, or a CODEPLANE_DB override),
+    // not a hardcoded "codeplane.db". The literal name is never created on
+    // non-latest channels, so the migration (and its "one time" banner) re-ran
+    // on every startup. In-memory DBs have no persistent file to mark — skip.
+    const marker = Database.Path
+    if (marker !== ":memory:" && !(await Filesystem.exists(marker))) {
       const tty = process.stderr.isTTY
       process.stderr.write("Performing one time database migration, may take a few minutes..." + EOL)
       const width = 36

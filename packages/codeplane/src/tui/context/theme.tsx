@@ -3,6 +3,7 @@ import path from "path"
 import { createEffect, createMemo, onCleanup, onMount } from "solid-js"
 import { createSimpleContext } from "./helper"
 import { Glob } from "@/tui/_compat/util/glob"
+import * as Log from "@/util/log"
 import aura from "./theme/aura.json" with { type: "json" }
 import ayu from "./theme/ayu.json" with { type: "json" }
 import catppuccin from "./theme/catppuccin.json" with { type: "json" }
@@ -546,21 +547,37 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
       process.off("SIGUSR2", refresh)
     })
 
+    // A malformed custom theme (circular / undefined color reference) makes
+    // resolveTheme throw. Inside this memo an uncaught throw escapes straight
+    // to the global ErrorBoundary and takes the WHOLE TUI down with no way to
+    // recover. Fall back to the known-good built-in instead.
+    const safeResolve = (theme: ThemeJson, label: string) => {
+      try {
+        return resolveTheme(theme, store.mode, { soften: isBuiltInTheme(theme) })
+      } catch (e) {
+        Log.Default.warn("invalid theme, falling back to opencode", {
+          theme: label,
+          error: e instanceof Error ? e.message : String(e),
+        })
+        return resolveTheme(store.themes.opencode, store.mode, { soften: true })
+      }
+    }
+
     const values = createMemo(() => {
       const active = store.themes[store.active]
       if (active) {
-        return resolveTheme(active, store.mode, { soften: isBuiltInTheme(active) })
+        return safeResolve(active, store.active)
       }
 
       const saved = kv.get("theme")
       if (typeof saved === "string") {
         const theme = store.themes[saved]
         if (theme) {
-          return resolveTheme(theme, store.mode, { soften: isBuiltInTheme(theme) })
+          return safeResolve(theme, saved)
         }
       }
 
-      return resolveTheme(store.themes.opencode, store.mode, { soften: isBuiltInTheme(store.themes.opencode) })
+      return safeResolve(store.themes.opencode, "opencode")
     })
 
     createEffect(() => {

@@ -288,7 +288,10 @@ export async function convertToOpenAIResponsesInput({
               call_id: part.toolCallId,
               output: localShellOutputSchema.parse(output.value).output,
             })
-            break
+            // `continue`, not `break`: this is inside the `for (const part of
+            // content)` loop, so `break` dropped every remaining tool-result
+            // part in the same message. Matches the upstream @ai-sdk converter.
+            continue
           }
 
           let contentValue: string

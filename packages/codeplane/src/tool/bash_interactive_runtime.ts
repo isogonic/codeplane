@@ -25,10 +25,17 @@ export function register(callID: string, entry: Omit<Active, "callID" | "output"
   })
 }
 
+// Rolling-tail cap on accumulated interactive output. Without it a long-running
+// interactive command (tail -f, a dev server, a chatty REPL) grows this buffer
+// unbounded for the life of the session. Generous enough that normal commands
+// are unaffected; only pathological output is trimmed to its most-recent tail.
+export const INTERACTIVE_OUTPUT_CAP = 2_000_000
+
 export function appendOutput(callID: string, chunk: string) {
   const entry = active.get(callID)
   if (!entry) return
   entry.output += chunk
+  if (entry.output.length > INTERACTIVE_OUTPUT_CAP) entry.output = entry.output.slice(-INTERACTIVE_OUTPUT_CAP)
 }
 
 export function get(callID: string): Active | undefined {

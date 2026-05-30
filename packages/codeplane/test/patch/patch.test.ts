@@ -190,6 +190,47 @@ PATCH`
       expect(content).toBe("line 1\nline 2 updated\nline 3\n")
     })
 
+    test("preserves CRLF line endings when updating a CRLF file", async () => {
+      const filePath = path.join(tempDir, "crlf.txt")
+      await fs.writeFile(filePath, "line 1\r\nline 2\r\nline 3\r\n")
+
+      const patchText = `*** Begin Patch
+*** Update File: ${filePath}
+@@
+ line 1
+-line 2
++line 2 updated
+ line 3
+*** End Patch`
+
+      const result = await Patch.applyPatch(patchText)
+      expect(result.modified).toHaveLength(1)
+
+      const content = await fs.readFile(filePath, "utf-8")
+      // The edit applied AND every newline stays CRLF — no mixed/corrupted
+      // endings (previously LF-only patch lines produced a mix).
+      expect(content).toBe("line 1\r\nline 2 updated\r\nline 3\r\n")
+      expect(/[^\r]\n/.test(content)).toBe(false)
+    })
+
+    test("inserts a context-anchored pure addition at the anchor, not end-of-file", async () => {
+      const filePath = path.join(tempDir, "anchored-add.txt")
+      await fs.writeFile(filePath, "alpha\nmarker\nbeta\ngamma\n")
+
+      const patchText = `*** Begin Patch
+*** Update File: ${filePath}
+@@ marker
++inserted line
+*** End Patch`
+
+      const result = await Patch.applyPatch(patchText)
+      expect(result.modified).toHaveLength(1)
+
+      const content = await fs.readFile(filePath, "utf-8")
+      // Must land right after the "marker" context line — NOT appended at EOF.
+      expect(content).toBe("alpha\nmarker\ninserted line\nbeta\ngamma\n")
+    })
+
     test("should move and update a file", async () => {
       const oldPath = path.join(tempDir, "old-name.txt")
       const newPath = path.join(tempDir, "new-name.txt")

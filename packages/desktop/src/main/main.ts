@@ -1259,6 +1259,12 @@ async function extractAsset(
     await execFileAsync("tar", ["-xzf", archivePath, "-C", destDir])
     return
   }
+  if (process.platform === "win32") {
+    // Windows has no `unzip` on PATH (spawn unzip ENOENT broke auto-update);
+    // bsdtar ships as tar.exe on Windows 10+ and extracts .zip archives.
+    await execFileAsync("tar", ["-xf", archivePath, "-C", destDir])
+    return
+  }
   await execFileAsync("unzip", ["-o", archivePath, "-d", destDir])
 }
 

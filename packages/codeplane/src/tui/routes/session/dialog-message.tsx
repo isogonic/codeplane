@@ -6,6 +6,8 @@ import { useRoute } from "@/tui/context/route"
 import * as Clipboard from "@/tui/util/clipboard"
 import type { PromptInfo } from "@/tui/component/prompt/history"
 import { strip } from "@/tui/component/prompt/part"
+import { useToast } from "@/tui/ui/toast"
+import { errorMessage } from "@/util/error"
 
 export function DialogMessage(props: {
   messageID: string
@@ -16,6 +18,7 @@ export function DialogMessage(props: {
   const sdk = useSDK()
   const message = createMemo(() => sync.data.message[props.sessionID]?.find((x) => x.id === props.messageID))
   const route = useRoute()
+  const toast = useToast()
 
   return (
     <DialogSelect
@@ -35,7 +38,7 @@ export function DialogMessage(props: {
             })
 
             if (props.setPrompt) {
-              const parts = sync.data.part[msg.id]
+              const parts = sync.data.part[msg.id] ?? []
               const promptInfo = parts.reduce(
                 (agg, part) => {
                   if (part.type === "text") {
@@ -60,7 +63,7 @@ export function DialogMessage(props: {
             const msg = message()
             if (!msg) return
 
-            const parts = sync.data.part[msg.id]
+            const parts = sync.data.part[msg.id] ?? []
             const text = parts.reduce((agg, part) => {
               if (part.type === "text" && !part.synthetic) {
                 agg += part.text
@@ -81,9 +84,20 @@ export function DialogMessage(props: {
               sessionID: props.sessionID,
               messageID: props.messageID,
             })
+            // A failed fork left result.data undefined; result.data!.id then
+            // crashed with an unhandled rejection. Surface a toast and bail.
+            if (result.error || !result.data) {
+              toast.show({
+                variant: "error",
+                message: `Failed to fork session: ${errorMessage(result.error)}`,
+                duration: 5000,
+              })
+              dialog.clear()
+              return
+            }
             const msg = message()
             const prompt = msg
-              ? sync.data.part[msg.id].reduce(
+              ? (sync.data.part[msg.id] ?? []).reduce(
                   (agg, part) => {
                     if (part.type === "text") {
                       if (!part.synthetic) agg.input += part.text
@@ -95,7 +109,7 @@ export function DialogMessage(props: {
                 )
               : undefined
             route.navigate({
-              sessionID: result.data!.id,
+              sessionID: result.data.id,
               type: "session",
               prompt,
             })

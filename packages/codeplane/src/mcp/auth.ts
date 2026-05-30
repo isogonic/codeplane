@@ -1,8 +1,13 @@
 import path from "path"
 import z from "zod"
 import { Global } from "../global"
-import { Effect, Layer, Context } from "effect"
+import { Effect, Layer, Context, Semaphore } from "effect"
 import { AppFileSystem } from "@codeplane-ai/shared/filesystem"
+
+// Single global mcp-auth.json ⇒ one process-wide lock serializes its writes,
+// so concurrent OAuth connections (multiple MCP servers authing in parallel)
+// don't read-modify-write over each other and lose tokens/registrations.
+const writeLock = Semaphore.makeUnsafe(1)
 
 export const Tokens = z.object({
   accessToken: z.string(),
@@ -76,32 +81,46 @@ export const layer = Layer.effect(
       return entry
     })
 
+    // Serialize the whole read-modify-write under one lock so concurrent
+    // mutators (set/remove/updateField/clearField) can't clobber each other.
+    const mutate = (fn: (data: Record<string, Entry>) => void) =>
+      writeLock.withPermits(1)(
+        Effect.gen(function* () {
+          const data = yield* all()
+          fn(data)
+          yield* fs.writeJson(filepath(), data, 0o600).pipe(Effect.orDie)
+        }),
+      )
+
     const set = Effect.fn("McpAuth.set")(function* (mcpName: string, entry: Entry, serverUrl?: string) {
-      const data = yield* all()
       if (serverUrl) entry.serverUrl = serverUrl
-      yield* fs.writeJson(filepath(), { ...data, [mcpName]: entry }, 0o600).pipe(Effect.orDie)
+      yield* mutate((data) => {
+        data[mcpName] = entry
+      })
     })
 
     const remove = Effect.fn("McpAuth.remove")(function* (mcpName: string) {
-      const data = yield* all()
-      delete data[mcpName]
-      yield* fs.writeJson(filepath(), data, 0o600).pipe(Effect.orDie)
+      yield* mutate((data) => {
+        delete data[mcpName]
+      })
     })
 
     const updateField = <K extends keyof Entry>(field: K, spanName: string) =>
       Effect.fn(`McpAuth.${spanName}`)(function* (mcpName: string, value: NonNullable<Entry[K]>, serverUrl?: string) {
-        const entry = (yield* get(mcpName)) ?? {}
-        entry[field] = value
-        yield* set(mcpName, entry, serverUrl)
+        yield* mutate((data) => {
+          const entry = data[mcpName] ?? {}
+          entry[field] = value
+          if (serverUrl) entry.serverUrl = serverUrl
+          data[mcpName] = entry
+        })
       })
 
     const clearField = <K extends keyof Entry>(field: K, spanName: string) =>
       Effect.fn(`McpAuth.${spanName}`)(function* (mcpName: string) {
-        const entry = yield* get(mcpName)
-        if (entry) {
-          delete entry[field]
-          yield* set(mcpName, entry)
-        }
+        yield* mutate((data) => {
+          const entry = data[mcpName]
+          if (entry) delete entry[field]
+        })
       })
 
     const updateTokens = updateField("tokens", "updateTokens")

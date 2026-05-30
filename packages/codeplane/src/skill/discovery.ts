@@ -80,15 +80,36 @@ export const layer: Layer.Layer<Service, never, AppFileSystem.Service | Path.Pat
           return true
         })
 
+        // skill.name and file come from the remote index.json (untrusted host).
+        // path.join(cache, "../../etc/...") would escape the cache dir and let a
+        // malicious registry write arbitrary files. Only accept destinations
+        // contained within the cache root.
+        const cacheRoot = path.resolve(cache)
+        const within = (target: string) => {
+          const resolved = path.resolve(target)
+          return resolved === cacheRoot || resolved.startsWith(cacheRoot + path.sep)
+        }
+
         const dirs = yield* Effect.forEach(
           list,
           (skill) =>
             Effect.gen(function* () {
               const root = path.join(cache, skill.name)
+              if (!within(root)) {
+                log.warn("skipping skill with unsafe name", { url: index, skill: skill.name })
+                return null
+              }
 
               yield* Effect.forEach(
                 skill.files,
-                (file) => download(new URL(file, `${host}/${skill.name}/`).href, path.join(root, file)),
+                (file) => {
+                  const dest = path.join(root, file)
+                  if (!within(dest)) {
+                    log.warn("skipping skill file with unsafe path", { url: index, skill: skill.name, file })
+                    return Effect.void
+                  }
+                  return download(new URL(file, `${host}/${skill.name}/`).href, dest)
+                },
                 {
                   concurrency: fileConcurrency,
                 },

@@ -312,8 +312,12 @@ async function pickSchedule(
           )
           return
         }
-        dialog.clear()
+        // settle BEFORE clear: dialog.clear() synchronously fires the picker's
+        // onClose (settle(null)). Because settle resolves once, doing it after
+        // clear() lets null win and the chosen schedule is discarded — so no
+        // scheduled task could ever be created.
         settle(preset.schedule)
+        dialog.clear()
       },
     }))
     // CRITICAL: pass the second arg (onClose) so escape / dialog.clear
@@ -363,8 +367,10 @@ function CustomScheduleStep(props: { theme: ReturnType<typeof useTheme>["theme"]
         const schedule: Schedule = intervalMs
           ? { kind: "interval", intervalMs }
           : { kind: "cron", expression: trimmed }
-        dialog.clear()
+        // onPicked (settle) BEFORE clear, otherwise dialog.clear()'s
+        // onClose=settle(null) wins and the entered schedule is discarded.
         props.onPicked(schedule)
+        dialog.clear()
       }}
       onCancel={() => {
         dialog.clear()

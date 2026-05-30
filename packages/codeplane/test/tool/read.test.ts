@@ -114,6 +114,21 @@ describe("tool.read external_directory permission", () => {
     }),
   )
 
+  it.live("does not split a surrogate pair at the line-truncation boundary", () =>
+    Effect.gen(function* () {
+      const dir = yield* tmpdirScoped()
+      // 1999 ASCII chars then a 2-code-unit emoji then more text: the old
+      // UTF-16 substring(0, 2000) cut between the surrogate halves, orphaning
+      // one surrogate that became U+FFFD when the output was UTF-8 encoded.
+      const longLine = "a".repeat(1999) + "😀" + "trailing-content"
+      yield* put(path.join(dir, "long.txt"), longLine)
+
+      const result = yield* exec(dir, { filePath: path.join(dir, "long.txt") })
+      expect(result.output).not.toContain("�")
+      expect(result.output).toContain("😀")
+    }),
+  )
+
   it.live("allows reading file in subdirectory inside project directory", () =>
     Effect.gen(function* () {
       const dir = yield* tmpdirScoped()

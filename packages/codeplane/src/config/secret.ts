@@ -2,10 +2,13 @@ export * as ConfigSecret from "./secret"
 
 import path from "path"
 import { AppFileSystem } from "@codeplane-ai/shared/filesystem"
-import { Context, Effect, Layer } from "effect"
+import { Context, Effect, Layer, Semaphore } from "effect"
 import { applyEdits, modify, parse as parseJsonc } from "jsonc-parser"
 import { Global } from "@/global"
 import { Filesystem } from "@/util"
+
+// Single global secrets file ⇒ one process-wide lock serializes its writes.
+const setLock = Semaphore.makeUnsafe(1)
 
 const INVALID_SEGMENT = /[^a-z0-9._-]+/g
 const EDGE_SEPARATOR = /^[._-]+|[._-]+$/g
@@ -75,13 +78,20 @@ export const layer = Layer.effect(
     const fs = yield* AppFileSystem.Service
 
     const set = Effect.fn("ConfigSecret.set")(function* (name: string, value: string) {
-      const normalized = assertName(name)
-      const target = filepath()
-      const exists = yield* fs.existsSafe(target)
-      const before = exists ? yield* fs.readFileString(target).pipe(Effect.orDie) : ""
-      const base = before.trim() ? before : `${HEADER}{}\n`
-      const next = applyEdits(base, modify(base, [normalized], value, { formattingOptions: FORMATTING }))
-      yield* fs.writeWithDirs(target, next, 0o600).pipe(Effect.orDie)
+      // Serialize the read-modify-write. secretizeUnknown extracts secrets with
+      // `concurrency: "unbounded"`, so without this every concurrent set reads
+      // the same `before` and last-write-wins dropped all but one secret.
+      yield* setLock.withPermits(1)(
+        Effect.gen(function* () {
+          const normalized = assertName(name)
+          const target = filepath()
+          const exists = yield* fs.existsSafe(target)
+          const before = exists ? yield* fs.readFileString(target).pipe(Effect.orDie) : ""
+          const base = before.trim() ? before : `${HEADER}{}\n`
+          const next = applyEdits(base, modify(base, [normalized], value, { formattingOptions: FORMATTING }))
+          yield* fs.writeWithDirs(target, next, 0o600).pipe(Effect.orDie)
+        }),
+      )
     })
 
     return Service.of({ set })

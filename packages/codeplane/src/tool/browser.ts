@@ -272,6 +272,12 @@ async function createCDPSession(): Promise<CDPSession> {
     ws.onclose = () => {
       session.closed = true
       if (activeSession.current === session) activeSession.current = null
+      // Reject any in-flight commands so the tool fails fast instead of stalling
+      // until the 120s tool timeout when the page/browser closes mid-command.
+      for (const { reject } of session.pending.values()) {
+        reject(new Error("CDP WebSocket closed before command completed"))
+      }
+      session.pending.clear()
     }
   })
 }
@@ -362,8 +368,13 @@ async function captureBrowserScreenshot(
   if (params.fullPage) {
     const metrics = await sendCommand(session, "Page.getLayoutMetrics")
     const content = metrics.cssContentSize ?? metrics.contentSize
-    const fullWidth = Math.ceil(Math.max(width, content?.width ?? width))
-    const fullHeight = Math.ceil(Math.max(height, content?.height ?? height))
+    // Bound the full-page capture: a page reporting a pathological contentSize
+    // (infinite scroll, huge canvas) would otherwise allocate a multi-GB
+    // bitmap. Generous enough for real long pages; bounded for the rest.
+    const MAX_FULL_WIDTH = 4096
+    const MAX_FULL_HEIGHT = 16384
+    const fullWidth = Math.min(MAX_FULL_WIDTH, Math.ceil(Math.max(width, content?.width ?? width)))
+    const fullHeight = Math.min(MAX_FULL_HEIGHT, Math.ceil(Math.max(height, content?.height ?? height)))
     const { data } = await sendCommand(session, "Page.captureScreenshot", {
       format: "png",
       clip: { x: 0, y: 0, width: fullWidth, height: fullHeight, scale: 1 },

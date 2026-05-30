@@ -197,8 +197,12 @@ const discoverSkills = Effect.fnUntraced(function* (
 })
 
 const loadSkills = Effect.fnUntraced(function* (state: State, discovered: DiscoveryState, bus: Bus.Interface) {
+  // Sequential, not unbounded: add() ends with a last-write-wins assignment to
+  // state.skills[name], so under unbounded concurrency the winner for a
+  // duplicate skill name was whichever file read happened to finish last —
+  // non-deterministic. Loading in discovery order makes precedence stable.
   yield* Effect.forEach(discovered.matches, (match) => add(state, match, bus), {
-    concurrency: "unbounded",
+    concurrency: 1,
     discard: true,
   })
 

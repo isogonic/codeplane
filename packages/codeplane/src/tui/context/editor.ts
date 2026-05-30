@@ -150,24 +150,32 @@ export const { use: useEditorContext, provider: EditorContextProvider } = create
           scheduleReconnect()
           return
         }
-        zedSelection ??= resolveZedSelection(dbPath, directory)
-          .then((result) => {
-            if (closed || socket) return
-            if (result.type === "unavailable") return
-            const selection = result.type === "selection" ? result.selection : undefined
-            const key = editorSelectionKey(selection)
-            if (key !== lastZedSelectionKey) {
-              lastZedSelectionKey = key
-              setStore("selection", selection)
-              setStore("status", selection ? "connected" : "disabled")
-            }
-          })
-          .catch(() => {
-            // Keep the last known Zed selection for transient polling failures.
-          })
-          .finally(() => {
-            zedSelection = undefined
-          })
+        if (!zedSelection) {
+          // Capture the directory this poll was started for. If the user
+          // switches directories before it resolves, drop the result — else
+          // the previous directory's Zed selection briefly flashes in the new
+          // one (reconnectWithDirectory already cleared it; this in-flight poll
+          // would otherwise re-set the stale value).
+          const pollDirectory = directory
+          zedSelection = resolveZedSelection(dbPath, directory)
+            .then((result) => {
+              if (closed || socket || directory !== pollDirectory) return
+              if (result.type === "unavailable") return
+              const selection = result.type === "selection" ? result.selection : undefined
+              const key = editorSelectionKey(selection)
+              if (key !== lastZedSelectionKey) {
+                lastZedSelectionKey = key
+                setStore("selection", selection)
+                setStore("status", selection ? "connected" : "disabled")
+              }
+            })
+            .catch(() => {
+              // Keep the last known Zed selection for transient polling failures.
+            })
+            .finally(() => {
+              zedSelection = undefined
+            })
+        }
         scheduleZedPoll()
         return
       }

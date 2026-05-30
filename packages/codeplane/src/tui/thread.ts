@@ -158,6 +158,13 @@ export const TuiThreadCommand = cmd({
       }
 
       const client = Rpc.client<typeof rpc>(worker)
+      // If the worker crashes or exits, every in-flight RPC call (and every TUI
+      // HTTP request routed through it in internal mode) would otherwise hang
+      // forever. Fail them so the TUI surfaces an error instead of freezing.
+      const failPending = (reason: string) => () => client.rejectAll(new Error(reason))
+      worker.addEventListener("error", failPending("worker crashed"))
+      worker.addEventListener("messageerror", failPending("worker message deserialization failed"))
+      worker.addEventListener("close", failPending("worker exited"))
       const error = (e: unknown) => {
         Log.Default.error("process error", { error: errorMessage(e) })
       }

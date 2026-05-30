@@ -1,5 +1,7 @@
 import type { AssistantMessage, Message, Part } from "@/tui/_compat/sdk-v2"
 import type { TuiPlugin, TuiPluginApi, TuiPluginModule } from "@codeplane-ai/plugin/tui"
+import { localeIntl } from "@codeplane-ai/shared/locale"
+import { tuiLocale } from "@/tui/i18n"
 import { createMemo } from "solid-js"
 
 const id = "internal:sidebar-context"
@@ -159,7 +161,7 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
       <text fg={theme().text}>
         <b>Context</b>
       </text>
-      <text fg={theme().textMuted}>{state().tokens.toLocaleString()} tokens</text>
+      <text fg={theme().textMuted}>{state().tokens.toLocaleString(localeIntl[tuiLocale])} tokens</text>
       <text fg={theme().textMuted}>{state().percent ?? 0}% used</text>
       <text fg={theme().textMuted}>{money.format(cost())} spent</text>
       {(() => {

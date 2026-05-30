@@ -121,7 +121,18 @@ export const WebFetchTool = Tool.define(
             }
           }
 
-          const content = new TextDecoder().decode(arrayBuffer)
+          // Decode using the response's declared charset, not always UTF-8 — a
+          // legacy/regional page (ISO-8859-1, windows-1252, shift_jis, …) would
+          // otherwise come back as mojibake (U+FFFD). Falls back to UTF-8 for an
+          // absent or unsupported label (TextDecoder throws on unknown labels).
+          const charsetMatch = /charset\s*=\s*"?([^\s;"]+)/i.exec(contentType)
+          const charsetLabel = charsetMatch?.[1]?.toLowerCase()
+          let content: string
+          try {
+            content = new TextDecoder(charsetLabel || "utf-8").decode(arrayBuffer)
+          } catch {
+            content = new TextDecoder("utf-8").decode(arrayBuffer)
+          }
 
           // Handle content based on requested format and actual content type
           switch (params.format) {
@@ -154,30 +165,34 @@ export const WebFetchTool = Tool.define(
   }),
 )
 
+const EXCLUDED_TEXT_TAGS = ["script", "style", "noscript", "iframe", "object", "embed"]
+
 async function extractTextFromHTML(html: string) {
   let text = ""
-  let skipContent = false
+  // Depth counter, not a boolean: the old boolean was reset to false by ANY
+  // non-excluded child element, so e.g. a <div> inside <script>/<object> leaked
+  // its text (and nested-excluded counting was wrong). onEndTag decrements when
+  // the excluded element actually closes.
+  let skipDepth = 0
 
   const rewriter = new HTMLRewriter()
-    .on("script, style, noscript, iframe, object, embed", {
-      element() {
-        skipContent = true
-      },
-      text() {
-        // Skip text content inside these elements
-      },
-    })
     .on("*", {
       element(element) {
-        // Reset skip flag when entering other elements
-        if (!["script", "style", "noscript", "iframe", "object", "embed"].includes(element.tagName)) {
-          skipContent = false
+        if (EXCLUDED_TEXT_TAGS.includes(element.tagName)) {
+          skipDepth++
+          try {
+            element.onEndTag(() => {
+              skipDepth--
+            })
+          } catch {
+            // Void/self-closing element (e.g. <embed>) has no end tag and no
+            // nested content — undo the increment immediately.
+            skipDepth--
+          }
         }
       },
       text(input) {
-        if (!skipContent) {
-          text += input.text
-        }
+        if (skipDepth === 0) text += input.text
       },
     })
     .transform(new Response(html))

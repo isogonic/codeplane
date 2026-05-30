@@ -22,8 +22,10 @@ const CRON_TASKS_STALE_MS = 5_000
 const CRON_RUNS_STALE_MS = 3_000
 const CRON_SIDEBAR_GC_MS = 60_000
 
-function formatTimestamp(ms: number): string {
-  return new Date(ms).toLocaleTimeString([], {
+function formatTimestamp(ms: number, locale?: string): string {
+  // Pass the user's configured locale so the clock matches it (e.g. 24h for
+  // de-DE) instead of following the browser/OS default via the empty `[]`.
+  return new Date(ms).toLocaleTimeString(locale ? [locale] : [], {
     hour: "2-digit",
     minute: "2-digit",
   })
@@ -243,6 +245,7 @@ const CronSessionRow = (props: {
   startedAt: number
   sequence: number
 }): JSX.Element => {
+  const language = useLanguage()
   const slug = createMemo(() => base64Encode(props.taskDirectory))
   const path = createMemo(() => `/cron/worktree/${slug()}/session/${props.sessionID}`)
   const href = createMemo(() => {
@@ -287,7 +290,7 @@ const CronSessionRow = (props: {
           {props.taskName}
         </span>
         <span class="text-12-regular text-text-weak truncate">
-          {formatTimestamp(props.startedAt)}
+          {formatTimestamp(props.startedAt, language.intl())}
         </span>
       </span>
     </div>

@@ -11,7 +11,7 @@ import { FileWatcher } from "../file/watcher"
 import { Format } from "../format"
 import { AppFileSystem } from "@codeplane-ai/shared/filesystem"
 import { Instance } from "../project/instance"
-import { trimDiff } from "./edit"
+import { trimDiff, lock } from "./edit"
 import { assertExternalDirectoryEffect } from "./external-directory"
 import * as Bom from "@/util/bom"
 
@@ -42,35 +42,45 @@ export const WriteTool = Tool.define(
             : path.join(Instance.directory, params.filePath)
           yield* assertExternalDirectoryEffect(ctx, filepath)
 
-          const exists = yield* fs.existsSafe(filepath)
-          const source = exists ? yield* Bom.readFile(fs, filepath) : { bom: false, text: "" }
-          const next = Bom.split(params.content)
-          const desiredBom = source.bom || next.bom
-          const contentOld = source.text
-          const contentNew = next.text
+          // Hold the same per-file lock edit.ts uses across the whole
+          // read-modify-write so concurrent edit/write to the same path (from
+          // parallel sub-agents) serialize instead of racing and losing edits.
+          let exists = false
+          let finalDiff = ""
+          let lineDiff: ReturnType<typeof diffLines> = []
+          yield* lock(filepath).withPermits(1)(
+            Effect.gen(function* () {
+              exists = yield* fs.existsSafe(filepath)
+              const source = exists ? yield* Bom.readFile(fs, filepath) : { bom: false, text: "" }
+              const next = Bom.split(params.content)
+              const desiredBom = source.bom || next.bom
+              const contentOld = source.text
+              const contentNew = next.text
 
-          const diff = trimDiff(createTwoFilesPatch(filepath, filepath, contentOld, contentNew))
-          yield* ctx.ask({
-            permission: "edit",
-            patterns: [path.relative(Instance.worktree, filepath)],
-            always: ["*"],
-            metadata: {
-              filepath,
-              diff,
-            },
-          })
+              const diff = trimDiff(createTwoFilesPatch(filepath, filepath, contentOld, contentNew))
+              yield* ctx.ask({
+                permission: "edit",
+                patterns: [path.relative(Instance.worktree, filepath)],
+                always: ["*"],
+                metadata: {
+                  filepath,
+                  diff,
+                },
+              })
 
-          yield* fs.writeWithDirs(filepath, Bom.join(contentNew, desiredBom))
-          const formattedContent = (yield* format.file(filepath))
-            ? yield* Bom.syncFile(fs, filepath, desiredBom)
-            : contentNew
-          const finalDiff = trimDiff(createTwoFilesPatch(filepath, filepath, contentOld, formattedContent))
-          const lineDiff = diffLines(contentOld, formattedContent)
-          yield* bus.publish(File.Event.Edited, { file: filepath })
-          yield* bus.publish(FileWatcher.Event.Updated, {
-            file: filepath,
-            event: exists ? "change" : "add",
-          })
+              yield* fs.writeWithDirs(filepath, Bom.join(contentNew, desiredBom))
+              const formattedContent = (yield* format.file(filepath))
+                ? yield* Bom.syncFile(fs, filepath, desiredBom)
+                : contentNew
+              finalDiff = trimDiff(createTwoFilesPatch(filepath, filepath, contentOld, formattedContent))
+              lineDiff = diffLines(contentOld, formattedContent)
+              yield* bus.publish(File.Event.Edited, { file: filepath })
+              yield* bus.publish(FileWatcher.Event.Updated, {
+                file: filepath,
+                event: exists ? "change" : "add",
+              })
+            }).pipe(Effect.orDie),
+          )
 
           let output = "Wrote file successfully."
           yield* lsp.touchFile(filepath, "document")

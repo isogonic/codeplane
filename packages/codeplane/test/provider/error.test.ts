@@ -121,4 +121,30 @@ describe("parseStreamError", () => {
     expect(parsed.isRetryable).toBe(false)
     expect(parsed.message).toContain("5 minute")
   })
+
+  // Flat provider error shape (no `type:"error"` wrapper) — what the Copilot
+  // chat/responses transforms now enqueue. Previously dropped by the gate.
+  test("classifies a flat context_length_exceeded error (keyed by type) as context overflow", () => {
+    const parsed = parseStreamError({ type: "context_length_exceeded", message: "Input too long for model" })
+    expect(parsed?.type).toBe("context_overflow")
+  })
+
+  test("classifies a flat insufficient_quota error (keyed by code) non-retryable", () => {
+    const parsed = parseStreamError({ code: "insufficient_quota", message: "no quota" })
+    expect(parsed?.type).toBe("api_error")
+    if (parsed?.type !== "api_error") throw new Error("expected api_error")
+    expect(parsed.isRetryable).toBe(false)
+  })
+
+  test("classifies a flat usage_limit_reached error with reset hint non-retryable", () => {
+    const parsed = parseStreamError({ type: "usage_limit_reached", message: "limit", resets_in_seconds: 300 })
+    expect(parsed?.type).toBe("api_error")
+    if (parsed?.type !== "api_error") throw new Error("expected api_error")
+    expect(parsed.isRetryable).toBe(false)
+    expect(parsed.message).toContain("5 minute")
+  })
+
+  test("returns undefined for a non-error body with no known code", () => {
+    expect(parseStreamError({ type: "server.connected", properties: {} })).toBeUndefined()
+  })
 })
