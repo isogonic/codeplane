@@ -56,6 +56,7 @@ import {
   focusTerminalById,
   shouldFocusTerminalOnKeyDown,
 } from "@/pages/session/helpers"
+import { orderCompactionTurnsChronologically } from "@/pages/session/compaction-order"
 import { MessageTimeline } from "@/pages/session/message-timeline"
 import { type DiffStyle, SessionReviewTab, type SessionReviewTabProps } from "@/pages/session/review-tab"
 import { SessionActivityTab } from "@/pages/session/session-activity-tab"
@@ -565,7 +566,8 @@ export default function Page() {
     () => {
       const revert = revertMessageID()
       const base = revert ? userMessages().filter((m) => m.id < revert) : userMessages()
-      return collapseEmptyCompactionTurns(base, sync.data.part, messages())
+      const collapsed = collapseEmptyCompactionTurns(base, sync.data.part, messages())
+      return orderCompactionTurnsChronologically(collapsed, sync.data.part)
     },
     emptyUserMessages,
     {
