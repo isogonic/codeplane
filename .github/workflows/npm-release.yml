@@ -129,6 +129,62 @@ jobs:
           CODEPLANE_PUBLISH_NPM_ONLY: "1"
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Update Homebrew formula
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN || github.token }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          # Configure git for commits
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+          # Clone the tap repo
+          TAP_DIR=$(mktemp -d)
+          git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/isogonic/homebrew-tap.git" "$TAP_DIR"
+          cd "$TAP_DIR"
+
+          # Download each platform package and compute SHA256
+          PLATFORMS=(
+            "codeplane-darwin-arm64"
+            "codeplane-darwin-x64"
+            "codeplane-linux-arm64"
+            "codeplane-linux-x64"
+          )
+
+          declare -A SHAS
+          for platform in "${PLATFORMS[@]}"; do
+            url="https://registry.npmjs.org/${platform}/-/${platform}-${VERSION}.tgz"
+            curl -fsSL -o "/tmp/${platform}.tgz" "$url"
+            SHAS[$platform]=$(sha256sum "/tmp/${platform}.tgz" | awk '{print $1}')
+          done
+
+          # Update the formula
+          FORMULA="Formula/codeplane.rb"
+          sed -i "s/version \".*\"/version \"${VERSION}\"/" "$FORMULA"
+
+          for platform in "${PLATFORMS[@]}"; do
+            sed -i "s|${platform}-[0-9.]*\.tgz|${platform}-${VERSION}.tgz|" "$FORMULA"
+            sed -i "s|sha256 \"[^\"]*\"|sha256 \"${SHAS[$platform]}\"|" "$FORMULA"
+          done
+
+          # Commit and push
+          git add "$FORMULA"
+          if git diff --cached --quiet; then
+            echo "No formula changes needed"
+            exit 0
+          fi
+          git commit -m "codeplane ${VERSION}"
+          for attempt in 1 2 3; do
+            if git push origin main; then
+              break
+            fi
+            sleep $((attempt * 5))
+            git pull --rebase origin main
+          done
+
       - name: Sync GitHub release body
         shell: bash
         env:
