@@ -58,7 +58,7 @@ jobs:
         run: |
           set -euo pipefail
           # Get the version from packages/shared/src/version.ts
-          VERSION=$(grep -oP 'VERSION = "\K[^"]+' packages/shared/src/version.ts || echo "0.0.0")
+          VERSION=$(grep -oP 'CodeplaneVersion = "\K[^"]+' packages/shared/src/version.ts || echo "0.0.0")
           SHA_SHORT=$(git rev-parse --short HEAD)
           PREVIEW_VERSION="${VERSION}-${PREVIEW_CHANNEL}.${SHA_SHORT}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
