@@ -10,6 +10,7 @@ import { Flag } from "@/flag/flag"
 import { basicAuth } from "hono/basic-auth"
 import { cors } from "hono/cors"
 import { compress } from "hono/compress"
+import { createHash, timingSafeEqual } from "node:crypto"
 import * as AuthRateLimit from "./rate-limit"
 
 const log = Log.create({ service: "server" })
@@ -81,11 +82,59 @@ async function sleepUntilAtLeast(startedAt: number, minMs: number): Promise<void
   await new Promise<void>((resolve) => setTimeout(resolve, minMs - elapsed))
 }
 
+// Constant-time Basic Auth check used only by the /global/auth discovery
+// probe. Mirrors hono's basicAuth compare path (SHA-256 digest +
+// timing-safe equal) so the probe can't be used as a faster oracle than
+// the real gate. Returns false for any malformed / missing header.
+function checkBasicCredentials(header: string | undefined, username: string, password: string): boolean {
+  if (!header) return false
+  const match = /^Basic\s+(.+)$/i.exec(header.trim())
+  if (!match) return false
+  let decoded: string
+  try {
+    decoded = Buffer.from(match[1], "base64").toString("utf8")
+  } catch {
+    return false
+  }
+  const index = decoded.indexOf(":")
+  if (index === -1) return false
+  const user = decoded.slice(0, index)
+  const pass = decoded.slice(index + 1)
+  return timingSafeStringEqual(user, username) && timingSafeStringEqual(pass, password)
+}
+
+function timingSafeStringEqual(a: string, b: string): boolean {
+  const da = createHash("sha256").update(a).digest()
+  const db = createHash("sha256").update(b).digest()
+  return da.length === db.length && timingSafeEqual(da, db)
+}
+
+// Public auth-discovery endpoint. The browser web UI hits this BEFORE it
+// has any credentials so it knows whether to render the login screen. It
+// never reveals whether a given password is correct via timing — only
+// whether the server requires authentication at all and whether the
+// presented credentials are valid. Kept deliberately tiny and side-effect
+// free so it's safe to expose ahead of the auth gate.
+const AUTH_INFO_PATH = "/global/auth"
+
 export const AuthMiddleware: MiddlewareHandler = async (c, next) => {
   // Allow CORS preflight requests to succeed without auth.
   // Browser clients sending Authorization headers will preflight with OPTIONS.
   if (c.req.method === "OPTIONS") return next()
   const password = Flag.CODEPLANE_SERVER_PASSWORD
+
+  // Auth-discovery probe. Always answers, with or without a password set,
+  // so the web UI can decide whether to show its custom login screen
+  // instead of relying on the browser's native Basic Auth popup. Replaces
+  // the legacy "let the browser pop up on 401" UX. Non-browser clients
+  // (TUI/CLI/desktop/mobile) ignore it and keep sending Basic headers.
+  if (c.req.method === "GET" && c.req.path === AUTH_INFO_PATH) {
+    if (!password) return c.json({ required: false, authenticated: true })
+    const username = Flag.CODEPLANE_SERVER_USERNAME ?? "codeplane"
+    const authenticated = checkBasicCredentials(c.req.header("authorization"), username, password)
+    return c.json({ required: true, authenticated })
+  }
+
   if (!password) return next()
   const username = Flag.CODEPLANE_SERVER_USERNAME ?? "codeplane"
   const startedAt = Date.now()
@@ -162,12 +211,14 @@ export const AuthMiddleware: MiddlewareHandler = async (c, next) => {
   } catch (err) {
     if (err instanceof HTTPException && err.status === 401) {
       if (!hadCredentials) {
-        // No-credentials 401 — just bounce the browser into the auth
-        // prompt without recording anything. Floor latency anyway so
-        // an attacker can't tell from timing whether they hit the
-        // rate-limit branch.
+        // No-credentials 401. The web UI now renders its OWN login
+        // screen (driven by the /global/auth probe), so we must NOT emit
+        // the `WWW-Authenticate: Basic` challenge that triggers the
+        // browser's native popup. Return a clean 401 without it. Floor
+        // latency anyway so an attacker can't tell from timing whether
+        // they hit the rate-limit branch.
         await sleepUntilAtLeast(startedAt, MIN_AUTH_LATENCY_MS)
-        throw err
+        return unauthorized()
       }
       const entry = AuthRateLimit.recordFailure(clientKey)
       log.warn("auth failure", {
@@ -183,9 +234,22 @@ export const AuthMiddleware: MiddlewareHandler = async (c, next) => {
       // "user lookup", "rate limit hit", and "compare failed" branches
       // would otherwise be observable.
       await sleepUntilAtLeast(startedAt, MIN_AUTH_LATENCY_MS)
+      return unauthorized()
     }
     throw err
   }
+}
+
+// 401 response WITHOUT the `WWW-Authenticate: Basic` header. Suppressing
+// that header is the whole point of the custom login UI: it stops the
+// browser from showing its built-in Basic Auth popup. Every Codeplane
+// client (web login screen, TUI, CLI, desktop, mobile) keys off the 401
+// status code and the JSON body, not the challenge header.
+function unauthorized(): Response {
+  return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    status: 401,
+    headers: { "content-type": "application/json" },
+  })
 }
 
 function clientKeyForRequest(c: Context): string {
