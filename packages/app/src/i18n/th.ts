@@ -3,6 +3,18 @@ import { dict as en } from "./en"
 type Keys = keyof typeof en
 
 const translated = {
+  "mcp.status.needs_client_registration": "ต้องมี client ID",
+  "mcp.action.authorize": "อนุญาต",
+  "mcp.action.authorizing": "กำลังอนุญาต…",
+  "mcp.action.signOut": "ออกจากระบบ",
+  "mcp.toast.authorized": "อนุญาต {{name}} แล้ว",
+  "mcp.toast.authFailed": "การอนุญาตล้มเหลว",
+  "mcp.toast.authTimeout": "การอนุญาตหมดเวลา — โปรดลองอีกครั้ง",
+  "mcp.toast.notSupported": "เซิร์ฟเวอร์นี้ไม่รองรับ OAuth",
+  "mcp.toast.needsClientId": "ต้องลงทะเบียน client",
+  "mcp.toast.signedOut": "ออกจากระบบแล้ว",
+  "mcp.toast.popupBlocked": "อนุญาตป๊อปอัปสำหรับไซต์นี้ แล้วลองอนุญาตอีกครั้ง",
+  "mcp.oauth.clientRegistrationHint": "เซิร์ฟเวอร์นี้ต้องการ client ID ที่ลงทะเบียนไว้ล่วงหน้า เพิ่ม oauth.clientId ลงในการตั้งค่าของเซิร์ฟเวอร์",
   "command.category.suggested": "แนะนำ",
   "command.category.view": "มุมมอง",
   "command.category.project": "โปรเจกต์",

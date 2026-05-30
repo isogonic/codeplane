@@ -76,6 +76,7 @@ const mcp = Layer.succeed(
     readResource: () => Effect.succeed(undefined),
     startAuth: () => Effect.die("unexpected MCP auth"),
     authenticate: () => Effect.die("unexpected MCP auth"),
+    beginAuth: () => Effect.die("unexpected MCP auth"),
     finishAuth: () => Effect.die("unexpected MCP auth"),
     removeAuth: () => Effect.void,
     supportsOAuth: () => Effect.succeed(false),

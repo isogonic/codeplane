@@ -3,7 +3,7 @@
   "info": {
     "title": "codeplane",
     "description": "codeplane api",
-    "version": "31.0.3"
+    "version": "31.1.0"
   },
   "paths": {
     "/global/cron": {
@@ -7773,6 +7773,136 @@
           {
             "lang": "js",
             "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.mcp.auth.authenticate({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/mcp/{name}/auth/begin": {
+      "post": {
+        "operationId": "mcp.auth.begin",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "redirectUri",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Begin MCP OAuth",
+        "description": "Begin an interactive OAuth flow for a remote MCP server without blocking. Returns the authorization URL for the client to open (embedded window on desktop, new tab on web/mobile); completion happens when the provider redirects back to the callback. Poll mcp.status for the result.",
+        "responses": {
+          "200": {
+            "description": "OAuth flow begun (authorization URL) or already resolved (status)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "supports": {
+                      "type": "boolean"
+                    },
+                    "authorizationUrl": {
+                      "description": "URL to open for authorization",
+                      "type": "string"
+                    },
+                    "redirectUri": {
+                      "description": "Redirect URI the provider will return to",
+                      "type": "string"
+                    },
+                    "status": {
+                      "$ref": "#/components/schemas/MCPStatus"
+                    }
+                  },
+                  "required": ["supports"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.mcp.auth.begin({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/mcp/oauth/callback": {
+      "get": {
+        "operationId": "mcp.auth.serverCallback",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "MCP OAuth callback",
+        "description": "Server-hosted OAuth redirect target. The authorization server redirects the user's browser here with ?code & ?state; this completes the matching in-flight flow (validated by the unguessable state) and renders a success/failure page. Reachable from web + mobile, unlike the 127.0.0.1 loopback callback.",
+        "responses": {
+          "200": {
+            "description": "Authorization handled (success or provider error)"
+          },
+          "400": {
+            "description": "Missing or invalid state / code"
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.mcp.auth.serverCallback({\n  ...\n})"
           }
         ]
       }
@@ -16469,6 +16599,7 @@
         "required": ["status", "error"]
       },
       "MCPStatus": {
+        "description": "Set when the flow resolved without user interaction",
         "anyOf": [
           {
             "$ref": "#/components/schemas/MCPStatusConnected"

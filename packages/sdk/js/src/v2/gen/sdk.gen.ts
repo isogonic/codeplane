@@ -85,10 +85,14 @@ import type {
   McpAuthAuthenticateErrors,
   McpAuthAuthenticateResponses,
   McpAuthAutoConnectResponses,
+  McpAuthBeginErrors,
+  McpAuthBeginResponses,
   McpAuthCallbackErrors,
   McpAuthCallbackResponses,
   McpAuthRemoveErrors,
   McpAuthRemoveResponses,
+  McpAuthServerCallbackErrors,
+  McpAuthServerCallbackResponses,
   McpAuthStartErrors,
   McpAuthStartResponses,
   McpConnectResponses,
@@ -4140,6 +4144,74 @@ export class Auth2 extends HeyApiClient {
         ...params,
       },
     )
+  }
+
+  /**
+   * Begin MCP OAuth
+   *
+   * Begin an interactive OAuth flow for a remote MCP server without blocking. Returns the authorization URL for the client to open (embedded window on desktop, new tab on web/mobile); completion happens when the provider redirects back to the callback. Poll mcp.status for the result.
+   */
+  public begin<ThrowOnError extends boolean = false>(
+    parameters: {
+      name: string
+      directory?: string
+      workspace?: string
+      redirectUri?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "name" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "query", key: "redirectUri" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<McpAuthBeginResponses, McpAuthBeginErrors, ThrowOnError>({
+      url: "/mcp/{name}/auth/begin",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * MCP OAuth callback
+   *
+   * Server-hosted OAuth redirect target. The authorization server redirects the user's browser here with ?code & ?state; this completes the matching in-flight flow (validated by the unguessable state) and renders a success/failure page. Reachable from web + mobile, unlike the 127.0.0.1 loopback callback.
+   */
+  public serverCallback<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<
+      McpAuthServerCallbackResponses,
+      McpAuthServerCallbackErrors,
+      ThrowOnError
+    >({
+      url: "/mcp/oauth/callback",
+      ...options,
+      ...params,
+    })
   }
 }
 

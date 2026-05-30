@@ -3,6 +3,18 @@ import { dict as en } from "./en"
 type Keys = keyof typeof en
 
 const translated = {
+  "mcp.status.needs_client_registration": "istemci kimliği gerekli",
+  "mcp.action.authorize": "Yetkilendir",
+  "mcp.action.authorizing": "Yetkilendiriliyor…",
+  "mcp.action.signOut": "Oturumu kapat",
+  "mcp.toast.authorized": "{{name}} yetkilendirildi",
+  "mcp.toast.authFailed": "Yetkilendirme başarısız",
+  "mcp.toast.authTimeout": "Yetkilendirme zaman aşımına uğradı — tekrar deneyin",
+  "mcp.toast.notSupported": "Bu sunucu OAuth desteklemiyor",
+  "mcp.toast.needsClientId": "İstemci kaydı gerekli",
+  "mcp.toast.signedOut": "Oturum kapatıldı",
+  "mcp.toast.popupBlocked": "Bu site için açılır pencerelere izin verin, ardından yeniden yetkilendirmeyi deneyin",
+  "mcp.oauth.clientRegistrationHint": "Bu sunucu önceden kaydedilmiş bir istemci kimliği (client ID) gerektirir. Yapılandırmasına oauth.clientId ekleyin.",
   "command.category.suggested": "Önerilen",
   "command.category.view": "Görünüm",
   "command.category.project": "Proje",

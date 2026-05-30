@@ -3,6 +3,18 @@ import { dict as en } from "./en"
 type Keys = keyof typeof en
 
 const translated = {
+  "mcp.status.needs_client_registration": "需要用戶端 ID",
+  "mcp.action.authorize": "授權",
+  "mcp.action.authorizing": "授權中…",
+  "mcp.action.signOut": "登出",
+  "mcp.toast.authorized": "已授權 {{name}}",
+  "mcp.toast.authFailed": "授權失敗",
+  "mcp.toast.authTimeout": "授權逾時 — 請再試一次",
+  "mcp.toast.notSupported": "此伺服器不支援 OAuth",
+  "mcp.toast.needsClientId": "需要註冊用戶端",
+  "mcp.toast.signedOut": "已登出",
+  "mcp.toast.popupBlocked": "請允許此網站的彈出式視窗，然後再試一次授權",
+  "mcp.oauth.clientRegistrationHint": "此伺服器需要預先註冊的用戶端 ID。請在其設定中加入 oauth.clientId。",
   "command.category.suggested": "建議",
   "command.category.view": "檢視",
   "command.category.project": "專案",

@@ -3,6 +3,18 @@ import { dict as en } from "./en"
 type Keys = keyof typeof en
 
 const translated = {
+  "mcp.status.needs_client_registration": "kræver klient-ID",
+  "mcp.action.authorize": "Godkend",
+  "mcp.action.authorizing": "Godkender…",
+  "mcp.action.signOut": "Log ud",
+  "mcp.toast.authorized": "Godkendte {{name}}",
+  "mcp.toast.authFailed": "Godkendelse mislykkedes",
+  "mcp.toast.authTimeout": "Godkendelsen fik timeout — prøv igen",
+  "mcp.toast.notSupported": "Denne server understøtter ikke OAuth",
+  "mcp.toast.needsClientId": "Klientregistrering kræves",
+  "mcp.toast.signedOut": "Logget ud",
+  "mcp.toast.popupBlocked": "Tillad pop op-vinduer for dette websted, og prøv at godkende igen",
+  "mcp.oauth.clientRegistrationHint": "Denne server kræver et forhåndsregistreret klient-ID. Tilføj oauth.clientId til dens konfiguration.",
   "command.category.suggested": "Foreslået",
   "command.category.view": "Vis",
   "command.category.project": "Projekt",

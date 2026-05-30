@@ -71,6 +71,11 @@ declare global {
         }>
         request: (permissionKey: string) => Promise<boolean>
       }
+      mcp?: {
+        authorize: (input: { name: string; authorizationUrl: string; redirectUri: string }) => Promise<
+          { ok: true } | { ok: false; error: string }
+        >
+      }
       relaunchShell?: () => Promise<{ ok: true } | { ok: false; error: string }>
       [key: string]: unknown
     }
