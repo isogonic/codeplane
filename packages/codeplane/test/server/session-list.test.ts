@@ -53,6 +53,36 @@ describe("session.list", () => {
     })
   })
 
+  test("resolves symlinked directories when filtering", async () => {
+    // Regression: a request directory that is a symlink (e.g. macOS /tmp -> /private/tmp,
+    // or a symlinked project path) must still match sessions stored under the realpath.
+    await using tmp = await tmpdir({ git: true })
+    await using linkHome = await tmpdir()
+    const link = path.join(linkHome.path, "symlinked-project")
+    await fs.symlink(tmp.path, link)
+
+    const created = await Instance.provide({
+      directory: tmp.path,
+      fn: async () => svc.create({ title: "symlink-session" }),
+    })
+
+    const viaSymlink = await Instance.provide({
+      directory: link,
+      fn: async () => [...svc.list({ directory: link })],
+    })
+    expect(viaSymlink.map((s) => s.id)).toContain(created.id)
+
+    // and the HTTP route (query param) path must agree
+    const res = await Instance.provide({
+      directory: link,
+      fn: async () =>
+        Server.Default().app.request(`/session?directory=${encodeURIComponent(link)}`),
+    })
+    expect(res.status).toBe(200)
+    const routed = (await res.json()) as SessionNs.Info[]
+    expect(routed.map((s) => s.id)).toContain(created.id)
+  })
+
   test("includes sessions created from subdirectories", async () => {
     await using tmp = await tmpdir({ git: true })
     const subdir = path.join(tmp.path, "packages", "app")

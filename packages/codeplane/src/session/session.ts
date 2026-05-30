@@ -811,8 +811,11 @@ export function* list(input?: {
   limit?: number
   archived?: boolean
 }) {
-  const directoryProjects = input?.directory ? sessionProjects() : undefined
-  const conditions: SQL[] = input?.directory ? [] : [eq(SessionTable.project_id, Instance.project.id)]
+  // Resolve symlinks so a request directory like /tmp/x matches sessions stored under
+  // the realpath /private/tmp/x (otherwise the scope filter silently returns nothing).
+  const directory = input?.directory ? AppFileSystem.resolve(input.directory) : undefined
+  const directoryProjects = directory ? sessionProjects() : undefined
+  const conditions: SQL[] = directory ? [] : [eq(SessionTable.project_id, Instance.project.id)]
 
   if (input?.workspaceID) {
     conditions.push(eq(SessionTable.workspace_id, input.workspaceID))
@@ -844,10 +847,10 @@ export function* list(input?: {
             .where(and(...conditions))
         : db.select().from(SessionTable)
     const ordered = query.orderBy(desc(SessionTable.time_updated))
-    return input?.directory ? ordered.all() : ordered.limit(limit).all()
+    return directory ? ordered.all() : ordered.limit(limit).all()
   })
-  const scoped = input?.directory
-    ? rows.filter((row) => inDirectoryScope(input.directory!, row, directoryProjects!))
+  const scoped = directory
+    ? rows.filter((row) => inDirectoryScope(directory, row, directoryProjects!))
     : rows
   for (const row of scoped.slice(0, limit)) {
     yield fromRow(row)
@@ -863,7 +866,9 @@ export function* listGlobal(input?: {
   limit?: number
   archived?: boolean
 }) {
-  const directoryProjects = input?.directory ? sessionProjects() : undefined
+  // See list(): resolve symlinks so the directory scope filter matches stored realpaths.
+  const directory = input?.directory ? AppFileSystem.resolve(input.directory) : undefined
+  const directoryProjects = directory ? sessionProjects() : undefined
   const conditions: SQL[] = []
   if (input?.roots) {
     conditions.push(isNull(SessionTable.parent_id))
@@ -892,11 +897,11 @@ export function* listGlobal(input?: {
             .where(and(...conditions))
         : db.select().from(SessionTable)
     const ordered = query.orderBy(desc(SessionTable.time_updated), desc(SessionTable.id))
-    return input?.directory ? ordered.all() : ordered.limit(limit).all()
+    return directory ? ordered.all() : ordered.limit(limit).all()
   })
 
-  const scoped = input?.directory
-    ? rows.filter((row) => inDirectoryScope(input.directory!, row, directoryProjects!)).slice(0, limit)
+  const scoped = directory
+    ? rows.filter((row) => inDirectoryScope(directory, row, directoryProjects!)).slice(0, limit)
     : rows.slice(0, limit)
   const ids = [...new Set(scoped.map((row) => row.project_id))]
   const projectMap = new Map<string, ProjectInfo>()
