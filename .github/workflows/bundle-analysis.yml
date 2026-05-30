@@ -29,7 +29,8 @@ jobs:
           cd packages/codeplane
           bun script/build.ts --skip-embed-web-ui --skip-install --single
         env:
-          CODEPLANE_VERSION: "bundle-analysis"
+          # Must be a valid semver — script/generate.ts validates it.
+          CODEPLANE_VERSION: "0.0.0"
       - name: Analyze binary
         run: |
           echo "## Bundle Analysis" >> $GITHUB_STEP_SUMMARY

@@ -20,7 +20,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
+      # The full cross-bundle build can transiently exceed the self-hosted
+      # runner's memory (OOM, exit 137). This is a reporting workflow, not a
+      # gate — keep it from hard-failing the whole pipeline if the heavy build
+      # is killed; the report still captures whatever did complete.
       - name: Measure build performance
+        continue-on-error: true
         run: |
           echo "## Performance Report" >> $GITHUB_STEP_SUMMARY
           echo "### Build Performance" >> $GITHUB_STEP_SUMMARY
@@ -31,18 +36,30 @@ jobs:
           DURATION=$(echo "$END - $START" | bc)
           echo "- CLI build time: ${DURATION}s" >> $GITHUB_STEP_SUMMARY
       - name: Measure bundle sizes
+        continue-on-error: true
         run: |
           echo "### Bundle Sizes" >> $GITHUB_STEP_SUMMARY
-          echo "- Binary: $(du -h packages/codeplane/dist/codeplane-linux-x64/bin/codeplane | awk '{print $1}')" >> $GITHUB_STEP_SUMMARY
-          echo "- TUI bundle: $(du -sh packages/codeplane/dist/codeplane-linux-x64/bin/runtime/tui/ | awk '{print $1}')" >> $GITHUB_STEP_SUMMARY
+          BIN=packages/codeplane/dist/codeplane-linux-x64/bin/codeplane
+          if [ -f "$BIN" ]; then
+            echo "- Binary: $(du -h "$BIN" | awk '{print $1}')" >> $GITHUB_STEP_SUMMARY
+            echo "- TUI bundle: $(du -sh packages/codeplane/dist/codeplane-linux-x64/bin/runtime/tui/ | awk '{print $1}')" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- Build artifact not present (build may have been resource-limited)" >> $GITHUB_STEP_SUMMARY
+          fi
       - name: Measure startup time
+        continue-on-error: true
         run: |
           echo "### Startup Performance" >> $GITHUB_STEP_SUMMARY
-          START=$(date +%s.%N)
-          ./packages/codeplane/dist/codeplane-linux-x64/bin/codeplane --version
-          END=$(date +%s.%N)
-          DURATION=$(echo "$END - $START" | bc)
-          echo "- Startup time: ${DURATION}s" >> $GITHUB_STEP_SUMMARY
+          BIN=packages/codeplane/dist/codeplane-linux-x64/bin/codeplane
+          if [ -x "$BIN" ]; then
+            START=$(date +%s.%N)
+            "$BIN" --version
+            END=$(date +%s.%N)
+            DURATION=$(echo "$END - $START" | bc)
+            echo "- Startup time: ${DURATION}s" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- Binary not available to measure startup" >> $GITHUB_STEP_SUMMARY
+          fi
       - name: Upload report
         uses: actions/upload-artifact@v4
         with:

@@ -29,7 +29,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.base || 'HEAD~1' }}
+          # actions/checkout cannot resolve a relative ref like HEAD~1 (it
+          # does a shallow fetch of a single ref). Fetch full history, then
+          # check out the parent commit explicitly.
+          ref: ${{ inputs.base || github.event.before || '' }}
+          fetch-depth: 0
+      - name: Resolve base commit
+        run: |
+          set -euo pipefail
+          if [ -z "${{ inputs.base || github.event.before || '' }}" ]; then
+            git checkout "$(git rev-parse HEAD~1)"
+          fi
       - uses: ./.github/actions/setup-bun
       - name: Build base
         run: |
@@ -40,7 +50,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-base
-          path: base-size.txt
+          path: packages/codeplane/base-size.txt
           retention-days: 1
 
   build-head:
@@ -48,7 +58,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.head || 'HEAD' }}
+          ref: ${{ inputs.head || github.sha }}
       - uses: ./.github/actions/setup-bun
       - name: Build head
         run: |
@@ -59,7 +69,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-head
-          path: head-size.txt
+          path: packages/codeplane/head-size.txt
           retention-days: 1
 
   compare:
