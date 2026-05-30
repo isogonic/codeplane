@@ -67,7 +67,6 @@ export function View(props: { api: TuiPluginApi }) {
       </text>
       <box>
         <text fg={theme().textMuted}>
-          <span style={{ fg: theme().success }}>•</span>{" "}
           <span style={{ fg: theme().text }}>
             <b>Codeplane</b>
           </span>{" "}

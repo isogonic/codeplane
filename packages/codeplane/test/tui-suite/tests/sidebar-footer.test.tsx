@@ -42,10 +42,11 @@ describe("tui-suite/sidebar-footer", () => {
         const frame = trimFrame(h.frame())
         console.log("\n----- sidebar footer (with instance) -----\n" + frame + "\n-------------------------------------------\n")
 
-        // Version line.
+        // Version line, with no leading status bullet.
         const codeplane = h.find("Codeplane")
         expect(codeplane).not.toBeNull()
         expect(h.find("28.21.22")).not.toBeNull()
+        expect(frame).not.toContain("•")
 
         // Instance name line directly below the version line.
         const instance = h.find("My Workstation")
