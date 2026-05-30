@@ -58,8 +58,16 @@ export function isSameVersion(current: string, target: string) {
   return cleanVersion(current) === cleanVersion(target)
 }
 
+export function isPreReleaseVersion(input: string) {
+  const clean = cleanVersion(input)
+  const parsed = semver.parse(clean)
+  return parsed ? parsed.prerelease.length > 0 : false
+}
+
 export function hasUpdate(current: string, latest: string) {
   if (isSameVersion(current, latest)) return false
+  // Never suggest a pre-release as an update target.
+  if (isPreReleaseVersion(latest)) return false
   const currentComparable = comparableVersion(current)
   const latestComparable = comparableVersion(latest)
   if (currentComparable && latestComparable) return semver.gt(latestComparable, currentComparable)

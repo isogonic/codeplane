@@ -18,6 +18,7 @@ import {
   isDesktopReleaseVersion,
   isMobileReleaseVersion,
   isPlatformReleaseVersion,
+  isPreReleaseVersion,
 } from "./version"
 
 const log = Log.create({ service: "installation" })
@@ -287,31 +288,39 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
 
         if (detectedMethod === "brew") {
           const formula = yield* getBrewFormula()
+          let version: string
           if (formula.includes("/")) {
             const infoJson = yield* text(["brew", "info", "--json=v2", formula])
             const info = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(BrewInfoV2))(infoJson)
             const formulaInfo = info.formulae[0]
             if (!formulaInfo) return yield* Effect.fail(new Error("No brew formula info found"))
-            return cleanVersion(formulaInfo.versions.stable)
+            version = cleanVersion(formulaInfo.versions.stable)
+          } else {
+            const response = yield* httpOk.execute(
+              HttpClientRequest.get("https://formulae.brew.sh/api/formula/codeplane.json").pipe(
+                HttpClientRequest.acceptJson,
+              ),
+            )
+            const data = yield* HttpClientResponse.schemaBodyJson(BrewFormula)(response)
+            version = cleanVersion(data.versions.stable)
           }
-          const response = yield* httpOk.execute(
-            HttpClientRequest.get("https://formulae.brew.sh/api/formula/codeplane.json").pipe(
-              HttpClientRequest.acceptJson,
-            ),
-          )
-          const data = yield* HttpClientResponse.schemaBodyJson(BrewFormula)(response)
-          return cleanVersion(data.versions.stable)
+          if (isPreReleaseVersion(version)) return yield* Effect.fail(new Error("Latest brew version is a pre-release"))
+          return version
         }
 
         if (detectedMethod === "npm" || detectedMethod === "bun" || detectedMethod === "pnpm") {
-          return yield* viewVersion(detectedMethod, `${npmPackage}@${InstallationChannel}`)
+          const version = yield* viewVersion(detectedMethod, `${npmPackage}@${InstallationChannel}`)
+          if (isPreReleaseVersion(version)) return yield* Effect.fail(new Error("Latest npm version is a pre-release"))
+          return version
         }
 
         // yarn doesn't ship its own `view` command in classic mode, so use npm
         // view to query the same registry. The package coordinates are
         // identical regardless of which client installed it.
         if (detectedMethod === "yarn") {
-          return yield* viewVersion("npm", `${npmPackage}@${InstallationChannel}`)
+          const version = yield* viewVersion("npm", `${npmPackage}@${InstallationChannel}`)
+          if (isPreReleaseVersion(version)) return yield* Effect.fail(new Error("Latest npm version is a pre-release"))
+          return version
         }
 
         if (detectedMethod === "choco") {
@@ -323,7 +332,9 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
           const data = yield* HttpClientResponse.schemaBodyJson(ChocoPackage)(response)
           const chocoEntry = data.d.results[0]
           if (!chocoEntry) return yield* Effect.fail(new Error("No choco version found"))
-          return cleanVersion(chocoEntry.Version)
+          const version = cleanVersion(chocoEntry.Version)
+          if (isPreReleaseVersion(version)) return yield* Effect.fail(new Error("Latest choco version is a pre-release"))
+          return version
         }
 
         if (detectedMethod === "scoop") {
@@ -333,7 +344,9 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
             ).pipe(HttpClientRequest.setHeaders({ Accept: "application/json" })),
           )
           const data = yield* HttpClientResponse.schemaBodyJson(ScoopManifest)(response)
-          return cleanVersion(data.version)
+          const version = cleanVersion(data.version)
+          if (isPreReleaseVersion(version)) return yield* Effect.fail(new Error("Latest scoop version is a pre-release"))
+          return version
         }
 
         const ghToken = process.env.GITHUB_TOKEN || process.env.GH_TOKEN
@@ -354,7 +367,9 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
         // 28.0.6-mobile ist verfügbar. Du nutzt 28.0.1.").
         const release = data.find((item) => !item.draft && !item.prerelease && !isPlatformReleaseVersion(item.tag_name))
         if (!release) return yield* Effect.fail(new Error("No platform-agnostic GitHub release found"))
-        return cleanVersion(release.tag_name)
+        const version = cleanVersion(release.tag_name)
+        if (isPreReleaseVersion(version)) return yield* Effect.fail(new Error("Latest GitHub release is a pre-release"))
+        return version
       }, Effect.orDie)
 
       const upgradeImpl = Effect.fn("Installation.upgrade")(function* (m: Method, target: string) {
@@ -374,6 +389,11 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
               `Mobile release targets (${target}) carry iOS / Android shell artefacts only. ` +
               `Update the Codeplane mobile app via the App Store (iOS) or Play Store (Android); ` +
               `this code path is for the CLI / web / TUI / server install.`,
+          })
+        }
+        if (isPreReleaseVersion(target)) {
+          return yield* new UpgradeFailedError({
+            stderr: `Pre-release targets (${target}) cannot be installed through the automatic update path. Install manually if you want a preview build.`,
           })
         }
         let result: { code: ChildProcessSpawner.ExitCode; stdout: string; stderr: string } | undefined
@@ -527,6 +547,7 @@ export {
   isDesktopReleaseVersion,
   isMobileReleaseVersion,
   isPlatformReleaseVersion,
+  isPreReleaseVersion,
   isSameVersion,
 } from "./version"
 export * as Installation from "."

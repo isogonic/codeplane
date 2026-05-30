@@ -521,6 +521,14 @@ export const GlobalRoutes = lazy(() =>
                     method,
                   }
                 }
+                if (Installation.isPreReleaseVersion(target)) {
+                  return {
+                    success: false as const,
+                    status: 400 as const,
+                    error: `Pre-release targets (${target}) cannot be installed through the automatic update path. Install manually if you want a preview build.`,
+                    method,
+                  }
+                }
                 if (Installation.isSameVersion(InstallationVersion, target)) {
                   return {
                     success: true as const,
