@@ -194,9 +194,8 @@ export default function Layout(props: ParentProps) {
       slug: match[1],
     }
   })
-  const colorSchemeOrder: ColorScheme[] = ["system", "light", "dark"]
-  const colorSchemeKey: Record<ColorScheme, "theme.scheme.system" | "theme.scheme.light" | "theme.scheme.dark"> = {
-    system: "theme.scheme.system",
+  const colorSchemeOrder: ColorScheme[] = ["light", "dark"]
+  const colorSchemeKey: Record<ColorScheme, "theme.scheme.light" | "theme.scheme.dark"> = {
     light: "theme.scheme.light",
     dark: "theme.scheme.dark",
   }

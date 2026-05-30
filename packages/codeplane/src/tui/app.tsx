@@ -35,7 +35,6 @@ import { useConnected } from "@/tui/component/use-connected"
 import { DialogMcp } from "@/tui/component/dialog-mcp"
 import { DialogCron } from "@/tui/component/dialog-cron"
 import { DialogStatus } from "@/tui/component/dialog-status"
-import { DialogThemeList } from "@/tui/component/dialog-theme-list"
 import { DialogHelp } from "./ui/dialog-help"
 import { CommandProvider, useCommandDialog } from "@/tui/component/dialog-command"
 import { DialogAgent } from "@/tui/component/dialog-agent"
@@ -222,7 +221,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
   const sdk = useSDK()
   const toast = useToast()
   const themeState = useTheme()
-  const { theme, mode, setMode, locked, lock, unlock } = themeState
+  const { theme, mode, setMode } = themeState
   const sync = useSync()
   const exit = useExit()
   const promptRef = usePromptRef()
@@ -614,32 +613,10 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       category: "System",
     },
     {
-      title: "Switch theme",
-      value: "theme.switch",
-      keybind: "theme_list",
-      slash: {
-        name: "themes",
-      },
-      onSelect: () => {
-        dialog.replace(() => <DialogThemeList />)
-      },
-      category: "System",
-    },
-    {
       title: mode() === "dark" ? "Switch to light mode" : "Switch to dark mode",
       value: "theme.switch_mode",
       onSelect: (dialog) => {
         setMode(mode() === "dark" ? "light" : "dark")
-        dialog.clear()
-      },
-      category: "System",
-    },
-    {
-      title: locked() ? "Unlock theme mode" : "Lock theme mode",
-      value: "theme.mode.lock",
-      onSelect: (dialog) => {
-        if (locked()) unlock()
-        else lock()
         dialog.clear()
       },
       category: "System",
