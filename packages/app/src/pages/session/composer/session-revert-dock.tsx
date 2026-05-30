@@ -32,7 +32,12 @@ export function SessionRevertDock(props: {
   const preview = createMemo(() => props.items[0]?.text ?? "")
 
   return (
-    <DockTray data-component="session-revert-dock">
+    <DockTray
+      data-component="session-revert-dock"
+      // Lifted over the todo dock via negative margin in session-composer-region;
+      // force an opaque background so the panel behind doesn't bleed through.
+      style={{ "background-color": "var(--muted)" }}
+    >
       <div
         class="pl-3 pr-2 py-2 flex items-center gap-2"
         role="button"

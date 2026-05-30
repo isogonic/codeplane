@@ -186,6 +186,11 @@ export function SessionFollowupDock(props: {
     <DockTray
       data-component="session-followup-dock"
       style={{
+        // This dock is lifted over the todo dock (negative margin + z-10 in
+        // session-composer-region). The shared tray background is only ~70%
+        // opaque, which let the todo panel text bleed through. Force a fully
+        // opaque background here so the overlap reads as a solid surface.
+        "background-color": "var(--muted)",
         "margin-bottom": "-0.875rem",
         "border-bottom-left-radius": 0,
         "border-bottom-right-radius": 0,
