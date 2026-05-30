@@ -2,7 +2,7 @@ name: ci
 
 # Essential validation pipeline — runs on every PR and push to main.
 # Covers: lint, typecheck, build (web app, site, CLI), and unit tests.
-# Designed for self-hosted runners (the repo's 12-runner fleet).
+# Uses GitHub-hosted ubuntu-latest runners for reliability.
 
 on:
   push:
