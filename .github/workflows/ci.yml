@@ -23,21 +23,21 @@ env:
 
 jobs:
   lint:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
       - run: bun lint
 
   typecheck:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
       - run: bunx turbo typecheck
 
   build:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -75,7 +75,7 @@ jobs:
         continue-on-error: ${{ matrix.name == 'desktop' || matrix.name == 'mobile' }}
 
   test:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -90,7 +90,7 @@ jobs:
   report:
     needs: [lint, typecheck, build, test]
     if: always()
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Summary
         run: |
