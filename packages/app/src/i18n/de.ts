@@ -664,7 +664,7 @@ const translated = {
   "settings.general.row.appearance.title": "Erscheinungsbild",
   "settings.general.row.appearance.description": "Anpassen, wie Codeplane auf Ihrem Gerät aussieht",
   "settings.general.row.colorScheme.title": "Farbschema",
-  "settings.general.row.colorScheme.description": "Wählen Sie, ob Codeplane dem System-, hellen oder dunklen Thema folgt",
+  "settings.general.row.colorScheme.description": "Wählen Sie zwischen hellem oder dunklem Thema",
   "settings.general.row.theme.title": "Thema",
   "settings.general.row.theme.description": "Das Thema von Codeplane anpassen.",
   "settings.general.row.font.title": "Code-Schriftart",

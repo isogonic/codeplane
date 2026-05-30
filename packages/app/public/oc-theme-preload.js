@@ -9,9 +9,11 @@
     localStorage.removeItem("codeplane-theme-css-dark")
   }
 
-  var scheme = localStorage.getItem("codeplane-color-scheme") || "system"
-  var isDark = scheme === "dark" || (scheme === "system" && matchMedia("(prefers-color-scheme: dark)").matches)
-  var mode = isDark ? "dark" : "light"
+  // Only light and dark are supported. Any other stored value (including the
+  // legacy "system" auto-follow) falls back to the default dark scheme.
+  var scheme = localStorage.getItem("codeplane-color-scheme")
+  var mode = scheme === "light" ? "light" : "dark"
+  var isDark = mode === "dark"
 
   document.documentElement.dataset.theme = themeId
   document.documentElement.dataset.colorScheme = mode

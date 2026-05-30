@@ -486,7 +486,7 @@ const translated = {
   "settings.general.row.appearance.title": "Udseende",
   "settings.general.row.appearance.description": "Tilpas hvordan Codeplane ser ud på din enhed",
   "settings.general.row.colorScheme.title": "Farveskema",
-  "settings.general.row.colorScheme.description": "Vælg om Codeplane følger systemets, lyst eller mørkt tema",
+  "settings.general.row.colorScheme.description": "Vælg mellem lyst eller mørkt tema",
   "settings.general.row.theme.title": "Tema",
   "settings.general.row.theme.description": "Tilpas hvordan Codeplane er temabestemt.",
   "settings.general.row.font.title": "Kode-skrifttype",

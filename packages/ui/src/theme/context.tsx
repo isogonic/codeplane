@@ -1,6 +1,5 @@
 import { createEffect, onMount } from "solid-js"
 import { createStore } from "solid-js/store"
-import { makeEventListener } from "@solid-primitives/event-listener"
 import { createSimpleContext } from "../context/helper"
 import oc2ThemeJson from "./themes/oc-2.json"
 import type { WebTheme } from "./types"
@@ -11,9 +10,13 @@ import type { WebTheme } from "./types"
  * The legacy multi-theme system (Dracula / Tokyonight / Catppuccin / 35
  * other themes that loaded JSON at runtime and injected `<style>` rules
  * into `<head>`) has been removed. The shared UI now ships a single
- * Logic-style monochrome design, with the actual token values living in
+ * Logic-style design, with the actual token values living in
  * `packages/ui/src/styles/shadcn.css`. This module just toggles the
  * `.dark` class on `<html>` so that file's selectors flip light ↔ dark.
+ *
+ * Only two color schemes are selectable: light and dark. The old
+ * "system"/auto-follow option was removed — a stored "system" value is
+ * migrated to the default scheme (dark) on read.
  *
  * The old API surface (`themeId()`, `themes()`, `setTheme()`,
  * `previewTheme()`, `ids()`, `name()`, `loadThemes()`, `registerTheme()`,
@@ -23,11 +26,22 @@ import type { WebTheme } from "./types"
  * single bundled theme; `themeId()` is always `"oc-2"`.
  */
 
-export type ColorScheme = "light" | "dark" | "system"
+export type ColorScheme = "light" | "dark"
 
 const STORAGE_KEY = "codeplane-color-scheme"
 const SINGLE_THEME_ID = "oc-2"
+const DEFAULT_SCHEME: ColorScheme = "dark"
 const oc2Theme = oc2ThemeJson as WebTheme
+
+/*
+ * Only light and dark are selectable. Older builds persisted "system"
+ * (auto-follow OS) — migrate any such stored value to a concrete mode so
+ * nothing outside { light, dark } leaks back into the UI.
+ */
+function normalizeScheme(value: string | null): ColorScheme {
+  if (value === "light" || value === "dark") return value
+  return DEFAULT_SCHEME
+}
 
 function read(): string | null {
   if (typeof localStorage !== "object") return null
@@ -43,11 +57,6 @@ function write(value: string): void {
   try {
     localStorage.setItem(STORAGE_KEY, value)
   } catch {}
-}
-
-function getSystemMode(): "light" | "dark" {
-  if (typeof window !== "object") return "light"
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
 }
 
 function applyMode(mode: "light" | "dark"): void {
@@ -84,8 +93,8 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
   name: "Theme",
   init: (props: { defaultTheme?: string; onThemeApplied?: (theme: WebTheme, mode: "light" | "dark") => void }) => {
     void props.defaultTheme
-    const colorScheme = (read() as ColorScheme | null) ?? "system"
-    const mode = colorScheme === "system" ? getSystemMode() : colorScheme
+    const colorScheme = normalizeScheme(read())
+    const mode = colorScheme
 
     const [store, setStore] = createStore({
       themes: { [SINGLE_THEME_ID]: oc2Theme } as Record<string, WebTheme>,
@@ -98,29 +107,18 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
 
     onMount(() => {
       purgeLegacyThemeArtifacts()
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
-      const onMedia = () => {
-        if (store.colorScheme !== "system") return
-        setStore("mode", getSystemMode())
-      }
-      makeEventListener(mediaQuery, "change", onMedia)
       applyMode(store.mode)
       props.onThemeApplied?.(oc2Theme, store.mode)
     })
 
     createEffect(() => {
-      const effective = store.previewScheme
-        ? store.previewScheme === "system"
-          ? getSystemMode()
-          : store.previewScheme
-        : store.mode
-      applyMode(effective)
+      applyMode(store.previewScheme ?? store.mode)
     })
 
     const setColorScheme = (scheme: ColorScheme) => {
       setStore("colorScheme", scheme)
       write(scheme)
-      setStore("mode", scheme === "system" ? getSystemMode() : scheme)
+      setStore("mode", scheme)
     }
 
     /* Picker / preview hooks are kept as no-ops so the rest of the
