@@ -6,13 +6,7 @@ description: |
 
 on:
   push:
-    branches: [main, "release/*"]
     tags: ["v*"]
-  pull_request:
-    branches: [main]
-    paths:
-      - "packages/codeplane/**"
-      - "packages/desktop/**"
   workflow_dispatch:
 
 permissions:

@@ -5,16 +5,6 @@ description: |
   Checks that iOS and Android builds can be generated.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "packages/mobile/**"
-      - "packages/app/**"
-  pull_request:
-    branches: [main]
-    paths:
-      - "packages/mobile/**"
-      - "packages/app/**"
   workflow_dispatch:
 
 permissions:
