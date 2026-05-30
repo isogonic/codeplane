@@ -3,7 +3,13 @@ name: npm-release
 on:
   push:
     tags:
-      - "v*"
+      # Fire only for the canonical CLI release tag (vX.Y.Z). Exclude the
+      # paired desktop/mobile tags (vX.Y.Z-desktop / vX.Y.Z-mobile) which also
+      # match "v*" but must NOT re-trigger an npm publish of an already-published
+      # immutable version. The `release: published` trigger is intentionally
+      # omitted: `gh release create` pushes the tag AND publishes the release,
+      # which would double-fire this workflow and fail on npm's immutable version.
+      - "v[0-9]+.[0-9]+.[0-9]+"
   workflow_dispatch:
     inputs:
       tag:
