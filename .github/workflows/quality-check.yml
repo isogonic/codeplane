@@ -32,7 +32,7 @@ jobs:
       - name: Check for lint errors
         run: |
           bun lint 2>&1 | tee lint-output.txt
-          if grep -q "Found.*error" lint-output.txt; then
+          if grep -qE "Found [0-9]+ error" lint-output.txt; then
             echo "::error::Lint errors found"
             exit 1
           fi
