@@ -90,10 +90,11 @@ jobs:
       fail-fast: false
       matrix:
         package: [codeplane, shared, ui, app, plugin, sdk]
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
-      - run: bun --cwd packages/${{ matrix.package }} test || echo "Tests may be flaky — not blocking prerelease"
+      - run: timeout 480s bun --cwd packages/${{ matrix.package }} test || echo "Tests may be flaky — not blocking prerelease"
         continue-on-error: true
 
   build:

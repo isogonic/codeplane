@@ -80,11 +80,12 @@ jobs:
       fail-fast: false
       matrix:
         package: [codeplane, shared, ui, app]
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bun
       - name: Test ${{ matrix.package }}
-        run: bun --cwd packages/${{ matrix.package }} test || echo "Tests may not exist for ${{ matrix.package }}"
+        run: timeout 480s bun --cwd packages/${{ matrix.package }} test || echo "Tests may not exist for ${{ matrix.package }}"
         continue-on-error: true
 
   report:
