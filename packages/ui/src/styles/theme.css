@@ -435,7 +435,23 @@
   --markdown-image-text: #63498e;
   --markdown-code-block: #67615a;
 
-  @media (prefers-color-scheme: dark) {
+  /*
+   * Dark-mode token overrides.
+   *
+   * The app toggles dark mode EXPLICITLY via the `.dark` class +
+   * `[data-color-scheme="dark"]` attribute on <html> (set by
+   * theme/context.tsx) — it never auto-follows the OS preference (the
+   * "system" option was removed; default is dark). This block used to be
+   * gated on `@media (prefers-color-scheme: dark)`, which meant ~170 of
+   * these OC-2 compatibility tokens (e.g. --surface-interactive-weak) only
+   * flipped to their dark values when the user's OS happened to also be in
+   * dark mode. When the app was in dark mode but the OS was in light mode,
+   * those tokens stayed light — e.g. a selected question option rendered a
+   * light pill with light text (unreadable). shadcn.css already keys its
+   * dark tokens off `.dark, [data-color-scheme="dark"]`; mirror that here
+   * so the two token layers stay in sync regardless of OS setting.
+   */
+  &:is(.dark, [data-color-scheme="dark"]) {
     color-scheme: dark;
     --text-mix-blend-mode: plus-lighter;
 
