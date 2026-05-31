@@ -41,6 +41,10 @@ const testHome = path.join(dir, "home")
 await fs.mkdir(testHome, { recursive: true })
 process.env["CODEPLANE_TEST_HOME"] = testHome
 
+// Unset CODEPLANE_HOME_DIR so tests use the temp directory instead of any
+// pre-set instance path (e.g. from the interactive agent's shell environment).
+delete process.env.CODEPLANE_HOME_DIR
+
 // Set test managed config directory to isolate tests from system managed settings
 const testManagedConfigDir = path.join(dir, "managed")
 process.env["CODEPLANE_TEST_MANAGED_CONFIG_DIR"] = testManagedConfigDir
