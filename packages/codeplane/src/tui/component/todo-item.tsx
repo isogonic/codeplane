@@ -1,4 +1,5 @@
 import { useTheme } from "../context/theme"
+import { isCancelled, isCompleted, isInProgress, todoStatus } from "@codeplane-ai/shared/todo-progress"
 
 export interface TodoItemProps {
   status: string
@@ -7,23 +8,13 @@ export interface TodoItemProps {
 
 export function TodoItem(props: TodoItemProps) {
   const { theme } = useTheme()
-
-  // Tolerate non-canonical casing/spacing the model may emit ("Completed",
-  // "In Progress") even though the server normalizes most paths.
-  const status = () => (props.status ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_")
   const marker = () => {
-    switch (status()) {
-      case "completed":
-        return "✓"
-      case "in_progress":
-        return "•"
-      case "cancelled":
-        return "✕"
-      default:
-        return " "
-    }
+    if (isCompleted({ status: props.status })) return "✓"
+    if (isInProgress({ status: props.status })) return "•"
+    if (isCancelled({ status: props.status })) return "✕"
+    return " "
   }
-  const fg = () => (status() === "in_progress" ? theme.warning : theme.textMuted)
+  const fg = () => (isInProgress({ status: props.status }) ? theme.warning : theme.textMuted)
 
   return (
     <box flexDirection="row" gap={0}>

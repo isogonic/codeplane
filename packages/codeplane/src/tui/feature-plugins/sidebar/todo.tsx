@@ -1,6 +1,7 @@
 import type { TuiPlugin, TuiPluginApi, TuiPluginModule } from "@codeplane-ai/plugin/tui"
 import { createMemo, For, Show, createSignal } from "solid-js"
 import { TodoItem } from "../../component/todo-item"
+import { todoProgress } from "@codeplane-ai/shared/todo-progress"
 
 const id = "internal:sidebar-todo"
 
@@ -8,6 +9,7 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
   const [open, setOpen] = createSignal(true)
   const theme = () => props.api.theme.current
   const list = createMemo(() => props.api.state.session.todo(props.session_id))
+  const progress = createMemo(() => todoProgress(list()))
   const show = createMemo(
     () => list().length > 0 && list().some((item) => item.status !== "completed" && item.status !== "cancelled"),
   )
@@ -20,7 +22,7 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
             <text fg={theme().text}>{open() ? "▼" : "▶"}</text>
           </Show>
           <text fg={theme().text}>
-            <b>Todo</b>
+            <b>Todo</b> <text fg={theme().textMuted}>{progress().done}/{progress().total}</text>
           </text>
         </box>
         <Show when={list().length <= 2 || open()}>
