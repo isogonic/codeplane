@@ -291,6 +291,7 @@ export const SessionRoutes = lazy(() =>
         z.object({
           title: z.string().optional(),
           permission: Permission.Ruleset.zod.optional(),
+          metadata: z.record(z.string(), z.unknown()).optional(),
           time: z
             .object({
               archived: z.number().nullable().optional(),
@@ -312,6 +313,12 @@ export const SessionRoutes = lazy(() =>
             yield* session.setPermission({
               sessionID,
               permission: Permission.merge(current.permission ?? [], updates.permission),
+            })
+          }
+          if (updates.metadata !== undefined) {
+            yield* session.setMetadata({
+              sessionID,
+              metadata: updates.metadata,
             })
           }
           if (updates.time && "archived" in updates.time) {

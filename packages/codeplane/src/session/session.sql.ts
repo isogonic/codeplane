@@ -38,6 +38,7 @@ export const SessionTable = sqliteTable(
     time_compacting: integer(),
     time_archived: integer(),
     cron_run_id: text().$type<CronRunID>(),
+    metadata: text({ mode: "json" }).$type<Record<string, unknown>>(),
   },
   (table) => [
     index("session_project_idx").on(table.project_id),

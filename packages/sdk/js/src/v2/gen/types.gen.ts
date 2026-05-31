@@ -1131,6 +1131,7 @@ export type Session = {
     diff?: string
   }
   cronRunID?: string
+  metadata?: Record<string, unknown>
 }
 
 export type EventSessionCreated = {
@@ -4640,6 +4641,7 @@ export type SessionCreateData = {
     permission?: PermissionRuleset
     workspaceID?: string
     cronRunID?: string
+    metadata?: Record<string, unknown>
   }
   path?: never
   query?: {
@@ -4769,6 +4771,7 @@ export type SessionUpdateData = {
   body?: {
     title?: string
     permission?: PermissionRuleset
+    metadata?: Record<string, unknown>
     time?: {
       archived?: number | null
     }

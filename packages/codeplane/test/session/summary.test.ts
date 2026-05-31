@@ -99,6 +99,7 @@ function sessionLayer(input: MessageV2.WithParts[]) {
       setTitle: unexpected,
       setArchived: unexpected,
       setPermission: unexpected,
+      setMetadata: unexpected,
       setRevert: unexpected,
       clearRevert: unexpected,
       setSummary: unexpected,

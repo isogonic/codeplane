@@ -671,12 +671,14 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
     case "@ai-sdk/gateway":
       if (model.id.includes("anthropic")) {
         if (adaptiveEfforts) {
+          const isOpus47 = model.api.id.includes("opus-4-7") || model.api.id.includes("opus-4.7")
           return Object.fromEntries(
             adaptiveEfforts.map((effort) => [
               effort,
               {
                 thinking: {
                   type: "adaptive",
+                  ...(isOpus47 ? { display: "summarized" } : {}),
                 },
                 effort,
               },
