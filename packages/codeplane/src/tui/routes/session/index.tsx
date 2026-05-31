@@ -21,7 +21,7 @@ import { useProject } from "@/tui/context/project"
 import { useSync } from "@/tui/context/sync"
 import { useEvent } from "@/tui/context/event"
 import { SplitBorder, ThinBorder } from "@/tui/component/border"
-import { Spinner } from "@/tui/component/spinner"
+import { PendingAnimation, Spinner } from "@/tui/component/spinner"
 import { MarkdownText } from "@/tui/component/markdown-text"
 import { selectedForeground, useTheme } from "@/tui/context/theme"
 import { ScrollBoxRenderable, addDefaultParsers, TextAttributes, RGBA } from "@opentui/core"
@@ -2047,11 +2047,18 @@ function InlineTool(props: {
           <Spinner color={fg()} children={props.children} />
         </Match>
         <Match when={true}>
-          <text paddingLeft={3} fg={fg()} attributes={denied() ? TextAttributes.STRIKETHROUGH : undefined}>
-            <Show fallback={<>~ {props.pending}</>} when={props.complete}>
+          <Show
+            when={props.complete}
+            fallback={
+              <box paddingLeft={3}>
+                <PendingAnimation label={props.pending} />
+              </box>
+            }
+          >
+            <text paddingLeft={3} fg={fg()} attributes={denied() ? TextAttributes.STRIKETHROUGH : undefined}>
               <span style={{ fg: props.iconColor }}>{props.icon}</span> {props.children}
-            </Show>
-          </text>
+            </text>
+          </Show>
         </Match>
       </Switch>
       <Show when={error() && !denied()}>

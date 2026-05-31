@@ -2,7 +2,7 @@ import type { TuiPlugin, TuiPluginApi, TuiPluginModule } from "@codeplane-ai/plu
 import { describeGenericToolDisplay } from "@codeplane-ai/shared/tool-display"
 import { useSyncV2 } from "@/tui/context/sync-v2"
 import { SplitBorder } from "@/tui/component/border"
-import { Spinner } from "@/tui/component/spinner"
+import { PendingAnimation, Spinner } from "@/tui/component/spinner"
 import { MarkdownText } from "@/tui/component/markdown-text"
 import { useTheme } from "@/tui/context/theme"
 import { useLocal } from "@/tui/context/local"
@@ -535,11 +535,18 @@ function InlineTool(props: {
           <Spinner color={theme.text}>{props.children}</Spinner>
         </Match>
         <Match when={true}>
-          <text paddingLeft={3} fg={props.complete ? theme.textMuted : theme.text}>
-            <Show fallback={<>~ {props.pending}</>} when={props.complete}>
+          <Show
+            when={props.complete}
+            fallback={
+              <box paddingLeft={3}>
+                <PendingAnimation label={props.pending} />
+              </box>
+            }
+          >
+            <text paddingLeft={3} fg={theme.textMuted}>
               {props.icon} {props.children}
-            </Show>
-          </text>
+            </text>
+          </Show>
         </Match>
       </Switch>
       <Show when={error() && !denied()}>
