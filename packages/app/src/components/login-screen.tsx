@@ -15,6 +15,7 @@ export function LoginScreen(props: {
   serverName: string
   error?: boolean
   busy?: boolean
+  notice?: string
   onSubmit: (input: LoginSubmit) => void
 }) {
   const language = useLanguage()
@@ -42,6 +43,13 @@ export function LoginScreen(props: {
             </p>
           </div>
         </div>
+
+        <Show when={props.notice}>
+          <div class="flex items-center gap-1.5 text-13-regular text-text-base bg-surface-base rounded-md px-3 py-2">
+            <Icon name="warning" size="x-small" />
+            <span>{props.notice}</span>
+          </div>
+        </Show>
 
         <div class="flex flex-col gap-3">
           <TextField

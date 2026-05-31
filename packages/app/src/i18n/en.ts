@@ -400,6 +400,16 @@ export const dict = {
   "login.signingIn": "Signing in…",
   "login.error": "Incorrect username or password",
   "login.hint": "Your credentials are stored only on this device.",
+  "login.expired": "Your session expired. Please sign in again to continue.",
+
+  "connect.title": "Connect to Codeplane",
+  "connect.subtitle": "Enter a server address to get started.",
+  "connect.address": "Server address",
+  "connect.placeholder": "local, an IP, or a domain",
+  "connect.hint": "Try “local”, an IP like 192.168.1.5, or a domain.",
+  "connect.signIn": "Sign in",
+  "connect.connecting": "Connecting…",
+  "connect.error": "Couldn’t reach that server. Check the address and try again.",
 
   "dialog.server.title": "Instances",
   "dialog.server.description": "Switch which Codeplane instance this app is attached to.",
