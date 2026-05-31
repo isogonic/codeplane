@@ -248,6 +248,7 @@ const mapPermissionState = (raw: string | undefined): MobilePermissionState => {
 export function createCodeplaneMobile(): CodeplaneMobileAPI {
   const platform = detectPlatform()
   const isNative = platform !== "web"
+  let nextNotifyId = 1
 
   const api: CodeplaneMobileAPI = {
     platform,
@@ -475,7 +476,7 @@ export function createCodeplaneMobile(): CodeplaneMobileAPI {
           await LocalNotifications.schedule({
             notifications: [
               {
-                id: Math.floor(Math.random() * 1e9),
+                id: nextNotifyId++,
                 title,
                 body: description ?? "",
                 extra: { href: href ?? null },

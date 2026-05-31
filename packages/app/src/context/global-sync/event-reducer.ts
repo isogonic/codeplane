@@ -413,7 +413,8 @@ export function applyDirectoryEvent(input: {
       break
     }
     case "message.part.updated": {
-      const part = (event.properties as { part: Part }).part
+      const part = (event.properties as { part?: Part }).part
+      if (!part) break
       if (SKIP_PARTS.has(part.type)) break
       // Drain any buffered deltas that arrived before this part existed.
       // The server publishes `message.part.updated` via `SyncEvent.run` whose

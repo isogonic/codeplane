@@ -1203,6 +1203,7 @@ export default function Page() {
     }
 
     if (event.key.length === 1 && event.key !== "Unidentified" && !(event.ctrlKey || event.metaKey)) {
+      if (event.isComposing || event.keyCode === 229) return
       if (composer.blocked() || isChildSession() || archived()) return
       inputRef?.focus()
     }

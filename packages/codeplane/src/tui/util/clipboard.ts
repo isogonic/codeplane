@@ -23,7 +23,7 @@ const getClipboardy = lazy(async () => {
  * the terminal emulator handle the clipboard locally.
  */
 function writeOsc52(text: string): void {
-  if (!process.stdout.isTTY) return
+  if (!process.stdout.isTTY && process.env["CODEPLANE_DISABLE_CLIPBOARD"] !== "1") return
   const base64 = Buffer.from(text).toString("base64")
   const osc52 = `\x1b]52;c;${base64}\x07`
   const passthrough = process.env["TMUX"] || process.env["STY"]

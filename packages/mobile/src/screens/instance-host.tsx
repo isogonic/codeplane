@@ -19,7 +19,15 @@ export const InstanceHostScreen: Component<{
   api: CodeplaneMobileAPI
   onBack: () => void
 }> = (props) => {
-  const title = () => props.instance.label || new URL(props.instance.url).host
+  const title = () => {
+    const url = props.instance.url
+    if (!url) return props.instance.label || ""
+    try {
+      return props.instance.label || new URL(url).host
+    } catch {
+      return props.instance.label || url
+    }
+  }
 
   return (
     <div class="flex flex-col h-full w-full">
