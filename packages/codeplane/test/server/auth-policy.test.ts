@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { evaluatePassword, config } from "../../src/server/auth-policy"
+import { evaluatePassword, evaluateTotp, config } from "../../src/server/auth-policy"
+import { generateSecret, isValidSecret } from "../../src/server/totp"
 
 describe("evaluatePassword", () => {
   test("refuses missing password when binding non-loopback", () => {
@@ -54,5 +55,30 @@ describe("evaluatePassword", () => {
     // but below the recommended).
     const v = evaluatePassword({ password: "🦄🦄🦄", username: undefined, isLocalBind: true })
     expect(v.kind).toBe("warn")
+  })
+})
+
+describe("evaluateTotp", () => {
+  const strong = "Z".repeat(config.RECOMMENDED_PASSWORD_BYTES + 4)
+
+  test("ok when no TOTP secret is set", () => {
+    const v = evaluateTotp({ totpSecret: undefined, password: strong, isValidSecret })
+    expect(v.kind).toBe("ok")
+  })
+
+  test("ok with a valid secret and a password", () => {
+    const v = evaluateTotp({ totpSecret: generateSecret(), password: strong, isValidSecret })
+    expect(v.kind).toBe("ok")
+  })
+
+  test("refuses a malformed secret", () => {
+    const v = evaluateTotp({ totpSecret: "not-base32-###", password: strong, isValidSecret })
+    expect(v.kind).toBe("refuse")
+  })
+
+  test("warns when a secret is set without a password (2FA inactive)", () => {
+    const v = evaluateTotp({ totpSecret: generateSecret(), password: undefined, isValidSecret })
+    expect(v.kind).toBe("warn")
+    if (v.kind === "warn") expect(v.message).toContain("inactive")
   })
 })

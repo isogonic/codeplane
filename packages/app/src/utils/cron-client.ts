@@ -71,10 +71,12 @@ export type CronUpdateInput = {
 }
 
 function authHeaders(server: ServerConnection.HttpBase): Record<string, string> {
-  if (!server.password) return {}
-  return {
-    Authorization: `Basic ${btoa(`${server.username ?? "codeplane"}:${server.password}`)}`,
+  const headers: Record<string, string> = {}
+  if (server.password) {
+    headers.Authorization = `Basic ${btoa(`${server.username ?? "codeplane"}:${server.password}`)}`
   }
+  if (server.otpToken) headers["x-codeplane-otp"] = server.otpToken
+  return headers
 }
 
 export type CronApiError = Error & {

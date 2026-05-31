@@ -141,11 +141,17 @@ function applyInstance(): void {
 function applyAuth(): void {
   const password = readFlagFromArgv(process.argv, "password")
   const username = readFlagFromArgv(process.argv, "username")
+  const totpSecret = readFlagFromArgv(process.argv, "totp-secret")
   if (password !== undefined && !process.env.CODEPLANE_SERVER_PASSWORD) {
     process.env.CODEPLANE_SERVER_PASSWORD = password
   }
   if (username !== undefined && !process.env.CODEPLANE_SERVER_USERNAME) {
     process.env.CODEPLANE_SERVER_USERNAME = username
+  }
+  // Second-factor secret. Like the password, an explicit env var wins so a
+  // systemd/launchd unit's secret stays in control.
+  if (totpSecret !== undefined && !process.env.CODEPLANE_SERVER_TOTP_SECRET) {
+    process.env.CODEPLANE_SERVER_TOTP_SECRET = totpSecret
   }
 }
 
