@@ -39,6 +39,7 @@ import type {
 } from "@/tui/_compat/sdk-v2"
 import { useLocal } from "@/tui/context/local"
 import { Locale } from "@/tui/_compat/locale"
+import { textValue } from "@/tui/util/text-value"
 import type { Tool } from "@/tui/_compat/tool-tool"
 import type { ReadTool } from "@/tool/read"
 import type { WriteTool } from "@/tool/write"
@@ -2186,7 +2187,7 @@ function Shell(props: ToolProps<typeof ShellTool>) {
       </Match>
       <Match when={true}>
         <InlineTool icon="$" pending="Writing command..." complete={props.input.command} part={props.part}>
-{textValue(props.input.command)}
+          {textValue(props.input.command)}
         </InlineTool>
       </Match>
     </Switch>
