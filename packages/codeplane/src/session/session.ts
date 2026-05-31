@@ -207,7 +207,9 @@ export const Info = Schema.Struct({
 })
   .annotate({ identifier: "Session" })
   .pipe(withStatics((s) => ({ zod: zod(s) })))
-export type Info = Types.DeepMutable<Schema.Schema.Type<typeof Info>>
+export type Info = Omit<Types.DeepMutable<Schema.Schema.Type<typeof Info>>, "metadata"> & {
+  metadata?: Record<string, unknown>
+}
 
 export const ProjectInfo = Schema.Struct({
   id: ProjectID,
@@ -224,7 +226,9 @@ export const GlobalInfo = Schema.Struct({
 })
   .annotate({ identifier: "GlobalSession" })
   .pipe(withStatics((s) => ({ zod: zod(s) })))
-export type GlobalInfo = Types.DeepMutable<Schema.Schema.Type<typeof GlobalInfo>>
+export type GlobalInfo = Omit<Types.DeepMutable<Schema.Schema.Type<typeof GlobalInfo>>, "metadata"> & {
+  metadata?: Record<string, unknown>
+}
 
 export const CreateInput = Schema.optional(
   Schema.Struct({
@@ -236,7 +240,10 @@ export const CreateInput = Schema.optional(
     metadata: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
   }),
 ).pipe(withStatics((s) => ({ zod: zod(s) })))
-export type CreateInput = Types.DeepMutable<Schema.Schema.Type<typeof CreateInput>>
+type CreateInputStruct = NonNullable<Types.DeepMutable<Schema.Schema.Type<typeof CreateInput>>>
+export type CreateInput =
+  | (Omit<CreateInputStruct, "metadata"> & { metadata?: Record<string, unknown> })
+  | undefined
 
 export const ForkInput = Schema.Struct({
   sessionID: SessionID,
@@ -483,7 +490,9 @@ export interface Interface {
 
 export class Service extends Context.Service<Service, Interface>()("@codeplane/Session") {}
 
-export type Patch = Types.DeepMutable<SyncEvent.Event<typeof Event.Updated>["data"]["info"]>
+export type Patch = Omit<Types.DeepMutable<SyncEvent.Event<typeof Event.Updated>["data"]["info"]>, "metadata"> & {
+  metadata?: Record<string, unknown> | null
+}
 
 const db = <T>(fn: (d: Parameters<typeof Database.use>[0] extends (trx: infer D) => any ? D : never) => T) =>
   Effect.sync(() => Database.use(fn))
