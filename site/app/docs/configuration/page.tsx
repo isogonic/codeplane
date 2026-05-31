@@ -266,7 +266,7 @@ export default function Configuration() {
           <tbody>
             <tr><td><code>share</code></td><td><code>manual</code>, <code>auto</code>, <code>disabled</code></td><td>Control public session sharing.</td></tr>
             <tr><td><code>autoupdate</code></td><td><code>true</code>, <code>false</code>, <code>notify</code></td><td>Auto-install patches or show update notifications.</td></tr>
-            <tr><td><code>commit.coauthor</code></td><td><code>true</code>, <code>false</code></td><td>Add <code>Co-Authored-By: codeplaneai[bot] &lt;287208015+codeplaneai[bot]@users.noreply.github.com&gt;</code> so GitHub shows the <a href="https://github.com/apps/codeplaneai">CodeplaneAI app</a> as a co-author.</td></tr>
+            <tr><td><code>commit.coauthor</code></td><td><code>true</code>, <code>false</code></td><td>Add <code>Co-Authored-By: codeplane-agent[bot] &lt;287208015+codeplane-agent[bot]@users.noreply.github.com&gt;</code> so GitHub shows the <a href="https://github.com/apps/codeplane-agent">codeplane-agent app</a> as a co-author.</td></tr>
             <tr><td><code>snapshot</code></td><td><code>true</code>, <code>false</code></td><td>Enable filesystem snapshots for revert/undo.</td></tr>
             <tr><td><code>tool_output.max_lines</code></td><td>positive integer</td><td>Truncate long tool output previews after this many lines.</td></tr>
             <tr><td><code>tool_output.max_bytes</code></td><td>positive integer</td><td>Truncate long tool output previews after this many bytes.</td></tr>
