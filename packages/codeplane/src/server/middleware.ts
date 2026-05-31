@@ -12,6 +12,7 @@ import { cors } from "hono/cors"
 import { compress } from "hono/compress"
 import { createHash, timingSafeEqual } from "node:crypto"
 import * as AuthRateLimit from "./rate-limit"
+import { verifyToken as verifyOtpToken } from "./totp-session"
 
 const log = Log.create({ service: "server" })
 
@@ -116,6 +117,13 @@ function timingSafeStringEqual(a: string, b: string): boolean {
 // presented credentials are valid. Kept deliberately tiny and side-effect
 // free so it's safe to expose ahead of the auth gate.
 const AUTH_INFO_PATH = "/global/auth"
+// The verify endpoint (POST) where a client trades password + TOTP code for
+// an OTP session token. Served ahead of the gate (the route validates the
+// password itself) so the client can complete the second factor.
+const AUTH_VERIFY_PATH = "/global/auth/verify"
+// Header the client uses to carry the OTP session token on every request once
+// the second factor is satisfied. WS upgrades use the `otp_token` query param.
+export const OTP_HEADER = "x-codeplane-otp"
 
 export const AuthMiddleware: MiddlewareHandler = async (c, next) => {
   // Allow CORS preflight requests to succeed without auth.
@@ -128,12 +136,35 @@ export const AuthMiddleware: MiddlewareHandler = async (c, next) => {
   // instead of relying on the browser's native Basic Auth popup. Replaces
   // the legacy "let the browser pop up on 401" UX. Non-browser clients
   // (TUI/CLI/desktop/mobile) ignore it and keep sending Basic headers.
+  const totpSecret = Flag.CODEPLANE_SERVER_TOTP_SECRET
+  const totpRequired = !!password && !!totpSecret
+
   if (c.req.method === "GET" && c.req.path === AUTH_INFO_PATH) {
-    if (!password) return c.json({ required: false, authenticated: true })
+    if (!password) return c.json({ required: false, authenticated: true, totpRequired: false })
     const username = Flag.CODEPLANE_SERVER_USERNAME ?? "codeplane"
-    const authenticated = checkBasicCredentials(c.req.header("authorization"), username, password)
-    return c.json({ required: true, authenticated })
+    const passwordOk = checkBasicCredentials(c.req.header("authorization"), username, password)
+    // `authenticated` means "fully authenticated" — password AND (if enabled)
+    // a valid second-factor session token. `totpRequired` tells the client
+    // whether to show the OTP step after the password is accepted.
+    if (!totpRequired) return c.json({ required: true, authenticated: passwordOk, totpRequired: false })
+    const otpOk =
+      passwordOk &&
+      verifyOtpToken({ token: c.req.header(OTP_HEADER), password, secret: totpSecret! })
+    return c.json({
+      required: true,
+      authenticated: otpOk,
+      totpRequired: true,
+      // Distinguish "password still needed" from "only the OTP step remains"
+      // so the UI can jump straight to the code entry after a refresh.
+      passwordValid: passwordOk,
+    })
   }
+
+  // The second-factor verify endpoint validates the password + TOTP code
+  // itself and is served ahead of this gate. Let it through untouched so the
+  // client can complete the OTP step (it can't pass the gate yet — that's the
+  // whole point). Handled by the global routes.
+  if (c.req.method === "POST" && c.req.path === AUTH_VERIFY_PATH) return next()
 
   if (!password) return next()
   const username = Flag.CODEPLANE_SERVER_USERNAME ?? "codeplane"
@@ -177,11 +208,28 @@ export const AuthMiddleware: MiddlewareHandler = async (c, next) => {
     c.req.raw.headers.set("authorization", `Basic ${c.req.query("auth_token")}`)
   }
 
+  // Second factor (TOTP) session token. The user trades their code for this
+  // token at POST /global/auth/verify; clients then carry it on every request
+  // via the OTP header, or — for WebSocket upgrades, which can't set custom
+  // headers from the browser — via the `otp_token` query param.
+  const otpToken = isWsUpgrade ? (c.req.query("otp_token") ?? c.req.header(OTP_HEADER)) : c.req.header(OTP_HEADER)
+
   // hono's basicAuth() throws HTTPException(401) on mismatch (caught by
   // ErrorMiddleware) and calls onAuthSuccess on success. We wrap it so
   // we can observe both outcomes and feed them into the rate limiter,
   // while keeping basicAuth's SHA-256 + timingSafeEqual compare path.
+  // When TOTP is enabled we interpose a second-factor check between a valid
+  // password and the protected `next()` — the password being correct is
+  // necessary but not sufficient.
   let succeeded = false
+  let needsOtp = false
+  const guardedNext = async () => {
+    if (totpRequired && !verifyOtpToken({ token: otpToken, password, secret: totpSecret! })) {
+      needsOtp = true
+      return
+    }
+    await next()
+  }
   const auth = basicAuth({
     username,
     password,
@@ -205,7 +253,16 @@ export const AuthMiddleware: MiddlewareHandler = async (c, next) => {
   const hadCredentials = !!c.req.header("authorization") || (isWsUpgrade && !!c.req.query("auth_token"))
 
   try {
-    await auth(c, next)
+    await auth(c, guardedNext)
+    // Password was correct but the second factor is missing/invalid. Return a
+    // distinct 401 body so the client knows to prompt for an OTP code rather
+    // than re-prompt the password. The password compare succeeded, so this
+    // does NOT count as a failed auth attempt against the rate limiter.
+    if (needsOtp) {
+      if (succeeded) AuthRateLimit.recordSuccess(clientKey)
+      await sleepUntilAtLeast(startedAt, MIN_AUTH_LATENCY_MS)
+      return otpRequired()
+    }
     if (succeeded) AuthRateLimit.recordSuccess(clientKey)
     return
   } catch (err) {
@@ -245,6 +302,16 @@ export const AuthMiddleware: MiddlewareHandler = async (c, next) => {
 // browser from showing its built-in Basic Auth popup. Every Codeplane
 // client (web login screen, TUI, CLI, desktop, mobile) keys off the 401
 // status code and the JSON body, not the challenge header.
+// 401 specifically for "password OK, second factor required/invalid". The
+// `totp: true` flag lets the client distinguish this from a bad password and
+// jump straight to the OTP code entry.
+function otpRequired(): Response {
+  return new Response(JSON.stringify({ error: "Two-factor authentication required", totp: true }), {
+    status: 401,
+    headers: { "content-type": "application/json" },
+  })
+}
+
 function unauthorized(): Response {
   return new Response(JSON.stringify({ error: "Unauthorized" }), {
     status: 401,

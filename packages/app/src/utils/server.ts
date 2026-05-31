@@ -20,6 +20,9 @@ export function createSdkForServer({
       Authorization: `Basic ${btoa(`${server.username ?? "codeplane"}:${server.password}`)}`,
     }
   })()
+  // Second-factor session token, sent as a custom header so the server's auth
+  // gate can satisfy the TOTP requirement without re-prompting per request.
+  const otp = server.otpToken ? { "x-codeplane-otp": server.otpToken } : undefined
   const credentials = config.credentials ?? credentialsForServer(server)
 
   return createCodeplaneClient({
@@ -29,6 +32,7 @@ export function createSdkForServer({
       ...(credentials === "include" ? { "Content-Type": "text/plain" } : {}),
       ...(config.headers instanceof Headers ? Object.fromEntries(config.headers.entries()) : config.headers),
       ...auth,
+      ...otp,
     },
     baseUrl: server.url,
   })

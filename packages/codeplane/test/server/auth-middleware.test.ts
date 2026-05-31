@@ -3,13 +3,20 @@ import { Hono } from "hono"
 import { Flag } from "../../src/flag/flag"
 import { AuthMiddleware, ErrorMiddleware } from "../../src/server/middleware"
 import * as AuthRateLimit from "../../src/server/rate-limit"
+import { issueToken as issueOtpToken } from "../../src/server/totp-session"
+import { base32Encode } from "../../src/server/totp"
 import { Log } from "../../src/util"
 
 void Log.init({ print: false })
 
+function base32EncodeAscii(ascii: string): string {
+  return base32Encode(new TextEncoder().encode(ascii))
+}
+
 const original = {
   CODEPLANE_SERVER_PASSWORD: Flag.CODEPLANE_SERVER_PASSWORD,
   CODEPLANE_SERVER_USERNAME: Flag.CODEPLANE_SERVER_USERNAME,
+  CODEPLANE_SERVER_TOTP_SECRET: Flag.CODEPLANE_SERVER_TOTP_SECRET,
 }
 
 function makeApp() {
@@ -32,6 +39,7 @@ beforeEach(() => {
 afterEach(() => {
   Flag.CODEPLANE_SERVER_PASSWORD = original.CODEPLANE_SERVER_PASSWORD
   Flag.CODEPLANE_SERVER_USERNAME = original.CODEPLANE_SERVER_USERNAME
+  Flag.CODEPLANE_SERVER_TOTP_SECRET = original.CODEPLANE_SERVER_TOTP_SECRET
   AuthRateLimit.reset()
 })
 
@@ -224,14 +232,14 @@ describe("AuthMiddleware", () => {
       Flag.CODEPLANE_SERVER_PASSWORD = undefined
       const res = await makeApp().request("/global/auth")
       expect(res.status).toBe(200)
-      expect(await res.json()).toEqual({ required: false, authenticated: true })
+      expect(await res.json()).toEqual({ required: false, authenticated: true, totpRequired: false })
     })
 
     test("reports required + unauthenticated without credentials", async () => {
       Flag.CODEPLANE_SERVER_PASSWORD = STRONG
       const res = await makeApp().request("/global/auth")
       expect(res.status).toBe(200)
-      expect(await res.json()).toEqual({ required: true, authenticated: false })
+      expect(await res.json()).toEqual({ required: true, authenticated: false, totpRequired: false })
     })
 
     test("reports required + authenticated with valid credentials", async () => {
@@ -240,7 +248,7 @@ describe("AuthMiddleware", () => {
         headers: { authorization: authHeader("codeplane", STRONG) },
       })
       expect(res.status).toBe(200)
-      expect(await res.json()).toEqual({ required: true, authenticated: true })
+      expect(await res.json()).toEqual({ required: true, authenticated: true, totpRequired: false })
     })
 
     test("reports required + unauthenticated with wrong credentials", async () => {
@@ -249,7 +257,7 @@ describe("AuthMiddleware", () => {
         headers: { authorization: authHeader("codeplane", "wrong-but-long-enough") },
       })
       expect(res.status).toBe(200)
-      expect(await res.json()).toEqual({ required: true, authenticated: false })
+      expect(await res.json()).toEqual({ required: true, authenticated: false, totpRequired: false })
     })
 
     test("honors a custom username in the discovery probe", async () => {
@@ -258,18 +266,95 @@ describe("AuthMiddleware", () => {
       const ok = await makeApp().request("/global/auth", {
         headers: { authorization: authHeader("alice", STRONG) },
       })
-      expect(await ok.json()).toEqual({ required: true, authenticated: true })
+      expect(await ok.json()).toEqual({ required: true, authenticated: true, totpRequired: false })
 
       const wrong = await makeApp().request("/global/auth", {
         headers: { authorization: authHeader("codeplane", STRONG) },
       })
-      expect(await wrong.json()).toEqual({ required: true, authenticated: false })
+      expect(await wrong.json()).toEqual({ required: true, authenticated: false, totpRequired: false })
     })
 
     test("the probe never returns a WWW-Authenticate challenge", async () => {
       Flag.CODEPLANE_SERVER_PASSWORD = STRONG
       const res = await makeApp().request("/global/auth")
       expect(res.headers.get("www-authenticate")).toBeNull()
+    })
+  })
+
+  describe("TOTP second factor", () => {
+    // A valid base32 secret (the RFC seed) so we can compute live codes.
+    const SECRET = base32EncodeAscii("12345678901234567890")
+
+    test("correct password alone is not enough when TOTP is enabled", async () => {
+      Flag.CODEPLANE_SERVER_PASSWORD = STRONG
+      Flag.CODEPLANE_SERVER_TOTP_SECRET = SECRET
+      const res = await makeApp().request("/ping", {
+        headers: { authorization: authHeader("codeplane", STRONG) },
+      })
+      expect(res.status).toBe(401)
+      const body = (await res.json()) as { totp?: boolean }
+      expect(body.totp).toBe(true)
+    })
+
+    test("password + valid OTP session token passes", async () => {
+      Flag.CODEPLANE_SERVER_PASSWORD = STRONG
+      Flag.CODEPLANE_SERVER_TOTP_SECRET = SECRET
+      const token = issueOtpToken({ password: STRONG, secret: SECRET })
+      const res = await makeApp().request("/ping", {
+        headers: { authorization: authHeader("codeplane", STRONG), "x-codeplane-otp": token },
+      })
+      expect(res.status).toBe(200)
+    })
+
+    test("rejects an OTP token minted for a different password", async () => {
+      Flag.CODEPLANE_SERVER_PASSWORD = STRONG
+      Flag.CODEPLANE_SERVER_TOTP_SECRET = SECRET
+      const token = issueOtpToken({ password: "another-strong-pass-1234", secret: SECRET })
+      const res = await makeApp().request("/ping", {
+        headers: { authorization: authHeader("codeplane", STRONG), "x-codeplane-otp": token },
+      })
+      expect(res.status).toBe(401)
+    })
+
+    test("probe reports totpRequired and passwordValid after the password", async () => {
+      Flag.CODEPLANE_SERVER_PASSWORD = STRONG
+      Flag.CODEPLANE_SERVER_TOTP_SECRET = SECRET
+      const res = await makeApp().request("/global/auth", {
+        headers: { authorization: authHeader("codeplane", STRONG) },
+      })
+      expect(await res.json()).toEqual({
+        required: true,
+        authenticated: false,
+        totpRequired: true,
+        passwordValid: true,
+      })
+    })
+
+    test("probe reports authenticated once a valid token is presented", async () => {
+      Flag.CODEPLANE_SERVER_PASSWORD = STRONG
+      Flag.CODEPLANE_SERVER_TOTP_SECRET = SECRET
+      const token = issueOtpToken({ password: STRONG, secret: SECRET })
+      const res = await makeApp().request("/global/auth", {
+        headers: { authorization: authHeader("codeplane", STRONG), "x-codeplane-otp": token },
+      })
+      expect(await res.json()).toEqual({
+        required: true,
+        authenticated: true,
+        totpRequired: true,
+        passwordValid: true,
+      })
+    })
+
+    test("OTP token query param is honored on WebSocket upgrades", async () => {
+      Flag.CODEPLANE_SERVER_PASSWORD = STRONG
+      Flag.CODEPLANE_SERVER_TOTP_SECRET = SECRET
+      const basic = Buffer.from(`codeplane:${STRONG}`).toString("base64")
+      const token = issueOtpToken({ password: STRONG, secret: SECRET })
+      const res = await makeApp().request(
+        `/pty/abc/connect?auth_token=${encodeURIComponent(basic)}&otp_token=${encodeURIComponent(token)}`,
+        { headers: { upgrade: "websocket" } },
+      )
+      expect(res.status).toBe(200)
     })
   })
 })

@@ -28,6 +28,7 @@ import { resolveCliArgs } from "./tui/dispatch"
 import { InstanceCommand } from "./cli/cmd/instance"
 import { GenerateCommand } from "./cli/cmd/generate"
 import { UpgradeCommand } from "./cli/cmd/upgrade"
+import { TotpCommand } from "./cli/cmd/totp"
 
 const processMetadata = ensureProcessMetadata("main")
 
@@ -158,6 +159,7 @@ const cli = yargs(args)
   .command(WebCommand)
   .command(TuiCommand)
   .command(InstanceCommand)
+  .command(TotpCommand)
   // Internal-only: hidden from help (describe: false). Used by the SDK
   // build pipeline (packages/sdk/js/script/build.ts) to emit the OpenAPI
   // spec for hey-api regeneration. Restored after v27.4.24's strict-4-

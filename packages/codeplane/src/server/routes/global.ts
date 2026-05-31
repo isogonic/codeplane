@@ -19,6 +19,11 @@ import { Config } from "../../config"
 import { errors } from "../error"
 import { killProc as bashInteractiveKill } from "../../tool/bash_interactive_runtime"
 import { CronRoutes } from "./cron"
+import { Flag } from "@/flag/flag"
+import { verifyCode as verifyTotpCode } from "../totp"
+import { issueToken as issueOtpToken, OTP_SESSION_TTL_MS } from "../totp-session"
+import { createHash, timingSafeEqual } from "node:crypto"
+import * as AuthRateLimit from "../rate-limit"
 
 const log = Log.create({ service: "server" })
 const configRuntime = makeRuntime(Config.Service, Config.defaultLayer)
@@ -49,6 +54,41 @@ const ReleaseNotesCache = {
     releaseNotesInflight.set(key, promise)
     return promise
   },
+}
+
+// Constant-time Basic Auth check for the /auth/verify route, which owns the
+// password compare for the second-factor exchange (it runs ahead of the auth
+// gate). Mirrors the digest+timingSafeEqual path used elsewhere.
+function checkBasicAuthHeader(header: string | undefined, username: string, password: string): boolean {
+  if (!header) return false
+  const match = /^Basic\s+(.+)$/i.exec(header.trim())
+  if (!match) return false
+  let decoded: string
+  try {
+    decoded = Buffer.from(match[1], "base64").toString("utf8")
+  } catch {
+    return false
+  }
+  const index = decoded.indexOf(":")
+  if (index === -1) return false
+  const safeEqual = (a: string, b: string) => {
+    const da = createHash("sha256").update(a).digest()
+    const db = createHash("sha256").update(b).digest()
+    return da.length === db.length && timingSafeEqual(da, db)
+  }
+  return safeEqual(decoded.slice(0, index), username) && safeEqual(decoded.slice(index + 1), password)
+}
+
+// Derive a rate-limit key from forwarded-IP headers (same trust order as the
+// auth middleware) so the verify endpoint shares the brute-force defense.
+function otpClientKey(c: Context): string {
+  const cf = c.req.header("cf-connecting-ip")
+  if (cf) return `otp:${cf.trim()}`
+  const real = c.req.header("x-real-ip")
+  if (real) return `otp:${real.trim()}`
+  const xff = c.req.header("x-forwarded-for")?.split(",")[0]?.trim()
+  if (xff) return `otp:${xff}`
+  return "otp:unknown"
 }
 
 export const GlobalDisposedEvent = BusEvent.define("global.disposed", Schema.Struct({}))
@@ -171,6 +211,58 @@ export const GlobalRoutes = lazy(() =>
       }),
       async (c) => {
         return c.json({ healthy: true, version: InstallationVersion })
+      },
+    )
+    .post(
+      "/auth/verify",
+      describeRoute({
+        summary: "Verify second factor",
+        description:
+          "Exchange a valid Basic Auth password plus a TOTP code for a short-lived second-factor session token. Returns 401 if the password is wrong, 400 if TOTP is not enabled, and 401 with { totp: true } if the code is invalid.",
+        operationId: "global.auth.verify",
+        responses: {
+          200: {
+            description: "Second-factor session token",
+            content: {
+              "application/json": {
+                schema: resolver(z.object({ token: z.string(), expiresAt: z.number() })),
+              },
+            },
+          },
+        },
+      }),
+      validator("json", z.object({ code: z.string().min(1).max(16) })),
+      async (c) => {
+        const password = Flag.CODEPLANE_SERVER_PASSWORD
+        const secret = Flag.CODEPLANE_SERVER_TOTP_SECRET
+        if (!password || !secret) {
+          return c.json({ error: "Two-factor authentication is not enabled on this server." }, 400)
+        }
+        const clientKey = otpClientKey(c)
+        const gate = AuthRateLimit.check(clientKey)
+        if (!gate.allowed) {
+          const retrySeconds = Math.max(1, Math.ceil(gate.retryAfterMs / 1000))
+          return c.json({ error: "Too many attempts. Try again later." }, 429, {
+            "retry-after": String(retrySeconds),
+          })
+        }
+        const username = Flag.CODEPLANE_SERVER_USERNAME ?? "codeplane"
+        // Re-check the password here: the verify endpoint runs ahead of the
+        // auth gate (the client can't pass the gate yet), so it owns the
+        // password compare for this request.
+        if (!checkBasicAuthHeader(c.req.header("authorization"), username, password)) {
+          AuthRateLimit.recordFailure(clientKey)
+          return c.json({ error: "Unauthorized" }, 401)
+        }
+        const code = c.req.valid("json").code
+        if (!verifyTotpCode(secret, code)) {
+          AuthRateLimit.recordFailure(clientKey)
+          log.warn("totp failure", { audit: true, client: clientKey })
+          return c.json({ error: "Invalid code", totp: true }, 401)
+        }
+        AuthRateLimit.recordSuccess(clientKey)
+        const token = issueOtpToken({ password, secret })
+        return c.json({ token, expiresAt: Date.now() + OTP_SESSION_TTL_MS })
       },
     )
     .get(

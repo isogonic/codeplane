@@ -3,7 +3,8 @@ import { cmd } from "./cmd"
 import { withNetworkOptions, resolveNetworkOptions } from "../network"
 import { Flag } from "../../flag/flag"
 import { upgrade } from "../upgrade"
-import { evaluatePassword } from "../../server/auth-policy"
+import { evaluatePassword, evaluateTotp } from "../../server/auth-policy"
+import { isValidSecret } from "../../server/totp"
 
 export const ServeCommand = cmd({
   command: "serve",
@@ -23,6 +24,11 @@ export const ServeCommand = cmd({
       .option("username", {
         type: "string",
         describe: "HTTP Basic Auth username (only used when --password is set). Defaults to 'codeplane'.",
+      })
+      .option("totp-secret", {
+        type: "string",
+        describe:
+          "Base32 TOTP secret to require a second factor (6-digit code) after the password. Equivalent to CODEPLANE_SERVER_TOTP_SECRET. Generate one with `codeplane totp generate`.",
       }),
   describe: "starts a headless codeplane server",
   handler: async (args) => {
@@ -39,6 +45,18 @@ export const ServeCommand = cmd({
     }
     if (verdict.kind === "warn") {
       console.warn("Warning:", verdict.message)
+    }
+    const totpVerdict = evaluateTotp({
+      totpSecret: Flag.CODEPLANE_SERVER_TOTP_SECRET,
+      password: Flag.CODEPLANE_SERVER_PASSWORD,
+      isValidSecret,
+    })
+    if (totpVerdict.kind === "refuse") {
+      console.error(totpVerdict.message)
+      process.exit(1)
+    }
+    if (totpVerdict.kind === "warn") {
+      console.warn("Warning:", totpVerdict.message)
     }
     const server = await Server.listen(opts)
     console.log(`codeplane server listening on http://${server.hostname}:${server.port}`)

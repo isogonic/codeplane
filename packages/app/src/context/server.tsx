@@ -63,6 +63,10 @@ export namespace ServerConnection {
     remoteUrl?: string
     username?: string
     password?: string
+    // Second-factor session token obtained from POST /global/auth/verify.
+    // Sent on every request via the `x-codeplane-otp` header so the user
+    // enters their TOTP code once per session, not per request.
+    otpToken?: string
   }
 
   // Regular web connections
@@ -155,7 +159,7 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
         // the SDK turns them into an `Authorization: Basic` header — exactly
         // the format every other Codeplane client (TUI/CLI/desktop/mobile)
         // already speaks, so this stays fully backwards compatible.
-        credentials: {} as Record<string, { username?: string; password?: string }>,
+        credentials: {} as Record<string, { username?: string; password?: string; otpToken?: string }>,
       }),
     )
 
@@ -163,11 +167,17 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
 
     const withCredentials = (conn: ServerConnection.Any): ServerConnection.Any => {
       const creds = store.credentials[ServerConnection.key(conn)]
-      if (!creds || (!creds.password && !creds.username)) return conn
+      if (!creds || (!creds.password && !creds.username && !creds.otpToken)) return conn
       // Never clobber credentials that were stored on the connection itself
-      // (e.g. a remote instance saved with an explicit username/password).
-      if (conn.http.password) return conn
-      return { ...conn, http: { ...conn.http, username: creds.username, password: creds.password } }
+      // (e.g. a remote instance saved with an explicit username/password). We
+      // still overlay the OTP token, since that's captured in-app regardless.
+      if (conn.http.password) {
+        return creds.otpToken ? { ...conn, http: { ...conn.http, otpToken: creds.otpToken } } : conn
+      }
+      return {
+        ...conn,
+        http: { ...conn.http, username: creds.username, password: creds.password, otpToken: creds.otpToken },
+      }
     }
 
     const allServers = createMemo((): Array<ServerConnection.Any> => {
@@ -261,10 +271,14 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
     // a given connection. Stored separately from the server list so it also
     // works for the embedded-origin connection (which never lives in
     // `store.list`). The credentials are overlaid by `withCredentials`.
-    function authenticate(key: ServerConnection.Key, creds: { username?: string; password?: string }) {
+    function authenticate(
+      key: ServerConnection.Key,
+      creds: { username?: string; password?: string; otpToken?: string },
+    ) {
       setStore("credentials", key, {
         username: creds.username?.trim() || undefined,
         password: creds.password,
+        otpToken: creds.otpToken,
       })
     }
 

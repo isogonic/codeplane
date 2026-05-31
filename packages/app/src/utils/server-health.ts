@@ -21,7 +21,7 @@ const healthCache = new Map<
 >()
 
 function cacheKey(server: ServerConnection.HttpBase) {
-  return `${server.url}\n${server.username ?? ""}\n${server.password ?? ""}`
+  return `${server.url}\n${server.username ?? ""}\n${server.password ?? ""}\n${server.otpToken ?? ""}`
 }
 
 function timeoutSignal(timeoutMs: number) {

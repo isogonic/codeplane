@@ -103,6 +103,33 @@ export function evaluatePassword(input: {
   return { kind: "ok" }
 }
 
+// Second-factor (TOTP) pre-boot gate. Runs alongside evaluatePassword from
+// serve/web. TOTP only adds value on top of a password, and only if the
+// secret is well-formed; otherwise the server would silently behave as if 2FA
+// were off (or refuse every login). We surface both cases loudly.
+export function evaluateTotp(input: {
+  totpSecret: string | undefined
+  password: string | undefined
+  isValidSecret: (secret: string) => boolean
+}): Verdict {
+  if (!input.totpSecret) return { kind: "ok" }
+  if (!input.isValidSecret(input.totpSecret)) {
+    return {
+      kind: "refuse",
+      message:
+        "CODEPLANE_SERVER_TOTP_SECRET is not a valid base32 TOTP secret. Generate one with `codeplane totp generate`.",
+    }
+  }
+  if (!input.password) {
+    return {
+      kind: "warn",
+      message:
+        "CODEPLANE_SERVER_TOTP_SECRET is set but CODEPLANE_SERVER_PASSWORD is not; two-factor auth is inactive (it only applies on top of a password).",
+    }
+  }
+  return { kind: "ok" }
+}
+
 export const config = {
   MIN_PASSWORD_BYTES,
   RECOMMENDED_PASSWORD_BYTES,
