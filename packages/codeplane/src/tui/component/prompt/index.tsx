@@ -1960,12 +1960,6 @@ export function Prompt(props: PromptProps) {
                   })()}
                 </box>
               </box>
-              <Show when={status().type !== "retry"}>
-                <text fg={theme.text}>
-                  {keybind.print("followup_toggle")}{" "}
-                  <span style={{ fg: followupModeColor() }}>{followupModeLabel()}</span>
-                </text>
-              </Show>
               <text fg={store.interrupt > 0 ? theme.primary : theme.text}>
                 esc{" "}
                 <span style={{ fg: store.interrupt > 0 ? theme.primary : theme.textMuted }}>
