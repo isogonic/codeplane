@@ -823,7 +823,14 @@ export const layer = Layer.effect(
             }
             perms[tool] = action
           }
-          result.permission = mergeDeep(perms, result.permission ?? {})
+          const existing = result.permission ?? {}
+          const toAdd: Record<string, ConfigPermission.Action> = {}
+          for (const [key, value] of Object.entries(perms)) {
+            if (!(key in existing)) {
+              toAdd[key] = value
+            }
+          }
+          result.permission = { ...existing, ...toAdd }
         }
 
         if (!result.username) result.username = os.userInfo().username
