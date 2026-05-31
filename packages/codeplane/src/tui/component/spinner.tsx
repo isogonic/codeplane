@@ -1,10 +1,9 @@
 import { createMemo, Show } from "solid-js"
 import { useTheme } from "../context/theme"
-import { useLocal } from "../context/local"
 import { useKV } from "../context/kv"
 import type { JSX } from "@opentui/solid"
 import type { RGBA } from "@opentui/core"
-import { createColors, createFrames } from "../ui/spinner.ts"
+import { pickPendingAnim } from "../ui/pending-anim.ts"
 import "opentui-spinner/solid"
 
 const frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
@@ -27,31 +26,22 @@ export function Spinner(props: { children?: JSX.Element; color?: RGBA }) {
 
 /**
  * Animated "pending" indicator for tools that are still running but have no
- * richer output yet. Renders the colored Knight Rider gradient scanner (the
- * same one used in the prompt footer) tinted to the active agent's color,
- * with the pending label beside it. Falls back to a static dimmed label when
- * animations are disabled.
+ * richer output yet. Cycles between three matching-palette animations
+ * (shimmer/orange, comet/purple, pulse/green) chosen stably from `seed` (a
+ * tool callID) so the same tool keeps one animation while different tools get
+ * variety. Falls back to a static dimmed label when animations are disabled.
  */
-export function PendingAnimation(props: { label: JSX.Element; color?: RGBA }) {
+export function PendingAnimation(props: { label: JSX.Element; seed?: string }) {
   const { theme } = useTheme()
-  const local = useLocal()
   const kv = useKV()
-  const color = createMemo(() => {
-    if (props.color) return props.color
-    const agent = local.agent.current()
-    return agent ? local.agent.color(agent.name) : theme.primary
-  })
-  const def = createMemo(() => {
-    const opts = { color: color(), style: "blocks" as const, width: 6, inactiveFactor: 0.5, minAlpha: 0.25 }
-    return { frames: createFrames(opts), color: createColors(opts) }
-  })
+  const def = createMemo(() => pickPendingAnim(props.seed ?? ""))
   return (
     <Show
       when={kv.get("animations_enabled", true)}
       fallback={<text fg={theme.textMuted}>⋯ {props.label}</text>}
     >
       <box flexDirection="row" gap={1} alignItems="center">
-        <spinner frames={def().frames} color={def().color} interval={60} />
+        <spinner frames={def().frames} color={def().color} interval={def().interval} />
         <text fg={theme.textMuted}>{props.label}</text>
       </box>
     </Show>

@@ -539,7 +539,7 @@ function InlineTool(props: {
             when={props.complete}
             fallback={
               <box paddingLeft={3}>
-                <PendingAnimation label={props.pending} />
+                <PendingAnimation label={props.pending} seed={props.part.id} />
               </box>
             }
           >
