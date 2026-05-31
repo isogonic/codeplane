@@ -16,51 +16,43 @@ function withAlpha(base: RGBA, a: number) {
   return RGBA.fromValues(base.r, base.g, base.b, Math.max(0, Math.min(1, a)))
 }
 
-// Comet — a bright head sweeps right leaving a fading trail, then repeats.
+// All three animations are SINGLE-GLYPH: every frame is exactly one character,
+// so the indicator occupies a single terminal cell (no horizontal width) and
+// reads as one compact animated symbol. Color is animated per-frame via the
+// ColorGenerator (charIndex is always 0). This keeps them square/compact while
+// staying distinct and agent-tinted.
+
+// Orbit — a moon-phase glyph rotates in place (purple).
 function comet(hue: string): PendingAnimDef {
   const base = RGBA.fromHex(hue)
-  const width = 7
-  const steps = width + 3
-  const frames = Array.from({ length: steps }, (_, f) =>
-    Array.from({ length: width }, (_, i) => {
-      const dist = f - i
-      if (dist === 0) return "◉"
-      if (dist > 0 && dist <= 3) return "•"
-      return "·"
-    }).join(""),
-  )
-  const color: ColorGenerator = (f, i) => {
-    const dist = f - i
-    if (dist === 0) return lighten(base, 1.15)
-    if (dist > 0 && dist <= 3) return withAlpha(base, 0.75 - dist * 0.2)
-    return withAlpha(base, 0.12)
+  const frames = ["◐", "◓", "◑", "◒"]
+  const color: ColorGenerator = (f) => {
+    // Gentle brightness shimmer as it rotates.
+    const v = (Math.sin((f / frames.length) * Math.PI * 2) + 1) / 2
+    return lighten(base, 1 + v * 0.15)
   }
-  return { key: "comet", frames, color, interval: 85, hue }
+  return { key: "comet", frames, color, interval: 110, hue }
 }
 
-// Pulse — three dots breathe in a travelling wave of brightness.
+// Pulse — a single dot breathes: grows/shrinks glyph + brightness (green).
 function pulse(hue: string): PendingAnimDef {
   const base = RGBA.fromHex(hue)
-  const steps = 14
-  const frames = Array.from({ length: steps }, () => "●●●")
-  const color: ColorGenerator = (f, i) => {
-    const v = (Math.sin((f / steps) * Math.PI * 2 - i * 0.9) + 1) / 2
-    return withAlpha(lighten(base, 1 + v * 0.15), 0.25 + v * 0.75)
+  // Different dot sizes so the single cell visibly "breathes".
+  const frames = ["·", "∙", "●", "⬤", "●", "∙"]
+  const color: ColorGenerator = (f) => {
+    const v = (Math.sin((f / frames.length) * Math.PI * 2) + 1) / 2
+    return withAlpha(lighten(base, 1 + v * 0.2), 0.4 + v * 0.6)
   }
-  return { key: "pulse", frames, color, interval: 80, hue }
+  return { key: "pulse", frames, color, interval: 110, hue }
 }
 
-// Shimmer — a solid bar with a bright glint sweeping through it.
+// Shimmer — the classic braille spinner with a bright glint (orange).
 function shimmer(hue: string): PendingAnimDef {
   const base = RGBA.fromHex(hue)
-  const width = 6
-  const steps = width + 4
-  const frames = Array.from({ length: steps }, () => "━".repeat(width))
-  const color: ColorGenerator = (f, i) => {
-    const d = Math.abs(i - (f % steps))
-    if (d === 0) return lighten(base, 1.25)
-    if (d === 1) return withAlpha(lighten(base, 1.1), 0.7)
-    return withAlpha(base, 0.3)
+  const frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+  const color: ColorGenerator = (f) => {
+    const v = (Math.sin((f / frames.length) * Math.PI * 2) + 1) / 2
+    return lighten(base, 1.05 + v * 0.2)
   }
   return { key: "shimmer", frames, color, interval: 80, hue }
 }

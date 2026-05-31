@@ -26,10 +26,12 @@ export function Spinner(props: { children?: JSX.Element; color?: RGBA }) {
 
 /**
  * Animated "pending" indicator for tools that are still running but have no
- * richer output yet. Cycles between three matching-palette animations
- * (shimmer/orange, comet/purple, pulse/green) chosen stably from `seed` (a
- * tool callID) so the same tool keeps one animation while different tools get
- * variety. Falls back to a static dimmed label when animations are disabled.
+ * richer output yet. Cycles between three matching-palette SINGLE-GLYPH
+ * animations (shimmer/orange braille spinner, orbit/purple moon, pulse/green
+ * breathing dot) chosen stably from `seed` (a tool callID) so the same tool
+ * keeps one animation while different tools get variety. Each occupies a
+ * single terminal cell. Falls back to a static dimmed label when animations
+ * are disabled.
  */
 export function PendingAnimation(props: { label: JSX.Element; seed?: string }) {
   const { theme } = useTheme()
