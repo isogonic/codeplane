@@ -13,6 +13,7 @@ import {
 } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
 import { useKeybind } from "@/tui/context/keybind"
+import { useLocal } from "@/tui/context/local"
 
 type Context = ReturnType<typeof init>
 const ctx = createContext<Context>()
@@ -164,9 +165,16 @@ export function CommandProvider(props: ParentProps) {
 
 function DialogCommand(props: { options: CommandOption[]; suggestedOptions: CommandOption[] }) {
   let ref: DialogSelectRef<string>
+  const local = useLocal()
+  // Tint the menu with the active agent/mode colour (e.g. orange for a goal
+  // agent) so the command palette matches the currently selected mode.
+  const accent = createMemo(() => {
+    const agent = local.agent.current()
+    return agent ? local.agent.color(agent.name) : undefined
+  })
   const list = () => {
     if (ref?.filter) return props.options
     return [...props.suggestedOptions, ...props.options]
   }
-  return <DialogSelect ref={(r) => (ref = r)} title="Commands" options={list()} />
+  return <DialogSelect ref={(r) => (ref = r)} title="Commands" options={list()} accent={accent()} />
 }

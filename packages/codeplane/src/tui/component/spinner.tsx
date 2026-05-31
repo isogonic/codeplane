@@ -26,24 +26,26 @@ export function Spinner(props: { children?: JSX.Element; color?: RGBA }) {
 
 /**
  * Animated "pending" indicator for tools that are still running but have no
- * richer output yet. Picks a random multi-colour braille animation (scan,
- * cascade, snake, orbit, waverows, helix, pulse, rain — ported from the
- * MIT-licensed unicode-animations project) chosen stably from `seed` (a tool
- * callID), so the same tool keeps one animation while different tools get
- * variety. Each frame shimmers through the full oc-2 palette. Falls back to a
- * static dimmed label when animations are disabled.
+ * richer output yet. Picks a random braille animation shape (scan, cascade,
+ * snake, orbit, waverows, helix, pulse, rain — ported from the MIT-licensed
+ * unicode-animations project) chosen stably from `seed` (a tool callID), so the
+ * same tool keeps one animation while different tools get variety. The whole
+ * animation is rendered in a single constant colour — the active agent/mode
+ * colour via `color` (e.g. orange for a goal agent) — not a rainbow. Falls back
+ * to a static dimmed label when animations are disabled.
  */
-export function PendingAnimation(props: { label: JSX.Element; seed?: string }) {
+export function PendingAnimation(props: { label: JSX.Element; seed?: string; color?: RGBA }) {
   const { theme } = useTheme()
   const kv = useKV()
   const def = createMemo(() => pickPendingAnim(props.seed ?? ""))
+  const color = () => props.color ?? theme.textMuted
   return (
     <Show
       when={kv.get("animations_enabled", true)}
-      fallback={<text fg={theme.textMuted}>⋯ {props.label}</text>}
+      fallback={<text fg={color()}>⋯ {props.label}</text>}
     >
       <box flexDirection="row" gap={1} alignItems="center">
-        <spinner frames={def().frames} color={def().color} interval={def().interval} />
+        <spinner frames={def().frames} color={color()} interval={def().interval} />
         <text fg={theme.textMuted}>{props.label}</text>
       </box>
     </Show>

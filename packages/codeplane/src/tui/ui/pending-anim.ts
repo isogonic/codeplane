@@ -1,18 +1,14 @@
-import { RGBA } from "@opentui/core"
-import type { ColorGenerator } from "opentui-spinner"
-
 // Braille spinner frame generators ported from the MIT-licensed
 // `unicode-animations` project by gunnargray-dev:
 //   https://github.com/gunnargray-dev/unicode-animations  (MIT)
 // Each braille char (U+2800 block) is a 2-col × 4-row dot grid; these build
-// multi-character animated frames. We pair each animation with a multi-colour
-// gradient generator so the pending indicator is lively and colourful rather
-// than a single flat hue.
+// multi-character animated frames. The animation shape is picked at random
+// (stable per tool) but rendered in a single constant colour supplied by the
+// caller — the active agent/mode colour — so it is NOT a rainbow.
 
 export interface PendingAnimDef {
   key: string
   frames: string[]
-  color: ColorGenerator
   interval: number
 }
 
@@ -190,39 +186,31 @@ function genRain(): string[] {
   return frames
 }
 
-// --- colour helpers ---
-function lerp(a: RGBA, b: RGBA, t: number) {
-  return RGBA.fromValues(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, 1)
+// All animations ported from unicode-animations (MIT). Colour is applied by
+// the caller as a single constant hue (the active agent/mode colour), so the
+// indicator animates its shape without cycling through colours.
+
+// All animations render at the same character width so the trailing label
+// never shifts when a different (randomly picked) animation is shown. Each
+// generator emits a fixed braille-char count (scan/cascade/waverows/helix/rain
+// = 4, pulse = 3, snake = 2, orbit = 1); we center-pad every frame to this
+// common width with blank braille cells (U+2800).
+const FRAME_WIDTH = 4
+const BLANK_BRAILLE = "\u2800"
+
+function padFrame(frame: string): string {
+  // Braille frames are made solely of single-code-unit U+2800-block chars, so
+  // `.length` is the exact glyph count (no surrogate pairs to worry about).
+  if (frame.length >= FRAME_WIDTH) return frame.slice(0, FRAME_WIDTH)
+  const pad = FRAME_WIDTH - frame.length
+  const left = Math.floor(pad / 2)
+  return BLANK_BRAILLE.repeat(left) + frame + BLANK_BRAILLE.repeat(pad - left)
 }
 
-// oc-2 dark palette — a cohesive multi-hue rainbow used by the gradient
-// colour generators below.
-const PALETTE = ["#8fb2d8", "#b399cf", "#88c6c9", "#75b5a6", "#d6bd78", "#d49a73", "#df6d5c"].map((h) =>
-  RGBA.fromHex(h),
-)
-
-// Sample the palette as a smooth looped gradient at position p in [0,1).
-function paletteAt(p: number): RGBA {
-  const n = PALETTE.length
-  const x = ((p % 1) + 1) % 1
-  const scaled = x * n
-  const i = Math.floor(scaled) % n
-  return lerp(PALETTE[i], PALETTE[(i + 1) % n], scaled - i)
+function uniformWidth(frames: string[]): string[] {
+  return frames.map(padFrame)
 }
 
-// Multi-colour generator: each character cell is tinted by a hue that sweeps
-// across the palette over frames AND across character columns, so the whole
-// animation shimmers through every colour. `speed` controls how fast the hue
-// advances per frame.
-function rainbow(frameCount: number, speed = 1): ColorGenerator {
-  return (f, i, _total, chars) => {
-    const colOffset = chars > 1 ? i / chars : 0
-    return paletteAt((f / frameCount) * speed + colOffset)
-  }
-}
-
-// All animations ported from unicode-animations (MIT), each paired with a
-// rainbow gradient so the pending indicator is multi-coloured.
 const ANIMS: PendingAnimDef[] = [
   { key: "scan", frames: genScan(), interval: 70 },
   { key: "cascade", frames: genCascade(), interval: 60 },
@@ -232,7 +220,7 @@ const ANIMS: PendingAnimDef[] = [
   { key: "helix", frames: genHelix(), interval: 80 },
   { key: "pulse", frames: genPulse(), interval: 150 },
   { key: "rain", frames: genRain(), interval: 100 },
-].map((a) => ({ ...a, color: rainbow(a.frames.length, 1.2) }))
+].map((a) => ({ ...a, frames: uniformWidth(a.frames) }))
 
 function hash(seed: string) {
   let h = 0
@@ -241,10 +229,11 @@ function hash(seed: string) {
 }
 
 /**
- * Pick one of the multi-colour braille pending animations. The choice is
- * pseudo-random but STABLE for a given seed (a tool callID), so the same tool
- * keeps one animation across re-renders while different tools get variety.
- * Passing an empty seed picks a genuinely random animation.
+ * Pick one of the braille pending animations. The choice is pseudo-random but
+ * STABLE for a given seed (a tool callID), so the same tool keeps one animation
+ * across re-renders while different tools get variety. Colour is applied by the
+ * caller (the active agent/mode colour) — the animation is a single constant
+ * hue, not a rainbow. Passing an empty seed picks a genuinely random animation.
  */
 export function pickPendingAnim(seed: string): PendingAnimDef {
   const idx = seed ? hash(seed) % ANIMS.length : Math.floor(Math.random() * ANIMS.length)

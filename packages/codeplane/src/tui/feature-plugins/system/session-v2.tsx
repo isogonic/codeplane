@@ -7,7 +7,7 @@ import { MarkdownText } from "@/tui/component/markdown-text"
 import { useTheme } from "@/tui/context/theme"
 import { useLocal } from "@/tui/context/local"
 import { useKeyboard, useRenderer, useTerminalDimensions, type JSX } from "@opentui/solid"
-import type { SyntaxStyle } from "@opentui/core"
+import type { RGBA, SyntaxStyle } from "@opentui/core"
 import { Locale } from "@/tui/_compat/locale"
 import { LANGUAGE_EXTENSIONS } from "@/lsp/language"
 import path from "path"
@@ -320,7 +320,7 @@ function AssistantMessage(props: {
               <AssistantReasoning part={part as SessionMessageAssistantReasoning} subtleSyntax={props.subtleSyntax} />
             </Match>
             <Match when={part.type === "tool"}>
-              <AssistantTool part={part as SessionMessageAssistantTool} />
+              <AssistantTool part={part as SessionMessageAssistantTool} agentColor={local.agent.color(props.message.agent)} />
             </Match>
           </Switch>
         )}
@@ -394,7 +394,7 @@ function AssistantReasoning(props: { part: SessionMessageAssistantReasoning; sub
   )
 }
 
-function AssistantTool(props: { part: SessionMessageAssistantTool }) {
+function AssistantTool(props: { part: SessionMessageAssistantTool; agentColor?: RGBA }) {
   const input = createMemo(() => toolInputRecord(props.part.state.input))
   const toolprops = {
     get input() {
@@ -407,6 +407,9 @@ function AssistantTool(props: { part: SessionMessageAssistantTool }) {
       return props.part.state.status === "pending" ? undefined : toolOutput(props.part.state.content)
     },
     part: props.part,
+    get agentColor() {
+      return props.agentColor
+    },
   }
   return (
     <Switch>
@@ -464,6 +467,7 @@ type ToolProps = {
   metadata: Record<string, unknown>
   output?: string
   part: SessionMessageAssistantTool
+  agentColor?: RGBA
 }
 
 function GenericTool(props: ToolProps) {
@@ -488,7 +492,7 @@ function GenericTool(props: ToolProps) {
     <Show
       when={output()}
       fallback={
-        <InlineTool icon="⚙" pending="Writing command..." complete={toolComplete(props.part)} part={props.part}>
+        <InlineTool icon="⚙" pending="Writing command..." complete={toolComplete(props.part)} part={props.part} agentColor={props.agentColor}>
           {[display().title, display().subtitle].filter(Boolean).join(" · ")}
         </InlineTool>
       }
@@ -516,6 +520,7 @@ function InlineTool(props: {
   spinner?: boolean
   children: JSX.Element
   part: SessionMessageAssistantTool
+  agentColor?: RGBA
 }) {
   const { theme } = useTheme()
   const error = createMemo(() => (props.part.state.status === "error" ? props.part.state.error.message : undefined))
@@ -538,9 +543,7 @@ function InlineTool(props: {
           <Show
             when={props.complete}
             fallback={
-              <box paddingLeft={3}>
-                <PendingAnimation label={props.pending} seed={props.part.id} />
-              </box>
+              <PendingAnimation label={props.pending} seed={props.part.id} color={props.agentColor ?? theme.textMuted} />
             }
           >
             <text paddingLeft={3} fg={theme.textMuted}>
@@ -635,7 +638,7 @@ function Bash(props: ToolProps) {
         </BlockTool>
       </Match>
       <Match when={true}>
-        <InlineTool icon="$" pending="Writing command..." complete={command()} part={props.part}>
+        <InlineTool icon="$" pending="Writing command..." complete={command()} part={props.part} agentColor={props.agentColor}>
           {command()}
         </InlineTool>
       </Match>
@@ -645,7 +648,7 @@ function Bash(props: ToolProps) {
 
 function Glob(props: ToolProps) {
   return (
-    <InlineTool icon="✱" pending="Finding files..." complete={toolComplete(props.part)} part={props.part}>
+    <InlineTool icon="✱" pending="Finding files..." complete={toolComplete(props.part)} part={props.part} agentColor={props.agentColor}>
       Glob "{stringValue(props.input.pattern) ?? pendingInput(props.part)}"{" "}
       <Show when={stringValue(props.input.path)}>in {normalizePath(stringValue(props.input.path))} </Show>
       <Show when={numberValue(props.metadata.count)}>
@@ -672,6 +675,7 @@ function Read(props: ToolProps) {
         complete={stringValue(props.input.filePath) ?? pendingInput(props.part)}
         spinner={props.part.state.status === "running"}
         part={props.part}
+        agentColor={props.agentColor}
       >
         Read {normalizePath(stringValue(props.input.filePath) ?? pendingInput(props.part))}{" "}
         {input(props.input, ["filePath"])}
@@ -691,7 +695,7 @@ function Read(props: ToolProps) {
 
 function Grep(props: ToolProps) {
   return (
-    <InlineTool icon="✱" pending="Searching content..." complete={toolComplete(props.part)} part={props.part}>
+    <InlineTool icon="✱" pending="Searching content..." complete={toolComplete(props.part)} part={props.part} agentColor={props.agentColor}>
       Grep "{stringValue(props.input.pattern) ?? pendingInput(props.part)}"{" "}
       <Show when={stringValue(props.input.path)}>in {normalizePath(stringValue(props.input.path))} </Show>
       <Show when={numberValue(props.metadata.matches)}>
@@ -707,7 +711,7 @@ function Grep(props: ToolProps) {
 
 function WebFetch(props: ToolProps) {
   return (
-    <InlineTool icon="%" pending="Fetching from the web..." complete={toolComplete(props.part)} part={props.part}>
+    <InlineTool icon="%" pending="Fetching from the web..." complete={toolComplete(props.part)} part={props.part} agentColor={props.agentColor}>
       WebFetch {stringValue(props.input.url) ?? pendingInput(props.part)}
     </InlineTool>
   )
@@ -715,7 +719,7 @@ function WebFetch(props: ToolProps) {
 
 function CodeSearch(props: ToolProps) {
   return (
-    <InlineTool icon="◇" pending="Searching code..." complete={toolComplete(props.part)} part={props.part}>
+    <InlineTool icon="◇" pending="Searching code..." complete={toolComplete(props.part)} part={props.part} agentColor={props.agentColor}>
       Exa Code Search "{stringValue(props.input.query) ?? pendingInput(props.part)}"{" "}
       <Show when={numberValue(props.metadata.results)}>{(results) => <>({results()} results)</>}</Show>
     </InlineTool>
@@ -724,7 +728,7 @@ function CodeSearch(props: ToolProps) {
 
 function WebSearch(props: ToolProps) {
   return (
-    <InlineTool icon="◈" pending="Searching web..." complete={toolComplete(props.part)} part={props.part}>
+    <InlineTool icon="◈" pending="Searching web..." complete={toolComplete(props.part)} part={props.part} agentColor={props.agentColor}>
       Exa Web Search "{stringValue(props.input.query) ?? pendingInput(props.part)}"{" "}
       <Show when={numberValue(props.metadata.numResults)}>{(results) => <>({results()} results)</>}</Show>
     </InlineTool>
@@ -752,7 +756,7 @@ function Write(props: ToolProps) {
         </BlockTool>
       </Match>
       <Match when={true}>
-        <InlineTool icon="←" pending="Preparing write..." complete={filePath()} part={props.part}>
+        <InlineTool icon="←" pending="Preparing write..." complete={filePath()} part={props.part} agentColor={props.agentColor}>
           Write {normalizePath(filePath())}
         </InlineTool>
       </Match>
@@ -796,7 +800,7 @@ function Edit(props: ToolProps) {
         )}
       </Match>
       <Match when={true}>
-        <InlineTool icon="←" pending="Preparing edit..." complete={filePath()} part={props.part}>
+        <InlineTool icon="←" pending="Preparing edit..." complete={filePath()} part={props.part} agentColor={props.agentColor}>
           Edit {normalizePath(filePath())} {input({ replaceAll: props.input.replaceAll })}
         </InlineTool>
       </Match>
@@ -859,7 +863,7 @@ function ApplyPatch(props: ToolProps) {
         </For>
       </Match>
       <Match when={true}>
-        <InlineTool icon="%" pending="Preparing patch..." complete={false} part={props.part}>
+        <InlineTool icon="%" pending="Preparing patch..." complete={false} part={props.part} agentColor={props.agentColor}>
           Patch
         </InlineTool>
       </Match>
@@ -886,7 +890,7 @@ function TodoWrite(props: ToolProps) {
         </BlockTool>
       </Match>
       <Match when={true}>
-        <InlineTool icon="⚙" pending="Updating todos..." complete={false} part={props.part}>
+        <InlineTool icon="⚙" pending="Updating todos..." complete={false} part={props.part} agentColor={props.agentColor}>
           Updating todos...
         </InlineTool>
       </Match>
@@ -917,7 +921,7 @@ function Question(props: ToolProps) {
         </BlockTool>
       </Match>
       <Match when={true}>
-        <InlineTool icon="→" pending="Asking questions..." complete={questions().length} part={props.part}>
+        <InlineTool icon="→" pending="Asking questions..." complete={questions().length} part={props.part} agentColor={props.agentColor}>
           Asked {questions().length} question{questions().length === 1 ? "" : "s"}
         </InlineTool>
       </Match>
@@ -927,7 +931,7 @@ function Question(props: ToolProps) {
 
 function Skill(props: ToolProps) {
   return (
-    <InlineTool icon="→" pending="Loading skill..." complete={toolComplete(props.part)} part={props.part}>
+    <InlineTool icon="→" pending="Loading skill..." complete={toolComplete(props.part)} part={props.part} agentColor={props.agentColor}>
       Skill "{stringValue(props.input.name) ?? pendingInput(props.part)}"
     </InlineTool>
   )
@@ -946,6 +950,7 @@ function Task(props: ToolProps) {
       complete={toolComplete(props.part)}
       pending="Delegating..."
       part={props.part}
+      agentColor={props.agentColor}
     >
       {content()}
     </InlineTool>

@@ -1999,11 +1999,13 @@ function InlineTool(props: {
   spinner?: boolean
   children: JSX.Element
   part: ToolPart
+  agentColor?: RGBA
   onClick?: () => void
 }) {
   const { theme } = useTheme()
   const ctx = use()
   const sync = useSync()
+  const local = useLocal()
   const renderer = useRenderer()
   const [hover, setHover] = createSignal(false)
 
@@ -2011,6 +2013,18 @@ function InlineTool(props: {
     const callID = sync.data.permission[ctx.sessionID]?.at(0)?.tool?.callID
     if (!callID) return false
     return callID === props.part.callID
+  })
+
+  // Constant colour for the pending animation: the active agent/mode colour
+  // (e.g. orange for a goal agent), resolved from the part's owning message.
+  // Falls back to an explicit `agentColor` override, then the muted text hue.
+  const pendingColor = createMemo(() => {
+    if (props.agentColor) return props.agentColor
+    const messageID = (props.part as { messageID?: string }).messageID
+    const agent = messageID
+      ? sync.data.message[ctx.sessionID]?.find((m) => m.id === messageID)?.agent
+      : undefined
+    return agent ? local.agent.color(agent) : theme.textMuted
   })
 
   const fg = createMemo(() => {
@@ -2049,11 +2063,7 @@ function InlineTool(props: {
         <Match when={true}>
           <Show
             when={props.complete}
-            fallback={
-              <box paddingLeft={3}>
-                <PendingAnimation label={props.pending} seed={props.part.callID} />
-              </box>
-            }
+            fallback={<PendingAnimation label={props.pending} seed={props.part.callID} color={pendingColor()} />}
           >
             <text paddingLeft={3} fg={fg()} attributes={denied() ? TextAttributes.STRIKETHROUGH : undefined}>
               <span style={{ fg: props.iconColor }}>{props.icon}</span> {props.children}

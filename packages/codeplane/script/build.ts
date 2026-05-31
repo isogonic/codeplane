@@ -102,6 +102,15 @@ const buildTUIBundle = async (outdir: string) => {
     outdir,
     plugins: [createSolidTransformPlugin()],
     conditions: ["browser"],
+    // The TUI bundle reads InstallationVersion/InstallationChannel (e.g. the
+    // sidebar footer's "Codeplane <version>"). These come from the global
+    // CODEPLANE_VERSION / CODEPLANE_CHANNEL constants the bundler injects.
+    // Without this define they're undefined at runtime and fall back to
+    // "local", so the footer shows "Codeplane local" instead of the version.
+    define: {
+      CODEPLANE_VERSION: `'${Script.version}'`,
+      CODEPLANE_CHANNEL: `'${Script.channel}'`,
+    },
   })
   if (!result.success) {
     throw new AggregateError(

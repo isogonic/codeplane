@@ -19,6 +19,10 @@ export interface DialogSelectProps<T> {
   placeholder?: string
   options: DialogSelectOption<T>[]
   flat?: boolean
+  // Accent colour for the title, category headers, and selection highlight.
+  // Defaults to the theme accent/primary when omitted. The command palette
+  // passes the active agent/mode colour so the menu matches the current mode.
+  accent?: RGBA
   ref?: (ref: DialogSelectRef<T>) => void
   onMove?: (option: DialogSelectOption<T>) => void
   onFilter?: (query: string) => void
@@ -58,6 +62,13 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
   const { theme } = useTheme()
   const tuiConfig = useTuiConfig()
   const scrollAcceleration = createMemo(() => getScrollAcceleration(tuiConfig))
+
+  // Accent for header/category text, and the highlight colour used for the
+  // selected row background + current-item marker. Both fall back to the theme
+  // when no `accent` is supplied (so other dialogs are unaffected).
+  const accent = () => props.accent ?? theme.accent
+  const highlight = () => props.accent ?? theme.primary
+  const highlightFg = () => selectedForeground(theme, props.accent)
 
   const [store, setStore] = createStore({
     selected: 0,
@@ -244,7 +255,7 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
     <box gap={1} paddingBottom={1}>
       <box paddingLeft={4} paddingRight={4}>
         <box flexDirection="row" justifyContent="space-between" alignItems="center">
-          <text fg={theme.accent} attributes={TextAttributes.BOLD}>
+          <text fg={accent()} attributes={TextAttributes.BOLD}>
             {props.title}
           </text>
           <text fg={theme.textMuted} onMouseUp={() => dialog.clear()}>
@@ -300,7 +311,7 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
                     <Show
                       when={options[0]?.categoryView}
                       fallback={
-                        <text fg={theme.accent} attributes={TextAttributes.BOLD}>
+                        <text fg={accent()} attributes={TextAttributes.BOLD}>
                           {category}
                         </text>
                       }
@@ -336,7 +347,7 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
                           if (index === -1) return
                           moveTo(index)
                         }}
-                        backgroundColor={active() ? (option.bg ?? theme.primary) : RGBA.fromInts(0, 0, 0, 0)}
+                        backgroundColor={active() ? (option.bg ?? highlight()) : RGBA.fromInts(0, 0, 0, 0)}
                         paddingLeft={current() || option.gutter ? 1 : 3}
                         paddingRight={3}
                         gap={1}
@@ -353,6 +364,8 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
                           active={active()}
                           current={current()}
                           gutter={option.gutter}
+                          highlight={highlight()}
+                          highlightFg={highlightFg()}
                         />
                       </box>
                     )
@@ -411,15 +424,18 @@ function Option(props: {
   current?: boolean
   footer?: JSX.Element | string
   gutter?: () => JSX.Element
+  highlight?: RGBA
+  highlightFg?: RGBA
   onMouseOver?: () => void
 }) {
   const { theme } = useTheme()
-  const fg = selectedForeground(theme)
+  const fg = () => props.highlightFg ?? selectedForeground(theme)
+  const currentFg = () => props.highlight ?? theme.primary
 
   return (
     <>
       <Show when={props.current}>
-        <text flexShrink={0} fg={props.active ? fg : props.current ? theme.primary : theme.text} marginRight={0}>
+        <text flexShrink={0} fg={props.active ? fg() : props.current ? currentFg() : theme.text} marginRight={0}>
           ●
         </text>
       </Show>
@@ -430,7 +446,7 @@ function Option(props: {
       </Show>
       <text
         flexGrow={1}
-        fg={props.active ? fg : props.current ? theme.primary : theme.text}
+        fg={props.active ? fg() : props.current ? currentFg() : theme.text}
         attributes={props.active ? TextAttributes.BOLD : undefined}
         overflow="hidden"
         wrapMode="none"
@@ -438,12 +454,12 @@ function Option(props: {
       >
         {Locale.truncate(props.title, 61)}
         <Show when={props.description}>
-          <span style={{ fg: props.active ? fg : theme.textMuted }}> {props.description}</span>
+          <span style={{ fg: props.active ? fg() : theme.textMuted }}> {props.description}</span>
         </Show>
       </text>
       <Show when={props.footer}>
         <box flexShrink={0}>
-          <text fg={props.active ? fg : theme.textMuted}>{props.footer}</text>
+          <text fg={props.active ? fg() : theme.textMuted}>{props.footer}</text>
         </box>
       </Show>
     </>
