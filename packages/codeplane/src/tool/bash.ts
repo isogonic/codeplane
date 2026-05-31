@@ -579,7 +579,9 @@ export const BashTool = Tool.define(
             .replaceAll("${shell}", name)
             .replaceAll("${chaining}", chain)
             .replaceAll("${maxLines}", String(limits.maxLines))
-            .replaceAll("${maxBytes}", String(limits.maxBytes)),
+            .replaceAll("${maxBytes}", String(limits.maxBytes))
+            .replaceAll("${timeoutMs}", String(DEFAULT_TIMEOUT))
+            .replaceAll("${timeoutMin}", String(Math.round(DEFAULT_TIMEOUT / 60000))),
           parameters: Parameters,
           // Bash takes its own per-call `timeout` parameter without a hard
           // upper bound — long builds/test suites legitimately exceed any

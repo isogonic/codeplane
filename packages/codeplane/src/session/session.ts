@@ -102,6 +102,7 @@ export function fromRow(row: SessionRow): Info {
       : undefined
   const share = row.share_url ? { url: row.share_url } : undefined
   const revert = row.revert ?? undefined
+  const metadata = row.metadata ?? undefined
   return {
     id: row.id,
     slug: row.slug,
@@ -116,6 +117,7 @@ export function fromRow(row: SessionRow): Info {
     revert,
     permission: row.permission ?? undefined,
     cronRunID: row.cron_run_id ?? undefined,
+    metadata,
     time: {
       created: row.time_created,
       updated: row.time_updated,
@@ -143,6 +145,7 @@ export function toRow(info: Info) {
     revert: info.revert ?? null,
     permission: info.permission,
     cron_run_id: info.cronRunID ?? null,
+    metadata: info.metadata ?? null,
     time_created: info.time.created,
     time_updated: info.time.updated,
     time_compacting: info.time.compacting,
@@ -200,6 +203,7 @@ export const Info = Schema.Struct({
   permission: Schema.optional(Permission.Ruleset),
   revert: Schema.optional(Revert),
   cronRunID: Schema.optional(CronRunID),
+  metadata: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
 })
   .annotate({ identifier: "Session" })
   .pipe(withStatics((s) => ({ zod: zod(s) })))
@@ -229,6 +233,7 @@ export const CreateInput = Schema.optional(
     permission: Schema.optional(Permission.Ruleset),
     workspaceID: Schema.optional(WorkspaceID),
     cronRunID: Schema.optional(CronRunID),
+    metadata: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
   }),
 ).pipe(withStatics((s) => ({ zod: zod(s) })))
 export type CreateInput = Types.DeepMutable<Schema.Schema.Type<typeof CreateInput>>
@@ -250,6 +255,10 @@ export const SetArchivedInput = Schema.Struct({
 export const SetPermissionInput = Schema.Struct({
   sessionID: SessionID,
   permission: Permission.Ruleset,
+}).pipe(withStatics((s) => ({ zod: zod(s) })))
+export const SetMetadataInput = Schema.Struct({
+  sessionID: SessionID,
+  metadata: Schema.Record(Schema.String, Schema.Unknown),
 }).pipe(withStatics((s) => ({ zod: zod(s) })))
 export const SetRevertInput = Schema.Struct({
   sessionID: SessionID,
@@ -292,6 +301,7 @@ const UpdatedInfo = Schema.Struct({
   permission: Schema.optional(Schema.NullOr(Permission.Ruleset)),
   revert: Schema.optional(Schema.NullOr(Revert)),
   cronRunID: Schema.optional(Schema.NullOr(CronRunID)),
+  metadata: Schema.optional(Schema.NullOr(Schema.Record(Schema.String, Schema.Unknown))),
 })
 
 const UpdatedEventSchema = Schema.Struct({
@@ -436,6 +446,7 @@ export interface Interface {
   readonly setTitle: (input: { sessionID: SessionID; title: string }) => Effect.Effect<void>
   readonly setArchived: (input: { sessionID: SessionID; time?: number }) => Effect.Effect<void>
   readonly setPermission: (input: { sessionID: SessionID; permission: Permission.Ruleset }) => Effect.Effect<void>
+  readonly setMetadata: (input: { sessionID: SessionID; metadata: Record<string, unknown> }) => Effect.Effect<void>
   readonly setRevert: (input: {
     sessionID: SessionID
     revert: Info["revert"]
@@ -491,6 +502,7 @@ export const layer: Layer.Layer<Service, never, Bus.Service | Storage.Service> =
       directory: string
       permission?: Permission.Ruleset
       cronRunID?: import("../cron/schema").CronRunID
+      metadata?: Record<string, unknown>
     }) {
       const ctx = yield* InstanceState.context
       const result: Info = {
@@ -504,6 +516,7 @@ export const layer: Layer.Layer<Service, never, Bus.Service | Storage.Service> =
         title: input.title ?? createDefaultTitle(!!input.parentID),
         permission: input.permission,
         cronRunID: input.cronRunID,
+        metadata: input.metadata,
         time: {
           created: Date.now(),
           updated: Date.now(),
@@ -621,6 +634,7 @@ export const layer: Layer.Layer<Service, never, Bus.Service | Storage.Service> =
       permission?: Permission.Ruleset
       workspaceID?: WorkspaceID
       cronRunID?: import("../cron/schema").CronRunID
+      metadata?: Record<string, unknown>
     }) {
       const directory = yield* InstanceState.directory
       const workspace = yield* InstanceState.workspaceID
@@ -631,6 +645,7 @@ export const layer: Layer.Layer<Service, never, Bus.Service | Storage.Service> =
         permission: input?.permission,
         workspaceID: workspace,
         cronRunID: input?.cronRunID,
+        metadata: input?.metadata,
       })
     })
 
@@ -691,6 +706,13 @@ export const layer: Layer.Layer<Service, never, Bus.Service | Storage.Service> =
       permission: Permission.Ruleset
     }) {
       yield* patch(input.sessionID, { permission: input.permission, time: { updated: Date.now() } })
+    })
+
+    const setMetadata = Effect.fn("Session.setMetadata")(function* (input: {
+      sessionID: SessionID
+      metadata: Record<string, unknown>
+    }) {
+      yield* patch(input.sessionID, { metadata: input.metadata, time: { updated: Date.now() } })
     })
 
     const setRevert = Effect.fn("Session.setRevert")(function* (input: {
@@ -782,6 +804,7 @@ export const layer: Layer.Layer<Service, never, Bus.Service | Storage.Service> =
       setTitle,
       setArchived,
       setPermission,
+      setMetadata,
       setRevert,
       clearRevert,
       setSummary,

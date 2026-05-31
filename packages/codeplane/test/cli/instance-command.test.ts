@@ -96,6 +96,17 @@ describe("cli instance helpers", () => {
     expect(() => composeRemoteHeaders({ username: "ali:ce", password: "secret" })).toThrow(/cannot contain a colon/)
   })
 
+  test("allows colons in basic auth passwords", () => {
+    expect(
+      composeRemoteHeaders({
+        username: "alice",
+        password: "pass:word",
+      }),
+    ).toEqual({
+      Authorization: "Basic YWxpY2U6cGFzczp3b3Jk",
+    })
+  })
+
   test("rejects empty explicit instance ids", () => {
     expect(validateInstanceID("remote-1")).toBe("remote-1")
     expect(validateInstanceID(" remote-1 ")).toBe("remote-1")
