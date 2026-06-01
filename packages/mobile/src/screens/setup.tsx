@@ -97,7 +97,7 @@ export const SetupScreen: Component<{
   // Narrow the sheet signal to "the editing variant or null" so <Show keyed>
   // can hand the full edit payload to its child without re-narrowing inside.
   const editingSheet = createMemo(() => {
-    const s = props.sheet()
+    const s = props.sheet
     return s.kind === "edit" ? s : null
   })
 
@@ -262,11 +262,11 @@ export const SetupScreen: Component<{
       </div>
 
       <BottomSheet
-        open={props.sheet().kind !== "closed"}
-        title={props.sheet().kind === "edit" ? "Edit server" : "Add server"}
+        open={props.sheet.kind !== "closed"}
+        title={props.sheet.kind === "edit" ? "Edit server" : "Add server"}
         onDismiss={closeSheet}
       >
-        <Show when={props.sheet().kind === "create"}>
+        <Show when={props.sheet.kind === "create"}>
           <InstanceForm
             onSubmit={handleSave}
             onCancel={closeSheet}
