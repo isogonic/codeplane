@@ -147,9 +147,12 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
 
-          # Clone the tap repo
+          # Clone the tap repo (non-fatal if it doesn't exist yet)
           TAP_DIR=$(mktemp -d)
-          git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/isogonic/homebrew-tap.git" "$TAP_DIR"
+          if ! git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/isogonic/homebrew-tap.git" "$TAP_DIR" 2>/dev/null; then
+            echo "Homebrew tap repo is not available; skipping Homebrew formula update."
+            exit 0
+          fi
           cd "$TAP_DIR"
 
           # Download each platform package and compute SHA256
