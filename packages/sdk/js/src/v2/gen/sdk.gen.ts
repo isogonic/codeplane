@@ -8,7 +8,7 @@ import type {
   AppLogErrors,
   AppLogResponses,
   AppSkillsResponses,
-  Auth as Auth3,
+  Auth as Auth4,
   AuthRemoveErrors,
   AuthRemoveResponses,
   AuthSetErrors,
@@ -64,6 +64,7 @@ import type {
   FindSymbolsResponses,
   FindTextResponses,
   FormatterStatusResponses,
+  GlobalAuthVerifyResponses,
   GlobalBashInteractiveKillErrors,
   GlobalBashInteractiveKillResponses,
   GlobalConfigGetResponses,
@@ -563,6 +564,32 @@ export class Cron extends HeyApiClient {
   }
 }
 
+export class Auth extends HeyApiClient {
+  /**
+   * Verify second factor
+   *
+   * Exchange a valid Basic Auth password plus a TOTP code for a short-lived second-factor session token. Returns 401 if the password is wrong, 400 if TOTP is not enabled, and 401 with { totp: true } if the code is invalid.
+   */
+  public verify<ThrowOnError extends boolean = false>(
+    parameters?: {
+      code?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "body", key: "code" }] }])
+    return (options?.client ?? this.client).post<GlobalAuthVerifyResponses, unknown, ThrowOnError>({
+      url: "/global/auth/verify",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
 export class Config extends HeyApiClient {
   /**
    * Get global configuration
@@ -730,6 +757,11 @@ export class Global extends HeyApiClient {
     })
   }
 
+  private _auth?: Auth
+  get auth(): Auth {
+    return (this._auth ??= new Auth({ client: this.client }))
+  }
+
   private _config?: Config
   get config(): Config {
     return (this._config ??= new Config({ client: this.client }))
@@ -741,7 +773,7 @@ export class Global extends HeyApiClient {
   }
 }
 
-export class Auth extends HeyApiClient {
+export class Auth2 extends HeyApiClient {
   /**
    * Remove auth credentials
    *
@@ -769,7 +801,7 @@ export class Auth extends HeyApiClient {
   public set<ThrowOnError extends boolean = false>(
     parameters: {
       providerID: string
-      auth?: Auth3
+      auth?: Auth4
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -2207,6 +2239,9 @@ export class Session2 extends HeyApiClient {
       permission?: PermissionRuleset
       workspaceID?: string
       cronRunID?: string
+      metadata?: {
+        [key: string]: unknown
+      }
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -2222,6 +2257,7 @@ export class Session2 extends HeyApiClient {
             { in: "body", key: "permission" },
             { in: "body", key: "workspaceID" },
             { in: "body", key: "cronRunID" },
+            { in: "body", key: "metadata" },
           ],
         },
       ],
@@ -2344,6 +2380,9 @@ export class Session2 extends HeyApiClient {
       workspace?: string
       title?: string
       permission?: PermissionRuleset
+      metadata?: {
+        [key: string]: unknown
+      }
       time?: {
         archived?: number | null
       }
@@ -2360,6 +2399,7 @@ export class Session2 extends HeyApiClient {
             { in: "query", key: "workspace" },
             { in: "body", key: "title" },
             { in: "body", key: "permission" },
+            { in: "body", key: "metadata" },
             { in: "body", key: "time" },
           ],
         },
@@ -3978,7 +4018,7 @@ export class Event extends HeyApiClient {
   }
 }
 
-export class Auth2 extends HeyApiClient {
+export class Auth3 extends HeyApiClient {
   /**
    * Auto-connect pending MCP OAuth
    *
@@ -4345,9 +4385,9 @@ export class Mcp extends HeyApiClient {
     })
   }
 
-  private _auth?: Auth2
-  get auth(): Auth2 {
-    return (this._auth ??= new Auth2({ client: this.client }))
+  private _auth?: Auth3
+  get auth(): Auth3 {
+    return (this._auth ??= new Auth3({ client: this.client }))
   }
 }
 
@@ -4593,9 +4633,9 @@ export class CodeplaneClient extends HeyApiClient {
     return (this._global ??= new Global({ client: this.client }))
   }
 
-  private _auth?: Auth
-  get auth(): Auth {
-    return (this._auth ??= new Auth({ client: this.client }))
+  private _auth?: Auth2
+  get auth(): Auth2 {
+    return (this._auth ??= new Auth2({ client: this.client }))
   }
 
   private _app?: App

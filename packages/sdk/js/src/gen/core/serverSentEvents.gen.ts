@@ -150,8 +150,9 @@ export const createSseClient = <TData = unknown>({
           while (true) {
             const { done, value } = await reader.read()
             if (done) break
-            const normalized = value.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
-            buffer += normalized
+            buffer += value
+            // Normalize line endings: CRLF -> LF, then CR -> LF
+            buffer = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
 
             const chunks = buffer.split("\n\n")
             buffer = chunks.pop() ?? ""
@@ -199,13 +200,14 @@ export const createSseClient = <TData = unknown>({
                 }
               }
 
+              onSseEvent?.({
+                data,
+                event: eventName,
+                id: lastEventId,
+                retry: retryDelay,
+              })
+
               if (dataLines.length) {
-                onSseEvent?.({
-                  data,
-                  event: eventName,
-                  id: lastEventId,
-                  retry: retryDelay,
-                })
                 yield data as any
               }
             }
@@ -224,10 +226,9 @@ export const createSseClient = <TData = unknown>({
           break // stop after firing error
         }
 
-        // exponential backoff with jitter: double retry each attempt, cap at 30s
+        // exponential backoff: double retry each attempt, cap at 30s
         const backoff = Math.min(retryDelay * 2 ** (attempt - 1), sseMaxRetryDelay ?? 30000)
-        const jittered = backoff * (0.5 + Math.random() * 0.5)
-        await sleep(jittered)
+        await sleep(backoff)
       }
     }
   }
