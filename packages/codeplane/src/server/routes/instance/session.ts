@@ -30,8 +30,11 @@ import { Bus } from "@/bus"
 import { NamedError } from "@codeplane-ai/shared/util/error"
 import { jsonRequest, runRequest } from "./trace"
 import { queryBoolean } from "@/server/query"
+import { CronScheduler } from "@/cron"
+import { makeRuntime } from "@/effect/run-service"
 
 const log = Log.create({ service: "server" })
+const cronSchedulerRuntime = makeRuntime(CronScheduler.Service, CronScheduler.defaultLayer)
 
 export const SessionRoutes = lazy(() =>
   new Hono()
@@ -439,6 +442,16 @@ export const SessionRoutes = lazy(() =>
       async (c) =>
         jsonRequest("SessionRoutes.abort", c, function* () {
           const sessionID = c.req.valid("param").sessionID
+          const session = yield* Session.Service
+          const info = yield* session.get(sessionID).pipe(
+            Effect.catch(() => Effect.succeed(undefined as Session.Info | undefined)),
+          )
+          const cronRunID = info?.cronRunID
+          if (cronRunID) {
+            yield* Effect.tryPromise(() => cronSchedulerRuntime.runPromise((svc) => svc.cancelRun(cronRunID))).pipe(
+              Effect.catch(() => Effect.void),
+            )
+          }
           const svc = yield* SessionPrompt.Service
           const aborted = new DOMException("Aborted", "AbortError")
           // Mark all pending+running queue rows cancelled BEFORE cancelling
