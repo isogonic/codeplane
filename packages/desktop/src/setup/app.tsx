@@ -479,7 +479,17 @@ const DesktopUpdateCard: Component = () => {
   })
   const offProgress = api.desktopUpdater.onProgress((progress) => {
     setState((prev) => {
-      if (prev.kind !== "downloading" && prev.kind !== "available") return prev
+      if (prev.kind === "loading") {
+        const version = cleanVersion(api.version)
+        return {
+          kind: "downloading",
+          current: version,
+          latest: version,
+          percent: Math.round(progress.percent),
+          transferred: progress.transferred,
+          total: progress.total,
+        }
+      }
       const current = prev.current
       const latest = "latest" in prev && prev.latest ? prev.latest : current
       const previousPercent = prev.kind === "downloading" ? prev.percent : 0

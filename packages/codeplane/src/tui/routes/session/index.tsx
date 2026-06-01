@@ -280,7 +280,7 @@ export function Session() {
     const part = evt.properties.part
     if (part.type !== "tool") return
     if (part.sessionID !== route.sessionID) return
-    if (part.state.status !== "completed") return
+    if (!part.state || part.state.status !== "completed") return
     if (part.id === lastSwitch) return
 
     if (part.tool === "plan_exit") {
@@ -837,7 +837,9 @@ export function Session() {
       },
       onSelect: async (dialog) => {
         const status = sync.data.session_status?.[route.sessionID]
-        if (status?.type !== "idle") await sdk.client.session.abort({ sessionID: route.sessionID }).catch(() => {})
+        if (status?.type !== "idle") {
+          await sdk.client.session.abort({ sessionID: route.sessionID }).catch(() => {})
+        }
         const revert = session()?.revert?.messageID
         const message = messages().findLast((x) => (!revert || x.id < revert) && x.role === "user")
         if (!message) return
@@ -1862,19 +1864,19 @@ function ToolPart(props: { last: boolean; part: ToolPart; message: AssistantMess
   // Hide tool if showDetails is false and tool completed successfully
   const shouldHide = createMemo(() => {
     if (ctx.showDetails()) return false
-    if (props.part.state.status !== "completed") return false
+    if (props.part.state?.status !== "completed") return false
     return true
   })
 
   const toolprops = {
     get metadata() {
-      return props.part.state.status === "pending" ? {} : (props.part.state.metadata ?? {})
+      return props.part.state?.status === "pending" ? {} : (props.part.state?.metadata ?? {})
     },
     get input() {
-      return props.part.state.input ?? {}
+      return props.part.state?.input ?? {}
     },
     get output() {
-      return props.part.state.status === "completed" ? props.part.state.output : undefined
+      return props.part.state?.status === "completed" ? props.part.state?.output : undefined
     },
     get permission() {
       const permissions = sync.data.permission[props.message.sessionID] ?? []
@@ -2035,7 +2037,7 @@ function InlineTool(props: {
     return theme.text
   })
 
-  const error = createMemo(() => (props.part.state.status === "error" ? props.part.state.error : undefined))
+  const error = createMemo(() => (props.part.state?.status === "error" ? props.part.state?.error : undefined))
 
   const denied = createMemo(
     () =>
@@ -2089,7 +2091,7 @@ function BlockTool(props: {
   const { theme } = useTheme()
   const renderer = useRenderer()
   const [hover, setHover] = createSignal(false)
-  const error = createMemo(() => (props.part?.state.status === "error" ? props.part.state.error : undefined))
+  const error = createMemo(() => (props.part?.state?.status === "error" ? props.part.state?.error : undefined))
   return (
     <box
       border={["left"]}
@@ -2130,7 +2132,7 @@ function BlockTool(props: {
 function Shell(props: ToolProps<typeof ShellTool>) {
   const { theme } = useTheme()
   const sync = useSync()
-  const isRunning = createMemo(() => props.part.state.status === "running")
+  const isRunning = createMemo(() => props.part.state?.status === "running")
   const output = createMemo(() => stripAnsi(props.metadata.output?.trim() ?? ""))
   const [expanded, setExpanded] = createSignal(false)
   const lines = createMemo(() => output().split("\n"))
@@ -2239,10 +2241,10 @@ function Glob(props: ToolProps<typeof GlobTool>) {
 
 function Read(props: ToolProps<typeof ReadTool>) {
   const { theme } = useTheme()
-  const isRunning = createMemo(() => props.part.state.status === "running")
+  const isRunning = createMemo(() => props.part.state?.status === "running")
   const loaded = createMemo(() => {
-    if (props.part.state.status !== "completed") return []
-    if (props.part.state.time.compacted) return []
+    if (props.part.state?.status !== "completed") return []
+    if (props.part.state?.time?.compacted) return []
     const value = props.metadata.loaded
     if (!value || !Array.isArray(value)) return []
     return value.filter((p): p is string => typeof p === "string")
@@ -2319,10 +2321,10 @@ function Task(props: ToolProps<typeof TaskTool>) {
   })
 
   const current = createMemo(() =>
-    tools().findLast((x) => (x.state.status === "running" || x.state.status === "completed") && x.state.title),
+    tools().findLast((x) => (x.state?.status === "running" || x.state?.status === "completed") && x.state?.title),
   )
 
-  const isRunning = createMemo(() => props.part.state.status === "running")
+  const isRunning = createMemo(() => props.part.state?.status === "running")
 
   const duration = createMemo(() => {
     const first = messages().find((x) => x.role === "user")?.time.created
@@ -2344,7 +2346,7 @@ function Task(props: ToolProps<typeof TaskTool>) {
       } else content.push(`↳ ${tools().length} toolcalls`)
     }
 
-    if (props.part.state.status === "completed") {
+    if (props.part.state?.status === "completed") {
       content.push(`└ ${tools().length} toolcalls · ${Locale.duration(duration())}`)
     }
 

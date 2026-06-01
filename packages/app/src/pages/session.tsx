@@ -1055,7 +1055,7 @@ export default function Page() {
     on(
       () => visibleUserMessages().at(-1)?.id,
       (lastId, prevLastId) => {
-        if (lastId && prevLastId && lastId > prevLastId) {
+        if (lastId && prevLastId && lastId > prevLastId && !autoScroll.userScrolled()) {
           setStore("messageId", undefined)
         }
       },
@@ -1479,6 +1479,8 @@ export default function Page() {
     if (!tree.reviewScroll) return
     if (!reviewReady()) return
 
+    const frames: number[] = []
+
     const attempt = (count: number) => {
       if (tree.pendingDiff !== pending) return
       if (count > 60) {
@@ -1488,18 +1490,21 @@ export default function Page() {
 
       const root = tree.reviewScroll
       if (!root) {
-        requestAnimationFrame(() => attempt(count + 1))
+        const id = requestAnimationFrame(() => attempt(count + 1))
+        frames.push(id)
         return
       }
 
       if (!scrollToReviewDiff(pending)) {
-        requestAnimationFrame(() => attempt(count + 1))
+        const id = requestAnimationFrame(() => attempt(count + 1))
+        frames.push(id)
         return
       }
 
       const top = reviewDiffTop(pending)
       if (top === undefined) {
-        requestAnimationFrame(() => attempt(count + 1))
+        const id = requestAnimationFrame(() => attempt(count + 1))
+        frames.push(id)
         return
       }
 
@@ -1508,10 +1513,16 @@ export default function Page() {
         return
       }
 
-      requestAnimationFrame(() => attempt(count + 1))
+      const id = requestAnimationFrame(() => attempt(count + 1))
+      frames.push(id)
     }
 
-    requestAnimationFrame(() => attempt(0))
+    const startId = requestAnimationFrame(() => attempt(0))
+    frames.push(startId)
+
+    onCleanup(() => {
+      for (const id of frames) cancelAnimationFrame(id)
+    })
   })
 
   createEffect(() => {
@@ -2031,8 +2042,10 @@ export default function Page() {
     setFollowup("edit", id, undefined)
   }
 
-  const halt = (sessionID: string) =>
-    busy(sessionID) ? sdk.client.session.abort({ sessionID }).catch(() => {}) : Promise.resolve()
+  const halt = async (sessionID: string) => {
+    if (!busy(sessionID)) return
+    await sdk.client.session.abort({ sessionID }).catch(() => undefined)
+  }
 
   const revertMutation = useMutation(() => ({
     mutationFn: async (input: { sessionID: string; messageID: string }) => {
