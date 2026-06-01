@@ -413,7 +413,8 @@ export function applyDirectoryEvent(input: {
       break
     }
     case "message.part.updated": {
-      const part = (event.properties as { part?: Part }).part
+      const props = event.properties as { part?: Part } | undefined
+      const part = props?.part
       if (!part) break
       if (SKIP_PARTS.has(part.type)) break
       // Drain any buffered deltas that arrived before this part existed.

@@ -1882,19 +1882,19 @@ function ToolPart(props: { last: boolean; part: ToolPart; message: AssistantMess
   // Hide tool if showDetails is false and tool completed successfully
   const shouldHide = createMemo(() => {
     if (ctx.showDetails()) return false
-    if (props.part.state.status !== "completed") return false
+    if (props.part.state?.status !== "completed") return false
     return true
   })
 
   const toolprops = {
     get metadata() {
-      return props.part.state.status === "pending" ? {} : (props.part.state.metadata ?? {})
+      return props.part.state?.status === "pending" ? {} : (props.part.state?.metadata ?? {})
     },
     get input() {
-      return props.part.state.input ?? {}
+      return props.part.state?.input ?? {}
     },
     get output() {
-      return props.part.state.status === "completed" ? props.part.state.output : undefined
+      return props.part.state?.status === "completed" ? props.part.state?.output : undefined
     },
     get permission() {
       const permissions = sync.data.permission[props.message.sessionID] ?? []

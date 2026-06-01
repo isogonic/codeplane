@@ -537,7 +537,13 @@ function InlineTool(props: {
   agentColor?: RGBA
 }) {
   const { theme } = useTheme()
-  const error = createMemo(() => (props.part.state.status === "error" ? props.part.state.error.message : undefined))
+  const error = createMemo(() => {
+    if (props.part.state?.status !== "error") return undefined
+    const err = props.part.state.error
+    if (!err) return "unknown error"
+    const msg = typeof err === "object" && err !== null && "message" in err ? (err as { message: unknown }).message : err
+    return typeof msg === "string" ? msg : String(msg)
+  })
   const denied = createMemo(() => {
     const message = error()
     if (!message) return false
@@ -583,7 +589,13 @@ function BlockTool(props: {
   const { theme } = useTheme()
   const renderer = useRenderer()
   const [hover, setHover] = createSignal(false)
-  const error = createMemo(() => (props.part?.state.status === "error" ? props.part.state.error.message : undefined))
+  const error = createMemo(() => {
+    if (props.part?.state?.status !== "error") return undefined
+    const err = props.part.state.error
+    if (!err) return "unknown error"
+    const msg = typeof err === "object" && err !== null && "message" in err ? (err as { message: unknown }).message : err
+    return typeof msg === "string" ? msg : String(msg)
+  })
   return (
     <box
       border={["left"]}

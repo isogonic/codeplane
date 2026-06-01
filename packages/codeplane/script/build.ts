@@ -300,7 +300,7 @@ const targets = singleFlag
 const binaries: Record<string, string> = {}
 
 try {
-  await $`rm -rf dist`
+  fs.rmSync(path.join(dir, "dist"), { recursive: true, force: true })
   if (!skipInstall) {
     await $`bun install --no-save --os="*" --cpu="*" @parcel/watcher@${pkg.dependencies["@parcel/watcher"]}`
   }
@@ -316,7 +316,7 @@ try {
       .filter(Boolean)
       .join("-")
     console.log(`building ${name}`)
-    await $`mkdir -p dist/${name}/bin`
+    fs.mkdirSync(path.join(dir, "dist", name, "bin"), { recursive: true })
 
     const mainResult = await Bun.build({
       // The bundler classifies the build by `target`. Without this, it defaults

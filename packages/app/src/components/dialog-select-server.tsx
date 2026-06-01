@@ -115,7 +115,7 @@ function ServerForm(props: ServerFormProps) {
       props.onBack()
       return
     }
-    if (event.key !== "Enter" || event.isComposing) return
+    if (event.key !== "Enter" || event.isComposing || event.keyCode === 229) return
     event.preventDefault()
     props.onSubmit()
   }
