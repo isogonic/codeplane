@@ -34,6 +34,7 @@ const CreateInput = z.object({
   status: Cron.Status.zod.optional(),
   timeoutMs: z.number().optional(),
   maxRetries: z.number().optional(),
+  mcpServers: z.array(z.string()).optional(),
 })
 
 const cronRuntime = makeRuntime(Cron.Service, Cron.defaultLayer)

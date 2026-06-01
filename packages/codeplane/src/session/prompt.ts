@@ -646,10 +646,20 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         agent: input.agent,
         sessionPermission: input.session.permission,
       }
-      const [nativeTools, nativeAvailability, mcpTools] = yield* Effect.all(
+      const [nativeTools, nativeAvailability, allMcpTools] = yield* Effect.all(
         [registry.tools(toolInput), registry.availability(toolInput), mcp.tools()],
         { concurrency: "unbounded" },
       )
+
+      const sanitizeMcp = (s: string) => s.replace(/[^a-zA-Z0-9_-]/g, "_")
+      const enabledMcpServers = input.session.metadata?.enabledMcpServers as string[] | undefined
+      const mcpTools = enabledMcpServers?.length
+        ? Object.fromEntries(
+            Object.entries(allMcpTools).filter(([key]) =>
+              enabledMcpServers.some((name) => key.startsWith(sanitizeMcp(name) + "_")),
+            ),
+          )
+        : allMcpTools
 
       const context = (args: any, options: ToolExecutionOptions): Tool.Context => ({
         sessionID: input.session.id,

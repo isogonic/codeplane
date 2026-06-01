@@ -30,6 +30,7 @@ export const CronTaskTable = sqliteTable(
     last_run_status: text(),
     last_error: text(),
     next_run_at: integer(),
+    mcp_servers: text({ mode: "json" }).$type<string[]>(),
     ...Timestamps,
   },
   (table) => [

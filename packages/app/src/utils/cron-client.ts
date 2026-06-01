@@ -21,6 +21,7 @@ export type CronTask = {
   status: CronStatus
   timeoutMs?: number
   maxRetries?: number
+  mcpServers?: string[]
   lastRunID?: string
   lastRunAt?: number
   lastRunStatus?: CronRunStatus
@@ -55,6 +56,7 @@ export type CronCreateInput = {
   status?: CronStatus
   timeoutMs?: number
   maxRetries?: number
+  mcpServers?: string[]
 }
 
 export type CronUpdateInput = {
@@ -68,6 +70,7 @@ export type CronUpdateInput = {
   status?: CronStatus
   timeoutMs?: number | null
   maxRetries?: number | null
+  mcpServers?: string[] | null
 }
 
 function authHeaders(server: ServerConnection.HttpBase): Record<string, string> {

@@ -446,6 +446,7 @@ export interface Interface {
     permission?: Permission.Ruleset
     workspaceID?: WorkspaceID
     cronRunID?: import("../cron/schema").CronRunID
+    metadata?: Record<string, unknown>
   }) => Effect.Effect<Info>
   readonly fork: (input: { sessionID: SessionID; messageID?: MessageID }) => Effect.Effect<Info>
   readonly touch: (sessionID: SessionID) => Effect.Effect<void>

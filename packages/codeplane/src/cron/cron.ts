@@ -78,6 +78,7 @@ export const Task = Schema.Struct({
   lastRunStatus: Schema.optional(RunStatus),
   lastError: Schema.optional(Schema.String),
   nextRunAt: Schema.optional(Schema.Number),
+  mcpServers: Schema.optional(Schema.Array(Schema.String)),
   time: Time,
 })
   .annotate({ identifier: "CronTask" })
@@ -117,6 +118,7 @@ export const CreateInput = Schema.Struct({
   status: Schema.optional(Status),
   timeoutMs: Schema.optional(Schema.Number),
   maxRetries: Schema.optional(Schema.Number),
+  mcpServers: Schema.optional(Schema.Array(Schema.String)),
 }).pipe(withStatics((s) => ({ zod: zod(s) })))
 export type CreateInput = Types.DeepMutable<Schema.Schema.Type<typeof CreateInput>>
 
@@ -132,6 +134,7 @@ export const UpdateInput = Schema.Struct({
   status: Schema.optional(Status),
   timeoutMs: Schema.optional(Schema.NullOr(Schema.Number)),
   maxRetries: Schema.optional(Schema.NullOr(Schema.Number)),
+  mcpServers: Schema.optional(Schema.NullOr(Schema.Array(Schema.String))),
 }).pipe(withStatics((s) => ({ zod: zod(s) })))
 export type UpdateInput = Types.DeepMutable<Schema.Schema.Type<typeof UpdateInput>>
 
@@ -192,6 +195,7 @@ export function taskFromRow(row: TaskRow): Task {
     lastRunStatus: (row.last_run_status as RunStatus | null) ?? undefined,
     lastError: row.last_error ?? undefined,
     nextRunAt: row.next_run_at ?? undefined,
+    mcpServers: row.mcp_servers ?? undefined,
     time: {
       created: row.time_created,
       updated: row.time_updated,
@@ -444,6 +448,7 @@ export const layer = Layer.effect(
             last_run_status: null,
             last_error: null,
             next_run_at: nextRun,
+            mcp_servers: input.mcpServers ?? null,
             time_created: now,
             time_updated: now,
           })
@@ -474,6 +479,7 @@ export const layer = Layer.effect(
       if (input.timezone !== undefined) next.timezone = input.timezone ?? null
       if (input.timeoutMs !== undefined) next.timeout_ms = input.timeoutMs ?? null
       if (input.maxRetries !== undefined) next.max_retries = input.maxRetries ?? null
+      if (input.mcpServers !== undefined) next.mcp_servers = input.mcpServers
 
       const newSchedule = input.schedule ?? existing.schedule
       if (input.schedule) {
