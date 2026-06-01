@@ -63,6 +63,15 @@ const app = (upgrade: UpgradeWebSocket) =>
       const url = c.req.header("x-codeplane-proxy-url")
       const queue: Msg[] = []
       let remote: WebSocket | undefined
+      let closed = false
+      const closeRemote = () => {
+        if (closed) return
+        closed = true
+        if (remote && remote.readyState < WebSocket.CLOSING) {
+          remote.close()
+        }
+        remote = undefined
+      }
       return {
         onOpen(_, ws) {
           if (!url) {
@@ -82,7 +91,9 @@ const app = (upgrade: UpgradeWebSocket) =>
             ws.close(1011, "proxy error")
           }
           remote.onclose = (event) => {
-            ws.close(event.code, event.reason)
+            if (remote?.readyState !== WebSocket.CLOSED) {
+              ws.close(event.code, event.reason)
+            }
           }
         },
         onMessage(event) {
@@ -95,7 +106,7 @@ const app = (upgrade: UpgradeWebSocket) =>
           queue.push(data)
         },
         onClose(event) {
-          remote?.close(event.code, event.reason)
+          closeRemote()
         },
       }
     }),

@@ -175,9 +175,11 @@ export async function listen(opts: {
   const server = await built.runtime.listen(opts)
   await cronSchedulerRuntime.runPromise((svc) => svc.start()).catch((err) => {
     log.error("failed to start cron scheduler", { error: err instanceof Error ? err.message : String(err) })
+    throw err
   })
   await promptQueueWorkerRuntime.runPromise((svc) => svc.start()).catch((err) => {
     log.error("failed to start prompt queue worker", { error: err instanceof Error ? err.message : String(err) })
+    throw err
   })
   UpdateChecker.start()
 

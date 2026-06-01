@@ -497,7 +497,7 @@ export const GlobalRoutes = lazy(() =>
           return c.json({ ok: true as const, method: "reload" as const })
         } catch (error) {
           log.warn("restart dispose failed, falling back to process exit", { error })
-          setTimeout(() => process.exit(0), 500)
+          setTimeout(() => process.exit(0), 3000)
           return c.json({ ok: true as const, method: "exit" as const })
         }
       },
@@ -681,6 +681,13 @@ export const GlobalRoutes = lazy(() =>
         // but the in-process binary is unchanged. Exit so the container's restart
         // policy brings us back on the new binary. Delay so the response flushes.
         if (restart) {
+          GlobalBus.emit("event", {
+            directory: "global",
+            payload: {
+              type: GlobalDisposedEvent.type,
+              properties: {},
+            },
+          })
           setTimeout(() => process.exit(0), 3000)
         }
         return c.json({

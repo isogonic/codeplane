@@ -1301,15 +1301,22 @@ export function Prompt(props: PromptProps) {
     // send this submission later (queue drain) or now (immediate / steer).
     const dispatch = async () => {
       if (currentMode === "shell") {
-        void sdk.client.session.shell({
-          sessionID: sessionID!,
-          agent: agent.name,
-          model: {
-            providerID: selectedModel.providerID,
-            modelID: selectedModel.modelID,
-          },
-          command: inputText,
-        })
+        try {
+          await sdk.client.session.shell({
+            sessionID: sessionID!,
+            agent: agent.name,
+            model: {
+              providerID: selectedModel.providerID,
+              modelID: selectedModel.modelID,
+            },
+            command: inputText,
+          })
+        } catch (error) {
+          toast.show({
+            message: error instanceof Error ? error.message : "Failed to run shell command",
+            variant: "error",
+          })
+        }
         return
       }
       if (isCustomCommand) {
@@ -1318,21 +1325,28 @@ export function Prompt(props: PromptProps) {
         const [command, ...firstLineArgs] = firstLine.split(" ")
         const restOfInput = firstLineEnd === -1 ? "" : inputText.slice(firstLineEnd + 1)
         const args = firstLineArgs.join(" ") + (restOfInput ? "\n" + restOfInput : "")
-        void sdk.client.session.command({
-          sessionID: sessionID!,
-          command: command.slice(1),
-          arguments: args,
-          agent: agent.name,
-          model: `${selectedModel.providerID}/${selectedModel.modelID}`,
-          messageID,
-          variant,
-          parts: nonTextParts
-            .filter((x) => x.type === "file")
-            .map((x) => ({
-              id: PartID.ascending(),
-              ...x,
-            })),
-        })
+        try {
+          await sdk.client.session.command({
+            sessionID: sessionID!,
+            command: command.slice(1),
+            arguments: args,
+            agent: agent.name,
+            model: `${selectedModel.providerID}/${selectedModel.modelID}`,
+            messageID,
+            variant,
+            parts: nonTextParts
+              .filter((x) => x.type === "file")
+              .map((x) => ({
+                id: PartID.ascending(),
+                ...x,
+              })),
+          })
+        } catch (error) {
+          toast.show({
+            message: error instanceof Error ? error.message : "Failed to run custom command",
+            variant: "error",
+          })
+        }
         return
       }
       // Always go through the server's persistent queue, even for an idle
@@ -1369,7 +1383,12 @@ export function Prompt(props: PromptProps) {
           // Cheap (one HTTP round-trip), idempotent (reducer dedupes by id).
           if (sessionID) void refreshQueue(sessionID)
         })
-        .catch(() => {})
+        .catch((error) => {
+          toast.show({
+            message: error instanceof Error ? error.message : "Failed to submit prompt",
+            variant: "error",
+          })
+        })
       lastSubmittedEditorSelectionKey = currentEditorSelectionKey
     }
 

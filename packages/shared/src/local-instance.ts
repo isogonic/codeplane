@@ -95,6 +95,7 @@ function createProcessLog(dir: string, id: string): ProcessLog {
   let closed = false
   stream.on("error", () => {
     closed = true
+    stream.destroy()
   })
   const safeWrite = (text: string) => {
     if (closed) return
@@ -367,10 +368,14 @@ export function createLocalInstanceManager(config: LocalInstanceManagerInput) {
           child.once("exit", finalize)
           try {
             if (process.platform === "win32") {
-              spawn("taskkill", ["/pid", String(child.pid), "/t", "/f"], { stdio: "ignore" }).on("exit", () => undefined)
-              return
+              spawn("taskkill", ["/pid", String(child.pid), "/t", "/f"], { stdio: "ignore" }).on("exit", (code) => {
+                if (code !== 0) {
+                  log("local.stop.taskkill-failed", { code, id: input.id })
+                }
+              })
+            } else {
+              child.kill("SIGTERM")
             }
-            child.kill("SIGTERM")
           } catch (error) {
             log("local.stop.error", { error, id: input.id })
             finalize()

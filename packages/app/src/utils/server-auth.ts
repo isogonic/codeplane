@@ -24,7 +24,8 @@ const UNREACHABLE: ServerAuthStatus = {
 
 function basicAuthHeader(server: ServerConnection.HttpBase): string | undefined {
   if (!server.password) return
-  return `Basic ${btoa(`${server.username ?? "codeplane"}:${server.password}`)}`
+  const credential = `${server.username ?? "codeplane"}:${server.password}`
+  return `Basic ${Buffer.from(credential).toString("base64")}`
 }
 
 function credentialsFor(server: ServerConnection.HttpBase): RequestCredentials | undefined {
@@ -48,10 +49,12 @@ export async function checkServerAuth(
   const base = server.url.replace(/\/+$/, "")
   const auth = basicAuthHeader(server)
 
-  const controller = opts?.signal ? undefined : new AbortController()
-  const timer =
-    controller && opts?.timeoutMs ? setTimeout(() => controller.abort(), opts.timeoutMs) : undefined
-  const signal = opts?.signal ?? controller?.signal
+  const controller = new AbortController()
+  const signal = opts?.signal ?? controller.signal
+  if (opts?.signal) {
+    opts.signal.addEventListener("abort", () => controller.abort(), { once: true })
+  }
+  const timer = opts?.timeoutMs ? setTimeout(() => controller.abort(), opts.timeoutMs) : undefined
 
   try {
     const headers: Record<string, string> = {}
@@ -115,10 +118,12 @@ export async function verifyTotp(
   const auth = basicAuthHeader(server)
   if (!auth) return { ok: false, reason: "unauthorized" }
 
-  const controller = opts?.signal ? undefined : new AbortController()
-  const timer =
-    controller && opts?.timeoutMs ? setTimeout(() => controller.abort(), opts.timeoutMs) : undefined
-  const signal = opts?.signal ?? controller?.signal
+  const controller = new AbortController()
+  const signal = opts?.signal ?? controller.signal
+  if (opts?.signal) {
+    opts.signal.addEventListener("abort", () => controller.abort(), { once: true })
+  }
+  const timer = opts?.timeoutMs ? setTimeout(() => controller.abort(), opts.timeoutMs) : undefined
 
   try {
     const res = await fetcher(`${base}/global/auth/verify`, {

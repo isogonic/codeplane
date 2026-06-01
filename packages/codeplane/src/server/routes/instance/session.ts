@@ -448,12 +448,18 @@ export const SessionRoutes = lazy(() =>
           // requeue a job the user just stopped.
           const queue = yield* PromptQueue.Service
           yield* queue.cancelSession(sessionID).pipe(Effect.catch(() => Effect.succeed(0)))
-          yield* svc.cancel(sessionID).pipe(Effect.catch(() => Effect.void))
+          yield* svc.cancel(sessionID)
           const todo = yield* Todo.Service
-          yield* todo.update({ sessionID, todos: [] }).pipe(Effect.catch(() => Effect.void))
-          yield* svc.recordError({ sessionID, error: aborted }).pipe(Effect.catch(() => Effect.void))
+          yield* todo.update({ sessionID, todos: [] }).pipe(
+            Effect.catch((e) => Effect.sync(() => log.warn("abort todo cleanup failed", { sessionID, error: e }))),
+          )
+          yield* svc.recordError({ sessionID, error: aborted }).pipe(
+            Effect.catch((e) => Effect.sync(() => log.warn("abort recordError failed", { sessionID, error: e }))),
+          )
           const status = yield* SessionStatus.Service
-          yield* status.set(sessionID, { type: "idle" }).pipe(Effect.catch(() => Effect.void))
+          yield* status.set(sessionID, { type: "idle" }).pipe(
+            Effect.catch((e) => Effect.sync(() => log.warn("abort status set failed", { sessionID, error: e }))),
+          )
           return true
         }),
     )
@@ -911,7 +917,11 @@ export const SessionRoutes = lazy(() =>
               svc.prompt({ ...body, sessionID } as unknown as SessionPrompt.PromptInput),
             ),
           )
-          void stream.write(JSON.stringify(msg))
+          try {
+            await stream.write(JSON.stringify(msg))
+          } catch {
+            // Client already disconnected; the prompt was processed server-side.
+          }
         })
       },
     )

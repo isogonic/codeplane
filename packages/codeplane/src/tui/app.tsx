@@ -771,7 +771,11 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
   ])
 
   event.on(TuiEvent.CommandExecute.type, (evt) => {
-    command.trigger(evt.properties.command)
+    try {
+      command.trigger(evt.properties.command)
+    } catch (error) {
+      toast.show({ variant: "error", message: errorMessage(error), duration: 5000 })
+    }
   })
 
   event.on(TuiEvent.ToastShow.type, (evt) => {

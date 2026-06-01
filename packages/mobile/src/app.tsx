@@ -1,5 +1,6 @@
 import { Component, Show, createMemo, createSignal, onMount, onCleanup } from "solid-js"
 import type { SavedInstance } from "@codeplane-ai/shared/instance"
+import type { SheetState } from "./screens/setup"
 import { createCodeplaneMobile } from "./platform/api"
 import { MobileShell } from "./components/mobile-shell"
 import { SetupScreen } from "./screens/setup"
@@ -26,6 +27,7 @@ type Route =
 export const App: Component = () => {
   const api = createCodeplaneMobile()
   const [route, setRoute] = createSignal<Route>({ kind: "setup" })
+  const [sheet, setSheet] = createSignal<SheetState>({ kind: "closed" })
 
   onMount(() => {
     // Honour incoming deep links of the form
@@ -69,12 +71,12 @@ export const App: Component = () => {
 
   const handleBack = () => {
     const r = route()
-    // Both `instance` and `settings` are leaves under the picker — the
-    // hardware-back / iOS-swipe always returns there. Returning `false`
-    // when we're already on the picker lets the platform default fire
-    // (Android exits the app; iOS has no system back from the root).
     if (r.kind === "instance" || r.kind === "settings") {
       setRoute({ kind: "setup" })
+      return true
+    }
+    if (r.kind === "setup" && sheet().kind !== "closed") {
+      setSheet({ kind: "closed" })
       return true
     }
     return false
@@ -120,6 +122,8 @@ export const App: Component = () => {
               fallback={
                 <SetupScreen
                   api={api}
+                  sheet={sheet()}
+                  setSheet={setSheet}
                   onOpenInstance={(instance) => setRoute({ kind: "instance", instance })}
                   onOpenSettings={() => setRoute({ kind: "settings" })}
                 />
