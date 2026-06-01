@@ -177,6 +177,7 @@ export const Terminal = (props: TerminalProps) => {
   const auth = server.current?.http
   const username = auth?.username ?? "codeplane"
   const password = auth?.password ?? ""
+  const otpToken = auth?.otpToken ?? ""
   const sameOrigin = new URL(url, location.href).origin === location.origin
   let container!: HTMLDivElement
   const [local, others] = splitProps(props, ["pty", "class", "classList", "autoFocus", "onConnect", "onConnectError"])
@@ -517,6 +518,7 @@ export const Terminal = (props: TerminalProps) => {
         next.searchParams.set("directory", directory)
         next.searchParams.set("cursor", String(seek))
         next.protocol = next.protocol === "https:" ? "wss:" : "ws:"
+        if (otpToken) next.searchParams.set("otp_token", otpToken)
         if (!sameOrigin && password) {
           next.searchParams.set("auth_token", btoa(`${username}:${password}`))
           // For same-origin requests, let the browser reuse the page's existing auth.

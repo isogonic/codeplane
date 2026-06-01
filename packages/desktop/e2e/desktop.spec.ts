@@ -89,6 +89,15 @@ async function attachIfExists(testInfo: TestInfo, name: string, file: string, co
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
+const basicAuthHeader = (username: string, password: string) =>
+  `Basic ${Buffer.from(`${username}:${password}`, "utf8").toString("base64")}`
+
+async function readRequestBody(request: http.IncomingMessage) {
+  const chunks: Buffer[] = []
+  for await (const chunk of request) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  return Buffer.concat(chunks).toString("utf8")
+}
+
 function createFixtureAssets(version: string, label: string) {
   const html = `<!doctype html>
 <html lang="en">
@@ -442,7 +451,15 @@ async function startFixtureServer(
   slug: string,
   version: string,
   label: string,
-  options?: { assetDelayMs?: number },
+  options?: {
+    assetDelayMs?: number
+    auth?: {
+      otpCode: string
+      otpToken: string
+      password: string
+      username: string
+    }
+  },
 ) {
   let currentVersion = version
   let currentLabel = label
@@ -471,6 +488,47 @@ async function startFixtureServer(
         pathname: url.pathname,
         ts: new Date().toISOString(),
       })
+
+      const validPassword = options?.auth
+        ? request.headers.authorization === basicAuthHeader(options.auth.username, options.auth.password)
+        : true
+      const otpHeader = request.headers["x-codeplane-otp"]
+      const validOtp = options?.auth
+        ? (Array.isArray(otpHeader) ? otpHeader[0] : otpHeader) === options.auth.otpToken
+        : true
+
+      if (options?.auth && url.pathname === "/global/auth") {
+        sendJson(response, {
+          authenticated: validPassword && validOtp,
+          passwordValid: validPassword,
+          required: true,
+          totpRequired: validPassword,
+        })
+        return
+      }
+
+      if (options?.auth && url.pathname === "/global/auth/verify") {
+        if (!validPassword) {
+          response.writeHead(401, { "Content-Type": "application/json; charset=utf-8" })
+          response.end(`${JSON.stringify({ totp: false })}\n`)
+          return
+        }
+        const body: unknown = JSON.parse((await readRequestBody(request)) || "{}")
+        const code = body && typeof body === "object" && "code" in body ? body.code : undefined
+        if (code !== options.auth.otpCode) {
+          response.writeHead(401, { "Content-Type": "application/json; charset=utf-8" })
+          response.end(`${JSON.stringify({ totp: true })}\n`)
+          return
+        }
+        sendJson(response, { token: options.auth.otpToken })
+        return
+      }
+
+      if (options?.auth && (!validPassword || !validOtp)) {
+        response.writeHead(401, { "Content-Type": "application/json; charset=utf-8" })
+        response.end(`${JSON.stringify({ error: "unauthorized" })}\n`)
+        return
+      }
 
       if (url.pathname === "/global/version") {
         sendJson(response, { current: currentVersion })
@@ -906,8 +964,11 @@ test("logs setup actions and opens cached desktop UI", async ({}, testInfo) => {
     await addInstanceButton.click()
     await page.locator('[data-desktop-action="pick-remote"]').click()
     await expect(page.getByRole("heading", { name: "Add a remote instance" })).toBeVisible()
-    await page.locator('[data-desktop-action="advanced-toggle"]').click()
-    await expect(page.locator('[data-desktop-field="instance-headers"]')).toBeVisible()
+    await expect(page.locator('[data-desktop-field="instance-basic-username"]')).toBeVisible()
+    await expect(page.locator('[data-desktop-field="instance-basic-password"]')).toBeVisible()
+    await expect(page.locator('[data-desktop-field="instance-otp"]')).toHaveCount(0)
+    await expect(page.locator('[data-desktop-field="instance-headers"]')).toHaveCount(0)
+    await expect(page.locator('[data-desktop-action="advanced-toggle"]')).toHaveCount(0)
     await page.locator('[data-desktop-action="form-cancel"]').click()
     await expect(page.getByText("Connect to your instance")).toBeVisible()
 
@@ -915,9 +976,10 @@ test("logs setup actions and opens cached desktop UI", async ({}, testInfo) => {
     await page.locator('[data-desktop-action="pick-remote"]').click()
     await page.locator('[data-desktop-field="instance-name"]').fill("Primary workspace")
     await page.locator('[data-desktop-field="instance-url"]').fill(server.origin)
+    await page.locator('[data-desktop-field="instance-basic-username"]').fill("alice")
+    await page.locator('[data-desktop-field="instance-basic-password"]').fill("secret")
     await expect(page.getByText(`Reachable. Detected Codeplane ${appVersion}.`)).toBeVisible()
-    await page.locator('[data-desktop-action="advanced-toggle"]').click()
-    await page.locator('[data-desktop-field="instance-headers"]').fill("x-test-header: desktop")
+    await expect(page.locator('[data-desktop-field="instance-otp"]')).toHaveCount(0)
     await page.locator('[data-desktop-field="ignore-certificates"]').check()
 
     await page.locator('[data-desktop-action="instance-save"]').click()
@@ -990,7 +1052,6 @@ test("logs setup actions and opens cached desktop UI", async ({}, testInfo) => {
     expect(hasAction("instance-add")).toBe(true)
     expect(hasAction("picker-back")).toBe(true)
     expect(hasAction("form-cancel")).toBe(true)
-    expect(hasAction("advanced-toggle")).toBe(true)
     expect(hasAction("instance-save")).toBe(true)
     expect(hasAction("desktop-update-check")).toBe(true)
     expect(hasAction("instance-open")).toBe(true)
@@ -1035,6 +1096,60 @@ test("logs setup actions and opens cached desktop UI", async ({}, testInfo) => {
     await server.close()
     await attachIfExists(testInfo, "desktop-log", testInfo.outputPath("desktop-runtime/logs/desktop.log"))
     await attachIfExists(testInfo, "primary-server-log", server.logFile)
+  }
+})
+
+test("shows OTP only after a password-protected remote server requires it", async ({}, testInfo) => {
+  const server = await startFixtureServer(testInfo, "otp", appVersion, "OTP workspace", {
+    auth: {
+      otpCode: "123456",
+      otpToken: "verified-otp-token",
+      password: "secret",
+      username: "alice",
+    },
+  })
+  let app: Awaited<ReturnType<typeof electron.launch>> | undefined
+
+  try {
+    const runtime = await launchDesktop(testInfo)
+    app = runtime.app
+    let page = runtime.page
+
+    await page.getByLabel("Add instance").first().click()
+    await page.locator('[data-desktop-action="pick-remote"]').click()
+    await page.locator('[data-desktop-field="instance-name"]').fill("OTP workspace")
+    await page.locator('[data-desktop-field="instance-url"]').fill(server.origin)
+    await expect(page.locator('[data-desktop-field="instance-otp"]')).toHaveCount(0)
+
+    await page.locator('[data-desktop-field="instance-basic-username"]').fill("alice")
+    await page.locator('[data-desktop-field="instance-basic-password"]').fill("secret")
+    await expect(page.locator('[data-desktop-field="instance-otp"]')).toHaveCount(0)
+
+    await page.locator('[data-desktop-action="instance-save"]').click()
+    await expect(page.locator('[data-desktop-field="instance-otp"]')).toBeVisible()
+    await expect(page.getByText("Enter the one-time code for this server.")).toBeVisible()
+
+    await page.locator('[data-desktop-field="instance-otp"]').fill("123456")
+    await page.locator('[data-desktop-action="instance-save"]').click()
+    await expect(page.locator('[data-desktop-state="prepare"]')).toBeVisible()
+    await expect(page.getByText("Connect to your instance")).toBeVisible({ timeout: 15_000 })
+
+    const instanceWindowPromise = app.waitForEvent("window")
+    await page.locator('[data-desktop-action="instance-open"]').first().click()
+    page = await instanceWindowPromise
+    await page.waitForLoadState("domcontentloaded")
+
+    await expect(page.getByTestId("fixture-server-version")).toHaveText(appVersion)
+    await expect(page.getByTestId("fixture-providers")).toHaveText(/^ok:/)
+
+    const requests = await readJsonLines<RequestLogEntry>(server.logFile)
+    expect(requests.some((entry) => entry.pathname === "/global/auth")).toBe(true)
+    expect(requests.some((entry) => entry.pathname === "/global/auth/verify")).toBe(true)
+  } finally {
+    if (app) await app.close()
+    await server.close()
+    await attachIfExists(testInfo, "desktop-log", testInfo.outputPath("desktop-runtime/logs/desktop.log"))
+    await attachIfExists(testInfo, "otp-server-log", server.logFile)
   }
 })
 

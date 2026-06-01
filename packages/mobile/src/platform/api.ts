@@ -9,7 +9,7 @@
  * without touching the screens.
  */
 
-import { Capacitor } from "@capacitor/core"
+import { Capacitor, CapacitorHttp } from "@capacitor/core"
 import { App as CapApp, type URLOpenListenerEvent } from "@capacitor/app"
 import { StatusBar, Style as StatusBarStyle } from "@capacitor/status-bar"
 import { Keyboard } from "@capacitor/keyboard"
@@ -28,6 +28,7 @@ import { uiCache, type UICacheAPI } from "./ui-cache"
 import { assetCache, type AssetCacheAPI } from "./asset-cache"
 import { offlineCache, type OfflineCacheAPI } from "./offline-cache"
 import type { SavedInstance } from "@codeplane-ai/shared/instance"
+import { checkRemoteAuth, verifyRemoteTotp, type RemoteAuthStatus, type VerifyRemoteTotpResult } from "@codeplane-ai/shared/remote-auth"
 import type { SSOConfig } from "./sso-types"
 
 export type MobilePlatform = "ios" | "android" | "web"
@@ -147,6 +148,8 @@ export type CodeplaneMobileAPI = {
     list: () => Promise<SavedInstance[]>
     save: (instance: SavedInstance) => Promise<SavedInstance[]>
     remove: (id: string) => Promise<SavedInstance[]>
+    authStatus: (input: SavedInstance) => Promise<RemoteAuthStatus>
+    verifyOtp: (input: { instance: SavedInstance; code: string }) => Promise<VerifyRemoteTotpResult>
     getLastId: () => Promise<string | undefined>
     setLastId: (id: string) => Promise<void>
     /**
@@ -243,6 +246,25 @@ const mapPermissionState = (raw: string | undefined): MobilePermissionState => {
     default:
       return "unknown"
   }
+}
+
+const capacitorFetch: typeof fetch = async (input, init) => {
+  const headers: Record<string, string> = {}
+  new Headers(init?.headers).forEach((value, key) => {
+    headers[key] = value
+  })
+  const response = await CapacitorHttp.request({
+    method: init?.method ?? "GET",
+    url: typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url,
+    headers,
+    data: typeof init?.body === "string" ? init.body : undefined,
+    connectTimeout: 8000,
+    readTimeout: 8000,
+  })
+  return new Response(typeof response.data === "string" ? response.data : JSON.stringify(response.data ?? null), {
+    status: response.status,
+    headers: response.headers,
+  })
 }
 
 export function createCodeplaneMobile(): CodeplaneMobileAPI {
@@ -585,9 +607,14 @@ export function createCodeplaneMobile(): CodeplaneMobileAPI {
         await assetCache.clear(id)
         return next
       }
+      const authFetch = isNative ? capacitorFetch : fetch
       return {
         ...base,
         remove,
+        authStatus: (input: SavedInstance) =>
+          checkRemoteAuth({ url: input.url, headers: input.headers }, authFetch, { timeoutMs: 8000 }),
+        verifyOtp: (input: { instance: SavedInstance; code: string }) =>
+          verifyRemoteTotp({ url: input.instance.url, headers: input.instance.headers, code: input.code }, authFetch, { timeoutMs: 8000 }),
         prefs: {
           async getLiveActivitiesEnabled(instanceId: string) {
             const v = await mobilePreferences.getItem(`cp:prefs:la:${instanceId}`)

@@ -1,12 +1,13 @@
 import { Component, Show, createSignal, createEffect } from "solid-js"
 import type { SavedInstance } from "@codeplane-ai/shared/instance"
-import { formatHeaders, parseHeaders } from "@codeplane-ai/shared/headers"
+import { composeRemoteAuthHeaders, splitRemoteAuthHeaders, type VerifyRemoteTotpResult } from "@codeplane-ai/shared/remote-auth"
+import type { CodeplaneMobileAPI } from "../platform/api"
 
 /**
  * Full-screen edit form for a single instance.
  *
- * Mirrors the fields the desktop picker collects (label, URL, auth
- * headers, ignore-cert toggle) but with a stacked, scroll-friendly
+ * Mirrors the fields the desktop picker collects (label, URL, username,
+ * password, conditional OTP, ignore-cert toggle) but with a stacked, scroll-friendly
  * layout. We deliberately don't reuse the desktop's two-column layout
  * here — on phones it just compresses to garbage.
  *
@@ -23,7 +24,11 @@ type Draft = {
   id: string
   url: string
   label: string
-  headersText: string
+  username: string
+  password: string
+  otpToken: string
+  otpCode: string
+  otpVisible: boolean
   ignoreCertificateErrors: boolean
   liveActivitiesEnabled: boolean
 }
@@ -32,14 +37,21 @@ const draftFromInstance = (
   instance?: SavedInstance,
   plaintextHeaders?: Record<string, string>,
   liveActivitiesEnabled?: boolean,
-): Draft => ({
-  id: instance?.id ?? uid(),
-  url: instance?.url ?? "",
-  label: instance?.label ?? "",
-  headersText: plaintextHeaders ? formatHeaders(plaintextHeaders) : "",
-  ignoreCertificateErrors: !!instance?.ignoreCertificateErrors,
-  liveActivitiesEnabled: liveActivitiesEnabled ?? true,
-})
+): Draft => {
+  const auth = splitRemoteAuthHeaders(plaintextHeaders)
+  return {
+    id: instance?.id ?? uid(),
+    url: instance?.url ?? "",
+    label: instance?.label ?? "",
+    username: auth.username ?? "",
+    password: auth.password ?? "",
+    otpToken: auth.otpToken ?? "",
+    otpCode: "",
+    otpVisible: false,
+    ignoreCertificateErrors: !!instance?.ignoreCertificateErrors,
+    liveActivitiesEnabled: liveActivitiesEnabled ?? true,
+  }
+}
 
 export const InstanceForm: Component<{
   instance?: SavedInstance
@@ -53,11 +65,13 @@ export const InstanceForm: Component<{
   liveActivitiesEnabled?: boolean
   /** Whether the device actually supports Live Activities (iOS 16.2+). */
   liveActivitiesSupported?: boolean
+  authStatus: CodeplaneMobileAPI["instances"]["authStatus"]
+  verifyOtp: CodeplaneMobileAPI["instances"]["verifyOtp"]
   onSubmit: (
     instance: SavedInstance,
     plaintextHeaders: Record<string, string>,
     prefs: { liveActivitiesEnabled: boolean },
-  ) => void
+  ) => void | Promise<void>
   onCancel: () => void
   onDelete?: (id: string) => void
 }> = (props) => {
@@ -65,12 +79,60 @@ export const InstanceForm: Component<{
     draftFromInstance(props.instance, props.plaintextHeaders, props.liveActivitiesEnabled),
   )
   const [error, setError] = createSignal<string | null>(null)
+  const [saving, setSaving] = createSignal(false)
 
   createEffect(() => {
     setDraft(draftFromInstance(props.instance, props.plaintextHeaders, props.liveActivitiesEnabled))
   })
 
-  const submit = () => {
+  const authHeaders = (current: Draft, otpToken = current.otpToken) =>
+    composeRemoteAuthHeaders({
+      username: current.username,
+      password: current.password,
+      otpToken,
+    }) ?? {}
+
+  const authHeadersWithoutOtp = (current: Draft) =>
+    composeRemoteAuthHeaders({
+      username: current.username,
+      password: current.password,
+    }) ?? {}
+
+  const otpFailureMessage = (reason: Extract<VerifyRemoteTotpResult, { ok: false }>["reason"]) =>
+    reason === "invalid-code"
+      ? "One-time code is incorrect."
+      : reason === "rate-limited"
+        ? "Too many attempts. Try again later."
+        : "Could not verify the one-time code."
+
+  const resolveAuthHeaders = async (instance: SavedInstance, current: Draft) => {
+    const status = await props.authStatus(instance)
+    if (!status.reachable) return { ok: true as const, headers: authHeaders(current) }
+    if (!status.required) {
+      setDraft({ ...draft(), otpVisible: false, otpToken: "", otpCode: "" })
+      return { ok: true as const, headers: authHeadersWithoutOtp(current) }
+    }
+    if (status.authenticated && !status.totpRequired) {
+      setDraft({ ...draft(), otpVisible: false, otpToken: "", otpCode: "" })
+      return { ok: true as const, headers: authHeadersWithoutOtp(current) }
+    }
+    if (!status.passwordValid || !status.totpRequired) {
+      setDraft({ ...draft(), otpVisible: false, otpToken: "" })
+      return { ok: false as const, message: "Username or password is incorrect." }
+    }
+    setDraft({ ...draft(), otpVisible: true })
+    if (!current.otpCode.trim()) return { ok: false as const, message: "Enter the one-time code for this server." }
+    const verified = await props.verifyOtp({
+      instance: { ...instance, headers: authHeadersWithoutOtp(current) },
+      code: current.otpCode,
+    })
+    if (!verified.ok) return { ok: false as const, message: otpFailureMessage(verified.reason) }
+    setDraft({ ...draft(), otpVisible: true, otpToken: verified.token, otpCode: "" })
+    return { ok: true as const, headers: authHeaders(current, verified.token) }
+  }
+
+  const submit = async () => {
+    if (saving()) return
     const current = draft()
     if (!current.url.trim()) {
       setError("Server URL is required")
@@ -84,26 +146,35 @@ export const InstanceForm: Component<{
       setError("Server URL must be a valid URL (https://…)")
       return
     }
-    let parsedHeaders: Record<string, string> = {}
-    if (current.headersText.trim()) {
-      try {
-        parsedHeaders = parseHeaders(current.headersText)
-      } catch (e) {
-        setError(`Headers: ${(e as Error).message}`)
+    setError(null)
+    setSaving(true)
+    try {
+      const saved: SavedInstance = {
+        id: current.id,
+        url: normalizedUrl,
+        label: current.label.trim() || undefined,
+        headers: Object.keys(authHeaders(current)).length ? authHeaders(current) : undefined,
+        ignoreCertificateErrors: current.ignoreCertificateErrors || undefined,
+      }
+      const auth = await resolveAuthHeaders(saved, current)
+      if (!auth.ok) {
+        setError(auth.message)
         return
       }
+      const headers = auth.headers
+      await props.onSubmit(
+        {
+          ...saved,
+          headers: Object.keys(headers).length ? headers : undefined,
+        },
+        headers,
+        {
+          liveActivitiesEnabled: current.liveActivitiesEnabled,
+        },
+      )
+    } finally {
+      setSaving(false)
     }
-    setError(null)
-    const saved: SavedInstance = {
-      id: current.id,
-      url: normalizedUrl,
-      label: current.label.trim() || undefined,
-      headers: Object.keys(parsedHeaders).length ? parsedHeaders : undefined,
-      ignoreCertificateErrors: current.ignoreCertificateErrors || undefined,
-    }
-    props.onSubmit(saved, parsedHeaders, {
-      liveActivitiesEnabled: current.liveActivitiesEnabled,
-    })
   }
 
   return (
@@ -118,7 +189,7 @@ export const InstanceForm: Component<{
       }}
       onSubmit={(event) => {
         event.preventDefault()
-        submit()
+        void submit()
       }}
     >
       <div class="mobile-field">
@@ -136,7 +207,7 @@ export const InstanceForm: Component<{
           required
           placeholder="https://codeplane.example.com"
           value={draft().url}
-          onInput={(e) => setDraft({ ...draft(), url: e.currentTarget.value })}
+          onInput={(e) => setDraft({ ...draft(), url: e.currentTarget.value, otpToken: "", otpCode: "", otpVisible: false })}
         />
       </div>
 
@@ -156,25 +227,65 @@ export const InstanceForm: Component<{
       </div>
 
       <div class="mobile-field">
-        <label class="mobile-label" for="cp-mobile-headers">
-          Auth headers
+        <label class="mobile-label" for="cp-mobile-username">
+          Username
         </label>
-        <textarea
-          id="cp-mobile-headers"
-          class="mobile-textarea"
-          rows={4}
+        <input
+          id="cp-mobile-username"
+          class="mobile-input"
+          type="text"
           autocapitalize="none"
           autocorrect="off"
           spellcheck={false}
-          placeholder={"Authorization: Bearer ...\nCookie: session=..."}
-          value={draft().headersText}
-          onInput={(e) => setDraft({ ...draft(), headersText: e.currentTarget.value })}
+          autocomplete="username"
+          placeholder="codeplane"
+          value={draft().username}
+          onInput={(e) => setDraft({ ...draft(), username: e.currentTarget.value, otpToken: "", otpCode: "" })}
+        />
+      </div>
+
+      <div class="mobile-field">
+        <label class="mobile-label" for="cp-mobile-password">
+          Password
+        </label>
+        <input
+          id="cp-mobile-password"
+          class="mobile-input"
+          type="password"
+          autocapitalize="none"
+          autocorrect="off"
+          spellcheck={false}
+          autocomplete="current-password"
+          placeholder="Password"
+          value={draft().password}
+          onInput={(e) => setDraft({ ...draft(), password: e.currentTarget.value, otpToken: "", otpCode: "" })}
         />
         <p class="mobile-help">
-          One per line, formatted <code>Key: Value</code>. Stored in the OS keychain and attached to every
-          request to this instance.
+          Use the credentials from <code>codeplane serve --password</code>. The one-time code field appears
+          only when the server requires it.
         </p>
       </div>
+
+      <Show when={draft().otpVisible}>
+        <div class="mobile-field">
+          <label class="mobile-label" for="cp-mobile-otp">
+            One-time code
+          </label>
+          <input
+            id="cp-mobile-otp"
+            class="mobile-input"
+            type="text"
+            inputmode="numeric"
+            autocapitalize="none"
+            autocorrect="off"
+            spellcheck={false}
+            autocomplete="one-time-code"
+            placeholder={draft().otpToken ? "OTP verified" : "123456"}
+            value={draft().otpCode}
+            onInput={(e) => setDraft({ ...draft(), otpCode: e.currentTarget.value })}
+          />
+        </div>
+      </Show>
 
       <div class="mobile-setting-row">
         <div class="mobile-setting-row__body">
@@ -184,6 +295,7 @@ export const InstanceForm: Component<{
         <Switch
           ariaLabel="Allow self-signed certificates"
           checked={draft().ignoreCertificateErrors}
+          disabled={saving()}
           onChange={(v) => setDraft({ ...draft(), ignoreCertificateErrors: v })}
         />
       </div>
@@ -200,6 +312,7 @@ export const InstanceForm: Component<{
           <Switch
             ariaLabel="Live Activities"
             checked={draft().liveActivitiesEnabled}
+            disabled={saving()}
             onChange={(v) => setDraft({ ...draft(), liveActivitiesEnabled: v })}
           />
         </div>
@@ -219,6 +332,7 @@ export const InstanceForm: Component<{
           type="button"
           class="mobile-button mobile-button--secondary"
           style={{ flex: "1 1 0" }}
+          disabled={saving()}
           onClick={() => props.onCancel()}
         >
           Cancel
@@ -227,8 +341,9 @@ export const InstanceForm: Component<{
           type="submit"
           class="mobile-button mobile-button--primary"
           style={{ flex: "1.4 1 0" }}
+          disabled={saving()}
         >
-          {props.instance ? "Save changes" : "Add server"}
+          {saving() ? "Saving..." : props.instance ? "Save changes" : "Add server"}
         </button>
       </div>
 
@@ -237,6 +352,7 @@ export const InstanceForm: Component<{
           <button
             type="button"
             class="mobile-button mobile-button--danger-ghost mobile-button--block"
+            disabled={saving()}
             onClick={() => props.onDelete?.(props.instance!.id)}
           >
             Remove this server

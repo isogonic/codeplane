@@ -7,6 +7,7 @@ import type {
   PrepareProgress,
   SavedInstance,
 } from "@codeplane-ai/shared/instance"
+import type { RemoteAuthStatus, VerifyRemoteTotpResult } from "@codeplane-ai/shared/remote-auth"
 
 type DesktopStorageApi = {
   getItem: (storageName: string | undefined, key: string) => string | null
@@ -115,10 +116,10 @@ const api = {
         status?: number
         error?: string
       }>,
-    signInWithBrowser: (input: { id: string; url: string }) =>
-      ipcRenderer.invoke("instances:sign-in-with-browser", input) as Promise<
-        { ok: true; cookieHeader: string; cookieCount: number } | { ok: false; error: string }
-      >,
+    authStatus: (input: SavedInstance) =>
+      ipcRenderer.invoke("instances:auth-status", input) as Promise<RemoteAuthStatus>,
+    verifyOtp: (input: { instance: SavedInstance; code: string }) =>
+      ipcRenderer.invoke("instances:verify-otp", input) as Promise<VerifyRemoteTotpResult>,
   },
   auth: {
     openExternal: (url: string) => ipcRenderer.invoke("auth:open-external", url) as Promise<boolean>,
