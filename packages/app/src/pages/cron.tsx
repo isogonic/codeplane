@@ -28,6 +28,7 @@ import {
 } from "@/utils/cron-client"
 import { base64Encode } from "@codeplane-ai/shared/util/encode"
 import { decode64 } from "@/utils/base64"
+import { CronTaskStopAction } from "./cron-stop-actions"
 import { cronAgentOptions, type CronAgentOption } from "./cron-agents"
 import { cronProjectForDirectory, cronProjectIDForRoute, cronTaskInScope, type CronProjectScope } from "./cron-scope"
 
@@ -268,6 +269,22 @@ function CronTaskRow(props: {
       }),
   }))
 
+  const cancelRun = useMutation(() => ({
+    mutationFn: async () => {
+      const conn = props.server()
+      if (!conn) throw new Error("No server connection")
+      if (!props.task.lastRunID) throw new Error("No run to cancel")
+      return CronClient.cancelRun(conn, props.task.lastRunID)
+    },
+    onSuccess: () => invalidate(),
+    onError: (err: unknown) =>
+      showToast({
+        variant: "error",
+        title: language.t("common.requestFailed"),
+        description: err instanceof Error ? err.message : String(err),
+      }),
+  }))
+
   const remove = useMutation(() => ({
     mutationFn: async () => {
       if (!confirm(language.t("cron.delete.confirm"))) return
@@ -322,6 +339,12 @@ function CronTaskRow(props: {
           </Show>
         </div>
         <div class="flex shrink-0 items-center gap-1">
+          <CronTaskStopAction
+            status={props.task.lastRunStatus}
+            label={language.t("cron.action.cancel")}
+            disabled={cancelRun.isPending || !props.task.lastRunID}
+            onClick={() => cancelRun.mutate()}
+          />
           <Tooltip value={language.t("cron.action.trigger")} placement="top">
             <IconButton
               icon="arrow-right"

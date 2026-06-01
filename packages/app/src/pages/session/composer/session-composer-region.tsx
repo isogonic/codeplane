@@ -8,6 +8,7 @@ import { useLanguage } from "@/context/language"
 import { usePrompt } from "@/context/prompt"
 import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
+import { CronSessionStopAction } from "@/pages/cron-stop-actions"
 import { getSessionHandoff, setSessionHandoff } from "@/pages/session/handoff"
 import { useSessionKey } from "@/pages/session/session-layout"
 import { SessionPermissionDock } from "@/pages/session/composer/session-permission-dock"
@@ -52,6 +53,10 @@ export function SessionComposerRegion(props: {
     disabled?: boolean
     onRestore: (id: string) => void
   }
+  cronStop?: {
+    stopping: boolean
+    onStop: () => void
+  }
   setPromptDockRef: (el: HTMLDivElement) => void
 }) {
   const navigate = useNavigate()
@@ -68,6 +73,7 @@ export function SessionComposerRegion(props: {
   const isCronSession = createMemo(() => !!(info() as { cronRunID?: string } | undefined)?.cronRunID)
   const archived = createMemo(() => !!info()?.time.archived || isCronSession())
   const showComposer = createMemo(() => !archived() && (!props.state.blocked() || child()))
+  const cronStop = createMemo(() => (isCronSession() ? props.cronStop : undefined))
 
   const previewPrompt = () =>
     prompt
@@ -326,9 +332,15 @@ export function SessionComposerRegion(props: {
             class="flex w-full items-center gap-2 rounded-[12px] border border-border-weak-base bg-background-base px-4 py-3 text-14-regular text-text-weak"
           >
             <Icon name={isCronSession() ? "bell" : "archive"} size="small" class="shrink-0" />
-            <span>
+            <span class="min-w-0 flex-1">
               {isCronSession() ? language.t("session.cron.readonly") : language.t("session.archived.readOnly")}
             </span>
+            <CronSessionStopAction
+              visible={!!cronStop()}
+              label={language.t("cron.action.cancel")}
+              stopping={cronStop()?.stopping}
+              onClick={() => cronStop()?.onStop()}
+            />
           </div>
         </Show>
       </div>

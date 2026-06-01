@@ -42,6 +42,7 @@ import { usePermission } from "@/context/permission"
 import { usePrompt } from "@/context/prompt"
 import { useSDK } from "@/context/sdk"
 import { useSettings } from "@/context/settings"
+import { useServer } from "@/context/server"
 import { INITIAL_MESSAGE_PAGE_SIZE, useSync } from "@/context/sync"
 import { useTerminal } from "@/context/terminal"
 import { type FollowupDraft, sendFollowupDraft } from "@/components/prompt-input/submit"
@@ -73,6 +74,8 @@ import { Persist, persisted } from "@/utils/persist"
 import { extractPromptFromParts } from "@/utils/prompt"
 import { same } from "@/utils/same"
 import { formatServerError } from "@/utils/server-errors"
+import { CronClient } from "@/utils/cron-client"
+import { canShowCronSessionStop } from "./cron-stop"
 
 const emptyUserMessages: UserMessage[] = []
 
@@ -418,6 +421,7 @@ export default function Page() {
   const language = useLanguage()
   const permission = usePermission()
   const sdk = useSDK()
+  const server = useServer()
   const settings = useSettings()
   const prompt = usePrompt()
   const comments = useComments()
@@ -523,7 +527,8 @@ export default function Page() {
 
   const info = createMemo(() => (params.id ? sync.session.get(params.id) : undefined))
   const isChildSession = createMemo(() => !!info()?.parentID)
-  const isCronSession = createMemo(() => !!(info() as { cronRunID?: string } | undefined)?.cronRunID)
+  const cronRunID = createMemo(() => (info() as { cronRunID?: string } | undefined)?.cronRunID)
+  const isCronSession = createMemo(() => !!cronRunID())
   // Cron-driven sessions are read-only: the agent runs autonomously, no prompts
   // or follow-ups accepted. We piggy-back on the existing `archived` predicate
   // which already gates input, follow-ups, revert, and queue actions.
@@ -1765,6 +1770,27 @@ export default function Page() {
     return isSessionWorking(sync.data.session_status[sessionID], sync.data.message[sessionID])
   }
 
+  const stopCronRun = useMutation(() => ({
+    mutationFn: async (runID: string) => {
+      const conn = server.current?.http
+      if (!conn) throw new Error("No server connection")
+      return CronClient.cancelRun(conn, runID)
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cron"] }),
+    onError: fail,
+  }))
+
+  const cronStop = createMemo(() => {
+    const id = params.id
+    const runID = cronRunID()
+    if (!id || !runID) return
+    if (!canShowCronSessionStop({ sessionID: id, runID, busy: !!id && busy(id) })) return
+    return {
+      stopping: stopCronRun.isPending,
+      onStop: () => stopCronRun.mutate(runID),
+    }
+  })
+
   // Server-authoritative queue: rows come from `sync.data.prompt_queue` —
   // populated by the snapshot fetch below and kept fresh by the
   // session.queue.{created,updated,removed} bus events. We display
@@ -2414,6 +2440,7 @@ export default function Page() {
                     }
                   : undefined
               }
+              cronStop={cronStop()}
               setPromptDockRef={(el) => {
                 promptDock = el
               }}

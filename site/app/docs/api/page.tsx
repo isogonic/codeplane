@@ -49,6 +49,8 @@ export default function API() {
             <tr><td>GET</td><td><code>/global/version</code></td><td>Current/latest version, update state, detected install method.</td></tr>
             <tr><td>GET</td><td><code>/global/event</code></td><td>Cross-instance SSE stream for global app state.</td></tr>
             <tr><td>GET</td><td><code>/global/cron</code></td><td>List configured recurring jobs.</td></tr>
+            <tr><td>GET</td><td><code>/global/cron/:taskID/runs</code></td><td>List recent scheduled task runs.</td></tr>
+            <tr><td>POST</td><td><code>/global/cron/runs/:runID/cancel</code></td><td>Cancel a queued or running scheduled task run.</td></tr>
           </tbody>
         </table>
 
