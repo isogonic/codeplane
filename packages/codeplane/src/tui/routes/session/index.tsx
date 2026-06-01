@@ -1998,7 +1998,7 @@ function InlineTool(props: {
   complete: any
   pending: string
   spinner?: boolean
-  children: JSX.Element
+  children: string
   part: ToolPart
   agentColor?: RGBA
   onClick?: () => void
@@ -2219,7 +2219,7 @@ function Write(props: ToolProps<typeof WriteTool>) {
       </Match>
       <Match when={true}>
         <InlineTool icon="←" pending="Preparing write..." complete={props.input.filePath} part={props.part}>
-          Write {normalizePath(props.input.filePath!)}
+          {`Write ${normalizePath(props.input.filePath)}`}
         </InlineTool>
       </Match>
     </Switch>
@@ -2227,12 +2227,14 @@ function Write(props: ToolProps<typeof WriteTool>) {
 }
 
 function Glob(props: ToolProps<typeof GlobTool>) {
+  const label = createMemo(() => {
+    const path = props.input.path ? ` in ${normalizePath(props.input.path)} ` : ""
+    const count = props.metadata.count ? ` (${props.metadata.count} ${props.metadata.count === 1 ? "match" : "matches"})` : ""
+    return `Glob "${textValue(props.input.pattern)}"${path}${count}`
+  })
   return (
     <InlineTool icon="✱" pending="Finding files..." complete={props.input.pattern} part={props.part}>
-      Glob "{textValue(props.input.pattern)}" <Show when={props.input.path}>in {normalizePath(props.input.path)} </Show>
-      <Show when={props.metadata.count}>
-        ({props.metadata.count} {props.metadata.count === 1 ? "match" : "matches"})
-      </Show>
+      {label()}
     </InlineTool>
   )
 }
@@ -2256,7 +2258,7 @@ function Read(props: ToolProps<typeof ReadTool>) {
         spinner={isRunning()}
         part={props.part}
       >
-        Read {normalizePath(props.input.filePath!)} {input(props.input, ["filePath"])}
+        {`Read ${normalizePath(props.input.filePath)} ${input(props.input, ["filePath"])}`.trimEnd()}
       </InlineTool>
       <For each={loaded()}>
         {(filepath) => (
@@ -2272,12 +2274,16 @@ function Read(props: ToolProps<typeof ReadTool>) {
 }
 
 function Grep(props: ToolProps<typeof GrepTool>) {
+  const label = createMemo(() => {
+    const path = props.input.path ? ` in ${normalizePath(props.input.path)} ` : ""
+    const matches = props.metadata.matches
+      ? ` (${props.metadata.matches} ${props.metadata.matches === 1 ? "match" : "matches"})`
+      : ""
+    return `Grep "${textValue(props.input.pattern)}"${path}${matches}`
+  })
   return (
     <InlineTool icon="✱" pending="Searching content..." complete={props.input.pattern} part={props.part}>
-      Grep "{textValue(props.input.pattern)}" <Show when={props.input.path}>in {normalizePath(props.input.path)} </Show>
-      <Show when={props.metadata.matches}>
-        ({props.metadata.matches} {props.metadata.matches === 1 ? "match" : "matches"})
-      </Show>
+      {label()}
     </InlineTool>
   )
 }
@@ -2285,16 +2291,20 @@ function Grep(props: ToolProps<typeof GrepTool>) {
 function WebFetch(props: ToolProps<typeof WebFetchTool>) {
   return (
     <InlineTool icon="%" pending="Fetching from the web..." complete={props.input.url} part={props.part}>
-      WebFetch {textValue(props.input.url)}
+      {`WebFetch ${textValue(props.input.url)}`}
     </InlineTool>
   )
 }
 
 function WebSearch(props: ToolProps<typeof WebSearchTool>) {
   const metadata = props.metadata as { numResults?: number }
+  const label = createMemo(() => {
+    const results = metadata.numResults ? ` (${metadata.numResults} results)` : ""
+    return `Exa Web Search "${textValue(props.input.query)}"${results}`
+  })
   return (
     <InlineTool icon="◈" pending="Searching web..." complete={props.input.query} part={props.part}>
-      Exa Web Search "{textValue(props.input.query)}" <Show when={metadata.numResults}>({metadata.numResults} results)</Show>
+      {label()}
     </InlineTool>
   )
 }
@@ -2414,7 +2424,7 @@ function Edit(props: ToolProps<typeof EditTool>) {
       </Match>
       <Match when={true}>
         <InlineTool icon="←" pending="Preparing edit..." complete={props.input.filePath} part={props.part}>
-          Edit {normalizePath(props.input.filePath!)} {input({ replaceAll: props.input.replaceAll })}
+          {`Edit ${normalizePath(props.input.filePath)} ${input({ replaceAll: props.input.replaceAll })}`.trimEnd()}
         </InlineTool>
       </Match>
     </Switch>
@@ -2544,7 +2554,7 @@ function Question(props: ToolProps<typeof QuestionTool>) {
       </Match>
       <Match when={true}>
         <InlineTool icon="→" pending="Asking questions..." complete={count()} part={props.part}>
-          Asked {count()} question{count() !== 1 ? "s" : ""}
+          {`Asked ${count()} question${count() !== 1 ? "s" : ""}`}
         </InlineTool>
       </Match>
     </Switch>
@@ -2554,7 +2564,7 @@ function Question(props: ToolProps<typeof QuestionTool>) {
 function Skill(props: ToolProps<typeof SkillTool>) {
   return (
     <InlineTool icon="→" pending="Loading skill..." complete={props.input.name} part={props.part}>
-      Skill "{textValue(props.input.name)}"
+      {`Skill "${textValue(props.input.name)}"`}
     </InlineTool>
   )
 }

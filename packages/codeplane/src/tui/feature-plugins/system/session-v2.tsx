@@ -9,6 +9,7 @@ import { useLocal } from "@/tui/context/local"
 import { useKeyboard, useRenderer, useTerminalDimensions, type JSX } from "@opentui/solid"
 import type { RGBA, SyntaxStyle } from "@opentui/core"
 import { Locale } from "@/tui/_compat/locale"
+import { textValue } from "@/tui/util/text-value"
 import { LANGUAGE_EXTENSIONS } from "@/lsp/language"
 import path from "path"
 import stripAnsi from "strip-ansi"
@@ -518,7 +519,7 @@ function InlineTool(props: {
   complete: unknown
   pending: string
   spinner?: boolean
-  children: JSX.Element
+  children: string
   part: SessionMessageAssistantTool
   agentColor?: RGBA
 }) {
@@ -647,17 +648,17 @@ function Bash(props: ToolProps) {
 }
 
 function Glob(props: ToolProps) {
+  const label = createMemo(() => {
+    const path = stringValue(props.input.path)
+    return `Glob "${valueText(props.input.pattern, pendingInput(props.part))}"${path ? ` in ${normalizePath(path)} ` : ""}${countText(
+      props.metadata.count,
+      "match",
+      "matches",
+    )}`
+  })
   return (
     <InlineTool icon="✱" pending="Finding files..." complete={toolComplete(props.part)} part={props.part} agentColor={props.agentColor}>
-      Glob "{stringValue(props.input.pattern) ?? pendingInput(props.part)}"{" "}
-      <Show when={stringValue(props.input.path)}>in {normalizePath(stringValue(props.input.path))} </Show>
-      <Show when={numberValue(props.metadata.count)}>
-        {(count) => (
-          <>
-            ({count()} {count() === 1 ? "match" : "matches"})
-          </>
-        )}
-      </Show>
+      {label()}
     </InlineTool>
   )
 }
@@ -677,8 +678,7 @@ function Read(props: ToolProps) {
         part={props.part}
         agentColor={props.agentColor}
       >
-        Read {normalizePath(stringValue(props.input.filePath) ?? pendingInput(props.part))}{" "}
-        {input(props.input, ["filePath"])}
+        {`Read ${pathText(props.input.filePath, pendingInput(props.part))} ${input(props.input, ["filePath"])}`.trimEnd()}
       </InlineTool>
       <For each={loaded()}>
         {(filepath) => (
@@ -694,17 +694,17 @@ function Read(props: ToolProps) {
 }
 
 function Grep(props: ToolProps) {
+  const label = createMemo(() => {
+    const path = stringValue(props.input.path)
+    return `Grep "${valueText(props.input.pattern, pendingInput(props.part))}"${path ? ` in ${normalizePath(path)} ` : ""}${countText(
+      props.metadata.matches,
+      "match",
+      "matches",
+    )}`
+  })
   return (
     <InlineTool icon="✱" pending="Searching content..." complete={toolComplete(props.part)} part={props.part} agentColor={props.agentColor}>
-      Grep "{stringValue(props.input.pattern) ?? pendingInput(props.part)}"{" "}
-      <Show when={stringValue(props.input.path)}>in {normalizePath(stringValue(props.input.path))} </Show>
-      <Show when={numberValue(props.metadata.matches)}>
-        {(matches) => (
-          <>
-            ({matches()} {matches() === 1 ? "match" : "matches"})
-          </>
-        )}
-      </Show>
+      {label()}
     </InlineTool>
   )
 }
@@ -712,25 +712,39 @@ function Grep(props: ToolProps) {
 function WebFetch(props: ToolProps) {
   return (
     <InlineTool icon="%" pending="Fetching from the web..." complete={toolComplete(props.part)} part={props.part} agentColor={props.agentColor}>
-      WebFetch {stringValue(props.input.url) ?? pendingInput(props.part)}
+      {`WebFetch ${valueText(props.input.url, pendingInput(props.part))}`}
     </InlineTool>
   )
 }
 
 function CodeSearch(props: ToolProps) {
+  const label = createMemo(
+    () =>
+      `Exa Code Search "${valueText(props.input.query, pendingInput(props.part))}"${countText(
+        props.metadata.results,
+        "result",
+        "results",
+      )}`,
+  )
   return (
     <InlineTool icon="◇" pending="Searching code..." complete={toolComplete(props.part)} part={props.part} agentColor={props.agentColor}>
-      Exa Code Search "{stringValue(props.input.query) ?? pendingInput(props.part)}"{" "}
-      <Show when={numberValue(props.metadata.results)}>{(results) => <>({results()} results)</>}</Show>
+      {label()}
     </InlineTool>
   )
 }
 
 function WebSearch(props: ToolProps) {
+  const label = createMemo(
+    () =>
+      `Exa Web Search "${valueText(props.input.query, pendingInput(props.part))}"${countText(
+        props.metadata.numResults,
+        "result",
+        "results",
+      )}`,
+  )
   return (
     <InlineTool icon="◈" pending="Searching web..." complete={toolComplete(props.part)} part={props.part} agentColor={props.agentColor}>
-      Exa Web Search "{stringValue(props.input.query) ?? pendingInput(props.part)}"{" "}
-      <Show when={numberValue(props.metadata.numResults)}>{(results) => <>({results()} results)</>}</Show>
+      {label()}
     </InlineTool>
   )
 }
@@ -757,7 +771,7 @@ function Write(props: ToolProps) {
       </Match>
       <Match when={true}>
         <InlineTool icon="←" pending="Preparing write..." complete={filePath()} part={props.part} agentColor={props.agentColor}>
-          Write {normalizePath(filePath())}
+          {`Write ${normalizePath(filePath())}`}
         </InlineTool>
       </Match>
     </Switch>
@@ -801,7 +815,7 @@ function Edit(props: ToolProps) {
       </Match>
       <Match when={true}>
         <InlineTool icon="←" pending="Preparing edit..." complete={filePath()} part={props.part} agentColor={props.agentColor}>
-          Edit {normalizePath(filePath())} {input({ replaceAll: props.input.replaceAll })}
+          {`Edit ${normalizePath(filePath())} ${input({ replaceAll: props.input.replaceAll })}`.trimEnd()}
         </InlineTool>
       </Match>
     </Switch>
@@ -922,7 +936,7 @@ function Question(props: ToolProps) {
       </Match>
       <Match when={true}>
         <InlineTool icon="→" pending="Asking questions..." complete={questions().length} part={props.part} agentColor={props.agentColor}>
-          Asked {questions().length} question{questions().length === 1 ? "" : "s"}
+          {`Asked ${questions().length} question${questions().length === 1 ? "" : "s"}`}
         </InlineTool>
       </Match>
     </Switch>
@@ -932,7 +946,7 @@ function Question(props: ToolProps) {
 function Skill(props: ToolProps) {
   return (
     <InlineTool icon="→" pending="Loading skill..." complete={toolComplete(props.part)} part={props.part} agentColor={props.agentColor}>
-      Skill "{stringValue(props.input.name) ?? pendingInput(props.part)}"
+      {`Skill "${valueText(props.input.name, pendingInput(props.part))}"`}
     </InlineTool>
   )
 }
@@ -1001,6 +1015,22 @@ function pendingInput(part: SessionMessageAssistantTool) {
 function toolComplete(part: SessionMessageAssistantTool) {
   if (part.state.status === "pending") return pendingInput(part)
   return part.state.status === "completed" || part.state.status === "error" || part.state.status === "running"
+}
+
+function valueText(value: unknown, fallback = "") {
+  return textValue(value) || fallback
+}
+
+function pathText(value: unknown, fallback = "") {
+  const path = stringValue(value)
+  if (path) return normalizePath(path)
+  return valueText(value, fallback)
+}
+
+function countText(value: unknown, singular: string, plural: string) {
+  const count = numberValue(value)
+  if (!count) return ""
+  return ` (${count} ${count === 1 ? singular : plural})`
 }
 
 function stringValue(value: unknown) {
