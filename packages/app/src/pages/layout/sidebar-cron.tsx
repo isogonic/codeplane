@@ -1,14 +1,18 @@
 import { A, useLocation } from "@solidjs/router"
-import { useQuery } from "@tanstack/solid-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/solid-query"
 import { createEffect, createMemo, For, Match, Show, Switch as SolidSwitch, type Accessor, type JSX } from "solid-js"
 import { base64Encode } from "@codeplane-ai/shared/util/encode"
 import { Icon } from "@codeplane-ai/ui/icon"
+import { IconButton } from "@codeplane-ai/ui/icon-button"
 import { Spinner } from "@codeplane-ai/ui/spinner"
+import { Tooltip } from "@codeplane-ai/ui/tooltip"
+import { showToast } from "@codeplane-ai/ui/toast"
 import { useGlobalSync } from "@/context/global-sync"
 import { useLanguage } from "@/context/language"
-import { useServer } from "@/context/server"
+import { ServerConnection, useServer } from "@/context/server"
 import { CronClient, type CronRun, type CronRunStatus, type CronTask } from "@/utils/cron-client"
 import { decode64 } from "@/utils/base64"
+import { CronSidebarStopAction } from "../cron-stop-actions"
 import { cronSidebarEntries } from "./sidebar-cron-helpers"
 import {
   cronProjectDirectories,
@@ -21,7 +25,6 @@ import {
 const CRON_TASKS_STALE_MS = 5_000
 const CRON_RUNS_STALE_MS = 3_000
 const CRON_SIDEBAR_GC_MS = 60_000
-
 function formatTimestamp(ms: number, locale?: string): string {
   // Pass the user's configured locale so the clock matches it (e.g. 24h for
   // de-DE) instead of following the browser/OS default via the empty `[]`.
@@ -221,12 +224,15 @@ export const CronSidebarPanel = (props: {
             {(run) => (
               <CronSessionRow
                 sessionID={run.sessionID}
+                runID={run.id}
                 taskName={run.taskName}
                 taskDirectory={run.taskDirectory}
                 projectID={projectID()}
                 status={run.status}
                 startedAt={run.startedAt}
                 sequence={run.sequence}
+                server={httpServer}
+                mobile={props.mobile}
               />
             )}
           </For>
@@ -238,14 +244,18 @@ export const CronSidebarPanel = (props: {
 
 const CronSessionRow = (props: {
   sessionID?: string
+  runID: string
   taskName: string
   taskDirectory: string
   projectID?: string
   status: CronRunStatus
   startedAt: number
   sequence: number
+  server: Accessor<ServerConnection.HttpBase | undefined>
+  mobile?: boolean
 }): JSX.Element => {
   const language = useLanguage()
+  const queryClient = useQueryClient()
   const slug = createMemo(() => base64Encode(props.taskDirectory))
   const path = createMemo(() => `/cron/worktree/${slug()}/session/${props.sessionID}`)
   const href = createMemo(() => {
@@ -256,6 +266,26 @@ const CronSessionRow = (props: {
   })
   const location = useLocation()
   const isActive = createMemo(() => !!props.sessionID && location.pathname === path())
+  const cancelRun = useMutation(() => ({
+    mutationFn: async () => {
+      const conn = props.server()
+      if (!conn) throw new Error("No server connection")
+      return CronClient.cancelRun(conn, props.runID)
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cron"] }),
+    onError: (err: unknown) =>
+      showToast({
+        variant: "error",
+        title: language.t("common.requestFailed"),
+        description: err instanceof Error ? err.message : String(err),
+      }),
+  }))
+
+  const stopRun = (event: MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    cancelRun.mutate()
+  }
 
   const indicator = (
     <div class="shrink-0 size-6 flex items-center justify-center">
@@ -305,12 +335,19 @@ const CronSessionRow = (props: {
     >
       <Show
         when={props.sessionID}
-        fallback={<div class="opacity-60 cursor-default">{inner}</div>}
+        fallback={<div class="opacity-60 cursor-default pr-7">{inner}</div>}
       >
-        <A href={href()} class="block">
+        <A href={href()} class="block pr-7">
           {inner}
         </A>
       </Show>
+      <CronSidebarStopAction
+        status={props.status}
+        label={language.t("cron.action.cancel")}
+        disabled={cancelRun.isPending}
+        mobile={props.mobile}
+        onClick={stopRun}
+      />
     </div>
   )
 }
