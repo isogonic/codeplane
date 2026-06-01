@@ -1,4 +1,4 @@
-import { createEffect, createMemo, on, onCleanup } from "solid-js"
+import { batch, createEffect, createMemo, on, onCleanup } from "solid-js"
 import { createStore } from "solid-js/store"
 import type { PermissionRequest, QuestionRequest, Todo } from "@codeplane-ai/sdk/v2"
 import { useParams } from "@solidjs/router"
@@ -77,6 +77,7 @@ export function createSessionComposerState(options?: { closeMs?: number | (() =>
     dock: todos().length > 0 && live(),
     closing: false,
     opening: false,
+    aborting: false,
   })
 
   const permissionResponding = createMemo(() => {
@@ -100,6 +101,26 @@ export function createSessionComposerState(options?: { closeMs?: number | (() =>
       .finally(() => {
         setStore("responding", (id) => (id === perm.id ? undefined : id))
       })
+  }
+
+  const abort = () => {
+    const id = params.id
+    if (!id || store.aborting) return
+
+    batch(() => {
+      globalSync.todo.set(id, [])
+      sync.set("todo", id, [])
+      sync.set("session_status", id, idle)
+      setStore("aborting", true)
+    })
+
+    sdk.client.session
+      .abort({ sessionID: id })
+      .catch((err: unknown) => {
+        const description = err instanceof Error ? err.message : String(err)
+        showToast({ title: language.t("common.requestFailed"), description })
+      })
+      .finally(() => setStore("aborting", false))
   }
 
   let timer: number | undefined
@@ -194,7 +215,10 @@ export function createSessionComposerState(options?: { closeMs?: number | (() =>
     permissionRequest,
     permissionResponding,
     decide,
+    abort,
+    aborting: () => store.aborting,
     todos,
+    working: busy,
     dock: () => store.dock,
     closing: () => store.closing,
     opening: () => store.opening,

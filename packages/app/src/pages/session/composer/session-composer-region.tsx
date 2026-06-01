@@ -2,6 +2,7 @@ import { Show, createEffect, createMemo, onCleanup } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useNavigate } from "@solidjs/router"
 import { useSpring } from "@codeplane-ai/ui/motion-spring"
+import { Button } from "@codeplane-ai/ui/button"
 import { Icon } from "@codeplane-ai/ui/icon"
 import { PromptInput } from "@/components/prompt-input"
 import { useLanguage } from "@/context/language"
@@ -323,12 +324,23 @@ export function SessionComposerRegion(props: {
         >
           <div
             ref={props.inputRef}
-            class="flex w-full items-center gap-2 rounded-[12px] border border-border-weak-base bg-background-base px-4 py-3 text-14-regular text-text-weak"
+            class="flex w-full flex-wrap items-center gap-2 rounded-[12px] border border-border-weak-base bg-background-base px-4 py-3 text-14-regular text-text-weak"
           >
             <Icon name={isCronSession() ? "bell" : "archive"} size="small" class="shrink-0" />
-            <span>
+            <span class="min-w-0 flex-1">
               {isCronSession() ? language.t("session.cron.readonly") : language.t("session.archived.readOnly")}
             </span>
+            <Show when={isCronSession() && props.state.working()}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="small"
+                disabled={props.state.aborting()}
+                onClick={() => props.state.abort()}
+              >
+                {language.t("prompt.action.stop")}
+              </Button>
+            </Show>
           </div>
         </Show>
       </div>
