@@ -105,6 +105,7 @@ export function createDesktopMcpOAuthManager(input: {
         const navigatedUrl = args.find((value): value is string => typeof value === "string")
         if (!navigatedUrl || !isMcpOAuthRedirect(navigatedUrl, launch.redirectUri)) return
         input.log("mcp.oauth.window.callback", { instanceID: instance.id, mcpName: launch.name, url: navigatedUrl })
+        cleanup(key, child)
         setTimeout(() => {
           if (!child.isDestroyed()) child.close()
         }, 250)

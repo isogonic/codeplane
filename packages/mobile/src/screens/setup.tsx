@@ -31,7 +31,7 @@ import { demoLiveActivity } from "../platform/live-activities"
  * The empty state replaces the previous text-only "tap the +" with a
  * real CTA card so the path forward is unmissable on first launch.
  */
-type SheetState =
+export type SheetState =
   | { kind: "closed" }
   | { kind: "create" }
   | {
@@ -43,10 +43,11 @@ type SheetState =
 
 export const SetupScreen: Component<{
   api: CodeplaneMobileAPI
+  sheet: SheetState
+  setSheet: (s: SheetState) => void
   onOpenInstance: (instance: SavedInstance) => void
   onOpenSettings: () => void
 }> = (props) => {
-  const [sheet, setSheet] = createSignal<SheetState>({ kind: "closed" })
   const [refreshKey, setRefreshKey] = createSignal(0)
   const [scrolled, setScrolled] = createSignal(false)
   /**
@@ -96,7 +97,7 @@ export const SetupScreen: Component<{
   // Narrow the sheet signal to "the editing variant or null" so <Show keyed>
   // can hand the full edit payload to its child without re-narrowing inside.
   const editingSheet = createMemo(() => {
-    const s = sheet()
+    const s = props.sheet()
     return s.kind === "edit" ? s : null
   })
 
@@ -126,7 +127,7 @@ export const SetupScreen: Component<{
 
   const openCreate = () => {
     props.api.haptics.selection().catch(() => {})
-    setSheet({ kind: "create" })
+    props.setSheet({ kind: "create" })
   }
 
   const openEdit = async (instance: SavedInstance) => {
@@ -135,10 +136,10 @@ export const SetupScreen: Component<{
       props.api.instances.secrets.get(instance.id),
       props.api.instances.prefs.getLiveActivitiesEnabled(instance.id),
     ])
-    setSheet({ kind: "edit", instance, plaintextHeaders: plaintext, liveActivitiesEnabled })
+    props.setSheet({ kind: "edit", instance, plaintextHeaders: plaintext, liveActivitiesEnabled })
   }
 
-  const closeSheet = () => setSheet({ kind: "closed" })
+  const closeSheet = () => props.setSheet({ kind: "closed" })
 
   const handleSave = async (
     instance: SavedInstance,
@@ -261,11 +262,11 @@ export const SetupScreen: Component<{
       </div>
 
       <BottomSheet
-        open={sheet().kind !== "closed"}
-        title={sheet().kind === "edit" ? "Edit server" : "Add server"}
+        open={props.sheet().kind !== "closed"}
+        title={props.sheet().kind === "edit" ? "Edit server" : "Add server"}
         onDismiss={closeSheet}
       >
-        <Show when={sheet().kind === "create"}>
+        <Show when={props.sheet().kind === "create"}>
           <InstanceForm
             onSubmit={handleSave}
             onCancel={closeSheet}

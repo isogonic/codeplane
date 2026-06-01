@@ -986,7 +986,10 @@ export const InstanceSignInCommand = cmd({
     UI.println(UI.Style.TEXT_DIM + "(Empty line cancels.)")
     UI.println(UI.Style.TEXT_NORMAL + "")
 
-    await open(saved!.url).catch(() => undefined)
+    await open(saved!.url).catch((e) => {
+      UI.println(UI.Style.TEXT_WARNING_BOLD + `Could not open browser automatically: ${e instanceof Error ? e.message : String(e)}`)
+      UI.println(UI.Style.TEXT_NORMAL + `Open this URL manually: ${saved!.url}`)
+    })
 
     const headerLine = await new Promise<string>((resolve) => {
       const rl = createInterface({ input: process.stdin, output: process.stdout })

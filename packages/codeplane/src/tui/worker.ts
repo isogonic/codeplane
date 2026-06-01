@@ -48,10 +48,18 @@ process.on("uncaughtException", (e) => {
   })
 })
 
-// Subscribe to global events and forward them via RPC
-GlobalBus.on("event", (event) => {
-  Rpc.emit("global.event", event)
-})
+// Subscribe to global events and forward them via RPC.
+// Track the handler so it can be removed on shutdown to avoid leaking
+// listeners across reload cycles.
+let globalEventHandler: ((event: unknown) => void) | undefined
+globalEventHandler = (event: unknown) => {
+  try {
+    Rpc.emit("global.event", event)
+  } catch (error) {
+    console.error("[worker] global event forward failed", error)
+  }
+}
+GlobalBus.on("event", globalEventHandler)
 
 let server: Awaited<ReturnType<typeof Server.listen>> | undefined
 
@@ -106,6 +114,10 @@ export const rpc = {
 
     await InstanceRuntime.disposeAllInstances()
     if (server) await server.stop(true)
+    if (globalEventHandler) {
+      GlobalBus.off("event", globalEventHandler)
+      globalEventHandler = undefined
+    }
   },
 }
 

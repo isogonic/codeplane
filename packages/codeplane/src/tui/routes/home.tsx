@@ -10,8 +10,6 @@ import { usePromptRef } from "../context/prompt"
 import { useLocal } from "../context/local"
 import { TuiPluginRuntime } from "@/tui/plugin/runtime"
 import { useTheme } from "../context/theme"
-
-let once = false
 const placeholder = {
   normal: ["Fix a TODO in the codebase", "What is the tech stack of this project?", "Fix broken tests"],
   shell: ["ls -la", "git status", "pwd"],
@@ -26,20 +24,21 @@ export function Home() {
   const args = useArgs()
   const local = useLocal()
   const { theme } = useTheme()
+  const [bound, setBound] = createSignal(false)
   let sent = false
 
   const bind = (r: PromptRef | undefined) => {
     setRef(r)
     promptRef.set(r)
-    if (once || !r) return
+    if (bound() || !r) return
     if (route.prompt) {
       r.set(route.prompt)
-      once = true
+      setBound(true)
       return
     }
     if (!args.prompt) return
     r.set({ input: args.prompt, parts: [] })
-    once = true
+    setBound(true)
   }
 
   // Wait for sync and model store to be ready before auto-submitting --prompt

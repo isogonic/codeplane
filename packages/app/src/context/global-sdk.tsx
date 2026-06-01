@@ -104,6 +104,7 @@ const globalSdkContext = createSimpleContext({
     const aborted = (error: unknown) => abortError.safeParse(error).success
 
     let attempt: AbortController | undefined
+    let currentOnAbort: (() => void) | undefined
     let run: Promise<void> | undefined
     let started = false
     const HEARTBEAT_TIMEOUT_MS = 45_000
@@ -128,11 +129,15 @@ const globalSdkContext = createSimpleContext({
       run = (async () => {
         // oxlint-disable-next-line no-unmodified-loop-condition -- `started` is set to false by stop() which also aborts; both flags are checked to allow graceful exit
         while (!abort.signal.aborted && started) {
+          if (currentOnAbort) {
+            abort.signal.removeEventListener("abort", currentOnAbort)
+          }
           attempt = new AbortController()
           lastEventAt = Date.now()
           const onAbort = () => {
             attempt?.abort()
           }
+          currentOnAbort = onAbort
           abort.signal.addEventListener("abort", onAbort)
           try {
             const events = await eventSdk.global.event({
@@ -183,7 +188,10 @@ const globalSdkContext = createSimpleContext({
               })
             }
           } finally {
-            abort.signal.removeEventListener("abort", onAbort)
+            if (currentOnAbort) {
+              abort.signal.removeEventListener("abort", currentOnAbort)
+            }
+            currentOnAbort = undefined
             attempt = undefined
             clearHeartbeat()
           }
