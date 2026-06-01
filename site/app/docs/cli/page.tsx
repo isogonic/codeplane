@@ -4,17 +4,17 @@ import { DocsLayout } from "@/components/docs-sidebar"
 
 export const metadata = {
   title: "CLI reference",
-  description: "Every Codeplane subcommand and flag, sourced from packages/codeplane/src/cli — serve, web, tui, instance, upgrade, completion.",
+  description: "Every Codeplane subcommand and flag, sourced from packages/codeplane/src/cli — serve, web, tui, instance, upgrade, totp, completion.",
   alternates: { canonical: "/docs/cli/" },
   openGraph: {
     title: "CLI reference · Codeplane",
-    description: "Every Codeplane subcommand and flag, sourced from packages/codeplane/src/cli — serve, web, tui, instance, upgrade, completion.",
+    description: "Every Codeplane subcommand and flag, sourced from packages/codeplane/src/cli — serve, web, tui, instance, upgrade, totp, completion.",
     url: "/docs/cli/",
     type: "article",
   },
   twitter: {
     title: "CLI reference · Codeplane",
-    description: "Every Codeplane subcommand and flag, sourced from packages/codeplane/src/cli — serve, web, tui, instance, upgrade, completion.",
+    description: "Every Codeplane subcommand and flag, sourced from packages/codeplane/src/cli — serve, web, tui, instance, upgrade, totp, completion.",
     card: "summary_large_image",
   },
 }
@@ -41,6 +41,8 @@ Commands:
   tui                     start the terminal UI
   instance                manage saved Codeplane instances + the shared local runtime
   upgrade [target]        upgrade Codeplane to the latest (or a specific) version
+  totp <command>          manage two-factor (TOTP) auth for the server
+  generate                regenerate the OpenAPI spec (SDK build pipeline)
   completion              generate shell completion script
 
 Top-level options (accepted by every subcommand):
@@ -110,6 +112,18 @@ Top-level options (accepted by every subcommand):
           <code>instance-daemon.ts</code>. New flags land in code first, then on this page.
         </p>
 
+        <h2><code>codeplane totp</code></h2>
+        <p>Manage the second factor for <code>serve</code> / <code>web</code>. The generated secret is
+          passed via <code>CODEPLANE_SERVER_TOTP_SECRET</code> or <code>--totp-secret</code>.</p>
+        <pre><code>{`codeplane totp <subcommand>
+
+  generate                  generate a new TOTP secret and enrolment URI
+                             flags: --account, --issuer
+  uri --secret &lt;s&gt;          print the otpauth:// URI for an existing secret
+                             flags: --secret, --account, --issuer
+  code --secret &lt;s&gt;         print the current 6-digit code (debug)
+                             flags: --secret`}</code></pre>
+
         <h2><code>codeplane upgrade</code></h2>
         <pre><code>{`codeplane upgrade [target]
 
@@ -163,9 +177,9 @@ codeplane completion fish > ~/.config/fish/completions/codeplane.fish`}</code></
 
         <h2>Generated and hidden commands</h2>
         <p>
-          <code>codeplane generate</code> is intentionally hidden from normal help. It is used by
-          the SDK build pipeline to emit OpenAPI data for client generation. Treat it as a build
-          command, not a public automation API.
+          <code>codeplane generate</code> is hidden from normal help (<code>describe: false</code>).
+          It is used by the SDK build pipeline to emit OpenAPI data for client generation. Treat it
+          as a build command, not a public automation API.
         </p>
 
         <h2>Exit codes</h2>

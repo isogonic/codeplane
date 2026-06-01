@@ -62,6 +62,8 @@ export default function Configuration() {
   "server": { /* default serve/web network options */ },
   "model": "anthropic/claude-sonnet-4-6",
   "small_model": "openai/gpt-5.2-mini",
+  "disabled_providers": ["example-provider"],
+  "enabled_providers": ["anthropic", "openai"],
   "provider": { /* model providers and overrides */ },
   "permission": { /* what the agent may do without asking */ },
   "agent": { /* named primary and sub-agent configs */ },
@@ -72,8 +74,12 @@ export default function Configuration() {
   "commit": { "coauthor": false },
   "autoupdate": "notify",
   "share": "manual",
+  "username": "custom-display-name",
+  "default_agent": "build",
+  "npm": { /* native npm auth and registry settings */ },
+  "watcher": { "ignore": ["node_modules/", "dist/"] },
   "tool_output": { "max_lines": 2000, "max_bytes": 51200 },
-  "compaction": { "auto": true, "prune": true }
+  "compaction": { "auto": true, "prune": true, "tail_turns": 2, "reserved": 1000 }
 }`}</code></pre>
 
         <h2>server</h2>
@@ -125,6 +131,17 @@ export default function Configuration() {
           resolves that value as empty so the instance can still open. See{" "}
           <Link href="/docs/providers/">Providers</Link> for model overrides, OAuth, and custom
           OpenAI-compatible endpoints.
+        </p>
+
+        <h2>npm</h2>
+        <pre><code>{`"npm": {
+  "registry": "https://registry.npmjs.org",
+  "authToken": "{secret:npm-auth-token}"
+}`}</code></pre>
+        <p>
+          Override the npm registry and supply an auth token for private registries. Used by the
+          local-runtime downloader and any plugin that shells out to npm. Values support{" "}
+          <code>{`{secret:name}`}</code> and <code>{`{env:VAR}`}</code> placeholders.
         </p>
 
         <h2>permission</h2>
@@ -264,14 +281,20 @@ export default function Configuration() {
         <table>
           <thead><tr><th>Key</th><th>Values</th><th>Use it for</th></tr></thead>
           <tbody>
+            <tr><td><code>username</code></td><td>string</td><td>Custom name shown in conversations instead of the system username.</td></tr>
+            <tr><td><code>default_agent</code></td><td>string</td><td>Primary agent to use when none is specified (falls back to <code>build</code>).</td></tr>
             <tr><td><code>share</code></td><td><code>manual</code>, <code>auto</code>, <code>disabled</code></td><td>Control public session sharing.</td></tr>
             <tr><td><code>autoupdate</code></td><td><code>true</code>, <code>false</code>, <code>notify</code></td><td>Auto-install patches or show update notifications.</td></tr>
             <tr><td><code>commit.coauthor</code></td><td><code>true</code>, <code>false</code></td><td>Add <code>Co-Authored-By: codeplane-agent[bot] &lt;287208015+codeplane-agent[bot]@users.noreply.github.com&gt;</code> so GitHub shows the <a href="https://github.com/apps/codeplane-agent">codeplane-agent app</a> as a co-author.</td></tr>
             <tr><td><code>snapshot</code></td><td><code>true</code>, <code>false</code></td><td>Enable filesystem snapshots for revert/undo.</td></tr>
+            <tr><td><code>disabled_providers</code></td><td>string array</td><td>Catalog providers to hide from the model selector.</td></tr>
+            <tr><td><code>enabled_providers</code></td><td>string array</td><td>When set, only these providers are loaded; all others are ignored.</td></tr>
             <tr><td><code>tool_output.max_lines</code></td><td>positive integer</td><td>Truncate long tool output previews after this many lines.</td></tr>
             <tr><td><code>tool_output.max_bytes</code></td><td>positive integer</td><td>Truncate long tool output previews after this many bytes.</td></tr>
             <tr><td><code>compaction.auto</code></td><td><code>true</code>, <code>false</code></td><td>Compact automatically when context is full.</td></tr>
             <tr><td><code>compaction.prune</code></td><td><code>true</code>, <code>false</code></td><td>Prune old tool outputs during compaction.</td></tr>
+            <tr><td><code>compaction.tail_turns</code></td><td>non-negative integer</td><td>Number of recent user turns to keep verbatim during compaction (default: 2).</td></tr>
+            <tr><td><code>compaction.reserved</code></td><td>non-negative integer</td><td>Token buffer to leave free so compaction does not overflow the context window.</td></tr>
           </tbody>
         </table>
 
