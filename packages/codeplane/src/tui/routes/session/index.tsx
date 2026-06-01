@@ -39,6 +39,7 @@ import type {
 } from "@/tui/_compat/sdk-v2"
 import { useLocal } from "@/tui/context/local"
 import { Locale } from "@/tui/_compat/locale"
+import { textValue } from "@/tui/util/text-value"
 import type { Tool } from "@/tui/_compat/tool-tool"
 import type { ReadTool } from "@/tool/read"
 import type { WriteTool } from "@/tool/write"
@@ -1720,7 +1721,7 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
           customBorderChars={SplitBorder.customBorderChars}
           borderColor={theme.error}
         >
-          <text fg={theme.textMuted}>{props.message.error?.data.message}</text>
+          <text fg={theme.textMuted}>{textValue(props.message.error?.data.message)}</text>
         </box>
       </Show>
       <Switch>
@@ -2174,7 +2175,7 @@ function Shell(props: ToolProps<typeof ShellTool>) {
           onClick={overflow() ? () => setExpanded((prev) => !prev) : undefined}
         >
           <box gap={1}>
-            <text fg={theme.text}>$ {props.input.command}</text>
+            <text fg={theme.text}>$ {textValue(props.input.command)}</text>
             <Show when={output()}>
               <text fg={theme.text}>{limited()}</text>
             </Show>
@@ -2186,7 +2187,7 @@ function Shell(props: ToolProps<typeof ShellTool>) {
       </Match>
       <Match when={true}>
         <InlineTool icon="$" pending="Writing command..." complete={props.input.command} part={props.part}>
-          {props.input.command}
+          {textValue(props.input.command)}
         </InlineTool>
       </Match>
     </Switch>
@@ -2228,7 +2229,7 @@ function Write(props: ToolProps<typeof WriteTool>) {
 function Glob(props: ToolProps<typeof GlobTool>) {
   return (
     <InlineTool icon="✱" pending="Finding files..." complete={props.input.pattern} part={props.part}>
-      Glob "{props.input.pattern}" <Show when={props.input.path}>in {normalizePath(props.input.path)} </Show>
+      Glob "{textValue(props.input.pattern)}" <Show when={props.input.path}>in {normalizePath(props.input.path)} </Show>
       <Show when={props.metadata.count}>
         ({props.metadata.count} {props.metadata.count === 1 ? "match" : "matches"})
       </Show>
@@ -2273,7 +2274,7 @@ function Read(props: ToolProps<typeof ReadTool>) {
 function Grep(props: ToolProps<typeof GrepTool>) {
   return (
     <InlineTool icon="✱" pending="Searching content..." complete={props.input.pattern} part={props.part}>
-      Grep "{props.input.pattern}" <Show when={props.input.path}>in {normalizePath(props.input.path)} </Show>
+      Grep "{textValue(props.input.pattern)}" <Show when={props.input.path}>in {normalizePath(props.input.path)} </Show>
       <Show when={props.metadata.matches}>
         ({props.metadata.matches} {props.metadata.matches === 1 ? "match" : "matches"})
       </Show>
@@ -2284,7 +2285,7 @@ function Grep(props: ToolProps<typeof GrepTool>) {
 function WebFetch(props: ToolProps<typeof WebFetchTool>) {
   return (
     <InlineTool icon="%" pending="Fetching from the web..." complete={props.input.url} part={props.part}>
-      WebFetch {props.input.url}
+      WebFetch {textValue(props.input.url)}
     </InlineTool>
   )
 }
@@ -2293,7 +2294,7 @@ function WebSearch(props: ToolProps<typeof WebSearchTool>) {
   const metadata = props.metadata as { numResults?: number }
   return (
     <InlineTool icon="◈" pending="Searching web..." complete={props.input.query} part={props.part}>
-      Exa Web Search "{props.input.query}" <Show when={metadata.numResults}>({metadata.numResults} results)</Show>
+      Exa Web Search "{textValue(props.input.query)}" <Show when={metadata.numResults}>({metadata.numResults} results)</Show>
     </InlineTool>
   )
 }
@@ -2553,7 +2554,7 @@ function Question(props: ToolProps<typeof QuestionTool>) {
 function Skill(props: ToolProps<typeof SkillTool>) {
   return (
     <InlineTool icon="→" pending="Loading skill..." complete={props.input.name} part={props.part}>
-      Skill "{props.input.name}"
+      Skill "{textValue(props.input.name)}"
     </InlineTool>
   )
 }
@@ -2572,7 +2573,7 @@ function Diagnostics(props: { diagnostics?: Record<string, Record<string, any>[]
         <For each={errors()}>
           {(diagnostic) => (
             <text fg={theme.error}>
-              Error [{diagnostic.range.start.line + 1}:{diagnostic.range.start.character + 1}] {diagnostic.message}
+              Error [{diagnostic.range.start.line + 1}:{diagnostic.range.start.character + 1}] {textValue(diagnostic.message)}
             </text>
           )}
         </For>
