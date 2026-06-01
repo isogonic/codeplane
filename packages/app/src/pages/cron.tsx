@@ -7,6 +7,7 @@ import { Dialog } from "@codeplane-ai/ui/dialog"
 import { Icon } from "@codeplane-ai/ui/icon"
 import { IconButton } from "@codeplane-ai/ui/icon-button"
 import { Select } from "@codeplane-ai/ui/select"
+import { Switch } from "@codeplane-ai/ui/switch"
 import { Tag } from "@codeplane-ai/ui/tag"
 import { TextField } from "@codeplane-ai/ui/text-field"
 import { Tooltip } from "@codeplane-ai/ui/tooltip"
@@ -394,6 +395,7 @@ type EditorState = {
   agent: string
   model: string
   status: CronStatus
+  mcpServers: string[]
   errors: { name?: string; prompt?: string; schedule?: string; timeout?: string; form?: string }
 }
 
@@ -460,6 +462,14 @@ function CronEditorDialog(props: {
     return result.sort((a, b) => a.group.localeCompare(b.group) || a.label.localeCompare(b.label))
   })
 
+  const mcpServerNames = createMemo<string[]>(() => {
+    const config = globalSync.data.config.mcp ?? {}
+    return Object.keys(config).filter((name) => {
+      const entry = config[name]
+      return entry && typeof entry === "object" && "type" in entry
+    }).sort()
+  })
+
   const initial = (): EditorState => {
     const e = props.existing
     if (!e)
@@ -474,6 +484,7 @@ function CronEditorDialog(props: {
         agent: "",
         model: "",
         status: "active",
+        mcpServers: [],
         errors: {},
       }
     return {
@@ -488,6 +499,7 @@ function CronEditorDialog(props: {
       agent: e.agent ?? "",
       model: e.model ?? "",
       status: e.status,
+      mcpServers: e.mcpServers ?? [],
       errors: {},
     }
   }
@@ -562,6 +574,7 @@ function CronEditorDialog(props: {
           agent: store.agent.trim() || null,
           model: store.model.trim() || null,
           status: store.status,
+          mcpServers: store.mcpServers.length > 0 ? store.mcpServers : null,
         }
         await CronClient.update(conn, props.existing.id, body)
       } else {
@@ -576,6 +589,7 @@ function CronEditorDialog(props: {
           agent: store.agent.trim() || undefined,
           model: store.model.trim() || undefined,
           status: store.status,
+          mcpServers: store.mcpServers.length > 0 ? store.mcpServers : undefined,
         }
         await CronClient.create(conn, body)
       }
@@ -727,6 +741,40 @@ function CronEditorDialog(props: {
               placeholder={language.t("common.default")}
               onSelect={(o) => setStore("model", o ? `${o.providerID}/${o.modelID}` : "")}
             />
+          </div>
+          <div class="flex flex-col gap-2">
+            <label class="text-12-medium text-text-weak">{language.t("cron.field.mcpServers")}</label>
+            <Show
+              when={mcpServerNames().length > 0}
+              fallback={
+                <div class="text-12-regular text-text-weak italic">
+                  {language.t("cron.field.mcpServers.empty")}
+                </div>
+              }
+            >
+              <div class="rounded-lg border border-border-weak-base bg-surface-base px-3 py-2 flex flex-col gap-1">
+                <div class="text-11-regular text-text-weak pb-1">{language.t("cron.field.mcpServers.help")}</div>
+                <For each={mcpServerNames()}>
+                  {(name) => (
+                    <div class="flex items-center justify-between gap-3 py-0.5">
+                      <span class="text-13-regular text-text-base truncate">{name}</span>
+                      <Switch
+                        checked={store.mcpServers.includes(name)}
+                        size="small"
+                        onChange={(enabled: boolean) => {
+                          setStore(
+                            "mcpServers",
+                            enabled
+                              ? [...store.mcpServers, name]
+                              : store.mcpServers.filter((s) => s !== name),
+                          )
+                        }}
+                      />
+                    </div>
+                  )}
+                </For>
+              </div>
+            </Show>
           </div>
           <Show when={store.errors.form}>
             <div class="rounded-md border border-border-critical-base bg-surface-critical-base/10 px-3 py-2 text-12-regular text-text-critical-base whitespace-pre-wrap">

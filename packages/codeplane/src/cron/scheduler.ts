@@ -152,6 +152,9 @@ export const layer = Layer.effect(
                 title: `[Cron] ${task.name}`,
                 permission: ALLOW_ALL_PERMISSIONS,
                 cronRunID: run.id,
+                metadata: task.mcpServers?.length
+                  ? { enabledMcpServers: task.mcpServers }
+                  : undefined,
               })
               yield* cron.recordRun({
                 runID: run.id,
