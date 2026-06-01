@@ -73,7 +73,7 @@
       "@solidjs/start": "https://pkg.pr.new/@solidjs/start@dfb2020",
       "solid-js": "1.9.10",
       "vite-plugin-solid": "2.11.10",
-      "@lydell/node-pty": "1.2.0-beta.10"
+      "@lydell/node-pty": "1.2.0-beta.12"
     }
   },
   "devDependencies": {

@@ -6,11 +6,12 @@ import { CliRenderer } from "@opentui/core"
 import { Filesystem } from "@/tui/_compat/filesystem"
 import { Process } from "@/tui/_compat/process"
 
-export async function open(opts: { value: string; renderer: CliRenderer }): Promise<string | undefined> {
+export async function open(opts: { value: string; renderer: CliRenderer; cwd?: string }): Promise<string | undefined> {
   const editor = process.env["VISUAL"] || process.env["EDITOR"]
   if (!editor) return
 
-  const filepath = join(tmpdir(), `${Date.now()}.md`)
+  const tmpdirPath = opts.cwd ?? tmpdir()
+  const filepath = join(tmpdirPath, `${Date.now()}.md`)
   await using _ = defer(async () => rm(filepath, { force: true }))
 
   await Filesystem.write(filepath, opts.value)

@@ -317,7 +317,7 @@ function AssistantMessage(props: {
               <AssistantText part={part as SessionMessageAssistantText} syntax={props.syntax} />
             </Match>
             <Match when={part.type === "reasoning"}>
-              <AssistantReasoning part={part as SessionMessageAssistantReasoning} subtleSyntax={props.subtleSyntax} />
+              <AssistantReasoning part={part as SessionMessageAssistantReasoning} subtleSyntax={props.subtleSyntax} done={Boolean(final())} />
             </Match>
             <Match when={part.type === "tool"}>
               <AssistantTool part={part as SessionMessageAssistantTool} agentColor={local.agent.color(props.message.agent)} />
@@ -369,9 +369,14 @@ function AssistantText(props: { part: SessionMessageAssistantText; syntax: Synta
   )
 }
 
-function AssistantReasoning(props: { part: SessionMessageAssistantReasoning; subtleSyntax: SyntaxStyle }) {
+function AssistantReasoning(props: { part: SessionMessageAssistantReasoning; subtleSyntax: SyntaxStyle; done?: boolean }) {
   const { theme } = useTheme()
   const content = createMemo(() => props.part.text.replace("[REDACTED]", "").trim())
+  const title = createMemo(() => {
+    if (!content()) return undefined
+    const line = content().split("\n")[0]
+    return line.length > 60 ? line.slice(0, 57) + "..." : line
+  })
   return (
     <Show when={content()}>
       <box
@@ -383,12 +388,21 @@ function AssistantReasoning(props: { part: SessionMessageAssistantReasoning; sub
         borderColor={theme.backgroundElement}
         flexShrink={0}
       >
-        <MarkdownText
-          text={"_Thinking:_ " + content()}
-          syntax={props.subtleSyntax}
-          streaming={true}
-          conceal={true}
-        />
+        <Switch>
+          <Match when={!props.done}>
+            <box flexDirection="row">
+              <Spinner color={theme.textMuted}>Thinking{title() ? ": " + title() : ""}</Spinner>
+            </box>
+          </Match>
+          <Match when={true}>
+            <MarkdownText
+              text={"_Thought:_ " + content()}
+              syntax={props.subtleSyntax}
+              streaming={true}
+              conceal={true}
+            />
+          </Match>
+        </Switch>
       </box>
     </Show>
   )
@@ -523,7 +537,13 @@ function InlineTool(props: {
   agentColor?: RGBA
 }) {
   const { theme } = useTheme()
-  const error = createMemo(() => (props.part.state.status === "error" ? props.part.state.error.message : undefined))
+  const error = createMemo(() => {
+    if (props.part.state?.status !== "error") return undefined
+    const err = props.part.state.error
+    if (!err) return "unknown error"
+    const msg = typeof err === "object" && err !== null && "message" in err ? (err as { message: unknown }).message : err
+    return typeof msg === "string" ? msg : String(msg)
+  })
   const denied = createMemo(() => {
     const message = error()
     if (!message) return false
@@ -569,7 +589,13 @@ function BlockTool(props: {
   const { theme } = useTheme()
   const renderer = useRenderer()
   const [hover, setHover] = createSignal(false)
-  const error = createMemo(() => (props.part?.state.status === "error" ? props.part.state.error.message : undefined))
+  const error = createMemo(() => {
+    if (props.part?.state?.status !== "error") return undefined
+    const err = props.part.state.error
+    if (!err) return "unknown error"
+    const msg = typeof err === "object" && err !== null && "message" in err ? (err as { message: unknown }).message : err
+    return typeof msg === "string" ? msg : String(msg)
+  })
   return (
     <box
       border={["left"]}

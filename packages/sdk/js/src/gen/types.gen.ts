@@ -1131,6 +1131,9 @@ export type Session = {
     diff?: string
   }
   cronRunID?: string
+  metadata?: {
+    [key: string]: unknown
+  }
 }
 
 export type EventSessionCreated = {
@@ -1519,6 +1522,9 @@ export type SyncEventSessionUpdated = {
         diff?: string
       } | null
       cronRunID?: string | null
+      metadata?: {
+        [key: string]: unknown
+      } | null
     }
   }
 }
@@ -2757,6 +2763,9 @@ export type GlobalSession = {
     diff?: string
   }
   cronRunID?: string
+  metadata?: {
+    [key: string]: unknown
+  }
   project: ProjectSummary | null
 }
 
@@ -3402,6 +3411,27 @@ export type GlobalHealthResponses = {
 }
 
 export type GlobalHealthResponse = GlobalHealthResponses[keyof GlobalHealthResponses]
+
+export type GlobalAuthVerifyData = {
+  body?: {
+    code: string
+  }
+  path?: never
+  query?: never
+  url: "/global/auth/verify"
+}
+
+export type GlobalAuthVerifyResponses = {
+  /**
+   * Second-factor session token
+   */
+  200: {
+    token: string
+    expiresAt: number
+  }
+}
+
+export type GlobalAuthVerifyResponse = GlobalAuthVerifyResponses[keyof GlobalAuthVerifyResponses]
 
 export type GlobalVersionData = {
   body?: never
@@ -4640,6 +4670,9 @@ export type SessionCreateData = {
     permission?: PermissionRuleset
     workspaceID?: string
     cronRunID?: string
+    metadata?: {
+      [key: string]: unknown
+    }
   }
   path?: never
   query?: {
@@ -4769,6 +4802,9 @@ export type SessionUpdateData = {
   body?: {
     title?: string
     permission?: PermissionRuleset
+    metadata?: {
+      [key: string]: unknown
+    }
     time?: {
       archived?: number | null
     }

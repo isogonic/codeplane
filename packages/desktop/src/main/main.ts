@@ -3002,8 +3002,6 @@ if (!gotLock) {
     // HTTP Basic Auth challenges. Do NOT call preventDefault or pass empty
     // credentials — doing so suppresses the OS prompt and sends a blank
     // Authorization header, permanently breaking auth_basic connections.
-    event.preventDefault()
-    callback()
   })
 
   app

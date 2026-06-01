@@ -3,7 +3,7 @@
   "info": {
     "title": "codeplane",
     "description": "codeplane api",
-    "version": "31.1.0"
+    "version": "31.3.4"
   },
   "paths": {
     "/global/cron": {
@@ -674,6 +674,57 @@
           {
             "lang": "js",
             "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.health({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/global/auth/verify": {
+      "post": {
+        "operationId": "global.auth.verify",
+        "summary": "Verify second factor",
+        "description": "Exchange a valid Basic Auth password plus a TOTP code for a short-lived second-factor session token. Returns 401 if the password is wrong, 400 if TOTP is not enabled, and 401 with { totp: true } if the code is invalid.",
+        "responses": {
+          "200": {
+            "description": "Second-factor session token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string"
+                    },
+                    "expiresAt": {
+                      "type": "number"
+                    }
+                  },
+                  "required": ["token", "expiresAt"]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16
+                  }
+                },
+                "required": ["code"]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createCodeplaneClient } from \"@codeplane-ai/sdk\"\n\nconst client = createCodeplaneClient()\nawait client.global.auth.verify({\n  ...\n})"
           }
         ]
       }
@@ -3329,6 +3380,13 @@
                   "cronRunID": {
                     "type": "string",
                     "pattern": "^crun.*"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {}
                   }
                 }
               }
@@ -3610,6 +3668,13 @@
                   },
                   "permission": {
                     "$ref": "#/components/schemas/PermissionRuleset"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {}
                   },
                   "time": {
                     "type": "object",
@@ -11555,6 +11620,13 @@
           "cronRunID": {
             "type": "string",
             "pattern": "^crun.*"
+          },
+          "metadata": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
           }
         },
         "required": ["id", "slug", "projectID", "directory", "title", "version", "time"]
@@ -12809,6 +12881,20 @@
                       {
                         "type": "string",
                         "pattern": "^crun.*"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "metadata": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {}
                       },
                       {
                         "type": "null"
@@ -15871,6 +15957,13 @@
           "cronRunID": {
             "type": "string",
             "pattern": "^crun.*"
+          },
+          "metadata": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
           },
           "project": {
             "anyOf": [
