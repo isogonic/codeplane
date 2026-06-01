@@ -119,21 +119,18 @@ const live: Layer.Layer<
       // TODO: move this to a proper hook
       const isOpenaiOauth = item.id === "openai" && info?.type === "oauth"
 
-      const system: string[] = []
-      system.push(
+      const system: string[] = [
         [
           // use agent prompt otherwise provider prompt
           ...(input.agent.prompt ? [input.agent.prompt] : SystemPrompt.provider(input.model)),
           // goal-mode instructions prepended to the provider prompt
           ...(input.agent.name === "goal" ? [PROMPT_GOAL] : []),
-          // any custom prompt passed into this call
-          ...input.system,
-          // any custom prompt from last user message
-          ...(input.user.system ? [input.user.system] : []),
         ]
           .filter((x) => x)
           .join("\n"),
-      )
+        ...input.system,
+        ...(input.user.system ? [input.user.system] : []),
+      ].filter((item) => item.length > 0)
 
       const header = system[0]
       yield* plugin.trigger(
@@ -141,11 +138,23 @@ const live: Layer.Layer<
         { sessionID: input.sessionID, model: input.model },
         { system },
       )
-      // rejoin to maintain 2-part structure for caching if header unchanged
-      if (system.length > 2 && system[0] === header) {
+      // Keep the provider/agent header and the first static context block intact so
+      // providers that cache prompt prefixes can reuse them across turns. Any tail
+      // blocks after that are dynamic and can be compacted together safely.
+      if (system[0] === header && system.length > 3) {
+        const first = system[0]
+        const second = system[1]
+        const rest = system.slice(2)
+        system.length = 0
+        if (first) system.push(first)
+        if (second) system.push(second)
+        system.push(rest.join("\n"))
+      } else if (system[0] === header && system.length > 2 && !system[1]) {
+        const first = system[0]
         const rest = system.slice(1)
         system.length = 0
-        system.push(header, rest.join("\n"))
+        if (first) system.push(first)
+        system.push(rest.join("\n"))
       }
 
       const variant =
