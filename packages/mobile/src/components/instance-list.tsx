@@ -199,8 +199,8 @@ export const InstanceList: Component<{
                         {/* Informational chips — muted variant, no
                             border, no dot. */}
                         <Show when={hasHeaders}>
-                          <span class="mobile-card__chip" data-tone="muted" title="Auth headers configured">
-                            Auth
+                          <span class="mobile-card__chip" data-tone="muted" title="Login saved">
+                            Login
                           </span>
                         </Show>
                         <Show when={isLast()}>

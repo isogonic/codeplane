@@ -9,7 +9,7 @@ import { Switch } from "@codeplane-ai/ui/switch"
 import { Mark } from "@codeplane-ai/ui/logo"
 import { showToast } from "@codeplane-ai/ui/toast"
 import { instanceEditorKind, type LocalTarget, type OpenProgress, type PrepareProgress as PrepareState, type SavedInstance } from "@codeplane-ai/shared/instance"
-import { formatHeaders as serializeHeaders, parseHeaders as parseHeaderInput } from "@codeplane-ai/shared/headers"
+import { composeRemoteAuthHeaders, splitRemoteAuthHeaders } from "@codeplane-ai/shared/remote-auth"
 import type { CodeplaneDesktopAPI } from "../main/preload"
 
 type LocalInstallState = {
@@ -180,9 +180,6 @@ const InstanceCacheSection: Component<{
     </Show>
   )
 }
-
-const parseHeaders = parseHeaderInput
-const formatHeaders = (headers: Record<string, string> | undefined) => serializeHeaders(headers, "newline")
 
 type NotificationSettingsState = {
   agent: boolean
@@ -1163,58 +1160,24 @@ const InstanceForm: Component<{
   onCancel: () => void
   onSaved: () => void
 }> = (props) => {
-  // If the saved instance already has an "Authorization: Basic …" header,
-  // peel it off so the dedicated username/password fields can pre-fill from
-  // it. Anything that isn't the Basic auth header stays in the headers blob
-  // so existing CF Access / SSO pastes don't get clobbered.
-  const splitBasicAuth = (h: Record<string, string> | undefined) => {
-    if (!h) return { user: "", pass: "", rest: undefined as Record<string, string> | undefined }
-    const authKey = Object.keys(h).find((k) => k.toLowerCase() === "authorization")
-    const authVal = authKey ? h[authKey] : undefined
-    const m = authVal && /^Basic\s+([A-Za-z0-9+/=]+)$/i.exec(authVal.trim())
-    if (!authKey || !m) return { user: "", pass: "", rest: h }
-    try {
-      const decoded = atob(m[1])
-      const idx = decoded.indexOf(":")
-      if (idx === -1) return { user: "", pass: "", rest: h }
-      const rest = { ...h }
-      delete rest[authKey]
-      return {
-        user: decoded.slice(0, idx),
-        pass: decoded.slice(idx + 1),
-        rest: Object.keys(rest).length ? rest : undefined,
-      }
-    } catch {
-      return { user: "", pass: "", rest: h }
-    }
-  }
-  const initialAuth = splitBasicAuth(props.editing?.headers)
+  const initialAuth = splitRemoteAuthHeaders(props.editing?.headers)
 
   const [label, setLabel] = createSignal(props.editing?.label ?? "")
   const [url, setUrl] = createSignal(props.editing?.url ?? "")
-  const [basicUsername, setBasicUsername] = createSignal(initialAuth.user)
-  const [basicPassword, setBasicPassword] = createSignal(initialAuth.pass)
-  const [headers, setHeaders] = createSignal(formatHeaders(initialAuth.rest))
+  const [basicUsername, setBasicUsername] = createSignal(initialAuth.username ?? "")
+  const [basicPassword, setBasicPassword] = createSignal(initialAuth.password ?? "")
+  const [otpToken, setOtpToken] = createSignal(initialAuth.otpToken ?? "")
+  const [otpCode, setOtpCode] = createSignal("")
   const [ignoreCert, setIgnoreCert] = createSignal(!!props.editing?.ignoreCertificateErrors)
   const [iconDataUrl, setIconDataUrl] = createSignal<string | undefined>(props.editing?.iconDataUrl)
-  const [signingIn, setSigningIn] = createSignal(false)
-  const [advanced, setAdvanced] = createSignal(
-    !!initialAuth.rest || !!props.editing?.ignoreCertificateErrors,
-  )
+  const [otpVisible, setOtpVisible] = createSignal(false)
 
-  // Compose the full headers map: dedicated Basic Auth fields override any
-  // Authorization line in the headers blob (keeps the form predictable when
-  // both are filled — the explicit field wins).
   const composedHeaders = (): Record<string, string> | undefined => {
-    const parsed = parseHeaders(headers())
-    const user = basicUsername().trim()
-    const pass = basicPassword()
-    if (user || pass) {
-      const authKey = Object.keys(parsed).find((k) => k.toLowerCase() === "authorization")
-      if (authKey) delete parsed[authKey]
-      parsed["Authorization"] = `Basic ${btoa(`${user}:${pass}`)}`
-    }
-    return Object.keys(parsed).length ? parsed : undefined
+    return composeRemoteAuthHeaders({
+      username: basicUsername(),
+      password: basicPassword(),
+      otpToken: otpToken(),
+    })
   }
   const [probe, setProbe] = createSignal<{ status: "idle" | "ok" | "error" | "checking"; message?: string }>({
     status: "idle",
@@ -1266,6 +1229,67 @@ const InstanceForm: Component<{
     offPrepare()
   })
 
+  const draftInstance = (headers = composedHeaders()): SavedInstance => ({
+    id: props.editing?.id ?? uid(),
+    url: url().trim(),
+    label: label().trim() || undefined,
+    headers,
+    ignoreCertificateErrors: ignoreCert() || undefined,
+    clientCertSubject: props.editing?.clientCertSubject,
+    iconDataUrl: iconDataUrl() || undefined,
+  })
+
+  const resolveAuthHeaders = async (): Promise<{ ok: true; headers?: Record<string, string> } | { ok: false; message: string }> => {
+    const base = draftInstance()
+    const status = await api.instances.authStatus(base)
+    if (!status.reachable) return { ok: true, headers: base.headers }
+    if (!status.required) {
+      setOtpVisible(false)
+      setOtpToken("")
+      setOtpCode("")
+      return { ok: true, headers: composeRemoteAuthHeaders({ username: basicUsername(), password: basicPassword() }) }
+    }
+    if (status.authenticated && !status.totpRequired) {
+      setOtpVisible(false)
+      setOtpToken("")
+      setOtpCode("")
+      return { ok: true, headers: composeRemoteAuthHeaders({ username: basicUsername(), password: basicPassword() }) }
+    }
+    if (!status.passwordValid) {
+      setOtpVisible(false)
+      setOtpToken("")
+      return { ok: false, message: "Username or password is incorrect." }
+    }
+    if (!status.totpRequired) return { ok: false, message: "Username or password is incorrect." }
+    setOtpVisible(true)
+    if (!otpCode().trim()) return { ok: false, message: "Enter the one-time code for this server." }
+    const verified = await api.instances.verifyOtp({
+      instance: draftInstance(composeRemoteAuthHeaders({ username: basicUsername(), password: basicPassword() })),
+      code: otpCode(),
+    })
+    if (!verified.ok) {
+      return {
+        ok: false,
+        message:
+          verified.reason === "invalid-code"
+            ? "One-time code is incorrect."
+            : verified.reason === "rate-limited"
+              ? "Too many attempts. Try again later."
+              : "Could not verify the one-time code.",
+      }
+    }
+    setOtpToken(verified.token)
+    setOtpCode("")
+    return {
+      ok: true,
+      headers: composeRemoteAuthHeaders({
+        username: basicUsername(),
+        password: basicPassword(),
+        otpToken: verified.token,
+      }),
+    }
+  }
+
   const triggerProbe = () => {
     if (probeTimer) clearTimeout(probeTimer)
     const value = url().trim()
@@ -1277,14 +1301,12 @@ const InstanceForm: Component<{
     logSetup("probe.start", { url: value })
     probeTimer = setTimeout(async () => {
       try {
-        const result = await api.instances.probe({
-          id: props.editing?.id ?? uid(),
-          url: value,
-          label: label().trim() || undefined,
-          headers: composedHeaders(),
-          ignoreCertificateErrors: ignoreCert() || undefined,
-          clientCertSubject: props.editing?.clientCertSubject,
-        })
+        const auth = await resolveAuthHeaders()
+        if (!auth.ok) {
+          setProbe({ status: "error", message: auth.message })
+          return
+        }
+        const result = await api.instances.probe(draftInstance(auth.headers))
         logSetup("probe.result", result)
         if (result.ok) {
           setProbe({
@@ -1329,15 +1351,12 @@ const InstanceForm: Component<{
     }
     setSaving(true)
     try {
-      const instance: SavedInstance = {
-        id: props.editing?.id ?? uid(),
-        url: url().trim(),
-        label: label().trim() || undefined,
-        headers: composedHeaders(),
-        ignoreCertificateErrors: ignoreCert() || undefined,
-        clientCertSubject: props.editing?.clientCertSubject,
-        iconDataUrl: iconDataUrl() || undefined,
+      const auth = await resolveAuthHeaders()
+      if (!auth.ok) {
+        setProbe({ status: "error", message: auth.message })
+        return
       }
+      const instance = draftInstance(auth.headers)
       logSetup("instance.save", instanceSummary(instance))
       setPrepareID(instance.id)
       setPreparing({
@@ -1493,6 +1512,9 @@ const InstanceForm: Component<{
           value={url()}
           onInput={(event) => {
             setUrl(event.currentTarget.value)
+            setOtpToken("")
+            setOtpCode("")
+            setOtpVisible(false)
             triggerProbe()
           }}
           class="rounded-md border border-border-weak-base bg-surface-raised-base px-3 py-2 text-[13px] text-text-strong outline-none transition-colors placeholder:text-text-weaker focus:border-border-interactive-base disabled:opacity-60"
@@ -1511,151 +1533,73 @@ const InstanceForm: Component<{
         </Show>
       </div>
 
-      <button
-        type="button"
-        data-desktop-action="advanced-toggle"
-        class="mt-5 self-start text-[12px] text-text-weak transition-colors hover:text-text-strong"
-        onClick={() => setAdvanced(!advanced())}
-      >
-        <Icon name={advanced() ? "chevron-down" : "chevron-right"} size="x-small" class="inline-block align-middle" />{" "}
-        Advanced auth (optional)
-      </button>
-
-      <Show when={advanced()}>
-        <div class="mt-3 flex flex-col gap-4 border-t border-border-weak-base pt-4">
-          <div class="flex flex-col gap-2">
-            <span class="text-[13px] font-medium text-text-strong">HTTP Basic Auth</span>
-            <span class="text-[12px] leading-relaxed text-text-weak">
-              For instances behind <code class="rounded bg-surface-base px-1 py-0.5 text-text-base">codeplane serve --password</code>.
-              Username defaults to <code class="rounded bg-surface-base px-1 py-0.5 text-text-base">codeplane</code>.
-            </span>
-            <div class="flex gap-2">
-              <input
-                data-desktop-field="instance-basic-username"
-                type="text"
-                placeholder="codeplane"
-                autocomplete="username"
-                class="min-w-0 flex-1 rounded-md border border-border-weak-base bg-surface-raised-base px-3 py-2 text-[13px] text-text-strong outline-none placeholder:text-text-weaker focus:border-border-interactive-base"
-                value={basicUsername()}
-                disabled={busy()}
-                onInput={(event) => setBasicUsername(event.currentTarget.value)}
-              />
-              <input
-                data-desktop-field="instance-basic-password"
-                type="password"
-                placeholder="••••••••"
-                autocomplete="current-password"
-                class="min-w-0 flex-1 rounded-md border border-border-weak-base bg-surface-raised-base px-3 py-2 text-[13px] text-text-strong outline-none placeholder:text-text-weaker focus:border-border-interactive-base"
-                value={basicPassword()}
-                disabled={busy()}
-                onInput={(event) => setBasicPassword(event.currentTarget.value)}
-              />
-            </div>
-          </div>
-
-          <div class="flex flex-col gap-2 border-t border-border-weak-base pt-4">
-            <span class="text-[13px] font-medium text-text-strong">Sign in with browser (Access / SSO)</span>
-            <span class="text-[12px] leading-relaxed text-text-weak">
-              For instances behind an access gateway, identity-aware proxy, or SSO redirect.
-              Opens a browser window at the instance URL, you sign in, and the resulting session cookies
-              are saved into the headers below. Re-run when the cookie expires — the desktop will also
-              bounce back here automatically with a "Sign-in required" toast when the server
-              starts returning 401/403.
-            </span>
-            <Button
-              type="button"
-              variant="secondary"
-              size="small"
-              icon="globe"
-              data-desktop-action="instance-sso-signin"
-              disabled={busy() || signingIn() || !url().trim()}
-              onClick={async () => {
-                const target = url().trim()
-                if (!target) {
-                  showToast({ variant: "error", icon: "warning", title: "Enter a URL first" })
-                  return
-                }
-                setSigningIn(true)
-                try {
-                  const result = await api.instances.signInWithBrowser({
-                    id: props.editing?.id ?? uid(),
-                    url: target,
-                  })
-                  if (!result.ok) {
-                    showToast({
-                      variant: "error",
-                      icon: "warning",
-                      title: "Sign-in did not complete",
-                      description: result.error ?? "No cookies were captured.",
-                    })
-                    return
-                  }
-                  // Merge captured cookie line into the existing headers blob
-                  // (deduped by header name — last write wins).
-                  const parsed = parseHeaders(headers())
-                  const cookieKey = Object.keys(parsed).find((k) => k.toLowerCase() === "cookie")
-                  if (cookieKey) delete parsed[cookieKey]
-                  parsed["Cookie"] = result.cookieHeader
-                  setHeaders(formatHeaders(parsed))
-                  showToast({
-                    variant: "success",
-                    icon: "check",
-                    title: "Sign-in captured",
-                    description: `Saved ${result.cookieCount} cookie${result.cookieCount === 1 ? "" : "s"} to the instance headers.`,
-                  })
-                } catch (error) {
-                  logSetup("instance.sso-signin.error", { error })
-                  showToast({
-                    variant: "error",
-                    icon: "warning",
-                    title: "Couldn't open the sign-in window",
-                    description: error instanceof Error ? error.message : String(error),
-                  })
-                } finally {
-                  setSigningIn(false)
-                }
-              }}
-            >
-              {signingIn() ? "Waiting for sign-in…" : "Open sign-in window"}
-            </Button>
-          </div>
-
-          <div class="flex flex-col gap-2 border-t border-border-weak-base pt-4">
-            <span class="text-[13px] font-medium text-text-strong">Custom request headers</span>
-            <textarea
-              data-desktop-field="instance-headers"
-              class="min-h-[88px] rounded-md border border-border-base bg-surface-raised-base px-3 py-2 font-mono text-[12px] text-text-strong outline-none focus:border-border-interactive-base"
-              placeholder="Authorization: Bearer ...&#10;Cookie: session=..."
-              value={headers()}
-              disabled={busy()}
-              onInput={(event) => setHeaders(event.currentTarget.value)}
-              autocomplete="off"
-              spellcheck={false}
-            />
-            <span class="text-[12px] leading-relaxed text-text-weak">
-              One <code class="rounded bg-surface-base px-1 py-0.5 text-text-base">Header: value</code> per line. Attached
-              to every request to this instance. Headers the page itself sets always win. The
-              <code class="rounded bg-surface-base px-1 py-0.5 text-text-base">Authorization</code> header is overridden
-              when a Basic Auth username/password is set above.
-            </span>
-          </div>
-
-          <label class="flex items-start gap-2.5 text-[13px] text-text-base">
+      <div class="mt-5 flex flex-col gap-4 border-t border-border-weak-base pt-4">
+        <div class="flex flex-col gap-2">
+          <span class="text-[13px] font-medium text-text-strong">Login</span>
+          <span class="text-[12px] leading-relaxed text-text-weak">
+            Use the username and password from <code class="rounded bg-surface-base px-1 py-0.5 text-text-base">codeplane serve --password</code>.
+            The OTP field appears only when the server requires one.
+          </span>
+          <div class="flex gap-2">
             <input
-              type="checkbox"
-              data-desktop-field="ignore-certificates"
-              class="mt-0.5"
+              data-desktop-field="instance-basic-username"
+              type="text"
+              placeholder="codeplane"
+              autocomplete="username"
+              class="min-w-0 flex-1 rounded-md border border-border-weak-base bg-surface-raised-base px-3 py-2 text-[13px] text-text-strong outline-none placeholder:text-text-weaker focus:border-border-interactive-base"
+              value={basicUsername()}
               disabled={busy()}
-              checked={ignoreCert()}
-              onChange={(event) => setIgnoreCert(event.currentTarget.checked)}
+              onInput={(event) => {
+                setBasicUsername(event.currentTarget.value)
+                setOtpToken("")
+                setOtpCode("")
+              }}
             />
-            <span class="flex flex-col gap-1">
-              <span class="text-text-strong">Trust self-signed TLS certificates</span>
-              <span class="text-[12px] text-text-weak">Only enable for trusted internal / dev instances.</span>
-            </span>
-          </label>
+            <input
+              data-desktop-field="instance-basic-password"
+              type="password"
+              placeholder="Password"
+              autocomplete="current-password"
+              class="min-w-0 flex-1 rounded-md border border-border-weak-base bg-surface-raised-base px-3 py-2 text-[13px] text-text-strong outline-none placeholder:text-text-weaker focus:border-border-interactive-base"
+              value={basicPassword()}
+              disabled={busy()}
+              onInput={(event) => {
+                setBasicPassword(event.currentTarget.value)
+                setOtpToken("")
+                setOtpCode("")
+              }}
+            />
+          </div>
+          <Show when={otpVisible()}>
+            <input
+              data-desktop-field="instance-otp"
+              type="text"
+              inputmode="numeric"
+              placeholder={otpToken() ? "OTP verified" : "One-time code"}
+              autocomplete="one-time-code"
+              class="rounded-md border border-border-weak-base bg-surface-raised-base px-3 py-2 text-[13px] text-text-strong outline-none placeholder:text-text-weaker focus:border-border-interactive-base"
+              value={otpCode()}
+              disabled={busy()}
+              onInput={(event) => setOtpCode(event.currentTarget.value)}
+            />
+          </Show>
         </div>
-      </Show>
+
+        <label class="flex items-start gap-2.5 text-[13px] text-text-base">
+          <input
+            type="checkbox"
+            data-desktop-field="ignore-certificates"
+            class="mt-0.5"
+            disabled={busy()}
+            checked={ignoreCert()}
+            onChange={(event) => setIgnoreCert(event.currentTarget.checked)}
+          />
+          <span class="flex flex-col gap-1">
+            <span class="text-text-strong">Trust self-signed TLS certificates</span>
+            <span class="text-[12px] text-text-weak">Only enable for trusted internal / dev instances.</span>
+          </span>
+        </label>
+      </div>
 
       <InstanceCacheSection instance={props.editing} busy={busy()} />
 

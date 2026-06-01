@@ -267,6 +267,8 @@ export const SetupScreen: Component<{
       >
         <Show when={sheet().kind === "create"}>
           <InstanceForm
+            authStatus={props.api.instances.authStatus}
+            verifyOtp={props.api.instances.verifyOtp}
             onSubmit={handleSave}
             onCancel={closeSheet}
             liveActivitiesEnabled={true}
@@ -280,6 +282,8 @@ export const SetupScreen: Component<{
               plaintextHeaders={s.plaintextHeaders}
               liveActivitiesEnabled={s.liveActivitiesEnabled}
               liveActivitiesSupported={liveActivitiesSupported()}
+              authStatus={props.api.instances.authStatus}
+              verifyOtp={props.api.instances.verifyOtp}
               onSubmit={handleSave}
               onCancel={closeSheet}
               onDelete={handleDelete}

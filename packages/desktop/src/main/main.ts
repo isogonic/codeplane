@@ -67,6 +67,7 @@ import {
 import { reconnectOverlayScript } from "./reconnect-overlay"
 import { codeplaneDesktopReleaseTag, codeplaneReleaseTag, CodeplaneVersion } from "@codeplane-ai/shared/version"
 import type { SavedInstance } from "@codeplane-ai/shared/instance"
+import { checkRemoteAuth, verifyRemoteTotp } from "@codeplane-ai/shared/remote-auth"
 
 /**
  * Codeplane desktop shell.
@@ -76,9 +77,8 @@ import type { SavedInstance } from "@codeplane-ai/shared/instance"
  * the selected server version into a local cache, and serves that UI from
  * a local host for fast subsequent launches.
  *
- * Users can additionally configure per-instance auth headers (e.g. CF
- * Access service tokens, internal API keys) that get attached to every
- * outbound request to that instance via the session's webRequest API.
+ * Users can additionally configure per-instance login credentials that are
+ * encoded as auth headers and attached to outbound requests to that instance.
  *
  * The desktop shell never embeds the backend. Local runtime install/update
  * flows are driven through the shared npm package pipeline so desktop and
@@ -780,8 +780,8 @@ function ensureSession(instance: SavedInstance): Session {
   if (configuredPartitions.has(partition)) return ses
   configuredPartitions.add(partition)
 
-  // Inject per-instance auth headers (CF Access, bearer tokens, …) on all
-  // outbound HTTP requests for this session. We never overwrite headers the
+  // Inject per-instance login headers on all outbound HTTP requests for this
+  // session. We never overwrite headers the
   // page itself already set, and we skip browser-managed headers so we don't
   // break CORS/credentials behaviour.
   //
@@ -2560,6 +2560,26 @@ function setupIpc() {
     }
     return ids
   })
+  ipcMain.handle("instances:auth-status", async (_event, input: SavedInstance) => {
+    const target = asUrl(input.url)
+    if (!target) {
+      return { reachable: false, required: false, authenticated: false, totpRequired: false, passwordValid: false }
+    }
+    const ses = ensureSession(input)
+    const nativeFetch = "fetch" in ses && typeof ses.fetch === "function" ? ses.fetch.bind(ses) : fetch
+    return checkRemoteAuth({ url: target.toString(), headers: input.headers }, nativeFetch, { timeoutMs: 8000 })
+  })
+  ipcMain.handle("instances:verify-otp", async (_event, input: { instance: SavedInstance; code: string }) => {
+    const target = asUrl(input.instance.url)
+    if (!target) return { ok: false as const, reason: "unreachable" as const }
+    const ses = ensureSession(input.instance)
+    const nativeFetch = "fetch" in ses && typeof ses.fetch === "function" ? ses.fetch.bind(ses) : fetch
+    return verifyRemoteTotp(
+      { url: target.toString(), headers: input.instance.headers, code: input.code },
+      nativeFetch,
+      { timeoutMs: 8000 },
+    )
+  })
   ipcMain.handle("instances:probe", async (_event, input: string | DesktopHostInstance) => {
     const instance =
       typeof input === "string"
@@ -2639,127 +2659,6 @@ function setupIpc() {
     },
   )
 
-  // Open a child BrowserWindow at the instance URL so the user can sign in
-  // through whatever auth proxy sits in front of it (Cloudflare Access,
-  // identity-aware proxy, custom SSO redirect). When the child window
-  // either reaches the instance origin successfully (HTTP 200 from the
-  // version endpoint via its own session) or the user closes it, we
-  // collect the cookies set on the instance origin and return them as a
-  // single Cookie header line. The caller (setup form) merges that into
-  // the saved instance's headers blob, so future requests carry the
-  // proof-of-auth cookies until they expire — at which point the existing
-  // bounce-to-Loader auth-required flow tells the user to sign in again.
-  ipcMain.handle(
-    "instances:sign-in-with-browser",
-    async (
-      _event,
-      input: { id: string; url: string },
-    ): Promise<{ ok: true; cookieHeader: string; cookieCount: number } | { ok: false; error: string }> => {
-      const target = asUrl(input.url)
-      if (!target) return { ok: false, error: "Invalid URL" }
-      logger.log("main", "instances.sign-in-with-browser.start", { id: input.id, url: target.toString() })
-
-      // Use the same per-instance session as the main window so any cookies
-      // captured here are immediately available to the production load.
-      const probeInstance: SavedInstance = { id: input.id, url: target.toString() }
-      const ses = ensureSession(probeInstance)
-
-      const child = new BrowserWindow({
-        width: 540,
-        height: 720,
-        title: `Sign in to ${target.host}`,
-        autoHideMenuBar: true,
-        webPreferences: {
-          session: ses,
-          partition: undefined,
-          nodeIntegration: false,
-          contextIsolation: true,
-          sandbox: true,
-        },
-      })
-
-      const collectCookieHeader = async (): Promise<{ count: number; line: string }> => {
-        // Cookies set on subdomains and parents both apply to the instance
-        // origin per RFC 6265. Pull the union and dedupe by name (last write
-        // wins so the freshest value from the sign-in flow wins over any
-        // stale one already in the jar).
-        const cookies = await ses.cookies.get({ url: target.toString() })
-        const seen = new Map<string, string>()
-        for (const cookie of cookies) {
-          if (!cookie.name) continue
-          seen.set(cookie.name, cookie.value)
-        }
-        const line = Array.from(seen.entries())
-          .map(([name, value]) => `${name}=${value}`)
-          .join("; ")
-        return { count: seen.size, line }
-      }
-
-      try {
-        await new Promise<void>((resolve, reject) => {
-          let settled = false
-          const finish = () => {
-            if (settled) return
-            settled = true
-            resolve()
-          }
-          const fail = (error: Error) => {
-            if (settled) return
-            settled = true
-            reject(error)
-          }
-          child.on("closed", () => finish())
-          // If the user finishes auth and lands back on the instance origin
-          // root, we treat that as a success signal and auto-close the
-          // child window after a short grace so any setting cookies from
-          // the redirect chain land first.
-          child.webContents.on("did-navigate", (_event, navigatedUrl) => {
-            const u = asUrl(navigatedUrl)
-            if (!u || u.origin !== target.origin) return
-            // Probe the version endpoint via the child session; if it
-            // returns 200 with a JSON body, the auth proof is in place.
-            void (async () => {
-              try {
-                const fetchFn =
-                  "fetch" in ses && typeof ses.fetch === "function" ? ses.fetch.bind(ses) : fetch
-                const response = await fetchFn(new URL("global/version", target).toString(), {
-                  method: "GET",
-                  redirect: "follow",
-                })
-                if (!response.ok) return
-                const body = (await response.json().catch(() => ({}))) as { current?: unknown }
-                if (typeof body.current !== "string") return
-                logger.log("main", "instances.sign-in-with-browser.success-detected", {
-                  id: input.id,
-                  url: target.toString(),
-                })
-                setTimeout(() => {
-                  if (!child.isDestroyed()) child.close()
-                }, 800)
-              } catch {
-                // Silent — keep the window open and let the user continue.
-              }
-            })()
-          })
-          void child.loadURL(target.toString()).catch((err) => fail(err instanceof Error ? err : new Error(String(err))))
-        })
-
-        const collected = await collectCookieHeader()
-        if (collected.count === 0) {
-          logger.log("main", "instances.sign-in-with-browser.no-cookies", { id: input.id })
-          return { ok: false, error: "No cookies were set during the sign-in flow." }
-        }
-        logger.log("main", "instances.sign-in-with-browser.success", {
-          cookieCount: collected.count,
-          id: input.id,
-        })
-        return { ok: true, cookieHeader: collected.line, cookieCount: collected.count }
-      } catch (error) {
-        logger.log("main", "instances.sign-in-with-browser.error", { error, id: input.id })
-        return { ok: false, error: error instanceof Error ? error.message : String(error) }
-      }
-    },
-  )
   ipcMain.handle("system-permissions:check", async () => {
     const permissions: DesktopSystemPermissionStatus[] = []
 
