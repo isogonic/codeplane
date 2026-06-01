@@ -2998,10 +2998,11 @@ if (!gotLock) {
   app.on("login", (event, _webContents, _request, authInfo, callback) => {
     logger.log("main", "login", { host: authInfo.host, isProxy: authInfo.isProxy, realm: authInfo.realm })
     if (authInfo.isProxy) return
-    // Let Electron surface the native credential dialog for non-proxy
-    // HTTP Basic Auth challenges. Do NOT call preventDefault or pass empty
-    // credentials — doing so suppresses the OS prompt and sends a blank
-    // Authorization header, permanently breaking auth_basic connections.
+    // Do not call preventDefault or callback here — Electron surfaces the
+    // native credential dialog automatically for non-proxy HTTP Basic Auth
+    // challenges. Calling preventDefault suppresses that dialog, and
+    // calling callback() with no args sends a blank Authorization header,
+    // which permanently breaks auth_basic connections.
   })
 
   app
